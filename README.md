@@ -13,9 +13,9 @@
   <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow" />
 </a>
 
-### ⚛️ React utilities for location routing, params, queries, and hashes.
+### ⚛️ React-Location is a modern Router for React
 
-React-Location is a Router for React. It's been built with the following considerations in mind:
+It's been built with the following considerations in mind:
 
 - Clean and clear routing syntax
 - Familiar API for productivity
@@ -24,10 +24,12 @@ React-Location is a Router for React. It's been built with the following conside
 - Relative Routing + Links
 - Both Colocated or Nested Route structure
 - Programmatic Navigation
-- Hooks for ease-of-use
+- Hooks
 - Support for URL or in-memory location sources
 
 ## Get Started
+
+**NOTE: React-Location requires React Hooks. Please verify you are using a version of React that supports them.**
 
 1. Install `react-location`
 
