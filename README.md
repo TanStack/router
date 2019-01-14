@@ -426,13 +426,14 @@ const Promise = navigate(
 ```
 
 **Argument Information**
-| Prop | Type | Description |
+
+| Prop    | Type            | Description                                                                                                                                           |
 | ------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| to | string | The path this link navigates to. It can be absolute, relative, external and can also contain a #hash. Defaults to the current location if not defined |
-| query | object/function | Either (1) the replacement query parameters for this link as an object, or (2) a function that receives the old query parameters and returns new ones |
-| state | object/function | Either (1) the replacement state for this link as an object, or (2) a function that receives the old state and returns new ones |
-| replace | boolean | Whether or not to replace the current history entry when this link is clicked |
-| preview | boolean | When `true`, returns the `href` produced by this Link |
+| to      | string          | The path this link navigates to. It can be absolute, relative, external and can also contain a #hash. Defaults to the current location if not defined |
+| query   | object/function | Either (1) the replacement query parameters for this link as an object, or (2) a function that receives the old query parameters and returns new ones |
+| state   | object/function | Either (1) the replacement state for this link as an object, or (2) a function that receives the old state and returns new ones                       |
+| replace | boolean         | Whether or not to replace the current history entry when this link is clicked                                                                         |
+| preview | boolean         | When `true`, returns the `href` produced by this Link                                                                                                 |
 
 ## Contribution and Roadmap
 
