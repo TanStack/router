@@ -17,7 +17,11 @@ export { createHistory, createMemorySource };
 const context = createContext();
 
 // Detect if we're in the DOM
-const isDOM = Boolean(window.document && window.document.createElement);
+const isDOM = Boolean(
+  typeof window !== "undefined" &&
+    window.document &&
+    window.document.createElement
+);
 
 // This is the default history object if none is defined
 export const globalHistory = createHistory(
@@ -25,7 +29,7 @@ export const globalHistory = createHistory(
 );
 
 // This is the main Location component that acts like a Provider
-export const Location = ({
+export const LocationProvider = ({
   history: userHistory,
   basepath: userBasepath,
   children
@@ -35,7 +39,7 @@ export const Location = ({
 
   // Let's get at some of the nested data on the history object
   const {
-    location: { pathname, hash: fullHash, search: searchStr, state },
+    location: { pathname, hash: fullHash, search: search, state },
     _onTransitionComplete
   } = history;
 
@@ -44,7 +48,7 @@ export const Location = ({
   // The default basepath for the entire Location
   const basepath = userBasepath || "/";
   // Parse the query params into an object
-  const query = qss.decode(searchStr.substring(1));
+  const query = qss.decode(search.substring(1));
 
   // Try to parse any query params that might be json
   Object.keys(query).forEach(key => {
@@ -57,7 +61,7 @@ export const Location = ({
 
   // Start off with fresh params at the top level
   const params = {};
-  const href = pathname + (hash ? "#" + hash : "") + searchStr;
+  const href = pathname + (hash ? "#" + hash : "") + search;
 
   // Build our context value
   const contextValue = {
@@ -66,7 +70,7 @@ export const Location = ({
     hash,
     params,
     query,
-    searchStr,
+    search,
     state,
     href,
     history
@@ -118,10 +122,10 @@ export const useLocation = () => {
     }
 
     // Then stringify the query params for URL encoding
-    const searchStr = qss.encode(resolvedQuery, "?");
+    const search = qss.encode(resolvedQuery, "?");
 
     // Construct the final href for the navigation
-    const href = resolve(to, basepath) + (searchStr === "?" ? "" : searchStr);
+    const href = resolve(to, basepath) + (search === "?" ? "" : search);
 
     // If this is a preview, just return the final href
     if (preview) {
@@ -138,6 +142,27 @@ export const useLocation = () => {
   return {
     ...contextValue,
     navigate // add the navigat function to the hook output
+  };
+};
+
+export const Location = ({ children, render, ...rest }) => {
+  const location = useLocation(rest);
+
+  if (children) {
+    return children(location);
+  }
+
+  if (render) {
+    return render(location);
+  }
+
+  return null;
+};
+
+export const withLocation = Comp => {
+  return props => {
+    const location = useLocation();
+    return <Comp {...props} location={location} />;
   };
 };
 
@@ -245,7 +270,7 @@ export const Match = ({ path, children, render, component: Comp }) => {
 
 // The Match component is used to match paths againts the location and
 // render content for that match
-export const Redirect = ({ from, to, query, state, replace }) => {
+export const Redirect = ({ from, to, query, state, replace = true }) => {
   // Use the location
   const locationValue = useLocation();
   const { basepath, pathname, navigate } = locationValue;
