@@ -62,30 +62,39 @@ render(
       <Match path="dashboard">
         <div>This is the Dashboard</div>
       </Match>
-      <MatchFirst>
-        <Match path="invoices">
-          <div>These are the invoices</div>
-          <ul>
-            <li>
-              <Link to="1">Invoice 1</Link>
-            </li>
-            <li>
-              <Link to="2">Invoice 2</Link>
-            </li>
-            <li>
-              <Link to="3">Invoice 3</Link>
-            </li>
-          </ul>
-        </Match>
-        <Match path=":invoiceID">
-          {({ params }) => (
-            <div>
-              <Link to="..">Back</Link>
-              This is invoice #{params.invoiceID}
-            </div>
-          )}
-        </Match>
-      </MatchFirst>
+      <Match path="invoices">
+        <MatchFirst>
+          <Match path="/">
+            <div>Invoices</div>
+            <ul>
+              <li>
+                <Link to="new">New Invoice</Link>
+              </li>
+              <li>
+                <Link to="1">Invoice 1</Link>
+              </li>
+              <li>
+                <Link to="2">Invoice 2</Link>
+              </li>
+              <li>
+                <Link to="3">Invoice 3</Link>
+              </li>
+            </ul>
+          </Match>
+          <Match path="new">
+            <Link to="..">Back</Link>
+            <div>This is a new invoice!</div>
+          </Match>
+          <Match path=":invoiceID">
+            {({ params }) => (
+              <div>
+                <Link to="..">Back</Link>
+                This is invoice #{params.invoiceID}
+              </div>
+            )}
+          </Match>
+        </MatchFirst>
+      </Match>
     </div>
   </LocationProvider>
 );
