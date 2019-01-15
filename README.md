@@ -418,6 +418,7 @@ The following **properties** are available on the location API:
 | `search`   | string | The search string of the location                            |
 | `state`    | object | The location's custom state `object`                         |
 | `href`     | string | The full url                                                 |
+| `key`      | string | The unique key for the current stack in history              |
 | `history`  | object | The underlying `history` object used to power the location   |
 
 The following **methods** are available on the location API:

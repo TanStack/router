@@ -38,7 +38,7 @@ const LocationRoot = ({
 
   // Let's get at some of the nested data on the history object
   const {
-    location: { pathname, hash: fullHash, search: search, state },
+    location: { pathname, hash: fullHash, search: search, state, key },
     _onTransitionComplete
   } = history;
 
@@ -72,6 +72,7 @@ const LocationRoot = ({
     search,
     state,
     href,
+    key,
     history
   };
 
