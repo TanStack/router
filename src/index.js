@@ -1,4 +1,10 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useRef
+} from "react";
 import * as qss from "qss";
 
 import { createHistory, createMemorySource } from "./history";
@@ -76,13 +82,16 @@ const LocationRoot = ({
     history
   };
 
-  // Force the component to rerender when the history changes
-  const [_, setCount] = useState(0);
+  const historyListenerRef = useRef();
+
+  // Subscribe to the history, even before the component mounts
+  if (!historyListenerRef.current) {
+    historyListenerRef.current = history.listen(() => setCount(old => old + 1));
+  }
+
+  // Before the component unmounts, unsubscribe from the history
   useEffect(() => {
-    const unlisten = history.listen(() => setCount(old => old + 1));
-    return () => {
-      unlisten();
-    };
+    return historyListenerRef.current;
   }, []);
 
   // After component update, mark the transition as complete
