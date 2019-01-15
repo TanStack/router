@@ -34,9 +34,11 @@ It's been built with the following considerations in mind:
 1. Install `react-location`
 
 ```sh
-yarn add react-location
+# React-Location is currently in beta, please use the @next tag to install the latest beta version
+
+yarn add react-location@next
 # or
-npm i -s react-location
+npm i -s react-location@next
 ```
 
 2. Import and use `react-location`
