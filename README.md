@@ -174,11 +174,13 @@ render(
 
 The `Match` component is used to render content when its path matches the current history's location. It is generally used for routing purposes. It also provides the new relative matching path to child `Match` components, allowing for clean nested route definition.
 
-| Prop                        | Required | Description                                                                                                                                                 |
-| --------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| path                        | true     | The path to match (relative to the nearest parent `Match` component or root basepath)                                                                       |
-| children                    |          | The content to be rendered when the path matches the current location                                                                                       |
-| children()/render/component |          | The function to be called when the path matches the current location. This function is called with the [`location` API](#location-api) as the only paramter |
+| Prop                               | Required | Description                                                                                                                                                                                                             |
+| ---------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| path                               | true     | The path to match (relative to the nearest parent `Match` component or root basepath)                                                                                                                                   |
+| children                           |          | The content to be rendered when the path matches the current location                                                                                                                                                   |
+| children(params, location)         |          | The function to be called when the path matches the current location. This function is called with any route params available in context and the [location API](#location-api)                                          |
+| render(params, location)           |          | The function to be called when the path matches the current location. This function is called with any route params available in context and the [location API](#location-api)                                          |
+| <component {...params} location /> |          | The component to be rendered when the path matches the current location. This component is renderd with any route params available in context **as props** and the [location API](#location-api) as the `location` prop |
 
 **Example**
 
@@ -189,7 +191,7 @@ render(<Match path="about">About me</Match>);
 // Use children as a function
 render(
   <Match path=":invoiceID">
-    {location => <div>This is invoice #{location.params.invoiceID}</div>}
+    {({ invoiceID }) => <div>This is invoice #{invoiceID}</div>}
   </Match>
 );
 
@@ -197,13 +199,13 @@ render(
 render(
   <Match
     path=":invoiceID"
-    render={location => <div>This is invoice #{location.params.invoiceID}</div>}
+    render={({ invoiceID }) => <div>This is invoice #{invoiceID}</div>}
   />
 );
 
 // Use a component
-const Invoice = ({ dark, location }) => (
-  <div>This is invoice #{location.params.invoiceID}</div>
+const Invoice = ({ invoiceID, location, dark }) => (
+  <div classname={dark && "dark"}>This is invoice #{invoiceID}</div>
 );
 
 render(<Match path=":invoiceID" component={Invoice} dark />);
@@ -334,7 +336,7 @@ As mentioned above, `activeType` configures when a link is considered "active", 
 
 ## useLocation, Location, withLocation
 
-The `useLocation` hook, `Location` component and `withLocation` HOC all return the current [`location` API](#location-api) from context when used.
+The `useLocation` hook, `Location` component and `withLocation` HOC all return the current [location API](#location-api) from context when used.
 
 **Example**
 
@@ -404,7 +406,7 @@ React-Location's model and API is located in a single object, passed via context
 - Via props passed to the `render` function, `children` function, and `component`s that are rendered with the `Match` component. [See Example](#match)
 - The first parameter of the `Link` component's `getActiveProps` prop function. [See Example](#link)
 
-The following **properties** are available on the `location` API:
+The following **properties** are available on the location API:
 
 | Property   | Type   | Description                                                  |
 | ---------- | ------ | ------------------------------------------------------------ |
@@ -418,7 +420,7 @@ The following **properties** are available on the `location` API:
 | `href`     | string | The full url                                                 |
 | `history`  | object | The underlying `history` object used to power the location   |
 
-The following **methods** are available on the `location` API:
+The following **methods** are available on the location API:
 
 ### `navigate`
 

@@ -216,7 +216,7 @@ export const MatchFirst = ({ children }) => {
 
 // The Match component is used to match paths againts the location and
 // render content for that match
-export const Match = ({ path, children, render, component: Comp }) => {
+export const Match = ({ path, children, render, component: Comp, ...rest }) => {
   // Use the location
   const locationValue = useLocation();
   const { basepath, pathname, params } = locationValue;
@@ -249,19 +249,24 @@ export const Match = ({ path, children, render, component: Comp }) => {
     return null;
   }
 
+  const renderProps = {
+    ...contextValue,
+    ...contextValue.params
+  };
+
   // Support the render prop
   if (render) {
-    children = render(contextValue);
+    children = render(renderProps);
   }
 
   // Support the component prop
   if (Comp) {
-    children = <Comp {...contextValue} />;
+    children = <Comp {...renderProps} {...rest} />;
   }
 
   // Support child as a function
   if (typeof children === "function") {
-    children = children(contextValue);
+    children = children(renderProps);
   }
 
   // Support just children
