@@ -411,12 +411,12 @@ The following **properties** are available on the `location` API:
 | `basepath` | string | The basepath of the API, including parent paths.             |
 | `pathname` | string | The pathname of the location.                                |
 | `hash`     | string | The hash of the location with the `#` removed.               |
-| `params`   | string | The params, deserialized to an `object` with key-value pairs |
-| `query`    | string | The query, deserialized to an `object` with key-value pairs  |
+| `params`   | object | The params, deserialized to an `object` with key-value pairs |
+| `query`    | object | The query, deserialized to an `object` with key-value pairs  |
 | `search`   | string | The search string of the location                            |
-| `state`    | string | The location's custom state `object`                         |
+| `state`    | object | The location's custom state `object`                         |
 | `href`     | string | The full url                                                 |
-| `history`  | string | The underlying `history` object used to power the location   |
+| `history`  | object | The underlying `history` object used to power the location   |
 
 The following **methods** are available on the `location` API:
 
