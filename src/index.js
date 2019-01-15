@@ -40,7 +40,7 @@ const LocationRoot = ({
   basepath: userBasepath
 }) => {
   // If this is the first history, create it using the userHistory or browserHistory
-  const [history] = useState(userHistory || globalHistory);
+  const [history, setHistory] = useState(userHistory || globalHistory);
 
   // Let's get at some of the nested data on the history object
   const {
@@ -86,7 +86,8 @@ const LocationRoot = ({
 
   // Subscribe to the history, even before the component mounts
   if (!historyListenerRef.current) {
-    historyListenerRef.current = history.listen(() => setCount(old => old + 1));
+    // Update this component any time history updates
+    historyListenerRef.current = history.listen(() => setHistory(history));
   }
 
   // Before the component unmounts, unsubscribe from the history
