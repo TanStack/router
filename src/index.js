@@ -28,11 +28,10 @@ export const globalHistory = createHistory(
   isDOM ? window : createMemorySource()
 );
 
-// This is the main Location component that acts like a Provider
-export const LocationProvider = ({
+const LocationRoot = ({
+  children,
   history: userHistory,
-  basepath: userBasepath,
-  children
+  basepath: userBasepath
 }) => {
   // If this is the first history, create it using the userHistory or browserHistory
   const [history] = useState(userHistory || globalHistory);
@@ -90,8 +89,15 @@ export const LocationProvider = ({
     _onTransitionComplete();
   });
 
-  // Provide the context
   return <context.Provider value={contextValue}>{children}</context.Provider>;
+};
+
+// This is the main Location component that acts like a Provider
+export const LocationProvider = ({ children, location, ...rest }) => {
+  if (location) {
+    return <context.Provider value={location}>{children}</context.Provider>;
+  }
+  return <LocationRoot {...rest}>{children}</LocationRoot>;
 };
 
 // This hook powers just about everything. It is also responsible for
