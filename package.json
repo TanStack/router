@@ -6,8 +6,8 @@
   "license": "MIT",
   "repository": "tannerlinsley/react-location",
   "main": "dist/index.js",
-  "module": "dist/index.es.js",
-  "jsnext:main": "dist/index.es.js",
+  "_module": "dist/index.es.js",
+  "_jsnext:main": "dist/index.es.js",
   "engines": {
     "node": ">=8",
     "npm": ">=5"
@@ -23,7 +23,7 @@
   },
   "peerDependencies": {
     "prop-types": "^15.5.4",
-    "react": "16.8.0-alpha.0"
+    "react": "^16.8.0-beta.0"
   },
   "dependencies": {
     "qss": "^2.0.1"
@@ -44,8 +44,6 @@
     "eslint-plugin-promise": "^4.0.0",
     "eslint-plugin-react": "^7.10.0",
     "eslint-plugin-standard": "^4.0.0",
-    "gh-pages": "^2.0.1",
-    "react": "16.8.0-alpha.0",
     "rollup": "^0.68.0",
     "rollup-plugin-babel": "^4.1.0",
     "rollup-plugin-commonjs": "^9.1.3",

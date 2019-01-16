@@ -197,7 +197,7 @@ export const MatchFirst = ({ children }) => {
     if (!match && React.isValidElement(child)) {
       // If the child isn't a route, it's the default content
       // and becomes the only match
-      if (child.type !== Match || child.type !== Redirect) {
+      if (!child.type.__isMatch && !child.type.__isRedirect) {
         match = child;
         return;
       }
@@ -290,6 +290,8 @@ export const Match = ({ path, children, render, component: Comp, ...rest }) => {
   return <context.Provider value={contextValue}>{children}</context.Provider>;
 };
 
+Match.__isMatch = true;
+
 // The Match component is used to match paths againts the location and
 // render content for that match
 export const Redirect = ({ from, to, query, state, replace = true }) => {
@@ -308,6 +310,8 @@ export const Redirect = ({ from, to, query, state, replace = true }) => {
 
   return null;
 };
+
+Redirect.__isRedirect = true;
 
 export function Link({
   to,
