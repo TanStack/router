@@ -368,11 +368,11 @@ export const MyComponent = withLocation(({ location }) => {
 
 ## Redirect
 
-The `Redirect` component can be used to redirect from one route to another based on a matching path.
+The `Redirect` component can be used to redirect from one route to another based on a matching path. It can be rendered standalone or within a `MatchFirst` component. If the `from` prop is left undefined, it will always match and always redirect if rendered.
 
 | Prop                     | Description                                                                                                     |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| from                     | The path to match. Behaves the same way a `Match` does.                                                         |
+| from                     | The path to match. Behaves the same way a `Match` does. If not defined, will always redirect when rendered.     |
 | ...[navigate](#navigate) | All properties for the [navigate](#navigate) method are supported here, but with `replace` defaulting to `true` |
 
 ## createHistory

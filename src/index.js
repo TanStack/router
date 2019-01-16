@@ -204,6 +204,10 @@ export const MatchFirst = ({ children }) => {
 
       // It must be a Match component, then.
       // Try and match on its to/from prop
+      if (child.type.__isRedirect && !child.props.from) {
+        match = child;
+        return;
+      }
       const path = child.props.path || child.props.from;
       let newBasepath = getResolvedBasepath(path, basepath);
       const matched = isMatch(newBasepath, pathname);
