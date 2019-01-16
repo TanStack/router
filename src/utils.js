@@ -6,6 +6,7 @@ export function trimSlashes(str) {
 }
 
 export function resolve(to, base) {
+  to = String(to);
   if (startsWith(to, "/")) {
     return to;
   }
