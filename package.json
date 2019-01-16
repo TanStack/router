@@ -32,6 +32,7 @@
     "@babel/plugin-proposal-class-properties": "^7.2.1",
     "@babel/preset-env": "^7.2.0",
     "@babel/preset-react": "^7.0.0",
+    "@babel/runtime": "^7.2.0",
     "@svgr/rollup": "^4.1.0",
     "babel-core": "7.0.0-bridge.0",
     "cross-env": "^5.1.4",
