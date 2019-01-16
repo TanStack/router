@@ -197,7 +197,7 @@ export const MatchFirst = ({ children }) => {
     if (!match && React.isValidElement(child)) {
       // If the child isn't a route, it's the default content
       // and becomes the only match
-      if (child.type !== Match) {
+      if (child.type !== Match || child.type !== Redirect) {
         match = child;
         return;
       }
