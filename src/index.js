@@ -40,7 +40,8 @@ const LocationRoot = ({
   basepath: userBasepath
 }) => {
   // If this is the first history, create it using the userHistory or browserHistory
-  const [history, setHistory] = useState(userHistory || globalHistory);
+  const [history] = useState(userHistory || globalHistory);
+  const [count, setHistoryCount] = useState(0);
 
   // Let's get at some of the nested data on the history object
   const {
@@ -87,7 +88,9 @@ const LocationRoot = ({
   // Subscribe to the history, even before the component mounts
   if (!historyListenerRef.current) {
     // Update this component any time history updates
-    historyListenerRef.current = history.listen(() => setHistory(history));
+    historyListenerRef.current = history.listen(() => {
+      setHistoryCount(old => old + 1);
+    });
   }
 
   // Before the component unmounts, unsubscribe from the history
@@ -98,9 +101,14 @@ const LocationRoot = ({
   // After component update, mark the transition as complete
   useEffect(() => {
     _onTransitionComplete();
-  });
+  }, [count]);
 
-  return <context.Provider value={contextValue}>{children}</context.Provider>;
+  return (
+    // The key prop here forces a rerender when the router changes
+    <context.Provider value={contextValue}>
+      <React.Fragment key={count}>{children}</React.Fragment>
+    </context.Provider>
+  );
 };
 
 // This is the main Location component that acts like a Provider
@@ -115,7 +123,16 @@ export const LocationProvider = ({ children, location, ...rest }) => {
 // creating the navigate() function based on the depth at which the hook is used
 export const useLocation = () => {
   const contextValue = useContext(context);
+  const [_, setHistoryCount] = useState(0);
   const { query, state, history, basepath } = contextValue;
+
+  // Make sure any components using this hook update when the
+  // history changes
+  useEffect(() => {
+    return history.listen(() => {
+      setHistoryCount(old => old + 1);
+    });
+  });
 
   // Make the navigate function
   const navigate = (
