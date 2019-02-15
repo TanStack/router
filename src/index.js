@@ -137,7 +137,7 @@ export const useLocation = () => {
   // Make the navigate function
   const navigate = (
     to,
-    { query: queryUpdater, state: stateUpdater, replace, preview }
+    { query: queryUpdater, state: stateUpdater, replace, preview } = {}
   ) => {
     // Allow query params and state to be updated with a function
     const resolvedQuery =
