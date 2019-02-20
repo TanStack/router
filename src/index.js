@@ -11,7 +11,7 @@ import { createHistory, createMemorySource } from "./history";
 import {
   isModifiedEvent,
   resolve,
-  isMatch,
+  isMatch as _isMatch,
   startsWith,
   getResolvedBasepath
 } from "./utils";
@@ -124,7 +124,7 @@ export const LocationProvider = ({ children, location, ...rest }) => {
 export const useLocation = () => {
   const contextValue = useContext(context);
   const [_, setHistoryCount] = useState(0);
-  const { query, state, history, basepath } = contextValue;
+  const { query, state, history, basepath, pathname } = contextValue;
 
   // Make sure any components using this hook update when the
   // history changes
@@ -173,9 +173,13 @@ export const useLocation = () => {
     });
   };
 
+  const isMatch = matchPath =>
+    _isMatch(getResolvedBasepath(matchPath, basepath), pathname);
+
   return {
     ...contextValue,
-    navigate // add the navigat function to the hook output
+    navigate,
+    isMatch
   };
 };
 
@@ -204,8 +208,7 @@ export const withLocation = Comp => {
 // any non-null non-Match component and renders only that component.
 // Comparable to React-Locations Swtich component
 export const MatchFirst = ({ children }) => {
-  const locationValue = useLocation();
-  const { basepath, pathname } = locationValue;
+  const { isMatch } = useLocation();
 
   let match;
   // Loop over all of the children
@@ -226,8 +229,7 @@ export const MatchFirst = ({ children }) => {
         return;
       }
       const path = child.props.path || child.props.from;
-      let newBasepath = getResolvedBasepath(path, basepath);
-      const matched = isMatch(newBasepath, pathname);
+      const matched = isMatch(path);
 
       // If it's a match
       if (matched) {
@@ -257,12 +259,10 @@ export const MatchFirst = ({ children }) => {
 export const Match = ({ path, children, render, component: Comp, ...rest }) => {
   // Use the location
   const locationValue = useLocation();
-  const { basepath, pathname, params } = locationValue;
+  const { params } = locationValue;
 
-  // Resolve the new basepath from the Match's path prop
-  let newBasePath = getResolvedBasepath(path, basepath);
   // See if the route is currently matched
-  const match = isMatch(newBasePath, pathname);
+  const match = isMatch(path);
 
   if (match) {
     // If the route is a match, make sure we use

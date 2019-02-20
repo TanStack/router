@@ -441,6 +441,28 @@ const Promise = navigate(
 );
 ```
 
+### `isMatch`
+
+The `isMatch` function allows you to programmatically test a path for a match **within the closest relative route**.
+
+**Usage**
+
+```javascript
+const MyComponent = () => {
+  const { isMatch } = useLocation();
+
+  isMatch("about"); // false
+  isMatch("me"); // true
+};
+
+const App = () => {
+  // path === '/about/me'
+  <Match path="about">
+    <MyComponent />
+  </Match>;
+};
+```
+
 **Argument Information**
 
 | Prop    | Type            | Description                                                                                                                                           |
