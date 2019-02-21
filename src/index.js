@@ -105,9 +105,7 @@ const LocationRoot = ({
 
   return (
     // The key prop here forces a rerender when the router changes
-    <context.Provider value={contextValue}>
-      <React.Fragment key={count}>{children}</React.Fragment>
-    </context.Provider>
+    <context.Provider value={contextValue}>{children}</context.Provider>
   );
 };
 
@@ -173,8 +171,8 @@ export const useLocation = () => {
     });
   };
 
-  const isMatch = matchPath =>
-    _isMatch(getResolvedBasepath(matchPath, basepath), pathname);
+  const isMatch = (matchPath, from) =>
+    _isMatch(getResolvedBasepath(matchPath, from || basepath), pathname);
 
   return {
     ...contextValue,
@@ -259,10 +257,12 @@ export const MatchFirst = ({ children }) => {
 export const Match = ({ path, children, render, component: Comp, ...rest }) => {
   // Use the location
   const locationValue = useLocation();
-  const { params } = locationValue;
+  const { params, isMatch } = locationValue;
 
   // See if the route is currently matched
   const match = isMatch(path);
+
+  let newBasePath;
 
   if (match) {
     // If the route is a match, make sure we use
@@ -318,12 +318,10 @@ Match.__isMatch = true;
 export const Redirect = ({ from, to, query, state, replace = true }) => {
   // Use the location
   const locationValue = useLocation();
-  const { basepath, pathname, navigate } = locationValue;
+  const { pathname, navigate, isMatch } = locationValue;
 
-  // Resolve the new basepath from the Match's path prop
-  let newBasePath = getResolvedBasepath(from, basepath);
   // See if the route is currently matched
-  const match = isMatch(newBasePath, pathname);
+  const match = isMatch(pathname, from);
 
   if (match) {
     navigate(to, { query, state, replace });
