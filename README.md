@@ -13,7 +13,7 @@
   <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow" />
 </a>
 
-### ⚛️ React-Location is a modern Router for React
+### ⚛️ React-Location is a modern Router and location API for React
 
 It's been built with the following considerations in mind:
 
@@ -29,16 +29,12 @@ It's been built with the following considerations in mind:
 
 ## Get Started
 
-**NOTE: React-Location requires React Hooks. Please verify you are using a version of React that supports them.**
-
 1. Install `react-location`
 
 ```sh
-# React-Location is currently in beta, please use the @next tag to install the latest beta version
-
-yarn add react-location@next
+npm install react-location --save
 # or
-npm i -s react-location@next
+yarn add react-location
 ```
 
 2. Import and use `react-location`
@@ -481,11 +477,17 @@ const App = () => {
 Server-side rendering is easy with react-location. You can use `createMemorySource`, `createHistory` and `LocationProvider` to mock your app into a specific state for SSR:
 
 ```js
+import {
+  createMemorySource,
+  createHistory,
+  LocationProvider
+} from "react-location";
+
 let history;
 if (typeof document !== "undefined") {
   history = createHistory(window);
 } else {
-  const source = createMemorySource(makePathAbsolute("/blog/post/2"));
+  const source = createMemorySource("/blog/post/2");
   history = createHistory(source);
 }
 
