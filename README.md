@@ -473,6 +473,28 @@ const App = () => {
 | replace | boolean         | Whether or not to replace the current history entry when this link is clicked                                                                         |
 | preview | boolean         | When `true`, returns the `href` produced by this Link                                                                                                 |
 
+### SSR
+
+Server-side rendering is easy with react-location. You can use `createMemorySource`, `createHistory` and `LocationProvider` to mock your app into a specific state for SSR:
+
+```js
+let history;
+if (typeof document !== "undefined") {
+  history = createHistory(window);
+} else {
+  const source = createMemorySource(makePathAbsolute("/blog/post/2"));
+  history = createHistory(source);
+}
+
+return (
+  <LocationProvider history={history}>
+    <div>...</div>
+  </LocationProvider>
+);
+```
+
+Looking to do static site generation? You should try react-location with [React Static!](https://react-static.js.org)
+
 ## Contribution and Roadmap
 
 - [ ] Improve Accessibility (Hopefully to the level of Reach Router)
