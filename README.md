@@ -112,6 +112,9 @@ render(
   - [createHistory](#createhistory)
   - [createMemorySource](#creatememorysource)
   - [Location API](#location-api)
+    - [navigate](#navigate)
+    - [isMatch](#ismatch)
+  - [SSR](#ssr)
 - [Contribution and Roadmap](#contribution-and-roadmap)
 - [Inspiration and Thanks](#inspiration-and-thanks)
 
@@ -473,7 +476,7 @@ const App = () => {
 | replace | boolean         | Whether or not to replace the current history entry when this link is clicked                                                                         |
 | preview | boolean         | When `true`, returns the `href` produced by this Link                                                                                                 |
 
-### SSR
+# SSR
 
 Server-side rendering is easy with react-location. You can use `createMemorySource`, `createHistory` and `LocationProvider` to mock your app into a specific state for SSR:
 
