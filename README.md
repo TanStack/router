@@ -40,9 +40,9 @@ yarn add react-location
 2. Import and use `react-location`
 
 ```js
-import { React } from "react";
-import { render } from "react-dom";
-import { LocationProvider, Match, MatchFirst, Link } from "react-location";
+import { React } from 'react'
+import { render } from 'react-dom'
+import { LocationProvider, Match, MatchFirst, Link } from 'react-location'
 
 render(
   <LocationProvider>
@@ -92,8 +92,8 @@ render(
         </MatchFirst>
       </Match>
     </div>
-  </LocationProvider>
-);
+  </LocationProvider>,
+)
 ```
 
 # Table of Contents
@@ -129,10 +129,41 @@ The `LocationProvider` component is the root Provider component for `react-locat
 | location | false    | A custom location to use instead of creating a new one. If a location is passed here, all other props will be ignored and will be inherited from the custom location instead. This useful for things like animation or preserving multiple locations in the tree at the same time. |
 | children | true     | The children to pass the location context to                                                                                                                                                                                                                                       |
 
+**Example: Basic**
+
+```javascript
+import { LocationProvider } from 'react-location'
+
+return (
+  <LocationProvider>
+    <div>Your Application</div>
+  </LocationProvider>
+)
+```
+
+**Example: Memory History**
+
+```javascript
+import {
+  createMemorySource,
+  createHistory,
+  LocationProvider,
+} from 'react-location'
+
+const source = createMemorySource('/')
+history = createHistory(source)
+
+return (
+  <LocationProvider history={history}>
+    <div>...</div>
+  </LocationProvider>
+)
+```
+
 **Example: Animated Routes**
 
 ```javascript
-import { LocationProvider, Location, Match } from "react-location";
+import { LocationProvider, Location, Match } from 'react-location'
 
 const AnimatedWrapper = ({ children }) => (
   <Location>
@@ -147,7 +178,7 @@ const AnimatedWrapper = ({ children }) => (
       </TransitionGroup>
     )}
   </Location>
-);
+)
 
 render(
   <LocationProvider>
@@ -165,8 +196,8 @@ render(
         </Match>
       </MatchFirst>
     </AnimatedWrapper>
-  </LocationProvider>
-);
+  </LocationProvider>,
+)
 ```
 
 ## Match
@@ -185,29 +216,29 @@ The `Match` component is used to render content when its path matches the curren
 
 ```javascript
 // Render children directly
-render(<Match path="about">About me</Match>);
+render(<Match path="about">About me</Match>)
 
 // Use children as a function
 render(
   <Match path=":invoiceID">
     {({ invoiceID }) => <div>This is invoice #{invoiceID}</div>}
-  </Match>
-);
+  </Match>,
+)
 
 // Use a render function
 render(
   <Match
     path=":invoiceID"
     render={({ invoiceID }) => <div>This is invoice #{invoiceID}</div>}
-  />
-);
+  />,
+)
 
 // Use a component
 const Invoice = ({ invoiceID, location, dark }) => (
-  <div classname={dark && "dark"}>This is invoice #{invoiceID}</div>
-);
+  <div classname={dark && 'dark'}>This is invoice #{invoiceID}</div>
+)
 
-render(<Match path=":invoiceID" component={Invoice} dark />);
+render(<Match path=":invoiceID" component={Invoice} dark />)
 ```
 
 ## MatchFirst
@@ -236,8 +267,8 @@ render(
         )}
       </Match>
     </MatchFirst>
-  </Match>
-);
+  </Match>,
+)
 ```
 
 **Example - Default / Fallback Route**
@@ -250,8 +281,8 @@ render(
     <div>
       This element would be rendered as the fallback when no Matches are found
     </div>
-  </MatchFirst>
-);
+  </MatchFirst>,
+)
 ```
 
 ## Link
@@ -315,7 +346,7 @@ The following link will be green with `/about` as the current location.
 <Link
   to="/about"
   getActiveProps={location => ({
-    style: { color: "green" }
+    style: { color: 'green' },
   })}
 >
   About
@@ -326,12 +357,23 @@ The following link will be green with `/about` as the current location.
 
 As mentioned above, `activeType` configures when a link is considered "active", and when `getActiveProps()` is run and applied to the link. Below is a table demonstrating the various options and how they behave:
 
-| Type | Description | Example |
-| ---- | ----------- | ------- |
+| Type      | Description                                              | Example |
+| --------- | -------------------------------------------------------- | ------- |
+| `full`    | Match agains the fully href including the query and hash |         |
+| `hash`    |                                                          |         |
+| `path`    |                                                          |         |
+| `partial` |                                                          |         |
 
-
-| `full`
-| `hash`
+let isCurrent;
+if (activeType === "partial") {
+isCurrent = startsWith(href, linkHrefWithQuery);
+} else if (activeType === "path") {
+isCurrent = pathname === linkHref;
+} else if (activeType === "hash") {
+isCurrent = pathname === linkHrefWithHash;
+} else {
+isCurrent = href === linkHrefWithQuery;
+}
 
 ## useLocation, Location, withLocation
 
@@ -381,14 +423,14 @@ Creates a custom history object. You can pass this history object to the `Locati
 **Example**
 
 ```javascript
-import { createMemorySource, createHistory } from "react-location";
+import { createMemorySource, createHistory } from 'react-location'
 
 // Use the window history (DOM only)
-let history = createHistory(window);
+let history = createHistory(window)
 
 // You can also pass it a memorySource instance for in-memory or SSR routing
-let source = createMemorySource("/starting/url");
-let history = createHistory(source);
+let source = createMemorySource('/starting/url')
+let history = createHistory(source)
 ```
 
 ## createMemorySource
@@ -448,18 +490,18 @@ The `isMatch` function allows you to programmatically test a path for a match **
 
 ```javascript
 const MyComponent = () => {
-  const { isMatch } = useLocation();
+  const { isMatch } = useLocation()
 
-  isMatch("about"); // false
-  isMatch("me"); // true
-};
+  isMatch('about') // false
+  isMatch('me') // true
+}
 
 const App = () => {
   // path === '/about/me'
-  <Match path="about">
+  ;<Match path="about">
     <MyComponent />
-  </Match>;
-};
+  </Match>
+}
 ```
 
 **Argument Information**
@@ -480,22 +522,22 @@ Server-side rendering is easy with react-location. You can use `createMemorySour
 import {
   createMemorySource,
   createHistory,
-  LocationProvider
-} from "react-location";
+  LocationProvider,
+} from 'react-location'
 
-let history;
-if (typeof document !== "undefined") {
-  history = createHistory(window);
+let history
+if (typeof document !== 'undefined') {
+  history = createHistory(window)
 } else {
-  const source = createMemorySource("/blog/post/2");
-  history = createHistory(source);
+  const source = createMemorySource('/blog/post/2')
+  history = createHistory(source)
 }
 
 return (
   <LocationProvider history={history}>
     <div>...</div>
   </LocationProvider>
-);
+)
 ```
 
 Looking to do static site generation? You should try react-location with [React Static!](https://react-static.js.org)
