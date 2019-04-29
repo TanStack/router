@@ -1,5 +1,6 @@
 // Most of these utilities have been respectfully
 // copied or modified from @reach/router by Ryan Florence. Thanks Ryan!
+import React from 'react'
 
 export function trimSlashes(str) {
   return str.replace(/(^\/+|\/+$)/g, '')
@@ -84,4 +85,22 @@ export function getResolvedBasepath(path, basepath) {
   return path === '/'
     ? basepath
     : `${trimSlashes(basepath)}/${trimSlashes(path)}`
+}
+
+export function useForceUpdate() {
+  const [_, setCount] = React.useState(0)
+  const mountedRef = React.useRef()
+
+  React.useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
+  return () => {
+    if (mountedRef.current) {
+      setCount(old => old + 1)
+    }
+  }
 }

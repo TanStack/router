@@ -63,7 +63,10 @@ export function createHistory(source) {
       const transition = new Promise(resolve => {
         resolveTransition = resolve
       })
-      listeners.forEach(listener => listener({ location, action: 'PUSH' }))
+      // setTimeout here to ensure that any unsubs have run before we try and notify them
+      setTimeout(() => {
+        listeners.forEach(listener => listener({ location, action: 'PUSH' }))
+      }, 1)
       return transition
     },
   }

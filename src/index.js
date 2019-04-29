@@ -1,10 +1,6 @@
-import React, {
-  createContext,
-  useState,
-  useContext,
-  useEffect,
-  useRef,
-} from 'react'
+/* eslint-disable react/prop-types */
+/* eslint-disable no-console */
+import React from 'react'
 import * as qss from 'qss'
 
 import { createHistory, createMemorySource } from './history'
@@ -14,14 +10,14 @@ import {
   isMatch as _isMatch,
   startsWith,
   getResolvedBasepath,
+  useForceUpdate,
 } from './utils'
 
 // Allow creation of custom historys including memory sources
 export { createHistory, createMemorySource }
 
 // The shared context for everything
-const context = createContext()
-console.log(context)
+const context = React.createContext()
 
 // Detect if we're in the DOM
 const isDOM = Boolean(
@@ -41,8 +37,10 @@ const LocationRoot = ({
   basepath: userBasepath,
 }) => {
   // If this is the first history, create it using the userHistory or browserHistory
-  const [history] = useState(userHistory || globalHistory)
-  const [count, setHistoryCount] = useState(0)
+  const historyRef = React.useRef(userHistory || globalHistory)
+  const forceUpdate = useForceUpdate()
+
+  const history = historyRef.current
 
   // Let's get at some of the nested data on the history object
   const {
@@ -84,25 +82,23 @@ const LocationRoot = ({
     history,
   }
 
-  const historyListenerRef = useRef()
+  const historyListenerRef = React.useRef()
 
   // Subscribe to the history, even before the component mounts
   if (!historyListenerRef.current) {
     // Update this component any time history updates
-    historyListenerRef.current = history.listen(() => {
-      setHistoryCount(old => old + 1)
-    })
+    historyListenerRef.current = history.listen(forceUpdate)
   }
 
   // Before the component unmounts, unsubscribe from the history
-  useEffect(() => {
+  React.useEffect(() => {
     return historyListenerRef.current
   }, [])
 
   // After component update, mark the transition as complete
-  useEffect(() => {
+  React.useEffect(() => {
     _onTransitionComplete()
-  }, [_onTransitionComplete, count])
+  }, [_onTransitionComplete])
 
   return (
     // The key prop here forces a rerender when the router changes
@@ -121,17 +117,15 @@ export const LocationProvider = ({ children, location, ...rest }) => {
 // This hook powers just about everything. It is also responsible for
 // creating the navigate() function based on the depth at which the hook is used
 export const useLocation = () => {
-  const contextValue = useContext(context)
-  const [_, setHistoryCount] = useState(0)
+  const contextValue = React.useContext(context)
+  const forceUpdate = useForceUpdate()
   const { query, state, history, basepath, pathname } = contextValue
 
   // Make sure any components using this hook update when the
   // history changes
-  useEffect(() => {
-    return history.listen(() => {
-      setHistoryCount(old => old + 1)
-    })
-  })
+  React.useEffect(() => {
+    return history.listen(forceUpdate)
+  }, [])
 
   // Make the navigate function
   const navigate = (
