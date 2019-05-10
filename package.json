@@ -33,7 +33,6 @@
     "react": "^16.8.0-beta.0"
   },
   "dependencies": {
-    "eslint-config-kentcdodds": "^14.3.1",
     "qss": "^2.0.1"
   },
   "devDependencies": {
@@ -47,6 +46,7 @@
     "babel-eslint": "^10.0.1",
     "cross-env": "^5.1.4",
     "eslint": "^5.10.0",
+    "eslint-config-kentcdodds": "^14.3.1",
     "eslint-config-prettier": "^4.1.0",
     "eslint-config-react": "^1.1.7",
     "eslint-config-standard": "^12.0.0",

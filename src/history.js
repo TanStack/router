@@ -5,7 +5,7 @@ function getLocation(source) {
   return {
     ...source.location,
     state: source.history.state,
-    key: (source.history.state && source.history.state.key) || 'initial',
+    id: (source.history.state && source.history.state.id) || 'initial',
   }
 }
 
@@ -46,7 +46,7 @@ export function createHistory(source) {
     },
 
     _navigate(to, { state, replace = false } = {}) {
-      state = { ...state, key: `${Date.now()}` }
+      state = { ...state, id: `${Date.now()}` }
       // try...catch iOS Safari limits to 100 pushState calls
       try {
         if (transitioning || replace) {

@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 /* eslint-disable react/prop-types */
 /* eslint-disable no-console */
 import React from 'react'
@@ -44,7 +45,7 @@ const LocationRoot = ({
 
   // Let's get at some of the nested data on the history object
   const {
-    location: { pathname, hash: fullHash, search, state, key },
+    location: { pathname, hash: fullHash, search, state, id },
     _onTransitionComplete,
   } = history
 
@@ -78,7 +79,7 @@ const LocationRoot = ({
     search,
     state,
     href,
-    key,
+    id,
     history,
   }
 
@@ -100,10 +101,7 @@ const LocationRoot = ({
     _onTransitionComplete()
   }, [_onTransitionComplete])
 
-  return (
-    // The key prop here forces a rerender when the router changes
-    <context.Provider value={contextValue}>{children}</context.Provider>
-  )
+  return <context.Provider value={contextValue}>{children}</context.Provider>
 }
 
 // This is the main Location component that acts like a Provider
@@ -201,60 +199,49 @@ export const withLocation = Comp => {
 // any non-null non-Match component and renders only that component.
 // Comparable to React-Locations Swtich component
 export const MatchFirst = ({ children }) => {
-  const { isMatch } = useLocation()
+  const matchFirstRef = React.useRef()
 
-  let match
-  // Loop over all of the children
-  React.Children.forEach(children, child => {
-    // If the match hasn't been found yet and the child is valid
-    if (!match && React.isValidElement(child)) {
-      // If the child isn't a route, it's the default content
-      // and becomes the only match
-      if (!child.type.__isMatch && !child.type.__isRedirect) {
-        match = child
-        return
-      }
+  matchFirstRef.current = false
 
-      // It must be a Match component, then.
-      // Try and match on its to/from prop
-      if (child.type.__isRedirect && !child.props.from) {
-        match = child
-        return
-      }
-      const path = child.props.path || child.props.from
-      const matched = isMatch(path)
+  let comp
 
-      // If it's a match
-      if (matched) {
-        // If it's an index path
-        if (path === '/') {
-          // And if the match is exact
-          if (matched.isExact) {
-            // Return this child
-            match = child
-          }
-          // Don't return non-exact index matches
-          return
-        }
-        // Return all other general matches though
-        match = child
-      }
-    }
+  children = React.Children.toArray(children)
+  ;[...children.reverse()].forEach(child => {
+    comp = child.type.__isMatch
+      ? React.cloneElement(child, {
+          ...child.props,
+          miss: comp,
+          exact: child.props.path === '/',
+        })
+      : child.type.__isRedirect
+      ? React.cloneElement(child, {
+          ...child.props,
+          miss: comp,
+        })
+      : child
   })
 
-  // Return the match or null
-  return match || null
+  return comp
 }
 
 // The Match component is used to match paths againts the location and
 // render content for that match
-export const Match = ({ path, children, render, component: Comp, ...rest }) => {
+export const Match = ({
+  path,
+  routes,
+  children,
+  render,
+  component: Comp,
+  miss = null,
+  exact,
+  ...rest
+}) => {
   // Use the location
   const locationValue = useLocation()
   const { params, isMatch } = locationValue
 
   // See if the route is currently matched
-  const match = isMatch(path)
+  let match = isMatch(path)
 
   let newBasePath
 
@@ -276,9 +263,9 @@ export const Match = ({ path, children, render, component: Comp, ...rest }) => {
     },
   }
 
-  // Not a match? Return null
-  if (!match) {
-    return null
+  // Not a match? Return a miss
+  if (!match || (exact && !match.isExact)) {
+    return miss
   }
 
   const renderProps = {
@@ -309,7 +296,14 @@ Match.__isMatch = true
 
 // The Match component is used to match paths againts the location and
 // render content for that match
-export const Redirect = ({ from, to, query, state, replace = true }) => {
+export const Redirect = ({
+  from,
+  to,
+  query,
+  state,
+  replace = true,
+  miss = null,
+}) => {
   // Use the location
   const locationValue = useLocation()
   const { pathname, navigate, isMatch } = locationValue
@@ -321,7 +315,7 @@ export const Redirect = ({ from, to, query, state, replace = true }) => {
     navigate(to, { query, state, replace })
   }
 
-  return null
+  return miss
 }
 
 Redirect.__isRedirect = true

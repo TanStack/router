@@ -168,10 +168,10 @@ import { LocationProvider, Location, Match } from 'react-location'
 const AnimatedWrapper = ({ children }) => (
   <Location>
     {location => (
-      // Get the current location and its key
-      // Use location.key as the unique ID in your animations
+      // Get the current location and its id
+      // Use location.id as the unique ID in your animations
       <TransitionGroup className="transition-group">
-        <CSSTransition key={location.key} classNames="fade" timeout={500}>
+        <CSSTransition key={location.id} classNames="fade" timeout={500}>
           {/* Manually pass LocationProvider the location prop for each animation */}
           <LocationProvider location={location} />
         </CSSTransition>
@@ -459,7 +459,7 @@ The following **properties** are available on the location API:
 | `search`   | string | The search string of the location                            |
 | `state`    | object | The location's custom state `object`                         |
 | `href`     | string | The full url                                                 |
-| `key`      | string | The unique key for the current stack in history              |
+| `id`       | string | The unique id for the current stack in history               |
 | `history`  | object | The underlying `history` object used to power the location   |
 
 The following **methods** are available on the location API:
