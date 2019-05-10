@@ -1,6 +1,6 @@
 {
   "name": "react-location",
-  "version": "1.1.2",
+  "version": "2.0.0",
   "description": "⚛️ React utilities for location routing, params, queries, and hashes.",
   "author": "tannerlinsley",
   "license": "MIT",
