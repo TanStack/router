@@ -74,6 +74,9 @@ export function trimLeading(string, search) {
 }
 
 export function segmentize(uri) {
+  if (!uri) {
+    return []
+  }
   return trimSlashes(uri).split('/')
 }
 
@@ -98,9 +101,9 @@ export function useForceUpdate() {
     }
   }, [])
 
-  return () => {
+  return React.useCallback(() => {
     if (mountedRef.current) {
       setCount(old => old + 1)
     }
-  }
+  }, [])
 }

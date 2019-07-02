@@ -39,12 +39,11 @@ const LocationRoot = ({
 }) => {
   // If this is the first history, create it using the userHistory or browserHistory
   const historyRef = React.useRef(userHistory || globalHistory)
-  const forceUpdate = useForceUpdate()
 
-  const history = historyRef.current
+  const [history, setHistory] = React.useState(historyRef.current)
 
   // Let's get at some of the nested data on the history object
-  const {
+  let {
     location: { pathname, hash: fullHash, search, state, id },
     _onTransitionComplete,
   } = history
@@ -54,19 +53,24 @@ const LocationRoot = ({
   // The default basepath for the entire Location
   const basepath = userBasepath || '/'
   // Parse the query params into an object
-  const query = qss.decode(search.substring(1))
+  const query = React.useMemo(() => {
+    let query = qss.decode(search.substring(1))
 
-  // Try to parse any query params that might be json
-  Object.keys(query).forEach(key => {
-    try {
-      query[key] = JSON.parse(query[key])
-    } catch (err) {
-      //
-    }
-  })
+    // Try to parse any query params that might be json
+    Object.keys(query).forEach(key => {
+      try {
+        query[key] = JSON.parse(query[key])
+      } catch (err) {
+        //
+      }
+    })
+
+    return query
+  }, [search])
 
   // Start off with fresh params at the top level
-  const params = {}
+  const params = React.useMemo(() => ({}), [])
+
   const href = pathname + (hash ? `#${hash}` : '') + search
 
   // Build our context value
@@ -88,7 +92,9 @@ const LocationRoot = ({
   // Subscribe to the history, even before the component mounts
   if (!historyListenerRef.current) {
     // Update this component any time history updates
-    historyListenerRef.current = history.listen(forceUpdate)
+    historyListenerRef.current = history.listen(() => {
+      setHistory(historyRef.current)
+    })
   }
 
   // Before the component unmounts, unsubscribe from the history
@@ -123,49 +129,55 @@ export const useLocation = () => {
   // history changes
   React.useEffect(() => {
     return history.listen(forceUpdate)
-  }, [])
+  }, [forceUpdate, history])
 
   // Make the navigate function
-  const navigate = (
-    to,
-    { query: queryUpdater, state: stateUpdater, replace, preview } = {},
-  ) => {
-    // Allow query params and state to be updated with a function
-    const resolvedQuery =
-      typeof queryUpdater === 'function' ? queryUpdater(query) : queryUpdater
-    const resolvedState =
-      typeof stateUpdater === 'function' ? stateUpdater(state) : stateUpdater
+  const navigate = React.useCallback(
+    (
+      to,
+      { query: queryUpdater, state: stateUpdater, replace, preview } = {},
+    ) => {
+      // Allow query params and state to be updated with a function
+      const resolvedQuery =
+        typeof queryUpdater === 'function' ? queryUpdater(query) : queryUpdater
+      const resolvedState =
+        typeof stateUpdater === 'function' ? stateUpdater(state) : stateUpdater
 
-    // If the query was updated, serialize all of the subkeys
-    if (resolvedQuery) {
-      Object.keys(resolvedQuery).forEach(key => {
-        const val = resolvedQuery[key]
-        if (typeof val === 'object' && val !== 'null') {
-          resolvedQuery[key] = JSON.stringify(val)
-        }
+      // If the query was updated, serialize all of the subkeys
+      if (resolvedQuery) {
+        Object.keys(resolvedQuery).forEach(key => {
+          const val = resolvedQuery[key]
+          if (typeof val === 'object' && val !== 'null') {
+            resolvedQuery[key] = JSON.stringify(val)
+          }
+        })
+      }
+
+      // Then stringify the query params for URL encoding
+      const search = qss.encode(resolvedQuery, '?')
+
+      // Construct the final href for the navigation
+      const href = resolve(to, basepath) + (search === '?' ? '' : search)
+
+      // If this is a preview, just return the final href
+      if (preview) {
+        return href
+      }
+
+      // Otherwise, apply the navigation to the history
+      return history._navigate(href, {
+        state: resolvedState,
+        replace,
       })
-    }
+    },
+    [basepath, history, query, state],
+  )
 
-    // Then stringify the query params for URL encoding
-    const search = qss.encode(resolvedQuery, '?')
-
-    // Construct the final href for the navigation
-    const href = resolve(to, basepath) + (search === '?' ? '' : search)
-
-    // If this is a preview, just return the final href
-    if (preview) {
-      return href
-    }
-
-    // Otherwise, apply the navigation to the history
-    return history._navigate(href, {
-      state: resolvedState,
-      replace,
-    })
-  }
-
-  const isMatch = (matchPath, from) =>
-    _isMatch(getResolvedBasepath(matchPath, from || basepath), pathname)
+  const isMatch = React.useCallback(
+    (matchPath, from) =>
+      _isMatch(getResolvedBasepath(matchPath, from || basepath), pathname),
+    [basepath, pathname],
+  )
 
   return {
     ...contextValue,
@@ -241,7 +253,7 @@ export const Match = ({
   const { params, isMatch } = locationValue
 
   // See if the route is currently matched
-  let match = isMatch(path)
+  let match = React.useMemo(() => isMatch(path), [isMatch, path])
 
   let newBasePath
 
@@ -253,15 +265,23 @@ export const Match = ({
     newBasePath = match.newBasePath
   }
 
-  // Update the contex to use hte new basePath and params
-  const contextValue = {
-    ...locationValue,
-    basepath: newBasePath,
-    params: {
+  const newParams = React.useMemo(
+    () => ({
       ...params,
       ...(match ? match.params : {}),
-    },
-  }
+    }),
+    [match, params],
+  )
+
+  // Update the contex to use hte new basePath and params
+  const contextValue = React.useMemo(
+    () => ({
+      ...locationValue,
+      basepath: newBasePath,
+      params: newParams,
+    }),
+    [locationValue, newBasePath, newParams],
+  )
 
   // Not a match? Return a miss
   if (!match || (exact && !match.isExact)) {
