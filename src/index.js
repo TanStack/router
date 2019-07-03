@@ -39,14 +39,18 @@ const LocationRoot = ({
 }) => {
   // If this is the first history, create it using the userHistory or browserHistory
   const historyRef = React.useRef(userHistory || globalHistory)
+  const forceUpdate = useForceUpdate()
 
-  const [history, setHistory] = React.useState(historyRef.current)
+  const history = historyRef.current
 
   // Let's get at some of the nested data on the history object
   let {
     location: { pathname, hash: fullHash, search, state, id },
     _onTransitionComplete,
   } = history
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  state = React.useMemo(() => state, [JSON.stringify(state)])
 
   // Get the hash without the bang
   const hash = fullHash.split('#').reverse()[0]
@@ -92,9 +96,7 @@ const LocationRoot = ({
   // Subscribe to the history, even before the component mounts
   if (!historyListenerRef.current) {
     // Update this component any time history updates
-    historyListenerRef.current = history.listen(() => {
-      setHistory(historyRef.current)
-    })
+    historyListenerRef.current = history.listen(forceUpdate)
   }
 
   // Before the component unmounts, unsubscribe from the history
