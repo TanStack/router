@@ -49,6 +49,8 @@ const LocationRoot = ({
     _onTransitionComplete,
   } = history
 
+  console.log(JSON.stringify(state))
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   state = React.useMemo(() => state, [JSON.stringify(state)])
 
@@ -133,6 +135,15 @@ export const useLocation = () => {
     return history.listen(forceUpdate)
   }, [forceUpdate, history])
 
+  const navigateRef = React.useRef()
+
+  navigateRef.current = {
+    history,
+    basepath,
+    query,
+    state,
+  }
+
   // Make the navigate function
   const navigate = React.useCallback(
     (
@@ -141,9 +152,13 @@ export const useLocation = () => {
     ) => {
       // Allow query params and state to be updated with a function
       const resolvedQuery =
-        typeof queryUpdater === 'function' ? queryUpdater(query) : queryUpdater
+        typeof queryUpdater === 'function'
+          ? queryUpdater(navigateRef.current.query)
+          : queryUpdater
       const resolvedState =
-        typeof stateUpdater === 'function' ? stateUpdater(state) : stateUpdater
+        typeof stateUpdater === 'function'
+          ? stateUpdater(navigateRef.current.state)
+          : stateUpdater
 
       // If the query was updated, serialize all of the subkeys
       if (resolvedQuery) {
@@ -159,7 +174,9 @@ export const useLocation = () => {
       const search = qss.encode(resolvedQuery, '?')
 
       // Construct the final href for the navigation
-      const href = resolve(to, basepath) + (search === '?' ? '' : search)
+      const href =
+        resolve(to, navigateRef.current.basepath) +
+        (search === '?' ? '' : search)
 
       // If this is a preview, just return the final href
       if (preview) {
@@ -167,13 +184,17 @@ export const useLocation = () => {
       }
 
       // Otherwise, apply the navigation to the history
-      return history._navigate(href, {
+      return navigateRef.current.history._navigate(href, {
         state: resolvedState,
         replace,
       })
     },
-    [basepath, history, query, state],
+    [],
   )
+
+  React.useEffect(() => {
+    console.log('crap')
+  }, [basepath, history, query, state])
 
   const isMatch = React.useCallback(
     (matchPath, from) =>
