@@ -49,8 +49,6 @@ const LocationRoot = ({
     _onTransitionComplete,
   } = history
 
-  console.log(JSON.stringify(state))
-
   // eslint-disable-next-line react-hooks/exhaustive-deps
   state = React.useMemo(() => state, [JSON.stringify(state)])
 
@@ -191,10 +189,6 @@ export const useLocation = () => {
     },
     [],
   )
-
-  React.useEffect(() => {
-    console.log('crap')
-  }, [basepath, history, query, state])
 
   const isMatch = React.useCallback(
     (matchPath, from) =>
