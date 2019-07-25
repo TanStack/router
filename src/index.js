@@ -107,7 +107,7 @@ const LocationRoot = ({
   // After component update, mark the transition as complete
   React.useEffect(() => {
     _onTransitionComplete()
-  }, [_onTransitionComplete])
+  })
 
   return <context.Provider value={contextValue}>{children}</context.Provider>
 }
