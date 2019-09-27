@@ -334,7 +334,7 @@ Match.__isMatch = true
 // The Match component is used to match paths againts the location and
 // render content for that match
 export const Redirect = ({
-  from,
+  from = '/',
   to,
   query,
   state,
@@ -346,9 +346,9 @@ export const Redirect = ({
   const { pathname, navigate, isMatch } = locationValue
 
   // See if the route is currently matched
-  const match = isMatch(pathname, from)
+  let match = React.useMemo(() => isMatch(from || '/'), [from, isMatch])
 
-  if (match) {
+  if (match && (from === '/' ? match.isExact : true)) {
     navigate(to, { query, state, replace })
   }
 
