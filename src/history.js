@@ -1,5 +1,7 @@
 // Most of these utilities have been respectfully
-// copied or modified from @reach/router by Ryan Florence. Thanks Ryan!
+// copied or modified from @reach/router by Ryan Florence
+// and their licenses have been included in this project.
+// Thanks Ryan!
 
 function getLocation(source) {
   return {
