@@ -61,7 +61,7 @@ const LocationRoot = ({
     let query = qss.decode(search.substring(1))
 
     // Try to parse any query params that might be json
-    Object.keys(query).forEach(key => {
+    Object.keys(query).forEach((key) => {
       try {
         query[key] = JSON.parse(query[key])
       } catch (err) {
@@ -125,7 +125,7 @@ export const LocationProvider = ({ children, location, ...rest }) => {
 export const useLocation = () => {
   const contextValue = React.useContext(context)
   const forceUpdate = useForceUpdate()
-  const { query, state, history, basepath, pathname } = contextValue
+  const { query, state, history, basepath, pathname, params } = contextValue
 
   // Make sure any components using this hook update when the
   // history changes
@@ -160,7 +160,7 @@ export const useLocation = () => {
 
       // If the query was updated, serialize all of the subkeys
       if (resolvedQuery) {
-        Object.keys(resolvedQuery).forEach(key => {
+        Object.keys(resolvedQuery).forEach((key) => {
           const val = resolvedQuery[key]
           if (typeof val === 'object' && val !== 'null') {
             resolvedQuery[key] = JSON.stringify(val)
@@ -173,8 +173,10 @@ export const useLocation = () => {
 
       // Construct the final href for the navigation
       const href =
-        resolve(to, navigateRef.current.basepath) +
-        (search === '?' ? '' : search)
+        resolve(
+          typeof to === 'function' ? to(params) : to,
+          navigateRef.current.basepath,
+        ) + (search === '?' ? '' : search)
 
       // If this is a preview, just return the final href
       if (preview) {
@@ -217,8 +219,8 @@ export const Location = ({ children, render, ...rest }) => {
   return null
 }
 
-export const withLocation = Comp => {
-  return props => {
+export const withLocation = (Comp) => {
+  return (props) => {
     const location = useLocation()
     return <Comp {...props} location={location} />
   }
@@ -235,7 +237,7 @@ export const MatchFirst = ({ children }) => {
   let comp
 
   children = React.Children.toArray(children)
-  ;[...children.reverse()].forEach(child => {
+  ;[...children.reverse()].forEach((child) => {
     comp = child.type.__isMatch
       ? React.cloneElement(child, {
           ...child.props,
@@ -334,7 +336,7 @@ Match.__isMatch = true
 // The Match component is used to match paths againts the location and
 // render content for that match
 export const Redirect = ({
-  from = '/',
+  from,
   to,
   query,
   state,
@@ -346,10 +348,20 @@ export const Redirect = ({
   const { pathname, navigate, isMatch } = locationValue
 
   // See if the route is currently matched
-  let match = React.useMemo(() => isMatch(from || '/'), [from, isMatch])
+  let match = React.useMemo(() => !from || isMatch(from), [from, isMatch])
 
-  if (match && (from === '/' ? match.isExact : true)) {
-    navigate(to, { query, state, replace })
+  if (match && from === '/' && !match.isExact) {
+    match = false
+  }
+
+  React.useLayoutEffect(() => {
+    if (match) {
+      navigate(to, { query, state, replace })
+    }
+  }, [match, navigate])
+
+  if (match) {
+    return null
   }
 
   return miss
@@ -376,22 +388,24 @@ export function Link({
   const { navigate, pathname, href } = location
 
   // If this `to` is an external URL, make a normal a href
-  try {
-    const link = new URL(to)
-    return (
-      <a
-        href={link.href}
-        target={target}
-        style={style}
-        className={className}
-        {...rest}
-      >
-        {children}
-      </a>
-    )
-  } catch (e) {
-    // if a path is not parsable by URL its a local relative path.
-    // Proceed
+  if (typeof to === 'string') {
+    try {
+      const link = new URL(to)
+      return (
+        <a
+          href={link.href}
+          target={target}
+          style={style}
+          className={className}
+          {...rest}
+        >
+          {children}
+        </a>
+      )
+    } catch (e) {
+      // if a path is not parsable by URL its a local relative path.
+      // Proceed
+    }
   }
 
   // Get the preview href for this link and its variations
@@ -400,6 +414,7 @@ export function Link({
     state,
     replace,
     preview: true,
+    params: location.params,
   })
   const linkHrefWithHash = linkHrefWithQuery.split('?')[0]
   const linkHref = linkHrefWithHash.split('#')[0]
@@ -424,7 +439,7 @@ export function Link({
   } = isCurrent ? getActiveProps(location) : {}
 
   // The click handler
-  const handleClick = e => {
+  const handleClick = (e) => {
     if (onClick) onClick(e)
 
     if (
