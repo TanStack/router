@@ -1,21 +1,17 @@
-/* eslint-disable no-nested-ternary */
-/* eslint-disable react/prop-types */
-/* eslint-disable no-console */
 import React from 'react'
 import * as qss from 'qss'
 
-import { createHistory, createMemorySource } from './history'
 import {
-  isModifiedEvent,
-  resolve,
-  isMatch as _isMatch,
-  startsWith,
-  getResolvedBasepath,
-  useForceUpdate,
-} from './utils'
+  createBrowserHistory,
+  createHashHistory,
+  createMemoryHistory,
+  parsePath,
+  createPath,
+} from 'history'
 
-// Allow creation of custom historys including memory sources
-export { createHistory, createMemorySource }
+{
+  createBrowserHistory, createHashHistory, createMemoryHistory
+}
 
 // The shared context for everything
 const context = React.createContext()
@@ -28,75 +24,41 @@ const isDOM = Boolean(
 )
 
 // This is the default history object if none is defined
-export const globalHistory = createHistory(
-  isDOM ? window : createMemorySource(),
+const defaultHistory = createBrowserHistory(
+  isDOM ? window : createMemoryHistory(),
 )
+
+const useIsMounted = () => {
+  const isMountedRef = React.useRef(false)
+
+  React.useEffect(() => {
+    isMountedRef.current = true
+
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  return isMountedRef.current
+}
 
 const LocationRoot = ({
   children,
   history: userHistory,
   basepath: userBasepath,
 }) => {
-  // If this is the first history, create it using the userHistory or browserHistory
-  const historyRef = React.useRef(userHistory || globalHistory)
-  const forceUpdate = useForceUpdate()
+  const isMounted = useIsMounted()
+  const getIsMounted = useGetLatest(isMounted)
+  const historyRef = React.useRef(userHistory || defaultHistory)
+  const historyListenerRef = React.useRef()
+  const [location, setLocation] = React.useState(historyRef.current.location)
 
-  const history = historyRef.current
-
-  // Let's get at some of the nested data on the history object
-  let {
-    location: { pathname, hash: fullHash, search, state, id },
-    _onTransitionComplete,
-  } = history
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  state = React.useMemo(() => state, [JSON.stringify(state)])
-
-  // Get the hash without the bang
-  const hash = fullHash.split('#').reverse()[0]
-  // The default basepath for the entire Location
-  const basepath = userBasepath || '/'
-  // Parse the query params into an object
-  const query = React.useMemo(() => {
-    let query = qss.decode(search.substring(1))
-
-    // Try to parse any query params that might be json
-    Object.keys(query).forEach((key) => {
-      try {
-        query[key] = JSON.parse(query[key])
-      } catch (err) {
-        //
+  if (!historyListenerRef.current) {
+    historyListenerRef.current = history.listen((location) => {
+      if (getIsMounted()) {
+        setLocation(location)
       }
     })
-
-    return query
-  }, [search])
-
-  // Start off with fresh params at the top level
-  const params = React.useMemo(() => ({}), [])
-
-  const href = pathname + (hash ? `#${hash}` : '') + search
-
-  // Build our context value
-  const contextValue = {
-    basepath,
-    pathname,
-    hash,
-    params,
-    query,
-    search,
-    state,
-    href,
-    id,
-    history,
-  }
-
-  const historyListenerRef = React.useRef()
-
-  // Subscribe to the history, even before the component mounts
-  if (!historyListenerRef.current) {
-    // Update this component any time history updates
-    historyListenerRef.current = history.listen(forceUpdate)
   }
 
   // Before the component unmounts, unsubscribe from the history
@@ -104,46 +66,92 @@ const LocationRoot = ({
     return historyListenerRef.current
   }, [])
 
-  // After component update, mark the transition as complete
-  React.useEffect(() => {
-    _onTransitionComplete()
+  const basepath = userBasepath || '/'
+
+  const match = React.useMemo(
+    () => ({
+      path: '/',
+      url: '/',
+      params: {},
+      isExact: location.pathname === '/',
+    }),
+    [],
+  )
+
+  const contextValueRef = React.useMemo(
+    () => ({
+      match,
+      location,
+      basepath,
+      history: historyRef.current,
+    }),
+    [location, basepath],
+  )
+
+  return (
+    <context.Provider value={contextValueRef.current}>
+      {children}
+    </context.Provider>
+  )
+}
+
+const parseQuery = (search) => {
+  let query = qss.decode(search.substring(1))
+
+  // Try to parse any query params that might be json
+  Object.keys(query).forEach((key) => {
+    try {
+      query[key] = JSON.parse(query[key])
+    } catch (err) {
+      //
+    }
   })
 
-  return <context.Provider value={contextValue}>{children}</context.Provider>
+  return query
 }
 
-// This is the main Location component that acts like a Provider
-export const LocationProvider = ({ children, location, ...rest }) => {
-  if (location) {
-    return <context.Provider value={location}>{children}</context.Provider>
-  }
-  return <LocationRoot {...rest}>{children}</LocationRoot>
-}
-
-// This hook powers just about everything. It is also responsible for
-// creating the navigate() function based on the depth at which the hook is used
-export const useLocation = () => {
-  const contextValue = React.useContext(context)
-  const forceUpdate = useForceUpdate()
-  const { query, state, history, basepath, pathname, params } = contextValue
-
-  // Make sure any components using this hook update when the
-  // history changes
-  React.useEffect(() => {
-    return history.listen(forceUpdate)
-  }, [forceUpdate, history])
-
-  const navigateRef = React.useRef()
-
-  navigateRef.current = {
-    history,
+const useLocation = () => {
+  const {
+    location,
+    match,
+    match: { params },
     basepath,
-    query,
-    state,
-  }
+    history,
+  } = React.useContext(context)
 
+  const { pathname, search, hash: fullHash, state, key } = location
+
+  // Get the hash without the bang
+  const [, ...hashParts] = fullHash.split('#')
+  const hash = hashParts.join('')
+
+  const previousQueryRef = React.useRef()
+
+  // Parse the query params into an object
+  const query = React.useMemo(() => {
+    let newQuery = parseQuery(search)
+    return replaceEqualDeep(previousQueryRef.current, newQuery)
+  }, [search])
+  previousQueryRef.current = query
+
+  const href = pathname + (hash ? `#${hash}` : '') + search
+
+  return {
+    location,
+    match,
+    params,
+    hash,
+    query,
+    href,
+    state,
+    key,
+    history,
+  }
+}
+
+const useNavigate = () => {
   // Make the navigate function
-  const navigate = React.useCallback(
+  return React.useCallback(
     (
       to,
       { query: queryUpdater, state: stateUpdater, replace, preview } = {},
@@ -191,39 +199,6 @@ export const useLocation = () => {
     },
     [],
   )
-
-  const isMatch = React.useCallback(
-    (matchPath, from) =>
-      _isMatch(getResolvedBasepath(matchPath, from || basepath), pathname),
-    [basepath, pathname],
-  )
-
-  return {
-    ...contextValue,
-    navigate,
-    isMatch,
-  }
-}
-
-export const Location = ({ children, render, ...rest }) => {
-  const location = useLocation(rest)
-
-  if (children) {
-    return children(location)
-  }
-
-  if (render) {
-    return render(location)
-  }
-
-  return null
-}
-
-export const withLocation = (Comp) => {
-  return (props) => {
-    const location = useLocation()
-    return <Comp {...props} location={location} />
-  }
 }
 
 // MatchFirst returns the first matching child Match component or
@@ -257,19 +232,15 @@ export const MatchFirst = ({ children }) => {
 
 // The Match component is used to match paths againts the location and
 // render content for that match
-export const Match = ({
-  path,
-  routes,
-  children,
-  render,
-  component: Comp,
-  miss = null,
-  exact,
-  ...rest
-}) => {
+const Match = ({ path, element, miss = null }) => {
   // Use the location
-  const locationValue = useLocation()
-  const { params, isMatch } = locationValue
+  const {
+    location,
+    match,
+    match: { params },
+    basepath,
+    history,
+  } = React.useContext(context)
 
   // See if the route is currently matched
   let match = React.useMemo(() => isMatch(path), [isMatch, path])
@@ -303,46 +274,19 @@ export const Match = ({
   )
 
   // Not a match? Return a miss
-  if (!match || (exact && !match.isExact)) {
+  if (!match) {
     return miss
   }
 
-  const renderProps = {
-    ...contextValue,
-    ...contextValue.params,
-  }
-
-  // Support the render prop
-  if (render) {
-    children = render(renderProps)
-  }
-
-  // Support the component prop
-  if (Comp) {
-    children = <Comp {...renderProps} {...rest} />
-  }
-
-  // Support child as a function
-  if (typeof children === 'function') {
-    children = children(renderProps)
-  }
-
   // Support just children
-  return <context.Provider value={contextValue}>{children}</context.Provider>
+  return <context.Provider value={contextValue}>{element}</context.Provider>
 }
 
 Match.__isMatch = true
 
 // The Match component is used to match paths againts the location and
 // render content for that match
-export const Redirect = ({
-  from,
-  to,
-  query,
-  state,
-  replace = true,
-  miss = null,
-}) => {
+const Redirect = ({ from, to, query, state, replace = true, miss = null }) => {
   // Use the location
   const locationValue = useLocation()
   const { pathname, navigate, isMatch } = locationValue
@@ -369,7 +313,7 @@ export const Redirect = ({
 
 Redirect.__isRedirect = true
 
-export function Link({
+function Link({
   to,
   query,
   replace,
@@ -472,4 +416,157 @@ export function Link({
       {children}
     </a>
   )
+}
+
+function trimSlashes(str) {
+  return str.replace(/(^\/+|\/+$)/g, '')
+}
+
+function resolve(to, base) {
+  to = String(to)
+  if (startsWith(to, '/')) {
+    return to
+  }
+
+  const toSegments = segmentize(to)
+  const baseSegments = segmentize(base)
+
+  if (toSegments[0] === '') {
+    return base
+  }
+
+  if (!startsWith(toSegments[0], '.')) {
+    const pathname = baseSegments.concat(toSegments).join('/')
+    return (base === '/' ? '' : '/') + pathname
+  }
+
+  const allSegments = baseSegments.concat(toSegments)
+
+  const segments = []
+
+  for (let i = 0, l = allSegments.length; i < l; i++) {
+    const segment = allSegments[i]
+    if (segment === '..') segments.pop()
+    else if (segment !== '.') segments.push(segment)
+  }
+
+  return `/${segments.join('/')}`
+}
+
+function isMatch(path, parentPath) {
+  const pathSegments = segmentize(path)
+  const parentPathSegments = segmentize(parentPath)
+
+  let newBasePath = []
+  const params = {}
+
+  const isMatched = pathSegments.every((segment, i) => {
+    if (segment === parentPathSegments[i]) {
+      newBasePath[i] = parentPathSegments[i]
+      return true
+    }
+    if (startsWith(segment, ':') && parentPathSegments[i]) {
+      const paramName = trimLeading(segment, ':')
+      params[paramName] = parentPathSegments[i]
+      newBasePath[i] = parentPathSegments[i]
+      return true
+    }
+    return false
+  })
+
+  newBasePath = newBasePath.join('/')
+
+  const isExact = pathSegments.length === pathnameSegments.length
+
+  return isMatched ? { params, newBasePath, isExact } : false
+}
+
+function startsWith(string, search) {
+  return string.substring(0, search.length) === search
+}
+
+function trimLeading(string, search) {
+  return string.substring(string.indexOf(search) + search.length)
+}
+
+function segmentize(uri) {
+  if (!uri) {
+    return []
+  }
+  return trimSlashes(uri).split('/')
+}
+
+function isModifiedEvent(e) {
+  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+}
+
+function getResolvedBasepath(path, basepath) {
+  return path === '/'
+    ? basepath
+    : `${trimSlashes(basepath)}/${trimSlashes(path)}`
+}
+
+/**
+ * This function returns `a` if `b` is deeply equal.
+ * If not, it will replace any deeply equal children of `b` with those of `a`.
+ * This can be used for structural sharing between JSON values for example.
+ */
+function replaceEqualDeep(a, b) {
+  if (a === b) {
+    return a
+  }
+
+  const array = Array.isArray(a) && Array.isArray(b)
+
+  if (array || (isPlainObject(a) && isPlainObject(b))) {
+    const aSize = array ? a.length : Object.keys(a).length
+    const bItems = array ? b : Object.keys(b)
+    const bSize = bItems.length
+    const copy = array ? [] : {}
+
+    let equalItems = 0
+
+    for (let i = 0; i < bSize; i++) {
+      const key = array ? i : bItems[i]
+      copy[key] = replaceEqualDeep(a[key], b[key])
+      if (copy[key] === a[key]) {
+        equalItems++
+      }
+    }
+
+    return aSize === bSize && equalItems === aSize ? a : copy
+  }
+
+  return b
+}
+
+// Copied from: https://github.com/jonschlinkert/is-plain-object
+function isPlainObject(o) {
+  if (!hasObjectPrototype(o)) {
+    return false
+  }
+
+  // If has modified constructor
+  const ctor = o.constructor
+  if (typeof ctor === 'undefined') {
+    return true
+  }
+
+  // If has modified prototype
+  const prot = ctor.prototype
+  if (!hasObjectPrototype(prot)) {
+    return false
+  }
+
+  // If constructor does not have an Object-specific method
+  if (!prot.hasOwnProperty('isPrototypeOf')) {
+    return false
+  }
+
+  // Most likely a plain Object
+  return true
+}
+
+function hasObjectPrototype(o) {
+  return Object.prototype.toString.call(o) === '[object Object]'
 }
