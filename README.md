@@ -13,19 +13,14 @@
   <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow" />
 </a>
 
-### ⚛️ React-Location is a modern Router and location API for React
+### ⚛️ React-Location - Enterprise Routing for React
 
-It's been built with the following considerations in mind:
-
-- Clean and clear routing syntax
-- Familiar API for productivity
-- Functional query params & URL parsing
-- Complex Link generation
+- Familiar API inspired by React Router & Next.js
+- JSON Search Param API
+- Search Param compression
+- Full ⌘/Ctrl-click Support
+- Transactionally Safe Location Updates
 - Relative Routing + Links
-- Both Colocated or Nested Route structure
-- Programmatic Navigation
-- Hooks
-- Support for URL or in-memory location sources
 
 ## Get Started
 
@@ -40,68 +35,102 @@ yarn add react-location
 2. Import and use `react-location`
 
 ```js
-import { React } from 'react'
-import { render } from 'react-dom'
-import { LocationProvider, Match, MatchFirst, Link } from 'react-location'
+import { React } from 'react';
+import { ReactLocation, Route, Routes, Link, useParams } from 'react-location';
 
-render(
-  <LocationProvider>
-    <nav>
-      <Link to="/">Home</Link>
-      <Link to="dashboard">Dashboard</Link>
-      <Link to="invoices">Invoices</Link>
-    </nav>
-    <div>
-      <Match path="/">
-        <div>This is Home</div>
-      </Match>
-      <Match path="dashboard">
-        <div>This is the Dashboard</div>
-      </Match>
-      <Match path="invoices">
-        <MatchFirst>
-          <Match path="/">
-            <div>Invoices</div>
-            <ul>
-              <li>
-                <Link to="new">New Invoice</Link>
-              </li>
-              <li>
-                <Link to="1">Invoice 1</Link>
-              </li>
-              <li>
-                <Link to="2">Invoice 2</Link>
-              </li>
-              <li>
-                <Link to="3">Invoice 3</Link>
-              </li>
-            </ul>
-          </Match>
-          <Match path="new">
+export function App() {
+  return (
+    <ReactLocation>
+      <nav>
+        <Link to="/">Home</Link>
+        <Link to="dashboard">Dashboard</Link>
+        <Link to="invoices">Invoices</Link>
+        <Link to="https://github.com/tannerlinsley/react-location">
+          Github - React Location
+        </Link>
+      </nav>
+      <div>
+        <Route path="/" element={<div>This is Home</div>} />
+        <Route path="dashboard" element={<div>This is the Dashboard</div>} />
+        <Route path="invoices" element={<Invoices />}></Route>
+      </div>
+    </ReactLocation>
+  );
+}
+
+function Invoices() {
+  return (
+    <Routes>
+      <Route path="/">
+        <div>Invoices</div>
+        <ul>
+          <li>
+            <Link to="new">New Invoice</Link>
+          </li>
+          <li>
+            <Link to="1">Invoice 1</Link>
+          </li>
+          <li>
+            <Link to="2">Invoice 2</Link>
+          </li>
+          <li>
+            <Link to="3">Invoice 3</Link>
+          </li>
+        </ul>
+      </Route>
+      <Route
+        path="new"
+        element={
+          <>
             <Link to="..">Back</Link>
             <div>This is a new invoice!</div>
-          </Match>
-          <Match path=":invoiceID">
-            {({ params }) => (
-              <div>
-                <Link to="..">Back</Link>
-                This is invoice #{params.invoiceID}
-              </div>
-            )}
-          </Match>
-        </MatchFirst>
-      </Match>
+          </>
+        }
+      />
+      <Route path=":invoiceID" element={<Invoice />} />
+    </Routes>
+  );
+}
+
+function Invoice() {
+  const params = useParams();
+  const search = useSearch();
+  const navigate = useNavigate();
+
+  const isPreviewOpen = search.previewState?.isOpen;
+
+  const togglePreview = () =>
+    navigate('.', {
+      search: (old) => ({
+        ...old,
+        previewState: {
+          ...(old.previewState ?? {}),
+          isOpen: !old.previewState.isOpen,
+        },
+      }),
+    });
+
+  return (
+    <div>
+      <Link to="..">Back</Link>
+      <div>This is invoice #{params.invoiceID}</div>
+      <div>
+        <button onClick={togglePreview}>
+          {isPreviewOpen ? 'Hide' : 'Show'} Preview
+        </button>
+      </div>
+      {isPreviewOpen ? <div>This is a preview!</div> : null}
     </div>
-  </LocationProvider>,
-)
+  );
+}
 ```
 
 # Table of Contents
 
 - [Documentation](#documentation)
-  - [LocationProvider](#locationprovider)
-  - [Match](#match)
-  - [MatchFirst](#matchfirst)
+  - [ReactLocation](#reactlocation)
+  - [Route](#route)
+  - [Routes](#routefirst)
   - [Link](#link)
   - [useLocation, Location, withLocation](#uselocation-location-withlocation)
   - [Redirect](#redirect)
@@ -109,202 +138,160 @@ render(
   - [createMemorySource](#creatememorysource)
   - [Location API](#location-api)
     - [navigate](#navigate)
-    - [isMatch](#ismatch)
+    - [isRoute](#isRoute)
   - [SSR](#ssr)
 - [Contribution and Roadmap](#contribution-and-roadmap)
 - [Inspiration and Thanks](#inspiration-and-thanks)
 
 # Documentation
 
-## LocationProvider
+## ReactLocation
 
 **Required: true**
 
-The `LocationProvider` component is the root Provider component for `react-location` in your app. Render it at least once in the highest sensible location within your application. You can also use this component to preserve multiple location instances in the react tree at the same, which is useful for things like route animations or location mocking.
+The `ReactLocation` component is the root Provider component for `react-location` in your app. Render it at least once in the highest sensible location within your application. You can also use this component to preserve multiple location instances in the react tree at the same, which is useful for things like route animations or location mocking.
 
-| Prop     | Required | Description                                                                                                                                                                                                                                                                        |
-| -------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| history  | false    | The history object to be used internally by react-location                                                                                                                                                                                                                         |
-| basepath | false    | The basepath prefix for all URLs (not-supported for memory source histories)                                                                                                                                                                                                       |
-| location | false    | A custom location to use instead of creating a new one. If a location is passed here, all other props will be ignored and will be inherited from the custom location instead. This useful for things like animation or preserving multiple locations in the tree at the same time. |
-| children | true     | The children to pass the location context to                                                                                                                                                                                                                                       |
+| Prop     | Required | Description                                                                  |
+| -------- | -------- | ---------------------------------------------------------------------------- |
+| history  | false    | The history object to be used internally by react-location                   |
+| basepath | false    | The basepath prefix for all URLs (not-supported for memory source histories) |
+| children | true     | The children to pass the location context to                                 |
 
 **Example: Basic**
 
-```javascript
-import { LocationProvider } from 'react-location'
+```tsx
+import { ReactLocation } from 'react-location';
 
 return (
-  <LocationProvider>
+  <ReactLocation>
     <div>Your Application</div>
-  </LocationProvider>
-)
+  </ReactLocation>
+);
 ```
 
 **Example: Memory History**
 
-```javascript
-import {
-  createMemorySource,
-  createHistory,
-  LocationProvider,
-} from 'react-location'
+```tsx
+import { createMemoryHistory, ReactLocation } from 'react-location';
 
-const source = createMemorySource('/')
-history = createHistory(source)
+const history = createMemoryHistory();
 
 return (
-  <LocationProvider history={history}>
+  <ReactLocation history={history}>
     <div>...</div>
-  </LocationProvider>
-)
+  </ReactLocation>
+);
 ```
 
-**Example: Animated Routes**
+## Route
 
-```javascript
-import { LocationProvider, Location, Match } from 'react-location'
+The `Route` component is used to render content when its path routees the current history's location. It is generally used for routing purposes. It also provides the new relative routeing path to child `Route` components, allowing for clean nested route definition.
 
-const AnimatedWrapper = ({ children }) => (
-  <Location>
-    {location => (
-      // Get the current location and its id
-      // Use location.id as the unique ID in your animations
-      <TransitionGroup className="transition-group">
-        <CSSTransition key={location.id} classNames="fade" timeout={500}>
-          {/* Manually pass LocationProvider the location prop for each animation */}
-          <LocationProvider location={location} />
-        </CSSTransition>
-      </TransitionGroup>
-    )}
-  </Location>
-)
-
-render(
-  <LocationProvider>
-    <AnimatedWrapper>
-      <MatchFirst>
-        <Match path="/page/:pageID">
-          {({ pageID, location }) => (
-            <div
-              className="page"
-              style={{ background: `hsl(${pageID * 75}, 60%, 60%)` }}
-            >
-              {pageID}
-            </div>
-          )}
-        </Match>
-      </MatchFirst>
-    </AnimatedWrapper>
-  </LocationProvider>,
-)
-```
-
-## Match
-
-The `Match` component is used to render content when its path matches the current history's location. It is generally used for routing purposes. It also provides the new relative matching path to child `Match` components, allowing for clean nested route definition.
-
-| Prop                               | Required | Description                                                                                                                                                                                                             |
-| ---------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| path                               | true     | The path to match (relative to the nearest parent `Match` component or root basepath)                                                                                                                                   |
-| children                           |          | The content to be rendered when the path matches the current location                                                                                                                                                   |
-| children(params, location)         |          | The function to be called when the path matches the current location. This function is called with any route params available in context and the [location API](#location-api)                                          |
-| render(params, location)           |          | The function to be called when the path matches the current location. This function is called with any route params available in context and the [location API](#location-api)                                          |
-| <component {...params} location /> |          | The component to be rendered when the path matches the current location. This component is renderd with any route params available in context **as props** and the [location API](#location-api) as the `location` prop |
+| Prop    | Required | Description                                                                           |
+| ------- | -------- | ------------------------------------------------------------------------------------- |
+| path    | true     | The path to route (relative to the nearest parent `Route` component or root basepath) |
+| element |          | The content to be rendered when the path routees the current location                 |
 
 **Example**
 
-```javascript
-// Render children directly
-render(<Match path="about">About me</Match>)
-
-// Use children as a function
-render(
-  <Match path=":invoiceID">
-    {({ invoiceID }) => <div>This is invoice #{invoiceID}</div>}
-  </Match>,
-)
-
-// Use a render function
-render(
-  <Match
-    path=":invoiceID"
-    render={({ invoiceID }) => <div>This is invoice #{invoiceID}</div>}
-  />,
-)
-
-// Use a component
-const Invoice = ({ invoiceID, location, dark }) => (
-  <div classname={dark && 'dark'}>This is invoice #{invoiceID}</div>
-)
-
-render(<Match path=":invoiceID" component={Invoice} dark />)
+```tsx
+<Route path="about" element="About Me" />
 ```
 
-## MatchFirst
+## Routes
 
-The `MatchFirst` component is used to selectively render the first child component that is av valid match and/or provide fallbacks. This is useful for:
+The `Routes` component is used to selectively render the first child component that is av valid route and/or provide fallbacks. This is useful for:
 
 - Nesting and Relative Routes
 - Matching index routes and hard-coded routes before dynamic ones
-- Default / fallback routes
+- Fallback/Wildcard routes
 
 **Example - Route Params**
 
-```javascript
+```tsx
 render(
-  <Match path="invoices">
-    <MatchFirst>
-      <Match path="/">This route would match and display at `/invoices/`</Match>
-      <Match path="new">
-        This route would match and display at `/invoices/new`
-      </Match>
-      <Match path=":invoiceID">
-        {({ params }) => (
-          <div>
-            This route would match for all other `/invoices/:invoiceID/` routes
-          </div>
-        )}
-      </Match>
-    </MatchFirst>
-  </Match>,
-)
+  <Route path="invoices">
+    <Routes>
+      <Route
+        path="/"
+        element="This route would route and display at `/invoices/`"
+      />
+      <Route
+        path="new"
+        element="This route would route and display at `/invoices/new`"
+      />
+      <Route path=":invoiceID" element={<Invoice />} />
+    </Routes>
+  </Route>
+);
+
+function Invoice() {
+  const params = useParams();
+
+  return (
+    <div>
+      <Link to="..">Back</Link>
+      <div>This is invoice #{params.invoiceID}</div>
+    </div>
+  );
+}
 ```
 
 **Example - Default / Fallback Route**
 
-```javascript
+```tsx
 render(
-  <MatchFirst>
-    <Match path="/">This route would match and display at `/`</Match>
-    <Match path="about">This route would match and display at `/about`</Match>
-    <div>
-      This element would be rendered as the fallback when no Matches are found
-    </div>
-  </MatchFirst>,
-)
+  <Routes>
+    <Route path="/" element="his route would route and display at `/`" />
+    <Route
+      path="about"
+      element="This route would route and display at `/about`"
+    />
+    <Route
+      path="*"
+      element="This element would be rendered as the fallback when no matches are found"
+    />
+  </Routes>
+);
+```
+
+\*\*Example - Default / Fallback Route with redirect
+
+```tsx
+render(
+  <Routes>
+    <Route path="/" element="This route would route and display at `/`" />
+    <Route
+      path="about"
+      element="This route would route and display at `/about`"
+    />
+    {/* Redirect all other routes to `/` */}
+    <Route path="*" element={<Navigate to="/" />} />
+  </Routes>
+);
 ```
 
 ## Link
 
-The `Link` component allows you to generate `<a href/>` links for navigation, capable of updating the:
+The `Link` component allows you to generate links for _internal_ navigation, capable of updating the:
 
-- Route path + hash
-- Query parameters
-- State
+- Pathname
+- Search Parameters
+- Location State
+- Hash
 - Push vs. Replace
 
-The links generated by it are designed to work perfectly with `Open in new Tab` + `ctrl + left-click` and `Open in new window...`. They are also capable of receiving "active" props (depending on the `activeType` passed) to decorate the link when the link is currently active relative to the current location.
+The links generated by it are designed to work perfectly with `Open in new Tab` + `ctrl + left-click` and `Open in new window...`. They are also capable of receiving "active" props (depending on the `activeOptions` passed) to decorate the link when the link is currently active relative to the current location.
 
-| Prop                     | Type                                                | Description                                                                                                                                                                                                                              |
-| ------------------------ | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ...[navigate](#navigate) |                                                     | All properties for the [navigate](#navigate) method are supported here.                                                                                                                                                                  |
-| activeType               | string (one of `partial`, `path`, `hash` or `full`) | Defaults to `full`. Defines which matching strategy is used to determine if the link is `active` or not. See the table below for more information.                                                                                       |
-| getActiveProps           | function                                            | A function that is passed the [Location API](#location-api) and returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated) |
+| Prop                                                      | Description                                                                                                                                                                                                                              |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ...[NavigateProps](#navigate)                             | All properties for the [<Navigate /> component](#navigate) method are supported here.                                                                                                                                                    |
+| activeOptions?: { exact?: boolean, includeHash?: boolean} | Defaults to `{ exact: false, includeHash: false }`                                                                                                                                                                                       |
+| getActiveProps: () => PropsObject                         | A function that is passed the [Location API](#location-api) and returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated) |
 
 **Example: The basics**
 
-```javascript
+```tsx
 render(
   <div>
     <Link to="/home">I will navigate to `/home`</Link>
@@ -312,27 +299,31 @@ render(
       I will navigate to `./todos`, relative to the current location
     </Link>
     <Link to="..">I will navigate up one level in the location hierarchy.</Link>
-    <Link to="#somehash">
-      I will navigate to the hash `somehash` at the current location
+    <Link to="." hash="somehash">
+      I will update the hash to `somehash` at the current location
     </Link>
-    <Link to="/search?stringQuery=yes!">I will navigate to `/search?stringQuery=yes!`</Link>
+    <Link to="/search" search={{ q: 'yes' }}>
+      I will navigate to `/search?q=yes`
+    </Link>
     <Link
-      query={
+      to="."
+      search={{
         someParams: true,
         otherParams: 'gogogo',
-        object: { nested: { list: [1, 2, 3], hello: "world" } }
+        object: { nested: { list: [1, 2, 3], hello: 'world' } },
       }}
     >
-      I will navigate to the current location + `?someParams=true&otherParams=gogogo&object=%7B%22nested%22%3A%7B%22list%22%3A%5B1%2C2%2C3%5D%2C%22hello%22%3A%22world%22%7D%7D`
+      I will navigate to the current location +
+      `?someParams=true&otherParams=gogogo&object=~(nested~(list~(~1~2~3)~hello~%27world))`
     </Link>
     <Link
-      query={query => ({
-        ...query,
+      search={({ removeThis, ...rest }) => ({
+        ...rest,
         addThis: 'This is new!',
-        removeThis: undefined
       })}
     >
-      I will add `addThis='This is new!' and also remove the `removeThis` param to/from the query params on the current page
+      I will add `addThis='This is new!' and also remove the `removeThis` param
+      to/from the search params on the current page
     </Link>
   </div>
 );
@@ -342,10 +333,10 @@ render(
 
 The following link will be green with `/about` as the current location.
 
-```javascript
+```tsx
 <Link
   to="/about"
-  getActiveProps={location => ({
+  getActiveProps={(location) => ({
     style: { color: 'green' },
   })}
 >
@@ -353,203 +344,120 @@ The following link will be green with `/about` as the current location.
 </Link>
 ```
 
-**Using `activeType`**
+## useLocation
 
-As mentioned above, `activeType` configures when a link is considered "active", and when `getActiveProps()` is run and applied to the link. Below is a table demonstrating the various options and how they behave:
-
-| Type      | Description                                              | Example |
-| --------- | -------------------------------------------------------- | ------- |
-| `full`    | Match agains the fully href including the query and hash |         |
-| `hash`    |                                                          |         |
-| `path`    |                                                          |         |
-| `partial` |                                                          |         |
-
-let isCurrent;
-if (activeType === "partial") {
-isCurrent = startsWith(href, linkHrefWithQuery);
-} else if (activeType === "path") {
-isCurrent = pathname === linkHref;
-} else if (activeType === "hash") {
-isCurrent = pathname === linkHrefWithHash;
-} else {
-isCurrent = href === linkHrefWithQuery;
-}
-
-## useLocation, Location, withLocation
-
-The `useLocation` hook, `Location` component and `withLocation` HOC all return the current [location API](#location-api) from context when used.
+The `useLocation` hook returns the current [React Location instance](#react-location-instance) from context when used.
 
 **Example**
 
-```javascript
-import { useLocation, Location, withLocation } from "react-location";
+```tsx
+import { useLocation } from 'react-location';
 
-// Hook
 export function MyComponent() {
   const location = useLocation();
   // use location...
 }
-
-// Component
-export function MyComponent() {
-  return (
-    <Location>
-      {location => {
-        // use location...
-      }}
-    </Location>
-  )
-}
-
-// HOC
-export const MyComponent = withLocation(({ location }) => {
-  // use location...
-})
 ```
 
-## Redirect
+## Navigate
 
-The `Redirect` component can be used to redirect from one route to another based on a matching path. It can be rendered standalone or within a `MatchFirst` component. If the `from` prop is left undefined, it will always match and always redirect if rendered.
+When renderd, the `Navigate` component will declaratively and relatively navigate to any route.
 
-| Prop                     | Description                                                                                                     |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| from                     | The path to match. Behaves the same way a `Match` does. If not defined, will always redirect when rendered.     |
-| ...[navigate](#navigate) | All properties for the [navigate](#navigate) method are supported here, but with `replace` defaulting to `true` |
+**Type**
 
-## createHistory
-
-Creates a custom history object. You can pass this history object to the `LocationProvider` or just use it to listen to the history of the page.
+```ts
+type NavigateProps = {
+  to: string;
+  search?: Updater<SearchObj>;
+  state?: Updater<StateObj>;
+  hash?: Updater<string>;
+  replace?: boolean;
+};
+```
 
 **Example**
 
-```javascript
-import { createMemorySource, createHistory } from 'react-location'
-
-// Use the window history (DOM only)
-let history = createHistory(window)
-
-// You can also pass it a memorySource instance for in-memory or SSR routing
-let source = createMemorySource('/starting/url')
-let history = createHistory(source)
-```
-
-## createMemorySource
-
-Creates a source for `createHistory` that manages a history stack in memory. You may want to use a memory source if you are using an environment that doesn't support or have reliable access to the window location eg. Node, Electron, Ionic, Cordova etc.
-
-See [createHistory](#createHistory) for an example
-
-# Location API
-
-React-Location's model and API is located in a single object, passed via context, throughout the library. It contains both the current state and API for location. It is made available via:
-
-- The return result for the `useLocation` hook, `Location` component, `withLocation` HOC. [See Example](#uselocation-location-withlocation)
-- Via props passed to the `render` function, `children` function, and `component`s that are rendered with the `Match` component. [See Example](#match)
-- The first parameter of the `Link` component's `getActiveProps` prop function. [See Example](#link)
-
-The following **properties** are available on the location API:
-
-| Property   | Type   | Description                                                  |
-| ---------- | ------ | ------------------------------------------------------------ |
-| `basepath` | string | The basepath of the API, including parent paths.             |
-| `pathname` | string | The pathname of the location.                                |
-| `hash`     | string | The hash of the location with the `#` removed.               |
-| `params`   | object | The params, deserialized to an `object` with key-value pairs |
-| `query`    | object | The query, deserialized to an `object` with key-value pairs  |
-| `search`   | string | The search string of the location                            |
-| `state`    | object | The location's custom state `object`                         |
-| `href`     | string | The full url                                                 |
-| `id`       | string | The unique id for the current stack in history               |
-| `history`  | object | The underlying `history` object used to power the location   |
-
-The following **methods** are available on the location API:
-
-### `navigate`
-
-The `navigate` function allows you to programmatically navigate your application. It is the same method that powers all of the components in this library.
-
-**Usage**
-
-```javascript
-const Promise = navigate(
-  to:string,
-  {
-    query: object{} | function(old) => new,
-    state: object{} | function(old) => new,
-    replace: boolean = false
-    preview: boolean = false
-  }
-);
-```
-
-### `isMatch`
-
-The `isMatch` function allows you to programmatically test a path for a match **within the closest relative route**.
-
-**Usage**
-
-```javascript
-const MyComponent = () => {
-  const { isMatch } = useLocation()
-
-  isMatch('about') // false
-  isMatch('me') // true
-}
-
-const App = () => {
-  // path === '/about/me'
-  ;<Match path="about">
-    <MyComponent />
-  </Match>
+```tsx
+function App () {
+  return <Navigate to='./about'>
 }
 ```
 
-**Argument Information**
+### `useNavigate`
 
-| Prop    | Type            | Description                                                                                                                                           |
-| ------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| to      | string          | The path this link navigates to. It can be absolute, relative, external and can also contain a #hash. Defaults to the current location if not defined |
-| query   | object/function | Either (1) the replacement query parameters for this link as an object, or (2) a function that receives the old query parameters and returns new ones |
-| state   | object/function | Either (1) the replacement state for this link as an object, or (2) a function that receives the old state and returns new ones                       |
-| replace | boolean         | Whether or not to replace the current history entry when this link is clicked                                                                         |
-| preview | boolean         | When `true`, returns the `href` produced by this Link                                                                                                 |
+The `useNavigate` hook allows you to programmatically navigate your application.
+
+**Usage**
+
+```tsx
+function MyComponent() {
+  const navigate = useNavigate();
+
+  const onClick = () => {
+    navigate('./about', { replace: true });
+  };
+
+  return <button onClick={onClick}>About</button>;
+}
+```
+
+### `useMatch`
+
+The `useMatch` hook allows you to programmatically test a path for a route **within the closest relative route**. If a path is match, it will return an object of route params detected, even if this is an empty object. If a path doesn't match, it will return `false`.
+
+**Usage**
+
+```tsx
+function App() {
+  const match = useMatch();
+
+  // If the path is '/'
+  match('/'); // {}
+  match(':teamId'); // false
+
+  // If the path is `/team-1'
+  match('/'); // {}
+  match('/', { exact: true }); // false
+  match(':teamId'); // { teamId: 'team-1 }
+
+  return (
+    <Routes>
+      <Route path="/" element="Hello!" />
+      <Route path=":teamId" element="Hello!" />
+    </Routes>
+  );
+}
+```
 
 # SSR
 
-Server-side rendering is easy with react-location. You can use `createMemorySource`, `createHistory` and `LocationProvider` to mock your app into a specific state for SSR:
+Server-side rendering is easy with react-location. Use `createMemoryHistory` and `ReactLocation` to mock your app into a specific state for SSR:
 
 ```js
 import {
-  createMemorySource,
-  createHistory,
-  LocationProvider,
-} from 'react-location'
+  createBowserHistory
+  createMemoryHistory,
+  ReactLocation,
+} from 'react-location';
 
-let history
+let history;
+
 if (typeof document !== 'undefined') {
-  history = createHistory(window)
+  history = createBowserHistory();
 } else {
-  const source = createMemorySource('/blog/post/2')
-  history = createHistory(source)
+  history = createMemoryHistory(['/blog/post/2]);
 }
 
 return (
-  <LocationProvider history={history}>
+  <ReactLocation history={history}>
     <div>...</div>
-  </LocationProvider>
-)
+  </ReactLocation>
+);
 ```
 
-Looking to do static site generation? You should try react-location with [React Static!](https://react-static.js.org)
+## Inspiration
 
-## Contribution and Roadmap
+All of these libraries offered a lot of guidance and good patterns for writing this library:
 
-- [ ] Improve Accessibility (Hopefully to the level of Reach Router)
-- [ ] Write Tests
-- [ ] Continuous Integration & Automated Releases
-
-Open an issue or PR to discuss!
-
-## Inspiration and Thanks
-
-This library was heavily inspired by both [`@reach/router`](https://reach.tech/router) and [`react-router`](https://reacttraining.com/react-router/). In some cases, utility functions were copy and pasted into this library (that's how good they are). Both are extremely fantastic tools that have set standards for the quality of routers in React.]
+- [`React Router`](https://reacttraining.com/react-router/)
+- [`Next.js`](https://nextjs.org)

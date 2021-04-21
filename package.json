@@ -1,91 +1,68 @@
 {
-  "name": "react-location",
-  "version": "2.0.8",
-  "description": "⚛️ React utilities for location routing, params, queries, and hashes.",
-  "author": "tannerlinsley",
+  "version": "0.1.0",
   "license": "MIT",
-  "repository": "tannerlinsley/react-location",
-  "main": "index.js",
-  "module": "dist/react-location.mjs",
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/tannerlinsley"
-  },
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
   "engines": {
-    "node": ">=8",
-    "npm": ">=5"
+    "node": ">=10"
   },
   "scripts": {
-    "test": "is-ci \"test:ci\" \"test:dev\"",
-    "test:dev": "jest --watch",
-    "test:ci": "jest",
-    "test:coverage": "yarn test:ci; open coverage/lcov-report/index.html",
-    "build": "NODE_ENV=production rollup -c",
-    "now-build": "yarn && cd www && yarn && yarn build",
-    "start": "rollup -c -w",
-    "prepublishOnly": "yarn build && yarn test:ci",
-    "release": "yarn publish",
-    "releaseNext": "yarn publish --tag next",
-    "format": "prettier {src,src/**,example/src,example/src/**}/*.{md,js,jsx,tsx} --write"
-  },
-  "release": {
-    "branches": [
-      "master"
-    ]
+    "start": "tsdx watch",
+    "build": "tsdx build",
+    "test": "tsdx test --passWithNoTests",
+    "lint": "tsdx lint",
+    "prepare": "tsdx build",
+    "size": "size-limit",
+    "analyze": "size-limit --why"
   },
   "peerDependencies": {
-    "prop-types": "^15.5.4",
-    "react": "^16.8.6"
+    "react": ">=16"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "tsdx lint"
+    }
+  },
+  "prettier": {
+    "printWidth": 80,
+    "semi": true,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  },
+  "name": "react-location",
+  "author": "Tanner Linsley",
+  "module": "dist/react-location.esm.js",
+  "size-limit": [
+    {
+      "path": "dist/react-location.cjs.production.min.js",
+      "limit": "10 KB"
+    },
+    {
+      "path": "dist/react-location.esm.js",
+      "limit": "10 KB"
+    }
+  ],
+  "devDependencies": {
+    "@size-limit/preset-small-lib": "^4.10.2",
+    "@testing-library/jest-dom": "^5.11.10",
+    "@testing-library/react": "^11.2.6",
+    "@types/jsurl": "^1.2.29",
+    "@types/react": "^17.0.3",
+    "@types/react-dom": "^17.0.3",
+    "husky": "^6.0.0",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "size-limit": "^4.10.2",
+    "ts-toolbelt": "^9.6.0",
+    "tsdx": "^0.14.1",
+    "tslib": "^2.2.0",
+    "typescript": "^4.2.4"
   },
   "dependencies": {
-    "qss": "^2.0.1"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.11.1",
-    "@babel/preset-env": "^7.11.0",
-    "@babel/preset-react": "^7.10.4",
-    "@rollup/plugin-replace": "^2.3.3",
-    "@svgr/rollup": "^5.4.0",
-    "@testing-library/react": "^10.4.8",
-    "babel-core": "7.0.0-bridge.0",
-    "babel-eslint": "10.1.0",
-    "babel-jest": "^26.3.0",
-    "babel-plugin-transform-async-to-promises": "^0.8.15",
-    "cross-env": "^7.0.2",
-    "dtslint": "^3.6.14",
-    "eslint": "7.7.0",
-    "eslint-config-prettier": "^6.11.0",
-    "eslint-config-react-app": "^5.2.1",
-    "eslint-config-standard": "^14.1.1",
-    "eslint-config-standard-react": "^9.2.0",
-    "eslint-plugin-flowtype": "5.2.0",
-    "eslint-plugin-import": "2.22.0",
-    "eslint-plugin-jsx-a11y": "6.3.1",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-prettier": "^3.1.4",
-    "eslint-plugin-promise": "^4.1.1",
-    "eslint-plugin-react": "7.20.6",
-    "eslint-plugin-react-hooks": "4.1.0",
-    "eslint-plugin-standard": "^4.0.0",
-    "is-ci-cli": "^2.1.2",
-    "jest": "^26.4.0",
-    "prettier": "^2.0.5",
-    "preval.macro": "^5.0.0",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
-    "react-error-boundary": "^2.3.1",
-    "rollup": "^2.26.3",
-    "rollup-plugin-babel": "^4.4.0",
-    "rollup-plugin-commonjs": "^10.0.0",
-    "rollup-plugin-jscc": "^1.0.0",
-    "rollup-plugin-node-resolve": "^5.0.0",
-    "rollup-plugin-peer-deps-external": "^2.2.3",
-    "rollup-plugin-prettier": "^2.1.0",
-    "rollup-plugin-size": "^0.2.2",
-    "rollup-plugin-terser": "^7.0.0",
-    "rollup-plugin-visualizer": "^4.1.0"
-  },
-  "files": [
-    "dist"
-  ]
+    "history": "^5.0.0"
+  }
 }

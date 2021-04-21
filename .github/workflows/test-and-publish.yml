@@ -1,0 +1,46 @@
+name: react-location tests
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'next'
+      - 'beta'
+      - '3.x'
+  pull_request:
+
+jobs:
+  test:
+    name: 'Node ${{ matrix.node }}'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [12, 14, 16]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install dependencies
+        uses: bahmutov/npm-install@v1
+      - run: yarn test:ci
+
+  publish-module:
+    name: 'Publish Module to NPM'
+    needs: test
+    # publish only when merged in master on original repo, not on PR
+    if: github.repository == 'tannerlinsley/react-location' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/next' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/3.x')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 14
+          registry-url: https://registry.npmjs.org/
+      - name: Install dependencies
+        uses: bahmutov/npm-install@v1
+      - run: yarn build
+      - run: npx semantic-release@17
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+          GH_TOKEN: ${{secrets.GH_TOKEN}}
