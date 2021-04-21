@@ -177,7 +177,7 @@ class ReactLocationInstance {
   basepath: string;
   current: Location;
   destroy: () => void;
-  commitTimeout: NodeJS.Timeout;
+  commitTimeout: ReturnType<typeof setTimeout>;
 
   //
 
