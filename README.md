@@ -22,7 +22,27 @@
 - Transactionally Safe Location Updates
 - Relative Routing + Links
 
-## Get Started
+# Table of Contents
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Get Started](#get-started)
+- [Documentation](#documentation)
+  - [ReactLocation](#reactlocation)
+  - [Route](#route)
+  - [Routes](#routes)
+  - [Link](#link)
+  - [useLocation](#uselocation)
+  - [Navigate](#navigate)
+  - [`useNavigate`](#usenavigate)
+  - [`useMatch`](#usematch)
+  - [SSR](#ssr)
+  - [Inspiration](#inspiration)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+# Get Started
 
 1. Install `react-location`
 
@@ -124,24 +144,6 @@ function Invoice() {
   );
 }
 ```
-
-# Table of Contents
-
-- [Documentation](#documentation)
-  - [ReactLocation](#reactlocation)
-  - [Route](#route)
-  - [Routes](#routefirst)
-  - [Link](#link)
-  - [useLocation, Location, withLocation](#uselocation-location-withlocation)
-  - [Redirect](#redirect)
-  - [createHistory](#createhistory)
-  - [createMemorySource](#creatememorysource)
-  - [Location API](#location-api)
-    - [navigate](#navigate)
-    - [isRoute](#isRoute)
-  - [SSR](#ssr)
-- [Contribution and Roadmap](#contribution-and-roadmap)
-- [Inspiration and Thanks](#inspiration-and-thanks)
 
 # Documentation
 
@@ -383,7 +385,7 @@ function App () {
 }
 ```
 
-### `useNavigate`
+## `useNavigate`
 
 The `useNavigate` hook allows you to programmatically navigate your application.
 
@@ -401,7 +403,7 @@ function MyComponent() {
 }
 ```
 
-### `useMatch`
+## `useMatch`
 
 The `useMatch` hook allows you to programmatically test a path for a route **within the closest relative route**. If a path is match, it will return an object of route params detected, even if this is an empty object. If a path doesn't match, it will return `false`.
 
@@ -429,7 +431,7 @@ function App() {
 }
 ```
 
-# SSR
+## SSR
 
 Server-side rendering is easy with react-location. Use `createMemoryHistory` and `ReactLocation` to mock your app into a specific state for SSR:
 

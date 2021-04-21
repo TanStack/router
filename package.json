@@ -20,7 +20,8 @@
     "lint": "tsdx lint",
     "prepare": "tsdx build",
     "size": "size-limit",
-    "analyze": "size-limit --why"
+    "analyze": "size-limit --why",
+    "doctoc": "doctoc README.md"
   },
   "peerDependencies": {
     "react": ">=16"
@@ -53,6 +54,7 @@
     "@types/jsurl": "^1.2.29",
     "@types/react": "^17.0.3",
     "@types/react-dom": "^17.0.3",
+    "doctoc": "^2.0.0",
     "husky": "^6.0.0",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
