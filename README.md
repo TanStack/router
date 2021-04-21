@@ -1,19 +1,30 @@
-# React-Location
+<img src="https://static.scarf.sh/a.png?x-pxid=d988eb79-b0fc-4a2b-8514-6a1ab932d188" />
 
-<a href="https://npmjs.com/package/react-location" target="\_parent">
+# ⚛️ React-Location (Beta)
+
+Enterprise Routing for React
+
+<a href="https://twitter.com/intent/tweet?button_hashtag=TanStack" target="\_parent">
+  <img alt="#TanStack" src="https://img.shields.io/twitter/url?color=%2308a0e9&label=%23TanStack&style=social&url=https%3A%2F%2Ftwitter.com%2Fintent%2Ftweet%3Fbutton_hashtag%3DTanStack">
+</a><a href="https://github.com/tannerlinsley/react-location/actions?query=workflow%3A%22react-location+tests%22">
+<img src="https://github.com/tannerlinsley/react-location/workflows/react-location%20tests/badge.svg" />
+</a><a href="https://npmjs.com/package/react-location" target="\_parent">
   <img alt="" src="https://img.shields.io/npm/dm/react-location.svg" />
-</a>
-<a href="https://spectrum.chat/react-location" target="\_parent">
-  <img alt="" src="https://img.shields.io/badge/spectrum-react--chat-purple.svg" />
-</a>
-<a href="https://github.com/tannerlinsley/react-location" target="\_parent">
+</a><a href="https://bundlephobia.com/result?p=react-location@next" target="\_parent">
+  <img alt="" src="https://badgen.net/bundlephobia/minzip/react-location@next" />
+</a><a href="#badge">
+    <img alt="semantic-release" src="https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg">
+  </a><a href="https://github.com/tannerlinsley/react-location/discussions">
+  <img alt="Join the discussion on Github" src="https://img.shields.io/badge/Github%20Discussions%20%26%20Support-Chat%20now!-blue" />
+</a><a href="https://bestofjs.org/projects/react-location"><img alt="Best of JS" src="https://img.shields.io/endpoint?url=https://bestofjs-serverless.now.sh/api/project-badge?fullName=tannerlinsley%2Freact-location%26since=daily" /></a><a href="https://github.com/tannerlinsley/react-location" target="\_parent">
   <img alt="" src="https://img.shields.io/github/stars/tannerlinsley/react-location.svg?style=social&label=Star" />
-</a>
-<a href="https://twitter.com/tannerlinsley" target="\_parent">
+</a><a href="https://twitter.com/tannerlinsley" target="\_parent">
   <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow" />
 </a>
 
-### ⚛️ React-Location (Beta) - Enterprise Routing for React
+Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Table](https://github.com/tannerlinsley/react-table), [React Form](https://github.com/tannerlinsley/react-form), [React Charts](https://github.com/tannerlinsley/react-charts)
+
+## Features
 
 - Familiar API inspired by React Router & Next.js
 - JSON Search Param API
@@ -22,12 +33,12 @@
 - Transactionally Safe Location Updates
 - Relative Routing + Links
 
-# Table of Contents
+## Table of Contents
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Get Started](#get-started)
+- [Getting Started](#getting-started)
 - [Documentation](#documentation)
   - [ReactLocation](#reactlocation)
   - [Route](#route)
@@ -42,7 +53,7 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# Getting Started
+## Getting Started
 
 1. Install `react-location@next`
 
@@ -145,9 +156,9 @@ function Invoice() {
 }
 ```
 
-# Documentation
+## Documentation
 
-## ReactLocation
+### ReactLocation
 
 **Required: true**
 
@@ -185,7 +196,7 @@ return (
 );
 ```
 
-## Route
+### Route
 
 The `Route` component is used to render content when its path routees the current history's location. It is generally used for routing purposes. It also provides the new relative routeing path to child `Route` components, allowing for clean nested route definition.
 
@@ -200,7 +211,7 @@ The `Route` component is used to render content when its path routees the curren
 <Route path="about" element="About Me" />
 ```
 
-## Routes
+### Routes
 
 The `Routes` component is used to selectively render the first child component that is av valid route and/or provide fallbacks. This is useful for:
 
@@ -273,7 +284,7 @@ render(
 );
 ```
 
-## Link
+### Link
 
 The `Link` component allows you to generate links for _internal_ navigation, capable of updating the:
 
@@ -346,7 +357,7 @@ The following link will be green with `/about` as the current location.
 </Link>
 ```
 
-## useLocation
+### useLocation
 
 The `useLocation` hook returns the current [React Location instance](#react-location-instance) from context when used.
 
@@ -361,7 +372,7 @@ export function MyComponent() {
 }
 ```
 
-## Navigate
+### Navigate
 
 When renderd, the `Navigate` component will declaratively and relatively navigate to any route.
 
@@ -385,7 +396,7 @@ function App () {
 }
 ```
 
-## `useNavigate`
+### `useNavigate`
 
 The `useNavigate` hook allows you to programmatically navigate your application.
 
@@ -403,7 +414,7 @@ function MyComponent() {
 }
 ```
 
-## `useMatch`
+### `useMatch`
 
 The `useMatch` hook allows you to programmatically test a path for a route **within the closest relative route**. If a path is match, it will return an object of route params detected, even if this is an empty object. If a path doesn't match, it will return `false`.
 
@@ -431,7 +442,7 @@ function App() {
 }
 ```
 
-## SSR
+### SSR
 
 Server-side rendering is easy with react-location. Use `createMemoryHistory` and `ReactLocation` to mock your app into a specific state for SSR:
 
@@ -457,7 +468,7 @@ return (
 );
 ```
 
-## Inspiration
+### Inspiration
 
 All of these libraries offered a lot of guidance and good patterns for writing this library:
 
