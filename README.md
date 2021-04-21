@@ -13,7 +13,7 @@
   <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow" />
 </a>
 
-### ⚛️ React-Location - Enterprise Routing for React
+### ⚛️ React-Location (Beta) - Enterprise Routing for React
 
 - Familiar API inspired by React Router & Next.js
 - JSON Search Param API
@@ -42,14 +42,14 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# Get Started
+# Getting Started
 
-1. Install `react-location`
+1. Install `react-location@next`
 
 ```sh
-npm install react-location --save
+npm install react-location@next --save
 # or
-yarn add react-location
+yarn add react-location@next
 ```
 
 2. Import and use `react-location`
