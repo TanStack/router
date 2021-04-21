@@ -176,8 +176,8 @@ class ReactLocationInstance {
   history: BrowserHistory | MemoryHistory;
   basepath: string;
   current: Location;
-  destroy;
-  commitTimeout;
+  destroy: () => void;
+  commitTimeout: NodeJS.Timeout;
 
   //
 
