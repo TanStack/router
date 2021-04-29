@@ -448,7 +448,7 @@ Server-side rendering is easy with react-location. Use `createMemoryHistory` and
 
 ```js
 import {
-  createBowserHistory
+  createBrowserHistory
   createMemoryHistory,
   ReactLocation,
 } from 'react-location';
@@ -456,7 +456,7 @@ import {
 let history;
 
 if (typeof document !== 'undefined') {
-  history = createBowserHistory();
+  history = createBrowserHistory();
 } else {
   history = createMemoryHistory(['/blog/post/2]);
 }
