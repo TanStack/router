@@ -134,7 +134,7 @@ function stringifySearch(search: SearchObj) {
   search = { ...search };
 
   if (search) {
-    Object.keys(search).forEach((key) => {
+    Object.keys(search).forEach(key => {
       const val = search[key];
       if (val && typeof val === 'object' && val !== null) {
         try {
@@ -188,7 +188,7 @@ class ReactLocationInstance {
     this.basepath = options.basepath || '/';
     this.current = parseLocation(this.history.location);
 
-    this.destroy = this.history.listen((event) => {
+    this.destroy = this.history.listen(event => {
       this.current = parseLocation(event.location, this.current);
       this.notify();
     });
@@ -205,7 +205,7 @@ class ReactLocationInstance {
   };
 
   notify = () => {
-    this.listeners.forEach((listener) => {
+    this.listeners.forEach(listener => {
       listener();
     });
   };
@@ -214,7 +214,7 @@ class ReactLocationInstance {
     this.listeners.push(cb);
 
     return () => {
-      this.listeners = this.listeners.filter((d) => d !== cb);
+      this.listeners = this.listeners.filter(d => d !== cb);
     };
   };
 
@@ -338,7 +338,7 @@ export function ReactLocation({
 }
 
 export function useLocation() {
-  const [, rerender] = React.useReducer((d) => d + 1, 0);
+  const [, rerender] = React.useReducer(d => d + 1, 0);
   const instance = React.useContext(LocationContext);
   warning(!!instance, 'useLocation must be used within a <ReactLocation />');
 
@@ -419,7 +419,7 @@ function rankRoutes(routes: RouteConfig[]) {
             key: 'type',
             value: 'param',
           },
-        ] as const).some((condition) => {
+        ] as const).some(condition => {
           if (
             [aSegment[condition.key], bSegment[condition.key]].includes(
               condition.value
@@ -508,10 +508,12 @@ export function usePrompt(message: string, when = true): void {
   React.useEffect(() => {
     if (!when) return;
 
-    let unblock = location.history.block((transition) => {
+    let unblock = location.history.block(transition => {
       if (window.confirm(message)) {
         unblock();
         transition.retry();
+      } else {
+        location.current.pathname = window.location.pathname;
       }
     });
 
@@ -578,7 +580,7 @@ export function Route({ path, element }: RouteProps) {
   const interpolatedPathSegments = segmentPathname(path);
 
   const interpolatedPath = joinPaths(
-    interpolatedPathSegments.map((segment) => {
+    interpolatedPathSegments.map(segment => {
       if (segment.value === '*') {
         return '';
       }
@@ -770,7 +772,7 @@ function joinPaths(paths: string[]) {
 }
 
 function matchRoutes(base: string, routeBase: string, routes: RouteConfig[]) {
-  return routes.find((route) =>
+  return routes.find(route =>
     matchRoute(base, joinPaths([routeBase, route.path]))
   );
 }
@@ -844,7 +846,7 @@ function segmentPathname(pathname: string) {
   }
 
   // Remove empty segments and '.' segments
-  const split = pathname.split('/').filter((path) => {
+  const split = pathname.split('/').filter(path => {
     return path.length && path !== '.';
   });
 
@@ -873,7 +875,7 @@ function resolvePath(base: string, to: string) {
   let baseSegments = segmentPathname(base);
   const toSegments = segmentPathname(to);
 
-  toSegments.forEach((toSegment) => {
+  toSegments.forEach(toSegment => {
     if (toSegment.type === 'param') {
       throw new Error(
         'Destination pathnames may not contain route parameter placeholders.'
@@ -889,7 +891,7 @@ function resolvePath(base: string, to: string) {
     }
   });
 
-  const joined = baseSegments.map((d) => d.value).join('/');
+  const joined = baseSegments.map(d => d.value).join('/');
 
   return cleanPathname(joined);
 }
