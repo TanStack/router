@@ -534,6 +534,8 @@ export function usePrompt(message: string, when = true): void {
       if (window.confirm(message)) {
         unblock();
         transition.retry();
+      } else {
+        location.current.pathname = window.location.pathname;
       }
     });
 
