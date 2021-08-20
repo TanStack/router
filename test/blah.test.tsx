@@ -92,9 +92,7 @@ describe('it', () => {
     );
 
     rtl.fireEvent.click(rtl.screen.getByText('To C'));
-    rtl.screen.debug();
     rtl.fireEvent.click(rtl.screen.getByText('To Root'));
-    rtl.screen.debug();
     rtl.screen.getByText('To C');
   });
 

@@ -134,7 +134,7 @@ function stringifySearch(search: SearchObj) {
   search = { ...search };
 
   if (search) {
-    Object.keys(search).forEach((key) => {
+    Object.keys(search).forEach(key => {
       const val = search[key];
       if (val && typeof val === 'object' && val !== null) {
         try {
@@ -188,7 +188,7 @@ class ReactLocationInstance {
     this.basepath = options.basepath || '/';
     this.current = parseLocation(this.history.location);
 
-    this.destroy = this.history.listen((event) => {
+    this.destroy = this.history.listen(event => {
       this.current = parseLocation(event.location, this.current);
       this.notify();
     });
@@ -205,7 +205,7 @@ class ReactLocationInstance {
   };
 
   notify = () => {
-    this.listeners.forEach((listener) => {
+    this.listeners.forEach(listener => {
       listener();
     });
   };
@@ -214,7 +214,7 @@ class ReactLocationInstance {
     this.listeners.push(cb);
 
     return () => {
-      this.listeners = this.listeners.filter((d) => d !== cb);
+      this.listeners = this.listeners.filter(d => d !== cb);
     };
   };
 
@@ -250,8 +250,11 @@ class ReactLocationInstance {
     return functionalUpdate(updater, this.current.hash);
   };
 
-  buildNext = (to: string, options: BuildNextOptions = {}): Location => {
-    const pathname = resolvePath(options.from || this.current.pathname, to);
+  buildNext = (to: NavigateTo, options: BuildNextOptions = {}): Location => {
+    const pathname = resolvePath(
+      options.from || this.current.pathname,
+      to ?? '.'
+    );
 
     const search = this.buildSearch(options.search);
 
@@ -273,7 +276,7 @@ class ReactLocationInstance {
     };
   };
 
-  navigate = (to: string, options: NavigateOptions = {}) => {
+  navigate = (to: NavigateTo, options: NavigateOptions = {}) => {
     this.current = this.buildNext(to, options);
 
     if (options.replace) {
@@ -338,13 +341,16 @@ export function ReactLocation({
 }
 
 export function useLocation() {
-  const [, rerender] = React.useReducer((d) => d + 1, 0);
+  const getIsMounted = useGetIsMounted();
+  const [, rerender] = React.useReducer(d => d + 1, 0);
   const instance = React.useContext(LocationContext);
   warning(!!instance, 'useLocation must be used within a <ReactLocation />');
 
   React.useEffect(() => {
     return instance.subscribe(() => {
-      rerender();
+      if (getIsMounted()) {
+        rerender();
+      }
     });
   }, [instance]);
 
@@ -419,7 +425,7 @@ function rankRoutes(routes: RouteConfig[]) {
             key: 'type',
             value: 'param',
           },
-        ] as const).some((condition) => {
+        ] as const).some(condition => {
           if (
             [aSegment[condition.key], bSegment[condition.key]].includes(
               condition.value
@@ -451,11 +457,15 @@ function useRouteContext() {
   return React.useContext(RouteContext);
 }
 
+export type NavigateTo = string | null | undefined;
+
 export type UseNavigateOptions = {
+  to?: string | null;
   search?: Updater<SearchObj>;
   state?: Updater<StateObj>;
   hash?: Updater<string>;
   replace?: boolean;
+  fromCurrent?: boolean;
 };
 
 export function useNavigate() {
@@ -463,9 +473,21 @@ export function useNavigate() {
   const location = useLocation();
 
   return React.useCallback(
-    (to: string, { search, state, hash, replace }: UseNavigateOptions = {}) => {
+    (
+      toOrOptions: NavigateTo | UseNavigateOptions,
+      options?: UseNavigateOptions
+    ) => {
+      let to: NavigateTo = typeof toOrOptions === 'string' ? toOrOptions : null;
+
+      let { search, state, hash, replace, fromCurrent, to: optionalTo } =
+        (typeof toOrOptions === 'string' ? options : toOrOptions) ?? {};
+
+      to = to ?? optionalTo ?? null;
+
+      fromCurrent = fromCurrent ?? to === null;
+
       location.navigate(to, {
-        from: routeContext.basepath,
+        from: fromCurrent ? location.current.pathname : routeContext.basepath,
         search,
         state,
         hash,
@@ -508,7 +530,7 @@ export function usePrompt(message: string, when = true): void {
   React.useEffect(() => {
     if (!when) return;
 
-    let unblock = location.history.block((transition) => {
+    let unblock = location.history.block(transition => {
       if (window.confirm(message)) {
         unblock();
         transition.retry();
@@ -578,7 +600,7 @@ export function Route({ path, element }: RouteProps) {
   const interpolatedPathSegments = segmentPathname(path);
 
   const interpolatedPath = joinPaths(
-    interpolatedPathSegments.map((segment) => {
+    interpolatedPathSegments.map(segment => {
       if (segment.value === '*') {
         return '';
       }
@@ -728,11 +750,8 @@ export function Link({
 
 export function Navigate({
   to,
-  search,
-  state,
-  hash,
-  replace,
-}: { to: string } & UseNavigateOptions) {
+  ...options
+}: { to: NavigateTo } & UseNavigateOptions) {
   let navigate = useNavigate();
 
   let useIsomorphicLayoutEffect = isDOM
@@ -744,7 +763,7 @@ export function Navigate({
   }
 
   useIsomorphicLayoutEffect(() => {
-    navigate(to, { search, state, hash, replace });
+    navigate(to, options);
   }, [navigate]);
 
   return null;
@@ -770,7 +789,7 @@ function joinPaths(paths: string[]) {
 }
 
 function matchRoutes(base: string, routeBase: string, routes: RouteConfig[]) {
-  return routes.find((route) =>
+  return routes.find(route =>
     matchRoute(base, joinPaths([routeBase, route.path]))
   );
 }
@@ -844,7 +863,7 @@ function segmentPathname(pathname: string) {
   }
 
   // Remove empty segments and '.' segments
-  const split = pathname.split('/').filter((path) => {
+  const split = pathname.split('/').filter(path => {
     return path.length && path !== '.';
   });
 
@@ -873,7 +892,7 @@ function resolvePath(base: string, to: string) {
   let baseSegments = segmentPathname(base);
   const toSegments = segmentPathname(to);
 
-  toSegments.forEach((toSegment) => {
+  toSegments.forEach(toSegment => {
     if (toSegment.type === 'param') {
       throw new Error(
         'Destination pathnames may not contain route parameter placeholders.'
@@ -889,13 +908,27 @@ function resolvePath(base: string, to: string) {
     }
   });
 
-  const joined = baseSegments.map((d) => d.value).join('/');
+  const joined = baseSegments.map(d => d.value).join('/');
 
   return cleanPathname(joined);
 }
 
 function isCtrlEvent(e: React.MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey);
+}
+
+function useGetIsMounted() {
+  const ref = React.useRef(false);
+
+  React.useEffect(() => {
+    ref.current = true;
+
+    return () => {
+      ref.current = false;
+    };
+  });
+
+  return () => ref.current;
 }
 
 /**

@@ -20,12 +20,6 @@ const App = () => {
 };
 
 function Root() {
-  const search = useSearch();
-
-  // React.useEffect(() => {
-  //   console.log(search);
-  // }, [search]);
-
   return (
     <>
       <div>
@@ -35,12 +29,14 @@ function Root() {
         <Link to="." search={(old) => ({ ...old, foo: 'bar' })}>
           <pre>Test</pre>
         </Link>
-        <Link to='.'
+        <Link
+          to="."
           search={{
             someParams: '',
             otherParams: 'gogogo',
-            object: { nested: { list: [1, 2, 3], hello: "world" } }
-          }}>
+            object: { nested: { list: [1, 2, 3], hello: 'world' } },
+          }}
+        >
           <pre>Test</pre>
         </Link>
         {/* <div>
@@ -100,7 +96,9 @@ function Root() {
           }
         />
       </Routes> */}
-    </}
+    </>
+  );
+}
 
 function Team() {
   const params = useParams();

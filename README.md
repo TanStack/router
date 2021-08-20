@@ -131,8 +131,8 @@ function Invoice() {
   const isPreviewOpen = search.previewState?.isOpen;
 
   const togglePreview = () =>
-    navigate('.', {
-      search: (old) => ({
+    navigate({
+      search: old => ({
         ...old,
         previewState: {
           ...(old.previewState ?? {}),
@@ -268,7 +268,7 @@ render(
 );
 ```
 
-\*\*Example - Default / Fallback Route with redirect
+**Example - Default / Fallback Route with redirect**
 
 ```tsx
 render(
@@ -349,7 +349,7 @@ The following link will be green with `/about` as the current location.
 ```tsx
 <Link
   to="/about"
-  getActiveProps={(location) => ({
+  getActiveProps={location => ({
     style: { color: 'green' },
   })}
 >
@@ -380,7 +380,8 @@ When renderd, the `Navigate` component will declaratively and relatively navigat
 
 ```ts
 type NavigateProps = {
-  to: string;
+  to?: string | null;
+  pathname?: string | null;
   search?: Updater<SearchObj>;
   state?: Updater<StateObj>;
   hash?: Updater<string>;
