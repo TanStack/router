@@ -484,6 +484,82 @@ const routeElement = (
 
 ### useRoute
 
+The `useRoute` hook returns the nearest current route match within context of where it's called. It can be used to access:
+
+- Route Data
+- Route Params (eg. `/:invoiceId` => `params.invoiceId`)
+- The next child match, if applicable
+
+**Example - Route Data**
+
+```tsx
+const routeElement = (
+  <Routes
+    routes={[
+      {
+        path: 'invoices',
+        element: <Invoices />,
+        load: async () => ({
+          invoices: await fetchInvoices(),
+        }),
+        children: [
+          {
+            path: ':invoiceId',
+            element: <Invoice />,
+            load: async ({ params }) => ({
+              invoice: await fetchInvoiceById(params.invoiceId),
+            }),
+          },
+        ],
+      },
+    ]}
+  />
+)
+
+function Invoice() {
+  const {
+    data: {
+      // You can access any data merged in from parent loaders as well
+      invoices,
+      invoice,
+    },
+  } = useRoute()
+}
+```
+
+**Example - Route Params**
+
+```tsx
+const routeElement = (
+  <Routes
+    routes={[
+      {
+        path: 'invoices',
+        element: <Invoices />,
+        children: [
+          {
+            path: ':invoiceId',
+            element: <Invoice />,
+          },
+        ],
+      },
+    ]}
+  />
+)
+
+function Invoice() {
+  const {
+    params: { invoiceId },
+  } = useRoute()
+
+  // Use it for whatever, like in a React Query!
+  const invoiceQuery = useQuery(
+    ['invoices', invoiceId],
+    fetchInvoiceById(invoiceId),
+  )
+}
+```
+
 ### Link
 
 The `Link` component allows you to generate links for _internal_ navigation, capable of updating the:
