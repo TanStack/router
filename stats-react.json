@@ -1,0 +1,358 @@
+{
+  "version": 2,
+  "tree": {
+    "name": "root",
+    "children": [
+      {
+        "name": "react-location.production.min.js",
+        "children": [
+          {
+            "name": "node_modules",
+            "children": [
+              {
+                "name": "@babel/runtime",
+                "children": [
+                  {
+                    "name": "helpers/esm",
+                    "children": [
+                      {
+                        "uid": "8f32-313",
+                        "name": "asyncToGenerator.js"
+                      },
+                      {
+                        "uid": "8f32-315",
+                        "name": "objectWithoutPropertiesLoose.js"
+                      },
+                      {
+                        "uid": "8f32-317",
+                        "name": "extends.js"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "regenerator/index.js",
+                    "uid": "8f32-323"
+                  }
+                ]
+              },
+              {
+                "name": "regenerator-runtime/runtime.js",
+                "uid": "8f32-321"
+              },
+              {
+                "name": "history",
+                "children": [
+                  {
+                    "name": "node_modules/@babel/runtime/helpers/esm/extends.js",
+                    "uid": "8f32-327"
+                  },
+                  {
+                    "uid": "8f32-329",
+                    "name": "index.js"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uid": "8f32-319",
+            "name": "\u0000commonjsHelpers.js"
+          },
+          {
+            "name": "src",
+            "children": [
+              {
+                "uid": "8f32-325",
+                "name": "qss.ts"
+              },
+              {
+                "uid": "8f32-331",
+                "name": "jsurl.ts"
+              },
+              {
+                "uid": "8f32-333",
+                "name": "index.tsx"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "isRoot": true
+  },
+  "nodeParts": {
+    "8f32-313": {
+      "renderedLength": 832,
+      "gzipLength": 330,
+      "brotliLength": 0,
+      "mainUid": "8f32-312"
+    },
+    "8f32-315": {
+      "renderedLength": 359,
+      "gzipLength": 226,
+      "brotliLength": 0,
+      "mainUid": "8f32-314"
+    },
+    "8f32-317": {
+      "renderedLength": 416,
+      "gzipLength": 235,
+      "brotliLength": 0,
+      "mainUid": "8f32-316"
+    },
+    "8f32-319": {
+      "renderedLength": 129,
+      "gzipLength": 110,
+      "brotliLength": 0,
+      "mainUid": "8f32-318"
+    },
+    "8f32-321": {
+      "renderedLength": 25528,
+      "gzipLength": 7054,
+      "brotliLength": 0,
+      "mainUid": "8f32-320"
+    },
+    "8f32-323": {
+      "renderedLength": 30,
+      "gzipLength": 50,
+      "brotliLength": 0,
+      "mainUid": "8f32-322"
+    },
+    "8f32-325": {
+      "renderedLength": 1229,
+      "gzipLength": 452,
+      "brotliLength": 0,
+      "mainUid": "8f32-324"
+    },
+    "8f32-327": {
+      "renderedLength": 410,
+      "gzipLength": 231,
+      "brotliLength": 0,
+      "mainUid": "8f32-326"
+    },
+    "8f32-329": {
+      "renderedLength": 9628,
+      "gzipLength": 2271,
+      "brotliLength": 0,
+      "mainUid": "8f32-328"
+    },
+    "8f32-331": {
+      "renderedLength": 4987,
+      "gzipLength": 1910,
+      "brotliLength": 0,
+      "mainUid": "8f32-330"
+    },
+    "8f32-333": {
+      "renderedLength": 28195,
+      "gzipLength": 6817,
+      "brotliLength": 0,
+      "mainUid": "8f32-332"
+    }
+  },
+  "nodeMetas": {
+    "8f32-312": {
+      "id": "/node_modules/@babel/runtime/helpers/esm/asyncToGenerator.js",
+      "moduleParts": {
+        "react-location.production.min.js": "8f32-313"
+      },
+      "imported": [],
+      "importedBy": [
+        {
+          "uid": "8f32-332"
+        }
+      ]
+    },
+    "8f32-314": {
+      "id": "/node_modules/@babel/runtime/helpers/esm/objectWithoutPropertiesLoose.js",
+      "moduleParts": {
+        "react-location.production.min.js": "8f32-315"
+      },
+      "imported": [],
+      "importedBy": [
+        {
+          "uid": "8f32-332"
+        }
+      ]
+    },
+    "8f32-316": {
+      "id": "/node_modules/@babel/runtime/helpers/esm/extends.js",
+      "moduleParts": {
+        "react-location.production.min.js": "8f32-317"
+      },
+      "imported": [],
+      "importedBy": [
+        {
+          "uid": "8f32-332"
+        }
+      ]
+    },
+    "8f32-318": {
+      "id": "\u0000commonjsHelpers.js",
+      "moduleParts": {
+        "react-location.production.min.js": "8f32-319"
+      },
+      "imported": [],
+      "importedBy": [
+        {
+          "uid": "8f32-320"
+        }
+      ]
+    },
+    "8f32-320": {
+      "id": "/node_modules/regenerator-runtime/runtime.js",
+      "moduleParts": {
+        "react-location.production.min.js": "8f32-321"
+      },
+      "imported": [
+        {
+          "uid": "8f32-318"
+        }
+      ],
+      "importedBy": [
+        {
+          "uid": "8f32-322"
+        },
+        {
+          "uid": "8f32-335"
+        }
+      ]
+    },
+    "8f32-322": {
+      "id": "/node_modules/@babel/runtime/regenerator/index.js",
+      "moduleParts": {
+        "react-location.production.min.js": "8f32-323"
+      },
+      "imported": [
+        {
+          "uid": "8f32-320"
+        },
+        {
+          "uid": "8f32-335"
+        }
+      ],
+      "importedBy": [
+        {
+          "uid": "8f32-332"
+        }
+      ]
+    },
+    "8f32-324": {
+      "id": "/src/qss.ts",
+      "moduleParts": {
+        "react-location.production.min.js": "8f32-325"
+      },
+      "imported": [],
+      "importedBy": [
+        {
+          "uid": "8f32-332"
+        }
+      ]
+    },
+    "8f32-326": {
+      "id": "/node_modules/history/node_modules/@babel/runtime/helpers/esm/extends.js",
+      "moduleParts": {
+        "react-location.production.min.js": "8f32-327"
+      },
+      "imported": [],
+      "importedBy": [
+        {
+          "uid": "8f32-328"
+        }
+      ]
+    },
+    "8f32-328": {
+      "id": "/node_modules/history/index.js",
+      "moduleParts": {
+        "react-location.production.min.js": "8f32-329"
+      },
+      "imported": [
+        {
+          "uid": "8f32-326"
+        }
+      ],
+      "importedBy": [
+        {
+          "uid": "8f32-332"
+        }
+      ]
+    },
+    "8f32-330": {
+      "id": "/src/jsurl.ts",
+      "moduleParts": {
+        "react-location.production.min.js": "8f32-331"
+      },
+      "imported": [],
+      "importedBy": [
+        {
+          "uid": "8f32-332"
+        }
+      ]
+    },
+    "8f32-332": {
+      "id": "/src/index.tsx",
+      "moduleParts": {
+        "react-location.production.min.js": "8f32-333"
+      },
+      "imported": [
+        {
+          "uid": "8f32-312"
+        },
+        {
+          "uid": "8f32-314"
+        },
+        {
+          "uid": "8f32-316"
+        },
+        {
+          "uid": "8f32-322"
+        },
+        {
+          "uid": "8f32-334"
+        },
+        {
+          "uid": "8f32-324"
+        },
+        {
+          "uid": "8f32-328"
+        },
+        {
+          "uid": "8f32-330"
+        }
+      ],
+      "importedBy": [],
+      "isEntry": true
+    },
+    "8f32-334": {
+      "id": "react",
+      "moduleParts": {},
+      "imported": [],
+      "importedBy": [
+        {
+          "uid": "8f32-332"
+        }
+      ],
+      "isExternal": true
+    },
+    "8f32-335": {
+      "id": "\u0000/node_modules/regenerator-runtime/runtime.js?commonjs-proxy",
+      "moduleParts": {},
+      "imported": [
+        {
+          "uid": "8f32-320"
+        }
+      ],
+      "importedBy": [
+        {
+          "uid": "8f32-322"
+        }
+      ]
+    }
+  },
+  "env": {
+    "rollup": "2.58.0"
+  },
+  "options": {
+    "gzip": true,
+    "brotli": false,
+    "sourcemap": false
+  }
+}

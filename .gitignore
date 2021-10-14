@@ -4,3 +4,6 @@ node_modules
 .cache
 dist
 .history
+es
+lib
+types

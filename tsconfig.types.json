@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "declarationDir": "./types",
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "paths": {
+      "react-location": ["./src/index.tsx"]
+    }
+  },
+  "files": ["./src/index.tsx"],
+  "exclude": ["./src/**/*"]
+}
