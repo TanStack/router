@@ -41,9 +41,13 @@
   },
   "release": {
     "branches": [
-      "master",
+      "main",
       {
         "name": "beta",
+        "prerelease": true
+      },
+      {
+        "name": "next",
         "prerelease": true
       }
     ]
