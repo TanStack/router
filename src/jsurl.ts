@@ -30,7 +30,7 @@ export function stringify(v: any): string {
   function encode(s: any) {
     return !/[^\w-.]/.test(s)
       ? s
-      : s.replace(/[^\w-.]/g, function(ch: any) {
+      : s.replace(/[^\w-.]/g, function (ch: any) {
           if (ch === '$') return '!'
           ch = ch.charCodeAt(0)
           // thanks to Douglas Crockford for the negative slice trick

@@ -67,9 +67,9 @@ When you begin to store more state in the URL you will inevitably and naturally 
 
 React Location handles all of this out of the box.
 
-### Deep-Route Suspense & Navigational Transactions
+### Client-side Navigational Suspense
 
-Popularized by frameworks like [Next.js](https://nextjs.org) and [Remix](https://remix.run), **specifying asynchronous dependencies for routes that can all resolve in parallel before rendering** has become an expectation of almost every SSR-based routing APIs. I believe this capability, while intuitive in an SSR environment, is not exclusive to it and definitely has a place in the client-side only world.
+Popularized by frameworks like [Next.js](https://nextjs.org) and [Remix](https://remix.run), **specifying asynchronous dependencies for routes that can all resolve in parallel before rendering** has become an expectation of almost every SSR-based routing APIs. I believe this capability, while intuitive in an SSR environment, is not exclusive to it and definitely has a place in the client-side routing world.
 
 React Location provides first-class support for specifying arbitrary asynchronous dependencies for your routes and will asynchronously suspend navigation rendering until these dependencies are met.
 
@@ -321,7 +321,6 @@ A **Route** object consist of the following properties:
 | path     | true     | `string`                                               | The path to route (relative to the nearest parent `Route` component or root basepath)       |
 | element  |          | `React.ReactNode`                                      | The content to be rendered when the path routees the current location                       |
 | loader   |          | `(match: RouteMatch) => Promise<Record<string, any>>`  | An asynchronous function responsible for prepping the route to be rendered                  |
-| redirect |          | `NavigateOptions`                                      | A static redirect using the same object of options as `<Link/>` and `useNavigate()`         |
 | children |          | `React.ReactNode`                                      | An array of child routes                                                                    |
 | import   |          | `({ params: Params }) => Promise<Omit<Route, 'path'>>` | An asyncronous function that resolves further route information. Useful for code-splitting! |
 
@@ -385,7 +384,7 @@ const routeElement = (
 )
 ```
 
-**Example - Default / Fallback Route with redirect**
+**Example - Default / Fallback Route with client-side redirect**
 
 ```tsx
 const routeElement = (
@@ -399,7 +398,7 @@ const routeElement = (
       },
       {
         path: '*',
-        redirect: { to: '/' },
+        element: <Navigate to="/" />,
       },
     ]}
   />
@@ -557,6 +556,91 @@ function Invoice() {
     ['invoices', invoiceId],
     fetchInvoiceById(invoiceId),
   )
+}
+```
+
+## useSearch
+
+The `useSearch` hook provides access to the URL search state for the current location. This JSON object is immutable from render to render through structural sharing so any part of it can be safely used for change-detection, even in useEffect/useMemo dependencies.
+
+**Example - Basic**
+
+```tsx
+type SearchObj = {
+  pagination?: {
+    index?: number
+    size?: number
+  }
+  filters?: {
+    name?: string
+  }
+  desc?: boolean
+}
+
+function MyComponent() {
+  // You should try to always pass a generic to `useSearch`
+  // or better yet, make your own pre-typed `useSearch` that proxies
+  // the original.
+
+  const search = useSearch<SearchObj>()
+
+  console.log(search)
+  // {
+  //   pagination: {
+  //     index: 1,
+  //     size: 20
+  //   },
+  //   filter: {
+  //     name: 'tanner'
+  //   },
+  //   desc: true
+  // }
+}
+```
+
+**Example - Updating URL Search State**
+
+```tsx
+type SearchObj = {
+  pagination?: {
+    index?: number
+    size?: number
+  }
+  filters?: {
+    name?: string
+  }
+  desc?: boolean
+}
+
+function MyComponent() {
+  // You should try to always pass a generic to `useSearch`
+  // or better yet, make your own pre-typed `useSearch` that proxies
+  // the original.
+
+  const navigate = useNavigate<SearchObj>()
+
+  const nextPage = () => {
+    navigate({
+      search: old => ({
+        ...old,
+        pagination: {
+          ...old.pagination,
+          index: old.pagination.index + 1,
+        },
+      }),
+    })
+  }
+
+  // OR use something like immer!
+
+  const nextPage = () => {
+    navigate({
+      search: old =>
+        immer.produce(old, draft => {
+          draft.pagination.index++
+        }),
+    })
+  }
 }
 ```
 

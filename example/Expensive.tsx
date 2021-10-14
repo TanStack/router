@@ -1,11 +1,11 @@
 import * as React from 'react'
-import { useRoute } from 'react-location'
+import { Route, RouteImported, useRoute } from 'react-location'
 
 import { sleepCache } from '.'
 
-export const route = {
+export const route: RouteImported = {
   element: <Expensive />,
-  load: async () => ({
+  loader: async () => ({
     expensive: await sleepCache.read('/expensive', 1000, 1000 * 10),
   }),
 }

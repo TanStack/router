@@ -25,14 +25,14 @@ export type ReactLocationOptions = {
   basepath?: string
 }
 
-export type BuildNextOptions = {
+export type BuildNextOptions<TSearch> = {
   from?: string
-  search?: Updater<SearchObj>
+  search?: Updater<TSearch>
   state?: Updater<StateObj>
   hash?: Updater<string>
 }
 
-export type NavigateOptions = BuildNextOptions & {
+export type NavigateOptions<TSearch> = BuildNextOptions<TSearch> & {
   replace?: boolean
 }
 
@@ -43,10 +43,10 @@ export type Updater<TResult, TPrevious = TResult> =
   | TResult
   | ((prev: TPrevious) => TResult)
 
-export type Location = {
+export type Location<TSearch> = {
   href: string
   pathname: string
-  search: SearchObj
+  search: TSearch
   searchStr: string
   state: StateObj
   hash: string
@@ -55,18 +55,19 @@ export type Location = {
 
 export type Route = RouteBasic | RouteAsync
 
-type RouteBasic = {
+export type RouteBasic = {
   path: string
-  load?: LoadFn
+  loader?: LoadFn
+  loaderErrorElement?: React.ReactNode
   waitForParents?: boolean
   element?: React.ReactNode
   children?: Route[]
   import?: never
 }
 
-type RouteImported = Omit<RouteBasic, 'path'>
+export type RouteImported = Omit<RouteBasic, 'path'>
 
-type RouteAsync = {
+export type RouteAsync = {
   path: string
   import: RouteImportFn
 }
@@ -76,6 +77,7 @@ export type RouteMatch = {
   pathname: string
   params: Params
   data: LoadData
+  dataError?: unknown
   childMatch?: RouteMatch
 }
 
@@ -97,16 +99,16 @@ export type Segment = {
   value: string
 }
 
-export type ReactLocationProps = {
+export type ReactLocationProps<TSearch> = {
   children: React.ReactNode
-  location: ReactLocation
+  location: ReactLocation<TSearch>
 }
 
 export type NavigateTo = string | null | undefined
 
-export type UseNavigateOptions = {
+export type UseNavigateOptions<TSearch> = {
   to?: string | null
-  search?: Updater<SearchObj>
+  search?: Updater<TSearch>
   state?: Updater<StateObj>
   hash?: Updater<string>
   replace?: boolean
@@ -129,12 +131,12 @@ type ActiveOptions = {
   includeHash?: boolean
 }
 
-export type LinkProps = Omit<
+export type LinkProps<TSearch> = Omit<
   React.AnchorHTMLAttributes<HTMLAnchorElement>,
   'href'
 > & {
-  to: string
-  search?: Updater<SearchObj>
+  to?: string
+  search?: Updater<TSearch>
   state?: Updater<StateObj>
   hash?: Updater<string>
   replace?: boolean
@@ -154,7 +156,7 @@ function warning(cond: boolean, message: string) {
   }
 }
 
-const LocationContext = React.createContext<ReactLocation>(undefined!)
+const LocationContext = React.createContext<ReactLocation<any>>(undefined!)
 
 const RouteContext = React.createContext<RouteMatch>({
   route: null!,
@@ -211,11 +213,11 @@ function parseSearch(search: string) {
   return query
 }
 
-function stringifySearch(search: SearchObj) {
+function stringifySearch(search: Record<string, unknown>) {
   search = { ...search }
 
   if (search) {
-    Object.keys(search).forEach(key => {
+    Object.keys(search).forEach((key) => {
       const val = search[key]
       if (val && typeof val === 'object' && val !== null) {
         try {
@@ -232,10 +234,10 @@ function stringifySearch(search: SearchObj) {
   return (searchStr = searchStr ? `?${searchStr}` : '')
 }
 
-const parseLocation = (
+function parseLocation<TSearch>(
   location: History['location'],
-  previousLocation?: Location,
-): Location => {
+  previousLocation?: Location<TSearch>,
+): Location<TSearch> {
   return {
     pathname: location.pathname,
     state: replaceEqualDeep(
@@ -253,10 +255,10 @@ const parseLocation = (
   }
 }
 
-export class ReactLocation {
+export class ReactLocation<TSearch> {
   history: BrowserHistory | MemoryHistory
   basepath: string
-  current: Location
+  current: Location<TSearch>
   destroy: () => void
 
   //
@@ -268,7 +270,7 @@ export class ReactLocation {
     this.basepath = options?.basepath || '/'
     this.current = parseLocation(this.history.location)
 
-    this.destroy = this.history.listen(event => {
+    this.destroy = this.history.listen((event) => {
       this.current = parseLocation(event.location, this.current)
       this.notify()
     })
@@ -281,7 +283,7 @@ export class ReactLocation {
   // };
 
   notify = () => {
-    this.listeners.forEach(listener => {
+    this.listeners.forEach((listener) => {
       listener()
     })
   }
@@ -290,11 +292,11 @@ export class ReactLocation {
     this.listeners.push(cb)
 
     return () => {
-      this.listeners = this.listeners.filter(d => d !== cb)
+      this.listeners = this.listeners.filter((d) => d !== cb)
     }
   }
 
-  private buildSearch = (updater?: Updater<SearchObj>) => {
+  private buildSearch(updater?: Updater<TSearch>) {
     const newSearch = functionalUpdate(updater, this.current.search)
 
     if (newSearch) {
@@ -317,7 +319,10 @@ export class ReactLocation {
     return functionalUpdate(updater, this.current.hash)
   }
 
-  buildNext = (to: NavigateTo, options: BuildNextOptions = {}): Location => {
+  buildNext = (
+    to: NavigateTo,
+    options: BuildNextOptions<TSearch> = {},
+  ): Location<TSearch> => {
     const pathname = resolvePath(
       options.from || this.current.pathname,
       to ?? '.',
@@ -343,7 +348,7 @@ export class ReactLocation {
     }
   }
 
-  navigate = (to: NavigateTo, options: NavigateOptions = {}) => {
+  navigate(to: NavigateTo, options: NavigateOptions<TSearch> = {}) {
     this.current = this.buildNext(to, options)
 
     if (options.replace) {
@@ -368,10 +373,10 @@ export class ReactLocation {
   }
 }
 
-export function ReactLocationProvider({
+export function ReactLocationProvider<TSearch>({
   children,
   location: locationInstance,
-}: ReactLocationProps) {
+}: ReactLocationProps<TSearch>) {
   // React.useEffect(() => locationInstance.commit());
 
   const rootMatch = React.useMemo((): RouteMatch => {
@@ -392,10 +397,10 @@ export function ReactLocationProvider({
   )
 }
 
-export function useLocation() {
+export function useLocation<TSearch>() {
   const getIsMounted = useGetIsMounted()
-  const [, rerender] = React.useReducer(d => d + 1, 0)
-  const instance = React.useContext(LocationContext)
+  const [, rerender] = React.useReducer((d) => d + 1, 0)
+  const instance = React.useContext(LocationContext) as ReactLocation<TSearch>
   warning(!!instance, 'useLocation must be used within a <ReactLocation />')
 
   React.useLayoutEffect(() => {
@@ -432,20 +437,22 @@ function rankRoutes(routes: Route[]): Route[] {
 
         if (aSegment && bSegment) {
           let sort: -1 | 1 | 0 = 0
-          ;([
-            {
-              key: 'value',
-              value: '*',
-            },
-            {
-              key: 'value',
-              value: '/',
-            },
-            {
-              key: 'type',
-              value: 'param',
-            },
-          ] as const).some(condition => {
+          ;(
+            [
+              {
+                key: 'value',
+                value: '*',
+              },
+              {
+                key: 'value',
+                value: '/',
+              },
+              {
+                key: 'type',
+                value: 'param',
+              },
+            ] as const
+          ).some((condition) => {
             if (
               [aSegment[condition.key], bSegment[condition.key]].includes(
                 condition.value,
@@ -477,37 +484,43 @@ export function useRoute() {
   return React.useContext(RouteContext)
 }
 
-export function useNavigate() {
+export function useNavigate<TSearch>() {
   const route = useRoute()
   const location = useLocation()
 
-  return useLatestCallback(
-    (
-      toOrOptions: NavigateTo | UseNavigateOptions,
-      options?: UseNavigateOptions,
-    ) => {
-      let to: NavigateTo = typeof toOrOptions === 'string' ? toOrOptions : null
+  function navigate(
+    toOrOptions: NavigateTo | UseNavigateOptions<TSearch>,
+    options?: UseNavigateOptions<TSearch>,
+  ) {
+    let to: NavigateTo = typeof toOrOptions === 'string' ? toOrOptions : null
 
-      let { search, state, hash, replace, fromCurrent, to: optionalTo } =
-        (typeof toOrOptions === 'string' ? options : toOrOptions) ?? {}
+    let {
+      search,
+      state,
+      hash,
+      replace,
+      fromCurrent,
+      to: optionalTo,
+    } = (typeof toOrOptions === 'string' ? options : toOrOptions) ?? {}
 
-      to = to ?? optionalTo ?? null
+    to = to ?? optionalTo ?? null
 
-      fromCurrent = fromCurrent ?? to === null
+    fromCurrent = fromCurrent ?? to === null
 
-      location.navigate(to, {
-        from: fromCurrent ? location.current.pathname : route.pathname,
-        search,
-        state,
-        hash,
-        replace,
-      })
-    },
-  )
+    location.navigate(to, {
+      from: fromCurrent ? location.current.pathname : route.pathname,
+      search,
+      state,
+      hash,
+      replace,
+    })
+  }
+
+  return useLatestCallback(navigate)
 }
 
-export function useSearch() {
-  const location = useLocation()
+export function useSearch<TSearch>() {
+  const location = useLocation<TSearch>()
   return location.current.search
 }
 
@@ -532,7 +545,7 @@ export function usePrompt(message: string, when = true): void {
   React.useEffect(() => {
     if (!when) return
 
-    let unblock = location.history.block(transition => {
+    let unblock = location.history.block((transition) => {
       if (window.confirm(message)) {
         unblock()
         transition.retry()
@@ -563,7 +576,7 @@ export function Routes(options: {
 export function useRoutes(
   routes?: Route[],
   options?: { initialMatch?: RouteMatch; fallback?: React.ReactNode },
-) {
+): Exclude<React.ReactNode, undefined> {
   const location = useLocation()
   const route = useRoute()
   const [matchedRoute, setMatchedRoute] = React.useState(options?.initialMatch)
@@ -574,32 +587,34 @@ export function useRoutes(
 
   const latestRef = React.useRef(0)
 
+  const reconcileRoute = async () => {
+    const id = Date.now()
+    latestRef.current = id
+
+    const newMatch = await matchRoutes(
+      location.current.pathname,
+      routes,
+      route.pathname,
+      route.params,
+    )
+
+    if (latestRef.current === id) {
+      await loadMatch(newMatch)
+      console.log(newMatch)
+    }
+
+    if (latestRef.current === id) {
+      setMatchedRoute(newMatch)
+    }
+  }
+
   React.useEffect(() => {
-    ;(async () => {
-      const id = Date.now()
-      latestRef.current = id
-
-      try {
-        const newMatch = await matchRoutes(
-          location.current.pathname,
-          routes,
-          route.pathname,
-          route.params,
-        )
-
-        if (latestRef.current === id) {
-          await loadMatch(newMatch)
-          console.log(newMatch)
-        }
-
-        if (latestRef.current === id) {
-          setMatchedRoute(newMatch)
-        }
-      } catch (err) {
-        console.error(err)
-      }
-    })()
-  }, [location.current.pathname])
+    try {
+      reconcileRoute()
+    } catch (err) {
+      console.error(err)
+    }
+  }, [location.current.key])
 
   if (!matchedRoute) {
     return options?.fallback ?? null
@@ -627,7 +642,7 @@ export async function matchRoutes(
 
   const rankedRoutes = rankRoutes(routes)
 
-  let route = rankedRoutes.find(route => {
+  let route = rankedRoutes.find((route) => {
     const fullRoutePathName = joinPaths([basePath, route.path])
 
     const matchParams = matchRoute(currentPathname, fullRoutePathName)
@@ -646,7 +661,7 @@ export async function matchRoutes(
   const interpolatedPathSegments = segmentPathname(route.path)
 
   const interpolatedPath = joinPaths(
-    interpolatedPathSegments.map(segment => {
+    interpolatedPathSegments.map((segment) => {
       if (segment.value === '*') {
         return ''
       }
@@ -701,7 +716,7 @@ export async function loadMatch(match?: RouteMatch) {
       return
     }
 
-    const load = match.route.load
+    const load = match.route.loader
 
     if (load) {
       let promise = Promise.resolve() as Promise<unknown>
@@ -710,18 +725,23 @@ export async function loadMatch(match?: RouteMatch) {
         promise = parentPromise
       }
 
-      promise = promise.then(async () => {
-        match.data = {
-          ...parentMatch?.data,
-        }
+      promise = promise
+        .then(async () => {
+          match.data = {
+            ...parentMatch?.data,
+          }
 
-        const loadData = await load(match)
+          const loadData = await load(match)
 
-        match.data = {
-          ...parentMatch?.data,
-          ...loadData,
-        }
-      })
+          match.data = {
+            ...parentMatch?.data,
+            ...loadData,
+          }
+        })
+        .catch((err) => {
+          console.error(err)
+          match.dataError = err
+        })
 
       promises.push(promise)
 
@@ -738,7 +758,7 @@ export async function loadMatch(match?: RouteMatch) {
   if (__DEV__) console.timeEnd('Match Loaded')
 }
 
-export function Link({
+export function Link<TSearch>({
   to = '.',
   search,
   state,
@@ -752,9 +772,9 @@ export function Link({
   getActiveProps = () => ({}),
   activeOptions,
   ...rest
-}: LinkProps) {
+}: LinkProps<TSearch>) {
   const route = useRoute()
-  const location = useLocation()
+  const location = useLocation<TSearch>()
   const navigate = useNavigate()
 
   // If this `to` is a valid external URL, log a warning
@@ -844,15 +864,17 @@ export function Outlet(_props: {}) {
 
   return (
     <RouteContext.Provider value={childMatch}>
-      {childMatch.route?.element ?? null}
+      {childMatch.dataError && childMatch.route.loaderErrorElement
+        ? childMatch.route.loaderErrorElement
+        : childMatch.route?.element ?? null}
     </RouteContext.Provider>
   )
 }
 
-export function Navigate({
+export function Navigate<TSearch>({
   to,
   ...options
-}: { to: NavigateTo } & UseNavigateOptions) {
+}: { to: NavigateTo } & UseNavigateOptions<TSearch>) {
   let navigate = useNavigate()
 
   React.useLayoutEffect(() => {
@@ -952,26 +974,24 @@ function segmentPathname(pathname: string) {
   }
 
   // Remove empty segments and '.' segments
-  const split = pathname.split('/').filter(path => {
+  const split = pathname.split('/').filter((path) => {
     return path.length && path !== '.'
   })
 
   segments.push(
-    ...split.map(
-      (part): Segment => {
-        if ([':', '$'].includes(part.charAt(0))) {
-          return {
-            type: 'param',
-            value: part.substring(1),
-          }
-        }
-
+    ...split.map((part): Segment => {
+      if ([':', '$'].includes(part.charAt(0))) {
         return {
-          type: 'pathname',
-          value: part,
+          type: 'param',
+          value: part.substring(1),
         }
-      },
-    ),
+      }
+
+      return {
+        type: 'pathname',
+        value: part,
+      }
+    }),
   )
 
   return segments
@@ -981,7 +1001,7 @@ function resolvePath(base: string, to: string) {
   let baseSegments = segmentPathname(base)
   const toSegments = segmentPathname(to)
 
-  toSegments.forEach(toSegment => {
+  toSegments.forEach((toSegment) => {
     if (toSegment.type === 'param') {
       warning(
         true,
@@ -999,7 +1019,7 @@ function resolvePath(base: string, to: string) {
     }
   })
 
-  const joined = baseSegments.map(d => d.value).join('/')
+  const joined = baseSegments.map((d) => d.value).join('/')
 
   return cleanPathname(joined)
 }
@@ -1011,9 +1031,8 @@ function isCtrlEvent(e: React.MouseEvent) {
 function useLatestCallback<TCallback extends (...args: any[]) => any>(
   cb: TCallback,
 ) {
-  const stableFnRef = React.useRef<
-    (...args: Parameters<TCallback>) => ReturnType<TCallback>
-  >()
+  const stableFnRef =
+    React.useRef<(...args: Parameters<TCallback>) => ReturnType<TCallback>>()
   const cbRef = React.useRef<TCallback>(cb)
 
   cbRef.current = cb

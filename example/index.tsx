@@ -9,6 +9,13 @@ import {
   useRoute,
 } from 'react-location'
 
+type SearchObj = {
+  foo?: string
+  someParams?: string
+  otherParams?: string
+  object?: { nested?: { list?: number[]; hello?: string } }
+}
+
 // Create a location instance
 const location = new ReactLocation()
 
@@ -57,10 +64,10 @@ function Root() {
         <Link to="/">
           <pre>/</pre>
         </Link>
-        <Link search={old => ({ ...old, foo: 'bar' })}>
+        <Link<SearchObj> search={old => ({ ...old, foo: 'bar' })}>
           <pre>{`search={old => ({ ...old, foo: 'bar' })}`}</pre>
         </Link>
-        <Link
+        <Link<SearchObj>
           search={{
             someParams: '',
             otherParams: 'gogogo',
@@ -90,17 +97,23 @@ function Root() {
             element: <Home />,
             // This is an async data loader for this route
             // Navigation will suspend until it resolves
-            load: async () => ({
+            loader: async () => ({
               root: await sleepCache.read('/', 300, 1000 * 10),
             }),
             children: [
               {
                 path: 'teams',
                 element: <Teams />,
-                load: async () => ({
-                  // Child loaders merge their results on top of parent loaders
-                  teams: await sleepCache.read('teams', 1000, 1000 * 10),
-                }),
+                loaderErrorElement: <LoaderError />,
+                loader: async () => {
+                  if (Math.random() > 0.9) {
+                    throw new Error('Status 500: Failed to load team data!')
+                  }
+                  return {
+                    // Child loaders merge their results on top of parent loaders
+                    teams: await sleepCache.read('teams', 1000, 1000 * 10),
+                  }
+                },
                 children: [
                   {
                     path: 'new',
@@ -113,7 +126,7 @@ function Root() {
                     // you can require a parent loader to finish before continuing down the
                     // tree.
                     waitForParents: true,
-                    load: async ({ data }) => ({
+                    loader: async ({ data }) => ({
                       // Look ma! I can rely on parent route data!
                       teamId: data.teams
                         ? await sleepCache.read(':teamId', 300, 1000 * 10)
@@ -124,17 +137,24 @@ function Root() {
               },
               {
                 path: 'expensive',
-                import: async () => {
-                  await new Promise(r => setTimeout(r, 1000))
-
-                  return import('./Expensive').then(res => res.route)
-                },
+                import: () => import('./Expensive').then(res => res.route),
               },
             ],
           },
         ]}
       />
     </>
+  )
+}
+
+function LoaderError() {
+  const route = useRoute()
+
+  return (
+    <div>
+      <div>Oh no! Something happened when fetching data for this route!</div>
+      <pre>{(route.dataError as Error).message}</pre>
+    </div>
   )
 }
 
