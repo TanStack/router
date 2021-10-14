@@ -54,7 +54,9 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "lib",
+    "types"
   ],
   "browserslist": [
     "last 2 versions",
