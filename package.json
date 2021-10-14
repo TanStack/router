@@ -7,6 +7,7 @@
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
   },
+  "description": "",
   "main": "lib/index.js",
   "module": "es/index.js",
   "unpkg": "dist/react-location.development.js",
