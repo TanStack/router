@@ -16,38 +16,38 @@
                     "name": "helpers/esm",
                     "children": [
                       {
-                        "uid": "8f32-313",
+                        "uid": "0537-121",
                         "name": "asyncToGenerator.js"
                       },
                       {
-                        "uid": "8f32-315",
+                        "uid": "0537-123",
                         "name": "objectWithoutPropertiesLoose.js"
                       },
                       {
-                        "uid": "8f32-317",
+                        "uid": "0537-125",
                         "name": "extends.js"
                       }
                     ]
                   },
                   {
                     "name": "regenerator/index.js",
-                    "uid": "8f32-323"
+                    "uid": "0537-131"
                   }
                 ]
               },
               {
                 "name": "regenerator-runtime/runtime.js",
-                "uid": "8f32-321"
+                "uid": "0537-129"
               },
               {
                 "name": "history",
                 "children": [
                   {
                     "name": "node_modules/@babel/runtime/helpers/esm/extends.js",
-                    "uid": "8f32-327"
+                    "uid": "0537-135"
                   },
                   {
-                    "uid": "8f32-329",
+                    "uid": "0537-137",
                     "name": "index.js"
                   }
                 ]
@@ -55,22 +55,22 @@
             ]
           },
           {
-            "uid": "8f32-319",
+            "uid": "0537-127",
             "name": "\u0000commonjsHelpers.js"
           },
           {
             "name": "src",
             "children": [
               {
-                "uid": "8f32-325",
+                "uid": "0537-133",
                 "name": "qss.ts"
               },
               {
-                "uid": "8f32-331",
+                "uid": "0537-139",
                 "name": "jsurl.ts"
               },
               {
-                "uid": "8f32-333",
+                "uid": "0537-141",
                 "name": "index.tsx"
               }
             ]
@@ -81,268 +81,268 @@
     "isRoot": true
   },
   "nodeParts": {
-    "8f32-313": {
+    "0537-121": {
       "renderedLength": 832,
       "gzipLength": 330,
       "brotliLength": 0,
-      "mainUid": "8f32-312"
+      "mainUid": "0537-120"
     },
-    "8f32-315": {
+    "0537-123": {
       "renderedLength": 359,
       "gzipLength": 226,
       "brotliLength": 0,
-      "mainUid": "8f32-314"
+      "mainUid": "0537-122"
     },
-    "8f32-317": {
+    "0537-125": {
       "renderedLength": 416,
       "gzipLength": 235,
       "brotliLength": 0,
-      "mainUid": "8f32-316"
+      "mainUid": "0537-124"
     },
-    "8f32-319": {
+    "0537-127": {
       "renderedLength": 129,
       "gzipLength": 110,
       "brotliLength": 0,
-      "mainUid": "8f32-318"
+      "mainUid": "0537-126"
     },
-    "8f32-321": {
+    "0537-129": {
       "renderedLength": 25528,
       "gzipLength": 7054,
       "brotliLength": 0,
-      "mainUid": "8f32-320"
+      "mainUid": "0537-128"
     },
-    "8f32-323": {
+    "0537-131": {
       "renderedLength": 30,
       "gzipLength": 50,
       "brotliLength": 0,
-      "mainUid": "8f32-322"
+      "mainUid": "0537-130"
     },
-    "8f32-325": {
+    "0537-133": {
       "renderedLength": 1229,
       "gzipLength": 452,
       "brotliLength": 0,
-      "mainUid": "8f32-324"
+      "mainUid": "0537-132"
     },
-    "8f32-327": {
+    "0537-135": {
       "renderedLength": 410,
       "gzipLength": 231,
       "brotliLength": 0,
-      "mainUid": "8f32-326"
+      "mainUid": "0537-134"
     },
-    "8f32-329": {
+    "0537-137": {
       "renderedLength": 9628,
       "gzipLength": 2271,
       "brotliLength": 0,
-      "mainUid": "8f32-328"
+      "mainUid": "0537-136"
     },
-    "8f32-331": {
+    "0537-139": {
       "renderedLength": 4987,
       "gzipLength": 1910,
       "brotliLength": 0,
-      "mainUid": "8f32-330"
+      "mainUid": "0537-138"
     },
-    "8f32-333": {
-      "renderedLength": 28195,
-      "gzipLength": 6817,
+    "0537-141": {
+      "renderedLength": 28669,
+      "gzipLength": 6928,
       "brotliLength": 0,
-      "mainUid": "8f32-332"
+      "mainUid": "0537-140"
     }
   },
   "nodeMetas": {
-    "8f32-312": {
+    "0537-120": {
       "id": "/node_modules/@babel/runtime/helpers/esm/asyncToGenerator.js",
       "moduleParts": {
-        "react-location.production.min.js": "8f32-313"
+        "react-location.production.min.js": "0537-121"
       },
       "imported": [],
       "importedBy": [
         {
-          "uid": "8f32-332"
+          "uid": "0537-140"
         }
       ]
     },
-    "8f32-314": {
+    "0537-122": {
       "id": "/node_modules/@babel/runtime/helpers/esm/objectWithoutPropertiesLoose.js",
       "moduleParts": {
-        "react-location.production.min.js": "8f32-315"
+        "react-location.production.min.js": "0537-123"
       },
       "imported": [],
       "importedBy": [
         {
-          "uid": "8f32-332"
+          "uid": "0537-140"
         }
       ]
     },
-    "8f32-316": {
+    "0537-124": {
       "id": "/node_modules/@babel/runtime/helpers/esm/extends.js",
       "moduleParts": {
-        "react-location.production.min.js": "8f32-317"
+        "react-location.production.min.js": "0537-125"
       },
       "imported": [],
       "importedBy": [
         {
-          "uid": "8f32-332"
+          "uid": "0537-140"
         }
       ]
     },
-    "8f32-318": {
+    "0537-126": {
       "id": "\u0000commonjsHelpers.js",
       "moduleParts": {
-        "react-location.production.min.js": "8f32-319"
+        "react-location.production.min.js": "0537-127"
       },
       "imported": [],
       "importedBy": [
         {
-          "uid": "8f32-320"
+          "uid": "0537-128"
         }
       ]
     },
-    "8f32-320": {
+    "0537-128": {
       "id": "/node_modules/regenerator-runtime/runtime.js",
       "moduleParts": {
-        "react-location.production.min.js": "8f32-321"
+        "react-location.production.min.js": "0537-129"
       },
       "imported": [
         {
-          "uid": "8f32-318"
+          "uid": "0537-126"
         }
       ],
       "importedBy": [
         {
-          "uid": "8f32-322"
+          "uid": "0537-130"
         },
         {
-          "uid": "8f32-335"
+          "uid": "0537-143"
         }
       ]
     },
-    "8f32-322": {
+    "0537-130": {
       "id": "/node_modules/@babel/runtime/regenerator/index.js",
       "moduleParts": {
-        "react-location.production.min.js": "8f32-323"
+        "react-location.production.min.js": "0537-131"
       },
       "imported": [
         {
-          "uid": "8f32-320"
+          "uid": "0537-128"
         },
         {
-          "uid": "8f32-335"
+          "uid": "0537-143"
         }
       ],
       "importedBy": [
         {
-          "uid": "8f32-332"
+          "uid": "0537-140"
         }
       ]
     },
-    "8f32-324": {
+    "0537-132": {
       "id": "/src/qss.ts",
       "moduleParts": {
-        "react-location.production.min.js": "8f32-325"
+        "react-location.production.min.js": "0537-133"
       },
       "imported": [],
       "importedBy": [
         {
-          "uid": "8f32-332"
+          "uid": "0537-140"
         }
       ]
     },
-    "8f32-326": {
+    "0537-134": {
       "id": "/node_modules/history/node_modules/@babel/runtime/helpers/esm/extends.js",
       "moduleParts": {
-        "react-location.production.min.js": "8f32-327"
+        "react-location.production.min.js": "0537-135"
       },
       "imported": [],
       "importedBy": [
         {
-          "uid": "8f32-328"
+          "uid": "0537-136"
         }
       ]
     },
-    "8f32-328": {
+    "0537-136": {
       "id": "/node_modules/history/index.js",
       "moduleParts": {
-        "react-location.production.min.js": "8f32-329"
+        "react-location.production.min.js": "0537-137"
       },
       "imported": [
         {
-          "uid": "8f32-326"
+          "uid": "0537-134"
         }
       ],
       "importedBy": [
         {
-          "uid": "8f32-332"
+          "uid": "0537-140"
         }
       ]
     },
-    "8f32-330": {
+    "0537-138": {
       "id": "/src/jsurl.ts",
       "moduleParts": {
-        "react-location.production.min.js": "8f32-331"
+        "react-location.production.min.js": "0537-139"
       },
       "imported": [],
       "importedBy": [
         {
-          "uid": "8f32-332"
+          "uid": "0537-140"
         }
       ]
     },
-    "8f32-332": {
+    "0537-140": {
       "id": "/src/index.tsx",
       "moduleParts": {
-        "react-location.production.min.js": "8f32-333"
+        "react-location.production.min.js": "0537-141"
       },
       "imported": [
         {
-          "uid": "8f32-312"
+          "uid": "0537-120"
         },
         {
-          "uid": "8f32-314"
+          "uid": "0537-122"
         },
         {
-          "uid": "8f32-316"
+          "uid": "0537-124"
         },
         {
-          "uid": "8f32-322"
+          "uid": "0537-130"
         },
         {
-          "uid": "8f32-334"
+          "uid": "0537-142"
         },
         {
-          "uid": "8f32-324"
+          "uid": "0537-132"
         },
         {
-          "uid": "8f32-328"
+          "uid": "0537-136"
         },
         {
-          "uid": "8f32-330"
+          "uid": "0537-138"
         }
       ],
       "importedBy": [],
       "isEntry": true
     },
-    "8f32-334": {
+    "0537-142": {
       "id": "react",
       "moduleParts": {},
       "imported": [],
       "importedBy": [
         {
-          "uid": "8f32-332"
+          "uid": "0537-140"
         }
       ],
       "isExternal": true
     },
-    "8f32-335": {
+    "0537-143": {
       "id": "\u0000/node_modules/regenerator-runtime/runtime.js?commonjs-proxy",
       "moduleParts": {},
       "imported": [
         {
-          "uid": "8f32-320"
+          "uid": "0537-128"
         }
       ],
       "importedBy": [
         {
-          "uid": "8f32-322"
+          "uid": "0537-130"
         }
       ]
     }

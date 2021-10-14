@@ -64,6 +64,8 @@ type RouteBasic = {
   import?: never
 }
 
+type RouteImported = Omit<RouteBasic, 'path'>
+
 type RouteAsync = {
   path: string
   import: RouteImportFn
@@ -82,7 +84,7 @@ export type LoadData = Record<string, unknown>
 
 export type RouteImportFn = (route: {
   params: Params
-}) => PromiseLike<RouteBasic>
+}) => PromiseLike<RouteImported>
 
 export type LoadFn = (routeMatch: RouteMatch) => PromiseLike<LoadData>
 
@@ -587,6 +589,7 @@ export function useRoutes(
 
         if (latestRef.current === id) {
           await loadMatch(newMatch)
+          console.log(newMatch)
         }
 
         if (latestRef.current === id) {
@@ -659,7 +662,10 @@ export async function matchRoutes(
   const pathname = joinPaths([basePath, interpolatedPath])
 
   if (route.import) {
-    route = await route.import({ params })
+    route = {
+      path: route.path,
+      ...(await route.import({ params })),
+    }
   }
 
   const match: RouteMatch = {
@@ -733,7 +739,7 @@ export async function loadMatch(match?: RouteMatch) {
 }
 
 export function Link({
-  to,
+  to = '.',
   search,
   state,
   hash,

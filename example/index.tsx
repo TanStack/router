@@ -48,7 +48,7 @@ const createSleepCache = () => {
   }
 }
 
-const sleepCache = createSleepCache()
+export const sleepCache = createSleepCache()
 
 function Root() {
   return (
@@ -57,21 +57,27 @@ function Root() {
         <Link to="/">
           <pre>/</pre>
         </Link>
-        <Link to="." search={old => ({ ...old, foo: 'bar' })}>
-          <pre>.</pre>
+        <Link search={old => ({ ...old, foo: 'bar' })}>
+          <pre>{`search={old => ({ ...old, foo: 'bar' })}`}</pre>
         </Link>
         <Link
-          to="."
           search={{
             someParams: '',
             otherParams: 'gogogo',
             object: { nested: { list: [1, 2, 3], hello: 'world' } },
           }}
         >
-          <pre>. + search</pre>
+          <pre>{`search={{
+  someParams: '',
+  otherParams: 'gogogo',
+  object: { nested: { list: [1, 2, 3], hello: 'world' } },
+}}`}</pre>
         </Link>
         <Link to="/teams">
           <pre>/teams</pre>
+        </Link>
+        <Link to="/expensive">
+          <pre>/expensive</pre>
         </Link>
       </div>
       <hr />
@@ -115,6 +121,14 @@ function Root() {
                     }),
                   },
                 ],
+              },
+              {
+                path: 'expensive',
+                import: async () => {
+                  await new Promise(r => setTimeout(r, 1000))
+
+                  return import('./Expensive').then(res => res.route)
+                },
               },
             ],
           },
