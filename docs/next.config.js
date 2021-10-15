@@ -1,6 +1,6 @@
 const path = require('path')
 const dotenvLoad = require('dotenv-load')
-const optimizedImages = require('next-optimized-images')
+// const optimizedImages = require('next-optimized-images')
 dotenvLoad()
 
 const remarkPlugins = [
