@@ -217,7 +217,7 @@ function stringifySearch(search: Record<string, unknown>) {
   search = { ...search }
 
   if (search) {
-    Object.keys(search).forEach((key) => {
+    Object.keys(search).forEach(key => {
       const val = search[key]
       if (val && typeof val === 'object' && val !== null) {
         try {
@@ -270,7 +270,7 @@ export class ReactLocation<TSearch> {
     this.basepath = options?.basepath || '/'
     this.current = parseLocation(this.history.location)
 
-    this.destroy = this.history.listen((event) => {
+    this.destroy = this.history.listen(event => {
       this.current = parseLocation(event.location, this.current)
       this.notify()
     })
@@ -283,7 +283,7 @@ export class ReactLocation<TSearch> {
   // };
 
   notify = () => {
-    this.listeners.forEach((listener) => {
+    this.listeners.forEach(listener => {
       listener()
     })
   }
@@ -292,7 +292,7 @@ export class ReactLocation<TSearch> {
     this.listeners.push(cb)
 
     return () => {
-      this.listeners = this.listeners.filter((d) => d !== cb)
+      this.listeners = this.listeners.filter(d => d !== cb)
     }
   }
 
@@ -399,7 +399,7 @@ export function ReactLocationProvider<TSearch>({
 
 export function useLocation<TSearch>() {
   const getIsMounted = useGetIsMounted()
-  const [, rerender] = React.useReducer((d) => d + 1, 0)
+  const [, rerender] = React.useReducer(d => d + 1, 0)
   const instance = React.useContext(LocationContext) as ReactLocation<TSearch>
   warning(!!instance, 'useLocation must be used within a <ReactLocation />')
 
@@ -437,22 +437,20 @@ function rankRoutes(routes: Route[]): Route[] {
 
         if (aSegment && bSegment) {
           let sort: -1 | 1 | 0 = 0
-          ;(
-            [
-              {
-                key: 'value',
-                value: '*',
-              },
-              {
-                key: 'value',
-                value: '/',
-              },
-              {
-                key: 'type',
-                value: 'param',
-              },
-            ] as const
-          ).some((condition) => {
+          ;([
+            {
+              key: 'value',
+              value: '*',
+            },
+            {
+              key: 'value',
+              value: '/',
+            },
+            {
+              key: 'type',
+              value: 'param',
+            },
+          ] as const).some(condition => {
             if (
               [aSegment[condition.key], bSegment[condition.key]].includes(
                 condition.value,
@@ -494,14 +492,8 @@ export function useNavigate<TSearch>() {
   ) {
     let to: NavigateTo = typeof toOrOptions === 'string' ? toOrOptions : null
 
-    let {
-      search,
-      state,
-      hash,
-      replace,
-      fromCurrent,
-      to: optionalTo,
-    } = (typeof toOrOptions === 'string' ? options : toOrOptions) ?? {}
+    let { search, state, hash, replace, fromCurrent, to: optionalTo } =
+      (typeof toOrOptions === 'string' ? options : toOrOptions) ?? {}
 
     to = to ?? optionalTo ?? null
 
@@ -545,7 +537,7 @@ export function usePrompt(message: string, when = true): void {
   React.useEffect(() => {
     if (!when) return
 
-    let unblock = location.history.block((transition) => {
+    let unblock = location.history.block(transition => {
       if (window.confirm(message)) {
         unblock()
         transition.retry()
@@ -642,7 +634,7 @@ export async function matchRoutes(
 
   const rankedRoutes = rankRoutes(routes)
 
-  let route = rankedRoutes.find((route) => {
+  let route = rankedRoutes.find(route => {
     const fullRoutePathName = joinPaths([basePath, route.path])
 
     const matchParams = matchRoute(currentPathname, fullRoutePathName)
@@ -661,7 +653,7 @@ export async function matchRoutes(
   const interpolatedPathSegments = segmentPathname(route.path)
 
   const interpolatedPath = joinPaths(
-    interpolatedPathSegments.map((segment) => {
+    interpolatedPathSegments.map(segment => {
       if (segment.value === '*') {
         return ''
       }
@@ -738,7 +730,7 @@ export async function loadMatch(match?: RouteMatch) {
             ...loadData,
           }
         })
-        .catch((err) => {
+        .catch(err => {
           console.error(err)
           match.dataError = err
         })
@@ -853,7 +845,7 @@ export function Link<TSearch>({
   )
 }
 
-export function Outlet(_props: {}) {
+export function Outlet() {
   const route = useRoute()
 
   const { childMatch } = route
@@ -974,24 +966,26 @@ function segmentPathname(pathname: string) {
   }
 
   // Remove empty segments and '.' segments
-  const split = pathname.split('/').filter((path) => {
+  const split = pathname.split('/').filter(path => {
     return path.length && path !== '.'
   })
 
   segments.push(
-    ...split.map((part): Segment => {
-      if ([':', '$'].includes(part.charAt(0))) {
-        return {
-          type: 'param',
-          value: part.substring(1),
+    ...split.map(
+      (part): Segment => {
+        if ([':', '$'].includes(part.charAt(0))) {
+          return {
+            type: 'param',
+            value: part.substring(1),
+          }
         }
-      }
 
-      return {
-        type: 'pathname',
-        value: part,
-      }
-    }),
+        return {
+          type: 'pathname',
+          value: part,
+        }
+      },
+    ),
   )
 
   return segments
@@ -1001,7 +995,7 @@ function resolvePath(base: string, to: string) {
   let baseSegments = segmentPathname(base)
   const toSegments = segmentPathname(to)
 
-  toSegments.forEach((toSegment) => {
+  toSegments.forEach(toSegment => {
     if (toSegment.type === 'param') {
       warning(
         true,
@@ -1019,7 +1013,7 @@ function resolvePath(base: string, to: string) {
     }
   })
 
-  const joined = baseSegments.map((d) => d.value).join('/')
+  const joined = baseSegments.map(d => d.value).join('/')
 
   return cleanPathname(joined)
 }
@@ -1031,8 +1025,9 @@ function isCtrlEvent(e: React.MouseEvent) {
 function useLatestCallback<TCallback extends (...args: any[]) => any>(
   cb: TCallback,
 ) {
-  const stableFnRef =
-    React.useRef<(...args: Parameters<TCallback>) => ReturnType<TCallback>>()
+  const stableFnRef = React.useRef<
+    (...args: Parameters<TCallback>) => ReturnType<TCallback>
+  >()
   const cbRef = React.useRef<TCallback>(cb)
 
   cbRef.current = cb
