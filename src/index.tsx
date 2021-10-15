@@ -568,13 +568,13 @@ export function Routes(options: {
 export function useRoutes(
   routes?: Route[],
   options?: { initialMatch?: RouteMatch; fallback?: React.ReactNode },
-): Exclude<React.ReactNode, undefined> {
+): JSX.Element {
   const location = useLocation()
   const route = useRoute()
   const [matchedRoute, setMatchedRoute] = React.useState(options?.initialMatch)
 
   if (!routes) {
-    return null
+    return null! as JSX.Element
   }
 
   const latestRef = React.useRef(0)
@@ -609,7 +609,7 @@ export function useRoutes(
   }, [location.current.key])
 
   if (!matchedRoute) {
-    return options?.fallback ?? null
+    return (options?.fallback ?? null) as JSX.Element
   }
 
   return (

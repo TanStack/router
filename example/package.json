@@ -2,7 +2,11 @@
   "name": "react-typescript",
   "version": "1.0.0",
   "description": "React and TypeScript example starter project",
-  "keywords": ["typescript", "react", "starter"],
+  "keywords": [
+    "typescript",
+    "react",
+    "starter"
+  ],
   "main": "src/index.tsx",
   "dependencies": {
     "react": "17.0.2",
@@ -11,15 +15,29 @@
     "react-scripts": "4.0.3"
   },
   "devDependencies": {
-    "@types/react": "17.0.20",
+    "@types/react": "17.0.30",
     "@types/react-dom": "17.0.9",
-    "typescript": "4.4.2"
+    "@rescripts/cli": "^0.0.14",
+    "@rescripts/rescript-use-babel-config": "^0.0.10",
+    "@rescripts/rescript-use-eslint-config": "^0.0.11",
+    "typescript": "4.4.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test --env=jsdom",
-    "eject": "react-scripts eject"
+    "start": "rescripts start",
+    "build": "rescripts build",
+    "test": "rescripts test --env=jsdom",
+    "eject": "rescripts eject"
   },
-  "browserslist": [">0.2%", "not dead", "not ie <= 11", "not op_mini all"]
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ],
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  }
 }
