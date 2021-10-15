@@ -1,6 +1,6 @@
 const path = require('path')
 const dotenvLoad = require('dotenv-load')
-// const optimizedImages = require('next-optimized-images')
+const optimizedImages = require('next-optimized-images')
 dotenvLoad()
 
 const remarkPlugins = [
@@ -33,10 +33,10 @@ const remarkPlugins = [
   ],
 ]
 
-module.exports = {
+module.exports = optimizedImages({
   pageExtensions: ['jsx', 'js', 'mdx', 'md'],
   env: {
-    NEXT_PUBLIC_GA_TRACKING_ID: process.env.NEXT_PUBLIC_GA_TRACKING_ID || '',
+    GA_TRACKING_ID: process.env.GA_TRACKING_ID || '',
     SENTRY_RELEASE: process.env.VERCEL_GITHUB_COMMIT_SHA || '',
   },
   experimental: {
@@ -93,14 +93,14 @@ module.exports = {
 
     return config
   },
-  // optimizeImages: {
-  //   /* config for next-optimized-images */
-  //   mozjpeg: {
-  //     quality: 70,
-  //   },
-  //   optipng: {
-  //     optimizationLevel: 3,
-  //   },
-  //   optimizeImagesInDev: true,
-  // },
-}
+  optimizeImages: {
+    /* config for next-optimized-images */
+    mozjpeg: {
+      quality: 70,
+    },
+    optipng: {
+      optimizationLevel: 3,
+    },
+    optimizeImagesInDev: true,
+  },
+})
