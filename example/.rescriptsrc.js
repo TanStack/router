@@ -13,17 +13,4 @@ const fixLinkedDependencies = config => {
   return config
 }
 
-const includeSrcDirectory = config => {
-  config.resolve = {
-    ...config.resolve,
-    modules: [path.resolve('src'), ...config.resolve.modules],
-  }
-  return config
-}
-
-module.exports = [
-  // ['use-babel-config', '.babelrc'],
-  // ['use-eslint-config', '.eslintrc'],
-  fixLinkedDependencies,
-  // includeSrcDirectory,
-]
+module.exports = [fixLinkedDependencies]
