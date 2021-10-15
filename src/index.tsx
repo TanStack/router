@@ -858,7 +858,7 @@ export function Outlet() {
     <RouteContext.Provider value={childMatch}>
       {childMatch.dataError && childMatch.route.loaderErrorElement
         ? childMatch.route.loaderErrorElement
-        : childMatch.route?.element ?? null}
+        : childMatch.route?.element ?? <Outlet />}
     </RouteContext.Provider>
   )
 }
