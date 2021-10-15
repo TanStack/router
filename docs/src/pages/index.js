@@ -75,6 +75,21 @@ const Home = props => {
             <div className="mx-auto container">
               <div className="lg:grid lg:grid-cols-3 lg:gap-8">
                 <div>
+                  <div className="mt-10 lg:mt-0">
+                    <div>
+                      <h3 className="text-xl leading-6 xl:text-2xl font-bold text-gray-900">
+                        First-Class URL Search API
+                      </h3>
+                      <div className="mt-2  lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
+                        Where most other routers draw the line with URL search
+                        params (something like "now you can take this string and
+                        do whatever you want with it") ,and leave you to
+                        implement things on your own, React Location goes the
+                        extra mile to provide highly integrated support for
+                        consuming and manipulating URL search params.
+                      </div>
+                    </div>
+                  </div>
                   <div>
                     <h3 className="text-xl leading-6 xl:text-2xl font-bold text-gray-900">
                       Inspired by the Greats
@@ -86,21 +101,6 @@ const Home = props => {
                       right at home while experiencing the super powers of React
                       Location.
                     </p>
-                  </div>
-                </div>
-                <div className="mt-10 lg:mt-0">
-                  <div>
-                    <h3 className="text-xl leading-6 xl:text-2xl font-bold text-gray-900">
-                      First-Class URL Search API
-                    </h3>
-                    <div className="mt-2  lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
-                      Where most other routers draw the line with URL search
-                      params (something like "now you can take this string and
-                      do whatever you want with it") ,and leave you to implement
-                      things on your own, React Location goes the extra mile to
-                      provide highly integrated support for consuming and
-                      manipulating URL search params.
-                    </div>
                   </div>
                 </div>
                 <div className="mt-10 lg:mt-0">
