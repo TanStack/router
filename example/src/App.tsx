@@ -1,5 +1,4 @@
 import * as React from 'react'
-import * as ReactDOM from 'react-dom'
 import {
   ReactLocation,
   ReactLocationProvider,
@@ -9,6 +8,7 @@ import {
   useRoute,
 } from 'react-location'
 
+// The shape of our potential search params
 type SearchObj = {
   foo?: string
   someParams?: string
@@ -214,4 +214,4 @@ function Team() {
   )
 }
 
-ReactDOM.render(<App />, document.getElementById('root'))
+export default App

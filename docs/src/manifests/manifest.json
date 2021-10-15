@@ -1,0 +1,36 @@
+{
+  "routes": [
+    {
+      "title": "Documentation",
+      "heading": true,
+      "routes": [
+        {
+          "title": "Overview",
+          "path": "/docs/overview",
+          "editUrl": "/docs/overview.md"
+        },
+        {
+          "title": "Installation",
+          "path": "/docs/installation",
+          "editUrl": "/docs/installation.md"
+        },
+        {
+          "title": "API Reference",
+          "path": "/docs/api",
+          "editUrl": "/docs/api.md"
+        }
+      ]
+    },
+    {
+      "title": "Examples",
+      "open": true,
+      "routes": [
+        {
+          "title": "Simple",
+          "path": "/examples/simple",
+          "editUrl": "/examples/simple.md"
+        }
+      ]
+    }
+  ]
+}
