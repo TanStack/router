@@ -98,7 +98,7 @@ const Home = props => {
                       params (something like "now you can take this string and
                       do whatever you want with it") ,and leave you to implement
                       things on your own, React Location goes the extra mile to
-                      provides highly integrated support for consuming and
+                      provide highly integrated support for consuming and
                       manipulating URL search params.
                     </div>
                   </div>
@@ -106,7 +106,8 @@ const Home = props => {
                 <div className="mt-10 lg:mt-0">
                   <div>
                     <h3 className="text-xl leading-6 xl:text-2xl font-bold text-gray-900">
-                      All of the async. None of the server (required, at least)
+                      All of the async, none of the server... If that's your
+                      JAM.
                     </h3>
                     <p className="mt-2  lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
                       Suspending navigation for asyncronous route data has
