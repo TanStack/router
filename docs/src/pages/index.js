@@ -14,7 +14,7 @@ const Home = props => {
     <>
       <Seo
         title="React Location"
-        description="Hooks for building lightweight, fast and extendable datagrids for React"
+        description="Enterprise routing for React applications"
       />
       <Head>
         <title>
@@ -82,9 +82,9 @@ const Home = props => {
                     <p className="mt-2 lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
                       Based on familiar routing concepts popularized by routers
                       like React Router and Next.js, React Location validates
-                      your existing routing skills and then powers them up. You
-                      should feel strangely right at home while also feeling
-                      leveled up.
+                      your existing routing skills, so you should feel strangely
+                      right at home while experiencing the super powers of React
+                      Location.
                     </p>
                   </div>
                 </div>
