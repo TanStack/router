@@ -2,9 +2,9 @@
 .DS_Store
 node_modules
 .cache
-dist
+/dist
 .history
-es
-lib
-types
+/es
+/lib
+/types
 stats-react.json
