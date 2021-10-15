@@ -116,7 +116,8 @@ const Home = props => {
                       entire full-stack approach. If you need SSR, this is
                       probably a good idea, but if you don't... Well then! You
                       can get all of the same code-splitting, data-loading,
-                      suspensefl heuristics without thinking about SSR once.
+                      suspenseful heuristics without all of the SSR or the
+                      framework.
                     </p>
                   </div>
                 </div>
