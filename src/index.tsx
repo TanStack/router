@@ -592,7 +592,6 @@ export function useRoutes(
 
     if (latestRef.current === id) {
       await loadMatch(newMatch)
-      console.log(newMatch)
     }
 
     if (latestRef.current === id) {
