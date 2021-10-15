@@ -39,7 +39,7 @@
     "next-images": "^1.4.0",
     "next-optimized-images": "^2.6.1",
     "node-fetch": "^2.6.0",
-    "prismjs": "^1.20.0",
+    "prismjs": "^1.25.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-icons": "^3.9.0",
