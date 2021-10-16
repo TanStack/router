@@ -63,7 +63,9 @@ export type RouteBasic = {
   pendingMs?: number
   pendingMinMs?: number
   waitForParents?: boolean
-  element?: React.ReactNode
+  element?:
+    | React.ReactNode
+    | ((opts: { params: Params }) => PromiseLike<React.ReactNode>)
   children?: Route[]
   import?: never
 }
@@ -80,6 +82,7 @@ export type RouteMatch = {
   pathname: string
   params: Params
   status: 'ready' | 'loading' | 'error'
+  element: React.ReactNode
   data: LoadData
   error?: unknown
   childMatch?: RouteMatch
@@ -88,7 +91,7 @@ export type RouteMatch = {
 export type Params = Record<string, string>
 export type LoadData = Record<string, unknown>
 
-export type RouteImportFn = (route: {
+export type RouteImportFn = (opts: {
   params: Params
 }) => PromiseLike<RouteImported>
 
@@ -168,6 +171,7 @@ const RouteContext = React.createContext<RouteMatch>({
   params: {},
   data: {},
   status: 'loading',
+  element: null,
 })
 
 // Detect if we're in the DOM
@@ -391,6 +395,7 @@ export function ReactLocationProvider<TSearch>({
       route: null!,
       data: {},
       status: 'ready',
+      element: <Outlet />,
     }
   }, [locationInstance.basepath])
 
@@ -637,8 +642,6 @@ export function useRoutes(
 }
 
 function renderMatch(match: RouteMatch) {
-  console.log('renderMatch', match.pathname, match.status, match.data)
-
   return (
     <RouteContext.Provider value={match} key={match.status}>
       {(() => {
@@ -655,7 +658,7 @@ function renderMatch(match: RouteMatch) {
           }
         }
 
-        return match.route?.element ?? <Outlet />
+        return match.element
       })()}
     </RouteContext.Provider>
   )
@@ -717,12 +720,17 @@ export async function matchRoutes(
     }
   }
 
+  const element = (typeof route.element === 'function'
+    ? await route.element({ params })
+    : route.element) ?? <Outlet />
+
   const match: RouteMatch = {
     route,
     params,
     pathname,
     data: {},
     status: 'loading',
+    element,
   }
 
   match.childMatch = await matchRoutes(

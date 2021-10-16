@@ -107,6 +107,7 @@
   "dependencies": {
     "@babel/runtime": "^7.15.4",
     "core-js": "^3.18.3",
+    "fast-async": "7",
     "history": "^5.0.0",
     "ts-toolbelt": "^9.6.0"
   }

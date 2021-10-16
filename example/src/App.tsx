@@ -59,7 +59,101 @@ export const sleepCache = createSleepCache()
 
 function Root() {
   return (
-    <>
+    <Routes
+      // You can define your routes inline and without any memoization
+      fallback="..."
+      routes={[
+        {
+          path: '/',
+          element: <Home />,
+          // This is an async data loader for this route
+          // Navigation will suspend until it resolves
+          loader: async () => ({
+            root: await sleepCache.read('/', 300, 1000 * 10),
+          }),
+          children: [
+            {
+              path: 'teams',
+              element: <Teams />,
+              errorElement: <LoaderError />,
+              pendingElement: 'Loading Teams...',
+              // Show pending element after 1 second
+              pendingMs: 1000,
+              // Show the pending element for at least 500ms
+              pendingMinMs: 500,
+              loader: async () => {
+                if (Math.random() > 0.9) {
+                  throw new Error('Status 500: Failed to load team data!')
+                }
+                return {
+                  // Child loaders merge their results on top of parent loaders
+                  teams: await sleepCache.read(
+                    'teams',
+                    // Soemtimes team data resolves fast, sometimtes slow...
+                    Math.random() * 2000,
+                    1000 * 10,
+                  ),
+                }
+              },
+              children: [
+                {
+                  path: 'new',
+                  element: 'new',
+                },
+                {
+                  path: ':teamId',
+                  element: <Team />,
+                  // By default, loaders are parallized, but at any point in the route tree
+                  // you can require a parent loader to finish before continuing down the
+                  // tree.
+                  waitForParents: true,
+                  loader: async ({ data }) => ({
+                    // Look ma! I can rely on parent route data!
+                    teamId: data.teams
+                      ? await sleepCache.read(':teamId', 300, 1000 * 10)
+                      : null,
+                  }),
+                },
+              ],
+            },
+            {
+              // In this route, the data and element are fetched in parallel
+              // because the async element and loader are fetchable up front
+              path: 'expensive',
+              element: () => import('./Expensive').then(res => <res.default />),
+              loader: async () => ({
+                expensive: await sleepCache.read('/expensive', 1000, 1000 * 10),
+              }),
+            },
+            {
+              // In this route, the data can only be fetched after the entire route
+              // module is imported, creating a momentary waterfall
+              path: 'really-expensive',
+              import: () => import('./ReallyExpensive').then(res => res.route),
+            },
+          ],
+        },
+      ]}
+    />
+  )
+}
+
+function LoaderError() {
+  const route = useRoute()
+
+  return (
+    <div>
+      <div>Oh no! Something happened when fetching data for this route!</div>
+      <pre>{(route.error as Error).message}</pre>
+    </div>
+  )
+}
+
+function Home() {
+  const route = useRoute()
+
+  return (
+    <div>
       <div>
         <Link to="/">
           <pre>/</pre>
@@ -86,93 +180,11 @@ function Root() {
         <Link to="/expensive">
           <pre>/expensive</pre>
         </Link>
+        <Link to="/really-expensive">
+          <pre>/really-expensive</pre>
+        </Link>
       </div>
       <hr />
-      <Routes
-        // You can define your routes inline and without any memoization
-        fallback="..."
-        routes={[
-          {
-            path: '/',
-            element: <Home />,
-            // This is an async data loader for this route
-            // Navigation will suspend until it resolves
-            loader: async () => ({
-              root: await sleepCache.read('/', 300, 1000 * 10),
-            }),
-            children: [
-              {
-                path: 'teams',
-                element: <Teams />,
-                errorElement: <LoaderError />,
-                pendingElement: 'Loading Teams...',
-                // Show pending element after 1 second
-                pendingMs: 1000,
-                // Show the pending element for at least 500ms
-                pendingMinMs: 500,
-                loader: async () => {
-                  if (Math.random() > 0.9) {
-                    throw new Error('Status 500: Failed to load team data!')
-                  }
-                  return {
-                    // Child loaders merge their results on top of parent loaders
-                    teams: await sleepCache.read(
-                      'teams',
-                      // Soemtimes team data resolves fast, sometimtes slow...
-                      Math.random() * 2000,
-                      1000 * 10,
-                    ),
-                  }
-                },
-                children: [
-                  {
-                    path: 'new',
-                    element: 'new',
-                  },
-                  {
-                    path: ':teamId',
-                    element: <Team />,
-                    // By default, loaders are parallized, but at any point in the route tree
-                    // you can require a parent loader to finish before continuing down the
-                    // tree.
-                    waitForParents: true,
-                    loader: async ({ data }) => ({
-                      // Look ma! I can rely on parent route data!
-                      teamId: data.teams
-                        ? await sleepCache.read(':teamId', 300, 1000 * 10)
-                        : null,
-                    }),
-                  },
-                ],
-              },
-              {
-                path: 'expensive',
-                import: () => import('./Expensive').then(res => res.route),
-              },
-            ],
-          },
-        ]}
-      />
-    </>
-  )
-}
-
-function LoaderError() {
-  const route = useRoute()
-
-  return (
-    <div>
-      <div>Oh no! Something happened when fetching data for this route!</div>
-      <pre>{(route.error as Error).message}</pre>
-    </div>
-  )
-}
-
-function Home() {
-  const route = useRoute()
-
-  return (
-    <div>
       Root Data: {JSON.stringify(route.data)}
       <hr />
       <Outlet />

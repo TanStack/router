@@ -9,6 +9,10 @@ module.exports = {
       {
         loose,
         modules: false,
+        exclude: [
+          'babel-plugin-transform-async-to-generator',
+          'babel-plugin-transform-regenerator',
+        ],
       },
     ],
     '@babel/preset-typescript',
@@ -16,15 +20,22 @@ module.exports = {
   ],
   plugins: [
     'babel-plugin-dev-expression',
-    cjs && ['@babel/transform-modules-commonjs', { loose }],
     [
-      '@babel/transform-runtime',
+      'module:fast-async',
       {
-        useESModules: !cjs,
-        version: require('./package.json').dependencies[
-          '@babel/runtime'
-        ].replace(/^[^0-9]*/, ''),
+        spec: true,
+        compiler: { promises: true, generators: false },
       },
     ],
+    cjs && ['@babel/transform-modules-commonjs', { loose }],
+    // [
+    //   '@babel/transform-runtime',
+    //   {
+    //     useESModules: !cjs,
+    //     version: require('./package.json').dependencies[
+    //       '@babel/runtime'
+    //     ].replace(/^[^0-9]*/, ''),
+    //   },
+    // ],
   ].filter(Boolean),
 }
