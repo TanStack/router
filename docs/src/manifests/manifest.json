@@ -27,8 +27,8 @@
       "routes": [
         {
           "title": "Simple",
-          "path": "/examples/simple",
-          "editUrl": "/examples/simple.md"
+          "path": "/examples/kitchen-sink",
+          "editUrl": "/examples/kitchen-sink.md"
         }
       ]
     }
