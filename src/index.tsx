@@ -58,17 +58,19 @@ export type Route = RouteBasic | RouteAsync
 export type RouteBasic = {
   path: string
   loader?: Loader
-  errorElement?: React.ReactNode
-  pendingElement?: React.ReactNode
+  element?: SyncOrAsyncNode
+  errorElement?: SyncOrAsyncNode
+  pendingElement?: SyncOrAsyncNode
   pendingMs?: number
   pendingMinMs?: number
   waitForParents?: boolean
-  element?:
-    | React.ReactNode
-    | ((opts: { params: Params }) => PromiseLike<React.ReactNode>)
   children?: Route[]
   import?: never
 }
+
+export type SyncOrAsyncNode = React.ReactNode | AsyncNode
+
+export type AsyncNode = (opts: { params: Params }) => Promise<React.ReactNode>
 
 export type RouteImported = Omit<RouteBasic, 'path'>
 
@@ -82,7 +84,9 @@ export type RouteMatch = {
   pathname: string
   params: Params
   status: 'ready' | 'loading' | 'error'
-  element: React.ReactNode
+  element?: React.ReactNode
+  errorElement?: React.ReactNode
+  pendingElement?: React.ReactNode
   data: LoadData
   error?: unknown
   childMatch?: RouteMatch
@@ -91,9 +95,7 @@ export type RouteMatch = {
 export type Params = Record<string, string>
 export type LoadData = Record<string, unknown>
 
-export type RouteImportFn = (opts: {
-  params: Params
-}) => PromiseLike<RouteImported>
+export type RouteImportFn = (opts: { params: Params }) => Promise<RouteImported>
 
 export type Loader = (routeMatch: RouteMatch) => PromiseLike<LoadData>
 
@@ -226,7 +228,7 @@ function stringifySearch(search: Record<string, unknown>) {
   search = { ...search }
 
   if (search) {
-    Object.keys(search).forEach(key => {
+    Object.keys(search).forEach((key) => {
       const val = search[key]
       if (val && typeof val === 'object' && val !== null) {
         try {
@@ -279,7 +281,7 @@ export class ReactLocation<TSearch> {
     this.basepath = options?.basepath || '/'
     this.current = parseLocation(this.history.location)
 
-    this.destroy = this.history.listen(event => {
+    this.destroy = this.history.listen((event) => {
       this.current = parseLocation(event.location, this.current)
       this.notify()
     })
@@ -292,7 +294,7 @@ export class ReactLocation<TSearch> {
   // };
 
   notify = () => {
-    this.listeners.forEach(listener => {
+    this.listeners.forEach((listener) => {
       listener()
     })
   }
@@ -301,7 +303,7 @@ export class ReactLocation<TSearch> {
     this.listeners.push(cb)
 
     return () => {
-      this.listeners = this.listeners.filter(d => d !== cb)
+      this.listeners = this.listeners.filter((d) => d !== cb)
     }
   }
 
@@ -410,7 +412,7 @@ export function ReactLocationProvider<TSearch>({
 
 export function useLocation<TSearch>() {
   const getIsMounted = useGetIsMounted()
-  const [, rerender] = React.useReducer(d => d + 1, 0)
+  const [, rerender] = React.useReducer((d) => d + 1, 0)
   const instance = React.useContext(LocationContext) as ReactLocation<TSearch>
   warning(!!instance, 'useLocation must be used within a <ReactLocation />')
 
@@ -448,20 +450,22 @@ function rankRoutes(routes: Route[]): Route[] {
 
         if (aSegment && bSegment) {
           let sort: -1 | 1 | 0 = 0
-          ;([
-            {
-              key: 'value',
-              value: '*',
-            },
-            {
-              key: 'value',
-              value: '/',
-            },
-            {
-              key: 'type',
-              value: 'param',
-            },
-          ] as const).some(condition => {
+          ;(
+            [
+              {
+                key: 'value',
+                value: '*',
+              },
+              {
+                key: 'value',
+                value: '/',
+              },
+              {
+                key: 'type',
+                value: 'param',
+              },
+            ] as const
+          ).some((condition) => {
             if (
               [aSegment[condition.key], bSegment[condition.key]].includes(
                 condition.value,
@@ -503,8 +507,14 @@ export function useNavigate<TSearch>() {
   ) {
     let to: NavigateTo = typeof toOrOptions === 'string' ? toOrOptions : null
 
-    let { search, state, hash, replace, fromCurrent, to: optionalTo } =
-      (typeof toOrOptions === 'string' ? options : toOrOptions) ?? {}
+    let {
+      search,
+      state,
+      hash,
+      replace,
+      fromCurrent,
+      to: optionalTo,
+    } = (typeof toOrOptions === 'string' ? options : toOrOptions) ?? {}
 
     to = to ?? optionalTo ?? null
 
@@ -548,7 +558,7 @@ export function usePrompt(message: string, when = true): void {
   React.useEffect(() => {
     if (!when) return
 
-    let unblock = location.history.block(transition => {
+    let unblock = location.history.block((transition) => {
       if (window.confirm(message)) {
         unblock()
         transition.retry()
@@ -658,7 +668,7 @@ function renderMatch(match: RouteMatch) {
           }
         }
 
-        return match.element
+        return match.element ?? <Outlet />
       })()}
     </RouteContext.Provider>
   )
@@ -674,73 +684,110 @@ export async function matchRoutes(
     return
   }
 
-  const basePath = userBasePath ?? '/'
-  const params = userParams ?? {}
+  const parallelPromises: Promise<unknown>[] = []
 
-  const rankedRoutes = rankRoutes(routes)
+  const recurse = async (
+    currentPathname: string,
+    routes: Route[],
+    userBasePath?: string,
+    userParams?: Params,
+  ) => {
+    const basePath = userBasePath ?? '/'
+    const params = userParams ?? {}
 
-  let route = rankedRoutes.find(route => {
-    const fullRoutePathName = joinPaths([basePath, route.path])
+    const rankedRoutes = rankRoutes(routes)
 
-    const matchParams = matchRoute(currentPathname, fullRoutePathName)
+    let flexRoute = rankedRoutes.find((route) => {
+      const fullRoutePathName = joinPaths([basePath, route.path])
 
-    if (matchParams) {
-      Object.assign(params, matchParams)
-    }
+      const matchParams = matchRoute(currentPathname, fullRoutePathName)
 
-    return !!matchParams
-  })
-
-  if (!route) {
-    return
-  }
-
-  const interpolatedPathSegments = segmentPathname(route.path)
-
-  const interpolatedPath = joinPaths(
-    interpolatedPathSegments.map(segment => {
-      if (segment.value === '*') {
-        return ''
+      if (matchParams) {
+        Object.assign(params, matchParams)
       }
 
-      if (segment.type === 'param') {
-        return params[segment.value] ?? ''
-      }
+      return !!matchParams
+    })
 
-      return segment.value
-    }),
-  )
-
-  const pathname = joinPaths([basePath, interpolatedPath])
-
-  if (route.import) {
-    route = {
-      path: route.path,
-      ...(await route.import({ params })),
+    if (!flexRoute) {
+      return
     }
+
+    const interpolatedPathSegments = segmentPathname(flexRoute.path)
+
+    const interpolatedPath = joinPaths(
+      interpolatedPathSegments.map((segment) => {
+        if (segment.value === '*') {
+          return ''
+        }
+
+        if (segment.type === 'param') {
+          return params[segment.value] ?? ''
+        }
+
+        return segment.value
+      }),
+    )
+
+    const pathname = joinPaths([basePath, interpolatedPath])
+
+    let route: RouteBasic
+
+    if (flexRoute.import) {
+      const res = await flexRoute.import({ params })
+
+      route = {
+        path: route!.path,
+        ...res,
+      }
+    } else {
+      route = flexRoute
+    }
+
+    const match: RouteMatch = {
+      route,
+      params,
+      pathname,
+      data: {},
+      status: 'loading',
+    }
+
+    // For each element type, potentially load it asynchronously
+    const elementTypes = ['element', 'errorElement', 'pendingElement'] as const
+
+    elementTypes.forEach((type) => {
+      const routeElement = route[type]
+      if (typeof routeElement === 'function') {
+        parallelPromises.push(
+          (routeElement as AsyncNode)({ params }).then((res) => {
+            match[type] = res
+          }),
+        )
+      } else {
+        match[type] = route[type]
+      }
+    })
+
+    match.childMatch = await recurse(
+      currentPathname,
+      route.children ?? [],
+      match.pathname,
+      match.params,
+    )
+
+    return match
   }
 
-  const element = (typeof route.element === 'function'
-    ? await route.element({ params })
-    : route.element) ?? <Outlet />
-
-  const match: RouteMatch = {
-    route,
-    params,
-    pathname,
-    data: {},
-    status: 'loading',
-    element,
-  }
-
-  match.childMatch = await matchRoutes(
+  const matchPromise = recurse(
     currentPathname,
-    route.children ?? [],
-    match.pathname,
-    match.params,
+    routes,
+    userBasePath,
+    userParams,
   )
 
-  return match
+  const resolvedMatch = await matchPromise
+  await Promise.all(parallelPromises)
+  return resolvedMatch
 }
 
 export async function loadMatch(
@@ -778,7 +825,7 @@ export async function loadMatch(
           ...parentMatch?.data,
         }
 
-        return new Promise<void>(async resolve => {
+        return new Promise<void>(async (resolve) => {
           let pendingTimeout: ReturnType<typeof setTimeout>
           let pendingMinPromise = Promise.resolve()
 
@@ -786,7 +833,7 @@ export async function loadMatch(
             pendingTimeout = setTimeout(() => {
               dispatch()
               if (match.route.pendingMinMs) {
-                pendingMinPromise = new Promise(r =>
+                pendingMinPromise = new Promise((r) =>
                   setTimeout(r, match.route.pendingMinMs),
                 )
               }
@@ -1039,26 +1086,24 @@ function segmentPathname(pathname: string) {
   }
 
   // Remove empty segments and '.' segments
-  const split = pathname.split('/').filter(path => {
+  const split = pathname.split('/').filter((path) => {
     return path.length && path !== '.'
   })
 
   segments.push(
-    ...split.map(
-      (part): Segment => {
-        if ([':', '$'].includes(part.charAt(0))) {
-          return {
-            type: 'param',
-            value: part.substring(1),
-          }
-        }
-
+    ...split.map((part): Segment => {
+      if ([':', '$'].includes(part.charAt(0))) {
         return {
-          type: 'pathname',
-          value: part,
+          type: 'param',
+          value: part.substring(1),
         }
-      },
-    ),
+      }
+
+      return {
+        type: 'pathname',
+        value: part,
+      }
+    }),
   )
 
   return segments
@@ -1068,7 +1113,7 @@ function resolvePath(base: string, to: string) {
   let baseSegments = segmentPathname(base)
   const toSegments = segmentPathname(to)
 
-  toSegments.forEach(toSegment => {
+  toSegments.forEach((toSegment) => {
     if (toSegment.type === 'param') {
       warning(
         true,
@@ -1086,7 +1131,7 @@ function resolvePath(base: string, to: string) {
     }
   })
 
-  const joined = baseSegments.map(d => d.value).join('/')
+  const joined = baseSegments.map((d) => d.value).join('/')
 
   return cleanPathname(joined)
 }
@@ -1098,9 +1143,8 @@ function isCtrlEvent(e: React.MouseEvent) {
 function useLatestCallback<TCallback extends (...args: any[]) => any>(
   cb: TCallback,
 ) {
-  const stableFnRef = React.useRef<
-    (...args: Parameters<TCallback>) => ReturnType<TCallback>
-  >()
+  const stableFnRef =
+    React.useRef<(...args: Parameters<TCallback>) => ReturnType<TCallback>>()
   const cbRef = React.useRef<TCallback>(cb)
 
   cbRef.current = cb

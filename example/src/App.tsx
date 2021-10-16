@@ -43,7 +43,7 @@ const createSleepCache = () => {
 
       cache[key] = {
         time: Date.now(),
-        promise: new Promise(r => setTimeout(r, time)).then(() => {
+        promise: new Promise((r) => setTimeout(r, time)).then(() => {
           cache[key].time = Date.now()
           delete cache[key].promise
           return cache[key].time
@@ -76,11 +76,11 @@ function Root() {
               path: 'teams',
               element: <Teams />,
               errorElement: <LoaderError />,
-              pendingElement: 'Loading Teams...',
+              pendingElement: 'Still Loading Teams...',
               // Show pending element after 1 second
               pendingMs: 1000,
               // Show the pending element for at least 500ms
-              pendingMinMs: 500,
+              pendingMinMs: 1000,
               loader: async () => {
                 if (Math.random() > 0.9) {
                   throw new Error('Status 500: Failed to load team data!')
@@ -120,7 +120,8 @@ function Root() {
               // In this route, the data and element are fetched in parallel
               // because the async element and loader are fetchable up front
               path: 'expensive',
-              element: () => import('./Expensive').then(res => <res.default />),
+              element: () =>
+                import('./Expensive').then((res) => <res.default />),
               loader: async () => ({
                 expensive: await sleepCache.read('/expensive', 1000, 1000 * 10),
               }),
@@ -129,7 +130,8 @@ function Root() {
               // In this route, the data can only be fetched after the entire route
               // module is imported, creating a momentary waterfall
               path: 'really-expensive',
-              import: () => import('./ReallyExpensive').then(res => res.route),
+              import: () =>
+                import('./ReallyExpensive').then((res) => res.route),
             },
           ],
         },
@@ -158,7 +160,7 @@ function Home() {
         <Link to="/">
           <pre>/</pre>
         </Link>
-        <Link<SearchObj> search={old => ({ ...old, foo: 'bar' })}>
+        <Link<SearchObj> search={(old) => ({ ...old, foo: 'bar' })}>
           <pre>{`search={old => ({ ...old, foo: 'bar' })}`}</pre>
         </Link>
         <Link<SearchObj>
