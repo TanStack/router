@@ -606,6 +606,7 @@ export function useRoutes(
       const id = Date.now()
       latestRef.current = id
 
+      // This resolves all `route.import`s and asynchronous route elements
       const newMatch = await matchRoutes(
         location.current.pathname,
         routes,
@@ -622,6 +623,7 @@ export function useRoutes(
         return
       }
 
+      // This kicks off route loaders
       loadMatch(newMatch, () => {
         if (done || latestRef.current !== id) {
           return
@@ -737,8 +739,9 @@ export async function matchRoutes(
       const res = await flexRoute.import({ params })
 
       route = {
-        path: route!.path,
+        ...flexRoute,
         ...res,
+        import: undefined,
       }
     } else {
       route = flexRoute

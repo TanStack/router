@@ -556,7 +556,9 @@ function App() {
 
 ### SSR
 
-Server-side rendering is easy with react-location. Use `createMemoryHistory` and `ReactLocation` to mock your app into a specific state for SSR:
+If you at all serious about SSR Routing, you should probably use a framework like [Remix](https://remix.run) or [Next.js](https://nextjs.org).
+
+However, if you truly desire to fudge around with SSR in React Location, you can. Use `createMemoryHistory` and `ReactLocation` to mock your app into a specific state for SSR:
 
 ```tsx
 import {
@@ -577,7 +579,7 @@ export async function render(requestUrl) {
     // ...
   ]
   // Match the routes to the locations current path
-  // This also does any `import`s defined in routes
+  // This also does any `import`s and async elements defined in routes
   const routeMatch = await matchRoutes(location.current.pathname, routes)
   // Perform any loading required for the matched route
   await loadMatch(routeMatch)
