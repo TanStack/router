@@ -67,7 +67,7 @@ Rotues are matched in the order of:
 - Dynamic paths (`:teamId`)
 - Wildcard path (`*` )
 
-A **Route** object consist of the following properties:
+A **Route** object consists of the following properties:
 
 | Property       | Required | type                                                              | Description                                                                                                                                                         |
 | -------------- | -------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
