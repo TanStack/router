@@ -56,11 +56,9 @@ return (
 )
 ```
 
-### Routes
+### Routes & useRoutes
 
-### useRoutes
-
-The `Routes` component & `useRoutes` hook are used to render an active route from an array (or tree) of **Route** objects.
+The `Routes` component and `useRoutes` hook are used to render an active route from an array (or tree) of **Route** objects.
 
 Rotues are matched in the order of:
 
