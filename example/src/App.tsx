@@ -90,7 +90,7 @@ function Root() {
       <hr />
       <Routes
         // You can define your routes inline and without any memoization
-        fallback={'...'}
+        fallback="..."
         routes={[
           {
             path: '/',
@@ -104,14 +104,24 @@ function Root() {
               {
                 path: 'teams',
                 element: <Teams />,
-                loaderErrorElement: <LoaderError />,
+                errorElement: <LoaderError />,
+                pendingElement: 'Loading Teams...',
+                // Show pending element after 1 second
+                pendingMs: 1000,
+                // Show the pending element for at least 500ms
+                pendingMinMs: 500,
                 loader: async () => {
                   if (Math.random() > 0.9) {
                     throw new Error('Status 500: Failed to load team data!')
                   }
                   return {
                     // Child loaders merge their results on top of parent loaders
-                    teams: await sleepCache.read('teams', 1000, 1000 * 10),
+                    teams: await sleepCache.read(
+                      'teams',
+                      // Soemtimes team data resolves fast, sometimtes slow...
+                      Math.random() * 2000,
+                      1000 * 10,
+                    ),
                   }
                 },
                 children: [
@@ -153,7 +163,7 @@ function LoaderError() {
   return (
     <div>
       <div>Oh no! Something happened when fetching data for this route!</div>
-      <pre>{(route.dataError as Error).message}</pre>
+      <pre>{(route.error as Error).message}</pre>
     </div>
   )
 }

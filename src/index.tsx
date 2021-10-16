@@ -57,8 +57,11 @@ export type Route = RouteBasic | RouteAsync
 
 export type RouteBasic = {
   path: string
-  loader?: LoadFn
-  loaderErrorElement?: React.ReactNode
+  loader?: Loader
+  errorElement?: React.ReactNode
+  pendingElement?: React.ReactNode
+  pendingMs?: number
+  pendingMinMs?: number
   waitForParents?: boolean
   element?: React.ReactNode
   children?: Route[]
@@ -76,8 +79,9 @@ export type RouteMatch = {
   route: RouteBasic
   pathname: string
   params: Params
+  status: 'ready' | 'loading' | 'error'
   data: LoadData
-  dataError?: unknown
+  error?: unknown
   childMatch?: RouteMatch
 }
 
@@ -88,7 +92,7 @@ export type RouteImportFn = (route: {
   params: Params
 }) => PromiseLike<RouteImported>
 
-export type LoadFn = (routeMatch: RouteMatch) => PromiseLike<LoadData>
+export type Loader = (routeMatch: RouteMatch) => PromiseLike<LoadData>
 
 type PromiseLike<T> = Promise<T> | T
 
@@ -163,6 +167,7 @@ const RouteContext = React.createContext<RouteMatch>({
   pathname: '/',
   params: {},
   data: {},
+  status: 'loading',
 })
 
 // Detect if we're in the DOM
@@ -385,6 +390,7 @@ export function ReactLocationProvider<TSearch>({
       pathname: locationInstance.basepath,
       route: null!,
       data: {},
+      status: 'ready',
     }
   }, [locationInstance.basepath])
 
@@ -579,29 +585,45 @@ export function useRoutes(
 
   const latestRef = React.useRef(0)
 
-  const reconcileRoute = async () => {
-    const id = Date.now()
-    latestRef.current = id
+  const reconcileRoute = () => {
+    let done = false
+    ;(async () => {
+      const id = Date.now()
+      latestRef.current = id
 
-    const newMatch = await matchRoutes(
-      location.current.pathname,
-      routes,
-      route.pathname,
-      route.params,
-    )
+      const newMatch = await matchRoutes(
+        location.current.pathname,
+        routes,
+        route.pathname,
+        route.params,
+      )
 
-    if (latestRef.current === id) {
-      await loadMatch(newMatch)
-    }
+      if (!newMatch) {
+        setMatchedRoute(newMatch)
+        return
+      }
 
-    if (latestRef.current === id) {
-      setMatchedRoute(newMatch)
+      if (latestRef.current !== id) {
+        return
+      }
+
+      loadMatch(newMatch, () => {
+        if (done || latestRef.current !== id) {
+          return
+        }
+
+        setMatchedRoute({ ...newMatch })
+      })
+    })()
+
+    return () => {
+      done = true
     }
   }
 
   React.useEffect(() => {
     try {
-      reconcileRoute()
+      return reconcileRoute()
     } catch (err) {
       console.error(err)
     }
@@ -611,9 +633,30 @@ export function useRoutes(
     return (options?.fallback ?? null) as JSX.Element
   }
 
+  return renderMatch(matchedRoute)
+}
+
+function renderMatch(match: RouteMatch) {
+  console.log('renderMatch', match.pathname, match.status, match.data)
+
   return (
-    <RouteContext.Provider value={matchedRoute}>
-      {matchedRoute.route?.element ?? null}
+    <RouteContext.Provider value={match} key={match.status}>
+      {(() => {
+        if (match.status === 'error') {
+          if (match.route.errorElement) {
+            return match.route.errorElement
+          }
+          throw match.error
+        }
+
+        if (match.status === 'loading') {
+          if (match.route.pendingElement) {
+            return match.route.pendingElement
+          }
+        }
+
+        return match.route?.element ?? <Outlet />
+      })()}
     </RouteContext.Provider>
   )
 }
@@ -679,6 +722,7 @@ export async function matchRoutes(
     params,
     pathname,
     data: {},
+    status: 'loading',
   }
 
   match.childMatch = await matchRoutes(
@@ -691,9 +735,12 @@ export async function matchRoutes(
   return match
 }
 
-export async function loadMatch(match?: RouteMatch) {
+export async function loadMatch(
+  match: RouteMatch,
+  dispatch: () => void = () => {},
+) {
   if (!match) {
-    return
+    return dispatch()
   }
 
   let promises: Promise<unknown>[] = []
@@ -709,30 +756,57 @@ export async function loadMatch(match?: RouteMatch) {
 
     const load = match.route.loader
 
-    if (load) {
+    if (!load) {
+      match.status === 'ready'
+    } else {
       let promise = Promise.resolve() as Promise<unknown>
 
       if (match.route.waitForParents) {
         promise = parentPromise
       }
 
-      promise = promise
-        .then(async () => {
-          match.data = {
-            ...parentMatch?.data,
+      promise = promise.then(() => {
+        match.data = {
+          ...parentMatch?.data,
+        }
+
+        return new Promise<void>(async resolve => {
+          let pendingTimeout: ReturnType<typeof setTimeout>
+          let pendingMinPromise = Promise.resolve()
+
+          if (match.route.pendingMs) {
+            pendingTimeout = setTimeout(() => {
+              dispatch()
+              if (match.route.pendingMinMs) {
+                pendingMinPromise = new Promise(r =>
+                  setTimeout(r, match.route.pendingMinMs),
+                )
+              }
+            }, match.route.pendingMs)
           }
 
-          const loadData = await load(match)
+          const finish = () => {
+            clearTimeout(pendingTimeout!)
+            resolve()
+          }
 
-          match.data = {
-            ...parentMatch?.data,
-            ...loadData,
+          try {
+            const loadData = await load(match)
+            match.status = 'ready'
+            match.data = {
+              ...parentMatch?.data,
+              ...loadData,
+            }
+            await pendingMinPromise
+            finish()
+          } catch (err) {
+            console.error(err)
+            match.status = 'error'
+            match.error = err
+            finish()
           }
         })
-        .catch(err => {
-          console.error(err)
-          match.dataError = err
-        })
+      })
 
       promises.push(promise)
 
@@ -744,9 +818,7 @@ export async function loadMatch(match?: RouteMatch) {
 
   recurse(match, Promise.resolve())
 
-  if (__DEV__) console.time('Match Loaded')
-  await Promise.all(promises)
-  if (__DEV__) console.timeEnd('Match Loaded')
+  await Promise.all(promises).then(dispatch)
 }
 
 export function Link<TSearch>({
@@ -853,13 +925,7 @@ export function Outlet() {
     return null
   }
 
-  return (
-    <RouteContext.Provider value={childMatch}>
-      {childMatch.dataError && childMatch.route.loaderErrorElement
-        ? childMatch.route.loaderErrorElement
-        : childMatch.route?.element ?? <Outlet />}
-    </RouteContext.Provider>
-  )
+  return renderMatch(childMatch)
 }
 
 export function Navigate<TSearch>({

@@ -71,13 +71,18 @@ Rotues are matched in the order of:
 
 A **Route** object consist of the following properties:
 
-| Property | Required | type                                                   | Description                                                                                 |
-| -------- | -------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| path     | true     | `string`                                               | The path to route (relative to the nearest parent `Route` component or root basepath)       |
-| element  |          | `React.ReactNode`                                      | The content to be rendered when the path routees the current location                       |
-| loader   |          | `(match: RouteMatch) => Promise<Record<string, any>>`  | An asynchronous function responsible for prepping the route to be rendered                  |
-| children |          | `React.ReactNode`                                      | An array of child routes                                                                    |
-| import   |          | `({ params: Params }) => Promise<Omit<Route, 'path'>>` | An asyncronous function that resolves further route information. Useful for code-splitting! |
+| Property       | Required | type                                                              | Description                                                                                                                                                         |
+| -------------- | -------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| path           | true     | `string`                                                          | The path to route (relative to the nearest parent `Route` component or root basepath)                                                                               |
+| element        |          | `React.ReactNode`                                                 | The content to be rendered when the route is matched                                                                                                                |
+| errorElement   |          | `React.ReactNode`                                                 | The content to be rendered when the route is loader encounters an error                                                                                             |
+| pendingElement |          | `React.ReactNode`                                                 | The content to be rendered when the route surpasses the `pendingMs` duration                                                                                        |
+| loader         |          | `(match: RouteMatch) => Promise<Record<string, any>>`             | An asynchronous function responsible for prepping the route to be rendered                                                                                          |
+| pendingMs      |          | number                                                            | The duration to wait during loader execution efore showing the `pendingElement`                                                                                     |
+| pendingMinMs   |          | number                                                            | _If the `pendingElement` is shown_, the minimum duration for which it will be shown.                                                                                |
+| waitForParents |          | boolean                                                           | If set to `true`, this loader will wait to fire until it's parent loader has resolved. **Note: This will slow down the paralellism of loader execution**            |
+| children       |          | `React.ReactNode`                                                 | An array of child routes                                                                                                                                            |
+| import         |          | `({ params: Params }) => Promise<Omit<Route, 'path' | 'import'>>` | An asyncronous function that resolves all of the above route information (everything but the `path` and `import` properties, of course). Useful for code-splitting! |
 
 **Example - Route Params**
 
