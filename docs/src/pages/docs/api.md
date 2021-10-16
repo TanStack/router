@@ -80,7 +80,7 @@ A **Route** object consists of the following properties:
 | pendingMinMs   |          | number                                                                | _If the `pendingElement` is shown_, the minimum duration for which it will be visible.                                                                         |
 | waitForParents |          | boolean                                                               | If set to `true`, `loader` will wait to fire until the parent route's `loader` has resolved. **Note: This will slow down the paralellism of loader execution** |
 | children       |          | Route[]                                                               | An array of child routes                                                                                                                                       |
-| import         |          | `({ params: Params }) => Promise<Omit<Route, 'path'                   | 'import'>>`                                                                                                                                                    | An asyncronous function that resolves all of the above route information (everything but the `path` and `import` properties, of course). Useful for code-splitting! |
+| import         |          | `({ params: Params }) => Promise<Omit<Route, 'path' / 'import'>>`     |                                                                                                                                                                | An asyncronous function that resolves all of the above route information (everything but the `path` and `import` properties, of course). Useful for code-splitting! |
 
 **Example - Route Params**
 
