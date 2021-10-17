@@ -48,14 +48,6 @@ function App() {
   );
 }
 
-async function fetchPosts() {
-  await new Promise((r) => setTimeout(r, 500));
-  const { data } = await axios.get(
-    "https://jsonplaceholder.typicode.com/posts"
-  );
-  return data;
-}
-
 function Posts() {
   const {
     data: { posts },
@@ -85,14 +77,6 @@ function Posts() {
   );
 }
 
-async function fetchPostById(id: string) {
-  await new Promise((r) => setTimeout(r, 500));
-  const { data } = await axios.get(
-    `https://jsonplaceholder.typicode.com/posts/${id}`
-  );
-  return data;
-}
-
 function Post() {
   const {
     data: { post },
@@ -109,6 +93,22 @@ function Post() {
       </div>
     </div>
   );
+}
+
+async function fetchPosts() {
+  await new Promise((r) => setTimeout(r, 500));
+  const { data } = await axios.get(
+    "https://jsonplaceholder.typicode.com/posts"
+  );
+  return data;
+}
+
+async function fetchPostById(id: string) {
+  await new Promise((r) => setTimeout(r, 500));
+  const { data } = await axios.get(
+    `https://jsonplaceholder.typicode.com/posts/${id}`
+  );
+  return data;
 }
 
 const rootElement = document.getElementById("root");

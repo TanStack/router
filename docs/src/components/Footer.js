@@ -19,7 +19,7 @@ export const Footer = (props) => {
                 </Link>
               </li>
               <li className="mt-4">
-                <Link href="/examples/kitchen-sink">
+                <Link href="/examples/basic">
                   <a className="text-base leading-6 text-gray-500 hover:text-gray-900">
                     Examples
                   </a>

@@ -26,9 +26,14 @@
       "open": true,
       "routes": [
         {
-          "title": "With React Query Basic",
-          "path": "/examples/react-query-basic",
-          "editUrl": "/examples/react-query-basic.md"
+          "title": "Basic",
+          "path": "/examples/basic",
+          "editUrl": "/examples/basic.md"
+        },
+        {
+          "title": "Basic with React Query",
+          "path": "/examples/basic-with-react-query",
+          "editUrl": "/examples/basic-with-react-query.md"
         },
         {
           "title": "Kitchen Sink",

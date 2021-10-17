@@ -1,6 +1,6 @@
 ---
-id: simple
-title: Simple Examples
+id: kitchen-sink
+title: Kitchen Sink
 toc: false
 ---
 
