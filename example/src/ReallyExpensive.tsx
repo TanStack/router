@@ -26,14 +26,24 @@ function SubExpensive() {
 export const route: RouteImported = {
   element: <Expensive />,
   loader: async () => ({
-    reallyExpensive: await sleepCache.read('/reallyExpensive', 1000, 1000 * 10),
+    reallyExpensive: await sleepCache.read(
+      '/reallyExpensive',
+      Date.now(),
+      1000,
+      1000 * 10,
+    ),
   }),
   children: [
     {
       path: 'sub-expensive',
       element: <SubExpensive />,
       loader: async () => ({
-        subExpensive: await sleepCache.read('/subExpensive', 1000, 1000 * 10),
+        subExpensive: await sleepCache.read(
+          '/subExpensive',
+          Date.now(),
+          1000,
+          1000 * 10,
+        ),
       }),
     },
   ],

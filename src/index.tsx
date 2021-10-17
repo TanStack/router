@@ -79,7 +79,7 @@ export type RouteAsync = {
   import: RouteImportFn
 }
 
-export type RouteMatch = {
+export type RouteMatch<TData extends LoadData> = {
   route: RouteBasic
   pathname: string
   params: Params
@@ -87,17 +87,17 @@ export type RouteMatch = {
   element?: React.ReactNode
   errorElement?: React.ReactNode
   pendingElement?: React.ReactNode
-  data: LoadData
+  data: TData
   error?: unknown
-  childMatch?: RouteMatch
+  childMatch?: RouteMatch<TData>
 }
 
 export type Params = Record<string, string>
-export type LoadData = Record<string, unknown>
+export type LoadData = Record<string, any>
 
 export type RouteImportFn = (opts: { params: Params }) => Promise<RouteImported>
 
-export type Loader = (routeMatch: RouteMatch) => PromiseLike<LoadData>
+export type Loader = (routeMatch: RouteMatch<any>) => PromiseLike<LoadData>
 
 type PromiseLike<T> = Promise<T> | T
 
@@ -167,7 +167,7 @@ function warning(cond: boolean, message: string) {
 
 const LocationContext = React.createContext<ReactLocation<any>>(undefined!)
 
-const RouteContext = React.createContext<RouteMatch>({
+const RouteContext = React.createContext<RouteMatch<any>>({
   route: null!,
   pathname: '/',
   params: {},
@@ -390,7 +390,7 @@ export function ReactLocationProvider<TSearch>({
 }: ReactLocationProps<TSearch>) {
   // React.useEffect(() => locationInstance.commit());
 
-  const rootMatch = React.useMemo((): RouteMatch => {
+  const rootMatch = React.useMemo((): RouteMatch<any> => {
     return {
       params: {},
       pathname: locationInstance.basepath,
@@ -493,8 +493,8 @@ function rankRoutes(routes: Route[]): Route[] {
     })
 }
 
-export function useRoute() {
-  return React.useContext(RouteContext)
+export function useRoute<TData>() {
+  return React.useContext(RouteContext) as RouteMatch<TData>
 }
 
 export function useNavigate<TSearch>() {
@@ -580,7 +580,7 @@ export function Prompt({ message, when }: PromptProps) {
 export function Routes(options: {
   routes: Route[]
   pendingElement?: React.ReactNode
-  initialMatch?: RouteMatch
+  initialMatch?: RouteMatch<any>
 }) {
   const { routes, ...rest } = options
   return useRoutes(routes, rest)
@@ -588,7 +588,10 @@ export function Routes(options: {
 
 export function useRoutes(
   routes?: Route[],
-  options?: { initialMatch?: RouteMatch; pendingElement?: React.ReactNode },
+  options?: {
+    initialMatch?: RouteMatch<any>
+    pendingElement?: React.ReactNode
+  },
 ): JSX.Element {
   const location = useLocation()
   const route = useRoute()
@@ -653,7 +656,7 @@ export function useRoutes(
   return renderMatch(matchedRoute)
 }
 
-function renderMatch(match: RouteMatch) {
+function renderMatch(match: RouteMatch<any>) {
   return (
     <RouteContext.Provider value={match} key={match.status}>
       {(() => {
@@ -681,7 +684,7 @@ export async function matchRoutes(
   routes: Route[],
   userBasePath?: string,
   userParams?: Params,
-): Promise<undefined | RouteMatch> {
+): Promise<undefined | RouteMatch<any>> {
   if (!routes?.length) {
     return
   }
@@ -747,7 +750,7 @@ export async function matchRoutes(
       route = flexRoute
     }
 
-    const match: RouteMatch = {
+    const match: RouteMatch<any> = {
       route,
       params,
       pathname,
@@ -794,7 +797,7 @@ export async function matchRoutes(
 }
 
 export async function loadMatch(
-  match: RouteMatch,
+  match: RouteMatch<any>,
   dispatch: () => void = () => {},
 ) {
   if (!match) {
@@ -804,9 +807,9 @@ export async function loadMatch(
   let promises: Promise<unknown>[] = []
 
   const recurse = (
-    match: RouteMatch,
+    match: RouteMatch<any>,
     parentPromise: Promise<unknown>,
-    parentMatch?: RouteMatch,
+    parentMatch?: RouteMatch<any>,
   ) => {
     if (!match) {
       return

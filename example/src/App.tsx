@@ -25,21 +25,25 @@ const App = () => {
 // Not too different from something like React Query or React's simple cache (except it doesn't
 // throw promises like a weirdo!)
 const createSleepCache = () => {
-  const cache: Record<string, { time: number; promise?: Promise<any> }> = {}
+  const cache: Record<
+    string,
+    { time: number; promise?: Promise<any>; data?: any }
+  > = {}
 
   return {
-    read: (key: string, time: number, maxAge: number) => {
+    read: (key: string, data: any, time: number, maxAge: number) => {
       if (cache[key]) {
         if (cache[key].promise) return cache[key].promise
-        if (Date.now() - cache[key].time < maxAge) return cache[key].time
+        if (Date.now() - cache[key].time < maxAge) return cache[key].data
       }
 
       cache[key] = {
         time: Date.now(),
         promise: new Promise((r) => setTimeout(r, time)).then(() => {
           cache[key].time = Date.now()
+          cache[key].data = data
           delete cache[key].promise
-          return cache[key].time
+          return cache[key].data
         }),
       }
 
@@ -57,7 +61,7 @@ const routes: Route[] = [
     // This is an async data loader for this route
     // Navigation will suspend until it resolves
     loader: async () => ({
-      root: await sleepCache.read('/', 300, 1000 * 10),
+      root: await sleepCache.read('/', Date.now(), 300, 1000 * 10),
     }),
     children: [
       { path: 'search-params', element: <SearchParams /> },
@@ -78,6 +82,7 @@ const routes: Route[] = [
             // Child loaders merge their results on top of parent loaders
             teams: await sleepCache.read(
               'teams',
+              ['team-1', 'team-2', 'team-3'],
               // Soemtimes team data resolves fast, sometimtes slow...
               Math.random() * 2000,
               1000 * 10,
@@ -99,7 +104,7 @@ const routes: Route[] = [
             loader: async ({ data }) => ({
               // Look ma! I can rely on parent route data!
               teamId: data.teams
-                ? await sleepCache.read(':teamId', 300, 1000 * 10)
+                ? await sleepCache.read(':teamId', Date.now(), 300, 1000 * 10)
                 : null,
             }),
           },
@@ -111,7 +116,12 @@ const routes: Route[] = [
         path: 'expensive',
         element: () => import('./Expensive').then((res) => <res.default />),
         loader: async () => ({
-          expensive: await sleepCache.read('/expensive', 1000, 1000 * 10),
+          expensive: await sleepCache.read(
+            '/expensive',
+            Date.now(),
+            1000,
+            1000 * 10,
+          ),
         }),
       },
       {
@@ -154,8 +164,8 @@ function Home() {
         <Link to="/teams">
           <pre>/teams</pre>
         </Link>
-        <Link to="/teams/2">
-          <pre>/teams/2</pre>
+        <Link to="/teams/team-2">
+          <pre>/teams/team-2</pre>
         </Link>
         <Link to="/expensive">
           <pre>/expensive</pre>
@@ -176,7 +186,7 @@ function Home() {
 }
 
 function Teams() {
-  const route = useRoute()
+  const route = useRoute<{ teams: string[] }>()
 
   return (
     <div>
@@ -192,16 +202,15 @@ function Teams() {
           <pre>new</pre>
         </Link>
       </div>
-      <div>
-        <Link to="team-1">
-          <pre>team-1</pre>
-        </Link>
-      </div>
-      <div>
-        <Link to="./team-2">
-          <pre>./team-2</pre>
-        </Link>
-      </div>
+      {route.data.teams.map((team) => {
+        return (
+          <div key={team}>
+            <Link to={team}>
+              <pre>{team}</pre>
+            </Link>
+          </div>
+        )
+      })}
       <hr />
       <Outlet />
     </div>
