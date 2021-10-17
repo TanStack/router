@@ -4,11 +4,11 @@ title: Simple Examples
 toc: false
 ---
 
-- [Open in CodeSandbox](https://codesandbox.io/s/github/tannerlinsley/react-location/tree/next/examples/kitchen-sink)
-- [View Source](https://github.com/tannerlinsley/react-location/tree/next/examples/kitchen-sink)
+- [Open in CodeSandbox](https://codesandbox.io/s/github/tannerlinsley/react-location/tree/next/examples/react-query-basic)
+- [View Source](https://github.com/tannerlinsley/react-location/tree/next/examples/react-query-basic)
 
 <iframe
-  src="https://codesandbox.io/embed/github/tannerlinsley/react-location/tree/next/examples/kitchen-sink?autoresize=1&fontsize=14&theme=dark"
+  src="https://codesandbox.io/embed/github/tannerlinsley/react-location/tree/next/examples/react-query-basic?autoresize=1&fontsize=14&theme=dark"
   title="tannerlinsley/react-location: simple"
   sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
   style={{

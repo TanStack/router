@@ -26,7 +26,12 @@
       "open": true,
       "routes": [
         {
-          "title": "Simple",
+          "title": "With React Query Basic",
+          "path": "/examples/react-query-basic",
+          "editUrl": "/examples/react-query-basic.md"
+        },
+        {
+          "title": "Kitchen Sink",
           "path": "/examples/kitchen-sink",
           "editUrl": "/examples/kitchen-sink.md"
         }

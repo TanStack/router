@@ -9,7 +9,7 @@ import { Seo } from 'components/Seo'
 import Head from 'next/head'
 import { ParentSize } from '@visx/responsive'
 
-const Home = props => {
+const Home = (props) => {
   return (
     <>
       <Seo
@@ -211,7 +211,7 @@ const Home = props => {
         <section className="bg-gray-900 body-font">
           <div className="container max-w-7xl px-4  mx-auto -mt-72 relative">
             <iframe
-              src="https://codesandbox.io/embed/github/tannerlinsley/react-location/tree/next/example?autoresize=1&fontsize=16&theme=dark"
+              src="https://codesandbox.io/embed/github/tannerlinsley/react-location/tree/next/examples/react-query-basic?autoresize=1&fontsize=16&theme=dark"
               title="tannerlinsley/react-location: simple"
               sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
               className="shadow-2xl"
@@ -251,7 +251,7 @@ const Home = props => {
                   'Pending Elements',
                   'Minimum Pending Duration',
                   'Code-Split Routes',
-                ].map(d => {
+                ].map((d) => {
                   return (
                     <a className="mb-2" key={d}>
                       <span className="bg-coral text-gray-800 w-4 h-4 mr-2 rounded-full inline-flex items-center justify-center">
