@@ -579,7 +579,7 @@ export function Prompt({ message, when }: PromptProps) {
 
 export function Routes(options: {
   routes: Route[]
-  fallback?: React.ReactNode
+  pendingElement?: React.ReactNode
   initialMatch?: RouteMatch
 }) {
   const { routes, ...rest } = options
@@ -588,7 +588,7 @@ export function Routes(options: {
 
 export function useRoutes(
   routes?: Route[],
-  options?: { initialMatch?: RouteMatch; fallback?: React.ReactNode },
+  options?: { initialMatch?: RouteMatch; pendingElement?: React.ReactNode },
 ): JSX.Element {
   const location = useLocation()
   const route = useRoute()
@@ -647,7 +647,7 @@ export function useRoutes(
   }, [location.current.key])
 
   if (!matchedRoute) {
-    return (options?.fallback ?? null) as JSX.Element
+    return (options?.pendingElement ?? null) as JSX.Element
   }
 
   return renderMatch(matchedRoute)

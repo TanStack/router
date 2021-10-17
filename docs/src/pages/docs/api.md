@@ -62,10 +62,17 @@ The `Routes` component and `useRoutes` hook are used to render an active route f
 
 Rotues are matched in the order of:
 
-- Index paths (`/`)
-- Hard-coded paths in the order of appearance (`about`)
-- Dynamic paths (`:teamId`)
-- Wildcard path (`*` )
+- Exact match index paths (`/`)
+- Hard-coded paths in the order of appearance (eg. `about`)
+- Dynamic paths (eg. `:teamId`) **OR** a wildcard path (`*`)
+
+| Property       | Required | type              | Description                                                                                                  |
+| -------------- | -------- | ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| routes         | true     | `Route[]`         | An array of routes to match                                                                                  |
+| pendingElement |          | `React.ReactNode` | The content to be rendered while the first route match is being loaded                                       |
+| initialMatch   |          | RouteMatch        | A route match object that has been both _matched_ and _loaded_. See the [SRR](#ssr) section for more details |
+
+### Route
 
 A **Route** object consists of the following properties:
 
