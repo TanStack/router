@@ -7,6 +7,7 @@ import {
   Outlet,
   useRoute,
   Route,
+  useSearch,
 } from 'react-location'
 
 // Create a location instance
@@ -238,6 +239,10 @@ type SearchObj = {
 }
 
 function SearchParams() {
+  const search = useSearch()
+
+  console.log(search)
+
   return (
     <>
       <Link<SearchObj>>
