@@ -56,7 +56,8 @@
     "dist",
     "src",
     "lib",
-    "types"
+    "types",
+    "es"
   ],
   "browserslist": [
     "last 2 versions",
