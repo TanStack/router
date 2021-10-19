@@ -76,18 +76,17 @@ Rotues are matched in the order of:
 
 A **Route** object consists of the following properties:
 
-| Property       | Required | type                                                                  | Description                                                                                                                                                    |
-| -------------- | -------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| path           | true     | `string`                                                              | The path to match (relative to the nearest parent `Route` component or root basepath)                                                                          |
-| element        |          | `React.ReactNode OR ({ params: Params }) => Promise<React.ReactNode>` | The content to be rendered when the route is matched                                                                                                           |
-| errorElement   |          | `React.ReactNode OR ({ params: Params }) => Promise<React.ReactNode>` | The content to be rendered when `loader` encounters an error                                                                                                   |
-| pendingElement |          | `React.ReactNode OR ({ params: Params }) => Promise<React.ReactNode>` | The content to be rendered when the duration of `loader` execution surpasses the `pendingMs` duration                                                          |
-| loader         |          | `(match: RouteMatch) => Promise<Record<string, any>>`                 | An asynchronous function responsible for preparing or fetching data for the route before it is rendered                                                        |
-| pendingMs      |          | number                                                                | The duration to wait during `loader` execution before showing the `pendingElement`                                                                             |
-| pendingMinMs   |          | number                                                                | _If the `pendingElement` is shown_, the minimum duration for which it will be visible.                                                                         |
-| waitForParents |          | boolean                                                               | If set to `true`, `loader` will wait to fire until the parent route's `loader` has resolved. **Note: This will slow down the paralellism of loader execution** |
-| children       |          | Route[]                                                               | An array of child routes                                                                                                                                       |
-| import         |          | `({ params: Params }) => Promise<Omit<Route, 'path' / 'import'>>`     |                                                                                                                                                                | An asyncronous function that resolves all of the above route information (everything but the `path` and `import` properties, of course). Useful for code-splitting! |
+| Property       | Required | type                                                                  | Description                                                                                             |
+| -------------- | -------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| path           | true     | `string`                                                              | The path to match (relative to the nearest parent `Route` component or root basepath)                   |
+| element        |          | `React.ReactNode OR ({ params: Params }) => Promise<React.ReactNode>` | The content to be rendered when the route is matched                                                    |
+| errorElement   |          | `React.ReactNode OR ({ params: Params }) => Promise<React.ReactNode>` | The content to be rendered when `loader` encounters an error                                            |
+| pendingElement |          | `React.ReactNode OR ({ params: Params }) => Promise<React.ReactNode>` | The content to be rendered when the duration of `loader` execution surpasses the `pendingMs` duration   |
+| loader         |          | `(match: RouteMatch) => Promise<Record<string, any>>`                 | An asynchronous function responsible for preparing or fetching data for the route before it is rendered |
+| pendingMs      |          | number                                                                | The duration to wait during `loader` execution before showing the `pendingElement`                      |
+| pendingMinMs   |          | number                                                                | _If the `pendingElement` is shown_, the minimum duration for which it will be visible.                  |
+| children       |          | Route[]                                                               | An array of child routes                                                                                |
+| import         |          | `({ params: Params }) => Promise<Omit<Route, 'path' / 'import'>>`     |                                                                                                         | An asyncronous function that resolves all of the above route information (everything but the `path` and `import` properties, of course). Useful for code-splitting! |
 
 **Example - Route Params**
 
@@ -558,6 +557,53 @@ function App() {
       ]}
     />
   )
+}
+```
+
+### useRouterState
+
+The `useRouterState` hook can be used to gain access to the state of the closes `useRoutes` or `<Routes />` boundar that's being rendered. It's shape looks like this:
+
+| Property         | Type       | Description                                                                                                      |
+| ---------------- | ---------- | ---------------------------------------------------------------------------------------------------------------- |
+| currentMatch     | RouteMatch | The current RouteMatch object that is being rendered                                                             |
+| previousLocation | Location   | The previous location snapshot                                                                                   |
+| currentLocation  | Location   | The current location snapshot                                                                                    |
+| nextLocation     | Location   | The next location snapshot                                                                                       |
+| isTransitioning  | boolean    | Will be `true` if the router is currently transitioning                                                          |
+| isLoading        | boolean    | Will be `true` if any matches in the route are currently in a loading state, including background loading states |
+
+### useResolvePath
+
+The `useResolvePath` hook returns a function that can be used to resolve the full path of a relative route, based on where the hook is called in the route hierarchy.
+
+** Example **
+
+```tsx
+function App() {
+  return (
+    <Routes
+      routes={[
+        {
+          path: 'workspaces',
+          children: [
+            {
+              path: 'team',
+              element: <Team />,
+            },
+          ],
+        },
+      ]}
+    />
+  )
+}
+
+function Team() {
+  const resolvePath = useResolvePath()
+
+  const parentPath = resolvePath('..') // /workspace
+  const parentPath = resolvePath('.') // /workspace/team
+  const parentPath = resolvePath('team-1') // /workspace/team/team-1
 }
 ```
 

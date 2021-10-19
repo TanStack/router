@@ -14,11 +14,11 @@ const Home = (props) => {
     <>
       <Seo
         title="React Location"
-        description="Enterprise client-side routing for React applications"
+        description="Enterprise routing for React applications"
       />
       <Head>
         <title>
-          React Location - Enterprise client-side routing for React applications
+          React Location - Enterprise routing for React applications
         </title>
       </Head>
       <div className="bg-gray-50 h-full min-h-full">
@@ -37,8 +37,7 @@ const Home = (props) => {
               <div className="col-span-12 lg:col-span-6 ">
                 <div className="text-center lg:text-left md:max-w-2xl md:mx-auto ">
                   <h1 className="text-4xl tracking-tight leading-10 font-extrabold text-gray-900 sm:leading-none sm:text-6xl lg:text-5xl xl:text-6xl">
-                    Powerful, enterprise-grade client-side routing for React
-                    applications
+                    Powerful, enterprise-grade routing for React applications
                   </h1>
                   <p className="mt-3 text-base text-gray-700 sm:mt-5 sm:text-xl lg:text-lg xl:text-xl">
                     SSR/Full-Stack-Inspired API, first-class URL Search APIs,
@@ -83,8 +82,8 @@ const Home = (props) => {
                     like <a href="https://remix.run">Remix</a> and{' '}
                     <a href="https://nextjs.org">Next.js</a>, React Location
                     validates your existing routing skills, so you should feel
-                    strangely right at home while experiencing the super powers
-                    of React Location in your client-side apps.
+                    strangely right at home while also experiencing super
+                    spider-strenth... I mean "Router Power"!
                   </p>
                 </div>
                 <div className="mt-10 lg:mt-0">
@@ -92,12 +91,11 @@ const Home = (props) => {
                     First-Class URL Search API
                   </h3>
                   <div className="mt-2  lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
-                    Where most other client-side routers draw the line with URL
-                    search params (something like "now you can take this string
-                    and do whatever you want with it") ,and leave you to
-                    implement things on your own, React Location goes the extra
-                    mile to provide highly integrated support for consuming and
-                    manipulating URL search params.
+                    Where most other routers draw the line with route matching
+                    to pathname only and basically give up on URL search param
+                    support in general, React Location goes the extra mile to
+                    actually provide highly integrated support for matching,
+                    consuming and manipulating URL search params.
                   </div>
                 </div>
                 <div className="mt-10 lg:mt-0">
@@ -107,10 +105,10 @@ const Home = (props) => {
                   <p className="mt-2  lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
                     Super smart routing has easily become the standard
                     expectation for full-stack react frameworks, but not all
-                    apps are created equally. With React Location you can get
-                    all of the same code-splitting, data-loading, suspenseful
-                    heuristics in your client-side single-page React
-                    applications.
+                    apps are created equally, nor are routers. With React
+                    Location you can get all of the same code-splitting,
+                    data-loading, suspenseful heuristics you love about these
+                    frameworks in your non-frameworked React applications.
                   </p>
                 </div>
               </div>

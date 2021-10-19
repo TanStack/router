@@ -99,14 +99,14 @@ const routes: Route[] = [
             path: ':teamId',
             element: <Team />,
             // By default, loaders are parallized, but at any point in the route tree
-            // you can require a parent loader to finish before continuing down the
-            // tree.
-            waitForParents: true,
-            loader: async ({ data }) => ({
+            // you can await a parentLoader's promise to finish before proceeding
+            loader: async (match) => ({
               // Look ma! I can rely on parent route data!
-              teamId: data.teams
-                ? await sleepCache.read(':teamId', Date.now(), 300, 1000 * 10)
-                : null,
+              teamId: await match.parentMatch.loaderPromise.then((data) =>
+                data.teams
+                  ? sleepCache.read(':teamId', Date.now(), 300, 1000 * 10)
+                  : null,
+              ),
             }),
           },
         ],
