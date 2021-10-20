@@ -51,30 +51,26 @@ function ensureCleanWorkingDirectory() {
 
 function getNextVersion(
   currentVersion: string,
-  recommendedReleaseType: string,
+  recommendedReleaseLevel: 0 | 1 | 2,
   prereleaseBranch?: string
 ) {
   console.log({
     currentVersion,
-    recommendedReleaseType,
+    recommendedReleaseLevel,
     prereleaseBranch,
   })
 
-  if (!recommendedReleaseType) {
-    throw new Error(`Missing next version.`)
-  }
+  const releaseType = prereleaseBranch
+    ? 'prerelease'
+    : { 0: 'patch', 1: 'minor', 2: 'major' }[recommendedReleaseLevel]
 
-  let nextVersion = semver.inc(
-    currentVersion,
-    prereleaseBranch ? 'prerelease' : recommendedReleaseType,
-    prereleaseBranch
-  )
+  let nextVersion = semver.inc(currentVersion, releaseType, prereleaseBranch)
 
   if (!nextVersion) {
     throw new Error(
       `Invalid version increment: ${JSON.stringify({
         currentVersion,
-        recommendedReleaseType,
+        recommendedReleaseLevel,
         prereleaseBranch,
       })}`
     )
@@ -125,20 +121,48 @@ async function run() {
   const branchName: string = currentGitBranch()
   const branch = branches[branchName]
   const prereleaseBranch = branch.prerelease ? branchName : undefined
-  const recommendedReleaseType = await new Promise<string>((r, e) =>
+  const recommendedReleaseLevel = await new Promise<-1 | 0 | 1 | 2>((r, e) =>
     conventionalRecommendedBump(
       {
         preset: 'angular',
+        whatBump: (commits: any) => {
+          console.log(commits)
+          let level: number = -1
+
+          commits.forEach((commit: any) => {
+            if (['fix', 'refactor'].includes(commit.type)) {
+              level = Math.max(level, 0)
+            }
+            if (['feat'].includes(commit.type)) {
+              level = Math.max(level, 1)
+            }
+            if (['feat'].includes(commit.type)) {
+              level = Math.max(level, 1)
+            }
+            if (commit.notes.length > 0) {
+              level = Math.max(level, 2)
+            }
+          })
+
+          return {
+            level,
+          }
+        },
       },
-      (err: any, version: { releaseType: string }) => {
+      (err: any, version: { level: -1 | 0 | 1 | 2 }) => {
         if (err) return e(err)
         console.log(version)
-        r(version.releaseType)
+        r(version.level)
       }
     )
   )
 
-  return
+  if (recommendedReleaseLevel === -1) {
+    console.log(
+      `There have been no changes since the last release that require a new version. You're good!`
+    )
+    return
+  }
 
   // TODO: This would be great to get working
   // const changelog = await new Promise(function (resolve, reject) {
@@ -160,7 +184,7 @@ async function run() {
   const currentVersion = await getPackageVersion(packageNames[0])
   const version = getNextVersion(
     currentVersion,
-    recommendedReleaseType,
+    recommendedReleaseLevel,
     prereleaseBranch
   )
 
