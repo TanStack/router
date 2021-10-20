@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "esnext",
     "module": "commonjs",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -8,5 +8,12 @@
     "skipLibCheck": true,
     "checkJs": true
   },
-  "exclude": ["./packages/**"]
+  "ts-node": {
+    "transpileOnly": true,
+    "files": true,
+    "compilerOptions": {
+      "sourceMap": true,
+      "inlineSources": true
+    }
+  }
 }

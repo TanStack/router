@@ -1,5 +1,5 @@
 // Originally ported to TS from https://github.com/remix-run/react-router/tree/main/scripts/version.js
-
+require('source-map-support')
 const path = require('path')
 const { execSync } = require('child_process')
 const fsp = require('fs/promises')
@@ -10,11 +10,8 @@ const semver = require('semver')
 
 //
 
-// The first package will be used as the versioner
-const packageNames: [string, string[]][] = [
-  ['react-location', []],
-  // ['react-location-simple-cache', []],
-]
+// TODO: List your npm packages here. The first package will be used as the versioner.
+const packageNames: string[] = ['react-location', 'react-location-simple-cache']
 
 const rootDir = path.resolve(__dirname, '..')
 const examplesDir = path.resolve(rootDir, 'examples')
@@ -116,14 +113,14 @@ async function run() {
 
     // Update each package to the new version along with any dependencies
     await Promise.all(
-      packageNames.map(async ([packageName, packageDependencies], index) => {
+      packageNames.map(async (packageName) => {
         await updatePackageConfig(packageName, (config) => {
           config.version = version
-          if (packageDependencies.length) {
-            packageDependencies.forEach((packageDependency) => {
-              config.dependencies[packageDependency] = version
-            })
-          }
+          packageNames.forEach((packageName) => {
+            if (config.dependencies[packageName]) {
+              config.dependencies[packageName] = version
+            }
+          })
         })
         console.log(
           chalk.green(`  Updated ${packageName} to version ${version}`)
@@ -138,7 +135,7 @@ async function run() {
       if (!stat.isDirectory()) continue
 
       await updateExamplesPackageConfig(example, (config) => {
-        packageNames.forEach(([packageName]) => {
+        packageNames.forEach((packageName) => {
           if (config.dependencies[packageName]) {
             config.dependencies[packageName] = version
           }
