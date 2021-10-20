@@ -21,10 +21,10 @@ jobs:
           registry-url: https://registry.npmjs.org/
       - name: Install dependencies
         uses: bahmutov/npm-install@v1
-      - run: |
+      - run: "
         git config --global user.name 'Tanner Linsley'
         git config --global user.email 'tannerlinsley@users.noreply.github.com'
-        yarn cipublish
+        yarn cipublish"
       # - run: 
       #   env:
       #     NODE_AUTH_TOKEN: ${{secrets.npm_token}}
