@@ -1,73 +1,24 @@
 {
-  "name": "react-location",
-  "author": "Tanner Linsley",
-  "version": "0.1.0",
-  "license": "MIT",
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/tannerlinsley"
-  },
-  "description": "",
-  "main": "lib/index.js",
-  "module": "es/index.js",
-  "unpkg": "dist/react-location.development.js",
-  "types": "types/index.d.ts",
+  "private": true,
+  "repository": "https://github.com/tannerlinsley/react-location.git",
   "scripts": {
-    "test": "is-ci && yarn test:ci || yarn test:dev",
-    "test:dev": "npm run test:types && npm run && yarn test:jest --watch",
-    "test:ci": "npm run test:types && npm run && yarn test:jest",
-    "test:coverage": "yarn test:ci; open coverage/lcov-report/index.html",
-    "test:types": "tsc",
-    "test:jest": "exit 0;",
-    "build": "yarn format && yarn build:commonjs && yarn build:es && yarn build:umd && yarn build:types",
-    "build:commonjs": "rimraf ./lib && cross-env BABEL_ENV=commonjs babel --extensions .ts,.tsx --ignore ./src/**/tests/**/* ./src --out-dir lib",
-    "build:es": "rimraf ./es && babel --extensions .ts,.tsx --ignore ./src/**/tests/**/* ./src --out-dir es",
-    "build:umd": "rimraf ./dist && cross-env NODE_ENV=production rollup -c && rollup-plugin-visualizer stats-react.json",
-    "build:types": "rimraf ./types && tsc --project ./tsconfig.types.json && replace 'import type' 'import' ./types -r --silent && replace 'export type' 'export' ./types -r --silent",
-    "watch": "yarn watch:commonjs & yarn watch:es & yarn watch:umd & yarn watch:types",
-    "watch:commonjs": "rimraf ./lib && cross-env BABEL_ENV=commonjs babel --watch --extensions .ts,.tsx --ignore ./src/**/tests/**/* ./src --out-dir lib",
-    "watch:es": "rimraf ./es && babel --watch --extensions .ts,.tsx --ignore ./src/**/tests/**/* ./src --out-dir es",
-    "watch:umd": "rimraf ./dist && cross-env NODE_ENV=production rollup -w -c && rollup-plugin-visualizer stats-react.json",
-    "watch:types": "rimraf ./types && tsc --watch --project ./tsconfig.types.json && replace 'import type' 'import' ./types -r --silent && replace 'export type' 'export' ./types -r --silent",
-    "now-build": "yarn && cd www && yarn && yarn build",
-    "prettier": "prettier \"{.,src,src/**,example/src,example/src/**}/*.{md,js,jsx,ts,tsx,json}\"",
+    "test": "yarn workspaces run test",
+    "build": "yarn workspace run build",
+    "watch": "yarn workspaces run watch",
+    "prettier": "yarn workspaces prettier",
     "start": "yarn watch",
-    "format": "yarn prettier --write",
-    "stats": "open ./stats.html",
-    "doctoc": "doctoc README.md"
+    "format": "yarn workspaces run format",
+    "doctoc": "yarn workspaces run doctoc",
+    "publish": "ts-node -T scripts/publish.js",
+    "version": "ts-node -T scripts/version.js"
   },
-  "engines": {
-    "node": ">=12"
-  },
-  "release": {
-    "branches": [
-      "main",
-      {
-        "name": "beta",
-        "prerelease": true
-      },
-      {
-        "name": "next",
-        "prerelease": true
-      }
+  "workspaces": {
+    "packages": [
+      "packages/react-location",
+      "packages/react-location-simple-cache"
     ]
   },
-  "files": [
-    "dist",
-    "src",
-    "lib",
-    "types",
-    "es"
-  ],
-  "browserslist": [
-    "last 2 versions",
-    "> 0.2%"
-  ],
-  "peerDependencies": {
-    "react": ">=16",
-    "react-dom": ">=16"
-  },
-  "devDependencies": {
+  "dependencies": {
     "@babel/cli": "^7.15.7",
     "@babel/core": "^7.15.8",
     "@babel/plugin-transform-runtime": "^7.15.8",
@@ -87,6 +38,7 @@
     "doctoc": "^2.1.0",
     "is-ci": "^3.0.0",
     "prettier": "^2.4.1",
+    "prompt-confirm": "^2.0.4",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-test-renderer": "^17.0.2",
@@ -102,14 +54,9 @@
     "rollup-plugin-size": "^0.2.2",
     "rollup-plugin-terser": "^7.0.2",
     "rollup-plugin-visualizer": "^5.5.2",
+    "ts-node": "^10.3.0",
     "tslib": "^2.3.1",
     "typescript": "^4.4.3"
   },
-  "dependencies": {
-    "@babel/runtime": "^7.15.4",
-    "core-js": "^3.18.3",
-    "fast-async": "7",
-    "history": "^5.0.0",
-    "ts-toolbelt": "^9.6.0"
-  }
+  "version": "0.0.0"
 }

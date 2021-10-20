@@ -457,13 +457,6 @@ export function useLocation<TSearch>() {
   return instance
 }
 
-function parsePathWithSegments(path: string) {
-  path = cleanPath(path)
-  const segments = segmentPathname(path)
-
-  return [path, segments] as const
-}
-
 function rankRoutes(routes: Route[]): Route[] {
   return [...routes]
     .map((d, i) => {

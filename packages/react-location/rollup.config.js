@@ -13,10 +13,10 @@ const external = ['react', 'react-dom', 'react-location']
 const globals = {
   react: 'React',
   'react-dom': 'ReactDOM',
-  'react-location': 'ReactTable',
+  'react-location': 'ReactLocation',
 }
 
-const inputSrcs = [['src/index.tsx', 'ReactTable', 'react-location']]
+const inputSrcs = [['src/index.tsx', 'ReactLocation', 'react-location']]
 
 const extensions = ['.js', '.jsx', '.es6', '.es', '.mjs', '.ts', '.tsx']
 const babelConfig = { extensions, runtimeHelpers: true }

@@ -22,37 +22,6 @@ const App = () => {
   )
 }
 
-// This is a simple cache that simulates sleep / async behavior with a maxAge before sleeping again.
-// Not too different from something like React Query or React's simple cache (except it doesn't
-// throw promises like a weirdo!)
-const createSleepCache = () => {
-  const cache: Record<
-    string,
-    { time: number; promise?: Promise<any>; data?: any }
-  > = {}
-
-  return {
-    read: (key: string, data: any, time: number, maxAge: number) => {
-      if (cache[key]) {
-        if (cache[key].promise) return cache[key].promise
-        if (Date.now() - cache[key].time < maxAge) return cache[key].data
-      }
-
-      cache[key] = {
-        time: Date.now(),
-        promise: new Promise((r) => setTimeout(r, time)).then(() => {
-          cache[key].time = Date.now()
-          cache[key].data = data
-          delete cache[key].promise
-          return cache[key].data
-        }),
-      }
-
-      return cache[key].promise
-    },
-  }
-}
-
 export const sleepCache = createSleepCache()
 
 const routes: Route[] = [
