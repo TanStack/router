@@ -9,7 +9,7 @@
     "start": "yarn watch",
     "format": "yarn workspaces run format",
     "doctoc": "yarn workspaces run doctoc",
-    "cipublish": "ts-node --project scripts/tsconfig.json scripts/publish.ts"
+    "cipublish": "yarn test && ts-node --project scripts/tsconfig.json scripts/publish.ts"
   },
   "workspaces": {
     "packages": [
