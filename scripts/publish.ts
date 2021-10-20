@@ -230,7 +230,10 @@ async function run() {
     console.log()
     console.log(`  npm publish ${packageDir} --tag ${tag}`)
     console.log()
-    execSync(`npm publish ${packageDir} --tag ${tag}`, { stdio: 'inherit' })
+    execSync(
+      `npm publish ${packageDir} --tag ${tag} --token ${process.env.NPM_TOKEN}`,
+      { stdio: 'inherit' }
+    )
   })
 }
 
