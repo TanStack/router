@@ -92,70 +92,60 @@ async function updateExamplesPackageConfig(
 }
 
 async function run() {
-  try {
-    let args = process.argv.slice(2)
-    let givenVersion = args[0]
-    let prereleaseId = args[1]
+  let args = process.argv.slice(2)
+  let givenVersion = args[0]
+  let prereleaseId = args[1]
 
-    ensureCleanWorkingDirectory()
+  ensureCleanWorkingDirectory()
 
-    let currentVersion = await getPackageVersion(packageNames[0][0])
-    let version = semver.valid(givenVersion)
-    if (version == null) {
-      version = getNextVersion(currentVersion, givenVersion, prereleaseId)
-    }
+  let currentVersion = await getPackageVersion(packageNames[0][0])
+  let version = semver.valid(givenVersion)
+  if (version == null) {
+    version = getNextVersion(currentVersion, givenVersion, prereleaseId)
+  }
 
-    let answer = await prompt(
-      `Are you sure you want to bump version ${currentVersion} to ${version}? [Yn] `
-    )
+  let answer = await prompt(
+    `Are you sure you want to bump version ${currentVersion} to ${version}? [Yn] `
+  )
 
-    if (answer === false) return 0
+  if (answer === false) return 0
 
-    // Update each package to the new version along with any dependencies
-    await Promise.all(
-      packageNames.map(async (packageName) => {
-        await updatePackageConfig(packageName, (config) => {
-          config.version = version
-          packageNames.forEach((packageName) => {
-            if (config.dependencies[packageName]) {
-              config.dependencies[packageName] = version
-            }
-          })
-        })
-        console.log(
-          chalk.green(`  Updated ${packageName} to version ${version}`)
-        )
-      })
-    )
-
-    // Upate example dependencies to the new version
-    let examples = await fsp.readdir(examplesDir)
-    for (const example of examples) {
-      let stat = await fsp.stat(path.join(examplesDir, example))
-      if (!stat.isDirectory()) continue
-
-      await updateExamplesPackageConfig(example, (config) => {
+  // Update each package to the new version along with any dependencies
+  await Promise.all(
+    packageNames.map(async (packageName) => {
+      await updatePackageConfig(packageName, (config) => {
+        config.version = version
         packageNames.forEach((packageName) => {
           if (config.dependencies[packageName]) {
             config.dependencies[packageName] = version
           }
         })
       })
-    }
+      console.log(chalk.green(`  Updated ${packageName} to version ${version}`))
+    })
+  )
 
-    execSync(`git commit --all --message="Version ${version}"`)
-    execSync(`git tag -a -m "Version ${version}" v${version}`)
-    console.log(chalk.green(`  Committed and tagged version ${version}`))
-  } catch (error: any) {
-    console.log()
-    console.error(chalk.red(`  ${error.message}`))
-    console.log()
-    return 1
+  // Upate example dependencies to the new version
+  let examples = await fsp.readdir(examplesDir)
+  for (const example of examples) {
+    let stat = await fsp.stat(path.join(examplesDir, example))
+    if (!stat.isDirectory()) continue
+
+    await updateExamplesPackageConfig(example, (config) => {
+      packageNames.forEach((packageName) => {
+        if (config.dependencies[packageName]) {
+          config.dependencies[packageName] = version
+        }
+      })
+    })
   }
 
-  return 0
+  execSync(`git commit --all --message="Version ${version}"`)
+  execSync(`git tag -a -m "Version ${version}" v${version}`)
+  console.log(chalk.green(`  Committed and tagged version ${version}`))
 }
 
-run().then((code) => {
-  process.exit(code)
+run().catch((err) => {
+  console.log(err)
+  process.exit(1)
 })
