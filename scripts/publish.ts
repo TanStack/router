@@ -132,10 +132,13 @@ async function run() {
       },
       (err: any, version: { releaseType: string }) => {
         if (err) return e(err)
+        console.log(version)
         r(version.releaseType)
       }
     )
   )
+
+  return
 
   // TODO: This would be great to get working
   // const changelog = await new Promise(function (resolve, reject) {
