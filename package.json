@@ -9,8 +9,8 @@
     "start": "yarn watch",
     "format": "yarn workspaces run format",
     "doctoc": "yarn workspaces run doctoc",
-    "publish": "ts-node -T scripts/publish.js",
-    "version": "ts-node -T scripts/version.js"
+    "publish": "ts-node -T scripts/publish.ts",
+    "bump": "ts-node -T scripts/version.ts"
   },
   "workspaces": {
     "packages": [
