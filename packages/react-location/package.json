@@ -13,7 +13,7 @@
   "unpkg": "dist/react-location.development.js",
   "types": "types/index.d.ts",
   "scripts": {
-    "test": "is-ci && yarn test:ci || yarn test:dev",
+    "test": "(is-ci && yarn test:ci) || yarn test:dev",
     "test:dev": "npm run test:types && npm run && yarn test:jest --watch",
     "test:ci": "npm run test:types && npm run && yarn test:jest",
     "test:coverage": "yarn test:ci; open coverage/lcov-report/index.html",
