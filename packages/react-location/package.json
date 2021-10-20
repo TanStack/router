@@ -42,9 +42,6 @@
       "packages/react-location-simple-cache"
     ]
   },
-  "engines": {
-    "node": ">=12"
-  },
   "release": {
     "branches": [
       "main",

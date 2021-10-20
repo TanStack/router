@@ -116,9 +116,10 @@ function getTaggedVersion() {
 
 async function run() {
   if (!process.env.CI) {
-    throw new Error(
+    console.warn(
       `You should always run the publish script from the CI environment!`
     )
+    return
   }
 
   const branchName: string = currentGitBranch()
