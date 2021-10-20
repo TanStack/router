@@ -13,7 +13,7 @@ const semver = require('semver')
 // The first package will be used as the versioner
 const packageNames: [string, string[]][] = [
   ['react-location', []],
-  ['react-location-simple-cache', []],
+  // ['react-location-simple-cache', []],
 ]
 
 const rootDir = path.resolve(__dirname, '..')
