@@ -25,7 +25,6 @@ jobs:
         git config --global user.name 'Tanner Linsley'\n
         git config --global user.email 'tannerlinsley@users.noreply.github.com'\n
         yarn cipublish\n"
-      # - run: 
-      #   env:
-      #     NODE_AUTH_TOKEN: ${{secrets.npm_token}}
-      #     GH_TOKEN: ${{secrets.GH_TOKEN}}
+        env:
+          NPM_TOKEN: ${{secrets.npm_token}}
+          # GH_TOKEN: ${{secrets.GH_TOKEN}}
