@@ -22,7 +22,6 @@ jobs:
       - name: Install dependencies
         uses: bahmutov/npm-install@v1
       - run: "
-        yarn config set registry=https://registry.npmjs.org:$NPM_TOKEN\n
         git config --global user.name 'Tanner Linsley'\n
         git config --global user.email 'tannerlinsley@users.noreply.github.com'\n
         yarn cipublish\n"
