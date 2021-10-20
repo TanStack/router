@@ -228,9 +228,9 @@ async function run() {
   packageNames.map((packageName) => {
     let packageDir = path.join(rootDir, 'packages', packageName)
     console.log()
-    console.log(`  yarn publish ${packageDir} --tag ${tag}`)
+    console.log(`  npm publish ${packageDir} --tag ${tag}`)
     console.log()
-    execSync(`yarn publish ${packageDir} --tag ${tag}`, { stdio: 'inherit' })
+    execSync(`npm publish ${packageDir} --tag ${tag}`, { stdio: 'inherit' })
   })
 }
 
