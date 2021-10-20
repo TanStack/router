@@ -7,7 +7,9 @@ import {
   ReactLocation,
   ReactLocationProvider,
   Routes,
+  useResolvePath,
   useRoute,
+  useRouterState,
 } from "react-location";
 
 //
@@ -52,6 +54,8 @@ function Posts() {
   const {
     data: { posts },
   } = useRoute<{ posts: Post[] }>();
+  const routerState = useRouterState();
+  const resolvePath = useResolvePath();
 
   return (
     <div>
@@ -59,7 +63,12 @@ function Posts() {
       <div>
         {posts.map((post) => (
           <p key={post.id}>
-            <Link to={`./${post.id}`}>{post.title}</Link>
+            <Link to={`./${post.id}`}>
+              {post.title}{" "}
+              {routerState.nextLocation?.pathname === resolvePath(post.id)
+                ? "..."
+                : ""}
+            </Link>
           </p>
         ))}
       </div>
@@ -71,11 +80,18 @@ function Post() {
   const {
     data: { post },
   } = useRoute<{ post: Post }>();
+  const routerState = useRouterState();
+  const resolvePath = useResolvePath();
 
   return (
     <div>
       <div>
-        <Link to="..">Back</Link>
+        <Link to="..">
+          Back{" "}
+          {routerState.nextLocation?.pathname === resolvePath("..")
+            ? "..."
+            : ""}
+        </Link>
       </div>
       <h1>{post.title}</h1>
       <div>
