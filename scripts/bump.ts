@@ -7,11 +7,23 @@ const chalk = require('chalk')
 const promptConfirm = require('prompt-confirm')
 const jsonfile = require('jsonfile')
 const semver = require('semver')
+const branchName = require('current-git-branch')
+const conventionalRecommendedBump = require(`conventional-recommended-bump`)
+const standardChangelog = require('standard-changelog')
 
 //
 
 // TODO: List your npm packages here. The first package will be used as the versioner.
 const packageNames: string[] = ['react-location', 'react-location-simple-cache']
+const branches: Record<string, { prerelease?: boolean }> = {
+  main: {},
+  next: {
+    prerelease: true,
+  },
+  beta: {
+    prerelease: true,
+  },
+}
 
 const rootDir = path.resolve(__dirname, '..')
 const examplesDir = path.resolve(rootDir, 'examples')
@@ -24,42 +36,51 @@ function ensureCleanWorkingDirectory() {
   let status: string = execSync(`git status --porcelain`).toString().trim()
   let lines = status.split('\n')
 
-  if (!lines.every((line) => line === '' || line.startsWith('?'))) {
-    throw new Error(
-      'Working directory is not clean. Please commit or stash your changes.'
-    )
-  }
+  // if (!lines.every((line) => line === '' || line.startsWith('?'))) {
+  //   throw new Error(
+  //     'Working directory is not clean. Please commit or stash your changes.'
+  //   )
+  // }
 }
 
 function getNextVersion(
   currentVersion: string,
-  givenVersion: string,
-  prereleaseId: string
+  recommendedReleaseType: string,
+  prereleaseBranch?: string
 ) {
-  if (!(givenVersion != null)) {
-    throw new Error(
-      `Missing next version. Usage: node version.js [nextVersion]`
-    )
+  console.log({
+    currentVersion,
+    recommendedReleaseType,
+    prereleaseBranch,
+  })
+
+  if (!recommendedReleaseType) {
+    throw new Error(`Missing next version.`)
   }
 
-  if (/^pre/.test(givenVersion)) {
-    if (prereleaseId == null) {
-      throw new Error(
-        `Missing prerelease id. Usage: node version.js ${givenVersion} [prereleaseId]`
-      )
-    }
-  }
-
-  let nextVersion = semver.inc(currentVersion, givenVersion, prereleaseId)
+  let nextVersion = semver.inc(
+    currentVersion,
+    prereleaseBranch ? 'prerelease' : recommendedReleaseType,
+    prereleaseBranch
+  )
 
   if (!nextVersion) {
-    throw new Error(`Invalid version specifier: ${givenVersion}`)
+    throw new Error(
+      `Invalid version increment: ${JSON.stringify({
+        currentVersion,
+        recommendedReleaseType,
+        prereleaseBranch,
+      })}`
+    )
   }
 
   return nextVersion
 }
 
-async function prompt(question: string) {
+async function prompt(question: string, fallback: boolean): Promise<boolean> {
+  if (process.env.CI) {
+    return fallback
+  }
   let confirm = new promptConfirm(question)
   let answer = await confirm.run()
   return answer
@@ -92,23 +113,52 @@ async function updateExamplesPackageConfig(
 }
 
 async function run() {
-  let args = process.argv.slice(2)
-  let givenVersion = args[0]
-  let prereleaseId = args[1]
+  const branch: string = branchName()
+  const prereleaseBranch = branches[branch].prerelease ? branch : undefined
+  const recommendedReleaseType = await new Promise<string>((r, e) =>
+    conventionalRecommendedBump(
+      {
+        preset: 'angular',
+      },
+      (err: any, version: { releaseType: string }) => {
+        if (err) return e(err)
+        r(version.releaseType)
+      }
+    )
+  )
+
+  // TODO: This would be great to get working
+  // const changelog = await new Promise(function (resolve, reject) {
+  //   const chunks: Uint8Array[] = []
+  //   const strm = standardChangelog({
+  //     // infile: path.resolve(rootDir, 'CHANGELOG.md'),
+  //     preset: 'angular',
+  //     version: recommendedVersion,
+  //     // lernaPackage: packageNames[0],
+  //     // releaseCount: 1,
+  //   })
+  //   strm.on('data', (chunk: any) => chunks.push(Buffer.from(chunk)))
+  //   strm.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
+  //   strm.on('error', reject)
+  // })
 
   ensureCleanWorkingDirectory()
 
-  let currentVersion = await getPackageVersion(packageNames[0][0])
-  let version = semver.valid(givenVersion)
-  if (version == null) {
-    version = getNextVersion(currentVersion, givenVersion, prereleaseId)
-  }
-
-  let answer = await prompt(
-    `Are you sure you want to bump version ${currentVersion} to ${version}? [Yn] `
+  const currentVersion = await getPackageVersion(packageNames[0])
+  const version = getNextVersion(
+    currentVersion,
+    recommendedReleaseType,
+    prereleaseBranch
   )
 
-  if (answer === false) return 0
+  let answer = await prompt(
+    `Are you sure you want to bump version ${currentVersion} to ${version}? [Yn] `,
+    true
+  )
+
+  if (!answer) {
+    return
+  }
 
   // Update each package to the new version along with any dependencies
   await Promise.all(
