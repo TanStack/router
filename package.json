@@ -16,6 +16,10 @@
     "./packages/react-location",
     "./packages/react-location-simple-cache"
   ],
+  "engines": {
+    "// This is so we can use some older packages in CI": "",
+    "node": "10"
+  },
   "dependencies": {
     "@babel/cli": "^7.15.7",
     "@babel/core": "^7.15.8",
