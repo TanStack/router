@@ -220,8 +220,7 @@ async function run() {
   // Tag and commit
   execSync(`git commit --all --message="Version ${version}"`)
   execSync(`git tag -a -m "Version ${version}" v${version}`)
-  execSync(`git push --tags`)
-  console.log(chalk.green(`  Committed, tagged, and pushed version ${version}`))
+  console.log(chalk.green(`  Committed and tagged version ${version}`))
 
   let taggedVersion = getTaggedVersion()
   if (!taggedVersion) {
@@ -260,6 +259,10 @@ async function run() {
       { stdio: 'inherit' }
     )
   })
+
+  console.log(chalk.green(`  Pushing new tags to branch.`))
+  execSync(`git push --tags`)
+  console.log(chalk.green(`  Pushed tags to branch.`))
 }
 
 run().catch((err) => {
