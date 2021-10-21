@@ -2,7 +2,7 @@
   "private": true,
   "repository": "https://github.com/tannerlinsley/react-location.git",
   "scripts": {
-    "linkAll": "lerna exec npm link",
+    "linkAll": "lerna exec yarn link",
     "test": "lerna run test",
     "build": "lerna run build",
     "watch": "lerna run watch --parallel",

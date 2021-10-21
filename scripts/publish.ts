@@ -255,10 +255,10 @@ async function run() {
   packageNames.map((packageName) => {
     let packageDir = path.join(rootDir, 'packages', packageName)
     console.log()
-    console.log(`  npm publish ${packageDir} --tag ${tag} `)
+    console.log(`  yarn publish ${packageDir} --tag ${tag} `)
     console.log()
     execSync(
-      `npm publish ${packageDir} --tag ${tag} --token ${process.env.NPM_TOKEN}`,
+      `yarn publish ${packageDir} --tag ${tag} --token ${process.env.NPM_TOKEN}`,
       { stdio: 'inherit' }
     )
   })
