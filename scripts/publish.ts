@@ -42,11 +42,11 @@ function ensureCleanWorkingDirectory() {
   let status: string = execSync(`git status --porcelain`).toString().trim()
   let lines = status.split('\n')
 
-  // if (!lines.every((line) => line === '' || line.startsWith('?'))) {
-  //   throw new Error(
-  //     'Working directory is not clean. Please commit or stash your changes.'
-  //   )
-  // }
+  if (!lines.every((line) => line === '' || line.startsWith('?'))) {
+    throw new Error(
+      'Working directory is not clean. Please commit or stash your changes.'
+    )
+  }
 }
 
 function getNextVersion(
@@ -243,20 +243,20 @@ async function run() {
     })
   )
 
-  // Upate example dependencies to the new version
-  let examples = await fsp.readdir(examplesDir)
-  for (const example of examples) {
-    let stat = await fsp.stat(path.join(examplesDir, example))
-    if (!stat.isDirectory()) continue
+  // // Upate example dependencies to the new version
+  // let examples = await fsp.readdir(examplesDir)
+  // for (const example of examples) {
+  //   let stat = await fsp.stat(path.join(examplesDir, example))
+  //   if (!stat.isDirectory()) continue
 
-    await updateExamplesPackageConfig(example, (config) => {
-      packageNames.forEach((packageName) => {
-        if (config.dependencies[packageName]) {
-          config.dependencies[packageName] = version
-        }
-      })
-    })
-  }
+  //   await updateExamplesPackageConfig(example, (config) => {
+  //     packageNames.forEach((packageName) => {
+  //       if (config.dependencies[packageName]) {
+  //         config.dependencies[packageName] = version
+  //       }
+  //     })
+  //   })
+  // }
 
   // Tag and commit
   execSync(`git tag -a -m "v${version}" v${version}`)
