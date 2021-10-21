@@ -232,10 +232,6 @@ async function run() {
     prereleaseBranch
   )
 
-  console.log(latestTag, version)
-
-  await new Promise((r) => setTimeout(r, 100000000))
-
   console.log(`Bumping version from ${latestTag} to ${version}`)
 
   // Update each package to the new version along with any dependencies
