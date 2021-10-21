@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "jsx": "react",
+    "lib": ["ESNext", "dom"],
+    "target": "es5",
+    "noEmit": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": false,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "types": ["jest", "node"],
+    "paths": {
+      "react-location": ["./packages/react-location"],
+      "react-location-simple-cache": ["./packages/react-location-simple-cache"]
+    }
+  },
+  "include": ["./packages/*/src/*"]
+  // "exclude": ["./examples", "./test"]
+}

@@ -2,21 +2,20 @@
   "private": true,
   "repository": "https://github.com/tannerlinsley/react-location.git",
   "scripts": {
-    "test": "yarn workspaces run test",
-    "build": "yarn workspace run build",
-    "watch": "yarn workspaces run watch",
-    "prettier": "yarn workspaces prettier",
+    "linkAll": "lerna exec npm link",
+    "test": "lerna run test",
+    "build": "lerna run build",
+    "watch": "lerna run watch --parallel",
+    "prettier": "lerna run prettier",
     "start": "yarn watch",
-    "format": "yarn workspaces run format",
-    "doctoc": "yarn workspaces run doctoc",
-    "cipublish": "yarn test && ts-node --project scripts/tsconfig.json scripts/publish.ts"
+    "format": "lerna run format",
+    "doctoc": "lerna run doctoc",
+    "cipublish": "yarn test && ts-node scripts/publish.ts"
   },
-  "workspaces": {
-    "packages": [
-      "packages/react-location",
-      "packages/react-location-simple-cache"
-    ]
-  },
+  "workspaces": [
+    "./packages/react-location",
+    "./packages/react-location-simple-cache"
+  ],
   "dependencies": {
     "@babel/cli": "^7.15.7",
     "@babel/core": "^7.15.8",
@@ -38,8 +37,10 @@
     "cross-env": "^7.0.3",
     "current-git-branch": "^1.1.0",
     "doctoc": "^2.1.0",
+    "fast-async": "^6.3.8",
     "is-ci": "^3.0.0",
     "jsonfile": "^6.1.0",
+    "lerna": "^4.0.0",
     "prettier": "^2.4.1",
     "prompt-confirm": "^2.0.4",
     "react": "^17.0.2",
@@ -61,6 +62,5 @@
     "ts-node": "^10.3.0",
     "tslib": "^2.3.1",
     "typescript": "^4.4.3"
-  },
-  "version": "0.0.0"
+  }
 }

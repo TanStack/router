@@ -4,7 +4,6 @@ import ReactDOM from "react-dom";
 import axios from "axios";
 import {
   Link,
-  Loader,
   ReactLocation,
   ReactLocationProvider,
   Routes,
@@ -12,6 +11,7 @@ import {
   useRouterState,
   useResolvePath,
 } from "react-location";
+import { createReactLocationSimpleCache } from "react-location-simple-cache";
 
 //
 
@@ -21,84 +21,7 @@ type Post = {
   body: string;
 };
 
-type FetchPolicy = "cache-and-network" | "cache-first" | "network-only";
-
-//
-
-const createRouteDataCache = () => {
-  let cache: Record<
-    string,
-    { updatedAt: number; ready: boolean; promise?: Promise<any>; data?: any }
-  > = {};
-
-  return {
-    createLoader(
-      loader: Loader,
-      opts?: {
-        maxAge?: number;
-        policy?: FetchPolicy;
-      }
-    ) {
-      const maxAge = opts?.maxAge ?? 0;
-      const policy = opts?.policy ?? "cache-and-network";
-
-      const cachedLoader: Loader = async (match, options) => {
-        // Cache on pathname
-        const key = match.pathname;
-
-        // No cache? Create it.
-        if (!cache[key]) {
-          cache[key] = {
-            updatedAt: 0,
-            ready: false,
-            promise: null!,
-          };
-        }
-
-        const doFetch = () => {
-          options.dispatch({ type: "loading" });
-          return loader(match, options)
-            .then((data: any) => {
-              cache[key].updatedAt = Date.now();
-              cache[key].data = data;
-              cache[key].ready = true;
-              options.dispatch({ type: "resolve", data });
-              return data;
-            })
-            .catch((err: any) => {
-              options.dispatch({ type: "reject", error: err });
-              throw err;
-            });
-        };
-
-        if (policy === "network-only") {
-          return await doFetch();
-        }
-
-        if (!cache[key].updatedAt) {
-          await doFetch();
-        }
-
-        if (policy === "cache-first") {
-          return cache[key].data;
-        }
-
-        if (Date.now() - cache[key].updatedAt > maxAge) {
-          doFetch();
-        }
-
-        return cache[key].data;
-      };
-
-      return cachedLoader;
-    },
-    invalidate: () => {
-      cache = {};
-    },
-  };
-};
-
-const routeCache = createRouteDataCache();
+const routeCache = createReactLocationSimpleCache();
 
 const location = new ReactLocation();
 
@@ -115,15 +38,20 @@ function App() {
               async () => ({
                 posts: await fetchPosts(),
               }),
-              { maxAge: 5000 }
+              { key: () => "posts", maxAge: 1000000 }
             ),
           },
           {
             path: ":postId",
             element: <Post />,
-            loader: routeCache.createLoader(async ({ params: { postId } }) => ({
-              post: await fetchPostById(postId),
-            })),
+            loader: routeCache.createLoader(
+              async ({ params: { postId } }) => ({
+                post: await fetchPostById(postId),
+              }),
+              {
+                key: (match) => `posts/${match.params.postId}`,
+              }
+            ),
           },
         ]}
       />
@@ -135,7 +63,7 @@ function Posts() {
   const {
     data: { posts },
     isLoading,
-  } = useRoute<{ posts: Post[] }>();
+  } = useRoute<unknown, { posts: Post[] }>();
   const resolvePath = useResolvePath();
   const routerState = useRouterState();
 
@@ -162,7 +90,7 @@ function Post() {
   const {
     data: { post },
     isLoading,
-  } = useRoute<{ post: Post }>();
+  } = useRoute<unknown, { post: Post }>();
   const resolvePath = useResolvePath();
   const routerState = useRouterState();
 
@@ -187,7 +115,7 @@ function Post() {
 }
 
 async function fetchPosts() {
-  await new Promise((r) => setTimeout(r, 2000));
+  await new Promise((r) => setTimeout(r, 1000));
   const { data } = await axios.get(
     "https://jsonplaceholder.typicode.com/posts"
   );
@@ -195,7 +123,7 @@ async function fetchPosts() {
 }
 
 async function fetchPostById(id: string) {
-  await new Promise((r) => setTimeout(r, 2000));
+  await new Promise((r) => setTimeout(r, 1000));
   const { data } = await axios.get(
     `https://jsonplaceholder.typicode.com/posts/${id}`
   );

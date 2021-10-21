@@ -25,7 +25,7 @@ With tokens and page index in hand, rename `.sample.env` and `.sample.env.build`
 +BLOG_INDEX_ID=<YOUR_BLOG_INDEX_ID>
 ```
 
-Now it will work. Run `yarn dev` to get going.
+Now it will work. Run `npm start dev` to get going.
 
 If you get stuck or need help, [send a DM to Jared](https://twitter.com/jaredpalmer) on Twitter.
 
