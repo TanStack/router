@@ -220,7 +220,8 @@ async function run() {
   // Tag and commit
   execSync(`git commit --all --message="Version ${version}"`)
   execSync(`git tag -a -m "Version ${version}" v${version}`)
-  console.log(chalk.green(`  Committed and tagged version ${version}`))
+  execSync(`git push --tags`)
+  console.log(chalk.green(`  Committed, tagged, and pushed version ${version}`))
 
   let taggedVersion = getTaggedVersion()
   if (!taggedVersion) {
