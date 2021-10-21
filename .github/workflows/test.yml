@@ -16,4 +16,4 @@ jobs:
         uses: bahmutov/npm-install@v1
         with:
           install-command: yarn --frozen-lockfile --ignore-engines
-      - run: yarn test:ci
+      - run: yarn test
