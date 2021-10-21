@@ -12,10 +12,7 @@ const standardChangelog = require('standard-changelog')
 //
 
 // TODO: List your npm packages here. The first package will be used as the versioner.
-const packageNames: string[] = [
-  'react-location',
-  // 'react-location-simple-cache'
-]
+const packageNames: string[] = ['react-location', 'react-location-simple-cache']
 const branches: Record<string, { prerelease: boolean; tag: string }> = {
   main: {
     tag: 'latest',
