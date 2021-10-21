@@ -1,6 +1,6 @@
 // Originally ported to TS from https://github.com/remix-run/react-router/tree/main/scripts/{version,publish}.js
 const path = require('path')
-const { execSync } = require('child_process')
+const { exec, execSync } = require('child_process')
 const fsp = require('fs/promises')
 const chalk = require('chalk')
 const jsonfile = require('jsonfile')
@@ -8,6 +8,9 @@ const semver = require('semver')
 const currentGitBranch = require('current-git-branch')
 const conventionalRecommendedBump = require(`conventional-recommended-bump`)
 const standardChangelog = require('standard-changelog')
+const { parseCommit } = require('parse-commit-message')
+const log = require('git-log-parser')
+const streamToArray = require('stream-to-array')
 
 //
 
@@ -48,18 +51,18 @@ function ensureCleanWorkingDirectory() {
 
 function getNextVersion(
   currentVersion: string,
-  recommendedReleaseLevel: 0 | 1 | 2,
+  recommendedReleaseLevel: number,
   prereleaseBranch?: string
 ) {
-  console.log({
-    currentVersion,
-    recommendedReleaseLevel,
-    prereleaseBranch,
-  })
-
   const releaseType = prereleaseBranch
     ? 'prerelease'
     : { 0: 'patch', 1: 'minor', 2: 'major' }[recommendedReleaseLevel]
+
+  if (!releaseType) {
+    throw new Error(
+      `Invalid release brand: ${prereleaseBranch} or level: ${recommendedReleaseLevel}`
+    )
+  }
 
   let nextVersion = semver.inc(currentVersion, releaseType, prereleaseBranch)
 
@@ -118,40 +121,83 @@ async function run() {
   const branchName: string = currentGitBranch()
   const branch = branches[branchName]
   const prereleaseBranch = branch.prerelease ? branchName : undefined
-  const recommendedReleaseLevel = await new Promise<-1 | 0 | 1 | 2>((r, e) =>
-    conventionalRecommendedBump(
-      {
-        preset: 'angular',
-        whatBump: (commits: any) => {
-          console.log(commits)
-          let level: number = -1
 
-          commits.forEach((commit: any) => {
-            if (['fix', 'refactor'].includes(commit.type)) {
-              level = Math.max(level, 0)
-            }
-            if (['feat'].includes(commit.type)) {
-              level = Math.max(level, 1)
-            }
-            if (['feat'].includes(commit.type)) {
-              level = Math.max(level, 1)
-            }
-            if (commit.notes.length > 0) {
-              level = Math.max(level, 2)
+  let tags = await new Promise<string[]>((resolve, reject) =>
+    exec('git tag', function (err: any, stdout: any, stderr: any) {
+      if (err) return reject(err)
+      return resolve(stdout.toString().split('\n'))
+    })
+  )
+
+  tags = tags
+    .filter(semver.valid)
+    .filter((tag) => {
+      if (branch.prerelease) {
+        return tag.includes(`-${branchName}`)
+      }
+
+      return true
+    })
+    .sort(semver.compare)
+
+  const latestTag = [...tags].pop()
+
+  // let commitsSinceLatestTag = await new Promise<string[]>((resolve, reject) =>
+  //   exec(
+  //     `git log ${latestTag}..HEAD`,
+  //     function (err: any, stdout: any, stderr: any) {
+  //       if (err) return reject(err)
+  //       resolve(testCommitString.split(/^commit /gm))
+  //       // return resolve(stdout.toString().split('\n').filter(Boolean))
+  //     }
+  //   )
+  // )
+
+  let commitsSinceLatestTag = await new Promise<
+    {
+      subject: string
+      body: string
+      parsed: { header: { type: string; scope: null; subject: string } }
+    }[]
+  >((resolve, reject) => {
+    const strm = log.parse({
+      _: `${latestTag}..HEAD`,
+    })
+    streamToArray(strm, function (err: any, arr: any[]) {
+      if (err) return reject(err)
+      resolve(
+        arr
+          .map((d) => {
+            try {
+              return { ...d, parsed: parseCommit(d.subject) }
+            } catch (err) {
+              // not a valid commit message
+              return undefined
             }
           })
+          .filter(Boolean)
+      )
+    })
+  })
 
-          return {
-            level,
-          }
-        },
-      },
-      (err: any, version: { level: -1 | 0 | 1 | 2 }) => {
-        if (err) return e(err)
-        console.log(version)
-        r(version.level)
+  const recommendedReleaseLevel: number = commitsSinceLatestTag.reduce(
+    (releaseLevel, commit) => {
+      if (['fix', 'refactor'].includes(commit.parsed.header.type)) {
+        releaseLevel = Math.max(releaseLevel, 0)
       }
-    )
+      if (['feat'].includes(commit.parsed.header.type)) {
+        releaseLevel = Math.max(releaseLevel, 1)
+      }
+      if (['feat'].includes(commit.parsed.header.type)) {
+        releaseLevel = Math.max(releaseLevel, 1)
+      }
+      if (commit.body.includes('BREAKING CHANGE')) {
+        releaseLevel = Math.max(releaseLevel, 2)
+      }
+
+      return releaseLevel
+    },
+    -1
   )
 
   if (recommendedReleaseLevel === -1) {
@@ -268,3 +314,51 @@ run().catch((err) => {
   console.log(err)
   process.exit(1)
 })
+
+const testCommitString = `commit da602fc487b382ca51467f4b87356fe49e840aca
+Author: Tanner Linsley <tannerlinsley@gmail.com>
+Date:   Thu Feb 4 18:14:26 2021 -0700
+
+    fix root width
+
+commit e1fb86c570013457760a375045f73802b7a5ea3e
+Merge: 20cd3181 5362bde1
+Author: Tanner Linsley <tannerlinsley@gmail.com>
+Date:   Thu Feb 4 18:09:09 2021 -0700
+
+    Merge branch 'dev' into beta
+
+commit 5362bde15c7d695eff470ee49f67c1c979c53340
+Author: Tanner Linsley <tannerlinsley@gmail.com>
+Date:   Thu Feb 4 18:07:01 2021 -0700
+
+    fix charts
+
+commit 9d300c3a741cdccf3dfa3cd125039de30fb16242
+Author: Tanner Linsley <tannerlinsley@gmail.com>
+Date:   Thu Feb 4 15:37:03 2021 -0700
+
+    Update inactive account banner
+
+commit fb4498f006a797b9112c37a75b85836d23508f66
+Author: Tanner Linsley <tannerlinsley@gmail.com>
+Date:   Thu Feb 4 15:10:33 2021 -0700
+
+    Improve single day time series
+
+commit 6364c3b8aa13a232eadee095097d123a8deb3b2c
+Author: Tanner Linsley <tannerlinsley@gmail.com>
+Date:   Thu Feb 4 13:54:01 2021 -0700
+
+    Update Auth.js
+
+commit 4d21e5202cccb4c45977b309849e4f32f609727a
+Merge: 547e0d78 c2f5c9d0
+Author: Tanner Linsley <tannerlinsley@gmail.com>
+Date:   Thu Feb 4 13:52:37 2021 -0700
+
+    Merge pull request #778 from nozzle/fix-Billing
+    
+    Fixes to billing page
+
+`

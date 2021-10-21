@@ -29,6 +29,7 @@
     "@testing-library/react-hooks": "^7.0.2",
     "@types/react": "^17.0.27",
     "@types/react-dom": "^17.0.9",
+    "@types/semver": "^7.3.9",
     "babel-plugin-const-enum": "^1.1.0",
     "babel-plugin-dev-expression": "^0.2.2",
     "babel-plugin-transform-async-to-promises": "^0.8.15",
@@ -38,9 +39,11 @@
     "current-git-branch": "^1.1.0",
     "doctoc": "^2.1.0",
     "fast-async": "^6.3.8",
+    "git-log-parser": "^1.2.0",
     "is-ci": "^3.0.0",
     "jsonfile": "^6.1.0",
     "lerna": "^4.0.0",
+    "parse-commit-message": "^3.2.3",
     "prettier": "^2.4.1",
     "prompt-confirm": "^2.0.4",
     "react": "^17.0.2",
@@ -59,8 +62,10 @@
     "rollup-plugin-terser": "^7.0.2",
     "rollup-plugin-visualizer": "^5.5.2",
     "standard-changelog": "^2.0.27",
+    "stream-to-array": "^2.3.0",
     "ts-node": "^10.3.0",
     "tslib": "^2.3.1",
     "typescript": "^4.4.3"
-  }
+  },
+  "devDependencies": {}
 }

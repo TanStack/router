@@ -9,8 +9,6 @@ on:
 jobs:
   publish-module:
     name: 'Publish Module to NPM'
-    # needs: test
-    # publish only when merged in master on original repo, not on PR
     if: github.repository == 'tannerlinsley/react-location' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/next')
     runs-on: ubuntu-latest
     steps:
