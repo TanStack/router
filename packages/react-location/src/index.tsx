@@ -57,7 +57,7 @@ export type Route = RouteBasic | RouteAsync
 
 export type RouteBasic = {
   path: string
-  loader?: Loader
+  loader?: LoaderFn
   element?: SyncOrAsyncNode
   errorElement?: SyncOrAsyncNode
   pendingElement?: SyncOrAsyncNode
@@ -100,10 +100,12 @@ export type RouteMatch<TParams = unknown, TData = unknown> = {
 export type Params = Record<string, string>
 export type LoaderData = Record<string, any>
 
-export type Loader = (
+export type LoaderFn = (
   routeMatch: RouteMatch,
-  opts: { dispatch: (event: LoaderDispatchEvent) => void },
+  opts: LoaderFnOptions,
 ) => PromiseLike<LoaderData>
+
+export type LoaderFnOptions = { dispatch: (event: LoaderDispatchEvent) => void }
 
 type PromiseLike<T> = Promise<T> | T
 

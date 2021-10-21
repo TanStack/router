@@ -11,7 +11,7 @@ import {
   useRouterState,
   useResolvePath,
 } from "react-location";
-import { createReactLocationSimpleCache } from "react-location-simple-cache";
+import { ReactLocationSimpleCache } from "react-location-simple-cache";
 
 //
 
@@ -21,8 +21,7 @@ type Post = {
   body: string;
 };
 
-const routeCache = createReactLocationSimpleCache();
-
+const routeCache = new ReactLocationSimpleCache();
 const location = new ReactLocation();
 
 function App() {
@@ -34,12 +33,9 @@ function App() {
           {
             path: "/",
             element: <Posts />,
-            loader: routeCache.createLoader(
-              async () => ({
-                posts: await fetchPosts(),
-              }),
-              { key: () => "posts", maxAge: 1000000 }
-            ),
+            loader: routeCache.createLoader(async () => ({
+              posts: await fetchPosts(),
+            })),
           },
           {
             path: ":postId",
@@ -49,7 +45,7 @@ function App() {
                 post: await fetchPostById(postId),
               }),
               {
-                key: (match) => `posts/${match.params.postId}`,
+                maxAge: 1000 * 10, // 10 seconds
               }
             ),
           },
