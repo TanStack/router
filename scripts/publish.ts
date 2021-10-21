@@ -122,12 +122,7 @@ async function run() {
   const branch = branches[branchName]
   const prereleaseBranch = branch.prerelease ? branchName : undefined
 
-  let tags = await new Promise<string[]>((resolve, reject) =>
-    exec('git tag', function (err: any, stdout: any, stderr: any) {
-      if (err) return reject(err)
-      return resolve(stdout.toString().split('\n'))
-    })
-  )
+  let tags: string[] = execSync('git tag').toString().split('\n')
 
   tags = tags
     .filter(semver.valid)
