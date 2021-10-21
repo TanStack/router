@@ -1,4 +1,7 @@
 name: publish
+concurrency:
+  group: publish-${{ github.github.base_ref }}
+  cancel-in-progress: true
 on:
   push:
     branches:
