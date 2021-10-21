@@ -24,7 +24,7 @@ jobs:
       - run: |
           git config --global user.name 'Tanner Linsley'
           git config --global user.email 'tannerlinsley@users.noreply.github.com'
-          yarn cipublishs
+          yarn cipublish
         env:
           YARN_REGISTRY: https://registry.npmjs.org/
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
