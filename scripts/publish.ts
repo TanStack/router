@@ -34,82 +34,6 @@ const branches: Record<string, { prerelease: boolean; tag: string }> = {
 const rootDir = path.resolve(__dirname, '..')
 const examplesDir = path.resolve(rootDir, 'examples')
 
-function packageJson(packageName: string, directory = 'packages') {
-  return path.join(rootDir, directory, packageName, 'package.json')
-}
-
-function ensureCleanWorkingDirectory() {
-  let status: string = execSync(`git status --porcelain`).toString().trim()
-  let lines = status.split('\n')
-
-  if (!lines.every((line) => line === '' || line.startsWith('?'))) {
-    throw new Error(
-      'Working directory is not clean. Please commit or stash your changes.'
-    )
-  }
-}
-
-function getNextVersion(
-  currentVersion: string,
-  recommendedReleaseLevel: number,
-  prereleaseBranch?: string
-) {
-  const releaseType = prereleaseBranch
-    ? 'prerelease'
-    : { 0: 'patch', 1: 'minor', 2: 'major' }[recommendedReleaseLevel]
-
-  if (!releaseType) {
-    throw new Error(
-      `Invalid release brand: ${prereleaseBranch} or level: ${recommendedReleaseLevel}`
-    )
-  }
-
-  let nextVersion = semver.inc(currentVersion, releaseType, prereleaseBranch)
-
-  if (!nextVersion) {
-    throw new Error(
-      `Invalid version increment: ${JSON.stringify({
-        currentVersion,
-        recommendedReleaseLevel,
-        prereleaseBranch,
-      })}`
-    )
-  }
-
-  return nextVersion
-}
-
-async function getPackageVersion(packageName: string) {
-  let file = packageJson(packageName)
-  let json = await jsonfile.readFile(file)
-  return json.version
-}
-
-async function updatePackageConfig(
-  packageName: string,
-  transform: (json: any) => void
-) {
-  let file = packageJson(packageName)
-  let json = await jsonfile.readFile(file)
-  transform(json)
-  await jsonfile.writeFile(file, json, { spaces: 2 })
-}
-
-async function updateExamplesPackageConfig(
-  example: string,
-  transform: (json: any) => void
-) {
-  let file = packageJson(example, 'examples')
-  let json = await jsonfile.readFile(file)
-  transform(json)
-  await jsonfile.writeFile(file, json, { spaces: 2 })
-}
-
-function getTaggedVersion() {
-  let output = execSync('git tag --list --points-at HEAD').toString()
-  return output.replace(/^v|\n+$/g, '')
-}
-
 async function run() {
   if (!process.env.CI) {
     console.warn(
@@ -118,23 +42,28 @@ async function run() {
     return
   }
 
+  ensureCleanWorkingDirectory()
+
   const branchName: string = currentGitBranch()
   const branch = branches[branchName]
   const prereleaseBranch = branch.prerelease ? branchName : undefined
 
+  // Get tags
   let tags: string[] = execSync('git tag').toString().split('\n')
 
+  // Filter tags to our branch/pre-release combo
   tags = tags
     .filter(semver.valid)
     .filter((tag) => {
       if (branch.prerelease) {
         return tag.includes(`-${branchName}`)
       }
-
       return true
     })
+    // sort by latest
     .sort(semver.compare)
 
+  // Get the latest tag
   const latestTag = [...tags].pop()
 
   if (!latestTag) {
@@ -143,17 +72,7 @@ async function run() {
     )
   }
 
-  // let commitsSinceLatestTag = await new Promise<string[]>((resolve, reject) =>
-  //   exec(
-  //     `git log ${latestTag}..HEAD`,
-  //     function (err: any, stdout: any, stderr: any) {
-  //       if (err) return reject(err)
-  //       resolve(testCommitString.split(/^commit /gm))
-  //       // return resolve(stdout.toString().split('\n').filter(Boolean))
-  //     }
-  //   )
-  // )
-
+  // Get the commits since the latest tag
   let commitsSinceLatestTag = await new Promise<
     {
       subject: string
@@ -181,6 +100,7 @@ async function run() {
     })
   })
 
+  // Pares the commit messsages, log them, and determine the type of release needed
   const recommendedReleaseLevel: number = commitsSinceLatestTag.reduce(
     (releaseLevel, commit) => {
       console.log(
@@ -227,8 +147,6 @@ async function run() {
   //   strm.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
   //   strm.on('error', reject)
   // })
-
-  ensureCleanWorkingDirectory()
 
   // const currentVersion = await getPackageVersion(packageNames[0])
   const version = getNextVersion(
@@ -320,3 +238,79 @@ run().catch((err) => {
   console.log(err)
   process.exit(1)
 })
+
+function packageJson(packageName: string, directory = 'packages') {
+  return path.join(rootDir, directory, packageName, 'package.json')
+}
+
+function ensureCleanWorkingDirectory() {
+  let status: string = execSync(`git status --porcelain`).toString().trim()
+  let lines = status.split('\n')
+
+  if (!lines.every((line) => line === '' || line.startsWith('?'))) {
+    throw new Error(
+      'Working directory is not clean. Please commit or stash your changes.'
+    )
+  }
+}
+
+function getNextVersion(
+  currentVersion: string,
+  recommendedReleaseLevel: number,
+  prereleaseBranch?: string
+) {
+  const releaseType = prereleaseBranch
+    ? 'prerelease'
+    : { 0: 'patch', 1: 'minor', 2: 'major' }[recommendedReleaseLevel]
+
+  if (!releaseType) {
+    throw new Error(
+      `Invalid release brand: ${prereleaseBranch} or level: ${recommendedReleaseLevel}`
+    )
+  }
+
+  let nextVersion = semver.inc(currentVersion, releaseType, prereleaseBranch)
+
+  if (!nextVersion) {
+    throw new Error(
+      `Invalid version increment: ${JSON.stringify({
+        currentVersion,
+        recommendedReleaseLevel,
+        prereleaseBranch,
+      })}`
+    )
+  }
+
+  return nextVersion
+}
+
+async function getPackageVersion(packageName: string) {
+  let file = packageJson(packageName)
+  let json = await jsonfile.readFile(file)
+  return json.version
+}
+
+async function updatePackageConfig(
+  packageName: string,
+  transform: (json: any) => void
+) {
+  let file = packageJson(packageName)
+  let json = await jsonfile.readFile(file)
+  transform(json)
+  await jsonfile.writeFile(file, json, { spaces: 2 })
+}
+
+async function updateExamplesPackageConfig(
+  example: string,
+  transform: (json: any) => void
+) {
+  let file = packageJson(example, 'examples')
+  let json = await jsonfile.readFile(file)
+  transform(json)
+  await jsonfile.writeFile(file, json, { spaces: 2 })
+}
+
+function getTaggedVersion() {
+  let output = execSync('git tag --list --points-at HEAD').toString()
+  return output.replace(/^v|\n+$/g, '')
+}
