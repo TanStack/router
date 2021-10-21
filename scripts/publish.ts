@@ -183,6 +183,11 @@ async function run() {
 
   const recommendedReleaseLevel: number = commitsSinceLatestTag.reduce(
     (releaseLevel, commit) => {
+      console.log(
+        commit.parsed.header.type,
+        commit.parsed.header.scope,
+        commit.parsed.header.subject
+      )
       if (['fix', 'refactor'].includes(commit.parsed.header.type)) {
         releaseLevel = Math.max(releaseLevel, 0)
       }
@@ -315,51 +320,3 @@ run().catch((err) => {
   console.log(err)
   process.exit(1)
 })
-
-const testCommitString = `commit da602fc487b382ca51467f4b87356fe49e840aca
-Author: Tanner Linsley <tannerlinsley@gmail.com>
-Date:   Thu Feb 4 18:14:26 2021 -0700
-
-    fix root width
-
-commit e1fb86c570013457760a375045f73802b7a5ea3e
-Merge: 20cd3181 5362bde1
-Author: Tanner Linsley <tannerlinsley@gmail.com>
-Date:   Thu Feb 4 18:09:09 2021 -0700
-
-    Merge branch 'dev' into beta
-
-commit 5362bde15c7d695eff470ee49f67c1c979c53340
-Author: Tanner Linsley <tannerlinsley@gmail.com>
-Date:   Thu Feb 4 18:07:01 2021 -0700
-
-    fix charts
-
-commit 9d300c3a741cdccf3dfa3cd125039de30fb16242
-Author: Tanner Linsley <tannerlinsley@gmail.com>
-Date:   Thu Feb 4 15:37:03 2021 -0700
-
-    Update inactive account banner
-
-commit fb4498f006a797b9112c37a75b85836d23508f66
-Author: Tanner Linsley <tannerlinsley@gmail.com>
-Date:   Thu Feb 4 15:10:33 2021 -0700
-
-    Improve single day time series
-
-commit 6364c3b8aa13a232eadee095097d123a8deb3b2c
-Author: Tanner Linsley <tannerlinsley@gmail.com>
-Date:   Thu Feb 4 13:54:01 2021 -0700
-
-    Update Auth.js
-
-commit 4d21e5202cccb4c45977b309849e4f32f609727a
-Merge: 547e0d78 c2f5c9d0
-Author: Tanner Linsley <tannerlinsley@gmail.com>
-Date:   Thu Feb 4 13:52:37 2021 -0700
-
-    Merge pull request #778 from nozzle/fix-Billing
-    
-    Fixes to billing page
-
-`
