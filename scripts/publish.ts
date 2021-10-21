@@ -239,6 +239,8 @@ async function run() {
 
   console.log(`Bumping version from ${latestTag} to ${version}`)
 
+  await new Promise((r) => setTimeout(r, 10000000))
+
   // Update each package to the new version along with any dependencies
   await Promise.all(
     packageNames.map(async (packageName) => {
