@@ -22,6 +22,8 @@ jobs:
           registry-url: https://registry.npmjs.org/
       - name: Install dependencies
         uses: bahmutov/npm-install@v1
+        with:
+          install-command: yarn --frozen-lockfile --ignore-engines
       - run: |
           git config --global user.name 'Tanner Linsley'
           git config --global user.email 'tannerlinsley@users.noreply.github.com'
