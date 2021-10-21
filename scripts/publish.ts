@@ -137,6 +137,12 @@ async function run() {
 
   const latestTag = [...tags].pop()
 
+  if (!latestTag) {
+    throw new Error(
+      'Could not find latest tag! Maybe make a manual release tag of v0.0.1 fist, then try again?'
+    )
+  }
+
   // let commitsSinceLatestTag = await new Promise<string[]>((resolve, reject) =>
   //   exec(
   //     `git log ${latestTag}..HEAD`,
@@ -219,14 +225,18 @@ async function run() {
 
   ensureCleanWorkingDirectory()
 
-  const currentVersion = await getPackageVersion(packageNames[0])
+  // const currentVersion = await getPackageVersion(packageNames[0])
   const version = getNextVersion(
-    currentVersion,
+    latestTag,
     recommendedReleaseLevel,
     prereleaseBranch
   )
 
-  console.log(`Bumping version from ${currentVersion} to ${version}`)
+  console.log(latestTag, version)
+
+  await new Promise((r) => setTimeout(r, 100000000))
+
+  console.log(`Bumping version from ${latestTag} to ${version}`)
 
   // Update each package to the new version along with any dependencies
   await Promise.all(
