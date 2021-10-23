@@ -32,14 +32,26 @@ An enterprise-grade router designed exclusively for the client that brings the b
 
 ## Quick Features
 
-- Route loaders & error boundaries
-- Pending route threshold fallbacks
-- Asynchronous routing trees (module-splitting, dynamic routes)
-- Deeply integrated URL Search API
-  - JSON
-  - Immutable w/ Structural Sharing
+- Deeply integrated URL Search Params API
+  - Route Matching
+  - Full `<Link>` and `useNavigate` support
+  - `cmd+click` support
+  - JSON State/Storage
+  - Immutability w/ Structural Sharing
   - Compression
   - Types
+- Promise-based route loaders
+- Post-render Async loader APIs (stale-while-revalidate, external cache integration)
+- Asynchronous route definitions
+- Asynchronous element definitions
+- Error boundary route elements
+- Threshold-based pending route elements
+- Route state hooks (data)
+- Router state hooks
+- Optional route filtering/ranking API
+- Prepackaged simple cache implementation for simple route loader caching
+- Integration w/ external caches and storage (eg. React Query)
+- SSR route matching, loading & hydration
 
 ### [Become a Sponsor!](https://github.com/sponsors/tannerlinsley/)
 

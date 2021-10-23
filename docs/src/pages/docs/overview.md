@@ -3,24 +3,53 @@ id: overview
 title: Overview
 ---
 
-React Location started as a solution to small roadblocks I experienced in the mostly wonderful APIs of [React Router](https://reactrouter.com/) and the [Next.js Router](https://nextjs.org/docs/api-reference/next/router).
+React Location is a router for browser-based React applications that strives to provide a powerful API and deep integration for advanced routing use-cases.
 
-### URL Search/Query State
+Here's a quick glance at some of it's featuers:
 
-Most applications, even large ones will get away with requiring only a few string-based search query params in the url, probably something like `?page=3` or `?filter-name=tanner`. The main reason you'll find this **state** inside of the URL is because it's linkability and shareability is very important. Your users should be able to bookmark/copy-paste/share a link from your app and have consistency with the original state of the page.
+- Deeply integrated URL Search Params API
+  - Route Matching
+  - Full `<Link>` and `useNavigate` support
+  - `cmd+click` support
+  - JSON State/Storage
+  - Immutability w/ Structural Sharing
+  - Compression
+  - Types
+- Promise-based route loaders
+- Post-render Async loader APIs (stale-while-revalidate, external cache integration)
+- Asynchronous route definitions
+- Asynchronous element definitions
+- Error boundary route elements
+- Threshold-based pending route elements
+- Route state hooks (data)
+- Router state hooks
+- Optional route filtering/ranking API
+- Prepackaged simple cache implementation for simple route loader caching
+- Integration w/ external caches and storage (eg. React Query)
+- SSR route matching, loading & hydration
+
+## Wait, another router?! 🤔
+
+React Location initially began to solve smaller issues I was experiencing while in the mostly wonderful APIs of [React Router](https://reactrouter.com/) and the [Next.js Router](https://nextjs.org/docs/api-reference/next/router). Over time, its API gave way to even more features, flexibiliy, a better developer-experience, and more power to build my applications how I saw fit.
+
+Here's some of those challenges and the features that solve them:
+
+### URL Search/Query Matching and state management
+
+Most applications, even large ones will get away with requiring only a few string-based search query params in the url, probably something like `?page=3` or `?filter-name=tanner`. The main reason you'll find this **state** inside of the URL is because while it may not fit the hierarchical patterns of the pathname, it's still very important to the output of a page. Both the ability to build and match routes on this state and your ability as a developer to manipulate this state without restrction is paramount to your app's developer and user experience. Your users should be able to bookmark/copy-paste/share a link from your app and have consistency with the original state of the page.
 
 When you begin to store more state in the URL you will inevitably and naturally want to reach for JSON to store it. Storing JSON state in the URL has it's own complications involving:
 
 - Parsing/Serialization
 - Immutability & Structural Sharing
 - Compression & Readablity
-- Powerful Declarative & Imperative APIs to manipulate query state
+- Low-level declarative APIs to manipulate query state (thing `<Link>`, `<Navigate>` and `useNavigate`)
 
-React Location handles all of this out of the box.
+React Location doesn't skimp on search params. Ithandles all of this out of the box and goes the extra mile!
 
 ### Client-side Navigational Suspense
 
-Popularized by frameworks like [Next.js](https://nextjs.org) and [Remix](https://remix.run), **specifying asynchronous dependencies for routes that can all resolve in parallel before rendering** has become an expectation of almost every SSR-based routing APIs. I believe this capability, while intuitive in an SSR environment, is not exclusive to it and definitely has a place in the client-side routing world.
+Popularized by frameworks like [Next.js](https://nextjs.org) and now [Remix](https://remix.run), **specifying asynchronous dependencies for routes that can all resolve in parallel before rendering** has become an expectation of almost every SSR-based routing APIs. I believe this capability, while intuitive in an SSR environment, is not exclusive to it and definitely has a place in the client-side routing world.
 
 React Location provides first-class support for specifying arbitrary asynchronous dependencies for your routes and will asynchronously suspend navigation rendering until these dependencies are met.
 
@@ -29,16 +58,6 @@ Don't like the initial fallback showing on the client while mouting? React Locat
 - Match and pre-load route data during SSR and also
 - Supply pre-loaded route data during rehydration
 
-### But Tanner, why didn't you just PR/plugin/proxy/add this functionality into an existing router?
+### Why not simply PR/plugin/proxy/add these features into an existing router?
 
-I tried so hard, I promise! I gave my best and most fervent attempt to proxy React Router v6 (argubly the only worthy router in the ecosystem to try this with) to achieve these features, but after hitting the ceiling on its public API and quite literally proxying and re-exporting every single function/variable/type from the library, I realized that unless the core internals of React Router were exposed (which would require yet another breaking change on its part) the idea was dead on arrival. Only then, did I know it was time to design a new router from the ground up with support for the features I needed.
-
-## Features
-
-- Deeply integrated URL Search API ()
-  - JSON
-  - Immutable w/ Structural Sharing
-  - Compression
-  - Types
-- Deep-Route Loaders (for data, images, assets, readiness, etc.)
-- Asynchronous Routes (module-splitting, dynamic routes)
+I tried and initially succeeded in proxying React Router v6 (argubly the only worthy router in the ecosystem to try this with) to achieve these features. I even shipped it to prodution for 6 months on a beta release! However, after hitting the ceiling on its public API and quite literally proxying and re-exporting every single function/variable/type from the library, I realized that unless the core internals of React Router were both exposed and altered (which would require yet another breaking change on its part) my RR plugin could not provide consistent features and simply just not going to work with new ones. Only then, did I know it was time to design a new router from the ground up with support for the features I needed.
