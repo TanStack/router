@@ -7,7 +7,7 @@
     "unlinkAll": "lerna exec yarn unlink",
     "test": "lerna run test",
     "build": "lerna run build",
-    "build:ci": "yarn linkAll && cd packages/react-location && yarn build && ../.. && lerna run build",
+    "build:ci": "cd packages/react-location && yarn build && cd ../.. && yarn linkAll && lerna run build",
     "watch": "lerna run watch --parallel",
     "prettier": "lerna run prettier",
     "start": "yarn watch",
