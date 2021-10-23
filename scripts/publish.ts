@@ -47,8 +47,6 @@ async function run() {
     return
   }
 
-  ensureCleanWorkingDirectory()
-
   const branchName: string = currentGitBranch()
   const branch = branches[branchName]
   const prereleaseBranch = branch.prerelease ? branchName : undefined
@@ -246,17 +244,6 @@ run().catch((err) => {
 
 function packageJson(packageName: string, directory = 'packages') {
   return path.join(rootDir, directory, packageName, 'package.json')
-}
-
-function ensureCleanWorkingDirectory() {
-  let status: string = execSync(`git status --porcelain`).toString().trim()
-  let lines = status.split('\n')
-
-  if (!lines.every((line) => line === '' || line.startsWith('?'))) {
-    throw new Error(
-      'Working directory is not clean. Please commit or stash your changes.'
-    )
-  }
 }
 
 function getNextVersion(
