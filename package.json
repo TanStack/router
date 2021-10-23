@@ -13,7 +13,8 @@
     "start": "yarn watch",
     "format": "lerna run format",
     "doctoc": "lerna run doctoc",
-    "cipublish": "yarn build:ci && lerna run test:ci && ts-node scripts/publish.ts"
+    "cipublish": "yarn build:ci && lerna run test:ci && ts-node scripts/publish.ts",
+    "examples": "ts-node scripts/updateExampleDeps.ts"
   },
   "workspaces": [
     "./packages/react-location",
