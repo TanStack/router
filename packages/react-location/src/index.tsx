@@ -1,5 +1,4 @@
 import * as React from 'react'
-import * as qss from './qss'
 
 import {
   createHashHistory,
@@ -10,7 +9,6 @@ import {
   History,
   HashHistory,
 } from 'history'
-import { parse, stringify } from './jsurl'
 
 export { createHashHistory, createBrowserHistory, createMemoryHistory }
 
@@ -46,7 +44,12 @@ export type UseGeneric<
 export type ReactLocationOptions = {
   history?: BrowserHistory | MemoryHistory | HashHistory
   basepath?: string
+  stringifySearch?: SearchSerializer
+  parseSearch?: SearchParser
 }
+
+type SearchSerializer = (searchObj: Record<string, any>) => string
+type SearchParser = (searchStr: string) => Record<string, any>
 
 export type BuildNextOptions<
   TGenerics extends PartialGenerics = DefaultGenerics,
@@ -277,6 +280,8 @@ export class ReactLocation<
   basepath: string
   current: Location<TGenerics>
   destroy: () => void
+  stringifySearch: SearchSerializer
+  parseSearch: SearchParser
 
   //
 
@@ -285,10 +290,12 @@ export class ReactLocation<
   constructor(options?: ReactLocationOptions) {
     this.history = options?.history || createDefaultHistory()
     this.basepath = options?.basepath || '/'
-    this.current = parseLocation(this.history.location)
+    this.stringifySearch = options?.stringifySearch ?? defaultStringifySearch
+    this.parseSearch = options?.parseSearch ?? defaultParseSearch
+    this.current = this.parseLocation(this.history.location)
 
     this.destroy = this.history.listen((event) => {
-      this.current = parseLocation(event.location, this.current)
+      this.current = this.parseLocation(event.location, this.current)
       this.notify()
     })
   }
@@ -332,7 +339,9 @@ export class ReactLocation<
 
     const search = this.buildSearch(options.search)
 
-    const searchStr = stringifySearch(search)
+    const searchStr = this.stringifySearch(search)
+
+    // searchStr = (searchStr = searchStr ? `?${searchStr}` : '')
 
     let hash = this.buildHash(options.hash)
     hash = hash ? `#${hash}` : ''
@@ -364,24 +373,20 @@ export class ReactLocation<
       search: this.current.searchStr,
     })
   }
-}
 
-export function parseLocation<
-  TGenerics extends PartialGenerics = DefaultGenerics,
->(
-  location: History['location'],
-  previousLocation?: Location<TGenerics>,
-): Location<TGenerics> {
-  return {
-    pathname: location.pathname,
-    searchStr: location.search,
-    search: replaceEqualDeep(
-      previousLocation?.search,
-      parseSearch(location.search),
-    ),
-    hash: location.hash.split('#').reverse()[0] ?? '',
-    href: `${location.pathname}${location.search}${location.hash}`,
-    key: location.key,
+  parseLocation<TGenerics extends PartialGenerics = DefaultGenerics>(
+    location: History['location'],
+    previousLocation?: Location<TGenerics>,
+  ): Location<TGenerics> {
+    const parsedSearch = this.parseSearch(location.search)
+    return {
+      pathname: location.pathname,
+      searchStr: location.search,
+      search: replaceEqualDeep(previousLocation?.search, parsedSearch),
+      hash: location.hash.split('#').reverse()[0] ?? '',
+      href: `${location.pathname}${location.search}${location.hash}`,
+      key: location.key,
+    }
   }
 }
 
@@ -1060,49 +1065,6 @@ export function functionalUpdate<TResult>(
   return updater
 }
 
-function parseSearch(search: string) {
-  if (search.substring(0, 1) === '?') {
-    search = search.substring(1)
-  }
-
-  let query = qss.decode(search)
-
-  // Try to parse any query params that might be json
-  for (let key in query) {
-    const value = query[key]
-    if (typeof value === 'string') {
-      try {
-        query[key] = parse(value)
-      } catch (err) {
-        //
-      }
-    }
-  }
-
-  return query
-}
-
-function stringifySearch(search: Record<string, unknown>) {
-  search = { ...search }
-
-  if (search) {
-    Object.keys(search).forEach((key) => {
-      const val = search[key]
-      if (val && typeof val === 'object' && val !== null) {
-        try {
-          search[key] = stringify(val)
-        } catch (err) {
-          // silent
-        }
-      }
-    })
-  }
-
-  let searchStr = qss.encode(search, '')
-
-  return (searchStr = searchStr ? `?${searchStr}` : '')
-}
-
 function findMatch<T>(match: T, fn: (match: T) => any): T | undefined {
   if (!match) {
     return
@@ -1119,8 +1081,6 @@ function cloneMatch<T extends RouteMatch<any>>(match?: T): T | undefined {
   if (!match) {
     return
   }
-  ;``
-
   return { ...match, childMatch: cloneMatch(match.childMatch) }
 }
 
@@ -1372,20 +1332,51 @@ function hasObjectPrototype(o: any) {
   return Object.prototype.toString.call(o) === '[object Object]'
 }
 
-// export function defaultFilterRoutes(routes: Route[]) {
-//   return [...routes].sort((a, b) => {
-//     if (a.path === '/') {
-//       if (b.path !== '/') {
-//         return -1
-//       }
-//     }
+export function defaultStringifySearch(search: Record<string, unknown>) {
+  search = { ...search }
 
-//     if (a.path?.endsWith('*')) {
-//       if (!b.path?.endsWith('*')) {
-//         return 1
-//       }
-//     }
+  if (search) {
+    Object.keys(search).forEach((key) => {
+      const val = search[key]
+      if (val && typeof val === 'object' && val !== null) {
+        try {
+          search[key] = JSON.stringify(val)
+        } catch (err) {
+          // silent
+        }
+      }
+    })
+  }
 
-//     return 0
-//   })
-// }
+  return new URLSearchParams(search as Record<string, string>).toString()
+}
+
+export function defaultParseSearch(searchStr: string): Record<string, any> {
+  if (searchStr.substring(0, 1) === '?') {
+    searchStr = searchStr.substring(1)
+  }
+
+  let query: Record<string, unknown> = Object.fromEntries(
+    (new URLSearchParams(searchStr) as any).entries(),
+  )
+
+  // Try to parse query params
+  for (let key in query) {
+    const value = query[key]
+    if (value === 'false') {
+      query[key] = false
+    } else if (value === 'true') {
+      query[key] = true
+    } else if (value === 'null') {
+      query[key] = null
+    } else if (typeof value === 'string') {
+      try {
+        query[key] = JSON.parse(value)
+      } catch (err) {
+        //
+      }
+    }
+  }
+
+  return query
+}
