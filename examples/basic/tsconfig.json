@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -13,13 +17,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "preserve",
-    "paths": {
-      "react-location": ["../../packages/react-location"],
-      "react-location-simple-cache": [
-        "../../packages/react-location-simple-cache"
-      ]
-    }
+    "jsx": "preserve"
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

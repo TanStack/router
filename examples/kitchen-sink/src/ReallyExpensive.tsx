@@ -1,9 +1,9 @@
 import * as React from 'react'
 import { Link, Outlet, RouteImported, useRoute } from 'react-location'
 
-import { sleepCache } from './App'
+import { simpleCache, sleep } from './'
 
-function Expensive() {
+function ReallyExpensive() {
   const route = useRoute()
   return (
     <>
@@ -24,27 +24,28 @@ function SubExpensive() {
 }
 
 export const route: RouteImported = {
-  element: <Expensive />,
-  loader: async () => ({
-    reallyExpensive: await sleepCache.read(
-      '/reallyExpensive',
-      Date.now(),
-      1000,
-      1000 * 10,
-    ),
-  }),
+  element: <ReallyExpensive />,
+  loader: simpleCache.createLoader(
+    async () => {
+      return {
+        reallyExpensive: Math.random(),
+      }
+    },
+    { maxAge: 1000 * 10 }
+  ),
   children: [
     {
       path: 'sub-expensive',
       element: <SubExpensive />,
-      loader: async () => ({
-        subExpensive: await sleepCache.read(
-          '/subExpensive',
-          Date.now(),
-          1000,
-          1000 * 10,
-        ),
-      }),
+      loader: simpleCache.createLoader(
+        async () => {
+          await sleep(1000)
+          return {
+            subExpensive: Math.random(),
+          }
+        },
+        { maxAge: 1000 * 10 }
+      ),
     },
   ],
 }

@@ -17,7 +17,8 @@
     "types": ["jest", "node"],
     "paths": {
       "react-location": ["./packages/react-location"],
-      "react-location-simple-cache": ["./packages/react-location-simple-cache"]
+      "react-location-simple-cache": ["./packages/react-location-simple-cache"],
+      "react-location-rank-routes": ["./packages/react-location-rank-routes"]
     }
   },
   "include": ["./packages/*/src/*"]

@@ -318,7 +318,7 @@ function Invoice() {
   // Use it for whatever, like in a React Query!
   const invoiceQuery = useQuery(
     ['invoices', invoiceId],
-    fetchInvoiceById(invoiceId),
+    fetchInvoiceById(invoiceId)
   )
 }
 ```
@@ -462,7 +462,7 @@ render(
       I will add `addThis='This is new!' and also remove the `removeThis` param
       to/from the search params on the current page
     </Link>
-  </div>,
+  </div>
 )
 ```
 
@@ -492,7 +492,6 @@ type NavigateProps = {
   to?: string | null
   pathname?: string | null
   search?: Updater<SearchObj>
-  state?: Updater<StateObj>
   hash?: Updater<string>
   replace?: boolean
 }
@@ -640,7 +639,7 @@ export async function render(requestUrl) {
   ReactDOMServer.renderToString(
     <ReactLocationProvider>
       <Routes initialMatch={routeMatch} routes={routes} />
-    </ReactLocationProvider>,
+    </ReactLocationProvider>
   )
 }
 ```

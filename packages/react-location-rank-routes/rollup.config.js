@@ -8,15 +8,22 @@ import visualizer from 'rollup-plugin-visualizer'
 import replace from '@rollup/plugin-replace'
 // import ccompiler from '@ampproject/rollup-plugin-closure-compiler'
 
-const external = ['react', 'react-dom', 'react-location']
+const external = [
+  'react',
+  'react-dom',
+  'react-location',
+  'react-location-rank-routes',
+]
 
 const globals = {
   react: 'React',
   'react-dom': 'ReactDOM',
-  'react-location': 'ReactLocation',
+  'react-location-rank-routes': 'ReactLocationRankRoutes',
 }
 
-const inputSrcs = [['src/index.tsx', 'ReactLocation', 'react-location']]
+const inputSrcs = [
+  ['src/index.tsx', 'ReactLocationRankRoutes', 'react-location-rank-routes'],
+]
 
 const extensions = ['.js', '.jsx', '.es6', '.es', '.mjs', '.ts', '.tsx']
 const babelConfig = { extensions }

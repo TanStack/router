@@ -10,6 +10,8 @@ import {
   useRoute,
   useRouterState,
   useResolvePath,
+  Outlet,
+  MakeGenerics,
 } from "react-location";
 import { ReactLocationSimpleCache } from "react-location-simple-cache";
 
@@ -21,6 +23,12 @@ type Post = {
   body: string;
 };
 
+type LocationGenerics = MakeGenerics<{
+  LoaderData: { posts: Post[]; post: Post };
+}>;
+
+//
+
 const routeCache = new ReactLocationSimpleCache();
 const location = new ReactLocation();
 
@@ -31,23 +39,27 @@ function App() {
         pendingElement="..."
         routes={[
           {
-            path: "/",
             element: <Posts />,
             loader: routeCache.createLoader(async () => ({
               posts: await fetchPosts(),
             })),
-          },
-          {
-            path: ":postId",
-            element: <Post />,
-            loader: routeCache.createLoader(
-              async ({ params: { postId } }) => ({
-                post: await fetchPostById(postId),
-              }),
+            children: [
               {
-                maxAge: 1000 * 10, // 10 seconds
-              }
-            ),
+                path: ":postId",
+                element: <Post />,
+                loader: routeCache.createLoader(
+                  async ({ params: { postId } }) => ({
+                    post: await fetchPostById(postId),
+                  }),
+                  {
+                    maxAge: 1000 * 10, // 10 seconds
+                  }
+                ),
+              },
+              {
+                element: "Select a post...",
+              },
+            ],
           },
         ]}
       />
@@ -59,24 +71,31 @@ function Posts() {
   const {
     data: { posts },
     isLoading,
-  } = useRoute<unknown, { posts: Post[] }>();
+  } = useRoute<LocationGenerics>();
   const resolvePath = useResolvePath();
   const routerState = useRouterState();
 
   return (
     <div>
+      <h1>Basic With Simple Cache</h1>
+      <hr />
       <h1>Posts {isLoading ? "..." : ""}</h1>
-      <div>
-        {posts.map((post) => (
-          <p key={post.id}>
-            <Link to={`./${post.id}`}>
-              {post.title}{" "}
-              {routerState.nextLocation?.pathname === resolvePath(post.id)
-                ? "..."
-                : ""}
-            </Link>
-          </p>
-        ))}
+      <div style={{ display: "flex", flexWrap: "wrap" }}>
+        <div style={{ flex: "0 0 200px" }}>
+          {posts?.map((post) => (
+            <p key={post.id}>
+              <Link to={`./${post.id}`}>
+                {post.title}{" "}
+                {routerState.nextLocation?.pathname === resolvePath(post.id)
+                  ? "..."
+                  : ""}
+              </Link>
+            </p>
+          ))}
+        </div>
+        <div style={{ flex: "1 1" }}>
+          <Outlet />
+        </div>
       </div>
     </div>
   );
@@ -86,25 +105,15 @@ function Post() {
   const {
     data: { post },
     isLoading,
-  } = useRoute<unknown, { post: Post }>();
-  const resolvePath = useResolvePath();
-  const routerState = useRouterState();
+  } = useRoute<LocationGenerics>();
 
   return (
     <div>
-      <div>
-        <Link to="..">
-          Back{" "}
-          {routerState.nextLocation?.pathname === resolvePath("..")
-            ? "..."
-            : ""}
-        </Link>
-      </div>
       <h1>
-        {post.title} {isLoading ? "..." : ""}
+        {post?.title} {isLoading ? "..." : ""}
       </h1>
       <div>
-        <p>{post.body}</p>
+        <p>{post?.body}</p>
       </div>
     </div>
   );

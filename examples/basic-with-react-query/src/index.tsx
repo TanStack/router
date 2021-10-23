@@ -4,6 +4,7 @@ import ReactDOM from "react-dom";
 import axios from "axios";
 import {
   Link,
+  MakeGenerics,
   ReactLocation,
   ReactLocationProvider,
   Routes,
@@ -16,6 +17,20 @@ import {
   QueryClientProvider,
 } from "react-query";
 import { ReactQueryDevtools } from "react-query/devtools";
+
+//
+
+type Post = {
+  id: string;
+  title: string;
+  body: string;
+};
+
+type LocationGenerics = MakeGenerics<{
+  LoaderData: { posts: Post[]; post: Post };
+}>;
+
+//
 
 const location = new ReactLocation();
 const queryClient = new QueryClient();
@@ -60,7 +75,7 @@ async function fetchPosts() {
 }
 
 function usePosts() {
-  return useQuery("posts", fetchPosts);
+  return useQuery<Post[], any>("posts", fetchPosts);
 }
 
 function Posts() {
@@ -88,7 +103,7 @@ function Posts() {
         ) : (
           <>
             <div>
-              {data.map((post) => (
+              {data?.map((post) => (
                 <p key={post.id}>
                   <Link
                     to={`./${post.id}`}
@@ -116,7 +131,7 @@ function Posts() {
   );
 }
 
-const fetchPostById = async (id) => {
+const fetchPostById = async (id: string) => {
   await new Promise((r) => setTimeout(r, 500));
   const { data } = await axios.get(
     `https://jsonplaceholder.typicode.com/posts/${id}`
@@ -124,8 +139,8 @@ const fetchPostById = async (id) => {
   return data;
 };
 
-function usePost(postId) {
-  return useQuery(["posts", postId], () => fetchPostById(postId), {
+function usePost(postId: string) {
+  return useQuery<Post, any>(["posts", postId], () => fetchPostById(postId), {
     enabled: !!postId,
   });
 }
@@ -148,9 +163,9 @@ function Post() {
         <span>Error: {error.message}</span>
       ) : (
         <>
-          <h1>{data.title}</h1>
+          <h1>{data?.title}</h1>
           <div>
-            <p>{data.body}</p>
+            <p>{data?.body}</p>
           </div>
           <div>{isFetching ? "Background Updating..." : " "}</div>
         </>

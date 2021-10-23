@@ -14,7 +14,8 @@
   },
   "workspaces": [
     "./packages/react-location",
-    "./packages/react-location-simple-cache"
+    "./packages/react-location-simple-cache",
+    "./packages/react-location-rank-routes"
   ],
   "dependencies": {
     "@babel/cli": "^7.15.7",

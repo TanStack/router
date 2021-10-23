@@ -4,6 +4,8 @@ import ReactDOM from "react-dom";
 import axios from "axios";
 import {
   Link,
+  MakeGenerics,
+  Outlet,
   ReactLocation,
   ReactLocationProvider,
   Routes,
@@ -22,6 +24,12 @@ type Post = {
 
 //
 
+type LocationGenerics = MakeGenerics<{
+  LoaderData: { posts: Post[]; post: Post };
+}>;
+
+//
+
 const location = new ReactLocation();
 
 function App() {
@@ -31,18 +39,22 @@ function App() {
         pendingElement="..."
         routes={[
           {
-            path: "/",
-            element: <Posts />,
-            loader: async () => ({
-              posts: await fetchPosts(),
-            }),
-          },
-          {
-            path: ":postId",
-            element: <Post />,
-            loader: async ({ params: { postId } }) => ({
-              post: await fetchPostById(postId),
-            }),
+            element: <Home />,
+            children: [
+              {
+                path: ":postId",
+                element: <Post />,
+                loader: async ({ params: { postId } }) => ({
+                  post: await fetchPostById(postId),
+                }),
+              },
+              {
+                element: <Posts />,
+                loader: async () => ({
+                  posts: await fetchPosts(),
+                }),
+              },
+            ],
           },
         ]}
       />
@@ -50,10 +62,20 @@ function App() {
   );
 }
 
+function Home() {
+  return (
+    <>
+      <h1>Basic Example</h1>
+      <hr />
+      <Outlet />
+    </>
+  );
+}
+
 function Posts() {
   const {
     data: { posts },
-  } = useRoute<{ posts: Post[] }>();
+  } = useRoute<LocationGenerics>();
   const routerState = useRouterState();
   const resolvePath = useResolvePath();
 
@@ -61,7 +83,7 @@ function Posts() {
     <div>
       <h1>Posts</h1>
       <div>
-        {posts.map((post) => (
+        {posts?.map((post) => (
           <p key={post.id}>
             <Link to={`./${post.id}`}>
               {post.title}{" "}
@@ -79,7 +101,7 @@ function Posts() {
 function Post() {
   const {
     data: { post },
-  } = useRoute<{ post: Post }>();
+  } = useRoute<LocationGenerics>();
   const routerState = useRouterState();
   const resolvePath = useResolvePath();
 
@@ -93,9 +115,9 @@ function Post() {
             : ""}
         </Link>
       </div>
-      <h1>{post.title}</h1>
+      <h1>{post?.title}</h1>
       <div>
-        <p>{post.body}</p>
+        <p>{post?.body}</p>
       </div>
     </div>
   );

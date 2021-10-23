@@ -1,5 +1,5 @@
 {
-  "name": "react-location-simple-cache",
+  "name": "react-location-rank-routes",
   "author": "Tanner Linsley",
   "version": "0.0.0",
   "license": "MIT",
@@ -10,7 +10,7 @@
   "description": "",
   "main": "lib/index.js",
   "module": "es/index.js",
-  "unpkg": "dist/react-location.development.js",
+  "unpkg": "dist/react-location-rank-routes.development.js",
   "types": "types/index.d.ts",
   "scripts": {
     "test": "(is-ci && yarn test:ci) || yarn test:dev",

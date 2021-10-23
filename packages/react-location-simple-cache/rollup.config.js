@@ -21,7 +21,7 @@ const inputSrcs = [
 ]
 
 const extensions = ['.js', '.jsx', '.es6', '.es', '.mjs', '.ts', '.tsx']
-const babelConfig = { extensions, runtimeHelpers: true }
+const babelConfig = { extensions }
 const resolveConfig = { extensions }
 
 export default inputSrcs
