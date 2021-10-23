@@ -224,10 +224,10 @@ async function run() {
   packageNames.map((packageName) => {
     let packageDir = path.join(rootDir, 'packages', packageName)
     console.log()
-    console.log(`  yarn publish ${packageDir} --tag ${tag} `)
+    console.log(`cd ${packageDir} && yarn publish --tag ${tag} `)
     console.log()
     execSync(
-      `yarn publish ${packageDir} --tag ${tag} --token ${process.env.NPM_TOKEN}`,
+      `cd ${packageDir} && yarn publish --tag ${tag} --token ${process.env.NPM_TOKEN}`,
       { stdio: 'inherit' }
     )
   })
