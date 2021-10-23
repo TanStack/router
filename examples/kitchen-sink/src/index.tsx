@@ -245,7 +245,7 @@ function Team() {
 function SearchParams() {
   const search = useSearch()
 
-  console.log(search)
+  console.info(search)
 
   return (
     <>

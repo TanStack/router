@@ -649,8 +649,6 @@ export function useRoutes<TGenerics extends PartialGenerics = DefaultGenerics>(
     }
   }, [location.current.key])
 
-  console.log(state.currentMatch)
-
   return (
     <routerStateContext.Provider value={routerStateContextValue}>
       {state.currentMatch

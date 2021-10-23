@@ -348,7 +348,7 @@ function MyComponent() {
 
   const search = useSearch<SearchObj>()
 
-  console.log(search)
+  console.info(search)
   // {
   //   pagination: {
   //     index: 1,
