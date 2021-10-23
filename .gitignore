@@ -8,3 +8,4 @@ node_modules
 /lib
 /types
 stats-react.json
+stats.html
