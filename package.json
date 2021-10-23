@@ -3,16 +3,16 @@
   "repository": "https://github.com/tannerlinsley/react-location.git",
   "scripts": {
     "installAll": "lerna exec 'yarn --force'",
-    "linkAll": "lerna exec yarn link",
+    "linkAll": "lerna exec 'yarn link' && lerna exec 'yarn link react-location'",
     "unlinkAll": "lerna exec yarn unlink",
     "test": "lerna run test",
-    "build": "cd packages/react-location && yarn build && yarn link && cd ../.. && lerna exec 'yarn link react-location' && lerna run build",
+    "build": "lerna run build",
     "watch": "lerna run watch --parallel",
     "prettier": "lerna run prettier",
     "start": "yarn watch",
     "format": "lerna run format",
     "doctoc": "lerna run doctoc",
-    "cipublish": "yarn build && lerna run test:ci && ts-node scripts/publish.ts"
+    "cipublish": "yarn linkAll && yarn build && lerna run test:ci && ts-node scripts/publish.ts"
   },
   "workspaces": [
     "./packages/react-location",
