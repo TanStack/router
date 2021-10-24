@@ -241,7 +241,7 @@ async function run() {
   }
   console.log(chalk.green(`  Updated example dependencies.`))
   execSync(`git commit -a -m "chore: update example dependencies"`)
-  execSync(`git push"`)
+  execSync(`git push`)
 }
 
 run().catch((err) => {
