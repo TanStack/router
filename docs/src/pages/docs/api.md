@@ -60,7 +60,7 @@ return (
 
 The `Routes` component and `useRoutes` hook are used to render an active route from an array (or tree) of **Route** objects.
 
-Rotues are matched in the order of:
+Routes are matched in the order of:
 
 - Exact match index paths (`/`)
 - Hard-coded paths in the order of appearance (eg. `about`)
