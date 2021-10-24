@@ -9,9 +9,7 @@ import {
   ReactLocationProvider,
   Routes,
   useIsNextPath,
-  useResolvePath,
   useRoute,
-  useRouterState,
 } from "react-location";
 import {
   useQuery,
