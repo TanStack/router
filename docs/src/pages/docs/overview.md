@@ -7,13 +7,13 @@ React Location is a router for browser-based React applications that strives to 
 
 Here's a quick glance at some of it's featuers:
 
-- Deeply integrated URL Search Params API
+- Deeply integrated Search Params API
   - Route Matching
   - Full `<Link>` and `useNavigate` support
   - `cmd+click` support
   - JSON State/Storage
   - Immutability w/ Structural Sharing
-  - Compression
+  - Optional Compression w/ JSURL plugin or your own custom parser/serializer!
   - Types
 - Promise-based route loaders
 - Post-render Async loader APIs (stale-while-revalidate, external cache integration)
@@ -28,24 +28,25 @@ Here's a quick glance at some of it's featuers:
 - Integration w/ external caches and storage (eg. React Query)
 - SSR route matching, loading & hydration
 
-## Wait, another router?! 🤔
+## Wait, another router? 🤔
 
-React Location initially began to solve smaller issues I was experiencing while in the mostly wonderful APIs of [React Router](https://reactrouter.com/) and the [Next.js Router](https://nextjs.org/docs/api-reference/next/router). Over time, its API gave way to even more features, flexibiliy, a better developer-experience, and more power to build my applications how I saw fit.
+React Location initially began to solve smaller issues I was experiencing with the mostly wonderful APIs of [React Router](https://reactrouter.com/) and the [Next.js Router](https://nextjs.org/docs/api-reference/next/router). Over time, its API gave way to even more features, flexibiliy, better DX, and more power to build my applications how I saw fit.
 
 Here's some of those challenges and the features that solve them:
 
-### URL Search/Query Matching and state management
+### URL Search Param Matching and state management
 
 Most applications, even large ones will get away with requiring only a few string-based search query params in the url, probably something like `?page=3` or `?filter-name=tanner`. The main reason you'll find this **state** inside of the URL is because while it may not fit the hierarchical patterns of the pathname, it's still very important to the output of a page. Both the ability to build and match routes on this state and your ability as a developer to manipulate this state without restrction is paramount to your app's developer and user experience. Your users should be able to bookmark/copy-paste/share a link from your app and have consistency with the original state of the page.
 
 When you begin to store more state in the URL you will inevitably and naturally want to reach for JSON to store it. Storing JSON state in the URL has it's own complications involving:
 
-- Parsing/Serialization
-- Immutability & Structural Sharing
-- Compression & Readablity
-- Low-level declarative APIs to manipulate query state (thing `<Link>`, `<Navigate>` and `useNavigate`)
+- Route Matching. Path matching for routes is really only a small part of what a decently designed route tree can do. Being able to match on search params (in it's many flavors) should not be considered a "plugin" or afterthought. It should be one of the most integrated and powerful parts of the API.
+- Parsing/Serialization. I'm talking about full-customization here; BYO stringifier/parser.
+- Immutability & Structural Sharing. This one is tricky to explain, but essentially it will save you from the inevitable infinite side-effect rerenders.
+- Compression & Readablity. While not out-of-the-box, this is usually desired, so making it simple to get should be as simple as including a library.
+- Low-level declarative APIs to manipulate query state (thing `<Link>`, `<Navigate>` and `useNavigate`). This is one where most routers can't or won't go. To do this correctly, you have to buy into your search-param APIs whole-sale at the core of the architecture and provide them as a consistent experience through the entire library.
 
-React Location doesn't skimp on search params. Ithandles all of this out of the box and goes the extra mile!
+Let's just say React Location doesn't skimp on search params. Ithandles all of this out of the box and goes the extra mile!
 
 ### Client-side Navigational Suspense
 

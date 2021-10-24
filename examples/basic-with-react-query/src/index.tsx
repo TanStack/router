@@ -8,7 +8,10 @@ import {
   ReactLocation,
   ReactLocationProvider,
   Routes,
+  useIsNextPath,
+  useResolvePath,
   useRoute,
+  useRouterState,
 } from "react-location";
 import {
   useQuery,
@@ -27,28 +30,21 @@ type Post = {
 };
 
 type LocationGenerics = MakeGenerics<{
-  LoaderData: { posts: Post[]; post: Post };
+  Params: { postId: string };
 }>;
 
 //
 
-const location = new ReactLocation();
+const location = new ReactLocation<LocationGenerics>();
 const queryClient = new QueryClient();
 
 function App() {
   return (
     <ReactLocationProvider location={location}>
       <QueryClientProvider client={queryClient}>
-        <Routes
+        <Routes<LocationGenerics>
           pendingElement="..."
           routes={[
-            {
-              path: "/",
-              element: <Posts />,
-              loader: () =>
-                queryClient.getQueryData("posts") ??
-                queryClient.fetchQuery("posts", fetchPosts),
-            },
             {
               path: ":postId",
               element: <Post />,
@@ -57,6 +53,13 @@ function App() {
                 queryClient.fetchQuery(["posts", postId], () =>
                   fetchPostById(postId)
                 ),
+            },
+            {
+              path: "/",
+              element: <Posts />,
+              loader: () =>
+                queryClient.getQueryData("posts") ??
+                queryClient.fetchQuery("posts", fetchPosts).then(() => ({})),
             },
           ]}
         />
@@ -81,6 +84,7 @@ function usePosts() {
 function Posts() {
   const queryClient = useQueryClient();
   const { status, data, error, isFetching } = usePosts();
+  const isNextPath = useIsNextPath();
 
   return (
     <div>
@@ -118,7 +122,7 @@ function Posts() {
                         : {}
                     }
                   >
-                    {post.title}
+                    {post.title} {isNextPath(post.id) ? "..." : ""}
                   </Link>
                 </p>
               ))}
@@ -148,14 +152,15 @@ function usePost(postId: string) {
 function Post() {
   const {
     params: { postId },
-  } = useRoute();
+  } = useRoute<LocationGenerics>();
+  const isNextPath = useIsNextPath();
 
   const { status, data, error, isFetching } = usePost(postId);
 
   return (
     <div>
       <div>
-        <Link to="..">Back</Link>
+        <Link to="..">Back {isNextPath("..") ? "..." : ""}</Link>
       </div>
       {!postId || status === "loading" ? (
         "Loading..."
@@ -163,11 +168,12 @@ function Post() {
         <span>Error: {error.message}</span>
       ) : (
         <>
-          <h1>{data?.title}</h1>
+          <h1>
+            {data?.title} {isFetching ? "..." : " "}
+          </h1>
           <div>
             <p>{data?.body}</p>
           </div>
-          <div>{isFetching ? "Background Updating..." : " "}</div>
         </>
       )}
     </div>

@@ -26,33 +26,6 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 
 ## Visit [react-location.tanstack.com](https://react-location.tanstack.com) for docs, guides, API and more!
 
-## What is React Location?
-
-An enterprise-grade router designed exclusively for the client that brings the best routing features you love from tools like [Remix](https://remix.run) and [Next.js](https://nextjs.org) to SPAs, and even takes it a step further with power-features like URL Search Param support and more!
-
-## Quick Features
-
-- Deeply integrated URL Search Params API
-  - Route Matching
-  - Full `<Link>` and `useNavigate` support
-  - `cmd+click` support
-  - JSON State/Storage
-  - Immutability w/ Structural Sharing
-  - Compression
-  - Types
-- Promise-based route loaders
-- Post-render Async loader APIs (stale-while-revalidate, external cache integration)
-- Asynchronous route definitions
-- Asynchronous element definitions
-- Error boundary route elements
-- Threshold-based pending route elements
-- Route state hooks (data)
-- Router state hooks
-- Optional route filtering/ranking API
-- Prepackaged simple cache implementation for simple route loader caching
-- Integration w/ external caches and storage (eg. React Query)
-- SSR route matching, loading & hydration
-
 ### [Become a Sponsor!](https://github.com/sponsors/tannerlinsley/)
 
 <!-- test 1 -->

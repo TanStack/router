@@ -40,7 +40,7 @@ const Home = (props) => {
                     Powerful, enterprise-grade routing for React applications
                   </h1>
                   <p className="mt-3 text-base text-gray-700 sm:mt-5 sm:text-xl lg:text-lg xl:text-xl">
-                    SSR/Full-Stack-Inspired API, first-class URL Search APIs,
+                    SSR/Full-Stack-Inspired API, first-class Search Param APIs,
                     declarative/suspendable route loaders, code-splitting and so
                     much more.
                   </p>
@@ -88,7 +88,7 @@ const Home = (props) => {
                 </div>
                 <div className="mt-10 lg:mt-0">
                   <h3 className="text-xl leading-6 xl:text-2xl font-bold text-gray-900">
-                    First-Class URL Search API
+                    First-Class Search Params API
                   </h3>
                   <div className="mt-2  lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
                     Where most other routers draw the line with route matching
@@ -238,7 +238,7 @@ const Home = (props) => {
             <div>
               <div className="grid grid-flow-row grid-cols-1 sm:grid-cols-2 md:grid-cols-3  gap-4 text-white max-w-screen-lg mx-auto text-lg">
                 {[
-                  'URL Search Params',
+                  'Search Params',
                   'Immutable Params',
                   'Nested Routes',
                   'Layout Routes',

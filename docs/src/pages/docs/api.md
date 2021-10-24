@@ -325,7 +325,7 @@ function Invoice() {
 
 ## useSearch
 
-The `useSearch` hook provides access to the URL search state for the current location. This JSON object is immutable from render to render through structural sharing so any part of it can be safely used for change-detection, even in useEffect/useMemo dependencies.
+The `useSearch` hook provides access to the search params state for the current location. This JSON object is immutable from render to render through structural sharing so any part of it can be safely used for change-detection, even in useEffect/useMemo dependencies.
 
 **Example - Basic**
 
@@ -362,7 +362,7 @@ function MyComponent() {
 }
 ```
 
-**Example - Updating URL Search State**
+**Example - Updating URL Search Params State**
 
 ```tsx
 type SearchObj = {
@@ -603,6 +603,36 @@ function Team() {
   const parentPath = resolvePath('..') // /workspace
   const parentPath = resolvePath('.') // /workspace/team
   const parentPath = resolvePath('team-1') // /workspace/team/team-1
+}
+```
+
+### useIsNextPath
+
+The `useIsNextPath` hook provides a function to test whether a relative path is the next destination that is currently being loaded by the nearest router.
+
+** Example **
+
+```tsx
+function Post() {
+  const isNextPath = useIsNextPath()
+
+  return (
+    <div>
+      <Link to="..">Back {isNextPath('..') ? '...' : ''}</Link>
+      ...
+    </div>
+  )
+}
+```
+
+It is essentially a shorthand hook for the following:
+
+```tsx
+function Post() {
+  const routerState = useRouterState()
+  const resolvePath = useResolvePath()
+
+  routerState.nextLocation?.pathname === resolvePath('..') // true | false
 }
 ```
 

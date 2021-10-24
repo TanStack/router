@@ -12,6 +12,7 @@ import {
   useResolvePath,
   Outlet,
   MakeGenerics,
+  useIsNextPath,
 } from "react-location";
 import { ReactLocationSimpleCache } from "react-location-simple-cache";
 
@@ -72,8 +73,7 @@ function Posts() {
     data: { posts },
     isLoading,
   } = useRoute<LocationGenerics>();
-  const resolvePath = useResolvePath();
-  const routerState = useRouterState();
+  const isNextPath = useIsNextPath();
 
   return (
     <div>
@@ -85,10 +85,7 @@ function Posts() {
           {posts?.map((post) => (
             <p key={post.id}>
               <Link to={`./${post.id}`}>
-                {post.title}{" "}
-                {routerState.nextLocation?.pathname === resolvePath(post.id)
-                  ? "..."
-                  : ""}
+                {post.title} {isNextPath(post.id) ? "..." : ""}
               </Link>
             </p>
           ))}

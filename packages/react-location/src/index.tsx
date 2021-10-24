@@ -487,6 +487,17 @@ export function useResolvePath<
   )
 }
 
+export function useIsNextPath() {
+  const routerState = useRouterState()
+  const resolvePath = useResolvePath()
+
+  return React.useCallback(
+    (pathname: string) =>
+      routerState.nextLocation?.pathname === resolvePath(pathname),
+    [],
+  )
+}
+
 export function useMatch<
   TGenerics extends PartialGenerics = DefaultGenerics,
 >() {
