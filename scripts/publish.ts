@@ -175,21 +175,6 @@ async function run() {
     })
   )
 
-  // // Upate example dependencies to the new version
-  // let examples = await fsp.readdir(examplesDir)
-  // for (const example of examples) {
-  //   let stat = await fsp.stat(path.join(examplesDir, example))
-  //   if (!stat.isDirectory()) continue
-
-  //   await updateExamplesPackageConfig(example, (config) => {
-  //     packageNames.forEach((packageName) => {
-  //       if (config.dependencies[packageName]) {
-  //         config.dependencies[packageName] = version
-  //       }
-  //     })
-  //   })
-  // }
-
   // Tag and commit
   execSync(`git tag -a -m "v${version}" v${version}`)
   console.log(chalk.green(`  Tagged version ${version}`))
@@ -235,6 +220,28 @@ async function run() {
   console.log(chalk.green(`  Pushing new tags to branch.`))
   execSync(`git push --tags`)
   console.log(chalk.green(`  Pushed tags to branch.`))
+
+  console.log(chalk.green(`  Resetting git working tree...`))
+  execSync(`git reset --hard`)
+
+  console.log(chalk.green(`  Updating examples dependencies...`))
+  // Upate example dependencies to the new version
+  let examples = await fsp.readdir(examplesDir)
+  for (const example of examples) {
+    let stat = await fsp.stat(path.join(examplesDir, example))
+    if (!stat.isDirectory()) continue
+
+    await updateExamplesPackageConfig(example, (config) => {
+      packageNames.forEach((packageName) => {
+        if (config.dependencies[packageName]) {
+          config.dependencies[packageName] = latestTag.substring(1)
+        }
+      })
+    })
+  }
+  console.log(chalk.green(`  Updated example dependencies.`))
+  execSync(`git commit -m "chore: update example dependencies"`)
+  execSync(`git push"`)
 }
 
 run().catch((err) => {
