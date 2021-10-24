@@ -44,13 +44,13 @@ When you begin to store more state in the URL you will inevitably and naturally 
 - Parsing/Serialization. I'm talking about full-customization here; BYO stringifier/parser.
 - Immutability & Structural Sharing. This one is tricky to explain, but essentially it will save you from the inevitable infinite side-effect rerenders.
 - Compression & Readablity. While not out-of-the-box, this is usually desired, so making it simple to get should be as simple as including a library.
-- Low-level declarative APIs to manipulate query state (thing `<Link>`, `<Navigate>` and `useNavigate`). This is one where most routers can't or won't go. To do this correctly, you have to buy into your search-param APIs whole-sale at the core of the architecture and provide them as a consistent experience through the entire library.
+- Low-level declarative APIs to manipulate query state (think `<Link>`, `<Navigate>` and `useNavigate`). This is one where most routers can't or won't go. To do this correctly, you have to buy into your search-param APIs whole-sale at the core of the architecture and provide them as a consistent experience through the entire library.
 
 Let's just say React Location doesn't skimp on search params. It handles all of this out of the box and goes the extra mile!
 
 ### Client-side Navigational Suspense
 
-Popularized by frameworks like [Next.js](https://nextjs.org) and now [Remix](https://remix.run), **specifying asynchronous dependencies for routes that can all resolve in parallel before rendering** has become an expectation of almost every SSR-based routing APIs. I believe this capability, while intuitive in an SSR environment, is not exclusive to it and definitely has a place in the client-side routing world.
+Popularized by frameworks like [Next.js](https://nextjs.org) and now [Remix](https://remix.run), **specifying asynchronous dependencies for routes that can all resolve in parallel before rendering** has become an expectation of almost every SSR-based routing API. I believe this capability, while intuitive in an SSR environment, is not exclusive to it and definitely has a place in the client-side routing world.
 
 React Location provides first-class support for specifying arbitrary asynchronous dependencies for your routes and will asynchronously suspend navigation rendering until these dependencies are met.
 
@@ -61,4 +61,4 @@ Don't like the initial fallback showing on the client while mouting? React Locat
 
 ### Why not simply PR/plugin/proxy/add these features into an existing router?
 
-I tried and initially succeeded in proxying React Router v6 (arguably the only worthy router in the ecosystem to try this with) to achieve these features. I even shipped it to prodution for 6 months on a beta release! However, after hitting the ceiling on its public API and quite literally proxying and re-exporting every single function/variable/type from the library, I realized that unless the core internals of React Router were both exposed and altered (which would require yet another breaking change on its part) my RR plugin could not provide consistent features and simply just not going to work with new ones. Only then, did I know it was time to design a new router from the ground up with support for the features I needed.
+I tried and initially succeeded in proxying React Router v6 (arguably the only worthy router in the ecosystem to try this with) to achieve these features. I even shipped it to prodution for 6 months on a beta release! However, after hitting the ceiling on its public API and quite literally proxying and re-exporting every single function/variable/type from the library, I realized that unless the core internals of React Router were both exposed and altered (which would require yet another breaking change on its part) my RR plugin could not provide consistent features and simply is just not going to work with new ones. Only then, did I know it was time to design a new router from the ground up with support for the features I needed.
