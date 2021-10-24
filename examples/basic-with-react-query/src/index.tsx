@@ -96,7 +96,7 @@ function Posts() {
           loading sequences)
         </strong>
       </p>
-      <h1>Posts</h1>
+      <h1>Posts {isFetching ? "..." : ""}</h1>
       <div>
         {status === "loading" ? (
           "Loading..."
@@ -125,7 +125,6 @@ function Posts() {
                 </p>
               ))}
             </div>
-            <div>{isFetching ? "Background Updating..." : " "}</div>
           </>
         )}
       </div>

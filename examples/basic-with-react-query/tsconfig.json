@@ -2,8 +2,11 @@
   "compilerOptions": {
     "strict": true,
     "esModuleInterop": true,
-    "lib": ["dom", "es2015"],
-    "jsx": "react-jsx",
+    "lib": [
+      "dom",
+      "es2015"
+    ],
+    "jsx": "preserve",
     "target": "es5",
     "allowJs": true,
     "skipLibCheck": true,
@@ -14,10 +17,9 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "paths": {
-      "react-location": ["../../packages/react-location"]
-    }
+    "noEmit": true
   },
-  "include": ["./src/**/*"]
+  "include": [
+    "./src/**/*"
+  ]
 }

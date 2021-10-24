@@ -30,7 +30,7 @@ const allowOutsideSrc = (config) => {
 
 module.exports = [
   ["use-babel-config", ".babelrc"],
-  ["use-eslint-config", ".eslintrc"],
+  // ["use-eslint-config", ".eslintrc"],
   fixLinkedDependencies,
   allowOutsideSrc,
   // includeSrcDirectory,

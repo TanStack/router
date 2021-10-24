@@ -494,7 +494,7 @@ export function useIsNextPath() {
   return React.useCallback(
     (pathname: string) =>
       routerState.nextLocation?.pathname === resolvePath(pathname),
-    [],
+    [routerState, resolvePath],
   )
 }
 
