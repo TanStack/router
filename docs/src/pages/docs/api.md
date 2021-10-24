@@ -86,7 +86,7 @@ A **Route** object consists of the following properties:
 | pendingMs      |          | number                                                                | The duration to wait during `loader` execution before showing the `pendingElement`                      |
 | pendingMinMs   |          | number                                                                | _If the `pendingElement` is shown_, the minimum duration for which it will be visible.                  |
 | children       |          | Route[]                                                               | An array of child routes                                                                                |
-| import         |          | `({ params: Params }) => Promise<Omit<Route, 'path' / 'import'>>`     |                                                                                                         | An asyncronous function that resolves all of the above route information (everything but the `path` and `import` properties, of course). Useful for code-splitting! |
+| import         |          | `({ params: Params }) => Promise<Omit<Route, 'path' / 'import'>>`     | An asyncronous function that resolves all of the above route information (everything but the `path` and `import` properties, of course). Useful for code-splitting! |
 
 **Example - Route Params**
 
