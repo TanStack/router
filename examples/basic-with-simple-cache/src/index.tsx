@@ -6,7 +6,12 @@ import {
   ReactLocation,
   ReactLocationProvider,
   MakeGenerics,
-  Router,
+  Routes,
+  useMatch,
+  useIsNextPath,
+  useLoadRoute,
+  Link,
+  Outlet,
 } from "react-location";
 import { ReactLocationSimpleCache } from "react-location-simple-cache";
 
@@ -27,39 +32,37 @@ type LocationGenerics = MakeGenerics<{
 const routeCache = new ReactLocationSimpleCache<LocationGenerics>();
 const location = new ReactLocation<LocationGenerics>();
 
-const router = new Router<LocationGenerics>({
-  routes: [
-    {
-      element: <Posts />,
-      loader: routeCache.createLoader(
-        async () => ({
-          posts: await fetchPosts(),
-        }),
-        { maxAge: 1000 * 20 }
-      ),
-      children: [
-        { path: "/", element: "Select a post." },
-        {
-          path: "/:postId",
-          element: <Post />,
-          loader: routeCache.createLoader(
-            async ({ params: { postId } }) => ({
-              post: await fetchPostById(postId),
-            }),
-            {
-              maxAge: 1000 * 10, // 10 seconds
-            }
-          ),
-        },
-      ],
-    },
-  ],
-});
-
 function App() {
   return (
     <ReactLocationProvider location={location}>
-      <router.Routes pendingElement="..." />
+      <Routes
+        routes={[
+          {
+            element: <Posts />,
+            loader: routeCache.createLoader(
+              async () => ({
+                posts: await fetchPosts(),
+              }),
+              { maxAge: 1000 * 20 }
+            ),
+            children: [
+              { path: "/", element: "Select a post." },
+              {
+                path: ":postId",
+                element: <Post />,
+                loader: routeCache.createLoader(
+                  async ({ params: { postId } }) => ({
+                    post: await fetchPostById(postId),
+                  }),
+                  {
+                    maxAge: 1000 * 10, // 10 seconds
+                  }
+                ),
+              },
+            ],
+          },
+        ]}
+      />
     </ReactLocationProvider>
   );
 }
@@ -68,32 +71,32 @@ function Posts() {
   const {
     data: { posts },
     isLoading,
-  } = router.useMatch();
-  const isNextPath = router.useIsNextPath();
-  const loadRoute = router.useLoadRoute();
+  } = useMatch<LocationGenerics>();
+  const isNextPath = useIsNextPath();
+  const loadRoute = useLoadRoute<LocationGenerics>();
 
   return (
     <div>
       <h1>Basic With Simple Cache</h1>
       <hr />
-      <h1>
-        <router.Link to=".">Posts {isLoading ? "..." : ""}</router.Link>
-      </h1>
+      <h2>
+        <Link to=".">Posts {isLoading ? "..." : ""}</Link>
+      </h2>
       <div style={{ display: "flex", flexWrap: "wrap" }}>
         <div style={{ flex: "0 0 200px" }}>
           {posts?.map((post) => (
             <p key={post.id}>
-              <router.Link
+              <Link
                 to={`./${post.id}`}
                 onMouseEnter={() => loadRoute({ to: `./${post.id}` })}
               >
                 {post.title} {isNextPath(post.id) ? "..." : ""}
-              </router.Link>
+              </Link>
             </p>
           ))}
         </div>
         <div style={{ flex: "1 1" }}>
-          <router.Outlet />
+          <Outlet />
         </div>
       </div>
     </div>
@@ -104,7 +107,7 @@ function Post() {
   const {
     data: { post },
     isLoading,
-  } = router.useMatch();
+  } = useMatch();
 
   return (
     <div>

@@ -56,25 +56,9 @@ return (
 )
 ```
 
-## Router
-
-The `Router` class can be used to create a new router based on a tree of route definitions. This router then serves as the primary API for consuming and managing routing throughout your application. It's common to define your router in it's own file and export either the entire router, or its methods to the rest of your application.
-
-```tsx
-import { Router } from 'react-location'
-
-export const router = new Router({
-  routes: [
-    // ...
-  ],
-})
-```
-
-| Property | Required | type      | Description                 |
-| -------- | -------- | --------- | --------------------------- |
-| routes   | true     | `Route[]` | An array of routes to match |
-
 ## Defining Routes
+
+In React Location, routes are just an array of objects where routes can contain child array's of more routes. It's a route tree!
 
 By default, Routes are matched in the order they are specified, with a few small rules:
 
@@ -121,144 +105,123 @@ A **Route** object consists of the following properties:
 **Example - Route Params**
 
 ```tsx
-const router = new Router({
-  routes: [
-    {
-      path: 'invoices',
-      children: [
-        {
-          path: '/',
-          element: 'This would render at the `/invoices` path',
-        },
-        {
-          path: 'new',
-          element: `This would render at the '/invoices/new' path`,
-        },
-        {
-          path: ':invoiceId',
-          element: <Invoice />,
-        },
-      ],
-    },
-  ],
-})
-
-function Invoice() {
-  const params = useParams<{ invoiceId: string }>()
-
-  return (
-    <div>
-      <router.Link to="..">Back</router.Link>
-      <div>This is invoice #{params.invoiceID}</div>
-    </div>
-  )
-}
+const routes: Route[] = [
+  {
+    path: 'invoices',
+    children: [
+      {
+        path: '/',
+        element: 'This would render at the `/invoices` path',
+      },
+      {
+        path: 'new',
+        element: `This would render at the '/invoices/new' path`,
+      },
+      {
+        path: ':invoiceId',
+        element: <Invoice />,
+      },
+    ],
+  },
+]
 ```
 
 **Example - Default / Fallback Route**
 
 ```tsx
-const router = new Router({
-  routes: [
-    {
-      path: '/',
-    },
-    {
-      path: 'about',
-    },
-    {
-      // Passing no route is equivalent to passing `path: '*'`
-      element: `This would render as the fallback when '/' or '/about' were not matched`,
-    },
-  ],
-})
+const routes: Route[] = [
+  {
+    path: '/',
+  },
+  {
+    path: 'about',
+  },
+  {
+    // Passing no route is equivalent to passing `path: '*'`
+    element: `This would render as the fallback when '/' or '/about' were not matched`,
+  },
+]
 ```
 
 **Example - Default / Fallback Route with client-side redirect**
 
 ```tsx
-const router = new Router({
-  routes: [
-    {
-      path: '/',
-      element: 'I am groot!',
-    },
-    {
-      path: 'about',
-      element: 'About me.',
-    },
-    {
-      element: <Navigate to="/" />,
-    },
-  ],
-})
+const routes: Route[] = [
+  {
+    path: '/',
+    element: 'I am groot!',
+  },
+  {
+    path: 'about',
+    element: 'About me.',
+  },
+  {
+    element: <Navigate to="/" />,
+  },
+]
 ```
 
 **Example - Root Wrapper**
 
 ```tsx
-const router = new Router({
-  routes: [
-    {
-      // Defaults to:
-      // path: '*'
-      // element: <Outlet />
-      loader: () => Promise.resolve({ data: 'some global data' }),
-      children: [
-        {
-          path: '/',
-          element: 'I am groot!',
-        },
-        {
-          path: 'about',
-          element: 'About me.',
-        },
-        {
-          element: <Navigate to="/" />,
-        },
-      ],
-    },
-  ],
-})
+const routes: Route[] = [
+  {
+    // Defaults to:
+    // path: '*'
+    // element: <Outlet />
+    loader: () => Promise.resolve({ data: 'some global data' }),
+    children: [
+      {
+        path: '/',
+        element: 'I am groot!',
+      },
+      {
+        path: 'about',
+        element: 'About me.',
+      },
+      {
+        element: <Navigate to="/" />,
+      },
+    ],
+  },
+]
 ```
 
 **Example - Data Loaders**
 
 ```tsx
-const router = new Router({
-  routes: [
-    {
-      path: '/',
-      element: <Home />,
-    },
-    {
-      path: 'dashboard',
-      element: <Dashboard />,
-    },
-    {
-      path: 'invoices',
-      element: <Invoices />,
-      // Load invoices before rendering
-      load: async () => ({
-        invoices: await fetchInvoices(),
-      }),
-      children: [
-        {
-          path: 'new',
-          element: <NewInvoice />,
-        },
-        {
-          path: ':invoiceId',
-          element: <Invoice />,
-          // Load the individual invoice before rendering
-          load: async ({ params }) => ({
-            invoice: await fetchInvoiceById(params.invoiceId),
-          }),
-        },
-      ],
-    },
-  ],
-})
+const routes: Route[] = [
+  {
+    path: '/',
+    element: <Home />,
+  },
+  {
+    path: 'dashboard',
+    element: <Dashboard />,
+  },
+  {
+    path: 'invoices',
+    element: <Invoices />,
+    // Load invoices before rendering
+    load: async () => ({
+      invoices: await fetchInvoices(),
+    }),
+    children: [
+      {
+        path: 'new',
+        element: <NewInvoice />,
+      },
+      {
+        path: ':invoiceId',
+        element: <Invoice />,
+        // Load the individual invoice before rendering
+        load: async ({ params }) => ({
+          invoice: await fetchInvoiceById(params.invoiceId),
+        }),
+      },
+    ],
+  },
+]
 ```
 
 **Example - Code Splitting**
@@ -272,40 +235,61 @@ const router = new Router({
 > Regardless, they still suspend navigation as you would expect!
 
 ```tsx
-const router = new Router({
-  routes: [
-    {
-      path: '/',
-      element: <Home />,
+const routes: Route[] = [
+  {
+    path: '/',
+    element: <Home />,
+  },
+  {
+    path: 'expensive',
+    import: async () => {
+      return import('./Expensive').then((res) => res.route)
+      // Expensive.route === {
+      //   element: <Expensive />,
+      //   data: async ({ params }) => ({
+      //     expensiveStuff: {...}
+      //   }),
+      // }
     },
-    {
-      path: 'expensive',
-      import: async () => {
-        return import('./Expensive').then((res) => res.route)
-        // Expensive.route === {
-        //   element: <Expensive />,
-        //   data: async ({ params }) => ({
-        //     expensiveStuff: {...}
-        //   }),
-        // }
-      },
-    },
-  ],
-})
+  },
+]
 ```
 
-## router.Routes & router.useRoutes
+## Routes & useRoutes
 
-The `router.Routes` component and `router.useRoutes` hook are used to conditionally match and render the matching route tree from the router based on the current location.
+The `Routes` component and `useRoutes` hook are used to conditionally match and render the matching route tree from the router based on the current location.
 
 | Property       | Required | type              | Description                                                                                                                                                                      |
 | -------------- | -------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| routes         | true     | `Route[]`         | An array of routes to match                                                                                                                                                      |
 | pendingElement |          | `React.ReactNode` | The content to be rendered while the first route match is being loaded. To avoid this element, consider using an [SRR](#ssr) approach to pre-load your route data on the server. |
 | initialMatch   |          | RouteMatch        | A route match object that has been both _matched_ and _loaded_. See the [SRR](#ssr) section for more details                                                                     |
 
-## router.useMatch
+```tsx
+const routes: Route[] = [
+  // ...
+]
 
-The `router.useMatch` hook returns the nearest current route match within context of where it's called. It can be used to access:
+function App() {
+  return <Routes routes={routes} />
+}
+```
+
+```tsx
+const routes: Route[] = [
+  // ...
+]
+
+function App() {
+  const routeElement = useRoutes({ routes })
+
+  return <div>{routeElement}</div>
+}
+```
+
+## useMatch
+
+The `useMatch` hook returns the nearest current route match within context of where it's called. It can be used to access:
 
 - Route Data
 - Route Params (eg. `/:invoiceId` => `params.invoiceId`)
@@ -314,26 +298,30 @@ The `router.useMatch` hook returns the nearest current route match within contex
 **Example - Route Data**
 
 ```tsx
-const router = new Router({
-  routes: [
-    {
-      path: 'invoices',
-      element: <Invoices />,
-      load: async () => ({
-        invoices: await fetchInvoices(),
-      }),
-      children: [
+function App() {
+  return (
+    <Routes
+      routes={[
         {
-          path: ':invoiceId',
-          element: <Invoice />,
-          load: async ({ params }) => ({
-            invoice: await fetchInvoiceById(params.invoiceId),
+          path: 'invoices',
+          element: <Invoices />,
+          load: async () => ({
+            invoices: await fetchInvoices(),
           }),
+          children: [
+            {
+              path: ':invoiceId',
+              element: <Invoice />,
+              load: async ({ params }) => ({
+                invoice: await fetchInvoiceById(params.invoiceId),
+              }),
+            },
+          ],
         },
-      ],
-    },
-  ],
-})
+      ]}
+    />
+  )
+}
 
 function Invoice() {
   const {
@@ -342,32 +330,36 @@ function Invoice() {
       invoices,
       invoice,
     },
-  } = router.useMatch()
+  } = useMatch()
 }
 ```
 
 **Example - Route Params**
 
 ```tsx
-const router = new Router({
-  routes: [
-    {
-      path: 'invoices',
-      element: <Invoices />,
-      children: [
+function App() {
+  return (
+    <Routes
+      routes={[
         {
-          path: ':invoiceId',
-          element: <Invoice />,
+          path: 'invoices',
+          element: <Invoices />,
+          children: [
+            {
+              path: ':invoiceId',
+              element: <Invoice />,
+            },
+          ],
         },
-      ],
-    },
-  ],
-})
+      ]}
+    />
+  )
+}
 
 function Invoice() {
   const {
     params: { invoiceId },
-  } = router.useMatch()
+  } = useMatch()
 
   // Use it for whatever, like in a React Query!
   const invoiceQuery = useQuery(
@@ -377,21 +369,15 @@ function Invoice() {
 }
 ```
 
-## router.useMatches
+## useMatches
 
-The `router.useMatches` hook is similar to the `router.useMatch` hook, except it returns an array of all matches from the current match down. If you are looking for a list of all matches, you'll want to use `router.useRouterState().matches`.
+The `useMatches` hook is similar to the `useMatch` hook, except it returns an array of all matches from the current match down. If you are looking for a list of all matches, you'll want to use `useRouterState().matches`.
 
 **Example - Route Data**
 
 ```tsx
-const router = new Router({
-  routes: [
-    // ...
-  ],
-})
-
 function Invoice() {
-  const matches = router.useMatches()
+  const matches = useMatches()
 }
 ```
 
@@ -407,17 +393,16 @@ The first level of search params always have standard encoding, eg. `?param1=val
 - Custom `stringifySearch` and `parseSearch` functions can be provided to your `ReactLocation` instance to further enhance the way search objects are encoded. We suggest using our `react-location-jsurl` package if you're truly looking for the best UX around search param encoding. It keeps urls small, readable and safely encoded for users to share and bookmark.
 - Regardless of the serialization strategy you pick for React Location, it will _always_ gauranty a stable, immutable and structurally-safe object reference. This means that even though your search params' source of truth is technically a string, it will behave as if it is an immutable object, stored in your application's memory.
 
-## router.useSearch
+## useSearch
 
-The `router.useSearch` hook provides access to the search params state for the current location. This JSON object is immutable from render to render through structural sharing so any part of it can be safely used for change-detection, even in useEffect/useMemo dependencies.
+The `useSearch` hook provides access to the search params state for the current location. This JSON object is immutable from render to render through structural sharing so any part of it can be safely used for change-detection, even in useEffect/useMemo dependencies.
 
 **Example - Basic**
 
 ```tsx
 import { Router, MakeGenerics } from 'react-location'
 
-const router = new Router<
-  MakeGenerics<{
+type MyLocationGenerics = MakeGenerics<{
     Search: {
       pagination?: {
         index?: number
@@ -429,14 +414,10 @@ const router = new Router<
       desc?: boolean
     }
   }>
->({
-  routes: [
-    // ..
-  ],
-})
+>
 
 function MyComponent() {
-  const search = router.useSearch()
+  const search = useSearch<MyLocationGenerics>()
 
   console.info(search)
   // {
@@ -455,8 +436,7 @@ function MyComponent() {
 **Example - Updating URL Search Params State**
 
 ```tsx
-const router = new Router<
-  MakeGenerics<{
+type MyLocationGenerics = MakeGenerics<{
     Search: {
       pagination?: {
         index?: number
@@ -468,14 +448,11 @@ const router = new Router<
       desc?: boolean
     }
   }>
->({
-  routes: [
-    // ..
-  ],
-})
+>
+
 
 function MyComponent() {
-  const navigate = router.useNavigate()
+  const navigate = useNavigate<MyLocationGenerics>()
 
   const nextPage = () => {
     navigate({
@@ -503,9 +480,9 @@ function MyComponent() {
 }
 ```
 
-### router.Link
+### Link
 
-The `router.Link` component allows you to generate links for _internal_ navigation, capable of updating the:
+The `Link` component allows you to generate links for _internal_ navigation, capable of updating the:
 
 - Pathname
 - Search Parameters
@@ -523,49 +500,45 @@ The links generated by it are designed to work perfectly with `Open in new Tab` 
 **Example: The basics**
 
 ```tsx
-const router = new Router({
-  routes: [
-    // ...
-  ],
-})
-
-render(
-  <div>
-    <router.Link to="/home">I will navigate to `/home`</router.Link>
-    <router.Link to="todos">
-      I will navigate to `./todos`, relative to the current location
-    </router.Link>
-    <router.Link to="..">
-      I will navigate up one level in the location hierarchy.
-    </router.Link>
-    <router.Link to="." hash="somehash">
-      I will update the hash to `somehash` at the current location
-    </router.Link>
-    <router.Link to="/search" search={{ q: 'yes' }}>
-      I will navigate to `/search?q=yes`
-    </router.Link>
-    <router.Link
-      to="."
-      search={{
-        someParams: true,
-        otherParams: 'gogogo',
-        object: { nested: { list: [1, 2, 3], hello: 'world' } },
-      }}
-    >
-      I will navigate to the current location +
-      `?someParams=true&otherParams=gogogo&object=~(nested~(list~(~1~2~3)~hello~%27world))`
-    </router.Link>
-    <router.Link
-      search={({ removeThis, ...rest }) => ({
-        ...rest,
-        addThis: 'This is new!',
-      })}
-    >
-      I will add `addThis='This is new!' and also remove the `removeThis` param
-      to/from the search params on the current page
-    </router.Link>
-  </div>
-)
+function App() {
+  return (
+    <div>
+      <Link to="/home">I will navigate to `/home`</Link>
+      <Link to="todos">
+        I will navigate to `./todos`, relative to the current location
+      </Link>
+      <Link to="..">
+        I will navigate up one level in the location hierarchy.
+      </Link>
+      <Link to="." hash="somehash">
+        I will update the hash to `somehash` at the current location
+      </Link>
+      <Link to="/search" search={{ q: 'yes' }}>
+        I will navigate to `/search?q=yes`
+      </Link>
+      <Link
+        to="."
+        search={{
+          someParams: true,
+          otherParams: 'gogogo',
+          object: { nested: { list: [1, 2, 3], hello: 'world' } },
+        }}
+      >
+        I will navigate to the current location +
+        `?someParams=true&otherParams=gogogo&object=~(nested~(list~(~1~2~3)~hello~%27world))`
+      </Link>
+      <Link
+        search={({ removeThis, ...rest }) => ({
+          ...rest,
+          addThis: 'This is new!',
+        })}
+      >
+        I will add `addThis='This is new!' and also remove the `removeThis`
+        param to/from the search params on the current page
+      </Link>
+    </div>
+  )
+}
 ```
 
 **Example: Using `getActiveProps`**
@@ -573,19 +546,19 @@ render(
 The following link will be green with `/about` as the current location.
 
 ```tsx
-<router.Link
+<Link
   to="/about"
   getActiveProps={(location) => ({
     style: { color: 'green' },
   })}
 >
   About
-</router.Link>
+</Link>
 ```
 
-### router.Navigate
+### Navigate
 
-When renderd, the `router.Navigate` component will declaratively and relatively navigate to any route.
+When renderd, the `Navigate` component will declaratively and relatively navigate to any route.
 
 | Prop    | Description                                                                                                      |
 | ------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -598,13 +571,13 @@ When renderd, the `router.Navigate` component will declaratively and relatively 
 
 ```tsx
 function App () {
-  return <router.Navigate to='./about'>
+  return <Navigate to='./about'>
 }
 ```
 
-### router.useNavigate
+### useNavigate
 
-The `router.useNavigate` hook allows you to programmatically navigate your application.
+The `useNavigate` hook allows you to programmatically navigate your application.
 
 **Usage**
 
@@ -620,28 +593,37 @@ function MyComponent() {
 }
 ```
 
-### router.useMatch
+### useMatch
 
-The `router.useMatch` hook allows you to programmatically test a relative path against the current location. If a path is match, it will return an object of route params detected, even if this is an empty object. If a path doesn't match, it will return `false`. This can be useful for detecting specific deep-route matches from a layout component
+The `useMatch` hook allows you to programmatically test a relative path against the current location. If a path is match, it will return an object of route params detected, even if this is an empty object. If a path doesn't match, it will return `false`. This can be useful for detecting specific deep-route matches from a layout component
 
 **Usage**
 
 ```tsx
-const router = new Router({
-  routes: [
-    {
-      path: '/',
-      element: 'Hello!',
-    },
-    {
-      path: ':teamId',
-      element: 'Hello!',
-    },
-  ],
-})
-
 function App() {
-  const matchRoute = router.useMatchRoute()
+  return (
+    <Routes
+      routes={[
+        {
+          element: <Root />,
+          children: [
+            {
+              path: '/',
+              element: 'Hello!',
+            },
+            {
+              path: ':teamId',
+              element: 'Hello!',
+            },
+          ],
+        },
+      ]}
+    />
+  )
+}
+
+function Root() {
+  const matchRoute = useMatchRoute()
 
   // If the path is '/'
   matchRoute({ to: '/' }) // {}
@@ -652,13 +634,13 @@ function App() {
   matchRoute({ to: '/*' }) // {}
   matchRoute({ to: ':teamId' }) // { teamId: 'team-1 }
 
-  return <router.Routes />
+  return <Routes />
 }
 ```
 
-### router.useRouterState
+### useRouterState
 
-The `router.useRouterState` hook can be used to gain access to the state of the closest `router.useRoutes()` element or `<router.Routes />` element. It's shape looks like this:
+The `useRouterState` hook can be used to gain access to the state of the closest `useRoutes()` element or `<Routes />` element. It's shape looks like this:
 
 | Property         | Type         | Description                                                                                                      |
 | ---------------- | ------------ | ---------------------------------------------------------------------------------------------------------------- |
@@ -678,26 +660,26 @@ The `useResolvePath` hook returns a function that can be used to resolve the ful
 ** Example **
 
 ```tsx
-const router = new Router({
-  routes: [
-    {
-      path: 'workspaces',
-      children: [
-        {
-          path: 'team',
-          element: <Team />,
-        },
-      ],
-    },
-  ],
-})
-
 function App() {
-  return <router.Routes />
+  return (
+    <Routes
+      routes={[
+        {
+          path: 'workspaces',
+          children: [
+            {
+              path: 'team',
+              element: <Team />,
+            },
+          ],
+        },
+      ]}
+    />
+  )
 }
 
 function Team() {
-  const resolvePath = router.useResolvePath()
+  const resolvePath = useResolvePath()
 
   const parentPath = resolvePath('..') // /workspace
   const parentPath = resolvePath('.') // /workspace/team
@@ -705,25 +687,19 @@ function Team() {
 }
 ```
 
-### router.useIsNextPath
+### useIsNextPath
 
-The `router.useIsNextPath` hook provides a function to test whether a relative path is the next destination that is currently being loaded by the nearest router.
+The `useIsNextPath` hook provides a function to test whether a relative path is the next destination that is currently being loaded by the nearest
 
 ** Example **
 
 ```tsx
-const router = new Router({
-  routes: [
-    // ...
-  ],
-})
-
 function Post() {
-  const isNextPath = router.useIsNextPath()
+  const isNextPath = useIsNextPath()
 
   return (
     <div>
-      <router.Link to="..">Back {isNextPath('..') ? '...' : ''}</router.Link>
+      <Link to="..">Back {isNextPath('..') ? '...' : ''}</Link>
       ...
     </div>
   )
@@ -733,15 +709,9 @@ function Post() {
 It is essentially a shorthand hook for the following:
 
 ```tsx
-const router = new Router({
-  routes: [
-    // ...
-  ],
-})
-
 function Post() {
-  const routerState = router.useRouterState()
-  const resolvePath = router.useResolvePath()
+  const routerState = useRouterState()
+  const resolvePath = useResolvePath()
 
   routerState.nextLocation?.pathname === resolvePath('..') // true | false
 }
@@ -765,23 +735,21 @@ export async function render(requestUrl) {
   // Create the location instance
   const location = new ReactLocation({ history })
   // Define your routes
-  const router = new Router({
-    routes: [
-      // ...
-    ],
-  })
+  const routes: Route[] = [
+    // ...
+  ]
   // Match the routes to the locations current path
   // This also performs any route imports
-  const initialMatch = await router.matchRoutes(location.current)
+  const initialMatch = await matchRoutes(routes, location.current)
 
   // Now we run all of the parallizable work
   if (initialMatch) {
-    await router.loadMatch(initialMatch).promise
+    await loadMatches(initialMatch).promise
   }
 
   const markup = ReactDOMServer.renderToString(
     <ReactLocationProvider>
-      <router.Routes initialMatch={initialMatch} routes={routes} />
+      <Routes initialMatch={initialMatch} routes={routes} />
     </ReactLocationProvider>
   )
 
@@ -799,17 +767,11 @@ export async function render(requestUrl) {
 import { createBowserHistory, ReactLocation, Router } from 'react-location'
 
 const location = new ReactLocation({ history })
-// Define your routes
-const router = new Router({
-  routes: [
-    // ...
-  ],
-})
 
 export function App() {
   return (
     <ReactLocationProvider location={location}>
-      <router.Routes initialMatch={window.__initialMatch} />)
+      <Routes routes={routes} initialMatch={window.__initialMatch} />)
     </ReactLocationProvider>
   )
 }

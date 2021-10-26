@@ -52,18 +52,13 @@ export type ReactLocationOptions = {
 type SearchSerializer = (searchObj: Record<string, any>) => string
 type SearchParser = (searchStr: string) => Record<string, any>
 
-export type BuildNextOptions<
+export type NavigateOptions<
   TGenerics extends PartialGenerics = DefaultGenerics,
 > = {
   to?: string | null
   search?: Updater<UseGeneric<TGenerics, 'Search'>>
   hash?: Updater<string>
   from?: string
-}
-
-export type NavigateOptions<
-  TGenerics extends PartialGenerics = DefaultGenerics,
-> = BuildNextOptions<TGenerics> & {
   replace?: boolean
 }
 
@@ -76,6 +71,7 @@ export type Location<TGenerics extends PartialGenerics = DefaultGenerics> = {
   searchStr: string
   hash: string
   key: string
+  nextAction?: 'push' | 'replace'
 }
 
 export type Route<TGenerics extends PartialGenerics = DefaultGenerics> =
@@ -139,7 +135,7 @@ export type RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> = {
   data: UseGeneric<TGenerics, 'LoaderData'>
   error?: unknown
   isLoading: boolean
-  loaderPromise: Promise<void>
+  loaderPromise?: Promise<UseGeneric<TGenerics, 'LoaderData'>>
 }
 
 export type LoaderFn<TGenerics extends PartialGenerics = DefaultGenerics> = (
@@ -221,16 +217,19 @@ export type LoaderDispatchEvent<
       error: unknown
     }
 
-export type RouterState<TGenerics extends PartialGenerics = DefaultGenerics> = {
-  previousMatches?: RouteMatch<TGenerics>[]
-  matches?: RouteMatch<TGenerics>[]
-  nextMatches?: RouteMatch<TGenerics>[]
-  isTransitioning: boolean
-  isLoading: boolean
-  previousLocation?: Location<TGenerics>
-  currentLocation: Location<TGenerics>
-  nextLocation?: Location<TGenerics>
-}
+export type RouterContext<TGenerics extends PartialGenerics = DefaultGenerics> =
+  {
+    filterRoutes?: FilterRoutesFn
+    routes: Route<TGenerics>[]
+    previousMatches?: RouteMatch<TGenerics>[]
+    matches?: RouteMatch<TGenerics>[]
+    nextMatches?: RouteMatch<TGenerics>[]
+    isTransitioning: boolean
+    isLoading: boolean
+    previousLocation?: Location<TGenerics>
+    currentLocation: Location<TGenerics>
+    nextLocation?: Location<TGenerics>
+  }
 
 export type FilterRoutesFn = <
   TGenerics extends PartialGenerics = DefaultGenerics,
@@ -241,16 +240,29 @@ export type FilterRoutesFn = <
 export type UseRoutesOptions<
   TGenerics extends PartialGenerics = DefaultGenerics,
 > = {
+  routes: Route<TGenerics>[]
   initialMatches?: RouteMatch<TGenerics>[]
   pendingElement?: React.ReactNode
   filterRoutes?: FilterRoutesFn
 }
 
-type MatchLoader = {
-  promise: Promise<void>
-  subscribe: (listener: () => void) => void
+type MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> = {
+  promise: Promise<RouteMatch<TGenerics>[]>
+  subscribe: (listener: (matches: RouteMatch<TGenerics>[]) => void) => void
   startPending: () => void
 }
+
+export type Transition<TGenerics> = {
+  promise?: Promise<any>
+  matchLoader?: MatchLoader<TGenerics>
+  matches?: RouteMatch<TGenerics>[]
+  listeners: LoaderListeners<TGenerics>[]
+  subscribe: (listeners: LoaderListeners<TGenerics>) => () => void
+  timeout?: ReturnType<typeof setTimeout>
+  remove: () => void
+}
+
+export type Transitions<TGenerics> = Record<string, Transition<TGenerics>>
 
 //
 
@@ -263,11 +275,10 @@ const defaultRouteMatch = {
   data: {} as any,
   status: 'resolved',
   isLoading: false,
-  loaderPromise: Promise.resolve(),
 } as const
 
 const RootMatchContext = React.createContext<RouteMatch<any>>(defaultRouteMatch)
-const RouteMatchContext = React.createContext<RouteMatch<any>[]>([
+const MatchesContext = React.createContext<RouteMatch<any>[]>([
   defaultRouteMatch,
 ])
 
@@ -282,7 +293,7 @@ const isDOM = Boolean(
 const createDefaultHistory = () =>
   isDOM ? createBrowserHistory() : createMemoryHistory()
 
-const routerStateContext = React.createContext<RouterState<any>>(null!)
+const routerContext = React.createContext<RouterContext<any>>(null!)
 
 export class ReactLocation<
   TLocationGenerics extends PartialGenerics = DefaultGenerics,
@@ -294,6 +305,8 @@ export class ReactLocation<
   stringifySearch: SearchSerializer
   parseSearch: SearchParser
   filterRoutes: FilterRoutesFn
+  transitions: Transitions<TLocationGenerics>
+  navigateTimeout?: ReturnType<typeof setTimeout>
 
   //
 
@@ -306,6 +319,7 @@ export class ReactLocation<
     this.parseSearch = options?.parseSearch ?? defaultParseSearch
     this.filterRoutes = options?.filterRoutes ?? ((d) => d)
     this.current = this.parseLocation(this.history.location)
+    this.transitions = {}
 
     this.destroy = this.history.listen((event) => {
       this.current = this.parseLocation(event.location, this.current)
@@ -344,7 +358,7 @@ export class ReactLocation<
   }
 
   buildNext<TGenerics extends PartialGenerics = TLocationGenerics>(
-    options: BuildNextOptions<TGenerics> = {},
+    options: NavigateOptions<TGenerics> = {},
   ): Location<TGenerics> {
     if (options.to === '') {
       options.from = this.current.pathname
@@ -364,6 +378,16 @@ export class ReactLocation<
     let hash = this.buildHash(options.hash)
     hash = hash ? `#${hash}` : ''
 
+    let nextAction: 'push' | 'replace' = 'replace'
+
+    if (!this.current.nextAction) {
+      nextAction = options.replace ? 'replace' : 'push'
+    }
+
+    if (!options.replace) {
+      nextAction = 'push'
+    }
+
     return {
       pathname,
       search,
@@ -371,27 +395,34 @@ export class ReactLocation<
       hash,
       href: `${pathname}${searchStr}${hash}`,
       key: this.current.key,
+      nextAction,
     }
   }
 
   navigate<TGenerics extends PartialGenerics = TLocationGenerics>(
     options: NavigateOptions<TGenerics> = {},
   ): void {
+    if (this.navigateTimeout) clearTimeout(this.navigateTimeout)
+
     this.current = this.buildNext(options)
 
-    if (options.replace) {
-      return this.history.replace({
+    this.navigateTimeout = setTimeout(() => {
+      delete this.current.nextAction
+
+      if (options.replace) {
+        return this.history.replace({
+          pathname: this.current.pathname,
+          hash: this.current.hash,
+          search: this.current.searchStr,
+        })
+      }
+
+      return this.history.push({
         pathname: this.current.pathname,
         hash: this.current.hash,
         search: this.current.searchStr,
       })
-    }
-
-    return this.history.push({
-      pathname: this.current.pathname,
-      hash: this.current.hash,
-      search: this.current.searchStr,
-    })
+    }, 16)
   }
 
   parseLocation<TGenerics extends PartialGenerics = TLocationGenerics>(
@@ -425,9 +456,9 @@ export function ReactLocationProvider<
   return (
     <LocationContext.Provider value={locationInstance}>
       <RootMatchContext.Provider value={rootMatch}>
-        <RouteMatchContext.Provider value={routeMatch}>
+        <MatchesContext.Provider value={routeMatch}>
           {children}
-        </RouteMatchContext.Provider>
+        </MatchesContext.Provider>
       </RootMatchContext.Provider>
     </LocationContext.Provider>
   )
@@ -457,634 +488,624 @@ type LoaderListeners<TGenerics> = {
   onLoad?: (match?: RouteMatch<TGenerics>[]) => void
 }
 
-export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
-  routes: Route<TRouterGenerics>[]
-  filterRoutes?: FilterRoutesFn
-  transitions: Record<
-    string,
-    {
-      promise?: Promise<any>
-      matchLoader?: MatchLoader
-      matches?: RouteMatch<TRouterGenerics>[]
-      listeners: LoaderListeners<TRouterGenerics>[]
-      subscribe: (listeners: LoaderListeners<TRouterGenerics>) => () => void
-      timeout?: ReturnType<typeof setTimeout>
-      remove: () => void
-    }
-  >
-
-  constructor(options: {
-    routes: Route<TRouterGenerics>[]
+export async function matchRoutes<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>(
+  routes: Route<TGenerics>[],
+  currentLocation: Location<TGenerics>,
+  opts?: {
+    parentMatch?: RouteMatch<TGenerics>
     filterRoutes?: FilterRoutesFn
-  }) {
-    this.routes = options.routes
-    this.filterRoutes = options.filterRoutes
-    this.transitions = {}
+  },
+): Promise<RouteMatch<TGenerics>[]> {
+  if (!routes?.length) {
+    return []
   }
 
-  matchRoutes = async <TGenerics extends PartialGenerics = TRouterGenerics>(
-    currentLocation: Location<TGenerics>,
-    opts?: {
-      parentMatch?: RouteMatch<TGenerics>
-      filterRoutes?: FilterRoutesFn
-    },
-  ): Promise<RouteMatch<TGenerics>[]> => {
-    if (!this.routes?.length) {
-      return []
-    }
+  const matches: RouteMatch<TGenerics>[] = []
 
-    const matches: RouteMatch<TGenerics>[] = []
+  const recurse = async (
+    routes: Route<TGenerics>[],
+    parentMatch: RouteMatch<TGenerics>,
+  ) => {
+    let { pathname, params } = parentMatch
+    const filteredRoutes = opts?.filterRoutes
+      ? opts?.filterRoutes(routes)
+      : routes
 
-    const recurse = async (
-      routes: Route<TGenerics>[],
-      parentMatch: RouteMatch<TGenerics>,
-    ) => {
-      let { pathname, params } = parentMatch
-      const filteredRoutes = opts?.filterRoutes
-        ? opts?.filterRoutes(routes)
-        : routes
+    const flexRoute = filteredRoutes.find((route) => {
+      const fullRoutePathName = joinPaths([pathname, route.path ?? '*'])
 
-      const flexRoute = filteredRoutes.find((route) => {
-        const fullRoutePathName = joinPaths([pathname, route.path ?? '*'])
-
-        const matchParams = matchRoute(currentLocation, {
-          to: fullRoutePathName,
-        })
-
-        if (matchParams) {
-          Object.assign(params, matchParams)
-        }
-
-        return !!matchParams
+      const matchParams = matchRoute(currentLocation, {
+        to: fullRoutePathName,
       })
 
-      if (!flexRoute) {
-        return
+      if (matchParams) {
+        Object.assign(params, matchParams)
       }
 
-      const interpolatedPathSegments = parsePathname(flexRoute.path)
+      return !!matchParams
+    })
 
-      const interpolatedPath = joinPaths(
-        interpolatedPathSegments.map((segment) => {
-          if (segment.value === '*') {
-            return ''
-          }
-
-          if (segment.type === 'param') {
-            return params![segment.value] ?? ''
-          }
-
-          return segment.value
-        }),
-      )
-
-      pathname = joinPaths([pathname, interpolatedPath])
-
-      let route: RouteResolved<TGenerics>
-
-      if (flexRoute.import) {
-        const res = await flexRoute.import({ params })
-        route = {
-          ...flexRoute,
-          ...res,
-        }
-      } else {
-        route = flexRoute
-      }
-
-      const match: RouteMatch<TGenerics> = {
-        route,
-        params,
-        pathname,
-        data: {} as any,
-        status: 'pending',
-        isLoading: false,
-        loaderPromise: Promise.resolve() as Promise<any>,
-      }
-
-      matches.push(match)
-
-      if (route.children) {
-        await recurse(route.children, match)
-      }
+    if (!flexRoute) {
+      return
     }
 
-    await recurse(this.routes, opts?.parentMatch ?? defaultRouteMatch)
+    const interpolatedPathSegments = parsePathname(flexRoute.path)
 
-    return matches
-  }
-
-  useLoadRoute = <
-    THookGenerics extends PartialGenerics = TRouterGenerics,
-  >() => {
-    const match = this.useMatch<THookGenerics>()
-    const location = useLocation<THookGenerics>()
-    const rootRoute = this.useRootMatch()
-
-    return React.useCallback(
-      <TGenerics extends PartialGenerics = THookGenerics>(
-        navigate: NavigateOptions<TGenerics>,
-        opts?: {
-          onMatch?: (match?: RouteMatch<TGenerics>[]) => undefined | false
-          onLoad?: (match?: RouteMatch<TGenerics>[]) => void
-          timeoutMs?: number
-          filterRoutes?: FilterRoutesFn
-          // This is a hint to our loader that the pendingMs should start,
-          // since we are trying to render the route, as opposed to just
-          // arbitrarily loading it eg. for prefetching
-          isTransition?: boolean
-        },
-      ) => {
-        const nextLocation = location.buildNext({
-          ...navigate,
-          from: match.pathname,
-        })
-
-        let transition = this.transitions[nextLocation.href]!
-
-        if (!transition) {
-          transition = this.transitions[nextLocation.href] = {
-            listeners: [],
-            subscribe: (listener) => {
-              transition.listeners.push(listener)
-
-              if (transition.matches?.length) {
-                listener.onMatch?.(transition.matches)
-
-                transition.promise?.then(() =>
-                  listener.onLoad?.(transition.matches),
-                )
-              }
-
-              return () => {
-                transition.listeners = transition.listeners.filter(
-                  (d) => d !== listener,
-                )
-
-                if (!transition.listeners.length) {
-                  transition.remove()
-                }
-              }
-            },
-            remove: () => {
-              delete this.transitions[nextLocation.href]
-            },
-          }
+    const interpolatedPath = joinPaths(
+      interpolatedPathSegments.map((segment) => {
+        if (segment.value === '*') {
+          return ''
         }
 
-        if (transition.timeout) clearTimeout(transition.timeout)
+        if (segment.type === 'param') {
+          return params![segment.value] ?? ''
+        }
 
-        if (!transition.promise) {
-          transition.promise = Promise.resolve().then(async () => {
-            transition.matches = await this.matchRoutes(nextLocation, {
-              parentMatch: rootRoute,
-              filterRoutes: this.filterRoutes ?? opts?.filterRoutes,
-            })
+        return segment.value
+      }),
+    )
 
-            transition.listeners.forEach((listeners) => {
-              listeners.onMatch?.(transition.matches)
-            })
+    pathname = joinPaths([pathname, interpolatedPath])
+
+    let route: RouteResolved<TGenerics>
+
+    if (flexRoute.import) {
+      const res = await flexRoute.import({ params })
+      route = {
+        ...flexRoute,
+        ...res,
+      }
+    } else {
+      route = flexRoute
+    }
+
+    const match: RouteMatch<TGenerics> = {
+      route,
+      params,
+      pathname,
+      data: {} as any,
+      status: 'pending',
+      isLoading: false,
+      loaderPromise: Promise.resolve() as Promise<any>,
+    }
+
+    matches.push(match)
+
+    if (route.children) {
+      await recurse(route.children, match)
+    }
+  }
+
+  await recurse(routes, opts?.parentMatch ?? defaultRouteMatch)
+
+  return matches
+}
+
+export function useLoadRoute<
+  THookGenerics extends PartialGenerics = DefaultGenerics,
+>(routes?: Route<THookGenerics>[]) {
+  const router = useRouter<THookGenerics>(undefined, true)
+  const match = useMatch<THookGenerics>()
+  const location = useLocation<THookGenerics>()
+  const rootRoute = useRootMatch<THookGenerics>()
+
+  routes = routes ?? router?.routes
+
+  return React.useCallback(
+    <TGenerics extends PartialGenerics = THookGenerics>(
+      navigate: NavigateOptions<TGenerics>,
+      opts?: {
+        onMatch?: (match?: RouteMatch<TGenerics>[]) => undefined | false
+        onLoad?: (match?: RouteMatch<TGenerics>[]) => void
+        timeoutMs?: number
+        filterRoutes?: FilterRoutesFn
+        // This is a hint to our loader that the pendingMs should start,
+        // since we are trying to render the route, as opposed to just
+        // arbitrarily loading it eg. for prefetching
+        isTransition?: boolean
+      },
+    ) => {
+      const filterRoutes = opts?.filterRoutes ?? router?.filterRoutes
+
+      const nextLocation = location.buildNext({
+        ...navigate,
+        from: match.pathname,
+      })
+
+      let transition = location.transitions[nextLocation.href]!
+
+      if (!transition) {
+        transition = location.transitions[nextLocation.href] = {
+          listeners: [],
+          subscribe: (listener) => {
+            transition.listeners.push(listener)
 
             if (transition.matches?.length) {
-              if (!transition.matchLoader) {
-                transition.matchLoader = loadMatches(transition.matches)
-              }
+              listener.onMatch?.(transition.matches)
 
-              transition.matchLoader?.subscribe(() => {
-                transition.listeners.forEach((listeners) => {
-                  listeners.onLoad?.(transition.matches)
-                })
-              })
+              transition.promise?.then(() =>
+                listener.onLoad?.(transition.matches),
+              )
             }
 
-            await transition.matchLoader?.promise
+            return () => {
+              transition.listeners = transition.listeners.filter(
+                (d) => d !== listener,
+              )
 
-            if (!opts?.isTransition) {
-              transition.timeout = setTimeout(() => {
+              if (!transition.listeners.length) {
                 transition.remove()
-              }, opts?.timeoutMs ?? 0)
+              }
             }
+          },
+          remove: () => {
+            delete location.transitions[nextLocation.href]
+          },
+        }
+      }
+
+      if (transition.timeout) clearTimeout(transition.timeout)
+
+      if (!transition.promise) {
+        transition.promise = Promise.resolve().then(async () => {
+          transition.matches = await matchRoutes(routes!, nextLocation, {
+            parentMatch: rootRoute,
+            filterRoutes,
           })
-        }
 
-        return transition
-      },
-      [],
-    )
-  }
+          transition.listeners.forEach((listeners) => {
+            listeners.onMatch?.(transition.matches)
+          })
 
-  useRoutes = <TGenerics extends PartialGenerics = TRouterGenerics>(
-    options?: UseRoutesOptions<TGenerics>,
-  ): JSX.Element => {
-    const location = useLocation<TGenerics>()
-    const loadRoute = this.useLoadRoute()
-    const startTransition =
-      (React as any).useTransition?.() ??
-      function <T>(cb: () => T): void {
-        cb()
-      }
-
-    const [state, setState] = React.useState<RouterState<TGenerics>>({
-      isLoading: null!, // This get's overwritten
-      isTransitioning: !options?.initialMatches,
-      matches: options?.initialMatches,
-      currentLocation: location.current,
-    })
-
-    const isLoading = !!(
-      state.matches && state.matches.find((d) => d.isLoading)
-    )
-
-    const routerStateContextValue = React.useMemo(
-      (): RouterState<TGenerics> => ({
-        ...state,
-        isLoading,
-      }),
-      [state],
-    )
-
-    // const latestRef = React.useRef(0)
-
-    React.useEffect(() => {
-      try {
-        const nextLocation = location.current
-
-        // let done = false
-
-        setState((old) => ({
-          ...old,
-          isTransitioning: true,
-          previousLocation: old.currentLocation,
-          nextLocation,
-        }))
-
-        //
-        // const id = Date.now()
-        // latestRef.current = id
-
-        // const isLatest = () => !done && latestRef.current === id
-
-        const transition = loadRoute(
-          { to: '' },
-          {
-            isTransition: true,
-            filterRoutes: options?.filterRoutes ?? location.filterRoutes,
-          },
-        )
-
-        const unsubscribe = transition.subscribe({
-          onMatch: (nextMatches) => {
-            setState((old) => ({
-              ...old,
-              nextMatches,
-            }))
-
-            if (!nextMatches?.length) {
-              setState((old) => ({
-                ...old,
-                previousMatches: old.matches,
-                matches: undefined,
-                nextMatches: undefined,
-                isTransitioning: false,
-                currentLocation: nextLocation,
-                nextLocation: undefined,
-              }))
-              return false
+          if (transition.matches?.length) {
+            if (!transition.matchLoader) {
+              transition.matchLoader = loadMatches(transition.matches)
             }
-          },
-          onLoad: (nextMatches) => {
-            startTransition(() => {
-              setState((old) => ({
-                ...old,
-                isTransitioning: false,
-                previousMatches: old.matches,
-                matches: nextMatches,
-                nextMatches: undefined,
-                currentLocation: nextLocation,
-                nextLocation: undefined,
-              }))
+
+            transition.matchLoader?.subscribe((newMatches) => {
+              transition.matches = newMatches
+
+              transition.listeners.forEach((listeners) => {
+                listeners.onLoad?.(transition.matches)
+              })
             })
-          },
-        })
+          }
 
-        return () => {
-          unsubscribe()
-        }
-      } catch (err) {
-        console.error(err)
-      }
-    }, [location.current.key])
+          await transition.matchLoader?.promise
 
-    return (
-      <routerStateContext.Provider value={routerStateContextValue}>
-        {state.matches?.length
-          ? this.renderMatches(state.matches)
-          : state.isTransitioning
-          ? ((options?.pendingElement ?? null) as JSX.Element)
-          : null}
-      </routerStateContext.Provider>
-    )
-  }
-
-  Routes = <TGenerics extends PartialGenerics = TRouterGenerics>(
-    options: UseRoutesOptions<TGenerics>,
-  ) => {
-    return this.useRoutes(options)
-  }
-
-  useMatches = <
-    TGenerics extends PartialGenerics = TRouterGenerics,
-  >(): RouteMatch<TGenerics>[] => {
-    return React.useContext(RouteMatchContext)
-  }
-
-  useMatch = <
-    TGenerics extends PartialGenerics = TRouterGenerics,
-  >(): RouteMatch<TGenerics> => {
-    return React.useContext(RouteMatchContext)[0]!
-  }
-
-  Link = <TGenerics extends PartialGenerics = TRouterGenerics>({
-    to = '.',
-    search,
-    hash,
-    children,
-    target,
-    style = {},
-    replace,
-    onClick,
-    className = '',
-    getActiveProps = () => ({}),
-    activeOptions,
-    ...rest
-  }: LinkProps<TGenerics>) => {
-    const match = this.useMatch<TGenerics>()
-    const location = useLocation<TGenerics>()
-    const navigate = this.useNavigate<TGenerics>()
-
-    // If this `to` is a valid external URL, log a warning
-    try {
-      const url = new URL(to)
-      warning(
-        false,
-        `<Link /> should not be used for external URLs like: ${url.href}`,
-      )
-    } catch (e) {}
-
-    const next = location.buildNext({
-      to,
-      from: match.pathname,
-      search,
-      hash,
-    })
-
-    // The click handler
-    const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-      if (onClick) onClick(e)
-
-      if (
-        !isCtrlEvent(e) &&
-        !e.defaultPrevented &&
-        (!target || target === '_self') &&
-        e.button === 0
-      ) {
-        e.preventDefault()
-        // All is well? Navigate!
-        navigate({
-          to,
-          search,
-          hash,
-          replace,
+          if (!opts?.isTransition) {
+            transition.timeout = setTimeout(() => {
+              transition.remove()
+            }, opts?.timeoutMs ?? 0)
+          }
         })
       }
+
+      return transition
+    },
+    [],
+  )
+}
+
+export function useRoutes<TGenerics extends PartialGenerics = DefaultGenerics>(
+  options: UseRoutesOptions<TGenerics>,
+): JSX.Element {
+  const location = useLocation<TGenerics>()
+  const loadRoute = useLoadRoute<TGenerics>(options.routes)
+  const startTransition =
+    (React as any).useTransition?.() ??
+    function <T>(cb: () => T): void {
+      cb()
     }
 
-    // Compare path/hash for matches
-    const pathIsEqual = location.current.pathname === next.pathname
-    const pathIsFuzzyEqual = location.current.pathname.startsWith(next.pathname)
-    const hashIsEqual = location.current.hash === next.hash
+  const [state, setState] = React.useState<{
+    isTransitioning: boolean
+    matches?: RouteMatch<TGenerics>[]
+    currentLocation: Location<TGenerics>
+  }>({
+    isTransitioning: !options.initialMatches,
+    matches: options.initialMatches,
+    currentLocation: location.current,
+  })
 
-    // Combine the matches based on user options
-    const pathTest = activeOptions?.exact ? pathIsEqual : pathIsFuzzyEqual
-    const hashTest = activeOptions?.includeHash ? hashIsEqual : true
+  const isLoading = !!(state.matches && state.matches.find((d) => d.isLoading))
 
-    // The final "active" test
-    const isCurrent = pathTest && hashTest
+  const routerContextValue = React.useMemo(
+    (): RouterContext<TGenerics> => ({
+      ...state,
+      isLoading,
+      routes: options.routes,
+      filterRoutes: options.filterRoutes,
+    }),
+    [state],
+  )
 
-    // Get the active props
-    const {
-      style: activeStyle = {},
-      className: activeClassName = '',
-      ...activeRest
-    } = isCurrent ? getActiveProps() : {}
+  // const latestRef = React.useRef(0)
 
-    return (
-      <a
-        {...{
-          href: next.href,
-          onClick: handleClick,
-          target,
-          style: {
-            ...style,
-            ...activeStyle,
-          },
-          className:
-            [className, activeClassName].filter(Boolean).join(' ') || undefined,
-          ...rest,
-          ...activeRest,
-          children,
-        }}
-      />
+  React.useEffect(() => {
+    try {
+      const nextLocation = location.current
+
+      // let done = false
+
+      setState((old) => ({
+        ...old,
+        isTransitioning: true,
+        previousLocation: old.currentLocation,
+        nextLocation,
+      }))
+
+      //
+      // const id = Date.now()
+      // latestRef.current = id
+
+      // const isLatest = () => !done && latestRef.current === id
+
+      const transition = loadRoute(
+        { to: '' },
+        {
+          isTransition: true,
+          filterRoutes: options.filterRoutes ?? location.filterRoutes,
+        },
+      )
+
+      const unsubscribe = transition.subscribe({
+        onMatch: (nextMatches) => {
+          setState((old) => ({
+            ...old,
+            nextMatches,
+          }))
+
+          if (!nextMatches?.length) {
+            setState((old) => ({
+              ...old,
+              previousMatches: old.matches,
+              matches: undefined,
+              nextMatches: undefined,
+              isTransitioning: false,
+              currentLocation: nextLocation,
+              nextLocation: undefined,
+            }))
+            return false
+          }
+        },
+        onLoad: (nextMatches) => {
+          startTransition(() => {
+            setState((old) => ({
+              ...old,
+              isTransitioning: false,
+              previousMatches: old.matches,
+              matches: nextMatches,
+              nextMatches: undefined,
+              currentLocation: nextLocation,
+              nextLocation: undefined,
+            }))
+          })
+        },
+      })
+
+      return () => {
+        unsubscribe()
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }, [location.current.key])
+
+  return (
+    <routerContext.Provider value={routerContextValue}>
+      {state.matches?.length
+        ? renderMatches(state.matches)
+        : state.isTransitioning
+        ? ((options.pendingElement ?? null) as JSX.Element)
+        : null}
+    </routerContext.Provider>
+  )
+}
+
+export function Routes<TGenerics extends PartialGenerics = DefaultGenerics>(
+  options: UseRoutesOptions<TGenerics>,
+) {
+  return useRoutes(options)
+}
+
+export function useMatches<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>(): RouteMatch<TGenerics>[] {
+  return React.useContext(MatchesContext)
+}
+
+export function useMatch<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>(): RouteMatch<TGenerics> {
+  return useMatches<TGenerics>()[0]!
+}
+
+export function Link<TGenerics extends PartialGenerics = DefaultGenerics>({
+  to = '.',
+  search,
+  hash,
+  children,
+  target,
+  style = {},
+  replace,
+  onClick,
+  className = '',
+  getActiveProps = () => ({}),
+  activeOptions,
+  ...rest
+}: LinkProps<TGenerics>) {
+  const match = useMatch<TGenerics>()
+  const location = useLocation<TGenerics>()
+  const navigate = useNavigate<TGenerics>()
+
+  // If this `to` is a valid external URL, log a warning
+  try {
+    const url = new URL(to)
+    warning(
+      false,
+      `<Link /> should not be used for external URLs like: ${url.href}`,
     )
-  }
+  } catch (e) {}
 
-  useNavigate<THookGenerics extends PartialGenerics = TRouterGenerics>() {
-    const match = this.useMatch<THookGenerics>()
-    const location = useLocation<THookGenerics>()
+  const next = location.buildNext({
+    to,
+    from: match.pathname,
+    search,
+    hash,
+  })
 
-    function navigate<TGenerics extends PartialGenerics = THookGenerics>({
-      search,
-      hash,
-      replace,
-      fromCurrent,
-      to,
-    }: UseNavigateOptions<TGenerics>) {
-      fromCurrent = fromCurrent ?? typeof to === 'undefined'
+  // The click handler
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (onClick) onClick(e)
 
-      location.navigate({
+    if (
+      !isCtrlEvent(e) &&
+      !e.defaultPrevented &&
+      (!target || target === '_self') &&
+      e.button === 0
+    ) {
+      e.preventDefault()
+      // All is well? Navigate!
+      navigate({
         to,
-        from: fromCurrent ? location.current.pathname : match.pathname,
         search,
         hash,
         replace,
       })
     }
-
-    return useLatestCallback(navigate)
   }
 
-  Navigate = <TGenerics extends PartialGenerics = TRouterGenerics>(
-    options: UseNavigateOptions<TGenerics>,
-  ) => {
-    let navigate = this.useNavigate<TGenerics>()
+  // Compare path/hash for matches
+  const pathIsEqual = location.current.pathname === next.pathname
+  const pathIsFuzzyEqual = location.current.pathname.startsWith(next.pathname)
+  const hashIsEqual = location.current.hash === next.hash
 
-    React.useLayoutEffect(() => {
-      navigate(options)
-    }, [navigate])
+  // Combine the matches based on user options
+  const pathTest = activeOptions?.exact ? pathIsEqual : pathIsFuzzyEqual
+  const hashTest = activeOptions?.includeHash ? hashIsEqual : true
 
+  // The final "active" test
+  const isCurrent = pathTest && hashTest
+
+  // Get the active props
+  const {
+    style: activeStyle = {},
+    className: activeClassName = '',
+    ...activeRest
+  } = isCurrent ? getActiveProps() : {}
+
+  return (
+    <a
+      {...{
+        href: next.href,
+        onClick: handleClick,
+        target,
+        style: {
+          ...style,
+          ...activeStyle,
+        },
+        className:
+          [className, activeClassName].filter(Boolean).join(' ') || undefined,
+        ...rest,
+        ...activeRest,
+        children,
+      }}
+    />
+  )
+}
+
+export function useNavigate<
+  THookGenerics extends PartialGenerics = DefaultGenerics,
+>() {
+  const match = useMatch<THookGenerics>()
+  const location = useLocation<THookGenerics>()
+
+  function navigate<TGenerics extends PartialGenerics = THookGenerics>({
+    search,
+    hash,
+    replace,
+    fromCurrent,
+    to,
+  }: UseNavigateOptions<TGenerics>) {
+    fromCurrent = fromCurrent ?? typeof to === 'undefined'
+
+    location.navigate({
+      to,
+      from: fromCurrent ? location.current.pathname : match.pathname,
+      search,
+      hash,
+      replace,
+    })
+  }
+
+  return useLatestCallback(navigate)
+}
+
+export function Navigate<TGenerics extends PartialGenerics = DefaultGenerics>(
+  options: UseNavigateOptions<TGenerics>,
+) {
+  let navigate = useNavigate<TGenerics>()
+
+  React.useLayoutEffect(() => {
+    navigate(options)
+  }, [navigate])
+
+  return null
+}
+
+export function Outlet<TGenerics extends PartialGenerics = DefaultGenerics>() {
+  const [_, ...matches] = useMatches<TGenerics>()
+  if (!matches.length) {
     return null
   }
+  return renderMatches<TGenerics>(matches)
+}
 
-  Outlet = <TGenerics extends PartialGenerics = TRouterGenerics>() => {
-    const [_, ...matches] = this.useMatches<TGenerics>()
-    if (!matches.length) {
-      return null
-    }
-    return this.renderMatches(matches)
+export function renderMatches<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>(matches: RouteMatch<TGenerics>[], opts?: { useErrorBoundary?: boolean }) {
+  const [match] = matches
+
+  if (!match) {
+    throw new Error()
   }
 
-  renderMatches = <TGenerics extends PartialGenerics = TRouterGenerics>(
-    matches: RouteMatch<TGenerics>[],
-    opts?: { useErrorBoundary?: boolean },
-  ) => {
-    const [match, ...childMatches] = matches
+  const element = (() => {
+    if (match.status === 'rejected') {
+      if (match.errorElement) {
+        return match.errorElement
+      }
 
-    if (!match) {
-      throw new Error()
-    }
-
-    const element = (() => {
-      if (match.status === 'rejected') {
-        if (match.errorElement) {
-          return match.errorElement
-        }
-
-        if (!opts?.useErrorBoundary) {
-          if (__DEV__) {
-            const preStyle: React.HTMLAttributes<HTMLPreElement>['style'] = {
-              whiteSpace: 'normal',
-              display: 'inline-block',
-              background: 'rgba(0,0,0,.1)',
-              padding: '.1rem .2rem',
-              margin: '.1rem',
-              lineHeight: '1',
-              borderRadius: '.25rem',
-            }
-
-            return (
-              <div style={{ lineHeight: '1.7' }}>
-                <strong>
-                  The following error occured in the loader for you route at:{' '}
-                  <pre style={preStyle}>{match.pathname}</pre>
-                </strong>
-                .
-                <br />
-                <pre
-                  style={{
-                    ...preStyle,
-                    display: 'block',
-                    padding: '.5rem',
-                    borderRadius: '.5rem',
-                  }}
-                >
-                  {(match.error as any).toString()}
-                </pre>
-                <br />
-                Your users won't see this message in production, but they will
-                see <strong>"An unknown error occured!"</strong>, which is at
-                least better than breaking your entire app. 😊 For a better UX,
-                please specify an <pre style={preStyle}>errorElement</pre> for
-                all of your routes that contain asynchronous behavior, or at
-                least provide your own
-                <pre style={preStyle}>ErrorBoundary</pre> wrapper around your
-                renders to both the elements rendered by{' '}
-                <pre style={preStyle}>
-                  {'useRoutes(routes, { useErrorBoundary: true })'}
-                </pre>{' '}
-                and <pre style={preStyle}>{'<Routes useErrorBoundary />'}</pre>.{' '}
-                <br />
-                <br />
-              </div>
-            )
+      if (!opts?.useErrorBoundary) {
+        if (__DEV__) {
+          const preStyle: React.HTMLAttributes<HTMLPreElement>['style'] = {
+            whiteSpace: 'normal',
+            display: 'inline-block',
+            background: 'rgba(0,0,0,.1)',
+            padding: '.1rem .2rem',
+            margin: '.1rem',
+            lineHeight: '1',
+            borderRadius: '.25rem',
           }
-          return 'An unknown error occured!'
-        }
 
-        throw match.error
+          return (
+            <div style={{ lineHeight: '1.7' }}>
+              <strong>
+                The following error occured in the loader for you route at:{' '}
+                <pre style={preStyle}>{match.pathname}</pre>
+              </strong>
+              .
+              <br />
+              <pre
+                style={{
+                  ...preStyle,
+                  display: 'block',
+                  padding: '.5rem',
+                  borderRadius: '.5rem',
+                }}
+              >
+                {(match.error as any).toString()}
+              </pre>
+              <br />
+              Your users won't see this message in production, but they will see{' '}
+              <strong>"An unknown error occured!"</strong>, which is at least
+              better than breaking your entire app. 😊 For a better UX, please
+              specify an <pre style={preStyle}>errorElement</pre> for all of
+              your routes that contain asynchronous behavior, or at least
+              provide your own
+              <pre style={preStyle}>ErrorBoundary</pre> wrapper around your
+              renders to both the elements rendered by{' '}
+              <pre style={preStyle}>
+                {'useRoutes(routes, { useErrorBoundary: true })'}
+              </pre>{' '}
+              and <pre style={preStyle}>{'<Routes useErrorBoundary />'}</pre>.{' '}
+              <br />
+              <br />
+            </div>
+          )
+        }
+        return 'An unknown error occured!'
       }
 
-      if (match.status === 'pending') {
-        if (match.route.pendingMs || match.pendingElement) {
-          return match.pendingElement ?? null
-        }
-      }
-
-      return match.element ?? <this.Outlet />
-    })()
-
-    return (
-      <RouteMatchContext.Provider value={childMatches}>
-        {element}
-      </RouteMatchContext.Provider>
-    )
-  }
-
-  useResolvePath = <
-    THookGenerics extends PartialGenerics = TRouterGenerics,
-  >() => {
-    const match = this.useMatch<THookGenerics>()
-
-    return React.useCallback(
-      (path: string) => resolvePath(match.pathname!, cleanPath(path)),
-      [match],
-    )
-  }
-
-  useRootMatch = <
-    TGenerics extends PartialGenerics = TRouterGenerics,
-  >(): RouteMatch<TGenerics> => {
-    return React.useContext(RootMatchContext)
-  }
-
-  useSearch = <TGenerics extends PartialGenerics = TRouterGenerics>() => {
-    const location = useLocation<TGenerics>()
-    return location.current.search
-  }
-
-  useIsNextPath = () => {
-    const routerState = this.useRouterState()
-    const resolvePath = this.useResolvePath()
-
-    return React.useCallback(
-      (pathname: string) =>
-        routerState.nextLocation?.pathname === resolvePath(pathname),
-      [routerState, resolvePath],
-    )
-  }
-
-  useMatchRoute = <TGenerics extends PartialGenerics = TRouterGenerics>() => {
-    const location = useLocation<TGenerics>()
-    const resolvePath = this.useResolvePath<TGenerics>()
-
-    return useLatestCallback((matchLocation: MatchLocation<TGenerics>) =>
-      matchRoute(location.current, {
-        ...matchLocation,
-        to: matchLocation.to ? resolvePath(matchLocation.to) : undefined,
-      }),
-    )
-  }
-
-  useRouterState = <TGenerics extends PartialGenerics = TRouterGenerics>() => {
-    const context = React.useContext(routerStateContext)
-    if (!context) {
-      warning(
-        true,
-        'You are trying to use useRouterState() outside of ReactLocation!',
-      )
-      throw new Error()
+      throw match.error
     }
-    return context as RouterState<TGenerics>
+
+    if (match.status === 'pending') {
+      if (match.route.pendingMs || match.pendingElement) {
+        return match.pendingElement ?? null
+      }
+    }
+
+    return match.element ?? <Outlet<TGenerics> />
+  })()
+
+  return (
+    <MatchesContext.Provider value={matches}>{element}</MatchesContext.Provider>
+  )
+}
+
+export function useResolvePath<
+  THookGenerics extends PartialGenerics = DefaultGenerics,
+>() {
+  const match = useMatch<THookGenerics>()
+
+  return React.useCallback(
+    (path: string) => resolvePath(match.pathname!, cleanPath(path)),
+    [match],
+  )
+}
+
+export function useRootMatch<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>(): RouteMatch<TGenerics> {
+  return React.useContext(RootMatchContext)
+}
+
+export function useSearch<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>() {
+  const location = useLocation<TGenerics>()
+  return location.current.search
+}
+
+export function useIsNextPath() {
+  const routerState = useRouter()
+  const resolvePath = useResolvePath()
+
+  return React.useCallback(
+    (pathname: string) =>
+      routerState.nextLocation?.pathname === resolvePath(pathname),
+    [routerState, resolvePath],
+  )
+}
+
+export function useMatchRoute<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>() {
+  const location = useLocation<TGenerics>()
+  const resolvePath = useResolvePath<TGenerics>()
+
+  return useLatestCallback((matchLocation: MatchLocation<TGenerics>) =>
+    matchRoute(location.current, {
+      ...matchLocation,
+      to: matchLocation.to ? resolvePath(matchLocation.to) : undefined,
+    }),
+  )
+}
+
+export function useRouter<TGenerics extends PartialGenerics = DefaultGenerics>(
+  _?: undefined,
+  unsafe?: boolean,
+) {
+  const context = React.useContext(routerContext)
+  if (!context && !unsafe) {
+    warning(true, 'You are trying to use useRouter() outside of ReactLocation!')
+    throw new Error()
   }
+  return context as RouterContext<TGenerics>
 }
 
 export function usePrompt(message: string, when = true): void {
@@ -1131,23 +1152,42 @@ export function matchRoute<TGenerics extends PartialGenerics = DefaultGenerics>(
 
 export function loadMatches<
   TGenerics extends PartialGenerics = DefaultGenerics,
->(matches: RouteMatch<TGenerics>[] | undefined): MatchLoader | undefined {
+>(
+  matches: RouteMatch<TGenerics>[] | undefined,
+): MatchLoader<TGenerics> | undefined {
   if (!matches?.length) {
     return
   }
 
   const firstRenderPromises: Promise<unknown>[] = []
 
-  let listeners: (() => void)[] = []
-  const subscribe = (listener: () => void) => {
+  let listeners: ((newMatches: RouteMatch<TGenerics>[]) => void)[] = []
+  const subscribe = (
+    listener: (newMatches: RouteMatch<TGenerics>[]) => void,
+  ) => {
     listeners.push(listener)
 
     return () => {
       listeners = listeners.filter((d) => d !== listener)
     }
   }
-  const notify = () => {
-    listeners.forEach((listener) => listener())
+
+  const notify = (): RouteMatch<TGenerics>[] => {
+    const newMatches = matches.map((match, index) => {
+      const parentMatch = matches[index - 1]
+
+      return {
+        ...match,
+        data: {
+          ...(parentMatch?.data ?? {}),
+          ...match.data,
+        },
+      }
+    })
+
+    listeners.forEach((listener) => listener(newMatches))
+
+    return newMatches
   }
 
   let pendingStarters: (() => void)[] = []
@@ -1188,12 +1228,8 @@ export function loadMatches<
     if (!load) {
       match.status = 'resolved'
     } else {
-      match.loaderPromise = match.loaderPromise.then(() => {
-        match.data = {
-          ...(parentMatch?.data as any),
-        }
-
-        return new Promise<void>(async (resolve) => {
+      match.loaderPromise = Promise.resolve().then(() => {
+        return new Promise(async (resolve) => {
           let pendingTimeout: ReturnType<typeof setTimeout>
           let pendingMinPromise = Promise.resolve()
 
@@ -1210,27 +1246,34 @@ export function loadMatches<
             })
           }
 
+          let promise: undefined | Promise<any>
+
           const finish = () => {
             clearTimeout(pendingTimeout!)
-            resolve()
+            resolve(match.data)
             match.isLoading = false
+            promise = undefined
           }
 
           try {
             match.isLoading = true
-            const data = await load(match, {
+
+            promise = load(match, {
+              parentMatch,
               dispatch: async (event) => {
-                await Promise.all([
-                  match.loaderPromise,
-                  firstRenderPromise,
-                  pendingMinPromise,
-                ])
+                // Do not allow async updates
+                // while the loader is in flight
+                if (!firstRendered) {
+                  return
+                }
+
+                // // Wait for the initial render to complete or at least
+                // // the first pending render
+                // await Promise.all([firstRenderPromise, pendingMinPromise])
+
                 if (event.type === 'resolve') {
                   match.status = 'resolved'
-                  match.data = {
-                    ...parentMatch?.data,
-                    ...event.data,
-                  } as any
+                  match.data = event.data
                   match.error = undefined
                   match.isLoading = false
                 } else if (event.type === 'reject') {
@@ -1242,12 +1285,11 @@ export function loadMatches<
                 }
                 notify()
               },
-            })
+            }) as any
+
+            const data = await promise
             match.status = 'resolved'
-            match.data = {
-              ...parentMatch?.data,
-              ...data,
-            } as any
+            match.data = data
             await pendingMinPromise
             finish()
           } catch (err) {
@@ -1263,7 +1305,12 @@ export function loadMatches<
     }
   })
 
-  const firstRenderPromise = Promise.all(firstRenderPromises).then(notify)
+  let firstRendered = false
+  const firstRenderPromise = Promise.all(firstRenderPromises).then(() => {
+    const newMatches = notify()
+    firstRendered = true
+    return newMatches
+  })
 
   return {
     promise: firstRenderPromise,
@@ -1297,23 +1344,20 @@ export function functionalUpdate<TResult>(
   return updater
 }
 
-function cleanPathname(pathname: string) {
-  return `${pathname}`.replace(/\/{2,}/g, '/')
+function joinPaths(paths: (string | undefined)[]) {
+  return cleanPath(paths.filter(Boolean).join('/'))
 }
 
 export function cleanPath(path: string) {
-  path = cleanPathname(path)
+  // remove double slashes
+  path = `${path}`.replace(/\/{2,}/g, '/')
 
-  // Remove '/' and './' prefixes from route paths
+  // remove trailing slash
   if (path !== '/') {
-    path = path.replace(/^(\/|\.\/)/g, '')
+    path = path.replace(/(\/)$/g, '')
   }
 
   return path
-}
-
-function joinPaths(paths: (string | undefined)[]) {
-  return cleanPathname(paths.filter(Boolean).join('/'))
 }
 
 function matchByPath<TGenerics extends PartialGenerics = DefaultGenerics>(
@@ -1323,8 +1367,6 @@ function matchByPath<TGenerics extends PartialGenerics = DefaultGenerics>(
   const baseSegments = parsePathname(currentLocation.pathname)
   const routeSegments = parsePathname(matchLocation.to ?? '*')
 
-  console.log(baseSegments, routeSegments)
-
   const params: Record<string, string> = {}
 
   let isMatch = (() => {
@@ -1333,30 +1375,40 @@ function matchByPath<TGenerics extends PartialGenerics = DefaultGenerics>(
       i < Math.max(baseSegments.length, routeSegments.length);
       i++
     ) {
-      const baseSegment = baseSegments[i]!
-      const routeSegment = routeSegments[i]!
+      const baseSegment = baseSegments[i]
+      const routeSegment = routeSegments[i]
 
       const isLastRouteSegment = i === routeSegments.length - 1
       const isLastBaseSegment = i === baseSegments.length - 1
 
-      if (routeSegment) {
+      if (!routeSegment) {
+        // /a/b
+        // contains
+        // /a
+        return true
+      } else {
         if (routeSegment.type === 'wildcard') {
+          // /a/b
+          // contains
+          // /a/*
           return true
         }
 
-        if (routeSegment.type === 'param') {
-          if (!baseSegment) {
-            return false
-          }
+        if (!baseSegment) {
+          // /a
+          // contains
+          // /a/b
+          return false
+        }
 
+        if (routeSegment.type === 'param') {
+          // /a/b
+          // contains
+          // /a/:param
           params[routeSegment.value] = baseSegment.value
         }
 
         if (routeSegment.type === 'pathname') {
-          if (!baseSegment) {
-            return false
-          }
-
           if (
             routeSegment.value === '/' &&
             isLastRouteSegment &&
@@ -1369,8 +1421,6 @@ function matchByPath<TGenerics extends PartialGenerics = DefaultGenerics>(
             return false
           }
         }
-      } else {
-        return true
       }
     }
 
@@ -1394,16 +1444,16 @@ export function parsePathname(pathname?: string): Segment[] {
     return []
   }
 
-  pathname = cleanPathname(pathname)
+  pathname = cleanPath(pathname)
 
   const segments: Segment[] = []
 
   if (pathname.charAt(0) === '/') {
+    pathname = pathname.substring(1)
     segments.push({
       type: 'pathname',
       value: '/',
     })
-    pathname = pathname.substring(1)
   }
 
   if (!pathname) {
@@ -1465,7 +1515,7 @@ function resolvePath(base: string, to: string) {
 
   const joined = baseSegments.map((d) => d.value).join('/')
 
-  return cleanPathname(joined)
+  return cleanPath(joined)
 }
 
 function isCtrlEvent(e: React.MouseEvent) {
@@ -1573,7 +1623,7 @@ export function defaultStringifySearch(search: Record<string, unknown>) {
   if (search) {
     Object.keys(search).forEach((key) => {
       const val = search[key]
-      if (val && typeof val === 'object' && val !== null) {
+      if (val && isPlainObject(val)) {
         try {
           search[key] = JSON.stringify(val)
         } catch (err) {
@@ -1583,7 +1633,11 @@ export function defaultStringifySearch(search: Record<string, unknown>) {
     })
   }
 
-  return new URLSearchParams(search as Record<string, string>).toString()
+  const searchStr = new URLSearchParams(
+    search as Record<string, string>,
+  ).toString()
+
+  return searchStr ? `?${searchStr}` : ''
 }
 
 export function defaultParseSearch(searchStr: string): Record<string, any> {
@@ -1598,18 +1652,11 @@ export function defaultParseSearch(searchStr: string): Record<string, any> {
   // Try to parse query params
   for (let key in query) {
     const value = query[key]
-    if (value === 'false') {
-      query[key] = false
-    } else if (value === 'true') {
-      query[key] = true
-    } else if (value === 'null') {
-      query[key] = null
-    } else if (typeof value === 'string') {
-      try {
-        query[key] = JSON.parse(value)
-      } catch (err) {
-        //
-      }
+
+    try {
+      query[key] = JSON.parse(value as string)
+    } catch (err) {
+      //
     }
   }
 

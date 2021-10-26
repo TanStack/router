@@ -3,10 +3,14 @@ import React from "react";
 import ReactDOM from "react-dom";
 import axios from "axios";
 import {
+  Link,
   MakeGenerics,
+  Outlet,
   ReactLocation,
   ReactLocationProvider,
-  Router,
+  Routes,
+  useIsNextPath,
+  useMatch,
 } from "react-location";
 
 //
@@ -25,35 +29,33 @@ type LocationGenerics = MakeGenerics<{
 
 //
 
-const location = new ReactLocation();
-
-const router = new Router<LocationGenerics>({
-  routes: [
-    {
-      element: <Home />,
-      children: [
-        {
-          path: ":postId",
-          element: <Post />,
-          loader: async ({ params: { postId } }) => ({
-            post: await fetchPostById(postId),
-          }),
-        },
-        {
-          element: <Posts />,
-          loader: async () => ({
-            posts: await fetchPosts(),
-          }),
-        },
-      ],
-    },
-  ],
-});
+const location = new ReactLocation<LocationGenerics>();
 
 function App() {
   return (
     <ReactLocationProvider location={location}>
-      <router.Routes pendingElement="..." />
+      <Routes<LocationGenerics>
+        routes={[
+          {
+            element: <Home />,
+            children: [
+              {
+                path: ":postId",
+                element: <Post />,
+                loader: async ({ params: { postId } }) => ({
+                  post: await fetchPostById(postId),
+                }),
+              },
+              {
+                element: <Posts />,
+                loader: async () => ({
+                  posts: await fetchPosts(),
+                }),
+              },
+            ],
+          },
+        ]}
+      />
     </ReactLocationProvider>
   );
 }
@@ -63,7 +65,7 @@ function Home() {
     <>
       <h1>Basic Example</h1>
       <hr />
-      <router.Outlet />
+      <Outlet />
     </>
   );
 }
@@ -71,19 +73,18 @@ function Home() {
 function Posts() {
   const {
     data: { posts },
-  } = router.useMatch();
-  const isNextPath = router.useIsNextPath();
-  const loadRoute = router.useLoadRoute();
+  } = useMatch<LocationGenerics>();
+  const isNextPath = useIsNextPath();
 
   return (
     <div>
-      <h1>Posts</h1>
+      <h2>Posts</h2>
       <div>
         {posts?.map((post) => (
           <p key={post.id}>
-            <router.Link to={post.id}>
+            <Link to={post.id}>
               {post.title} {isNextPath(post.id) ? "..." : ""}
-            </router.Link>
+            </Link>
           </p>
         ))}
       </div>
@@ -94,13 +95,13 @@ function Posts() {
 function Post() {
   const {
     data: { post },
-  } = router.useRoute<LocationGenerics>();
-  const isNextPath = router.useIsNextPath();
+  } = useMatch<LocationGenerics>();
+  const isNextPath = useIsNextPath();
 
   return (
     <div>
       <div>
-        <router.Link to="..">Back {isNextPath("..") ? "..." : ""}</router.Link>
+        <Link to="..">Back {isNextPath("..") ? "..." : ""}</Link>
       </div>
       <h1>{post?.title}</h1>
       <div>

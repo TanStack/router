@@ -3,10 +3,14 @@ import React from "react";
 import ReactDOM from "react-dom";
 import axios from "axios";
 import {
+  Link,
   MakeGenerics,
   ReactLocation,
   ReactLocationProvider,
-  Router,
+  Routes,
+  useIsNextPath,
+  useLoadRoute,
+  useMatch,
 } from "react-location";
 import {
   useQuery,
@@ -31,31 +35,34 @@ type LocationGenerics = MakeGenerics<{
 //
 
 const location = new ReactLocation<LocationGenerics>();
-const router = new Router<LocationGenerics>({
-  routes: [
-    {
-      path: ":postId",
-      element: <Post />,
-      loader: ({ params: { postId } }) =>
-        queryClient.getQueryData(["posts", postId]) ??
-        queryClient.fetchQuery(["posts", postId], () => fetchPostById(postId)),
-    },
-    {
-      path: "/",
-      element: <Posts />,
-      loader: () =>
-        queryClient.getQueryData("posts") ??
-        queryClient.fetchQuery("posts", fetchPosts).then(() => ({})),
-    },
-  ],
-});
 const queryClient = new QueryClient();
 
 function App() {
   return (
     <ReactLocationProvider location={location}>
       <QueryClientProvider client={queryClient}>
-        <router.Routes pendingElement="..." />
+        <h1>Basic w/ React Query</h1>
+        <hr />
+        <Routes
+          routes={[
+            {
+              path: ":postId",
+              element: <Post />,
+              loader: ({ params: { postId } }) =>
+                queryClient.getQueryData(["posts", postId]) ??
+                queryClient.fetchQuery(["posts", postId], () =>
+                  fetchPostById(postId)
+                ),
+            },
+            {
+              path: "/",
+              element: <Posts />,
+              loader: () =>
+                queryClient.getQueryData("posts") ??
+                queryClient.fetchQuery("posts", fetchPosts).then(() => ({})),
+            },
+          ]}
+        />
         <ReactQueryDevtools initialIsOpen />
       </QueryClientProvider>
     </ReactLocationProvider>
@@ -77,22 +84,12 @@ function usePosts() {
 function Posts() {
   const queryClient = useQueryClient();
   const { status, data, error, isFetching } = usePosts();
-  const isNextPath = router.useIsNextPath();
-  const loadRoute = router.useLoadRoute();
+  const isNextPath = useIsNextPath();
+  const loadRoute = useLoadRoute();
 
   return (
     <div>
-      <p>
-        As you visit the posts below, you will notice them in a loading state
-        the first time you load them. However, after you return to this list and
-        click on any posts you have already visited again, you will see them
-        load instantly and background refresh right before your eyes!{" "}
-        <strong>
-          (You may need to throttle your network speed to simulate longer
-          loading sequences)
-        </strong>
-      </p>
-      <h1>Posts {isFetching ? "..." : ""}</h1>
+      <h2>Posts {isFetching ? "..." : ""}</h2>
       <div>
         {status === "loading" ? (
           "Loading..."
@@ -103,7 +100,7 @@ function Posts() {
             <div>
               {data?.map((post) => (
                 <p key={post.id}>
-                  <router.Link
+                  <Link
                     to={`./${post.id}`}
                     onMouseEnter={() => loadRoute({ to: post.id })}
                     style={
@@ -118,7 +115,7 @@ function Posts() {
                     }
                   >
                     {post.title} {isNextPath(post.id) ? "..." : ""}
-                  </router.Link>
+                  </Link>
                 </p>
               ))}
             </div>
@@ -146,15 +143,15 @@ function usePost(postId: string) {
 function Post() {
   const {
     params: { postId },
-  } = router.useMatch();
-  const isNextPath = router.useIsNextPath();
+  } = useMatch();
+  const isNextPath = useIsNextPath();
 
   const { status, data, error, isFetching } = usePost(postId);
 
   return (
     <div>
       <div>
-        <router.Link to="..">Back {isNextPath("..") ? "..." : ""}</router.Link>
+        <Link to="..">Back {isNextPath("..") ? "..." : ""}</Link>
       </div>
       {!postId || status === "loading" ? (
         "Loading..."

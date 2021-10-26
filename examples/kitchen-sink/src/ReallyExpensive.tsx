@@ -1,24 +1,24 @@
-import { RouteImported } from 'react-location'
+import { Link, Outlet, RouteImported, useMatch } from 'react-location'
 
-import { simpleCache, sleep, router } from './'
+import { simpleCache, sleep } from './'
 
 function ReallyExpensive() {
-  const route = router.useMatch()
+  const route = useMatch()
   return (
     <>
       Really Expensive Data: {JSON.stringify(route.data)}
       <br />
-      <router.Link to="sub-expensive">
+      <Link to="sub-expensive">
         <pre>sub-expensive</pre>
-      </router.Link>
+      </Link>
       <hr />
-      <router.Outlet />
+      <Outlet />
     </>
   )
 }
 
 function SubExpensive() {
-  const route = router.useMatch()
+  const route = useMatch()
   return <>Sub-Expensive Data: {JSON.stringify(route.data)}</>
 }
 

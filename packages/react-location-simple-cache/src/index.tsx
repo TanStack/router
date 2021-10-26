@@ -53,7 +53,6 @@ export class ReactLocationSimpleCache<
           updatedAt: 0,
           ready: false,
           match,
-          // loaderOptions,
         }
       }
 

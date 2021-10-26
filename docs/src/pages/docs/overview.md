@@ -15,6 +15,7 @@ Here's a quick glance at some of its features:
   - Immutability w/ Structural Sharing
   - Optional Compression w/ JSURL plugin or your own custom parser/serializer!
   - Types
+- Navigation batching and graceful replace/push escalation
 - Promise-based route loaders
 - Post-render Async loader APIs (stale-while-revalidate, external cache integration)
 - Asynchronous route definitions
