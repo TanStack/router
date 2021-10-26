@@ -3,7 +3,7 @@ import { RouteImported } from 'react-location'
 import { simpleCache, sleep, router } from './'
 
 function ReallyExpensive() {
-  const route = router.useRoute()
+  const route = router.useMatch()
   return (
     <>
       Really Expensive Data: {JSON.stringify(route.data)}
@@ -18,7 +18,7 @@ function ReallyExpensive() {
 }
 
 function SubExpensive() {
-  const route = router.useRoute()
+  const route = router.useMatch()
   return <>Sub-Expensive Data: {JSON.stringify(route.data)}</>
 }
 

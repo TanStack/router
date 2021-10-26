@@ -99,7 +99,7 @@ All of these features are essentially **asynchronous routing features** and we'l
 - All `loader`s and asynchronous `element`s for the **entire tree** are loaded **in parallel**. _PRO TIP: If you need a route to wait for a parent's promise or data, you can access it via `loader: (match) => match.parentMatch.loaderPromise`_
 - Out of the box, React Location **does not cache loaders, async elements or route imports**. We recommend using an external cache for your loader data like `react-location-simple-cache` or our other favorit TanStack library, React Query!
 - Route `import`s, due to their nature, cause a temporary waterfall in the parallelization of route loading, but as soon as a route `import` is resolved, any child loaders and async elements will continue in parallel as normal.
-- Introducing async behavior into a route usually means you should handle errors too. Use the `errorElement` route option and the `useRoute()` hook to handle and display these errors.
+- Introducing async behavior into a route usually means you should handle errors too. Use the `errorElement` route option and the `useMatch()` hook to handle and display these errors.
 
 #### Route Properties
 
@@ -303,9 +303,9 @@ The `router.Routes` component and `router.useRoutes` hook are used to conditiona
 | pendingElement |          | `React.ReactNode` | The content to be rendered while the first route match is being loaded. To avoid this element, consider using an [SRR](#ssr) approach to pre-load your route data on the server. |
 | initialMatch   |          | RouteMatch        | A route match object that has been both _matched_ and _loaded_. See the [SRR](#ssr) section for more details                                                                     |
 
-## router.useRoute
+## router.useMatch
 
-The `router.useRoute` hook returns the nearest current route match within context of where it's called. It can be used to access:
+The `router.useMatch` hook returns the nearest current route match within context of where it's called. It can be used to access:
 
 - Route Data
 - Route Params (eg. `/:invoiceId` => `params.invoiceId`)
@@ -342,7 +342,7 @@ function Invoice() {
       invoices,
       invoice,
     },
-  } = router.useRoute()
+  } = router.useMatch()
 }
 ```
 
@@ -367,13 +367,31 @@ const router = new Router({
 function Invoice() {
   const {
     params: { invoiceId },
-  } = router.useRoute()
+  } = router.useMatch()
 
   // Use it for whatever, like in a React Query!
   const invoiceQuery = useQuery(
     ['invoices', invoiceId],
     fetchInvoiceById(invoiceId)
   )
+}
+```
+
+## router.useMatches
+
+The `router.useMatches` hook is similar to the `router.useMatch` hook, except it returns an array of all matches from the current match down. If you are looking for a list of all matches, you'll want to use `router.useRouterState().matches`.
+
+**Example - Route Data**
+
+```tsx
+const router = new Router({
+  routes: [
+    // ...
+  ],
+})
+
+function Invoice() {
+  const matches = router.useMatches()
 }
 ```
 
@@ -623,16 +641,16 @@ const router = new Router({
 })
 
 function App() {
-  const match = router.useMatch()
+  const matchRoute = router.useMatchRoute()
 
   // If the path is '/'
-  match({ to: '/' }) // {}
-  match({ to: ':teamId' }) // false
+  matchRoute({ to: '/' }) // {}
+  matchRoute({ to: ':teamId' }) // false
 
   // If the path is `/team-1'
-  match({ to: '/' }) // false
-  match({ to: '/*' }) // {}
-  match({ to: ':teamId' }) // { teamId: 'team-1 }
+  matchRoute({ to: '/' }) // false
+  matchRoute({ to: '/*' }) // {}
+  matchRoute({ to: ':teamId' }) // { teamId: 'team-1 }
 
   return <router.Routes />
 }
@@ -642,14 +660,16 @@ function App() {
 
 The `router.useRouterState` hook can be used to gain access to the state of the closest `router.useRoutes()` element or `<router.Routes />` element. It's shape looks like this:
 
-| Property         | Type       | Description                                                                                                      |
-| ---------------- | ---------- | ---------------------------------------------------------------------------------------------------------------- |
-| currentMatch     | RouteMatch | The current RouteMatch object that is being rendered                                                             |
-| previousLocation | Location   | The previous location snapshot                                                                                   |
-| currentLocation  | Location   | The current location snapshot                                                                                    |
-| nextLocation     | Location   | The next location snapshot                                                                                       |
-| isTransitioning  | boolean    | Will be `true` if the router is currently transitioning                                                          |
-| isLoading        | boolean    | Will be `true` if any matches in the route are currently in a loading state, including background loading states |
+| Property         | Type         | Description                                                                                                      |
+| ---------------- | ------------ | ---------------------------------------------------------------------------------------------------------------- |
+| matches          | RouteMatch[] | The current set of matches that are being rendered                                                               |
+| previousMatches  | RouteMatch[] | The previous set of matches before the last committed navigation                                                 |
+| nextMatches      | RouteMatch[] | The next set of matches that are being loaded                                                                    |
+| previousLocation | Location     | The previous location snapshot                                                                                   |
+| currentLocation  | Location     | The current location snapshot                                                                                    |
+| nextLocation     | Location     | The next location snapshot                                                                                       |
+| isTransitioning  | boolean      | Will be `true` if the router is currently transitioning                                                          |
+| isLoading        | boolean      | Will be `true` if any matches in the route are currently in a loading state, including background loading states |
 
 ### useResolvePath
 

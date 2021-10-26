@@ -71,7 +71,7 @@ function Home() {
 function Posts() {
   const {
     data: { posts },
-  } = router.useRoute();
+  } = router.useMatch();
   const isNextPath = router.useIsNextPath();
   const loadRoute = router.useLoadRoute();
 

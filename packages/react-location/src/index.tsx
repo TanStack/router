@@ -140,8 +140,6 @@ export type RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> = {
   error?: unknown
   isLoading: boolean
   loaderPromise: Promise<void>
-  childMatch?: RouteMatch<TGenerics>
-  parentMatch?: RouteMatch<TGenerics>
 }
 
 export type LoaderFn<TGenerics extends PartialGenerics = DefaultGenerics> = (
@@ -152,6 +150,7 @@ export type LoaderFn<TGenerics extends PartialGenerics = DefaultGenerics> = (
 export type LoaderFnOptions<
   TGenerics extends PartialGenerics = DefaultGenerics,
 > = {
+  parentMatch?: RouteMatch<TGenerics>
   dispatch: (event: LoaderDispatchEvent<TGenerics>) => void
 }
 
@@ -223,7 +222,9 @@ export type LoaderDispatchEvent<
     }
 
 export type RouterState<TGenerics extends PartialGenerics = DefaultGenerics> = {
-  currentMatch?: RouteMatch<TGenerics>
+  previousMatches?: RouteMatch<TGenerics>[]
+  matches?: RouteMatch<TGenerics>[]
+  nextMatches?: RouteMatch<TGenerics>[]
   isTransitioning: boolean
   isLoading: boolean
   previousLocation?: Location<TGenerics>
@@ -240,7 +241,7 @@ export type FilterRoutesFn = <
 export type UseRoutesOptions<
   TGenerics extends PartialGenerics = DefaultGenerics,
 > = {
-  initialMatch?: RouteMatch<TGenerics>
+  initialMatches?: RouteMatch<TGenerics>[]
   pendingElement?: React.ReactNode
   filterRoutes?: FilterRoutesFn
 }
@@ -266,8 +267,9 @@ const defaultRouteMatch = {
 } as const
 
 const RootMatchContext = React.createContext<RouteMatch<any>>(defaultRouteMatch)
-const RouteMatchContext =
-  React.createContext<RouteMatch<any>>(defaultRouteMatch)
+const RouteMatchContext = React.createContext<RouteMatch<any>[]>([
+  defaultRouteMatch,
+])
 
 // Detect if we're in the DOM
 const isDOM = Boolean(
@@ -418,10 +420,12 @@ export function ReactLocationProvider<
     }
   }, [locationInstance.basepath])
 
+  const routeMatch = React.useMemo(() => [rootMatch], [rootMatch])
+
   return (
     <LocationContext.Provider value={locationInstance}>
       <RootMatchContext.Provider value={rootMatch}>
-        <RouteMatchContext.Provider value={rootMatch}>
+        <RouteMatchContext.Provider value={routeMatch}>
           {children}
         </RouteMatchContext.Provider>
       </RootMatchContext.Provider>
@@ -449,8 +453,8 @@ export function useLocation<
 }
 
 type LoaderListeners<TGenerics> = {
-  onMatch?: (match?: RouteMatch<TGenerics>) => void
-  onLoad?: (match?: RouteMatch<TGenerics>) => void
+  onMatch?: (match?: RouteMatch<TGenerics>[]) => void
+  onLoad?: (match?: RouteMatch<TGenerics>[]) => void
 }
 
 export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
@@ -461,7 +465,7 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
     {
       promise?: Promise<any>
       matchLoader?: MatchLoader
-      match?: RouteMatch<TRouterGenerics>
+      matches?: RouteMatch<TRouterGenerics>[]
       listeners: LoaderListeners<TRouterGenerics>[]
       subscribe: (listeners: LoaderListeners<TRouterGenerics>) => () => void
       timeout?: ReturnType<typeof setTimeout>
@@ -484,15 +488,16 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
       parentMatch?: RouteMatch<TGenerics>
       filterRoutes?: FilterRoutesFn
     },
-  ): Promise<undefined | RouteMatch<TGenerics>> => {
+  ): Promise<RouteMatch<TGenerics>[]> => {
     if (!this.routes?.length) {
-      return
+      return []
     }
+
+    const matches: RouteMatch<TGenerics>[] = []
 
     const recurse = async (
       routes: Route<TGenerics>[],
       parentMatch: RouteMatch<TGenerics>,
-      isRoot?: boolean,
     ) => {
       let { pathname, params } = parentMatch
       const filteredRoutes = opts?.filterRoutes
@@ -557,28 +562,22 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
         loaderPromise: Promise.resolve() as Promise<any>,
       }
 
-      if (!isRoot) {
-        match.parentMatch = parentMatch
-      }
+      matches.push(match)
 
       if (route.children) {
-        match.childMatch = await recurse(route.children, match)
+        await recurse(route.children, match)
       }
-
-      return match
     }
 
-    return await recurse(
-      this.routes,
-      opts?.parentMatch ?? defaultRouteMatch,
-      true,
-    )
+    await recurse(this.routes, opts?.parentMatch ?? defaultRouteMatch)
+
+    return matches
   }
 
   useLoadRoute = <
     THookGenerics extends PartialGenerics = TRouterGenerics,
   >() => {
-    const route = this.useRoute<THookGenerics>()
+    const match = this.useMatch<THookGenerics>()
     const location = useLocation<THookGenerics>()
     const rootRoute = this.useRootMatch()
 
@@ -586,8 +585,8 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
       <TGenerics extends PartialGenerics = THookGenerics>(
         navigate: NavigateOptions<TGenerics>,
         opts?: {
-          onMatch?: (match?: RouteMatch<TGenerics>) => undefined | false
-          onLoad?: (match?: RouteMatch<TGenerics>) => void
+          onMatch?: (match?: RouteMatch<TGenerics>[]) => undefined | false
+          onLoad?: (match?: RouteMatch<TGenerics>[]) => void
           timeoutMs?: number
           filterRoutes?: FilterRoutesFn
           // This is a hint to our loader that the pendingMs should start,
@@ -598,7 +597,7 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
       ) => {
         const nextLocation = location.buildNext({
           ...navigate,
-          from: route.pathname,
+          from: match.pathname,
         })
 
         let transition = this.transitions[nextLocation.href]!
@@ -609,11 +608,11 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
             subscribe: (listener) => {
               transition.listeners.push(listener)
 
-              if (transition.match) {
-                listener.onMatch?.(transition.match)
+              if (transition.matches?.length) {
+                listener.onMatch?.(transition.matches)
 
                 transition.promise?.then(() =>
-                  listener.onLoad?.(transition.match),
+                  listener.onLoad?.(transition.matches),
                 )
               }
 
@@ -637,23 +636,23 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
 
         if (!transition.promise) {
           transition.promise = Promise.resolve().then(async () => {
-            transition.match = await this.matchRoutes(nextLocation, {
+            transition.matches = await this.matchRoutes(nextLocation, {
               parentMatch: rootRoute,
               filterRoutes: this.filterRoutes ?? opts?.filterRoutes,
             })
 
             transition.listeners.forEach((listeners) => {
-              listeners.onMatch?.(transition.match)
+              listeners.onMatch?.(transition.matches)
             })
 
-            if (transition.match) {
+            if (transition.matches?.length) {
               if (!transition.matchLoader) {
-                transition.matchLoader = loadMatch(transition.match)
+                transition.matchLoader = loadMatches(transition.matches)
               }
 
               transition.matchLoader?.subscribe(() => {
                 transition.listeners.forEach((listeners) => {
-                  listeners.onLoad?.(transition.match)
+                  listeners.onLoad?.(transition.matches)
                 })
               })
             }
@@ -687,13 +686,13 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
 
     const [state, setState] = React.useState<RouterState<TGenerics>>({
       isLoading: null!, // This get's overwritten
-      isTransitioning: !options?.initialMatch,
-      currentMatch: options?.initialMatch,
+      isTransitioning: !options?.initialMatches,
+      matches: options?.initialMatches,
       currentLocation: location.current,
     })
 
     const isLoading = !!(
-      state.currentMatch && findMatch(state.currentMatch, (d) => d.isLoading)
+      state.matches && state.matches.find((d) => d.isLoading)
     )
 
     const routerStateContextValue = React.useMemo(
@@ -734,17 +733,18 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
         )
 
         const unsubscribe = transition.subscribe({
-          onMatch: (nextMatch) => {
+          onMatch: (nextMatches) => {
             setState((old) => ({
               ...old,
-              previousMatch: old.currentMatch,
-              nextMatch,
+              nextMatches,
             }))
 
-            if (!nextMatch) {
+            if (!nextMatches?.length) {
               setState((old) => ({
                 ...old,
-                currentMatch: undefined,
+                previousMatches: old.matches,
+                matches: undefined,
+                nextMatches: undefined,
                 isTransitioning: false,
                 currentLocation: nextLocation,
                 nextLocation: undefined,
@@ -752,54 +752,20 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
               return false
             }
           },
-          onLoad: (nextMatch) => {
+          onLoad: (nextMatches) => {
             startTransition(() => {
               setState((old) => ({
                 ...old,
                 isTransitioning: false,
-                currentMatch: cloneMatch(nextMatch),
+                previousMatches: old.matches,
+                matches: nextMatches,
+                nextMatches: undefined,
                 currentLocation: nextLocation,
                 nextLocation: undefined,
               }))
             })
           },
         })
-
-        // const unsubscribe = loader.subscribe({
-        //   onMatch: (nextMatch) => {
-        //     setState((old) => ({
-        //       ...old,
-        //       previousMatch: old.currentMatch,
-        //       nextMatch,
-        //     }))
-
-        //     if (!nextMatch || !isLatest()) {
-        //       setState((old) => ({
-        //         ...old,
-        //         currentMatch: undefined,
-        //         isTransitioning: false,
-        //         currentLocation: nextLocation,
-        //         nextLocation: undefined,
-        //       }))
-        //       return false
-        //     }
-        //   },
-        //   onLoad: (nextMatch) => {
-        //     if (!isLatest()) {
-        //       return
-        //     }
-
-        //     startTransition(() => {
-        //       setState((old) => ({
-        //         ...old,
-        //         isTransitioning: false,
-        //         currentMatch: cloneMatch(nextMatch),
-        //         currentLocation: nextLocation,
-        //         nextLocation: undefined,
-        //       }))
-        //     })
-        //   },
-        // })
 
         return () => {
           unsubscribe()
@@ -811,8 +777,8 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
 
     return (
       <routerStateContext.Provider value={routerStateContextValue}>
-        {state.currentMatch
-          ? this.renderMatch(state.currentMatch)
+        {state.matches?.length
+          ? this.renderMatches(state.matches)
           : state.isTransitioning
           ? ((options?.pendingElement ?? null) as JSX.Element)
           : null}
@@ -826,10 +792,16 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
     return this.useRoutes(options)
   }
 
-  useRoute = <
+  useMatches = <
+    TGenerics extends PartialGenerics = TRouterGenerics,
+  >(): RouteMatch<TGenerics>[] => {
+    return React.useContext(RouteMatchContext)
+  }
+
+  useMatch = <
     TGenerics extends PartialGenerics = TRouterGenerics,
   >(): RouteMatch<TGenerics> => {
-    return React.useContext(RouteMatchContext)
+    return React.useContext(RouteMatchContext)[0]!
   }
 
   Link = <TGenerics extends PartialGenerics = TRouterGenerics>({
@@ -846,7 +818,7 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
     activeOptions,
     ...rest
   }: LinkProps<TGenerics>) => {
-    const route = this.useRoute<TGenerics>()
+    const match = this.useMatch<TGenerics>()
     const location = useLocation<TGenerics>()
     const navigate = this.useNavigate<TGenerics>()
 
@@ -861,7 +833,7 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
 
     const next = location.buildNext({
       to,
-      from: route.pathname,
+      from: match.pathname,
       search,
       hash,
     })
@@ -927,7 +899,7 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
   }
 
   useNavigate<THookGenerics extends PartialGenerics = TRouterGenerics>() {
-    const route = this.useRoute<THookGenerics>()
+    const match = this.useMatch<THookGenerics>()
     const location = useLocation<THookGenerics>()
 
     function navigate<TGenerics extends PartialGenerics = THookGenerics>({
@@ -941,7 +913,7 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
 
       location.navigate({
         to,
-        from: fromCurrent ? location.current.pathname : route.pathname,
+        from: fromCurrent ? location.current.pathname : match.pathname,
         search,
         hash,
         replace,
@@ -952,18 +924,23 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
   }
 
   Outlet = <TGenerics extends PartialGenerics = TRouterGenerics>() => {
-    const route = this.useRoute<TGenerics>()
-    const { childMatch } = route
-    if (!childMatch) {
+    const [_, ...matches] = this.useMatches<TGenerics>()
+    if (!matches.length) {
       return null
     }
-    return this.renderMatch(childMatch)
+    return this.renderMatches(matches)
   }
 
-  renderMatch = <TGenerics extends PartialGenerics = TRouterGenerics>(
-    match: RouteMatch<TGenerics>,
+  renderMatches = <TGenerics extends PartialGenerics = TRouterGenerics>(
+    matches: RouteMatch<TGenerics>[],
     opts?: { useErrorBoundary?: boolean },
   ) => {
+    const [match, ...childMatches] = matches
+
+    if (!match) {
+      throw new Error()
+    }
+
     const element = (() => {
       if (match.status === 'rejected') {
         if (match.errorElement) {
@@ -1034,7 +1011,7 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
     })()
 
     return (
-      <RouteMatchContext.Provider value={match} key={match.status}>
+      <RouteMatchContext.Provider value={childMatches}>
         {element}
       </RouteMatchContext.Provider>
     )
@@ -1043,11 +1020,11 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
   useResolvePath = <
     THookGenerics extends PartialGenerics = TRouterGenerics,
   >() => {
-    const route = this.useRoute<THookGenerics>()
+    const match = this.useMatch<THookGenerics>()
 
     return React.useCallback(
-      (path: string) => resolvePath(route.pathname, cleanPath(path)),
-      [route],
+      (path: string) => resolvePath(match.pathname!, cleanPath(path)),
+      [match],
     )
   }
 
@@ -1073,7 +1050,7 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
     )
   }
 
-  useMatch = <TGenerics extends PartialGenerics = TRouterGenerics>() => {
+  useMatchRoute = <TGenerics extends PartialGenerics = TRouterGenerics>() => {
     const location = useLocation<TGenerics>()
     const resolvePath = this.useResolvePath<TGenerics>()
 
@@ -1140,10 +1117,10 @@ export function matchRoute<TGenerics extends PartialGenerics = DefaultGenerics>(
   return (pathParams ?? {}) as UseGeneric<TGenerics, 'Params'>
 }
 
-export function loadMatch<TGenerics extends PartialGenerics = DefaultGenerics>(
-  rootMatch: RouteMatch<TGenerics> | undefined,
-): MatchLoader | undefined {
-  if (!rootMatch) {
+export function loadMatches<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>(matches: RouteMatch<TGenerics>[] | undefined): MatchLoader | undefined {
+  if (!matches?.length) {
     return
   }
 
@@ -1166,10 +1143,13 @@ export function loadMatch<TGenerics extends PartialGenerics = DefaultGenerics>(
     pendingStarters.forEach((starter) => starter())
   }
 
-  const recurse = (
-    match: RouteMatch<TGenerics>,
-    parentMatch?: RouteMatch<TGenerics>,
-  ) => {
+  matches.forEach((match, index) => {
+    const parentMatch = matches[index - 1]
+
+    if (!match) {
+      return
+    }
+
     let routePromises: Promise<any>[] = []
 
     // For each element type, potentially load it asynchronously
@@ -1269,13 +1249,7 @@ export function loadMatch<TGenerics extends PartialGenerics = DefaultGenerics>(
 
       firstRenderPromises.push(match.loaderPromise)
     }
-
-    if (match.childMatch) {
-      recurse(match.childMatch, match)
-    }
-  }
-
-  recurse(rootMatch)
+  })
 
   const firstRenderPromise = Promise.all(firstRenderPromises).then(notify)
 
@@ -1309,25 +1283,6 @@ export function functionalUpdate<TResult>(
   }
 
   return updater
-}
-
-function findMatch<T>(match: T, fn: (match: T) => any): T | undefined {
-  if (!match) {
-    return
-  }
-
-  if (fn(match)) {
-    return match
-  }
-
-  return findMatch((match as any).childMatch, fn)
-}
-
-function cloneMatch<T extends RouteMatch<any>>(match?: T): T | undefined {
-  if (!match) {
-    return
-  }
-  return { ...match, childMatch: cloneMatch(match.childMatch) }
 }
 
 function cleanPathname(pathname: string) {

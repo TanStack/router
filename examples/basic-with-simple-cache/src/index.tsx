@@ -68,7 +68,7 @@ function Posts() {
   const {
     data: { posts },
     isLoading,
-  } = router.useRoute();
+  } = router.useMatch();
   const isNextPath = router.useIsNextPath();
   const loadRoute = router.useLoadRoute();
 

@@ -146,7 +146,7 @@ function usePost(postId: string) {
 function Post() {
   const {
     params: { postId },
-  } = router.useRoute();
+  } = router.useMatch();
   const isNextPath = router.useIsNextPath();
 
   const { status, data, error, isFetching } = usePost(postId);

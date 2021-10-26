@@ -90,10 +90,11 @@ export const router = new Router<LocationGenerics>({
               // By default, loaders are parallized, but at any point in the route tree
               // you can await a parentLoader's promise to finish before proceeding
               loader: simpleCache.createLoader(
-                async (match) => {
+                async (match, { parentMatch }) => {
                   // Look ma! I can rely on parent route promise/data!
-                  await match.parentMatch!.loaderPromise
+                  await parentMatch!.loaderPromise
                   if (!match.data.teams?.length) {
+                    throw new Error('Team not found!')
                   }
                   await sleep(300)
                   return {
@@ -143,18 +144,18 @@ const App = () => {
 }
 
 function LoaderError() {
-  const route = router.useRoute()
+  const match = router.useMatch()
 
   return (
     <div>
       <div>Oh no! Something happened when fetching data for this route!</div>
-      <pre>{(route.error as Error).message}</pre>
+      <pre>{(match.error as Error).message}</pre>
     </div>
   )
 }
 
 function Home() {
-  const route = router.useRoute()
+  const match = router.useMatch()
 
   return (
     <div>
@@ -182,7 +183,7 @@ function Home() {
         </router.Link>
       </div>
       <hr />
-      Root Data: {JSON.stringify(route.data)}
+      Root Data: {JSON.stringify(match.data)}
       <hr />
       <router.Outlet />
     </div>
@@ -190,11 +191,11 @@ function Home() {
 }
 
 function Teams() {
-  const route = router.useRoute()
+  const match = router.useMatch()
 
   return (
     <div>
-      Teams Data: {JSON.stringify(route.data)}
+      Teams Data: {JSON.stringify(match.data)}
       <hr />
       <div>
         <router.Link to="..">
@@ -206,7 +207,7 @@ function Teams() {
           <pre>new</pre>
         </router.Link>
       </div>
-      {route.data.teams?.map((team) => {
+      {match.data.teams?.map((team) => {
         return (
           <div key={team}>
             <router.Link to={team}>
@@ -222,12 +223,12 @@ function Teams() {
 }
 
 function Team() {
-  const route = router.useRoute()
+  const match = router.useMatch()
 
   return (
     <div>
-      <div>TeamId: {route.params.teamId}</div>
-      <div>Team Data: {JSON.stringify(route.data)}</div>
+      <div>TeamId: {match.params.teamId}</div>
+      <div>Team Data: {JSON.stringify(match.data)}</div>
     </div>
   )
 }
