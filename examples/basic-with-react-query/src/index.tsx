@@ -3,13 +3,10 @@ import React from "react";
 import ReactDOM from "react-dom";
 import axios from "axios";
 import {
-  Link,
   MakeGenerics,
   ReactLocation,
   ReactLocationProvider,
-  Routes,
-  useIsNextPath,
-  useRoute,
+  Router,
 } from "react-location";
 import {
   useQuery,
@@ -34,33 +31,31 @@ type LocationGenerics = MakeGenerics<{
 //
 
 const location = new ReactLocation<LocationGenerics>();
+const router = new Router<LocationGenerics>({
+  routes: [
+    {
+      path: ":postId",
+      element: <Post />,
+      loader: ({ params: { postId } }) =>
+        queryClient.getQueryData(["posts", postId]) ??
+        queryClient.fetchQuery(["posts", postId], () => fetchPostById(postId)),
+    },
+    {
+      path: "/",
+      element: <Posts />,
+      loader: () =>
+        queryClient.getQueryData("posts") ??
+        queryClient.fetchQuery("posts", fetchPosts).then(() => ({})),
+    },
+  ],
+});
 const queryClient = new QueryClient();
 
 function App() {
   return (
     <ReactLocationProvider location={location}>
       <QueryClientProvider client={queryClient}>
-        <Routes<LocationGenerics>
-          pendingElement="..."
-          routes={[
-            {
-              path: ":postId",
-              element: <Post />,
-              loader: ({ params: { postId } }) =>
-                queryClient.getQueryData(["posts", postId]) ??
-                queryClient.fetchQuery(["posts", postId], () =>
-                  fetchPostById(postId)
-                ),
-            },
-            {
-              path: "/",
-              element: <Posts />,
-              loader: () =>
-                queryClient.getQueryData("posts") ??
-                queryClient.fetchQuery("posts", fetchPosts).then(() => ({})),
-            },
-          ]}
-        />
+        <router.Routes pendingElement="..." />
         <ReactQueryDevtools initialIsOpen />
       </QueryClientProvider>
     </ReactLocationProvider>
@@ -82,7 +77,8 @@ function usePosts() {
 function Posts() {
   const queryClient = useQueryClient();
   const { status, data, error, isFetching } = usePosts();
-  const isNextPath = useIsNextPath();
+  const isNextPath = router.useIsNextPath();
+  const loadRoute = router.useLoadRoute();
 
   return (
     <div>
@@ -107,8 +103,9 @@ function Posts() {
             <div>
               {data?.map((post) => (
                 <p key={post.id}>
-                  <Link
+                  <router.Link
                     to={`./${post.id}`}
+                    onMouseEnter={() => loadRoute({ to: post.id })}
                     style={
                       // We can access the query data here to show bold links for
                       // ones that are cached
@@ -121,7 +118,7 @@ function Posts() {
                     }
                   >
                     {post.title} {isNextPath(post.id) ? "..." : ""}
-                  </Link>
+                  </router.Link>
                 </p>
               ))}
             </div>
@@ -149,15 +146,15 @@ function usePost(postId: string) {
 function Post() {
   const {
     params: { postId },
-  } = useRoute<LocationGenerics>();
-  const isNextPath = useIsNextPath();
+  } = router.useRoute();
+  const isNextPath = router.useIsNextPath();
 
   const { status, data, error, isFetching } = usePost(postId);
 
   return (
     <div>
       <div>
-        <Link to="..">Back {isNextPath("..") ? "..." : ""}</Link>
+        <router.Link to="..">Back {isNextPath("..") ? "..." : ""}</router.Link>
       </div>
       {!postId || status === "loading" ? (
         "Loading..."

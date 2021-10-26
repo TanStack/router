@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { useRoute } from 'react-location'
+import { router } from '.'
 
 export default function Expensive() {
-  const route = useRoute()
+  const route = router.useRoute()
 
   return <>Expensive Data: {JSON.stringify(route.data)}</>
 }

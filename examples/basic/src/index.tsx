@@ -3,14 +3,10 @@ import React from "react";
 import ReactDOM from "react-dom";
 import axios from "axios";
 import {
-  Link,
   MakeGenerics,
-  Outlet,
   ReactLocation,
   ReactLocationProvider,
-  Routes,
-  useRoute,
-  useIsNextPath,
+  Router,
 } from "react-location";
 
 //
@@ -31,32 +27,33 @@ type LocationGenerics = MakeGenerics<{
 
 const location = new ReactLocation();
 
+const router = new Router<LocationGenerics>({
+  routes: [
+    {
+      element: <Home />,
+      children: [
+        {
+          path: ":postId",
+          element: <Post />,
+          loader: async ({ params: { postId } }) => ({
+            post: await fetchPostById(postId),
+          }),
+        },
+        {
+          element: <Posts />,
+          loader: async () => ({
+            posts: await fetchPosts(),
+          }),
+        },
+      ],
+    },
+  ],
+});
+
 function App() {
   return (
     <ReactLocationProvider location={location}>
-      <Routes
-        pendingElement="..."
-        routes={[
-          {
-            element: <Home />,
-            children: [
-              {
-                path: ":postId",
-                element: <Post />,
-                loader: async ({ params: { postId } }) => ({
-                  post: await fetchPostById(postId),
-                }),
-              },
-              {
-                element: <Posts />,
-                loader: async () => ({
-                  posts: await fetchPosts(),
-                }),
-              },
-            ],
-          },
-        ]}
-      />
+      <router.Routes pendingElement="..." />
     </ReactLocationProvider>
   );
 }
@@ -66,7 +63,7 @@ function Home() {
     <>
       <h1>Basic Example</h1>
       <hr />
-      <Outlet />
+      <router.Outlet />
     </>
   );
 }
@@ -74,8 +71,9 @@ function Home() {
 function Posts() {
   const {
     data: { posts },
-  } = useRoute<LocationGenerics>();
-  const isNextPath = useIsNextPath();
+  } = router.useRoute();
+  const isNextPath = router.useIsNextPath();
+  const loadRoute = router.useLoadRoute();
 
   return (
     <div>
@@ -83,9 +81,9 @@ function Posts() {
       <div>
         {posts?.map((post) => (
           <p key={post.id}>
-            <Link to={`./${post.id}`}>
+            <router.Link to={post.id}>
               {post.title} {isNextPath(post.id) ? "..." : ""}
-            </Link>
+            </router.Link>
           </p>
         ))}
       </div>
@@ -96,13 +94,13 @@ function Posts() {
 function Post() {
   const {
     data: { post },
-  } = useRoute<LocationGenerics>();
-  const isNextPath = useIsNextPath();
+  } = router.useRoute<LocationGenerics>();
+  const isNextPath = router.useIsNextPath();
 
   return (
     <div>
       <div>
-        <Link to="..">Back {isNextPath("..") ? "..." : ""}</Link>
+        <router.Link to="..">Back {isNextPath("..") ? "..." : ""}</router.Link>
       </div>
       <h1>{post?.title}</h1>
       <div>
@@ -121,7 +119,7 @@ async function fetchPosts() {
 }
 
 async function fetchPostById(id: string) {
-  await new Promise((r) => setTimeout(r, 500));
+  await new Promise((r) => setTimeout(r, Math.random() * 500));
   const { data } = await axios.get(
     `https://jsonplaceholder.typicode.com/posts/${id}`
   );
