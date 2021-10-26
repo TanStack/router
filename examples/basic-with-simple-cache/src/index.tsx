@@ -104,7 +104,7 @@ function Post() {
   const {
     data: { post },
     isLoading,
-  } = router.useRoute<LocationGenerics>();
+  } = router.useMatch();
 
   return (
     <div>
