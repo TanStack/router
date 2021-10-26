@@ -923,6 +923,18 @@ export class Router<TRouterGenerics extends PartialGenerics = DefaultGenerics> {
     return useLatestCallback(navigate)
   }
 
+  Navigate = <TGenerics extends PartialGenerics = TRouterGenerics>(
+    options: UseNavigateOptions<TGenerics>,
+  ) => {
+    let navigate = this.useNavigate<TGenerics>()
+
+    React.useLayoutEffect(() => {
+      navigate(options)
+    }, [navigate])
+
+    return null
+  }
+
   Outlet = <TGenerics extends PartialGenerics = TRouterGenerics>() => {
     const [_, ...matches] = this.useMatches<TGenerics>()
     if (!matches.length) {
