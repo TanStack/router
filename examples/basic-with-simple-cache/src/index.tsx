@@ -4,11 +4,10 @@ import ReactDOM from "react-dom";
 import axios from "axios";
 import {
   ReactLocation,
-  ReactLocationProvider,
+  Router,
   MakeGenerics,
-  Routes,
   useMatch,
-  useIsNextPath,
+  useIsNextLocation,
   useLoadRoute,
   Link,
   Outlet,
@@ -34,36 +33,35 @@ const location = new ReactLocation<LocationGenerics>();
 
 function App() {
   return (
-    <ReactLocationProvider location={location}>
-      <Routes
-        routes={[
-          {
-            element: <Posts />,
-            loader: routeCache.createLoader(
-              async () => ({
-                posts: await fetchPosts(),
-              }),
-              { maxAge: 1000 * 20 }
-            ),
-            children: [
-              { path: "/", element: "Select a post." },
-              {
-                path: ":postId",
-                element: <Post />,
-                loader: routeCache.createLoader(
-                  async ({ params: { postId } }) => ({
-                    post: await fetchPostById(postId),
-                  }),
-                  {
-                    maxAge: 1000 * 10, // 10 seconds
-                  }
-                ),
-              },
-            ],
-          },
-        ]}
-      />
-    </ReactLocationProvider>
+    <Router
+      location={location}
+      routes={[
+        {
+          element: <Posts />,
+          loader: routeCache.createLoader(
+            async () => ({
+              posts: await fetchPosts(),
+            }),
+            { maxAge: 1000 * 20 }
+          ),
+          children: [
+            { path: "/", element: "Select a post." },
+            {
+              path: ":postId",
+              element: <Post />,
+              loader: routeCache.createLoader(
+                async ({ params: { postId } }) => ({
+                  post: await fetchPostById(postId),
+                }),
+                {
+                  maxAge: 1000 * 10, // 10 seconds
+                }
+              ),
+            },
+          ],
+        },
+      ]}
+    />
   );
 }
 
@@ -72,7 +70,7 @@ function Posts() {
     data: { posts },
     isLoading,
   } = useMatch<LocationGenerics>();
-  const isNextPath = useIsNextPath();
+  const isNextPath = useIsNextLocation();
   const loadRoute = useLoadRoute<LocationGenerics>();
 
   return (
@@ -90,7 +88,7 @@ function Posts() {
                 to={`./${post.id}`}
                 onMouseEnter={() => loadRoute({ to: `./${post.id}` })}
               >
-                {post.title} {isNextPath(post.id) ? "..." : ""}
+                {post.title} {isNextPath({ to: post.id }) ? "..." : ""}
               </Link>
             </p>
           ))}

@@ -14,7 +14,8 @@
     "react-location": "3.1.0-next.39",
     "react-scripts": "3.0.1",
     "stop-runaway-react-effects": "^1.2.0",
-    "styled-components": "^4.3.2"
+    "styled-components": "^4.3.2",
+    "twind": "^0.16.16"
   },
   "devDependencies": {
     "@rescripts/cli": "^0.0.11",

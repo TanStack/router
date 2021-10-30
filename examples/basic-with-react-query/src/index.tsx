@@ -5,10 +5,10 @@ import axios from "axios";
 import {
   Link,
   MakeGenerics,
+  Outlet,
   ReactLocation,
-  ReactLocationProvider,
-  Routes,
-  useIsNextPath,
+  Router,
+  useIsNextLocation,
   useLoadRoute,
   useMatch,
 } from "react-location";
@@ -39,33 +39,34 @@ const queryClient = new QueryClient();
 
 function App() {
   return (
-    <ReactLocationProvider location={location}>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <Router
+        location={location}
+        routes={[
+          {
+            path: ":postId",
+            element: <Post />,
+            loader: ({ params: { postId } }) =>
+              queryClient.getQueryData(["posts", postId]) ??
+              queryClient.fetchQuery(["posts", postId], () =>
+                fetchPostById(postId)
+              ),
+          },
+          {
+            path: "/",
+            element: <Posts />,
+            loader: () =>
+              queryClient.getQueryData("posts") ??
+              queryClient.fetchQuery("posts", fetchPosts).then(() => ({})),
+          },
+        ]}
+      >
         <h1>Basic w/ React Query</h1>
         <hr />
-        <Routes
-          routes={[
-            {
-              path: ":postId",
-              element: <Post />,
-              loader: ({ params: { postId } }) =>
-                queryClient.getQueryData(["posts", postId]) ??
-                queryClient.fetchQuery(["posts", postId], () =>
-                  fetchPostById(postId)
-                ),
-            },
-            {
-              path: "/",
-              element: <Posts />,
-              loader: () =>
-                queryClient.getQueryData("posts") ??
-                queryClient.fetchQuery("posts", fetchPosts).then(() => ({})),
-            },
-          ]}
-        />
-        <ReactQueryDevtools initialIsOpen />
-      </QueryClientProvider>
-    </ReactLocationProvider>
+        <Outlet />
+      </Router>
+      <ReactQueryDevtools initialIsOpen />
+    </QueryClientProvider>
   );
 }
 
@@ -84,7 +85,7 @@ function usePosts() {
 function Posts() {
   const queryClient = useQueryClient();
   const { status, data, error, isFetching } = usePosts();
-  const isNextPath = useIsNextPath();
+  const isNextPath = useIsNextLocation();
   const loadRoute = useLoadRoute();
 
   return (
@@ -114,7 +115,7 @@ function Posts() {
                         : {}
                     }
                   >
-                    {post.title} {isNextPath(post.id) ? "..." : ""}
+                    {post.title} {isNextPath({ to: post.id }) ? "..." : ""}
                   </Link>
                 </p>
               ))}
@@ -144,14 +145,14 @@ function Post() {
   const {
     params: { postId },
   } = useMatch();
-  const isNextPath = useIsNextPath();
+  const isNextPath = useIsNextLocation();
 
   const { status, data, error, isFetching } = usePost(postId);
 
   return (
     <div>
       <div>
-        <Link to="..">Back {isNextPath("..") ? "..." : ""}</Link>
+        <Link to="..">Back {isNextPath({ to: ".." }) ? "..." : ""}</Link>
       </div>
       {!postId || status === "loading" ? (
         "Loading..."

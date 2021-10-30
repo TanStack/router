@@ -9,10 +9,22 @@ title: API
 
 The `ReactLocation` class is the core engine to React Location. It bridges all of the hooks, components and public API to the underlying history and location APIs. It is required and needs to be provided to your application via the `ReactLocationProvider` component.
 
-| Property | Required | Default                                                  | Description                                                                  |
-| -------- | -------- | -------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| history  | false    | A history will be created automatically if not provided. | The history object to be used internally by react-location                   |
-| basepath | false    | `/`                                                      | The basepath prefix for all URLs (not-supported for memory source histories) |
+```tsx
+export type ReactLocationOptions = {
+  // The history object to be used internally by react-location
+  // A history will be created automatically if not provided.
+  history?: BrowserHistory | MemoryHistory | HashHistory
+  // The basepath prefix for all URLs (not-supported for memory source histories)
+  // Defualts to '/'
+  basepath?: string
+  stringifySearch?: SearchSerializer
+  parseSearch?: SearchParser
+  filterRoutes?: FilterRoutesFn
+  defaultLinkPreloadMaxAge?: number
+  defaultLoaderMaxAge?: number
+  useErrorBoundary?: boolean
+}
+```
 
 **Example: Basic**
 
@@ -31,28 +43,58 @@ const history = createMemoryHistory()
 const reactLocation = new ReactLocation({ history })
 ```
 
-## ReactLocationProvider
+## Router
 
 **Required: true**
 
-The `ReactLocationProvider` component is the root Provider component for `react-location` in your app. Render it at least once in the highest sensible location within your application. You can also use this component to preserve multiple location instances in the react tree at the same, which is useful for things like route animations or location mocking.
+The `Router` component is the root Provider component for the `react-location` instance and your route configuration in your app. Render it _only once_ (rendering multiple routers is an anti-pattern, and straight-up not supported for good reason).
 
-| Prop     | Required | Description                                         |
-| -------- | -------- | --------------------------------------------------- |
-| location | true     | An instance of the `ReactLocation` class            |
-| children | true     | The children that will receive the location context |
+- If no `children` prop is passed, it will default to `<Outlet />` which will start rendering your route matches.
+- if a `children` prop is passed, you must eventually render `<Outlet />` where you want your routes to start rendering
+
+```tsx
+export type RouterProps<TGenerics extends PartialGenerics = DefaultGenerics> = {
+  // An instance of the `ReactLocation` class
+  location: ReactLocation<TGenerics>
+  // Children will default to `<Outlet />` if not provided
+  children?: React.ReactNode
+  // An array of route objects to match
+  routes: Route<TGenerics>[]
+  // An array of route match objects that have been both _matched_ and _loaded_. See the [SRR](#ssr) section for more details
+  initialMatches?: Match<TGenerics>[]
+}
+```
 
 **Example: Basic**
 
 ```tsx
-import { ReactLocation, ReactLocationProvider } from 'react-location'
+import { ReactLocation, Router } from 'react-location'
 
 const reactLocation = new ReactLocation()
 
 return (
-  <ReactLocationProvider location={reactLocation}>
-    <div>Your Application</div>
-  </ReactLocationProvider>
+  <Router location={reactLocation} routes={[{
+    path: '/',
+    element: 'Home on the range!"
+  }]} />
+)
+```
+
+**Example: With Children**
+
+```tsx
+import { ReactLocation, Router } from 'react-location'
+
+const reactLocation = new ReactLocation()
+
+return (
+  <Router location={reactLocation} routes={[{
+    path: '/',
+    element: 'Home on the range!"
+  }]}>
+    <div>Header</div>
+    <Outlet />
+  </Router>
 )
 ```
 
@@ -87,20 +129,41 @@ All of these features are essentially **asynchronous routing features** and we'l
 
 #### Route Properties
 
-A **Route** object consists of the following properties:
+```tsx
+export type Route<TGenerics extends PartialGenerics = DefaultGenerics> =
+  | RouteBasic<TGenerics>
+  | RouteAsync<TGenerics>
 
-| Property       | type                                                                  | Description                                                                                                                                                                                  |
-| -------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| path           | `string`                                                              | The path to match (relative to the nearest parent `Route` component or root basepath)                                                                                                        |
-| search         | `shallowSearchObj OR (searchObj: Generics['Search']) => boolean`      | Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched. |
-| element        | `React.ReactNode OR ({ params: Params }) => Promise<React.ReactNode>` | The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`                                                                                    |
-| errorElement   | `React.ReactNode OR ({ params: Params }) => Promise<React.ReactNode>` | The content to be rendered when `loader` encounters an error                                                                                                                                 |
-| pendingElement | `React.ReactNode OR ({ params: Params }) => Promise<React.ReactNode>` | The content to be rendered when the duration of `loader` execution surpasses the `pendingMs` duration                                                                                        |
-| loader         | `(match: RouteMatch) => Promise<Record<string, any>>`                 | An asynchronous function responsible for preparing or fetching data for the route before it is rendered                                                                                      |
-| pendingMs      | number                                                                | The duration to wait during `loader` execution before showing the `pendingElement`                                                                                                           |
-| pendingMinMs   | number                                                                | _If the `pendingElement` is shown_, the minimum duration for which it will be visible.                                                                                                       |
-| children       | Route[]                                                               | An array of child routes                                                                                                                                                                     |
-| import         | `({ params: Params }) => Promise<Omit<Route, 'path' / 'import'>>`     |                                                                                                                                                                                              | An asyncronous function that resolves all of the above route information (everything but the `path` and `import` properties, of course). Useful for code-splitting! |
+export type RouteBasic<TGenerics extends PartialGenerics = DefaultGenerics> = {
+  // The path to match (relative to the nearest parent `Route` component or root basepath)
+  path?: string
+  // Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched.
+  search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
+  // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
+  element?: SyncOrAsyncElement<TGenerics>
+  // The content to be rendered when `loader` encounters an error
+  errorElement?: SyncOrAsyncElement<TGenerics>
+  // The content to be rendered when the duration of `loader` execution surpasses the `pendingMs` duration
+  pendingElement?: SyncOrAsyncElement<TGenerics>
+  // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
+  loader?: LoaderFn<TGenerics>
+  // The duration to wait during `loader` execution before showing the `pendingElement`
+  pendingMs?: number
+  // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
+  pendingMinMs?: number
+  // An array of child routes
+  children?: Route<TGenerics>[]
+}
+
+export type RouteAsync<TGenerics extends PartialGenerics = DefaultGenerics> = {
+  // Same as above
+  path?: string
+  // Same as above
+  search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
+  // An asyncronous function that resolves all of the above route information (everything but the `path` and `import` properties, of course). Useful for code-splitting!
+  import: RouteImportFn<TGenerics>
+}
+```
 
 **Example - Route Params**
 
@@ -253,38 +316,6 @@ const routes: Route[] = [
     },
   },
 ]
-```
-
-## Routes & useRoutes
-
-The `Routes` component and `useRoutes` hook are used to conditionally match and render the matching route tree from the router based on the current location.
-
-| Property       | Required | type              | Description                                                                                                                                                                      |
-| -------------- | -------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| routes         | true     | `Route[]`         | An array of routes to match                                                                                                                                                      |
-| pendingElement |          | `React.ReactNode` | The content to be rendered while the first route match is being loaded. To avoid this element, consider using an [SRR](#ssr) approach to pre-load your route data on the server. |
-| initialMatch   |          | RouteMatch        | A route match object that has been both _matched_ and _loaded_. See the [SRR](#ssr) section for more details                                                                     |
-
-```tsx
-const routes: Route[] = [
-  // ...
-]
-
-function App() {
-  return <Routes routes={routes} />
-}
-```
-
-```tsx
-const routes: Route[] = [
-  // ...
-]
-
-function App() {
-  const routeElement = useRoutes({ routes })
-
-  return <div>{routeElement}</div>
-}
 ```
 
 ## useMatch
@@ -491,11 +522,26 @@ The `Link` component allows you to generate links for _internal_ navigation, cap
 
 The links generated by it are designed to work perfectly with `Open in new Tab` + `ctrl + left-click` and `Open in new window...`. They are also capable of receiving "active" props (depending on the `activeOptions` passed) to decorate the link when the link is currently active relative to the current location.
 
-| Prop                                                      | Description                                                                                                                                                                                                                              |
-| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ...[NavigateProps](#navigate)                             | All properties for the [<Navigate /> component](#navigate) method are supported here.                                                                                                                                                    |
-| activeOptions?: { exact?: boolean, includeHash?: boolean} | Defaults to `{ exact: false, includeHash: false }`                                                                                                                                                                                       |
-| getActiveProps: () => PropsObject                         | A function that is passed the [Location API](#location-api) and returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated) |
+```tsx
+export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
+  Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
+    to?: string
+    search?: Updater<UseGeneric<TGenerics, 'Search'>>
+    hash?: Updater<string>
+    replace?: boolean
+    // A function that is passed the [Location API](#location-api) and returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+    getActiveProps?: () => Record<string, any>
+    // Defaults to `{ exact: false, includeHash: false }`
+    activeOptions?: ActiveOptions
+    // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
+    preload?: number
+  }
+
+export type ActiveOptions = {
+  exact?: boolean
+  includeHash?: boolean
+}
+```
 
 **Example: The basics**
 
@@ -560,12 +606,26 @@ The following link will be green with `/about` as the current location.
 
 When renderd, the `Navigate` component will declaratively and relatively navigate to any route.
 
-| Prop    | Description                                                                                                      |
-| ------- | ---------------------------------------------------------------------------------------------------------------- |
-| to      | The new relative or absolute pathname                                                                            |
-| search  | A new search params object, or a function that receives the latest search params object and returns the new one. |
-| hash    | The new hash string                                                                                              |
-| replace | If `true`, the new location will replace the current entry in the history stack instead of creating a new one.   |
+```tsx
+export type NavigateOptions<
+  TGenerics extends PartialGenerics = DefaultGenerics
+> = {
+  // The new relative or absolute pathname
+  to?: string | null
+  // A new search params object, or a function that receives the latest search params object and returns the new one.
+  search?: Updater<UseGeneric<TGenerics, 'Search'>>
+  // The new hash string
+  hash?: Updater<string>
+  // If set to 'true', will replace the current state instead of pushing a new one onto the stack
+  replace?: boolean
+  // If `true`, the new location will replace the current entry in the history stack instead of creating a new one.
+  fromCurrent?: boolean
+  // If set will update the key of the new location
+  key?: string
+  // ADVANCED. Can be used to set the relative origin of the navigation for resolution
+  from?: Partial<Location<TGenerics>>
+}
+```
 
 **Example**
 
@@ -593,9 +653,9 @@ function MyComponent() {
 }
 ```
 
-### useMatch
+### useMatchRoute
 
-The `useMatch` hook allows you to programmatically test a relative path against the current location. If a path is match, it will return an object of route params detected, even if this is an empty object. If a path doesn't match, it will return `false`. This can be useful for detecting specific deep-route matches from a layout component
+The `useMatchRoute` hook allows you to programmatically test a relative path against the current location. If a path is match, it will return an object of route params detected, even if this is an empty object. If a path doesn't match, it will return `false`. This can be useful for detecting specific deep-route matches from a layout component
 
 **Usage**
 
@@ -642,16 +702,20 @@ function Root() {
 
 The `useRouterState` hook can be used to gain access to the state of the closest `useRoutes()` element or `<Routes />` element. It's shape looks like this:
 
-| Property         | Type         | Description                                                                                                      |
-| ---------------- | ------------ | ---------------------------------------------------------------------------------------------------------------- |
-| matches          | RouteMatch[] | The current set of matches that are being rendered                                                               |
-| previousMatches  | RouteMatch[] | The previous set of matches before the last committed navigation                                                 |
-| nextMatches      | RouteMatch[] | The next set of matches that are being loaded                                                                    |
-| previousLocation | Location     | The previous location snapshot                                                                                   |
-| currentLocation  | Location     | The current location snapshot                                                                                    |
-| nextLocation     | Location     | The next location snapshot                                                                                       |
-| isTransitioning  | boolean      | Will be `true` if the router is currently transitioning                                                          |
-| isLoading        | boolean      | Will be `true` if any matches in the route are currently in a loading state, including background loading states |
+```tsx
+export type RouterState<TGenerics> = {
+  // The current transition of location + matches that has been successfully matched and loaded
+  transition: Transition<TGenerics>
+  // The next/pending transition of location + matches that is being matched and loaded
+  nextTransition?: Transition<TGenerics>
+}
+
+export type Transition<TGenerics> = {
+  status: 'pending' | 'ready'
+  location: Location<TGenerics>
+  matches: Match<TGenerics>[]
+}
+```
 
 ### useResolvePath
 
@@ -687,33 +751,22 @@ function Team() {
 }
 ```
 
-### useIsNextPath
+### useIsNextLocation
 
-The `useIsNextPath` hook provides a function to test whether a relative path is the next destination that is currently being loaded by the nearest
+The `useIsNextLocation` hook provides a function to test whether a relative path is the next destination that is currently being loaded by the nearest
 
 ** Example **
 
 ```tsx
 function Post() {
-  const isNextPath = useIsNextPath()
+  const isNextLocation = useIsNextLocation()
 
   return (
     <div>
-      <Link to="..">Back {isNextPath('..') ? '...' : ''}</Link>
+      <Link to="..">Back {isNextLocation({ to: '..' }) ? '...' : ''}</Link>
       ...
     </div>
   )
-}
-```
-
-It is essentially a shorthand hook for the following:
-
-```tsx
-function Post() {
-  const routerState = useRouterState()
-  const resolvePath = useResolvePath()
-
-  routerState.nextLocation?.pathname === resolvePath('..') // true | false
 }
 ```
 
