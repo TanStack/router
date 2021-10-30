@@ -540,20 +540,6 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
 
         unsubscribe = matchLoader.subscribe(() => {
           setState((old) => {
-            // Remove old match caches that we are navigating away from
-            if (matchLoader.location !== old.transition.location) {
-              const existingMatchIds = old.transition.matches?.map((d) => d.id)
-              const newMatchIds = matchLoader.matches?.map((d) => d.id)
-
-              const oldIds = existingMatchIds?.filter(
-                (id) => !newMatchIds?.includes(id),
-              )
-
-              oldIds?.forEach((id) => {
-                delete matchCache[id]
-              })
-            }
-
             return {
               ...old,
               transition: {
@@ -710,6 +696,7 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
     })
 
     if (!this.matches?.length) {
+      this.notify()
       return
     }
 
