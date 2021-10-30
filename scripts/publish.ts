@@ -238,6 +238,8 @@ async function run() {
         }
       })
     })
+
+    execSync(`cd examples/${example} && yarn`)
   }
   console.log(chalk.green(`  Updated example dependencies.`))
   execSync(`git commit -a -m "chore: update example dependencies"`)
