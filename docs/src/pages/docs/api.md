@@ -291,7 +291,7 @@ const routes: Route[] = [
 
 > NOTE: Because of the asynchronous nature of code-split routes,
 > subsequent loaders and child route configurations are unknown
-> untile the import is resolved. Thus, any further asynchronous
+> until the import is resolved. Thus, any further asynchronous
 > dependencies they result in (loaders or child routes)
 > cannot be loaded in parallel.
 >
