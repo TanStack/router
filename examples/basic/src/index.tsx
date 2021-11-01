@@ -103,7 +103,7 @@ function App() {
     <>
       {/* This stuff is just to tweak our sandbox setup in real-time */}
       <div
-        className={tw`text-xs fixed w-52 shadow rounded bottom-2 right-2 bg-white bg-opacity-75 p-2 border-b flex flex-col gap-2 flex-wrap items-left`}
+        className={tw`text-xs fixed w-52 shadow rounded bottom-2 left-2 bg-white bg-opacity-75 p-2 border-b flex flex-col gap-2 flex-wrap items-left`}
       >
         <div>
           Link Preload Max Age:{" "}
@@ -231,7 +231,7 @@ function Home() {
         As you navigate around take note of the UX. It should feel
         suspense-like, where routes are only rendered once all of their data and
         elements are ready. To exaggerate this effect, play with the delay
-        slider in the bottom-right corner.
+        slider in the bottom-left corner.
       </p>
       <hr className={tw`my-2`} />
       <p>
