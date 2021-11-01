@@ -10,7 +10,7 @@ title: API
 The `ReactLocation` class is the core engine to React Location. It bridges all of the hooks, components and public API to the underlying history and location APIs. It is required and needs to be provided to your application via the `ReactLocationProvider` component.
 
 ```tsx
-export type ReactLocationOptions = {
+export type ReactLocationOptions<TGenerics> = {
   // The history object to be used internally by react-location
   // A history will be created automatically if not provided.
   history?: BrowserHistory | MemoryHistory | HashHistory
@@ -19,10 +19,17 @@ export type ReactLocationOptions = {
   basepath?: string
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
+  options?: RouterOptions<TGenerics>
+}
+
+// These options are also available to pass to the <Router /> component
+export type RouterOptions<TGenerics> = {
   filterRoutes?: FilterRoutesFn
   defaultLinkPreloadMaxAge?: number
   defaultLoaderMaxAge?: number
   useErrorBoundary?: boolean
+  routes?: Route<TGenerics>[]
+  initialMatches?: Match<TGenerics>[]
 }
 ```
 
@@ -53,13 +60,17 @@ The `Router` component is the root Provider component for the `react-location` i
 - if a `children` prop is passed, you must eventually render `<Outlet />` where you want your routes to start rendering
 
 ```tsx
-export type RouterProps<TGenerics extends PartialGenerics = DefaultGenerics> = {
+export type RouterProps<TGenerics> = {
   // An instance of the `ReactLocation` class
   location: ReactLocation<TGenerics>
   // Children will default to `<Outlet />` if not provided
   children?: React.ReactNode
   // An array of route objects to match
-  routes: Route<TGenerics>[]
+  routes?: Route<TGenerics>[]
+  filterRoutes?: FilterRoutesFn
+  defaultLinkPreloadMaxAge?: number
+  defaultLoaderMaxAge?: number
+  useErrorBoundary?: boolean
   // An array of route match objects that have been both _matched_ and _loaded_. See the [SRR](#ssr) section for more details
   initialMatches?: Match<TGenerics>[]
 }
@@ -402,7 +413,7 @@ function Invoice() {
 
 ## useMatches
 
-The `useMatches` hook is similar to the `useMatch` hook, except it returns an array of all matches from the current match down. If you are looking for a list of all matches, you'll want to use `useRouterState().matches`.
+The `useMatches` hook is similar to the `useMatch` hook, except it returns an array of all matches from the current match down. If you are looking for a list of all matches, you'll want to use `useRouter().matches`.
 
 **Example - Route Data**
 
@@ -698,17 +709,19 @@ function Root() {
 }
 ```
 
-### useRouterState
+### useRouter
 
-The `useRouterState` hook can be used to gain access to the state of the closest `useRoutes()` element or `<Routes />` element. It's shape looks like this:
+The `useRouter` hook can be used to gain access to the state of the parent `<Router />` component It's shape looks like this:
 
 ```tsx
-export type RouterState<TGenerics> = {
-  // The current transition of location + matches that has been successfully matched and loaded
-  transition: Transition<TGenerics>
-  // The next/pending transition of location + matches that is being matched and loaded
-  nextTransition?: Transition<TGenerics>
-}
+export type Router<TGenerics extends PartialGenerics = DefaultGenerics> =
+  // The resolved options used in the router
+  RouterProps<TGenerics> & {
+    // The current transition of location + matches that has been successfully matched and loaded
+    transition: Transition<TGenerics>
+    // The next/pending transition of location + matches that is being matched and loaded
+    nextTransition?: Transition<TGenerics>
+  }
 
 export type Transition<TGenerics> = {
   status: 'pending' | 'ready'

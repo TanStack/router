@@ -14,7 +14,7 @@ import {
   useMatch,
   useRouter,
   useSearch,
-  useMatches,
+  useNavigate,
 } from "react-location";
 
 //
@@ -31,20 +31,17 @@ type LocationGenerics = MakeGenerics<{
     invoice: Invoice;
   };
   Search: {
-    details: boolean;
+    showNotes: boolean;
+    notes: string;
   };
 }>;
 
 //
 
-const storedDelay = localStorage.getItem("delay");
-let globalDelay = storedDelay ? Number(storedDelay) : 500;
+// Set up a ReactLocation instance
+const location = new ReactLocation<LocationGenerics>();
 
-const location = new ReactLocation<LocationGenerics>({
-  defaultLoaderMaxAge: 1000,
-  defaultLinkPreloadMaxAge: 1000 * 3,
-});
-
+// Build our routes. We could do this in our component, too.
 const routes: Route[] = [
   { path: "/", element: <Home /> },
   {
@@ -92,41 +89,97 @@ const routes: Route[] = [
   },
 ];
 
+// Provide our location and routes to our application
 function App() {
+  const [delay, setDelay] = useLocalStorage("delay", 500);
+  const [defaultLinkPreloadMaxAge, setDefaultLinkPreloadMaxAge] =
+    useLocalStorage("defaultLinkPreloadMaxAge", 0);
+  const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useLocalStorage(
+    "defaultLoaderMaxAge",
+    0
+  );
+
   return (
-    <Router location={location} routes={routes}>
-      <Root />
-    </Router>
+    <>
+      {/* This stuff is just to tweak our sandbox setup in real-time */}
+      <div
+        className={tw`text-xs fixed w-52 shadow rounded bottom-2 right-2 bg-white bg-opacity-75 p-2 border-b flex flex-col gap-2 flex-wrap items-left`}
+      >
+        <div>
+          Link Preload Max Age:{" "}
+          {defaultLinkPreloadMaxAge ? `${defaultLinkPreloadMaxAge}ms` : "Off"}
+        </div>
+        <div>
+          <input
+            type="range"
+            min="0"
+            max="10000"
+            step="250"
+            value={defaultLinkPreloadMaxAge}
+            onChange={(e) =>
+              setDefaultLinkPreloadMaxAge(e.target.valueAsNumber)
+            }
+            className={tw`w-full`}
+          />
+        </div>
+        <div>
+          Loader Max Age:{" "}
+          {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : "Off"}
+        </div>
+        <div>
+          <input
+            type="range"
+            min="0"
+            max="10000"
+            step="250"
+            value={defaultLoaderMaxAge}
+            onChange={(e) => setDefaultLoaderMaxAge(e.target.valueAsNumber)}
+            className={tw`w-full`}
+          />
+        </div>
+        <div>Artificial Delay: {delay}ms</div>
+        <div>
+          <input
+            type="range"
+            min="0"
+            max="10000"
+            step="250"
+            value={delay}
+            onChange={(e) => setDelay(e.target.valueAsNumber)}
+            className={tw`w-full`}
+          />
+        </div>
+      </div>
+      {/* Normally <Router /> would match and render our
+      routes, but when we pass children, we can use
+      <Outlet /> to start rendering our matches at any
+      level we want. This also let's us use router API's
+      in <Root /> before rendering any routes */}
+      <Router
+        location={location}
+        routes={routes}
+        defaultLinkPreloadMaxAge={defaultLinkPreloadMaxAge}
+        defaultLoaderMaxAge={defaultLoaderMaxAge}
+        key={[defaultLinkPreloadMaxAge, defaultLoaderMaxAge].join(".")}
+      >
+        {/* This is where the regular stuff is */}
+        <Root />
+      </Router>
+    </>
   );
 }
 
 function Root() {
+  // We can access the router state, even though
+  // we're not rendering any routes yet
   const router = useRouter<LocationGenerics>();
-  const [delay, setDelay] = React.useState(globalDelay);
-
-  React.useEffect(() => {
-    globalDelay = delay;
-    localStorage.setItem("delay", delay + "");
-  }, [delay]);
 
   return (
     <div className={tw`min-h-screen flex flex-col`}>
       <div className={tw`flex items-center border-b gap-2`}>
         <h1 className={tw`text-3xl p-2`}>Basic Example</h1>
+        {/* Show a global spinner when the router is transitioning */}
         <Spinner show={router.nextTransition} />
-        <div className={tw`ml-auto mr-2`}>
-          <label>
-            Delay: {delay}ms{" "}
-            <input
-              type="range"
-              min="0"
-              max="10000"
-              step="250"
-              value={delay}
-              onChange={(e) => setDelay(e.target.valueAsNumber)}
-            />
-          </label>
-        </div>
       </div>
       <div className={tw`flex-1 flex`}>
         <div className={tw`divide-y w-48`}>
@@ -139,8 +192,13 @@ function Root() {
                 <Link
                   to={to}
                   className={tw`block py-2 px-3 text-blue-700`}
-                  activeOptions={{ exact: to === "." }}
+                  // Make "active" links bold
                   getActiveProps={() => ({ className: tw`font-bold` })}
+                  activeOptions={{
+                    // If the route points to the root of it's parent,
+                    // make sure it's only active if it's exact
+                    exact: to === ".",
+                  }}
                 >
                   {label}
                 </Link>
@@ -149,6 +207,7 @@ function Root() {
           })}
         </div>
         <div className={tw`flex-1 border-l border-gray-200`}>
+          {/* Render our first route match */}
           <Outlet />
         </div>
       </div>
@@ -270,6 +329,16 @@ function Invoice() {
   } = useMatch<LocationGenerics>();
   const isNextLocation = useIsNextLocation();
   const search = useSearch<LocationGenerics>();
+  const navigate = useNavigate();
+
+  const [notes, setNotes] = React.useState(search.notes ?? ``);
+
+  React.useEffect(() => {
+    navigate({
+      search: (old) => ({ ...old, notes: notes }),
+      replace: true,
+    });
+  }, [notes]);
 
   return (
     <div className={tw`p-2`}>
@@ -282,16 +351,30 @@ function Invoice() {
       <div>
         <p>{invoice?.body}</p>
       </div>
-      <Link search={(old) => ({ ...old, details: !old?.details })}>
-        {search.details ? "Close Details" : "Show Details"}{" "}
+      <hr className={tw`my-2`} />
+      <Link
+        search={(old) => ({
+          ...old,
+          showNotes: old?.showNotes ? undefined : true,
+        })}
+        className={tw`text-blue-700 `}
+      >
+        {search.showNotes ? "Close Notes" : "Show Notes"}{" "}
       </Link>
-      {search.details ? (
+      {search.showNotes ? (
         <>
-          <hr />
           <div>
-            <label>
-              Notes: <textarea />
-            </label>
+            <div className={tw`h-2`} />
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={5}
+              className={tw`shadow w-full p-2 rounded`}
+              placeholder={`Write some notes here...`}
+            />
+            <div className={tw`italic text-xs`}>
+              Notes are stored in the URL. Try copying the URL into a new tab!
+            </div>
           </div>
         </>
       ) : null}
@@ -322,7 +405,9 @@ function Spinner({ show }: { show: any }) {
 }
 
 async function fetchInvoices() {
-  await new Promise((r) => setTimeout(r, globalDelay));
+  await new Promise((r) =>
+    setTimeout(r, Number(localStorage.getItem("delay") ?? 0))
+  );
   const { data } = await axios.get(
     "https://jsonplaceholder.typicode.com/posts"
   );
@@ -330,7 +415,9 @@ async function fetchInvoices() {
 }
 
 async function fetchInvoiceById(id: string) {
-  await new Promise((r) => setTimeout(r, globalDelay));
+  await new Promise((r) =>
+    setTimeout(r, Number(localStorage.getItem("delay") ?? 0))
+  );
   const { data } = await axios.get(
     `https://jsonplaceholder.typicode.com/posts/${id}`
   );
@@ -338,11 +425,26 @@ async function fetchInvoiceById(id: string) {
 }
 
 async function fetchUsers() {
-  await new Promise((r) => setTimeout(r, globalDelay));
+  await new Promise((r) =>
+    setTimeout(r, Number(localStorage.getItem("delay") ?? 0))
+  );
   const { data } = await axios.get(
     "https://jsonplaceholder.typicode.com/users"
   );
   return data;
+}
+
+function useLocalStorage<T>(key: string, initialValue: T) {
+  const state = React.useState<T>(() => {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : initialValue;
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem(key, JSON.stringify(state[0]));
+  }, [state[0]]);
+
+  return state;
 }
 
 const rootElement = document.getElementById("root");
