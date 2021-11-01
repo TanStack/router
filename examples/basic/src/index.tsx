@@ -271,7 +271,7 @@ function Home() {
         1 New Invoice
       </Link>
       <hr className={tw`my-2`} />
-      <p className={tw`max-w-xl`}>
+      <div className={tw`max-w-xl`}>
         As you navigate around take note of the UX. It should feel
         suspense-like, where routes are only rendered once all of their data and
         elements are ready.
@@ -284,7 +284,7 @@ function Home() {
         The last 2 sliders determine if link-hover preloading is enabled (and
         how long those preloads stick around) and also whether to cache rendered
         route data (and for how long). Both of these default to 0 (or off).
-      </p>
+      </div>
     </div>
   );
 }
