@@ -394,7 +394,7 @@ function Invoice() {
 
   React.useEffect(() => {
     navigate({
-      search: (old) => ({ ...old, notes: notes }),
+      search: (old) => ({ ...old, notes: notes ? notes : undefined }),
       replace: true,
     });
   }, [notes]);
