@@ -253,7 +253,7 @@ async function run() {
     await updateExamplesPackageConfig(example, (config) => {
       packageNames.forEach(([packageName]) => {
         if (config.dependencies[packageName]) {
-          config.dependencies[packageName] = latestTag.substring(1)
+          config.dependencies[packageName] = version
         }
       })
     })
