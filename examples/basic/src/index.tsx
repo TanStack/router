@@ -419,7 +419,7 @@ function Spinner({ show }: { show: any }) {
 
 async function fetchInvoices() {
   await new Promise((r) =>
-    setTimeout(r, Number(localStorage.getItem("delay") ?? 0))
+    setTimeout(r, Number(sessionStorage.getItem("delay") ?? 0))
   );
   const { data } = await axios.get(
     "https://jsonplaceholder.typicode.com/posts"
@@ -429,7 +429,7 @@ async function fetchInvoices() {
 
 async function fetchInvoiceById(id: string) {
   await new Promise((r) =>
-    setTimeout(r, Number(localStorage.getItem("delay") ?? 0))
+    setTimeout(r, Number(sessionStorage.getItem("delay") ?? 0))
   );
   const { data } = await axios.get(
     `https://jsonplaceholder.typicode.com/posts/${id}`
@@ -439,7 +439,7 @@ async function fetchInvoiceById(id: string) {
 
 async function fetchUsers() {
   await new Promise((r) =>
-    setTimeout(r, Number(localStorage.getItem("delay") ?? 0))
+    setTimeout(r, Number(sessionStorage.getItem("delay") ?? 0))
   );
   const { data } = await axios.get(
     "https://jsonplaceholder.typicode.com/users"
@@ -449,12 +449,12 @@ async function fetchUsers() {
 
 function useLocalStorage<T>(key: string, initialValue: T) {
   const state = React.useState<T>(() => {
-    const stored = localStorage.getItem(key);
+    const stored = sessionStorage.getItem(key);
     return stored ? JSON.parse(stored) : initialValue;
   });
 
   React.useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(state[0]));
+    sessionStorage.setItem(key, JSON.stringify(state[0]));
   }, [state[0]]);
 
   return state;
