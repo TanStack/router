@@ -89,6 +89,7 @@ const routes: Route[] = [
 
 // Provide our location and routes to our application
 function App() {
+  // This stuff is just to tweak our sandbox setup in real-time
   const [delay, setDelay] = useLocalStorage("delay", 500);
   const [defaultPendingMs, setDefaultPendingMs] = useLocalStorage(
     "defaultPendingMs",
@@ -107,7 +108,7 @@ function App() {
 
   return (
     <>
-      {/* This stuff is just to tweak our sandbox setup in real-time */}
+      {/* More stuff to tweak our sandbox setup in real-time */}
       <div
         className={tw`text-xs fixed w-52 shadow rounded bottom-2 left-2 bg-white bg-opacity-75 p-2 border-b flex flex-col gap-2 flex-wrap items-left`}
       >
@@ -185,10 +186,10 @@ function App() {
           />
         </div>
       </div>
-      {/* Normally <Router /> would match and render our
-      routes, but when we pass children, we can use
-      <Outlet /> to start rendering our matches at any
-      level we want. This also let's us use router API's
+      {/* Normally <Router /> matches and renders our
+      routes, but when we pass our own children, we can use
+      <Outlet /> to start rendering our matches when we're
+      // ready. This also let's us use router API's
       in <Root /> before rendering any routes */}
       <Router
         location={location}
@@ -206,7 +207,6 @@ function App() {
           defaultPendingMinMs,
         ].join(".")}
       >
-        {/* This is where the regular stuff is */}
         <Root />
       </Router>
     </>
