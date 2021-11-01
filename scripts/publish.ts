@@ -15,10 +15,11 @@ const streamToArray = require('stream-to-array')
 //
 
 // TODO: List your npm packages here. The first package will be used as the versioner.
-const packageNames: string[] = [
-  'react-location',
-  'react-location-simple-cache',
-  'react-location-rank-routes',
+const packageNames: [string, string[]][] = [
+  ['react-location', []],
+  ['react-location-jsurl', []],
+  ['react-location-simple-cache', ['react-location']],
+  ['react-location-rank-routes', ['react-location']],
 ]
 
 const branches: Record<string, { prerelease: boolean; tag: string }> = {
@@ -40,13 +41,6 @@ const rootDir = path.resolve(__dirname, '..')
 const examplesDir = path.resolve(rootDir, 'examples')
 
 async function run() {
-  if (!process.env.CI) {
-    console.warn(
-      `You should always run the publish script from the CI environment!`
-    )
-    return
-  }
-
   const branchName: string = currentGitBranch()
   const branch = branches[branchName]
   const prereleaseBranch = branch.prerelease ? branchName : undefined
@@ -131,7 +125,7 @@ async function run() {
 
   if (recommendedReleaseLevel === -1) {
     console.log(
-      `There have been no changes since the last release that require a new version. You're good!`
+      `There have been no changes since the release of ${latestTag} that require a new version. You're good!`
     )
     return
   }
@@ -158,22 +152,39 @@ async function run() {
     prereleaseBranch
   )
 
-  console.log(`Bumping version from ${latestTag} to ${version}`)
-
   // Update each package to the new version along with any dependencies
-  await Promise.all(
-    packageNames.map(async (packageName) => {
-      await updatePackageConfig(packageName, (config) => {
-        config.version = version
-        packageNames.forEach((packageName) => {
-          if (config.dependencies[packageName]) {
-            config.dependencies[packageName] = version
-          }
-        })
+  for (const [packageName, dependencies] of packageNames) {
+    execSync(
+      [
+        `cd packages/${packageName}`,
+        ...dependencies.map((dep) => `yarn link ${dep}`),
+        `yarn build && yarn link && yarn test`,
+      ].join(' && ')
+    )
+
+    console.log(
+      `Bumping ${packageName} version from ${latestTag} to ${version}`
+    )
+
+    await updatePackageConfig(packageName, (config) => {
+      config.version = version
+      dependencies.forEach((dependency) => {
+        if (config.dependencies[dependency]) {
+          config.dependencies[dependency] = version
+        }
       })
-      console.log(chalk.green(`  Updated ${packageName} to version ${version}`))
     })
-  )
+    console.log(
+      chalk.green(`  Updated ${packageName} dependencies to version ${version}`)
+    )
+  }
+
+  if (!process.env.CI) {
+    console.warn(
+      `This is a dry run for version ${version}. Push to CI to publish for real!`
+    )
+    return
+  }
 
   // Tag and commit
   execSync(`git tag -a -m "v${version}" v${version}`)

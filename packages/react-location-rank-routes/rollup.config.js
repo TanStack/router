@@ -18,6 +18,7 @@ const external = [
 const globals = {
   react: 'React',
   'react-dom': 'ReactDOM',
+  'react-location': 'ReactLocation',
   'react-location-rank-routes': 'ReactLocationRankRoutes',
 }
 
