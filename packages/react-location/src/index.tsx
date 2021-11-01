@@ -135,6 +135,7 @@ export type UnloadedMatch<TGenerics extends PartialGenerics = DefaultGenerics> =
   {
     routePath: string
     id: string
+    originalRoute: Route<TGenerics>
     route: RouteBasic<TGenerics>
     routeIndex: number
     pathname: string
@@ -192,6 +193,11 @@ export type RouterOptions<TGenerics> = {
   useErrorBoundary?: boolean
   routes?: Route<TGenerics>[]
   initialMatches?: Match<TGenerics>[]
+  defaultElement?: SyncOrAsyncElement<TGenerics>
+  defaultErrorElement?: SyncOrAsyncElement<TGenerics>
+  defaultPendingElement?: SyncOrAsyncElement<TGenerics>
+  defaultPendingMs?: number
+  defaultPendingMinMs?: number
 }
 
 export type BuildNextOptions<
@@ -316,6 +322,11 @@ export class ReactLocation<
     defaultLinkPreloadMaxAge: number
     defaultLoaderMaxAge: number
     useErrorBoundary: boolean
+    defaultElement?: SyncOrAsyncElement<TLocationGenerics>
+    defaultErrorElement?: SyncOrAsyncElement<TLocationGenerics>
+    defaultPendingElement?: SyncOrAsyncElement<TLocationGenerics>
+    defaultPendingMs?: number
+    defaultPendingMinMs?: number
   }
 
   current: Location<TLocationGenerics>
@@ -334,6 +345,7 @@ export class ReactLocation<
     this.stringifySearch = options?.stringifySearch ?? defaultStringifySearch
     this.parseSearch = options?.parseSearch ?? defaultParseSearch
     this.options = {
+      ...options?.options,
       filterRoutes: options?.options?.filterRoutes ?? ((d) => d),
       defaultLinkPreloadMaxAge: options?.options?.defaultLinkPreloadMaxAge ?? 0,
       defaultLoaderMaxAge: options?.options?.defaultLoaderMaxAge ?? 0,
@@ -501,6 +513,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
       status: 'resolved',
       data: {},
       isLoading: false,
+      originalRoute: null!,
     }
   }, [location.basepath])
 
@@ -713,9 +726,7 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
       this.router.routes,
       this.location,
       this.parentMatch,
-      {
-        filterRoutes: this.router.filterRoutes,
-      },
+      this.router,
     )
 
     this.matches = unloadedMatches?.map((unloadedMatch): Match<TGenerics> => {
@@ -916,6 +927,11 @@ export async function matchRoutes<
   parentMatch: UnloadedMatch<TGenerics>,
   opts?: {
     filterRoutes?: FilterRoutesFn
+    defaultPendingMs?: number
+    defaultPendingMinMs?: number
+    defaultElement?: SyncOrAsyncElement<TGenerics>
+    defaultErrorElement?: SyncOrAsyncElement<TGenerics>
+    defaultPendingElement?: SyncOrAsyncElement<TGenerics>
   },
 ): Promise<UnloadedMatch<TGenerics>[]> {
   if (!routes?.length) {
@@ -935,7 +951,7 @@ export async function matchRoutes<
 
     let routeIndex: number = -1
 
-    const flexRoute = filteredRoutes.find((route, index) => {
+    const originalRoute = filteredRoutes.find((route, index) => {
       const fullRoutePathName = joinPaths([pathname, route.path ?? '*'])
 
       const matchParams = matchRoute(currentLocation, {
@@ -954,11 +970,11 @@ export async function matchRoutes<
       return !!matchParams
     })
 
-    if (!flexRoute) {
+    if (!originalRoute) {
       return
     }
 
-    const interpolatedPathSegments = parsePathname(flexRoute.path)
+    const interpolatedPathSegments = parsePathname(originalRoute.path)
 
     const interpolatedPath = joinPaths(
       interpolatedPathSegments.map((segment) => {
@@ -978,14 +994,14 @@ export async function matchRoutes<
 
     let route: RouteResolved<TGenerics>
 
-    if (flexRoute.import) {
-      const res = await flexRoute.import({ params })
+    if (originalRoute.import) {
+      const res = await originalRoute.import({ params })
       route = {
-        ...flexRoute,
+        ...originalRoute,
         ...res,
       }
     } else {
-      route = flexRoute
+      route = originalRoute
     }
 
     const routePath = joinPaths([parentMatch.routePath, routeIndex.toString()])
@@ -993,7 +1009,15 @@ export async function matchRoutes<
     const match: UnloadedMatch<TGenerics> = {
       routePath,
       id: JSON.stringify([routePath, params]),
-      route,
+      route: {
+        pendingMs: opts?.defaultPendingMs,
+        pendingMinMs: opts?.defaultPendingMinMs,
+        ...route,
+        element: route.element ?? opts?.defaultElement,
+        errorElement: route.errorElement ?? opts?.defaultErrorElement,
+        pendingElement: route.pendingElement ?? opts?.defaultPendingElement,
+      },
+      originalRoute,
       routeIndex,
       params,
       pathname,

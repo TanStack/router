@@ -39,7 +39,11 @@ type LocationGenerics = MakeGenerics<{
 //
 
 // Set up a ReactLocation instance
-const location = new ReactLocation<LocationGenerics>();
+const location = new ReactLocation<LocationGenerics>({
+  options: {
+    defaultPendingElement: <Spinner />,
+  },
+});
 
 // Build our routes. We could do this in our component, too.
 const routes: Route[] = [
@@ -52,17 +56,11 @@ const routes: Route[] = [
         invoices: await fetchInvoices(),
       };
     },
-
     children: [
       { path: "/", element: <DashboardHome /> },
       {
         path: "invoices",
         element: <Invoices />,
-        loader: async () => {
-          return {
-            invoices: await fetchInvoices(),
-          };
-        },
         children: [
           { path: "/", element: <InvoicesHome /> },
           {
@@ -92,6 +90,14 @@ const routes: Route[] = [
 // Provide our location and routes to our application
 function App() {
   const [delay, setDelay] = useLocalStorage("delay", 500);
+  const [defaultPendingMs, setDefaultPendingMs] = useLocalStorage(
+    "defaultPendingMs",
+    1000
+  );
+  const [defaultPendingMinMs, setDefaulPendingMinMs] = useLocalStorage(
+    "defaultPendingMinMs",
+    500
+  );
   const [defaultLinkPreloadMaxAge, setDefaultLinkPreloadMaxAge] =
     useLocalStorage("defaultLinkPreloadMaxAge", 0);
   const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useLocalStorage(
@@ -105,6 +111,62 @@ function App() {
       <div
         className={tw`text-xs fixed w-52 shadow rounded bottom-2 left-2 bg-white bg-opacity-75 p-2 border-b flex flex-col gap-2 flex-wrap items-left`}
       >
+        <div>Artificial Delay: {delay}ms</div>
+        <div>
+          <input
+            type="range"
+            min="0"
+            max="5000"
+            step="100"
+            value={delay}
+            onChange={(e) => setDelay(e.target.valueAsNumber)}
+            className={tw`w-full`}
+          />
+        </div>
+        <div>
+          Default Pending Ms: {defaultPendingMs}ms{" "}
+          {defaultPendingMs > delay ? <>🔴</> : <>🟢</>}
+        </div>
+        <div>
+          <input
+            type="range"
+            min="0"
+            max="5000"
+            step="100"
+            value={defaultPendingMs}
+            onChange={(e) => setDefaultPendingMs(e.target.valueAsNumber)}
+            className={tw`w-full`}
+          />
+        </div>
+        <div className={tw`${!defaultPendingMs ? "opacity-30" : ""}`}>
+          <div>Default Min Pending Ms: {defaultPendingMinMs}ms</div>
+          <div>
+            <input
+              type="range"
+              min="0"
+              max="5000"
+              step="100"
+              value={defaultPendingMinMs}
+              onChange={(e) => setDefaulPendingMinMs(e.target.valueAsNumber)}
+              className={tw`w-full`}
+            />
+          </div>
+        </div>
+        <div>
+          Loader Max Age:{" "}
+          {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : "Off"}
+        </div>
+        <div>
+          <input
+            type="range"
+            min="0"
+            max="10000"
+            step="250"
+            value={defaultLoaderMaxAge}
+            onChange={(e) => setDefaultLoaderMaxAge(e.target.valueAsNumber)}
+            className={tw`w-full`}
+          />
+        </div>
         <div>
           Link Preload Max Age:{" "}
           {defaultLinkPreloadMaxAge ? `${defaultLinkPreloadMaxAge}ms` : "Off"}
@@ -122,33 +184,6 @@ function App() {
             className={tw`w-full`}
           />
         </div>
-        <div>
-          Loader Max Age:{" "}
-          {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : "Off"}
-        </div>
-        <div>
-          <input
-            type="range"
-            min="0"
-            max="10000"
-            step="250"
-            value={defaultLoaderMaxAge}
-            onChange={(e) => setDefaultLoaderMaxAge(e.target.valueAsNumber)}
-            className={tw`w-full`}
-          />
-        </div>
-        <div>Artificial Delay: {delay}ms</div>
-        <div>
-          <input
-            type="range"
-            min="0"
-            max="10000"
-            step="250"
-            value={delay}
-            onChange={(e) => setDelay(e.target.valueAsNumber)}
-            className={tw`w-full`}
-          />
-        </div>
       </div>
       {/* Normally <Router /> would match and render our
       routes, but when we pass children, we can use
@@ -160,7 +195,16 @@ function App() {
         routes={routes}
         defaultLinkPreloadMaxAge={defaultLinkPreloadMaxAge}
         defaultLoaderMaxAge={defaultLoaderMaxAge}
-        key={[defaultLinkPreloadMaxAge, defaultLoaderMaxAge].join(".")}
+        defaultPendingMs={defaultPendingMs}
+        defaultPendingMinMs={defaultPendingMinMs}
+        // Normally, the options above aren't changing, but for this particular
+        // example, we need to key the router when they change
+        key={[
+          defaultLinkPreloadMaxAge,
+          defaultLoaderMaxAge,
+          defaultPendingMs,
+          defaultPendingMinMs,
+        ].join(".")}
       >
         {/* This is where the regular stuff is */}
         <Root />
@@ -179,10 +223,10 @@ function Root() {
       <div className={tw`flex items-center border-b gap-2`}>
         <h1 className={tw`text-3xl p-2`}>Basic Example</h1>
         {/* Show a global spinner when the router is transitioning */}
-        <Spinner show={router.nextTransition} />
+        <Spinner show={!!router.nextTransition} />
       </div>
       <div className={tw`flex-1 flex`}>
-        <div className={tw`divide-y w-48`}>
+        <div className={tw`divide-y w-56`}>
           {[
             [".", "Home"],
             ["dashboard", "Dashboard"],
@@ -227,16 +271,18 @@ function Home() {
         1 New Invoice
       </Link>
       <hr className={tw`my-2`} />
-      <p>
+      <p className={tw`max-w-xl`}>
         As you navigate around take note of the UX. It should feel
         suspense-like, where routes are only rendered once all of their data and
-        elements are ready. To exaggerate this effect, play with the delay
-        slider in the bottom-left corner.
-      </p>
-      <hr className={tw`my-2`} />
-      <p>
-        The other sliders determine if link-hover preloading is enabled (and how
-        long those preloads stick around) and also whether to cache rendered
+        elements are ready.
+        <hr className={tw`my-2`} />
+        To exaggerate async effects, play with the artificial request delay
+        slider in the bottom-left corner. You can also play with the default
+        timings for displaying the pending fallbacks and the minimum time any
+        pending fallbacks will remain shown.
+        <hr className={tw`my-2`} />
+        The last 2 sliders determine if link-hover preloading is enabled (and
+        how long those preloads stick around) and also whether to cache rendered
         route data (and for how long). Both of these default to 0 (or off).
       </p>
     </div>
@@ -403,10 +449,16 @@ function Users() {
   );
 }
 
-function Spinner({ show }: { show: any }) {
+function Spinner({
+  show = true,
+  className = "",
+}: {
+  show?: any;
+  className?: string;
+}) {
   return (
     <div
-      className={tw`animate-spin px-3 text-xl`}
+      className={tw`inline-block animate-spin px-3 text-xl`}
       style={{
         opacity: show ? 1 : 0,
         transitionDuration: show ? "1000" : "0",
@@ -418,33 +470,37 @@ function Spinner({ show }: { show: any }) {
 }
 
 async function fetchInvoices() {
-  await new Promise((r) =>
-    setTimeout(r, Number(sessionStorage.getItem("delay") ?? 0))
+  const { data } = await delayFn(() =>
+    axios.get("https://jsonplaceholder.typicode.com/posts")
   );
-  const { data } = await axios.get(
-    "https://jsonplaceholder.typicode.com/posts"
-  );
+
   return data.slice(0, 25);
 }
 
 async function fetchInvoiceById(id: string) {
-  await new Promise((r) =>
-    setTimeout(r, Number(sessionStorage.getItem("delay") ?? 0))
+  const { data } = await delayFn(() =>
+    axios.get(`https://jsonplaceholder.typicode.com/posts/${id}`)
   );
-  const { data } = await axios.get(
-    `https://jsonplaceholder.typicode.com/posts/${id}`
-  );
+
   return { ...data, body: data.body + " " + Date.now() };
 }
 
 async function fetchUsers() {
-  await new Promise((r) =>
+  const { data } = await delayFn(() =>
+    axios.get("https://jsonplaceholder.typicode.com/users")
+  );
+
+  return data;
+}
+
+async function delayFn<T>(fn: (...args: any[]) => Promise<T>) {
+  const delayPromise = new Promise((r) =>
     setTimeout(r, Number(sessionStorage.getItem("delay") ?? 0))
   );
-  const { data } = await axios.get(
-    "https://jsonplaceholder.typicode.com/users"
-  );
-  return data;
+
+  const [res] = await Promise.all([fn(), delayPromise]);
+
+  return res;
 }
 
 function useLocalStorage<T>(key: string, initialValue: T) {
