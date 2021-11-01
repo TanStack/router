@@ -1,14 +1,13 @@
 import { render } from 'react-dom'
 import {
   ReactLocation,
-  ReactLocationProvider,
   MakeGenerics,
   useMatch,
   Link,
   Outlet,
   useSearch,
-  Routes,
   useNavigate,
+  Router,
 } from 'react-location'
 import { ReactLocationSimpleCache } from 'react-location-simple-cache'
 
@@ -46,109 +45,108 @@ export function sleep(time: number) {
 
 const App = () => {
   return (
-    <ReactLocationProvider location={location}>
-      <Routes<LocationGenerics>
-        routes={[
-          {
-            element: <Home />,
-            // This is an async data loader for this route
-            // Navigation will suspend until it resolves
-            loader: simpleCache.createLoader(
-              async () => {
-                await sleep(1000)
-                return {
-                  root: Math.random(),
-                }
-              },
-              {
-                maxAge: 1000 * 5,
+    <Router<LocationGenerics>
+      location={location}
+      routes={[
+        {
+          element: <Home />,
+          // This is an async data loader for this route
+          // Navigation will suspend until it resolves
+          loader: simpleCache.createLoader(
+            async () => {
+              await sleep(1000)
+              return {
+                root: Math.random(),
               }
-            ),
-            children: [
-              { path: 'search-params', element: <SearchParams /> },
-              {
-                path: 'teams',
-                element: <Teams />,
-                errorElement: <LoaderError />,
-                // pendingElement: 'Still Loading Teams...',
-                // // Show pending element after 1 second
-                // pendingMs: 1000,
-                // // Show the pending element for at least 500ms
-                // pendingMinMs: 1000,
-                loader: simpleCache.createLoader(
-                  async () => {
-                    // Fail some of the time
-                    if (Math.random() > 0.9) {
-                      throw new Error('Status 500: Failed to load team data!')
-                    }
-                    // Soemtimes team data resolves fast, sometimtes slow...
-                    await sleep(Math.random() * 2000)
-                    // Child loaders merge their results on top of parent loaders
-                    return {
-                      teams: ['team-1', 'team-2', 'team-3'],
-                    }
-                  },
-                  {
-                    maxAge: 1000 * 10,
+            },
+            {
+              maxAge: 1000 * 5,
+            }
+          ),
+          children: [
+            { path: 'search-params', element: <SearchParams /> },
+            {
+              path: 'teams',
+              element: <Teams />,
+              errorElement: <LoaderError />,
+              // pendingElement: 'Still Loading Teams...',
+              // // Show pending element after 1 second
+              // pendingMs: 1000,
+              // // Show the pending element for at least 500ms
+              // pendingMinMs: 1000,
+              loader: simpleCache.createLoader(
+                async () => {
+                  // Fail some of the time
+                  if (Math.random() > 0.9) {
+                    throw new Error('Status 500: Failed to load team data!')
                   }
-                ),
-                children: [
-                  {
-                    path: 'new',
-                    element: 'new',
-                  },
-                  {
-                    path: ':teamId',
-                    element: <Team />,
-                    // By default, loaders are parallized, but at any point in the route tree
-                    // you can await a parentLoader's promise to finish before proceeding
-                    loader: simpleCache.createLoader(
-                      async (match, { parentMatch }) => {
-                        // Look ma! I can rely on parent route promise/data!
-                        const parentData = await parentMatch?.loaderPromise
+                  // Soemtimes team data resolves fast, sometimtes slow...
+                  await sleep(Math.random() * 2000)
+                  // Child loaders merge their results on top of parent loaders
+                  return {
+                    teams: ['team-1', 'team-2', 'team-3'],
+                  }
+                },
+                {
+                  maxAge: 1000 * 10,
+                }
+              ),
+              children: [
+                {
+                  path: 'new',
+                  element: 'new',
+                },
+                {
+                  path: ':teamId',
+                  element: <Team />,
+                  // By default, loaders are parallized, but at any point in the route tree
+                  // you can await a parentLoader's promise to finish before proceeding
+                  loader: simpleCache.createLoader(
+                    async (match, { parentMatch }) => {
+                      // Look ma! I can rely on parent route promise/data!
+                      const parentData = await parentMatch?.loaderPromise
 
-                        if (!parentData?.teams?.length) {
-                          throw new Error('Team not found!')
-                        }
+                      if (!parentData?.teams?.length) {
+                        throw new Error('Team not found!')
+                      }
 
-                        await sleep(300)
+                      await sleep(300)
 
-                        return {
-                          teamId: match.params.teamId + Math.random(),
-                        }
-                      },
-                      { maxAge: 1000 * 10 }
-                    ),
-                  },
-                ],
-              },
-              {
-                // In this route, the data and element are fetched in parallel
-                // because the async element and loader are fetchable up front
-                path: 'expensive',
-                element: () =>
-                  import('./Expensive').then((res) => <res.default />),
-                loader: simpleCache.createLoader(
-                  async () => ({
-                    expensive: await new Promise((r) =>
-                      setTimeout(r, 1000)
-                    ).then(() => Math.random()),
-                  }),
-                  { maxAge: 1000 * 10 }
-                ),
-              },
-              {
-                // In this route, the data can only be fetched after the entire route
-                // module is imported, creating a momentary waterfall
-                path: 'really-expensive',
-                import: () =>
-                  import('./ReallyExpensive').then((res) => res.route),
-              },
-            ],
-          },
-        ]}
-      />
-    </ReactLocationProvider>
+                      return {
+                        teamId: match.params.teamId + Math.random(),
+                      }
+                    },
+                    { maxAge: 1000 * 10 }
+                  ),
+                },
+              ],
+            },
+            {
+              // In this route, the data and element are fetched in parallel
+              // because the async element and loader are fetchable up front
+              path: 'expensive',
+              element: () =>
+                import('./Expensive').then((res) => <res.default />),
+              loader: simpleCache.createLoader(
+                async () => ({
+                  expensive: await new Promise((r) => setTimeout(r, 1000)).then(
+                    () => Math.random()
+                  ),
+                }),
+                { maxAge: 1000 * 10 }
+              ),
+            },
+            {
+              // In this route, the data can only be fetched after the entire route
+              // module is imported, creating a momentary waterfall
+              path: 'really-expensive',
+              import: () =>
+                import('./ReallyExpensive').then((res) => res.route),
+            },
+          ],
+        },
+      ]}
+    />
   )
 }
 
