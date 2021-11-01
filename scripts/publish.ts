@@ -204,7 +204,7 @@ async function run() {
 
   // Ensure packages are up to date and ready
   await Promise.all(
-    packageNames.map(async (packageName) => {
+    packageNames.map(async ([packageName, dependencies]) => {
       let file = path.join(rootDir, 'packages', packageName, 'package.json')
       let json = await jsonfile.readFile(file)
 
@@ -213,11 +213,19 @@ async function run() {
           `Package ${packageName} is on version ${json.version}, but should be on ${version}`
         )
       }
+
+      for (const dependency of dependencies) {
+        if (json.dependencies[dependency] !== version) {
+          throw new Error(
+            `Package ${packageName}'s dependency of ${dependency} is on version ${json.dependencies[dependency]}, but should be on ${version}`
+          )
+        }
+      }
     })
   )
 
   // Publish each package
-  packageNames.map((packageName) => {
+  packageNames.map(([packageName]) => {
     let packageDir = path.join(rootDir, 'packages', packageName)
     console.log()
     console.log(`cd ${packageDir} && yarn publish --tag ${tag} `)
@@ -243,7 +251,7 @@ async function run() {
     if (!stat.isDirectory()) continue
 
     await updateExamplesPackageConfig(example, (config) => {
-      packageNames.forEach((packageName) => {
+      packageNames.forEach(([packageName]) => {
         if (config.dependencies[packageName]) {
           config.dependencies[packageName] = latestTag.substring(1)
         }
