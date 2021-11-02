@@ -155,6 +155,10 @@ export type Match<TGenerics extends PartialGenerics = DefaultGenerics> =
     loaderPromise?: Promise<UseGeneric<TGenerics, 'LoaderData'>>
     used?: boolean
     maxAge?: number
+    listeners?: (() => void)[]
+    subscribe?: (cb: () => void) => void
+    notify?: () => void
+    startPending?: () => void
   }
 
 export type LoaderFn<TGenerics extends PartialGenerics = DefaultGenerics> = (
@@ -731,12 +735,24 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
 
     this.matches = unloadedMatches?.map((unloadedMatch): Match<TGenerics> => {
       if (!this.matchCache[unloadedMatch.id]) {
-        this.matchCache[unloadedMatch.id] = {
+        const match: Match<TGenerics> = {
           ...unloadedMatch,
           isLoading: false,
           status: 'pending',
           data: {},
+          listeners: [],
+          subscribe: (cb) => {
+            match?.listeners?.push(cb)
+            return () => {
+              match.listeners = match.listeners?.filter((d) => d !== cb)
+            }
+          },
+          notify: () => {
+            match.listeners?.forEach((d) => d())
+          },
         }
+
+        this.matchCache[unloadedMatch.id] = match
       }
 
       return this.matchCache[unloadedMatch.id]!
@@ -795,6 +811,10 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
 
       const load = match.route.loader
 
+      match.subscribe?.(() => {
+        this.notify()
+      })
+
       if (!load) {
         match.status = 'resolved'
       } else if (!match.loaderPromise) {
@@ -802,17 +822,17 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
           let pendingTimeout: ReturnType<typeof setTimeout>
           let pendingMinPromise = Promise.resolve()
 
-          if (match.route.pendingMs) {
-            this.pendingStarters.push(() => {
+          match.startPending = () => {
+            if (match.route.pendingMs) {
               pendingTimeout = setTimeout(() => {
-                this.notify()
+                match.notify?.()
                 if (typeof match.route.pendingMinMs !== 'undefined') {
                   pendingMinPromise = new Promise((r) =>
                     setTimeout(r, match.route.pendingMinMs),
                   )
                 }
               }, match.route.pendingMs)
-            })
+            }
           }
 
           let promise: undefined | Promise<any>
@@ -871,7 +891,7 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
                   loading()
                 }
 
-                this.notify()
+                match.notify?.()
               },
             }) as any
 
@@ -904,7 +924,7 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
   }
 
   startPending = async () => {
-    this.pendingStarters.forEach((d) => d())
+    this.matches.forEach((match) => match.startPending?.())
   }
 }
 
@@ -1150,7 +1170,11 @@ export function Link<TGenerics extends PartialGenerics = DefaultGenerics>({
 
   // Compare path/hash for matches
   const pathIsEqual = location.current.pathname === next.pathname
-  const pathIsFuzzyEqual = location.current.pathname.startsWith(next.pathname)
+  const currentPathSplit = location.current.pathname.split('/')
+  const nextPathSplit = next.pathname.split('/')
+  const pathIsFuzzyEqual = nextPathSplit.every(
+    (d, i) => d === currentPathSplit[i],
+  )
   const hashIsEqual = location.current.hash === next.hash
 
   // Combine the matches based on user options
