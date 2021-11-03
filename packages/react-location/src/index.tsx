@@ -1134,22 +1134,27 @@ export type LinkType<TGenerics extends PartialGenerics = DefaultGenerics> = (
   props: LinkProps<TGenerics>,
 ) => JSX.Element
 
-export function Link<TGenerics extends PartialGenerics = DefaultGenerics>({
-  to = '.',
-  search,
-  hash,
-  children,
-  target,
-  style = {},
-  replace,
-  onClick,
-  onMouseEnter,
-  className = '',
-  getActiveProps = () => ({}),
-  activeOptions,
-  preload,
-  ...rest
-}: LinkProps<TGenerics>) {
+export const Link = React.forwardRef(function Link<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>(
+  {
+    to = '.',
+    search,
+    hash,
+    children,
+    target,
+    style = {},
+    replace,
+    onClick,
+    onMouseEnter,
+    className = '',
+    getActiveProps = () => ({}),
+    activeOptions,
+    preload,
+    ...rest
+  }: LinkProps<TGenerics>,
+  ref?: React.Ref<HTMLAnchorElement>,
+) {
   const loadRoute = useLoadRoute<TGenerics>()
   const match = useMatch<TGenerics>()
   const location = useLocation<TGenerics>()
@@ -1238,6 +1243,7 @@ export function Link<TGenerics extends PartialGenerics = DefaultGenerics>({
   return (
     <a
       {...{
+        ref,
         href: next.href,
         onClick: handleClick,
         onMouseEnter: handleMouseEnter,
@@ -1254,7 +1260,7 @@ export function Link<TGenerics extends PartialGenerics = DefaultGenerics>({
       }}
     />
   )
-}
+})
 
 export type UseNavigateType<
   THookGenerics extends PartialGenerics = DefaultGenerics,
