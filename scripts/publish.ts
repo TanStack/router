@@ -157,12 +157,12 @@ async function run() {
     const cmd = [
       `cd packages/${packageName}`,
       ...dependencies.map((dep) => `yarn link ${dep}`),
-      `yarn build && yarn unlink && yarn link && yarn test`,
+      `yarn link && yarn build && yarn test`,
     ].join(' && ')
 
     console.log(cmd)
 
-    execSync(cmd)
+    execSync(cmd, { encoding: 'utf8' })
 
     console.log(
       `Bumping ${packageName} version from ${latestTag} to ${version}`
