@@ -105,7 +105,7 @@ export type RouteAsync<TGenerics extends PartialGenerics = DefaultGenerics> = {
 
 export type MatchLocation<TGenerics extends PartialGenerics = DefaultGenerics> =
   {
-    to?: string
+    to?: string | number | null
     search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
     exact?: boolean
   }
@@ -207,8 +207,8 @@ export type RouterOptions<TGenerics> = {
 export type BuildNextOptions<
   TGenerics extends PartialGenerics = DefaultGenerics,
 > = {
-  to?: string | null
-  search?: Updater<UseGeneric<TGenerics, 'Search'>>
+  to?: string | number | null
+  search?: true | Updater<UseGeneric<TGenerics, 'Search'>>
   hash?: Updater<string>
   from?: Partial<Location<TGenerics>>
   key?: string
@@ -227,7 +227,7 @@ export type PromptProps = {
 export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
   Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
     // The absolute or relative destination pathname
-    to?: string
+    to?: string | number | null
     // The new search object or a function to update it
     search?: Updater<UseGeneric<TGenerics, 'Search'>>
     // The new has string or a function to update it
@@ -1063,8 +1063,8 @@ export function useLoadRoute<
   const router = useRouter<THookGenerics>()
 
   return React.useCallback(
-    async <TGenerics extends PartialGenerics = THookGenerics>(
-      navigate: NavigateOptions<TGenerics> = location.current,
+    async (
+      navigate: NavigateOptions<THookGenerics> = location.current,
       opts?: { maxAge?: number },
     ) => {
       const matchLoader = router.__.getMatchLoader({
@@ -1116,7 +1116,7 @@ export function Link<TGenerics extends PartialGenerics = DefaultGenerics>({
 
   // If this `to` is a valid external URL, log a warning
   try {
-    const url = new URL(to)
+    const url = new URL(`${to}`)
     warning(
       false,
       `<Link /> should not be used for external URLs like: ${url.href}`,
@@ -1218,14 +1218,14 @@ export function useNavigate<
   const match = useMatch<THookGenerics>()
   const location = useLocation<THookGenerics>()
 
-  function navigate<TGenerics extends PartialGenerics = THookGenerics>({
+  function navigate({
     search,
     hash,
     replace,
     from,
     to,
     fromCurrent,
-  }: NavigateOptions<TGenerics>) {
+  }: NavigateOptions<THookGenerics>) {
     fromCurrent = fromCurrent ?? typeof to === 'undefined'
 
     location.navigate({
@@ -1369,14 +1369,12 @@ export function useIsNextLocation<
   const resolvePath = useResolvePath()
 
   return React.useCallback(
-    <TGenerics extends PartialGenerics = THookGenerics>(
-      matchLocation: MatchLocation<TGenerics>,
-    ) => {
+    (matchLocation: MatchLocation<THookGenerics>) => {
       return (
         router.nextTransition?.location &&
         matchRoute(router.nextTransition?.location, {
           ...matchLocation,
-          to: matchLocation.to ? resolvePath(matchLocation.to) : undefined,
+          to: matchLocation.to ? resolvePath(`${matchLocation.to}`) : undefined,
           exact: matchLocation.exact ?? true,
         })
       )
@@ -1394,7 +1392,7 @@ export function useMatchRoute<
   return useLatestCallback((matchLocation: MatchLocation<TGenerics>) =>
     matchRoute(location.current, {
       ...matchLocation,
-      to: matchLocation.to ? resolvePath(matchLocation.to) : undefined,
+      to: matchLocation.to ? resolvePath(`${matchLocation.to}`) : undefined,
     }),
   )
 }
@@ -1486,7 +1484,7 @@ function matchByPath<TGenerics extends PartialGenerics = DefaultGenerics>(
   matchLocation: MatchLocation<TGenerics>,
 ): UseGeneric<TGenerics, 'Params'> | undefined {
   const baseSegments = parsePathname(currentLocation.pathname)
-  const routeSegments = parsePathname(matchLocation.to ?? '*')
+  const routeSegments = parsePathname(`${matchLocation.to ?? '*'}`)
 
   const params: Record<string, string> = {}
 
