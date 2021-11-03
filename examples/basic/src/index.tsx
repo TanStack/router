@@ -81,12 +81,12 @@ type LocationGenerics = MakeGenerics<{
 const location = new ReactLocation<LocationGenerics>({
   options: {
     defaultPendingElement: <Spinner />,
-    searchFilter: (prev, next) => {
-      return {
-        ...prev,
-        ...next,
-      };
-    },
+    // searchFilter: (prev, next) => { // TODO: implement this
+    //   return {
+    //     ...prev,
+    //     ...next,
+    //   };
+    // },
   },
 });
 
@@ -628,6 +628,5 @@ function useLocalStorage<T>(key: string, initialValue: T) {
 
   return state;
 }
-
 const rootElement = document.getElementById("root");
 ReactDOM.render(<App />, rootElement);

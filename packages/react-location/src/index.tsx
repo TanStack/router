@@ -389,8 +389,11 @@ export class ReactLocation<
       ...dest.from,
     }
 
-    const pathname = resolvePath(from.pathname, dest.to ?? '.')
-    const updatedSearch = functionalUpdate(dest.search, from.search)
+    const pathname = resolvePath(from.pathname, `${dest.to ?? '.'}`)
+    const updatedSearch =
+      dest.search === true
+        ? from.search
+        : functionalUpdate(dest.search, from.search)
     const search = updatedSearch
       ? replaceEqualDeep(from.search, updatedSearch)
       : {}
