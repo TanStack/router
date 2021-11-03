@@ -1,3 +1,4 @@
+// Check that re-exporting the API with a specific Generics type works.
 import {
   Link as vLink,
   LinkType,
@@ -28,7 +29,7 @@ import {
   MatchRouteType,
   matchRoutes as vMatchRoutes,
   MatchRoutesType,
-} from './index'
+} from '../src'
 
 export type Generics = MakeGenerics<{
   Params: {
