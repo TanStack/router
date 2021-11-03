@@ -154,13 +154,15 @@ async function run() {
 
   // Update each package to the new version along with any dependencies
   for (const [packageName, dependencies] of packageNames) {
-    execSync(
-      [
-        `cd packages/${packageName}`,
-        ...dependencies.map((dep) => `yarn link ${dep}`),
-        `yarn build && yarn link && yarn test`,
-      ].join(' && ')
-    )
+    const cmd = [
+      `cd packages/${packageName}`,
+      ...dependencies.map((dep) => `yarn link ${dep}`),
+      `yarn build && yarn unlink && yarn link && yarn test`,
+    ].join(' && ')
+
+    console.log(cmd)
+
+    execSync(cmd)
 
     console.log(
       `Bumping ${packageName} version from ${latestTag} to ${version}`

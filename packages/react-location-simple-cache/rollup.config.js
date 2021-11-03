@@ -8,16 +8,16 @@ import visualizer from 'rollup-plugin-visualizer'
 import replace from '@rollup/plugin-replace'
 // import ccompiler from '@ampproject/rollup-plugin-closure-compiler'
 
-const external = ['react', 'react-dom', 'react-location-simple-cace']
+const external = ['react', 'react-dom', 'react-location-simple-cache']
 
 const globals = {
   react: 'React',
   'react-dom': 'ReactDOM',
-  'react-location-simple-cace': 'ReactLocationSimpleCache',
+  'react-location-simple-cache': 'ReactLocationSimpleCache',
 }
 
 const inputSrcs = [
-  ['src/index.tsx', 'ReactLocationSimpleCache', 'react-location-simple-cace'],
+  ['src/index.tsx', 'ReactLocationSimpleCache', 'react-location-simple-cache'],
 ]
 
 const extensions = ['.js', '.jsx', '.es6', '.es', '.mjs', '.ts', '.tsx']

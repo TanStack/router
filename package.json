@@ -2,6 +2,7 @@
   "private": true,
   "repository": "https://github.com/tannerlinsley/react-location.git",
   "scripts": {
+    "i": "yarn install --ignore-engines",
     "installAll": "lerna exec 'yarn --force'",
     "linkAll": "lerna exec 'yarn link' && lerna exec 'yarn link react-location'",
     "unlinkAll": "lerna exec yarn unlink",
