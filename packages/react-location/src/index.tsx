@@ -247,6 +247,9 @@ type ActiveOptions = {
   includeHash?: boolean
 }
 
+export type LinkPropsType<TGenerics extends PartialGenerics = DefaultGenerics> =
+  LinkProps<TGenerics>
+
 export type LoaderDispatchEvent<
   TGenerics extends PartialGenerics = DefaultGenerics,
 > =
@@ -467,6 +470,14 @@ export class ReactLocation<
   }
 }
 
+export type RouterPropsType<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = RouterProps<TGenerics>
+
+export type RouterType<TGenerics extends PartialGenerics = DefaultGenerics> = (
+  props: RouterProps<TGenerics>,
+) => JSX.Element
+
 export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
   children,
   location,
@@ -655,9 +666,13 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
   )
 }
 
+export type UseLocationType<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = () => ReactLocation<TGenerics>
+
 export function useLocation<
   TGenerics extends PartialGenerics = DefaultGenerics,
->() {
+>(): ReactLocation<TGenerics> {
   const getIsMounted = useGetIsMounted()
   const [, rerender] = React.useReducer((d) => d + 1, 0)
   const instance = React.useContext(LocationContext) as ReactLocation<TGenerics>
@@ -928,9 +943,12 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
   }
 }
 
+export type UseRouterType<TGenerics extends PartialGenerics = DefaultGenerics> =
+  () => Router<TGenerics>
+
 export function useRouter<
   TGenerics extends PartialGenerics = DefaultGenerics,
->() {
+>(): Router<TGenerics> {
   const context = React.useContext(routerContext)
   if (!context) {
     warning(true, 'You are trying to use useRouter() outside of ReactLocation!')
@@ -939,20 +957,31 @@ export function useRouter<
   return context as Router<TGenerics>
 }
 
+export interface MatchRoutesOptions<TGenerics> {
+  filterRoutes?: FilterRoutesFn
+  defaultPendingMs?: number
+  defaultPendingMinMs?: number
+  defaultElement?: SyncOrAsyncElement<TGenerics>
+  defaultErrorElement?: SyncOrAsyncElement<TGenerics>
+  defaultPendingElement?: SyncOrAsyncElement<TGenerics>
+}
+
+export type MatchRoutesType<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = (
+  routes: undefined | Route<TGenerics>[],
+  currentLocation: Location<TGenerics>,
+  parentMatch: UnloadedMatch<TGenerics>,
+  opts?: MatchRoutesOptions<TGenerics>,
+) => Promise<UnloadedMatch<TGenerics>[]>
+
 export async function matchRoutes<
   TGenerics extends PartialGenerics = DefaultGenerics,
 >(
   routes: undefined | Route<TGenerics>[],
   currentLocation: Location<TGenerics>,
   parentMatch: UnloadedMatch<TGenerics>,
-  opts?: {
-    filterRoutes?: FilterRoutesFn
-    defaultPendingMs?: number
-    defaultPendingMinMs?: number
-    defaultElement?: SyncOrAsyncElement<TGenerics>
-    defaultErrorElement?: SyncOrAsyncElement<TGenerics>
-    defaultPendingElement?: SyncOrAsyncElement<TGenerics>
-  },
+  opts?: MatchRoutesOptions<TGenerics>,
 ): Promise<UnloadedMatch<TGenerics>[]> {
   if (!routes?.length) {
     return []
@@ -1055,6 +1084,10 @@ export async function matchRoutes<
   return matches
 }
 
+export type UseLoadRouteType<
+  THookGenerics extends PartialGenerics = DefaultGenerics,
+> = (routes?: Route<THookGenerics>[]) => void
+
 export function useLoadRoute<
   THookGenerics extends PartialGenerics = DefaultGenerics,
 >() {
@@ -1078,11 +1111,18 @@ export function useLoadRoute<
   )
 }
 
+export type UseMatchesType<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = () => Match<TGenerics>[]
+
 export function useMatches<
   TGenerics extends PartialGenerics = DefaultGenerics,
 >(): Match<TGenerics>[] {
   return React.useContext(MatchesContext)
 }
+
+export type UseMatchType<TGenerics extends PartialGenerics = DefaultGenerics> =
+  () => Match<TGenerics>
 
 export function useMatch<
   TGenerics extends PartialGenerics = DefaultGenerics,
@@ -1090,22 +1130,31 @@ export function useMatch<
   return useMatches<TGenerics>()?.[0]!
 }
 
-export function Link<TGenerics extends PartialGenerics = DefaultGenerics>({
-  to = '.',
-  search,
-  hash,
-  children,
-  target,
-  style = {},
-  replace,
-  onClick,
-  onMouseEnter,
-  className = '',
-  getActiveProps = () => ({}),
-  activeOptions,
-  preload,
-  ...rest
-}: LinkProps<TGenerics>) {
+export type LinkType<TGenerics extends PartialGenerics = DefaultGenerics> = (
+  props: LinkProps<TGenerics>,
+) => JSX.Element
+
+export const Link = React.forwardRef(function Link<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>(
+  {
+    to = '.',
+    search,
+    hash,
+    children,
+    target,
+    style = {},
+    replace,
+    onClick,
+    onMouseEnter,
+    className = '',
+    getActiveProps = () => ({}),
+    activeOptions,
+    preload,
+    ...rest
+  }: LinkProps<TGenerics>,
+  ref?: React.Ref<HTMLAnchorElement>,
+) {
   const loadRoute = useLoadRoute<TGenerics>()
   const match = useMatch<TGenerics>()
   const location = useLocation<TGenerics>()
@@ -1194,6 +1243,7 @@ export function Link<TGenerics extends PartialGenerics = DefaultGenerics>({
   return (
     <a
       {...{
+        ref,
         href: next.href,
         onClick: handleClick,
         onMouseEnter: handleMouseEnter,
@@ -1210,7 +1260,11 @@ export function Link<TGenerics extends PartialGenerics = DefaultGenerics>({
       }}
     />
   )
-}
+})
+
+export type UseNavigateType<
+  THookGenerics extends PartialGenerics = DefaultGenerics,
+> = (options: NavigateOptions<THookGenerics>) => void
 
 export function useNavigate<
   THookGenerics extends PartialGenerics = DefaultGenerics,
@@ -1241,6 +1295,9 @@ export function useNavigate<
 
   return useLatestCallback(navigate)
 }
+
+export type NavigateType<TGenerics extends PartialGenerics = DefaultGenerics> =
+  (options: NavigateOptions<TGenerics>) => null
 
 export function Navigate<TGenerics extends PartialGenerics = DefaultGenerics>(
   options: NavigateOptions<TGenerics>,
@@ -1355,6 +1412,9 @@ export function useResolvePath<
   )
 }
 
+export type UseSearchType<TGenerics extends PartialGenerics = DefaultGenerics> =
+  () => Partial<Maybe<TGenerics['Search'], Search<any>>>
+
 export function useSearch<
   TGenerics extends PartialGenerics = DefaultGenerics,
 >() {
@@ -1383,9 +1443,17 @@ export function useIsNextLocation<
   )
 }
 
+export type UseMatchRouteType<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = () => (
+  matchLocation: MatchLocation<TGenerics>,
+) => Maybe<TGenerics['Params'], Params<any>> | undefined
+
 export function useMatchRoute<
   TGenerics extends PartialGenerics = DefaultGenerics,
->() {
+>(): (
+  matchLocation: MatchLocation<TGenerics>,
+) => Maybe<TGenerics['Params'], Params<any>> | undefined {
   const location = useLocation<TGenerics>()
   const resolvePath = useResolvePath<TGenerics>()
 
@@ -1419,6 +1487,13 @@ export function Prompt({ message, when }: PromptProps) {
   usePrompt(message, when)
   return null
 }
+
+export type MatchRouteType<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = (
+  currentLocation: Location<TGenerics>,
+  matchLocation: MatchLocation<TGenerics>,
+) => UseGeneric<TGenerics, 'Params'> | undefined
 
 export function matchRoute<TGenerics extends PartialGenerics = DefaultGenerics>(
   currentLocation: Location<TGenerics>,
