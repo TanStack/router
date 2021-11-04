@@ -229,6 +229,7 @@ export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
     activeOptions?: ActiveOptions
     // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
     preload?: number
+    // If a function is pass as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
       | React.ReactNode
       | ((state: { isActive: boolean }) => React.ReactNode)

@@ -550,6 +550,10 @@ export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
     activeOptions?: ActiveOptions
     // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
     preload?: number
+    // If a function is pass as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+    children?:
+      | React.ReactNode
+      | ((state: { isActive: boolean }) => React.ReactNode)
   }
 
 export type ActiveOptions = {
@@ -614,6 +618,27 @@ The following link will be green with `/about` as the current location.
   })}
 >
   About
+</Link>
+```
+
+**Example: Using a child function for further active state customization**
+
+The following link will contain an `<ActiveIcon/>` prefix when active
+
+```tsx
+<Link to="/about">
+  {({ isActive }) => {
+    return (
+      <>
+        {isActive ? (
+          <>
+            <ActiveIcon />{' '}
+          </>
+        ) : null}
+        About
+      </>
+    )
+  }}
 </Link>
 ```
 
