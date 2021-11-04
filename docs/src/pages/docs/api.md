@@ -19,7 +19,6 @@ export type ReactLocationOptions<TGenerics> = {
   basepath?: string
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
-  options?: RouterOptions<TGenerics>
 }
 
 // These options are also available to pass to the <Router /> component
@@ -71,6 +70,11 @@ export type RouterProps<TGenerics> = {
   defaultLinkPreloadMaxAge?: number
   defaultLoaderMaxAge?: number
   useErrorBoundary?: boolean
+  defaultElement?: SyncOrAsyncElement<TGenerics>
+  defaultErrorElement?: SyncOrAsyncElement<TGenerics>
+  defaultPendingElement?: SyncOrAsyncElement<TGenerics>
+  defaultPendingMs?: number
+  defaultPendingMinMs?: number
   // An array of route match objects that have been both _matched_ and _loaded_. See the [SRR](#ssr) section for more details
   initialMatches?: Match<TGenerics>[]
 }

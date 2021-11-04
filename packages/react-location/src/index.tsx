@@ -12,7 +12,7 @@ import {
 
 export { createHashHistory, createBrowserHistory, createMemoryHistory }
 
-//
+// Types
 
 declare global {
   const __DEV__: boolean
@@ -43,7 +43,7 @@ export type UseGeneric<
   ? Partial<Maybe<TGenerics[TGeneric], DefaultGenerics[TGeneric]>>
   : Maybe<TGenerics[TGeneric], DefaultGenerics[TGeneric]>
 
-export type ReactLocationOptions<TGenerics> = {
+export type ReactLocationOptions = {
   // The history object to be used internally by react-location
   // A history will be created automatically if not provided.
   history?: BrowserHistory | MemoryHistory | HashHistory
@@ -52,7 +52,6 @@ export type ReactLocationOptions<TGenerics> = {
   basepath?: string
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
-  options?: RouterOptions<TGenerics>
 }
 
 type SearchSerializer = (searchObj: Record<string, any>) => string
@@ -91,6 +90,7 @@ export type RouteBasic<TGenerics extends PartialGenerics = DefaultGenerics> = {
   pendingMs?: number
   // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
   pendingMinMs?: number
+  searchFilters?: SearchFilter<TGenerics>[]
   // An array of child routes
   children?: Route<TGenerics>[]
   import?: never
@@ -113,6 +113,11 @@ export type MatchLocation<TGenerics extends PartialGenerics = DefaultGenerics> =
   }
 
 export type SearchPredicate<TSearch> = (search: TSearch) => any
+
+export type SearchFilter<TGenerics> = (
+  prev: UseGeneric<TGenerics, 'Search'>,
+  next: UseGeneric<TGenerics, 'Search'>,
+) => UseGeneric<TGenerics, 'Search'>
 
 export type SyncOrAsyncElement<
   TGenerics extends PartialGenerics = DefaultGenerics,
@@ -195,6 +200,7 @@ export type BuildNextOptions<
   hash?: Updater<string>
   from?: Partial<Location<TGenerics>>
   key?: string
+  __searchFilters?: SearchFilter<TGenerics>[]
 }
 
 export type NavigateOptions<TGenerics> = BuildNextOptions<TGenerics> & {
@@ -208,7 +214,7 @@ export type PromptProps = {
 }
 
 export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
-  Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
+  Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'children'> & {
     // The absolute or relative destination pathname
     to?: string | number | null
     // The new search object or a function to update it
@@ -223,6 +229,9 @@ export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
     activeOptions?: ActiveOptions
     // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
     preload?: number
+    children?:
+      | React.ReactNode
+      | ((state: { isActive: boolean }) => React.ReactNode)
   }
 
 type ActiveOptions = {
@@ -283,7 +292,15 @@ export type FilterRoutesFn = <
   routes: Route<TGenerics>[],
 ) => Route<TGenerics>[]
 
-//
+export type RouterPropsType<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = RouterProps<TGenerics>
+
+export type RouterType<TGenerics extends PartialGenerics = DefaultGenerics> = (
+  props: RouterProps<TGenerics>,
+) => JSX.Element
+
+// Source
 
 const LocationContext = React.createContext<ReactLocation<any>>(null!)
 const MatchesContext = React.createContext<Match<any>[]>(null!)
@@ -307,17 +324,6 @@ export class ReactLocation<
   basepath: string
   stringifySearch: SearchSerializer
   parseSearch: SearchParser
-  options: {
-    filterRoutes: FilterRoutesFn
-    defaultLinkPreloadMaxAge: number
-    defaultLoaderMaxAge: number
-    useErrorBoundary: boolean
-    defaultElement?: SyncOrAsyncElement<TLocationGenerics>
-    defaultErrorElement?: SyncOrAsyncElement<TLocationGenerics>
-    defaultPendingElement?: SyncOrAsyncElement<TLocationGenerics>
-    defaultPendingMs?: number
-    defaultPendingMinMs?: number
-  }
 
   current: Location<TLocationGenerics>
   destroy: () => void
@@ -329,18 +335,11 @@ export class ReactLocation<
   listeners: ListenerFn[] = []
   isTransitioning: boolean = false
 
-  constructor(options?: ReactLocationOptions<TLocationGenerics>) {
+  constructor(options?: ReactLocationOptions) {
     this.history = options?.history || createDefaultHistory()
     this.basepath = options?.basepath || '/'
     this.stringifySearch = options?.stringifySearch ?? defaultStringifySearch
     this.parseSearch = options?.parseSearch ?? defaultParseSearch
-    this.options = {
-      ...options?.options,
-      filterRoutes: options?.options?.filterRoutes ?? ((d) => d),
-      defaultLinkPreloadMaxAge: options?.options?.defaultLinkPreloadMaxAge ?? 0,
-      defaultLoaderMaxAge: options?.options?.defaultLoaderMaxAge ?? 0,
-      useErrorBoundary: options?.options?.useErrorBoundary ?? false,
-    }
 
     this.current = this.parseLocation(this.history.location)
 
@@ -373,13 +372,21 @@ export class ReactLocation<
     }
 
     const pathname = resolvePath(from.pathname, `${dest.to ?? '.'}`)
+
     const updatedSearch =
-      dest.search === true
+      (dest.search === true
         ? from.search
-        : functionalUpdate(dest.search, from.search)
-    const search = updatedSearch
-      ? replaceEqualDeep(from.search, updatedSearch)
-      : {}
+        : functionalUpdate(dest.search, from.search)) ?? {}
+
+    const filteredSearch = dest.__searchFilters?.length
+      ? dest.__searchFilters.reduce(
+          (prev, next) => next(prev, updatedSearch),
+          updatedSearch,
+        )
+      : updatedSearch
+
+    const search = replaceEqualDeep(from.search, filteredSearch)
+
     const searchStr = this.stringifySearch(search)
     let hash = functionalUpdate(dest.hash, from.hash)
     hash = hash ? `#${hash}` : ''
@@ -445,6 +452,7 @@ export class ReactLocation<
     previousLocation?: Location<TGenerics>,
   ): Location<TGenerics> {
     const parsedSearch = this.parseSearch(location.search)
+
     return {
       pathname: location.pathname,
       searchStr: location.search,
@@ -455,14 +463,6 @@ export class ReactLocation<
     }
   }
 }
-
-export type RouterPropsType<
-  TGenerics extends PartialGenerics = DefaultGenerics,
-> = RouterProps<TGenerics>
-
-export type RouterType<TGenerics extends PartialGenerics = DefaultGenerics> = (
-  props: RouterProps<TGenerics>,
-) => JSX.Element
 
 export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
   children,
@@ -485,16 +485,11 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
   if (!matchCacheRef.current) matchCacheRef.current = {}
   const matchCache = matchCacheRef.current
 
-  const options = {
-    ...location.options,
-    ...rest,
-  }
-
   const [state, setState] = React.useState<RouterState<TGenerics>>({
     transition: {
       status: 'ready',
       location: location.current,
-      matches: options.initialMatches ?? [],
+      matches: rest.initialMatches ?? [],
     },
   })
 
@@ -573,7 +568,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
   const router = React.useMemo(
     (): Router<TGenerics> => ({
       ...state,
-      ...options,
+      ...rest,
       __: {
         matchCache,
         setState: setState,
@@ -631,7 +626,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
           })
         })
 
-        matchLoader.loadData({ maxAge: options.defaultLoaderMaxAge })
+        matchLoader.loadData({ maxAge: rest.defaultLoaderMaxAge })
         matchLoader.startPending()
       } catch (err) {
         console.error(err)
@@ -1132,6 +1127,23 @@ export type LinkType<TGenerics extends PartialGenerics = DefaultGenerics> = (
   props: LinkProps<TGenerics>,
 ) => JSX.Element
 
+// export function useParentMatches<TGenerics>()
+// {
+//   const router = useRouter<TGenerics>()
+//   const match = useMatch<TGenerics>()
+//   const matchIndex = router.transition.matches.findIndex(d => d.id === match.id)
+//   return router.transition.matches.slice(0, matchIndex)
+// }
+
+// export function useSearchFilters<TGenerics>() {
+//   const router = useRouter<TGenerics>()
+//   const match = useMatch<TGenerics>()
+//   const matchIndex = router.transition.matches.findIndex(
+//     (d) => d.id === match.id,
+//   )
+//   return router.transition.matches.slice(0, matchIndex)
+// }
+
 export const Link = React.forwardRef(function Link<
   TGenerics extends PartialGenerics = DefaultGenerics,
 >(
@@ -1175,6 +1187,7 @@ export const Link = React.forwardRef(function Link<
     search,
     hash,
     from: { pathname: match.pathname },
+    // __searchFilters:
   })
 
   // The click handler
@@ -1229,14 +1242,14 @@ export const Link = React.forwardRef(function Link<
   const hashTest = activeOptions?.includeHash ? hashIsEqual : true
 
   // The final "active" test
-  const isCurrent = pathTest && hashTest
+  const isActive = pathTest && hashTest
 
   // Get the active props
   const {
     style: activeStyle = {},
     className: activeClassName = '',
     ...activeRest
-  } = isCurrent ? getActiveProps() : {}
+  } = isActive ? getActiveProps() : {}
 
   return (
     <a
@@ -1254,7 +1267,8 @@ export const Link = React.forwardRef(function Link<
           [className, activeClassName].filter(Boolean).join(' ') || undefined,
         ...rest,
         ...activeRest,
-        children,
+        children:
+          typeof children === 'function' ? children({ isActive }) : children,
       }}
     />
   )

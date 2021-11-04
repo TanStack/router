@@ -80,17 +80,7 @@ type LocationGenerics = MakeGenerics<{
 //
 
 // Set up a ReactLocation instance
-const location = new ReactLocation<LocationGenerics>({
-  options: {
-    defaultPendingElement: <Spinner />,
-    // searchFilter: (prev, next) => { // TODO: implement this
-    //   return {
-    //     ...prev,
-    //     ...next,
-    //   };
-    // },
-  },
-});
+const location = new ReactLocation<LocationGenerics>();
 
 // Build our routes. We could do this in our component, too.
 const routes: Route<LocationGenerics>[] = [
@@ -129,6 +119,16 @@ const routes: Route<LocationGenerics>[] = [
             users: await fetchUsers(),
           };
         },
+        // searchFilters: [ // TODO: Coming soon!
+        //   // Keep the usersView search param around while in this route
+        //   (prev, next) => ({
+        //     ...next,
+        //     usersView: {
+        //       ...prev.usersView,
+        //       ...next.usersView,
+        //     },
+        //   }),
+        // ],
         children: [
           {
             path: ":userId",
@@ -252,6 +252,7 @@ function App() {
       <Router
         location={location}
         routes={routes}
+        defaultPendingElement={<Spinner />}
         defaultLinkPreloadMaxAge={defaultLinkPreloadMaxAge}
         defaultLoaderMaxAge={defaultLoaderMaxAge}
         defaultPendingMs={defaultPendingMs}
