@@ -151,11 +151,11 @@ function App() {
   const [delay, setDelay] = useLocalStorage("delay", 500);
   const [defaultPendingMs, setDefaultPendingMs] = useLocalStorage(
     "defaultPendingMs",
-    1000
+    2000
   );
   const [defaultPendingMinMs, setDefaulPendingMinMs] = useLocalStorage(
     "defaultPendingMinMs",
-    500
+    1000
   );
   const [defaultLinkPreloadMaxAge, setDefaultLinkPreloadMaxAge] =
     useLocalStorage("defaultLinkPreloadMaxAge", 0);
