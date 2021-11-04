@@ -61,9 +61,11 @@ type LocationGenerics = MakeGenerics<{
     invoices: Invoice[];
     invoice: Invoice;
     users: User[];
+    user: User;
   };
   Params: {
     invoiceId: string;
+    userId: string;
   };
   Search: {
     showNotes: boolean;
@@ -127,17 +129,17 @@ const routes: Route<LocationGenerics>[] = [
             users: await fetchUsers(),
           };
         },
-        // searchFilters: [
-        //   (prev, next) => {
-        //     return {
-        //       ...next,
-        //       usersView: {
-        //         ...prev.usersView,
-        //         ...next.usersView,
-        //       },
-        //     };
-        //   },
-        // ],
+        children: [
+          {
+            path: ":userId",
+            element: <User />,
+            loader: async ({ params: { userId } }) => {
+              return {
+                user: await fetchUserById(userId),
+              };
+            },
+          },
+        ],
       },
     ],
   },
@@ -377,9 +379,7 @@ function Dashboard() {
         })}
       </div>
       <hr />
-      <div>
-        <Outlet />
-      </div>
+      <Outlet />
     </>
   );
 }
@@ -561,10 +561,31 @@ function Users() {
           );
         })}
       </div>
-      <div className={tw`flex-1 border-l border-gray-200`}>
+      <div className={tw`flex-initial border-l border-gray-200`}>
         <Outlet />
       </div>
     </div>
+  );
+}
+
+function User() {
+  const {
+    data: { user },
+  } = useMatch<LocationGenerics>();
+  const isNextLocation = useIsNextLocation();
+
+  return (
+    <>
+      <div className={tw`p-2`}>
+        <div>
+          <Link to="../" className={tw`italic text-red-500`}>
+            Close {isNextLocation({ to: "../" }) ? "..." : ""}
+          </Link>
+        </div>
+        <h4 className={tw`font-bold`}>{user?.name}</h4>
+      </div>
+      <pre className={tw`text-sm`}>{JSON.stringify(user, null, 2)}</pre>
+    </>
   );
 }
 
@@ -601,6 +622,14 @@ async function fetchInvoiceById(id: string) {
 async function fetchUsers() {
   const { data } = await delayFn(() =>
     axios.get("https://jsonplaceholder.typicode.com/users")
+  );
+
+  return data;
+}
+
+async function fetchUserById(id: string) {
+  const { data } = await delayFn(() =>
+    axios.get(`https://jsonplaceholder.typicode.com/users/${id}`)
   );
 
   return data;

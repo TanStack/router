@@ -18,6 +18,8 @@ declare global {
   const __DEV__: boolean
 }
 
+type Timeout = ReturnType<typeof setTimeout>
+
 type Maybe<T, TUnknown> = T extends {} ? T : TUnknown
 
 export type DefaultGenerics = {
@@ -140,25 +142,6 @@ export type UnloadedMatch<TGenerics extends PartialGenerics = DefaultGenerics> =
     routeIndex: number
     pathname: string
     params: UseGeneric<TGenerics, 'Params'>
-  }
-
-export type Match<TGenerics extends PartialGenerics = DefaultGenerics> =
-  UnloadedMatch<TGenerics> & {
-    status: 'pending' | 'resolved' | 'rejected'
-    updatedAt?: number
-    element?: React.ReactNode
-    errorElement?: React.ReactNode
-    pendingElement?: React.ReactNode
-    data: UseGeneric<TGenerics, 'LoaderData'>
-    error?: unknown
-    isLoading: boolean
-    loaderPromise?: Promise<UseGeneric<TGenerics, 'LoaderData'>>
-    used?: boolean
-    maxAge?: number
-    listeners?: (() => void)[]
-    subscribe?: (cb: () => void) => void
-    notify?: () => void
-    startPending?: () => void
   }
 
 export type LoaderFn<TGenerics extends PartialGenerics = DefaultGenerics> = (
@@ -338,7 +321,7 @@ export class ReactLocation<
 
   current: Location<TLocationGenerics>
   destroy: () => void
-  navigateTimeout?: ReturnType<typeof setTimeout>
+  navigateTimeout?: Timeout
   nextAction?: 'push' | 'replace'
 
   //
@@ -520,19 +503,21 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
     stateRef.current = state
   })
 
-  const rootMatch = React.useMemo((): Match<TGenerics> => {
-    return {
+  const rootMatch = React.useMemo(() => {
+    const rootMatch: Match<TGenerics> = {
       routePath: '',
       id: '__root__',
       route: null!,
       params: {} as any,
       routeIndex: 0,
       pathname: location.basepath,
-      status: 'resolved',
+      originalRoute: null!,
       data: {},
       isLoading: false,
-      originalRoute: null!,
+      status: 'resolved',
     }
+
+    return rootMatch
   }, [location.basepath])
 
   const getMatchLoaderFn: LoadRouteFn<TGenerics> = (navigate = true) => {
@@ -552,7 +537,12 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
             },
           })
 
-    return new MatchLoader(router, matchCache, nextLocation, rootMatch)
+    return new MatchLoader(
+      router,
+      matchCache,
+      nextLocation,
+      rootMatch as Match<TGenerics>,
+    )
   }
 
   const getMatchLoader = React.useCallback(getMatchLoaderFn, [])
@@ -697,6 +687,156 @@ export function useLocation<
   return instance
 }
 
+class Match<TGenerics extends PartialGenerics = DefaultGenerics> {
+  routePath: string
+  id: string
+  originalRoute: Route<TGenerics>
+  route: RouteBasic<TGenerics>
+  routeIndex: number
+  pathname: string
+  params: UseGeneric<TGenerics, 'Params'>
+  updatedAt?: number
+  element?: React.ReactNode
+  errorElement?: React.ReactNode
+  pendingElement?: React.ReactNode
+  error?: unknown
+  loaderPromise?: Promise<UseGeneric<TGenerics, 'LoaderData'>>
+  used?: boolean
+  maxAge?: number
+  matchLoader?: MatchLoader<TGenerics>
+  pendingTimeout?: Timeout
+  pendingMinPromise?: Promise<void>
+
+  constructor(unloadedMatch: UnloadedMatch<TGenerics>) {
+    this.routePath = unloadedMatch.routePath
+    this.id = unloadedMatch.id
+    this.originalRoute = unloadedMatch.originalRoute
+    this.route = unloadedMatch.route
+    this.routeIndex = unloadedMatch.routeIndex
+    this.pathname = unloadedMatch.pathname
+    this.params = unloadedMatch.params
+  }
+
+  status: 'pending' | 'resolved' | 'rejected' = 'pending'
+  data: UseGeneric<TGenerics, 'LoaderData'> = {}
+  isLoading: boolean = false
+
+  private notify? = (isSoft?: boolean) => {
+    this.matchLoader?.notify(isSoft)
+  }
+
+  assignMatchLoader? = (matchLoader: MatchLoader<TGenerics>) => {
+    this.matchLoader = matchLoader
+  }
+
+  startPending? = () => {
+    if (this.pendingTimeout) {
+      clearTimeout(this.pendingTimeout)
+    }
+
+    if (this.route.pendingMs) {
+      this.pendingTimeout = setTimeout(() => {
+        this.notify?.()
+        if (typeof this.route.pendingMinMs !== 'undefined') {
+          this.pendingMinPromise = new Promise((r) =>
+            setTimeout(r, this.route.pendingMinMs),
+          )
+        }
+      }, this.route.pendingMs)
+    }
+  }
+
+  load? = (opts: { maxAge?: number; parentMatch?: Match<TGenerics> }) => {
+    this.maxAge = opts.maxAge
+
+    const elementPromises: Promise<void>[] = []
+
+    // For each element type, potentially load it asynchronously
+    const elementTypes = ['element', 'errorElement', 'pendingElement'] as const
+
+    elementTypes.forEach((type) => {
+      const routeElement = this.route[type]
+
+      if (this[type]) {
+        return
+      }
+
+      if (typeof routeElement === 'function') {
+        elementPromises.push(
+          (routeElement as AsyncElement)(this).then((res) => {
+            this[type] = res
+          }),
+        )
+      } else {
+        this[type] = this.route[type]
+      }
+    })
+
+    const loader = this.route.loader
+
+    if (!loader) {
+      this.status = 'resolved'
+    } else if (!this.loaderPromise) {
+      this.loaderPromise = Promise.all(elementPromises).then(() => {
+        return new Promise(async (resolvePromise) => {
+          let pendingTimeout: Timeout
+
+          const loading = () => {
+            this.updatedAt = Date.now()
+            this.isLoading = true
+          }
+
+          const resolve = (data: any) => {
+            this.updatedAt = Date.now()
+            this.status = 'resolved'
+            this.data = data
+            this.error = undefined
+          }
+
+          const reject = (err: any) => {
+            this.updatedAt = Date.now()
+            console.error(err)
+            this.status = 'rejected'
+            this.error = err
+          }
+
+          const finish = () => {
+            this.isLoading = false
+            this.startPending = undefined
+            clearTimeout(pendingTimeout)
+            resolvePromise(this.data)
+          }
+
+          try {
+            loading()
+            resolve(
+              await loader(this, {
+                parentMatch: opts.parentMatch,
+                dispatch: async (event) => {
+                  if (event.type === 'resolve') {
+                    resolve(event.data)
+                  } else if (event.type === 'reject') {
+                    reject(event.error)
+                  } else if (event.type === 'loading') {
+                    loading()
+                  }
+
+                  this.notify?.(true)
+                },
+              }),
+            )
+            await this.pendingMinPromise
+            finish()
+          } catch (err) {
+            reject(err)
+            finish()
+          }
+        })
+      })
+    }
+  }
+}
+
 class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
   router: Router<TGenerics>
   location: Location<TGenerics>
@@ -705,6 +845,7 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
   matches: Match<TGenerics>[]
   prepPromise?: Promise<void>
   matchPromise?: Promise<UnloadedMatch<TGenerics>[]>
+  firstRenderPromises?: Promise<any>[]
 
   constructor(
     router: Router<TGenerics>,
@@ -719,8 +860,9 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
     this.matches = []
   }
 
+  status: 'pending' | 'resolved' = 'pending'
+
   listeners: (() => void)[] = []
-  pendingStarters: (() => void)[] = []
 
   subscribe = (cb: () => void) => {
     this.listeners?.push(cb)
@@ -730,7 +872,13 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
     }
   }
 
-  notify = () => {
+  notify = (isSoft?: boolean) => {
+    if (this.status === 'pending' && isSoft) {
+      return
+    }
+
+    this.status = 'resolved'
+
     this.matches?.forEach((match, index) => {
       const parentMatch = this.matches?.[index - 1]
 
@@ -753,24 +901,7 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
 
     this.matches = unloadedMatches?.map((unloadedMatch): Match<TGenerics> => {
       if (!this.matchCache[unloadedMatch.id]) {
-        const match: Match<TGenerics> = {
-          ...unloadedMatch,
-          isLoading: false,
-          status: 'pending',
-          data: {},
-          listeners: [],
-          subscribe: (cb) => {
-            match?.listeners?.push(cb)
-            return () => {
-              match.listeners = match.listeners?.filter((d) => d !== cb)
-            }
-          },
-          notify: () => {
-            match.listeners?.forEach((d) => d())
-          },
-        }
-
-        this.matchCache[unloadedMatch.id] = match
+        this.matchCache[unloadedMatch.id] = new Match(unloadedMatch)
       }
 
       return this.matchCache[unloadedMatch.id]!
@@ -785,152 +916,16 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
       return
     }
 
-    const firstRenderPromises: Promise<unknown>[] = []
-
-    this.pendingStarters = []
+    this.firstRenderPromises = []
 
     this.matches.forEach((match, index) => {
-      match.maxAge = maxAge
-
       const parentMatch = this.matches?.[index - 1]
-
-      if (!match) {
-        return
-      }
-
-      let routePromises: Promise<any>[] = []
-
-      // For each element type, potentially load it asynchronously
-      const elementTypes = [
-        'element',
-        'errorElement',
-        'pendingElement',
-      ] as const
-
-      elementTypes.forEach((type) => {
-        const routeElement = match.route[type]
-
-        if (match[type]) {
-          return
-        }
-
-        if (typeof routeElement === 'function') {
-          routePromises.push(
-            (routeElement as AsyncElement)(match).then((res) => {
-              match[type] = res
-            }),
-          )
-        } else {
-          match[type] = match.route[type]
-        }
-      })
-
-      firstRenderPromises.push(Promise.all(routePromises))
-
-      const load = match.route.loader
-
-      match.subscribe?.(() => {
-        this.notify()
-      })
-
-      if (!load) {
-        match.status = 'resolved'
-      } else if (!match.loaderPromise) {
-        match.loaderPromise = new Promise(async (resolvePromise) => {
-          let pendingTimeout: ReturnType<typeof setTimeout>
-          let pendingMinPromise = Promise.resolve()
-
-          match.startPending = () => {
-            if (match.route.pendingMs) {
-              pendingTimeout = setTimeout(() => {
-                match.notify?.()
-                if (typeof match.route.pendingMinMs !== 'undefined') {
-                  pendingMinPromise = new Promise((r) =>
-                    setTimeout(r, match.route.pendingMinMs),
-                  )
-                }
-              }, match.route.pendingMs)
-            }
-          }
-
-          let promise: undefined | Promise<any>
-
-          const loading = () => {
-            match.updatedAt = Date.now()
-            match.isLoading = true
-          }
-
-          const resolve = (data: any) => {
-            match.updatedAt = Date.now()
-            match.status = 'resolved'
-            match.data = data
-            match.error = undefined
-            match.isLoading = false
-          }
-
-          const reject = (err: any) => {
-            match.updatedAt = Date.now()
-            console.error(err)
-            match.status = 'rejected'
-            match.error = err
-            match.isLoading = false
-          }
-
-          const finish = () => {
-            clearTimeout(pendingTimeout!)
-            resolvePromise(match.data!)
-            promise = undefined
-          }
-
-          try {
-            loading()
-
-            promise = load(match, {
-              parentMatch,
-              dispatch: async (event) => {
-                // Ignore async updates
-                // while the initial call to the
-                // loader is in flight
-                if (!firstRendered) {
-                  return
-                }
-
-                // If the initial render is done,
-                // wait for the pendingMinPromise for this
-                // laoder (it resolves immediately if there's
-                // no pending state)
-                await pendingMinPromise
-
-                if (event.type === 'resolve') {
-                  resolve(event.data)
-                } else if (event.type === 'reject') {
-                  reject(event.error)
-                } else if (event.type === 'loading') {
-                  loading()
-                }
-
-                match.notify?.()
-              },
-            }) as any
-
-            const data = await promise
-            resolve(data)
-            await pendingMinPromise
-            finish()
-          } catch (err) {
-            reject(err)
-            finish()
-          }
-        })
-      }
-
-      firstRenderPromises.push(match.loaderPromise!)
+      match.assignMatchLoader?.(this)
+      match.load?.({ maxAge, parentMatch })
+      this.firstRenderPromises?.push(match.loaderPromise!)
     })
 
-    let firstRendered = false
-
-    return await Promise.all(firstRenderPromises).then(() => {
-      firstRendered = true
+    return await Promise.all(this.firstRenderPromises).then(() => {
       this.notify()
       return this.matches
     })
