@@ -687,7 +687,7 @@ export function useLocation<
   return instance
 }
 
-class Match<TGenerics extends PartialGenerics = DefaultGenerics> {
+export class Match<TGenerics extends PartialGenerics = DefaultGenerics> {
   routePath: string
   id: string
   originalRoute: Route<TGenerics>
