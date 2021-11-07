@@ -120,7 +120,7 @@ function Post() {
 }
 
 async function fetchPosts() {
-  await new Promise((r) => setTimeout(r, 300));
+  await new Promise((r) => setTimeout(r, 1000));
   const { data } = await axios.get(
     "https://jsonplaceholder.typicode.com/posts"
   );
@@ -128,7 +128,7 @@ async function fetchPosts() {
 }
 
 async function fetchPostById(id: string) {
-  await new Promise((r) => setTimeout(r, 300));
+  await new Promise((r) => setTimeout(r, 1000));
   const { data } = await axios.get(
     `https://jsonplaceholder.typicode.com/posts/${id}`
   );

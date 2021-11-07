@@ -137,23 +137,29 @@ All of these features are essentially **asynchronous routing features** and we'l
 
 - All async routing features are called on **every navigation, all the time, regardless of route nesting**.
   - This allows routes loaders to control _all_ aspects of caching. Caching is certainly something with which React Location integrates well, but ultimately, caching is not the core of React Location's responsibility.
-- All `loader`s and asynchronous `element`s for the **entire tree** are loaded **in parallel**. _PRO TIP: If you need a route to wait for a parent's promise or data, you can access it via `loader: (match) => match.parentMatch.loaderPromise`_
-- Out of the box, React Location **does not cache loaders, async elements or route imports**. We recommend using an external cache for your loader data like `react-location-simple-cache` or our other favorit TanStack library, React Query!
-- Route `import`s, due to their nature, cause a temporary waterfall in the parallelization of route loading, but as soon as a route `import` is resolved, any child loaders and async elements will continue in parallel as normal.
-- Introducing async behavior into a route usually means you should handle errors too. Use the `errorElement` route option and the `useMatch()` hook to handle and display these errors.
+- Unless you specify a depedency on a parent route's promise, **all `loader`s and asynchronous `element`s for the entire tree are loaded in parallel!**. _If you need a route to wait for a parent's promise or data, you can access it via `loader: (match) => match.parentMatch.loaderPromise`_
+- Out of the box, React Location **only caches loaders and async elements for routes that are currently rendered on the screen**. If you need more caching than this, you can play with the `defaultLoaderMaxAge` option on the `<Router />` component or better yet, we recommend using an external cache for your loader data like `react-location-simple-cache` or our other favorite TanStack library, React Query!
+- Introducing async behavior (loaders and async elements) into a route usually means you should handle errors too. Use the `errorElement` route option and the `useMatch()` hook to handle and display these errors.
 
 #### Route Properties
 
 ```tsx
+// A Route can either be a basic route, or an "import" route
 export type Route<TGenerics extends PartialGenerics = DefaultGenerics> =
-  | RouteBasic<TGenerics>
-  | RouteAsync<TGenerics>
+  | BasicRoute<TGenerics>
+  | ImportRoute<TGenerics>
 
-export type RouteBasic<TGenerics extends PartialGenerics = DefaultGenerics> = {
+export type BasicRoute<TGenerics extends PartialGenerics = DefaultGenerics> = {
   // The path to match (relative to the nearest parent `Route` component or root basepath)
   path?: string
   // Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched.
   search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
+  // The duration to wait during `loader` execution before showing the `pendingElement`
+  pendingMs?: number
+  // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
+  pendingMinMs?: number
+  searchFilters?: SearchFilter<TGenerics>[]
+
   // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
   element?: SyncOrAsyncElement<TGenerics>
   // The content to be rendered when `loader` encounters an error
@@ -162,21 +168,22 @@ export type RouteBasic<TGenerics extends PartialGenerics = DefaultGenerics> = {
   pendingElement?: SyncOrAsyncElement<TGenerics>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: LoaderFn<TGenerics>
-  // The duration to wait during `loader` execution before showing the `pendingElement`
-  pendingMs?: number
-  // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
-  pendingMinMs?: number
+
+  // If `import` is defined, this route can resolve its elements and loaders in a single asynchronous call
+  // This is particularly useful for code-splitting or module federation
+  import: () => Promise<{
+    // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
+    element?: SyncOrAsyncElement<TGenerics>
+    // The content to be rendered when `loader` encounters an error
+    errorElement?: SyncOrAsyncElement<TGenerics>
+    // The content to be rendered when the duration of `loader` execution surpasses the `pendingMs` duration
+    pendingElement?: SyncOrAsyncElement<TGenerics>
+    // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
+    loader?: LoaderFn<TGenerics>
+  }>
+
   // An array of child routes
   children?: Route<TGenerics>[]
-}
-
-export type RouteAsync<TGenerics extends PartialGenerics = DefaultGenerics> = {
-  // Same as above
-  path?: string
-  // Same as above
-  search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
-  // An asyncronous function that resolves all of the above route information (everything but the `path` and `import` properties, of course). Useful for code-splitting!
-  import: RouteImportFn<TGenerics>
 }
 ```
 
@@ -304,14 +311,6 @@ const routes: Route[] = [
 
 **Example - Code Splitting**
 
-> NOTE: Because of the asynchronous nature of code-split routes,
-> subsequent loaders and child route configurations are unknown
-> until the import is resolved. Thus, any further asynchronous
-> dependencies they result in (loaders or child routes)
-> cannot be loaded in parallel.
->
-> Regardless, they still suspend navigation as you would expect!
-
 ```tsx
 const routes: Route[] = [
   {
@@ -320,15 +319,11 @@ const routes: Route[] = [
   },
   {
     path: 'expensive',
-    import: async () => {
-      return import('./Expensive').then((res) => res.route)
-      // Expensive.route === {
-      //   element: <Expensive />,
-      //   data: async ({ params }) => ({
-      //     expensiveStuff: {...}
-      //   }),
-      // }
-    },
+    // Code-split Element
+    element: () => import('./Expensive').then((mod) => <mod.default />),
+    // Code-split Loader
+    loader: async (...args) =>
+      import('./Expensive').then((mod) => mod.loader(...args)),
   },
 ]
 ```
@@ -539,10 +534,14 @@ The links generated by it are designed to work perfectly with `Open in new Tab` 
 
 ```tsx
 export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
-  Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
-    to?: string
-    search?: Updater<UseGeneric<TGenerics, 'Search'>>
+  Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'children'> & {
+    // The absolute or relative destination pathname
+    to?: string | number | null
+    // The new search object or a function to update it
+    search?: true | Updater<UseGeneric<TGenerics, 'Search'>>
+    // The new has string or a function to update it
     hash?: Updater<string>
+    // Whether to replace the current history stack instead of pushing a new one
     replace?: boolean
     // A function that is passed the [Location API](#location-api) and returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
     getActiveProps?: () => Record<string, any>
@@ -550,6 +549,8 @@ export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
     activeOptions?: ActiveOptions
     // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
     preload?: number
+    // A custom ref prop because of this: https://stackoverflow.com/questions/58469229/react-with-typescript-generics-while-using-react-forwardref/58473012
+    _ref?: React.Ref<HTMLAnchorElement>
     // If a function is pass as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
       | React.ReactNode
@@ -835,7 +836,7 @@ export async function render(requestUrl) {
   ]
   // Match the routes to the locations current path
   // This also performs any route imports
-  const initialMatch = await matchRoutes(routes, location.current)
+  const initialMatches = matchRoutes(routes, location.current)
 
   // Now we run all of the parallizable work
   if (initialMatch) {

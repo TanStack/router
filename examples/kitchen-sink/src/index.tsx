@@ -137,11 +137,22 @@ const App = () => {
               ),
             },
             {
-              // In this route, the data can only be fetched after the entire route
-              // module is imported, creating a momentary waterfall
+              // In these routes, the the elements and loaders are
+              // imported asynchronously first, then loaded
               path: 'really-expensive',
               import: () =>
-                import('./ReallyExpensive').then((res) => res.route),
+                import('./ReallyExpensive').then(
+                  (d) => d.reallyExpensiveLoaders
+                ),
+              children: [
+                {
+                  path: 'sub-expensive',
+                  import: () =>
+                    import('./ReallyExpensive').then(
+                      (d) => d.subExpensiveLoaders
+                    ),
+                },
+              ],
             },
           ],
         },

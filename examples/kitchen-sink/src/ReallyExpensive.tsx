@@ -1,8 +1,33 @@
-import { Link, Outlet, RouteImported, useMatch } from 'react-location'
+import { Link, Outlet, useMatch } from 'react-location'
 
-import { simpleCache, sleep } from './'
+import { LocationGenerics, simpleCache, sleep } from './'
 
-function ReallyExpensive() {
+export const reallyExpensiveLoaders = {
+  element: <ReallyExpensive />,
+  loader: simpleCache.createLoader<LocationGenerics>(
+    async () => {
+      return {
+        reallyExpensive: Math.random(),
+      }
+    },
+    { maxAge: 1000 * 10 }
+  ),
+}
+
+export const subExpensiveLoaders = {
+  element: <SubExpensive />,
+  loader: simpleCache.createLoader<LocationGenerics>(
+    async () => {
+      await sleep(1000)
+      return {
+        subExpensive: Math.random(),
+      }
+    },
+    { maxAge: 1000 * 10 }
+  ),
+}
+
+export function ReallyExpensive() {
   const route = useMatch()
   return (
     <>
@@ -17,34 +42,7 @@ function ReallyExpensive() {
   )
 }
 
-function SubExpensive() {
+export function SubExpensive() {
   const route = useMatch()
   return <>Sub-Expensive Data: {JSON.stringify(route.data)}</>
-}
-
-export const route: RouteImported = {
-  element: <ReallyExpensive />,
-  loader: simpleCache.createLoader(
-    async () => {
-      return {
-        reallyExpensive: Math.random(),
-      }
-    },
-    { maxAge: 1000 * 10 }
-  ),
-  children: [
-    {
-      path: 'sub-expensive',
-      element: <SubExpensive />,
-      loader: simpleCache.createLoader(
-        async () => {
-          await sleep(1000)
-          return {
-            subExpensive: Math.random(),
-          }
-        },
-        { maxAge: 1000 * 10 }
-      ),
-    },
-  ],
 }

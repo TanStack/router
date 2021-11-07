@@ -119,16 +119,17 @@ const routes: Route<LocationGenerics>[] = [
             users: await fetchUsers(),
           };
         },
-        // searchFilters: [ // TODO: Coming soon!
-        //   // Keep the usersView search param around while in this route
-        //   (prev, next) => ({
-        //     ...next,
-        //     usersView: {
-        //       ...prev.usersView,
-        //       ...next.usersView,
-        //     },
-        //   }),
-        // ],
+        searchFilters: [
+          // TODO: Coming soon!
+          // Keep the usersView search param around while in this route
+          (prev, next) => ({
+            ...next,
+            usersView: {
+              ...prev.usersView,
+              ...next.usersView,
+            },
+          }),
+        ],
         children: [
           {
             path: ":userId",
@@ -361,15 +362,18 @@ function Dashboard() {
         </Link>
       </div>
       <div className={tw`flex flex-wrap divide-x`}>
-        {[
-          [".", "Summary"],
-          ["invoices", "Invoices"],
-          ["users", "Users"],
-        ].map(([to, label]) => {
+        {(
+          [
+            [".", "Summary"],
+            ["invoices", "Invoices"],
+            ["users", "Users", true],
+          ] as const
+        ).map(([to, label, search]) => {
           return (
             <Link
               key={to}
               to={to}
+              search={search}
               className={tw`inline-block py-2 px-3 text-blue-700`}
               activeOptions={{ exact: to === "." }}
               getActiveProps={() => ({ className: tw`font-bold` })}
