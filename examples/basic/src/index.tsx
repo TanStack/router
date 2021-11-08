@@ -594,6 +594,7 @@ function Users() {
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
+            placeholder="Search Names..."
             className={tw`min-w-0 flex-1 border p-1 px-2 rounded`}
           />
         </div>

@@ -18,7 +18,7 @@ function ReallyExpensive() {
   } = useMatch<LocationGenerics>();
 
   React.useEffect(() => {
-    console.log({ reallyExpensiveTimestamp });
+    console.info({ reallyExpensiveTimestamp });
   });
 
   return (

@@ -761,8 +761,6 @@ export class Match<TGenerics extends PartialGenerics = DefaultGenerics> {
 
         const loader = this.route.loader
 
-        console.log(loader)
-
         const dataPromise = !loader
           ? Promise.resolve().then(() => {
               this.status = 'resolved'
