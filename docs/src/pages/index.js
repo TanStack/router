@@ -75,15 +75,26 @@ const Home = (props) => {
               <div className="lg:grid lg:grid-cols-3 lg:gap-8">
                 <div>
                   <h3 className="text-xl leading-6 xl:text-2xl font-bold text-gray-900">
-                    Inspired by SSR frameworks you love
+                    Familiar API, Entirely New & Powerful Features
                   </h3>
                   <p className="mt-2 lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
-                    Based on familiar routing concepts popularized by frameworks
-                    like <a href="https://remix.run">Remix</a> and{' '}
-                    <a href="https://nextjs.org">Next.js</a>, React Location
-                    validates your existing routing skills, so you should feel
-                    strangely right at home while also experiencing super
-                    spider-strenth... I mean "Router Power"!
+                    Instead of making you start over and learn an entirely new
+                    router, React Location validates your existing routing
+                    knowledge and builds upon it to provide powerful features
+                    you'd expect from an enterprise router.
+                  </p>
+                </div>
+                <div className="mt-10 lg:mt-0">
+                  <h3 className="text-xl leading-6 xl:text-2xl font-bold text-gray-900">
+                    Asynchronous Routing, Prefetching & Caching
+                  </h3>
+                  <p className="mt-2  lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
+                    Async routing has easily become the standard for full-stack
+                    react frameworks but where traditional SPA routing is
+                    falling behind, React Location packs a new modern punch.
+                    SSR-style async routing is the out-of-the-box default
+                    providing parallelized component-splitting and data-loading
+                    with minimal effort.
                   </p>
                 </div>
                 <div className="mt-10 lg:mt-0">
@@ -91,25 +102,12 @@ const Home = (props) => {
                     First-Class Search Params API
                   </h3>
                   <div className="mt-2  lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
-                    Where most other routers draw the line with route matching
-                    to pathname only and basically give up on URL search param
-                    support in general, React Location goes the extra mile to
-                    actually provide highly integrated support for matching,
-                    consuming and manipulating URL search params.
+                    Where most other routers provide minimum-to-no support for
+                    intelligent URL search param management, React Location take
+                    them very seriously to provide highly integrated support for
+                    matching, consuming and manipulating URL search params at
+                    scale.
                   </div>
-                </div>
-                <div className="mt-10 lg:mt-0">
-                  <h3 className="text-xl leading-6 xl:text-2xl font-bold text-gray-900">
-                    All of the features, none of the server...
-                  </h3>
-                  <p className="mt-2  lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
-                    Super smart routing has easily become the standard
-                    expectation for full-stack react frameworks, but not all
-                    apps are created equally, nor are routers. With React
-                    Location you can get all of the same code-splitting,
-                    data-loading, suspenseful heuristics you love about these
-                    frameworks in your non-frameworked React applications.
-                  </p>
                 </div>
               </div>
             </div>
@@ -241,17 +239,19 @@ const Home = (props) => {
             <div>
               <div className="grid grid-flow-row grid-cols-1 sm:grid-cols-2 md:grid-cols-3  gap-4 text-white max-w-screen-lg mx-auto text-lg">
                 {[
-                  'Search Params',
-                  'Immutable Params',
-                  'Nested Routes',
-                  'Layout Routes',
+                  'Asynchronous Elements',
+                  'Async Route Loaders',
+                  'Code-Splitting',
+                  'Nested/Layout Routes',
                   'Path Params',
-                  'Search State Compression',
-                  'Route Loaders',
-                  'Error Boundaries',
+                  '1st-Class Search Params API',
+                  'Search Param Route Matching',
+                  'Search Param Filters/Persistence',
+                  'Search Param Compression + Stability',
+                  'Default Elements',
+                  'Error Boundary Elements',
                   'Pending Elements',
                   'Minimum Pending Duration',
-                  'Code-Split Routes',
                 ].map((d) => {
                   return (
                     <a className="mb-2" key={d}>

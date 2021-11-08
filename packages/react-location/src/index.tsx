@@ -69,25 +69,32 @@ export type Location<TGenerics extends PartialGenerics = DefaultGenerics> = {
   // nextAction?: 'push' | 'replace'
 }
 
-export type Route<TGenerics extends PartialGenerics = DefaultGenerics> = {
-  // The path to match (relative to the nearest parent `Route` component or root basepath)
-  path?: string
-  // Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched.
-  search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
-  // The duration to wait during `loader` execution before showing the `pendingElement`
-  pendingMs?: number
-  // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
-  pendingMinMs?: number
-  searchFilters?: SearchFilter<TGenerics>[]
-  // An array of child routes
-  children?: Route<TGenerics>[]
-} & RouteLoaders<TGenerics> & {
+export type Route<TGenerics extends PartialGenerics = DefaultGenerics> =
+  // Route Loaders (see below) can be inline on the route, or resolved async
+  // via the `import` property
+  RouteLoaders<TGenerics> & {
+    // The path to match (relative to the nearest parent `Route` component or root basepath)
+    path?: string
+    // Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched.
+    search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
+    // The duration to wait during `loader` execution before showing the `pendingElement`
+    pendingMs?: number
+    // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
+    pendingMinMs?: number
+    // Search filters can be used to rewrite, persist, default and manipulate search params for link that
+    // point to their routes or child routes. See the "basic" example to see them in action.
+    searchFilters?: SearchFilter<TGenerics>[]
+    // An array of child routes
+    children?: Route<TGenerics>[]
+  } & {
+    // If `import` is defined, this route can resolve its elements and loaders in a single asynchronous call
+    // This is particularly useful for code-splitting or module federation
     import?: (opts: {
       params: UseGeneric<TGenerics, 'Params'>
     }) => Promise<RouteLoaders<TGenerics>>
   }
 
-type RouteLoaders<TGenerics> = {
+export type RouteLoaders<TGenerics> = {
   // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
   element?: SyncOrAsyncElement<TGenerics>
   // The content to be rendered when `loader` encounters an error
@@ -98,6 +105,11 @@ type RouteLoaders<TGenerics> = {
   loader?: LoaderFn<TGenerics>
 }
 
+export type SearchFilter<TGenerics> = (
+  prev: UseGeneric<TGenerics, 'Search'>,
+  next: UseGeneric<TGenerics, 'Search'>,
+) => UseGeneric<TGenerics, 'Search'>
+
 export type MatchLocation<TGenerics extends PartialGenerics = DefaultGenerics> =
   {
     to?: string | number | null
@@ -106,11 +118,6 @@ export type MatchLocation<TGenerics extends PartialGenerics = DefaultGenerics> =
   }
 
 export type SearchPredicate<TSearch> = (search: TSearch) => any
-
-export type SearchFilter<TGenerics> = (
-  prev: UseGeneric<TGenerics, 'Search'>,
-  next: UseGeneric<TGenerics, 'Search'>,
-) => UseGeneric<TGenerics, 'Search'>
 
 export type SyncOrAsyncElement<
   TGenerics extends PartialGenerics = DefaultGenerics,
@@ -245,6 +252,7 @@ export type Router<TGenerics extends PartialGenerics = DefaultGenerics> =
   RouterOptions<TGenerics> &
     RouterState<TGenerics> & {
       __: {
+        rootMatch: Match<TGenerics>
         matchCache: Record<string, Match<TGenerics>>
         setState: React.Dispatch<React.SetStateAction<RouterState<TGenerics>>>
         getMatchLoader: LoadRouteFn<TGenerics>
@@ -302,14 +310,14 @@ const createDefaultHistory = () =>
   isDOM ? createBrowserHistory() : createMemoryHistory()
 
 export class ReactLocation<
-  TLocationGenerics extends PartialGenerics = DefaultGenerics,
+  TGenerics extends PartialGenerics = DefaultGenerics,
 > {
   history: BrowserHistory | MemoryHistory
   basepath: string
   stringifySearch: SearchSerializer
   parseSearch: SearchParser
 
-  current: Location<TLocationGenerics>
+  current: Location<TGenerics>
   destroy: () => void
   navigateTimeout?: Timeout
   nextAction?: 'push' | 'replace'
@@ -347,9 +355,7 @@ export class ReactLocation<
     }
   }
 
-  buildNext<TGenerics extends PartialGenerics = TLocationGenerics>(
-    dest: BuildNextOptions<TGenerics> = {},
-  ): Location<TGenerics> {
+  buildNext(dest: BuildNextOptions<TGenerics> = {}): Location<TGenerics> {
     const from = {
       ...this.current,
       ...dest.from,
@@ -385,10 +391,7 @@ export class ReactLocation<
     }
   }
 
-  navigate<TGenerics extends PartialGenerics = TLocationGenerics>(
-    next: Location<TGenerics>,
-    replace?: boolean,
-  ): void {
+  navigate(next: Location<TGenerics>, replace?: boolean): void {
     this.current = next
 
     if (this.navigateTimeout) clearTimeout(this.navigateTimeout)
@@ -432,7 +435,7 @@ export class ReactLocation<
     }, 16)
   }
 
-  parseLocation<TGenerics extends PartialGenerics = TLocationGenerics>(
+  parseLocation(
     location: History['location'],
     previousLocation?: Location<TGenerics>,
   ): Location<TGenerics> {
@@ -554,6 +557,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
       ...state,
       ...rest,
       __: {
+        rootMatch,
         matchCache,
         setState: setState,
         getMatchLoader,
@@ -715,7 +719,8 @@ export class Match<TGenerics extends PartialGenerics = DefaultGenerics> {
 
     const importer = this.route.import
 
-    this.loaderPromise = ( // First, run any importers
+    // First, run any importers
+    this.loaderPromise = (
       !importer
         ? Promise.resolve()
         : importer({ params: this.params }).then((imported) => {
@@ -755,6 +760,8 @@ export class Match<TGenerics extends PartialGenerics = DefaultGenerics> {
         })
 
         const loader = this.route.loader
+
+        console.log(loader)
 
         const dataPromise = !loader
           ? Promise.resolve().then(() => {
@@ -1057,19 +1064,19 @@ export function matchRoutes<
 }
 
 export type UseLoadRouteType<
-  THookGenerics extends PartialGenerics = DefaultGenerics,
-> = (routes?: Route<THookGenerics>[]) => void
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = (routes?: Route<TGenerics>[]) => void
 
 export function useLoadRoute<
-  THookGenerics extends PartialGenerics = DefaultGenerics,
+  TGenerics extends PartialGenerics = DefaultGenerics,
 >() {
-  const location = useLocation<THookGenerics>()
-  const match = useMatch<THookGenerics>()
-  const router = useRouter<THookGenerics>()
+  const location = useLocation<TGenerics>()
+  const match = useMatch<TGenerics>()
+  const router = useRouter<TGenerics>()
 
   return React.useCallback(
     async (
-      navigate: NavigateOptions<THookGenerics> = location.current,
+      navigate: NavigateOptions<TGenerics> = location.current,
       opts?: { maxAge?: number },
     ) => {
       const matchLoader = router.__.getMatchLoader({
@@ -1102,26 +1109,87 @@ export function useMatch<
   return useMatches<TGenerics>()?.[0]!
 }
 
+export type UseNavigateType<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = (options: NavigateOptions<TGenerics>) => void
+
+export function useNavigate<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>() {
+  const location = useLocation<TGenerics>()
+  const match = useMatch<TGenerics>()
+  const buildNext = useBuildNext<TGenerics>()
+
+  function navigate({
+    search,
+    hash,
+    replace,
+    from,
+    to,
+    fromCurrent,
+  }: NavigateOptions<TGenerics> & {
+    replace?: boolean
+  }) {
+    fromCurrent = fromCurrent ?? typeof to === 'undefined'
+
+    const next = buildNext({
+      to,
+      search,
+      hash,
+      from: fromCurrent
+        ? location.current
+        : from ?? { pathname: match.pathname },
+    })
+
+    location.navigate(next, replace)
+  }
+
+  return useLatestCallback(navigate)
+}
+
+export type NavigateType<TGenerics extends PartialGenerics = DefaultGenerics> =
+  (options: NavigateOptions<TGenerics>) => null
+
+export function Navigate<TGenerics extends PartialGenerics = DefaultGenerics>(
+  options: NavigateOptions<TGenerics>,
+) {
+  let navigate = useNavigate<TGenerics>()
+
+  React.useLayoutEffect(() => {
+    navigate(options)
+  }, [navigate])
+
+  return null
+}
+
+function useBuildNext<TGenerics>() {
+  const location = useLocation<TGenerics>()
+  const router = useRouter<TGenerics>()
+
+  const buildNext = (opts: BuildNextOptions<TGenerics>) => {
+    const next = location.buildNext(opts)
+
+    const matches = matchRoutes<TGenerics>(
+      router.routes,
+      next,
+      router.__.rootMatch,
+      router,
+    )
+
+    const __searchFilters = matches
+      .map((match) => match.route.searchFilters ?? [])
+      .flat()
+      .filter(Boolean)
+
+    return location.buildNext({ ...opts, __searchFilters })
+  }
+
+  return React.useCallback(buildNext, [])
+}
+
 export type LinkType<TGenerics extends PartialGenerics = DefaultGenerics> = (
   props: LinkProps<TGenerics>,
 ) => JSX.Element
-
-// export function useParentMatches<TGenerics>()
-// {
-//   const router = useRouter<TGenerics>()
-//   const match = useMatch<TGenerics>()
-//   const matchIndex = router.transition.matches.findIndex(d => d.id === match.id)
-//   return router.transition.matches.slice(0, matchIndex)
-// }
-
-// function useSearchFilters<TGenerics>() {
-//   const router = useRouter<TGenerics>()
-//   const match = useMatch<TGenerics>()
-//   const matchIndex = router.transition.matches.findIndex(
-//     (d) => d.id === match.id,
-//   )
-//   return router.transition.matches.slice(0, matchIndex)
-// }
 
 export const Link = function Link<
   TGenerics extends PartialGenerics = DefaultGenerics,
@@ -1147,6 +1215,7 @@ export const Link = function Link<
   const location = useLocation<TGenerics>()
   const router = useRouter<TGenerics>()
   const navigate = useNavigate<TGenerics>()
+  const buildNext = useBuildNext<TGenerics>()
 
   preload = preload ?? router.defaultLinkPreloadMaxAge
 
@@ -1159,12 +1228,11 @@ export const Link = function Link<
     )
   } catch (e) {}
 
-  const next = location.buildNext({
+  const next = buildNext({
     to,
     search,
     hash,
     from: { pathname: match.pathname },
-    // __searchFilters:
   })
 
   // The click handler
@@ -1249,58 +1317,6 @@ export const Link = function Link<
       }}
     />
   )
-}
-
-export type UseNavigateType<
-  THookGenerics extends PartialGenerics = DefaultGenerics,
-> = (options: NavigateOptions<THookGenerics>) => void
-
-export function useNavigate<
-  THookGenerics extends PartialGenerics = DefaultGenerics,
->() {
-  const match = useMatch<THookGenerics>()
-  const location = useLocation<THookGenerics>()
-
-  function navigate({
-    search,
-    hash,
-    replace,
-    from,
-    to,
-    fromCurrent,
-  }: NavigateOptions<THookGenerics> & {
-    replace?: boolean
-  }) {
-    fromCurrent = fromCurrent ?? typeof to === 'undefined'
-
-    const next = location.buildNext({
-      to,
-      search,
-      hash,
-      from: fromCurrent
-        ? location.current
-        : from ?? { pathname: match.pathname },
-    })
-
-    location.navigate(next, replace)
-  }
-
-  return useLatestCallback(navigate)
-}
-
-export type NavigateType<TGenerics extends PartialGenerics = DefaultGenerics> =
-  (options: NavigateOptions<TGenerics>) => null
-
-export function Navigate<TGenerics extends PartialGenerics = DefaultGenerics>(
-  options: NavigateOptions<TGenerics>,
-) {
-  let navigate = useNavigate<TGenerics>()
-
-  React.useLayoutEffect(() => {
-    navigate(options)
-  }, [navigate])
-
-  return null
 }
 
 export function Outlet<TGenerics extends PartialGenerics = DefaultGenerics>() {
@@ -1400,9 +1416,9 @@ export function Outlet<TGenerics extends PartialGenerics = DefaultGenerics>() {
 }
 
 export function useResolvePath<
-  THookGenerics extends PartialGenerics = DefaultGenerics,
+  TGenerics extends PartialGenerics = DefaultGenerics,
 >() {
-  const match = useMatch<THookGenerics>()
+  const match = useMatch<TGenerics>()
 
   return React.useCallback(
     (path: string) => resolvePath(match.pathname!, cleanPath(path)),
@@ -1421,13 +1437,13 @@ export function useSearch<
 }
 
 export function useIsNextLocation<
-  THookGenerics extends PartialGenerics = DefaultGenerics,
+  TGenerics extends PartialGenerics = DefaultGenerics,
 >() {
-  const router = useRouter<THookGenerics>()
+  const router = useRouter<TGenerics>()
   const resolvePath = useResolvePath()
 
   return React.useCallback(
-    (matchLocation: MatchLocation<THookGenerics>) => {
+    (matchLocation: MatchLocation<TGenerics>) => {
       return (
         router.nextTransition?.location &&
         matchRoute(router.nextTransition?.location, {

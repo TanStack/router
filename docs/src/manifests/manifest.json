@@ -39,11 +39,6 @@
           "title": "Basic with React Query",
           "path": "/examples/basic-with-react-query",
           "editUrl": "/examples/basic-with-react-query.md"
-        },
-        {
-          "title": "Kitchen Sink",
-          "path": "/examples/kitchen-sink",
-          "editUrl": "/examples/kitchen-sink.md"
         }
       ]
     }

@@ -149,17 +149,31 @@ export type Route<TGenerics extends PartialGenerics = DefaultGenerics> =
   | BasicRoute<TGenerics>
   | ImportRoute<TGenerics>
 
-export type BasicRoute<TGenerics extends PartialGenerics = DefaultGenerics> = {
-  // The path to match (relative to the nearest parent `Route` component or root basepath)
-  path?: string
-  // Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched.
-  search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
-  // The duration to wait during `loader` execution before showing the `pendingElement`
-  pendingMs?: number
-  // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
-  pendingMinMs?: number
-  searchFilters?: SearchFilter<TGenerics>[]
+export type BasicRoute<TGenerics extends PartialGenerics = DefaultGenerics> =
+  // Route Loaders (see below) can be inline on the route, or resolved async
+  // via the `import` property
+  RouteLoaders<TGenerics> & {
+    // The path to match (relative to the nearest parent `Route` component or root basepath)
+    path?: string
+    // Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched.
+    search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
+    // The duration to wait during `loader` execution before showing the `pendingElement`
+    pendingMs?: number
+    // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
+    pendingMinMs?: number
+    searchFilters?: SearchFilter<TGenerics>[]
 
+    // An array of child routes
+    children?: Route<TGenerics>[]
+  } & {
+    // If `import` is defined, this route can resolve its elements and loaders in a single asynchronous call
+    // This is particularly useful for code-splitting or module federation
+    import?: (opts: {
+      params: UseGeneric<TGenerics, 'Params'>
+    }) => Promise<RouteLoaders<TGenerics>>
+  }
+
+export type RouteLoaders<TGenerics> = {
   // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
   element?: SyncOrAsyncElement<TGenerics>
   // The content to be rendered when `loader` encounters an error
@@ -168,22 +182,6 @@ export type BasicRoute<TGenerics extends PartialGenerics = DefaultGenerics> = {
   pendingElement?: SyncOrAsyncElement<TGenerics>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: LoaderFn<TGenerics>
-
-  // If `import` is defined, this route can resolve its elements and loaders in a single asynchronous call
-  // This is particularly useful for code-splitting or module federation
-  import: () => Promise<{
-    // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
-    element?: SyncOrAsyncElement<TGenerics>
-    // The content to be rendered when `loader` encounters an error
-    errorElement?: SyncOrAsyncElement<TGenerics>
-    // The content to be rendered when the duration of `loader` execution surpasses the `pendingMs` duration
-    pendingElement?: SyncOrAsyncElement<TGenerics>
-    // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-    loader?: LoaderFn<TGenerics>
-  }>
-
-  // An array of child routes
-  children?: Route<TGenerics>[]
 }
 ```
 

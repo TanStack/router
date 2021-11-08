@@ -17,6 +17,8 @@ import {
   useNavigate,
 } from "react-location";
 
+import reallyExpensiveRoute from "./reallyExpensive";
+
 //
 
 type Invoice = {
@@ -56,12 +58,14 @@ export interface Company {
 
 type UsersViewSortBy = "name" | "id" | "email";
 
-type LocationGenerics = MakeGenerics<{
+export type LocationGenerics = MakeGenerics<{
   LoaderData: {
     invoices: Invoice[];
     invoice: Invoice;
     users: User[];
     user: User;
+    expensiveTimestamp: number;
+    reallyExpensiveTimestamp: number;
   };
   Params: {
     invoiceId: string;
@@ -72,7 +76,7 @@ type LocationGenerics = MakeGenerics<{
     notes: string;
     usersView: {
       sortBy?: UsersViewSortBy;
-      filter?: string;
+      filterBy?: string;
     };
   };
 }>;
@@ -120,8 +124,8 @@ const routes: Route<LocationGenerics>[] = [
           };
         },
         searchFilters: [
-          // TODO: Coming soon!
-          // Keep the usersView search param around while in this route
+          // Keep the usersView search param around
+          // while in this route (or it's children!)
           (prev, next) => ({
             ...next,
             usersView: {
@@ -144,6 +148,13 @@ const routes: Route<LocationGenerics>[] = [
       },
     ],
   },
+  {
+    // Your elements can be asynchronous, which means you can code-split!
+    path: "expensive",
+    element: () => import("./Expensive").then((res) => <res.Expensive />),
+  },
+  // Obviously, you can put routes in other files, too
+  reallyExpensiveRoute,
 ];
 
 // Provide our location and routes to our application
@@ -290,6 +301,8 @@ function Root() {
           {[
             [".", "Home"],
             ["dashboard", "Dashboard"],
+            ["expensive", "Expensive"],
+            ["really-expensive", "Really Expensive"],
           ].map(([to, label]) => {
             return (
               <div key={to}>
@@ -511,6 +524,9 @@ function Users() {
   const { usersView } = useSearch<LocationGenerics>();
 
   const sortBy = usersView?.sortBy;
+  const filterBy = usersView?.filterBy;
+
+  const [filter, setFilter] = React.useState(filterBy ?? "");
 
   const sortedUsers = React.useMemo(() => {
     if (!users) return [];
@@ -520,7 +536,30 @@ function Users() {
       : [...users].sort((a, b) => {
           return a[sortBy] > b[sortBy] ? 1 : -1;
         });
-  }, [sortBy]);
+  }, [users, sortBy]);
+
+  const filteredUsers = React.useMemo(() => {
+    if (!filterBy) return sortedUsers;
+
+    return sortedUsers.filter((user) =>
+      user.name.toLowerCase().includes(filterBy.toLowerCase())
+    );
+  }, [sortedUsers, filterBy]);
+
+  React.useEffect(() => {
+    navigate({
+      search: (old) => {
+        return {
+          ...old,
+          usersView: {
+            ...old?.usersView,
+            filterBy: filter,
+          },
+        };
+      },
+      replace: true,
+    });
+  });
 
   return (
     <div className={tw`flex-1 flex`}>
@@ -550,7 +589,15 @@ function Users() {
             })}
           </select>
         </div>
-        {sortedUsers?.map((user) => {
+        <div className={tw`py-2 px-3 flex gap-2 items-center bg-gray-100`}>
+          <div>Filter By:</div>
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className={tw`min-w-0 flex-1 border p-1 px-2 rounded`}
+          />
+        </div>
+        {filteredUsers?.map((user) => {
           return (
             <div key={user.id}>
               <Link
@@ -589,7 +636,9 @@ function User() {
         </div>
         <h4 className={tw`font-bold`}>{user?.name}</h4>
       </div>
-      <pre className={tw`text-sm`}>{JSON.stringify(user, null, 2)}</pre>
+      <pre className={tw`text-sm whitespace-pre-wrap`}>
+        {JSON.stringify(user, null, 2)}
+      </pre>
     </>
   );
 }
