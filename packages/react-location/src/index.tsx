@@ -452,6 +452,17 @@ export class ReactLocation<
   }
 }
 
+export type MatchesProviderProps<TGenerics> = {
+  value: Match<TGenerics>[]
+  children: React.ReactNode
+}
+
+export function MatchesProvider<TGenerics>(
+  props: MatchesProviderProps<TGenerics>,
+) {
+  return <MatchesContext.Provider {...props} />
+}
+
 export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
   children,
   location,
@@ -618,9 +629,9 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
 
   return (
     <routerContext.Provider value={router}>
-      <MatchesContext.Provider value={[rootMatch, ...state.transition.matches]}>
+      <MatchesProvider value={[rootMatch, ...state.transition.matches]}>
         {children}
-      </MatchesContext.Provider>
+      </MatchesProvider>
     </routerContext.Provider>
   )
 }
@@ -1092,6 +1103,17 @@ export type UseMatchesType<
   TGenerics extends PartialGenerics = DefaultGenerics,
 > = () => Match<TGenerics>[]
 
+export function useParentMatches<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>(): Match<TGenerics>[] {
+  const router = useRouter<TGenerics>()
+  const match = useMatch()
+
+  const matches = router.transition.matches
+
+  return matches.slice(0, matches.findIndex((d) => d.id === match.id) - 1)
+}
+
 export function useMatches<
   TGenerics extends PartialGenerics = DefaultGenerics,
 >(): Match<TGenerics>[] {
@@ -1407,9 +1429,9 @@ export function Outlet<TGenerics extends PartialGenerics = DefaultGenerics>() {
   })()
 
   return (
-    <MatchesContext.Provider value={matches} key={match.updatedAt}>
+    <MatchesProvider value={matches} key={match.updatedAt}>
       {element}
-    </MatchesContext.Provider>
+    </MatchesProvider>
   )
 }
 
