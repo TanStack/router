@@ -513,34 +513,34 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
     return rootMatch
   }, [location.basepath])
 
-  const getMatchLoaderFn: LoadRouteFn<TGenerics> = (navigate = true) => {
-    const nextLocation =
-      navigate === true
-        ? location.buildNext({
-            to: null,
-            search: (d) => d!,
-            hash: (d) => d!,
-            from: location.current,
-          })
-        : location.buildNext({
-            ...navigate,
-            from: navigate.from ?? {
-              ...state.transition.location,
-              pathname: rootMatch.pathname,
-            },
-          })
+  const getMatchLoader: LoadRouteFn<TGenerics> = useLatestCallback(
+    (navigate = true) => {
+      const nextLocation =
+        navigate === true
+          ? location.buildNext({
+              to: null,
+              search: (d) => d!,
+              hash: (d) => d!,
+              from: location.current,
+            })
+          : location.buildNext({
+              ...navigate,
+              from: navigate.from ?? {
+                ...state.transition.location,
+                pathname: rootMatch.pathname,
+              },
+            })
 
-    return new MatchLoader(
-      router,
-      matchCache,
-      nextLocation,
-      rootMatch as Match<TGenerics>,
-    )
-  }
+      return new MatchLoader(
+        router,
+        matchCache,
+        nextLocation,
+        rootMatch as Match<TGenerics>,
+      )
+    },
+  )
 
-  const getMatchLoader = React.useCallback(getMatchLoaderFn, [])
-
-  const clearMatchCache = React.useCallback(() => {
+  const clearMatchCache = useLatestCallback(() => {
     const activeMatchIds = [
       ...(stateRef.current?.transition.matches ?? []),
       ...(stateRef.current?.nextTransition?.matches ?? []),
@@ -557,7 +557,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
         delete matchCache[match.id]
       }
     })
-  }, [])
+  })
 
   React.useEffect(() => {
     clearMatchCache()
@@ -1083,7 +1083,7 @@ export function useLoadRoute<
   const match = useMatch<TGenerics>()
   const router = useRouter<TGenerics>()
 
-  return React.useCallback(
+  return useLatestCallback(
     async (
       navigate: NavigateOptions<TGenerics> = location.current,
       opts?: { maxAge?: number },
@@ -1095,7 +1095,6 @@ export function useLoadRoute<
 
       return await matchLoader.load(opts)
     },
-    [],
   )
 }
 
@@ -1204,7 +1203,7 @@ function useBuildNext<TGenerics>() {
     return location.buildNext({ ...opts, __searchFilters })
   }
 
-  return React.useCallback(buildNext, [])
+  return useLatestCallback(buildNext)
 }
 
 export type LinkType<TGenerics extends PartialGenerics = DefaultGenerics> = (
@@ -1440,9 +1439,8 @@ export function useResolvePath<
 >() {
   const match = useMatch<TGenerics>()
 
-  return React.useCallback(
-    (path: string) => resolvePath(match.pathname!, cleanPath(path)),
-    [match],
+  return useLatestCallback((path: string) =>
+    resolvePath(match.pathname!, cleanPath(path)),
   )
 }
 
@@ -1462,19 +1460,16 @@ export function useIsNextLocation<
   const router = useRouter<TGenerics>()
   const resolvePath = useResolvePath()
 
-  return React.useCallback(
-    (matchLocation: MatchLocation<TGenerics>) => {
-      return (
-        router.nextTransition?.location &&
-        matchRoute(router.nextTransition?.location, {
-          ...matchLocation,
-          to: matchLocation.to ? resolvePath(`${matchLocation.to}`) : undefined,
-          exact: matchLocation.exact ?? true,
-        })
-      )
-    },
-    [router, resolvePath],
-  )
+  return useLatestCallback((matchLocation: MatchLocation<TGenerics>) => {
+    return (
+      router.nextTransition?.location &&
+      matchRoute(router.nextTransition?.location, {
+        ...matchLocation,
+        to: matchLocation.to ? resolvePath(`${matchLocation.to}`) : undefined,
+        exact: matchLocation.exact ?? true,
+      })
+    )
+  })
 }
 
 export type UseMatchRouteType<
@@ -1497,29 +1492,6 @@ export function useMatchRoute<
       to: matchLocation.to ? resolvePath(`${matchLocation.to}`) : undefined,
     }),
   )
-}
-export function usePrompt(message: string, when = true): void {
-  const location = useLocation()
-
-  React.useEffect(() => {
-    if (!when) return
-
-    let unblock = location.history.block((transition) => {
-      if (window.confirm(message)) {
-        unblock()
-        transition.retry()
-      } else {
-        location.current.pathname = window.location.pathname
-      }
-    })
-
-    return unblock
-  }, [when, location, message])
-}
-
-export function Prompt({ message, when }: PromptProps) {
-  usePrompt(message, when)
-  return null
 }
 
 export type MatchRouteType<
@@ -1545,6 +1517,30 @@ export function matchRoute<TGenerics extends PartialGenerics = DefaultGenerics>(
   }
 
   return (pathParams ?? {}) as UseGeneric<TGenerics, 'Params'>
+}
+
+export function usePrompt(message: string, when = true): void {
+  const location = useLocation()
+
+  React.useEffect(() => {
+    if (!when) return
+
+    let unblock = location.history.block((transition) => {
+      if (window.confirm(message)) {
+        unblock()
+        transition.retry()
+      } else {
+        location.current.pathname = window.location.pathname
+      }
+    })
+
+    return unblock
+  }, [when, location, message])
+}
+
+export function Prompt({ message, when }: PromptProps) {
+  usePrompt(message, when)
+  return null
 }
 
 function warning(cond: boolean, message: string) {
@@ -1578,14 +1574,7 @@ function joinPaths(paths: (string | undefined)[]) {
 
 export function cleanPath(path: string) {
   // remove double slashes
-  path = `${path}`.replace(/\/{2,}/g, '/')
-
-  // // remove trailing slash
-  // if (path !== '/') {
-  //   path = path.replace(/(\/)$/g, '')
-  // }
-
-  return path
+  return `${path}`.replace(/\/{2,}/g, '/')
 }
 
 function matchByPath<TGenerics extends PartialGenerics = DefaultGenerics>(
