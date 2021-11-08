@@ -151,7 +151,8 @@ const routes: Route<LocationGenerics>[] = [
   {
     // Your elements can be asynchronous, which means you can code-split!
     path: "expensive",
-    element: () => import("./Expensive").then((res) => <res.Expensive />),
+    element: () =>
+      delayFn(() => import("./Expensive")).then((res) => <res.Expensive />),
   },
   // Obviously, you can put routes in other files, too
   reallyExpensiveRoute,
@@ -160,18 +161,18 @@ const routes: Route<LocationGenerics>[] = [
 // Provide our location and routes to our application
 function App() {
   // This stuff is just to tweak our sandbox setup in real-time
-  const [delay, setDelay] = useLocalStorage("delay", 500);
-  const [defaultPendingMs, setDefaultPendingMs] = useLocalStorage(
+  const [delay, setDelay] = useSessionStorage("delay", 500);
+  const [defaultPendingMs, setDefaultPendingMs] = useSessionStorage(
     "defaultPendingMs",
     2000
   );
-  const [defaultPendingMinMs, setDefaulPendingMinMs] = useLocalStorage(
+  const [defaultPendingMinMs, setDefaulPendingMinMs] = useSessionStorage(
     "defaultPendingMinMs",
     1000
   );
   const [defaultLinkPreloadMaxAge, setDefaultLinkPreloadMaxAge] =
-    useLocalStorage("defaultLinkPreloadMaxAge", 0);
-  const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useLocalStorage(
+    useSessionStorage("defaultLinkPreloadMaxAge", 0);
+  const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useSessionStorage(
     "defaultLoaderMaxAge",
     0
   );
@@ -690,17 +691,18 @@ async function fetchUserById(id: string) {
   return data;
 }
 
-async function delayFn<T>(fn: (...args: any[]) => Promise<T>) {
-  const delayPromise = new Promise((r) =>
-    setTimeout(r, Number(sessionStorage.getItem("delay") ?? 0))
-  );
+export async function delayFn<T>(fn: (...args: any[]) => Promise<T> | T) {
+  const delay = Number(sessionStorage.getItem("delay") ?? 0);
+
+  console.log(delay);
+  const delayPromise = new Promise((r) => setTimeout(r, delay));
 
   const [res] = await Promise.all([fn(), delayPromise]);
 
   return res;
 }
 
-function useLocalStorage<T>(key: string, initialValue: T) {
+function useSessionStorage<T>(key: string, initialValue: T) {
   const state = React.useState<T>(() => {
     const stored = sessionStorage.getItem(key);
     return stored ? JSON.parse(stored) : initialValue;

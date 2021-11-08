@@ -547,11 +547,15 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
     ].map((d) => d.id)
 
     Object.values(matchCache).forEach((match) => {
-      if (!match.updatedAt) return
-      const age = Date.now() - match.updatedAt
+      if (!match.updatedAt) {
+        return
+      }
+
       if (activeMatchIds.includes(match.id)) {
         return
       }
+
+      const age = Date.now() - (match.updatedAt ?? 0)
 
       if (!match.maxAge || age > match.maxAge) {
         delete matchCache[match.id]
@@ -779,20 +783,13 @@ export class Match<TGenerics extends PartialGenerics = DefaultGenerics> {
           : new Promise(async (resolveLoader, rejectLoader) => {
               let pendingTimeout: Timeout
 
-              const loading = () => {
-                this.updatedAt = Date.now()
-                this.isLoading = true
-              }
-
               const resolve = (data: any) => {
-                this.updatedAt = Date.now()
                 this.status = 'resolved'
                 this.data = data
                 this.error = undefined
               }
 
               const reject = (err: any) => {
-                this.updatedAt = Date.now()
                 console.error(err)
                 this.status = 'rejected'
                 this.error = err
@@ -807,7 +804,8 @@ export class Match<TGenerics extends PartialGenerics = DefaultGenerics> {
               }
 
               try {
-                loading()
+                this.isLoading = true
+
                 resolve(
                   await loader(this, {
                     parentMatch: opts.parentMatch,
@@ -817,8 +815,10 @@ export class Match<TGenerics extends PartialGenerics = DefaultGenerics> {
                       } else if (event.type === 'reject') {
                         reject(event.error)
                       } else if (event.type === 'loading') {
-                        loading()
+                        this.isLoading = true
                       }
+
+                      this.updatedAt = Date.now()
 
                       this.notify?.(true)
                     },
@@ -832,7 +832,9 @@ export class Match<TGenerics extends PartialGenerics = DefaultGenerics> {
               }
             })
 
-        return Promise.all([...elementPromises, dataPromise])
+        return Promise.all([...elementPromises, dataPromise]).then(() => {
+          this.updatedAt = Date.now()
+        })
       })
       .then(() => {
         return this.data

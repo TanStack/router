@@ -1,13 +1,13 @@
 import * as React from "react";
 import { RouteLoaders, useMatch } from "react-location";
 import { tw } from "twind";
-import { LocationGenerics } from "..";
+import { delayFn, LocationGenerics } from "..";
 
 // A Router Loader object
 export const loaders: RouteLoaders<LocationGenerics> = {
   element: <ReallyExpensive />,
   loader: () =>
-    new Promise((r) => setTimeout(r, 1000)).then(() => ({
+    delayFn(() => ({
       reallyExpensiveTimestamp: Date.now(),
     })),
 };
