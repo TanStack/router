@@ -261,10 +261,7 @@ export type Router<TGenerics extends PartialGenerics = DefaultGenerics> =
     }
 
 export type LoadRouteFn<TGenerics> = (
-  navigate?: true | BuildNextOptions<TGenerics>,
-  opts?: {
-    subscribe?: (transition: Transition<TGenerics>) => void
-  },
+  next: Location<TGenerics>,
 ) => MatchLoader<TGenerics>
 
 export type RouterState<TGenerics> = {
@@ -514,27 +511,11 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
   }, [location.basepath])
 
   const getMatchLoader: LoadRouteFn<TGenerics> = useLatestCallback(
-    (navigate = true) => {
-      const nextLocation =
-        navigate === true
-          ? location.buildNext({
-              to: null,
-              search: (d) => d!,
-              hash: (d) => d!,
-              from: location.current,
-            })
-          : location.buildNext({
-              ...navigate,
-              from: navigate.from ?? {
-                ...state.transition.location,
-                pathname: rootMatch.pathname,
-              },
-            })
-
+    (next: Location<TGenerics>) => {
       return new MatchLoader(
         router,
         matchCache,
-        nextLocation,
+        next,
         rootMatch as Match<TGenerics>,
       )
     },
@@ -584,7 +565,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
 
   React.useLayoutEffect(() => {
     // Make a new match loader for the same location
-    const matchLoader = getMatchLoader()
+    const matchLoader = getMatchLoader(location.current)
 
     setState((old) => {
       old.transition.matches?.forEach((match) => {
@@ -1084,16 +1065,19 @@ export function useLoadRoute<
   const location = useLocation<TGenerics>()
   const match = useMatch<TGenerics>()
   const router = useRouter<TGenerics>()
+  const buildNext = useBuildNext<TGenerics>()
 
   return useLatestCallback(
     async (
       navigate: NavigateOptions<TGenerics> = location.current,
       opts?: { maxAge?: number },
     ) => {
-      const matchLoader = router.__.getMatchLoader({
+      const next = buildNext({
         ...navigate,
-        from: { pathname: match.pathname },
+        from: navigate.from ?? { pathname: match.pathname },
       })
+
+      const matchLoader = router.__.getMatchLoader(next)
 
       return await matchLoader.load(opts)
     },

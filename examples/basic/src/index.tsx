@@ -560,7 +560,7 @@ function Users() {
       },
       replace: true,
     });
-  });
+  }, [filter]);
 
   return (
     <div className={tw`flex-1 flex`}>
@@ -602,7 +602,7 @@ function Users() {
         {filteredUsers?.map((user) => {
           return (
             <div key={user.id}>
-              <Link
+              <Link<LocationGenerics>
                 to={user.id}
                 className={tw`block py-2 px-3 text-blue-700`}
                 getActiveProps={() => ({ className: tw`font-bold` })}
@@ -693,8 +693,6 @@ async function fetchUserById(id: string) {
 
 export async function delayFn<T>(fn: (...args: any[]) => Promise<T> | T) {
   const delay = Number(sessionStorage.getItem("delay") ?? 0);
-
-  console.log(delay);
   const delayPromise = new Promise((r) => setTimeout(r, delay));
 
   const [res] = await Promise.all([fn(), delayPromise]);
