@@ -31,13 +31,13 @@ Here's a quick glance at some of its features:
 
 ## Wait, another router? 🤔
 
-React Location initially began to solve smaller issues I was experiencing with the mostly wonderful APIs of [React Router](https://reactrouter.com/) and the [Next.js Router](https://nextjs.org/docs/api-reference/next/router). Over time, its API gave way to even more features, flexibiliy, better DX, and more power to build my applications how I saw fit.
+React Location initially began to solve smaller issues I was experiencing with the mostly wonderful APIs of [React Router](https://reactrouter.com/) and the [Next.js Router](https://nextjs.org/docs/api-reference/next/router). Over time, its API gave way to even more features, flexibility, better DX, and more power to build my applications how I saw fit.
 
 Here's some of those challenges and the features that solve them:
 
 ### URL Search Param Matching and state management
 
-Most applications, even large ones will get away with requiring only a few string-based search query params in the url, probably something like `?page=3` or `?filter-name=tanner`. The main reason you'll find this **state** inside of the URL is because while it may not fit the hierarchical patterns of the pathname, it's still very important to the output of a page. Both the ability to build and match routes on this state and your ability as a developer to manipulate this state without restrction is paramount to your app's developer and user experience. Your users should be able to bookmark/copy-paste/share a link from your app and have consistency with the original state of the page.
+Most applications, even large ones will get away with requiring only a few string-based search query params in the url, probably something like `?page=3` or `?filter-name=tanner`. The main reason you'll find this **state** inside of the URL is because while it may not fit the hierarchical patterns of the pathname, it's still very important to the output of a page. Both the ability to build and match routes on this state and your ability as a developer to manipulate this state without restriction is paramount to your app's developer and user experience. Your users should be able to bookmark/copy-paste/share a link from your app and have consistency with the original state of the page.
 
 When you begin to store more state in the URL you will inevitably and naturally want to reach for JSON to store it. Storing JSON state in the URL has its own complications involving:
 
