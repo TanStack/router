@@ -10,7 +10,7 @@ Feature/Capability Key:
 - ✅ 1st-class, built-in, and ready to use with no added configuration or code
 - 🟦 Full Support as an official plugin or addon package
 - 🟡 Partial Support
-- 🔶 Unofficially supported via custom code
+- 🔶 Possible, but requires custom code/implementation
 - 🛑 Not officially supported
 
 |                                                  | React Location                                                | React Router DOM [_(Website)_][react-router]                |
@@ -18,7 +18,7 @@ Feature/Capability Key:
 | Github Repo / Stars                              | [![][stars-react-location]][gh-react-location]                | [![][stars-react-router]][gh-react-router]                  |
 | Their Comparison                                 |                                                               | (none)                                                      |
 | Bundle Size                                      | [![][bp-react-location]][bpl-react-location] (react-location) | [![][bp-react-router]][bpl-react-router] (react-router-dom) |
-| -                                                | -                                                             | [![][bp-history]][bpl-history] (history)                    |
+|                                                  | -                                                             | [![][bp-history]][bpl-history] (history)                    |
 | **General**                                      |                                                               |                                                             |
 | Nested / Layout Routes                           | ✅                                                            | ✅                                                          |
 | Path Params                                      | ✅                                                            | ✅                                                          |
@@ -31,13 +31,13 @@ Feature/Capability Key:
 | Basic Search Params                              | ✅                                                            | ✅                                                          |
 | Search Param Hook                                | ✅                                                            | ✅                                                          |
 | Integrated `<Link/>` search param API            | ✅                                                            | 🟡 (search-string only via the `to` prop)                   |
-| Integrated `useNavigate` search param API        | ✅                                                            | 🟡 (search-string only via the `to` property)               |
-| JSON Search Params                               | ✅                                                            | 🔶 (requires custom-hook)                                   |
-| Search Param Stabilization (Structural Sharing)  | ✅                                                            | 🔶 (requires custom-hook)                                   |
-| Custom Search Param parsing/serialization        | ✅                                                            | 🔶 (requires custom-hook)                                   |
+| Integrated `useNavigate` search param API        | ✅                                                            | 🟡 (search-string only via the `search` property)           |
+| JSON Search Params                               | ✅                                                            | 🔶                                                          |
+| Search Param Stabilization (Structural Sharing)  | ✅                                                            | 🔶                                                          |
+| Custom Search Param parsing/serialization        | ✅                                                            | 🔶                                                          |
 | Queued/Batched Search Param Updates              | ✅                                                            | 🛑                                                          |
 | Search-Based Route Matching                      | ✅                                                            | 🟡 (string/Regex only?)                                     |
-| Search Param Compression                         | 🟦 (`react-location-jsurl`)                                   | 🔶 (requires custom-hook)                                   |
+| Search Param Compression                         | 🟦 (`react-location-jsurl`)                                   | 🔶                                                          |
 | **Async Routing, Loaders & Data**                |                                                               |                                                             |
 | Route Loaders & Data (parallelized and blocking) | ✅                                                            | 🛑                                                          |
 | Basic Route Data Caching                         | ✅                                                            | 🛑                                                          |
