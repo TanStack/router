@@ -1,23 +1,23 @@
 {
   "routes": [
     {
-      "title": "Documentation",
+      "title": "Getting Started",
       "heading": true,
       "routes": [
         {
           "title": "Overview",
-          "path": "/docs/overview",
-          "editUrl": "/docs/overview.md"
+          "path": "/overview",
+          "editUrl": "/overview.md"
         },
         {
           "title": "Installation",
-          "path": "/docs/installation",
-          "editUrl": "/docs/installation.md"
+          "path": "/installation",
+          "editUrl": "/installation.md"
         },
         {
-          "title": "API Reference",
-          "path": "/docs/api",
-          "editUrl": "/docs/api.md"
+          "title": "Comparison",
+          "path": "/comparison",
+          "editUrl": "/comparison.md"
         }
       ]
     },
@@ -39,6 +39,17 @@
           "title": "Basic with React Query",
           "path": "/examples/basic-with-react-query",
           "editUrl": "/examples/basic-with-react-query.md"
+        }
+      ]
+    },
+    {
+      "title": "Documentation",
+      "heading": true,
+      "routes": [
+        {
+          "title": "API Reference",
+          "path": "/docs/api",
+          "editUrl": "/docs/api.md"
         }
       ]
     }
