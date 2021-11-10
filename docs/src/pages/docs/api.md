@@ -15,7 +15,7 @@ export type ReactLocationOptions<TGenerics> = {
   // A history will be created automatically if not provided.
   history?: BrowserHistory | MemoryHistory | HashHistory
   // The basepath prefix for all URLs (not-supported for memory source histories)
-  // Defualts to '/'
+  // Defaults to '/'
   basepath?: string
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
@@ -137,7 +137,7 @@ All of these features are essentially **asynchronous routing features** and we'l
 
 - All async routing features are called on **every navigation, all the time, regardless of route nesting**.
   - This allows routes loaders to control _all_ aspects of caching. Caching is certainly something with which React Location integrates well, but ultimately, caching is not the core of React Location's responsibility.
-- Unless you specify a depedency on a parent route's promise, **all `loader`s and asynchronous `element`s for the entire tree are loaded in parallel!**. _If you need a route to wait for a parent's promise or data, you can access it via `loader: (match) => match.parentMatch.loaderPromise`_
+- Unless you specify a dependency on a parent route's promise, **all `loader`s and asynchronous `element`s for the entire tree are loaded in parallel!**. _If you need a route to wait for a parent's promise or data, you can access it via `loader: (match) => match.parentMatch.loaderPromise`_
 - Out of the box, React Location **only caches loaders and async elements for routes that are currently rendered on the screen**. If you need more caching than this, you can play with the `defaultLoaderMaxAge` option on the `<Router />` component or better yet, we recommend using an external cache for your loader data like `react-location-simple-cache` or our other favorite TanStack library, React Query!
 - Introducing async behavior (loaders and async elements) into a route usually means you should handle errors too. Use the `errorElement` route option and the `useMatch()` hook to handle and display these errors.
 
@@ -430,7 +430,7 @@ The first level of search params always have standard encoding, eg. `?param1=val
 
 - By default, React Location uses `JSON.parse` and `JSON.stringify` to ensure your search params can contain complex JSON objects.
 - Custom `stringifySearch` and `parseSearch` functions can be provided to your `ReactLocation` instance to further enhance the way search objects are encoded. We suggest using our `react-location-jsurl` package if you're truly looking for the best UX around search param encoding. It keeps urls small, readable and safely encoded for users to share and bookmark.
-- Regardless of the serialization strategy you pick for React Location, it will _always_ gauranty a stable, immutable and structurally-safe object reference. This means that even though your search params' source of truth is technically a string, it will behave as if it is an immutable object, stored in your application's memory.
+- Regardless of the serialization strategy you pick for React Location, it will _always_ guarantee a stable, immutable and structurally-safe object reference. This means that even though your search params' source of truth is technically a string, it will behave as if it is an immutable object, stored in your application's memory.
 
 ## useSearch
 
@@ -815,7 +815,7 @@ function Post() {
 
 If you at all serious about SSR Routing, then you should probably investigate using a framework like [Remix](https://remix.run) or [Next.js](https://nextjs.org).
 
-However, if you truly desire to fudge around with SSR in React Location to avoid that initial pending state, you can! Use `createMemoryHistory` and `ReactLocation` to mock your app into a specific state for SSR, then use the manual routing tools to match and load the correct route information. You can then serialize this inital match info into your document to be rehydrated on the client.
+However, if you truly desire to fudge around with SSR in React Location to avoid that initial pending state, you can! Use `createMemoryHistory` and `ReactLocation` to mock your app into a specific state for SSR, then use the manual routing tools to match and load the correct route information. You can then serialize this initial match info into your document to be rehydrated on the client.
 
 ```tsx
 // Server.tsx
@@ -836,7 +836,7 @@ export async function render(requestUrl) {
   // This also performs any route imports
   const initialMatches = matchRoutes(routes, location.current)
 
-  // Now we run all of the parallizable work
+  // Now we run all of the parallelizable work
   if (initialMatch) {
     await loadMatches(initialMatch).promise
   }
@@ -850,7 +850,7 @@ export async function render(requestUrl) {
   // Serialize the initialMatch into your HTML
   const script = `
     <script>
-      window.__initialMatch = ${JSON.stringify(intitialMatch)}
+      window.__initialMatch = ${JSON.stringify(initialMatch)}
     </script>
   `
 }
@@ -858,7 +858,7 @@ export async function render(requestUrl) {
 
 ```tsx
 // Client.tsx
-import { createBowserHistory, ReactLocation, Router } from 'react-location'
+import { createBrowserHistory, ReactLocation, Router } from 'react-location'
 
 const location = new ReactLocation({ history })
 

@@ -31,7 +31,7 @@ Here's a quick glance at some of its features:
 
 ## Wait, another router? 🤔
 
-React Location initially began to solve smaller issues I was experiencing with the mostly wonderful APIs of [React Router](https://reactrouter.com/) and the [Next.js Router](https://nextjs.org/docs/api-reference/next/router). Over time, its API gave way to even more features, flexibiliy, better DX, and more power to build my applications how I saw fit.
+React Location initially began to solve smaller issues I was experiencing with the mostly wonderful APIs of [React Router](https://reactrouter.com/) and the [Next.js Router](https://nextjs.org/docs/api-reference/next/router). Over time, its API gave way to even more features, flexibility, better DX, and more power to build my applications how I saw fit.
 
 Here's some of those challenges and the features that solve them:
 
@@ -44,7 +44,7 @@ When you begin to store more state in the URL you will inevitably and naturally 
 - Route Matching. Path matching for routes is really only a small part of what a decently designed route tree can do. Being able to match on search params (in its many flavors) should not be considered a "plugin" or afterthought. It should be one of the most integrated and powerful parts of the API.
 - Parsing/Serialization. I'm talking about full-customization here; BYO stringifier/parser.
 - Immutability & Structural Sharing. This one is tricky to explain, but essentially it will save you from the inevitable infinite side-effect rerenders.
-- Compression & Readablity. While not out-of-the-box, this is usually desired, so making it simple to get should be as simple as including a library.
+- Compression & Readability. While not out-of-the-box, this is usually desired, so making it simple to get should be as simple as including a library.
 - Low-level declarative APIs to manipulate query state (think `<Link>`, `<Navigate>` and `useNavigate`). This is one where most routers can't or won't go. To do this correctly, you have to buy into your search-param APIs whole-sale at the core of the architecture and provide them as a consistent experience through the entire library.
 
 Let's just say React Location doesn't skimp on search params. It handles all of this out of the box and goes the extra mile!
@@ -55,7 +55,7 @@ Popularized by frameworks like [Next.js](https://nextjs.org) and now [Remix](htt
 
 React Location provides first-class support for specifying arbitrary asynchronous dependencies for your routes and will asynchronously suspend navigation rendering until these dependencies are met.
 
-Don't like the initial fallback showing on the client while mouting? React Location provides the ability to both:
+Don't like the initial fallback showing on the client while mounting? React Location provides the ability to both:
 
 - Match and pre-load route data during SSR and also
 - Supply pre-loaded route data during rehydration
