@@ -218,6 +218,8 @@ export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
     activeOptions?: ActiveOptions
     // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
     preload?: number
+    // If true, will render the link without the href attribute
+    disabled?: boolean
     // A custom ref prop because of this: https://stackoverflow.com/questions/58469229/react-with-typescript-generics-while-using-react-forwardref/58473012
     _ref?: React.Ref<HTMLAnchorElement>
     // If a function is pass as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
@@ -1213,6 +1215,7 @@ export const Link = function Link<
   getActiveProps = () => ({}),
   activeOptions,
   preload,
+  disabled,
   _ref,
   ...rest
 }: LinkProps<TGenerics>) {
@@ -1306,7 +1309,7 @@ export const Link = function Link<
     <a
       {...{
         ref: _ref,
-        href: next.href,
+        href: disabled ? undefined : next.href,
         onClick: handleClick,
         onMouseEnter: handleMouseEnter,
         target,
@@ -1316,6 +1319,12 @@ export const Link = function Link<
         },
         className:
           [className, activeClassName].filter(Boolean).join(' ') || undefined,
+        ...(disabled
+          ? {
+              role: 'link',
+              'aria-disabled': true,
+            }
+          : undefined),
         ...rest,
         ...activeRest,
         children:
