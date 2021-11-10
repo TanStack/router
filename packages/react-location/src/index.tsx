@@ -193,6 +193,7 @@ export type BuildNextOptions<
 }
 
 export type NavigateOptions<TGenerics> = BuildNextOptions<TGenerics> & {
+  replace?: boolean
   fromCurrent?: boolean
 }
 
