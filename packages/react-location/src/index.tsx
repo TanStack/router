@@ -1468,6 +1468,27 @@ export function useIsNextLocation<
   })
 }
 
+export function IsNextLocation<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>({
+  children,
+  ...rest
+}: MatchLocation<TGenerics> & {
+  children:
+    | React.ReactNode
+    | ((isNextLocation?: Params<TGenerics>) => React.ReactNode)
+}) {
+  const isNextLocation = useIsNextLocation<TGenerics>()
+
+  const nextLocation = isNextLocation(rest)
+
+  if (typeof children === 'function') {
+    return children(nextLocation)
+  }
+
+  return nextLocation ? children : null
+}
+
 export type UseMatchRouteType<
   TGenerics extends PartialGenerics = DefaultGenerics,
 > = () => (
