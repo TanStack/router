@@ -49,9 +49,6 @@ export type ReactLocationOptions = {
   // The history object to be used internally by react-location
   // A history will be created automatically if not provided.
   history?: BrowserHistory | MemoryHistory | HashHistory
-  // The basepath prefix for all URLs (not-supported for memory source histories)
-  // Defualts to '/'
-  basepath?: string
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
 }
@@ -172,6 +169,7 @@ type RouterInnerProps<TGenerics extends PartialGenerics = DefaultGenerics> = {
 } & RouterOptions<TGenerics>
 
 export type RouterOptions<TGenerics> = {
+  basepath?: string
   filterRoutes?: FilterRoutesFn
   defaultLinkPreloadMaxAge?: number
   defaultLoaderMaxAge?: number
@@ -317,7 +315,6 @@ export class ReactLocation<
   TGenerics extends PartialGenerics = DefaultGenerics,
 > {
   history: BrowserHistory | MemoryHistory
-  basepath: string
   stringifySearch: SearchSerializer
   parseSearch: SearchParser
 
@@ -333,7 +330,6 @@ export class ReactLocation<
 
   constructor(options?: ReactLocationOptions) {
     this.history = options?.history || createDefaultHistory()
-    this.basepath = options?.basepath || '/'
     this.stringifySearch = options?.stringifySearch ?? defaultStringifySearch
     this.parseSearch = options?.parseSearch ?? defaultParseSearch
 
@@ -507,7 +503,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
       id: '__root__',
       params: {} as any,
       routeIndex: 0,
-      pathname: location.basepath,
+      pathname: rest.basepath ?? '/',
       route: null!,
       data: {},
       isLoading: false,
@@ -515,7 +511,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
     }
 
     return rootMatch
-  }, [location.basepath])
+  }, [rest.basepath])
 
   const getMatchLoader: LoadRouteFn<TGenerics> = useLatestCallback(
     (next: Location<TGenerics>) => {

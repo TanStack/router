@@ -14,9 +14,6 @@ export type ReactLocationOptions<TGenerics> = {
   // The history object to be used internally by react-location
   // A history will be created automatically if not provided.
   history?: BrowserHistory | MemoryHistory | HashHistory
-  // The basepath prefix for all URLs (not-supported for memory source histories)
-  // Defaults to '/'
-  basepath?: string
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
 }
@@ -62,6 +59,7 @@ The `Router` component is the root Provider component for the `react-location` i
 export type RouterProps<TGenerics> = {
   // An instance of the `ReactLocation` class
   location: ReactLocation<TGenerics>
+  basepath?: string
   // Children will default to `<Outlet />` if not provided
   children?: React.ReactNode
   // An array of route objects to match
@@ -88,10 +86,15 @@ import { ReactLocation, Router } from 'react-location'
 const reactLocation = new ReactLocation()
 
 return (
-  <Router location={reactLocation} routes={[{
-    path: '/',
-    element: 'Home on the range!'
-  }]} />
+  <Router
+    location={reactLocation}
+    routes={[
+      {
+        path: '/',
+        element: 'Home on the range!',
+      },
+    ]}
+  />
 )
 ```
 
@@ -103,10 +106,15 @@ import { ReactLocation, Router } from 'react-location'
 const reactLocation = new ReactLocation()
 
 return (
-  <Router location={reactLocation} routes={[{
-    path: '/',
-    element: 'Home on the range!'
-  }]}>
+  <Router
+    location={reactLocation}
+    routes={[
+      {
+        path: '/',
+        element: 'Home on the range!',
+      },
+    ]}
+  >
     <div>Header</div>
     <Outlet />
   </Router>
