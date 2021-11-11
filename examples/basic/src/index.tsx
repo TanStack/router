@@ -158,11 +158,13 @@ const routes: Route<LocationGenerics>[] = [
   reallyExpensiveRoute,
   {
     path: "authenticated",
-    element: (
-      <Auth>
-        <Authenticated />
-      </Auth>
-    ),
+    element: <Auth />,
+    children: [
+      {
+        path: "/",
+        element: <Authenticated />,
+      },
+    ],
   },
 ];
 
@@ -535,7 +537,7 @@ function Users() {
   const navigate = useNavigate<LocationGenerics>();
   const { usersView } = useSearch<LocationGenerics>();
 
-  const sortBy = usersView?.sortBy;
+  const sortBy = usersView?.sortBy ?? "name";
   const filterBy = usersView?.filterBy;
 
   const [filter, setFilter] = React.useState(filterBy ?? "");
@@ -558,19 +560,36 @@ function Users() {
     );
   }, [sortedUsers, filterBy]);
 
-  React.useEffect(() => {
+  const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
       search: (old) => {
         return {
           ...old,
           usersView: {
             ...old?.usersView,
-            filterBy: filter,
+            sortBy,
           },
         };
       },
       replace: true,
     });
+
+  const setFilterBy = (filterBy: string) =>
+    navigate({
+      search: (old) => {
+        return {
+          ...old,
+          usersView: {
+            ...old?.usersView,
+            filterBy: filterBy || undefined,
+          },
+        };
+      },
+      replace: true,
+    });
+
+  React.useEffect(() => {
+    setFilterBy(filter);
   }, [filter]);
 
   return (
@@ -580,20 +599,7 @@ function Users() {
           <div>Sort By:</div>
           <select
             value={sortBy}
-            onChange={(e) => {
-              navigate({
-                search: (old) => {
-                  return {
-                    ...old,
-                    usersView: {
-                      ...old?.usersView,
-                      sortBy: e.target.value as UsersViewSortBy,
-                    },
-                  };
-                },
-                replace: true,
-              });
-            }}
+            onChange={(e) => setSortBy(e.target.value as UsersViewSortBy)}
             className={tw`flex-1 border p-1 px-2 rounded`}
           >
             {["name", "id", "email"].map((d) => {
@@ -699,7 +705,7 @@ function useAuth() {
   return React.useContext(AuthContext);
 }
 
-function Auth({ children }: { children: React.ReactNode }) {
+function Auth() {
   const auth = useAuth();
   const [username, setUsername] = React.useState("");
 
@@ -710,7 +716,7 @@ function Auth({ children }: { children: React.ReactNode }) {
   };
 
   return auth.status === "loggedIn" ? (
-    <>{children}</>
+    <Outlet />
   ) : (
     <div className={tw`p-2`}>
       <div>You must log in!</div>
@@ -746,6 +752,14 @@ function Authenticated() {
       >
         Log out
       </button>
+      <div className={tw`h-2`} />
+      <div>
+        This authentication example is obviously very contrived and simple. It
+        doesn't cover the use case of a redirected login page, but does
+        illustrate how easy it is to simply wrap routes with ternary logic to
+        either show a login prompt or redirect (probably with the `Navigate`
+        component).
+      </div>
     </div>
   );
 }
