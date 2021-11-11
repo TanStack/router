@@ -144,12 +144,7 @@ All of these features are essentially **asynchronous routing features** and we'l
 #### Route Properties
 
 ```tsx
-// A Route can either be a basic route, or an "import" route
 export type Route<TGenerics extends PartialGenerics = DefaultGenerics> =
-  | BasicRoute<TGenerics>
-  | ImportRoute<TGenerics>
-
-export type BasicRoute<TGenerics extends PartialGenerics = DefaultGenerics> =
   // Route Loaders (see below) can be inline on the route, or resolved async
   // via the `import` property
   RouteLoaders<TGenerics> & {
@@ -161,8 +156,9 @@ export type BasicRoute<TGenerics extends PartialGenerics = DefaultGenerics> =
     pendingMs?: number
     // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
     pendingMinMs?: number
+    // Search filters can be used to rewrite, persist, default and manipulate search params for link that
+    // point to their routes or child routes. See the "basic" example to see them in action.
     searchFilters?: SearchFilter<TGenerics>[]
-
     // An array of child routes
     children?: Route<TGenerics>[]
   } & {
@@ -182,7 +178,14 @@ export type RouteLoaders<TGenerics> = {
   pendingElement?: SyncOrAsyncElement<TGenerics>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: LoaderFn<TGenerics>
+  // An object of whatever you want! This object is accessible anywhere matches are.
+  meta?: UseGeneric<TGenerics, 'RouteMeta'>
 }
+
+export type SearchFilter<TGenerics> = (
+  prev: UseGeneric<TGenerics, 'Search'>,
+  next: UseGeneric<TGenerics, 'Search'>
+) => UseGeneric<TGenerics, 'Search'>
 ```
 
 **Example - Route Params**

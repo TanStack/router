@@ -23,9 +23,10 @@ type Timeout = ReturnType<typeof setTimeout>
 type Maybe<T, TUnknown> = T extends {} ? T : TUnknown
 
 export type DefaultGenerics = {
-  LoaderData: LoaderData<any>
-  Params: Params<any>
-  Search: Search<any>
+  LoaderData: LoaderData<unknown>
+  Params: Params<string>
+  Search: Search<unknown>
+  RouteMeta: RouteMeta<unknown>
 }
 
 export type PartialGenerics = Partial<DefaultGenerics>
@@ -35,6 +36,7 @@ export type MakeGenerics<TGenerics extends PartialGenerics> = TGenerics
 export type Search<T> = Record<string, T>
 export type Params<T> = Record<string, T>
 export type LoaderData<T> = Record<string, T>
+export type RouteMeta<T> = Record<string, T>
 
 export type UseGeneric<
   TGenerics extends PartialGenerics,
@@ -103,6 +105,8 @@ export type RouteLoaders<TGenerics> = {
   pendingElement?: SyncOrAsyncElement<TGenerics>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: LoaderFn<TGenerics>
+  // An object of whatever you want! This object is accessible anywhere matches are.
+  meta?: UseGeneric<TGenerics, 'RouteMeta'>
 }
 
 export type SearchFilter<TGenerics> = (
@@ -1483,7 +1487,7 @@ export function IsNextLocation<
   const nextLocation = isNextLocation(rest)
 
   if (typeof children === 'function') {
-    return children(nextLocation)
+    return children(nextLocation as any)
   }
 
   return nextLocation ? children : null
