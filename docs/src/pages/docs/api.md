@@ -90,7 +90,7 @@ const reactLocation = new ReactLocation()
 return (
   <Router location={reactLocation} routes={[{
     path: '/',
-    element: 'Home on the range!"
+    element: 'Home on the range!'
   }]} />
 )
 ```
@@ -105,7 +105,7 @@ const reactLocation = new ReactLocation()
 return (
   <Router location={reactLocation} routes={[{
     path: '/',
-    element: 'Home on the range!"
+    element: 'Home on the range!'
   }]}>
     <div>Header</div>
     <Outlet />
