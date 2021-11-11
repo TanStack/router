@@ -156,6 +156,14 @@ const routes: Route<LocationGenerics>[] = [
   },
   // Obviously, you can put routes in other files, too
   reallyExpensiveRoute,
+  {
+    path: "authenticated",
+    element: (
+      <Auth>
+        <Authenticated />
+      </Auth>
+    ),
+  },
 ];
 
 // Provide our location and routes to our application
@@ -262,25 +270,27 @@ function App() {
       <Outlet /> to start rendering our matches when we're
       // ready. This also let's us use router API's
       in <Root /> before rendering any routes */}
-      <Router
-        location={location}
-        routes={routes}
-        defaultPendingElement={<Spinner />}
-        defaultLinkPreloadMaxAge={defaultLinkPreloadMaxAge}
-        defaultLoaderMaxAge={defaultLoaderMaxAge}
-        defaultPendingMs={defaultPendingMs}
-        defaultPendingMinMs={defaultPendingMinMs}
-        // Normally, the options above aren't changing, but for this particular
-        // example, we need to key the router when they change
-        key={[
-          defaultLinkPreloadMaxAge,
-          defaultLoaderMaxAge,
-          defaultPendingMs,
-          defaultPendingMinMs,
-        ].join(".")}
-      >
-        <Root />
-      </Router>
+      <AuthProvider>
+        <Router
+          location={location}
+          routes={routes}
+          defaultPendingElement={<Spinner />}
+          defaultLinkPreloadMaxAge={defaultLinkPreloadMaxAge}
+          defaultLoaderMaxAge={defaultLoaderMaxAge}
+          defaultPendingMs={defaultPendingMs}
+          defaultPendingMinMs={defaultPendingMinMs}
+          // Normally, the options above aren't changing, but for this particular
+          // example, we need to key the router when they change
+          key={[
+            defaultLinkPreloadMaxAge,
+            defaultLoaderMaxAge,
+            defaultPendingMs,
+            defaultPendingMinMs,
+          ].join(".")}
+        >
+          <Root />
+        </Router>
+      </AuthProvider>
     </>
   );
 }
@@ -304,6 +314,7 @@ function Root() {
             ["dashboard", "Dashboard"],
             ["expensive", "Expensive"],
             ["really-expensive", "Really Expensive"],
+            ["authenticated", "Authenticated"],
           ].map(([to, label]) => {
             return (
               <div key={to}>
@@ -642,6 +653,100 @@ function User() {
         {JSON.stringify(user, null, 2)}
       </pre>
     </>
+  );
+}
+
+type AuthContext = {
+  login: (username: string) => void;
+  logout: () => void;
+} & AuthContextState;
+
+type AuthContextState = {
+  status: "loggedOut" | "loggedIn";
+  username?: string;
+};
+
+const AuthContext = React.createContext<AuthContext>(null!);
+
+function AuthProvider(props: { children: React.ReactNode }) {
+  const [state, setState] = React.useState<AuthContextState>({
+    status: "loggedOut",
+  });
+
+  const login = (username: string) => {
+    setState({ status: "loggedIn", username });
+  };
+
+  const logout = () => {
+    setState({ status: "loggedOut" });
+  };
+
+  const contextValue = React.useMemo(
+    () => ({
+      ...state,
+      login,
+      logout,
+    }),
+    [state]
+  );
+
+  return (
+    <AuthContext.Provider value={contextValue} children={props.children} />
+  );
+}
+
+function useAuth() {
+  return React.useContext(AuthContext);
+}
+
+function Auth({ children }: { children: React.ReactNode }) {
+  const auth = useAuth();
+  const [username, setUsername] = React.useState("");
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    auth.login(username);
+  };
+
+  return auth.status === "loggedIn" ? (
+    <>{children}</>
+  ) : (
+    <div className={tw`p-2`}>
+      <div>You must log in!</div>
+      <div className={tw`h-2`} />
+      <form onSubmit={onSubmit} className={tw`flex gap-2`}>
+        <input
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Username"
+          className={tw`border p-1 px-2 rounded`}
+        />
+        <button
+          onClick={() => auth.logout()}
+          className={tw`text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded`}
+        >
+          Login
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function Authenticated() {
+  const auth = useAuth();
+
+  return (
+    <div className={tw`p-2`}>
+      You're authenticated! Your username is <strong>{auth.username}</strong>
+      <div className={tw`h-2`} />
+      <button
+        onClick={() => auth.logout()}
+        className={tw`text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded`}
+      >
+        Log out
+      </button>
+    </div>
   );
 }
 
