@@ -98,7 +98,7 @@ return (
 **Example: With Children**
 
 ```tsx
-import { ReactLocation, Router } from 'react-location'
+import { ReactLocation, Router, Outlet } from 'react-location'
 
 const reactLocation = new ReactLocation()
 
