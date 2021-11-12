@@ -257,17 +257,18 @@ export type LoaderDispatchEvent<
       error: unknown
     }
 
-export type Router<TGenerics extends PartialGenerics = DefaultGenerics> =
-  RouterOptions<TGenerics> &
-    RouterState<TGenerics> & {
-      __: {
-        rootMatch: RouteMatch<TGenerics>
-        matchCache: Record<string, RouteMatch<TGenerics>>
-        setState: React.Dispatch<React.SetStateAction<RouterState<TGenerics>>>
-        getMatchLoader: LoadRouteFn<TGenerics>
-        clearMatchCache: () => void
-      }
+export type Router<TGenerics extends PartialGenerics = DefaultGenerics> = Omit<
+  RouterOptions<TGenerics>,
+  'basepath'
+> & { basepath: string } & RouterState<TGenerics> & {
+    __: {
+      rootMatch: RouteMatch<TGenerics>
+      matchCache: Record<string, RouteMatch<TGenerics>>
+      setState: React.Dispatch<React.SetStateAction<RouterState<TGenerics>>>
+      getMatchLoader: LoadRouteFn<TGenerics>
+      clearMatchCache: () => void
     }
+  }
 
 export type LoadRouteFn<TGenerics> = (
   next: Location<TGenerics>,
@@ -490,7 +491,8 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
   const matchCacheRef = React.useRef<Record<string, RouteMatch<TGenerics>>>()
   if (!matchCacheRef.current) matchCacheRef.current = {}
   const matchCache = matchCacheRef.current
-  rest.basepath = cleanPath(`/${rest.basepath ?? ''}`)
+
+  const basepath = cleanPath(`/${rest.basepath ?? ''}`)
 
   const [state, setState] = React.useState<RouterState<TGenerics>>({
     state: {
@@ -511,7 +513,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
       id: '__root__',
       params: {} as any,
       routeIndex: 0,
-      pathname: rest.basepath!,
+      pathname: basepath,
       route: null!,
       data: {},
       isLoading: false,
@@ -519,7 +521,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
     }
 
     return rootMatch
-  }, [rest.basepath])
+  }, [basepath])
 
   const getMatchLoader: LoadRouteFn<TGenerics> = useLatestCallback(
     (next: Location<TGenerics>) => {
@@ -563,6 +565,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
     (): Router<TGenerics> => ({
       ...state,
       ...rest,
+      basepath,
       __: {
         rootMatch,
         matchCache,
@@ -1438,10 +1441,11 @@ export function Outlet<TGenerics extends PartialGenerics = DefaultGenerics>() {
 export function useResolvePath<
   TGenerics extends PartialGenerics = DefaultGenerics,
 >() {
+  const router = useRouter<TGenerics>()
   const match = useMatch<TGenerics>()
 
   return useLatestCallback((path: string) =>
-    resolvePath(match.pathname!, cleanPath(path)),
+    resolvePath(router.basepath!, match.pathname!, cleanPath(path)),
   )
 }
 
