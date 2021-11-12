@@ -55,7 +55,7 @@ async function run() {
       if (branch.prerelease) {
         return tag.includes(`-${branchName}`)
       }
-      return true
+      return semver.prerelease(tag) == null
     })
     // sort by latest
     .sort(semver.compare)
