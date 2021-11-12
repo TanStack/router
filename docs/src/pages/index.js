@@ -40,9 +40,9 @@ const Home = (props) => {
                     Powerful, enterprise-grade routing for React applications
                   </h1>
                   <p className="mt-3 text-base text-gray-700 sm:mt-5 sm:text-xl lg:text-lg xl:text-xl">
-                    SSR/Full-Stack-Inspired API, first-class Search Param APIs,
-                    declarative/suspendable route loaders, code-splitting and so
-                    much more.
+                    Declarative & asynchronous route elements and data loaders,
+                    first-class Search Param APIs, nested-routing,
+                    code-splitting and so much more.
                   </p>
 
                   <div className="mt-5  mx-auto sm:flex sm:justify-center lg:justify-start lg:mx-0 md:mt-8">
@@ -75,13 +75,16 @@ const Home = (props) => {
               <div className="lg:grid lg:grid-cols-3 lg:gap-8">
                 <div>
                   <h3 className="text-xl leading-6 xl:text-2xl font-bold text-gray-900">
-                    Familiar API, Entirely New & Powerful Features
+                    Table Stakes, but Without the Table
                   </h3>
                   <p className="mt-2 lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
-                    Instead of making you start over and learn an entirely new
-                    router, React Location validates your existing routing
-                    knowledge and builds upon it to provide powerful features
-                    you'd expect from an enterprise router.
+                    While React Location pays serious homage to features that
+                    users have come to expect from existing routers in the
+                    ecosystem like React Router and Next.js, it's not wasting
+                    any time by ignoring the complexities and challenges of
+                    building client-side applications. React Location is
+                    hyper-focused on providing mega-smooth routing experiences
+                    that your users will immediately fall in love with.
                   </p>
                 </div>
                 <div className="mt-10 lg:mt-0">
