@@ -1425,17 +1425,13 @@ export function Outlet<TGenerics extends PartialGenerics = DefaultGenerics>() {
     const matchElement = match.element ?? router.defaultElement
 
     return matchElement ? (
-      <React.Fragment key={match.updatedAt}>{matchElement}</React.Fragment>
+      <React.Fragment>{matchElement}</React.Fragment>
     ) : (
-      <Outlet<TGenerics> key={match.updatedAt} />
+      <Outlet<TGenerics> />
     )
   })()
 
-  return (
-    <MatchesProvider value={matches} key={match.updatedAt}>
-      {element}
-    </MatchesProvider>
-  )
+  return <MatchesProvider value={matches}>{element}</MatchesProvider>
 }
 
 export function useResolvePath<
