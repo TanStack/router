@@ -654,7 +654,7 @@ The following link will contain an `<ActiveIcon/>` prefix when active
 
 ### Navigate
 
-When renderd, the `Navigate` component will declaratively and relatively navigate to any route.
+When rendered, the `Navigate` component will declaratively and relatively navigate to any route.
 
 ```tsx
 export type NavigateOptions<
