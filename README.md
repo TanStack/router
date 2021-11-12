@@ -1,6 +1,6 @@
 <img src="https://static.scarf.sh/a.png?x-pxid=d988eb79-b0fc-4a2b-8514-6a1ab932d188" />
 
-# ⚛️ React-Location (Beta)
+# ⚛️ React-Location
 
 Enterprise Client-Side Routing for React
 
@@ -22,10 +22,8 @@ Enterprise Client-Side Routing for React
   <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow" />
 </a>
 
-Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Query](https://github.com/tannerlinsley/react-query), [React Table](https://github.com/tannerlinsley/react-table), [React Form](https://github.com/tannerlinsley/react-form), [React Charts](https://github.com/tannerlinsley/react-charts)
+Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Query](https://github.com/tannerlinsley/react-query), [React Table](https://github.com/tannerlinsley/react-table), [React Charts](https://github.com/tannerlinsley/react-charts), [React Virtual](https://github.com/tannerlinsley/react-virtual)
 
 ## Visit [react-location.tanstack.com](https://react-location.tanstack.com) for docs, guides, API and more!
-
-### [Become a Sponsor!](https://github.com/sponsors/tannerlinsley/)
 
 <!-- test 2 -->
