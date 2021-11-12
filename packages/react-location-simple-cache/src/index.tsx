@@ -1,6 +1,6 @@
 import {
   LoaderFn,
-  Match,
+  RouteMatch,
   PartialGenerics,
   DefaultGenerics,
 } from 'react-location'
@@ -15,7 +15,7 @@ export type SimpleCacheRecord<
   ready: boolean
   data?: any
   invalid?: boolean
-  match: Match<TGenerics>
+  match: RouteMatch<TGenerics>
 }
 
 export type SimpleCacheRecords<
@@ -34,7 +34,7 @@ export class ReactLocationSimpleCache<
   createLoader<TGenerics extends TDefualtGenerics = TDefualtGenerics>(
     loader: LoaderFn<TGenerics>,
     opts?: {
-      key?: (match: Match<TGenerics>) => string
+      key?: (match: RouteMatch<TGenerics>) => string
       maxAge?: number
       policy?: FetchPolicy
     },

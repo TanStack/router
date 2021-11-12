@@ -10,11 +10,11 @@ import {
   ReactLocation,
   Router,
   Route,
-  useIsNextLocation,
   useMatch,
   useRouter,
   useSearch,
   useNavigate,
+  MatchRoute,
 } from "react-location";
 
 import reallyExpensiveRoute from "./reallyExpensive";
@@ -307,7 +307,7 @@ function Root() {
       <div className={tw`flex items-center border-b gap-2`}>
         <h1 className={tw`text-3xl p-2`}>Basic Example</h1>
         {/* Show a global spinner when the router is transitioning */}
-        <Spinner show={!!router.nextTransition} />
+        <Spinner show={!!router.pending} />
       </div>
       <div className={tw`flex-1 flex`}>
         <div className={tw`divide-y w-56`}>
@@ -433,7 +433,6 @@ function Invoices() {
   const {
     data: { invoices },
   } = useMatch<LocationGenerics>();
-  const isNextLocation = useIsNextLocation();
 
   return (
     <div className={tw`flex-1 flex`}>
@@ -448,7 +447,9 @@ function Invoices() {
               >
                 <pre className={tw`text-sm`}>
                   #{invoice.id} - {invoice.title.slice(0, 10)}{" "}
-                  {isNextLocation({ to: invoice.id }) ? "..." : ""}
+                  <MatchRoute to={invoice.id} pending>
+                    ...
+                  </MatchRoute>
                 </pre>
               </Link>
             </div>
@@ -474,7 +475,6 @@ function Invoice() {
   const {
     data: { invoice },
   } = useMatch<LocationGenerics>();
-  const isNextLocation = useIsNextLocation();
   const search = useSearch<LocationGenerics>();
   const navigate = useNavigate();
 
@@ -489,11 +489,6 @@ function Invoice() {
 
   return (
     <div className={tw`p-2`}>
-      <div>
-        <Link to="../" className={tw`italic text-red-500`}>
-          Close {isNextLocation({ to: "../" }) ? "..." : ""}
-        </Link>
-      </div>
       <h4 className={tw`font-bold`}>{invoice?.title}</h4>
       <div>
         <p>{invoice?.body}</p>
@@ -533,7 +528,6 @@ function Users() {
   const {
     data: { users },
   } = useMatch<LocationGenerics>();
-  const isNextLocation = useIsNextLocation<LocationGenerics>();
   const navigate = useNavigate<LocationGenerics>();
   const { usersView } = useSearch<LocationGenerics>();
 
@@ -625,7 +619,10 @@ function Users() {
                 getActiveProps={() => ({ className: tw`font-bold` })}
               >
                 <pre className={tw`text-sm`}>
-                  {user.name} {isNextLocation({ to: user.id }) ? "..." : ""}
+                  {user.name}{" "}
+                  <MatchRoute to={user.id} pending>
+                    ...
+                  </MatchRoute>
                 </pre>
               </Link>
             </div>
@@ -643,18 +640,10 @@ function User() {
   const {
     data: { user },
   } = useMatch<LocationGenerics>();
-  const isNextLocation = useIsNextLocation();
 
   return (
     <>
-      <div className={tw`p-2`}>
-        <div>
-          <Link to="../" className={tw`italic text-red-500`}>
-            Close {isNextLocation({ to: "../" }) ? "..." : ""}
-          </Link>
-        </div>
-        <h4 className={tw`font-bold`}>{user?.name}</h4>
-      </div>
+      <h4 className={tw`p-2 font-bold`}>{user?.name}</h4>
       <pre className={tw`text-sm whitespace-pre-wrap`}>
         {JSON.stringify(user, null, 2)}
       </pre>

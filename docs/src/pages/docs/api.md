@@ -705,7 +705,10 @@ function MyComponent() {
 
 ### useMatchRoute
 
-The `useMatchRoute` hook allows you to programmatically test a relative path against the current location. If a path is match, it will return an object of route params detected, even if this is an empty object. If a path doesn't match, it will return `false`. This can be useful for detecting specific deep-route matches from a layout component
+The `useMatchRoute` hook allows you to programmatically test both relative and absolute paths against the current or pending location. If a path is match, it will return an object of route params detected, even if this is an empty object. This can be useful for:
+
+- Detecting specific deep-route matches from a layout component
+- Determining if a specific route is the next pending location that is being transitioned to
 
 **Usage**
 
@@ -735,16 +738,45 @@ function App() {
 function Root() {
   const matchRoute = useMatchRoute()
 
-  // If the path is '/'
+  // If the current path is '/'
   matchRoute({ to: '/' }) // {}
-  matchRoute({ to: ':teamId' }) // false
+  matchRoute({ to: ':teamId' }) // undefined
 
-  // If the path is `/team-1'
-  matchRoute({ to: '/' }) // false
-  matchRoute({ to: '/*' }) // {}
+  // If the current path is `/team-1'
+  matchRoute({ to: '/' }) // undefined
+  matchRoute({ to: '/', fuzzy: true }) // {}
+  matchRoute({ to: '/*' }) // { '*': 'team-1' }
   matchRoute({ to: ':teamId' }) // { teamId: 'team-1 }
 
+  // If the pending path is `/team-1`
+  matchRoute({ to: ':teamId' }) // undefined
+  matchRoute({ to: ':teamId', pending: true }) // { teamId: 'team-1 }
+
   return <Routes />
+}
+```
+
+### MatchRoute
+
+The `MatchRoute` component is merely a component-version of `useMatchRoute`. It takes all of the same options, but comes with some different affordances.
+
+- If the options provided _do not_ result in a match, `null` will be rendered.
+- If the options provided **do** result in a match
+  - If `children` is a `React.ReactNode`, `children` will be rendered
+  - If `children` is a function, it will be called with resulting match params, or an empty object if no params were found.
+
+**Example: Rendering ellipsis if the pending route matches**
+
+```tsx
+function Example() {
+  return (
+    <Link to="dashboard">
+      Dashboard{' '}
+      <MatchRoute to="dashboard" pending>
+        ...
+      </MatchRoute>
+    </Link>
+  )
 }
 ```
 
@@ -756,13 +788,13 @@ The `useRouter` hook can be used to gain access to the state of the parent `<Rou
 export type Router<TGenerics extends PartialGenerics = DefaultGenerics> =
   // The resolved options used in the router
   RouterProps<TGenerics> & {
-    // The current transition of location + matches that has been successfully matched and loaded
-    transition: Transition<TGenerics>
-    // The next/pending transition of location + matches that is being matched and loaded
-    nextTransition?: Transition<TGenerics>
+    // The current transition state of location + matches that has been successfully matched and loaded
+    state: TransitionState<TGenerics>
+    // The next/pending transition state of location + matches that is being matched and loaded
+    pending?: TransitionState<TGenerics>
   }
 
-export type Transition<TGenerics> = {
+export type TransitionState<TGenerics> = {
   status: 'pending' | 'ready'
   location: Location<TGenerics>
   matches: Match<TGenerics>[]
@@ -800,25 +832,6 @@ function Team() {
   const parentPath = resolvePath('..') // /workspace
   const parentPath = resolvePath('.') // /workspace/team
   const parentPath = resolvePath('team-1') // /workspace/team/team-1
-}
-```
-
-### useIsNextLocation
-
-The `useIsNextLocation` hook provides a function to test whether a relative path is the next destination that is currently being loaded by the nearest
-
-** Example **
-
-```tsx
-function Post() {
-  const isNextLocation = useIsNextLocation()
-
-  return (
-    <div>
-      <Link to="..">Back {isNextLocation({ to: '..' }) ? '...' : ''}</Link>
-      ...
-    </div>
-  )
 }
 ```
 
