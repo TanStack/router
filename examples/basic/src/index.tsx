@@ -276,7 +276,11 @@ function App() {
         <Router
           location={location}
           routes={routes}
-          defaultPendingElement={<Spinner />}
+          defaultPendingElement={
+            <div className={tw`text-2xl`}>
+              <Spinner />
+            </div>
+          }
           defaultLinkPreloadMaxAge={defaultLinkPreloadMaxAge}
           defaultLoaderMaxAge={defaultLoaderMaxAge}
           defaultPendingMs={defaultPendingMs}
@@ -307,7 +311,13 @@ function Root() {
       <div className={tw`flex items-center border-b gap-2`}>
         <h1 className={tw`text-3xl p-2`}>Basic Example</h1>
         {/* Show a global spinner when the router is transitioning */}
-        <Spinner show={!!router.pending} />
+        <div
+          className={tw`text-3xl duration-100 delay-0 opacity-0 ${
+            !!router.pending ? `delay-500 duration-300 opacity-40` : ""
+          }`}
+        >
+          <Spinner />
+        </div>
       </div>
       <div className={tw`flex-1 flex`}>
         <div className={tw`divide-y w-56`}>
@@ -448,7 +458,7 @@ function Invoices() {
                 <pre className={tw`text-sm`}>
                   #{invoice.id} - {invoice.title.slice(0, 10)}{" "}
                   <MatchRoute to={invoice.id} pending>
-                    ...
+                    <Spinner />
                   </MatchRoute>
                 </pre>
               </Link>
@@ -621,7 +631,7 @@ function Users() {
                 <pre className={tw`text-sm`}>
                   {user.name}{" "}
                   <MatchRoute to={user.id} pending>
-                    ...
+                    <Spinner />
                   </MatchRoute>
                 </pre>
               </Link>
@@ -753,18 +763,8 @@ function Authenticated() {
   );
 }
 
-function Spinner({ show = true }: { show?: any }) {
-  return (
-    <div
-      className={tw`inline-block animate-spin px-3 text-xl`}
-      style={{
-        opacity: show ? 1 : 0,
-        transitionDuration: show ? "1000" : "0",
-      }}
-    >
-      ⍥
-    </div>
-  );
+function Spinner() {
+  return <div className={tw`inline-block animate-spin px-3`}>⍥</div>;
 }
 
 async function fetchInvoices() {
