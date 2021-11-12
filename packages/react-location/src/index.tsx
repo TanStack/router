@@ -161,26 +161,30 @@ export type Segment = {
 }
 
 export type RouterProps<TGenerics extends PartialGenerics = DefaultGenerics> = {
+  // An instance of the `ReactLocation` class
   location: ReactLocation<TGenerics>
 } & RouterInnerProps<TGenerics>
 
 type RouterInnerProps<TGenerics extends PartialGenerics = DefaultGenerics> = {
+  // Children will default to `<Outlet />` if not provided
   children?: React.ReactNode
 } & RouterOptions<TGenerics>
 
 export type RouterOptions<TGenerics> = {
+  // An array of route objects to match
+  routes?: Route<TGenerics>[]
   basepath?: string
   filterRoutes?: FilterRoutesFn
   defaultLinkPreloadMaxAge?: number
   defaultLoaderMaxAge?: number
   useErrorBoundary?: boolean
-  routes?: Route<TGenerics>[]
-  initialMatches?: RouteMatch<TGenerics>[]
   defaultElement?: SyncOrAsyncElement<TGenerics>
   defaultErrorElement?: SyncOrAsyncElement<TGenerics>
   defaultPendingElement?: SyncOrAsyncElement<TGenerics>
   defaultPendingMs?: number
   defaultPendingMinMs?: number
+  // An array of route match objects that have been both _matched_ and _loaded_. See the [SRR](#ssr) section for more details
+  initialMatches?: RouteMatch<TGenerics>[]
 }
 
 export type BuildNextOptions<
@@ -355,13 +359,16 @@ export class ReactLocation<
     }
   }
 
-  buildNext(dest: BuildNextOptions<TGenerics> = {}): Location<TGenerics> {
+  buildNext(
+    basepath: string = '/',
+    dest: BuildNextOptions<TGenerics> = {},
+  ): Location<TGenerics> {
     const from = {
       ...this.current,
       ...dest.from,
     }
 
-    const pathname = resolvePath(from.pathname, `${dest.to ?? '.'}`)
+    const pathname = resolvePath(basepath, from.pathname, `${dest.to ?? '.'}`)
 
     const updatedSearch =
       (dest.search === true
@@ -483,6 +490,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
   const matchCacheRef = React.useRef<Record<string, RouteMatch<TGenerics>>>()
   if (!matchCacheRef.current) matchCacheRef.current = {}
   const matchCache = matchCacheRef.current
+  rest.basepath = cleanPath(`/${rest.basepath ?? ''}`)
 
   const [state, setState] = React.useState<RouterState<TGenerics>>({
     state: {
@@ -503,7 +511,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
       id: '__root__',
       params: {} as any,
       routeIndex: 0,
-      pathname: rest.basepath ?? '/',
+      pathname: rest.basepath!,
       route: null!,
       data: {},
       isLoading: false,
@@ -1172,7 +1180,7 @@ function useBuildNext<TGenerics>() {
   const router = useRouter<TGenerics>()
 
   const buildNext = (opts: BuildNextOptions<TGenerics>) => {
-    const next = location.buildNext(opts)
+    const next = location.buildNext(router.basepath, opts)
 
     const matches = matchRoutes<TGenerics>(
       router.routes,
@@ -1186,7 +1194,7 @@ function useBuildNext<TGenerics>() {
       .flat()
       .filter(Boolean)
 
-    return location.buildNext({ ...opts, __searchFilters })
+    return location.buildNext(router.basepath, { ...opts, __searchFilters })
   }
 
   return useLatestCallback(buildNext)
@@ -1391,7 +1399,7 @@ export function Outlet<TGenerics extends PartialGenerics = DefaultGenerics>() {
               <pre style={preStyle}>
                 {'useRoutes(routes, { useErrorBoundary: true })'}
               </pre>{' '}
-              and <pre style={preStyle}>{'<Routes useErrorBoundary />'}</pre>.{' '}
+              and <pre style={preStyle}>{'<Router useErrorBoundary />'}</pre>.{' '}
               <br />
               <br />
             </div>
@@ -1721,7 +1729,10 @@ export function parsePathname(pathname?: string): Segment[] {
   return segments
 }
 
-function resolvePath(base: string, to: string) {
+function resolvePath(basepath: string, base: string, to: string) {
+  base = base.replace(new RegExp(`^${basepath}`), '/')
+  to = to.replace(new RegExp(`^${basepath}`), '/')
+
   let baseSegments = parsePathname(base)
   const toSegments = parsePathname(to)
 
@@ -1741,7 +1752,7 @@ function resolvePath(base: string, to: string) {
     }
   })
 
-  const joined = baseSegments.map((d) => d.value).join('/')
+  const joined = joinPaths([basepath, ...baseSegments.map((d) => d.value)])
 
   return cleanPath(joined)
 }
