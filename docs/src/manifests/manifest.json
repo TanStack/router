@@ -49,7 +49,7 @@
     },
     {
       "title": "Examples",
-      "open": true,
+      "heading": true,
       "routes": [
         {
           "title": "Basic",
