@@ -4,11 +4,11 @@ title: Basic with React Query
 toc: false
 ---
 
-- [Open in CodeSandbox](https://codesandbox.io/s/github/tannerlinsley/react-location/tree/next/examples/basic-with-react-query)
-- [View Source](https://github.com/tannerlinsley/react-location/tree/next/examples/basic-with-react-query)
+- [Open in CodeSandbox](https://codesandbox.io/s/github/tannerlinsley/react-location/tree/main/examples/basic-with-react-query)
+- [View Source](https://github.com/tannerlinsley/react-location/tree/main/examples/basic-with-react-query)
 
 <iframe
-  src="https://codesandbox.io/embed/github/tannerlinsley/react-location/tree/next/examples/basic-with-react-query?autoresize=1&fontsize=14&theme=dark"
+  src="https://codesandbox.io/embed/github/tannerlinsley/react-location/tree/main/examples/basic-with-react-query?autoresize=1&fontsize=14&theme=dark"
   title="tannerlinsley/react-location: simple"
   sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
   style={{

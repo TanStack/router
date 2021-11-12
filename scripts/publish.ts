@@ -111,9 +111,6 @@ async function run() {
       if (['feat'].includes(commit.parsed.header.type)) {
         releaseLevel = Math.max(releaseLevel, 1)
       }
-      if (['feat'].includes(commit.parsed.header.type)) {
-        releaseLevel = Math.max(releaseLevel, 1)
-      }
       if (commit.body.includes('BREAKING CHANGE')) {
         releaseLevel = Math.max(releaseLevel, 2)
       }
@@ -122,6 +119,11 @@ async function run() {
     },
     -1
   )
+
+  if (recommendedReleaseLevel === 2) {
+    console.log(`Major versions releases must be tagged and released manually.`)
+    return
+  }
 
   if (recommendedReleaseLevel === -1) {
     console.log(
