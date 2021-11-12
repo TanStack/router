@@ -22,6 +22,32 @@
       ]
     },
     {
+      "title": "Tools & Plugins",
+      "heading": true,
+      "routes": [
+        {
+          "title": "JSURL Search Params",
+          "path": "/tools/jsurl",
+          "editUrl": "/tools/jsurl.md"
+        },
+        {
+          "title": "Simple Cache for Loaders",
+          "path": "/tools/simple-cache",
+          "editUrl": "/tools/simple-cache.md"
+        },
+        {
+          "title": "Ranked Routes",
+          "path": "/tools/ranked-routes",
+          "editUrl": "/tools/ranked-routes.md"
+        },
+        {
+          "title": "<Route> + Elements-To-Routes",
+          "path": "/tools/elements-to-routes",
+          "editUrl": "/tools/elements-to-routes.md"
+        }
+      ]
+    },
+    {
       "title": "Examples",
       "open": true,
       "routes": [

@@ -7,7 +7,7 @@ title: API
 
 **Required: true**
 
-The `ReactLocation` class is the core engine to React Location. It bridges all of the hooks, components and public API to the underlying history and location APIs. It is required and needs to be provided to your application via the `ReactLocationProvider` component.
+The foundation of React Location 🚀. An instance of the `ReactLocation` class is required and must be provided to your application via the `Router` component.
 
 ```tsx
 export type ReactLocationOptions<TGenerics> = {
@@ -16,16 +16,6 @@ export type ReactLocationOptions<TGenerics> = {
   history?: BrowserHistory | MemoryHistory | HashHistory
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
-}
-
-// These options are also available to pass to the <Router /> component
-export type RouterOptions<TGenerics> = {
-  filterRoutes?: FilterRoutesFn
-  defaultLinkPreloadMaxAge?: number
-  defaultLoaderMaxAge?: number
-  useErrorBoundary?: boolean
-  routes?: Route<TGenerics>[]
-  initialMatches?: Match<TGenerics>[]
 }
 ```
 
@@ -350,7 +340,7 @@ The `useMatch` hook returns the nearest current route match within context of wh
 ```tsx
 function App() {
   return (
-    <Routes
+    <Router
       routes={[
         {
           path: 'invoices',
@@ -389,7 +379,7 @@ function Invoice() {
 ```tsx
 function App() {
   return (
-    <Routes
+    <Router
       routes={[
         {
           path: 'invoices',
@@ -715,7 +705,7 @@ The `useMatchRoute` hook allows you to programmatically test both relative and a
 ```tsx
 function App() {
   return (
-    <Routes
+    <Router
       routes={[
         {
           element: <Root />,
@@ -751,8 +741,6 @@ function Root() {
   // If the pending path is `/team-1`
   matchRoute({ to: ':teamId' }) // undefined
   matchRoute({ to: ':teamId', pending: true }) // { teamId: 'team-1 }
-
-  return <Routes />
 }
 ```
 
@@ -810,7 +798,7 @@ The `useResolvePath` hook returns a function that can be used to resolve the ful
 ```tsx
 function App() {
   return (
-    <Routes
+    <Router
       routes={[
         {
           path: 'workspaces',
@@ -866,9 +854,7 @@ export async function render(requestUrl) {
   }
 
   const markup = ReactDOMServer.renderToString(
-    <ReactLocationProvider>
-      <Routes initialMatch={initialMatch} routes={routes} />
-    </ReactLocationProvider>
+    <Router initialMatch={initialMatch} routes={routes} />
   )
 
   // Serialize the initialMatch into your HTML
@@ -888,9 +874,11 @@ const location = new ReactLocation({ history })
 
 export function App() {
   return (
-    <ReactLocationProvider location={location}>
-      <Routes routes={routes} initialMatch={window.__initialMatch} />)
-    </ReactLocationProvider>
+    <Router
+      location={location}
+      routes={routes}
+      initialMatch={window.__initialMatch}
+    />
   )
 }
 ```
