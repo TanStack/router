@@ -1,6 +1,13 @@
-import { Route, parsePathname } from 'react-location'
+import {
+  Route,
+  parsePathname,
+  PartialGenerics,
+  DefaultGenerics,
+} from 'react-location'
 
-export function rankRoutes(routes: Route[]): Route[] {
+export function rankRoutes<TGenerics extends PartialGenerics = DefaultGenerics>(
+  routes: Route<TGenerics>[],
+): Route<TGenerics>[] {
   return [...routes]
     .map((d, i) => {
       return { ...d, index: i }
