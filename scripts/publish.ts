@@ -20,6 +20,7 @@ const packageNames: [string, string[]][] = [
   ['react-location-jsurl', []],
   ['react-location-simple-cache', ['react-location']],
   ['react-location-rank-routes', ['react-location']],
+  ['react-location-elements-to-routes', ['react-location']],
 ]
 
 const branches: Record<string, { prerelease: boolean; tag: string }> = {
