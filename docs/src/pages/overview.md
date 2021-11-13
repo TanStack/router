@@ -28,7 +28,7 @@ Here are some of its core features at a glance:
 - Optional JSX route definitions
 - Prepackaged simple cache implementation for route loader caching
 - Easy Integration w/ external caches and storage (eg. React Query, Apollo, SWR, RTKQuery)
-- SSR route matching, loading & hydration
+- SSR route matching, loading & hydration (coming soon)
 
 ## In the beginning...
 

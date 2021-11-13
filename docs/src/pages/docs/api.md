@@ -825,7 +825,9 @@ function Team() {
 
 ### SSR
 
-If you at all serious about SSR Routing, then you should probably investigate using a framework like [Remix](https://remix.run) or [Next.js](https://nextjs.org).
+> SSR documentation is coming soon!
+
+<!-- If you at all serious about SSR Routing, then you should probably investigate using a framework like [Remix](https://remix.run) or [Next.js](https://nextjs.org).
 
 However, if you truly desire to fudge around with SSR in React Location to avoid that initial pending state, you can! Use `createMemoryHistory` and `ReactLocation` to mock your app into a specific state for SSR, then use the manual routing tools to match and load the correct route information. You can then serialize this initial match info into your document to be rehydrated on the client.
 
@@ -881,4 +883,4 @@ export function App() {
     />
   )
 }
-```
+``` -->

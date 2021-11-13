@@ -24,11 +24,11 @@ Feature/Capability Key:
 | **General**                                      |                                                               |                                                             |
 | Nested / Layout Routes                           | ✅                                                            | ✅                                                          |
 | Path Params                                      | ✅                                                            | ✅                                                          |
-| JSX Routes                                       | 🛑 (🟦 Coming soon!)                                          | ✅                                                          |
+| JSX Routes                                       | 🟦                                                            | ✅                                                          |
 | Code-Splitting                                   | ✅                                                            | ✅                                                          |
 | Ranked Routes                                    | 🟦 (`react-location-ranked-routes`)                           | ✅                                                          |
 | Active Link Customization                        | ✅                                                            | ✅                                                          |
-| SSR                                              | ✅                                                            | ✅                                                          |
+| SSR                                              | 🔶 (✅ Coming soon)                                           | ✅                                                          |
 | **Search Params**                                |                                                               |                                                             |
 | Basic Search Params                              | ✅                                                            | ✅                                                          |
 | Search Param Hook                                | ✅                                                            | ✅                                                          |
