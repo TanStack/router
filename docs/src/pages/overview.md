@@ -3,41 +3,58 @@ id: overview
 title: Overview
 ---
 
-React Location is a router for browser-based React applications that strives to provide a powerful API and deep integration for advanced routing use-cases.
+React Location is a router for client-side React applications.
 
-Here's a quick glance at some of its features:
+Here are some of its core features at a glance:
 
+- Asynchronous routing
+  - Promise-based data loaders
+  - Asynchronous route elements
+  - Threshold-based pending route elements
+  - Error boundary route elements
+  - Code-splitting
+  - Post-render async loader APIs (stale-while-revalidate, external cache integration)
+  - Navigation batching with graceful replace/push escalation
 - Deeply integrated Search Params API
+  - JSON-first Search Params
+  - Full `<Link>` and `useNavigate` integrtion
+  - Full `cmd+click` support
+  - Search Param Immutability w/ Structural Sharing
+  - Batched Updates / Functional Updates
   - Route Matching
-  - Full `<Link>` and `useNavigate` support
-  - `cmd+click` support
-  - JSON State/Storage
-  - Immutability w/ Structural Sharing
   - Optional Compression w/ JSURL plugin or your own custom parser/serializer!
-  - Types
-- Navigation batching and graceful replace/push escalation
-- Promise-based route loaders
-- Post-render Async loader APIs (stale-while-revalidate, external cache integration)
-- Asynchronous route definitions
-- Asynchronous element definitions
-- Error boundary route elements
-- Threshold-based pending route elements
-- Route state hooks (data)
-- Router state hooks
-- Optional route filtering/ranking API
-- Prepackaged simple cache implementation for simple route loader caching
-- Integration w/ external caches and storage (eg. React Query)
+- Hooks for everything: Router, Matches, Route Matching, Preloading
+- Optional route filtering/ranking
+- Optional JSX route definitions
+- Prepackaged simple cache implementation for route loader caching
+- Easy Integration w/ external caches and storage (eg. React Query, Apollo, SWR, RTKQuery)
 - SSR route matching, loading & hydration
 
-## Wait, another router? 🤔
+## In the beginning...
 
-React Location initially began to solve smaller issues I was experiencing with the mostly wonderful APIs of [React Router](https://reactrouter.com/) and the [Next.js Router](https://nextjs.org/docs/api-reference/next/router). Over time, its API gave way to even more features, flexibility, better DX, and more power to build my applications how I saw fit.
+React Location got its humble beginnings as a wrapper around the long-winded v6 beta release of [React Router](https://reactrouter.com/). Originally, it solved, skirted, and patched a few of the limitations (essentially a majority of the itesm on the list of features above). Over time, React Location's feature set outgrew the core capabilities of React Router and required full control over the routing experience to achieve its potential.
 
-Here's some of those challenges and the features that solve them:
+### Why are Search Params so important?
 
-### URL Search Param Matching and state management
+It's likely that every day, you are faced with the decision of state management in your app. **Where to I put this state?**
 
-Most applications, even large ones will get away with requiring only a few string-based search query params in the url, probably something like `?page=3` or `?filter-name=tanner`. The main reason you'll find this **state** inside of the URL is because while it may not fit the hierarchical patterns of the pathname, it's still very important to the output of a page. Both the ability to build and match routes on this state and your ability as a developer to manipulate this state without restriction is paramount to your app's developer and user experience. Your users should be able to bookmark/copy-paste/share a link from your app and have consistency with the original state of the page.
+Common answers to this question might include:
+
+- Server state? Put it in React Query!
+- In-memory app state? Put it in {insert your favorite client-side state manager} (mine is Zustand or Valtio!)
+- Persist on the machine? LocalStorage or SessionStorage, of course.
+
+**But did you know you're missing one?! What about the URL!**
+
+All too often I see developers putting state in the wrong places not only because stage management is Hard™️, but also because their tools are limiting their decisions.
+
+So, what if storing state in the URL was as easy as storing state in any other first-class state management tool? Would you do it more? Did you know your URLs would then be more sharable, bookmarkable and more consistent across app navigation?
+
+Much how React Query made handling server-state in your React applications a breeze, React Location similarly **unlocks the power of URL search params**.
+
+### How does React Location handle Search Params?
+
+Most applications, even large ones will get away with requiring only a few string-based search query params in the url, probably something like `?page=3` or `?filter-name=tanner`. The main reason you'll find this **state** inside of the URL is because while it may not fit the hierarchical patterns of the pathname section of the URL, it's still very important to the output of a page. Both the ability to consume these search params and manipulate them without restriction is paramount to your app's developer and user experience. Your users should be able to bookmark/copy-paste/share a link from your app and have consistency with the original state of the page.
 
 When you begin to store more state in the URL you will inevitably and naturally want to reach for JSON to store it. Storing JSON state in the URL has its own complications involving:
 
@@ -49,17 +66,23 @@ When you begin to store more state in the URL you will inevitably and naturally 
 
 Let's just say React Location doesn't skimp on search params. It handles all of this out of the box and goes the extra mile!
 
-### Client-side Navigational Suspense
+### Asynchronous Navigation
 
-Popularized by frameworks like [Next.js](https://nextjs.org) and now [Remix](https://remix.run), **specifying asynchronous dependencies for routes that can all resolve in parallel before rendering** has become an expectation of almost every SSR-based routing API. I believe this capability, while intuitive in an SSR environment, is not exclusive to it and definitely has a place in the client-side routing world.
+Popularized by frameworks like [Next.js](https://nextjs.org) and now [Remix](https://remix.run), **specifying asynchronous dependencies for routes that can all resolve in parallel before rendering** is quickly becoming table stakes for almost every React Framework out there. It would be nice if Suspense on its own could give us the solution, but without a router to indicate what needs to be pre-loaded, only suspending on render doesn't allow you to avoid waterfal suspense requests.
 
-React Location provides first-class support for specifying arbitrary asynchronous dependencies for your routes and will asynchronously suspend navigation rendering until these dependencies are met.
+This capability of knowing everything that needs to be fetched up front before navigating is being exploreded heavily in SSR frameworks, but not in cleint-side apps. React Location's goal is to provide that same first-class support for specifying arbitrary asynchronous dependencies for your routes while asynchronously suspending navigation rendering until these dependencies are met.
 
-Don't like the initial fallback showing on the client while mounting? React Location provides the ability to both:
+To do this properly, routing and navigation needs to be designed from the ground up to be **fully asynchronous**. The following features in React Location are first-class and native to the entire routing architecture:
 
-- Match and pre-load route data during SSR and also
-- Supply pre-loaded route data during rehydration
+- Scheduling
+- Batching
+- Data Loading
+- Asynchronous Elements
+- Pending states
+- Error handling
+- Preloading
+- Caching
 
-### Why not simply PR/plugin/proxy/add these features into an existing router?
+### So much more!
 
-I tried and initially succeeded in proxying React Router v6 (arguably the only worthy router in the ecosystem to try this with) to achieve these features. I even shipped it to production for 6 months on a beta release! However, after hitting the ceiling on its public API and quite literally proxying and re-exporting every single function/variable/type from the library, I realized that unless the core internals of React Router were both exposed and altered (which would require yet another breaking change on its part) my RR plugin could not provide consistent features and simply is just not going to work with new ones. Only then, did I know it was time to design a new router from the ground up with support for the features I needed.
+Enough overview, there's so much more to do with React Location. Hit that next button and let's get started!
