@@ -309,7 +309,7 @@ function Root() {
   return (
     <div className={tw`min-h-screen flex flex-col`}>
       <div className={tw`flex items-center border-b gap-2`}>
-        <h1 className={tw`text-3xl p-2`}>Basic Example</h1>
+        <h1 className={tw`text-3xl p-2`}>Kitchen Sink</h1>
         {/* Show a global spinner when the router is transitioning */}
         <div
           className={tw`text-3xl duration-100 delay-0 opacity-0 ${
