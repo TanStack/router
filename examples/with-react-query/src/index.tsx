@@ -5,10 +5,10 @@ import axios from "axios";
 import {
   Link,
   MakeGenerics,
+  MatchRoute,
   Outlet,
   ReactLocation,
   Router,
-  useIsNextLocation,
   useLoadRoute,
   useMatch,
 } from "react-location";
@@ -85,7 +85,6 @@ function usePosts() {
 function Posts() {
   const queryClient = useQueryClient();
   const { status, data, error, isFetching } = usePosts();
-  const isNextPath = useIsNextLocation();
   const loadRoute = useLoadRoute();
 
   return (
@@ -115,7 +114,10 @@ function Posts() {
                         : {}
                     }
                   >
-                    {post.title} {isNextPath({ to: post.id }) ? "..." : ""}
+                    {post.title}{" "}
+                    <MatchRoute to=".." pending>
+                      ...
+                    </MatchRoute>
                   </Link>
                 </p>
               ))}
@@ -145,14 +147,18 @@ function Post() {
   const {
     params: { postId },
   } = useMatch();
-  const isNextPath = useIsNextLocation();
 
   const { status, data, error, isFetching } = usePost(postId);
 
   return (
     <div>
       <div>
-        <Link to="..">Back {isNextPath({ to: ".." }) ? "..." : ""}</Link>
+        <Link to="..">
+          Back{" "}
+          <MatchRoute to=".." pending>
+            ...
+          </MatchRoute>
+        </Link>
       </div>
       {!postId || status === "loading" ? (
         "Loading..."
