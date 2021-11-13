@@ -87,7 +87,7 @@ async function fetchPostById(postId: string) {
 
   return await axios
     .get(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-    .then((r) => r.data.slice(0, 5));
+    .then((r) => r.data);
 }
 
 function Index() {
