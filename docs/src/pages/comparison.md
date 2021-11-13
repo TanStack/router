@@ -3,6 +3,8 @@ id: comparison
 title: Comparison | React Location vs React Router
 ---
 
+Before you commit to a new tool, it's always nice to know it stacks up against the competition!
+
 > This comparison table strives to be as accurate and as unbiased as possible. If you use any of these libraries and feel the information could be improved, feel free to suggest changes (with notes or evidence of claims) using the "Edit this page on Github" link at the bottom of this page.
 
 Feature/Capability Key:

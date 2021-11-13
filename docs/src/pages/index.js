@@ -196,7 +196,7 @@ const Home = (props) => {
         <div className="bg-gray-100 relative py-24 border-t border-gray-200 ">
           <div className="px-4 sm:px-6 lg:px-8  mx-auto container max-w-3xl sm:text-center">
             <h3 className="text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl sm:leading-10 lg:leading-none mt-2">
-              Try it out! Right here. Right now!
+              Try out the "Kitchen Sink" example below!
             </h3>
             <p className="my-4 text-xl leading-7  text-gray-600">
               Build your paths. Fetch your data. Command those URL Search
@@ -213,7 +213,7 @@ const Home = (props) => {
         <section className="bg-gray-900 body-font">
           <div className="container max-w-7xl px-4  mx-auto -mt-72 relative">
             <iframe
-              src="https://codesandbox.io/embed/github/tannerlinsley/react-location/tree/next/examples/basic?autoresize=1&fontsize=16&theme=dark"
+              src="https://codesandbox.io/embed/github/tannerlinsley/react-location/tree/next/examples/kitchen-sink?autoresize=1&fontsize=16&theme=dark"
               title="tannerlinsley/react-location: simple"
               sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
               className="shadow-2xl"

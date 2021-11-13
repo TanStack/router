@@ -57,14 +57,19 @@
           "editUrl": "/examples/basic.md"
         },
         {
-          "title": "Basic with Simple Cache",
-          "path": "/examples/basic-with-simple-cache",
-          "editUrl": "/examples/basic-with-simple-cache.md"
+          "title": "Kitchen Sink",
+          "path": "/examples/kitchen-sink",
+          "editUrl": "/examples/kitchen-sink.md"
         },
         {
-          "title": "Basic with React Query",
-          "path": "/examples/basic-with-react-query",
-          "editUrl": "/examples/basic-with-react-query.md"
+          "title": "With Simple Cache",
+          "path": "/examples/with-simple-cache",
+          "editUrl": "/examples/with-simple-cache.md"
+        },
+        {
+          "title": "With React Query",
+          "path": "/examples/with-react-query",
+          "editUrl": "/examples/with-react-query.md"
         }
       ]
     },
