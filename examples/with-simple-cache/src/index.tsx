@@ -7,10 +7,10 @@ import {
   Router,
   MakeGenerics,
   useMatch,
-  useIsNextLocation,
   useLoadRoute,
   Link,
   Outlet,
+  MatchRoute,
 } from "react-location";
 import { ReactLocationSimpleCache } from "react-location-simple-cache";
 
@@ -70,7 +70,6 @@ function Posts() {
     data: { posts },
     isLoading,
   } = useMatch<LocationGenerics>();
-  const isNextPath = useIsNextLocation();
   const loadRoute = useLoadRoute<LocationGenerics>();
 
   return (
@@ -85,10 +84,13 @@ function Posts() {
           {posts?.map((post) => (
             <p key={post.id}>
               <Link
-                to={`./${post.id}`}
+                to={post.id}
                 onMouseEnter={() => loadRoute({ to: `./${post.id}` })}
               >
-                {post.title} {isNextPath({ to: post.id }) ? "..." : ""}
+                {post.title}{" "}
+                <MatchRoute to={post.id} pending>
+                  ...
+                </MatchRoute>
               </Link>
             </p>
           ))}
@@ -105,7 +107,7 @@ function Post() {
   const {
     data: { post },
     isLoading,
-  } = useMatch();
+  } = useMatch<LocationGenerics>();
 
   return (
     <div>

@@ -115,7 +115,7 @@ function Posts() {
                     }
                   >
                     {post.title}{" "}
-                    <MatchRoute to=".." pending>
+                    <MatchRoute to={post.id} pending>
                       ...
                     </MatchRoute>
                   </Link>
@@ -153,12 +153,7 @@ function Post() {
   return (
     <div>
       <div>
-        <Link to="..">
-          Back{" "}
-          <MatchRoute to=".." pending>
-            ...
-          </MatchRoute>
-        </Link>
+        <Link to="..">Back</Link>
       </div>
       {!postId || status === "loading" ? (
         "Loading..."
