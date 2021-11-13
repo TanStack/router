@@ -37,27 +37,21 @@ function App() {
         {
           path: "posts",
           element: <Posts />,
-          loader: () =>
-            axios
-              .get("https://jsonplaceholder.typicode.com/posts")
-              .then((res) => {
-                return {
-                  posts: res.data.slice(0, 5),
-                };
-              }),
+          loader: async () => {
+            return {
+              posts: await fetchPosts(),
+            };
+          },
           children: [
             { path: "/", element: <PostsIndex /> },
             {
               path: ":postId",
               element: <Post />,
-              loader: ({ params: { postId } }) =>
-                axios
-                  .get(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-                  .then((res) => {
-                    return {
-                      post: res.data,
-                    };
-                  }),
+              loader: async ({ params: { postId } }) => {
+                return {
+                  post: await fetchPostById(postId),
+                };
+              },
             },
           ],
         },
@@ -79,6 +73,21 @@ function App() {
       <Outlet /> {/* Start rendering router matches */}
     </Router>
   );
+}
+
+async function fetchPosts() {
+  await new Promise((r) => setTimeout(r, 300));
+  return await axios
+    .get("https://jsonplaceholder.typicode.com/posts")
+    .then((r) => r.data.slice(0, 5));
+}
+
+async function fetchPostById(postId: string) {
+  await new Promise((r) => setTimeout(r, 300));
+
+  return await axios
+    .get(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+    .then((r) => r.data.slice(0, 5));
 }
 
 function Index() {
