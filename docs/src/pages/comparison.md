@@ -24,7 +24,7 @@ Feature/Capability Key:
 | **General**                                      |                                                               |                                                             |
 | Nested / Layout Routes                           | ✅                                                            | ✅                                                          |
 | Path Params                                      | ✅                                                            | ✅                                                          |
-| JSX Routes                                       | 🟦                                                            | ✅                                                          |
+| JSX Routes                                       | 🟦 (`react-location-elements-to-routes`)                      | ✅                                                          |
 | Code-Splitting                                   | ✅                                                            | ✅                                                          |
 | Ranked Routes                                    | 🟦 (`react-location-ranked-routes`)                           | ✅                                                          |
 | Active Link Customization                        | ✅                                                            | ✅                                                          |
