@@ -9,7 +9,7 @@ function loadScript(src, attrs = {}) {
     const script = document.createElement('script')
     script.async = true
     script.defer = true
-    Object.keys(attrs).forEach(attr => script.setAttribute(attr, attrs[attr]))
+    Object.keys(attrs).forEach((attr) => script.setAttribute(attr, attrs[attr]))
     script.src = src
     document.body.appendChild(script)
   }
@@ -19,8 +19,8 @@ function MyApp({ Component, pageProps }) {
   React.useEffect(() => {
     loadScript('https://buttons.github.io/buttons.js')
     // Convert kit slide up form
-    loadScript('https://tanstack.ck.page/2e928df461/index.js', {
-      'data-uid': '2e928df461',
+    loadScript('https://tanstack.ck.page/ec931f3f3d/index.js', {
+      'data-uid': 'ec931f3f3d',
     })
   }, [])
 
@@ -48,6 +48,7 @@ function MyApp({ Component, pageProps }) {
           }}
         />
       </Head>
+      <img src="https://static.scarf.sh/a.png?x-pxid=c26c2c2e-bc50-4e9e-9909-aeaba8968d45" />
       <SearchProvider>
         <Component {...pageProps} />
       </SearchProvider>

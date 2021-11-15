@@ -26,7 +26,30 @@ const Home = (props) => {
         <Sticky>
           <Nav />
         </Sticky>
-        <div className="relative bg-white overflow-hidden">
+        <div
+          style={{
+            padding: '56.25% 0 0 0',
+            position: 'relative',
+          }}
+        >
+          <iframe
+            width="560"
+            height="315"
+            src="https://www.youtube.com/embed/rLY65AQreSU"
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+            }}
+          ></iframe>
+        </div>
+        <div className="relative bg-white overflow-hidden shadow-2xl">
           <div className="py-24 mx-auto container px-4 sm:mt-12  relative">
             <img
               src={require('images/emblem-light.svg')}
