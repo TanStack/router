@@ -17,7 +17,7 @@ Here are some of its core features at a glance:
   - Navigation batching with graceful replace/push escalation
 - Deeply integrated Search Params API
   - JSON-first Search Params
-  - Full `<Link>` and `useNavigate` integrtion
+  - Full `<Link>` and `useNavigate` integration
   - Full `cmd+click` support
   - Search Param Immutability w/ Structural Sharing
   - Batched Updates / Functional Updates
