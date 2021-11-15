@@ -74,6 +74,16 @@ describe('matchRoute', () => {
         },
         {},
       ],
+      [
+        {
+          pathname: '/a/b',
+        },
+        {
+          to: '/a/b/',
+          fuzzy: true,
+        },
+        {},
+      ],
     ].forEach(([a, b, eq]) => {
       test(`${a.pathname} == ${b.to}`, () => {
         expect(matchRoute(createLocation(a), b)).toEqual(eq)

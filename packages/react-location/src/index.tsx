@@ -1609,6 +1609,8 @@ export function matchByPath<
   const baseSegments = parsePathname(currentLocation.pathname)
   const routeSegments = parsePathname(`${matchLocation.to ?? '*'}`)
 
+  // console.log(baseSegments, routeSegments)
+
   const params: Record<string, string> = {}
 
   let isMatch = (() => {
@@ -1633,6 +1635,10 @@ export function matchByPath<
         }
 
         if (routeSegment.type === 'pathname') {
+          if (routeSegment.value === '/' && !baseSegment?.value) {
+            return true
+          }
+
           if (baseSegment) {
             if (routeSegment.value !== baseSegment.value) {
               return false

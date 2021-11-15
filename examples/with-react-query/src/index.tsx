@@ -44,26 +44,41 @@ function App() {
         location={location}
         routes={[
           {
-            path: ":postId",
-            element: <Post />,
-            loader: ({ params: { postId } }) =>
-              queryClient.getQueryData(["posts", postId]) ??
-              queryClient.fetchQuery(["posts", postId], () =>
-                fetchPostById(postId)
-              ),
+            path: "/",
+            element: "Welcome Home!",
           },
           {
-            path: "/",
+            path: "posts",
             element: <Posts />,
             loader: () =>
               queryClient.getQueryData("posts") ??
               queryClient.fetchQuery("posts", fetchPosts).then(() => ({})),
+            children: [
+              { path: "/", element: "Select a post." },
+              {
+                path: ":postId",
+                element: <Post />,
+                loader: ({ params: { postId } }) =>
+                  queryClient.getQueryData(["posts", postId]) ??
+                  queryClient.fetchQuery(["posts", postId], () =>
+                    fetchPostById(postId)
+                  ),
+              },
+            ],
           },
         ]}
       >
-        <h1>Basic w/ React Query</h1>
-        <hr />
-        <Outlet />
+        <div>
+          <h1>Basic With React Query</h1>
+          <hr />
+          <h3>
+            <Link to=".">Home</Link>{" "}
+            <Link to="posts" preload={1}>
+              Posts
+            </Link>
+          </h3>
+          <Outlet />
+        </div>
       </Router>
       <ReactQueryDevtools initialIsOpen />
     </QueryClientProvider>
@@ -97,30 +112,35 @@ function Posts() {
           <span>Error: {error.message}</span>
         ) : (
           <>
-            <div>
-              {data?.map((post) => (
-                <p key={post.id}>
-                  <Link
-                    to={`./${post.id}`}
-                    onMouseEnter={() => loadRoute({ to: post.id })}
-                    style={
-                      // We can access the query data here to show bold links for
-                      // ones that are cached
-                      queryClient.getQueryData(["post", post.id])
-                        ? {
-                            fontWeight: "bold",
-                            color: "green",
-                          }
-                        : {}
-                    }
-                  >
-                    {post.title}{" "}
-                    <MatchRoute to={post.id} pending>
-                      ...
-                    </MatchRoute>
-                  </Link>
-                </p>
-              ))}
+            <div style={{ display: "flex", flexWrap: "wrap" }}>
+              <div style={{ flex: "0 0 200px" }}>
+                {data?.map((post) => (
+                  <p key={post.id}>
+                    <Link
+                      to={`./${post.id}`}
+                      onMouseEnter={() => loadRoute({ to: post.id })}
+                      style={
+                        // We can access the query data here to show bold links for
+                        // ones that are cached
+                        queryClient.getQueryData(["post", post.id])
+                          ? {
+                              fontWeight: "bold",
+                              color: "green",
+                            }
+                          : {}
+                      }
+                    >
+                      {post.title}{" "}
+                      <MatchRoute to={post.id} pending>
+                        ...
+                      </MatchRoute>
+                    </Link>
+                  </p>
+                ))}
+              </div>
+              <div style={{ flex: "1 1" }}>
+                <Outlet />
+              </div>
             </div>
           </>
         )}
