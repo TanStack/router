@@ -32,7 +32,7 @@ Here are some of its core features at a glance:
 
 ## In the beginning...
 
-React Location got its humble beginnings as a wrapper around the long-winded v6 beta release of [React Router](https://reactrouter.com/). Originally, it solved, skirted, and patched a few of the limitations (essentially a majority of the itesm on the list of features above). Over time, React Location's feature set outgrew the core capabilities of React Router and required full control over the routing experience to achieve its potential.
+React Location got its humble beginnings as a wrapper around the long-winded v6 beta release of [React Router](https://reactrouter.com/). Originally, it solved, skirted, and patched a few of the limitations (essentially a majority of the items on the list of features above). Over time, React Location's feature set outgrew the core capabilities of React Router and required full control over the routing experience to achieve its potential.
 
 ### Why are Search Params so important?
 
