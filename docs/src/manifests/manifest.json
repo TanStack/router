@@ -48,6 +48,17 @@
       ]
     },
     {
+      "title": "Documentation",
+      "heading": true,
+      "routes": [
+        {
+          "title": "API Reference",
+          "path": "/docs/api",
+          "editUrl": "/docs/api.md"
+        }
+      ]
+    },
+    {
       "title": "Examples",
       "heading": true,
       "routes": [
@@ -70,17 +81,6 @@
           "title": "With React Query",
           "path": "/examples/with-react-query",
           "editUrl": "/examples/with-react-query.md"
-        }
-      ]
-    },
-    {
-      "title": "Documentation",
-      "heading": true,
-      "routes": [
-        {
-          "title": "API Reference",
-          "path": "/docs/api",
-          "editUrl": "/docs/api.md"
         }
       ]
     }
