@@ -46,7 +46,7 @@ Common answers to this question might include:
 
 **But did you know you're missing one?! What about the URL!**
 
-All too often I see developers putting state in the wrong places not only because stage management is Hard™️, but also because their tools are limiting their decisions.
+All too often I see developers putting state in the wrong places not only because state management is Hard™️, but also because their tools are limiting their decisions.
 
 So, what if storing state in the URL was as easy as storing state in any other first-class state management tool? Would you do it more? Did you know your URLs would then be more sharable, bookmarkable and more consistent across app navigation?
 
