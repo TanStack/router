@@ -998,12 +998,14 @@ export function matchRoutes<
     let routeIndex: number = -1
 
     const originalRoute = filteredRoutes.find((route, index) => {
-      const fullRoutePathName = joinPaths([pathname, route.path ?? '*'])
+      const fullRoutePathName = joinPaths([pathname, route.path])
+
+      const fuzzy = !!(route.path !== '/' || route.children?.length)
 
       const matchParams = matchRoute(currentLocation, {
         to: fullRoutePathName,
         search: route.search,
-        fuzzy: true,
+        fuzzy,
       })
 
       if (matchParams) {
@@ -1598,7 +1600,9 @@ export function cleanPath(path: string) {
   return `${path}`.replace(/\/{2,}/g, '/')
 }
 
-function matchByPath<TGenerics extends PartialGenerics = DefaultGenerics>(
+export function matchByPath<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>(
   currentLocation: Location<TGenerics>,
   matchLocation: MatchLocation<TGenerics>,
 ): UseGeneric<TGenerics, 'Params'> | undefined {
@@ -1629,15 +1633,6 @@ function matchByPath<TGenerics extends PartialGenerics = DefaultGenerics>(
         }
 
         if (routeSegment.type === 'pathname') {
-          if (isLastRouteSegment && routeSegment.value === '/') {
-            if (!baseSegment) {
-              return true
-            }
-            if (!isLastBaseSegment) {
-              return false
-            }
-          }
-
           if (baseSegment) {
             if (routeSegment.value !== baseSegment.value) {
               return false
@@ -1652,8 +1647,10 @@ function matchByPath<TGenerics extends PartialGenerics = DefaultGenerics>(
         if (routeSegment.type === 'param') {
           params[routeSegment.value] = baseSegment.value
         }
-      } else if (!matchLocation.fuzzy && baseSegment) {
-        return false
+      }
+
+      if (isLastRouteSegment && !isLastBaseSegment) {
+        return !!matchLocation.fuzzy
       }
     }
     return true
