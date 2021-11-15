@@ -7,7 +7,6 @@ import {
   Router,
   MakeGenerics,
   useMatch,
-  useLoadRoute,
   Link,
   Outlet,
   MatchRoute,
