@@ -823,6 +823,75 @@ function Team() {
 }
 ```
 
+### usePrompt
+
+The `usePrompt` hook allows you to programmatically prompt the user with a dialog.
+
+It's syntax looks like this:
+
+```tsx
+export function usePrompt(message: string, when: boolean | any): void
+```
+
+- Pass the `message` string to be displayed to the user
+- Pass a `when` boolean (or anything truthy) to conditionally prompt the user
+
+** Example **
+
+```tsx
+function App() {
+  const [isDirty, setDirty] = useState(false)
+
+  usePrompt(
+    'There are unsaved changes, are you sure you want to leave?',
+    isDirty
+  )
+
+  // ...
+}
+```
+
+### Prompt
+
+The `Prompt` component is merely a component-version of `usePrompt`. It takes all of the same options, but comes with some different affordances.
+
+It's syntax looks like this:
+
+```tsx
+export function Prompt(props: { message: string; when: boolean | any }): null
+```
+
+** Example **
+
+```tsx
+function App() {
+  const [isDirty, setDirty] = useState(false)
+
+  return (
+    <>
+      <Prompt
+        message="There are unsaved changes, are you sure you want to leave?"
+        when={isDirty}
+      />
+      OR
+      <Prompt
+        message="There are unsaved changes, are you sure you want to leave?"
+        when={isDirty}
+      >
+        Anything you want to render here
+      </Prompt>
+      OR
+      {isDirty ? (
+        // when defaults to true with <Prompt>
+        <Prompt message="There are unsaved changes, are you sure you want to leave?" />
+      ) : null}
+    </>
+  )
+
+  // ...
+}
+```
+
 ### SSR
 
 > SSR documentation is coming soon!

@@ -205,7 +205,8 @@ export type NavigateOptions<TGenerics> = BuildNextOptions<TGenerics> & {
 
 export type PromptProps = {
   message: string
-  when?: boolean
+  when?: boolean | any
+  children?: React.ReactNode
 }
 
 export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
@@ -1542,7 +1543,7 @@ export function MatchRoute<
   return match ? children : null
 }
 
-export function usePrompt(message: string, when = true): void {
+export function usePrompt(message: string, when: boolean | any): void {
   const location = useLocation()
 
   React.useEffect(() => {
@@ -1561,9 +1562,9 @@ export function usePrompt(message: string, when = true): void {
   }, [when, location, message])
 }
 
-export function Prompt({ message, when }: PromptProps) {
-  usePrompt(message, when)
-  return null
+export function Prompt({ message, when, children }: PromptProps) {
+  usePrompt(message, when ?? true)
+  return children ?? null
 }
 
 function warning(cond: boolean, message: string) {
