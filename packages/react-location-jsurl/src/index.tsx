@@ -16,11 +16,7 @@ export function stringifySearch(search: Record<string, unknown>) {
     })
   }
 
-  // let searchStr = qss.encode(search, '')
-
   return new URLSearchParams(search as Record<string, string>).toString()
-
-  // return (searchStr = searchStr ? `?${searchStr}` : '')
 }
 
 export function parseSearch(searchStr: string): Record<string, any> {
