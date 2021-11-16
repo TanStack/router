@@ -22,6 +22,17 @@
       ]
     },
     {
+      "title": "Guides & Concepts",
+      "heading": true,
+      "routes": [
+        {
+          "title": "Memory and Hash Routing",
+          "path": "/guides/memory-and-hash-routing",
+          "editUrl": "/guides/memory-and-hash-routing.md"
+        }
+      ]
+    },
+    {
       "title": "Tools & Plugins",
       "heading": true,
       "routes": [
