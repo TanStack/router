@@ -1032,7 +1032,7 @@ export function matchRoutes<
         }
 
         if (segment.type === 'param') {
-          return params![segment.value] ?? ''
+          return params![segment.value.substring(1)] ?? ''
         }
 
         return segment.value
@@ -1651,7 +1651,7 @@ export function matchByPath<
         }
 
         if (routeSegment.type === 'param') {
-          params[routeSegment.value] = baseSegment.value
+          params[routeSegment.value.substring(1)] = baseSegment.value
         }
       }
 
@@ -1710,7 +1710,7 @@ export function parsePathname(pathname?: string): Segment[] {
       if (part.charAt(0) === ':') {
         return {
           type: 'param',
-          value: part.substring(1),
+          value: part,
         }
       }
 
