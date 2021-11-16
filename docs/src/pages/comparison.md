@@ -31,7 +31,7 @@ Feature/Capability Key:
 | SSR                                              | 🔶 (✅ Coming soon)                                           | ✅                                                          |
 | **Search Params**                                |                                                               |                                                             |
 | Basic Search Params                              | ✅                                                            | ✅                                                          |
-| Search Param Hook                                | ✅                                                            | ✅                                                          |
+| Search Param Hooks                               | ✅                                                            | ✅                                                          |
 | Integrated `<Link/>` search param API            | ✅                                                            | 🟡 (search-string only via the `to` prop)                   |
 | Integrated `useNavigate` search param API        | ✅                                                            | 🟡 (search-string only via the `search` property)           |
 | JSON Search Params                               | ✅                                                            | 🔶                                                          |
