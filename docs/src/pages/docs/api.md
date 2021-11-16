@@ -118,14 +118,15 @@ In React Location, routes are just an array of objects where routes can contain 
 By default, Routes are matched in the order they are specified, with a few small rules:
 
 - If a route has **no path**, it is considered to have `path: *`
-- If a route has **no element**, it is considered to have `element: <Outlet />`
-- If a route has both a `path` and `search` defined, both must be matched.
+- If a route has **no element**, it is considered to have `element: <Outlet />` (or whatever you set as the `Router`'s `defaultElement` prop)
+- If a route has both a `path` and `search` defined, both must pass to be matched.
 - For Paths:
-  - Index routes (`/`) are `exact` by default.
-  - The following routes will always match:
+  - Index routes (`/`) are considered `exact`, unless they contain child routes.
+  - The following routes will always match when encountered:
     - Param'd routes (eg. `:teamId`)
     - Wildcard routes (`*`)
-    - Routes without a `path`
+    - Routes without a `path` (which are also considered wildcard `*` routes)
+  - All other routes are fuzzy matched, meaning that they will match if they are a prefix of the current path.
 - For Search params:
   - No search params will always match
 
