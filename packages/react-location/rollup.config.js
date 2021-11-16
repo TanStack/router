@@ -36,6 +36,11 @@ export default inputSrcs
         },
         external,
         plugins: [
+          replace({
+            'process.env.NODE_ENV': `"development"`,
+            delimiters: ['', ''],
+            preventAssignment: true,
+          }),
           resolve(resolveConfig),
           babel({ ...babelConfig, plugins: ['babel-plugin-dev-expression'] }),
           commonJS(),
@@ -53,7 +58,6 @@ export default inputSrcs
         },
         external,
         plugins: [
-          // ccompiler
           replace({
             'process.env.NODE_ENV': `"production"`,
             delimiters: ['', ''],
