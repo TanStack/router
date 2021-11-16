@@ -521,7 +521,7 @@ function MyComponent() {
 }
 ```
 
-### Link
+## Link
 
 The `Link` component allows you to generate links for _internal_ navigation, capable of updating the:
 
@@ -643,7 +643,7 @@ The following link will contain an `<ActiveIcon/>` prefix when active
 </Link>
 ```
 
-### Navigate
+## Navigate
 
 When renderd, the `Navigate` component will declaratively and relatively navigate to any route.
 
@@ -676,7 +676,7 @@ function App () {
 }
 ```
 
-### useNavigate
+## useNavigate
 
 The `useNavigate` hook allows you to programmatically navigate your application.
 
@@ -694,7 +694,7 @@ function MyComponent() {
 }
 ```
 
-### useMatchRoute
+## useMatchRoute
 
 The `useMatchRoute` hook allows you to programmatically test both relative and absolute paths against the current or pending location. If a path is match, it will return an object of route params detected, even if this is an empty object. This can be useful for:
 
@@ -745,7 +745,7 @@ function Root() {
 }
 ```
 
-### MatchRoute
+## MatchRoute
 
 The `MatchRoute` component is merely a component-version of `useMatchRoute`. It takes all of the same options, but comes with some different affordances.
 
@@ -769,7 +769,7 @@ function Example() {
 }
 ```
 
-### useRouter
+## useRouter
 
 The `useRouter` hook can be used to gain access to the state of the parent `<Router />` component It's shape looks like this:
 
@@ -790,7 +790,7 @@ export type TransitionState<TGenerics> = {
 }
 ```
 
-### useResolvePath
+## useResolvePath
 
 The `useResolvePath` hook returns a function that can be used to resolve the full path of a relative route, based on where the hook is called in the route hierarchy.
 
@@ -824,7 +824,7 @@ function Team() {
 }
 ```
 
-### usePrompt
+## usePrompt
 
 The `usePrompt` hook allows you to programmatically prompt the user with a dialog.
 
@@ -852,7 +852,7 @@ function App() {
 }
 ```
 
-### Prompt
+## Prompt
 
 The `Prompt` component is merely a component-version of `usePrompt`. It takes all of the same options, but comes with some different affordances.
 
@@ -893,7 +893,7 @@ function App() {
 }
 ```
 
-### SSR
+## SSR
 
 > SSR documentation is coming soon!
 
