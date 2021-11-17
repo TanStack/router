@@ -1,4 +1,5 @@
 import { stringify, parse } from './jsurl'
+import { decode, encode } from './qss'
 
 export function stringifySearch(search: Record<string, unknown>) {
   search = { ...search }
@@ -18,9 +19,9 @@ export function stringifySearch(search: Record<string, unknown>) {
     })
   }
 
-  const searchStr = new URLSearchParams(
-    search as Record<string, string>,
-  ).toString()
+  const searchStr = encode(search as Record<string, string>).toString()
+
+  console.log(search, searchStr)
 
   return searchStr ? `?${searchStr}` : ''
 }
@@ -30,9 +31,7 @@ export function parseSearch(searchStr: string): Record<string, any> {
     searchStr = searchStr.substring(1)
   }
 
-  let query: Record<string, unknown> = Object.fromEntries(
-    (new URLSearchParams(searchStr) as any).entries(),
-  )
+  let query: Record<string, unknown> = decode(searchStr)
 
   // Try to parse any query params that might be json
   for (let key in query) {
@@ -45,6 +44,8 @@ export function parseSearch(searchStr: string): Record<string, any> {
       }
     }
   }
+
+  console.log({ query })
 
   return query
 }

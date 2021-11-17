@@ -1,30 +1,9 @@
-/**
- * Copyright (c) 2011 Bruno Jouhier <bruno.jouhier@sage.com>
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
-//
-
+// We're inlining our own version of qss here for compression's sake, but we've included it as a hard dependency for the MIT license it requires.
 // Types are naive, but at least it compiles!
+
+// Unreserved characters for URL encoding are: - . _ ~
+// Earlier versions of this library used a different encoding for strings, but in our version we use a period for the string delimiter.
+const stringPrefix = '.'
 
 export function stringify(v: any): string {
   function encode(s: any) {
@@ -48,7 +27,7 @@ export function stringify(v: any): string {
     case 'boolean':
       return '~' + v
     case 'string':
-      return "~'" + encode(v)
+      return '~' + stringPrefix + encode(v)
     case 'object':
       if (!v) return '~null'
 
@@ -88,7 +67,7 @@ var reserved: Record<string, boolean | null> = {
 
 export function parse(s: string): unknown {
   if (!s) return s
-  s = s.replace(/%(25)*27/g, "'")
+  s = s.replace(/%(25)*27/g, stringPrefix)
   var i = 0,
     len = s.length
 
@@ -156,7 +135,7 @@ export function parse(s: string): unknown {
         }
         eat(')')
         break
-      case "'":
+      case stringPrefix:
         i++
         result = decode()
         break

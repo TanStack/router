@@ -92,6 +92,8 @@
     "@babel/runtime": "^7.15.4",
     "core-js": "^3.18.3",
     "fast-async": "7",
+    "jsurl": "^0.1.5",
+    "qss": "^2.0.3",
     "ts-toolbelt": "^9.6.0"
   }
 }
