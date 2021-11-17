@@ -68,7 +68,7 @@ Let's just say React Location doesn't skimp on search params. It handles all of 
 
 ### Asynchronous Navigation
 
-Popularized by frameworks like [Next.js](https://nextjs.org) and now [Remix](https://remix.run), **specifying asynchronous dependencies for routes that can all resolve in parallel before rendering** is quickly becoming table stakes for almost every React Framework out there. It would be nice if Suspense on its own could give us the solution, but without a router to indicate what needs to be pre-loaded, only suspending on render doesn't allow you to avoid waterfal suspense requests.
+Popularized by frameworks like [Next.js](https://nextjs.org) and now [Remix](https://remix.run), **specifying asynchronous dependencies for routes that can all resolve in parallel before rendering** is quickly becoming table stakes for almost every React Framework out there. It would be nice if Suspense on its own could give us the solution, but without a router to indicate what needs to be pre-loaded, only suspending on render doesn't allow you to avoid waterfall suspense requests.
 
 This capability of knowing everything that needs to be fetched up front before navigating is being explored heavily in SSR frameworks, but not in client-side apps. React Location's goal is to provide that same first-class support for specifying arbitrary asynchronous dependencies for your routes while asynchronously suspending navigation rendering until these dependencies are met.
 
