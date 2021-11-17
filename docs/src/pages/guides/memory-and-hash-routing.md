@@ -8,7 +8,7 @@ title: Memory and Hash Routing
 Hash routing can be helpful if your server doesn't support rewrites to `index.html` for http requests (among other environments that don't have a server).
 
 ```tsx
-import { createMemoryHistory, ReactLocation } from 'react-location'
+import { createHashHistory, ReactLocation } from 'react-location'
 
 // Create a hash history
 const hashHistory = createHashHistory()
