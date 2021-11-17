@@ -544,7 +544,7 @@ function Users() {
   const sortBy = usersView?.sortBy ?? "name";
   const filterBy = usersView?.filterBy;
 
-  const [filter, setFilter] = React.useState(filterBy ?? "");
+  const [filterDraft, setFilterDraft] = React.useState(filterBy ?? "");
 
   const sortedUsers = React.useMemo(() => {
     if (!users) return [];
@@ -570,7 +570,7 @@ function Users() {
         return {
           ...old,
           usersView: {
-            ...old?.usersView,
+            ...(old?.usersView ?? {}),
             sortBy,
           },
         };
@@ -578,23 +578,20 @@ function Users() {
       replace: true,
     });
 
-  const setFilterBy = (filterBy: string) =>
+  React.useEffect(() => {
     navigate({
       search: (old) => {
         return {
           ...old,
           usersView: {
             ...old?.usersView,
-            filterBy: filterBy || undefined,
+            filterBy: filterDraft || undefined,
           },
         };
       },
       replace: true,
     });
-
-  React.useEffect(() => {
-    setFilterBy(filter);
-  }, [filter]);
+  }, [filterDraft]);
 
   return (
     <div className={tw`flex-1 flex`}>
@@ -614,8 +611,8 @@ function Users() {
         <div className={tw`py-2 px-3 flex gap-2 items-center bg-gray-100`}>
           <div>Filter By:</div>
           <input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            value={filterDraft}
+            onChange={(e) => setFilterDraft(e.target.value)}
             placeholder="Search Names..."
             className={tw`min-w-0 flex-1 border p-1 px-2 rounded`}
           />
