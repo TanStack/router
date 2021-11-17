@@ -1868,7 +1868,6 @@ export function defaultStringifySearch(search: Record<string, unknown>) {
       const val = search[key]
       if (typeof val === 'undefined' || val === undefined) {
         delete search[key]
-      } else if (val && isPlainObject(val)) {
       } else if (val && typeof val === 'object' && val !== null) {
         try {
           search[key] = JSON.stringify(val)
