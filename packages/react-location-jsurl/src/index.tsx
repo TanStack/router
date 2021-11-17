@@ -6,7 +6,9 @@ export function stringifySearch(search: Record<string, unknown>) {
   if (search) {
     Object.keys(search).forEach((key) => {
       const val = search[key]
-      if (val && typeof val === 'object' && val !== null) {
+      if (typeof val === 'undefined' || val === undefined) {
+        delete search[key]
+      } else if (val && typeof val === 'object' && val !== null) {
         try {
           search[key] = stringify(val)
         } catch (err) {
@@ -16,7 +18,11 @@ export function stringifySearch(search: Record<string, unknown>) {
     })
   }
 
-  return new URLSearchParams(search as Record<string, string>).toString()
+  const searchStr = new URLSearchParams(
+    search as Record<string, string>,
+  ).toString()
+
+  return searchStr ? `?${searchStr}` : ''
 }
 
 export function parseSearch(searchStr: string): Record<string, any> {
