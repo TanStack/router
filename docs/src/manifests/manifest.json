@@ -36,6 +36,11 @@
           "editUrl": "/guides/route-loaders.md"
         },
         {
+          "title": "Route Elements",
+          "path": "/guides/route-elements",
+          "editUrl": "/guides/route-elements.md"
+        },
+        {
           "title": "History Types & Location",
           "path": "/guides/history-types-and-location",
           "editUrl": "/guides/history-types-and-location.md"
