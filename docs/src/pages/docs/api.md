@@ -288,7 +288,7 @@ const routes: Route[] = [
     path: 'invoices',
     element: <Invoices />,
     // Load invoices before rendering
-    load: async () => ({
+    loader: async () => ({
       invoices: await fetchInvoices(),
     }),
     children: [
@@ -300,7 +300,7 @@ const routes: Route[] = [
         path: ':invoiceId',
         element: <Invoice />,
         // Load the individual invoice before rendering
-        load: async ({ params }) => ({
+        loader: async ({ params }) => ({
           invoice: await fetchInvoiceById(params.invoiceId),
         }),
       },
@@ -346,14 +346,14 @@ function App() {
         {
           path: 'invoices',
           element: <Invoices />,
-          load: async () => ({
+          loader: async () => ({
             invoices: await fetchInvoices(),
           }),
           children: [
             {
               path: ':invoiceId',
               element: <Invoice />,
-              load: async ({ params }) => ({
+              loader: async ({ params }) => ({
                 invoice: await fetchInvoiceById(params.invoiceId),
               }),
             },
