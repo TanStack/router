@@ -5,7 +5,7 @@ title: Routes
 
 ## What is a route?
 
-A React Location route is simplly an **object**. The `path` property can be used to define the path of the route it should match. Every property of the `Route` type is optional, but clearly recommended for varying circumstances. Here's the most simple use-case, path matching!
+A React Location route is just an **object**. The `path` property can be used to define the path of the route it should match. Every property of the `Route` type is optional, but clearly recommended for varying circumstances. Here's the most simple use-case, path matching!
 
 ```tsx
 const routes = [
