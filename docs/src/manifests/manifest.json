@@ -26,9 +26,19 @@
       "heading": true,
       "routes": [
         {
-          "title": "Memory and Hash Routing",
-          "path": "/guides/memory-and-hash-routing",
-          "editUrl": "/guides/memory-and-hash-routing.md"
+          "title": "Routes",
+          "path": "/guides/routes",
+          "editUrl": "/guides/routes.md"
+        },
+        {
+          "title": "Route Loaders",
+          "path": "/guides/route-loaders",
+          "editUrl": "/guides/route-loaders.md"
+        },
+        {
+          "title": "History Types & Location",
+          "path": "/guides/history-types-and-location",
+          "editUrl": "/guides/history-types-and-location.md"
         }
       ]
     },

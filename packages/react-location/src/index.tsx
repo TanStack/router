@@ -102,6 +102,8 @@ export type RouteLoaders<TGenerics> = {
   pendingElement?: SyncOrAsyncElement<TGenerics>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: LoaderFn<TGenerics>
+  // An integer of milliseconds representing how long data should be cached for the route
+  loaderMaxAge?: number
   // An object of whatever you want! This object is accessible anywhere matches are.
   meta?: UseGeneric<TGenerics, 'RouteMeta'>
 }
@@ -246,6 +248,10 @@ export type LinkPropsType<TGenerics extends PartialGenerics = DefaultGenerics> =
 export type LoaderDispatchEvent<
   TGenerics extends PartialGenerics = DefaultGenerics,
 > =
+  | {
+      type: 'maxAge'
+      maxAge: number
+    }
   | {
       type: 'loading'
     }
@@ -615,7 +621,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
       })
     })
 
-    matchLoader.loadData({ maxAge: rest.defaultLoaderMaxAge })
+    matchLoader.loadData()
     matchLoader.startPending()
 
     return unsubscribe
@@ -715,8 +721,13 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
     }
   }
 
-  load? = (opts: { maxAge?: number; parentMatch?: RouteMatch<TGenerics> }) => {
-    this.maxAge = opts.maxAge
+  load? = (opts: {
+    maxAge?: number
+    parentMatch?: RouteMatch<TGenerics>
+    router: Router<TGenerics>
+  }) => {
+    this.maxAge =
+      opts.maxAge ?? this.route.loaderMaxAge ?? opts.router.defaultLoaderMaxAge
 
     if (this.loaderPromise) {
       return
@@ -806,6 +817,8 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
                         reject(event.error)
                       } else if (event.type === 'loading') {
                         this.isLoading = true
+                      } else if (event.type === 'maxAge') {
+                        this.maxAge = event.maxAge
                       }
 
                       this.updatedAt = Date.now()
@@ -921,7 +934,7 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
     this.matches.forEach((match, index) => {
       const parentMatch = this.matches?.[index - 1]
       match.assignMatchLoader?.(this)
-      match.load?.({ maxAge, parentMatch })
+      match.load?.({ maxAge, parentMatch, router: this.router })
       this.firstRenderPromises?.push(match.loaderPromise!)
     })
 

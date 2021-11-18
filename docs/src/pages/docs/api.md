@@ -115,30 +115,7 @@ return (
 
 In React Location, routes are just an array of objects where routes can contain child array's of more routes. It's a route tree!
 
-By default, Routes are matched in the order they are specified, with a few small rules:
-
-- If a route has **no path**, it is considered to have `path: *`
-- If a route has **no element**, it is considered to have `element: <Outlet />` (or whatever you set as the `Router`'s `defaultElement` prop)
-- If a route has both a `path` and `search` defined, both must pass to be matched.
-- For Paths:
-  - Index routes (`/`) are considered `exact`, unless they contain child routes.
-  - The following routes will always match when encountered:
-    - Param'd routes (eg. `:teamId`)
-    - Wildcard routes (`*`)
-    - Routes without a `path` (which are also considered wildcard `*` routes)
-  - All other routes are fuzzy matched, meaning that they will match if they are a prefix of the current path.
-- For Search params:
-  - No search params will always match
-
-**Route Loaders, Async Elements, and Imports**
-
-All of these features are essentially **asynchronous routing features** and we'll commonly refer to them as such in these docs.
-
-- All async routing features are called on **every navigation, all the time, regardless of route nesting**.
-  - This allows routes loaders to control _all_ aspects of caching. Caching is certainly something with which React Location integrates well, but ultimately, caching is not the core of React Location's responsibility.
-- Unless you specify a dependency on a parent route's promise, **all `loader`s and asynchronous `element`s for the entire tree are loaded in parallel!**. _If you need a route to wait for a parent's promise or data, you can access it via `loader: (match) => match.parentMatch.loaderPromise`_
-- Out of the box, React Location **only caches loaders and async elements for routes that are currently rendered on the screen**. If you need more caching than this, you can play with the `defaultLoaderMaxAge` option on the `<Router />` component or better yet, we recommend using an external cache for your loader data like `react-location-simple-cache` or our other favorite TanStack library, React Query!
-- Introducing async behavior (loaders and async elements) into a route usually means you should handle errors too. Use the `errorElement` route option and the `useMatch()` hook to handle and display these errors.
+For mor information on creating routes and how they behave, see [../guides/routes.md](../guides/routes.md).
 
 #### Route Properties
 
@@ -177,6 +154,8 @@ export type RouteLoaders<TGenerics> = {
   pendingElement?: SyncOrAsyncElement<TGenerics>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: LoaderFn<TGenerics>
+  // An integer of milliseconds representing how long data should be cached for the route loader
+  loaderMaxAge?: number
   // An object of whatever you want! This object is accessible anywhere matches are.
   meta?: UseGeneric<TGenerics, 'RouteMeta'>
 }
