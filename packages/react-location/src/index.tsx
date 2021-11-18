@@ -14,9 +14,7 @@ export { createHashHistory, createBrowserHistory, createMemoryHistory }
 
 // Types
 
-declare global {
-  const __DEV__: boolean
-}
+let __DEV__: boolean
 
 type Timeout = ReturnType<typeof setTimeout>
 
