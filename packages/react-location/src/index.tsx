@@ -88,6 +88,7 @@ export type Route<TGenerics extends PartialGenerics = DefaultGenerics> =
     // This is particularly useful for code-splitting or module federation
     import?: (opts: {
       params: UseGeneric<TGenerics, 'Params'>
+      search: UseGeneric<TGenerics, 'Search'>
     }) => Promise<RouteLoaders<TGenerics>>
   }
 
@@ -137,6 +138,7 @@ export type UnloadedMatch<TGenerics extends PartialGenerics = DefaultGenerics> =
     routeIndex: number
     pathname: string
     params: UseGeneric<TGenerics, 'Params'>
+    search: UseGeneric<TGenerics, 'Search'>
   }
 
 export type LoaderFn<TGenerics extends PartialGenerics = DefaultGenerics> = (
@@ -517,6 +519,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
       routePath: '',
       id: '__root__',
       params: {} as any,
+      search: {} as any,
       routeIndex: 0,
       pathname: basepath,
       route: null!,
@@ -669,6 +672,7 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
   routeIndex: number
   pathname: string
   params: UseGeneric<TGenerics, 'Params'>
+  search: UseGeneric<TGenerics, 'Search'>
   updatedAt?: number
   element?: React.ReactNode
   errorElement?: React.ReactNode
@@ -688,6 +692,7 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
     this.routeIndex = unloadedMatch.routeIndex
     this.pathname = unloadedMatch.pathname
     this.params = unloadedMatch.params
+    this.search = unloadedMatch.search
   }
 
   status: 'pending' | 'resolved' | 'rejected' = 'pending'
@@ -737,12 +742,14 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
     this.loaderPromise = (
       !importer
         ? Promise.resolve()
-        : importer({ params: this.params }).then((imported) => {
-            this.route = {
-              ...this.route,
-              ...imported,
-            }
-          })
+        : importer({ params: this.params, search: this.search }).then(
+            (imported) => {
+              this.route = {
+                ...this.route,
+                ...imported,
+              }
+            },
+          )
     )
       // then run all element and data loaders in parallel
       .then(() => {
@@ -1066,6 +1073,7 @@ export function matchRoutes<
       routeIndex,
       params,
       pathname,
+      search: currentLocation.search,
     }
 
     matches.push(match)
