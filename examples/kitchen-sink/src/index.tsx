@@ -17,8 +17,6 @@ import {
   MatchRoute,
 } from "react-location";
 
-import { parseSearch, stringifySearch } from "react-location-jsurl";
-
 import reallyExpensiveRoute from "./reallyExpensive";
 
 //
@@ -86,10 +84,7 @@ export type LocationGenerics = MakeGenerics<{
 //
 
 // Set up a ReactLocation instance
-const location = new ReactLocation<LocationGenerics>({
-  parseSearch,
-  stringifySearch,
-});
+const location = new ReactLocation<LocationGenerics>();
 
 // Build our routes. We could do this in our component, too.
 const routes: Route<LocationGenerics>[] = [
