@@ -29,7 +29,7 @@ A route path can be a string _(regular expression support is coming soon!)_, and
 - `about/me`
 - `about/me/`
 - `about/me/you`
-- `about/me/you`
+- `about/me/you/`
 
 Or, you can use the `children` property to define child routes:
 
