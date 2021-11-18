@@ -133,7 +133,7 @@ const routes = [
 ]
 ```
 
-**The text that matches a path param is extracted and usable in many places like [loaders](../route-loaders.md), [importers](../route-imports.md) and [elements](../route-matches).**
+**The text that matches a path param is extracted and usable in many places like [loaders](../route-loaders), [importers](../route-imports) and [elements](../route-matches).**
 
 Because path params behave like wildcards, they will match any path that provides them with a valid value. Because of this, it is recommended to define path params last in your route hierarchy so you have the opportunity to match other non-wildcard paths before they are matched by path params:
 

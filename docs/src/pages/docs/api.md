@@ -115,7 +115,7 @@ return (
 
 In React Location, routes are just an array of objects where routes can contain child array's of more routes. It's a route tree!
 
-For mor information on creating routes and how they behave, see [../guides/routes.md](../guides/routes.md).
+For more information on creating routes and how they behave, see the [Routes Guide](../guides/routes).
 
 #### Route Properties
 
