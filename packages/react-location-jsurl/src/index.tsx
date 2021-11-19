@@ -21,8 +21,6 @@ export function stringifySearch(search: Record<string, unknown>) {
 
   const searchStr = encode(search as Record<string, string>).toString()
 
-  console.log(search, searchStr)
-
   return searchStr ? `?${searchStr}` : ''
 }
 
@@ -44,8 +42,6 @@ export function parseSearch(searchStr: string): Record<string, any> {
       }
     }
   }
-
-  console.log({ query })
 
   return query
 }
