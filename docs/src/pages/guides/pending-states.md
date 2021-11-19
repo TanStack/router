@@ -96,6 +96,21 @@ function App() {
 }
 ```
 
+You can also use the `MatchRoute` component with a function as a child:
+
+```tsx
+function App() {
+  return (
+    <Link to="dashboard">
+      Dashboard{' '}
+      <MatchRoute to="dashboard" pending>
+        {(match) => <Spinner show={!!match} />}
+      </MatchRoute>
+    </Link>
+  )
+}
+```
+
 Likewise, you can use the `useMatchRoute` hook to get a more functional approach to the same end:
 
 ```tsx
@@ -110,5 +125,3 @@ function App() {
   )
 }
 ```
-
---

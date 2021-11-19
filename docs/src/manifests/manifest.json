@@ -41,6 +41,11 @@
           "editUrl": "/guides/route-elements.md"
         },
         {
+          "title": "Pending States",
+          "path": "/guides/pending-states",
+          "editUrl": "/guides/pending-states.md"
+        },
+        {
           "title": "History Types & Location",
           "path": "/guides/history-types-and-location",
           "editUrl": "/guides/history-types-and-location.md"
