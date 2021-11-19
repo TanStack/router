@@ -37,7 +37,7 @@ export function elementsToRoutes<
       throw new Error()
     }
 
-    let route: RouteType<TGenerics> = element.props
+    let route: RouteType<TGenerics> = { ...element.props }
 
     if (element.props.children) {
       route.children = elementsToRoutes(element.props.children)
