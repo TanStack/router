@@ -33,7 +33,7 @@ Routes come with a few defaults, each of which is customizable via the `Router` 
 
 - `element`: The `defaultElement` prop you pass to your `Router`, which defaults to `<Outlet>`.
   - If you don't specify an element, the `defaultElement` outlet will be used instead.
-  - `<Outlet>` is the default element because it enables routes to be defined with just a path for heirarchical purposes, and simply act as a passthrough for rendering.
+  - `<Outlet>` is the default element because it enables routes to be defined with just a path for hierarchical purposes, and simply act as a passthrough for rendering.
 - `errorElement`: The `defaultErrorElement` prop you pass to your `Router`, which defaults to `null`.
   - In development, a default error element is provided to warn you of unhandled promises and the lack of an `errorElement` on the route
   - In production, there is no default error element, which means unhandled route errors will bubble up to the nearest `<ErrorBoundary>`

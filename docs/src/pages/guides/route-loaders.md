@@ -6,12 +6,12 @@ title: Route Loaders
 Route loaders are route-level functions that can specify arbitrary data requirements for that route. They can be used to:
 
 - Fetch data from a server
-- Delay the loading of a route until an asynchrnous action has been completed
+- Delay the loading of a route until an asynchronous action has been completed
 - Prepare the route to be rendered
 
 ## Why should I use route loaders? Why are they cool?!
 
-Routes requiring data is nothing new, but the way React Location orchestrates these requirements is where the magic happens. In a traditional React application, usually the route is rendered immediately, and the data is fetched asynchronously either via a custom hook or a suspense boundary that is hit. This is a great way to get data from a server, but it also means that the route is rendered before the data is available. It introduces the need for a lot of boilerplate code to handle the asynchronous data fetching and even worse, **spinners** everywhere. This is usually a sub-optimal user experience, and with route loaders, **it's one that we can avoid!**
+Routes requiring data are nothing new, but the way React Location orchestrates these requirements is where the magic happens. In a traditional React application, usually the route is rendered immediately, and the data is fetched asynchronously either via a custom hook or a suspense boundary that is hit. This is a great way to get data from a server, but it also means that the route is rendered before the data is available. It introduces the need for a lot of boilerplate code to handle the asynchronous data fetching and even worse, **spinners** everywhere. This is usually a sub-optimal user experience, and with route loaders, **it's one that we can avoid!**
 
 Route loaders are called when:
 
@@ -33,10 +33,10 @@ All you have to do is return a promise that resolves **an object with the data y
 
 ## Route Loader Objects
 
-Why do route loaders need to return an object? Because **multiple route loaders can be matche at once**. For example:
+Why do route loaders need to return an object? Because **multiple route loaders can be matched at once**. For example:
 
 - A `teams` route might have a route loader that fetches a list of teams
-- A `teams/:teamId` route might have another loader that fetches the invidual team details.
+- A `teams/:teamId` route might have another loader that fetches the individual team details.
 
 At the `teams` route, you would return an object with the `teams` key, and at the `teams/:teamId` route, you would return an object with the `team` key.
 
@@ -68,9 +68,9 @@ Each of these loader objects will be merged together into a single object that c
 }
 ```
 
-## Parallized Execution Vs Serial Execution
+## Parallelized Execution Vs Serial Execution
 
-Route loaders are parallized by default. This means that when a route is matched, each of the loaders it matches will be executed **at the same** time. This is great for performance, but it also means that if one of the loaders fails, the others will still be executed. It also means that if one of your loaders depends on the data of a parent, it will need to de-opt and await the promise of its parent before proceeding.
+Route loaders are parallelized by default. This means that when a route is matched, each of the loaders it matches will be executed **at the same** time. This is great for performance, but it also means that if one of the loaders fails, the others will still be executed. It also means that if one of your loaders depends on the data of a parent, it will need to de-opt and await the promise of its parent before proceeding.
 
 Here is an example of a route loader that depends on the data of a parent:
 
@@ -169,7 +169,7 @@ The `maxAge` of a route loader represents the amount of time in milliseconds to 
 
 The loader dispatcher can be used to imperatively update specific aspects of a router loader's state either during or after the loader has run. This can be useful for:
 
-- Setting a maxAge for the route loader based on the loader response
+- Setting a `maxAge` for the route loader based on the loader response
 - Triggering background refetches of a route loader
 - Extending the cache abilities of a route loader, as is done with the [`react-location-simple-cache`](..) package.
 
@@ -185,7 +185,7 @@ const routes = [{
 }]
 ```
 
-The dispatcher takes an event object as it's only argument. The event object must have a `type` property, and any additional properties that correspond to that event. Here is the event type::
+The dispatcher takes an event object as its only argument. The event object must have a `type` property, and any additional properties that correspond to that event. Here is the event type::
 
 ```tsx
 export type LoaderDispatchEvent<

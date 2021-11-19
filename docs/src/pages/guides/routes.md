@@ -24,7 +24,7 @@ A route path can be a string _(regular expression support is coming soon!)_, and
 - `about/`
 - `about`
 
-**Leading and trailing slashes are optional because they do not affect the hierarchy of the route structure.** To build hierarchy, you can either use slashes inside your your route path eg.
+**Leading and trailing slashes are optional because they do not affect the hierarchy of the route structure.** To build hierarchy, you can either use slashes inside your route path eg.
 
 - `about/me`
 - `about/me/`
