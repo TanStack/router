@@ -3,7 +3,8 @@
 
 // Unreserved characters for URL encoding are: - . _ ~
 // Earlier versions of this library used a different encoding for strings, but in our version we use a period for the string delimiter.
-const stringPrefix = '.'
+const previousStringPrefixes = ["'"] as const
+const stringPrefix = '-'
 
 export function stringify(v: any): string {
   function encode(s: any) {
@@ -67,7 +68,7 @@ var reserved: Record<string, boolean | null> = {
 
 export function parse(s: string): unknown {
   if (!s) return s
-  s = s.replace(/%(25)*27/g, stringPrefix)
+  s = s.replace(/%(25)*27/g, "'")
   var i = 0,
     len = s.length
 
@@ -113,45 +114,43 @@ export function parse(s: string): unknown {
   return (function parseOne(): any {
     var result: any, ch, beg
     eat('~')
-    switch ((ch = s.charAt(i))) {
-      case '(':
-        i++
-        if (s.charAt(i) === '~') {
-          result = []
-          if (s.charAt(i + 1) === ')') i++
-          else {
-            do {
-              result.push(parseOne())
-            } while (s.charAt(i) === '~')
-          }
-        } else {
-          result = {}
-          if (s.charAt(i) !== ')') {
-            do {
-              var key = decode()
-              result[key] = parseOne()
-            } while (s.charAt(i) === '~' && ++i)
-          }
+    const current = (ch = s.charAt(i))
+    if (current === '(') {
+      i++
+      if (s.charAt(i) === '~') {
+        result = []
+        if (s.charAt(i + 1) === ')') i++
+        else {
+          do {
+            result.push(parseOne())
+          } while (s.charAt(i) === '~')
         }
-        eat(')')
-        break
-      case stringPrefix:
-        i++
-        result = decode()
-        break
-      default:
-        beg = i++
-        while (i < len && /[^)~]/.test(s.charAt(i))) i++
-        var sub: string = s.substring(beg, i)
-        if (/[\d\-]/.test(ch)) {
-          result = parseFloat(sub)
-        } else {
-          result = reserved[sub]
-          if (typeof result === 'undefined') {
-            // throw new Error('bad value keyword: ' + sub)
-            throw new Error()
-          }
+      } else {
+        result = {}
+        if (s.charAt(i) !== ')') {
+          do {
+            var key = decode()
+            result[key] = parseOne()
+          } while (s.charAt(i) === '~' && ++i)
         }
+      }
+      eat(')')
+    } else if ([stringPrefix, ...previousStringPrefixes].includes(current)) {
+      i++
+      result = decode()
+    } else {
+      beg = i++
+      while (i < len && /[^)~]/.test(s.charAt(i))) i++
+      var sub: string = s.substring(beg, i)
+      if (/[\d\-]/.test(ch)) {
+        result = parseFloat(sub)
+      } else {
+        result = reserved[sub]
+        if (typeof result === 'undefined') {
+          // throw new Error('bad value keyword: ' + sub)
+          throw new Error()
+        }
+      }
     }
     return result
   })()
