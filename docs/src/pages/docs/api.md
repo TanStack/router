@@ -113,7 +113,7 @@ return (
 
 ## Defining Routes
 
-In React Location, routes are just an array of objects where routes can contain child array's of more routes. It's a route tree!
+In React Location, routes are just an array of objects where routes can contain child arrays of more routes. It's a route tree!
 
 For more information on creating routes and how they behave, see the [Routes Guide](../guides/routes).
 
@@ -410,7 +410,7 @@ In React Location, search params are considered first-class objects that can be 
 The first level of search params always have standard encoding, eg. `?param1=value&param2=value&param3=value`. This keeps things at the root level of the search params experience as compatible as possible with the rest of the web ecosystem. There are many tools frameworks and core web browsers APIs that use this basic expectation. **Starting with at value level of search params, however, React Location offers much more power**.
 
 - By default, React Location uses `JSON.parse` and `JSON.stringify` to ensure your search params can contain complex JSON objects.
-- Custom `stringifySearch` and `parseSearch` functions can be provided to your `ReactLocation` instance to further enhance the way search objects are encoded. We suggest using our `react-location-jsurl` package if you're truly looking for the best UX around search param encoding. It keeps urls small, readable and safely encoded for users to share and bookmark.
+- Custom `stringifySearch` and `parseSearch` functions can be provided to your `ReactLocation` instance to further enhance the way search objects are encoded. We suggest using our `react-location-jsurl` package if you're truly looking for the best UX around search param encoding. It keeps URLs small, readable and safely encoded for users to share and bookmark.
 - Regardless of the serialization strategy you pick for React Location, it will _always_ guarantee a stable, immutable and structurally-safe object reference. This means that even though your search params' source of truth is technically a string, it will behave as if it is an immutable object, stored in your application's memory.
 
 ## useSearch
@@ -624,7 +624,7 @@ The following link will contain an `<ActiveIcon/>` prefix when active
 
 ## Navigate
 
-When renderd, the `Navigate` component will declaratively and relatively navigate to any route.
+When rendered, the `Navigate` component will declaratively and relatively navigate to any route.
 
 ```tsx
 export type NavigateOptions<
@@ -675,7 +675,7 @@ function MyComponent() {
 
 ## useMatchRoute
 
-The `useMatchRoute` hook allows you to programmatically test both relative and absolute paths against the current or pending location. If a path is match, it will return an object of route params detected, even if this is an empty object. This can be useful for:
+The `useMatchRoute` hook allows you to programmatically test both relative and absolute paths against the current or pending location. If a path is matched, it will return an object of route params detected, even if this is an empty object. This can be useful for:
 
 - Detecting specific deep-route matches from a layout component
 - Determining if a specific route is the next pending location that is being transitioned to
@@ -750,7 +750,7 @@ function Example() {
 
 ## useRouter
 
-The `useRouter` hook can be used to gain access to the state of the parent `<Router />` component It's shape looks like this:
+The `useRouter` hook can be used to gain access to the state of the parent `<Router />` component. Its shape looks like this:
 
 ```tsx
 export type Router<TGenerics extends PartialGenerics = DefaultGenerics> =
@@ -807,7 +807,7 @@ function Team() {
 
 The `usePrompt` hook allows you to programmatically prompt the user with a dialog.
 
-It's syntax looks like this:
+Its syntax looks like this:
 
 ```tsx
 export function usePrompt(message: string, when: boolean | any): void
@@ -835,7 +835,7 @@ function App() {
 
 The `Prompt` component is merely a component-version of `usePrompt`. It takes all of the same options, but comes with some different affordances.
 
-It's syntax looks like this:
+Its syntax looks like this:
 
 ```tsx
 export function Prompt(props: { message: string; when: boolean | any }): null
