@@ -5,7 +5,7 @@ title: Routes
 
 ## What is a route?
 
-A React Location route is just an **object**. The `path` property can be used to define the path of the route it should match. Every property of the `Route` type is optional, but clearly recommended for varying circumstances. Here's the most simple use-case, path matching!
+A React Location route is just an **object**. The `path` property can be used to define the path of the route it should match. Every property of the `Route` type is optional, but clearly recommended for varying circumstances. Here's the simplest use-case, path matching!
 
 ```tsx
 const routes = [
@@ -109,14 +109,14 @@ const routes = [
 
 ## Path Params
 
-Path params are named **wildcards** that can be used to match, and extract, any part of th path that they match. They can defined by using the `:` character in the path. The following are valid paths:
+Path params are named **wildcards** that can be used to match, and extract, any part of the path that they match. They can be defined by using the `:` character in the path. The following are valid paths:
 
 - `:postId`
 - `:name`
 - `:teamId`
 - `about/:name`
 - `team/:teamId`
-- `blog/:postId
+- `blog/:postId`
 
 Again, the `children` property can be used to express nested routes with path params:
 
