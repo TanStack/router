@@ -21,7 +21,7 @@ import MDXComponents from './MDXComponents'
 import Head from 'next/head'
 import { getManifest } from 'manifests/getManifest'
 
-const getSlugAndTag = path => {
+const getSlugAndTag = (path) => {
   const parts = path.split('/')
 
   if (parts[2] === '1.5.8' || parts[2] === '2.1.4') {
@@ -40,7 +40,7 @@ const addTagToSlug = (slug, tag) => {
   return tag ? `/docs/${tag}/${slug.replace('/docs/', '')}` : slug
 }
 
-export const LayoutDocs = props => {
+export const LayoutDocs = (props) => {
   const router = useRouter()
   const { slug, tag } = getSlugAndTag(router.asPath)
   const { routes } = getManifest(tag)
@@ -75,11 +75,10 @@ export const LayoutDocs = props => {
         )}
         <Seo
           title={title || props.meta.title}
-          description={props.meta.description}
+          description={props.meta.description ?? props.meta.body}
         />
         <div className="block">
           <>
-
             <div className="container mx-auto pb-12 pt-6 content">
               <div className="flex relative">
                 {!isMobile && (
@@ -132,7 +131,7 @@ export const LayoutDocs = props => {
 }
 
 function getCategoryPath(routes) {
-  const route = routes.find(r => r.path)
+  const route = routes.find((r) => r.path)
   return route && removeFromLast(route.path, '/')
 }
 
