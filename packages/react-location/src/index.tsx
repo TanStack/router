@@ -103,6 +103,14 @@ export type RouteLoaders<TGenerics> = {
   loader?: LoaderFn<TGenerics>
   // An integer of milliseconds representing how long data should be cached for the route
   loaderMaxAge?: number
+  // Similar to React's useEffect hook, this function is called
+  // when moving from an inactive state to an active one. Likewise, when moving from
+  // an active to an inactive state, the return function (if provided) is called.
+  onMatch?: (
+    match: RouteMatch<TGenerics>,
+  ) => void | undefined | ((match: RouteMatch<TGenerics>) => void)
+  // This function is called when the route remains active from one transition to the next.
+  onTransition?: (match: RouteMatch<TGenerics>) => void
   // An object of whatever you want! This object is accessible anywhere matches are.
   meta?: UseGeneric<TGenerics, 'RouteMeta'>
 }
@@ -132,7 +140,6 @@ export type AsyncElement<TGenerics extends PartialGenerics = DefaultGenerics> =
 
 export type UnloadedMatch<TGenerics extends PartialGenerics = DefaultGenerics> =
   {
-    routePath: string
     id: string
     route: Route<TGenerics>
     routeIndex: number
@@ -516,7 +523,6 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
 
   const rootMatch = React.useMemo(() => {
     const rootMatch: RouteMatch<TGenerics> = {
-      routePath: '',
       id: '__root__',
       params: {} as any,
       search: {} as any,
@@ -610,6 +616,32 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
 
     const unsubscribe = matchLoader.subscribe(() => {
       setState((old) => {
+        const oldMatches = old.state.matches
+
+        oldMatches
+          .filter((d) => {
+            return !matchLoader.matches.find((dd) => dd.id === d.id)
+          })
+          .forEach((d) => {
+            d.onExit?.(d)
+          })
+
+        oldMatches
+          .filter((d) => {
+            return matchLoader.matches.find((dd) => dd.id === d.id)
+          })
+          .forEach((d) => {
+            d.route.onTransition?.(d)
+          })
+
+        matchLoader.matches
+          .filter((d) => {
+            return !oldMatches.find((dd) => dd.id === d.id)
+          })
+          .forEach((d) => {
+            d.onExit = d.route.onMatch?.(d)
+          })
+
         return {
           ...old,
           state: {
@@ -666,7 +698,6 @@ export function useLocation<
 }
 
 export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
-  routePath: string
   id: string
   route: Route<TGenerics>
   routeIndex: number
@@ -684,9 +715,9 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
   matchLoader?: MatchLoader<TGenerics>
   pendingTimeout?: Timeout
   pendingMinPromise?: Promise<void>
+  onExit?: void | ((match: RouteMatch<TGenerics>) => void)
 
   constructor(unloadedMatch: UnloadedMatch<TGenerics>) {
-    this.routePath = unloadedMatch.routePath
     this.id = unloadedMatch.id
     this.route = unloadedMatch.route
     this.routeIndex = unloadedMatch.routeIndex
@@ -1060,11 +1091,13 @@ export function matchRoutes<
 
     pathname = joinPaths([pathname, interpolatedPath])
 
-    const routePath = joinPaths([parentMatch.routePath, routeIndex.toString()])
+    const id = joinPaths([
+      parentMatch.id,
+      `${interpolatedPath}-${routeIndex.toString()}`,
+    ])
 
     const match: UnloadedMatch<TGenerics> = {
-      routePath,
-      id: JSON.stringify([routePath, params]),
+      id,
       route: {
         ...originalRoute,
         pendingMs: originalRoute.pendingMs ?? opts?.defaultPendingMs,

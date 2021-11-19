@@ -112,6 +112,14 @@ const routes: Route<LocationGenerics>[] = [
                 invoice: await fetchInvoiceById(invoiceId),
               };
             },
+            onMatch: (match) => {
+              console.log(`Now rendering invoice ${match.params.invoiceId}`);
+              return () => {
+                console.log(
+                  `No longer rendering invoice ${match.params.invoiceId}`
+                );
+              };
+            },
           },
         ],
       },

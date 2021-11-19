@@ -156,6 +156,14 @@ export type RouteLoaders<TGenerics> = {
   loader?: LoaderFn<TGenerics>
   // An integer of milliseconds representing how long data should be cached for the route loader
   loaderMaxAge?: number
+  // Similar to React's useEffect hook, this function is called
+  // when moving from an inactive state to an active one. Likewise, when moving from
+  // an active to an inactive state, the return function (if provided) is called.
+  onMatch?: (
+    match: RouteMatch<TGenerics>
+  ) => void | undefined | ((match: RouteMatch<TGenerics>) => void)
+  // This function is called when the route remains active from one transition to the next.
+  onTransition?: (match: RouteMatch<TGenerics>) => void
   // An object of whatever you want! This object is accessible anywhere matches are.
   meta?: UseGeneric<TGenerics, 'RouteMeta'>
 }
