@@ -9,7 +9,7 @@ let __DEV__: boolean
 
 export function Route<TGenerics extends PartialGenerics = DefaultGenerics>(
   _props: Omit<RouteType<TGenerics>, 'children'> & {
-    children: React.ReactNode
+    children?: React.ReactNode
   },
 ) {
   return null
