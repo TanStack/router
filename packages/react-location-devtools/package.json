@@ -8,9 +8,9 @@
     "url": "https://github.com/sponsors/tannerlinsley"
   },
   "description": "",
-  "main": "lib/index.js",
-  "module": "es/index.js",
-  "unpkg": "dist/react-location-devtools.development.js",
+  "main": "index.lib.js",
+  "module": "index.es.js",
+  "unpkg": "index.js",
   "types": "types/index.d.ts",
   "scripts": {
     "test": "(is-ci && yarn test:ci) || yarn test:dev",
