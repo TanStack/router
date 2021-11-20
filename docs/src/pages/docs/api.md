@@ -724,11 +724,11 @@ function Root() {
   matchRoute({ to: '/' }) // undefined
   matchRoute({ to: '/', fuzzy: true }) // {}
   matchRoute({ to: '/*' }) // { '*': 'team-1' }
-  matchRoute({ to: ':teamId' }) // { teamId: 'team-1 }
+  matchRoute({ to: ':teamId' }) // { teamId: 'team-1' }
 
   // If the pending path is `/team-1`
   matchRoute({ to: ':teamId' }) // undefined
-  matchRoute({ to: ':teamId', pending: true }) // { teamId: 'team-1 }
+  matchRoute({ to: ':teamId', pending: true }) // { teamId: 'team-1' }
 }
 ```
 
