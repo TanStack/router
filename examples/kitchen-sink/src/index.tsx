@@ -16,6 +16,7 @@ import {
   useNavigate,
   MatchRoute,
 } from "react-location";
+import { ReactLocationDevtools } from "react-location-devtools";
 
 import reallyExpensiveRoute from "./reallyExpensive";
 
@@ -303,6 +304,7 @@ function App() {
           ].join(".")}
         >
           <Root />
+          <ReactLocationDevtools position="bottom-right" />
         </Router>
       </AuthProvider>
     </>

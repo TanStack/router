@@ -15,6 +15,11 @@
           "editUrl": "/installation.md"
         },
         {
+          "title": "Helpful Tips",
+          "path": "/helpful-tips",
+          "editUrl": "/helpful-tips.md"
+        },
+        {
           "title": "Comparison",
           "path": "/comparison",
           "editUrl": "/comparison.md"
@@ -56,6 +61,11 @@
       "title": "Tools & Plugins",
       "heading": true,
       "routes": [
+        {
+          "title": "Devtools",
+          "path": "/tools/devtools",
+          "editUrl": "/tools/devtools.md"
+        },
         {
           "title": "JSURL Search Params",
           "path": "/tools/jsurl",

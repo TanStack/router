@@ -18,6 +18,7 @@ const streamToArray = require('stream-to-array')
 const packageNames: [string, string[]][] = [
   ['react-location', []],
   ['react-location-jsurl', []],
+  ['react-location-devtools', ['react-location']],
   ['react-location-simple-cache', ['react-location']],
   ['react-location-rank-routes', ['react-location']],
   ['react-location-elements-to-routes', ['react-location']],

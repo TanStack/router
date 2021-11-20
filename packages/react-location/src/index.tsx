@@ -523,7 +523,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
 
   const rootMatch = React.useMemo(() => {
     const rootMatch: RouteMatch<TGenerics> = {
-      id: '__root__',
+      id: 'root',
       params: {} as any,
       search: {} as any,
       routeIndex: 0,
@@ -1092,7 +1092,7 @@ export function matchRoutes<
     pathname = joinPaths([pathname, interpolatedPath])
 
     const id = joinPaths([
-      parentMatch.id,
+      parentMatch.id === 'root' ? '' : parentMatch.id,
       `${interpolatedPath}-${routeIndex.toString()}`,
     ])
 
