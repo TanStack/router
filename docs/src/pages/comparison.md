@@ -10,7 +10,7 @@ Before you commit to a new tool, it's always nice to know it stacks up against t
 Feature/Capability Key:
 
 - ✅ 1st-class, built-in, and ready to use with no added configuration or code
-- 🟦 Full Support as an official plugin or addon package
+- 🟢 Full Support as an official plugin or addon package
 - 🟡 Partial Support
 - 🔶 Possible, but requires custom code/implementation
 - 🛑 Not officially supported
@@ -24,13 +24,13 @@ Feature/Capability Key:
 | **General**                                                                                                |                                                               |                                                             |
 | Nested / Layout Routes                                                                                     | ✅                                                            | ✅                                                          |
 | Path Params                                                                                                | ✅                                                            | ✅                                                          |
-| JSX Routes                                                                                                 | 🟦 (`react-location-elements-to-routes`)                      | ✅                                                          |
+| JSX Routes                                                                                                 | 🟢 `react-location-elements-to-routes`                        | ✅                                                          |
 | Code-Splitting                                                                                             | ✅                                                            | ✅                                                          |
-| Ranked Routes                                                                                              | 🟦 (`react-location-ranked-routes`)                           | ✅                                                          |
+| Ranked Routes                                                                                              | 🟢 `react-location-ranked-routes`                             | ✅                                                          |
 | Active Link Customization                                                                                  | ✅                                                            | ✅                                                          |
 | SSR                                                                                                        | 🔶 (✅ Coming soon)                                           | ✅                                                          |
 | Route Mount/Transition/Unmount Events                                                                      | ✅                                                            | 🛑                                                          |
-| Dedicated Devtools                                                                                         | ✅                                                            | 🛑                                                          |
+| Official Devtools                                                                                          | 🟢 `react-location-devtools`                                  | 🛑                                                          |
 | **Search Params**                                                                                          |                                                               |                                                             |
 | Basic Search Params                                                                                        | ✅                                                            | ✅                                                          |
 | Search Param Hooks                                                                                         | ✅                                                            | ✅                                                          |
@@ -41,7 +41,7 @@ Feature/Capability Key:
 | Custom Search Param parsing/serialization                                                                  | ✅                                                            | 🔶                                                          |
 | Queued/Batched Search Param Updates                                                                        | ✅                                                            | 🛑                                                          |
 | Search-Based Route Matching                                                                                | ✅                                                            | 🟡 (string/Regex only?)                                     |
-| Search Param Compression                                                                                   | 🟦 (`react-location-jsurl`)                                   | 🔶                                                          |
+| Search Param Compression                                                                                   | 🟢 `react-location-jsurl`                                     | 🔶                                                          |
 | **Async Routing, Loaders & Data**                                                                          |                                                               |                                                             |
 | Route Loaders & Data (parallelized and blocking)                                                           | ✅                                                            | 🛑                                                          |
 | Basic Route Data Caching                                                                                   | ✅                                                            | 🛑                                                          |
