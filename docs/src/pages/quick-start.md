@@ -7,11 +7,11 @@ The `basic` example below illustrates a few of the basic concepts you'll encount
 
 - Creating Routes
 - Using path params
-- Fetching data in routes
+- Fetching data in Routes
 - Using the Router
 - Creating Links
-- Styling Active Links
-- Using route data in components
+- Styling active Links
+- Using Route data in components
 
 <iframe
   src="https://codesandbox.io/embed/github/tannerlinsley/react-location/tree/main/examples/basic?autoresize=1&fontsize=14&theme=dark"

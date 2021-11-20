@@ -3,7 +3,7 @@ id: simple-cache
 title: React Location Simple Cache
 ---
 
-A simple cache created for React Location route loaders.
+A simple cache created for React Location Route loaders.
 
 - Fetch Policies
 - Stale-While-Revalidate
@@ -59,7 +59,7 @@ const simpleCache = new ReactLocationSimpleCache()
 
 ### SimpleCacheRecord
 
-This is the underlying shape of each record that is stored in the cache
+This is the underlying shape of each record that is stored in the cache:
 
 ```tsx
 import { LoaderData, RouteMatch } from 'react-location'
@@ -79,7 +79,7 @@ export type SimpleCacheRecord<
 
 ### Fetch Policies
 
-The caching functionality of the simple cache allows for a few different fetch policies to be used when determining if and when your loader function is called again.
+The caching functionality of the simple cache allows for a few different fetch policies to be used when determining if and when your loader function gets called again.
 
 ```tsx
 type FetchPolicy = 'cache-and-network' | 'cache-first' | 'network-only'

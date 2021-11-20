@@ -129,9 +129,9 @@ const Home = (props) => {
                   </h3>
                   <div className="mt-2  lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
                     Where most other routers provide minimum-to-no support for
-                    intelligent URL search param management, React Location take
+                    intelligent URL search param management, React Location takes
                     them very seriously to provide highly integrated support for
-                    matching, consuming and manipulating URL search params at
+                    matching, consuming, and manipulating URL search params at
                     scale.
                   </div>
                 </div>

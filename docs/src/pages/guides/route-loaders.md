@@ -11,7 +11,7 @@ Route loaders are route-level functions that can specify arbitrary data requirem
 
 ## Why should I use route loaders? Why are they cool?!
 
-Routes requiring data are nothing new, but the way React Location orchestrates these requirements is where the magic happens. In a traditional React application, usually the route is rendered immediately, and the data is fetched asynchronously either via a custom hook or a suspense boundary that is hit. This is a great way to get data from a server, but it also means that the route is rendered before the data is available. It introduces the need for a lot of boilerplate code to handle the asynchronous data fetching and even worse, **spinners** everywhere. This is usually a sub-optimal user experience, and with route loaders, **it's one that we can avoid!**
+Routes requiring data are nothing new, but the way React Location orchestrates these requirements is where the magic happens. In a traditional React application, usually, the route is rendered immediately, and the data is fetched asynchronously either via a custom hook or a suspense boundary that is hit. This is a great way to get data from a server, but it also means that the route is rendered before the data is available. It introduces the need for a lot of boilerplate code to handle the asynchronous data fetching and even worse, **spinners** everywhere. This is usually a sub-optimal user experience, and with route loaders, **it's one that we can avoid!**
 
 Route loaders are called when:
 
@@ -20,7 +20,7 @@ Route loaders are called when:
 
 ## Route Loader Promises
 
-Route loaders are extremely agnostic as to how you fetch your data. You can use any data fetching means that you like! Here's some of our favorites:
+Route loaders are extremely agnostic as to how you fetch your data. You can use any data fetching means that you like! Here are some of our favorites:
 
 - `fetch`
 - `axios`
@@ -138,7 +138,7 @@ function Team() {
 
 ## Route Loader Caching
 
-> The built-in caching mechanisms for React Location are extremely basic on purpose, since **caching is not the core responsibility or purpose of React Location**. That said, it ensures a very good UX out of the box by doing the bare minimum to retain navigational consistency.
+> The built-in caching mechanisms for React Location are extremely basic on purpose since **caching is not the core responsibility or purpose of React Location**. That said, it ensures a very good UX out of the box by doing the bare minimum to retain navigational consistency.
 
 By default, route loaders are called for **new or changed routes in the route hierarchy that resulted from a navigation**.
 
@@ -185,7 +185,7 @@ const routes = [{
 }]
 ```
 
-The dispatcher takes an event object as its only argument. The event object must have a `type` property, and any additional properties that correspond to that event. Here is the event type::
+The dispatcher takes an event object as its only argument. The event object must have a `type` property and any additional properties that correspond to that event. Here is the event type:
 
 ```tsx
 export type LoaderDispatchEvent<
@@ -212,7 +212,6 @@ export type LoaderDispatchEvent<
 - The `loading` event can be used to indicate that the route loader is in a loading state.
 - The `resolve` event can be used to indicate that the route loader has completed successfully and is required to pass the new loader data.
 - The `reject` event can be used to indicate that the route loader has failed and is required to pass the error that caused the failure.
--
 
 Here's an example of using a `Response`'s `max-age` header to set the `maxAge` for the loader:
 

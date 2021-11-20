@@ -317,7 +317,7 @@ const routes: Route[] = [
 
 ## useMatch
 
-The `useMatch` hook returns the nearest current route match within context of where it's called. It can be used to access:
+The `useMatch` hook returns the nearest current route match within the context of where it's called. It can be used to access:
 
 - Route Data
 - Route Params (eg. `/:invoiceId` => `params.invoiceId`)
@@ -415,10 +415,10 @@ In React Location, search params are considered first-class objects that can be 
 
 **Parsing & Serialization**
 
-The first level of search params always have standard encoding, eg. `?param1=value&param2=value&param3=value`. This keeps things at the root level of the search params experience as compatible as possible with the rest of the web ecosystem. There are many tools frameworks and core web browsers APIs that use this basic expectation. **Starting with at value level of search params, however, React Location offers much more power**.
+The first level of search params always have standard encoding, eg. `?param1=value&param2=value&param3=value`. This keeps things at the root level of the search params experience as compatible as possible with the rest of the web ecosystem. There are many tools frameworks and core web browser APIs that use this basic expectation. **Starting with at value level of search params, however, React Location offers much more power**.
 
 - By default, React Location uses `JSON.parse` and `JSON.stringify` to ensure your search params can contain complex JSON objects.
-- Custom `stringifySearch` and `parseSearch` functions can be provided to your `ReactLocation` instance to further enhance the way search objects are encoded. We suggest using our `react-location-jsurl` package if you're truly looking for the best UX around search param encoding. It keeps URLs small, readable and safely encoded for users to share and bookmark.
+- Custom `stringifySearch` and `parseSearch` functions can be provided to your `ReactLocation` instance to further enhance the way search objects are encoded. We suggest using our `react-location-jsurl` package if you're truly looking for the best UX around search param encoding. It keeps URLs small, readable, and safely encoded for users to share and bookmark.
 - Regardless of the serialization strategy you pick for React Location, it will _always_ guarantee a stable, immutable and structurally-safe object reference. This means that even though your search params' source of truth is technically a string, it will behave as if it is an immutable object, stored in your application's memory.
 
 ## useSearch
@@ -724,17 +724,17 @@ function Root() {
   matchRoute({ to: '/' }) // undefined
   matchRoute({ to: '/', fuzzy: true }) // {}
   matchRoute({ to: '/*' }) // { '*': 'team-1' }
-  matchRoute({ to: ':teamId' }) // { teamId: 'team-1 }
+  matchRoute({ to: ':teamId' }) // { teamId: 'team-1' }
 
   // If the pending path is `/team-1`
   matchRoute({ to: ':teamId' }) // undefined
-  matchRoute({ to: ':teamId', pending: true }) // { teamId: 'team-1 }
+  matchRoute({ to: ':teamId', pending: true }) // { teamId: 'team-1' }
 }
 ```
 
 ## MatchRoute
 
-The `MatchRoute` component is merely a component-version of `useMatchRoute`. It takes all of the same options, but comes with some different affordances.
+The `MatchRoute` component is merely a component-version of `useMatchRoute`. It takes all of the same options but comes with some different affordances.
 
 - If the options provided _do not_ result in a match, `null` will be rendered.
 - If the options provided **do** result in a match
