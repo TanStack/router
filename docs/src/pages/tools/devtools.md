@@ -7,7 +7,7 @@ Wave your hands in the air and shout hooray because React Location comes with de
 
 When you begin your React Location journey, you'll want these devtools by your side. They help visualize all of the inner workings of React Location and will likely save you hours of debugging if you find yourself in a pinch!
 
-> Please note that for now, the devtools **do not support React Native**. If you would like to help us make the devtools platform agnostic, please let us know!
+> Please note that for now, the devtools **do not support React Native**. If you would like to help us make the devtools platform-agnostic, please let us know!
 
 ## Import the Devtools
 
@@ -41,7 +41,7 @@ function App() {
 ### Options
 
 - `initialIsOpen: Boolean`
-  - Set this `true` if you want the dev tools to default to being open
+  - Set this `true` if you want the devtools to default to being open
 - `panelProps: PropsObject`
   - Use this to add props to the panel. For example, you can add `className`, `style` (merge and override default style), etc.
 - `closeButtonProps: PropsObject`
@@ -71,7 +71,7 @@ function App() {
 
 ### Options
 
-Use these options to style the dev tools.
+Use these options to style the devtools.
 
 - `style: StyleObject`
   - The standard React style object used to style a component with inline styles

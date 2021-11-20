@@ -61,7 +61,7 @@ function App() {
 }
 ```
 
-The Routes above will be filtered/ranked to the following order:
+The Routes above will be filtered and ranked in the following order:
 
 ```tsx
 const routes = [

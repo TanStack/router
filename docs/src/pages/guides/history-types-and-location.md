@@ -5,7 +5,7 @@ title: History Types & Location
 
 > NOTE: If you don't need **hash or memory routing, then you can skip this section**.
 
-While it's not required to know the `history` API itself to use React Location, it's a good idea to understand how it works. Under the hood React Location requires and uses a `history` instance to manage the browser history.
+While it's not required to know the `history` API itself to use React Location, it's a good idea to understand how it works. Under the hood, React Location requires and uses a `history` instance to manage the browser history.
 
 - If you don't create a history instance, a default `createBrowserHistory` instance is created for you automatically when you call `new ReactLocation()`
 - If you **need a special history instance type**, You can use the history package to create your own history instance:
@@ -42,7 +42,7 @@ The `createBrowserHistory` is the default history type. It uses the browser's `h
 
 ## Hash Routing
 
-Hash routing can be helpful if your server doesn't support rewrites to `index.html` for http requests (among other environments that don't have a server).
+Hash routing can be helpful if your server doesn't support rewrites to `index.html` for HTTP requests (among other environments that don't have a server).
 
 ```tsx
 import { createHashHistory, ReactLocation } from 'react-location'
