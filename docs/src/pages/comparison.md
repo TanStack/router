@@ -1,6 +1,7 @@
 ---
 id: comparison
 title: Comparison | React Location vs React Router
+toc: false
 ---
 
 Before you commit to a new tool, it's always nice to know it stacks up against the competition!
