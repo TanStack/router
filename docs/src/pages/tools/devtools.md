@@ -17,7 +17,7 @@ The devtools are bundle split into the `react-location-devtools` package. No nee
 import { ReactLocationDevtools } from 'react-location-devtools'
 ```
 
-By default, React Query Devtools are only included in bundles when `process.env.NODE_ENV === 'development'`, so you don't need to worry about excluding them during a production build.
+By default, React Location Devtools are only included in bundles when `process.env.NODE_ENV === 'development'`, so you don't need to worry about excluding them during a production build.
 
 ## Floating Mode
 
@@ -50,7 +50,7 @@ function App() {
   - Use this to add props to the toggle button. For example, you can add `className`, `style` (merge and override default style), `onClick` (extend default handler), etc.
 - `position?: "top-left" | "top-right" | "bottom-left" | "bottom-right"`
   - Defaults to `bottom-left`
-  - The position of the React Query logo to open and close the devtools panel
+  - The position of the React Location logo to open and close the devtools panel
 
 ## Embedded Mode
 
