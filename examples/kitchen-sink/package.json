@@ -13,7 +13,7 @@
     "broadcast-channel": "^3.4.1",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
-    "react-location": "3.2.2",
+    "react-location": "3.2.3",
     "react-location-devtools": "3.2.2",
     "react-scripts": "3.0.1",
     "stop-runaway-react-effects": "^1.2.0",
