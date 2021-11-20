@@ -13,7 +13,7 @@ There are 3 types of route elements:
 
 ## What exactly is an element?
 
-We refer to route elements with the same context as React. It is the result of a rendered block of JSX, a string, number, or even `null`. Here's a few examples:
+We refer to route elements with the same context as React. It is the result of a rendered block of JSX, a string, number, or even `null`. Here are a few examples:
 
 ```tsx
 const routes = [
@@ -57,4 +57,4 @@ For more information, see the [Route Loaders - Handling Loader Errors](../route-
 
 The pending `element` property of a route is what the router will render when a route loader enters the `pending` state.
 
-Because pending state shares some context with other sections, you can read all about it in its own [Pending States](../pending-states) guide.
+Because a pending state shares some context with other sections, you can read all about it in its own [Pending States](../pending-states) guide.

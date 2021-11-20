@@ -54,7 +54,7 @@ Much how React Query made handling server-state in your React applications a bre
 
 ### How does React Location handle Search Params?
 
-Most applications, even large ones will get away with requiring only a few string-based search query params in the URL, probably something like `?page=3` or `?filter-name=tanner`. The main reason you'll find this **state** inside of the URL is because while it may not fit the hierarchical patterns of the pathname section of the URL, it's still very important to the output of a page. Both the ability to consume these search params and manipulate them without restriction is paramount to your app's developer and user experience. Your users should be able to bookmark/copy-paste/share a link from your app and have consistency with the original state of the page.
+Most applications, even large ones will get away with requiring only a few string-based search query params in the URL, probably something like `?page=3` or `?filter-name=tanner`. The main reason you'll find this **state** inside of the URL is that while it may not fit the hierarchical patterns of the pathname section of the URL, it's still very important to the output of a page. Both the ability to consume these search params and manipulate them without restriction is paramount to your app's developer and user experience. Your users should be able to bookmark/copy-paste/share a link from your app and have consistency with the original state of the page.
 
 When you begin to store more state in the URL you will inevitably and naturally want to reach for JSON to store it. Storing JSON state in the URL has its own complications involving:
 
@@ -62,7 +62,7 @@ When you begin to store more state in the URL you will inevitably and naturally 
 - Parsing/Serialization. I'm talking about full-customization here; BYO stringifier/parser.
 - Immutability & Structural Sharing. This one is tricky to explain, but essentially it will save you from the inevitable infinite side-effect rerenders.
 - Compression & Readability. While not out-of-the-box, this is usually desired, so making it simple to get should be as simple as including a library.
-- Low-level declarative APIs to manipulate query state (think `<Link>`, `<Navigate>` and `useNavigate`). This is one where most routers can't or won't go. To do this correctly, you have to buy into your search-param APIs whole-sale at the core of the architecture and provide them as a consistent experience through the entire library.
+- Low-level declarative APIs to manipulate query state (think `<Link>`, `<Navigate>` and `useNavigate`). This is one where most routers can't or won't go. To do this correctly, you have to buy into your search-param APIs wholesale at the core of the architecture and provide them as a consistent experience through the entire library.
 
 Let's just say React Location doesn't skimp on search params. It handles all of this out of the box and goes the extra mile!
 
@@ -70,9 +70,9 @@ Let's just say React Location doesn't skimp on search params. It handles all of 
 
 Popularized by frameworks like [Next.js](https://nextjs.org) and now [Remix](https://remix.run), **specifying asynchronous dependencies for routes that can all resolve in parallel before rendering** is quickly becoming table stakes for almost every React Framework out there. It would be nice if Suspense on its own could give us the solution, but without a router to indicate what needs to be pre-loaded, only suspending on render doesn't allow you to avoid waterfall suspense requests.
 
-This capability of knowing everything that needs to be fetched up front before navigating is being explored heavily in SSR frameworks, but not in client-side apps. React Location's goal is to provide that same first-class support for specifying arbitrary asynchronous dependencies for your routes while asynchronously suspending navigation rendering until these dependencies are met.
+This capability of knowing everything that needs to be fetched upfront before navigating is being explored heavily in SSR frameworks, but not in client-side apps. React Location's goal is to provide that same first-class support for specifying arbitrary asynchronous dependencies for your routes while asynchronously suspending navigation rendering until these dependencies are met.
 
-To do this properly, routing and navigation needs to be designed from the ground up to be **fully asynchronous**. The following features in React Location are first-class and native to the entire routing architecture:
+To do this properly, routing and navigation need to be designed from the ground up to be **fully asynchronous**. The following features in React Location are first-class and native to the entire routing architecture:
 
 - Scheduling
 - Batching

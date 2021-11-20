@@ -5,7 +5,7 @@ title: Routes
 
 ## What is a route?
 
-A React Location route is just an **object**. The `path` property can be used to define the path of the route it should match. Every property of the `Route` type is optional, but clearly recommended for varying circumstances. Here's the simplest use-case, path matching!
+A React Location route is just an **object**. The `path` defines the path of the route it should match. Every property of the `Route` type is optional but clearly recommended for varying circumstances. Here's the simplest use-case for path matching!
 
 ```tsx
 const routes = [
@@ -24,7 +24,7 @@ A route path can be a string _(regular expression support is coming soon!)_, and
 - `about/`
 - `about`
 
-**Leading and trailing slashes are optional because they do not affect the hierarchy of the route structure.** To build hierarchy, you can either use slashes inside your route path eg.
+**Leading and trailing slashes are optional because they do not affect the hierarchy of the route structure.** To build hierarchy, you can use slashes inside of your route path:
 
 - `about/me`
 - `about/me/`
@@ -86,7 +86,7 @@ const routes = [
 ]
 ```
 
-All other route path types that are not root/index (`/`) routes are **fuzzy** matched. This means that if they either an exact match OR are a prefix of the current location, they will match. For example:
+All other route path types that are not root/index (`/`) routes are **fuzzy** matched. This means that if they are either an exact match OR are a prefix of the current location, they will match. For example:
 
 ```tsx
 const routes = [
