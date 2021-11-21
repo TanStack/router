@@ -27,7 +27,7 @@ const routes = [
     path: '/',
     loader: () => loadHomeData()
     element: () => <div>Home</div>,
-    pendingElement: () => <div>Taking a long time...</div>,
+    pendingElement: async () => <div>Taking a long time...</div>,
     pendingMs: 1000 * 2, // 2 seconds
   },
 ]
@@ -46,7 +46,7 @@ const routes = [
     path: '/',
     loader: () => loadHomeData()
     element: () => <div>Home</div>,
-    pendingElement: () => <div>Taking a long time...</div>,
+    pendingElement: async () => <div>Taking a long time...</div>,
     pendingMs: 1000 * 2, // 2 seconds
     pendingMinMs: 500 // If it's shown, ensure the pending element is rendered for at least 500ms
   },
