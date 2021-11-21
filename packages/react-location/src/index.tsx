@@ -560,7 +560,7 @@ class RouterInstance<
       matches: [],
     }
 
-    opts.location.subscribe(this.notify)
+    opts.location.subscribe(this.notify.bind(this))
   }
 
   setState = (
