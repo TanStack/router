@@ -26,4 +26,31 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 
 ## Visit [react-location.tanstack.com](https://react-location.tanstack.com) for docs, guides, API and more!
 
+## Quick Features
+
+- Asynchronous routing
+  - Promise-based data loaders
+  - Asynchronous route elements
+  - Threshold-based pending route elements
+  - Error boundary route elements
+  - Code-splitting
+  - Post-render async loader APIs (stale-while-revalidate, external cache integration)
+  - Navigation batching with graceful replace/push escalation
+- Deeply integrated Search Params API
+  - JSON-first Search Params
+  - Full `<Link>` and `useNavigate` integration
+  - Full `cmd+click` support
+  - Search Param Immutability w/ Structural Sharing
+  - Batched Updates / Functional Updates
+  - Route Matching
+  - Optional Compression w/ JSURL plugin or your own custom parser/serializer!
+- Hooks for everything: Router, Matches, Route Matching, Preloading
+- Optional route filtering/ranking
+- Optional JSX route definitions
+- Prepackaged simple cache implementation for route loader caching
+- Easy Integration w/ external caches and storage (eg. React Query, Apollo, SWR, RTKQuery)
+- SSR route matching, loading & hydration (coming soon)
+
+
+
 <!-- test 2 -->
