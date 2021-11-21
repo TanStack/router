@@ -5,8 +5,6 @@ import {
   DefaultGenerics,
 } from 'react-location'
 
-declare const __DEV__: boolean
-
 export function Route<TGenerics extends PartialGenerics = DefaultGenerics>(
   _props: Omit<RouteType<TGenerics>, 'children'> & {
     children?: React.ReactNode
@@ -29,7 +27,7 @@ export function elementsToRoutes<
     }
 
     if (!element.type === (Route as any)) {
-      if (__DEV__) {
+      if (process.env.node_env !== 'production') {
         console.warn(
           'elementsToRoutes only supports <Route> and <React.Fragment> elements.',
         )

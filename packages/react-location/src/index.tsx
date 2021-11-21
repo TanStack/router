@@ -14,8 +14,6 @@ export { createHashHistory, createBrowserHistory, createMemoryHistory }
 
 // Types
 
-declare const __DEV__: boolean
-
 type Timeout = ReturnType<typeof setTimeout>
 
 type Maybe<T, TUnknown> = T extends {} ? T : TUnknown
@@ -170,18 +168,14 @@ export type Segment = {
 }
 
 export type RouterProps<TGenerics extends PartialGenerics = DefaultGenerics> = {
-  // An instance of the `ReactLocation` class
-  location: ReactLocation<TGenerics>
-} & RouterInnerProps<TGenerics>
-
-type RouterInnerProps<TGenerics extends PartialGenerics = DefaultGenerics> = {
   // Children will default to `<Outlet />` if not provided
   children?: React.ReactNode
 } & RouterOptions<TGenerics>
 
 export type RouterOptions<TGenerics> = {
   // An array of route objects to match
-  routes?: Route<TGenerics>[]
+  location: ReactLocation<TGenerics>
+  routes: Route<TGenerics>[]
   basepath?: string
   filterRoutes?: FilterRoutesFn
   defaultLinkPreloadMaxAge?: number
@@ -271,27 +265,9 @@ export type LoaderDispatchEvent<
       error: unknown
     }
 
-export type Router<TGenerics extends PartialGenerics = DefaultGenerics> = Omit<
-  RouterOptions<TGenerics>,
-  'basepath'
-> & { basepath: string } & RouterState<TGenerics> & {
-    __: {
-      rootMatch: RouteMatch<TGenerics>
-      matchCache: Record<string, RouteMatch<TGenerics>>
-      setState: React.Dispatch<React.SetStateAction<RouterState<TGenerics>>>
-      getMatchLoader: LoadRouteFn<TGenerics>
-      clearMatchCache: () => void
-    }
-  }
-
 export type LoadRouteFn<TGenerics> = (
   next: Location<TGenerics>,
 ) => MatchLoader<TGenerics>
-
-export type RouterState<TGenerics> = {
-  state: TransitionState<TGenerics>
-  pending?: TransitionState<TGenerics>
-}
 
 export type TransitionState<TGenerics> = {
   status: 'pending' | 'ready'
@@ -313,11 +289,15 @@ export type RouterType<TGenerics extends PartialGenerics = DefaultGenerics> = (
   props: RouterProps<TGenerics>,
 ) => JSX.Element
 
+type Listener<TPayload> = (payload: TPayload) => void
+
 // Source
 
 const LocationContext = React.createContext<ReactLocation<any>>(null!)
 const MatchesContext = React.createContext<RouteMatch<any>[]>(null!)
-const routerContext = React.createContext<Router<any>>(null!)
+const routerContext = React.createContext<{ router: RouterInstance<any> }>(
+  null!,
+)
 
 // Detect if we're in the DOM
 const isDOM = Boolean(
@@ -326,13 +306,35 @@ const isDOM = Boolean(
     window.document.createElement,
 )
 
+const useLayoutEffect = isDOM ? React.useLayoutEffect : React.useEffect
+
 // This is the default history object if none is defined
 const createDefaultHistory = () =>
   isDOM ? createBrowserHistory() : createMemoryHistory()
 
+class Subscribable<TPayload = void> {
+  listeners: Listener<TPayload>[]
+
+  constructor() {
+    this.listeners = []
+  }
+
+  subscribe(listener: Listener<TPayload>): () => void {
+    this.listeners.push(listener as Listener<TPayload>)
+
+    return () => {
+      this.listeners = this.listeners.filter((x) => x !== listener)
+    }
+  }
+
+  notify(payload: TPayload): void {
+    this.listeners.forEach((listener) => listener(payload))
+  }
+}
+
 export class ReactLocation<
   TGenerics extends PartialGenerics = DefaultGenerics,
-> {
+> extends Subscribable {
   history: BrowserHistory | MemoryHistory
   stringifySearch: SearchSerializer
   parseSearch: SearchParser
@@ -344,10 +346,10 @@ export class ReactLocation<
 
   //
 
-  listeners: ListenerFn[] = []
   isTransitioning: boolean = false
 
   constructor(options?: ReactLocationOptions) {
+    super()
     this.history = options?.history || createDefaultHistory()
     this.stringifySearch = options?.stringifySearch ?? defaultStringifySearch
     this.parseSearch = options?.parseSearch ?? defaultParseSearch
@@ -358,20 +360,6 @@ export class ReactLocation<
       this.current = this.parseLocation(event.location, this.current)
       this.notify()
     })
-  }
-
-  private notify = () => {
-    this.listeners.forEach((listener) => {
-      listener()
-    })
-  }
-
-  subscribe = (cb: ListenerFn): (() => void) => {
-    this.listeners.push(cb)
-
-    return () => {
-      this.listeners = this.listeners.filter((d) => d !== cb)
-    }
   }
 
   buildNext(
@@ -490,71 +478,116 @@ export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
   location,
   ...rest
 }: RouterProps<TGenerics>) {
+  const routerRef = React.useRef<RouterInstance<TGenerics>>(null!)
+  if (!routerRef.current) {
+    routerRef.current = new RouterInstance<TGenerics>({ ...rest, location })
+  }
+  const router = routerRef.current
+
+  const [nonce, rerender] = React.useReducer(() => ({}), {})
+
+  React.useEffect(() => {
+    return router.subscribe(rerender)
+  }, [])
+
+  useLayoutEffect(() => {
+    return router.updateLocation(location.current)
+  }, [location.current.key])
+
+  const routerValue = React.useMemo(
+    () => ({
+      router,
+    }),
+    [nonce],
+  )
+
   return (
     <LocationContext.Provider value={location}>
-      <RouterInner {...rest}>{children ?? <Outlet />}</RouterInner>
+      <routerContext.Provider value={routerValue}>
+        <MatchesProvider value={[router.rootMatch, ...router.state.matches]}>
+          {children}
+        </MatchesProvider>
+      </routerContext.Provider>
     </LocationContext.Provider>
   )
 }
 
-function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
-  children,
-  ...rest
-}: RouterInnerProps<TGenerics>) {
-  const location = useLocation<TGenerics>()
-  const matchCacheRef = React.useRef<Record<string, RouteMatch<TGenerics>>>()
-  if (!matchCacheRef.current) matchCacheRef.current = {}
-  const matchCache = matchCacheRef.current
+type RouterInstanceState<TGenerics> = {
+  state: TransitionState<TGenerics>
+  pending?: TransitionState<TGenerics>
+}
 
-  const basepath = cleanPath(`/${rest.basepath ?? ''}`)
+class RouterInstance<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> extends Subscribable {
+  basepath: string
+  rootMatch: RouteMatch<TGenerics>
+  state: TransitionState<TGenerics>
+  pending?: TransitionState<TGenerics>
+  routes!: Route<TGenerics>[]
+  filterRoutes?: FilterRoutesFn
+  defaultLinkPreloadMaxAge?: number
+  defaultLoaderMaxAge?: number
+  useErrorBoundary?: boolean
+  defaultElement: SyncOrAsyncElement<TGenerics>
+  defaultErrorElement: SyncOrAsyncElement<TGenerics>
+  defaultPendingElement: SyncOrAsyncElement<TGenerics>
+  defaultPendingMs?: number
+  defaultPendingMinMs?: number
 
-  const [state, setState] = React.useState<RouterState<TGenerics>>({
-    state: {
-      status: 'ready',
-      location: location.current,
-      matches: rest.initialMatches ?? [],
-    },
-  })
+  constructor(
+    opts: { location: ReactLocation<TGenerics> } & RouterOptions<TGenerics>,
+  ) {
+    super()
+    Object.assign(this, opts)
 
-  const stateRef = React.useRef<RouterState<TGenerics>>()
-  React.useEffect(() => {
-    stateRef.current = state
-  })
-
-  const rootMatch = React.useMemo(() => {
-    const rootMatch: RouteMatch<TGenerics> = {
+    this.basepath = cleanPath(`/${opts.basepath ?? ''}`)
+    this.rootMatch = {
       id: 'root',
       params: {} as any,
       search: {} as any,
       routeIndex: 0,
-      pathname: basepath,
+      pathname: this.basepath,
       route: null!,
       data: {},
       isLoading: false,
       status: 'resolved',
     }
 
-    return rootMatch
-  }, [basepath])
+    this.state = {
+      status: 'ready',
+      location: opts.location.current,
+      matches: [],
+    }
 
-  const getMatchLoader: LoadRouteFn<TGenerics> = useLatestCallback(
-    (next: Location<TGenerics>) => {
-      return new MatchLoader(
-        router,
-        matchCache,
-        next,
-        rootMatch as RouteMatch<TGenerics>,
-      )
-    },
-  )
+    opts.location.subscribe(this.notify)
+  }
 
-  const clearMatchCache = useLatestCallback(() => {
+  setState = (
+    updater: (
+      old: RouterInstanceState<TGenerics>,
+    ) => RouterInstanceState<TGenerics>,
+  ) => {
+    const newState = updater({ state: this.state, pending: this.pending })
+    this.state = newState.state
+    this.pending = newState.pending
+    this.cleanMatchCache()
+    this.notify()
+  }
+
+  matchCache: Record<string, RouteMatch<TGenerics>> = {}
+
+  getMatchLoader = (next: Location<TGenerics>) => {
+    return new MatchLoader(this, next)
+  }
+
+  cleanMatchCache = () => {
     const activeMatchIds = [
-      ...(stateRef.current?.state.matches ?? []),
-      ...(stateRef.current?.pending?.matches ?? []),
+      ...(this?.state.matches ?? []),
+      ...(this?.pending?.matches ?? []),
     ].map((d) => d.id)
 
-    Object.values(matchCache).forEach((match) => {
+    Object.values(this.matchCache).forEach((match) => {
       if (!match.updatedAt) {
         return
       }
@@ -566,44 +599,19 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
       const age = Date.now() - (match.updatedAt ?? 0)
 
       if (!match.maxAge || age > match.maxAge) {
-        delete matchCache[match.id]
+        delete this.matchCache[match.id]
       }
     })
-  })
+  }
 
-  React.useEffect(() => {
-    clearMatchCache()
-  }, [state])
+  updateLocation = (next: Location<TGenerics>) => {
+    const matchLoader = this.getMatchLoader(next)
 
-  const router = React.useMemo(
-    (): Router<TGenerics> => ({
-      ...state,
-      ...rest,
-      basepath,
-      __: {
-        rootMatch,
-        matchCache,
-        setState: setState,
-        getMatchLoader,
-        clearMatchCache,
-      },
-    }),
-    [state],
-  )
-
-  React.useLayoutEffect(() => {
-    // Make a new match loader for the same location
-    const matchLoader = getMatchLoader(location.current)
-
-    setState((old) => {
-      old.state.matches?.forEach((match) => {
-        match.used = true
-      })
-
-      return old
+    this.state.matches?.forEach((match) => {
+      match.used = true
     })
 
-    setState((old) => {
+    this.setState((old) => {
       return {
         ...old,
         pending: {
@@ -615,7 +623,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
     })
 
     const unsubscribe = matchLoader.subscribe(() => {
-      setState((old) => {
+      this.setState((old) => {
         const oldMatches = old.state.matches
 
         oldMatches
@@ -658,15 +666,7 @@ function RouterInner<TGenerics extends PartialGenerics = DefaultGenerics>({
     matchLoader.startPending()
 
     return unsubscribe
-  }, [location.current.key])
-
-  return (
-    <routerContext.Provider value={router}>
-      <MatchesProvider value={[rootMatch, ...state.state.matches]}>
-        {children}
-      </MatchesProvider>
-    </routerContext.Provider>
-  )
+  }
 }
 
 export type UseLocationType<
@@ -681,7 +681,7 @@ export function useLocation<
   const instance = React.useContext(LocationContext) as ReactLocation<TGenerics>
   warning(!!instance, 'useLocation must be used within a <ReactLocation />')
 
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     return instance.subscribe(() => {
       // Rerender all subscribers in a microtask
       Promise.resolve().then(() => {
@@ -698,12 +698,12 @@ export function useLocation<
 }
 
 export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
-  id: string
-  route: Route<TGenerics>
-  routeIndex: number
-  pathname: string
-  params: UseGeneric<TGenerics, 'Params'>
-  search: UseGeneric<TGenerics, 'Search'>
+  id!: string
+  route!: Route<TGenerics>
+  routeIndex!: number
+  pathname!: string
+  params!: UseGeneric<TGenerics, 'Params'>
+  search!: UseGeneric<TGenerics, 'Search'>
   updatedAt?: number
   element?: React.ReactNode
   errorElement?: React.ReactNode
@@ -718,12 +718,7 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
   onExit?: void | ((match: RouteMatch<TGenerics>) => void)
 
   constructor(unloadedMatch: UnloadedMatch<TGenerics>) {
-    this.id = unloadedMatch.id
-    this.route = unloadedMatch.route
-    this.routeIndex = unloadedMatch.routeIndex
-    this.pathname = unloadedMatch.pathname
-    this.params = unloadedMatch.params
-    this.search = unloadedMatch.search
+    Object.assign(this, unloadedMatch)
   }
 
   status: 'pending' | 'resolved' | 'rejected' = 'pending'
@@ -758,7 +753,7 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
   load? = (opts: {
     maxAge?: number
     parentMatch?: RouteMatch<TGenerics>
-    router: Router<TGenerics>
+    router: RouterInstance<TGenerics>
   }) => {
     this.maxAge =
       opts.maxAge ?? this.route.loaderMaxAge ?? opts.router.defaultLoaderMaxAge
@@ -881,26 +876,23 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
   }
 }
 
-class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
-  router: Router<TGenerics>
+class MatchLoader<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> extends Subscribable<undefined | boolean> {
+  router: RouterInstance<TGenerics>
   location: Location<TGenerics>
-  matchCache: Record<string, RouteMatch<TGenerics>>
-  parentMatch: RouteMatch<TGenerics>
   matches: RouteMatch<TGenerics>[]
   prepPromise?: Promise<void>
   matchPromise?: Promise<UnloadedMatch<TGenerics>[]>
   firstRenderPromises?: Promise<any>[]
 
   constructor(
-    router: Router<TGenerics>,
-    matchCache: Record<string, RouteMatch<TGenerics>>,
+    router: RouterInstance<TGenerics>,
     nextLocation: Location<TGenerics>,
-    parentMatch: RouteMatch<TGenerics>,
   ) {
+    super()
     this.router = router
-    this.matchCache = matchCache
     this.location = nextLocation
-    this.parentMatch = parentMatch
     this.matches = []
 
     this.loadMatches()
@@ -908,17 +900,7 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
 
   status: 'pending' | 'resolved' = 'pending'
 
-  listeners: (() => void)[] = []
-
-  subscribe = (cb: () => void) => {
-    this.listeners?.push(cb)
-
-    return () => {
-      this.listeners = this.listeners?.filter((d) => d !== cb)
-    }
-  }
-
-  notify = (isSoft?: boolean) => {
+  preNotify = (isSoft?: boolean) => {
     if (this.status === 'pending' && isSoft) {
       return
     }
@@ -934,34 +916,31 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
       }
     })
 
-    this.listeners?.forEach((d) => d())
+    this.notify(false)
   }
 
   private loadMatches = () => {
-    const unloadedMatches = matchRoutes(
-      this.router.routes,
-      this.location,
-      this.parentMatch,
-      this.router,
-    )
+    const unloadedMatches = matchRoutes(this.router, this.location)
 
     this.matches = unloadedMatches?.map(
       (unloadedMatch): RouteMatch<TGenerics> => {
-        if (!this.matchCache[unloadedMatch.id]) {
-          this.matchCache[unloadedMatch.id] = new RouteMatch(unloadedMatch)
+        if (!this.router.matchCache[unloadedMatch.id]) {
+          this.router.matchCache[unloadedMatch.id] = new RouteMatch(
+            unloadedMatch,
+          )
         }
 
-        return this.matchCache[unloadedMatch.id]!
+        return this.router.matchCache[unloadedMatch.id]!
       },
     )
   }
 
   loadData = async ({ maxAge }: { maxAge?: number } = {}) => {
     this.loadMatches()
-    this.router.__.clearMatchCache()
+    this.router.cleanMatchCache()
 
     if (!this.matches?.length) {
-      this.notify()
+      this.preNotify()
       return
     }
 
@@ -975,7 +954,7 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
     })
 
     return await Promise.all(this.firstRenderPromises).then(() => {
-      this.notify()
+      this.preNotify()
       return this.matches
     })
   }
@@ -991,17 +970,18 @@ class MatchLoader<TGenerics extends PartialGenerics = DefaultGenerics> {
 }
 
 export type UseRouterType<TGenerics extends PartialGenerics = DefaultGenerics> =
-  () => Router<TGenerics>
+  () => RouterInstance<TGenerics>
 
 export function useRouter<
   TGenerics extends PartialGenerics = DefaultGenerics,
->(): Router<TGenerics> {
-  const context = React.useContext(routerContext)
-  if (!context) {
+>(): RouterInstance<TGenerics> {
+  const value = React.useContext(routerContext)
+  if (!value) {
     warning(true, 'You are trying to use useRouter() outside of ReactLocation!')
     throw new Error()
   }
-  return context as Router<TGenerics>
+
+  return value.router as RouterInstance<TGenerics>
 }
 
 export interface MatchRoutesOptions<TGenerics> {
@@ -1016,21 +996,17 @@ export interface MatchRoutesOptions<TGenerics> {
 export type MatchRoutesType<
   TGenerics extends PartialGenerics = DefaultGenerics,
 > = (
-  routes: undefined | Route<TGenerics>[],
+  router: RouterInstance<TGenerics>[],
   currentLocation: Location<TGenerics>,
-  parentMatch: UnloadedMatch<TGenerics>,
-  opts?: MatchRoutesOptions<TGenerics>,
 ) => Promise<UnloadedMatch<TGenerics>[]>
 
 export function matchRoutes<
   TGenerics extends PartialGenerics = DefaultGenerics,
 >(
-  routes: undefined | Route<TGenerics>[],
+  router: RouterInstance<TGenerics>,
   currentLocation: Location<TGenerics>,
-  parentMatch: UnloadedMatch<TGenerics>,
-  opts?: MatchRoutesOptions<TGenerics>,
 ): UnloadedMatch<TGenerics>[] {
-  if (!routes?.length) {
+  if (!router.routes?.length) {
     return []
   }
 
@@ -1041,8 +1017,8 @@ export function matchRoutes<
     parentMatch: UnloadedMatch<TGenerics>,
   ): Promise<void> => {
     let { pathname, params } = parentMatch
-    const filteredRoutes = opts?.filterRoutes
-      ? opts?.filterRoutes(routes)
+    const filteredRoutes = router?.filterRoutes
+      ? router?.filterRoutes(routes)
       : routes
 
     let routeIndex: number = -1
@@ -1100,8 +1076,8 @@ export function matchRoutes<
       id,
       route: {
         ...originalRoute,
-        pendingMs: originalRoute.pendingMs ?? opts?.defaultPendingMs,
-        pendingMinMs: originalRoute.pendingMinMs ?? opts?.defaultPendingMinMs,
+        pendingMs: originalRoute.pendingMs ?? router?.defaultPendingMs,
+        pendingMinMs: originalRoute.pendingMinMs ?? router?.defaultPendingMinMs,
       },
       routeIndex,
       params,
@@ -1116,7 +1092,7 @@ export function matchRoutes<
     }
   }
 
-  recurse(routes, parentMatch)
+  recurse(router.routes, router.rootMatch)
 
   return matches
 }
@@ -1143,7 +1119,7 @@ export function useLoadRoute<
         from: navigate.from ?? { pathname: match.pathname },
       })
 
-      const matchLoader = router.__.getMatchLoader(next)
+      const matchLoader = router.getMatchLoader(next)
 
       return await matchLoader.load(opts)
     },
@@ -1226,7 +1202,7 @@ export function Navigate<TGenerics extends PartialGenerics = DefaultGenerics>(
 ) {
   let navigate = useNavigate<TGenerics>()
 
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     navigate(options)
   }, [navigate])
 
@@ -1240,12 +1216,7 @@ function useBuildNext<TGenerics>() {
   const buildNext = (opts: BuildNextOptions<TGenerics>) => {
     const next = location.buildNext(router.basepath, opts)
 
-    const matches = matchRoutes<TGenerics>(
-      router.routes,
-      next,
-      router.__.rootMatch,
-      router,
-    )
+    const matches = matchRoutes<TGenerics>(router, next)
 
     const __searchFilters = matches
       .map((match) => match.route.searchFilters ?? [])
@@ -1416,7 +1387,7 @@ export function Outlet<TGenerics extends PartialGenerics = DefaultGenerics>() {
       }
 
       if (!router.useErrorBoundary) {
-        if (__DEV__) {
+        if (process.env.NODE_ENV !== 'production') {
           const preStyle: React.HTMLAttributes<HTMLPreElement>['style'] = {
             whiteSpace: 'normal',
             display: 'inline-block',
