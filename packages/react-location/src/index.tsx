@@ -486,12 +486,12 @@ export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
 
   const [nonce, rerender] = React.useReducer(() => ({}), {})
 
-  React.useEffect(() => {
+  useLayoutEffect(() => {
     return router.subscribe(rerender)
   }, [])
 
   useLayoutEffect(() => {
-    return router.updateLocation(location.current)
+    return router.updateLocation(location.current).unsubscribe
   }, [location.current.key])
 
   const routerValue = React.useMemo(
@@ -517,7 +517,7 @@ type RouterInstanceState<TGenerics> = {
   pending?: TransitionState<TGenerics>
 }
 
-class RouterInstance<
+export class RouterInstance<
   TGenerics extends PartialGenerics = DefaultGenerics,
 > extends Subscribable {
   basepath: string
@@ -557,10 +557,10 @@ class RouterInstance<
     this.state = {
       status: 'ready',
       location: opts.location.current,
-      matches: [],
+      matches: opts.initialMatches ?? [],
     }
 
-    opts.location.subscribe(this.notify)
+    opts.location.subscribe(() => this.notify())
   }
 
   setState = (
@@ -605,28 +605,30 @@ class RouterInstance<
   }
 
   updateLocation = (next: Location<TGenerics>) => {
-    const matchLoader = this.getMatchLoader(next)
+    let unsubscribe: () => void
 
-    this.state.matches?.forEach((match) => {
-      match.used = true
-    })
+    const promise = new Promise<void>((resolve) => {
+      const matchLoader = this.getMatchLoader(next)
 
-    this.setState((old) => {
-      return {
-        ...old,
-        pending: {
-          status: 'pending',
-          location: matchLoader.location,
-          matches: matchLoader.matches,
-        },
-      }
-    })
+      this.state.matches?.forEach((match) => {
+        match.used = true
+      })
 
-    const unsubscribe = matchLoader.subscribe(() => {
       this.setState((old) => {
-        const oldMatches = old.state.matches
+        return {
+          ...old,
+          pending: {
+            status: 'pending',
+            location: matchLoader.location,
+            matches: matchLoader.matches,
+          },
+        }
+      })
 
-        oldMatches
+      unsubscribe = matchLoader.subscribe(() => {
+        const currentMatches = this.state.matches
+
+        currentMatches
           .filter((d) => {
             return !matchLoader.matches.find((dd) => dd.id === d.id)
           })
@@ -634,7 +636,7 @@ class RouterInstance<
             d.onExit?.(d)
           })
 
-        oldMatches
+        currentMatches
           .filter((d) => {
             return matchLoader.matches.find((dd) => dd.id === d.id)
           })
@@ -644,28 +646,35 @@ class RouterInstance<
 
         matchLoader.matches
           .filter((d) => {
-            return !oldMatches.find((dd) => dd.id === d.id)
+            return !currentMatches.find((dd) => dd.id === d.id)
           })
           .forEach((d) => {
             d.onExit = d.route.onMatch?.(d)
           })
 
-        return {
-          ...old,
-          state: {
-            status: 'ready',
-            location: matchLoader.location,
-            matches: matchLoader.matches,
-          },
-          pending: undefined,
-        }
+        this.setState((old) => {
+          return {
+            ...old,
+            state: {
+              status: 'ready',
+              location: matchLoader.location,
+              matches: matchLoader.matches,
+            },
+            pending: undefined,
+          }
+        })
+
+        resolve()
       })
+
+      matchLoader.loadData()
+      matchLoader.startPending()
     })
 
-    matchLoader.loadData()
-    matchLoader.startPending()
-
-    return unsubscribe
+    return {
+      promise,
+      unsubscribe: unsubscribe!,
+    }
   }
 }
 
