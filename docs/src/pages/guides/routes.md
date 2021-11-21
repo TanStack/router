@@ -94,7 +94,7 @@ const routes = [
     path: 'dashboard',
     children: [
       {
-        path: '/', // matches /teams exactly
+        path: '/', // matches /dashboard exactly
       },
       {
         path: 'teams', // matches /dashboard/teams/* (notice the fuzzy match)
