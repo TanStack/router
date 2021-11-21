@@ -71,7 +71,9 @@ function App() {
           ],
         },
       ]}
-    />
+    >
+      <Outlet />
+    </Router>
   );
 }
 
