@@ -63,6 +63,7 @@ export type RouterProps<TGenerics> = {
   defaultPendingElement?: SyncOrAsyncElement<TGenerics>
   defaultPendingMs?: number
   defaultPendingMinMs?: number
+  caseSensitive?: boolean
   // An array of route match objects that have been both _matched_ and _loaded_. See the [SRR](#ssr) section for more details
   initialMatches?: Match<TGenerics>[]
 }
@@ -120,28 +121,31 @@ For more information on creating routes and how they behave, see the [Routes Gui
 #### Route Properties
 
 ```tsx
-export type Route<TGenerics extends PartialGenerics = DefaultGenerics> =
+export type Route<TGenerics extends PartialGenerics = DefaultGenerics> = {
+  // The path to match (relative to the nearest parent `Route` component or root basepath)
+  path?: string
+  // An ID to uniquely identify this route within its siblings. This is only required for routes that *only match on search* or if you have multiple routes with the same path
+  id?: string
+  // If true, this route will be matched as case-sensitive
+  caseSensitive?: boolean
+  // Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched.
+  search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
+  // The duration to wait during `loader` execution before showing the `pendingElement`
+  pendingMs?: number
+  // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
+  pendingMinMs?: number
+  // Search filters can be used to rewrite, persist, default and manipulate search params for link that
+  // point to their routes or child routes. See the "basic" example to see them in action.
+  searchFilters?: SearchFilter<TGenerics>[]
+  // An array of child routes
+  children?: Route<TGenerics>[]
   // Route Loaders (see below) can be inline on the route, or resolved async
-  // via the `import` property
-  RouteLoaders<TGenerics> & {
-    // The path to match (relative to the nearest parent `Route` component or root basepath)
-    path?: string
-    // Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched.
-    search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
-    // The duration to wait during `loader` execution before showing the `pendingElement`
-    pendingMs?: number
-    // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
-    pendingMinMs?: number
-    // Search filters can be used to rewrite, persist, default and manipulate search params for link that
-    // point to their routes or child routes. See the "basic" example to see them in action.
-    searchFilters?: SearchFilter<TGenerics>[]
-    // An array of child routes
-    children?: Route<TGenerics>[]
-  } & {
+} & RouteLoaders<TGenerics> & {
     // If `import` is defined, this route can resolve its elements and loaders in a single asynchronous call
     // This is particularly useful for code-splitting or module federation
     import?: (opts: {
       params: UseGeneric<TGenerics, 'Params'>
+      search: UseGeneric<TGenerics, 'Search'>
     }) => Promise<RouteLoaders<TGenerics>>
   }
 
@@ -154,7 +158,7 @@ export type RouteLoaders<TGenerics> = {
   pendingElement?: SyncOrAsyncElement<TGenerics>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: LoaderFn<TGenerics>
-  // An integer of milliseconds representing how long data should be cached for the route loader
+  // An integer of milliseconds representing how long data should be cached for the route
   loaderMaxAge?: number
   // Similar to React's useEffect hook, this function is called
   // when moving from an inactive state to an active one. Likewise, when moving from
@@ -687,6 +691,16 @@ The `useMatchRoute` hook allows you to programmatically test both relative and a
 
 - Detecting specific deep-route matches from a layout component
 - Determining if a specific route is the next pending location that is being transitioned to
+
+```tsx
+function useMatchRoute(): (opts: {
+  to?: string | number | null
+  search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
+  fuzzy?: boolean
+  caseSensitive?: boolean
+  pending?: boolean
+}) => undefined | Params<TGenerics>
+```
 
 **Usage**
 
