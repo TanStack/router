@@ -551,6 +551,29 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
                 }}
               />
             </div>
+            <div
+              style={{
+                padding: '.5em',
+              }}
+            >
+              <Explorer
+                label="Router"
+                value={{
+                  basepath: router.basepath,
+                  routes: router.routes,
+                  routesById: router.routesById,
+                  matchCachgffe: router.matchCache,
+                  defaultLinkPreloadMaxAge: router.defaultLinkPreloadMaxAge,
+                  defaultLoaderMaxAge: router.defaultLoaderMaxAge,
+                  defaultPendingMinMs: router.defaultPendingMinMs,
+                  defaultPendingMs: router.defaultPendingMs,
+                  defaultElement: router.defaultElement,
+                  defaultErrorElement: router.defaultErrorElement,
+                  defaultPendingElement: router.defaultPendingElement,
+                }}
+                defaultExpanded={{}}
+              />
+            </div>
           </div>
         </div>
 

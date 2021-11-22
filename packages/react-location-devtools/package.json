@@ -10,7 +10,7 @@
   "description": "",
   "main": "./index.js",
   "module": "./index.js",
-  "types": "../types/index.d.ts",
+  "types": "./types/index.d.ts",
   "unpkg": "./dist/react-location-devtools.production.min.js",
   "scripts": {
     "test": "(is-ci && yarn test:ci) || yarn test:dev",

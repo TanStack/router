@@ -609,11 +609,11 @@ export class RouterInstance<
       parent?: Route<TGenerics>,
     ): Route<TGenerics>[] => {
       return routes.map((route) => {
+        const path = route.path ?? '*'
+
         const id = joinPaths([
           parent?.id === 'root' ? '' : parent?.id,
-          `${route.path?.replace(/(.)\/$/, '$1')}${
-            route.id ? `-${route.id}` : ''
-          }`,
+          `${path?.replace(/(.)\/$/, '$1')}${route.id ? `-${route.id}` : ''}`,
         ])
 
         route = {
@@ -1148,7 +1148,7 @@ export function matchRoutes<
     const interpolatedPath = interpolatePath(route.path, params)
     pathname = joinPaths([pathname, interpolatedPath])
 
-    const interpolatedId = interpolatePath(route.id, params)
+    const interpolatedId = interpolatePath(route.id, params, true)
 
     const match: UnloadedMatch<TGenerics> = {
       id: interpolatedId,
@@ -1170,12 +1170,16 @@ export function matchRoutes<
   return matches
 }
 
-function interpolatePath(path: string | undefined, params: any) {
+function interpolatePath(
+  path: string | undefined,
+  params: any,
+  leaveWildcard?: boolean,
+) {
   const interpolatedPathSegments = parsePathname(path)
 
   return joinPaths(
     interpolatedPathSegments.map((segment) => {
-      if (segment.value === '*') {
+      if (segment.value === '*' && !leaveWildcard) {
         return ''
       }
 

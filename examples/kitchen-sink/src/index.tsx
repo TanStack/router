@@ -105,22 +105,25 @@ const routes: Route<LocationGenerics>[] = [
         element: <Invoices />,
         children: [
           { path: "/", element: <InvoicesHome /> },
+          // {
+          //   path: ":invoiceId",
+          //   element: <Invoice />,
+          //   loader: async ({ params: { invoiceId } }) => {
+          //     return {
+          //       invoice: await fetchInvoiceById(invoiceId),
+          //     };
+          //   },
+          //   onMatch: (match) => {
+          //     console.log(`Now rendering invoice ${match.params.invoiceId}`);
+          //     return () => {
+          //       console.log(
+          //         `No longer rendering invoice ${match.params.invoiceId}`
+          //       );
+          //     };
+          //   },
+          // },
           {
-            path: ":invoiceId",
-            element: <Invoice />,
-            loader: async ({ params: { invoiceId } }) => {
-              return {
-                invoice: await fetchInvoiceById(invoiceId),
-              };
-            },
-            onMatch: (match) => {
-              console.log(`Now rendering invoice ${match.params.invoiceId}`);
-              return () => {
-                console.log(
-                  `No longer rendering invoice ${match.params.invoiceId}`
-                );
-              };
-            },
+            element: "Not Found!",
           },
         ],
       },
