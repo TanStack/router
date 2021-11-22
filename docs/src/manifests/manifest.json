@@ -54,6 +54,11 @@
           "title": "History Types & Location",
           "path": "/guides/history-types-and-location",
           "editUrl": "/guides/history-types-and-location.md"
+        },
+        {
+          "title": "Bread Crumbs",
+          "path": "/guides/breadcrumbs",
+          "editUrl": "/guides/breadcrumbs.md"
         }
       ]
     },
