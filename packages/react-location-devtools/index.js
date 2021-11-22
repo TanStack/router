@@ -8,5 +8,5 @@ if (process.env.NODE_ENV !== 'development') {
     },
   }
 } else {
-  module.exports = require('./dist/react-location-devtools.development.js')
+  module.exports = require('./entry')
 }

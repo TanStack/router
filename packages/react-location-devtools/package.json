@@ -8,10 +8,10 @@
     "url": "https://github.com/sponsors/tannerlinsley"
   },
   "description": "",
-  "main": "index.lib.js",
-  "module": "index.es.js",
-  "unpkg": "index.js",
-  "types": "types/index.d.ts",
+  "main": "./index.js",
+  "module": "./index.js",
+  "types": "../types/index.d.ts",
+  "unpkg": "./dist/react-location-devtools.production.min.js",
   "scripts": {
     "test": "(is-ci && yarn test:ci) || yarn test:dev",
     "test:dev": "yarn && yarn test:jest --watch",
@@ -40,7 +40,8 @@
     "src",
     "lib",
     "types",
-    "es"
+    "es",
+    "entry"
   ],
   "browserslist": [
     "last 2 versions",
