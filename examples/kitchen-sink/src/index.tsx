@@ -166,7 +166,7 @@ const routes: Route<LocationGenerics>[] = [
   // Obviously, you can put routes in other files, too
   reallyExpensiveRoute,
   {
-    path: "authenticated",
+    path: "authenticated/",
     element: <Auth />,
     children: [
       {
