@@ -474,7 +474,7 @@ export function MatchesProvider<TGenerics>(
 }
 
 export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
-  children,
+  children = <Outlet />,
   location,
   ...rest
 }: RouterProps<TGenerics>) {
