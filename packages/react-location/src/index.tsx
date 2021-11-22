@@ -474,7 +474,7 @@ export function MatchesProvider<TGenerics>(
 }
 
 export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
-  children = <Outlet />,
+  children,
   location,
   ...rest
 }: RouterProps<TGenerics>) {
@@ -505,7 +505,7 @@ export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
     <LocationContext.Provider value={location}>
       <routerContext.Provider value={routerValue}>
         <MatchesProvider value={[router.rootMatch, ...router.state.matches]}>
-          {children}
+          {children ?? <Outlet />}
         </MatchesProvider>
       </routerContext.Provider>
     </LocationContext.Provider>
