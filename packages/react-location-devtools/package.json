@@ -41,7 +41,8 @@
     "lib",
     "types",
     "es",
-    "entry"
+    "entry",
+    "index.js"
   ],
   "browserslist": [
     "last 2 versions",
