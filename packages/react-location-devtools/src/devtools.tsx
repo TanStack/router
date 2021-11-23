@@ -562,7 +562,7 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
                   basepath: router.basepath,
                   routes: router.routes,
                   routesById: router.routesById,
-                  matchCachgffe: router.matchCache,
+                  matchCache: router.matchCache,
                   defaultLinkPreloadMaxAge: router.defaultLinkPreloadMaxAge,
                   defaultLoaderMaxAge: router.defaultLoaderMaxAge,
                   defaultPendingMinMs: router.defaultPendingMinMs,
