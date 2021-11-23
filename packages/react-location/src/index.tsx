@@ -1545,8 +1545,6 @@ export function Outlet<TGenerics extends PartialGenerics = DefaultGenerics>() {
 
     const matchElement = match.element ?? router.defaultElement
 
-    console.log(matchElement)
-
     return matchElement ?? <Outlet />
   })()
 
