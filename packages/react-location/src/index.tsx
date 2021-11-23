@@ -190,7 +190,7 @@ export type RouterOptions<TGenerics> = {
   defaultPendingMinMs?: number
   caseSensitive?: boolean
   // An array of route match objects that have been both _matched_ and _loaded_. See the [SRR](#ssr) section for more details
-  snapshot?: RouterSnapshot<TGenerics>
+  // snapshot?: RouterSnapshot<TGenerics>
 }
 
 export type RouterSnapshot<TGenerics> = {
@@ -489,14 +489,14 @@ export function MatchesProvider<TGenerics>(
 export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
   children,
   location,
-  snapshot,
+  // snapshot,
   ...rest
 }: RouterProps<TGenerics>) {
   const routerRef = React.useRef<RouterInstance<TGenerics>>(null!)
   if (!routerRef.current) {
     routerRef.current = new RouterInstance<TGenerics>({
       location,
-      snapshot,
+      // snapshot,
       routes: rest.routes,
     })
   }
@@ -564,34 +564,34 @@ export class RouterInstance<
 
   constructor({
     location,
-    snapshot,
+    // snapshot,
     ...rest
   }: {
     location: ReactLocation<TGenerics>
-    snapshot?: RouterSnapshot<TGenerics>
+    // snapshot?: RouterSnapshot<TGenerics>
   } & RouterOptions<TGenerics>) {
     super()
 
     this.update(rest)
 
-    const matchLoader = new MatchLoader(this, location.current)
-
-    if (snapshot) {
-      matchLoader.matches.forEach((match, index) => {
-        if (match.id !== snapshot.matches[index]?.id) {
-          throw new Error(
-            `Router hydration mismatch: ${match.id} !== ${snapshot.matches[index]?.id}`,
-          )
-        }
-        match.ownData = snapshot.matches[index]?.ownData ?? {}
-      })
-    }
-
-    cascadeMatchData(matchLoader.matches)
+    // if (snapshot) {
+    //   const matchLoader = new MatchLoader(this, location.current)
+    //   matchLoader.matches.forEach((match, index) => {
+    //     if (match.id !== snapshot.matches[index]?.id) {
+    //       throw new Error(
+    //         `Router hydration mismatch: ${match.id} !== ${snapshot.matches[index]?.id}`,
+    //       )
+    //     }
+    //     match.ownData = snapshot.matches[index]?.ownData ?? {}
+    //   })
+    //   cascadeMatchData(matchLoader.matches)
+    // }
 
     this.state = {
-      location: snapshot?.location ?? location.current,
-      matches: matchLoader.matches,
+      // location: snapshot?.location ?? location.current,
+      // matches: matchLoader.matches,
+      location: location.current,
+      matches: [],
     }
 
     location.subscribe(() => this.notify())
@@ -759,17 +759,17 @@ export class RouterInstance<
     }
   }
 
-  snapshot = (): RouterSnapshot<TGenerics> => {
-    return {
-      location: this.state.location,
-      matches: this.state.matches.map(({ ownData, id }) => {
-        return {
-          id,
-          ownData,
-        }
-      }),
-    }
-  }
+  // snapshot = (): RouterSnapshot<TGenerics> => {
+  //   return {
+  //     location: this.state.location,
+  //     matches: this.state.matches.map(({ ownData, id }) => {
+  //       return {
+  //         id,
+  //         ownData,
+  //       }
+  //     }),
+  //   }
+  // }
 }
 
 export type UseLocationType<
@@ -1545,11 +1545,9 @@ export function Outlet<TGenerics extends PartialGenerics = DefaultGenerics>() {
 
     const matchElement = match.element ?? router.defaultElement
 
-    return matchElement ? (
-      <React.Fragment>{matchElement}</React.Fragment>
-    ) : (
-      <Outlet<TGenerics> />
-    )
+    console.log(matchElement)
+
+    return matchElement ?? <Outlet />
   })()
 
   return <MatchesProvider value={matches}>{element}</MatchesProvider>
