@@ -1679,7 +1679,7 @@ export function usePrompt(message: string, when: boolean | any): void {
 
 export function Prompt({ message, when, children }: PromptProps) {
   usePrompt(message, when ?? true)
-  return children ?? null
+  return (children ?? null) as React.ReactNode
 }
 
 function warning(cond: boolean, message: string) {
