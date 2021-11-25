@@ -10,8 +10,8 @@ While it's not required to know the `history` API itself to use React Location, 
 - If you don't create a history instance, a default `createBrowserHistory` instance is created for you automatically when you call `new ReactLocation()`
 - If you **need a special history instance type**, You can use the history package to create your own history instance:
 
-- `createHashHistory`: The default history type.
-- `createBrowserHistory`: A history type that uses the browser's `history` API.
+- `createBrowserHistory`: The default history type.
+- `createHashHistory`: A history type that uses a hash to track history.
 - `createMemoryHistory`: A history type that keeps the history in memory.
 
 Each of these APIs behaves slightly differently and documentation for them can be found in the [`history` package](https://github.com/remix-run/history).
