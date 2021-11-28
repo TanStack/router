@@ -80,7 +80,7 @@ const routes = [
         path: ':teamId',
         element: <Team />,
         meta: {
-          breadcrumb: (params) => <TeamBreadcrumb teamId={teamId} />
+          breadcrumb: ({teamId}) => <TeamBreadcrumb teamId={teamId} />
         }
       }
 ]
