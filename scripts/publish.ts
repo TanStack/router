@@ -6,9 +6,9 @@ const chalk = require('chalk')
 const jsonfile = require('jsonfile')
 const semver = require('semver')
 const currentGitBranch = require('current-git-branch')
-const conventionalRecommendedBump = require(`conventional-recommended-bump`)
-const standardChangelog = require('standard-changelog')
-const { parseCommit } = require('parse-commit-message')
+// const conventionalRecommendedBump = require(`conventional-recommended-bump`)
+// const standardChangelog = require('standard-changelog')
+const parseCommit = require('@commitlint/parse').default;
 const log = require('git-log-parser')
 const streamToArray = require('stream-to-array')
 
@@ -76,41 +76,43 @@ async function run() {
     {
       subject: string
       body: string
-      parsed: { header: { type: string; scope: null; subject: string } }
+      parsed: { type: string; scope: null; subject: string }
     }[]
   >((resolve, reject) => {
     const strm = log.parse({
       _: `${latestTag}..HEAD`,
     })
+
     streamToArray(strm, function (err: any, arr: any[]) {
-      if (err) return reject(err)
-      resolve(
-        arr
-          .map((d) => {
-            try {
-              return { ...d, parsed: parseCommit(d.subject) }
-            } catch (err) {
-              // not a valid commit message
-              return undefined
-            }
-          })
-          .filter(Boolean)
-      )
-    })
-  })
+      if (err) return reject(err);
+
+      Promise.all(
+        arr.map(async (d) => {
+          const parsed = await parseCommit(d.subject);
+
+          // not a valid commit message
+          if (!parsed.type) {
+            return undefined;
+          }
+
+          return { ...d, parsed };
+        })
+      ).then((res) => resolve(res.filter(Boolean)));
+    });
+  });
 
   // Pares the commit messsages, log them, and determine the type of release needed
   const recommendedReleaseLevel: number = commitsSinceLatestTag.reduce(
     (releaseLevel, commit) => {
       console.log(
-        commit.parsed.header.type,
-        commit.parsed.header.scope,
-        commit.parsed.header.subject
+        commit.parsed.type,
+        commit.parsed.scope,
+        commit.parsed.subject
       )
-      if (['fix', 'refactor'].includes(commit.parsed.header.type)) {
+      if (['fix', 'refactor'].includes(commit.parsed.type)) {
         releaseLevel = Math.max(releaseLevel, 0)
       }
-      if (['feat'].includes(commit.parsed.header.type)) {
+      if (['feat'].includes(commit.parsed.type)) {
         releaseLevel = Math.max(releaseLevel, 1)
       }
       if (commit.body.includes('BREAKING CHANGE')) {
