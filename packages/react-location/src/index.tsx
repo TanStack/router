@@ -914,7 +914,7 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
           ? Promise.resolve().then(() => {
               this.status = 'resolved'
             })
-          : new Promise(async (resolveLoader, rejectLoader) => {
+          : new Promise(async (resolveLoader) => {
               let pendingTimeout: Timeout
 
               const resolve = (data: any) => {
@@ -927,7 +927,6 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
                 console.error(err)
                 this.status = 'rejected'
                 this.error = err
-                rejectLoader(err)
               }
 
               const finish = () => {
