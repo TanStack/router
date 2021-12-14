@@ -238,6 +238,8 @@ export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
     replace?: boolean
     // A function that is passed the [Location API](#location-api) and returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
     getActiveProps?: () => Record<string, any>
+    // A function that is passed the [Location API](#location-api) and returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+    getInactiveProps?: () => Record<string, any>
     // Defaults to `{ exact: false, includeHash: false }`
     activeOptions?: ActiveOptions
     // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
@@ -1341,6 +1343,7 @@ export const Link = function Link<
   onMouseEnter,
   className = '',
   getActiveProps = () => ({}),
+  getInactiveProps = () => ({}),
   activeOptions,
   preload,
   disabled,
@@ -1433,6 +1436,13 @@ export const Link = function Link<
     ...activeRest
   } = isActive ? getActiveProps() : {}
 
+  // Get the inactive props
+  const {
+    style: inactiveStyle = {},
+    className: inactiveClassName = '',
+    ...inactiveRest
+  } = isActive ? {} : getInactiveProps()
+
   return (
     <a
       {...{
@@ -1444,9 +1454,10 @@ export const Link = function Link<
         style: {
           ...style,
           ...activeStyle,
+          ...inactiveStyle,
         },
         className:
-          [className, activeClassName].filter(Boolean).join(' ') || undefined,
+          [className, activeClassName, inactiveClassName].filter(Boolean).join(' ') || undefined,
         ...(disabled
           ? {
               role: 'link',
@@ -1455,6 +1466,7 @@ export const Link = function Link<
           : undefined),
         ...rest,
         ...activeRest,
+        ...inactiveRest
         children:
           typeof children === 'function' ? children({ isActive }) : children,
       }}
