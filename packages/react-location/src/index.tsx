@@ -1466,7 +1466,7 @@ export const Link = function Link<
           : undefined),
         ...rest,
         ...activeRest,
-        ...inactiveRest
+        ...inactiveRest,
         children:
           typeof children === 'function' ? children({ isActive }) : children,
       }}
