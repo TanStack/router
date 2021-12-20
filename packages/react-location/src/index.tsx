@@ -101,6 +101,9 @@ export type RouteLoaders<TGenerics> = {
   pendingElement?: SyncOrAsyncElement<TGenerics>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: LoaderFn<TGenerics>
+  // An asynchronous function responsible for cleaning up when the match cache is cleared. This is useful when
+  // the loader function uses libraries with their own request caching, and they need to be cleaned up.
+  unloader?: UnloaderFn<TGenerics>
   // An integer of milliseconds representing how long data should be cached for the route
   loaderMaxAge?: number
   // Similar to React's useEffect hook, this function is called
@@ -152,6 +155,11 @@ export type LoaderFn<TGenerics extends PartialGenerics = DefaultGenerics> = (
   routeMatch: RouteMatch<TGenerics>,
   opts: LoaderFnOptions<TGenerics>,
 ) => PromiseLike<UseGeneric<TGenerics, 'LoaderData'>>
+
+export type UnloaderFn<TGenerics extends PartialGenerics = DefaultGenerics> = (
+  routeMatch: RouteMatch<TGenerics>,
+  loaded?: UseGeneric<TGenerics, 'LoaderData'>,
+) => PromiseLike<void>
 
 export type LoaderFnOptions<
   TGenerics extends PartialGenerics = DefaultGenerics,
@@ -689,6 +697,14 @@ export class RouterInstance<
       const age = Date.now() - (match.updatedAt ?? 0)
 
       if (!match.maxAge || age > match.maxAge) {
+        if (match.route.unloader) {
+          if (match.status === 'resolved') {
+            match.route.unloader(match, match.ownData)
+          } else {
+            match.route.unloader(match)
+          }
+        }
+
         delete this.matchCache[match.id]
       }
     })
