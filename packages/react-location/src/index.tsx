@@ -562,7 +562,7 @@ export class RouterInstance<
   defaultPendingMinMs?: number
   caseSensitive?: boolean
 
-  routesById: Record<string, Route<TGenerics>> = {}
+  routesById: Record<string, Route<TGenerics>[]> = {}
 
   constructor({
     location,
@@ -626,13 +626,17 @@ export class RouterInstance<
         }
 
         if (this.routesById[id]) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn('Duplicate routes found:', this.routesById[id], route)
+          if (route.search) {
+            this.routesById[id]?.push(route);
+          } else {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn('Duplicate routes found:', this.routesById[id], route)
+            }
+            throw new Error()
           }
-          throw new Error()
+        } else {
+          this.routesById[id] = [route]
         }
-
-        this.routesById[id] = route
 
         route.children = route.children?.length
           ? recurseRoutes(route.children, route)
