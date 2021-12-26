@@ -51,10 +51,10 @@ const routes = [{ path: '/', element: <Home /> }]
 
 The error `element` property of a route is what the router will render when a route loader or async element throws an error.
 
-For more information, see the [Route Loaders - Handling Loader Errors](../route-loaders#handling-loader-errors) guide.
+For more information, see the [Route Loaders - Handling Loader Errors](./route-loaders#handling-loader-errors) guide.
 
 ## Pending Route Elements
 
 The pending `element` property of a route is what the router will render when a route loader enters the `pending` state.
 
-Because a pending state shares some context with other sections, you can read all about it in its own [Pending States](../pending-states) guide.
+Because a pending state shares some context with other sections, you can read all about it in its own [Pending States](./pending-states) guide.
