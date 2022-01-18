@@ -102,7 +102,7 @@ export type RouteLoaders<TGenerics> = {
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: LoaderFn<TGenerics>
   // An asynchronous function responsible for cleaning up when the match cache is cleared. This is useful when
-  // the loader function uses libraries with their own request caching, and they need to be cleaned up.
+  // the loader function has side effects that need to be cleaned up when the match is no longer in use.
   unloader?: UnloaderFn<TGenerics>
   // An integer of milliseconds representing how long data should be cached for the route
   loaderMaxAge?: number
@@ -158,8 +158,7 @@ export type LoaderFn<TGenerics extends PartialGenerics = DefaultGenerics> = (
 
 export type UnloaderFn<TGenerics extends PartialGenerics = DefaultGenerics> = (
   routeMatch: RouteMatch<TGenerics>,
-  loaded?: UseGeneric<TGenerics, 'LoaderData'>,
-) => PromiseLike<void>
+) => void
 
 export type LoaderFnOptions<
   TGenerics extends PartialGenerics = DefaultGenerics,
@@ -698,11 +697,7 @@ export class RouterInstance<
 
       if (!match.maxAge || age > match.maxAge) {
         if (match.route.unloader) {
-          if (match.status === 'resolved') {
-            match.route.unloader(match, match.ownData)
-          } else {
-            match.route.unloader(match)
-          }
+          match.route.unloader(match)
         }
 
         delete this.matchCache[match.id]
@@ -1473,7 +1468,9 @@ export const Link = function Link<
           ...inactiveStyle,
         },
         className:
-          [className, activeClassName, inactiveClassName].filter(Boolean).join(' ') || undefined,
+          [className, activeClassName, inactiveClassName]
+            .filter(Boolean)
+            .join(' ') || undefined,
         ...(disabled
           ? {
               role: 'link',
@@ -1482,7 +1479,7 @@ export const Link = function Link<
           : undefined),
         ...rest,
         ...activeRest,
-        ...inactiveRest
+        ...inactiveRest,
         children:
           typeof children === 'function' ? children({ isActive }) : children,
       }}
