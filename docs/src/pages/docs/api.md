@@ -156,6 +156,9 @@ export type RouteLoaders<TGenerics> = {
   pendingElement?: SyncOrAsyncElement<TGenerics>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: LoaderFn<TGenerics>
+  // An asynchronous function responsible for cleaning up when the match cache is cleared. This is useful when
+  // the loader function has side effects that need to be cleaned up when the match is no longer in use.
+  unloader?: UnloaderFn<TGenerics>
   // An integer of milliseconds representing how long data should be cached for the route
   loaderMaxAge?: number
   // Similar to React's useEffect hook, this function is called
