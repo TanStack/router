@@ -634,7 +634,11 @@ export class RouterInstance<
 
         if (this.routesById[id]) {
           if (process.env.NODE_ENV !== 'production') {
-            console.warn('Duplicate routes found:', this.routesById[id], route)
+            console.warn(
+              `Duplicate routes found with id: ${id}`,
+              this.routesById,
+              route,
+            )
           }
           throw new Error()
         }
@@ -1749,8 +1753,6 @@ export function matchByPath<
   const baseSegments = parsePathname(currentLocation.pathname)
   const routeSegments = parsePathname(`${matchLocation.to ?? '*'}`)
 
-  // console.log(baseSegments, routeSegments)
-
   const params: Record<string, string> = {}
 
   let isMatch = (() => {
@@ -1879,7 +1881,7 @@ export function parsePathname(pathname?: string): Segment[] {
   return segments
 }
 
-function resolvePath(basepath: string, base: string, to: string) {
+export function resolvePath(basepath: string, base: string, to: string) {
   base = base.replace(new RegExp(`^${basepath}`), '/')
   to = to.replace(new RegExp(`^${basepath}`), '/')
 
@@ -1889,7 +1891,11 @@ function resolvePath(basepath: string, base: string, to: string) {
   toSegments.forEach((toSegment, index) => {
     if (toSegment.value === '/') {
       if (!index) {
+        // Leading slash
         baseSegments = [toSegment]
+      } else if (index === toSegments.length - 1) {
+        // Trailing Slash
+        baseSegments.push(toSegment)
       } else {
         // ignore inter-slashes
       }

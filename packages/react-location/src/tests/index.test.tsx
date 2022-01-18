@@ -1,4 +1,4 @@
-import { Location, matchRoute } from '..'
+import { Location, matchRoute, resolvePath } from '..'
 
 function createLocation(location: Partial<Location>): Location {
   return {
@@ -177,6 +177,49 @@ describe('matchRoute', () => {
     ].forEach(([a, b, eq]) => {
       test(`${a.pathname} == ${b.to}`, () => {
         expect(matchRoute(createLocation(a), b)).toEqual(eq)
+      })
+    })
+  })
+})
+
+describe('resolvePath', () => {
+  describe('basic resolution', () => {
+    ;[
+      ['/', '/', '/', '/'],
+      ['/', '/', '/a', '/a'],
+      ['/', '/', '/a/b', '/a/b'],
+      ['/', 'a', 'b', '/a/b'],
+      ['/a/b', 'c', '/a/b/c', '/a/b/c'],
+    ].forEach(([base, a, b, eq]) => {
+      test(`${a} to ${b} === ${eq}`, () => {
+        expect(resolvePath(base, a, b)).toEqual(eq)
+      })
+    })
+  })
+
+  describe('relative', () => {
+    ;[
+      ['/a/b', '/', './c', '/a/b/c'],
+      ['/', '/', './a/b', '/a/b'],
+      ['/', '/a/b/c', './d', '/a/b/c/d'],
+      ['/', '/a/b/c', '../d', '/a/b/d'],
+      ['/', '/a/b/c', '../../d', '/a/d'],
+      ['/', '/a/b/c', '../..', '/a'],
+      ['/', '/a/b/c', '../../..', '/'],
+    ].forEach(([base, a, b, eq]) => {
+      test(`${a} to ${b} === ${eq}`, () => {
+        expect(resolvePath(base, a, b)).toEqual(eq)
+      })
+    })
+  })
+
+  describe('trailing slash', () => {
+    ;[
+      ['/', '/a', './b/', '/a/b/'],
+      ['/', '/', 'a/b/c/', '/a/b/c/'],
+    ].forEach(([base, a, b, eq]) => {
+      test(`${a} to ${b} === ${eq}`, () => {
+        expect(resolvePath(base, a, b)).toEqual(eq)
       })
     })
   })

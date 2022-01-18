@@ -336,7 +336,7 @@ function Root() {
             ["dashboard", "Dashboard"],
             ["expensive", "Expensive"],
             ["really-expensive", "Really Expensive"],
-            ["authenticated", "Authenticated"],
+            ["authenticated/", "Authenticated"], // This route has a trailing slash on purpose.
           ].map(([to, label]) => {
             return (
               <div key={to}>
