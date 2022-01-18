@@ -842,7 +842,7 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
       clearTimeout(this.pendingTimeout)
     }
 
-    if (this.route.pendingMs) {
+    if (this.route.pendingMs !== undefined) {
       this.pendingTimeout = setTimeout(() => {
         this.notify?.()
         if (typeof this.route.pendingMinMs !== 'undefined') {
