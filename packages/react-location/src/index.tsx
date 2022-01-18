@@ -311,7 +311,7 @@ export type RouterType<TGenerics extends PartialGenerics = DefaultGenerics> = (
   props: RouterProps<TGenerics>,
 ) => JSX.Element
 
-type Listener<TPayload> = (payload: TPayload) => void
+type Listener = () => void
 
 // Source
 
@@ -334,23 +334,23 @@ const useLayoutEffect = isDOM ? React.useLayoutEffect : React.useEffect
 const createDefaultHistory = () =>
   isDOM ? createBrowserHistory() : createMemoryHistory()
 
-class Subscribable<TPayload = void> {
-  listeners: Listener<TPayload>[]
+class Subscribable {
+  listeners: Listener[]
 
   constructor() {
     this.listeners = []
   }
 
-  subscribe(listener: Listener<TPayload>): () => void {
-    this.listeners.push(listener as Listener<TPayload>)
+  subscribe(listener: Listener): () => void {
+    this.listeners.push(listener as Listener)
 
     return () => {
       this.listeners = this.listeners.filter((x) => x !== listener)
     }
   }
 
-  notify(payload: TPayload): void {
-    this.listeners.forEach((listener) => listener(payload))
+  notify(): void {
+    this.listeners.forEach((listener) => listener())
   }
 }
 
@@ -839,13 +839,13 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
     Object.assign(this, unloadedMatch)
   }
 
-  status: 'pending' | 'resolved' | 'rejected' = 'pending'
+  status: 'loading' | 'pending' | 'resolved' | 'rejected' = 'loading'
   ownData: UseGeneric<TGenerics, 'LoaderData'> = {}
   data: UseGeneric<TGenerics, 'LoaderData'> = {}
   isLoading: boolean = false
 
   private notify? = (isSoft?: boolean) => {
-    this.matchLoader?.notify(isSoft)
+    this.matchLoader?.preNotify(isSoft)
   }
 
   assignMatchLoader? = (matchLoader: MatchLoader<TGenerics>) => {
@@ -859,6 +859,9 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
 
     if (this.route.pendingMs !== undefined) {
       this.pendingTimeout = setTimeout(() => {
+        if (this.status === 'loading') {
+          this.status = 'pending'
+        }
         this.notify?.()
         if (typeof this.route.pendingMinMs !== 'undefined') {
           this.pendingMinPromise = new Promise((r) =>
@@ -951,6 +954,7 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
                 this.startPending = undefined
                 clearTimeout(pendingTimeout)
                 resolveLoader(this.ownData)
+                this.notify?.(true)
               }
 
               try {
@@ -971,7 +975,6 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
                       }
 
                       this.updatedAt = Date.now()
-
                       this.notify?.(true)
                     },
                   }),
@@ -996,7 +999,7 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
 
 class MatchLoader<
   TGenerics extends PartialGenerics = DefaultGenerics,
-> extends Subscribable<undefined | boolean> {
+> extends Subscribable {
   router: RouterInstance<TGenerics>
   location: Location<TGenerics>
   matches: RouteMatch<TGenerics>[]
@@ -1031,13 +1034,12 @@ class MatchLoader<
   status: 'pending' | 'resolved' = 'pending'
 
   preNotify = (isSoft?: boolean) => {
-    if (this.status === 'pending' && isSoft) {
-      return
+    if (!isSoft) {
+      this.status = 'resolved'
     }
 
-    this.status = 'resolved'
     cascadeMatchData(this.matches)
-    this.notify(false)
+    this.notify()
   }
 
   loadData = async ({ maxAge }: { maxAge?: number } = {}) => {
@@ -1564,6 +1566,10 @@ export function Outlet<TGenerics extends PartialGenerics = DefaultGenerics>() {
     }
 
     const pendingElement = match.pendingElement ?? router.defaultPendingElement
+
+    if (match.status === 'loading') {
+      return null
+    }
 
     if (match.status === 'pending') {
       if (match.route.pendingMs || pendingElement) {
