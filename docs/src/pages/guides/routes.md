@@ -173,7 +173,7 @@ const routes = [
     path: 'dashboard',
     children: [
       {
-        path: '/', // matches /teams
+        path: '/', // matches /dashboard exactly
       },
       {
         path: 'teams', // matches /dashboard/teams/*
