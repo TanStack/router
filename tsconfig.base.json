@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "lib": ["DOM", "DOM.Iterable", "ES2020"],
+    "target": "ES2020",
+    "module": "ES2020",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "jsx": "react",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "react-location": ["packages/react-location"],
+      "react-location-devtools": ["packages/react-location-devtools"],
+      "react-location-elements-to-routes": [
+        "packages/react-location-elements-to-routes"
+      ],
+      "react-location-jsurl": ["packages/react-location-jsurl"],
+      "react-location-rank-routes": ["packages/react-location-rank-routes"],
+      "react-location-simple-cach": ["packages/react-location-simple-cache"]
+    }
+  }
+}

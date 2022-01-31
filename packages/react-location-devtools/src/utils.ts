@@ -1,5 +1,5 @@
 import React from 'react'
-import { RouteMatch } from '../../react-location/types'
+import { DefaultGenerics, RouteMatch } from 'react-location'
 
 import { Theme, useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
@@ -25,7 +25,10 @@ type StyledComponent<T> = T extends 'button'
   ? React.HTMLAttributes<HTMLElementTagNameMap[T]>
   : never
 
-export function getStatusColor(match: RouteMatch, theme: Theme) {
+export function getStatusColor(
+  match: RouteMatch<DefaultGenerics>,
+  theme: Theme,
+) {
   return match.isLoading
     ? theme.active
     : match.status === 'rejected'

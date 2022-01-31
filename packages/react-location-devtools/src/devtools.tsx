@@ -1,9 +1,8 @@
 import React from 'react'
+import { useRouter } from 'react-location'
 
 import useLocalStorage from './useLocalStorage'
 import { getStatusColor, useIsMounted, useSafeState } from './utils'
-import { useRouter } from 'react-location'
-
 import {
   Panel,
   Button,

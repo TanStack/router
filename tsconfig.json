@@ -1,27 +1,12 @@
 {
-  "compilerOptions": {
-    "esModuleInterop": true,
-    "isolatedModules": true,
-    "jsx": "react",
-    "lib": ["ESNext", "dom"],
-    "target": "es5",
-    "noEmit": true,
-    "noImplicitAny": true,
-    "noImplicitReturns": false,
-    "noImplicitThis": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "types": ["jest", "node"],
-    "paths": {
-      "react-location": ["./packages/react-location"],
-      "react-location-devtools": ["./packages/react-location-devtools"],
-      "react-location-simple-cache": ["./packages/react-location-simple-cache"],
-      "react-location-rank-routes": ["./packages/react-location-rank-routes"]
-    }
-  },
-  "include": ["./packages/*/src/*"]
-  // "exclude": ["./examples", "./test"]
+  "files": [],
+  "references": [
+    { "path": "packages/react-location" },
+    { "path": "packages/react-location-devtools" },
+    { "path": "packages/react-location-elements-to-routes" },
+    { "path": "packages/react-location-jsurl" },
+    { "path": "packages/react-location-rank-routes" },
+    { "path": "packages/react-location-simple-cache" }
+  ]
+  // "exclude": ["node_modules"]
 }

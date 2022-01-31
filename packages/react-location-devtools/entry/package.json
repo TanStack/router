@@ -1,7 +1,0 @@
-{
-  "internal": true,
-  "main": "../lib/index.js",
-  "module": "../es/index.js",
-  "unpkg": "../dist/react-location-devtools.production.min.js",
-  "types": "../types/index.d.ts"
-}

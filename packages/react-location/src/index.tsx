@@ -517,9 +517,7 @@ export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
 
   useLayoutEffect(() => {
     return router.subscribe(() => {
-      // microtask(() => {
       rerender()
-      // })
     })
   }, [])
 
@@ -801,18 +799,18 @@ export function useLocation<
   const instance = React.useContext(LocationContext) as ReactLocation<TGenerics>
   warning(!!instance, 'useLocation must be used within a <ReactLocation />')
 
-  useLayoutEffect(() => {
-    return instance.subscribe(() => {
-      // Rerender all subscribers in a microtask
-      Promise.resolve().then(() => {
-        setTimeout(function renderAllLocationSubscribers() {
-          if (getIsMounted()) {
-            rerender()
-          }
-        }, 0)
-      })
-    })
-  }, [instance])
+  // useLayoutEffect(() => {
+  //   return instance.subscribe(() => {
+  //     // Rerender all subscribers in a microtask
+  //     Promise.resolve().then(() => {
+  //       // setTimeout(function renderAllLocationSubscribers() {
+  //       if (getIsMounted()) {
+  //         rerender()
+  //       }
+  //       // }, 0)
+  //     })
+  //   })
+  // }, [instance])
 
   return instance
 }
