@@ -2,7 +2,7 @@
   "private": true,
   "repository": "https://github.com/tannerlinsley/react-location.git",
   "scripts": {
-    "linkAll": "lerna exec 'yarn link' && lerna exec 'yarn link @tanstack/react-location'",
+    "linkAll": "lerna exec 'yarn link' && lerna exec 'yarn link react-location'",
     "unlinkAll": "lerna exec yarn unlink",
     "test": "(is-ci && yarn test:ci) || yarn test:dev",
     "test:ci": "jest",
