@@ -297,6 +297,7 @@ async function run() {
               'docs',
               'chore',
               'refactor',
+              'perf',
               'fix',
               'feat',
             ].indexOf(d),
