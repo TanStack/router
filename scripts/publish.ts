@@ -207,7 +207,7 @@ async function run() {
   // Pares the commit messsages, log them, and determine the type of release needed
   const recommendedReleaseLevel: number = commitsSinceLatestTag.reduce(
     (releaseLevel, commit) => {
-      if (['fix', 'refactor'].includes(commit.parsed.type)) {
+      if (['fix', 'refactor', 'perf'].includes(commit.parsed.type)) {
         releaseLevel = Math.max(releaseLevel, 0)
       }
       if (['feat'].includes(commit.parsed.type)) {

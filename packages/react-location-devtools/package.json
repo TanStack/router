@@ -39,6 +39,10 @@
     "react-dom": ">=16"
   },
   "dependencies": {
+    "@babel/runtime": "^7.16.7",
     "react-location": "3.1.0-next.13"
+  },
+  "devDependencies": {
+    "babel-plugin-transform-async-to-promises": "^0.8.18"
   }
 }

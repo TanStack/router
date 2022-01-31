@@ -37,7 +37,7 @@ const umdDevPlugin = (type: 'development' | 'production') =>
   })
 
 const babelPlugin = babel({
-  babelHelpers: 'bundled',
+  babelHelpers: 'runtime',
   exclude: /node_modules/,
   extensions: ['.ts', '.tsx'],
 })

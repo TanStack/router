@@ -315,7 +315,9 @@ type Listener = () => void
 
 // Source
 
-const LocationContext = React.createContext<ReactLocation<any>>(null!)
+const LocationContext = React.createContext<{ location: ReactLocation<any> }>(
+  null!,
+)
 const MatchesContext = React.createContext<RouteMatch<any>[]>(null!)
 const routerContext = React.createContext<{ router: RouterInstance<any> }>(
   null!,
@@ -533,7 +535,7 @@ export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
   )
 
   return (
-    <LocationContext.Provider value={location}>
+    <LocationContext.Provider value={{ location }}>
       <routerContext.Provider value={routerValue}>
         <MatchesProvider value={[router.rootMatch!, ...router.state.matches]}>
           {children ?? <Outlet />}
@@ -794,10 +796,12 @@ export type UseLocationType<
 export function useLocation<
   TGenerics extends PartialGenerics = DefaultGenerics,
 >(): ReactLocation<TGenerics> {
-  const getIsMounted = useGetIsMounted()
-  const [, rerender] = React.useReducer((d) => d + 1, 0)
-  const instance = React.useContext(LocationContext) as ReactLocation<TGenerics>
-  warning(!!instance, 'useLocation must be used within a <ReactLocation />')
+  // const getIsMounted = useGetIsMounted()
+  // const [, rerender] = React.useReducer((d) => d + 1, 0)
+  const context = React.useContext(LocationContext) as {
+    location: ReactLocation<TGenerics>
+  }
+  warning(!!context, 'useLocation must be used within a <ReactLocation />')
 
   // useLayoutEffect(() => {
   //   return instance.subscribe(() => {
@@ -812,7 +816,7 @@ export function useLocation<
   //   })
   // }, [instance])
 
-  return instance
+  return context.location
 }
 
 export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
