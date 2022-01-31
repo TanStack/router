@@ -25,9 +25,10 @@ const globals = {
   'react-location-simple-cache': 'ReactLocationSimpleCache',
   'react-location-rank-routes': 'ReactLocationRankRoutes',
   'react-location-jsurl': 'ReactLocationJsurl',
+  history: 'History',
 }
 
-const externals = Object.keys(globals)
+const externals = [...Object.keys(globals), /@babel\/runtime/, 'history']
 
 const umdDevPlugin = (type: 'development' | 'production') =>
   replace({
@@ -37,7 +38,7 @@ const umdDevPlugin = (type: 'development' | 'production') =>
   })
 
 const babelPlugin = babel({
-  babelHelpers: 'runtime',
+  babelHelpers: 'bundled',
   exclude: /node_modules/,
   extensions: ['.ts', '.tsx'],
 })
