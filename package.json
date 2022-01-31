@@ -18,6 +18,7 @@
   "workspaces": [
     "./packages/react-location",
     "./packages/react-location-devtools",
+    "./packages/react-location-elements-to-routes",
     "./packages/react-location-simple-cache",
     "./packages/react-location-rank-routes",
     "./packages/react-location-jsurl"

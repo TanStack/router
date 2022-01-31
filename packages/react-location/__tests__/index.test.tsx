@@ -1,4 +1,4 @@
-import { Location, matchRoute, resolvePath } from '..'
+import { Location, matchRoute, resolvePath } from '../src'
 
 function createLocation(location: Partial<Location>): Location {
   return {
