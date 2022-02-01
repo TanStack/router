@@ -129,10 +129,10 @@ const Home = (props) => {
                   </h3>
                   <div className="mt-2  lg:mt-4 text-base xl:text-lg lg:leading-normal leading-6 text-gray-600">
                     Where most other routers provide minimum-to-no support for
-                    intelligent URL search param management, React Location takes
-                    them very seriously to provide highly integrated support for
-                    matching, consuming, and manipulating URL search params at
-                    scale.
+                    intelligent URL search param management, React Location
+                    takes them very seriously to provide highly integrated
+                    support for matching, consuming, and manipulating URL search
+                    params at scale.
                   </div>
                 </div>
               </div>
@@ -236,8 +236,8 @@ const Home = (props) => {
         <section className="bg-gray-900 body-font">
           <div className="container max-w-7xl px-4  mx-auto -mt-72 relative">
             <iframe
-              src="https://codesandbox.io/embed/github/tannerlinsley/react-location/tree/main/examples/kitchen-sink?autoresize=1&fontsize=16&theme=dark"
-              title="tannerlinsley/react-location: simple"
+              src="https://codesandbox.io/embed/github/tanstack/react-location/tree/main/examples/kitchen-sink?autoresize=1&fontsize=16&theme=dark"
+              title="tanstack/react-location: simple"
               sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
               className="shadow-2xl"
               style={{

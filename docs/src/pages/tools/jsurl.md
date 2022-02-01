@@ -11,8 +11,8 @@ A [JSURL](https://github.com/Sage/jsurl) powered stringifier/parser for React Lo
 ## Usage
 
 ```tsx
-import { ReactLocation } from 'react-location'
-import { parseSearch, stringifySearch } from 'react-location-jsurl'
+import { ReactLocation } from '@tanstack/react-location'
+import { parseSearch, stringifySearch } from '@tanstack/react-location-jsurl'
 
 const reactLocation = new ReactLocation({
   parseSearch,

@@ -1,4 +1,4 @@
-import { Route } from "react-location";
+import { Route } from "@tanstack/react-location";
 import { LocationGenerics } from "..";
 
 const route: Route<LocationGenerics> = {

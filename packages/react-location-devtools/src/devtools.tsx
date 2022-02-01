@@ -1,5 +1,5 @@
 import React from 'react'
-import { useRouter } from 'react-location'
+import { RouterInstance, useRouter } from '@tanstack/react-location'
 
 import useLocalStorage from './useLocalStorage'
 import { getStatusColor, useIsMounted, useSafeState } from './utils'
@@ -15,6 +15,8 @@ import { ThemeProvider, defaultTheme as theme } from './theme'
 // import { getQueryStatusLabel, getQueryStatusColor } from './utils'
 import Explorer from './Explorer'
 import Logo from './Logo'
+
+export type PartialKeys<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
 
 interface DevtoolsOptions {
   /**
@@ -53,6 +55,10 @@ interface DevtoolsOptions {
    * Defaults to 'footer'.
    */
   containerElement?: string | any
+  /**
+   * A boolean variable indicating if the "lite" version of the library is being used
+   */
+  useRouter?: () => unknown
 }
 
 interface DevtoolsPanelOptions {
@@ -76,6 +82,10 @@ interface DevtoolsPanelOptions {
    * Handles the opening and closing the devtools panel
    */
   handleDragStart: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+  /**
+   * A boolean variable indicating if the "lite" version of the library is being used
+   */
+  useRouter: () => unknown
 }
 
 const isServer = typeof window === 'undefined'
@@ -87,6 +97,7 @@ export function ReactLocationDevtools({
   toggleButtonProps = {},
   position = 'bottom-left',
   containerElement: Container = 'footer',
+  useRouter: useRouterImpl = useRouter,
 }: DevtoolsOptions): React.ReactElement | null {
   const rootRef = React.useRef<HTMLDivElement>(null)
   const panelRef = React.useRef<HTMLDivElement>(null)
@@ -221,6 +232,7 @@ export function ReactLocationDevtools({
         <ReactLocationDevtoolsPanel
           ref={panelRef as any}
           {...otherPanelProps}
+          useRouter={useRouterImpl}
           style={{
             position: 'fixed',
             bottom: '0',
@@ -345,16 +357,22 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
   HTMLDivElement,
   DevtoolsPanelOptions
 >(function ReactLocationDevtoolsPanel(props, ref): React.ReactElement {
-  const { isOpen = true, setIsOpen, handleDragStart, ...panelProps } = props
+  const {
+    isOpen = true,
+    setIsOpen,
+    handleDragStart,
+    useRouter,
+    ...panelProps
+  } = props
 
-  const router = useRouter()
+  const router = useRouter() as RouterInstance<any>
 
   const [activeMatchId, setActiveRouteId] = useLocalStorage(
     'reactLocationDevtoolsActiveRouteId',
     '',
   )
 
-  const activeMatch = router.state.matches.find((d) => d.id === activeMatchId)
+  const activeMatch = router.state.matches?.find((d) => d.id === activeMatchId)
 
   return (
     <ThemeProvider theme={theme}>
@@ -799,7 +817,9 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
                 Last Updated:{' '}
                 {activeMatch.updatedAt ? (
                   <Code>
-                    {new Date(activeMatch.updatedAt).toLocaleTimeString()}
+                    {new Date(
+                      activeMatch.updatedAt as number,
+                    ).toLocaleTimeString()}
                   </Code>
                 ) : (
                   'N/A'

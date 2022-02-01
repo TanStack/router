@@ -50,7 +50,7 @@ export const Seo = withRouter(
         key="twitter:card"
         content="summary_large_image"
       />
-      <meta name="twitter:site" key="twitter:site" content="@tannerlinsley" />
+      <meta name="twitter:site" key="twitter:site" content="@tan_stack" />
       <meta
         name="twitter:creator"
         key="twitter:creator"

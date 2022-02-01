@@ -1,9 +1,9 @@
 {
-  "name": "react-location",
+  "name": "@tanstack/react-location",
   "author": "Tanner Linsley",
   "version": "3.3.4",
   "license": "MIT",
-  "repository": "tannerlinsley/react-location",
+  "repository": "tanstack/react-location",
   "homepage": "https://react-location.tanstack.com/",
   "description": "",
   "publishConfig": {
@@ -12,7 +12,7 @@
   "keywords": [
     "react",
     "location",
-    "react-location",
+    "@tanstack/react-location",
     "router",
     "routing",
     "async",

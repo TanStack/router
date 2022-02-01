@@ -1,8 +1,8 @@
 {
   "private": true,
-  "repository": "https://github.com/tannerlinsley/react-location.git",
+  "repository": "https://github.com/tanstack/react-location.git",
   "scripts": {
-    "linkAll": "lerna exec 'yarn link' && lerna exec 'yarn link react-location'",
+    "linkAll": "lerna exec 'yarn link' && lerna exec 'yarn link @tanstack/react-location'",
     "unlinkAll": "lerna exec yarn unlink",
     "test": "(is-ci && yarn test:ci) || yarn test:dev",
     "test:ci": "jest",
@@ -17,6 +17,7 @@
   },
   "workspaces": [
     "./packages/react-location",
+    "./packages/react-location-lite",
     "./packages/react-location-devtools",
     "./packages/react-location-elements-to-routes",
     "./packages/react-location-simple-cache",

@@ -3,7 +3,7 @@ import {
   Route as RouteType,
   PartialGenerics,
   DefaultGenerics,
-} from 'react-location'
+} from '@tanstack/react-location'
 
 export function Route<TGenerics extends PartialGenerics = DefaultGenerics>(
   _props: Omit<RouteType<TGenerics>, 'children'> & {

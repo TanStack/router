@@ -57,29 +57,29 @@ type BranchConfig = {
 
 // TODO: List your npm packages here. The first package will be used as the versioner.
 const packages: Package[] = [
-  { name: 'react-location', srcDir: 'packages/react-location/src' },
+  { name: '@tanstack/react-location', srcDir: 'packages/react-location/src' },
   {
-    name: 'react-location-devtools',
+    name: '@tanstack/react-location-devtools',
     srcDir: 'packages/react-location-devtools/src',
-    deps: ['react-location'],
+    deps: ['@tanstack/react-location'],
   },
   {
-    name: 'react-location-elements-to-routes',
+    name: '@tanstack/react-location-elements-to-routes',
     srcDir: 'packages/react-location-elements-to-routes/src',
-    deps: ['react-location'],
+    deps: ['@tanstack/react-location'],
   },
   {
-    name: 'react-location-simple-cache',
+    name: '@tanstack/react-location-simple-cache',
     srcDir: 'packages/react-location-simple-cache/src',
-    deps: ['react-location'],
+    deps: ['@tanstack/react-location'],
   },
   {
-    name: 'react-location-rank-routes',
+    name: '@tanstack/react-location-rank-routes',
     srcDir: 'packages/react-location-rank-routes/src',
-    deps: ['react-location'],
+    deps: ['@tanstack/react-location'],
   },
   {
-    name: 'react-location-jsurl',
+    name: '@tanstack/react-location-jsurl',
     srcDir: 'packages/react-location-jsurl/src',
     deps: [],
   },

@@ -41,7 +41,7 @@ export const Footer = (props) => {
             <ul className="mt-4">
               <li className="mt-4">
                 <a
-                  href="https://github.com/tannerlinsley/react-location/discussions"
+                  href="https://github.com/tanstack/react-location/discussions"
                   className="text-base leading-6 text-gray-500 hover:text-gray-900"
                 >
                   Forum & Support
@@ -65,7 +65,7 @@ export const Footer = (props) => {
               </li>
               <li className="mt-4">
                 <a
-                  href="https://github.com/tannerlinsley/react-location/releases"
+                  href="https://github.com/tanstack/react-location/releases"
                   className="text-base leading-6 text-gray-500 hover:text-gray-900"
                 >
                   Releases
@@ -74,12 +74,12 @@ export const Footer = (props) => {
               <li className="mt-4">
                 <a
                   className="github-button"
-                  href="https://github.com/tannerlinsley/react-location"
+                  href="https://github.com/tanstack/react-location"
                   data-color-scheme="no-preference: light; light: light; dark: dark;"
                   data-icon="octicon-star"
                   data-size="large"
                   data-show-count="true"
-                  aria-label="Star tannerlinsley/react-location on GitHub"
+                  aria-label="Star tanstack/react-location on GitHub"
                 >
                   Star
                 </a>
@@ -146,7 +146,7 @@ export const Footer = (props) => {
         <div className="mt-8 border-t border-gray-200 pt-8 md:flex md:items-center md:justify-between">
           <div className="flex md:order-2">
             <a
-              href="https://twitter.com/tannerlinsley"
+              href="https://twitter.com/tanstack"
               className="ml-6 text-gray-400 hover:text-gray-500"
             >
               <span className="sr-only">Twitter</span>
@@ -155,7 +155,7 @@ export const Footer = (props) => {
               </svg>
             </a>
             <a
-              href="https://github.com/tannerlinsley"
+              href="https://github.com/tanstack"
               className="ml-6 text-gray-400 hover:text-gray-500"
             >
               <span className="sr-only">GitHub</span>

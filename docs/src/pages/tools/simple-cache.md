@@ -21,8 +21,8 @@ npm i react-location-simple-cache
 ## Getting Started
 
 ```tsx
-import { ReactLocation, Router } from 'react-location'
-import { ReactLocationSimpleCache } from 'react-location-simple-cache'
+import { ReactLocation, Router } from '@tanstack/react-location'
+import { ReactLocationSimpleCache } from '@tanstack/react-location-simple-cache'
 
 //
 
@@ -62,10 +62,10 @@ const simpleCache = new ReactLocationSimpleCache()
 This is the underlying shape of each record that is stored in the cache:
 
 ```tsx
-import { LoaderData, RouteMatch } from 'react-location'
+import { LoaderData, RouteMatch } from '@tanstack/react-location'
 
 export type SimpleCacheRecord<
-  TData extends LoaderData = Record<string, unknown>
+  TData extends LoaderData = Record<string, unknown>,
 > = {
   key: string
   updatedAt: number
@@ -115,7 +115,7 @@ createLoader: (
     key?: (match: RouteMatch) => string
     maxAge?: number
     policy?: FetchPolicy
-  }
+  },
 ) => Loader
 ```
 
@@ -137,7 +137,7 @@ const routes = [
       }),
       {
         key: (match) => `posts_${match.params.postId}`,
-      }
+      },
     ),
   },
 ]
@@ -160,7 +160,7 @@ Removes records from the cache by predicate function
 ```tsx
 type cache = {
   remove<TLoaderData>(
-    predicateFn: (record: SimpleCacheRecord) => boolean | any
+    predicateFn: (record: SimpleCacheRecord) => boolean | any,
   ): void
 }
 ```
@@ -172,7 +172,7 @@ Returns records by predicate function
 ```tsx
 type cache = {
   filter<TLoaderData>(
-    predicateFn: (record: SimpleCacheRecord) => boolean | any
+    predicateFn: (record: SimpleCacheRecord) => boolean | any,
   ): SimpleCacheRecord<TLoaderData>
 }
 ```
@@ -184,7 +184,7 @@ Returns the first record found by predicate
 ```tsx
 type cache = {
   find<TLoaderData>(
-    predicateFn: (record: SimpleCacheRecord) => boolean | any
+    predicateFn: (record: SimpleCacheRecord) => boolean | any,
   ): SimpleCacheRecord<TLoaderData>
 }
 ```
@@ -196,7 +196,7 @@ Invalidates records by predicate function
 ```tsx
 type cache = {
   invalidate<TLoaderData>(
-    predicateFn: (record: SimpleCacheRecord) => boolean | any
+    predicateFn: (record: SimpleCacheRecord) => boolean | any,
   ): void
 }
 ```

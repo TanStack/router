@@ -60,8 +60,8 @@ Feature/Capability Key:
 
 [bp-react-location]: https://badgen.net/bundlephobia/minzip/react-location?label=💾
 [bpl-react-location]: https://bundlephobia.com/result?p=react-location
-[gh-react-location]: https://github.com/tannerlinsley/react-location
-[stars-react-location]: https://img.shields.io/github/stars/tannerlinsley/react-location?label=%F0%9F%8C%9F
+[gh-react-location]: https://github.com/tanstack/react-location
+[stars-react-location]: https://img.shields.io/github/stars/tanstack/react-location?label=%F0%9F%8C%9F
 
 <!-- -->
 

@@ -3,7 +3,7 @@ import {
   parsePathname,
   PartialGenerics,
   DefaultGenerics,
-} from 'react-location'
+} from '@tanstack/react-location'
 
 export function rankRoutes<TGenerics extends PartialGenerics = DefaultGenerics>(
   routes: Route<TGenerics>[],

@@ -4,12 +4,12 @@ title: With React Query
 toc: false
 ---
 
-- [Open in CodeSandbox](https://codesandbox.io/s/github/tannerlinsley/react-location/tree/main/examples/with-react-query)
-- [View Source](https://github.com/tannerlinsley/react-location/tree/main/examples/with-react-query)
+- [Open in CodeSandbox](https://codesandbox.io/s/github/tanstack/react-location/tree/main/examples/with-react-query)
+- [View Source](https://github.com/tanstack/react-location/tree/main/examples/with-react-query)
 
 <iframe
-  src="https://codesandbox.io/embed/github/tannerlinsley/react-location/tree/main/examples/with-react-query?autoresize=1&fontsize=14&theme=dark"
-  title="tannerlinsley/react-location: simple"
+  src="https://codesandbox.io/embed/github/tanstack/react-location/tree/main/examples/with-react-query?autoresize=1&fontsize=14&theme=dark"
+  title="tanstack/react-location: simple"
   sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
   style={{
     width: '100%',

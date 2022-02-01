@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "packages/react-location" },
+    { "path": "packages/react-location-lite" },
     { "path": "packages/react-location-devtools" },
     { "path": "packages/react-location-elements-to-routes" },
     { "path": "packages/react-location-jsurl" },
