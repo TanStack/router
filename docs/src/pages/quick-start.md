@@ -14,8 +14,8 @@ The `basic` example below illustrates a few of the basic concepts you'll encount
 - Using Route data in components
 
 <iframe
-  src="https://codesandbox.io/embed/github/tannerlinsley/react-location/tree/main/examples/basic?autoresize=1&fontsize=14&theme=dark"
-  title="tannerlinsley/react-location: simple"
+  src="https://codesandbox.io/embed/github/tanstack/react-location/tree/main/examples/basic?autoresize=1&fontsize=14&theme=dark"
+  title="tanstack/react-location: simple"
   sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
   style={{
     width: '100%',

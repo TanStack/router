@@ -3,7 +3,7 @@ import {
   RouteMatch,
   PartialGenerics,
   DefaultGenerics,
-} from 'react-location'
+} from '@tanstack/react-location'
 
 export type FetchPolicy = 'cache-and-network' | 'cache-first' | 'network-only'
 

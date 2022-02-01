@@ -19,12 +19,14 @@ type Options = {
 const globals = {
   react: 'React',
   'react-dom': 'ReactDOM',
-  'react-location': 'ReactLocation',
-  'react-location-devtools': 'ReactLocationDevtools',
-  'react-location-elements-to-routes': 'ReactLocationElementsToRoutes',
-  'react-location-simple-cache': 'ReactLocationSimpleCache',
-  'react-location-rank-routes': 'ReactLocationRankRoutes',
-  'react-location-jsurl': 'ReactLocationJsurl',
+  '@tanstack/react-location': 'ReactLocation',
+  '@tanstack/react-location-lite': 'ReactLocationLite',
+  '@tanstack/react-location-devtools': 'ReactLocationDevtools',
+  '@tanstack/react-location-elements-to-routes':
+    'ReactLocationElementsToRoutes',
+  '@tanstack/react-location-simple-cache': 'ReactLocationSimpleCache',
+  '@tanstack/react-location-rank-routes': 'ReactLocationRankRoutes',
+  '@tanstack/react-location-jsurl': 'ReactLocationJsurl',
   history: 'History',
 }
 
@@ -50,6 +52,13 @@ export default function rollup(options: RollupOptions): RollupOptions[] {
       packageDir: 'packages/react-location',
       jsName: 'ReactLocation',
       outputFile: 'react-location',
+      entryFile: 'src/index.tsx',
+    }),
+    ...buildConfigs({
+      name: 'react-location-lite',
+      packageDir: 'packages/react-location-lite',
+      jsName: 'ReactLocationLite',
+      outputFile: 'react-location-lite',
       entryFile: 'src/index.tsx',
     }),
     ...buildConfigs({

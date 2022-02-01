@@ -20,7 +20,10 @@ The `Route` component can be used to create a JSX representation of a `Route` ob
 Use the `Route` component and `elementsToRoutes` function like so:
 
 ```tsx
-import { Route, elementsToRoutes } from 'react-location-elements-to-routes'
+import {
+  Route,
+  elementsToRoutes,
+} from '@tanstack/react-location-elements-to-routes'
 
 const routes = elementsToRoutes(
   <Route path="admin" element={<Admin />}>
@@ -35,7 +38,7 @@ const routes = elementsToRoutes(
       }}
     />
     <Route path="settings" element={<Settings />} />
-  </Route>
+  </Route>,
 )
 
 // routes ===
@@ -69,8 +72,11 @@ const routes = elementsToRoutes(
 You can then pass these routes to `react-location`'s `Router` as you normally would:
 
 ```tsx
-import { Router } from 'react-location'
-import { Route, elementsToRoutes } from 'react-location-elements-to-routes'
+import { Router } from '@tanstack/react-location'
+import {
+  Route,
+  elementsToRoutes,
+} from '@tanstack/react-location-elements-to-routes'
 
 function App() {
   return (
@@ -88,7 +94,7 @@ function App() {
             }}
           />
           <Route path="settings" element={<Settings />} />
-        </Route>
+        </Route>,
       )}
     />
   )

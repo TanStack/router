@@ -10,8 +10,8 @@ import {
   Link,
   Outlet,
   MatchRoute,
-} from "react-location";
-import { ReactLocationSimpleCache } from "react-location-simple-cache";
+} from "@tanstack/react-location";
+import { ReactLocationSimpleCache } from "@tanstack/react-location-simple-cache";
 
 //
 

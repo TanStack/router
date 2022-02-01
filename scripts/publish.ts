@@ -57,29 +57,29 @@ type BranchConfig = {
 
 // TODO: List your npm packages here. The first package will be used as the versioner.
 const packages: Package[] = [
-  { name: 'react-location', srcDir: 'packages/react-location/src' },
+  { name: '@tanstack/react-location', srcDir: 'packages/react-location/src' },
   {
-    name: 'react-location-devtools',
+    name: '@tanstack/react-location-devtools',
     srcDir: 'packages/react-location-devtools/src',
-    deps: ['react-location'],
+    deps: ['@tanstack/react-location'],
   },
   {
-    name: 'react-location-elements-to-routes',
+    name: '@tanstack/react-location-elements-to-routes',
     srcDir: 'packages/react-location-elements-to-routes/src',
-    deps: ['react-location'],
+    deps: ['@tanstack/react-location'],
   },
   {
-    name: 'react-location-simple-cache',
+    name: '@tanstack/react-location-simple-cache',
     srcDir: 'packages/react-location-simple-cache/src',
-    deps: ['react-location'],
+    deps: ['@tanstack/react-location'],
   },
   {
-    name: 'react-location-rank-routes',
+    name: '@tanstack/react-location-rank-routes',
     srcDir: 'packages/react-location-rank-routes/src',
-    deps: ['react-location'],
+    deps: ['@tanstack/react-location'],
   },
   {
-    name: 'react-location-jsurl',
+    name: '@tanstack/react-location-jsurl',
     srcDir: 'packages/react-location-jsurl/src',
     deps: [],
   },
@@ -121,9 +121,9 @@ const rootDir = path.resolve(__dirname, '..')
 const examplesDir = path.resolve(rootDir, 'examples')
 
 async function run() {
-  let branchName: string = process.env.PR_NUMBER
-    ? `pr-${process.env.PR_NUMBER}`
-    : currentGitBranch()
+  let branchName: string =
+    process.env.BRANCH ??
+    (process.env.PR_NUMBER ? `pr-${process.env.PR_NUMBER}` : currentGitBranch())
 
   const branchConfig: BranchConfig = branchConfigs[branchName] || {
     prerelease: true,
@@ -159,18 +159,28 @@ async function run() {
   let range = `${latestTag}..HEAD`
   // let range = ``;
 
-  if (!latestTag) {
-    if (process.env.FIRST_TAG === 'true') {
+  // If RELEASE_ALL is set via a commit subject or body, all packages will be
+  // released regardless if they have changed files matching the package srcDir.
+  let RELEASE_ALL = false
+
+  if (!latestTag || process.env.TAG) {
+    if (process.env.TAG) {
+      if (!process.env.TAG.startsWith('v')) {
+        throw new Error(
+          `process.env.TAG must start with "v", eg. v0.0.0. You supplied ${process.env.TAG}`,
+        )
+      }
       console.log(
         chalk.yellow(
-          'No tags found. This is the first tag for this branch. Publishing...',
+          `Tag is set to ${process.env.TAG}. This will force release all packages. Publishing...`,
         ),
       )
-      latestTag = 'v0.0.0'
+      RELEASE_ALL = true
+      latestTag = process.env.TAG
       range = ''
     } else {
       throw new Error(
-        'Could not find latest tag! To make a release tag of v0.0.1, run with FIRST_TAG=true',
+        'Could not find latest tag! To make a release tag of v0.0.1, run with TAG=v0.0.1',
       )
     }
   }
@@ -200,10 +210,6 @@ async function run() {
     `Parsing ${commitsSinceLatestTag.length} commits since ${latestTag}...`,
   )
 
-  // If RELEASE_ALL is set via a commit subject or body, all packages will be
-  // released regardless if they have changed files matching the package srcDir.
-  let RELEASE_ALL = false
-
   // Pares the commit messsages, log them, and determine the type of release needed
   const recommendedReleaseLevel: number = commitsSinceLatestTag.reduce(
     (releaseLevel, commit) => {
@@ -228,10 +234,12 @@ async function run() {
     -1,
   )
 
-  const changedFiles: string[] = execSync(`git diff ${latestTag} --name-only`)
-    .toString()
-    .split('\n')
-    .filter(Boolean)
+  const changedFiles: string[] = process.env.TAG
+    ? []
+    : execSync(`git diff ${latestTag} --name-only`)
+        .toString()
+        .split('\n')
+        .filter(Boolean)
 
   const changedPackages = RELEASE_ALL
     ? packages
@@ -243,16 +251,20 @@ async function run() {
         return changedPackages
       }, [] as Package[])
 
-  if (recommendedReleaseLevel === 2) {
-    console.log(`Major versions releases must be tagged and released manually.`)
-    return
-  }
+  if (!process.env.TAG) {
+    if (recommendedReleaseLevel === 2) {
+      console.log(
+        `Major versions releases must be tagged and released manually.`,
+      )
+      return
+    }
 
-  if (recommendedReleaseLevel === -1) {
-    console.log(
-      `There have been no changes since the release of ${latestTag} that require a new version. You're good!`,
-    )
-    return
+    if (recommendedReleaseLevel === -1) {
+      console.log(
+        `There have been no changes since the release of ${latestTag} that require a new version. You're good!`,
+      )
+      return
+    }
   }
 
   function getSorterFn<TItem>(sorters: ((d: TItem) => any)[]) {
@@ -277,77 +289,81 @@ async function run() {
     }
   }
 
-  const changelogCommitsMd = await Promise.all(
-    Object.entries(
-      commitsSinceLatestTag.reduce((acc, next) => {
-        const type = next.parsed.type?.toLowerCase() ?? 'other'
+  const changelogCommitsMd = process.env.TAG
+    ? `Manual Release: ${latestTag}`
+    : await Promise.all(
+        Object.entries(
+          commitsSinceLatestTag.reduce((acc, next) => {
+            const type = next.parsed.type?.toLowerCase() ?? 'other'
 
-        return {
-          ...acc,
-          [type]: [...(acc[type] || []), next],
-        }
-      }, {} as Record<string, Commit[]>),
-    )
-      .sort(
-        getSorterFn([
-          ([d]) =>
-            [
-              'other',
-              'examples',
-              'docs',
-              'chore',
-              'refactor',
-              'perf',
-              'fix',
-              'feat',
-            ].indexOf(d),
-        ]),
-      )
-      .reverse()
-      .map(async ([type, commits]) => {
-        return Promise.all(
-          commits.map(async (commit) => {
-            let username = ''
-
-            if (process.env.GH_TOKEN) {
-              const query = `${commit.author.email ?? commit.committer.email}`
-
-              const res = await axios.get(
-                'https://api.github.com/search/users',
-                {
-                  params: {
-                    q: query,
-                  },
-                  headers: {
-                    Authorization: `token ${process.env.GH_TOKEN}`,
-                  },
-                },
-              )
-
-              username = res.data.items[0]?.login
+            return {
+              ...acc,
+              [type]: [...(acc[type] || []), next],
             }
+          }, {} as Record<string, Commit[]>),
+        )
+          .sort(
+            getSorterFn([
+              ([d]) =>
+                [
+                  'other',
+                  'examples',
+                  'docs',
+                  'chore',
+                  'refactor',
+                  'perf',
+                  'fix',
+                  'feat',
+                ].indexOf(d),
+            ]),
+          )
+          .reverse()
+          .map(async ([type, commits]) => {
+            return Promise.all(
+              commits.map(async (commit) => {
+                let username = ''
 
-            const scope = commit.parsed.scope
-              ? `(${commit.parsed.scope}): `
-              : ''
-            const subject = commit.parsed.subject ?? commit.subject
-            // const commitUrl = `${remoteURL}/commit/${commit.commit.long}`;
+                if (process.env.GH_TOKEN) {
+                  const query = `${
+                    commit.author.email ?? commit.committer.email
+                  }`
 
-            return `- ${scope}${subject} (${commit.commit.short}) ${
-              username
-                ? `by @${username}`
-                : `by ${commit.author.name ?? commit.author.email}`
-            }`
+                  const res = await axios.get(
+                    'https://api.github.com/search/users',
+                    {
+                      params: {
+                        q: query,
+                      },
+                      headers: {
+                        Authorization: `token ${process.env.GH_TOKEN}`,
+                      },
+                    },
+                  )
+
+                  username = res.data.items[0]?.login
+                }
+
+                const scope = commit.parsed.scope
+                  ? `(${commit.parsed.scope}): `
+                  : ''
+                const subject = commit.parsed.subject ?? commit.subject
+                // const commitUrl = `${remoteURL}/commit/${commit.commit.long}`;
+
+                return `- ${scope}${subject} (${commit.commit.short}) ${
+                  username
+                    ? `by @${username}`
+                    : `by ${commit.author.name ?? commit.author.email}`
+                }`
+              }),
+            ).then((commits) => [type, commits] as const)
           }),
-        ).then((commits) => [type, commits] as const)
-      }),
-  ).then((groups) => {
-    return groups
-      .map(([type, commits]) => {
-        return [`### ${capitalize(type)}`, commits.join('\n')].join('\n\n')
+      ).then((groups) => {
+        return groups
+          .map(([type, commits]) => {
+            return [`### ${capitalize(type)}`, commits.join('\n')].join('\n\n')
+          })
+          .join('\n\n')
       })
-      .join('\n\n')
-  })
 
   const releaseType = branchConfig.prerelease
     ? 'prerelease'
@@ -357,7 +373,9 @@ async function run() {
     throw new Error(`Invalid release level: ${recommendedReleaseLevel}`)
   }
 
-  const version = semver.inc(latestTag, releaseType, npmTag)
+  const version = process.env.TAG
+    ? semver.parse(process.env.TAG)?.version
+    : semver.inc(latestTag, releaseType, npmTag)
 
   if (!version) {
     throw new Error(

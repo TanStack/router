@@ -22,7 +22,7 @@ export type ReactLocationOptions<TGenerics> = {
 **Example: Basic**
 
 ```tsx
-import { ReactLocation } from 'react-location'
+import { ReactLocation } from '@tanstack/react-location'
 
 const reactLocation = new ReactLocation()
 ```
@@ -30,7 +30,7 @@ const reactLocation = new ReactLocation()
 **Example: Memory History**
 
 ```tsx
-import { createMemoryHistory, ReactLocation } from 'react-location'
+import { createMemoryHistory, ReactLocation } from '@tanstack/react-location'
 
 const history = createMemoryHistory()
 const reactLocation = new ReactLocation({ history })
@@ -40,7 +40,7 @@ const reactLocation = new ReactLocation({ history })
 
 **Required: true**
 
-The `Router` component is the root Provider component for the `react-location` instance and your route configuration in your app. Render it _only once_ (rendering multiple routers is an anti-pattern, and straight-up not supported for good reason).
+The `Router` component is the root Provider component for the React Location instance and your route configuration in your app. Render it _only once_ (rendering multiple routers is an anti-pattern, and straight-up not supported for good reason).
 
 - If no `children` prop is passed, it will default to `<Outlet />` which will start rendering your route matches.
 - if a `children` prop is passed, you must eventually render `<Outlet />` where you want your routes to start rendering
@@ -70,7 +70,7 @@ export type RouterProps<TGenerics> = {
 **Example: Basic**
 
 ```tsx
-import { ReactLocation, Router } from 'react-location'
+import { ReactLocation, Router } from '@tanstack/react-location'
 
 const reactLocation = new ReactLocation()
 
@@ -90,7 +90,7 @@ return (
 **Example: With Children**
 
 ```tsx
-import { ReactLocation, Router, Outlet } from 'react-location'
+import { ReactLocation, Router, Outlet } from '@tanstack/react-location'
 
 const reactLocation = new ReactLocation()
 
@@ -165,7 +165,7 @@ export type RouteLoaders<TGenerics> = {
   // when moving from an inactive state to an active one. Likewise, when moving from
   // an active to an inactive state, the return function (if provided) is called.
   onMatch?: (
-    match: RouteMatch<TGenerics>
+    match: RouteMatch<TGenerics>,
   ) => void | undefined | ((match: RouteMatch<TGenerics>) => void)
   // This function is called when the route remains active from one transition to the next.
   onTransition?: (match: RouteMatch<TGenerics>) => void
@@ -175,7 +175,7 @@ export type RouteLoaders<TGenerics> = {
 
 export type SearchFilter<TGenerics> = (
   prev: UseGeneric<TGenerics, 'Search'>,
-  next: UseGeneric<TGenerics, 'Search'>
+  next: UseGeneric<TGenerics, 'Search'>,
 ) => UseGeneric<TGenerics, 'Search'>
 ```
 
@@ -397,7 +397,7 @@ function Invoice() {
   // Use it for whatever, like in a React Query!
   const invoiceQuery = useQuery(
     ['invoices', invoiceId],
-    fetchInvoiceById(invoiceId)
+    fetchInvoiceById(invoiceId),
   )
 }
 ```
@@ -423,7 +423,7 @@ In React Location, search params are considered first-class objects that can be 
 The first level of search params always have standard encoding, eg. `?param1=value&param2=value&param3=value`. This keeps things at the root level of the search params experience as compatible as possible with the rest of the web ecosystem. There are many tools frameworks and core web browser APIs that use this basic expectation. **Starting with at value level of search params, however, React Location offers much more power**.
 
 - By default, React Location uses `JSON.parse` and `JSON.stringify` to ensure your search params can contain complex JSON objects.
-- Custom `stringifySearch` and `parseSearch` functions can be provided to your `ReactLocation` instance to further enhance the way search objects are encoded. We suggest using our `react-location-jsurl` package if you're truly looking for the best UX around search param encoding. It keeps URLs small, readable, and safely encoded for users to share and bookmark.
+- Custom `stringifySearch` and `parseSearch` functions can be provided to your `ReactLocation` instance to further enhance the way search objects are encoded. We suggest using our `@tanstack/react-location-jsurl` package if you're truly looking for the best UX around search param encoding. It keeps URLs small, readable, and safely encoded for users to share and bookmark.
 - Regardless of the serialization strategy you pick for React Location, it will _always_ guarantee a stable, immutable and structurally-safe object reference. This means that even though your search params' source of truth is technically a string, it will behave as if it is an immutable object, stored in your application's memory.
 
 ## useSearch
@@ -433,7 +433,7 @@ The `useSearch` hook provides access to the search params state for the current 
 **Example - Basic**
 
 ```tsx
-import { Router, MakeGenerics } from 'react-location'
+import { Router, MakeGenerics } from '@tanstack/react-location'
 
 type MyLocationGenerics = MakeGenerics<{
     Search: {
@@ -641,7 +641,7 @@ When rendered, the `Navigate` component will declaratively and relatively naviga
 
 ```tsx
 export type NavigateOptions<
-  TGenerics extends PartialGenerics = DefaultGenerics
+  TGenerics extends PartialGenerics = DefaultGenerics,
 > = {
   // The new relative or absolute pathname
   to?: string | null
@@ -847,7 +847,7 @@ function App() {
 
   usePrompt(
     'There are unsaved changes, are you sure you want to leave?',
-    isDirty
+    isDirty,
   )
 
   // ...
@@ -906,7 +906,7 @@ However, if you truly desire to fudge around with SSR in React Location to avoid
 
 ```tsx
 // Server.tsx
-import { createMemoryHistory, ReactLocation, Router } from 'react-location'
+import { createMemoryHistory, ReactLocation, Router } from '@tanstack/react-location'
 
 export async function render(requestUrl) {
   // Get the URL pathname
@@ -943,7 +943,7 @@ export async function render(requestUrl) {
 
 ```tsx
 // Client.tsx
-import { createBrowserHistory, ReactLocation, Router } from 'react-location'
+import { createBrowserHistory, ReactLocation, Router } from '@tanstack/react-location'
 
 const location = new ReactLocation({ history })
 

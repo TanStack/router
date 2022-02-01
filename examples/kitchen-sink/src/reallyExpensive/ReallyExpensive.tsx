@@ -1,5 +1,5 @@
 import * as React from "react";
-import { RouteLoaders, useMatch } from "react-location";
+import { RouteLoaders, useMatch } from "@tanstack/react-location";
 import { tw } from "twind";
 import { delayFn, LocationGenerics } from "..";
 

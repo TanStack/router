@@ -1,5 +1,5 @@
 import React from 'react'
-import { DefaultGenerics, RouteMatch } from 'react-location'
+import { DefaultGenerics, RouteMatch } from '@tanstack/react-location'
 
 import { Theme, useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'

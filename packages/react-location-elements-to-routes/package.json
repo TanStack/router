@@ -1,9 +1,9 @@
 {
-  "name": "react-location-elements-to-routes",
+  "name": "@tanstack/react-location-elements-to-routes",
   "author": "Tanner Linsley",
-  "version": "0.0.0",
+  "version": "3.4.0",
   "license": "MIT",
-  "repository": "tannerlinsley/react-location",
+  "repository": "tanstack/react-location",
   "homepage": "https://react-location.tanstack.com/",
   "description": "",
   "publishConfig": {
@@ -12,7 +12,7 @@
   "keywords": [
     "react",
     "location",
-    "react-location",
+    "@tanstack/react-location",
     "router",
     "routing",
     "async",
@@ -39,6 +39,7 @@
     "react-dom": ">=16"
   },
   "dependencies": {
-    "react-location": "3.1.0-next.13"
+    "@tanstack/react-location": "3.4.0",
+    "history": "^5.2.0"
   }
 }

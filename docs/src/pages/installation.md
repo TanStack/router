@@ -10,13 +10,13 @@ You can install React Location with [NPM](https://npmjs.com),
 ### NPM
 
 ```sh
-npm install react-location --save
+npm install @tanstack/react-location --save
 ```
 
 or
 
 ```sh
-yarn add react-location
+yarn add @tanstack/react-location
 ```
 
 React Location is compatible with React v16.8+ and is compatible with ReactDOM only

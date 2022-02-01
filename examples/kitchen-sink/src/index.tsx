@@ -15,8 +15,8 @@ import {
   useSearch,
   useNavigate,
   MatchRoute,
-} from "react-location";
-import { ReactLocationDevtools } from "react-location-devtools";
+} from "@tanstack/react-location";
+import { ReactLocationDevtools } from "@tanstack/react-location-devtools";
 
 import reallyExpensiveRoute from "./reallyExpensive";
 

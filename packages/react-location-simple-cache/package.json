@@ -1,9 +1,9 @@
 {
-  "name": "react-location-simple-cache",
+  "name": "@tanstack/react-location-simple-cache",
   "author": "Tanner Linsley",
-  "version": "0.0.0",
+  "version": "3.4.0",
   "license": "MIT",
-  "repository": "tannerlinsley/react-location",
+  "repository": "tanstack/react-location",
   "homepage": "https://react-location.tanstack.com/",
   "description": "",
   "publishConfig": {
@@ -12,7 +12,7 @@
   "keywords": [
     "react",
     "location",
-    "react-location",
+    "@tanstack/react-location",
     "router",
     "routing",
     "async",
@@ -40,7 +40,8 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.16.7",
-    "react-location": "3.1.0-next.13"
+    "@tanstack/react-location": "3.4.0",
+    "history": "^5.2.0"
   },
   "devDependencies": {
     "babel-plugin-transform-async-to-promises": "^0.8.18"

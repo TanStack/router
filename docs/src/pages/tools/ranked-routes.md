@@ -16,8 +16,8 @@ npm i react-location-rank-routes
 ## Getting Started
 
 ```tsx
-import { ReactLocation, Router } from 'react-location'
-import { rankRoutes } from 'react-location-rank-routes'
+import { ReactLocation, Router } from '@tanstack/react-location'
+import { rankRoutes } from '@tanstack/react-location-rank-routes'
 
 //
 
