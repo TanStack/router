@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/react-location-jsurl",
   "author": "Tanner Linsley",
-  "version": "0.0.0",
+  "version": "3.1.0-next.63",
   "license": "MIT",
   "repository": "tanstack/react-location",
   "homepage": "https://react-location.tanstack.com/",
@@ -42,7 +42,7 @@
     "@babel/runtime": "^7.16.7",
     "jsurl": "^0.1.5",
     "qss": "^2.0.3",
-    "react-location": "3.1.0-next.13"
+    "@tanstack/react-location": "3.1.0-next.13"
   },
   "devDependencies": {
     "babel-plugin-transform-async-to-promises": "^0.8.18"
