@@ -121,9 +121,9 @@ const rootDir = path.resolve(__dirname, '..')
 const examplesDir = path.resolve(rootDir, 'examples')
 
 async function run() {
-  let branchName: string = process.env.PR_NUMBER
-    ? `pr-${process.env.PR_NUMBER}`
-    : currentGitBranch()
+  let branchName: string =
+    process.env.BRANCH ??
+    (process.env.PR_NUMBER ? `pr-${process.env.PR_NUMBER}` : currentGitBranch())
 
   const branchConfig: BranchConfig = branchConfigs[branchName] || {
     prerelease: true,
@@ -165,6 +165,11 @@ async function run() {
 
   if (!latestTag || process.env.TAG) {
     if (process.env.TAG) {
+      if (!process.env.TAG.startsWith('v')) {
+        throw new Error(
+          `process.env.TAG must start with "v", eg. v0.0.0. You supplied ${process.env.TAG}`,
+        )
+      }
       console.log(
         chalk.yellow(
           `Tag is set to ${process.env.TAG}. This will force release all packages. Publishing...`,
@@ -368,7 +373,9 @@ async function run() {
     throw new Error(`Invalid release level: ${recommendedReleaseLevel}`)
   }
 
-  const version = semver.inc(latestTag, releaseType, npmTag)
+  const version = process.env.TAG
+    ? semver.parse(process.env.TAG)?.version
+    : semver.inc(latestTag, releaseType, npmTag)
 
   if (!version) {
     throw new Error(
