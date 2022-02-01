@@ -2552,9 +2552,9 @@ react-error-boundary@^3.1.0:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-17.0.2.tgz#e691d4a8e9c789365655539ab372762b0efb54f0"
   integrity sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==
 
-react-location@3.1.0-next.13:
-  version "3.1.0-next.13"
-  resolved "https://registry.yarnpkg.com/react-location/-/react-location-3.1.0-next.13.tgz#2792deb6cb15e6086d48ef907fa080fcf95ec476"
+react-location@3.1.0-next.63:
+  version "3.1.0-next.63"
+  resolved "https://registry.yarnpkg.com/react-location/-/react-location-3.1.0-next.63.tgz#2792deb6cb15e6086d48ef907fa080fcf95ec476"
   integrity sha512-Of2qZaXKuwZT8TubFHTyWToMGv0FDRa38M7hTSf6/BJbRA2TP4wwCLcgLmM7jAHOuYI83brPFSnSmRgx0jxV1g==
   dependencies:
     "@babel/runtime" "^7.15.4"
