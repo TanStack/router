@@ -20,7 +20,7 @@ const globals = {
   react: 'React',
   'react-dom': 'ReactDOM',
   '@tanstack/react-location': 'ReactLocation',
-  '@tanstack/react-location-lite': 'ReactLocationLite',
+  '@tanstack/react-location-lite-experimental': 'ReactLocationLiteExperimental',
   '@tanstack/react-location-devtools': 'ReactLocationDevtools',
   '@tanstack/react-location-elements-to-routes':
     'ReactLocationElementsToRoutes',
@@ -55,10 +55,10 @@ export default function rollup(options: RollupOptions): RollupOptions[] {
       entryFile: 'src/index.tsx',
     }),
     ...buildConfigs({
-      name: 'react-location-lite',
-      packageDir: 'packages/react-location-lite',
+      name: 'react-location-lite-experimental',
+      packageDir: 'packages/react-location-lite-experimental',
       jsName: 'ReactLocationLite',
-      outputFile: 'react-location-lite',
+      outputFile: 'react-location-lite-experimental',
       entryFile: 'src/index.tsx',
     }),
     ...buildConfigs({

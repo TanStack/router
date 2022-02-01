@@ -14,7 +14,9 @@
     "baseUrl": ".",
     "paths": {
       "@tanstack/react-location": ["packages/react-location"],
-      "@tanstack/react-location-lite": ["packages/react-location-lite"],
+      "@tanstack/react-location-lite-experimental": [
+        "packages/react-location-lite-experimental"
+      ],
       "@tanstack/react-location-devtools": ["packages/react-location-devtools"],
       "@tanstack/react-location-elements-to-routes": [
         "packages/react-location-elements-to-routes"

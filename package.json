@@ -17,7 +17,7 @@
   },
   "workspaces": [
     "./packages/react-location",
-    "./packages/react-location-lite",
+    "./packages/react-location-lite-experimental",
     "./packages/react-location-devtools",
     "./packages/react-location-elements-to-routes",
     "./packages/react-location-simple-cache",

@@ -1,7 +1,7 @@
 {
-  "name": "@tanstack/react-location-lite",
+  "name": "@tanstack/react-location-lite-experimental",
   "author": "Tanner Linsley",
-  "version": "0.0.0",
+  "version": "3.4.1",
   "license": "MIT",
   "repository": "tanstack/react-location",
   "homepage": "https://react-location.tanstack.com/",

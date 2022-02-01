@@ -14,7 +14,7 @@ import {
   useRouter,
   useSearch,
   useNavigate,
-} from "@tanstack/react-location-lite";
+} from "@tanstack/react-location-lite-experimental";
 import { ReactLocationDevtools } from "@tanstack/react-location-devtools";
 import {
   useQuery,
