@@ -52,4 +52,4 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 - Prepackaged simple cache implementation for route loader caching
 - Easy Integration w/ external caches and storage (eg. React Query, Apollo, SWR, RTKQuery)
 
-<!-- Force 1 -->
+<!-- Force 2 -->
