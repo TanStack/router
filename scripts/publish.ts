@@ -159,18 +159,18 @@ async function run() {
   let range = `${latestTag}..HEAD`
   // let range = ``;
 
-  if (!latestTag) {
-    if (process.env.FIRST_TAG === 'true') {
+  if (!latestTag || process.env.TAG) {
+    if (process.env.TAG) {
       console.log(
         chalk.yellow(
           'No tags found. This is the first tag for this branch. Publishing...',
         ),
       )
-      latestTag = 'v0.0.0'
+      latestTag = process.env.TAG
       range = ''
     } else {
       throw new Error(
-        'Could not find latest tag! To make a release tag of v0.0.1, run with FIRST_TAG=true',
+        'Could not find latest tag! To make a release tag of v0.0.1, run with TAG=v0.0.1',
       )
     }
   }

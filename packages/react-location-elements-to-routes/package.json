@@ -39,6 +39,7 @@
     "react-dom": ">=16"
   },
   "dependencies": {
-    "@tanstack/react-location": "3.1.0-next.63"
+    "@tanstack/react-location": "3.1.0-next.63",
+    "history": "^5.2.0"
   }
 }
