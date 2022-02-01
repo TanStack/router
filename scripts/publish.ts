@@ -59,6 +59,10 @@ type BranchConfig = {
 const packages: Package[] = [
   { name: '@tanstack/react-location', srcDir: 'packages/react-location/src' },
   {
+    name: '@tanstack/react-location-lite-experimental',
+    srcDir: 'packages/react-location-lite-experimental/src',
+  },
+  {
     name: '@tanstack/react-location-devtools',
     srcDir: 'packages/react-location-devtools/src',
     deps: ['@tanstack/react-location'],
