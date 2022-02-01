@@ -464,8 +464,6 @@ export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
     }
   }, [routerState, rootMatch, basepath])
 
-  console.log(router.state)
-
   useLayoutEffect(() => {
     const update = () => {
       const matches = matchRoutes(router, location.current)
