@@ -13,8 +13,8 @@
     "broadcast-channel": "^3.4.1",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
-    "@tanstack/react-location": "3.1.0-next.63",
-    "@tanstack/react-location-simple-cache": "3.1.0-next.63",
+    "@tanstack/react-location": "3.2.0-next.2",
+    "@tanstack/react-location-simple-cache": "3.2.0-next.2",
     "react-scripts": "3.0.1",
     "stop-runaway-react-effects": "^1.2.0",
     "styled-components": "^4.3.2"
