@@ -432,41 +432,30 @@ export class ReactLocation<
 
     let nextAction: 'push' | 'replace' = 'replace'
 
-    if (!this.nextAction) {
-      nextAction = replace ? 'replace' : 'push'
-    }
-
     if (!replace) {
       nextAction = 'push'
     }
 
-    this.nextAction = nextAction
+    const isSameUrl =
+      this.parseLocation(this.history.location).href === this.current.href
 
-    this.navigateTimeout = setTimeout(() => {
-      let nextAction = this.nextAction
-      delete this.nextAction
+    if (isSameUrl && !this.current.key) {
+      nextAction = 'replace'
+    }
 
-      const isSameUrl =
-        this.parseLocation(this.history.location).href === this.current.href
-
-      if (isSameUrl && !this.current.key) {
-        nextAction = 'replace'
-      }
-
-      if (nextAction === 'replace') {
-        return this.history.replace({
-          pathname: this.current.pathname,
-          hash: this.current.hash,
-          search: this.current.searchStr,
-        })
-      }
-
-      return this.history.push({
+    if (nextAction === 'replace') {
+      return this.history.replace({
         pathname: this.current.pathname,
         hash: this.current.hash,
         search: this.current.searchStr,
       })
-    }, 16)
+    }
+
+    return this.history.push({
+      pathname: this.current.pathname,
+      hash: this.current.hash,
+      search: this.current.searchStr,
+    })
   }
 
   parseLocation(
@@ -527,16 +516,9 @@ export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
     return router.updateLocation(location.current).unsubscribe
   }, [location.current.key])
 
-  const routerValue = React.useMemo(
-    () => ({
-      router,
-    }),
-    [nonce],
-  )
-
   return (
     <LocationContext.Provider value={{ location }}>
-      <routerContext.Provider value={routerValue}>
+      <routerContext.Provider value={{ router }}>
         <MatchesProvider value={[router.rootMatch!, ...router.state.matches]}>
           {children ?? <Outlet />}
         </MatchesProvider>
@@ -802,19 +784,6 @@ export function useLocation<
     location: ReactLocation<TGenerics>
   }
   warning(!!context, 'useLocation must be used within a <ReactLocation />')
-
-  // useLayoutEffect(() => {
-  //   return instance.subscribe(() => {
-  //     // Rerender all subscribers in a microtask
-  //     Promise.resolve().then(() => {
-  //       // setTimeout(function renderAllLocationSubscribers() {
-  //       if (getIsMounted()) {
-  //         rerender()
-  //       }
-  //       // }, 0)
-  //     })
-  //   })
-  // }, [instance])
 
   return context.location
 }

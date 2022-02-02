@@ -339,7 +339,6 @@ export class ReactLocation<
       hash: this.current.hash,
       search: this.current.searchStr,
     })
-    // }, 16)
   }
 
   parseLocation(
