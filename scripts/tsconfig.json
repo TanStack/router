@@ -7,7 +7,8 @@
     "strict": true,
     "noImplicitAny": true,
     "skipLibCheck": true,
-    "checkJs": true
+    "checkJs": true,
+    "strictNullChecks": true
   },
   "ts-node": {
     "transpileOnly": true,

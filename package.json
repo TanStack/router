@@ -58,6 +58,7 @@
     "rollup-plugin-visualizer": "^5.5.4",
     "stream-to-array": "^2.3.0",
     "ts-node": "^10.4.0",
+    "type-fest": "^2.11.1",
     "typescript": "^4.5.5"
   }
 }

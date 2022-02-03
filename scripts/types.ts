@@ -34,7 +34,11 @@ export type Parsed = {
   raw: string
 }
 
-export type Package = { name: string; srcDir: string; deps?: string[] }
+export type Package = {
+  name: string
+  srcDir: string
+  peerDependencies?: string[]
+}
 
 export type BranchConfig = {
   prerelease: boolean

@@ -9,18 +9,20 @@ import { BranchConfig, Commit, Package } from './types'
 import { getPackageDir } from './utils'
 
 // Originally ported to TS from https://github.com/remix-run/react-router/tree/main/scripts/{version,publish}.js
-const path = require('path')
-const { exec, execSync } = require('child_process')
-const fsp = require('fs/promises')
-const chalk = require('chalk')
-const jsonfile = require('jsonfile')
-const semver = require('semver')
-const currentGitBranch = require('current-git-branch')
-const parseCommit = require('@commitlint/parse').default
-const log = require('git-log-parser')
-const streamToArray = require('stream-to-array')
-const axios = require('axios')
-const { DateTime } = require('luxon')
+import path from 'path'
+import { exec, execSync } from 'child_process'
+import fsp from 'fs/promises'
+import chalk from 'chalk'
+import jsonfile from 'jsonfile'
+import semver from 'semver'
+import currentGitBranch from 'current-git-branch'
+import parseCommit from '@commitlint/parse'
+import log from 'git-log-parser'
+import streamToArray from 'stream-to-array'
+import axios from 'axios'
+import { DateTime } from 'luxon'
+
+import { PackageJson } from 'type-fest'
 
 const releaseCommitMsg = (version: string) => `release: v${version}`
 
@@ -332,15 +334,13 @@ async function run() {
 
     await updatePackageConfig(pkg.name, (config) => {
       config.version = version
-      ;(['dependencies', 'devDependendies'] as const).forEach((type) => {
-        pkg.deps?.forEach((dependency) => {
-          if (config[type]?.[dependency]) {
-            console.log(
-              `    Updating ${type} on ${pkg.name} to version ${version}.`,
-            )
-            config[type][dependency] = version
-          }
-        })
+      pkg.peerDependencies?.forEach((peerDep) => {
+        if (config.peerDependencies?.[peerDep]) {
+          console.log(
+            `    Updating peerDependency on ${pkg.name} to version ${version}.`,
+          )
+          config.peerDependencies[peerDep] = version
+        }
       })
     })
   }
@@ -355,11 +355,11 @@ async function run() {
 
     await updateExamplesPackageConfig(example, (config) => {
       changedPackages.forEach((pkg) => {
-        if (config.dependencies[pkg.name]) {
+        if (config.dependencies?.[pkg.name]) {
           console.log(
             `    Updating dependency ${pkg.name} to version ${version}...`,
           )
-          config.dependencies[pkg.name] = version
+          config.dependencies![pkg.name] = version
         }
       })
     })
@@ -395,7 +395,7 @@ async function run() {
         getPackageDir(pkg.name),
         'package.json',
       )
-      let json = await jsonfile.readFile(file)
+      let json = (await jsonfile.readFile(file)) as PackageJson
 
       if (json.version !== version) {
         throw new Error(
@@ -403,13 +403,15 @@ async function run() {
         )
       }
 
-      for (const dependency of pkg.deps ?? []) {
-        if (json.dependencies[dependency] !== version) {
-          throw new Error(
-            `Package ${pkg.name}'s dependency of ${dependency} is on version ${json.dependencies[dependency]}, but should be on ${version}`,
-          )
+      ;(pkg.peerDependencies ?? []).forEach((peerDependency) => {
+        if (json.peerDependencies?.[peerDependency]) {
+          if (json.peerDependencies[peerDependency] !== version) {
+            throw new Error(
+              `Package ${pkg.name}'s peerDependency of ${peerDependency} is on version ${json.peerDependencies[peerDependency]}, but should be on ${version}`,
+            )
+          }
         }
-      }
+      })
     }),
   )
 
@@ -470,7 +472,7 @@ function capitalize(str: string) {
 
 async function updatePackageConfig(
   packageName: string,
-  transform: (json: any) => void,
+  transform: (json: PackageJson) => void,
 ) {
   let file = packageJson(packageName)
   let json = await jsonfile.readFile(file)
@@ -480,7 +482,7 @@ async function updatePackageConfig(
 
 async function updateExamplesPackageConfig(
   example: string,
-  transform: (json: any) => void,
+  transform: (json: PackageJson) => void,
 ) {
   let file = packageJson(example, 'examples')
   let json = await jsonfile.readFile(file)

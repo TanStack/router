@@ -11,27 +11,27 @@ export const packages: Package[] = [
   {
     name: '@tanstack/react-location-devtools',
     srcDir: 'packages/react-location-devtools/src',
-    deps: ['@tanstack/react-location'],
+    peerDependencies: ['@tanstack/react-location'],
   },
   {
     name: '@tanstack/react-location-elements-to-routes',
     srcDir: 'packages/react-location-elements-to-routes/src',
-    deps: ['@tanstack/react-location'],
+    peerDependencies: ['@tanstack/react-location'],
   },
   {
     name: '@tanstack/react-location-simple-cache',
     srcDir: 'packages/react-location-simple-cache/src',
-    deps: ['@tanstack/react-location'],
+    peerDependencies: ['@tanstack/react-location'],
   },
   {
     name: '@tanstack/react-location-rank-routes',
     srcDir: 'packages/react-location-rank-routes/src',
-    deps: ['@tanstack/react-location'],
+    peerDependencies: ['@tanstack/react-location'],
   },
   {
     name: '@tanstack/react-location-jsurl',
     srcDir: 'packages/react-location-jsurl/src',
-    deps: [],
+    peerDependencies: [],
   },
 ]
 
