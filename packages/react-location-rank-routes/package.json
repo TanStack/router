@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/react-location-rank-routes",
   "author": "Tanner Linsley",
-  "version": "3.4.1",
+  "version": "3.4.4",
   "license": "MIT",
   "repository": "tanstack/react-location",
   "homepage": "https://react-location.tanstack.com/",
@@ -37,6 +37,6 @@
   "peerDependencies": {
     "react": ">=16",
     "react-dom": ">=16",
-    "@tanstack/react-location": "3.4.1"
+    "@tanstack/react-location": "3.4.4"
   }
 }
