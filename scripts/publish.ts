@@ -110,19 +110,9 @@ const branchConfigs: Record<string, BranchConfig> = {
   },
 }
 
-const releaseCommitMsg = (version: string) => `release: v${version}`
-
-const filterCommitsFn = (commit: Commit) => {
-  const exclude = [
-    commit.subject.startsWith('Merge branch '), // No merge commits
-    commit.subject.startsWith(releaseCommitMsg('')), // No example update commits
-  ].some(Boolean)
-
-  return !exclude
-}
-
 const rootDir = path.resolve(__dirname, '..')
 const examplesDir = path.resolve(rootDir, 'examples')
+const releaseCommitMsg = (version: string) => `release: v${version}`
 
 async function run() {
   let branchName: string =
@@ -208,7 +198,14 @@ async function run() {
         ).then((res) => resolve(res.filter(Boolean)))
       })
     })
-  ).filter(filterCommitsFn)
+  ).filter((commit: Commit) => {
+    const exclude = [
+      commit.subject.startsWith('Merge branch '), // No merge commits
+      commit.subject.startsWith(releaseCommitMsg('')), // No example update commits
+    ].some(Boolean)
+
+    return !exclude
+  })
 
   console.log(
     `Parsing ${commitsSinceLatestTag.length} commits since ${latestTag}...`,
@@ -426,12 +423,14 @@ async function run() {
     await updatePackageConfig(pkg.name, (config) => {
       config.version = version
       pkg.deps?.forEach((dependency) => {
-        if (config.dependencies[dependency]) {
-          console.log(
-            `    Updating dependency on ${pkg.name} to version ${version}.`,
-          )
-          config.dependencies[dependency] = version
-        }
+        ;(['dependencies', 'devDependendies'] as const).forEach((type) => {
+          if (config[type][dependency]) {
+            console.log(
+              `    Updating ${type} on ${pkg.name} to version ${version}.`,
+            )
+            config[type][dependency] = version
+          }
+        })
       })
     })
   }

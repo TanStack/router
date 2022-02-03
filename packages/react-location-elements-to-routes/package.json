@@ -36,10 +36,7 @@
   ],
   "peerDependencies": {
     "react": ">=16",
-    "react-dom": ">=16"
-  },
-  "dependencies": {
-    "@tanstack/react-location": "3.4.1",
-    "history": "^5.2.0"
+    "react-dom": ">=16",
+    "@tanstack/react-location": "3.4.1"
   }
 }

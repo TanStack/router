@@ -36,12 +36,11 @@
   ],
   "peerDependencies": {
     "react": ">=16",
-    "react-dom": ">=16"
+    "react-dom": ">=16",
+    "@tanstack/react-location": "3.4.1"
   },
   "dependencies": {
-    "@babel/runtime": "^7.16.7",
-    "@tanstack/react-location": "3.4.1",
-    "history": "^5.2.0"
+    "@babel/runtime": "^7.16.7"
   },
   "devDependencies": {
     "babel-plugin-transform-async-to-promises": "^0.8.18"
