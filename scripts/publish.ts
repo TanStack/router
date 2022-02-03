@@ -332,9 +332,9 @@ async function run() {
 
     await updatePackageConfig(pkg.name, (config) => {
       config.version = version
-      pkg.deps?.forEach((dependency) => {
-        ;(['dependencies', 'devDependendies'] as const).forEach((type) => {
-          if (config[type][dependency]) {
+      ;(['dependencies', 'devDependendies'] as const).forEach((type) => {
+        pkg.deps?.forEach((dependency) => {
+          if (config[type]?.[dependency]) {
             console.log(
               `    Updating ${type} on ${pkg.name} to version ${version}.`,
             )
