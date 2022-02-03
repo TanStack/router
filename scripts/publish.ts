@@ -359,7 +359,7 @@ async function run() {
           console.log(
             `    Updating dependency ${pkg.name} to version ${version}...`,
           )
-          config.dependencies![pkg.name] = version
+          config.dependencies[pkg.name] = version
         }
       })
     })
