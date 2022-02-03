@@ -1,3 +1,13 @@
+import {
+  branchConfigs,
+  examplesDir,
+  latestBranch,
+  packages,
+  rootDir,
+} from './config'
+import { BranchConfig, Commit, Package } from './types'
+import { getPackageDir } from './utils'
+
 // Originally ported to TS from https://github.com/remix-run/react-router/tree/main/scripts/{version,publish}.js
 const path = require('path')
 const { exec, execSync } = require('child_process')
@@ -12,106 +22,6 @@ const streamToArray = require('stream-to-array')
 const axios = require('axios')
 const { DateTime } = require('luxon')
 
-type Commit = {
-  commit: CommitOrTree
-  tree: CommitOrTree
-  author: AuthorOrCommitter
-  committer: AuthorOrCommitter
-  subject: string
-  body: string
-  parsed: Parsed
-}
-
-type CommitOrTree = {
-  long: string
-  short: string
-}
-
-type AuthorOrCommitter = {
-  name: string
-  email: string
-  date: string
-}
-
-type Parsed = {
-  type: string
-  scope?: string | null
-  subject: string
-  merge?: null
-  header: string
-  body?: null
-  footer?: null
-  notes?: null[] | null
-  references?: null[] | null
-  mentions?: null[] | null
-  revert?: null
-  raw: string
-}
-
-type Package = { name: string; srcDir: string; deps?: string[] }
-
-type BranchConfig = {
-  prerelease: boolean
-  ghRelease: boolean
-}
-
-// TODO: List your npm packages here. The first package will be used as the versioner.
-const packages: Package[] = [
-  { name: '@tanstack/react-location', srcDir: 'packages/react-location/src' },
-  {
-    name: '@tanstack/react-location-lite-experimental',
-    srcDir: 'packages/react-location-lite-experimental/src',
-  },
-  {
-    name: '@tanstack/react-location-devtools',
-    srcDir: 'packages/react-location-devtools/src',
-    deps: ['@tanstack/react-location'],
-  },
-  {
-    name: '@tanstack/react-location-elements-to-routes',
-    srcDir: 'packages/react-location-elements-to-routes/src',
-    deps: ['@tanstack/react-location'],
-  },
-  {
-    name: '@tanstack/react-location-simple-cache',
-    srcDir: 'packages/react-location-simple-cache/src',
-    deps: ['@tanstack/react-location'],
-  },
-  {
-    name: '@tanstack/react-location-rank-routes',
-    srcDir: 'packages/react-location-rank-routes/src',
-    deps: ['@tanstack/react-location'],
-  },
-  {
-    name: '@tanstack/react-location-jsurl',
-    srcDir: 'packages/react-location-jsurl/src',
-    deps: [],
-  },
-]
-
-const latestBranch = 'main'
-
-const branchConfigs: Record<string, BranchConfig> = {
-  main: {
-    prerelease: false,
-    ghRelease: true,
-  },
-  next: {
-    prerelease: true,
-    ghRelease: true,
-  },
-  beta: {
-    prerelease: true,
-    ghRelease: true,
-  },
-  alpha: {
-    prerelease: true,
-    ghRelease: true,
-  },
-}
-
-const rootDir = path.resolve(__dirname, '..')
-const examplesDir = path.resolve(rootDir, 'examples')
 const releaseCommitMsg = (version: string) => `release: v${version}`
 
 async function run() {
@@ -556,19 +466,6 @@ run().catch((err) => {
 
 function capitalize(str: string) {
   return str.slice(0, 1).toUpperCase() + str.slice(1)
-}
-
-function getPackageDir(packageName: string) {
-  return packageName
-    .split('/')
-    .filter((d) => !d.startsWith('@'))
-    .join('/')
-}
-
-async function getPackageVersion(packageName: string) {
-  let file = packageJson(packageName)
-  let json = await jsonfile.readFile(file)
-  return json.version
 }
 
 async function updatePackageConfig(
