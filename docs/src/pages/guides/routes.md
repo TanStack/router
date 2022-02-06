@@ -23,7 +23,7 @@ A route path can be a string _(regular expression support is coming soon!)_, and
 - `/about`
 - `about/`
 - `about`
-- `About'
+- `About`
 
 > **Important:** Route paths are **not case-sensitive** by default. This means that `/about` and `/About` are considered the same path. This is a good thing, since this is the way most of the web works anyway! However, if you truly want to match a path with a different case, you can set a route's `caseSensitive` property to `true`.
 
