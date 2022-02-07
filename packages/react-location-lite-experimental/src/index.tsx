@@ -506,7 +506,7 @@ export function useLocation<
   return context.location
 }
 
-type RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> = {
+export type RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> = {
   id: string
   route: Route<TGenerics>
   pathname: string
@@ -1216,7 +1216,7 @@ function isCtrlEvent(e: React.MouseEvent) {
 
 function useLatestCallback<TCallback extends (...args: any[]) => any>(
   cb: TCallback,
-) {
+): TCallback {
   const stableFnRef =
     React.useRef<(...args: Parameters<TCallback>) => ReturnType<TCallback>>()
   const cbRef = React.useRef<TCallback>(cb)
@@ -1227,7 +1227,7 @@ function useLatestCallback<TCallback extends (...args: any[]) => any>(
     stableFnRef.current = (...args) => cbRef.current(...args)
   }
 
-  return stableFnRef.current
+  return stableFnRef.current as TCallback
 }
 
 /**
