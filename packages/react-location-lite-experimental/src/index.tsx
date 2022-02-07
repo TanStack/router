@@ -132,7 +132,7 @@ export type BuildNextOptions<
 > = {
   to?: string | number | null
   search?: true | Updater<UseGeneric<TGenerics, 'Search'>>
-  hash?: Updater<string>
+  hash?: true | Updater<string>
   from?: Partial<Location<TGenerics>>
   key?: string
   __searchFilters?: SearchFilter<TGenerics>[]
@@ -295,7 +295,8 @@ export class ReactLocation<
     const search = replaceEqualDeep(from.search, filteredSearch)
 
     const searchStr = this.stringifySearch(search)
-    let hash = functionalUpdate(dest.hash, from.hash)
+    let hash =
+      dest.hash === true ? from.hash : functionalUpdate(dest.hash, from.hash)
     hash = hash ? `#${hash}` : ''
 
     return {
@@ -478,17 +479,44 @@ export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
     update()
 
     return location.subscribe(update)
-  }, [location.current.key])
+  }, [location])
 
   return (
     <LocationContext.Provider value={{ location }}>
       <routerContext.Provider value={router}>
+        <InitialSideEffects />
         <MatchesProvider value={[router.rootMatch!, ...router.state.matches]}>
           {children ?? <Outlet />}
         </MatchesProvider>
       </routerContext.Provider>
     </LocationContext.Provider>
   )
+}
+
+function InitialSideEffects() {
+  const location = useLocation()
+  const buildNext = useBuildNext()
+  const navigate = useNavigate()
+
+  useLayoutEffect(() => {
+    const next = buildNext({
+      to: '.',
+      search: true,
+      hash: true,
+    })
+
+    if (next.href !== location.current.href) {
+      navigate({
+        to: '.',
+        search: true,
+        hash: true,
+        fromCurrent: true,
+        replace: true,
+      })
+    }
+  }, [])
+
+  return null
 }
 
 export type UseLocationType<
