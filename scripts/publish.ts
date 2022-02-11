@@ -437,7 +437,7 @@ async function run() {
     // Stringify the markdown to excape any quotes
     execSync(
       `gh release create v${version} ${
-        branchName ? '--prerelease' : ''
+        isLatestBranch ? '--prerelease' : ''
       } --notes '${changelogMd}'`,
     )
     console.log(`  Github release created.`)
