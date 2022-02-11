@@ -1444,7 +1444,7 @@ export const Link = function Link<
   // Get the active props
   const {
     style: activeStyle = {},
-    className: activeClassName = '',
+    className: activeClassName = 'active',
     ...activeRest
   } = isActive ? getActiveProps() : {}
 
