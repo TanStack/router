@@ -120,7 +120,6 @@ export type RouteLoaders<TGenerics> = {
 
 export type SearchFilter<TGenerics> = (
   prev: UseGeneric<TGenerics, 'Search'>,
-  next: UseGeneric<TGenerics, 'Search'>,
 ) => UseGeneric<TGenerics, 'Search'>
 
 export type MatchLocation<TGenerics extends PartialGenerics = DefaultGenerics> =
@@ -397,19 +396,16 @@ export class ReactLocation<
 
     const pathname = resolvePath(basepath, from.pathname, `${dest.to ?? '.'}`)
 
-    const updatedSearch =
-      (dest.search === true
-        ? from.search
-        : functionalUpdate(dest.search, from.search)) ?? {}
-
     const filteredSearch = dest.__searchFilters?.length
-      ? dest.__searchFilters.reduce(
-          (prev, next) => next(prev, updatedSearch),
-          from.search,
-        )
-      : updatedSearch
+      ? dest.__searchFilters.reduce((prev, next) => next(prev), from.search)
+      : from.search
 
-    const search = replaceEqualDeep(from.search, filteredSearch)
+    const updatedSearch =
+      dest.search === true || !dest.search
+        ? filteredSearch
+        : functionalUpdate(dest.search, filteredSearch) ?? {}
+
+    const search = replaceEqualDeep(from.search, updatedSearch)
 
     const searchStr = this.stringifySearch(search)
     let hash =

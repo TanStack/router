@@ -174,8 +174,7 @@ export type RouteLoaders<TGenerics> = {
 }
 
 export type SearchFilter<TGenerics> = (
-  prev: UseGeneric<TGenerics, 'Search'>,
-  next: UseGeneric<TGenerics, 'Search'>,
+  search: UseGeneric<TGenerics, 'Search'>,
 ) => UseGeneric<TGenerics, 'Search'>
 ```
 

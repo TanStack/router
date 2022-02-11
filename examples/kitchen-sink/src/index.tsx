@@ -135,11 +135,10 @@ const routes: Route<LocationGenerics>[] = [
         searchFilters: [
           // Keep the usersView search param around
           // while in this route (or it's children!)
-          (prev, next) => ({
-            ...next,
+          (search) => ({
+            ...search,
             usersView: {
-              ...prev.usersView,
-              ...next.usersView,
+              ...search.usersView,
             },
           }),
         ],
