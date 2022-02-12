@@ -1354,7 +1354,7 @@ export const Link = function Link<
   onClick,
   onMouseEnter,
   className = '',
-  getActiveProps = () => ({}),
+  getActiveProps = () => ({ className: 'active' }),
   getInactiveProps = () => ({}),
   activeOptions,
   preload,
@@ -1444,7 +1444,7 @@ export const Link = function Link<
   // Get the active props
   const {
     style: activeStyle = {},
-    className: activeClassName = 'active',
+    className: activeClassName = '',
     ...activeRest
   } = isActive ? getActiveProps() : {}
 
