@@ -8,9 +8,9 @@ A simple utility for ranking routes based on their specificity
 ## Installation
 
 ```bash
-yarn add react-location-rank-routes
+yarn add @tanstack/react-location-rank-routes
 # or
-npm i react-location-rank-routes
+npm i @tanstack/react-location-rank-routes
 ```
 
 ## Getting Started

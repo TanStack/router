@@ -13,9 +13,9 @@ A simple cache created for React Location Route loaders.
 ## Installation
 
 ```bash
-yarn add react-location-simple-cache
+yarn add @tanstack/react-location-simple-cache
 # or
-npm i react-location-simple-cache
+npm i @tanstack/react-location-simple-cache
 ```
 
 ## Getting Started
