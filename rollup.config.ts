@@ -199,7 +199,7 @@ function umdProd({
     output: {
       format: 'umd',
       sourcemap: true,
-      file: `${packageDir}/build/umd/index.production.js`,
+      file: `${packageDir}/build/umd/index.production.min.js`,
       name: jsName,
       globals,
       banner,
