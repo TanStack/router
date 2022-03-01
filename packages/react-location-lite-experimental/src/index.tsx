@@ -70,8 +70,12 @@ export type Route<TGenerics extends PartialGenerics = DefaultGenerics> = {
   caseSensitive?: boolean
   // Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched.
   search?: SearchPredicate<UseGeneric<TGenerics, 'Search'>>
-  // The duration to wait during `loader` execution before showing the `pendingElement`
-  searchFilters?: SearchFilter<TGenerics>[]
+  // Filter functions that can manipulate search params *before* they are passed to links and navigate
+  // calls that match this route.
+  preSearchFilters?: SearchFilter<TGenerics>[]
+  // Filter functions that can manipulate search params *after* they are passed to links and navigate
+  // calls that match this route.
+  postSearchFilters?: SearchFilter<TGenerics>[]
   // An array of child routes
   children?: Route<TGenerics>[]
   // Route Loaders (see below) can be inline on the route, or resolved async
@@ -134,7 +138,8 @@ export type BuildNextOptions<
   hash?: true | Updater<string>
   from?: Partial<Location<TGenerics>>
   key?: string
-  __searchFilters?: SearchFilter<TGenerics>[]
+  __preSearchFilters?: SearchFilter<TGenerics>[]
+  __postSearchFilters?: SearchFilter<TGenerics>[]
 }
 
 export type NavigateOptions<TGenerics> = BuildNextOptions<TGenerics> & {
@@ -279,16 +284,23 @@ export class ReactLocation<
 
     const pathname = resolvePath(basepath, from.pathname, `${dest.to ?? '.'}`)
 
-    const filteredSearch = dest.__searchFilters?.length
-      ? dest.__searchFilters.reduce((prev, next) => next(prev), from.search)
+    // Pre filters first
+    const preFilteredSearch = dest.__preSearchFilters?.length
+      ? dest.__preSearchFilters.reduce((prev, next) => next(prev), from.search)
       : from.search
 
-    const updatedSearch =
+    // Then the link/navigate function
+    const destSearch =
       dest.search === true || !dest.search
-        ? filteredSearch
-        : functionalUpdate(dest.search, filteredSearch) ?? {}
+        ? preFilteredSearch
+        : functionalUpdate(dest.search, preFilteredSearch) ?? {}
 
-    const search = replaceEqualDeep(from.search, updatedSearch)
+    // Then post filters
+    const postFilteredSearch = dest.__preSearchFilters?.length
+      ? dest.__preSearchFilters.reduce((prev, next) => next(prev), destSearch)
+      : destSearch
+
+    const search = replaceEqualDeep(from.search, postFilteredSearch)
 
     const searchStr = this.stringifySearch(search)
     let hash =
@@ -746,12 +758,21 @@ function useBuildNext<TGenerics>() {
 
     const matches = matchRoutes<TGenerics>(router, next)
 
-    const __searchFilters = matches
-      .map((match) => match.route.searchFilters ?? [])
+    const __preSearchFilters = matches
+      .map((match) => match.route.preSearchFilters ?? [])
       .flat()
       .filter(Boolean)
 
-    return location.buildNext(router.basepath, { ...opts, __searchFilters })
+    const __postSearchFilters = matches
+      .map((match) => match.route.postSearchFilters ?? [])
+      .flat()
+      .filter(Boolean)
+
+    return location.buildNext(router.basepath, {
+      ...opts,
+      __preSearchFilters,
+      __postSearchFilters,
+    })
   }
 
   return useLatestCallback(buildNext)
