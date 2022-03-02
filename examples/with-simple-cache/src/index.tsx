@@ -40,7 +40,7 @@ function App() {
           element: <Index />,
           children: [
             {
-              path: "/",
+              path: "/home",
               element: "Welcome Home!",
             },
             {
@@ -83,7 +83,7 @@ function Index() {
       <h1>Basic With Simple Cache</h1>
       <hr />
       <h2>
-        <Link to=".">Home</Link>{" "}
+        <Link to="/home">Home</Link>{" "}
         <Link to="posts" preload={1}>
           Posts {isLoading ? "..." : ""}
         </Link>
