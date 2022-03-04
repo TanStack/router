@@ -296,8 +296,8 @@ export class ReactLocation<
         : functionalUpdate(dest.search, preFilteredSearch) ?? {}
 
     // Then post filters
-    const postFilteredSearch = dest.__preSearchFilters?.length
-      ? dest.__preSearchFilters.reduce((prev, next) => next(prev), destSearch)
+    const postFilteredSearch = dest.__postSearchFilters?.length
+      ? dest.__postSearchFilters.reduce((prev, next) => next(prev), destSearch)
       : destSearch
 
     const search = replaceEqualDeep(from.search, postFilteredSearch)
