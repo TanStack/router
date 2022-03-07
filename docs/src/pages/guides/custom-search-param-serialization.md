@@ -34,8 +34,8 @@ import {
 } from '@tanstack/react-location'
 
 const reactLocation = new ReactLocation({
-  parseSearch: parseSearchWith((value) => JSON.parse(btoa(value))),
-  stringifySearch: stringifySearchWith((value) => atob(JSON.stringify(value))),
+  parseSearch: parseSearchWith((value) => JSON.parse(atob(value))),
+  stringifySearch: stringifySearchWith((value) => btoa(JSON.stringify(value))),
 })
 ```
 
@@ -53,10 +53,10 @@ import { stringify, parse } from 'zipson'
 
 const reactLocation = new ReactLocation({
   parseSearch: parseSearchWith((value) =>
-    parse(decodeURIComponent(btoa(value))),
+    parse(decodeURIComponent(atob(value))),
   ),
   stringifySearch: stringifySearchWith((value) =>
-    atob(encodeURIComponent(stringify(value))),
+    btoa(encodeURIComponent(stringify(value))),
   ),
 })
 ```
