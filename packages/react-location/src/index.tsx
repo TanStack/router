@@ -1389,6 +1389,7 @@ export const Link = function Link<
 
   // The click handler
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (disabled) return
     if (onClick) onClick(e)
 
     if (
