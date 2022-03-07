@@ -12,6 +12,8 @@ import {
 
 export { createHashHistory, createBrowserHistory, createMemoryHistory }
 
+import { decode, encode } from './qss'
+
 // Types
 
 type Timeout = ReturnType<typeof setTimeout>
@@ -49,8 +51,8 @@ export type ReactLocationOptions = {
   parseSearch?: SearchParser
 }
 
-type SearchSerializer = (searchObj: Record<string, any>) => string
-type SearchParser = (searchStr: string) => Record<string, any>
+export type SearchSerializer = (searchObj: Record<string, any>) => string
+export type SearchParser = (searchStr: string) => Record<string, any>
 
 export type Updater<TResult> = TResult | ((prev?: TResult) => TResult)
 
@@ -2013,50 +2015,54 @@ function hasObjectPrototype(o: any) {
   return Object.prototype.toString.call(o) === '[object Object]'
 }
 
-export function defaultStringifySearch(search: Record<string, unknown>) {
-  search = { ...search }
+export const defaultParseSearch = parseSearchWith(JSON.parse)
+export const defaultStringifySearch = stringifySearchWith(JSON.stringify)
 
-  if (search) {
-    Object.keys(search).forEach((key) => {
-      const val = search[key]
-      if (typeof val === 'undefined' || val === undefined) {
-        delete search[key]
-      } else if (val && typeof val === 'object' && val !== null) {
+export function parseSearchWith(parser: (str: string) => any) {
+  return (searchStr: string): Record<string, any> => {
+    if (searchStr.substring(0, 1) === '?') {
+      searchStr = searchStr.substring(1)
+    }
+
+    let query: Record<string, unknown> = decode(searchStr)
+
+    // Try to parse any query params that might be json
+    for (let key in query) {
+      const value = query[key]
+      if (typeof value === 'string') {
         try {
-          search[key] = JSON.stringify(val)
+          query[key] = parser(value)
         } catch (err) {
-          // silent
+          //
         }
       }
-    })
+    }
+
+    return query
   }
-
-  const searchStr = new URLSearchParams(
-    search as Record<string, string>,
-  ).toString()
-
-  return searchStr ? `?${searchStr}` : ''
 }
 
-export function defaultParseSearch(searchStr: string): Record<string, any> {
-  if (searchStr.substring(0, 1) === '?') {
-    searchStr = searchStr.substring(1)
-  }
+export function stringifySearchWith(stringify: (search: any) => string) {
+  return (search: Record<string, any>) => {
+    search = { ...search }
 
-  let query: Record<string, unknown> = Object.fromEntries(
-    (new URLSearchParams(searchStr) as any).entries(),
-  )
-
-  // Try to parse query params
-  for (let key in query) {
-    const value = query[key]
-
-    try {
-      query[key] = JSON.parse(value as string)
-    } catch (err) {
-      //
+    if (search) {
+      Object.keys(search).forEach((key) => {
+        const val = search[key]
+        if (typeof val === 'undefined' || val === undefined) {
+          delete search[key]
+        } else if (val && typeof val === 'object' && val !== null) {
+          try {
+            search[key] = stringify(val)
+          } catch (err) {
+            // silent
+          }
+        }
+      })
     }
-  }
 
-  return query
+    const searchStr = encode(search as Record<string, string>).toString()
+
+    return searchStr ? `?${searchStr}` : ''
+  }
 }

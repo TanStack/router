@@ -3,19 +3,6 @@ id: jsurl
 title: React Location JSURL
 ---
 
-A [JSURL](https://github.com/Sage/jsurl) powered stringifier/parser for React Location.
+## DEPRECATED ⚠️
 
-- Search param compression (smaller URLs)
-- More legible search params (fewer JSON encodings)
-
-## Usage
-
-```tsx
-import { ReactLocation } from '@tanstack/react-location'
-import { parseSearch, stringifySearch } from '@tanstack/react-location-jsurl'
-
-const reactLocation = new ReactLocation({
-  parseSearch,
-  stringifySearch,
-})
-```
+This module is officially deprecated and will be removed in the next major version. Please see [Custom Search Param Serialization](../guides/custom-search-param-serialization)

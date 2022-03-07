@@ -419,11 +419,56 @@ In React Location, search params are considered first-class objects that can be 
 
 **Parsing & Serialization**
 
-The first level of search params always have standard encoding, eg. `?param1=value&param2=value&param3=value`. This keeps things at the root level of the search params experience as compatible as possible with the rest of the web ecosystem. There are many tools frameworks and core web browser APIs that use this basic expectation. **Starting with at value level of search params, however, React Location offers much more power**.
+The first level of search params always have standard encoding, eg. `?param1=value&param2=value&param3=value`. This keeps things at the root level of the search params experience fully compliant with the native `URLSearchParams` API and the rest of the web ecosystem. **When it comes to the values of those URLSearchParams, however, React Location offers much more power by fully supporting JSON, included nested JSON structures**.
 
-- By default, React Location uses `JSON.parse` and `JSON.stringify` to ensure your search params can contain complex JSON objects.
-- Custom `stringifySearch` and `parseSearch` functions can be provided to your `ReactLocation` instance to further enhance the way search objects are encoded. We suggest using our `@tanstack/react-location-jsurl` package if you're truly looking for the best UX around search param encoding. It keeps URLs small, readable, and safely encoded for users to share and bookmark.
-- Regardless of the serialization strategy you pick for React Location, it will _always_ guarantee a stable, immutable and structurally-safe object reference. This means that even though your search params' source of truth is technically a string, it will behave as if it is an immutable object, stored in your application's memory.
+For every search param **value**, React Location follows the following schema:
+
+- Top-level, primitive, non-object-like values are serialized normally as strings/numbers/booleans.
+- Top-level object-like values are serialized using `JSON.stringify` and parsed using `JSON.parse`
+
+Custom `stringifySearch` and `parseSearch` functions can be provided to your `ReactLocation` instance to further enhance the way search objects are encoded.
+
+**Regardless of how your search params are serialized or parsed**, React Location willl **always provide a stable, immutable and structurally-safe object reference**. This means that even though your search params' source of truth is technically a string that is changing over time, it will behave as a structurally shared immutable object.
+
+## Search Param Parsing and Serialization
+
+When implementing custom search param parsing and serialization, the `parseSearch`/`stringifySearch` options and `parseSearchWith`/`stringifySearchWith` functions will come in handy.
+
+Their types are as follows:
+
+```ts
+export type SearchParser = (searchStr: string) => Record<string, any>
+export type SearchSerializer = (searchObj: Record<string, any>) => string
+
+export function parseSearchWith(
+  parser: (str: string) => any,
+): (searchStr: string) => Record<string, any>
+
+export function stringifySearchWith(
+  stringify: (search: any) => string,
+): (search: Record<string, any>) => string
+```
+
+While unnecessary, here is an example of how to re-implement the default search param parsing and serialization for React Location:
+
+```tsx
+import {
+  ReactLocation,
+  parseSearchWith,
+  stringifySearchWith,
+} from '@tanstack/react-location'
+
+const reactLocation = new ReactLocation({
+  parseSearch: (search: string) => {
+    return parseSearchWith(JSON.parse)(search)
+  },
+  stringifySearch: (search: any) => {
+    return stringifySearchWith(JSON.stringify)(search)
+  },
+})
+```
+
+[See more examples of custom search param parsing and serialization](../guides/custom-search-param-serialization)
 
 ## useSearch
 
