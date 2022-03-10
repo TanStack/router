@@ -146,7 +146,7 @@ export const Footer = (props) => {
         <div className="mt-8 border-t border-gray-200 pt-8 md:flex md:items-center md:justify-between">
           <div className="flex md:order-2">
             <a
-              href="https://twitter.com/tanstack"
+              href="https://twitter.com/tannerlinsley"
               className="ml-6 text-gray-400 hover:text-gray-500"
             >
               <span className="sr-only">Twitter</span>
