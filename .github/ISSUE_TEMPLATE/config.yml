@@ -1,8 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Feature Requests & Questions
-    url: https://github.com/tanstack/react-location/discussions
+  - name: 🤔 Feature Requests & Questions
+    url: https://github.com/TanStack/react-table/discussions
     about: Please ask and answer questions here.
-  - name: Community Chat
+  - name: 💬 Community Chat
     url: https://discord.gg/mQd7egN
     about: A dedicated discord server hosted by Tanner Linsley
+  - name: 💬 Tanstack Twitter
+    url: https://twitter.com/tan_stack
+    about: Stay up to date with new releases of our libraries
