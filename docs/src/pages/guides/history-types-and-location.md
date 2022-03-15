@@ -64,7 +64,9 @@ Memory routing is useful in environments that are not a browser, like `node.js` 
 import { createMemoryHistory, ReactLocation } from '@tanstack/react-location'
 
 // Create a memory history
-const memoryHistory = createMemoryHistory('/') // Pass your initial url
+const memoryHistory = createMemoryHistory({
+  initialEntries: ['/'] // Pass your initial url
+})
 
 // Set up a ReactLocation instance with the memory history
 const location = new ReactLocation({
