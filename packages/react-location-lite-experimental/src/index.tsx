@@ -292,9 +292,13 @@ export class ReactLocation<
 
     // Then the link/navigate function
     const destSearch =
-      dest.search === true || !dest.search
-        ? preFilteredSearch
-        : functionalUpdate(dest.search, preFilteredSearch) ?? {}
+      dest.search === true
+        ? preFilteredSearch // Preserve from true
+        : dest.search
+        ? functionalUpdate(dest.search, preFilteredSearch) ?? {} // Updater
+        : dest.__preSearchFilters?.length
+        ? preFilteredSearch // Preserve from filters
+        : {}
 
     // Then post filters
     const postFilteredSearch = dest.__postSearchFilters?.length
@@ -1387,7 +1391,7 @@ export function stringifySearchWith(stringify: (search: any) => string) {
       })
     }
 
-    const searchStr = encode(search as Record<string, string>).toString()
+    const searchStr = encode(search as Record<string, string>)
 
     return searchStr ? `?${searchStr}` : ''
   }

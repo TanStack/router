@@ -403,9 +403,13 @@ export class ReactLocation<
       : from.search
 
     const updatedSearch =
-      dest.search === true || !dest.search
-        ? filteredSearch
-        : functionalUpdate(dest.search, filteredSearch) ?? {}
+      dest.search === true
+        ? filteredSearch // Preserve from true
+        : dest.search
+        ? functionalUpdate(dest.search, filteredSearch) ?? {} // Updater
+        : dest.__searchFilters?.length
+        ? filteredSearch // Preserve from filters
+        : {}
 
     const search = replaceEqualDeep(from.search, updatedSearch)
 
