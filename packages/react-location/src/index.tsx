@@ -846,7 +846,7 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
   isLoading: boolean = false
 
   private notify? = (isSoft?: boolean) => {
-    this.matchLoader?.preNotify(isSoft)
+    this.matchLoader?.preNotify(isSoft ? this : undefined)
   }
 
   assignMatchLoader? = (matchLoader: MatchLoader<TGenerics>) => {
@@ -891,14 +891,17 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
     this.loaderPromise = (
       !importer
         ? Promise.resolve()
-        : importer({ params: this.params, search: this.search }).then(
-            (imported) => {
-              this.route = {
-                ...this.route,
-                ...imported,
-              }
-            },
-          )
+        : (() => {
+            this.isLoading = true
+            return importer({ params: this.params, search: this.search }).then(
+              (imported) => {
+                this.route = {
+                  ...this.route,
+                  ...imported,
+                }
+              },
+            )
+          })()
     )
       // then run all element and data loaders in parallel
       .then(() => {
@@ -919,6 +922,7 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
           }
 
           if (typeof routeElement === 'function') {
+            this.isLoading = true
             elementPromises.push(
               (routeElement as AsyncElement)(this).then((res) => {
                 this[type] = res
@@ -932,35 +936,29 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
         const loader = this.route.loader
 
         const dataPromise = !loader
-          ? Promise.resolve().then(() => {
-              this.status = 'resolved'
-            })
+          ? Promise.resolve()
           : new Promise(async (resolveLoader) => {
-              let pendingTimeout: Timeout
+              this.isLoading = true
+
+              const loaderReady = (status: 'resolved' | 'rejected') => {
+                this.updatedAt = Date.now()
+                resolveLoader(this.ownData)
+                this.status = status
+              }
 
               const resolve = (data: any) => {
-                this.status = 'resolved'
                 this.ownData = data
                 this.error = undefined
+                loaderReady('resolved')
               }
 
               const reject = (err: any) => {
                 console.error(err)
-                this.status = 'rejected'
                 this.error = err
-              }
-
-              const finish = () => {
-                this.isLoading = false
-                this.startPending = undefined
-                clearTimeout(pendingTimeout)
-                resolveLoader(this.ownData)
-                this.notify?.(true)
+                loaderReady('rejected')
               }
 
               try {
-                this.isLoading = true
-
                 resolve(
                   await loader(this, {
                     parentMatch: opts.parentMatch,
@@ -980,17 +978,24 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
                     },
                   }),
                 )
-                await this.pendingMinPromise
-                finish()
               } catch (err) {
                 reject(err)
-                finish()
               }
             })
 
-        return Promise.all([...elementPromises, dataPromise]).then(() => {
-          this.updatedAt = Date.now()
-        })
+        return Promise.all([...elementPromises, dataPromise])
+          .then(() => {
+            this.status = 'resolved'
+            this.isLoading = false
+            this.startPending = undefined
+          })
+          .then(() => this.pendingMinPromise)
+          .then(() => {
+            if (this.pendingTimeout) {
+              clearTimeout(this.pendingTimeout)
+            }
+            this.notify?.(true)
+          })
       })
       .then(() => {
         return this.ownData
@@ -1007,6 +1012,7 @@ class MatchLoader<
   prepPromise?: Promise<void>
   matchPromise?: Promise<UnloadedMatch<TGenerics>[]>
   firstRenderPromises?: Promise<any>[]
+  preNotifiedMatches: RouteMatch<TGenerics>[] = []
 
   constructor(
     router: RouterInstance<TGenerics>,
@@ -1034,13 +1040,18 @@ class MatchLoader<
 
   status: 'pending' | 'resolved' = 'pending'
 
-  preNotify = (isSoft?: boolean) => {
-    if (!isSoft) {
-      this.status = 'resolved'
+  preNotify = (routeMatch?: RouteMatch<TGenerics>) => {
+    if (routeMatch) {
+      if (!this.preNotifiedMatches.includes(routeMatch)) {
+        this.preNotifiedMatches.push(routeMatch)
+      }
     }
 
-    cascadeMatchData(this.matches)
-    this.notify()
+    if (!routeMatch || this.preNotifiedMatches.length === this.matches.length) {
+      this.status = 'resolved'
+      cascadeMatchData(this.matches)
+      this.notify()
+    }
   }
 
   loadData = async ({ maxAge }: { maxAge?: number } = {}) => {
