@@ -695,6 +695,10 @@ export class RouterInstance<
 
   matchCache: Record<string, RouteMatch<TGenerics>> = {}
 
+  removeAllCache = () => {
+    this.matchCache = {}
+  }
+
   cleanMatchCache = () => {
     const activeMatchIds = [
       ...(this?.state.matches ?? []),
