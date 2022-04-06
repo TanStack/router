@@ -5,9 +5,9 @@ export const siteConfig = {
   copyright: `Copyright © ${new Date().getFullYear()} Tanner Linsley. All Rights Reserved.`,
   repoUrl: 'https://github.com/tanstack/react-location',
   algolia: {
-    appId: 'BH4D9OD16A',
-    apiKey: 'f501b7d59335fb8731d2c76764c3fc86',
-    indexName: 'tanstack_react-location', // algoliaOptions: {
+    appId: '2Q4R7APCNU',
+    apiKey: 'b7bd0be1ae4ec4526393ba8003f01dec',
+    indexName: 'react-location-tanstack', // algoliaOptions: {
     //   facetFilters: ['version:VERSION'],
     // },
   },
