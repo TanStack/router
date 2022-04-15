@@ -13,6 +13,7 @@ import {
 export { createHashHistory, createBrowserHistory, createMemoryHistory }
 
 import { decode, encode } from './qss'
+import {useCallback, useState} from "react";
 
 // Types
 
@@ -25,6 +26,7 @@ export type DefaultGenerics = {
   Params: Params<string>
   Search: Search<unknown>
   RouteMeta: RouteMeta<unknown>
+  DataLoaderData: DataLoaderData<unknown>
 }
 
 export type PartialGenerics = Partial<DefaultGenerics>
@@ -35,6 +37,7 @@ export type Search<T> = Record<string, T>
 export type Params<T> = Record<string, T>
 export type LoaderData<T> = Record<string, T>
 export type RouteMeta<T> = Record<string, T>
+export type DataLoaderData<T> = Record<string, T>
 
 export type UseGeneric<
   TGenerics extends PartialGenerics,
@@ -2080,5 +2083,123 @@ export function stringifySearchWith(stringify: (search: any) => string) {
     const searchStr = encode(search as Record<string, string>).toString()
 
     return searchStr ? `?${searchStr}` : ''
+  }
+}
+
+
+export const useIsActiveRoute = ():boolean => {
+  const router = useRouter()
+  let myPath = router.state.location.pathname // my route path
+  let browserPath = window.location.pathname  // browser's root path
+  return myPath === browserPath
+}
+
+export interface PromiseState<T> {
+  status: 'idle' | 'fulfilled' | 'rejected'
+  value: T | null
+  error: any
+}
+function usePromiseEffect<T>(effect: () => Promise<T>, deps: React.DependencyList, enabled?:boolean, reload?:boolean):PromiseState<T> {
+  const deps2 = React.useMemo(()=>{
+    let dd:React.DependencyList = [...deps]
+    if (enabled !== undefined) {
+      dd = [...dd,enabled]
+    }
+    if (reload !== undefined) {
+      dd = [...dd,reload]
+    }
+    return dd
+  },[deps,enabled,reload])
+
+  const [state, setState] = React.useState<PromiseState<T>>({
+    status: 'idle',
+    value: null,
+    error: null,
+  })
+
+  React.useEffect(() => {
+    if (!enabled) { return }
+    effect()
+        .then((value) => {
+          setState({status: 'fulfilled', value, error: null})
+        })
+        .catch((error) => {
+          setState({ status: 'rejected', value: null, error })
+        })
+  }, deps2)
+
+  return {
+    status: state.status,
+    value: state.value,
+    error: state.error
+  }
+}
+
+export const useDataLoader = (loader:(search:any,params:any,data:any) => Promise<any>,reload:boolean):PromiseState<any>  => {
+  const enabled = useIsActiveRoute() // Required to trigger dataLoader only when path matches the current route.
+  const router = useRouter()
+  const pathname = router.state.location.pathname
+  const match = router.state.matches.find(v => v.pathname === pathname)
+  const search = router.state.location.search
+  const params = match!.params
+  const data = match!.data
+
+  return usePromiseEffect(async ()=>{
+    return  await loader(search,params,data)
+  },[search,params,data],enabled,reload)
+}
+
+
+export function DataLoader({MyComponent,MyLoader}:{MyComponent:any,MyLoader:(search:any,params:any,data:any) => Promise<any>}) {
+  // for reload
+  const [reload,setReload] = useState(false)
+  const reloadMethod = useCallback(()=>{
+    setReload(v => !v)
+  },[])
+
+  const {status, value, error} = useDataLoader(MyLoader,reload)
+  if (status !== "fulfilled") {
+    if (error) {
+      throw error
+    }
+    return  (<></>)
+  }
+  const dataProps = {
+    data: value,
+    reload: reloadMethod
+  }
+  console.log("dataProps",dataProps)
+  // return (<MyComponent {...dataProps} />) // reactのバージョンの問題か？
+  return (<MyComponent.type ref={MyComponent.ref} {...MyComponent.props} {...dataProps} />) // react-locationに組み込む場合、こっちが成功する
+}
+
+export type UseGenericAsIs<
+    TGenerics extends PartialGenerics,
+    TGeneric extends keyof PartialGenerics,
+    > = Maybe<TGenerics[TGeneric], DefaultGenerics[TGeneric]>
+
+export function createDataLoader<TGenerics extends PartialGenerics = DefaultGenerics>(
+    loader: (
+        search: UseGeneric<TGenerics, 'Search'>,
+        params: UseGeneric<TGenerics, 'Params'>,
+        data: UseGeneric<TGenerics, 'LoaderData'>,
+    ) => Promise<UseGenericAsIs<TGenerics, 'DataLoaderData'>>) {
+  return loader
+}
+
+export interface LoaderPageProps<T> {
+  data :T,
+  reload: ()=>void  | any
+}
+
+export function withDataLoader<TGenerics extends PartialGenerics = DefaultGenerics>(
+    MyComponent:React.FunctionComponent<LoaderPageProps<UseGenericAsIs<TGenerics, 'DataLoaderData'>>>,
+    loader: (
+        search: UseGeneric<TGenerics, 'Search'>,
+        params: UseGeneric<TGenerics, 'Params'>,
+        data: UseGeneric<TGenerics, 'LoaderData'>,
+    ) => Promise<UseGenericAsIs<TGenerics, 'DataLoaderData'>>) {
+  return function () {
+    return (<DataLoader MyComponent={MyComponent} MyLoader={loader} />)
   }
 }
