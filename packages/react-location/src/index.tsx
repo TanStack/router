@@ -2169,8 +2169,8 @@ export function DataLoader({MyComponent,MyLoader}:{MyComponent:any,MyLoader:(sea
     reload: reloadMethod
   }
   console.log("dataProps",dataProps)
-  // return (<MyComponent {...dataProps} />) // reactのバージョンの問題か？
-  return (<MyComponent.type ref={MyComponent.ref} {...MyComponent.props} {...dataProps} />) // react-locationに組み込む場合、こっちが成功する
+  return (<MyComponent {...dataProps} />) // reactのバージョンの問題か？
+  // return (<MyComponent.type ref={MyComponent.ref} {...MyComponent.props} {...dataProps} />) // react-locationに組み込む場合、こっちが成功する
 }
 
 export type UseGenericAsIs<
@@ -2192,13 +2192,14 @@ export interface LoaderPageProps<T> {
   reload: ()=>void  | any
 }
 
-export function withDataLoader<TGenerics extends PartialGenerics = DefaultGenerics>(
-    MyComponent:React.FunctionComponent<LoaderPageProps<UseGenericAsIs<TGenerics, 'DataLoaderData'>>>,
+export function DataLoaderFC<TGenerics extends PartialGenerics = DefaultGenerics>(
     loader: (
         search: UseGeneric<TGenerics, 'Search'>,
         params: UseGeneric<TGenerics, 'Params'>,
         data: UseGeneric<TGenerics, 'LoaderData'>,
-    ) => Promise<UseGenericAsIs<TGenerics, 'DataLoaderData'>>) {
+    ) => Promise<UseGenericAsIs<TGenerics, 'DataLoaderData'>>,
+    MyComponent:React.FunctionComponent<LoaderPageProps<UseGenericAsIs<TGenerics, 'DataLoaderData'>>>
+) {
   return function () {
     return (<DataLoader MyComponent={MyComponent} MyLoader={loader} />)
   }
