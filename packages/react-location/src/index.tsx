@@ -2192,7 +2192,7 @@ export interface LoaderPageProps<T> {
   reload: ()=>void  | any
 }
 
-export function DataLoaderFC<TGenerics extends PartialGenerics = DefaultGenerics>(
+export function DataLoaderRoute<TGenerics extends PartialGenerics = DefaultGenerics>(
     loader: (
         search: UseGeneric<TGenerics, 'Search'>,
         params: UseGeneric<TGenerics, 'Params'>,
