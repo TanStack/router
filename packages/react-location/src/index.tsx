@@ -2135,7 +2135,7 @@ function usePromiseEffect<T>(effect: () => Promise<T>, deps: React.DependencyLis
   }
 }
 
-export const useDataLoader = (loader:(values:{search:any,params:any,data:any}) => Promise<any>,reload:boolean):PromiseState<any>  => {
+export const useDataLoader = (loader:(options:{search:any,params:any,data:any}) => Promise<any>,reload:boolean):PromiseState<any>  => {
   const enabled = useIsActiveRoute() // Required to trigger dataLoader only when path matches the current route.
   const router = useRouter()
   const pathname = router.state.location.pathname
@@ -2145,17 +2145,17 @@ export const useDataLoader = (loader:(values:{search:any,params:any,data:any}) =
   const data = match!.data
 
   return usePromiseEffect(async ()=>{
-    let values ={
+    let options ={
       search:search,
       params:params,
       data:data
     }
-    return  await loader(values)
+    return  await loader(options)
   },[search,params,data],enabled,reload)
 }
 
 
-export function DataLoader({MyComponent,MyLoader}:{MyComponent:any,MyLoader:(values: {  search:any,params:any,data:any }) => Promise<any>}) {
+export function DataLoader({MyComponent,MyLoader}:{MyComponent:any,MyLoader:(options: {  search:any,params:any,data:any }) => Promise<any>}) {
   // for reload
   const [reload,setReload] = useState(false)
   const reloadMethod = useCallback(()=>{
@@ -2185,7 +2185,7 @@ export type UseGenericAsIs<
 
 export function createDataLoader<TGenerics extends PartialGenerics = DefaultGenerics>(
     loader: (
-        values: {
+        options: {
           search: UseGeneric<TGenerics, 'Search'>,
           params: UseGeneric<TGenerics, 'Params'>,
           data: UseGeneric<TGenerics, 'LoaderData'>
@@ -2201,7 +2201,7 @@ export interface LoaderPageProps<T> {
 
 export function DataLoaderRoute<TGenerics extends PartialGenerics = DefaultGenerics>(
     loader: (
-        values: {
+        options: {
           search: UseGeneric<TGenerics, 'Search'>,
           params: UseGeneric<TGenerics, 'Params'>,
           data: UseGeneric<TGenerics, 'LoaderData'>
