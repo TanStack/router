@@ -2135,7 +2135,7 @@ function usePromiseEffect<T>(effect: () => Promise<T>, deps: React.DependencyLis
   }
 }
 
-export const useDataLoader = (loader:(search:any,params:any,data:any) => Promise<any>,reload:boolean):PromiseState<any>  => {
+export const useDataLoader = (loader:(values:{search:any,params:any,data:any}) => Promise<any>,reload:boolean):PromiseState<any>  => {
   const enabled = useIsActiveRoute() // Required to trigger dataLoader only when path matches the current route.
   const router = useRouter()
   const pathname = router.state.location.pathname
@@ -2145,12 +2145,17 @@ export const useDataLoader = (loader:(search:any,params:any,data:any) => Promise
   const data = match!.data
 
   return usePromiseEffect(async ()=>{
-    return  await loader(search,params,data)
+    let values ={
+      search:search,
+      params:params,
+      data:data
+    }
+    return  await loader(values)
   },[search,params,data],enabled,reload)
 }
 
 
-export function DataLoader({MyComponent,MyLoader}:{MyComponent:any,MyLoader:(search:any,params:any,data:any) => Promise<any>}) {
+export function DataLoader({MyComponent,MyLoader}:{MyComponent:any,MyLoader:(values: {  search:any,params:any,data:any }) => Promise<any>}) {
   // for reload
   const [reload,setReload] = useState(false)
   const reloadMethod = useCallback(()=>{
@@ -2180,9 +2185,11 @@ export type UseGenericAsIs<
 
 export function createDataLoader<TGenerics extends PartialGenerics = DefaultGenerics>(
     loader: (
-        search: UseGeneric<TGenerics, 'Search'>,
-        params: UseGeneric<TGenerics, 'Params'>,
-        data: UseGeneric<TGenerics, 'LoaderData'>,
+        values: {
+          search: UseGeneric<TGenerics, 'Search'>,
+          params: UseGeneric<TGenerics, 'Params'>,
+          data: UseGeneric<TGenerics, 'LoaderData'>
+        }
     ) => Promise<UseGenericAsIs<TGenerics, 'DataLoaderData'>>) {
   return loader
 }
@@ -2194,9 +2201,11 @@ export interface LoaderPageProps<T> {
 
 export function DataLoaderRoute<TGenerics extends PartialGenerics = DefaultGenerics>(
     loader: (
-        search: UseGeneric<TGenerics, 'Search'>,
-        params: UseGeneric<TGenerics, 'Params'>,
-        data: UseGeneric<TGenerics, 'LoaderData'>,
+        values: {
+          search: UseGeneric<TGenerics, 'Search'>,
+          params: UseGeneric<TGenerics, 'Params'>,
+          data: UseGeneric<TGenerics, 'LoaderData'>
+        }
     ) => Promise<UseGenericAsIs<TGenerics, 'DataLoaderData'>>,
     MyComponent:React.FunctionComponent<LoaderPageProps<UseGenericAsIs<TGenerics, 'DataLoaderData'>>>
 ) {
