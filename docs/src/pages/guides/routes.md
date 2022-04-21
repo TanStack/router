@@ -208,6 +208,29 @@ const routes = [
 
 The `search` function is passed the current `search` object, and should return a boolean value. If the function returns `true`, the route will match.
 
+Note that if you have two base routes that are only differentiated by search, you must supply a unique `id` to each route object.
+
+```tsx
+const routes = [
+  {
+    id: 'teamId1234',
+    path: 'team',
+    // This route would match the url `/team?teamId=1234`
+    search: (search) => {
+      return search.teamId === '1234'
+    },
+  },
+  {
+    id: 'teamId9999',
+    path: 'team',
+    // This route would match the url `/team?teamId=9999`
+    search: (search) => {
+      return search.teamId === '9999'
+    },
+  },
+]
+```
+
 > Even we are still exploring the possibilities that `search` matching provides, so let us know what you do with them!
 
 ## Route Defaults
