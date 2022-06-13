@@ -490,8 +490,7 @@ type MyLocationGenerics = MakeGenerics<{
       }
       desc?: boolean
     }
-  }>
->
+}>
 
 function MyComponent() {
   const search = useSearch<MyLocationGenerics>()
