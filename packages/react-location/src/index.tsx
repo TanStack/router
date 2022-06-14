@@ -63,6 +63,7 @@ export type Location<TGenerics extends PartialGenerics = DefaultGenerics> = {
   searchStr: string
   hash: string
   key?: string
+  state?: any
   // nextAction?: 'push' | 'replace'
 }
 
@@ -219,12 +220,14 @@ export type BuildNextOptions<
   hash?: true | Updater<string>
   from?: Partial<Location<TGenerics>>
   key?: string
+  state?: any
   __searchFilters?: SearchFilter<TGenerics>[]
 }
 
 export type NavigateOptions<TGenerics> = BuildNextOptions<TGenerics> & {
   replace?: boolean
   fromCurrent?: boolean
+  state?: any
 }
 
 export type PromptProps = {
@@ -241,6 +244,7 @@ export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
     search?: true | Updater<UseGeneric<TGenerics, 'Search'>>
     // The new has string or a function to update it
     hash?: Updater<string>
+    state?: any
     // Whether to replace the current history stack instead of pushing a new one
     replace?: boolean
     // A function that is passed the [Location API](#location-api) and returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
@@ -424,6 +428,7 @@ export class ReactLocation<
       hash,
       href: `${pathname}${searchStr}${hash}`,
       key: dest.key,
+      state: dest.state,
     }
   }
 
@@ -450,14 +455,14 @@ export class ReactLocation<
         pathname: this.current.pathname,
         hash: this.current.hash,
         search: this.current.searchStr,
-      })
+      }, this.current.state)
     }
 
     return this.history.push({
       pathname: this.current.pathname,
       hash: this.current.hash,
       search: this.current.searchStr,
-    })
+    }, this.current.state)
   }
 
   parseLocation(
@@ -473,6 +478,7 @@ export class ReactLocation<
       hash: location.hash.split('#').reverse()[0] ?? '',
       href: `${location.pathname}${location.search}${location.hash}`,
       key: location.key,
+      state: location.state,
     }
   }
 }
@@ -1299,6 +1305,7 @@ export function useNavigate<
     from,
     to,
     fromCurrent,
+    state,
   }: NavigateOptions<TGenerics> & {
     replace?: boolean
   }) {
@@ -1308,6 +1315,7 @@ export function useNavigate<
       to,
       search,
       hash,
+      state,
       from: fromCurrent
         ? location.current
         : from ?? { pathname: match.pathname },
@@ -1377,6 +1385,7 @@ export const Link = function Link<
   preload,
   disabled,
   _ref,
+  state,
   ...rest
 }: LinkProps<TGenerics>) {
   const loadRoute = useLoadRoute<TGenerics>()
@@ -1401,6 +1410,7 @@ export const Link = function Link<
     to,
     search,
     hash,
+    state,
     from: { pathname: match.pathname },
   })
 
@@ -1422,6 +1432,7 @@ export const Link = function Link<
         search,
         hash,
         replace,
+        state,
         from: { pathname: match.pathname },
       })
     }
@@ -1437,6 +1448,7 @@ export const Link = function Link<
           to,
           search,
           hash,
+          state,
         },
         { maxAge: preload },
       )
