@@ -37,7 +37,7 @@
   "peerDependencies": {
     "react": ">=16",
     "react-dom": ">=16",
-    "@tanstack/react-location": "3.4.4"
+    "@tanstack/react-location": ">=3.4.4"
   },
   "dependencies": {
     "@babel/runtime": "^7.16.7"
