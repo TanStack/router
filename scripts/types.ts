@@ -36,8 +36,14 @@ export type Parsed = {
 
 export type Package = {
   name: string
+  packageDir: string
   srcDir: string
+  dependencies?: string[]
   peerDependencies?: string[]
+  jsName: string
+  outputFile: string
+  entryFile: string
+  globals: Record<string, string>
 }
 
 export type BranchConfig = {

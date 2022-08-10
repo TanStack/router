@@ -12,11 +12,12 @@ function makeConfig(name: string) {
 
 module.exports = {
   projects: [
+    makeConfig('location-core'),
     makeConfig('react-location'),
-    makeConfig('react-location-devtools'),
-    makeConfig('react-location-elements-to-routes'),
-    makeConfig('react-location-simple-cache'),
-    makeConfig('react-location-rank-routes'),
-    makeConfig('react-location-jsurl'),
+    // makeConfig('react-location-devtools'),
+    // makeConfig('react-location-elements-to-routes'),
+    // makeConfig('react-location-simple-cache'),
+    // makeConfig('react-location-rank-routes'),
+    // makeConfig('react-location-jsurl'),
   ],
 }

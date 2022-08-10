@@ -6,6 +6,10 @@ import visualizer from 'rollup-plugin-visualizer'
 import replace from '@rollup/plugin-replace'
 import nodeResolve from '@rollup/plugin-node-resolve'
 import path from 'path'
+import svelte from 'rollup-plugin-svelte'
+import dts from 'rollup-plugin-dts'
+//
+import { packages } from './scripts/config'
 
 type Options = {
   input: string
@@ -14,23 +18,8 @@ type Options = {
   banner: string
   jsName: string
   outputFile: string
+  globals: Record<string, string>
 }
-
-const globals = {
-  react: 'React',
-  'react-dom': 'ReactDOM',
-  '@tanstack/react-location': 'ReactLocation',
-  '@tanstack/react-location-lite-experimental': 'ReactLocationLiteExperimental',
-  '@tanstack/react-location-devtools': 'ReactLocationDevtools',
-  '@tanstack/react-location-elements-to-routes':
-    'ReactLocationElementsToRoutes',
-  '@tanstack/react-location-simple-cache': 'ReactLocationSimpleCache',
-  '@tanstack/react-location-rank-routes': 'ReactLocationRankRoutes',
-  '@tanstack/react-location-jsurl': 'ReactLocationJsurl',
-  history: 'History',
-}
-
-const externals = [...Object.keys(globals), /@babel\/runtime/, 'history']
 
 const umdDevPlugin = (type: 'development' | 'production') =>
   replace({
@@ -46,57 +35,16 @@ const babelPlugin = babel({
 })
 
 export default function rollup(options: RollupOptions): RollupOptions[] {
-  return [
-    ...buildConfigs({
-      name: 'react-location',
-      packageDir: 'packages/react-location',
-      jsName: 'ReactLocation',
-      outputFile: 'react-location',
-      entryFile: 'src/index.tsx',
-    }),
-    ...buildConfigs({
-      name: 'react-location-lite-experimental',
-      packageDir: 'packages/react-location-lite-experimental',
-      jsName: 'ReactLocationLite',
-      outputFile: 'react-location-lite-experimental',
-      entryFile: 'src/index.tsx',
-    }),
-    ...buildConfigs({
-      name: 'react-location-devtools',
-      packageDir: 'packages/react-location-devtools',
-      jsName: 'ReactLocationDevtools',
-      outputFile: 'react-location-devtools',
-      entryFile: 'src/index.tsx',
-    }),
-    ...buildConfigs({
-      name: 'react-location-elements-to-routes',
-      packageDir: 'packages/react-location-elements-to-routes',
-      jsName: 'ReactLocationElementsToRoutes',
-      outputFile: 'react-location-elements-to-routes',
-      entryFile: 'src/index.tsx',
-    }),
-    ...buildConfigs({
-      name: 'react-location-simple-cache',
-      packageDir: 'packages/react-location-simple-cache',
-      jsName: 'ReactLocationSimpleCache',
-      outputFile: 'react-location-simple-cache',
-      entryFile: 'src/index.tsx',
-    }),
-    ...buildConfigs({
-      name: 'react-location-rank-routes',
-      packageDir: 'packages/react-location-rank-routes',
-      jsName: 'ReactLocationRankRoutes',
-      outputFile: 'react-location-rank-routes',
-      entryFile: 'src/index.tsx',
-    }),
-    ...buildConfigs({
-      name: 'react-location-jsurl',
-      packageDir: 'packages/react-location-jsurl',
-      jsName: 'ReactLocationJsurl',
-      outputFile: 'react-location-jsurl',
-      entryFile: 'src/index.tsx',
-    }),
-  ]
+  return packages.flatMap((pkg) => {
+    return buildConfigs({
+      name: pkg.packageDir,
+      packageDir: `packages/${pkg.packageDir}`,
+      jsName: pkg.jsName,
+      outputFile: pkg.packageDir,
+      entryFile: pkg.entryFile,
+      globals: pkg.globals,
+    })
+  })
 }
 
 function buildConfigs(opts: {
@@ -105,9 +53,10 @@ function buildConfigs(opts: {
   jsName: string
   outputFile: string
   entryFile: string
+  globals: Record<string, string>
 }): RollupOptions[] {
   const input = path.resolve(opts.packageDir, opts.entryFile)
-  const externalDeps = [...externals]
+  const externalDeps = Object.keys(opts.globals)
 
   const external = (moduleName) => externalDeps.includes(moduleName)
   const banner = createBanner(opts.name)
@@ -119,9 +68,16 @@ function buildConfigs(opts: {
     packageDir: opts.packageDir,
     external,
     banner,
+    globals: opts.globals,
   }
 
-  return [esm(options), cjs(options), umdDev(options), umdProd(options)]
+  return [
+    esm(options),
+    cjs(options),
+    umdDev(options),
+    umdProd(options),
+    types(options),
+  ]
 }
 
 function esm({ input, packageDir, external, banner }: Options): RollupOptions {
@@ -135,7 +91,15 @@ function esm({ input, packageDir, external, banner }: Options): RollupOptions {
       dir: `${packageDir}/build/esm`,
       banner,
     },
-    plugins: [babelPlugin, nodeResolve({ extensions: ['.ts', '.tsx'] })],
+    plugins: [
+      svelte({
+        compilerOptions: {
+          hydratable: true,
+        },
+      }),
+      babelPlugin,
+      nodeResolve({ extensions: ['.ts', '.tsx'] }),
+    ],
   }
 }
 
@@ -152,7 +116,11 @@ function cjs({ input, external, packageDir, banner }: Options): RollupOptions {
       exports: 'named',
       banner,
     },
-    plugins: [babelPlugin, nodeResolve({ extensions: ['.ts', '.tsx'] })],
+    plugins: [
+      svelte(),
+      babelPlugin,
+      nodeResolve({ extensions: ['.ts', '.tsx'] }),
+    ],
   }
 }
 
@@ -161,6 +129,7 @@ function umdDev({
   external,
   packageDir,
   outputFile,
+  globals,
   banner,
   jsName,
 }: Options): RollupOptions {
@@ -177,6 +146,7 @@ function umdDev({
       banner,
     },
     plugins: [
+      svelte(),
       babelPlugin,
       nodeResolve({ extensions: ['.ts', '.tsx'] }),
       umdDevPlugin('development'),
@@ -189,6 +159,7 @@ function umdProd({
   external,
   packageDir,
   outputFile,
+  globals,
   banner,
   jsName,
 }: Options): RollupOptions {
@@ -199,12 +170,13 @@ function umdProd({
     output: {
       format: 'umd',
       sourcemap: true,
-      file: `${packageDir}/build/umd/index.production.min.js`,
+      file: `${packageDir}/build/umd/index.production.js`,
       name: jsName,
       globals,
       banner,
     },
     plugins: [
+      svelte(),
       babelPlugin,
       nodeResolve({ extensions: ['.ts', '.tsx'] }),
       umdDevPlugin('production'),
@@ -223,6 +195,25 @@ function umdProd({
         gzipSize: true,
       }),
     ],
+  }
+}
+
+function types({
+  input,
+  packageDir,
+  external,
+  banner,
+}: Options): RollupOptions {
+  return {
+    // TYPES
+    external,
+    input,
+    output: {
+      format: 'es',
+      file: `${packageDir}/build/types/index.d.ts`,
+      banner,
+    },
+    plugins: [dts()],
   }
 }
 

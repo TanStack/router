@@ -2,7 +2,7 @@ name: pr
 on: [pull_request]
 jobs:
   test:
-    name: "Test (node ${{ matrix.node }})"
+    name: 'Test (node ${{ matrix.node }})'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -13,6 +13,6 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: |
-          yarn install --frozen-lockfile
+          yarn
           yarn build
           yarn test
