@@ -1358,7 +1358,7 @@ export type LinkType<TGenerics extends PartialGenerics = DefaultGenerics> = (
   props: LinkProps<TGenerics>,
 ) => JSX.Element
 
-export const Link = function Link<
+export const Link = React.memo(function Link<
   TGenerics extends PartialGenerics = DefaultGenerics,
 >({
   to = '.',
@@ -1405,7 +1405,7 @@ export const Link = function Link<
   })
 
   // The click handler
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleClick = React.useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
     if (disabled) return
     if (onClick) onClick(e)
 
@@ -1425,23 +1425,23 @@ export const Link = function Link<
         from: { pathname: match.pathname },
       })
     }
-  }
+  }, [disabled, onClick, target, navigate, to, search, hash, replace, match.pathname])
 
-  // The click handler
-  const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (onMouseEnter) onMouseEnter(e)
+ // The click handler
+ const handleMouseEnter = React.useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
+  if (onMouseEnter) onMouseEnter(e)
 
-    if (preload && preload > 0) {
-      loadRoute(
-        {
-          to,
-          search,
-          hash,
-        },
-        { maxAge: preload },
-      )
-    }
+  if (preload && preload > 0) {
+    loadRoute(
+      {
+        to,
+        search,
+        hash,
+      },
+      { maxAge: preload },
+    )
   }
+}, [onMouseEnter, preload, loadRoute, to, search, hash])
 
   // Compare path/hash for matches
   const pathIsEqual = location.current.pathname === next.pathname
@@ -1504,7 +1504,7 @@ export const Link = function Link<
       }}
     />
   )
-}
+})
 
 export function Outlet<TGenerics extends PartialGenerics = DefaultGenerics>() {
   const router = useRouter<TGenerics>()
