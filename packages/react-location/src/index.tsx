@@ -259,6 +259,8 @@ export type LinkProps<TGenerics extends PartialGenerics = DefaultGenerics> =
     children?:
       | React.ReactNode
       | ((state: { isActive: boolean }) => React.ReactNode)
+    // Allowing to make route change concurrental in `\React 18
+    transitionable?: boolean
   }
 
 type ActiveOptions = {
@@ -331,6 +333,12 @@ const isDOM = Boolean(
 )
 
 const useLayoutEffect = isDOM ? React.useLayoutEffect : React.useEffect
+
+/**
+ * Uses `React.startTransition` in first place and fallback to `requestIdleCallback` when using version less than `React 18` and
+ * due to browser compatibility reason we need to fallback to `queueMicrotask`.
+*/
+const startIdleTransitionTask = React.startTransition || self?.requestIdleCallback || queueMicrotask
 
 // This is the default history object if none is defined
 const createDefaultHistory = () =>
@@ -1377,6 +1385,7 @@ export const Link = function Link<
   preload,
   disabled,
   _ref,
+  transitionable = true,
   ...rest
 }: LinkProps<TGenerics>) {
   const loadRoute = useLoadRoute<TGenerics>()
@@ -1416,14 +1425,27 @@ export const Link = function Link<
       e.button === 0
     ) {
       e.preventDefault()
+      
       // All is well? Navigate!
-      navigate({
-        to,
-        search,
-        hash,
-        replace,
-        from: { pathname: match.pathname },
-      })
+      if (!!transitionable) {
+        startIdleTransitionTask(() => {
+          navigate({
+            to,
+            search,
+            hash,
+            replace,
+            from: { pathname: match.pathname },
+          })
+        })
+      }else {
+        navigate({
+          to,
+          search,
+          hash,
+          replace,
+          from: { pathname: match.pathname },
+        })
+      }
     }
   }
 
