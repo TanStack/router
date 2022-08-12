@@ -1,6 +1,8 @@
 ---
-title: React Location Devtools
+title: Helpful Tips
 ---
+
+> Link, take this sword... I mean Devtools!... to help you on your way!
 
 Wave your hands in the air and shout hooray because React Location comes with dedicated devtools! 🥳
 

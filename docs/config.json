@@ -1,0 +1,153 @@
+{
+  "docSearch": {
+    "appId": "",
+    "apiKey": "",
+    "indexName": "tanstack-router"
+  },
+  "menu": [
+    {
+      "label": "Adapters",
+      "children": [
+        {
+          "label": "React Router",
+          "to": "adapters/react-router"
+        },
+        {
+          "label": "Solid Router",
+          "to": "adapters/solid-router"
+        },
+        {
+          "label": "Svelte Router",
+          "to": "adapters/svelte-router"
+        },
+        {
+          "label": "Vue Router",
+          "to": "adapters/vue-router"
+        },
+        {
+          "label": "Vanilla JS/TS",
+          "to": "adapters/vanilla"
+        }
+      ]
+    },
+    {
+      "label": "Guide",
+      "children": [
+        {
+          "label": "Introduction",
+          "to": "guide/introduction"
+        },
+        {
+          "label": "Overview",
+          "to": "guide/overview"
+        },
+        {
+          "label": "Installation",
+          "to": "guide/installation"
+        },
+        {
+          "label": "Devtools",
+          "to": "guide/devtools"
+        },
+        {
+          "label": "Routes",
+          "to": "guide/routes"
+        },
+        {
+          "label": "Route Loaders",
+          "to": "guide/route-loaders"
+        },
+        {
+          "label": "Prompts",
+          "to": "guide/prompts"
+        },
+        {
+          "label": "Route Elements",
+          "to": "guide/route-elements"
+        },
+        {
+          "label": "Pending States",
+          "to": "guide/pending-states"
+        },
+        {
+          "label": "Custom Search Param Serialization",
+          "to": "guide/custom-search-param-serialization"
+        },
+        {
+          "label": "History Types And Location",
+          "to": "guide/history-types-and-location"
+        },
+        {
+          "label": "Breadcrumbs",
+          "to": "guide/breadcrumbs"
+        }
+      ]
+    },
+    {
+      "label": "API",
+      "children": [
+        {
+          "label": "Core API",
+          "to": "api/core"
+        }
+      ]
+    },
+    {
+      "label": "Tools",
+      "children": [
+        {
+          "label": "React Elements to Routes",
+          "to": "tools/react-elements-to-routes"
+        },
+        {
+          "label": "Ranked Routes",
+          "to": "tools/ranked-routes"
+        }
+      ]
+    },
+    {
+      "label": "React Examples",
+      "children": [
+        {
+          "label": "Basic",
+          "to": "examples/react/basic"
+        },
+        {
+          "label": "Kitchen Sink",
+          "to": "examples/react/kitchen-sink"
+        },
+        {
+          "label": "With React Query",
+          "to": "examples/react/with-react-query"
+        }
+      ]
+    },
+    {
+      "label": "Solid Examples",
+      "children": [
+        {
+          "to": "#solid-coming-soon",
+          "label": "Coming Soon!"
+        }
+      ]
+    },
+    {
+      "label": "Svelte Examples",
+      "children": [
+        {
+          "to": "#svelte-coming-soon",
+          "label": "Coming Soon!"
+        }
+      ]
+    },
+    {
+      "label": "Vue Examples",
+      "children": [
+        {
+          "to": "vue-coming-soon#",
+          "label": "Coming Soon!"
+        }
+      ]
+    }
+  ]
+}
