@@ -39,7 +39,7 @@ It's likely that every day, you are faced with the decision of state management 
 Common answers to this question might include:
 
 - Server state? Put it in React Query!
-- In-memory app state? Put it in {insert your favorite client-side state manager} (mine is Zustand or Valtio!)
+- In-memory app state? Put it in (insert your favorite client-side state manager) (mine is Zustand or Valtio!)
 - Persist on the machine? LocalStorage or SessionStorage, of course.
 
 **But did you know you're missing one?! What about the URL!**
