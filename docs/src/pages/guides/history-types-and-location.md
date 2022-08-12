@@ -1,5 +1,4 @@
 ---
-id: history-types-and-location
 title: History Types & Location
 ---
 
@@ -45,7 +44,7 @@ The `createBrowserHistory` is the default history type. It uses the browser's `h
 Hash routing can be helpful if your server doesn't support rewrites to `index.html` for HTTP requests (among other environments that don't have a server).
 
 ```tsx
-import { createHashHistory, ReactLocation } from '@tanstack/react-location'
+import { createHashHistory, ReactLocation } from '@tanstack/react-router'
 
 // Create a hash history
 const hashHistory = createHashHistory()
@@ -61,11 +60,11 @@ const location = new ReactLocation({
 Memory routing is useful in environments that are not a browser, like `node.js` or `electron`.
 
 ```tsx
-import { createMemoryHistory, ReactLocation } from '@tanstack/react-location'
+import { createMemoryHistory, ReactLocation } from '@tanstack/react-router'
 
 // Create a memory history
 const memoryHistory = createMemoryHistory({
-  initialEntries: ['/'] // Pass your initial url
+  initialEntries: ['/'], // Pass your initial url
 })
 
 // Set up a ReactLocation instance with the memory history

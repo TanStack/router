@@ -3,7 +3,7 @@ import {
   RouteMatch,
   PartialGenerics,
   DefaultGenerics,
-} from '@tanstack/react-location'
+} from '@tanstack/react-router'
 
 export type FetchPolicy = 'cache-and-network' | 'cache-first' | 'network-only'
 
@@ -63,27 +63,12 @@ export class ReactLocationSimpleCache<
         loaderOptions,
       })
 
-      const doFetch = async () => {
-        loaderOptions.dispatch({ type: 'loading' })
-        try {
-          const data = await loader(match, loaderOptions)
-          entry.updatedAt = Date.now()
-          entry.ready = true
-          entry.data = data
-          loaderOptions.dispatch({ type: 'resolve', data })
-          return data
-        } catch (err) {
-          loaderOptions.dispatch({ type: 'reject', error: err })
-          throw err
-        }
-      }
-
       if (policy === 'network-only') {
-        return await doFetch()
+        return await match.invalidate()
       }
 
       if (!entry.updatedAt) {
-        await doFetch()
+        await match.invalidate()
       }
 
       if (policy === 'cache-first') {
@@ -91,7 +76,7 @@ export class ReactLocationSimpleCache<
       }
 
       if (Date.now() - entry.updatedAt > maxAge) {
-        doFetch()
+        match.invalidate()
       }
 
       return entry.data

@@ -1,5 +1,4 @@
 ---
-id: devtools
 title: React Location Devtools
 ---
 
@@ -11,10 +10,10 @@ When you begin your React Location journey, you'll want these devtools by your s
 
 ## Import the Devtools
 
-The devtools are bundle split into the `react-location-devtools` package. No need to install anything extra, just:
+The devtools are bundle split into the `react-router-devtools` package. No need to install anything extra, just:
 
 ```js
-import { ReactLocationDevtools } from '@tanstack/react-location-devtools'
+import { ReactLocationDevtools } from '@tanstack/router-devtools'
 ```
 
 By default, React Location Devtools are only included in bundles when `process.env.NODE_ENV === 'development'`, so you don't need to worry about excluding them during a production build.
@@ -26,7 +25,7 @@ Floating Mode will mount the devtools as a fixed, floating element in your app a
 Place the following code as high in your React app as you can. The closer it is to the root of the page, the better it will work!
 
 ```js
-import { ReactLocationDevtools } from '@tanstack/react-location-devtools'
+import { ReactLocationDevtools } from '@tanstack/router-devtools'
 
 function App() {
   return (
@@ -57,7 +56,7 @@ function App() {
 Embedded Mode will embed the devtools as a regular component in your application. You can style it however you'd like after that!
 
 ```js
-import { ReactLocationDevtoolsPanel } from '@tanstack/react-location-devtools'
+import { ReactLocationDevtoolsPanel } from '@tanstack/router-devtools'
 
 function App() {
   return (

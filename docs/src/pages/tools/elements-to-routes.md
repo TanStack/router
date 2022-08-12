@@ -1,16 +1,15 @@
 ---
-id: elements-to-routes
 title: React Location Elements To Routes
 ---
 
-The `react-location-elements-to-routes` package exports:
+The `react-router-elements-to-routes` package exports:
 
 - A `Route` component
 - An `elementsToRoutes` function
 
 ### Route
 
-The `Route` component can be used to create a JSX representation of a `Route` object you would normally use to configure your routes in `react-location`
+The `Route` component can be used to create a JSX representation of a `Route` object you would normally use to configure your routes in `react-router`
 
 - `Route.children` is of type `React.ReactNode` instead of the usual `Route[]`.
 - Only `<Route>` and `<React.Fragment>`/`<></>` elements may be used
@@ -20,10 +19,7 @@ The `Route` component can be used to create a JSX representation of a `Route` ob
 Use the `Route` component and `elementsToRoutes` function like so:
 
 ```tsx
-import {
-  Route,
-  elementsToRoutes,
-} from '@tanstack/react-location-elements-to-routes'
+import { Route, elementsToRoutes } from '@tanstack/router-elements-to-routes'
 
 const routes = elementsToRoutes(
   <Route path="admin" element={<Admin />}>
@@ -69,14 +65,11 @@ const routes = elementsToRoutes(
 //   ]
 ```
 
-You can then pass these routes to `react-location`'s `Router` as you normally would:
+You can then pass these routes to `react-router`'s `Router` as you normally would:
 
 ```tsx
-import { Router } from '@tanstack/react-location'
-import {
-  Route,
-  elementsToRoutes,
-} from '@tanstack/react-location-elements-to-routes'
+import { Router } from '@tanstack/react-router'
+import { Route, elementsToRoutes } from '@tanstack/router-elements-to-routes'
 
 function App() {
   return (

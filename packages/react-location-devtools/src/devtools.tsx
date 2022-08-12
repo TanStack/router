@@ -1,5 +1,6 @@
 import React from 'react'
-import { RouterInstance, useRouter } from '@tanstack/react-location'
+import { RouterInstance, useRouter } from '@tanstack/react-router'
+import { formatDistanceStrict } from 'date-fns'
 
 import useLocalStorage from './useLocalStorage'
 import { getStatusColor, useIsMounted, useSafeState } from './utils'
@@ -45,7 +46,7 @@ interface DevtoolsOptions {
     HTMLButtonElement
   >
   /**
-   * The position of the React Location logo to open and close the devtools panel.
+   * The position of the TanStack Location logo to open and close the devtools panel.
    * Defaults to 'bottom-left'.
    */
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
@@ -271,8 +272,8 @@ export function ReactLocationDevtools({
         {isResolvedOpen ? (
           <Button
             type="button"
-            aria-label="Close React Location Devtools"
-            {...(otherCloseButtonProps as unknown)}
+            aria-label="Close TanStack Location Devtools"
+            {...(otherCloseButtonProps as any)}
             onClick={(e) => {
               setIsOpen(false)
               onCloseClick && onCloseClick(e)
@@ -308,7 +309,7 @@ export function ReactLocationDevtools({
         <button
           type="button"
           {...otherToggleButtonProps}
-          aria-label="Open React Location Devtools"
+          aria-label="Open TanStack Location Devtools"
           onClick={(e) => {
             setIsOpen(true)
             onToggleClick && onToggleClick(e)
@@ -365,7 +366,7 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
     ...panelProps
   } = props
 
-  const router = useRouter() as RouterInstance<any>
+  const router = useRouter() as RouterInstance
 
   const [activeMatchId, setActiveRouteId] = useLocalStorage(
     'reactLocationDevtoolsActiveRouteId',
@@ -380,6 +381,7 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
         <style
           dangerouslySetInnerHTML={{
             __html: `
+
             .ReactLocationDevtoolsPanel * {
               scrollbar-color: ${theme.backgroundAlt} ${theme.gray};
             }
@@ -398,6 +400,28 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
               border-radius: .5em;
               border: 3px solid ${theme.backgroundAlt};
             }
+
+            .ReactLocationDevtoolsPanel table {
+              width: 100%;
+            }
+
+            .ReactLocationDevtoolsPanel table tr {
+              border-bottom: 2px dotted rgba(255, 255, 255, .2);
+            }
+
+            .ReactLocationDevtoolsPanel table tr:last-child {
+              border-bottom: none
+            }
+
+            .ReactLocationDevtoolsPanel table td {
+              padding: .25rem .5rem;
+              border-right: 2px dotted rgba(255, 255, 255, .05);
+            }
+
+            .ReactLocationDevtoolsPanel table td:last-child {
+              border-right: none
+            }
+
           `,
           }}
         />
@@ -447,7 +471,7 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
                 fontWeight: 'bold',
               }}
             >
-              React Location{' '}
+              TanStack Location{' '}
               <span
                 style={{
                   fontWeight: 100,
@@ -561,36 +585,80 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
               }}
             >
               <Explorer
-                label="Location"
-                value={router.state.location}
-                defaultExpanded={{
-                  search: true,
-                }}
-              />
-            </div>
-            <div
-              style={{
-                padding: '.5em',
-              }}
-            >
-              <Explorer
                 label="Router"
-                value={{
-                  basepath: router.basepath,
-                  routes: router.routes,
-                  routesById: router.routesById,
-                  matchCache: router.matchCache,
-                  defaultLinkPreloadMaxAge: router.defaultLinkPreloadMaxAge,
-                  defaultLoaderMaxAge: router.defaultLoaderMaxAge,
-                  defaultPendingMinMs: router.defaultPendingMinMs,
-                  defaultPendingMs: router.defaultPendingMs,
-                  defaultElement: router.defaultElement,
-                  defaultErrorElement: router.defaultErrorElement,
-                  defaultPendingElement: router.defaultPendingElement,
-                }}
+                value={(() => {
+                  const {
+                    listeners,
+                    buildLocation,
+                    mount,
+                    update,
+                    buildNext,
+                    navigate,
+                    cancelMatches,
+                    loadLocation,
+                    cleanPreloadCache,
+                    loadRoute,
+                    matchRoutes,
+                    resolveMatches,
+                    loadMatches,
+                    invalidateRoute,
+                    getOutletElement,
+                    resolvePath,
+                    matchRoute,
+                    buildLinkInfo,
+                    __experimental__createSnapshot,
+                    stringifySearch,
+                    parseSearch,
+                    destroy,
+                    defaultPendingElement,
+                    rootMatch,
+                    ...rest
+                  } = router
+                  return rest
+                })()}
                 defaultExpanded={{}}
               />
             </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            flex: '1 1 500px',
+            minHeight: '40%',
+            maxHeight: '100%',
+            overflow: 'auto',
+            borderRight: `1px solid ${theme.grayAlt}`,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div
+            style={{
+              padding: '.5em',
+              background: theme.backgroundAlt,
+              position: 'sticky',
+              top: 0,
+              zIndex: 1,
+            }}
+          >
+            Loader Data
+          </div>
+          <div
+            style={{
+              padding: '.5em',
+            }}
+          >
+            <Explorer
+              value={router.state.loaderData}
+              defaultExpanded={Object.keys(router.state.loaderData).reduce(
+                (obj: any, next) => {
+                  obj[next] = {}
+                  return obj
+                },
+                {},
+              )}
+            />
           </div>
         </div>
 
@@ -648,21 +716,7 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
                     transition: 'all .2s ease-out',
                   }}
                 />
-                {/* {isDisabled ? (
-                    <div
-                      style={{
-                        flex: '0 0 auto',
-                        height: '2em',
-                        background: theme.gray,
-                        display: 'flex',
-                        alignItems: 'center',
-                        fontWeight: 'bold',
-                        padding: '0 0.5em',
-                      }}
-                    >
-                      disabled
-                    </div>
-                  ) : null} */}
+
                 <Code
                   style={{
                     padding: '.5em',
@@ -685,7 +739,7 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
           >
             Pending Matches
           </div>
-          {router.pending?.matches.map((match, i) => {
+          {router.state.pending?.matches.map((match, i) => {
             return (
               <div
                 key={match.id || i}
@@ -716,21 +770,7 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
                     transition: 'all .2s ease-out',
                   }}
                 />
-                {/* {isDisabled ? (
-                    <div
-                      style={{
-                        flex: '0 0 auto',
-                        height: '2em',
-                        background: theme.gray,
-                        display: 'flex',
-                        alignItems: 'center',
-                        fontWeight: 'bold',
-                        padding: '0 0.5em',
-                      }}
-                    >
-                      disabled
-                    </div>
-                  ) : null} */}
+
                 <Code
                   style={{
                     padding: '.5em',
@@ -741,6 +781,87 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
               </div>
             )
           })}
+          <div
+            style={{
+              marginTop: '2rem',
+              padding: '.5em',
+              background: theme.backgroundAlt,
+              position: 'sticky',
+              top: 0,
+              zIndex: 1,
+            }}
+          >
+            Preloading Matches
+          </div>
+          {Object.keys(router.preloadCache)
+            .filter((key) => {
+              return router.preloadCache[key]!.expiresAt > Date.now()
+            })
+            .map((key, i) => {
+              const { match, expiresAt } = router.preloadCache[key]!
+
+              return (
+                <div
+                  key={match.id || i}
+                  role="button"
+                  aria-label={`Open match details for ${match.id}`}
+                  onClick={() =>
+                    setActiveRouteId(activeMatchId === match.id ? '' : match.id)
+                  }
+                  style={{
+                    display: 'flex',
+                    borderBottom: `solid 1px ${theme.grayAlt}`,
+                    cursor: 'pointer',
+                    background:
+                      match === activeMatch
+                        ? 'rgba(255,255,255,.1)'
+                        : undefined,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      padding: '.5rem',
+                      gap: '.3rem',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '.5rem',
+                      }}
+                    >
+                      <div
+                        style={{
+                          flex: '0 0 auto',
+                          width: '1.3rem',
+                          height: '1.3rem',
+                          background: getStatusColor(match, theme),
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 'bold',
+                          borderRadius: '.25rem',
+                          transition: 'all .2s ease-out',
+                        }}
+                      />
+                      <Code>{`${match.id}`}</Code>
+                    </div>
+                    <span
+                      style={{
+                        opacity: '.5',
+                      }}
+                    >
+                      Expires{' '}
+                      {formatDistanceStrict(new Date(), new Date(expiresAt), {
+                        addSuffix: true,
+                      })}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
         </div>
 
         {activeMatch ? (
@@ -756,77 +877,47 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
             >
               Match Details
             </div>
-            <div
-              style={{
-                padding: '.5em',
-              }}
-            >
-              <div
-                style={{
-                  marginBottom: '.5em',
-                  display: 'flex',
-                  alignItems: 'stretch',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Code
-                  style={{
-                    lineHeight: '1.8em',
-                  }}
-                >
-                  <pre
-                    style={{
-                      margin: 0,
-                      padding: 0,
-                      overflow: 'auto',
-                    }}
-                  >
-                    {JSON.stringify(activeMatch.id, null, 2)}
-                  </pre>
-                </Code>
-                {/* <span
-                  style={{
-                    padding: '0.3em .6em',
-                    borderRadius: '0.4em',
-                    fontWeight: 'bold',
-                    textShadow: '0 2px 10px black',
-                    background: getQueryStatusColor(activeMatch, theme),
-                    flexShrink: 0,
-                  }}
-                >
-                  {getQueryStatusLabel(activeMatch)}
-                </span> */}
-              </div>
-              {/* <div
-                style={{
-                  marginBottom: '.5em',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                Observers: <Code>{activeMatch.getObserversCount()}</Code>
-              </div> */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                Last Updated:{' '}
-                {activeMatch.updatedAt ? (
-                  <Code>
-                    {new Date(
-                      activeMatch.updatedAt as number,
-                    ).toLocaleTimeString()}
-                  </Code>
-                ) : (
-                  'N/A'
-                )}
-              </div>
+            <div>
+              <table>
+                <tbody>
+                  <tr>
+                    <td style={{ opacity: '.5' }}>ID</td>
+                    <td>
+                      <Code
+                        style={{
+                          lineHeight: '1.8em',
+                        }}
+                      >
+                        {JSON.stringify(activeMatch.id, null, 2)}
+                      </Code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ opacity: '.5' }}>Status</td>
+                    <td>{activeMatch.status}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ opacity: '.5' }}>Pending</td>
+                    <td>{activeMatch.isPending.toString()}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ opacity: '.5' }}>Invalid</td>
+                    <td>{activeMatch.isInvalid.toString()}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ opacity: '.5' }}>Last Updated</td>
+                    <td>
+                      {activeMatch.updatedAt
+                        ? new Date(
+                            activeMatch.updatedAt as number,
+                          ).toLocaleTimeString()
+                        : 'N/A'}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            {/*<div
+            <div
               style={{
                 background: theme.backgroundAlt,
                 padding: '.5em',
@@ -837,14 +928,17 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
             >
               Actions
             </div>
-             <div
+            <div
               style={{
                 padding: '0.5em',
               }}
             >
               <Button
                 type="button"
-                onClick={() => matchClient.invalidateQueries(activeMatch)}
+                onClick={() => {
+                  router.invalidateRoute(activeMatch as any)
+                  router.notify()
+                }}
                 style={{
                   background: theme.warning,
                   color: theme.inputTextColor,
@@ -854,23 +948,14 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
               </Button>{' '}
               <Button
                 type="button"
-                onClick={() => matchClient.resetQueries(activeMatch)}
+                onClick={() => router.reload()}
                 style={{
                   background: theme.gray,
                 }}
               >
-                Reset
-              </Button>{' '}
-              <Button
-                type="button"
-                onClick={() => matchClient.removeQueries(activeMatch)}
-                style={{
-                  background: theme.danger,
-                }}
-              >
-                Remove
+                Reload
               </Button>
-            </div> */}
+            </div>
             <div
               style={{
                 background: theme.backgroundAlt,
@@ -889,7 +974,32 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
             >
               <Explorer
                 label="Match"
-                value={activeMatch}
+                value={(() => {
+                  const {
+                    abortController,
+                    resolve,
+                    notify,
+                    elementsPromise,
+                    importPromise,
+                    loaderPromise,
+                    pendingMinPromise,
+                    pendingTimeout,
+                    cancel,
+                    startPending,
+                    cancelPending,
+                    setParentMatch,
+                    load,
+                    router,
+                    element,
+                    errorElement,
+                    pendingElement,
+                    dataPromise,
+                    onExit,
+                    ...rest
+                  } = activeMatch
+
+                  return rest
+                })()}
                 defaultExpanded={{}}
               />
             </div>

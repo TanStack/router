@@ -43,7 +43,7 @@ export const Footer = (props) => {
             <ul className="mt-4">
               <li className="mt-4">
                 <a
-                  href="https://github.com/tanstack/react-location/discussions"
+                  href="https://github.com/tanstack/router/discussions"
                   className="text-base leading-6 text-gray-500 hover:text-gray-900"
                 >
                   Forum & Support
@@ -59,7 +59,7 @@ export const Footer = (props) => {
               </li>
               <li className="mt-4">
                 <a
-                  href="http://stackoverflow.com/questions/tagged/react-location"
+                  href="http://stackoverflow.com/questions/tagged/react-router"
                   className="text-base leading-6 text-gray-500 hover:text-gray-900"
                 >
                   Stack Overflow
@@ -67,7 +67,7 @@ export const Footer = (props) => {
               </li>
               <li className="mt-4">
                 <a
-                  href="https://github.com/tanstack/react-location/releases"
+                  href="https://github.com/tanstack/router/releases"
                   className="text-base leading-6 text-gray-500 hover:text-gray-900"
                 >
                   Releases
@@ -76,12 +76,12 @@ export const Footer = (props) => {
               <li className="mt-4">
                 <a
                   className="github-button"
-                  href="https://github.com/tanstack/react-location"
+                  href="https://github.com/tanstack/router"
                   data-color-scheme="no-preference: light; light: light; dark: dark;"
                   data-icon="octicon-star"
                   data-size="large"
                   data-show-count="true"
-                  aria-label="Star tanstack/react-location on GitHub"
+                  aria-label="Star tanstack/router on GitHub"
                 >
                   Star
                 </a>

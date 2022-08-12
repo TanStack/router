@@ -11,7 +11,7 @@ import {
   Router,
   useLoadRoute,
   useMatch,
-} from "@tanstack/react-location";
+} from "@tanstack/react-router";
 import {
   useQuery,
   useQueryClient,

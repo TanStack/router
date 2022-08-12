@@ -1,6 +1,6 @@
 {
   "private": true,
-  "repository": "https://github.com/tanstack/react-location.git",
+  "repository": "https://github.com/tanstack/router.git",
   "scripts": {
     "clean": "yarn exec --workspaces \"rm -rf build || true\"",
     "test": "(is-ci && yarn test:ci) || yarn test:dev",
@@ -18,14 +18,14 @@
     "typecheck": "tsc -b"
   },
   "workspaces": [
-    "./packages/location-core",
-    "./packages/react-location",
-    "./packages/react-location-lite-experimental",
-    "./packages/react-location-devtools",
-    "./packages/react-location-elements-to-routes",
-    "./packages/react-location-simple-cache",
-    "./packages/react-location-rank-routes",
-    "./packages/react-location-jsurl",
+    "./packages/router-core",
+    "./packages/react-router",
+    "./packages/react-router-lite-experimental",
+    "./packages/react-router-devtools",
+    "./packages/react-router-elements-to-routes",
+    "./packages/react-router-simple-cache",
+    "./packages/react-router-rank-routes",
+    "./packages/react-router-jsurl",
     "./examples/react/kitchen-sink"
   ],
   "devDependencies": {

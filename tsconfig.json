@@ -1,15 +1,15 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/location-core" },
-    { "path": "packages/react-location" },
-    // { "path": "packages/react-location-lite-experimental" },
-    // { "path": "packages/react-location-devtools" },
-    // { "path": "packages/react-location-elements-to-routes" },
-    // { "path": "packages/react-location-jsurl" },
-    // { "path": "packages/react-location-rank-routes" },
-    // { "path": "packages/react-location-simple-cache" },
-    { "path": "examples/react/kitchen-sink/tsconfig.dev.json" }
+    { "path": "packages/router-core" },
+    { "path": "packages/react-router" }
+    // { "path": "packages/react-router-lite-experimental" },
+    // { "path": "packages/react-router-devtools" },
+    // { "path": "packages/react-router-elements-to-routes" },
+    // { "path": "packages/react-router-jsurl" },
+    // { "path": "packages/react-router-rank-routes" },
+    // { "path": "packages/react-router-simple-cache" },
+    // { "path": "examples/react/kitchen-sink/tsconfig.dev.json" }
   ]
   // "exclude": ["node_modules"]
 }

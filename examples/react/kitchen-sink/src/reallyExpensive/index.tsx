@@ -1,4 +1,4 @@
-import { Route } from '@tanstack/react-location'
+import { Route } from '@tanstack/react-router'
 
 const route: Route = {
   path: 'really-expensive',

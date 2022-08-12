@@ -21,7 +21,7 @@ const remarkPlugins = [
   require('remark-images'),
   [
     require('remark-github'),
-    { repository: 'https://github.com/tanstack/react-location' },
+    { repository: 'https://github.com/tanstack/router' },
   ],
   require('remark-unwrap-images'),
   [

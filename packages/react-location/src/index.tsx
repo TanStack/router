@@ -4,7 +4,6 @@ import { useSyncExternalStore } from 'use-sync-external-store/shim'
 
 import {
   warning,
-  LocationManager,
   RouterInstance,
   RouterOptions,
   RouteMatch,
@@ -13,11 +12,11 @@ import {
   MatchLocation,
   MatchRouteOptions,
   LinkOptions,
-} from '@tanstack/location-core'
+} from '@tanstack/router-core'
 
-export * from '@tanstack/location-core'
+export * from '@tanstack/router-core'
 
-declare module '@tanstack/location-core' {
+declare module '@tanstack/router-core' {
   interface FrameworkGenerics<TData = unknown> {
     Element: React.ReactNode
     AsyncElement: (opts: {
@@ -59,46 +58,33 @@ export function MatchesProvider(props: MatchesProviderProps) {
   return <matchesContext.Provider {...props} />
 }
 
-export type RouterProps = {
+export type RouterProps = RouterOptions & {
   // Children will default to `<Outlet />` if not provided
-  locationManager?: LocationManager
   children?: React.ReactNode
-} & RouterOptions
+}
 
-export function Router({
-  locationManager,
-  __experimental__snapshot,
-  children,
-  ...rest
-}: RouterProps) {
+export function Router({ children, ...rest }: RouterProps) {
   const [router] = React.useState(() => {
-    if (!locationManager) {
-      locationManager = new LocationManager()
-    }
-
-    return new RouterInstance({
-      locationManager,
-      __experimental__snapshot,
-    })
+    return new RouterInstance(rest)
   })
 
   router.update(rest)
-
-  useLayoutEffect(() => {
-    router.mount()
-  }, [])
 
   useSyncExternalStore(
     (cb) => router.subscribe(() => cb()),
     () => router.state,
   )
 
+  useLayoutEffect(() => {
+    router.mount()
+  }, [])
+
   return (
     <routerContext.Provider value={{ router }}>
       <MatchesProvider
         value={[
           router.rootMatch as RouteMatch<unknown>,
-          ...router.state.current.matches,
+          ...router.state.matches,
         ]}
       >
         {children ?? <Outlet />}
@@ -109,24 +95,21 @@ export function Router({
 
 export function useRouter(): RouterInstance {
   const value = React.useContext(routerContext)
-
   warning(value, 'useRouter must be used inside a <Router> component!')
 
-  return value.router as RouterInstance
-}
+  useSyncExternalStore(
+    (cb) => value.router.subscribe(() => cb()),
+    () => value.router.state,
+  )
 
-export function useLocationManager(): LocationManager {
-  const router = useRouter()
-  return router.locationManager
+  return value.router as RouterInstance
 }
 
 function useLatestCallback<TCallback extends (...args: any[]) => any>(
   cb: TCallback,
 ) {
   const cbRef = React.useRef<TCallback>(cb)
-
   cbRef.current = cb
-
   return React.useCallback(
     (...args: Parameters<TCallback>): ReturnType<TCallback> =>
       cbRef.current(...args),
@@ -138,15 +121,63 @@ export function useMatches(): RouteMatch<unknown>[] {
   return React.useContext(matchesContext)
 }
 
+export function useParentMatches(): RouteMatch<unknown>[] {
+  const router = useRouter()
+  const match = useMatch()
+  const matches = router.state.matches
+  return matches.slice(0, matches.findIndex((d) => d.id === match.id) - 1)
+}
+
+export function useMatch<T>(): RouteMatch<T> {
+  return useMatches()?.[0] as RouteMatch<T>
+}
+
+export function useLoaderData() {
+  const router = useRouter()
+  return router.state.loaderData
+}
+
+export function useAction<
+  TPayload = unknown,
+  TResponse = unknown,
+  TError = unknown,
+>(opts?: Pick<NavigateOptions, 'to' | 'from'>) {
+  const match = useMatch()
+  const router = useRouter()
+  return router.getAction<TPayload, TResponse, TError>(
+    { from: match.pathname, to: '.', ...opts },
+    { isActive: !opts?.to },
+  )
+}
+
+export function useMatchRoute() {
+  const router = useRouter()
+  const match = useMatch()
+
+  return useLatestCallback(
+    (matchLocation: MatchLocation, opts?: MatchRouteOptions) => {
+      return router.matchRoute(
+        {
+          ...matchLocation,
+          from: match.pathname,
+        },
+        opts,
+      )
+    },
+  )
+}
+
+export type MatchRouteProps = MatchLocation &
+  MatchRouteOptions & {
+    children: React.ReactNode | ((routeParams?: RouteParams) => React.ReactNode)
+  }
+
 export function MatchRoute({
   children,
   pending,
   caseSensitive,
   ...rest
-}: {
-  children: React.ReactNode | ((routeParams?: RouteParams) => React.ReactNode)
-} & MatchLocation &
-  MatchRouteOptions): JSX.Element {
+}: MatchRouteProps): JSX.Element {
   const matchRoute = useMatchRoute()
   const match = matchRoute(rest, { pending, caseSensitive })
 
@@ -162,20 +193,18 @@ export function useLoadRoute() {
   const router = useRouter()
 
   return useLatestCallback(
-    async (navigateOpts: NavigateOptions, loaderOpts?: { maxAge?: number }) =>
+    async (navigateOpts: NavigateOptions, loaderOpts: { maxAge: number }) =>
       router.loadRoute({ ...navigateOpts, from: match.pathname }, loaderOpts),
   )
 }
 
-export function useParentMatches(): RouteMatch<unknown>[] {
-  const router = useRouter()
+export function useInvalidateRoute() {
   const match = useMatch()
-  const matches = router.state.current.matches
-  return matches.slice(0, matches.findIndex((d) => d.id === match.id) - 1)
-}
+  const router = useRouter()
 
-export function useMatch<T>(): RouteMatch<T> {
-  return useMatches()?.[0] as RouteMatch<T>
+  return useLatestCallback(async (navigateOpts: MatchLocation = { to: '.' }) =>
+    router.invalidateRoute({ ...navigateOpts, from: match.pathname }),
+  )
 }
 
 export function useNavigate() {
@@ -210,22 +239,14 @@ export function Outlet() {
 export function useResolvePath() {
   const router = useRouter()
   const match = useMatch()
-  return useLatestCallback((path: string) => router.resolvePath(match, path))
+  return useLatestCallback((path: string) =>
+    router.resolvePath(match.pathname, path),
+  )
 }
 
 export function useSearch() {
-  const location = useLocationManager()
-  return location.current.search
-}
-
-export function useMatchRoute() {
   const router = useRouter()
-  const match = useMatch()
-
-  return useLatestCallback(
-    (matchLocation: MatchLocation, opts?: MatchRouteOptions) =>
-      router.matchRoute(matchLocation, opts, match),
-  )
+  return router.location.search
 }
 
 export type LinkProps = LinkOptions &
@@ -244,7 +265,8 @@ export type LinkProps = LinkOptions &
 export function useLink(opts: LinkOptions) {
   const router = useRouter()
   const match = useMatch()
-  return router.buildLinkInfo({ ...opts, from: match.pathname })
+  const ref = React.useRef({}).current
+  return router.buildLinkInfo({ ...opts, from: match.pathname, ref })
 }
 
 export function Link(props: LinkProps) {
@@ -266,6 +288,12 @@ export function Link(props: LinkProps) {
     preloadMaxAge,
     style,
     className,
+    onClick,
+    onFocus,
+    onMouseEnter,
+    onMouseLeave,
+    onTouchStart,
+    onTouchEnd,
     ...rest
   } = props
 
@@ -282,11 +310,22 @@ export function Link(props: LinkProps) {
   const {
     next,
     activeProps,
+    handleFocus,
     handleClick,
-    handleMouseEnter,
+    handleEnter,
+    handleLeave,
     inactiveProps,
     isActive,
   } = linkUtils
+
+  const composeHandlers =
+    (handlers: (undefined | ((e: any) => void))[]) =>
+    (e: React.SyntheticEvent) => {
+      e.persist()
+      handlers.forEach((handler) => {
+        if (handler) handler(e)
+      })
+    }
 
   return (
     <a
@@ -296,8 +335,10 @@ export function Link(props: LinkProps) {
         ...rest,
         ref: _ref,
         href: disabled ? undefined : next.href,
-        onClick: handleClick as any,
-        onMouseEnter: handleMouseEnter as any,
+        onClick: composeHandlers([handleClick, onClick]),
+        onFocus: composeHandlers([handleFocus, onFocus]),
+        onMouseEnter: composeHandlers([handleEnter, onMouseEnter]),
+        onMouseLeave: composeHandlers([handleLeave, onMouseLeave]),
         target,
         style: {
           ...style,

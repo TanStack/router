@@ -1,5 +1,4 @@
 ---
-id: routes
 title: Routes
 ---
 

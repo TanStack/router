@@ -11,13 +11,14 @@ function makeConfig(name: string) {
 }
 
 module.exports = {
+  modulePathIgnorePatterns: ['/build/'],
   projects: [
-    makeConfig('location-core'),
-    makeConfig('react-location'),
-    // makeConfig('react-location-devtools'),
-    // makeConfig('react-location-elements-to-routes'),
-    // makeConfig('react-location-simple-cache'),
-    // makeConfig('react-location-rank-routes'),
-    // makeConfig('react-location-jsurl'),
+    makeConfig('router-core'),
+    makeConfig('react-router'),
+    // makeConfig('react-router-devtools'),
+    // makeConfig('react-router-elements-to-routes'),
+    // makeConfig('react-router-simple-cache'),
+    // makeConfig('react-router-rank-routes'),
+    // makeConfig('react-router-jsurl'),
   ],
 }

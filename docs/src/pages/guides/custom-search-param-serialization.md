@@ -1,5 +1,4 @@
 ---
-id: custom-search-param-serialization
 title: Custom Search Param Serialization
 ---
 
@@ -14,7 +13,7 @@ import {
   ReactLocation,
   parseSearchWith,
   stringifySearchWith,
-} from '@tanstack/react-location'
+} from '@tanstack/react-router'
 
 const reactLocation = new ReactLocation({
   parseSearch: parseSearchWith(JSON.parse),
@@ -31,7 +30,7 @@ import {
   ReactLocation,
   parseSearchWith,
   stringifySearchWith,
-} from '@tanstack/react-location'
+} from '@tanstack/react-router'
 
 const reactLocation = new ReactLocation({
   parseSearch: parseSearchWith((value) => JSON.parse(decodeFromBinary(value))),
@@ -69,7 +68,7 @@ import {
   ReactLocation,
   parseSearchWith,
   stringifySearchWith,
-} from '@tanstack/react-location'
+} from '@tanstack/react-router'
 import { stringify, parse } from 'zipson'
 
 const reactLocation = new ReactLocation({
@@ -110,7 +109,7 @@ import {
   ReactLocation,
   parseSearchWith,
   stringifySearchWith,
-} from '@tanstack/react-location'
+} from '@tanstack/react-router'
 import jsurl from 'jsurl'
 
 const reactLocation = new ReactLocation({

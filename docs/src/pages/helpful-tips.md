@@ -1,5 +1,4 @@
 ---
-id: helpful-tips
 title: Helpful Tips
 ---
 

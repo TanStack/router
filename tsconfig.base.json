@@ -15,22 +15,18 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@tanstack/location-core": ["packages/location-core"],
-      "@tanstack/react-location": ["packages/react-location"],
-      "@tanstack/react-location-lite-experimental": [
-        "packages/react-location-lite-experimental"
+      "@tanstack/router-core": ["packages/router-core"],
+      "@tanstack/react-router": ["packages/react-router"],
+      "@tanstack/router-lite-experimental": [
+        "packages/react-router-lite-experimental"
       ],
-      "@tanstack/react-location-devtools": ["packages/react-location-devtools"],
-      "@tanstack/react-location-elements-to-routes": [
-        "packages/react-location-elements-to-routes"
+      "@tanstack/router-devtools": ["packages/react-router-devtools"],
+      "@tanstack/router-elements-to-routes": [
+        "packages/react-router-elements-to-routes"
       ],
-      "@tanstack/react-location-jsurl": ["packages/react-location-jsurl"],
-      "@tanstack/react-location-rank-routes": [
-        "packages/react-location-rank-routes"
-      ],
-      "@tanstack/react-location-simple-cach": [
-        "packages/react-location-simple-cache"
-      ]
+      "@tanstack/router-jsurl": ["packages/react-router-jsurl"],
+      "@tanstack/router-rank-routes": ["packages/react-router-rank-routes"],
+      "@tanstack/router-simple-cach": ["packages/react-router-simple-cache"]
     }
   }
 }

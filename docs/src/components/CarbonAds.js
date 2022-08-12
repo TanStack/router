@@ -5,7 +5,7 @@ function buildScript(src, attrs = {}) {
     const script = document.createElement('script')
     script.async = true
     script.defer = true
-    Object.keys(attrs).forEach(attr => script.setAttribute(attr, attrs[attr]))
+    Object.keys(attrs).forEach((attr) => script.setAttribute(attr, attrs[attr]))
     script.src = src
 
     return script
@@ -17,7 +17,7 @@ export default function CarbonAds() {
 
   React.useEffect(() => {
     const script = buildScript(
-      '//cdn.carbonads.com/carbon.js?serve=CESI4KJY&placement=react-locationtanstackcom',
+      '//cdn.carbonads.com/carbon.js?serve=CESI4KJY&placement=react-routertanstackcom',
       {
         type: 'text/javascript',
         id: '_carbonads_js',
@@ -29,7 +29,7 @@ export default function CarbonAds() {
 
   React.useEffect(() => {
     const interval = setInterval(() => {
-      ;[...ref.current.children].forEach(child => {
+      ;[...ref.current.children].forEach((child) => {
         if (child.id.startsWith('carbonads_')) {
           ref.current.removeChild(child)
         }

@@ -1,28 +1,22 @@
 import * as React from 'react'
-import {
-  Route as RouteType,
-  PartialGenerics,
-  DefaultGenerics,
-} from '@tanstack/react-location'
+import { Route as RouteType } from '@tanstack/react-router'
 
-export function Route<TGenerics extends PartialGenerics = DefaultGenerics>(
-  _props: Omit<RouteType<TGenerics>, 'children'> & {
+export function Route<TData>(
+  _props: Omit<RouteType<TData>, 'children'> & {
     children?: React.ReactNode
   },
 ) {
   return null
 }
 
-export function elementsToRoutes<
-  TGenerics extends PartialGenerics = DefaultGenerics,
->(children: React.ReactNode): RouteType<TGenerics>[] {
-  let routes: RouteType<TGenerics>[] = []
+export function elementsToRoutes(children: React.ReactNode): RouteType[] {
+  let routes: RouteType[] = []
 
   React.Children.forEach(children, (element) => {
     if (!React.isValidElement(element)) return
 
     if (element.type === React.Fragment) {
-      routes.push(...elementsToRoutes<TGenerics>(element.props.children))
+      routes.push(...elementsToRoutes(element.props.children))
       return
     }
 
@@ -35,7 +29,7 @@ export function elementsToRoutes<
       throw new Error()
     }
 
-    let route: RouteType<TGenerics> = { ...element.props }
+    let route: RouteType = { ...element.props }
 
     if (element.props.children) {
       route.children = elementsToRoutes(element.props.children)

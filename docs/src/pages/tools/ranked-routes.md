@@ -1,5 +1,4 @@
 ---
-id: simple-cache
 title: React Location Rank Routes
 ---
 
@@ -8,25 +7,22 @@ A simple utility for ranking routes based on their specificity
 ## Installation
 
 ```bash
-yarn add @tanstack/react-location-rank-routes
+yarn add @tanstack/router-rank-routes
 # or
-npm i @tanstack/react-location-rank-routes
+npm i @tanstack/router-rank-routes
 ```
 
 ## Getting Started
 
 ```tsx
-import { ReactLocation, Router } from '@tanstack/react-location'
-import { rankRoutes } from '@tanstack/react-location-rank-routes'
+import { Router } from '@tanstack/react-router'
+import { rankRoutes } from '@tanstack/router-rank-routes'
 
 //
-
-const location = new ReactLocation()
 
 function App() {
   return (
     <Router
-      location={location}
       filterRoutes={rankRoutes}
       routes={[
         {

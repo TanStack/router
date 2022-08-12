@@ -1,9 +1,9 @@
 import * as React from 'react'
-import { RouteLoaders, useMatch } from '@tanstack/react-location'
-import { delayFn } from '../main'
+import { RouteLoaders, useMatch } from '@tanstack/react-router'
+import { loaderDelayFn } from '../utils'
 
 const loader = () =>
-  delayFn(() => ({
+  loaderDelayFn(() => ({
     reallyExpensiveTimestamp: Date.now(),
   }))
 

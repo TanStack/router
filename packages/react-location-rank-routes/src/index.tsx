@@ -1,25 +1,14 @@
-import {
-  Route,
-  parsePathname,
-  PartialGenerics,
-  DefaultGenerics,
-} from '@tanstack/react-location'
+import { Route, parsePathname } from '@tanstack/react-router'
 
-export function rankRoutes<TGenerics extends PartialGenerics = DefaultGenerics>(
-  routes: Route<TGenerics>[],
-): Route<TGenerics>[] {
+export function rankRoutes<T extends Route>(routes: T[]): T[] {
   return [...routes]
     .map((d, i) => {
       return { ...d, index: i }
     })
     .sort((a, b) => {
       if (a.search || b.search) {
-        if (!b.search) {
-          return -1
-        }
-        if (!a.search) {
-          return 1
-        }
+        if (!b.search) return -1
+        if (!a.search) return 1
       }
 
       const aSegments = parsePathname(a.path)

@@ -1,6 +1,6 @@
 # React Location Docs
 
-This is source code to react-location.tanstack.com. It is forked from the [Formik](https://formik.org) docs and is built with:
+This is source code to react-router.tanstack.com. It is forked from the [Formik](https://formik.org) docs and is built with:
 
 - Next.js
 - MDX

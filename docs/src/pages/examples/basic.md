@@ -1,15 +1,14 @@
 ---
-id: basic
 title: Basic
 toc: false
 ---
 
-- [Open in CodeSandbox](https://codesandbox.io/s/github/tanstack/react-location/tree/main/examples/basic)
-- [View Source](https://github.com/tanstack/react-location/tree/main/examples/basic)
+- [Open in CodeSandbox](https://codesandbox.io/s/github/tanstack/router/tree/main/examples/basic)
+- [View Source](https://github.com/tanstack/router/tree/main/examples/basic)
 
 <iframe
-  src="https://codesandbox.io/embed/github/tanstack/react-location/tree/main/examples/basic?autoresize=1&fontsize=14&theme=dark"
-  title="tanstack/react-location: simple"
+  src="https://codesandbox.io/embed/github/tanstack/router/tree/main/examples/basic?autoresize=1&fontsize=14&theme=dark"
+  title="tanstack/router: simple"
   sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
   style={{
     width: '100%',

@@ -1,5 +1,4 @@
 ---
-id: route-loaders
 title: Route Loaders
 ---
 
@@ -87,7 +86,7 @@ const routes = [
         loader: async ({ params: { teamId } }, { parentMatch }) => ({
           // This route will wait for the parent loaderPromise to resolve before finding the individual team
           team: await parentMatch.loaderPromise.then(({ teams }) =>
-            teams.find((team) => team.id === teamId)
+            teams.find((team) => team.id === teamId),
           ),
         }),
       },
@@ -115,7 +114,7 @@ const routes = [
         loader: async ({ params: { teamId }, parentMatch }) => ({
           // This route will wait for the parent loaderPromise to resolve before finding the individual team
           team: await parentMatch.loaderPromise.then(({ teams }) =>
-            teams.find((team) => team.id === teamId)
+            teams.find((team) => team.id === teamId),
           ),
         }),
       },
@@ -171,7 +170,7 @@ The loader dispatcher can be used to imperatively update specific aspects of a r
 
 - Setting a `maxAge` for the route loader based on the loader response
 - Triggering background refetches of a route loader
-- Extending the cache abilities of a route loader, as is done with the [`react-location-simple-cache`](..) package.
+- Extending the cache abilities of a route loader, as is done with the [`react-router-simple-cache`](..) package.
 
 The dispatcher can be accessed in the second options bag argument of the loader function:
 
@@ -189,7 +188,7 @@ The dispatcher takes an event object as its only argument. The event object must
 
 ```tsx
 export type LoaderDispatchEvent<
-  TGenerics extends PartialGenerics = DefaultGenerics
+  TGenerics extends PartialGenerics = DefaultGenerics,
 > =
   | {
       type: 'maxAge'

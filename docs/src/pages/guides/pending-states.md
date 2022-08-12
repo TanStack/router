@@ -1,5 +1,4 @@
 ---
-id: pending-states
 title: Pending States
 ---
 

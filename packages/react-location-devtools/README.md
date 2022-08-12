@@ -1,3 +1,3 @@
 # React Location Devtools
 
-See https://react-location.tanstack.com/tools/devtools
+See https://react-router.tanstack.com/tools/devtools

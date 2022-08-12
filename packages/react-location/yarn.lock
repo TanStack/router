@@ -16,9 +16,9 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@tanstack/location-core@0.0.1-beta.0":
+"@tanstack/router-core@0.0.1-beta.0":
   version "0.0.1-beta.0"
-  resolved "https://registry.yarnpkg.com/@tanstack/location-core/-/location-core-0.0.1-beta.0.tgz#597921274c912889c4980b4957656b3ba9e141c9"
+  resolved "https://registry.yarnpkg.com/@tanstack/router-core/-/router-core-0.0.1-beta.0.tgz#597921274c912889c4980b4957656b3ba9e141c9"
   integrity sha512-cLQOzq3s8xYwiCtbRiJst12NZneLppgO3baQkcLTIMzzcz567gnCAT/MxpkHn8xAwN67CsIAK0jMGj7cYjaGZA==
   dependencies:
     "@babel/runtime" "^7.16.7"

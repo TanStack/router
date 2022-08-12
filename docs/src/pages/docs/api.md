@@ -1,5 +1,4 @@
 ---
-id: api
 title: API
 ---
 
@@ -11,7 +10,7 @@ The foundation of React Location 🚀. An instance of the `ReactLocation` class 
 
 ```tsx
 export type ReactLocationOptions<TGenerics> = {
-  // The history object to be used internally by react-location
+  // The history object to be used internally by react-router
   // A history will be created automatically if not provided.
   history?: BrowserHistory | MemoryHistory | HashHistory
   stringifySearch?: SearchSerializer
@@ -22,7 +21,7 @@ export type ReactLocationOptions<TGenerics> = {
 **Example: Basic**
 
 ```tsx
-import { ReactLocation } from '@tanstack/react-location'
+import { ReactLocation } from '@tanstack/react-router'
 
 const reactLocation = new ReactLocation()
 ```
@@ -30,7 +29,7 @@ const reactLocation = new ReactLocation()
 **Example: Memory History**
 
 ```tsx
-import { createMemoryHistory, ReactLocation } from '@tanstack/react-location'
+import { createMemoryHistory, ReactLocation } from '@tanstack/react-router'
 
 const history = createMemoryHistory()
 const reactLocation = new ReactLocation({ history })
@@ -70,7 +69,7 @@ export type RouterProps<TGenerics> = {
 **Example: Basic**
 
 ```tsx
-import { ReactLocation, Router } from '@tanstack/react-location'
+import { ReactLocation, Router } from '@tanstack/react-router'
 
 const reactLocation = new ReactLocation()
 
@@ -90,7 +89,7 @@ return (
 **Example: With Children**
 
 ```tsx
-import { ReactLocation, Router, Outlet } from '@tanstack/react-location'
+import { ReactLocation, Router, Outlet } from '@tanstack/react-router'
 
 const reactLocation = new ReactLocation()
 
@@ -456,7 +455,7 @@ import {
   ReactLocation,
   parseSearchWith,
   stringifySearchWith,
-} from '@tanstack/react-location'
+} from '@tanstack/react-router'
 
 const reactLocation = new ReactLocation({
   parseSearch: (search: string) => {
@@ -477,19 +476,19 @@ The `useSearch` hook provides access to the search params state for the current 
 **Example - Basic**
 
 ```tsx
-import { Router, MakeGenerics } from '@tanstack/react-location'
+import { Router, MakeGenerics } from '@tanstack/react-router'
 
 type MyLocationGenerics = MakeGenerics<{
-    Search: {
-      pagination?: {
-        index?: number
-        size?: number
-      }
-      filters?: {
-        name?: string
-      }
-      desc?: boolean
+  Search: {
+    pagination?: {
+      index?: number
+      size?: number
     }
+    filters?: {
+      name?: string
+    }
+    desc?: boolean
+  }
 }>
 
 function MyComponent() {
@@ -949,7 +948,7 @@ However, if you truly desire to fudge around with SSR in React Location to avoid
 
 ```tsx
 // Server.tsx
-import { createMemoryHistory, ReactLocation, Router } from '@tanstack/react-location'
+import { createMemoryHistory, ReactLocation, Router } from '@tanstack/react-router'
 
 export async function render(requestUrl) {
   // Get the URL pathname
@@ -986,7 +985,7 @@ export async function render(requestUrl) {
 
 ```tsx
 // Client.tsx
-import { createBrowserHistory, ReactLocation, Router } from '@tanstack/react-location'
+import { createBrowserHistory, ReactLocation, Router } from '@tanstack/react-router'
 
 const location = new ReactLocation({ history })
 

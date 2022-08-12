@@ -8,7 +8,7 @@ import {
   ReactLocation,
   Router,
   useMatch,
-} from "@tanstack/react-location";
+} from "@tanstack/react-router";
 import axios from "axios";
 
 type PostType = {

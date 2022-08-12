@@ -1,10 +1,10 @@
 {
-  "name": "@tanstack/react-location-devtools",
+  "name": "@tanstack/router-devtools",
   "author": "Tanner Linsley",
   "version": "3.4.4",
   "license": "MIT",
-  "repository": "tanstack/react-location",
-  "homepage": "https://react-location.tanstack.com/",
+  "repository": "tanstack/router",
+  "homepage": "https://react-router.tanstack.com/",
   "description": "",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
@@ -12,7 +12,7 @@
   "keywords": [
     "react",
     "location",
-    "@tanstack/react-location",
+    "@tanstack/react-router",
     "router",
     "routing",
     "async",
@@ -35,12 +35,13 @@
     "src"
   ],
   "peerDependencies": {
+    "@tanstack/react-router": "3.4.4",
     "react": ">=16",
-    "react-dom": ">=16",
-    "@tanstack/react-location": "3.4.4"
+    "react-dom": ">=16"
   },
   "dependencies": {
-    "@babel/runtime": "^7.16.7"
+    "@babel/runtime": "^7.16.7",
+    "date-fns": "^2.29.1"
   },
   "devDependencies": {
     "babel-plugin-transform-async-to-promises": "^0.8.18"

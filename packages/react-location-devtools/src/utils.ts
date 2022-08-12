@@ -1,5 +1,5 @@
 import React from 'react'
-import { DefaultGenerics, RouteMatch } from '@tanstack/react-location'
+import { RouteMatch } from '@tanstack/react-router'
 
 import { Theme, useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
@@ -25,17 +25,16 @@ type StyledComponent<T> = T extends 'button'
   ? React.HTMLAttributes<HTMLElementTagNameMap[T]>
   : never
 
-export function getStatusColor(
-  match: RouteMatch<DefaultGenerics>,
-  theme: Theme,
-) {
-  return match.isLoading
+export function getStatusColor(match: RouteMatch, theme: Theme) {
+  return match.isPending
+    ? theme.warning
+    : match.status === 'loading'
     ? theme.active
     : match.status === 'rejected'
     ? theme.danger
-    : match.status === 'pending'
-    ? theme.warning
-    : theme.success
+    : match.status === 'resolved'
+    ? theme.success
+    : theme.gray
 }
 
 // export function getQueryStatusLabel(query: Query) {
@@ -101,6 +100,17 @@ export function useIsMounted() {
   }, [])
 
   return isMounted
+}
+
+/**
+ * Displays a string regardless the type of the data
+ * @param {unknown} value Value to be stringified
+ */
+export const displayValue = (value: unknown) => {
+  const name = Object.getOwnPropertyNames(Object(value))
+  const newValue = typeof value === 'bigint' ? `${value.toString()}n` : value
+
+  return JSON.stringify(newValue, name)
 }
 
 /**

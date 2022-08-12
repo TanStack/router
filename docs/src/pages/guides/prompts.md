@@ -1,5 +1,4 @@
 ---
-id: prompts
 title: Prompts
 ---
 

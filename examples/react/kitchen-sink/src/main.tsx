@@ -1,64 +1,37 @@
-// @ts-nocheck
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import axios from 'axios'
 import {
   Link,
   Outlet,
   Router,
   Route,
-  useMatch,
   useRouter,
   useSearch,
   useNavigate,
   MatchRoute,
-  LocationManager,
-} from '@tanstack/react-location'
-// import { ReactLocationDevtools } from '@tanstack/react-location-devtools'
+  useLoaderData,
+  useAction,
+} from '@tanstack/react-router'
+import { ReactLocationDevtools } from '@tanstack/router-devtools'
+
+import {
+  fetchInvoices,
+  fetchInvoiceById,
+  fetchUsers,
+  fetchUserById,
+  Invoice,
+  User,
+  postInvoice,
+} from './mockTodos'
 
 import reallyExpensiveRoute from './reallyExpensive'
+import { loaderDelayFn } from './utils'
 
 //
 
-type Invoice = {
-  id: string
-  title: string
-  body: string
-}
-
-export interface User {
-  id: number
-  name: string
-  username: string
-  email: string
-  address: Address
-  phone: string
-  website: string
-  company: Company
-}
-export interface Address {
-  street: string
-  suite: string
-  city: string
-  zipcode: string
-  geo: Geo
-}
-
-export interface Geo {
-  lat: string
-  lng: string
-}
-
-export interface Company {
-  name: string
-  catchPhrase: string
-  bs: string
-}
-
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
-declare module '@tanstack/react-location' {
+declare module '@tanstack/react-router' {
   interface SearchSchema {
     showNotes?: boolean
     notes?: string
@@ -73,7 +46,7 @@ declare module '@tanstack/react-location' {
     userId: string
   }
 
-  interface RouteData {
+  interface LoaderData {
     invoices: Invoice[]
     invoice: Invoice
     users: User[]
@@ -94,6 +67,7 @@ const routes: Route[] = [
         path: 'dashboard',
         element: <Dashboard />,
         loader: async () => {
+          console.log('Fetching all invoices...')
           return {
             invoices: await fetchInvoices(),
           }
@@ -103,23 +77,25 @@ const routes: Route[] = [
           {
             path: 'invoices',
             element: <Invoices />,
+            action: async (data, ctx) => {
+              const invoice = await postInvoice()
+              // Redirect to the new invoice
+              ctx.router.navigate({
+                to: invoice.id,
+                // Use the current match for relative paths
+                from: ctx.match.pathname,
+              })
+              return invoice
+            },
             children: [
               { path: '/', element: <InvoicesHome /> },
               {
                 path: ':invoiceId',
-                element: <Invoice />,
+                element: <InvoiceView />,
                 loader: async ({ params: { invoiceId } }) => {
                   console.log('Fetching invoice...')
                   return {
                     invoice: await fetchInvoiceById(invoiceId!),
-                  }
-                },
-                onMatch: (match) => {
-                  console.log(`Now rendering invoice ${match.params.invoiceId}`)
-                  return () => {
-                    console.log(
-                      `No longer rendering invoice ${match.params.invoiceId}`,
-                    )
                   }
                 },
               },
@@ -146,7 +122,7 @@ const routes: Route[] = [
             children: [
               {
                 path: ':userId',
-                element: <User />,
+                element: <UserView />,
                 loader: async ({ params: { userId } }) => {
                   return {
                     user: await fetchUserById(userId!),
@@ -161,7 +137,9 @@ const routes: Route[] = [
         // Your elements can be asynchronous, which means you can code-split!
         path: 'expensive',
         element: () =>
-          delayFn(() => import('./Expensive')).then((res) => <res.Expensive />),
+          loaderDelayFn(() => import('./Expensive')).then((res) => (
+            <res.Expensive />
+          )),
       },
       // Obviously, you can put routes in other files, too
       reallyExpensiveRoute,
@@ -182,7 +160,8 @@ const routes: Route[] = [
 // Provide our location and routes to our application
 function App() {
   // This stuff is just to tweak our sandbox setup in real-time
-  const [delay, setDelay] = useSessionStorage('delay', 500)
+  const [loaderDelay, setLoaderDelay] = useSessionStorage('loaderDelay', 500)
+  const [actionDelay, setActionDelay] = useSessionStorage('actionDelay', 500)
   const [defaultPendingMs, setDefaultPendingMs] = useSessionStorage(
     'defaultPendingMs',
     2000,
@@ -201,24 +180,22 @@ function App() {
   return (
     <>
       {/* More stuff to tweak our sandbox setup in real-time */}
-      <div
-        className={`text-xs fixed w-52 shadow rounded bottom-2 left-2 bg-white bg-opacity-75 p-2 border-b flex flex-col gap-2 flex-wrap items-left`}
-      >
-        <div>Artificial Delay: {delay}ms</div>
+      <div className="text-xs fixed w-52 shadow rounded bottom-2 left-2 bg-white bg-opacity-75 p-2 border-b flex flex-col gap-1 flex-wrap items-left">
+        <div>Loader Delay: {loaderDelay}ms</div>
         <div>
           <input
             type="range"
             min="0"
             max="5000"
             step="100"
-            value={delay}
-            onChange={(e) => setDelay(e.target.valueAsNumber)}
-            className={`w-full`}
+            value={loaderDelay}
+            onChange={(e) => setLoaderDelay(e.target.valueAsNumber)}
+            className="w-full"
           />
         </div>
         <div>
           Default Pending Ms: {defaultPendingMs}ms{' '}
-          {defaultPendingMs > delay ? <>🔴</> : <>🟢</>}
+          {defaultPendingMs > loaderDelay ? <>🔴</> : <>🟢</>}
         </div>
         <div>
           <input
@@ -228,7 +205,7 @@ function App() {
             step="100"
             value={defaultPendingMs}
             onChange={(e) => setDefaultPendingMs(e.target.valueAsNumber)}
-            className={`w-full`}
+            className="w-full"
           />
         </div>
         <div className={`${!defaultPendingMs ? 'opacity-30' : ''}`}>
@@ -260,6 +237,18 @@ function App() {
             className={`w-full`}
           />
         </div>
+        <div>Action Delay: {actionDelay}ms</div>
+        <div>
+          <input
+            type="range"
+            min="0"
+            max="5000"
+            step="100"
+            value={actionDelay}
+            onChange={(e) => setActionDelay(e.target.valueAsNumber)}
+            className="w-full"
+          />
+        </div>
         <div>
           Link Preload Max Age:{' '}
           {defaultLinkPreloadMaxAge ? `${defaultLinkPreloadMaxAge}ms` : 'Off'}
@@ -285,10 +274,9 @@ function App() {
       in <Root /> before rendering any routes */}
       <AuthProvider>
         <Router
-          locationManager={locationManager}
           routes={routes}
           defaultPendingElement={
-            <div className={`text-2xl`}>
+            <div className={`p-2 text-2xl`}>
               <Spinner />
             </div>
           }
@@ -306,7 +294,7 @@ function App() {
           ].join('.')}
         >
           <Root />
-          {/* <ReactLocationDevtools position="bottom-right" /> */}
+          <ReactLocationDevtools position="bottom-right" />
         </Router>
       </AuthProvider>
     </>
@@ -325,7 +313,7 @@ function Root() {
         {/* Show a global spinner when the router is transitioning */}
         <div
           className={`text-3xl duration-100 delay-0 opacity-0 ${
-            !!router.state.pending ? `delay-500 duration-300 opacity-40` : ''
+            router.state.status === 'loading' ? ` duration-300 opacity-40` : ''
           }`}
         >
           <Spinner />
@@ -401,16 +389,16 @@ function Home() {
 function Dashboard() {
   return (
     <>
-      <div className={`flex items-center border-b`}>
-        <h2 className={`text-xl p-2`}>Dashboard</h2>
+      <div className="flex items-center border-b">
+        <h2 className="text-xl p-2">Dashboard</h2>
         <Link
           to="./invoices/3"
-          className={`py-1 px-2 text-xs bg-blue-500 text-white rounded-full`}
+          className="py-1 px-2 text-xs bg-blue-500 text-white rounded-full"
         >
           1 New Invoice
         </Link>
       </div>
-      <div className={`flex flex-wrap divide-x`}>
+      <div className="flex flex-wrap divide-x">
         {(
           [
             ['.', 'Summary'],
@@ -423,7 +411,7 @@ function Dashboard() {
               key={to}
               to={to}
               search={search}
-              className={`inline-block py-2 px-3 text-blue-700`}
+              className="inline-block py-2 px-3 text-blue-700"
               activeOptions={{ exact: to === '.' }}
               getActiveProps={() => ({ className: `font-bold` })}
             >
@@ -439,35 +427,43 @@ function Dashboard() {
 }
 
 function DashboardHome() {
-  const match = useMatch()
+  const { invoices } = useLoaderData()
 
   return (
-    <div className={`p-2`}>
-      <div className={`p-2`}>
+    <div className="p-2">
+      <div className="p-2">
         Welcome to the dashboard! You have{' '}
-        <strong>{match.data.invoices?.length} total invoices</strong>.
+        <strong>{invoices.length} total invoices</strong>.
       </div>
     </div>
   )
 }
 
 function Invoices() {
-  const {
-    data: { invoices },
-  } = useMatch()
+  const { invoices } = useLoaderData()
+  const invoicesAction = useAction()
 
   return (
-    <div className={`flex-1 flex`}>
-      <div className={`divide-y w-48`}>
+    <div className="flex-1 flex">
+      <div className="divide-y w-48">
+        <div className="flex">
+          <button
+            onClick={() => invoicesAction.send()}
+            className="flex-1 bg-green-500 text-white p-1"
+          >
+            Create New Invoice
+          </button>
+        </div>
         {invoices?.map((invoice) => {
           return (
             <div key={invoice.id}>
               <Link
                 to={invoice.id}
-                className={`block py-2 px-3 text-blue-700`}
+                className="block py-2 px-3 text-blue-700"
                 getActiveProps={() => ({ className: `font-bold` })}
+                preload="intent"
               >
-                <pre className={`text-sm`}>
+                <pre className="text-sm">
                   #{invoice.id} - {invoice.title.slice(0, 10)}{' '}
                   <MatchRoute to={invoice.id} pending>
                     <Spinner />
@@ -478,7 +474,7 @@ function Invoices() {
           )
         })}
       </div>
-      <div className={`flex-1 border-l border-gray-200`}>
+      <div className="flex-1 border-l border-gray-200">
         <Outlet />
       </div>
     </div>
@@ -486,17 +482,23 @@ function Invoices() {
 }
 
 function InvoicesHome() {
+  const invoicesAction = useAction()
+
+  console.log(invoicesAction)
+
   return (
     <>
-      <div className={`p-2`}>Select an invoice.</div>
+      <div className="p-2">
+        {invoicesAction?.status === 'pending'
+          ? 'Creating invoice...'
+          : 'Select an invoice.'}
+      </div>
     </>
   )
 }
 
-function Invoice() {
-  const {
-    data: { invoice },
-  } = useMatch()
+function InvoiceView() {
+  const { invoice } = useLoaderData()
   const search = useSearch()
   const navigate = useNavigate()
 
@@ -510,33 +512,33 @@ function Invoice() {
   }, [notes])
 
   return (
-    <div className={`p-2`}>
-      <h4 className={`font-bold`}>{invoice?.title}</h4>
+    <div className="p-2">
+      <h4 className="font-bold">{invoice?.title}</h4>
       <div>
         <p>{invoice?.body}</p>
       </div>
-      <hr className={`my-2`} />
+      <hr className="my-2" />
       <Link
         search={(old) => ({
           ...old,
           showNotes: old?.showNotes ? undefined : true,
         })}
-        className={`text-blue-700 `}
+        className="text-blue-700 "
       >
         {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
       </Link>
       {search.showNotes ? (
         <>
           <div>
-            <div className={`h-2`} />
+            <div className="h-2" />
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={5}
-              className={`shadow w-full p-2 rounded`}
-              placeholder={`Write some notes here...`}
+              className="shadow w-full p-2 rounded"
+              placeholder="Write some notes here..."
             />
-            <div className={`italic text-xs`}>
+            <div className="italic text-xs">
               Notes are stored in the URL. Try copying the URL into a new tab!
             </div>
           </div>
@@ -547,9 +549,7 @@ function Invoice() {
 }
 
 function Users() {
-  const {
-    data: { users },
-  } = useMatch()
+  const { users } = useLoaderData()
   const navigate = useNavigate()
   const { usersView } = useSearch()
 
@@ -606,27 +606,27 @@ function Users() {
   }, [filterDraft])
 
   return (
-    <div className={`flex-1 flex`}>
-      <div className={`divide-y`}>
-        <div className={`py-2 px-3 flex gap-2 items-center bg-gray-100`}>
+    <div className="flex-1 flex">
+      <div className="divide-y">
+        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100">
           <div>Sort By:</div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as UsersViewSortBy)}
-            className={`flex-1 border p-1 px-2 rounded`}
+            className="flex-1 border p-1 px-2 rounded"
           >
             {['name', 'id', 'email'].map((d) => {
               return <option key={d} value={d} children={d} />
             })}
           </select>
         </div>
-        <div className={`py-2 px-3 flex gap-2 items-center bg-gray-100`}>
+        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100">
           <div>Filter By:</div>
           <input
             value={filterDraft}
             onChange={(e) => setFilterDraft(e.target.value)}
             placeholder="Search Names..."
-            className={`min-w-0 flex-1 border p-1 px-2 rounded`}
+            className="min-w-0 flex-1 border p-1 px-2 rounded"
           />
         </div>
         {filteredUsers?.map((user) => {
@@ -634,10 +634,10 @@ function Users() {
             <div key={user.id}>
               <Link
                 to={user.id}
-                className={`block py-2 px-3 text-blue-700`}
+                className="block py-2 px-3 text-blue-700"
                 getActiveProps={() => ({ className: `font-bold` })}
               >
-                <pre className={`text-sm`}>
+                <pre className="text-sm">
                   {user.name}{' '}
                   <MatchRoute to={user.id} pending>
                     <Spinner />
@@ -648,22 +648,20 @@ function Users() {
           )
         })}
       </div>
-      <div className={`flex-initial border-l border-gray-200`}>
+      <div className="flex-initial border-l border-gray-200">
         <Outlet />
       </div>
     </div>
   )
 }
 
-function User() {
-  const {
-    data: { user },
-  } = useMatch()
+function UserView() {
+  const { user } = useLoaderData()
 
   return (
     <>
-      <h4 className={`p-2 font-bold`}>{user?.name}</h4>
-      <pre className={`text-sm whitespace-pre-wrap`}>
+      <h4 className="p-2 font-bold">{user?.name}</h4>
+      <pre className="text-sm whitespace-pre-wrap">
         {JSON.stringify(user, null, 2)}
       </pre>
     </>
@@ -724,19 +722,19 @@ function Auth() {
   return auth.status === 'loggedIn' ? (
     <Outlet />
   ) : (
-    <div className={`p-2`}>
+    <div className="p-2">
       <div>You must log in!</div>
-      <div className={`h-2`} />
-      <form onSubmit={onSubmit} className={`flex gap-2`}>
+      <div className="h-2" />
+      <form onSubmit={onSubmit} className="flex gap-2">
         <input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Username"
-          className={`border p-1 px-2 rounded`}
+          className="border p-1 px-2 rounded"
         />
         <button
           onClick={() => auth.logout()}
-          className={`text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded`}
+          className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
         >
           Login
         </button>
@@ -749,16 +747,16 @@ function Authenticated() {
   const auth = useAuth()
 
   return (
-    <div className={`p-2`}>
+    <div className="p-2">
       You're authenticated! Your username is <strong>{auth.username}</strong>
-      <div className={`h-2`} />
+      <div className="h-2" />
       <button
         onClick={() => auth.logout()}
-        className={`text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded`}
+        className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
       >
         Log out
       </button>
-      <div className={`h-2`} />
+      <div className="h-2" />
       <div>
         This authentication example is obviously very contrived and simple. It
         doesn't cover the use case of a redirected login page, but does
@@ -771,48 +769,7 @@ function Authenticated() {
 }
 
 function Spinner() {
-  return <div className={`inline-block animate-spin px-3`}>⍥</div>
-}
-
-async function fetchInvoices() {
-  const { data } = await delayFn(() =>
-    axios.get('https://jsonplaceholder.typicode.com/posts'),
-  )
-
-  return data.slice(0, 25)
-}
-
-async function fetchInvoiceById(id: string) {
-  const { data } = await delayFn(() =>
-    axios.get(`https://jsonplaceholder.typicode.com/posts/${id}`),
-  )
-
-  return { ...data, body: data.body + ' ' + Date.now() }
-}
-
-async function fetchUsers() {
-  const { data } = await delayFn(() =>
-    axios.get('https://jsonplaceholder.typicode.com/users'),
-  )
-
-  return data
-}
-
-async function fetchUserById(id: string) {
-  const { data } = await delayFn(() =>
-    axios.get(`https://jsonplaceholder.typicode.com/users/${id}`),
-  )
-
-  return data
-}
-
-export async function delayFn<T>(fn: (...args: any[]) => Promise<T> | T) {
-  const delay = Number(sessionStorage.getItem('delay') ?? 0)
-  const delayPromise = new Promise((r) => setTimeout(r, delay))
-
-  const [res] = await Promise.all([fn(), delayPromise])
-
-  return res
+  return <div className="inline-block animate-spin px-3">⍥</div>
 }
 
 function useSessionStorage<T>(key: string, initialValue: T) {
@@ -829,5 +786,7 @@ function useSessionStorage<T>(key: string, initialValue: T) {
 }
 
 const rootElement = document.getElementById('app')!
-const root = ReactDOM.createRoot(rootElement)
-root.render(<App />)
+if (!rootElement.innerHTML) {
+  const root = ReactDOM.createRoot(rootElement)
+  root.render(<App />)
+}

@@ -1,5 +1,4 @@
 ---
-id: breadcrumbs
 title: Bread Crumbs
 ---
 
@@ -11,7 +10,7 @@ We can store anything in `route.meta` - including components! We can set a bread
 type LocationGenerics = MakeGenerics<{
   Params: {
     teamId: string
-  },
+  }
   RouteMeta: {
     breadcrumb: (params: LocationGenerics['Params']) => React.ReactElement
   }
@@ -26,19 +25,19 @@ const routes: Route<LocationGenerics>[] = [
     path: 'teams',
     element: <Teams />,
     meta: {
-      breadcrumb: () => 'Teams'
+      breadcrumb: () => 'Teams',
     },
     children: [
       {
         path: ':teamId',
         element: <Team />,
         meta: {
-          breadcrumb: (params) => params.teamId
-        }
-      }
-    ]
-  }
-];
+          breadcrumb: (params) => params.teamId,
+        },
+      },
+    ],
+  },
+]
 ```
 
 We can access this meta property from a route match. We will use the `useMatches` hook to get access to all route matches and render a list of breadcrumbs.
@@ -50,16 +49,15 @@ function Breadcrumbs() {
   return (
     <ol>
       {matches
-        // skip routes that don't have a breadcrumb, like is the case of our '/' route 
-        .filter(match => match.route.meta?.breadcrumb)
-        .map(match => (
+        // skip routes that don't have a breadcrumb, like is the case of our '/' route
+        .filter((match) => match.route.meta?.breadcrumb)
+        .map((match) => (
           <li key={match.pathname}>
             <Link to={match.pathname}>
               {match.route.meta!.breadcrumb(match.params)}
             </Link>
           </li>
-        ))
-      }
+        ))}
     </ol>
   )
 }
@@ -76,12 +74,12 @@ function TeamBreadcrumb({ teamId }: { teamId: string }) {
 
 const routes = [
   // ...
-      {
-        path: ':teamId',
-        element: <Team />,
-        meta: {
-          breadcrumb: ({teamId}) => <TeamBreadcrumb teamId={teamId} />
-        }
-      }
+  {
+    path: ':teamId',
+    element: <Team />,
+    meta: {
+      breadcrumb: ({ teamId }) => <TeamBreadcrumb teamId={teamId} />,
+    },
+  },
 ]
 ```
