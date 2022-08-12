@@ -38,10 +38,6 @@
           "to": "guide/introduction"
         },
         {
-          "label": "Overview",
-          "to": "guide/overview"
-        },
-        {
           "label": "Installation",
           "to": "guide/installation"
         },
