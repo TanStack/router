@@ -6,7 +6,7 @@ Pending route states are similar to a React Suspense `fallback` state, or if you
 
 ## Why Pending States?
 
-React Location is different from other routing libraries. Because it is asynchronous, it has its own "suspense"-like **pending state** when a new route is being loaded. If a route doesn't have any data requirements or async dependencies, it can be loaded immediately and the pending state isn't ever observed.
+TanStack Router is different from other routing libraries. Because it is asynchronous, it has its own "suspense"-like **pending state** when a new route is being loaded. If a route doesn't have any data requirements or async dependencies, it can be loaded immediately and the pending state isn't ever observed.
 
 However, if a route has data requirements or async dependencies, it will be loaded in the background and the pending state can be observed in a few ways:
 

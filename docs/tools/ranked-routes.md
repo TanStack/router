@@ -1,5 +1,5 @@
 ---
-title: React Location Rank Routes
+title: TanStack Router Rank Routes
 ---
 
 A simple utility for ranking routes based on their specificity

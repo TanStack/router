@@ -2,7 +2,7 @@
 title: Custom Search Param Serialization
 ---
 
-By default, React Location parses and serializes your search params automatically. Depending on your needs though, you may want to customize the serialization process.
+By default, TanStack Router parses and serializes your search params automatically. Depending on your needs though, you may want to customize the serialization process.
 
 To do so, you can [use `ReactLocation`'s `parseSearch` and `stringifySearch` options combined with the `parseSearchWith` and `stringifySearchWith` utilities](../docs/api#search-param-parsing-and-serialization).
 

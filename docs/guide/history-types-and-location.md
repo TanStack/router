@@ -4,7 +4,7 @@ title: History Types & Location
 
 > NOTE: If you don't need **hash or memory routing, then you can skip this section**.
 
-While it's not required to know the `history` API itself to use React Location, it's a good idea to understand how it works. Under the hood, React Location requires and uses a `history` instance to manage the browser history.
+While it's not required to know the `history` API itself to use TanStack Router, it's a good idea to understand how it works. Under the hood, TanStack Router requires and uses a `history` instance to manage the browser history.
 
 - If you don't create a history instance, a default `createBrowserHistory` instance is created for you automatically when you call `new ReactLocation()`
 - If you **need a special history instance type**, You can use the history package to create your own history instance:

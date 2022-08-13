@@ -1,5 +1,5 @@
 ---
-title: React Location Elements To Routes
+title: TanStack Router Elements To Routes
 ---
 
 The `react-router-elements-to-routes` package exports:

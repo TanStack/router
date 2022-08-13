@@ -2,7 +2,7 @@
 title: Overview
 ---
 
-React Location is a router for client-side React applications.
+TanStack Router is a router for client-side React applications.
 
 Here are some of its core features at a glance:
 
@@ -30,7 +30,7 @@ Here are some of its core features at a glance:
 
 ## In the beginning...
 
-React Location got its humble beginnings as a wrapper around the long-winded v6 beta release of [React Router](https://reactrouter.com/). Originally, it solved, skirted, and patched a few of the limitations (essentially a majority of the items on the list of features above). Over time, React Location's feature set outgrew the core capabilities of React Router and required full control over the routing experience to achieve its potential.
+TanStack Router got its humble beginnings as a wrapper around the long-winded v6 beta release of [React Router](https://reactrouter.com/). Originally, it solved, skirted, and patched a few of the limitations (essentially a majority of the items on the list of features above). Over time, TanStack Router's feature set outgrew the core capabilities of React Router and required full control over the routing experience to achieve its potential.
 
 ### Why are Search Params so important?
 
@@ -48,9 +48,9 @@ All too often I see developers putting state in the wrong places not only becaus
 
 So, what if storing state in the URL was as easy as storing state in any other first-class state management tool? Would you do it more? Did you know your URLs would then be more sharable, bookmarkable and more consistent across app navigation?
 
-Much how React Query made handling server-state in your React applications a breeze, React Location similarly **unlocks the power of URL search params**.
+Much how React Query made handling server-state in your React applications a breeze, TanStack Router similarly **unlocks the power of URL search params**.
 
-### How does React Location handle Search Params?
+### How does TanStack Router handle Search Params?
 
 Most applications, even large ones will get away with requiring only a few string-based search query params in the URL, probably something like `?page=3` or `?filter-name=tanner`. The main reason you'll find this **state** inside of the URL is that while it may not fit the hierarchical patterns of the pathname section of the URL, it's still very important to the output of a page. Both the ability to consume these search params and manipulate them without restriction is paramount to your app's developer and user experience. Your users should be able to bookmark/copy-paste/share a link from your app and have consistency with the original state of the page.
 
@@ -62,15 +62,15 @@ When you begin to store more state in the URL you will inevitably and naturally 
 - Compression & Readability. While not out-of-the-box, this is usually desired, so making it simple to get should be as simple as including a library.
 - Low-level declarative APIs to manipulate query state (think `<Link>`, `<Navigate>` and `useNavigate`). This is one where most routers can't or won't go. To do this correctly, you have to buy into your search-param APIs wholesale at the core of the architecture and provide them as a consistent experience through the entire library.
 
-Let's just say React Location doesn't skimp on search params. It handles all of this out of the box and goes the extra mile!
+Let's just say TanStack Router doesn't skimp on search params. It handles all of this out of the box and goes the extra mile!
 
 ### Asynchronous Navigation
 
 Popularized by frameworks like [Next.js](https://nextjs.org) and now [Remix](https://remix.run), **specifying asynchronous dependencies for routes that can all resolve in parallel before rendering** is quickly becoming table stakes for almost every React Framework out there. It would be nice if Suspense on its own could give us the solution, but without a router to indicate what needs to be pre-loaded, only suspending on render doesn't allow you to avoid waterfall suspense requests.
 
-This capability of knowing everything that needs to be fetched upfront before navigating is being explored heavily in SSR frameworks, but not in client-side apps. React Location's goal is to provide that same first-class support for specifying arbitrary asynchronous dependencies for your routes while asynchronously suspending navigation rendering until these dependencies are met.
+This capability of knowing everything that needs to be fetched upfront before navigating is being explored heavily in SSR frameworks, but not in client-side apps. TanStack Router's goal is to provide that same first-class support for specifying arbitrary asynchronous dependencies for your routes while asynchronously suspending navigation rendering until these dependencies are met.
 
-To do this properly, routing and navigation need to be designed from the ground up to be **fully asynchronous**. The following features in React Location are first-class and native to the entire routing architecture:
+To do this properly, routing and navigation need to be designed from the ground up to be **fully asynchronous**. The following features in TanStack Router are first-class and native to the entire routing architecture:
 
 - Scheduling
 - Batching
@@ -83,4 +83,4 @@ To do this properly, routing and navigation need to be designed from the ground 
 
 ### So much more!
 
-Enough overview, there's so much more to do with React Location. Hit that next button and let's get started!
+Enough overview, there's so much more to do with TanStack Router. Hit that next button and let's get started!

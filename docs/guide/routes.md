@@ -4,7 +4,7 @@ title: Routes
 
 ## What is a route?
 
-A React Location route is just an **object**. The `path` defines the path of the route it should match. Every property of the `Route` type is optional but clearly recommended for varying circumstances. Here's the simplest use-case for path matching!
+A TanStack Router route is just an **object**. The `path` defines the path of the route it should match. Every property of the `Route` type is optional but clearly recommended for varying circumstances. Here's the simplest use-case for path matching!
 
 ```tsx
 const routes = [
@@ -189,7 +189,7 @@ const routes = [
 
 ## Search Matching
 
-Up to this point, we've only talked about `path` matching, but the `path` is only a small party of the entire URL. In React Location, the `search` section of the URL is actually a first-class citizen and represented as an object of key/value pairs. You can learn more about [Search Params]() in another section, but we'll mention here that you can use the `search` property to match a route using search params as well!
+Up to this point, we've only talked about `path` matching, but the `path` is only a small party of the entire URL. In TanStack Router, the `search` section of the URL is actually a first-class citizen and represented as an object of key/value pairs. You can learn more about [Search Params]() in another section, but we'll mention here that you can use the `search` property to match a route using search params as well!
 
 To do this, pass a `search` function to the route:
 
@@ -234,7 +234,7 @@ const routes = [
 
 ## Route Defaults
 
-Routes in React Location are extremely forgiving with plenty of default behaviors:
+Routes in TanStack Router are extremely forgiving with plenty of default behaviors:
 
 - If a route has **no path**, it is considered to have `path: *`, so it will always be matched
 - If a route has **no element**, it is considered to have `element: <Outlet />` (or whatever you set as the `Router`'s `defaultElement` prop)

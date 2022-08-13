@@ -1,3 +1,3 @@
-# React Location Rank Routes
+# TanStack Router Rank Routes
 
-A route ranker for React Location that sorts your routes by general specificity.
+A route ranker for TanStack Router that sorts your routes by general specificity.

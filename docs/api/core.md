@@ -6,7 +6,7 @@ title: API
 
 **Required: true**
 
-The foundation of React Location 🚀. An instance of the `ReactLocation` class is required and must be provided to your application via the `Router` component.
+The foundation of TanStack Router 🚀. An instance of the `ReactLocation` class is required and must be provided to your application via the `Router` component.
 
 ```tsx
 export type ReactLocationOptions<TGenerics> = {
@@ -39,7 +39,7 @@ const reactLocation = new ReactLocation({ history })
 
 **Required: true**
 
-The `Router` component is the root Provider component for the React Location instance and your route configuration in your app. Render it _only once_ (rendering multiple routers is an anti-pattern, and straight-up not supported for good reason).
+The `Router` component is the root Provider component for the TanStack Router instance and your route configuration in your app. Render it _only once_ (rendering multiple routers is an anti-pattern, and straight-up not supported for good reason).
 
 - If no `children` prop is passed, it will default to `<Outlet />` which will start rendering your route matches.
 - if a `children` prop is passed, you must eventually render `<Outlet />` where you want your routes to start rendering
@@ -111,7 +111,7 @@ return (
 
 ## Defining Routes
 
-In React Location, routes are just an array of objects where routes can contain child arrays of more routes. It's a route tree!
+In TanStack Router, routes are just an array of objects where routes can contain child arrays of more routes. It's a route tree!
 
 For more information on creating routes and how they behave, see the [Routes Guide](../guides/routes).
 
@@ -414,20 +414,20 @@ function Invoice() {
 
 ## Search Params
 
-In React Location, search params are considered first-class objects that can be immutably updated safely and consistently in a similar fashion to `React.useState`s `setState(replacementObj)` and `setState((old) => new)` patterns.
+In TanStack Router, search params are considered first-class objects that can be immutably updated safely and consistently in a similar fashion to `React.useState`s `setState(replacementObj)` and `setState((old) => new)` patterns.
 
 **Parsing & Serialization**
 
-The first level of search params always have standard encoding, eg. `?param1=value&param2=value&param3=value`. This keeps things at the root level of the search params experience fully compliant with the native `URLSearchParams` API and the rest of the web ecosystem. **When it comes to the values of those URLSearchParams, however, React Location offers much more power by fully supporting JSON, included nested JSON structures**.
+The first level of search params always have standard encoding, eg. `?param1=value&param2=value&param3=value`. This keeps things at the root level of the search params experience fully compliant with the native `URLSearchParams` API and the rest of the web ecosystem. **When it comes to the values of those URLSearchParams, however, TanStack Router offers much more power by fully supporting JSON, included nested JSON structures**.
 
-For every search param **value**, React Location follows the following schema:
+For every search param **value**, TanStack Router follows the following schema:
 
 - Top-level, primitive, non-object-like values are serialized normally as strings/numbers/booleans.
 - Top-level object-like values are serialized using `JSON.stringify` and parsed using `JSON.parse`
 
 Custom `stringifySearch` and `parseSearch` functions can be provided to your `ReactLocation` instance to further enhance the way search objects are encoded.
 
-**Regardless of how your search params are serialized or parsed**, React Location willl **always provide a stable, immutable and structurally-safe object reference**. This means that even though your search params' source of truth is technically a string that is changing over time, it will behave as a structurally shared immutable object.
+**Regardless of how your search params are serialized or parsed**, TanStack Router willl **always provide a stable, immutable and structurally-safe object reference**. This means that even though your search params' source of truth is technically a string that is changing over time, it will behave as a structurally shared immutable object.
 
 ## Search Param Parsing and Serialization
 
@@ -448,7 +448,7 @@ export function stringifySearchWith(
 ): (search: Record<string, any>) => string
 ```
 
-While unnecessary, here is an example of how to re-implement the default search param parsing and serialization for React Location:
+While unnecessary, here is an example of how to re-implement the default search param parsing and serialization for TanStack Router:
 
 ```tsx
 import {
@@ -944,7 +944,7 @@ function App() {
 
 If you at all serious about SSR Routing, then you should probably investigate using a framework like [Remix](https://remix.run) or [Next.js](https://nextjs.org).
 
-However, if you truly desire to fudge around with SSR in React Location to avoid that initial pending state, you can! Use `createMemoryHistory` and `ReactLocation` to mock your app into a specific state for SSR, then use the manual routing tools to match and load the correct route information. You can then serialize this initial match info into your document to be rehydrated on the client.
+However, if you truly desire to fudge around with SSR in TanStack Router to avoid that initial pending state, you can! Use `createMemoryHistory` and `ReactLocation` to mock your app into a specific state for SSR, then use the manual routing tools to match and load the correct route information. You can then serialize this initial match info into your document to be rehydrated on the client.
 
 ```tsx
 // Server.tsx

@@ -1,5 +1,5 @@
 ---
-title: Comparison | React Location vs React Router
+title: Comparison | TanStack Router vs React Router
 toc: false
 ---
 
@@ -15,7 +15,7 @@ Feature/Capability Key:
 - 🔶 Possible, but requires custom code/implementation
 - 🛑 Not officially supported
 
-|                                                                                                            | React Location                                          | React Router DOM [_(Website)_][react-router]                |
+|                                                                                                            | TanStack Router                                         | React Router DOM [_(Website)_][react-router]                |
 | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------- |
 | Github Repo / Stars                                                                                        | [![][stars-react-router]][gh-react-router]              | [![][stars-react-router]][gh-react-router]                  |
 | Their Comparison                                                                                           |                                                         | (none)                                                      |

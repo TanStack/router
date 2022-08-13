@@ -10,7 +10,7 @@ Route loaders are route-level functions that can specify arbitrary data requirem
 
 ## Why should I use route loaders? Why are they cool?!
 
-Routes requiring data are nothing new, but the way React Location orchestrates these requirements is where the magic happens. In a traditional React application, usually, the route is rendered immediately, and the data is fetched asynchronously either via a custom hook or a suspense boundary that is hit. This is a great way to get data from a server, but it also means that the route is rendered before the data is available. It introduces the need for a lot of boilerplate code to handle the asynchronous data fetching and even worse, **spinners** everywhere. This is usually a sub-optimal user experience, and with route loaders, **it's one that we can avoid!**
+Routes requiring data are nothing new, but the way TanStack Router orchestrates these requirements is where the magic happens. In a traditional React application, usually, the route is rendered immediately, and the data is fetched asynchronously either via a custom hook or a suspense boundary that is hit. This is a great way to get data from a server, but it also means that the route is rendered before the data is available. It introduces the need for a lot of boilerplate code to handle the asynchronous data fetching and even worse, **spinners** everywhere. This is usually a sub-optimal user experience, and with route loaders, **it's one that we can avoid!**
 
 Route loaders are called when:
 
@@ -137,7 +137,7 @@ function Team() {
 
 ## Route Loader Caching
 
-> The built-in caching mechanisms for React Location are extremely basic on purpose since **caching is not the core responsibility or purpose of React Location**. That said, it ensures a very good UX out of the box by doing the bare minimum to retain navigational consistency.
+> The built-in caching mechanisms for TanStack Router are extremely basic on purpose since **caching is not the core responsibility or purpose of TanStack Router**. That said, it ensures a very good UX out of the box by doing the bare minimum to retain navigational consistency.
 
 By default, route loaders are called for **new or changed routes in the route hierarchy that resulted from a navigation**.
 

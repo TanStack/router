@@ -2,7 +2,7 @@
 title: Route Elements
 ---
 
-After we have defined our routes and set up data loaders for them, we can finally tell React Location what to render when those routes are matched!
+After we have defined our routes and set up data loaders for them, we can finally tell TanStack Router what to render when those routes are matched!
 
 There are 3 types of route elements:
 

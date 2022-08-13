@@ -4,9 +4,9 @@ title: Helpful Tips
 
 > Link, take this sword... I mean Devtools!... to help you on your way!
 
-Wave your hands in the air and shout hooray because React Location comes with dedicated devtools! 🥳
+Wave your hands in the air and shout hooray because TanStack Router comes with dedicated devtools! 🥳
 
-When you begin your React Location journey, you'll want these devtools by your side. They help visualize all of the inner workings of React Location and will likely save you hours of debugging if you find yourself in a pinch!
+When you begin your TanStack Router journey, you'll want these devtools by your side. They help visualize all of the inner workings of TanStack Router and will likely save you hours of debugging if you find yourself in a pinch!
 
 > Please note that for now, the devtools **do not support React Native**. If you would like to help us make the devtools platform-agnostic, please let us know!
 
@@ -18,7 +18,7 @@ The devtools are bundle split into the `react-router-devtools` package. No need 
 import { ReactLocationDevtools } from '@tanstack/router-devtools'
 ```
 
-By default, React Location Devtools are only included in bundles when `process.env.NODE_ENV === 'development'`, so you don't need to worry about excluding them during a production build.
+By default, TanStack Router Devtools are only included in bundles when `process.env.NODE_ENV === 'development'`, so you don't need to worry about excluding them during a production build.
 
 ## Floating Mode
 
@@ -51,7 +51,7 @@ function App() {
   - Use this to add props to the toggle button. For example, you can add `className`, `style` (merge and override default style), `onClick` (extend default handler), etc.
 - `position?: "top-left" | "top-right" | "bottom-left" | "bottom-right"`
   - Defaults to `bottom-left`
-  - The position of the React Location logo to open and close the devtools panel
+  - The position of the TanStack Router logo to open and close the devtools panel
 
 ## Embedded Mode
 
