@@ -146,9 +146,24 @@ export function useAction<
   const router = useRouter()
   return router.getAction<TPayload, TResponse, TError>(
     { from: match.pathname, to: '.', ...opts },
-    { isActive: !opts?.to },
+    {
+      isActive: !opts?.to,
+    },
   )
 }
+
+// export function Form(props: React.HTMLProps<HTMLFormElement>) {
+//   const action = useAction()
+
+//   return (
+//     <form
+//       {...props}
+
+//     >
+//       {props.children}
+//     </form>
+//   )
+// }
 
 export function useMatchRoute() {
   const router = useRouter()
@@ -232,8 +247,17 @@ export function Outlet() {
 
   if (!matches.length) return null
 
+  const [match] = matches
+
   let element = router.getOutletElement(matches) ?? <Outlet />
-  return <MatchesProvider value={matches}>{element}</MatchesProvider>
+
+  const catchElement = match?.route.catchElement ?? router.defaultCatchElement
+
+  return (
+    <MatchesProvider value={matches}>
+      <CatchBoundary catchElement={catchElement}>{element}</CatchBoundary>
+    </MatchesProvider>
+  )
 }
 
 export function useResolvePath() {
@@ -359,5 +383,50 @@ export function Link(props: LinkProps) {
           typeof children === 'function' ? children({ isActive }) : children,
       }}
     />
+  )
+}
+
+class CatchBoundary extends React.Component<{
+  children: any
+  catchElement: any
+}> {
+  state = {
+    error: false,
+  }
+  componentDidCatch(error: any, info: any) {
+    console.error(error)
+
+    this.setState({
+      error,
+      info,
+    })
+  }
+  reset = () => {
+    this.setState({
+      error: false,
+      info: false,
+    })
+  }
+  render() {
+    const catchElement = this.props.catchElement ?? DefaultCatchBoundary
+
+    if (this.state.error) {
+      return typeof catchElement === 'function'
+        ? catchElement(this.state)
+        : catchElement
+    }
+
+    return this.props.children
+  }
+}
+
+function DefaultCatchBoundary({ error }: { error: any }) {
+  return (
+    <div style={{ padding: '.5rem', maxWidth: '100%' }}>
+      {error.message ? null : <h1>Something went wrong!</h1>}
+      <small>
+        <em>{error.message}</em>
+      </small>
+    </div>
   )
 }

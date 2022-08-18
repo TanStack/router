@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-location-react-example-kitchen-sink",
+  "name": "tanstack-router-react-example-kitchen-sink",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -11,6 +11,7 @@
   "dependencies": {
     "@vitejs/plugin-react": "^1.1.3",
     "@tanstack/react-router": "^3.0.0",
+    "immer": "^9.0.15",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "vite": "^2.8.6"

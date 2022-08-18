@@ -7,7 +7,7 @@ export const packages: Package[] = [
     name: '@tanstack/router-core',
     packageDir: 'router-core',
     srcDir: 'src',
-    jsName: 'LocationCore',
+    jsName: 'RouterCore',
     entryFile: 'src/index.ts',
     outputFile: 'router-core',
     globals: {},

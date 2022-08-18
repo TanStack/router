@@ -11,6 +11,7 @@ import { createTimer, sleep } from './utils'
 
 function createRouterInstance(opts?: { initialEntries?: string[] }) {
   return new RouterInstance({
+    routes: [],
     history: createMemoryHistory({
       initialEntries: opts?.initialEntries ?? ['/'],
     }),
@@ -153,7 +154,7 @@ describe('Router', () => {
       routes,
     })
 
-    router.mount()
+    await router.mount()
     expect(router.state.location.href).toBe('/')
 
     let promise = router.navigate({ to: 'a' })
@@ -197,12 +198,11 @@ describe('Router', () => {
 
     timer.start()
     await router.navigate({ to: 'a/b' })
-    expect(timer.getTime()).toBeLessThan(18)
-
     expect(router.state.loaderData).toEqual({
       a: true,
       b: true,
     })
+    expect(timer.getTime()).toBeLessThan(30)
   })
 
   test('async navigates with import + loader', async () => {
@@ -246,12 +246,11 @@ describe('Router', () => {
 
     timer.start()
     await router.navigate({ to: 'a/b' })
-    expect(timer.getTime()).toBeLessThan(28)
-
     expect(router.state.loaderData).toEqual({
       a: true,
       b: true,
     })
+    expect(timer.getTime()).toBeLessThan(28)
   })
 
   test('async navigates with import + elements + loader', async () => {
@@ -302,12 +301,11 @@ describe('Router', () => {
     router.mount()
 
     await router.navigate({ to: 'a/b' })
-    expect(timer.getTime()).toBeLessThan(55)
-
     expect(router.state.loaderData).toEqual({
       a: true,
       b: true,
     })
+    expect(timer.getTime()).toBeLessThan(55)
   })
 
   test('async navigates with pending state', async () => {
@@ -334,11 +332,10 @@ describe('Router', () => {
       routes,
     })
 
-    router.mount()
+    await router.mount()
 
     const timer = createTimer()
     await router.navigate({ to: 'a/b' })
-
     expect(timer.getTime()).toBeLessThan(46)
   })
 })
@@ -521,6 +518,7 @@ describe('resolvePath', () => {
     ;[
       ['/', '/', '/', '/'],
       ['/', '/', '/a', '/a'],
+      ['/', '/', 'a/', '/a/'],
       ['/', '/', '/a/b', '/a/b'],
       ['/', 'a', 'b', '/a/b'],
       ['/a/b', 'c', '/a/b/c', '/a/b/c'],

@@ -28,11 +28,11 @@ type StyledComponent<T> = T extends 'button'
 export function getStatusColor(match: RouteMatch, theme: Theme) {
   return match.isPending
     ? theme.warning
-    : match.status === 'loading'
+    : match.isFetching
     ? theme.active
-    : match.status === 'rejected'
+    : match.status === 'error'
     ? theme.danger
-    : match.status === 'resolved'
+    : match.status === 'success'
     ? theme.success
     : theme.gray
 }

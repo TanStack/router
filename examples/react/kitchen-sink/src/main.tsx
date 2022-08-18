@@ -22,10 +22,12 @@ import {
   Invoice,
   User,
   postInvoice,
+  patchInvoice,
 } from './mockTodos'
 
 import reallyExpensiveRoute from './reallyExpensive'
 import { loaderDelayFn } from './utils'
+import { createRoutes } from '@tanstack/router-core/src'
 
 //
 
@@ -57,105 +59,114 @@ declare module '@tanstack/react-router' {
 }
 
 // Build our routes. We could do this in our component, too.
-const routes: Route[] = [
-  {
-    path: '/',
-    id: 'tanner',
-    children: [
-      { path: '/', element: <Home />, id: 'home' },
-      {
-        path: 'dashboard',
-        element: <Dashboard />,
-        loader: async () => {
-          console.log('Fetching all invoices...')
-          return {
-            invoices: await fetchInvoices(),
-          }
+const routes = createRoutes(
+  [
+    {
+      path: '/',
+      id: 'tanner',
+      children: [
+        { path: '/', element: <Home />, id: 'home' },
+        {
+          path: 'dashboard',
+          element: <Dashboard />,
+          loader: async () => {
+            console.log('Fetching all invoices...')
+            return {
+              invoices: await fetchInvoices(),
+            }
+          },
+          children: [
+            { path: '/', element: <DashboardHome /> },
+            {
+              path: 'invoices',
+              element: <Invoices />,
+              children: [
+                {
+                  path: '/',
+                  element: <InvoicesHome />,
+                  action: async (partialInvoice: Partial<Invoice>, ctx) => {
+                    const invoice = await postInvoice(partialInvoice)
+
+                    // // Redirect to the new invoice
+                    // ctx.router.navigate({
+                    //   to: invoice.id,
+                    //   // Use the current match for relative paths
+                    //   from: ctx.match.pathname,
+                    // })
+
+                    return invoice
+                  },
+                },
+                {
+                  path: ':invoiceId',
+                  element: <InvoiceView />,
+                  loader: async ({ params: { invoiceId } }) => {
+                    console.log('Fetching invoice...')
+                    return {
+                      invoice: await fetchInvoiceById(invoiceId!),
+                    }
+                  },
+                  action: patchInvoice,
+                },
+              ],
+            },
+            {
+              path: 'users',
+              element: <Users />,
+              loader: async () => {
+                return {
+                  users: await fetchUsers(),
+                }
+              },
+              preSearchFilters: [
+                // Keep the usersView search param around
+                // while in this route (or it's children!)
+                (search) => ({
+                  ...search,
+                  usersView: {
+                    ...search.usersView,
+                  },
+                }),
+              ],
+              children: [
+                {
+                  path: ':userId',
+                  element: <UserView />,
+                  loader: async ({ params: { userId } }) => {
+                    return {
+                      user: await fetchUserById(userId!),
+                    }
+                  },
+                },
+              ],
+            },
+          ],
         },
-        children: [
-          { path: '/', element: <DashboardHome /> },
-          {
-            path: 'invoices',
-            element: <Invoices />,
-            action: async (data, ctx) => {
-              const invoice = await postInvoice()
-              // Redirect to the new invoice
-              ctx.router.navigate({
-                to: invoice.id,
-                // Use the current match for relative paths
-                from: ctx.match.pathname,
-              })
-              return invoice
+        {
+          // Your elements can be asynchronous, which means you can code-split!
+          path: 'expensive',
+          element: () =>
+            loaderDelayFn(() => import('./Expensive')).then((res) => (
+              <res.Expensive />
+            )),
+        },
+        // Obviously, you can put routes in other files, too
+        reallyExpensiveRoute,
+        {
+          path: 'authenticated/',
+          element: <Auth />,
+          children: [
+            {
+              path: '/',
+              element: <Authenticated />,
             },
-            children: [
-              { path: '/', element: <InvoicesHome /> },
-              {
-                path: ':invoiceId',
-                element: <InvoiceView />,
-                loader: async ({ params: { invoiceId } }) => {
-                  console.log('Fetching invoice...')
-                  return {
-                    invoice: await fetchInvoiceById(invoiceId!),
-                  }
-                },
-              },
-            ],
-          },
-          {
-            path: 'users',
-            element: <Users />,
-            loader: async () => {
-              return {
-                users: await fetchUsers(),
-              }
-            },
-            preSearchFilters: [
-              // Keep the usersView search param around
-              // while in this route (or it's children!)
-              (search) => ({
-                ...search,
-                usersView: {
-                  ...search.usersView,
-                },
-              }),
-            ],
-            children: [
-              {
-                path: ':userId',
-                element: <UserView />,
-                loader: async ({ params: { userId } }) => {
-                  return {
-                    user: await fetchUserById(userId!),
-                  }
-                },
-              },
-            ],
-          },
-        ],
-      },
-      {
-        // Your elements can be asynchronous, which means you can code-split!
-        path: 'expensive',
-        element: () =>
-          loaderDelayFn(() => import('./Expensive')).then((res) => (
-            <res.Expensive />
-          )),
-      },
-      // Obviously, you can put routes in other files, too
-      reallyExpensiveRoute,
-      {
-        path: 'authenticated/',
-        element: <Auth />,
-        children: [
-          {
-            path: '/',
-            element: <Authenticated />,
-          },
-        ],
-      },
-    ],
-  },
-]
+          ],
+        },
+      ],
+    },
+  ],
+  (type) => {},
+)
 
 // Provide our location and routes to our application
 function App() {
@@ -172,10 +183,6 @@ function App() {
   )
   const [defaultLinkPreloadMaxAge, setDefaultLinkPreloadMaxAge] =
     useSessionStorage('defaultLinkPreloadMaxAge', 0)
-  const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useSessionStorage(
-    'defaultLoaderMaxAge',
-    0,
-  )
 
   return (
     <>
@@ -222,21 +229,6 @@ function App() {
             />
           </div>
         </div>
-        <div>
-          Loader Max Age:{' '}
-          {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : 'Off'}
-        </div>
-        <div>
-          <input
-            type="range"
-            min="0"
-            max="10000"
-            step="250"
-            value={defaultLoaderMaxAge}
-            onChange={(e) => setDefaultLoaderMaxAge(e.target.valueAsNumber)}
-            className={`w-full`}
-          />
-        </div>
         <div>Action Delay: {actionDelay}ms</div>
         <div>
           <input
@@ -281,14 +273,12 @@ function App() {
             </div>
           }
           defaultLinkPreloadMaxAge={defaultLinkPreloadMaxAge}
-          defaultLoaderMaxAge={defaultLoaderMaxAge}
           defaultPendingMs={defaultPendingMs}
           defaultPendingMinMs={defaultPendingMinMs}
           // Normally, the options above aren't changing, but for this particular
           // example, we need to key the router when they change
           key={[
             defaultLinkPreloadMaxAge,
-            defaultLoaderMaxAge,
             defaultPendingMs,
             defaultPendingMinMs,
           ].join('.')}
@@ -441,19 +431,14 @@ function DashboardHome() {
 
 function Invoices() {
   const { invoices } = useLoaderData()
-  const invoicesAction = useAction()
+  const invoicesAction = useAction({ to: './' })
+  const invoiceAction = useAction({ to: './:invoiceId' })
+
+  console.log(invoiceAction)
 
   return (
     <div className="flex-1 flex">
       <div className="divide-y w-48">
-        <div className="flex">
-          <button
-            onClick={() => invoicesAction.send()}
-            className="flex-1 bg-green-500 text-white p-1"
-          >
-            Create New Invoice
-          </button>
-        </div>
         {invoices?.map((invoice) => {
           return (
             <div key={invoice.id}>
@@ -473,6 +458,15 @@ function Invoices() {
             </div>
           )
         })}
+        {invoicesAction.pending.map((action) => (
+          <div key={action.submittedAt}>
+            <Link className="block py-2 px-3 text-blue-700">
+              <pre className="text-sm">
+                #<Spinner /> - {action.submission.title?.slice(0, 10)}
+              </pre>
+            </Link>
+          </div>
+        ))}
       </div>
       <div className="flex-1 border-l border-gray-200">
         <Outlet />
@@ -482,16 +476,31 @@ function Invoices() {
 }
 
 function InvoicesHome() {
-  const invoicesAction = useAction()
-
-  console.log(invoicesAction)
+  const action = useAction({ tsPath: '/' })
 
   return (
     <>
       <div className="p-2">
-        {invoicesAction?.status === 'pending'
-          ? 'Creating invoice...'
-          : 'Select an invoice.'}
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            const formData = new FormData(event.target as HTMLFormElement)
+            action.submit({
+              title: formData.get('title') as string,
+              body: formData.get('body') as string,
+            })
+          }}
+          className="space-y-2"
+        >
+          <div>Create a new Invoice:</div>
+          <InvoiceFields invoice={{} as Invoice} />
+          <div>
+            <button className="bg-blue-500 rounded p-2 uppercase text-white font-black">
+              Save
+            </button>
+          </div>
+        </form>
       </div>
     </>
   )
@@ -501,6 +510,7 @@ function InvoiceView() {
   const { invoice } = useLoaderData()
   const search = useSearch()
   const navigate = useNavigate()
+  const action = useAction()
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
 
@@ -512,38 +522,105 @@ function InvoiceView() {
   }, [notes])
 
   return (
-    <div className="p-2">
-      <h4 className="font-bold">{invoice?.title}</h4>
+    <form
+      key={invoice.id}
+      onSubmit={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        const formData = new FormData(event.target as HTMLFormElement)
+        action.submit({
+          title: formData.get('title') as string,
+          body: formData.get('body') as string,
+        })
+      }}
+      className="p-2 space-y-2"
+    >
+      <InvoiceFields
+        invoice={invoice}
+        disabled={action.latest?.status === 'pending'}
+      />
       <div>
-        <p>{invoice?.body}</p>
-      </div>
-      <hr className="my-2" />
-      <Link
-        search={(old) => ({
-          ...old,
-          showNotes: old?.showNotes ? undefined : true,
-        })}
-        className="text-blue-700 "
-      >
-        {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
-      </Link>
-      {search.showNotes ? (
-        <>
-          <div>
-            <div className="h-2" />
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={5}
-              className="shadow w-full p-2 rounded"
-              placeholder="Write some notes here..."
-            />
-            <div className="italic text-xs">
-              Notes are stored in the URL. Try copying the URL into a new tab!
+        <Link
+          search={(old) => ({
+            ...old,
+            showNotes: old?.showNotes ? undefined : true,
+          })}
+          className="text-blue-700 "
+        >
+          {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
+        </Link>
+        {search.showNotes ? (
+          <>
+            <div>
+              <div className="h-2" />
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={5}
+                className="shadow w-full p-2 rounded"
+                placeholder="Write some notes here..."
+              />
+              <div className="italic text-xs">
+                Notes are stored in the URL. Try copying the URL into a new tab!
+              </div>
             </div>
+          </>
+        ) : null}
+      </div>
+      <div>
+        <button
+          className="bg-blue-500 rounded p-2 uppercase text-white font-black"
+          disabled={action.latest?.status === 'pending'}
+        >
+          Save
+        </button>
+      </div>
+      <div
+        key={action.latest?.submittedAt}
+        className="animate-bounce [animation-iteration-count:1.5] [animation-duration:.3s]"
+      >
+        {action.latest?.status === 'success' ? (
+          <div className="inline-block px-2 py-1 rounded bg-green-500 text-white">
+            Saved!
           </div>
-        </>
-      ) : null}
+        ) : action.latest?.status === 'error' ? (
+          <div className="inline-block px-2 py-1 rounded bg-red-500 text-white">
+            Failed to save.
+          </div>
+        ) : null}
+      </div>
+    </form>
+  )
+}
+
+function InvoiceFields({
+  invoice,
+  disabled,
+}: {
+  invoice: Invoice
+  disabled?: boolean
+}) {
+  return (
+    <div className="space-y-2">
+      <h2 className="font-bold text-lg">
+        <input
+          name="title"
+          defaultValue={invoice?.title}
+          placeholder="Invoice Title"
+          className="border border-opacity-50 rounded p-2 w-full"
+          disabled={disabled}
+        />
+      </h2>
+      <div>
+        <textarea
+          name="body"
+          defaultValue={invoice?.body}
+          rows={6}
+          placeholder="Invoice Body..."
+          className="border border-opacity-50 p-2 rounded w-full"
+          disabled={disabled}
+        />
+      </div>
     </div>
   )
 }

@@ -21,9 +21,7 @@ export type ReactLocationOptions<TGenerics> = {
 **Example: Basic**
 
 ```tsx
-import { ReactLocation } from '@tanstack/react-router'
-
-const reactLocation = new ReactLocation()
+import { Router } from '@tanstack/react-router'
 ```
 
 **Example: Memory History**
