@@ -482,10 +482,24 @@ export type MatchesProviderProps<TGenerics> = {
   children: React.ReactNode
 }
 
+function arrayShallowEqual(arr1: unknown[], arr2: unknown[]): boolean {
+  if(arr1 === arr2) {
+    return true
+  }
+  if (arr1.length !== arr2.length) {
+    return false
+  }
+  return arr1.every((v, i) => v === arr2[i])
+}
+
 export function MatchesProvider<TGenerics>(
-  props: MatchesProviderProps<TGenerics>,
+  {value, children}: MatchesProviderProps<TGenerics>,
 ) {
-  return <MatchesContext.Provider {...props} />
+  const prevValueRef = React.useRef<RouteMatch<TGenerics>[]>(value);
+  const matches = arrayShallowEqual(prevValueRef.current, value) ? prevValueRef.current : value
+  prevValueRef.current = matches;
+
+  return <MatchesContext.Provider value={matches}>{children}</MatchesContext.Provider>
 }
 
 export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
