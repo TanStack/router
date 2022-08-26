@@ -8,7 +8,7 @@ import {
   HashHistory,
 } from 'history'
 import React from 'react'
-import { ParsePathParam } from './createRoutes'
+import { objectInputType, z, ZodObject, ZodObjectDef } from 'zod'
 
 export { createHashHistory, createBrowserHistory, createMemoryHistory }
 export * from './createRoutes'
@@ -17,6 +17,7 @@ import { decode, encode } from './qss'
 
 // Types
 
+export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<T, Y, N> = 1 extends 0 & T ? Y : N
 export type IsKnown<T, Y, N> = unknown extends T ? N : Y
 export type PickRequired<T, K extends keyof T> = Omit<T, K> &
@@ -40,14 +41,18 @@ export interface LocationState {}
 export interface RouteParams {
   [name: string]: string | undefined
 }
-export interface LoaderData {}
+export interface LoaderData {
+  [key: string]: unknown
+}
 
 type Timeout = ReturnType<typeof setTimeout>
 
 export type SearchSerializer = (searchObj: Record<string, any>) => string
 export type SearchParser = (searchStr: string) => Record<string, any>
 
-export type Updater<TResult> = TResult | ((prev?: TResult) => TResult)
+export type Updater<TPrevious, TResult = TPrevious> =
+  | TResult
+  | ((prev?: TPrevious) => TResult)
 
 export type Location = {
   href: string
@@ -66,136 +71,185 @@ export type FromLocation = {
   hash?: string
 }
 
+export type AnyLoaderData = Record<string, unknown>
+
 export type Route<
-  TLoaderData = unknown,
+  TPath extends string = string,
+  TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
+  TSearchSchema extends ZodObject<any> = ZodObject<any>,
 > = {
   // The path to match (relative to the nearest parent `Route` component or root basepath)
-  path?: string
+  path: TPath
   // An ID to uniquely identify this route within its siblings. This is only required for routes that *only match on search* or if you have multiple routes with the same path
   id?: string
   // If true, this route will be matched as case-sensitive
   caseSensitive?: boolean
+  searchSchema?: TSearchSchema
   // Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched.
-  search?: SearchPredicate
+  search?: SearchPredicate<z.infer<TSearchSchema>>
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
   // calls that match this route.
-  preSearchFilters?: SearchFilter[]
+  preSearchFilters?: SearchFilter<z.infer<TSearchSchema>>[]
   // Filter functions that can manipulate search params *after* they are passed to links and navigate
   // calls that match this route.
-  postSearchFilters?: SearchFilter[]
+  postSearchFilters?: SearchFilter<z.infer<TSearchSchema>>[]
   // The duration to wait during `loader` execution before showing the `pendingElement`
   pendingMs?: number
   // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
   pendingMinMs?: number
   // An array of child routes
-  children?: Route<any, any, any>[]
+  children?: Route<any, any, any, any>[]
   // Route Loaders (see below) can be inline on the route, or resolved async
-} & RouteLoaders<TLoaderData, TActionPayload, TActionResponse> & {
+} & RouteLoaders<
+  TPath,
+  TLoaderData,
+  TActionPayload,
+  TActionResponse,
+  TSearchSchema
+> & {
     // If `import` is defined, this route can resolve its elements and loaders in a single asynchronous call
     // This is particularly useful for code-splitting or module federation
     import?: (opts: {
       params: RouteParams
-      search: SearchSchema
-    }) => Promise<RouteLoaders<TLoaderData, TActionPayload, TActionResponse>>
+      search: z.infer<TSearchSchema>
+    }) => Promise<
+      RouteLoaders<
+        TPath,
+        TLoaderData,
+        TActionPayload,
+        TActionResponse,
+        TSearchSchema
+      >
+    >
   }
 
-export type ResolvedRoute<TLoaderData, TActionPayload, TActionResponse> = Omit<
-  PickRequired<Route<TLoaderData, TActionPayload, TActionResponse>, 'id'>,
+export type ResolvedRoute<
+  TPath extends string = string,
+  TLoaderData extends AnyLoaderData = {},
+  TActionPayload = unknown,
+  TActionResponse = unknown,
+> = Omit<
+  PickRequired<
+    Route<TPath, TLoaderData, TActionPayload, TActionResponse>,
+    'id'
+  >,
   'children'
 > & {
-  children?: ResolvedRoute<any, any, any>[]
+  children?: ResolvedRoute<any, any, any, any>[]
 }
 
 export interface RouteLoaders<
-  TLoaderData = unknown,
+  TPath extends string = string,
+  TLoaderData extends AnyLoaderData = {},
   TActionPayload = any,
   TActionData = unknown,
+  TSearchSchema extends ZodObject<any> = ZodObject<any>,
 > {
   // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
-  element?: GetFrameworkGeneric<'SyncOrAsyncElement', TLoaderData>
+  element?: GetFrameworkGeneric<'SyncOrAsyncElement', NoInfer<TLoaderData>>
   // The content to be rendered when `loader` encounters an error
-  errorElement?: GetFrameworkGeneric<'SyncOrAsyncElement', TLoaderData>
+  errorElement?: GetFrameworkGeneric<'SyncOrAsyncElement', NoInfer<TLoaderData>>
   // The content to be rendered when rendering encounters an error
-  catchElement?: GetFrameworkGeneric<'SyncOrAsyncElement', TLoaderData>
+  catchElement?: GetFrameworkGeneric<'SyncOrAsyncElement', NoInfer<TLoaderData>>
   // The content to be rendered when the duration of `loader` execution surpasses the `pendingMs` duration
-  pendingElement?: GetFrameworkGeneric<'SyncOrAsyncElement', TLoaderData>
+  pendingElement?: GetFrameworkGeneric<
+    'SyncOrAsyncElement',
+    NoInfer<TLoaderData>
+  >
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-  loader?: LoaderFn<TLoaderData>
+  loader?: LoaderFn<TPath, TLoaderData, TSearchSchema>
   // An asynchronous function made available to the route for performing asynchronous or mutative actions that
   // might invalidate the route's data.
-  action?: ActionFn<TActionPayload, TActionData, TLoaderData>
+  action?: ActionFn<TPath, NoInfer<TLoaderData>, TActionPayload, TActionData>
   // This function is called
   // when moving from an inactive state to an active one. Likewise, when moving from
   // an active to an inactive state, the return function (if provided) is called.
   onMatch?: (
-    match: RouteMatch<TLoaderData>,
-  ) => void | undefined | ((match: RouteMatch<TLoaderData>) => void)
+    match: RouteMatch<TPath, TLoaderData>,
+  ) => void | undefined | ((match: RouteMatch<TPath, TLoaderData>) => void)
   // This function is called when the route remains active from one transition to the next.
-  onTransition?: (match: RouteMatch<TLoaderData>) => void
+  onTransition?: (match: RouteMatch<TPath, TLoaderData>) => void
   // An object of whatever you want! This object is accessible anywhere matches are.
   meta?: RouteMeta
 }
 
-export type SearchFilter = (prev: SearchSchema) => SearchSchema
+export type SearchFilter<T, U = T> = (prev: T) => U
 
 export type MatchLocation = {
   to?: string | number | null
-  search?: SearchPredicate
+  search?: SearchPredicate<unknown>
   fuzzy?: boolean
   caseSensitive?: boolean
   from?: string
   fromCurrent?: boolean
 }
 
-export type SearchPredicate = (search: SearchSchema) => any
+export type SearchPredicate<TSearch> = (search: TSearch) => any
 
-export type UnloadedMatch<TLoaderData, TActionPayload, TActionResponse> = {
+export type UnloadedMatch<
+  TPath extends string = string,
+  TLoaderData extends AnyLoaderData = {},
+  TActionPayload = unknown,
+  TActionResponse = unknown,
+  TSearchSchema extends ZodObject<any> = ZodObject<any>,
+> = {
   id: string
-  route: ResolvedRoute<TLoaderData, TActionPayload, TActionResponse>
+  route: ResolvedRoute<TPath, TLoaderData, TActionPayload, TActionResponse>
   pathname: string
   params: RouteParams
-  search: SearchSchema
+  search: TSearchSchema
 }
 
-export type LoaderFn<TLoaderData, TPath = string> = (
-  match: RouteMatch<TLoaderData, unknown, unknown>,
-  ctx: RouteMatchContext<TLoaderData, any, any>,
+export type LoaderFn<
+  TPath extends string,
+  TLoaderData extends Record<string, unknown>,
+  TSearchSchema extends ZodObject<any> = ZodObject<any>,
+> = (
+  match: RouteMatch<TPath, {}, unknown, unknown, TSearchSchema>,
+  ctx: RouteMatchContext<TPath>,
 ) => PromiseLike<TLoaderData>
 
 export type ActionFn<
+  TPath extends string = string,
+  TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
-  TLoaderData = unknown,
 > = (
-  submission: undefined | TActionPayload,
-  ctx: ActionContext<TLoaderData, TActionPayload, TActionResponse>,
+  submission: TActionPayload,
+  ctx: ActionContext<TPath, TLoaderData, TActionPayload, TActionResponse>,
 ) => PromiseLike<TActionResponse>
 
-export type UnloaderFn<TLoaderData> = (
-  routeMatch: RouteMatch<TLoaderData>,
+export type UnloaderFn<TPath extends string> = (
+  routeMatch: RouteMatch<TPath>,
 ) => void
 
-export type RouteMatchContext<TLoaderData, TActionPayload, TActionResponse> = {
-  match: UnloadedMatch<TLoaderData, TActionPayload, TActionResponse>
+export type RouteMatchContext<
+  TPath extends string,
+  TLoaderData extends AnyLoaderData = {},
+  TActionPayload = unknown,
+  TActionResponse = unknown,
+> = {
+  match: UnloadedMatch<TPath, TLoaderData, TActionPayload, TActionResponse>
   signal?: AbortSignal
   router: RouterInstance
 }
 
 export type ActionContext<
-  TLoaderData = unknown,
+  TPath extends string = string,
+  TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
 > = {
   router: RouterInstance
-  match: UnloadedMatch<TLoaderData, TActionPayload, TActionResponse>
+  match: UnloadedMatch<TPath, TLoaderData, TActionPayload, TActionResponse>
 }
 
 export type RouterState = {
   status: 'idle' | 'loading'
   location: Location
-  matches: RouteMatch<unknown>[]
+  matches: RouteMatch[]
   lastUpdated: number
   loaderData: LoaderData
   action?: ActionState
@@ -205,7 +259,7 @@ export type RouterState = {
 
 export type PendingState = {
   location: Location
-  matches: RouteMatch<unknown>[]
+  matches: RouteMatch[]
 }
 
 type PromiseLike<T> = Promise<T> | T
@@ -234,13 +288,13 @@ export type SnapshotRouteMatch<TData> = {
 
 export type BuildNextOptions = {
   to?: string | number | null
-  search?: true | Updater<SearchSchema>
+  search?: true | Updater<unknown>
   hash?: true | Updater<string>
   key?: string
   from?: string
   fromCurrent?: boolean
-  __preSearchFilters?: SearchFilter[]
-  __postSearchFilters?: SearchFilter[]
+  __preSearchFilters?: SearchFilter<unknown>[]
+  __postSearchFilters?: SearchFilter<unknown>[]
 }
 
 export type NavigateOptions = BuildNextOptions & {
@@ -251,7 +305,7 @@ export type LinkOptions = {
   // The absolute or relative destination pathname
   to?: string | number | null
   // The new search object or a function to update it
-  search?: true | Updater<SearchSchema>
+  search?: true | Updater<unknown, unknown>
   // The new has string or a function to update it
   hash?: Updater<string>
   // Whether to replace the current history stack instead of pushing a new one
@@ -289,9 +343,9 @@ type ActiveOptions = {
   includeHash?: boolean
 }
 
-export type FilterRoutesFn = (
-  routes: Route<unknown, unknown, unknown>[],
-) => Route<unknown, unknown, unknown>[]
+export type FilterRoutesFn = <TRoute extends Route<any, any, any, any>>(
+  routes: TRoute[],
+) => TRoute[]
 
 type Listener = () => void
 
@@ -338,11 +392,11 @@ export type LinkInfo = {
 
 export type PreloadCacheEntry = {
   expiresAt: number
-  match: RouteMatch<unknown>
+  match: RouteMatch
 }
 
 export type RouterOptions = {
-  routes: Route<any, any, any>[]
+  routes: Route<any, any, any, any>[]
   basepath?: string
 } & Partial<
   Pick<RouterInstance, 'history' | 'stringifySearch' | 'parseSearch'>
@@ -405,10 +459,10 @@ export class RouterInstance extends Subscribable {
   __experimental__snapshot?: __Experimental__RouterSnapshot
 
   // Computed in this.update()
-  routes!: ResolvedRoute<unknown, unknown, unknown>[]
+  routes!: ResolvedRoute[]
   basepath!: string
   rootMatch!: Pick<
-    RouteMatch<unknown>,
+    RouteMatch,
     'id' | 'params' | 'search' | 'pathname' | 'data' | 'data' | 'status'
   >
 
@@ -419,7 +473,7 @@ export class RouterInstance extends Subscribable {
   destroy: () => void
   state: RouterState
   isTransitioning: boolean = false
-  routesById: Record<string, ResolvedRoute<unknown, unknown, unknown>> = {}
+  routesById: Record<string, ResolvedRoute> = {}
   navigationPromise = Promise.resolve()
   resolveNavigation = () => {}
   startedLoadingAt = Date.now()
@@ -437,7 +491,7 @@ export class RouterInstance extends Subscribable {
 
     this.update(options)
 
-    let matches: RouteMatch<unknown>[] = []
+    let matches: RouteMatch[] = []
 
     const __experimental__snapshot = options?.__experimental__snapshot
 
@@ -501,11 +555,11 @@ export class RouterInstance extends Subscribable {
     this.routes = this.buildRoutes(routes)
   }
 
-  buildRoutes = (routes: Route<unknown, unknown, unknown>[]) => {
+  buildRoutes = (routes: Route[]) => {
     const recurseRoutes = (
-      routes: readonly Route<any, any, any>[],
-      parent?: Route<unknown, unknown, unknown>,
-    ): ResolvedRoute<unknown, unknown, unknown>[] => {
+      routes: Route<any, any, any, any>[],
+      parent?: ResolvedRoute,
+    ): ResolvedRoute[] => {
       return routes.map((route) => {
         const path = route.path ?? '*'
 
@@ -514,7 +568,7 @@ export class RouterInstance extends Subscribable {
           `${path?.replace(/(.)\/$/, '$1')}${route.id ? `-${route.id}` : ''}`,
         ])
 
-        const resolvedRoute: ResolvedRoute<unknown, unknown, unknown> = {
+        const resolvedRoute: ResolvedRoute = {
           ...route,
           children: [],
           pendingMs: route.pendingMs ?? this.defaultPendingMs,
@@ -873,20 +927,18 @@ export class RouterInstance extends Subscribable {
     return matches
   }
 
-  matchRoutes = (
-    location: Location,
-  ): UnloadedMatch<unknown, unknown, unknown>[] => {
+  matchRoutes = (location: Location): UnloadedMatch[] => {
     this.cleanPreloadCache()
 
-    const matches: UnloadedMatch<unknown, unknown, unknown>[] = []
+    const matches: UnloadedMatch[] = []
 
     if (!this.routes?.length) {
       return matches
     }
 
     const recurse = async (
-      routes: Route<unknown, unknown, unknown>[],
-      parentMatch: UnloadedMatch<unknown, unknown, unknown>,
+      routes: Route<any, any, any, any>[],
+      parentMatch: UnloadedMatch,
     ): Promise<void> => {
       let { pathname, params } = parentMatch
       const filteredRoutes = this?.filterRoutes
@@ -924,9 +976,9 @@ export class RouterInstance extends Subscribable {
 
       const interpolatedId = interpolatePath(route.id, params, true)
 
-      const match: UnloadedMatch<unknown, unknown, unknown> = {
+      const match: UnloadedMatch = {
         id: interpolatedId,
-        route: route as ResolvedRoute<unknown, unknown, unknown>,
+        route: route as ResolvedRoute,
         params,
         pathname,
         search: location.search,
@@ -939,17 +991,12 @@ export class RouterInstance extends Subscribable {
       }
     }
 
-    recurse(
-      this.routes,
-      this.rootMatch as unknown as UnloadedMatch<unknown, unknown, unknown>,
-    )
+    recurse(this.routes, this.rootMatch as unknown as UnloadedMatch)
 
     return matches
   }
 
-  resolveMatches = (
-    unloadedMatches: UnloadedMatch<unknown, unknown, unknown>[],
-  ): RouteMatch<unknown>[] => {
+  resolveMatches = (unloadedMatches: UnloadedMatch[]): RouteMatch[] => {
     if (!unloadedMatches?.length) {
       return []
     }
@@ -975,12 +1022,12 @@ export class RouterInstance extends Subscribable {
   }
 
   loadMatches = async (
-    resolvedMatches: RouteMatch<unknown>[],
+    resolvedMatches: RouteMatch<string, any, any, any>[],
     loaderOpts?: { withPending?: boolean } & (
       | { preload: true; maxAge: number }
       | { preload?: false; maxAge?: never }
     ),
-  ): Promise<RouteMatch<unknown>[]> => {
+  ): Promise<RouteMatch[]> => {
     const matchPromises = resolvedMatches.map(async (match) => {
       if (
         (match.status === 'success' && match.isInvalid) ||
@@ -1039,7 +1086,7 @@ export class RouterInstance extends Subscribable {
     const matches = this.matchRoutes(next)
     const match = matches.find(
       (d) => d.pathname === next.pathname,
-    )! as UnloadedMatch<unknown, TActionPayload, TActionResponse>
+    )! as UnloadedMatch<string, LoaderData, TActionPayload, TActionResponse>
     const route = match.route
 
     if (!route) {
@@ -1069,7 +1116,7 @@ export class RouterInstance extends Subscribable {
     Object.assign(action, {
       route,
       submit: async (
-        submission?: TActionPayload,
+        submission: TActionPayload,
         actionOpts?: { invalidate?: boolean },
       ) => {
         if (!route) {
@@ -1130,7 +1177,7 @@ export class RouterInstance extends Subscribable {
     return action
   }
 
-  getOutletElement = (matches: RouteMatch<unknown>[]): JSX.Element => {
+  getOutletElement = (matches: RouteMatch[]): JSX.Element => {
     const match = matches[0]
 
     const element = ((): React.ReactNode => {
@@ -1353,18 +1400,20 @@ export class RouterInstance extends Subscribable {
 }
 
 export class RouteMatch<
-  TLoaderData = unknown,
+  TPath extends string = string,
+  TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
+  TSearchSchema extends ZodObject<any> = ZodObject<any>,
   TParams extends RouteParams = RouteParams,
 > {
   id!: string
   router: RouterInstance
-  parentMatch?: RouteMatch<any>
-  route!: ResolvedRoute<TLoaderData, TActionPayload, TActionResponse>
+  parentMatch?: RouteMatch<any, any, any, any>
+  route!: ResolvedRoute<TPath, TLoaderData, TActionPayload, TActionResponse>
   pathname!: string
   params!: TParams
-  search!: SearchSchema
+  search!: z.infer<TSearchSchema>
   updatedAt?: number
   element?: GetFrameworkGeneric<'Element', TLoaderData>
   errorElement?: GetFrameworkGeneric<'Element', TLoaderData>
@@ -1377,12 +1426,17 @@ export class RouteMatch<
   dataPromise?: Promise<void>
   pendingTimeout?: Timeout
   pendingMinPromise?: Promise<void>
-  onExit?: void | ((match: RouteMatch<TLoaderData>) => void)
+  onExit?: void | ((match: RouteMatch<TPath, TLoaderData>) => void)
   isInvalid = false
 
   constructor(
     router: RouterInstance,
-    unloadedMatch: UnloadedMatch<TLoaderData, TActionPayload, TActionResponse>,
+    unloadedMatch: UnloadedMatch<
+      TPath,
+      TLoaderData,
+      TActionPayload,
+      TActionResponse
+    >,
   ) {
     this.router = router
     Object.assign(this, unloadedMatch)
@@ -1430,7 +1484,7 @@ export class RouteMatch<
     clearTimeout(this.pendingTimeout)
   }
 
-  setParentMatch = (parentMatch?: RouteMatch<TLoaderData>) => {
+  setParentMatch = (parentMatch?: RouteMatch<TPath, TLoaderData>) => {
     this.parentMatch = parentMatch
   }
 
@@ -1510,7 +1564,7 @@ export class RouteMatch<
         this.dataPromise = Promise.resolve().then(async () => {
           try {
             const data = await this.route.loader?.(this as any, {
-              match: this,
+              match: this as any,
               signal: this.abortController.signal,
               router: this.router,
             })
@@ -1715,7 +1769,10 @@ export function matchByPath(
   return isMatch ? (params as Record<string, string>) : undefined
 }
 
-function matchBySearch(search: SearchSchema, matchLocation: MatchLocation) {
+function matchBySearch(
+  search: SearchSchemazzzzz,
+  matchLocation: MatchLocation,
+) {
   return !!(matchLocation.search && matchLocation.search(search))
 }
 
