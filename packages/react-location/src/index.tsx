@@ -315,11 +315,11 @@ type Listener = () => void
 
 // Source
 
-const LocationContext = React.createContext<{ location: ReactLocation<any> }>(
+export const LocationContext = React.createContext<{ location: ReactLocation<any> }>(
   null!,
 )
-const MatchesContext = React.createContext<RouteMatch<any>[]>(null!)
-const routerContext = React.createContext<{ router: RouterInstance<any> }>(
+export const MatchesContext = React.createContext<RouteMatch<any>[]>(null!)
+export const RouterContext = React.createContext<{ router: RouterInstance<any> }>(
   null!,
 )
 
@@ -520,12 +520,12 @@ export function Router<TGenerics extends PartialGenerics = DefaultGenerics>({
 
   return (
     <LocationContext.Provider value={{ location }}>
-      <routerContext.Provider value={{ router }}>
+      <RouterContext.Provider value={{ router }}>
         <InitialSideEffects />
         <MatchesProvider value={[router.rootMatch!, ...router.state.matches]}>
           {children ?? <Outlet />}
         </MatchesProvider>
-      </routerContext.Provider>
+      </RouterContext.Provider>
     </LocationContext.Provider>
   )
 }
@@ -1103,7 +1103,7 @@ export type UseRouterType<TGenerics extends PartialGenerics = DefaultGenerics> =
 export function useRouter<
   TGenerics extends PartialGenerics = DefaultGenerics,
 >(): RouterInstance<TGenerics> {
-  const value = React.useContext(routerContext)
+  const value = React.useContext(RouterContext)
   if (!value) {
     warning(true, 'You are trying to use useRouter() outside of ReactLocation!')
     throw new Error()
