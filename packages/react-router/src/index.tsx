@@ -4,27 +4,27 @@ import { useSyncExternalStore } from 'use-sync-external-store/shim'
 
 import {
   warning,
-  RouterInstance,
+  Router,
   RouterOptions,
   RouteMatch,
-  RouteParams,
   NavigateOptions,
   MatchLocation,
   MatchRouteOptions,
   LinkOptions,
+  RouteDef,
+  RoutesInfo,
+  Route,
 } from '@tanstack/router-core'
 
 export * from '@tanstack/router-core'
 
 declare module '@tanstack/router-core' {
-  interface FrameworkGenerics<TData = unknown> {
+  interface FrameworkGenerics {
     Element: React.ReactNode
     AsyncElement: (opts: {
       params: Record<string, string>
     }) => Promise<React.ReactNode>
-    SyncOrAsyncElement:
-      | React.ReactNode
-      | FrameworkGenerics<TData>['AsyncElement']
+    SyncOrAsyncElement: React.ReactNode | FrameworkGenerics['AsyncElement']
     LinkProps: React.HTMLAttributes<unknown>
   }
 }
@@ -37,8 +37,8 @@ export type PromptProps = {
 
 //
 
-const matchesContext = React.createContext<RouteMatch<unknown>[]>(null!)
-const routerContext = React.createContext<{ router: RouterInstance }>(null!)
+const matchesContext = React.createContext<RouteMatch[]>(null!)
+const routerContext = React.createContext<{ router: Router<any, any> }>(null!)
 
 // Detect if we're in the DOM
 const isDOM = Boolean(
@@ -50,7 +50,7 @@ const isDOM = Boolean(
 const useLayoutEffect = isDOM ? React.useLayoutEffect : React.useEffect
 
 export type MatchesProviderProps = {
-  value: RouteMatch<unknown>[]
+  value: RouteMatch[]
   children: React.ReactNode
 }
 
@@ -58,16 +58,44 @@ export function MatchesProvider(props: MatchesProviderProps) {
   return <matchesContext.Provider {...props} />
 }
 
-export type RouterProps = RouterOptions & {
-  // Children will default to `<Outlet />` if not provided
-  children?: React.ReactNode
-}
+export type RouterProps<TRouteDefs extends RouteDef = RouteDef> =
+  RouterOptions<TRouteDefs> & {
+    router: Router<TRouteDefs>
+    // Children will default to `<Outlet />` if not provided
+    children?: React.ReactNode
+  }
 
-export function Router({ children, ...rest }: RouterProps) {
-  const [router] = React.useState(() => {
-    return new RouterInstance(rest)
-  })
+// export class ReactRoute<
+//   TId extends string = string,
+//   TPath extends string = string,
+//   TLoaderData extends LoaderData = {},
+//   TAllLoaderData extends LoaderData = {},
+//   TActionPayload = unknown,
+//   TActionResponse = unknown,
+//   TSearchZod extends SearchZod = {},
+//   TSearchSchema extends AnySearchSchema = {},
+//   TParams extends RouteParams = Record<ParsePathParam<TPath>, string>,
+// > extends Route<
+//   TId,
+//   TPath,
+//   TLoaderData,
+//   TAllLoaderData,
+//   TActionPayload,
+//   TActionResponse,
+//   TSearchZod,
+//   TSearchSchema,
+//   TParams
+// > {
+//   constructor(options) {
+//     super()
+//   }
+// }
 
+export function RouterProvider<TRouteDefs extends RouteDef = RouteDef>({
+  children,
+  router,
+  ...rest
+}: RouterProps<TRouteDefs>) {
   router.update(rest)
 
   useSyncExternalStore(
@@ -82,10 +110,7 @@ export function Router({ children, ...rest }: RouterProps) {
   return (
     <routerContext.Provider value={{ router }}>
       <MatchesProvider
-        value={[
-          router.rootMatch as RouteMatch<unknown>,
-          ...router.state.matches,
-        ]}
+        value={[router.rootMatch as RouteMatch, ...router.state.matches]}
       >
         {children ?? <Outlet />}
       </MatchesProvider>
@@ -93,7 +118,7 @@ export function Router({ children, ...rest }: RouterProps) {
   )
 }
 
-export function useRouter(): RouterInstance {
+export function useRouter(): Router {
   const value = React.useContext(routerContext)
   warning(value, 'useRouter must be used inside a <Router> component!')
 
@@ -102,7 +127,7 @@ export function useRouter(): RouterInstance {
     () => value.router.state,
   )
 
-  return value.router as RouterInstance
+  return value.router as Router
 }
 
 function useLatestCallback<TCallback extends (...args: any[]) => any>(
@@ -117,19 +142,19 @@ function useLatestCallback<TCallback extends (...args: any[]) => any>(
   )
 }
 
-export function useMatches(): RouteMatch<unknown>[] {
+export function useMatches(): RouteMatch[] {
   return React.useContext(matchesContext)
 }
 
-export function useParentMatches(): RouteMatch<unknown>[] {
+export function useParentMatches(): RouteMatch[] {
   const router = useRouter()
   const match = useMatch()
   const matches = router.state.matches
   return matches.slice(0, matches.findIndex((d) => d.id === match.id) - 1)
 }
 
-export function useMatch<T>(): RouteMatch<T> {
-  return useMatches()?.[0] as RouteMatch<T>
+export function useMatch<T>(): RouteMatch {
+  return useMatches()?.[0] as RouteMatch
 }
 
 export function useLoaderData() {
@@ -144,7 +169,7 @@ export function useAction<
 >(opts?: Pick<NavigateOptions, 'to' | 'from'>) {
   const match = useMatch()
   const router = useRouter()
-  return router.getAction<TPayload, TResponse, TError>(
+  return router.getAction<TPayload, TResponse>(
     { from: match.pathname, to: '.', ...opts },
     {
       isActive: !opts?.to,
@@ -184,7 +209,7 @@ export function useMatchRoute() {
 
 export type MatchRouteProps = MatchLocation &
   MatchRouteOptions & {
-    children: React.ReactNode | ((routeParams?: RouteParams) => React.ReactNode)
+    children: React.ReactNode | ((routeParams?: PathParams) => React.ReactNode)
   }
 
 export function MatchRoute({
@@ -251,7 +276,8 @@ export function Outlet() {
 
   let element = router.getOutletElement(matches) ?? <Outlet />
 
-  const catchElement = match?.route.catchElement ?? router.defaultCatchElement
+  const catchElement =
+    match?.route.options.catchElement ?? router.defaultCatchElement
 
   return (
     <MatchesProvider value={matches}>
@@ -273,27 +299,22 @@ export function useSearch() {
   return router.location.search
 }
 
-export type LinkProps = LinkOptions &
-  Omit<
-    React.AnchorHTMLAttributes<HTMLAnchorElement>,
-    'href' | 'children' | keyof LinkOptions
-  > & {
-    // A custom ref prop because of this: https://stackoverflow.com/questions/58469229/react-with-typescript-generics-while-using-react-forwardref/58473012
-    _ref?: React.Ref<HTMLAnchorElement>
-    // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-    children?:
-      | React.ReactNode
-      | ((state: { isActive: boolean }) => React.ReactNode)
-  }
+// export type LinkProps<TRoutesInfo extends RoutesInfo = RoutesInfo> =
+//   LinkOptions<TRoutesInfo> &
+//     Omit<
+//       React.AnchorHTMLAttributes<HTMLAnchorElement>,
+//       'href' | 'children' | keyof LinkOptions<TRoutesInfo>
+//     > & {
+//       // A custom ref prop because of this: https://stackoverflow.com/questions/58469229/react-with-typescript-generics-while-using-react-forwardref/58473012
+//       _ref?: React.Ref<HTMLAnchorElement>
+//       // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+//       children?:
+//         | React.ReactNode
+//         | ((state: { isActive: boolean }) => React.ReactNode)
+//     }
 
-export function useLink(opts: LinkOptions) {
-  const router = useRouter()
-  const match = useMatch()
-  const ref = React.useRef({}).current
-  return router.buildLinkInfo({ ...opts, from: match.pathname, ref })
-}
-
-export function Link(props: LinkProps) {
+// export function Link(props: LinkProps<TRoutesInfo>) {
+export function Link(props: any) {
   const linkUtils = useLink(props)
 
   const {
@@ -323,7 +344,7 @@ export function Link(props: LinkProps) {
 
   if (!linkUtils) {
     return (
-      <a href={to as string} {...rest}>
+      <a href={to as any} {...rest}>
         {typeof children === 'function'
           ? children({ isActive: false })
           : children}
@@ -384,6 +405,13 @@ export function Link(props: LinkProps) {
       }}
     />
   )
+}
+
+export function useLink(opts: any) {
+  const router = useRouter()
+  const match = useMatch()
+  const ref = React.useRef({}).current
+  return router.buildLinkInfo({ ...opts, from: match.pathname as any, ref })
 }
 
 class CatchBoundary extends React.Component<{

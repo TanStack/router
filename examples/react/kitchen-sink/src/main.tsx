@@ -1,17 +1,17 @@
+// @sts-nocheck
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Link,
   Outlet,
-  Router,
-  Route,
-  useRouter,
+  RouterProvider,
   useSearch,
   useNavigate,
   MatchRoute,
   useLoaderData,
   useAction,
   createRoutes,
+  ReactRouter,
 } from '@tanstack/react-router'
 import { ReactLocationDevtools } from '@tanstack/router-devtools'
 
@@ -28,142 +28,137 @@ import {
 
 import reallyExpensiveRoute from './reallyExpensive'
 import { loaderDelayFn } from './utils'
+import { z } from 'zod'
 
 //
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
 declare module '@tanstack/react-router' {
-  interface SearchSchema {
-    showNotes?: boolean
-    notes?: string
-    usersView?: {
-      sortBy?: UsersViewSortBy
-      filterBy?: string
-    }
-  }
-
-  interface RouteParams {
-    invoiceId: string
-    userId: string
-  }
-
-  interface LoaderData {
-    invoices: Invoice[]
-    invoice: Invoice
-    users: User[]
-    user: User
-    expensiveTimestamp: number
-    reallyExpensiveTimestamp: number
-  }
+  // interface SearchSchema {
+  //   showNotes?: boolean
+  //   notes?: string
+  // }
+  // interface RouteParams {
+  //   invoiceId: string
+  //   userId: string
+  // }
+  // interface LoaderData {
+  //   invoices: Invoice[]
+  //   invoice: Invoice
+  //   users: User[]
+  //   user: User
+  //   expensiveTimestamp: number
+  //   reallyExpensiveTimestamp: number
+  // }
 }
 
 // Build our routes. We could do this in our component, too.
-const routes = createRoutes([
-  {
-    path: '/',
-    id: 'tanner',
-    children: [
-      { path: '/', element: <Home />, id: 'home' },
-      {
-        path: 'dashboard',
-        element: <Dashboard />,
-        loader: async () => {
-          console.log('Fetching all invoices...')
+const routes = createRoutes().addChildren((createRoute) => [
+  createRoute({ path: '/', element: <Home /> }),
+  createRoute({
+    path: 'dashboard',
+    element: <Dashboard />,
+    loader: async () => {
+      console.log('Fetching all invoices...')
+      return {
+        invoices: await fetchInvoices(),
+      }
+    },
+  }).addChildren((createRoute) => [
+    createRoute({ path: '/', element: <DashboardHome /> }),
+    createRoute({
+      path: 'invoices',
+      element: <Invoices />,
+    }).addChildren((createRoute) => [
+      createRoute({
+        path: '/',
+        element: <InvoicesHome />,
+        action: async (partialInvoice: Partial<Invoice>, ctx) => {
+          const invoice = await postInvoice(partialInvoice)
+          // // Redirect to the new invoice
+          // ctx.router.navigate({
+          //   to: invoice.id,
+          //   // Use the current match for relative paths
+          //   from: ctx.match.pathname,
+          // })
+          return invoice
+        },
+      }),
+      createRoute({
+        path: ':invoiceId',
+        element: <InvoiceView />,
+        loader: async ({ params: { invoiceId } }) => {
+          console.log('Fetching invoice...')
           return {
-            invoices: await fetchInvoices(),
+            invoice: await fetchInvoiceById(invoiceId!),
           }
         },
-        children: [
-          { path: '/', element: <DashboardHome /> },
-          {
-            path: 'invoices',
-            element: <Invoices />,
-            children: [
-              {
-                path: '/',
-                element: <InvoicesHome />,
-                action: async (partialInvoice: Partial<Invoice>, ctx) => {
-                  const invoice = await postInvoice(partialInvoice)
-
-                  // // Redirect to the new invoice
-                  // ctx.router.navigate({
-                  //   to: invoice.id,
-                  //   // Use the current match for relative paths
-                  //   from: ctx.match.pathname,
-                  // })
-
-                  return invoice
-                },
-              },
-              {
-                path: ':invoiceId',
-                element: <InvoiceView />,
-                loader: async ({ params: { invoiceId } }) => {
-                  console.log('Fetching invoice...')
-                  return {
-                    invoice: await fetchInvoiceById(invoiceId!),
-                  }
-                },
-                action: patchInvoice,
-              },
-            ],
-          },
-          {
-            path: 'users',
-            element: <Users />,
-            loader: async () => {
-              return {
-                users: await fetchUsers(),
-              }
-            },
-            preSearchFilters: [
-              // Keep the usersView search param around
-              // while in this route (or it's children!)
-              (search) => ({
-                ...search,
-                usersView: {
-                  ...search.usersView,
-                },
-              }),
-            ],
-            children: [
-              {
-                path: ':userId',
-                element: <UserView />,
-                loader: async ({ params: { userId } }) => {
-                  return {
-                    user: await fetchUserById(userId!),
-                  }
-                },
-              },
-            ],
-          },
-        ],
+        action: patchInvoice,
+      }),
+    ]),
+    createRoute({
+      path: 'users',
+      element: <Users />,
+      loader: async () => {
+        return {
+          users: await fetchUsers(),
+        }
       },
-      {
-        // Your elements can be asynchronous, which means you can code-split!
-        path: 'expensive',
-        element: () =>
-          loaderDelayFn(() => import('./Expensive')).then((res) => (
-            <res.Expensive />
-          )),
+      searchSchema: {
+        usersView: z
+          .object({
+            sortBy: z.enum(['name', 'id', 'email']).optional(),
+            filterBy: z.string().optional(),
+          })
+          .optional(),
       },
-      // Obviously, you can put routes in other files, too
-      // reallyExpensiveRoute,
-      {
-        path: 'authenticated/',
-        element: <Auth />,
-        children: [
-          {
-            path: '/',
-            element: <Authenticated />,
+      preSearchFilters: [
+        // Keep the usersView search param around
+        // while in this route (or it's children!)
+        (search) => ({
+          ...search,
+          usersView: {
+            ...search.usersView,
           },
-        ],
-      },
-    ],
-  },
+        }),
+      ],
+    }).addChildren((createRoute) => [
+      createRoute({
+        path: ':userId',
+        element: <UserView />,
+        loader: async ({ params: { userId } }) => {
+          return {
+            user: await fetchUserById(userId!),
+          }
+        },
+      }),
+    ]),
+  ]),
+  createRoute({
+    // Your elements can be asynchronous, which means you can code-split!
+    path: 'expensive',
+    element: () =>
+      loaderDelayFn(() => import('./Expensive')).then((res) => (
+        <res.Expensive />
+      )),
+  }),
+  // Obviously, you can put routes in other files, too
+  // reallyExpensiveRoute,
+  createRoute({
+    path: 'authenticated/', // Trailing slash doesn't mean anything
+    element: <Auth />,
+  }).addChildren((createRoute) => [
+    createRoute({
+      path: '/',
+      element: <Authenticated />,
+    }),
+  ]),
 ])
+
+const router = new ReactRouter({
+  routes,
+})
 
 // Provide our location and routes to our application
 function App() {
@@ -262,8 +257,8 @@ function App() {
       // ready. This also let's us use router API's
       in <Root /> before rendering any routes */}
       <AuthProvider>
-        <Router
-          routes={routes}
+        <RouterProvider
+          router={router}
           defaultPendingElement={
             <div className={`p-2 text-2xl`}>
               <Spinner />
@@ -282,17 +277,13 @@ function App() {
         >
           <Root />
           <ReactLocationDevtools position="bottom-right" />
-        </Router>
+        </RouterProvider>
       </AuthProvider>
     </>
   )
 }
 
 function Root() {
-  // We can access the router state, even though
-  // we're not rendering any routes yet
-  const router = useRouter()
-
   return (
     <div className={`min-h-screen flex flex-col`}>
       <div className={`flex items-center border-b gap-2`}>
@@ -394,7 +385,7 @@ function Dashboard() {
           ] as const
         ).map(([to, label, search]) => {
           return (
-            <Link
+            <router.Link
               key={to}
               to={to}
               search={search}
@@ -403,7 +394,7 @@ function Dashboard() {
               getActiveProps={() => ({ className: `font-bold` })}
             >
               {label}
-            </Link>
+            </router.Link>
           )
         })}
       </div>
@@ -414,7 +405,7 @@ function Dashboard() {
 }
 
 function DashboardHome() {
-  const { invoices } = useLoaderData()
+  const { invoices } = router.getRoute('/dashboard/').getLoaderData()
 
   return (
     <div className="p-2">
@@ -426,12 +417,13 @@ function DashboardHome() {
   )
 }
 
-function Invoices() {
-  const { invoices } = useLoaderData()
-  const invoicesAction = useAction({ to: './' })
-  const invoiceAction = useAction({ to: './:invoiceId' })
+router.getRoute('/')
 
-  console.log(invoiceAction)
+function Invoices() {
+  const { invoices } = router.getRoute('/dashboard/invoices').getLoaderData()
+
+  // Get the action for a child route
+  const addInvoiceAction = router.getRoute('/dashboard/invoices/').getAction()
 
   return (
     <div className="flex-1 flex">
@@ -455,7 +447,7 @@ function Invoices() {
             </div>
           )
         })}
-        {invoicesAction.pending.map((action) => (
+        {addInvoiceAction.pending.map((action) => (
           <div key={action.submittedAt}>
             <Link className="block py-2 px-3 text-blue-700">
               <pre className="text-sm">
@@ -473,7 +465,8 @@ function Invoices() {
 }
 
 function InvoicesHome() {
-  const action = useAction({ tsPath: '/' })
+  const route = router.getRoute('/dashboard/invoices/')
+  const action = route.getAction()
 
   return (
     <>
