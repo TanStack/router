@@ -10,10 +10,8 @@ import {
   NavigateOptions,
   MatchLocation,
   MatchRouteOptions,
-  LinkOptions,
   RouteDef,
-  RoutesInfo,
-  Route,
+  PathParams,
 } from '@tanstack/router-core'
 
 export * from '@tanstack/router-core'

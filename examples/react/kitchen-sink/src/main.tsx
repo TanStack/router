@@ -11,7 +11,6 @@ import {
   useLoaderData,
   useAction,
   createRoutes,
-  ReactRouter,
 } from '@tanstack/react-router'
 import { ReactLocationDevtools } from '@tanstack/router-devtools'
 
@@ -74,10 +73,10 @@ const routes = createRoutes().addChildren((createRoute) => [
       createRoute({
         path: '/',
         element: <InvoicesHome />,
-        action: async (partialInvoice: Partial<Invoice>, ctx) => {
+        action: async (partialInvoice: Partial<Invoice>) => {
           const invoice = await postInvoice(partialInvoice)
           // // Redirect to the new invoice
-          // ctx.router.navigate({
+          // router.navigate({
           //   to: invoice.id,
           //   // Use the current match for relative paths
           //   from: ctx.match.pathname,
@@ -100,12 +99,13 @@ const routes = createRoutes().addChildren((createRoute) => [
     createRoute({
       path: 'users',
       element: <Users />,
-      loader: async () => {
+      loader: async ({ search }) => {
+        search
         return {
           users: await fetchUsers(),
         }
       },
-      searchSchema: {
+      searchZod: {
         usersView: z
           .object({
             sortBy: z.enum(['name', 'id', 'email']).optional(),

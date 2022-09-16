@@ -8,7 +8,7 @@ import {
   HashHistory,
 } from 'history'
 import React from 'react'
-import { z } from 'zod'
+import { ParsePath, z } from 'zod'
 // import { z } from 'zod'
 
 export { createHashHistory, createBrowserHistory, createMemoryHistory }
@@ -21,8 +21,8 @@ export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<T, Y, N> = 1 extends 0 & T ? Y : N
 export type IsAnyBoolean<T> = 1 extends 0 & T ? true : false
 export type IsKnown<T, Y, N> = unknown extends T ? N : Y
-export type PickRequired<T, K extends keyof T> = Omit<T, K> &
-  Required<Pick<T, K>>
+// export type PickAsRequired<T, K extends keyof T> = Omit<T, K> &
+//   Required<Pick<T, K>>
 export type PickPartial<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
 export type PickUnsafe<T, K> = K extends keyof T ? Pick<T, K> : never
 export type PickExtra<T, K> = Expand<{
@@ -32,6 +32,9 @@ export type PickExtra<T, K> = Expand<{
     ? never
     : TKey]: K[TKey]
 }>
+type PickRequired<T> = {
+  [K in keyof T as undefined extends T[K] ? never : K]: T[K]
+}
 
 export interface FrameworkGenerics {
   // The following properties are used internally
@@ -47,15 +50,19 @@ export interface FrameworkGenerics {
 export type RouteDef<
   TId extends string = string,
   TPath extends string = string,
-  TLoaderData extends LoaderData = LoaderData,
-  TAllLoaderData extends LoaderData = LoaderData,
+  TLoaderData extends AnyLoaderData = AnyLoaderData,
+  TAllLoaderData extends AnyLoaderData = AnyLoaderData,
   TActionPayload = unknown,
   TActionResponse = unknown,
-  TSearchZod extends SearchZod = SearchZod,
+  TParentSearchSchema extends {} = {},
   TSearchSchema extends AnySearchSchema = {},
-  TParentParams extends PathParams = PathParams,
-  TParams extends PathParams = PathParams,
-  TAllParams extends PathParams = PathParams,
+  TFullSearchSchema extends AnySearchSchema = {},
+  TParentParams extends AnyPathParams = {},
+  TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
+    ParsePathParams<TPath>,
+    string
+  >,
+  TAllParams extends AnyPathParams = {},
   TKnownChildren = unknown,
 > = {
   id: TId
@@ -65,8 +72,9 @@ export type RouteDef<
     TAllLoaderData,
     TActionPayload,
     TActionResponse,
-    TSearchZod,
+    TParentSearchSchema,
     TSearchSchema,
+    TFullSearchSchema,
     TParentParams,
     TParams,
     TAllParams
@@ -78,7 +86,7 @@ export type RouteDef<
         false,
         TId,
         TAllLoaderData,
-        TSearchSchema,
+        TFullSearchSchema,
         TAllParams
       >,
     ) => TNewChildren extends AnyRouteDef[]
@@ -91,8 +99,9 @@ export type RouteDef<
     TAllLoaderData,
     TActionPayload,
     TActionResponse,
-    TSearchZod,
+    TParentSearchSchema,
     TSearchSchema,
+    TFullSearchSchema,
     TParentParams,
     TParams,
     TAllParams,
@@ -103,21 +112,24 @@ export type RouteDef<
 type CreateRouteFn<
   TIsRoot extends boolean,
   TParentId extends string = string,
-  TParentAllLoaderData extends LoaderData = {},
+  TParentAllLoaderData extends AnyLoaderData = {},
   TParentSearchSchema extends AnySearchSchema = {},
-  TParentParams extends PathParams = PathParams,
+  TParentParams extends AnyPathParams = {},
 > = <
   TPath extends string,
-  TLoaderData extends LoaderData,
+  TLoaderData extends AnyLoaderData,
   TActionPayload,
   TActionResponse,
-  TSearchZod extends ParentZod<TParentSearchSchema> = {},
-  TParams extends PathParams = PathParams,
-  TResolvedParams extends PathParams extends TParams
-    ? PathParamsFromPath<TPath>
-    : TParams = PathParams extends TParams
-    ? PathParamsFromPath<TPath>
-    : TParams,
+  TSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
+    ParsePathParams<TPath>,
+    string
+  >,
+  TAllParams extends AnyPathParams extends TParams
+    ? Record<ParsePathParams<TPath>, string>
+    : NoInfer<TParams> = AnyPathParams extends TParams
+    ? Record<ParsePathParams<TPath>, string>
+    : NoInfer<TParams>,
   TKnownChildren extends RouteDef[] = RouteDef[],
 >(
   options?: TIsRoot extends true
@@ -128,11 +140,12 @@ type CreateRouteFn<
           Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TLoaderData>>>,
           TActionPayload,
           TActionResponse,
-          TSearchZod,
-          Expand<TParentSearchSchema & NoInfer<InferZod<TSearchZod>>>,
+          TParentSearchSchema,
+          TSearchSchema,
+          Expand<TParentSearchSchema & TSearchSchema>,
           TParentParams,
           TParams,
-          Expand<TParentParams & TResolvedParams>
+          Expand<TParentParams & TAllParams>
         >,
         'path'
       > & { path?: never }
@@ -142,11 +155,12 @@ type CreateRouteFn<
         Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TLoaderData>>>,
         TActionPayload,
         TActionResponse,
-        TSearchZod,
-        Expand<TParentSearchSchema & NoInfer<InferZod<TSearchZod>>>,
+        TParentSearchSchema,
+        TSearchSchema,
+        Expand<TParentSearchSchema & TSearchSchema>,
         TParentParams,
         TParams,
-        Expand<TParentParams & TResolvedParams>
+        Expand<TParentParams & TAllParams>
       >,
   children?: TKnownChildren,
   isRoot?: boolean,
@@ -157,19 +171,14 @@ type CreateRouteFn<
   Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TLoaderData>>>,
   TActionPayload,
   TActionResponse,
-  TSearchZod,
-  Expand<TParentSearchSchema & InferZod<TSearchZod>>,
+  TParentSearchSchema,
+  TSearchSchema,
+  Expand<TParentSearchSchema & TSearchSchema>,
   TParentParams,
   TParams,
-  Expand<TParentParams & TResolvedParams>,
+  Expand<TParentParams & TAllParams>,
   TKnownChildren
 >
-
-type ValidateParams<TParams, TParentParams> = PathParams extends TParentParams
-  ? true
-  : keyof TParams extends keyof TParentParams
-  ? true
-  : false
 
 export const createRoutes: CreateRouteFn<true> = (
   options = {} as any,
@@ -204,6 +213,7 @@ export type AnyRouteDef = RouteDef<
   any,
   any,
   any,
+  any,
   any
 >
 
@@ -219,24 +229,52 @@ export type AnyRouteDefWithChildren<TChildren> = RouteDef<
   any,
   any,
   any,
+  any,
   TChildren
 >
 
-export type RoutesInfo<
-  TRouteDef extends AnyRouteDef = AnyRouteDef,
-  TPreParsed extends ParseRouteDef = ParseRouteDef<TRouteDef, TRouteDef>,
-  TParsed extends TPreParsed = TPreParsed,
-  // TParsed extends TPreParsed extends never
-  //   ? Route
-  //   : TPreParsed = TPreParsed extends never ? Route : TPreParsed,
+export type AnyAllRouteInfo = {
+  routeDef: AnyRouteDef
+  routeInfo: AnyRouteInfo
+  routeInfoById: Record<string, AnyRouteInfo>
+  routeInfoByFullPath: Record<string, AnyRouteInfo>
+}
+
+export type DefaultAllRouteInfo = {
+  routeDef: RouteDef
+  routeInfo: RouteInfo
+  routeInfoById: Record<string, RouteInfo>
+  routeInfoByFullPath: Record<string, RouteInfo>
+}
+
+export type AllRouteInfo<TRouteDef extends AnyRouteDef = RouteDef> =
+  RoutesInfoInner<TRouteDef, ParseRouteDef<TRouteDef>>
+
+export type RoutesInfoInner<
+  TRouteDef extends AnyRouteDef,
+  TRouteInfo extends RouteInfo<
+    string,
+    string,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+  > = RouteInfo,
 > = {
-  route: TParsed
-  routesById: AnyRouteDef extends TParsed
-    ? Record<string, Route>
-    : RoutesById<TParsed>
-  routesByPath: AnyRouteDef extends TParsed
-    ? Record<string, Route>
-    : RoutesByPath<TParsed>
+  routeDef: TRouteDef
+  routeInfo: TRouteInfo
+  routeInfoById: {
+    [TInfo in TRouteInfo as TInfo['id']]: TInfo
+  }
+  routeInfoByFullPath: {
+    [TInfo in TRouteInfo as RouteIdToPath<TInfo['id']>]: TInfo
+  }
   // params: ParseRoute<TRouteDef>['param']
   // routesByParams: IndexObj<ParseRoute<TRouteDef>, 'param'>
   // allLoaderData: LoaderData &
@@ -258,7 +296,9 @@ export type RoutesInfo<
   // >
 }
 
-export type AnyRoute = Route<
+export type AnyRoute = Route<any, any>
+export type AnyRouteInfo = RouteInfo<
+  any,
   any,
   any,
   any,
@@ -272,39 +312,24 @@ export type AnyRoute = Route<
   any
 >
 
-type RoutesById<TParsed> = {
-  [TRoute in TParsed as TRoute extends AnyRoute ? TRoute['id'] : never]: TRoute
-}
-
-type RoutesByPath<TParsed> = {
-  [TRoute in TParsed as TRoute extends AnyRoute
-    ? TrimPathRight<`${TRoute['id']}/`>
-    : never]: TRoute
-}
-
 type IndexObj<T extends Record<string, any>, TKey extends keyof T> = {
   [E in T as E[TKey]]: E
 }
 
-type ParseRouteDef<
-  TRootRouteDef extends AnyRouteDef = AnyRouteDef,
-  TRouteDef = AnyRouteDef,
-> = TRouteDef extends AnyRouteDef
-  ?
-      | RouteDefRoute<TRootRouteDef, TRouteDef>
-      | ParseRouteChildren<TRootRouteDef, TRouteDef>
+type RouteIdToPath<T extends string> = TrimPathRight<`${T}/`>
+
+type ParseRouteDef<TRouteDef = AnyRouteDef> = TRouteDef extends AnyRouteDef
+  ? RouteDefRoute<TRouteDef> | ParseRouteChildren<TRouteDef>
   : never
 
-type ParseRouteChildren<
-  TRootRouteDef extends AnyRouteDef,
-  TRouteDef,
-> = TRouteDef extends AnyRouteDefWithChildren<infer TChildren>
+type ParseRouteChildren<TRouteDef> = TRouteDef extends AnyRouteDefWithChildren<
+  infer TChildren
+>
   ? unknown extends TChildren
     ? never
     : TChildren extends AnyRouteDef[]
     ? Values<{
         [TId in TChildren[number]['id']]: ParseRouteChild<
-          TRootRouteDef,
           TChildren[number],
           TId
         >
@@ -312,31 +337,25 @@ type ParseRouteChildren<
     : never // Children are not routes
   : never // No children
 
-type ParseRouteChild<
-  TRootRouteDef extends AnyRouteDef,
-  TRouteDef,
-  TId,
-> = TRouteDef & {
+type ParseRouteChild<TRouteDef, TId> = TRouteDef & {
   id: TId
 } extends AnyRouteDef
-  ? ParseRouteDef<TRootRouteDef, TRouteDef>
+  ? ParseRouteDef<TRouteDef>
   : never
 
 export type Values<O> = O[ValueKeys<O>]
 export type ValueKeys<O> = Extract<keyof O, PropertyKey>
 
-export type RouteDefRoute<
-  TRootRoute extends AnyRouteDef,
-  TRouteDef,
-> = TRouteDef extends RouteDef<
+export type RouteDefRoute<TRouteDef> = TRouteDef extends RouteDef<
   infer TId,
   infer TPath,
   infer TLoaderData,
   infer TAllLoaderData,
   infer TActionPayload,
   infer TActionResponse,
-  infer TSearchZod,
+  infer TParentSearchSchema,
   infer TSearchSchema,
+  infer TFullSearchSchema,
   infer TParentParams,
   infer TParams,
   infer TAllParams,
@@ -344,21 +363,64 @@ export type RouteDefRoute<
 >
   ? string extends TId
     ? never
-    : Route<
-        TRootRoute,
+    : RouteInfo<
         TId,
         TPath,
         TLoaderData,
         TAllLoaderData,
         TActionPayload,
         TActionResponse,
-        TSearchZod,
+        TParentSearchSchema,
         TSearchSchema,
+        TFullSearchSchema,
         TParentParams,
         TParams,
         TAllParams
       >
   : never
+
+export type RouteInfo<
+  TId extends string = string,
+  TPath extends string = string,
+  TLoaderData extends AnyLoaderData = {},
+  TAllLoaderData extends AnyLoaderData = {},
+  TActionPayload = unknown,
+  TActionResponse = unknown,
+  TParentSearchSchema extends {} = {},
+  TSearchSchema extends AnySearchSchema = {},
+  TFullSearchSchema extends AnySearchSchema = {},
+  TParentParams extends AnyPathParams = {},
+  TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
+    ParsePathParams<TPath>,
+    string
+  >,
+  TAllParams extends AnyPathParams = {},
+> = {
+  id: TId
+  path: TPath
+  loaderData: TLoaderData
+  allLoaderData: TAllLoaderData
+  actionPayload: TActionPayload
+  actionResponse: TActionResponse
+  searchSchema: TSearchSchema
+  fullSearchSchema: TFullSearchSchema
+  parentParams: TParentParams
+  params: TParams
+  allParams: TAllParams
+  options: RouteOptions<
+    TPath,
+    TLoaderData,
+    TAllLoaderData,
+    TActionPayload,
+    TActionResponse,
+    TParentSearchSchema,
+    TSearchSchema,
+    TFullSearchSchema,
+    TParentParams,
+    TParams,
+    TAllParams
+  >
+}
 
 type DeepAwaited<T> = T extends Promise<infer A>
   ? DeepAwaited<A>
@@ -410,10 +472,6 @@ export type ParsePathParams<T extends string> = Split<
     : never
   : never
 
-export type PathParamsFromPath<TPath extends string = string> = Expand<
-  Record<ParsePathParams<TPath>, string>
->
-
 export type PathParamMask<TRoutePath extends string> =
   TRoutePath extends `${infer L}/:${infer C}/${infer R}`
     ? PathParamMask<`${L}/${string}/${R}`>
@@ -433,11 +491,6 @@ type _PartialPath<TRoutePath extends string> =
         | (string extends L ? `${L}/` : L | `${L}/`)
         | `${L}/${_PartialPath<`${R}`>}`
     : TRoutePath
-
-type RelativePathTo<
-  TFrom extends string,
-  TValidPaths extends string = string,
-> = PartialPath<PathParamMask<TFrom>>
 
 type Split<S extends string, D extends string = '/'> = string extends S
   ? string[]
@@ -485,10 +538,9 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   ? I
   : never
 
-export type AnySearchSchema = any
-export interface SearchSchema {}
-export interface PathParams {}
-export interface LoaderData {}
+export type AnySearchSchema = {}
+export type AnyLoaderData = {}
+export type AnyPathParams = {}
 export interface RouteMeta {}
 export interface LocationState {}
 
@@ -516,7 +568,7 @@ export type Location<
 
 export type FromLocation = {
   pathname: string
-  search?: SearchSchema
+  search?: unknown
   key?: string
   hash?: string
 }
@@ -529,129 +581,110 @@ export type PickExclude<T, U> = {
   [K in keyof T as T[K] extends U ? never : K]: T[K]
 }
 
-export type SearchZod = Record<string, any>
-
-export type DefinedSearchParamWarning =
-  'Top level search params cannot be redefined by child routes!'
-
-export type ParentZod<TParentSearchZod = unknown> =
-  unknown extends TParentSearchZod
-    ? {}
-    : SearchZod & {
-        [Key in keyof TParentSearchZod]?: DefinedSearchParamWarning
-      }
+export type SearchSchemaValidator<TReturn, TParentSchema> = (
+  searchObj: Record<string, unknown>,
+) => {} extends TParentSchema
+  ? TReturn
+  : keyof TReturn extends keyof TParentSchema
+  ? {
+      error: 'Top level search params cannot be redefined by child routes!'
+      keys: keyof TReturn & keyof TParentSchema
+    }
+  : TReturn
 
 export type DefinedPathParamWarning =
   'Path params cannot be redefined by child routes!'
 
-export type ParentParams<TParentParams> = PathParams extends TParentParams
+export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
   ? {}
-  : SearchZod & {
+  : {
       [Key in keyof TParentParams]?: DefinedPathParamWarning
     }
 
-export type InferZod<T extends SearchZod> = Expand<{
-  [Key in keyof T]: z.infer<T[Key]>
-}>
-
 export type RouteOptions<
   TPath extends string = string,
-  TLoaderData extends LoaderData = {},
-  TAllLoaderData extends LoaderData = {},
+  TLoaderData extends AnyLoaderData = {},
+  TAllLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
-  TSearchZod extends SearchZod = {},
+  TParentSearchSchema extends {} = {},
   TSearchSchema extends AnySearchSchema = {},
-  TParentParams extends PathParams = PathParams,
-  TParams extends Record<ParsePathParams<TPath>, any> = Record<
+  TFullSearchSchema extends AnySearchSchema = TSearchSchema,
+  TParentParams extends AnyPathParams = {},
+  TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
     ParsePathParams<TPath>,
-    any
+    string
   >,
-  TAllParams extends PathParams = PathParams,
+  TAllParams extends AnyPathParams = {},
 > = {
   // The path to match (relative to the nearest parent `Route` component or root basepath)
   path: TPath
   // If true, this route will be matched as case-sensitive
   caseSensitive?: boolean
-  searchZod?: TSearchZod
-  searchSchema?: TSearchSchema
+  validateSearch?: SearchSchemaValidator<TSearchSchema, TParentSearchSchema>
   // // Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched.
-  // search?: SearchPredicate<TSearchSchema>
+  // search?: SearchPredicate<TFullSearchSchema>
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
   // calls that match this route.
-  preSearchFilters?: SearchFilter<TSearchSchema>[]
+  preSearchFilters?: SearchFilter<TFullSearchSchema>[]
   // Filter functions that can manipulate search params *after* they are passed to links and navigate
   // calls that match this route.
-  postSearchFilters?: SearchFilter<TSearchSchema>[]
+  postSearchFilters?: SearchFilter<TFullSearchSchema>[]
   // The duration to wait during `loader` execution before showing the `pendingElement`
   pendingMs?: number
   // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
   pendingMinMs?: number
   // // An array of child routes
   // children?: Route<any, any, any, any>[]
-} & (IsAnyBoolean<TPath> extends true
-  ? {}
-  :
-      | {
-          parseParams?: never
-          stringifyParams?: never
-        }
-      | {
-          // Parse params optionally receives path params as strings and returns them in a parsed format (like a number or boolean)
-          parseParams: (rawParams: PathParamsFromPath<TPath>) => TParams
-          stringifyParams: (
-            params: NoInfer<TParams>,
-          ) => PathParamsFromPath<TPath>
-        }) &
+} & (
+  | {
+      parseParams?: never
+      stringifyParams?: never
+    }
+  | {
+      // Parse params optionally receives path params as strings and returns them in a parsed format (like a number or boolean)
+      parseParams: (
+        rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
+      ) => TParams
+      stringifyParams: (
+        params: TParams,
+      ) => Record<ParsePathParams<TPath>, string>
+    }
+) &
   RouteLoaders<
     // Route Loaders (see below) can be inline on the route, or resolved async
-    any,
-    TPath,
     TLoaderData,
     TAllLoaderData,
     TActionPayload,
     TActionResponse,
-    TSearchZod,
-    TSearchSchema,
+    TFullSearchSchema,
     TAllParams
   > & {
     // If `import` is defined, this route can resolve its elements and loaders in a single asynchronous call
     // This is particularly useful for code-splitting or module federation
     import?: (opts: {
-      params: PathParams
+      params: AnyPathParams
     }) => Promise<
       RouteLoaders<
-        any,
-        TPath,
         TLoaderData,
         TAllLoaderData,
         TActionPayload,
         TActionResponse,
-        TSearchZod,
-        TSearchSchema,
+        TFullSearchSchema,
         TAllParams
       >
     >
-  } & (Record<keyof PathParamsFromPath<TPath>, any> extends NoInfer<TParams> // Detect if parseRoutes is returning extra properties
-    ? {}
-    : {
-        error: 'parseParams must only return path params defined in the path'
-        param: Expand<Omit<NoInfer<TParams>, keyof PathParamsFromPath<TPath>>>
-      }) &
-  (PickUnsafe<TParentParams, keyof PathParamsFromPath<TPath>> extends never // Detect if an existing path param is being redefined
+  } & (PickUnsafe<TParentParams, ParsePathParams<TPath>> extends never // Detect if an existing path param is being redefined
     ? {}
     : 'Cannot redefined path params in child routes!')
 
 export interface RouteLoaders<
-  TRootRouteDef extends AnyRouteDef = AnyRouteDef,
-  TPath extends string = string,
-  TLoaderData extends LoaderData = {},
-  TAllLoaderData extends LoaderData = {},
+  TLoaderData extends AnyLoaderData = {},
+  TAllLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionData = unknown,
-  TSearchZod extends SearchZod = SearchZod,
-  TSearchSchema extends AnySearchSchema = {},
-  TAllParams extends PathParams = PathParams,
+  TFullSearchSchema extends AnySearchSchema = {},
+  TAllParams extends AnyPathParams = {},
 > {
   // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
   element?: GetFrameworkGeneric<'SyncOrAsyncElement', NoInfer<TAllLoaderData>>
@@ -671,63 +704,23 @@ export interface RouteLoaders<
     NoInfer<TAllLoaderData>
   >
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-  loader?: LoaderFn<TPath, TLoaderData, TSearchZod, TSearchSchema, TAllParams>
+  loader?: LoaderFn<TLoaderData, TFullSearchSchema, TAllParams>
   // An asynchronous function made available to the route for performing asynchronous or mutative actions that
   // might invalidate the route's data.
-  action?: ActionFn<TPath, TActionPayload, TActionData>
+  action?: ActionFn<TActionPayload, TActionData>
   // This function is called
   // when moving from an inactive state to an active one. Likewise, when moving from
   // an active to an inactive state, the return function (if provided) is called.
   onMatch?: (
-    match: RouteMatch<
-      TRootRouteDef,
-      TPath,
-      TPath,
-      TLoaderData,
-      TAllLoaderData,
-      TActionPayload,
-      TActionData,
-      TSearchZod,
-      TSearchSchema,
-      TAllParams
-    >,
-  ) =>
-    | void
-    | undefined
-    | ((
-        match: RouteMatch<
-          TRootRouteDef,
-          TPath,
-          TPath,
-          TLoaderData,
-          TAllLoaderData,
-          TActionPayload,
-          TActionData,
-          TSearchZod,
-          TSearchSchema,
-          TAllParams
-        >,
-      ) => void)
+    match: RouteMatch,
+  ) => void | undefined | ((match: RouteMatch) => void)
   // This function is called when the route remains active from one transition to the next.
-  onTransition?: (
-    match: RouteMatch<
-      TRootRouteDef,
-      TPath,
-      TPath,
-      TLoaderData,
-      TAllLoaderData,
-      TActionPayload,
-      TActionData,
-      TSearchZod,
-      TSearchSchema,
-      TAllParams
-    >,
-  ) => void
+  onTransition?: (match: RouteMatch) => void
   // An object of whatever you want! This object is accessible anywhere matches are.
   meta?: RouteMeta
 }
 
-export type SearchFilter<T = SearchSchema, U = T> = (prev: T) => U
+export type SearchFilter<T, U = T> = (prev: T) => U
 
 export type MatchLocation = {
   to?: string | number | null
@@ -743,68 +736,43 @@ export type SearchPredicate<TSearch extends AnySearchSchema = {}> = (
 
 export type UnloadedMatch<
   TPath extends string = string,
-  TLoaderData extends LoaderData = {},
+  TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
 > = {
   id: string
-  route: Route
+  route: Route<any, RouteInfo>
   pathname: string
-  params: PathParams
+  params: AnyPathParams
 }
 
 export type LoaderFn<
-  TPath extends string,
-  TLoaderData extends LoaderData,
-  TSearchZod extends SearchZod = SearchZod,
-  TSearchSchema extends AnySearchSchema = {},
-  TAllParams extends PathParams = PathParams,
-> = (
-  match: RouteMatch<
-    any,
-    TPath,
-    TPath,
-    {},
-    {},
-    unknown,
-    unknown,
-    TSearchZod,
-    TSearchSchema,
-    TAllParams
-  >,
-  ctx: RouteMatchContext<TPath>,
-) => Promise<TLoaderData>
+  TLoaderData extends AnyLoaderData,
+  TFullSearchSchema extends AnySearchSchema = {},
+  TAllParams extends AnyPathParams = {},
+> = (loaderContext: {
+  params: TAllParams
+  search: TFullSearchSchema
+  signal?: AbortSignal
+}) => Promise<TLoaderData>
 
-export type ActionFn<
-  TPath extends string = string,
-  TActionPayload = unknown,
-  TActionResponse = unknown,
-> = (
+export type ActionFn<TActionPayload = unknown, TActionResponse = unknown> = (
   submission: TActionPayload,
-  ctx: ActionContext<TPath, TActionPayload>,
-) => Promise<TActionResponse>
+) => TActionResponse | Promise<TActionResponse>
 
 export type UnloaderFn<TPath extends string> = (
-  routeMatch: RouteMatch<any, TPath>,
+  routeMatch: RouteMatch<any, RouteInfo<string, TPath>>,
 ) => void
 
 export type RouteMatchContext<
   TPath extends string,
-  TLoaderData extends LoaderData = {},
+  TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
 > = {
   match: UnloadedMatch<TPath, TLoaderData, TActionPayload, TActionResponse>
   signal?: AbortSignal
   // router: Router
-}
-
-export type ActionContext<
-  TPath extends string = string,
-  TActionPayload = unknown,
-> = {
-  // router: Router
-  match: UnloadedMatch<TPath, LoaderData, TActionPayload, unknown>
 }
 
 export type RouterState = {
@@ -846,85 +814,35 @@ export type SnapshotRouteMatch<TData> = {
 
 export type BuildNextOptions = {
   to?: string | number | null
-  search?: true | Updater<SearchSchema>
+  search?: true | Updater<unknown>
   hash?: true | Updater<string>
   key?: string
   from?: string
   fromCurrent?: boolean
-  __preSearchFilters?: SearchFilter[]
-  __postSearchFilters?: SearchFilter[]
+  __preSearchFilters?: SearchFilter<any>[]
+  __postSearchFilters?: SearchFilter<any>[]
 }
 
 export type NavigateOptions = BuildNextOptions & {
   replace?: boolean
 }
 
-export type LinkOptions<
-  TRoutesInfo extends RoutesInfo,
-  TRoute extends TRoutesInfo['route'],
-  // TId extends string = string,
-  // TPath extends string = string,
-  // TLoaderData extends LoaderData = {},
-  // TAllLoaderData extends LoaderData = {},
-  // TActionPayload extends any = any,
-  // TActionResponse extends any = any,
-  // TSearchZod extends SearchZod = {},
-  // TSearchSchema extends AnySearchSchema = {},
-  // TRouteDefs extends AnyRouteDef = AnyRouteDef,
-  TTo extends keyof TRoutesInfo['routesByPath'],
-  // TFromRoutePath extends string = '',
-  // TFrom extends string = '/',
-  // TParams extends StrictPathParamsFromPath<
-  //   NoInfer<TTo>
-  // > = StrictPathParamsFromPath<NoInfer<TTo>>,
-  // TToResolved extends string = ResolvePath<TFrom, TTo>,
-> = {
-  fromRoute?: TRoute
-  // The absolute or relative route path
-  to?: TTo
-  // The params to interpolate into the destination route
-  // params?: TParams
-  // The new search object or a function to update it
-  search?: true | Updater<SearchSchema>
-  // The new has string or a function to update it
-  hash?: Updater<string>
-  // Whether to replace the current history stack instead of pushing a new one
-  replace?: boolean
-  // The standard anchor tag target attribute
-  target?: HTMLAnchorElement['target']
-  // A function that is passed the [Location API](#location-api) and returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
-  getActiveProps?: () => GetFrameworkGeneric<'LinkProps'>
-  // A function that is passed the [Location API](#location-api) and returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
-  getInactiveProps?: () => GetFrameworkGeneric<'LinkProps'>
-  // Defaults to `{ exact: false, includeHash: false }`
-  activeOptions?: ActiveOptions
-  // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
-  preload?: false | 'intent'
-  // When preloaded and set, will cache the preloaded result for this duration in milliseconds
-  preloadMaxAge?: number
-  // Delay intent preloading by this many milliseconds. If the intent exits before this delay, the preload will be cancelled.
-  preloadDelay?: number
-  // If true, will render the link without the href attribute
-  disabled?: boolean
-  // The root (excluding the basepath) from which to resolve the route.
-  // Defaults to the current location's pathname.
-  // To navigate from the root, pass `/` as the from
-  from?: string
-  // from?: TFrom
-}
-
-export type FullLinkOptions = LinkOptions<any, any, any> & {
-  // This ref is used internally by framework adapters to track mutable state for each link.
-  // Passing it in userland is a no-op.
-  ref: { preloadTimeout?: null | ReturnType<typeof setTimeout> }
-}
+export type LinkPropsOptionsRelative<
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+  TFrom extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
+  TTo extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
+> = { from: TFrom } & LinkPropsOptions<
+  TAllRouteInfo,
+  TAllRouteInfo['routeInfoByFullPath'][TFrom],
+  TTo
+>
 
 type ActiveOptions = {
   exact?: boolean
   includeHash?: boolean
 }
 
-export type FilterRoutesFn = <TRoute extends Route>(
+export type FilterRoutesFn = <TRoute extends Route<any, RouteInfo>>(
   routeDefs: TRoute[],
 ) => TRoute[]
 
@@ -1019,11 +937,25 @@ export type ActionState<
   error?: unknown
 }
 
+type RoutesById<TAllRouteInfo extends AnyAllRouteInfo> = {
+  [K in keyof TAllRouteInfo['routeInfoById']]: Route<
+    TAllRouteInfo,
+    TAllRouteInfo['routeInfoById'][K]
+  >
+}
+
+type RoutesByPath<TAllRouteInfo extends AnyAllRouteInfo> = {
+  [K in keyof TAllRouteInfo['routeInfoByFullPath']]: Route<
+    TAllRouteInfo,
+    TAllRouteInfo['routeInfoByFullPath'][K]
+  >
+}
+
 export class Router<
-  TRouteDefs extends RouteDef = RouteDef,
-  TRoutesInfo extends RoutesInfo<TRouteDefs> = RoutesInfo<TRouteDefs>,
+  TRouteDefs extends AnyRouteDef = RouteDef,
+  TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteDefs>,
 > extends Subscribable {
-  routeInfo!: TRoutesInfo
+  allRouteInfo!: TAllRouteInfo
   history: BrowserHistory | MemoryHistory | HashHistory
   stringifySearch: SearchSerializer
   parseSearch: SearchParser
@@ -1055,9 +987,8 @@ export class Router<
   destroy: () => void
   state: RouterState
   isTransitioning: boolean = false
-  routes: Route[] = [] as any
-  routesById: TRoutesInfo['routesById'] = {} as any
-  _unsafe_routesById: Record<string, Route> = {} as any
+  routes: Route<TAllRouteInfo, RouteInfo>[] = [] as any
+  routesById: RoutesById<TAllRouteInfo> = {} as any
   navigationPromise = Promise.resolve()
   resolveNavigation = () => {}
   startedLoadingAt = Date.now()
@@ -1119,9 +1050,9 @@ export class Router<
     }
   }
 
-  update = <TRouteDefs extends RouteDef = RouteDef>(
+  update<TRouteDefs extends RouteDef = RouteDef>(
     opts?: RouterOptions<TRouteDefs>,
-  ): Router<TRouteDefs> => {
+  ): Router<TRouteDefs> {
     const { basepath, routes, ...rest } = opts ?? {}
     Object.assign(this, rest)
 
@@ -1141,11 +1072,14 @@ export class Router<
       this.routes = this.buildRoutes(routes)
     }
 
-    return this as unknown as Router<TRouteDefs>
+    return this as any
   }
 
   buildRoutes = (rootRouteDef: RouteDef) => {
-    const recurseRoutes = (routeDefs: RouteDef[], parent?: Route): Route[] => {
+    const recurseRoutes = (
+      routeDefs: RouteDef[],
+      parent?: Route<TAllRouteInfo, any>,
+    ): Route<TAllRouteInfo, any>[] => {
       return routeDefs.map((routeDef) => {
         const routeOptions = routeDef.options
         const route = new Route(routeOptions, parent, this)
@@ -1155,12 +1089,12 @@ export class Router<
         //   pendingMinMs: routeOptions.pendingMinMs ?? this.defaultPendingMinMs,
         // }
 
-        const existingRoute = this._unsafe_routesById[route.id]
+        const existingRoute = (this.routesById as any)[route.id]
 
         if (existingRoute) {
           if (process.env.NODE_ENV !== 'production') {
             console.warn(
-              `Duplicate routes found with id: ${route.id}`,
+              `Duplicate routes found with id: ${String(route.id)}`,
               this.routesById,
               route,
             )
@@ -1168,7 +1102,7 @@ export class Router<
           throw new Error()
         }
 
-        this._unsafe_routesById[route.id] = route
+        ;(this.routesById as any)[route.id] = route
 
         const children = routeDef.children as RouteDef[]
 
@@ -1182,56 +1116,22 @@ export class Router<
 
     const routes = recurseRoutes([rootRouteDef])
 
-    this.routesById = this._unsafe_routesById as TRoutesInfo['routesById']
-
     return routes
   }
 
-  getRoute = <TRouteId extends keyof typeof this.routesById>(
-    routeId: TRouteId,
-  ) => {
+  getRoute = <TId extends keyof TAllRouteInfo['routeInfoById']>(
+    routeId: TId,
+  ): Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]> => {
     const route = this.routesById[routeId]
 
     if (!route) {
       throw new Error('Route not found!')
     }
 
-    return route
+    return route as any
   }
 
-  preNotify = () => {
-    const match = last(this.state.matches)
-
-    let loaderData = {}
-
-    if (match) {
-      const recurse = (m: RouteMatch) => {
-        if (m.parentMatch) {
-          recurse(m.parentMatch)
-        }
-        loaderData = { ...loaderData, ...(m.loaderData as any) }
-      }
-
-      recurse(match)
-    }
-
-    const isPending =
-      !!this.state.pending ||
-      this.state.matches.find((d) => d.status === 'loading')
-
-    const isLoading =
-      isPending ||
-      Object.keys(this.state.actions).some(
-        (key) => this.state.actions[key]?.pending.length,
-      )
-
-    this.state = {
-      ...this.state,
-      status: isLoading ? 'loading' : 'idle',
-      loaderData: replaceEqualDeep(this.state.loaderData, loaderData),
-      lastUpdated: Date.now(),
-    }
-  }
+  preNotify = () => {}
 
   parseLocation = (
     location: History['location'],
@@ -1364,7 +1264,13 @@ export class Router<
     return this.navigationPromise
   }
 
-  buildNext = (opts: BuildNextOptions) => {
+  buildNext = <
+    TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+    TFrom extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
+    TTo extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
+  >(
+    opts: BuildNextOptions,
+  ) => {
     const next = this.buildLocation(this.basepath, opts)
 
     const matches = this.matchRoutes(next.pathname)
@@ -1536,7 +1442,7 @@ export class Router<
     }
 
     const recurse = async (
-      routes: Route[],
+      routes: Route<any, any>[],
       parentMatch: UnloadedMatch,
     ): Promise<void> => {
       let { params } = parentMatch
@@ -1686,7 +1592,7 @@ export class Router<
     const matches = this.matchRoutes(next.pathname)
     const match = matches.find(
       (d) => d.pathname === next.pathname,
-    )! as UnloadedMatch<string, LoaderData, TActionPayload, TActionResponse>
+    )! as UnloadedMatch<string, AnyLoaderData, TActionPayload, TActionResponse>
     const route = match.route
 
     return null as any
@@ -1845,8 +1751,11 @@ export class Router<
     return matchPathname(this.state.location.pathname, matchLocation)
   }
 
-  buildLinkInfo = ({
-    to = '.' as unknown as never,
+  linkProps = <
+    TFrom extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
+    TTo extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
+  >({
+    to = '.' as TTo,
     search,
     hash,
     target,
@@ -1859,23 +1768,26 @@ export class Router<
     preloadDelay: userPreloadDelay,
     disabled,
     from,
-    ref,
-  }: FullLinkOptions): LinkInfo | null => {
+  }: LinkPropsOptionsRelative<TAllRouteInfo, TFrom, TTo>): LinkInfo | null => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
     // If this `to` is a valid external URL, return
     // null for LinkUtils
+
+    const toString = String(to)
+    const fromString = String(from)
+
     try {
-      new URL(`${to}`)
+      new URL(`${toString}`)
       return null
     } catch (e) {}
 
     const next = this.buildNext({
-      to,
+      from: fromString,
+      to: toString,
       search,
       hash,
-      from,
     })
 
     preload = preload ?? this.defaultLinkPreload
@@ -1916,18 +1828,18 @@ export class Router<
         e.preventDefault()
         if (pathIsEqual && !search && !hash) {
           this.invalidateRoute({
-            to,
-            from,
+            from: fromString,
+            to: toString,
           })
         }
 
         // All is well? Navigate!)
         this.navigate({
-          to,
+          from: fromString,
+          to: toString,
           search,
           hash,
           replace,
-          from,
         })
       }
     }
@@ -1937,15 +1849,17 @@ export class Router<
       if (preload && preloadMaxAge > 0) {
         this.loadRoute(
           {
-            to,
+            from: fromString,
+            to: toString,
             search,
             hash,
-            from,
           },
           { maxAge: preloadMaxAge },
         )
       }
     }
+
+    const ref: { preloadTimeout?: null | ReturnType<typeof setTimeout> } = {}
 
     const handleEnter = (e: MouseEvent) => {
       if (preload && preloadMaxAge > 0) {
@@ -1957,10 +1871,10 @@ export class Router<
           ref.preloadTimeout = null
           this.loadRoute(
             {
-              to,
+              from: fromString,
+              to: toString,
               search,
               hash,
-              from,
             },
             { maxAge: preloadMaxAge },
           )
@@ -2001,65 +1915,20 @@ export class Router<
 }
 
 export class Route<
-  TRootRoute extends AnyRouteDef = AnyRouteDef,
-  TId extends string = string,
-  TPath extends string = string,
-  TLoaderData extends LoaderData = {},
-  TAllLoaderData extends LoaderData = {},
-  TActionPayload = unknown,
-  TActionResponse = unknown,
-  TSearchZod extends SearchZod = {},
-  TSearchSchema extends AnySearchSchema = {},
-  TParentParams extends PathParams = PathParams,
-  TParams extends PathParams = PathParams,
-  TAllParams extends PathParams = TParams,
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+  TRouteInfo extends AnyRouteInfo = RouteInfo,
 > {
-  types!: {
-    RootRoute: TRootRoute
-    Id: TId
-    Path: TPath
-    LoaderData: TLoaderData
-    AllLoaderData: TAllLoaderData
-    ActionPayload: TActionPayload
-    ActionResponse: TActionResponse
-    SearchZod: TSearchZod
-    SearchSchema: TSearchSchema
-    ParentParams: TParentParams
-    Params: TParams
-    AllParams: TAllParams
-  }
-  id: TId
-  parent?: Route
-  children?: Route[]
-  router: Router<any>
-  options: RouteOptions<
-    TPath,
-    TLoaderData,
-    TAllLoaderData,
-    TActionPayload,
-    TActionResponse,
-    TSearchZod,
-    TSearchSchema,
-    TParentParams,
-    TParams,
-    TAllParams
-  >
+  id: TRouteInfo['id']
+  parent?: AnyRoute
+  children?: AnyRoute[]
+  info!: TRouteInfo
+  router: Router<TAllRouteInfo['routeDef']>
+  options: TRouteInfo['options']
 
   constructor(
-    options: RouteOptions<
-      TPath,
-      TLoaderData,
-      TAllLoaderData,
-      TActionPayload,
-      TActionResponse,
-      TSearchZod,
-      TSearchSchema,
-      TParentParams,
-      TParams,
-      TAllParams
-    >,
-    parent: undefined | Route,
-    router: Router<TRootRoute>,
+    options: TRouteInfo['options'],
+    parent: undefined | Route<TAllRouteInfo, any>,
+    router: Router<any, any>,
   ) {
     if (!options.path) {
       if (process.env.NODE_ENV !== 'production') {
@@ -2075,132 +1944,130 @@ export class Route<
             parent!.id,
             `${options.path?.replace(/(.)\/$/, '$1')}`,
           ]).replace(new RegExp(`^${rootRouteId}`), '')
-    ) as TId
+    ) as TRouteInfo['id']
 
     this.options = options
-    this.parent = parent
+    // this.parent = parent
     this.router = router! as any
   }
 
-  getLoaderData = (): TAllLoaderData => {
+  getLoaderData = (): TRouteInfo['allLoaderData'] => {
     return null as any
   }
 
-  getAction = (): Action<TActionPayload, TActionResponse> => {
+  getAction = (): Action<
+    TRouteInfo['actionPayload'],
+    TRouteInfo['actionResponse']
+  > => {
     return null as any
   }
 
   linkProps = <
-    TRoutesInfo extends RoutesInfo<TRootRoute>,
-    // TId extends string = string,
-    // TPath extends string = string,
-    // TLoaderData extends LoaderData = {},
-    // TAllLoaderData extends LoaderData = {},
-    // TActionPayload extends any = any,
-    // TActionResponse extends any = any,
-    // TSearchZod extends SearchZod = {},
-    // TSearchSchema extends AnySearchSchema = {},
-    // TRouteDefs extends AnyRouteDef = AnyRouteDef,
-    TTo extends keyof TRoutesInfo['routesByPath'],
-    // TFromRoutePath extends string = '',
-    // TFrom extends string = '/',
-    // TToResolved extends string = ResolvePath<TFrom, TTo>,
+    TTo extends keyof TAllRouteInfo['routeInfoByFullPath'] = TRouteInfo['id'],
   >(
-    options: {
-      // fromRoute?: TRoute
-      // The absolute or relative route path
-      to?: TTo
-      // The new search object or a function to update it
-      // search?: true | Updater<SearchSchema, TRoutesInfo['routesById'][TTo]>
-      // The new has string or a function to update it
-      hash?: Updater<string>
-      // Whether to replace the current history stack instead of pushing a new one
-      replace?: boolean
-      // The standard anchor tag target attribute
-      target?: HTMLAnchorElement['target']
-      // A function that is passed the [Location API](#location-api) and returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
-      getActiveProps?: () => GetFrameworkGeneric<'LinkProps'>
-      // A function that is passed the [Location API](#location-api) and returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
-      getInactiveProps?: () => GetFrameworkGeneric<'LinkProps'>
-      // Defaults to `{ exact: false, includeHash: false }`
-      activeOptions?: ActiveOptions
-      // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
-      preload?: false | 'intent'
-      // When preloaded and set, will cache the preloaded result for this duration in milliseconds
-      preloadMaxAge?: number
-      // Delay intent preloading by this many milliseconds. If the intent exits before this delay, the preload will be cancelled.
-      preloadDelay?: number
-      // If true, will render the link without the href attribute
-      disabled?: boolean
-      // The root (excluding the basepath) from which to resolve the route.
-      // Defaults to the current location's pathname.
-      // To navigate from the root, pass `/` as the from
-      from?: (arg: TRoutesInfo['routesByPath'][TTo]) => void
-      // from?: TFrom
-    } & PathParamOptions<
-      TParams,
-      TRoutesInfo['routesByPath'][TTo]['types']['AllParams']
-    >,
-  ) => {}
+    options: LinkPropsOptions<TAllRouteInfo, TRouteInfo, TTo>,
+  ) => {
+    const newOptions: LinkPropsOptionsRelative<
+      TAllRouteInfo,
+      TRouteInfo['id'],
+      TTo
+    > = {
+      ...options,
+      from: this.id,
+    }
+
+    this.router.linkProps(newOptions as any)
+  }
 }
 
-type RouteById<TRoutesById, TRouteId> = Record<
-  string,
-  AnyRoute
-> extends TRoutesById
-  ? Route
-  : TRoutesById extends Record<string, AnyRoute>
-  ? TRouteId extends keyof TRoutesById
-    ? TRoutesById[TRouteId]
-    : never
-  : never
+type LinkPropsOptions<
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+  TRouteInfo extends AnyRouteInfo = RouteInfo,
+  TTo extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
+> = {
+  // The absolute or relative route path
+  to?: TTo
+  // The new has string or a function to update it
+  hash?: Updater<string>
+  // Whether to replace the current history stack instead of pushing a new one
+  replace?: boolean
+  // The standard anchor tag target attribute
+  target?: HTMLAnchorElement['target']
+  // A function that is passed the [Location API](#location-api) and returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+  getActiveProps?: () => GetFrameworkGeneric<'LinkProps'>
+  // A function that is passed the [Location API](#location-api) and returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+  getInactiveProps?: () => GetFrameworkGeneric<'LinkProps'>
+  // Defaults to `{ exact: false, includeHash: false }`
+  activeOptions?: ActiveOptions
+  // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
+  preload?: false | 'intent'
+  // When preloaded and set, will cache the preloaded result for this duration in milliseconds
+  preloadMaxAge?: number
+  // Delay intent preloading by this many milliseconds. If the intent exits before this delay, the preload will be cancelled.
+  preloadDelay?: number
+  // If true, will render the link without the href attribute
+  disabled?: boolean
+  // The root (excluding the basepath) from which to resolve the route.
+  // Defaults to the current location's pathname.
+  // To navigate from the root, pass `/` as the from
+  // from?: TFrom
+} & SearchParamOptions<
+  TRouteInfo['fullSearchSchema'],
+  TAllRouteInfo['routeInfoByFullPath'][TTo]['fullSearchSchema']
+> &
+  PathParamOptions<
+    TRouteInfo['allParams'],
+    TAllRouteInfo['routeInfoByFullPath'][TTo]['allParams']
+  >
 
-type PathParamOptions<TPrevParams, TNextParams> = PathParams extends TNextParams
-  ? {
-      params?: {
-        [x: string]: never
+type SearchParamOptions<TPrevSearchSchema, TNextSearchSchema> =
+  // No search params? Don't allow it
+  keyof TNextSearchSchema extends never
+    ? {
+        search?: never
       }
-    }
-  : {
-      // The params to interpolate into the destination route
-      params: TNextParams | ((current: TPrevParams) => TNextParams)
-    }
+    : // Optional search params? Allow it
+    keyof PickRequired<TNextSearchSchema> extends never
+    ? {
+        search?:
+          | TNextSearchSchema
+          | ((current: TPrevSearchSchema) => TNextSearchSchema)
+      }
+    : {
+        // Must have required search params, enforce it
+        search:
+          | TNextSearchSchema
+          | ((current: TPrevSearchSchema) => TNextSearchSchema)
+      }
+
+type PathParamOptions<TPrevParams, TNextParams> =
+  AnyPathParams extends TNextParams
+    ? {
+        params?: {
+          [x: string]: never
+        }
+      }
+    : {
+        // The params to interpolate into the destination route
+        params: TNextParams | ((current: TPrevParams) => TNextParams)
+      }
 
 export class RouteMatch<
-  TRootRoute extends AnyRouteDef = AnyRouteDef,
-  TId extends string = string,
-  TPath extends string = string,
-  TLoaderData extends LoaderData = {},
-  TAllLoaderData extends LoaderData = {},
-  TActionPayload = unknown,
-  TActionResponse = unknown,
-  TSearchZod extends SearchZod = {},
-  TSearchSchema extends AnySearchSchema = {},
-  TParams extends PathParams = PathParams,
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+  TRouteInfo extends AnyRouteInfo = RouteInfo,
 > {
   id!: string
   router: unknown
   parentMatch?: RouteMatch
-  route!: Route<
-    TRootRoute,
-    TId,
-    TPath,
-    TLoaderData,
-    TAllLoaderData,
-    TActionPayload,
-    TActionResponse,
-    TSearchZod,
-    TSearchSchema,
-    TParams
-  >
+  route!: Route<TAllRouteInfo, TRouteInfo>
   pathname!: string
-  params!: TParams
-  search!: TSearchSchema
+  params!: TRouteInfo['allParams']
+  search!: TRouteInfo['searchSchema']
   updatedAt?: number
-  element?: GetFrameworkGeneric<'Element', TLoaderData>
-  errorElement?: GetFrameworkGeneric<'Element', TLoaderData>
-  catchElement?: GetFrameworkGeneric<'Element', TLoaderData>
-  pendingElement?: GetFrameworkGeneric<'Element', TLoaderData>
+  element?: GetFrameworkGeneric<'Element', TRouteInfo['allLoaderData']>
+  errorElement?: GetFrameworkGeneric<'Element', TRouteInfo['allLoaderData']>
+  catchElement?: GetFrameworkGeneric<'Element', TRouteInfo['allLoaderData']>
+  pendingElement?: GetFrameworkGeneric<'Element', TRouteInfo['allLoaderData']>
   error?: unknown
   loaderPromise?: Promise<void>
   importPromise?: Promise<void>
@@ -2208,31 +2075,16 @@ export class RouteMatch<
   dataPromise?: Promise<void>
   pendingTimeout?: Timeout
   pendingMinPromise?: Promise<void>
-  onExit?:
-    | void
-    | ((
-        match: RouteMatch<
-          TRootRoute,
-          TId,
-          TPath,
-          TLoaderData,
-          TAllLoaderData,
-          TActionPayload,
-          TActionResponse,
-          TSearchZod,
-          TSearchSchema,
-          TParams
-        >,
-      ) => void)
+  onExit?: void | ((match: RouteMatch<TAllRouteInfo, TRouteInfo>) => void)
   isInvalid = false
 
   constructor(
     router: Router<any, any>,
     unloadedMatch: UnloadedMatch<
-      TPath,
-      TLoaderData,
-      TActionPayload,
-      TActionResponse
+      TRouteInfo['path'],
+      TRouteInfo['allLoaderData'],
+      TRouteInfo['actionPayload'],
+      TRouteInfo['actionResponse']
     >,
   ) {
     this.router = router
@@ -2240,7 +2092,7 @@ export class RouteMatch<
   }
 
   status: 'idle' | 'loading' | 'success' | 'error' = 'idle'
-  loaderData: TLoaderData = {} as TLoaderData
+  loaderData: TRouteInfo['allLoaderData'] = {} as TRouteInfo['allLoaderData']
   isPending: boolean = false
   isFetching: boolean = false
   abortController = new AbortController()
@@ -2360,10 +2212,10 @@ export class RouteMatch<
 
         this.dataPromise = Promise.resolve().then(async () => {
           try {
-            const data = await this.route.options.loader?.(this as any, {
-              match: this as any,
+            const data = await this.route.options.loader?.({
+              params: this.params,
+              search: this.search,
               signal: this.abortController.signal,
-              // router: this.router,
             })
             if (id !== this.latestId) {
               return this.loaderPromise
@@ -2371,7 +2223,7 @@ export class RouteMatch<
 
             this.loaderData = replaceEqualDeep(
               this.loaderData,
-              data || ({} as TLoaderData),
+              data || ({} as TRouteInfo['loaderData']),
             )
             this.error = undefined
             this.status = 'success'
@@ -2425,7 +2277,7 @@ export class RouteMatch<
 export function matchPathname(
   currentPathname: string,
   matchLocation: Pick<MatchLocation, 'to' | 'fuzzy' | 'caseSensitive'>,
-): PathParams | undefined {
+): AnyPathParams | undefined {
   const pathParams = matchByPath(currentPathname, matchLocation)
   // const searchMatched = matchBySearch(currentLocation.search, matchLocation)
 
@@ -2736,7 +2588,7 @@ export const defaultParseSearch = parseSearchWith(JSON.parse)
 export const defaultStringifySearch = stringifySearchWith(JSON.stringify)
 
 export function parseSearchWith(parser: (str: string) => any) {
-  return (searchStr: string): Record<string, any> => {
+  return (searchStr: string): AnySearchSchema => {
     if (searchStr.substring(0, 1) === '?') {
       searchStr = searchStr.substring(1)
     }

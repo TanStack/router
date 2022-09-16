@@ -1,6 +1,7 @@
+import { AnyAllRouteInfo, Route } from '@tanstack/router-core'
 import * as React from 'react'
 import { z } from 'zod'
-import { createRoutes, Router, RoutesInfo } from '.'
+import { createRoutes, Router, AnyRouteDef, AllRouteInfo } from '.'
 
 const paramTest = createRoutes().addChildren((createRoute) => {
   return [
@@ -57,13 +58,13 @@ const paramTest = createRoutes().addChildren((createRoute) => {
   ]
 })
 
-type ParamsRoutesInfo = keyof RoutesInfo<typeof paramTest>['routesById']
+type ParamsRoutesInfo = keyof AllRouteInfo<typeof paramTest>['routeInfoById']
 //   ^?
 
 const searchSchemaTest = createRoutes({
-  searchZod: {
+  validateSearch: z.object({
     userId: z.string(),
-  },
+  }).parse,
   loader: async ({ search }) => {
     search.userId
     return {}
@@ -74,13 +75,11 @@ const searchSchemaTest = createRoutes({
   }),
   createRoute({
     path: 'dashboard',
-    searchZod: {
+    validateSearch: z.object({
       version: z.string(),
       dateRange: z.tuple([z.number(), z.number()]).optional(),
-    },
+    }).parse,
     loader: async ({ search }) => {
-      search.userId, search.dateRange, search.version
-
       return {
         invoices: 'invoices' as const,
       }
@@ -96,7 +95,7 @@ const searchSchemaTest = createRoutes({
             invoices: 'invoices' as const,
           }
         },
-        action: async (partialInvoice: 'partialInvoince', ctx) => {
+        action: async (partialInvoice: 'partialInvoince') => {
           const invoice = await Promise.resolve(
             `postInvoice(${partialInvoice})`,
           )
@@ -172,15 +171,29 @@ const searchSchemaTest = createRoutes({
   ]),
 ])
 
-type MyRoutesInfo = RoutesInfo<typeof searchSchemaTest>
+type Test = AnyAllRouteInfo
+
+type Test1a = Test['routeInfo']
+type Test2 = keyof Test['routeInfoById']
+type Test3 = Test['routeInfoById'][Test2]
 //   ^?
-type RoutesById = MyRoutesInfo['routesById']
+
+type MyRoutesInfo = AllRouteInfo<typeof searchSchemaTest>
 //   ^?
-type RoutePaths = keyof RoutesById
+type RouteInfo = MyRoutesInfo['routeInfo']
+type RoutesById = MyRoutesInfo['routeInfoById']
+type RoutesTest = Route<
+  MyRoutesInfo,
+  MyRoutesInfo['routeInfoByFullPath']['/dashboard/invoices']
+>
 //   ^?
-type InvoiceRoute = RoutesById['/dashboard/invoices/:invoiceId']
+type RoutePaths = MyRoutesInfo['routeInfoByFullPath']
 //   ^?
-type InvoiceLoaderData = InvoiceRoute['types']['AllLoaderData']
+type InvoiceRouteInfo = RoutesById['/dashboard/invoices/:invoiceId']
+//   ^?
+type InvoiceLoaderData = InvoiceRouteInfo['allLoaderData']
+//   ^?//
+type InvoiceAction = InvoiceRouteInfo['actionPayload']
 //   ^?
 
 //
@@ -205,7 +218,12 @@ type InvoiceLoaderData = InvoiceRoute['types']['AllLoaderData']
 
 // Build our routes. We could do this in our component, too.
 const routes = createRoutes().addChildren((createRoute) => [
-  createRoute({ path: '/' }),
+  createRoute({
+    path: '/',
+    validateSearch: z.object({
+      version: z.number(),
+    }).parse,
+  }),
   createRoute({
     path: 'dashboard',
     loader: async () => {
@@ -221,7 +239,7 @@ const routes = createRoutes().addChildren((createRoute) => [
     }).addChildren((createRoute) => [
       createRoute({
         path: '/',
-        action: async (partialInvoice: { amount: number }, ctx) => {
+        action: async (partialInvoice: { amount: number }) => {
           const invoice: { id: number; amount: number } = null!
           // // Redirect to the new invoice
           // ctx.router.navigate({
@@ -234,15 +252,14 @@ const routes = createRoutes().addChildren((createRoute) => [
       }),
       createRoute({
         path: ':invoiceId',
-        parseParams: ({ invoiceId }) => ({ invoiceId: Number(invoiceId) }),
-        stringifyParams: ({ invoiceId }) => ({ invoiceId: String(invoiceId) }),
+        // parseParams: ({ invoiceId }) => ({ invoiceId: Number(invoiceId) }),
+        // stringifyParams: ({ invoiceId }) => ({ invoiceId: String(invoiceId) }),
         loader: async ({ params: { invoiceId } }) => {
           console.log('Fetching invoice...')
           return {
             invoice: 'await fetchInvoiceById(invoiceId!)',
           }
         },
-        // action: patchInvoice,
       }),
     ]),
     createRoute({
@@ -252,14 +269,14 @@ const routes = createRoutes().addChildren((createRoute) => [
           users: 'await fetchUsers()',
         }
       },
-      searchZod: {
+      validateSearch: z.object({
         usersView: z
           .object({
             sortBy: z.enum(['name', 'id', 'email']).optional(),
             filterBy: z.string().optional(),
           })
           .optional(),
-      },
+      }).parse,
       preSearchFilters: [
         // Keep the usersView search param around
         // while in this route (or it's children!)
@@ -273,11 +290,20 @@ const routes = createRoutes().addChildren((createRoute) => [
     }).addChildren((createRoute) => [
       createRoute({
         path: ':userId',
-
         loader: async ({ params: { userId } }) => {
           return {
             user: 'await fetchUserById(userId!)',
           }
+        },
+        action: async (partialUser: { amount: number }) => {
+          const invoice: { id: number; amount: number } = null!
+          // // Redirect to the new invoice
+          // ctx.router.navigate({
+          //   to: invoice.id,
+          //   // Use the current match for relative paths
+          //   from: ctx.match.pathname,
+          // })
+          return invoice
         },
       }),
     ]),
@@ -297,30 +323,37 @@ const router = new Router({
   routes,
 })
 
-router.routeInfo.routesByPath['/dashboard/invoices/:invoiceId'].types.AllParams
+const info = router.allRouteInfo.routeInfoById['/dashboard/invoices/:invoiceId']
+//    ^?
 
 const loaderData = router.getRoute('/dashboard/users/:userId').getLoaderData()
 //    ^?
-const action = router.getRoute('/dashboard/invoices/').getAction()
+const route = router.getRoute('/dashboard/users/:userId')
+//    ^?
+const action = route.getAction()
 //    ^?
 const result = action.submit({ amount: 10000 })
 //    ^?
 
-const route = router.getRoute('/')
-
-route.types.AllParams
-
-route.linkProps({
+router.getRoute('/dashboard').linkProps({
   to: '/dashboard/invoices',
   params: {
-    // invoiceId: 2,
+    // @ts-expect-error
+    invoiceId: 2,
   },
 })
 
 router.getRoute('/').linkProps({
   to: '/dashboard/invoices/:invoiceId',
   params: {
-    invoiceId: 2,
+    invoiceId: '2',
+  },
+})
+
+router.getRoute('/').linkProps({
+  to: '/',
+  search: {
+    version: 2,
   },
 })
 
@@ -330,7 +363,12 @@ router.getRoute('/').linkProps({
     userId:
       // @ts-expect-error
       current?.invoiceId,
-    //          ^?
+  }),
+  search: (old) => ({
+    usersView: {
+      sortBy: 'email',
+      filterBy: String(old.version),
+    },
   }),
 })
 
@@ -339,12 +377,27 @@ router.getRoute('/dashboard/invoices/:invoiceId').linkProps({
   params: (current) => ({
     userId: current?.invoiceId,
   }),
+  search: () => {
+    return {
+      usersView: {
+        sortBy: 'name',
+        filterBy: 'tanner',
+      },
+    }
+  },
 })
 
-router.getRoute('/').linkProps({
+router.linkProps({
+  from: '/',
   to: '/dashboard/users/:userId',
-  params: (current) => ({
-    userId: current?.invoiceId,
+  params: {
+    userId: '2',
+  },
+  search: (prev) => ({
+    usersView: {
+      sortBy: 'email',
+      filterBy: `${prev.version}`,
+    },
   }),
 })
 
