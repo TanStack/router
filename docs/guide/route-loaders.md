@@ -265,4 +265,4 @@ function TeamsError() {
 
 ## Pending States
 
-Route loaders _and_ async elements both share a set of features to show **pending** states. Because they are shared, we have a dedicated [Pending States](../guides/pending-states) section where you can learn more about them.
+Route loaders _and_ async elements both share a set of features to show **pending** states. Because they are shared, we have a dedicated [Pending States](../guide/pending-states) section where you can learn more about them.
