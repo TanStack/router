@@ -510,13 +510,15 @@ type _PartialPath<TRoutePath extends string> =
         | `${L}/${_PartialPath<`${R}`>}`
     : TRoutePath
 
-type Split<S extends string, D extends string = '/'> = string extends S
-  ? string[]
-  : CleanPath<S> extends ''
-  ? []
-  : CleanPath<S> extends `${infer T}${D}${infer U}`
-  ? [T, ...Split<U, D>]
-  : [S]
+type Split<S extends string, D extends string = '/'> = S extends unknown
+  ? string extends S
+    ? string[]
+    : CleanPath<S> extends ''
+    ? []
+    : CleanPath<S> extends `${infer T}${D}${infer U}`
+    ? [T, ...Split<U, D>]
+    : [S]
+  : never
 
 type Join<T, D extends string = '/'> = T extends []
   ? ''
@@ -2049,9 +2051,17 @@ export class Route<
 
   link = <TTo extends ValidToPath<TAllRouteInfo, TRouteInfo['id']> = '.'>(
     options: Omit<
-      LinkOptionsRelative<TAllRouteInfo, TRouteInfo['id'], TTo>,
-      'from'
-    >,
+      LinkOptionsRelative<TAllRouteInfo, TRouteInfo['id'], NoInfer<TTo>>,
+      'from' | 'to'
+    > & {
+      to?:
+        | TTo
+        | RelativeLinkAutoComplete<
+            TAllRouteInfo['fullPath'],
+            TRouteInfo['id'],
+            NoInfer<TTo> & string
+          >
+    },
   ) => {
     return this.router.link<TRouteInfo['id'], TTo>({
       ...options,
@@ -2071,6 +2081,37 @@ export class Route<
     } as any)
   }
 }
+
+type RelativeLinkAutoComplete<
+  AllPaths extends string,
+  TFrom extends string,
+  TTo extends string,
+  SplitPaths extends string[] = Split<AllPaths>,
+> = TTo extends `..${string}`
+  ? SplitPaths extends [...GetMatchingPath<TFrom, TTo>, ...unknown[]]
+    ? `${Join<Split<TTo>>}${
+        | Join<SplitPaths>
+        | (GetMatchingPath<TFrom, TTo>['length'] extends 0
+            ? never
+            : '/..')}`
+    : never
+  : TTo extends `./${infer RestTTo}`
+  ? SplitPaths extends [...Split<TFrom>, ...Split<RestTTo>, ...infer RestPath]
+    ? `${TTo}${Join<RestPath>}`
+    : never
+  : './' | '..' | AllPaths
+
+type MapToUnknown<T extends object> = { [_ in keyof T]: unknown }
+
+type GetMatchingPath<
+  TFrom extends string,
+  TTo extends string,
+  SplitTTo = MapToUnknown<Split<TTo>>,
+> = Split<TFrom> extends [...infer Matching, ...Extract<SplitTTo, unknown[]>]
+  ? Matching['length'] extends 0
+    ? never
+    : Matching
+  : never
 
 type NavigateOptions<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
