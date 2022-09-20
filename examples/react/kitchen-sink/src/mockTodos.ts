@@ -3,7 +3,7 @@ import axios from 'axios'
 import { produce } from 'immer'
 import { actionDelayFn, loaderDelayFn, shuffle } from './utils'
 export type Invoice = {
-  id: string
+  id: number
   title: string
   body: string
 }
@@ -73,10 +73,10 @@ export async function fetchInvoices() {
   return loaderDelayFn(() => ensureInvoices().then(() => invoices))
 }
 
-export async function fetchInvoiceById(id: string) {
+export async function fetchInvoiceById(id: number) {
   return loaderDelayFn(() =>
     ensureInvoices().then(() => {
-      const invoice = invoices.find((d) => String(d.id) === id)
+      const invoice = invoices.find((d) => d.id === id)
       if (invoice) {
         return {
           ...invoice,
@@ -95,7 +95,7 @@ export async function postInvoice(partialInvoice: Partial<Invoice>) {
       throw new Error('Ouch!')
     }
     const invoice = {
-      id: `${invoices.length + 1}`,
+      id: invoices.length + 1,
       title:
         partialInvoice.title ?? `New Invoice ${String(Date.now()).slice(0, 5)}`,
       body:
@@ -115,7 +115,7 @@ export async function postInvoice(partialInvoice: Partial<Invoice>) {
 export async function patchInvoice(updatedInvoice: Partial<Invoice>) {
   return actionDelayFn(() => {
     invoices = produce(invoices, (draft) => {
-      let invoice = draft.find((d) => String(d.id) === updatedInvoice.id)
+      let invoice = draft.find((d) => d.id === updatedInvoice.id)
       if (!invoice) {
         throw new Error('Invoice not found.')
       }

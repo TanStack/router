@@ -11,6 +11,7 @@ import {
   useLoaderData,
   useAction,
   createRoutes,
+  Router,
 } from '@tanstack/react-router'
 import { ReactLocationDevtools } from '@tanstack/router-devtools'
 
@@ -28,29 +29,11 @@ import {
 import reallyExpensiveRoute from './reallyExpensive'
 import { loaderDelayFn } from './utils'
 import { z } from 'zod'
+import route from './reallyExpensive'
 
 //
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
-
-declare module '@tanstack/react-router' {
-  // interface SearchSchema {
-  //   showNotes?: boolean
-  //   notes?: string
-  // }
-  // interface RouteParams {
-  //   invoiceId: string
-  //   userId: string
-  // }
-  // interface LoaderData {
-  //   invoices: Invoice[]
-  //   invoice: Invoice
-  //   users: User[]
-  //   user: User
-  //   expensiveTimestamp: number
-  //   reallyExpensiveTimestamp: number
-  // }
-}
 
 // Build our routes. We could do this in our component, too.
 const routes = createRoutes().addChildren((createRoute) => [
@@ -86,6 +69,12 @@ const routes = createRoutes().addChildren((createRoute) => [
       }),
       createRoute({
         path: ':invoiceId',
+        parseParams: ({ invoiceId }) => ({ invoiceId: Number(invoiceId) }),
+        stringifyParams: ({ invoiceId }) => ({ invoiceId: `${invoiceId}` }),
+        validateSearch: z.object({
+          showNotes: z.boolean().optional(),
+          notes: z.string().optional(),
+        }).parse,
         element: <InvoiceView />,
         loader: async ({ params: { invoiceId } }) => {
           console.log('Fetching invoice...')
@@ -105,14 +94,14 @@ const routes = createRoutes().addChildren((createRoute) => [
           users: await fetchUsers(),
         }
       },
-      searchZod: {
+      validateSearch: z.object({
         usersView: z
           .object({
             sortBy: z.enum(['name', 'id', 'email']).optional(),
             filterBy: z.string().optional(),
           })
           .optional(),
-      },
+      }).parse,
       preSearchFilters: [
         // Keep the usersView search param around
         // while in this route (or it's children!)
@@ -156,7 +145,7 @@ const routes = createRoutes().addChildren((createRoute) => [
   ]),
 ])
 
-const router = new ReactRouter({
+const router = new Router({
   routes,
 })
 
@@ -284,6 +273,8 @@ function App() {
 }
 
 function Root() {
+  const route = router.getRoute('__root__')
+
   return (
     <div className={`min-h-screen flex flex-col`}>
       <div className={`flex items-center border-b gap-2`}>
@@ -299,25 +290,28 @@ function Root() {
       </div>
       <div className={`flex-1 flex`}>
         <div className={`divide-y w-56`}>
-          {[
-            ['.', 'Home'],
-            ['dashboard', 'Dashboard'],
-            ['expensive', 'Expensive'],
-            ['really-expensive', 'Really Expensive'],
-            ['authenticated/', 'Authenticated'], // This route has a trailing slash on purpose.
-          ].map(([to, label]) => {
+          {(
+            [
+              ['.', 'Home'],
+              ['/dashboard', 'Dashboard'],
+              ['/expensive', 'Expensive'],
+              ['/authenticated', 'Authenticated'], // This route has a trailing slash on purpose.
+            ] as const
+          ).map(([to, label]) => {
             return (
               <div key={to}>
                 <Link
-                  to={to}
+                  {...route.link({
+                    to,
+                    activeOptions: {
+                      // If the route points to the root of it's parent,
+                      // make sure it's only active if it's exact
+                      exact: to === '.',
+                    },
+                  })}
                   className={`block py-2 px-3 text-blue-700`}
                   // Make "active" links bold
-                  getActiveProps={() => ({ className: `font-bold` })}
-                  activeOptions={{
-                    // If the route points to the root of it's parent,
-                    // make sure it's only active if it's exact
-                    exact: to === '.',
-                  }}
+                  activeProps={{ className: `font-bold` }}
                 >
                   {label}
                 </Link>
@@ -335,12 +329,19 @@ function Root() {
 }
 
 function Home() {
+  const route = router.getRoute('/')
+
   return (
     <div className={`p-2`}>
       <div className={`text-lg`}>Welcome Home!</div>
       <hr className={`my-2`} />
       <Link
-        to="dashboard/invoices/3"
+        {...route.link({
+          to: '/dashboard/invoices/:invoiceId',
+          params: {
+            invoiceId: 3,
+          },
+        })}
         className={`py-1 px-2 text-xs bg-blue-500 text-white rounded-full`}
       >
         1 New Invoice
@@ -365,12 +366,19 @@ function Home() {
 }
 
 function Dashboard() {
+  const route = router.getRoute('/dashboard')
+
   return (
     <>
       <div className="flex items-center border-b">
         <h2 className="text-xl p-2">Dashboard</h2>
         <Link
-          to="./invoices/3"
+          {...route.link({
+            to: '/dashboard/invoices/:invoiceId',
+            params: {
+              invoiceId: 3,
+            },
+          })}
           className="py-1 px-2 text-xs bg-blue-500 text-white rounded-full"
         >
           1 New Invoice
@@ -380,21 +388,22 @@ function Dashboard() {
         {(
           [
             ['.', 'Summary'],
-            ['invoices', 'Invoices'],
-            ['users', 'Users', true],
+            ['/dashboard/invoices', 'Invoices'],
+            ['/dashboard/users', 'Users', true],
           ] as const
         ).map(([to, label, search]) => {
           return (
-            <router.Link
+            <Link
               key={to}
-              to={to}
-              search={search}
-              className="inline-block py-2 px-3 text-blue-700"
-              activeOptions={{ exact: to === '.' }}
-              getActiveProps={() => ({ className: `font-bold` })}
+              {...route.link({
+                to,
+                search,
+                activeOptions: { exact: to === '.' },
+              })}
+              activeProps={{ className: `font-bold` }}
             >
               {label}
-            </router.Link>
+            </Link>
           )
         })}
       </div>
@@ -420,7 +429,8 @@ function DashboardHome() {
 router.getRoute('/')
 
 function Invoices() {
-  const { invoices } = router.getRoute('/dashboard/invoices').getLoaderData()
+  const route = router.getRoute('/dashboard/invoices')
+  const { invoices } = route.getLoaderData()
 
   // Get the action for a child route
   const addInvoiceAction = router.getRoute('/dashboard/invoices/').getAction()
@@ -432,10 +442,15 @@ function Invoices() {
           return (
             <div key={invoice.id}>
               <Link
-                to={invoice.id}
+                {...route.link({
+                  to: '/dashboard/invoices/:invoiceId',
+                  params: {
+                    invoiceId: invoice.id,
+                  },
+                  preload: 'intent',
+                })}
                 className="block py-2 px-3 text-blue-700"
-                getActiveProps={() => ({ className: `font-bold` })}
-                preload="intent"
+                activeProps={{ className: `font-bold` }}
               >
                 <pre className="text-sm">
                   #{invoice.id} - {invoice.title.slice(0, 10)}{' '}
@@ -449,11 +464,11 @@ function Invoices() {
         })}
         {addInvoiceAction.pending.map((action) => (
           <div key={action.submittedAt}>
-            <Link className="block py-2 px-3 text-blue-700">
+            <a href="#" className="block py-2 px-3 text-blue-700">
               <pre className="text-sm">
                 #<Spinner /> - {action.submission.title?.slice(0, 10)}
               </pre>
-            </Link>
+            </a>
           </div>
         ))}
       </div>
@@ -497,15 +512,17 @@ function InvoicesHome() {
 }
 
 function InvoiceView() {
-  const { invoice } = useLoaderData()
-  const search = useSearch()
+  const route = router.getRoute('/dashboard/invoices/:invoiceId')
+  const { invoice } = route.getLoaderData()
+  const search = route.getSearch()
   const navigate = useNavigate()
   const action = useAction()
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
 
   React.useEffect(() => {
-    navigate({
+    route.navigate({
+      to: '.',
       search: (old) => ({ ...old, notes: notes ? notes : undefined }),
       replace: true,
     })
@@ -702,7 +719,7 @@ function Users() {
               <Link
                 to={user.id}
                 className="block py-2 px-3 text-blue-700"
-                getActiveProps={() => ({ className: `font-bold` })}
+                activeProps={{ className: `font-bold` }}
               >
                 <pre className="text-sm">
                   {user.name}{' '}

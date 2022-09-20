@@ -170,12 +170,6 @@ const searchSchemaTest = createRoutes({
     }),
   ]),
 ])
-
-type Test = AnyAllRouteInfo
-
-type Test1a = Test['routeInfo']
-type Test2 = keyof Test['routeInfoById']
-type Test3 = Test['routeInfoById'][Test2]
 //   ^?
 
 type MyRoutesInfo = AllRouteInfo<typeof searchSchemaTest>
@@ -225,6 +219,13 @@ const routes = createRoutes().addChildren((createRoute) => [
     }).parse,
   }),
   createRoute({
+    path: '/test',
+    validateSearch: z.object({
+      version: z.number(),
+      other: z.boolean(),
+    }).parse,
+  }),
+  createRoute({
     path: 'dashboard',
     loader: async () => {
       console.log('Fetching all invoices...')
@@ -252,8 +253,8 @@ const routes = createRoutes().addChildren((createRoute) => [
       }),
       createRoute({
         path: ':invoiceId',
-        // parseParams: ({ invoiceId }) => ({ invoiceId: Number(invoiceId) }),
-        // stringifyParams: ({ invoiceId }) => ({ invoiceId: String(invoiceId) }),
+        parseParams: ({ invoiceId }) => ({ invoiceId: Number(invoiceId) }),
+        stringifyParams: ({ invoiceId }) => ({ invoiceId: String(invoiceId) }),
         loader: async ({ params: { invoiceId } }) => {
           console.log('Fetching invoice...')
           return {
@@ -323,9 +324,6 @@ const router = new Router({
   routes,
 })
 
-const info = router.allRouteInfo.routeInfoById['/dashboard/invoices/:invoiceId']
-//    ^?
-
 const loaderData = router.getRoute('/dashboard/users/:userId').getLoaderData()
 //    ^?
 const route = router.getRoute('/dashboard/users/:userId')
@@ -335,29 +333,49 @@ const action = route.getAction()
 const result = action.submit({ amount: 10000 })
 //    ^?
 
-router.getRoute('/dashboard').linkProps({
+router.link({
+  from: '/dashboard/invoices/:invoiceId',
+})
+
+router.link({
+  from: '/test',
+  to: '/',
+})
+
+route.link({
+  to: '',
+})
+
+router.getRoute('/dashboard').link({
   to: '/dashboard/invoices',
   params: {
-    // @ts-expect-error
     invoiceId: 2,
   },
 })
 
-router.getRoute('/').linkProps({
+router.getRoute('/dashboard').link({
   to: '/dashboard/invoices/:invoiceId',
   params: {
+    // @ts-expect-error
     invoiceId: '2',
   },
 })
 
-router.getRoute('/').linkProps({
+router.getRoute('/').link({
+  to: '/dashboard/invoices/:invoiceId',
+  params: {
+    invoiceId: 2,
+  },
+})
+
+router.getRoute('/').link({
   to: '/',
   search: {
     version: 2,
   },
 })
 
-router.getRoute('/').linkProps({
+router.getRoute('/').link({
   to: '/dashboard/users/:userId',
   params: (current) => ({
     userId:
@@ -372,10 +390,10 @@ router.getRoute('/').linkProps({
   }),
 })
 
-router.getRoute('/dashboard/invoices/:invoiceId').linkProps({
+router.getRoute('/dashboard/invoices/:invoiceId').link({
   to: '/dashboard/users/:userId',
   params: (current) => ({
-    userId: current?.invoiceId,
+    userId: `${current?.invoiceId}`,
   }),
   search: () => {
     return {
@@ -387,7 +405,7 @@ router.getRoute('/dashboard/invoices/:invoiceId').linkProps({
   },
 })
 
-router.linkProps({
+router.link({
   from: '/',
   to: '/dashboard/users/:userId',
   params: {
@@ -399,6 +417,20 @@ router.linkProps({
       filterBy: `${prev.version}`,
     },
   }),
+})
+
+router.getRoute('/dashboard/invoices/:invoiceId').link({
+  to: '..',
+  test: (arg) => {},
+  // params: {
+  //   userId: '2',
+  // },
+  // search: (prev) => ({
+  //   usersView: {
+  //     sortBy: 'email',
+  //     filterBy: `${prev.version}`,
+  //   },
+  // }),
 })
 
 ///

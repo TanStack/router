@@ -35,6 +35,7 @@ export type PickExtra<T, K> = Expand<{
 type PickRequired<T> = {
   [K in keyof T as undefined extends T[K] ? never : K]: T[K]
 }
+type LooseAutocomplete<T> = T extends string ? T | Omit<string, T> : never
 
 export interface FrameworkGenerics {
   // The following properties are used internally
@@ -44,12 +45,12 @@ export interface FrameworkGenerics {
   // Element: any
   // AsyncElement: any
   // SyncOrAsyncElement?: any
-  // LinkProps: any
 }
 
 export type RouteDef<
   TId extends string = string,
   TPath extends string = string,
+  TFullPath extends string = string,
   TLoaderData extends AnyLoaderData = AnyLoaderData,
   TAllLoaderData extends AnyLoaderData = AnyLoaderData,
   TActionPayload = unknown,
@@ -80,37 +81,42 @@ export type RouteDef<
     TAllParams
   >
   children?: TKnownChildren
-  addChildren: <TNewChildren extends any>(
-    cb: (
-      createChildRoute: CreateRouteFn<
-        false,
-        TId,
-        TAllLoaderData,
-        TFullSearchSchema,
-        TAllParams
-      >,
-    ) => TNewChildren extends AnyRouteDef[]
-      ? TNewChildren
-      : { error: 'Invalid route detected'; route: TNewChildren },
-  ) => RouteDef<
+  addChildren: IsAny<
     TId,
-    TPath,
-    TLoaderData,
-    TAllLoaderData,
-    TActionPayload,
-    TActionResponse,
-    TParentSearchSchema,
-    TSearchSchema,
-    TFullSearchSchema,
-    TParentParams,
-    TParams,
-    TAllParams,
-    TNewChildren
+    any,
+    <TNewChildren extends any>(
+      cb: (
+        createChildRoute: CreateRouteFn<
+          false,
+          TId,
+          TAllLoaderData,
+          TFullSearchSchema,
+          TAllParams
+        >,
+      ) => TNewChildren extends AnyRouteDef[]
+        ? TNewChildren
+        : { error: 'Invalid route detected'; route: TNewChildren },
+    ) => RouteDef<
+      TId,
+      TPath,
+      TFullPath,
+      TLoaderData,
+      TAllLoaderData,
+      TActionPayload,
+      TActionResponse,
+      TParentSearchSchema,
+      TSearchSchema,
+      TFullSearchSchema,
+      TParentParams,
+      TParams,
+      TAllParams,
+      TNewChildren
+    >
   >
 }
 
 type CreateRouteFn<
-  TIsRoot extends boolean,
+  TIsRoot extends boolean = false,
   TParentId extends string = string,
   TParentAllLoaderData extends AnyLoaderData = {},
   TParentSearchSchema extends AnySearchSchema = {},
@@ -167,6 +173,7 @@ type CreateRouteFn<
 ) => RouteDef<
   RouteId<TParentId, TPath>,
   TPath,
+  RouteIdToPath<RouteId<TParentId, TPath>>,
   TLoaderData,
   Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TLoaderData>>>,
   TActionPayload,
@@ -230,6 +237,7 @@ export type AnyRouteDefWithChildren<TChildren> = RouteDef<
   any,
   any,
   any,
+  any,
   TChildren
 >
 
@@ -238,6 +246,7 @@ export type AnyAllRouteInfo = {
   routeInfo: AnyRouteInfo
   routeInfoById: Record<string, AnyRouteInfo>
   routeInfoByFullPath: Record<string, AnyRouteInfo>
+  fullPath: string
 }
 
 export type DefaultAllRouteInfo = {
@@ -245,6 +254,7 @@ export type DefaultAllRouteInfo = {
   routeInfo: RouteInfo
   routeInfoById: Record<string, RouteInfo>
   routeInfoByFullPath: Record<string, RouteInfo>
+  fullPath: string
 }
 
 export type AllRouteInfo<TRouteDef extends AnyRouteDef = RouteDef> =
@@ -273,8 +283,11 @@ export type RoutesInfoInner<
     [TInfo in TRouteInfo as TInfo['id']]: TInfo
   }
   routeInfoByFullPath: {
-    [TInfo in TRouteInfo as RouteIdToPath<TInfo['id']>]: TInfo
+    [TInfo in TRouteInfo as TInfo['fullPath'] extends RootRouteId
+      ? never
+      : RouteIdToPath<TInfo['id']>]: TInfo
   }
+  fullPath: Exclude<RouteIdToPath<TRouteInfo['id']>, RootRouteId>
   // params: ParseRoute<TRouteDef>['param']
   // routesByParams: IndexObj<ParseRoute<TRouteDef>, 'param'>
   // allLoaderData: LoaderData &
@@ -298,6 +311,7 @@ export type RoutesInfoInner<
 
 export type AnyRoute = Route<any, any>
 export type AnyRouteInfo = RouteInfo<
+  any,
   any,
   any,
   any,
@@ -349,6 +363,7 @@ export type ValueKeys<O> = Extract<keyof O, PropertyKey>
 export type RouteDefRoute<TRouteDef> = TRouteDef extends RouteDef<
   infer TId,
   infer TPath,
+  infer TFullPath,
   infer TLoaderData,
   infer TAllLoaderData,
   infer TActionPayload,
@@ -366,6 +381,7 @@ export type RouteDefRoute<TRouteDef> = TRouteDef extends RouteDef<
     : RouteInfo<
         TId,
         TPath,
+        TFullPath,
         TLoaderData,
         TAllLoaderData,
         TActionPayload,
@@ -382,6 +398,7 @@ export type RouteDefRoute<TRouteDef> = TRouteDef extends RouteDef<
 export type RouteInfo<
   TId extends string = string,
   TPath extends string = string,
+  TFullPath extends {} = string,
   TLoaderData extends AnyLoaderData = {},
   TAllLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
@@ -398,6 +415,7 @@ export type RouteInfo<
 > = {
   id: TId
   path: TPath
+  fullPath: TFullPath
   loaderData: TLoaderData
   allLoaderData: TAllLoaderData
   actionPayload: TActionPayload
@@ -622,8 +640,6 @@ export type RouteOptions<
   // If true, this route will be matched as case-sensitive
   caseSensitive?: boolean
   validateSearch?: SearchSchemaValidator<TSearchSchema, TParentSearchSchema>
-  // // Either (1) an object that will be used to shallowly match the current location's search or (2) A function that receives the current search params and can return truthy if they are matched.
-  // search?: SearchPredicate<TFullSearchSchema>
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
   // calls that match this route.
   preSearchFilters?: SearchFilter<TFullSearchSchema>[]
@@ -711,11 +727,18 @@ export interface RouteLoaders<
   // This function is called
   // when moving from an inactive state to an active one. Likewise, when moving from
   // an active to an inactive state, the return function (if provided) is called.
-  onMatch?: (
-    match: RouteMatch,
-  ) => void | undefined | ((match: RouteMatch) => void)
+  onMatch?: (matchContext: {
+    params: TAllParams
+    search: TFullSearchSchema
+  }) =>
+    | void
+    | undefined
+    | ((match: { params: TAllParams; search: TFullSearchSchema }) => void)
   // This function is called when the route remains active from one transition to the next.
-  onTransition?: (match: RouteMatch) => void
+  onTransition?: (match: {
+    params: TAllParams
+    search: TFullSearchSchema
+  }) => void
   // An object of whatever you want! This object is accessible anywhere matches are.
   meta?: RouteMeta
 }
@@ -823,19 +846,11 @@ export type BuildNextOptions = {
   __postSearchFilters?: SearchFilter<any>[]
 }
 
-export type NavigateOptions = BuildNextOptions & {
-  replace?: boolean
-}
-
-export type LinkPropsOptionsRelative<
+export type LinkOptionsRelative<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-  TFrom extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
-  TTo extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
-> = { from: TFrom } & LinkPropsOptions<
-  TAllRouteInfo,
-  TAllRouteInfo['routeInfoByFullPath'][TFrom],
-  TTo
->
+  TFrom extends ValidFromPath<TAllRouteInfo> = undefined,
+  TTo extends ValidToPath<TAllRouteInfo, TFrom> = '',
+> = { from?: TFrom } & LinkOptions<TAllRouteInfo, TFrom, TTo>
 
 type ActiveOptions = {
   exact?: boolean
@@ -878,23 +893,28 @@ const createDefaultHistory = () =>
 
 export type MatchRouteOptions = { pending: boolean; caseSensitive?: boolean }
 
-export type LinkInfo = {
-  next: Location
-  handleFocus: (e: any) => void
-  handleClick: (e: any) => void
-  handleEnter: (e: any) => void
-  handleLeave: (e: any) => void
-  activeProps: GetFrameworkGeneric<'LinkProps'>
-  inactiveProps: GetFrameworkGeneric<'LinkProps'>
-  isActive: boolean
-}
+export type LinkInfo =
+  | {
+      type: 'external'
+      href: string
+    }
+  | {
+      type: 'internal'
+      next: Location
+      handleFocus: (e: any) => void
+      handleClick: (e: any) => void
+      handleEnter: (e: any) => void
+      handleLeave: (e: any) => void
+      isActive: boolean
+      disabled?: boolean
+    }
 
 export type PreloadCacheEntry = {
   expiresAt: number
   match: RouteMatch
 }
 
-export type RouterOptions<TRouteDefs extends RouteDef> = {
+export type RouterOptions<TRouteDefs extends AnyRouteDef> = {
   routes?: TRouteDefs
   basepath?: string
 } & Partial<Pick<Router, 'history' | 'stringifySearch' | 'parseSearch'>> &
@@ -945,11 +965,26 @@ type RoutesById<TAllRouteInfo extends AnyAllRouteInfo> = {
 }
 
 type RoutesByPath<TAllRouteInfo extends AnyAllRouteInfo> = {
-  [K in keyof TAllRouteInfo['routeInfoByFullPath']]: Route<
+  [K in TAllRouteInfo['fullPath']]: Route<
     TAllRouteInfo,
     TAllRouteInfo['routeInfoByFullPath'][K]
   >
 }
+
+type ValidFromPath<
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+> =
+  | undefined
+  | (string extends TAllRouteInfo['fullPath']
+      ? string
+      : TAllRouteInfo['fullPath'])
+
+type ValidToPath<
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+  TFrom = undefined,
+> = TFrom extends undefined
+  ? TAllRouteInfo['fullPath'] | `...unsafe-relative-path (cast "as any")`
+  : LooseAutocomplete<'.' | TAllRouteInfo['fullPath']>
 
 export class Router<
   TRouteDefs extends AnyRouteDef = RouteDef,
@@ -1266,8 +1301,8 @@ export class Router<
 
   buildNext = <
     TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-    TFrom extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
-    TTo extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
+    TFrom extends TAllRouteInfo['fullPath'] = TAllRouteInfo['fullPath'],
+    TTo extends TAllRouteInfo['fullPath'] = TAllRouteInfo['fullPath'],
   >(
     opts: BuildNextOptions,
   ) => {
@@ -1290,18 +1325,6 @@ export class Router<
       __preSearchFilters,
       __postSearchFilters,
     })
-  }
-
-  navigate = (
-    opts: NavigateOptions,
-    // otherOpts?: { resolveEarly?: boolean },
-  ) => {
-    const next = this.buildNext(opts)
-    return this.commitLocation(
-      next,
-      opts.replace,
-      // otherOpts
-    )
   }
 
   cancelMatches = () => {
@@ -1575,9 +1598,9 @@ export class Router<
 
   reload = () =>
     this.navigate({
-      to: '',
       fromCurrent: true,
       replace: true,
+      search: true,
     })
 
   getLoaderData = () => {
@@ -1751,36 +1774,94 @@ export class Router<
     return matchPathname(this.state.location.pathname, matchLocation)
   }
 
-  linkProps = <
-    TFrom extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
-    TTo extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
+  navigate = <
+    TFrom extends ValidFromPath<TAllRouteInfo> = undefined,
+    TTo extends ValidToPath<TAllRouteInfo, TFrom> = '',
   >({
+    from,
     to = '.' as TTo,
     search,
     hash,
-    target,
     replace,
-    getActiveProps = () => ({ className: 'active' }),
-    getInactiveProps = () => ({}),
-    activeOptions,
-    preload,
-    preloadMaxAge: userPreloadMaxAge,
-    preloadDelay: userPreloadDelay,
-    disabled,
-    from,
-  }: LinkPropsOptionsRelative<TAllRouteInfo, TFrom, TTo>): LinkInfo | null => {
+  }: NavigateOptions<TAllRouteInfo, TFrom, TTo>) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
     // If this `to` is a valid external URL, return
     // null for LinkUtils
+    const toString = String(to)
+    const fromString = String(from)
 
+    let isExternal
+
+    try {
+      new URL(`${toString}`)
+      isExternal = true
+    } catch (e) {}
+
+    if (isExternal) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          'Attempting to navigate to external url with router.navigate!',
+        )
+      }
+      return
+    }
+
+    const next = this.buildNext({
+      from: fromString,
+      to: toString,
+      search,
+      hash,
+    })
+
+    // Compare path/hash for matches
+    const pathIsEqual = this.state.location.pathname === next.pathname
+
+    if (pathIsEqual && !search && !hash) {
+      this.invalidateRoute({
+        from: fromString,
+        to: toString,
+      })
+    }
+
+    this.commitLocation(
+      next,
+      replace,
+      // otherOpts
+    )
+  }
+
+  link = <
+    TFrom extends ValidFromPath<TAllRouteInfo> = undefined,
+    TTo extends ValidToPath<TAllRouteInfo, TFrom> = '',
+  >({
+    from,
+    to = '.' as TTo,
+    search,
+    hash,
+    target,
+    replace,
+    activeOptions,
+    preload,
+    preloadMaxAge: userPreloadMaxAge,
+    preloadDelay: userPreloadDelay,
+    disabled,
+  }: LinkOptionsRelative<TAllRouteInfo, TFrom, TTo>): LinkInfo => {
+    // If this link simply reloads the current route,
+    // make sure it has a new key so it will trigger a data refresh
+
+    // If this `to` is a valid external URL, return
+    // null for LinkUtils
     const toString = String(to)
     const fromString = String(from)
 
     try {
       new URL(`${toString}`)
-      return null
+      return {
+        type: 'external',
+        href: toString,
+      }
     } catch (e) {}
 
     const next = this.buildNext({
@@ -1809,12 +1890,6 @@ export class Router<
 
     // The final "active" test
     const isActive = pathTest && hashTest
-
-    // Get the active props
-    const activeProps = isActive ? getActiveProps() : {}
-
-    // Get the inactive props
-    const inactiveProps = isActive ? {} : getInactiveProps()
 
     // The click handler
     const handleClick = (e: MouseEvent) => {
@@ -1859,16 +1934,16 @@ export class Router<
       }
     }
 
-    const ref: { preloadTimeout?: null | ReturnType<typeof setTimeout> } = {}
-
     const handleEnter = (e: MouseEvent) => {
+      const target = (e.target || {}) as LinkCurrentTargetElement
+
       if (preload && preloadMaxAge > 0) {
-        if (ref.preloadTimeout) {
+        if (target.preloadTimeout) {
           return
         }
 
-        ref.preloadTimeout = setTimeout(() => {
-          ref.preloadTimeout = null
+        target.preloadTimeout = setTimeout(() => {
+          target.preloadTimeout = null
           this.loadRoute(
             {
               from: fromString,
@@ -1883,21 +1958,23 @@ export class Router<
     }
 
     const handleLeave = (e: MouseEvent) => {
-      if (ref.preloadTimeout) {
-        clearTimeout(ref.preloadTimeout)
-        ref.preloadTimeout = null
+      const target = (e.target || {}) as LinkCurrentTargetElement
+
+      if (target.preloadTimeout) {
+        clearTimeout(target.preloadTimeout)
+        target.preloadTimeout = null
       }
     }
 
     return {
+      type: 'internal',
       next,
       handleFocus,
       handleClick,
       handleEnter,
       handleLeave,
-      activeProps,
-      inactiveProps,
       isActive,
+      disabled,
     }
   }
 
@@ -1914,6 +1991,10 @@ export class Router<
   }
 }
 
+type LinkCurrentTargetElement = {
+  preloadTimeout?: null | ReturnType<typeof setTimeout>
+}
+
 export class Route<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TRouteInfo extends AnyRouteInfo = RouteInfo,
@@ -1922,13 +2003,13 @@ export class Route<
   parent?: AnyRoute
   children?: AnyRoute[]
   info!: TRouteInfo
-  router: Router<TAllRouteInfo['routeDef']>
+  router: Router<TAllRouteInfo['routeDef'], TAllRouteInfo>
   options: TRouteInfo['options']
 
   constructor(
     options: TRouteInfo['options'],
     parent: undefined | Route<TAllRouteInfo, any>,
-    router: Router<any, any>,
+    router: Router<TAllRouteInfo['routeDef'], TAllRouteInfo>,
   ) {
     if (!options.path) {
       if (process.env.NODE_ENV !== 'production') {
@@ -1948,10 +2029,14 @@ export class Route<
 
     this.options = options
     // this.parent = parent
-    this.router = router! as any
+    this.router = router
   }
 
   getLoaderData = (): TRouteInfo['allLoaderData'] => {
+    return null as any
+  }
+
+  getSearch = (): TRouteInfo['searchSchema'] => {
     return null as any
   }
 
@@ -1962,41 +2047,66 @@ export class Route<
     return null as any
   }
 
-  linkProps = <
-    TTo extends keyof TAllRouteInfo['routeInfoByFullPath'] = TRouteInfo['id'],
-  >(
-    options: LinkPropsOptions<TAllRouteInfo, TRouteInfo, TTo>,
+  link = <TTo extends ValidToPath<TAllRouteInfo, TRouteInfo['id']> = '.'>(
+    options: Omit<
+      LinkOptionsRelative<TAllRouteInfo, TRouteInfo['id'], TTo>,
+      'from'
+    >,
   ) => {
-    const newOptions: LinkPropsOptionsRelative<
-      TAllRouteInfo,
-      TRouteInfo['id'],
-      TTo
-    > = {
+    return this.router.link<TRouteInfo['id'], TTo>({
       ...options,
-      from: this.id,
-    }
+      to: this.id,
+    } as any)
+  }
 
-    this.router.linkProps(newOptions as any)
+  navigate = <TTo extends ValidToPath<TAllRouteInfo, TRouteInfo['id']> = '.'>(
+    options: Omit<
+      LinkOptionsRelative<TAllRouteInfo, TRouteInfo['id'], TTo>,
+      'from'
+    >,
+  ) => {
+    return this.router.navigate<TRouteInfo['id'], TTo>({
+      ...options,
+      to: this.id,
+    } as any)
   }
 }
 
-type LinkPropsOptions<
+type NavigateOptions<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-  TRouteInfo extends AnyRouteInfo = RouteInfo,
-  TTo extends keyof TAllRouteInfo['routeInfoByFullPath'] = keyof TAllRouteInfo['routeInfoByFullPath'],
-> = {
-  // The absolute or relative route path
+  TFrom extends ValidFromPath<TAllRouteInfo> = undefined,
+  TTo extends ValidToPath<TAllRouteInfo, TFrom> = '',
+  TResolvedTo extends ResolveRelativePath<TFrom, TTo> = ResolveRelativePath<
+    TFrom,
+    TTo
+  >,
+> = (TResolvedTo extends TAllRouteInfo['fullPath']
+  ? {}
+  : `${TTo extends string
+      ? `'to: ${TTo}'`
+      : `'to: unknown'`} does not resolve to a registered route. Try an absolute route, double check your relative path, or cast as 'any' if you know better...`) & {
+  // The destination route path
+  // (An absolute path is preferred for type-safety, but relative is also allowed)
   to?: TTo
+  test?: (arg: NoInfer<TResolvedTo>, arg2: TAllRouteInfo['fullPath']) => void
   // The new has string or a function to update it
   hash?: Updater<string>
   // Whether to replace the current history stack instead of pushing a new one
   replace?: boolean
+  // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
+  from?: TFrom
+  // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
+  fromCurrent?: boolean
+} & SearchParamOptions<TAllRouteInfo, TFrom, TResolvedTo> &
+  PathParamOptions<TAllRouteInfo, TFrom, TResolvedTo>
+
+type LinkOptions<
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+  TFrom extends ValidFromPath<TAllRouteInfo> = undefined,
+  TTo extends ValidToPath<TAllRouteInfo, TFrom> = '',
+> = NavigateOptions<TAllRouteInfo, TFrom, TTo> & {
   // The standard anchor tag target attribute
   target?: HTMLAnchorElement['target']
-  // A function that is passed the [Location API](#location-api) and returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
-  getActiveProps?: () => GetFrameworkGeneric<'LinkProps'>
-  // A function that is passed the [Location API](#location-api) and returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
-  getInactiveProps?: () => GetFrameworkGeneric<'LinkProps'>
   // Defaults to `{ exact: false, includeHash: false }`
   activeOptions?: ActiveOptions
   // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
@@ -2007,49 +2117,95 @@ type LinkPropsOptions<
   preloadDelay?: number
   // If true, will render the link without the href attribute
   disabled?: boolean
-  // The root (excluding the basepath) from which to resolve the route.
-  // Defaults to the current location's pathname.
-  // To navigate from the root, pass `/` as the from
-  // from?: TFrom
-} & SearchParamOptions<
-  TRouteInfo['fullSearchSchema'],
-  TAllRouteInfo['routeInfoByFullPath'][TTo]['fullSearchSchema']
-> &
-  PathParamOptions<
-    TRouteInfo['allParams'],
-    TAllRouteInfo['routeInfoByFullPath'][TTo]['allParams']
-  >
+}
 
-type SearchParamOptions<TPrevSearchSchema, TNextSearchSchema> =
-  // No search params? Don't allow it
-  keyof TNextSearchSchema extends never
-    ? {
-        search?: never
-      }
-    : // Optional search params? Allow it
-    keyof PickRequired<TNextSearchSchema> extends never
-    ? {
-        search?:
-          | TNextSearchSchema
-          | ((current: TPrevSearchSchema) => TNextSearchSchema)
-      }
-    : {
-        // Must have required search params, enforce it
-        search:
-          | TNextSearchSchema
-          | ((current: TPrevSearchSchema) => TNextSearchSchema)
-      }
+type ResolveRelativePath<TFrom, TTo> = TFrom extends string
+  ? TTo extends string
+    ? TTo extends `/${infer TRest}`
+      ? TTo
+      : Split<TTo> extends ['..', ...infer ToRest]
+      ? Split<TFrom> extends [...infer FromRest, infer FromTail]
+        ? ResolveRelativePath<Join<FromRest>, Join<ToRest>>
+        : never
+      : Split<TTo> extends ['.', ...infer ToRest]
+      ? ResolveRelativePath<TFrom, Join<ToRest>>
+      : CleanPath<Join<[...Split<TFrom>, ...Split<TTo>]>>
+    : never
+  : never
 
-type PathParamOptions<TPrevParams, TNextParams> =
-  AnyPathParams extends TNextParams
+type RouteInfoByPath<
+  TRouteInfoByPath extends AnyAllRouteInfo,
+  TPath,
+> = TPath extends keyof TRouteInfoByPath['routeInfoByFullPath']
+  ? TRouteInfoByPath['routeInfoByFullPath'][TPath]
+  : never
+
+type SearchParamOptions<
+  TAllRouteInfo extends AnyAllRouteInfo,
+  TFrom,
+  TTo,
+> = RouteInfoByPath<
+  TAllRouteInfo,
+  TFrom
+>['fullSearchSchema'] extends RouteInfoByPath<
+  // If the next routes params extend or cover the from route, params will be optional
+  TAllRouteInfo,
+  TTo
+>['fullSearchSchema']
+  ? {
+      search?:
+        | RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema']
+        | ((
+            current: RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema'],
+          ) => RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema'])
+    }
+  : keyof PickRequired<
+      // Optional search params? Allow it
+      RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema']
+    > extends never
+  ? {
+      search?:
+        | RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema']
+        | ((
+            current: RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema'],
+          ) => RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema'])
+    }
+  : {
+      // Must have required search params, enforce it
+      search:
+        | RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema']
+        | ((
+            current: RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema'],
+          ) => RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema'])
+    }
+
+type PathParamOptions<TAllRouteInfo extends AnyAllRouteInfo, TFrom, TTo> =
+  // If the next routes params extend or cover the from route, params will be optional
+  RouteInfoByPath<TAllRouteInfo, TFrom>['allParams'] extends RouteInfoByPath<
+    TAllRouteInfo,
+    TTo
+  >['allParams']
+    ? {
+        params?:
+          | RouteInfoByPath<TAllRouteInfo, TTo>['allParams']
+          | ((
+              current: RouteInfoByPath<TAllRouteInfo, TFrom>['allParams'],
+            ) => RouteInfoByPath<TAllRouteInfo, TTo>['allParams'])
+      }
+    : // If the next route doesn't have params, warn if any have been passed
+    AnyPathParams extends RouteInfoByPath<TAllRouteInfo, TTo>['allParams']
     ? {
         params?: {
           [x: string]: never
         }
       }
-    : {
-        // The params to interpolate into the destination route
-        params: TNextParams | ((current: TPrevParams) => TNextParams)
+    : // If the next route has params, enforce them
+      {
+        params:
+          | RouteInfoByPath<TAllRouteInfo, TTo>['allParams']
+          | ((
+              current: RouteInfoByPath<TAllRouteInfo, TFrom>['allParams'],
+            ) => RouteInfoByPath<TAllRouteInfo, TTo>['allParams'])
       }
 
 export class RouteMatch<

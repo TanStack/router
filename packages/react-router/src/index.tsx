@@ -11,7 +11,13 @@ import {
   MatchLocation,
   MatchRouteOptions,
   RouteDef,
-  PathParams,
+  AnyPathParams,
+  AnyRouteDef,
+  AnyAllRouteInfo,
+  DefaultAllRouteInfo,
+  LinkInfo,
+  functionalUpdate,
+  LinkOptionsRelative,
 } from '@tanstack/router-core'
 
 export * from '@tanstack/router-core'
@@ -56,44 +62,19 @@ export function MatchesProvider(props: MatchesProviderProps) {
   return <matchesContext.Provider {...props} />
 }
 
-export type RouterProps<TRouteDefs extends RouteDef = RouteDef> =
-  RouterOptions<TRouteDefs> & {
-    router: Router<TRouteDefs>
-    // Children will default to `<Outlet />` if not provided
-    children?: React.ReactNode
-  }
+export type RouterProps<
+  TRouteDefs extends AnyRouteDef = RouteDef,
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+> = RouterOptions<TRouteDefs> & {
+  router: Router<TRouteDefs, TAllRouteInfo>
+  // Children will default to `<Outlet />` if not provided
+  children?: React.ReactNode
+}
 
-// export class ReactRoute<
-//   TId extends string = string,
-//   TPath extends string = string,
-//   TLoaderData extends LoaderData = {},
-//   TAllLoaderData extends LoaderData = {},
-//   TActionPayload = unknown,
-//   TActionResponse = unknown,
-//   TSearchZod extends SearchZod = {},
-//   TSearchSchema extends AnySearchSchema = {},
-//   TParams extends RouteParams = Record<ParsePathParam<TPath>, string>,
-// > extends Route<
-//   TId,
-//   TPath,
-//   TLoaderData,
-//   TAllLoaderData,
-//   TActionPayload,
-//   TActionResponse,
-//   TSearchZod,
-//   TSearchSchema,
-//   TParams
-// > {
-//   constructor(options) {
-//     super()
-//   }
-// }
-
-export function RouterProvider<TRouteDefs extends RouteDef = RouteDef>({
-  children,
-  router,
-  ...rest
-}: RouterProps<TRouteDefs>) {
+export function RouterProvider<
+  TRouteDefs extends AnyRouteDef = RouteDef,
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+>({ children, router, ...rest }: RouterProps<TRouteDefs, TAllRouteInfo>) {
   router.update(rest)
 
   useSyncExternalStore(
@@ -207,7 +188,9 @@ export function useMatchRoute() {
 
 export type MatchRouteProps = MatchLocation &
   MatchRouteOptions & {
-    children: React.ReactNode | ((routeParams?: PathParams) => React.ReactNode)
+    children:
+      | React.ReactNode
+      | ((routeParams?: AnyPathParams) => React.ReactNode)
   }
 
 export function MatchRoute({
@@ -303,8 +286,7 @@ export function useSearch() {
 //       React.AnchorHTMLAttributes<HTMLAnchorElement>,
 //       'href' | 'children' | keyof LinkOptions<TRoutesInfo>
 //     > & {
-//       // A custom ref prop because of this: https://stackoverflow.com/questions/58469229/react-with-typescript-generics-while-using-react-forwardref/58473012
-//       _ref?: React.Ref<HTMLAnchorElement>
+
 //       // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
 //       children?:
 //         | React.ReactNode
@@ -312,105 +294,131 @@ export function useSearch() {
 //     }
 
 // export function Link(props: LinkProps<TRoutesInfo>) {
-export function Link(props: any) {
-  const linkUtils = useLink(props)
 
-  const {
-    to,
-    children,
-    _ref,
-    disabled,
-    target,
-    search,
-    hash,
-    replace,
-    getActiveProps,
-    getInactiveProps,
-    activeOptions,
-    preload,
-    preloadMaxAge,
-    style,
-    className,
-    onClick,
-    onFocus,
-    onMouseEnter,
-    onMouseLeave,
-    onTouchStart,
-    onTouchEnd,
-    ...rest
-  } = props
+export type LinkProps = {
+  // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+  activeProps?:
+    | React.AnchorHTMLAttributes<HTMLAnchorElement>
+    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+  // A function that returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+  inactiveProps?:
+    | React.AnchorHTMLAttributes<HTMLAnchorElement>
+    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+  children?:
+    | React.ReactNode
+    | ((meta: { isActive: boolean }) => React.ReactNode)
+} & LinkInfo &
+  React.AnchorHTMLAttributes<HTMLAnchorElement>
 
-  if (!linkUtils) {
-    return (
-      <a href={to as any} {...rest}>
-        {typeof children === 'function'
-          ? children({ isActive: false })
-          : children}
-      </a>
-    )
-  }
-
-  const {
-    next,
-    activeProps,
-    handleFocus,
-    handleClick,
-    handleEnter,
-    handleLeave,
-    inactiveProps,
-    isActive,
-  } = linkUtils
-
-  const composeHandlers =
-    (handlers: (undefined | ((e: any) => void))[]) =>
-    (e: React.SyntheticEvent) => {
-      e.persist()
-      handlers.forEach((handler) => {
-        if (handler) handler(e)
-      })
+export const Link = React.forwardRef(
+  (props: LinkProps, ref: React.ForwardedRef<HTMLAnchorElement>) => {
+    if (props.type === 'external') {
+      const {
+        href,
+        children,
+        // remove
+        type,
+        activeProps,
+        inactiveProps,
+        ...rest
+      } = props
+      return (
+        <a
+          {...{
+            ...rest,
+            href,
+            children:
+              typeof children === 'function'
+                ? children({ isActive: false })
+                : children,
+          }}
+        />
+      )
     }
 
-  return (
-    <a
-      {...{
-        ...activeProps,
-        ...inactiveProps,
-        ...rest,
-        ref: _ref,
-        href: disabled ? undefined : next.href,
-        onClick: composeHandlers([handleClick, onClick]),
-        onFocus: composeHandlers([handleFocus, onFocus]),
-        onMouseEnter: composeHandlers([handleEnter, onMouseEnter]),
-        onMouseLeave: composeHandlers([handleLeave, onMouseLeave]),
-        target,
-        style: {
-          ...style,
-          ...activeProps.style,
-          ...inactiveProps.style,
-        },
-        className:
-          [className, activeProps.className, inactiveProps.className]
-            .filter(Boolean)
-            .join(' ') || undefined,
-        ...(disabled
-          ? {
-              role: 'link',
-              'aria-disabled': true,
-            }
-          : undefined),
-        children:
-          typeof children === 'function' ? children({ isActive }) : children,
-      }}
-    />
-  )
-}
+    const {
+      type,
+      children,
+      target,
+      style,
+      className,
+      onClick,
+      onFocus,
+      onMouseEnter,
+      onMouseLeave,
+      onTouchStart,
+      onTouchEnd,
+      activeProps = () => ({ className: 'active' }),
+      inactiveProps = () => ({}),
+      ...rest
+    } = props
 
-export function useLink(opts: any) {
-  const router = useRouter()
-  const match = useMatch()
-  const ref = React.useRef({}).current
-  return router.buildLinkInfo({ ...opts, from: match.pathname as any, ref })
-}
+    const {
+      next,
+      handleFocus,
+      handleClick,
+      handleEnter,
+      handleLeave,
+      isActive,
+      disabled,
+    } = props
+
+    const composeHandlers =
+      (handlers: (undefined | ((e: any) => void))[]) =>
+      (e: React.SyntheticEvent) => {
+        e.persist()
+        handlers.forEach((handler) => {
+          if (handler) handler(e)
+        })
+      }
+
+    // Get the active props
+    const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+      isActive ? functionalUpdate(activeProps) ?? {} : {}
+
+    // Get the inactive props
+    const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+      isActive ? {} : functionalUpdate(inactiveProps) ?? {}
+
+    return (
+      <a
+        {...{
+          ref,
+          ...resolvedActiveProps,
+          ...resolvedInactiveProps,
+          ...rest,
+          href: disabled ? undefined : next.href,
+          onClick: composeHandlers([handleClick, onClick]),
+          onFocus: composeHandlers([handleFocus, onFocus]),
+          onMouseEnter: composeHandlers([handleEnter, onMouseEnter]),
+          onMouseLeave: composeHandlers([handleLeave, onMouseLeave]),
+          target,
+          style: {
+            ...style,
+            ...resolvedActiveProps.style,
+            ...resolvedInactiveProps.style,
+          },
+          className:
+            [
+              className,
+              resolvedActiveProps.className,
+              resolvedInactiveProps.className,
+            ]
+              .filter(Boolean)
+              .join(' ') || undefined,
+          ...(disabled
+            ? {
+                role: 'link',
+                'aria-disabled': true,
+              }
+            : undefined),
+          children:
+            typeof children === 'function' ? children({ isActive }) : children,
+        }}
+      />
+    )
+  },
+)
 
 class CatchBoundary extends React.Component<{
   children: any
