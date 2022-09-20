@@ -419,22 +419,7 @@ router.link({
   }),
 })
 
-router.getRoute('/dashboard/invoices/:invoiceId').link({
-  to: '..',
-  test: (arg) => {},
-  // params: {
-  //   userId: '2',
-  // },
-  // search: (prev) => ({
-  //   usersView: {
-  //     sortBy: 'email',
-  //     filterBy: `${prev.version}`,
-  //   },
-  // }),
+router.link({
+  from: '/dashboard/invoices',
+  to: '/dashboard',
 })
-
-///
-
-//
-
-//
