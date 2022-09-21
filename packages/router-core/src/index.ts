@@ -7,6 +7,7 @@ import {
   History,
   HashHistory,
 } from 'history'
+import { ToISOFormat } from 'luxon'
 import React from 'react'
 import { ParsePath, z } from 'zod'
 // import { z } from 'zod'
@@ -36,6 +37,7 @@ type PickRequired<T> = {
   [K in keyof T as undefined extends T[K] ? never : K]: T[K]
 }
 type LooseAutocomplete<T> = T extends string ? T | Omit<string, T> : never
+type ErrorKey = '### Error ###'
 
 export interface FrameworkGenerics {
   // The following properties are used internally
@@ -851,7 +853,7 @@ export type BuildNextOptions = {
 export type LinkOptionsRelative<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TFrom extends ValidFromPath<TAllRouteInfo> = undefined,
-  TTo extends ValidToPath<TAllRouteInfo, TFrom> = '',
+  TTo extends string = '',
 > = { from?: TFrom } & LinkOptions<TAllRouteInfo, TFrom, TTo>
 
 type ActiveOptions = {
@@ -1778,14 +1780,15 @@ export class Router<
 
   navigate = <
     TFrom extends ValidFromPath<TAllRouteInfo> = undefined,
-    TTo extends ValidToPath<TAllRouteInfo, TFrom> = '',
+    TTo extends string = '',
   >({
     from,
     to = '.' as TTo,
     search,
     hash,
     replace,
-  }: NavigateOptions<TAllRouteInfo, TFrom, TTo>) => {
+  }: CheckRelativePath<TAllRouteInfo, TFrom, NoInfer<TTo>> &
+    NavigateOptions<TAllRouteInfo, TFrom, TTo>) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
@@ -1835,8 +1838,8 @@ export class Router<
   }
 
   link = <
-    TFrom extends ValidFromPath<TAllRouteInfo> = undefined,
-    TTo extends ValidToPath<TAllRouteInfo, TFrom> = '',
+    TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+    TTo extends string = '',
   >({
     from,
     to = '.' as TTo,
@@ -1849,7 +1852,8 @@ export class Router<
     preloadMaxAge: userPreloadMaxAge,
     preloadDelay: userPreloadDelay,
     disabled,
-  }: LinkOptionsRelative<TAllRouteInfo, TFrom, TTo>): LinkInfo => {
+  }: CheckRelativePath<TAllRouteInfo, TFrom, NoInfer<TTo>> &
+    LinkOptionsRelative<TAllRouteInfo, TFrom, TTo>): LinkInfo => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
@@ -2049,19 +2053,9 @@ export class Route<
     return null as any
   }
 
-  link = <TTo extends ValidToPath<TAllRouteInfo, TRouteInfo['id']> = '.'>(
-    options: Omit<
-      LinkOptionsRelative<TAllRouteInfo, TRouteInfo['id'], NoInfer<TTo>>,
-      'from' | 'to'
-    > & {
-      to?:
-        | TTo
-        | RelativeLinkAutoComplete<
-            TAllRouteInfo['fullPath'],
-            TRouteInfo['id'],
-            NoInfer<TTo> & string
-          >
-    },
+  link = <TTo extends string = ''>(
+    options: CheckRelativePath<TAllRouteInfo, TRouteInfo['id'], NoInfer<TTo>> &
+      Omit<LinkOptionsRelative<TAllRouteInfo, TRouteInfo['id'], TTo>, 'from'>,
   ) => {
     return this.router.link<TRouteInfo['id'], TTo>({
       ...options,
@@ -2069,7 +2063,7 @@ export class Route<
     } as any)
   }
 
-  navigate = <TTo extends ValidToPath<TAllRouteInfo, TRouteInfo['id']> = '.'>(
+  navigate = <TTo extends string = ''>(
     options: Omit<
       LinkOptionsRelative<TAllRouteInfo, TRouteInfo['id'], TTo>,
       'from'
@@ -2087,13 +2081,12 @@ type RelativeLinkAutoComplete<
   TFrom extends string,
   TTo extends string,
   SplitPaths extends string[] = Split<AllPaths>,
-> = TTo extends `..${string}`
-  ? SplitPaths extends [...GetMatchingPath<TFrom, TTo>, ...unknown[]]
-    ? `${Join<Split<TTo>>}${
-        | Join<SplitPaths>
-        | (GetMatchingPath<TFrom, TTo>['length'] extends 0
-            ? never
-            : '/..')}`
+> = TTo extends `..${infer _}`
+  ? SplitPaths extends [
+      ...Split<ResolveRelativePath<TFrom, TTo>>,
+      ...infer TToRest,
+    ]
+    ? `${CleanPath<Join<[...Split<TTo>, ...TToRest]>>}`
     : never
   : TTo extends `./${infer RestTTo}`
   ? SplitPaths extends [...Split<TFrom>, ...Split<RestTTo>, ...infer RestPath]
@@ -2103,33 +2096,39 @@ type RelativeLinkAutoComplete<
 
 type MapToUnknown<T extends object> = { [_ in keyof T]: unknown }
 
-type GetMatchingPath<
-  TFrom extends string,
-  TTo extends string,
-  SplitTTo = MapToUnknown<Split<TTo>>,
-> = Split<TFrom> extends [...infer Matching, ...Extract<SplitTTo, unknown[]>]
-  ? Matching['length'] extends 0
-    ? never
-    : Matching
-  : never
+// type GetMatchingPath<
+//   TFrom extends string,
+//   TTo extends string,
+//   SplitTTo = MapToUnknown<Split<TTo>>,
+// > = Split<TFrom> extends [...infer Matching, ...Extract<SplitTTo, unknown[]>]
+//   ? Matching['length'] extends 0
+//     ? never
+//     : Matching
+//   : never
+
+// type Test1 = Split<'a/b/c'>
+// //   ^?
+// type Test = Extract<MapToUnknown<Split<'../e'>>, unknown[]>
+// //   ^?
+// type Test3 = Test1 extends [...infer Matching, ...Test] ? Matching : never
+// //   ^?
+// type Test4 = ResolveRelativePath<'a/b/c', '../e'>
+// //   ^?
 
 type NavigateOptions<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TFrom extends ValidFromPath<TAllRouteInfo> = undefined,
-  TTo extends ValidToPath<TAllRouteInfo, TFrom> = '',
-  TResolvedTo extends ResolveRelativePath<TFrom, TTo> = ResolveRelativePath<
-    TFrom,
-    TTo
-  >,
-> = (TResolvedTo extends TAllRouteInfo['fullPath']
-  ? {}
-  : `${TTo extends string
-      ? `'to: ${TTo}'`
-      : `'to: unknown'`} does not resolve to a registered route. Try an absolute route, double check your relative path, or cast as 'any' if you know better...`) & {
+  TTo extends string = '',
+> = {
   // The destination route path
   // (An absolute path is preferred for type-safety, but relative is also allowed)
-  to?: TTo
-  test?: (arg: NoInfer<TResolvedTo>, arg2: TAllRouteInfo['fullPath']) => void
+  to?:
+    | TTo
+    | RelativeLinkAutoComplete<
+        TAllRouteInfo['fullPath'],
+        TFrom extends string ? TFrom : '',
+        NoInfer<TTo> & string
+      >
   // The new has string or a function to update it
   hash?: Updater<string>
   // Whether to replace the current history stack instead of pushing a new one
@@ -2138,13 +2137,13 @@ type NavigateOptions<
   from?: TFrom
   // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
   fromCurrent?: boolean
-} & SearchParamOptions<TAllRouteInfo, TFrom, TResolvedTo> &
-  PathParamOptions<TAllRouteInfo, TFrom, TResolvedTo>
+} & SearchParamOptions<TAllRouteInfo, TFrom, ResolveRelativePath<TFrom, TTo>> &
+  PathParamOptions<TAllRouteInfo, TFrom, ResolveRelativePath<TFrom, TTo>>
 
 type LinkOptions<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TFrom extends ValidFromPath<TAllRouteInfo> = undefined,
-  TTo extends ValidToPath<TAllRouteInfo, TFrom> = '',
+  TTo extends string = '',
 > = NavigateOptions<TAllRouteInfo, TFrom, TTo> & {
   // The standard anchor tag target attribute
   target?: HTMLAnchorElement['target']
@@ -2160,6 +2159,24 @@ type LinkOptions<
   disabled?: boolean
 }
 
+type CheckRelativePath<
+  TAllRouteInfo extends AnyAllRouteInfo,
+  TFrom,
+  TTo,
+> = TTo extends string
+  ? TFrom extends string
+    ? ResolveRelativePath<TFrom, TTo> extends TAllRouteInfo['fullPath']
+      ? {}
+      : {
+          Error: `${TFrom} + ${TTo} resolves to ${ResolveRelativePath<
+            TFrom,
+            TTo
+          >}, which is not a valid route path.`
+          'Valid Route Paths': TAllRouteInfo['fullPath']
+        }
+    : {}
+  : {}
+
 type ResolveRelativePath<TFrom, TTo> = TFrom extends string
   ? TTo extends string
     ? TTo extends `/${infer TRest}`
@@ -2170,7 +2187,7 @@ type ResolveRelativePath<TFrom, TTo> = TFrom extends string
         : never
       : Split<TTo> extends ['.', ...infer ToRest]
       ? ResolveRelativePath<TFrom, Join<ToRest>>
-      : CleanPath<Join<[...Split<TFrom>, ...Split<TTo>]>>
+      : CleanPath<Join<['/', ...Split<TFrom>, ...Split<TTo>]>>
     : never
   : never
 
@@ -2187,67 +2204,53 @@ type SearchParamOptions<
   TTo,
 > = RouteInfoByPath<
   TAllRouteInfo,
-  TFrom
->['fullSearchSchema'] extends RouteInfoByPath<
-  // If the next routes params extend or cover the from route, params will be optional
-  TAllRouteInfo,
   TTo
->['fullSearchSchema']
-  ? {
-      search?:
-        | RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema']
-        | ((
-            current: RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema'],
-          ) => RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema'])
-    }
-  : keyof PickRequired<
-      // Optional search params? Allow it
-      RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema']
-    > extends never
-  ? {
-      search?:
-        | RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema']
-        | ((
-            current: RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema'],
-          ) => RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema'])
-    }
-  : {
-      // Must have required search params, enforce it
-      search:
-        | RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema']
-        | ((
-            current: RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema'],
-          ) => RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema'])
-    }
-
-type PathParamOptions<TAllRouteInfo extends AnyAllRouteInfo, TFrom, TTo> =
-  // If the next routes params extend or cover the from route, params will be optional
-  RouteInfoByPath<TAllRouteInfo, TFrom>['allParams'] extends RouteInfoByPath<
-    TAllRouteInfo,
-    TTo
-  >['allParams']
-    ? {
-        params?:
-          | RouteInfoByPath<TAllRouteInfo, TTo>['allParams']
-          | ((
-              current: RouteInfoByPath<TAllRouteInfo, TFrom>['allParams'],
-            ) => RouteInfoByPath<TAllRouteInfo, TTo>['allParams'])
-      }
-    : // If the next route doesn't have params, warn if any have been passed
-    AnyPathParams extends RouteInfoByPath<TAllRouteInfo, TTo>['allParams']
-    ? {
-        params?: {
-          [x: string]: never
+>['fullSearchSchema'] extends infer TToSchema
+  ? RouteInfoByPath<
+      TAllRouteInfo,
+      TFrom
+    >['fullSearchSchema'] extends infer TFromSchema
+    ? // If the next route search extend or cover the from route, params will be optional
+      TFromSchema extends TToSchema
+      ? {
+          search?: TToSchema | ((current: TFromSchema) => TToSchema)
         }
-      }
-    : // If the next route has params, enforce them
-      {
-        params:
-          | RouteInfoByPath<TAllRouteInfo, TTo>['allParams']
-          | ((
-              current: RouteInfoByPath<TAllRouteInfo, TFrom>['allParams'],
-            ) => RouteInfoByPath<TAllRouteInfo, TTo>['allParams'])
-      }
+      : // Optional search params? Allow it
+      keyof PickRequired<TToSchema> extends never
+      ? {
+          search?: TToSchema | ((current: TFromSchema) => TToSchema)
+        }
+      : {
+          // Must have required search params, enforce it
+          search: TToSchema | ((current: TFromSchema) => TToSchema)
+        }
+    : never
+  : never
+
+type PathParamOptions<
+  TAllRouteInfo extends AnyAllRouteInfo,
+  TFrom,
+  TTo,
+> = RouteInfoByPath<TAllRouteInfo, TFrom>['allParams'] extends infer TFromParams
+  ? RouteInfoByPath<TAllRouteInfo, TTo>['allParams'] extends infer TToParams
+    ? // If the next routes params extend or cover the from route, params will be optional
+      TFromParams extends TToParams
+      ? {
+          params?: TToParams | ((current: TFromParams) => TToParams)
+        }
+      : // If the next route doesn't have params, warn if any have been passed
+      AnyPathParams extends TToParams
+      ? {
+          params?: {
+            [x: string]: never
+          }
+        }
+      : // If the next route has params, enforce them
+        {
+          params: TToParams | ((current: TFromParams) => TToParams)
+        }
+    : never
+  : never
 
 export class RouteMatch<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
