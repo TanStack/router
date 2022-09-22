@@ -124,7 +124,7 @@ type RoutesTest = Route<
 //   ^?
 type RoutePaths = MyRoutesInfo['routeInfoByFullPath']
 //   ^?
-type InvoiceRouteInfo = RoutesById['/dashboard/invoices/:invoiceId']
+type InvoiceRouteInfo = RoutesById['/dashboard/invoices/']
 //   ^?
 type InvoiceLoaderData = InvoiceRouteInfo['allLoaderData']
 //   ^?//
@@ -257,10 +257,17 @@ router.link({
   to: '/dashboard',
 })
 
-router.getRoute('/dashboard').link({
-  to: '../dashboard/invoices/tanner',
+router.getRoute('/').link({
+  to: '/dashboard/invoices/:invoiceId',
+  params: {
+    invoiceId: 2,
+  },
+  // search: d => d
 })
 
 router.getRoute('/dashboard/invoices/:invoiceId').link({
-  to: '../',
+  // to: '',
+  params: (d) => ({
+    invoiceId: d.invoiceId,
+  }),
 })
