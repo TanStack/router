@@ -170,11 +170,6 @@ router.link({
   to: '/',
 })
 
-router.link({
-  from: '/test',
-  to: '/',
-})
-
 route.link({
   to: '',
 })
@@ -217,7 +212,7 @@ router.getRoute('/').link({
   }),
   search: (old) => ({
     usersView: {
-      sortBy: 'email',
+      sortBy: 'email' as const,
       filterBy: String(old.version),
     },
   }),
@@ -246,7 +241,7 @@ router.link({
   },
   search: (prev) => ({
     usersView: {
-      sortBy: 'email',
+      sortBy: 'id' as const,
       filterBy: `${prev.version}`,
     },
   }),
@@ -262,7 +257,6 @@ router.getRoute('/').link({
   params: {
     invoiceId: 2,
   },
-  // search: d => d
 })
 
 router.getRoute('/dashboard/invoices/:invoiceId').link({

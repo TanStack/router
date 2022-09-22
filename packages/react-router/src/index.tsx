@@ -7,7 +7,6 @@ import {
   Router,
   RouterOptions,
   RouteMatch,
-  NavigateOptions,
   MatchLocation,
   MatchRouteOptions,
   RouteDef,
@@ -18,6 +17,7 @@ import {
   LinkInfo,
   functionalUpdate,
   LinkOptionsRelative,
+  BuildNextOptions,
 } from '@tanstack/router-core'
 
 export * from '@tanstack/router-core'
@@ -145,7 +145,7 @@ export function useAction<
   TPayload = unknown,
   TResponse = unknown,
   TError = unknown,
->(opts?: Pick<NavigateOptions, 'to' | 'from'>) {
+>(opts?: Pick<BuildNextOptions, 'to' | 'from'>) {
   const match = useMatch()
   const router = useRouter()
   return router.getAction<TPayload, TResponse>(
@@ -214,7 +214,7 @@ export function useLoadRoute() {
   const router = useRouter()
 
   return useLatestCallback(
-    async (navigateOpts: NavigateOptions, loaderOpts: { maxAge: number }) =>
+    async (navigateOpts: BuildNextOptions, loaderOpts: { maxAge: number }) =>
       router.loadRoute({ ...navigateOpts, from: match.pathname }, loaderOpts),
   )
 }
@@ -232,12 +232,13 @@ export function useNavigate() {
   const router = useRouter()
   const match = useMatch()
 
-  return useLatestCallback((options: NavigateOptions) =>
+  return useLatestCallback((options: BuildNextOptions) =>
+    // @ts-ignore-next // TODO: fix this
     router.navigate({ ...options, from: match.pathname }),
   )
 }
 
-export function Navigate(options: NavigateOptions) {
+export function Navigate(options: BuildNextOptions) {
   let navigate = useNavigate()
 
   useLayoutEffect(() => {

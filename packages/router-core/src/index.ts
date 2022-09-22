@@ -332,7 +332,9 @@ type IndexObj<T extends Record<string, any>, TKey extends keyof T> = {
   [E in T as E[TKey]]: E
 }
 
-type RouteIdToPath<T extends string> = TrimPathRight<`${T}/`>
+type RouteIdToPath<T extends string> = T extends RootRouteId
+  ? '/'
+  : TrimPathRight<`${T}/`>
 
 type ParseRouteDef<TRouteDef = AnyRouteDef> = TRouteDef extends AnyRouteDef
   ? RouteDefRoute<TRouteDef> | ParseRouteChildren<TRouteDef>
@@ -1446,7 +1448,7 @@ export class Router<
   }
 
   loadRoute = async (
-    navigateOpts: NavigateOptions = this.location,
+    navigateOpts: BuildNextOptions = this.location,
     loaderOpts: { maxAge: number },
   ) => {
     const next = this.buildNext(navigateOpts)
@@ -1601,7 +1603,7 @@ export class Router<
   }
 
   reload = () =>
-    this.navigate({
+    this._navigate({
       fromCurrent: true,
       replace: true,
       search: true,
@@ -1778,6 +1780,11 @@ export class Router<
     return matchPathname(this.state.location.pathname, matchLocation)
   }
 
+  _navigate = (location: BuildNextOptions & { replace?: boolean }) => {
+    const next = this.buildNext(location)
+    return this.commitLocation(next, location.replace)
+  }
+
   navigate = <
     TFrom extends ValidFromPath<TAllRouteInfo> = '/',
     TTo extends string = '.',
@@ -1813,28 +1820,12 @@ export class Router<
       return
     }
 
-    const next = this.buildNext({
+    return this._navigate({
       from: fromString,
       to: toString,
       search,
       hash,
     })
-
-    // Compare path/hash for matches
-    const pathIsEqual = this.state.location.pathname === next.pathname
-
-    if (pathIsEqual && !search && !hash) {
-      this.invalidateRoute({
-        from: fromString,
-        to: toString,
-      })
-    }
-
-    this.commitLocation(
-      next,
-      replace,
-      // otherOpts
-    )
   }
 
   link = <
@@ -1915,7 +1906,7 @@ export class Router<
         }
 
         // All is well? Navigate!)
-        this.navigate({
+        this._navigate({
           from: fromString,
           to: toString,
           search,
@@ -2054,10 +2045,17 @@ export class Route<
   }
 
   link = <TTo extends string = '.'>(
-    options: CheckRelativePath<TAllRouteInfo, TRouteInfo['id'], NoInfer<TTo>> &
-      Omit<LinkOptionsRelative<TAllRouteInfo, TRouteInfo['id'], TTo>, 'from'>,
+    options: CheckRelativePath<
+      TAllRouteInfo,
+      TRouteInfo['fullPath'],
+      NoInfer<TTo>
+    > &
+      Omit<
+        LinkOptionsRelative<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
+        'from'
+      >,
   ) => {
-    return this.router.link<TRouteInfo['id'], TTo>({
+    return this.router.link<TRouteInfo['fullPath'], TTo>({
       ...options,
       to: this.id,
     } as any)
@@ -2222,11 +2220,17 @@ type SearchParamOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
   TFrom,
   TTo,
-  TToSchema extends unknown = RouteInfoByPath<
+  TToSchema extends RouteInfoByPath<
+    TAllRouteInfo,
+    TTo
+  >['fullSearchSchema'] = RouteInfoByPath<
     TAllRouteInfo,
     TTo
   >['fullSearchSchema'],
-  TFromSchema extends unknown = RouteInfoByPath<
+  TFromSchema extends RouteInfoByPath<
+    TAllRouteInfo,
+    TFrom
+  >['fullSearchSchema'] = RouteInfoByPath<
     TAllRouteInfo,
     TFrom
   >['fullSearchSchema'],

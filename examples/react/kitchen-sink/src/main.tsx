@@ -78,8 +78,14 @@ const routes = createRoutes().addChildren((createRoute) => [
         element: <InvoiceView />,
         loader: async ({ params: { invoiceId } }) => {
           console.log('Fetching invoice...')
+          const invoice = await fetchInvoiceById(invoiceId!)
+
+          if (!invoice) {
+            throw new Error('Invoice not found!')
+          }
+
           return {
-            invoice: await fetchInvoiceById(invoiceId!),
+            invoice,
           }
         },
         action: patchInvoice,
@@ -530,7 +536,7 @@ function InvoiceView() {
 
   return (
     <form
-      key={invoice.id}
+      key={invoice?.id}
       onSubmit={(event) => {
         event.preventDefault()
         event.stopPropagation()
@@ -548,9 +554,11 @@ function InvoiceView() {
       />
       <div>
         <Link
-          search={(old) => ({
-            ...old,
-            showNotes: old?.showNotes ? undefined : true,
+          {...route.link({
+            search: (old) => ({
+              ...old,
+              showNotes: old?.showNotes ? undefined : true,
+            }),
           })}
           className="text-blue-700 "
         >
@@ -633,9 +641,9 @@ function InvoiceFields({
 }
 
 function Users() {
-  const { users } = useLoaderData()
-  const navigate = useNavigate()
-  const { usersView } = useSearch()
+  const route = router.getRoute('/dashboard/users')
+  const { users } = route.getLoaderData()
+  const { usersView } = route.getSearch()
 
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy
