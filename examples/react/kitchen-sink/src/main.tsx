@@ -5,13 +5,9 @@ import {
   Link,
   Outlet,
   RouterProvider,
-  useNavigate,
-  MatchRoute,
-  useLoaderData,
-  useAction,
   createRoutes,
   Router,
-  RouteDef,
+  MatchRoute,
 } from '@tanstack/react-router'
 import { ReactLocationDevtools } from '@tanstack/router-devtools'
 
@@ -461,7 +457,15 @@ function Invoices() {
               >
                 <pre className="text-sm">
                   #{invoice.id} - {invoice.title.slice(0, 10)}{' '}
-                  <MatchRoute to={invoice.id} pending>
+                  <MatchRoute
+                    {...route.link({
+                      to: './:invoiceId',
+                      params: {
+                        invoiceId: invoice.id,
+                      },
+                    })}
+                    pending
+                  >
                     <Spinner />
                   </MatchRoute>
                 </pre>
@@ -520,10 +524,9 @@ function InvoicesHome() {
 
 function InvoiceView() {
   const route = router.getRoute('/dashboard/invoices/:invoiceId')
+  const action = route.getAction()
   const { invoice } = route.getLoaderData()
   const search = route.getSearch()
-  const navigate = useNavigate()
-  const action = useAction()
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
 
