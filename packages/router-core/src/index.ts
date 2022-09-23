@@ -7,10 +7,7 @@ import {
   History,
   HashHistory,
 } from 'history'
-import { ToISOFormat } from 'luxon'
 import React from 'react'
-import { ParsePath, z } from 'zod'
-// import { z } from 'zod'
 
 export { createHashHistory, createBrowserHistory, createMemoryHistory }
 
@@ -37,7 +34,20 @@ type PickRequired<T> = {
   [K in keyof T as undefined extends T[K] ? never : K]: T[K]
 }
 type LooseAutocomplete<T> = T extends string ? T | Omit<string, T> : never
-type ErrorKey = '### Error ###'
+type StartsWith<A, B> = A extends `${B extends string ? B : never}${infer _}`
+  ? true
+  : false
+type Expand<T> = T extends object
+  ? T extends infer O
+    ? { [K in keyof O]: O[K] }
+    : never
+  : T
+
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
+  k: infer I,
+) => any
+  ? I
+  : never
 
 export interface FrameworkGenerics {
   // The following properties are used internally
@@ -49,7 +59,7 @@ export interface FrameworkGenerics {
   // SyncOrAsyncElement?: any
 }
 
-export type RouteDef<
+export interface RouteDef<
   TId extends string = string,
   TPath extends string = string,
   TFullPath extends string = string,
@@ -67,7 +77,7 @@ export type RouteDef<
   >,
   TAllParams extends AnyPathParams = {},
   TKnownChildren = unknown,
-> = {
+> {
   id: TId
   options: RouteOptions<
     TPath,
@@ -210,40 +220,42 @@ export const createRoutes: CreateRouteFn<true> = (
   } as any
 }
 
-export type AnyRouteDef = RouteDef<
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any
->
+export interface AnyRouteDef
+  extends RouteDef<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+  > {}
 
-export type AnyRouteDefWithChildren<TChildren> = RouteDef<
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  TChildren
->
+export interface AnyRouteDefWithChildren<TChildren>
+  extends RouteDef<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    TChildren
+  > {}
 
-export type AnyAllRouteInfo = {
+export interface AnyAllRouteInfo {
   routeDef: AnyRouteDef
   routeInfo: AnyRouteInfo
   routeInfoById: Record<string, AnyRouteInfo>
@@ -251,7 +263,7 @@ export type AnyAllRouteInfo = {
   fullPath: string
 }
 
-export type DefaultAllRouteInfo = {
+export interface DefaultAllRouteInfo {
   routeDef: RouteDef
   routeInfo: RouteInfo
   routeInfoById: Record<string, RouteInfo>
@@ -259,10 +271,10 @@ export type DefaultAllRouteInfo = {
   fullPath: string
 }
 
-export type AllRouteInfo<TRouteDef extends AnyRouteDef = RouteDef> =
-  RoutesInfoInner<TRouteDef, ParseRouteDef<TRouteDef>>
+export interface AllRouteInfo<TRouteDef extends AnyRouteDef = RouteDef>
+  extends RoutesInfoInner<TRouteDef, ParseRouteDef<TRouteDef>> {}
 
-export type RoutesInfoInner<
+export interface RoutesInfoInner<
   TRouteDef extends AnyRouteDef,
   TRouteInfo extends RouteInfo<
     string,
@@ -278,55 +290,37 @@ export type RoutesInfoInner<
     any,
     any
   > = RouteInfo,
-> = {
+> {
   routeDef: TRouteDef
   routeInfo: TRouteInfo
   routeInfoById: {
     [TInfo in TRouteInfo as TInfo['id']]: TInfo
   }
   routeInfoByFullPath: {
-    [TInfo in TRouteInfo as TInfo['fullPath'] extends RootRouteId
+    [TInfo in TRouteInfo as TInfo['id'] extends RootRouteId
       ? never
       : RouteIdToPath<TInfo['id']>]: TInfo
   }
-  fullPath: Exclude<RouteIdToPath<TRouteInfo['id']>, RootRouteId>
-  // params: ParseRoute<TRouteDef>['param']
-  // routesByParams: IndexObj<ParseRoute<TRouteDef>, 'param'>
-  // allLoaderData: LoaderData &
-  //   Expand<
-  //     UnionToIntersection<
-  //       Extract<ParseRoute<TRouteDef>, { loaderData: {} }>['loaderData']
-  //     >
-  //   >
-  // allZodSchemas: Extract<
-  //   ParseRoute<TRouteDef>,
-  //   { searchSchema: {} }
-  // >['searchSchema']
-  // fullSearchSchema: Expand<
-  //   UnionToIntersection<
-  //     InferZod<
-  //       Extract<ParseRoute<TRouteDef>, { searchSchema: {} }>['searchSchema']
-  //     >
-  //   >
-  // >
+  fullPath: RouteIdToPath<TRouteInfo['id']>
 }
 
-export type AnyRoute = Route<any, any>
-export type AnyRouteInfo = RouteInfo<
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any
->
+export interface AnyRoute extends Route<any, any> {}
+export interface AnyRouteInfo
+  extends RouteInfo<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+  > {}
 
 type IndexObj<T extends Record<string, any>, TKey extends keyof T> = {
   [E in T as E[TKey]]: E
@@ -399,7 +393,7 @@ export type RouteDefRoute<TRouteDef> = TRouteDef extends RouteDef<
       >
   : never
 
-export type RouteInfo<
+export interface RouteInfo<
   TId extends string = string,
   TPath extends string = string,
   TFullPath extends {} = string,
@@ -416,7 +410,7 @@ export type RouteInfo<
     string
   >,
   TAllParams extends AnyPathParams = {},
-> = {
+> {
   id: TId
   path: TPath
   fullPath: TFullPath
@@ -501,27 +495,16 @@ export type PathParamMask<TRoutePath extends string> =
     ? PathParamMask<`${L}/${string}`>
     : TRoutePath
 
-type PartialPath<TRoutePath extends string> = Expand<
-  Values<{
-    [T in TRoutePath]: `/${TrimPathLeft<_PartialPath<T>>}`
-  }>
->
-
-type _PartialPath<TRoutePath extends string> =
-  TrimPath<TRoutePath> extends TrimPath<`${infer L}/${infer R}`>
-    ?
-        | (string extends L ? `${L}/` : L | `${L}/`)
-        | `${L}/${_PartialPath<`${R}`>}`
-    : TRoutePath
-
-type Split<S extends string, D extends string = '/'> = S extends unknown
+type Split<S, D extends string = '/'> = S extends unknown
   ? string extends S
     ? string[]
-    : CleanPath<S> extends ''
-    ? []
-    : CleanPath<S> extends `${infer T}${D}${infer U}`
-    ? [T, ...Split<U, D>]
-    : [S]
+    : S extends string
+    ? CleanPath<S> extends ''
+      ? []
+      : CleanPath<S> extends `${infer T}${D}${infer U}`
+      ? [T, ...Split<U, D>]
+      : [S]
+    : never
   : never
 
 type Join<T, D extends string = '/'> = T extends []
@@ -543,25 +526,6 @@ export type ResolvePath<
     : never
   : `${TBase}/${TTo}`
 
-// let testResolveRoute: ResolvePath<'/a/b/c', '../../../d'> = '/d'
-//  ^?
-// type ValidRoutes = '/a/b/c' | 'a/b/cc' | '/d/e'
-// let test6: VerifyLink<ValidRoutes, ResolvePath<'/a/b/c', '../cc'>>
-// let test4: VerifyLink<ValidRoutes, ResolvePath<'/a/b/c', '../'>>
-// let test5: VerifyLink<ValidRoutes, ResolvePath<'/a/b/c', '../cc'>>
-
-type Expand<T> = T extends object
-  ? T extends infer O
-    ? { [K in keyof O]: O[K] }
-    : never
-  : T
-
-type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
-  k: infer I,
-) => any
-  ? I
-  : never
-
 export type AnySearchSchema = {}
 export type AnyLoaderData = {}
 export type AnyPathParams = {}
@@ -577,10 +541,10 @@ export type Updater<TPrevious, TResult = TPrevious> =
   | TResult
   | ((prev?: TPrevious) => TResult)
 
-export type Location<
+export interface Location<
   TSearchObj extends AnySearchSchema = {},
   TState extends LocationState = LocationState,
-> = {
+> {
   href: string
   pathname: string
   search: TSearchObj
@@ -590,7 +554,7 @@ export type Location<
   key?: string
 }
 
-export type FromLocation = {
+export interface FromLocation {
   pathname: string
   search?: unknown
   key?: string
@@ -751,7 +715,7 @@ export interface RouteLoaders<
 
 export type SearchFilter<T, U = T> = (prev: T) => U
 
-export type MatchLocation = {
+export interface MatchLocation {
   to?: string | number | null
   fuzzy?: boolean
   caseSensitive?: boolean
@@ -763,12 +727,12 @@ export type SearchPredicate<TSearch extends AnySearchSchema = {}> = (
   search: TSearch,
 ) => any
 
-export type UnloadedMatch<
+export interface UnloadedMatch<
   TPath extends string = string,
   TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
-> = {
+> {
   id: string
   route: Route<any, RouteInfo>
   pathname: string
@@ -793,18 +757,18 @@ export type UnloaderFn<TPath extends string> = (
   routeMatch: RouteMatch<any, RouteInfo<string, TPath>>,
 ) => void
 
-export type RouteMatchContext<
+export interface RouteMatchContext<
   TPath extends string,
   TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
-> = {
+> {
   match: UnloadedMatch<TPath, TLoaderData, TActionPayload, TActionResponse>
   signal?: AbortSignal
   // router: Router
 }
 
-export type RouterState = {
+export interface RouterState {
   status: 'idle' | 'loading'
   location: Location
   matches: RouteMatch[]
@@ -815,14 +779,14 @@ export type RouterState = {
   pending?: PendingState
 }
 
-export type PendingState = {
+export interface PendingState {
   location: Location
   matches: RouteMatch[]
 }
 
 export type ListenerFn = () => void
 
-export type Segment = {
+export interface Segment {
   type: 'pathname' | 'param' | 'wildcard'
   value: string
 }
@@ -831,17 +795,17 @@ type GetFrameworkGeneric<U, TData = unknown> = U extends keyof FrameworkGenerics
   ? FrameworkGenerics[U]
   : any
 
-export type __Experimental__RouterSnapshot = {
+export interface __Experimental__RouterSnapshot {
   location: Location
   matches: SnapshotRouteMatch<unknown>[]
 }
 
-export type SnapshotRouteMatch<TData> = {
+export interface SnapshotRouteMatch<TData> {
   id: string
   loaderData: TData
 }
 
-export type BuildNextOptions = {
+export interface BuildNextOptions {
   to?: string | number | null
   search?: true | Updater<unknown>
   hash?: true | Updater<string>
@@ -858,7 +822,7 @@ export type LinkOptionsRelative<
   TTo extends string = '.',
 > = { from?: TFrom } & LinkOptions<TAllRouteInfo, TFrom, TTo>
 
-type ActiveOptions = {
+interface ActiveOptions {
   exact?: boolean
   includeHash?: boolean
 }
@@ -941,21 +905,21 @@ export type RouterOptions<TRouteDefs extends AnyRouteDef> = {
     | '__experimental__snapshot'
   >
 
-export type Action<
+export interface Action<
   TPayload = unknown,
   TResponse = unknown,
   // TError = unknown,
-> = {
+> {
   submit: (submission?: TPayload) => Promise<TResponse>
   latest?: ActionState
   pending: ActionState<TPayload, TResponse>[]
 }
 
-export type ActionState<
+export interface ActionState<
   TPayload = unknown,
   TResponse = unknown,
   // TError = unknown,
-> = {
+> {
   submittedAt: number
   status: 'idle' | 'pending' | 'success' | 'error'
   submission: TPayload
@@ -970,12 +934,12 @@ type RoutesById<TAllRouteInfo extends AnyAllRouteInfo> = {
   >
 }
 
-type RoutesByPath<TAllRouteInfo extends AnyAllRouteInfo> = {
-  [K in TAllRouteInfo['fullPath']]: Route<
-    TAllRouteInfo,
-    TAllRouteInfo['routeInfoByFullPath'][K]
-  >
-}
+// type RoutesByPath<TAllRouteInfo extends AnyAllRouteInfo> = {
+//   [K in TAllRouteInfo['fullPath']]: Route<
+//     TAllRouteInfo,
+//     TAllRouteInfo['routeInfoByFullPath'][K]
+//   >
+// }
 
 type ValidFromPath<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
@@ -990,7 +954,9 @@ type ValidToPath<
   TFrom = undefined,
 > = TFrom extends undefined
   ? TAllRouteInfo['fullPath'] | `...unsafe-relative-path (cast "as any")`
-  : LooseAutocomplete<'.' | TAllRouteInfo['fullPath']>
+  : TAllRouteInfo['fullPath']
+// LooseAutocomplete<'.' |
+// TAllRouteInfo['fullPath']>
 
 export class Router<
   TRouteDefs extends AnyRouteDef = RouteDef,
@@ -2125,10 +2091,11 @@ type MapToUnknown<T extends object> = { [_ in keyof T]: unknown }
 // type Test4 = ResolveRelativePath<'a/b/c', '../e'>
 // //   ^?
 
-type NavigateOptions<
+export type NavigateOptions<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TFrom extends ValidFromPath<TAllRouteInfo> = '/',
   TTo extends string = '.',
+  TResolvedTo = ResolveRelativePath<TFrom, NoInfer<TTo>>,
 > = {
   // The destination route path
   // (An absolute path is preferred for type-safety, but relative is also allowed)
@@ -2147,16 +2114,9 @@ type NavigateOptions<
   from?: TFrom
   // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
   fromCurrent?: boolean
-} & SearchParamOptions<
-  TAllRouteInfo,
-  TFrom,
-  ResolveRelativePath<TFrom, NoInfer<TTo>>
-> &
-  PathParamOptions<
-    TAllRouteInfo,
-    TFrom,
-    ResolveRelativePath<TFrom, NoInfer<TTo>>
-  >
+  test?: (arg: TResolvedTo) => void
+} & SearchParamOptions<TAllRouteInfo, TFrom, TResolvedTo> &
+  PathParamOptions<TAllRouteInfo, TFrom, TResolvedTo>
 
 type LinkOptions<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
@@ -2195,9 +2155,11 @@ type CheckRelativePath<
     : {}
   : {}
 
-type ResolveRelativePath<TFrom, TTo> = TFrom extends string
+type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
   ? TTo extends string
-    ? TTo extends `/${infer TRest}`
+    ? TTo extends '.'
+      ? TFrom
+      : TTo extends `/${infer TRest}`
       ? TTo
       : Split<TTo> extends ['..', ...infer ToRest]
       ? Split<TFrom> extends [...infer FromRest, infer FromTail]
@@ -2213,57 +2175,48 @@ type RouteInfoByPath<
   TRouteInfoByPath extends AnyAllRouteInfo,
   TPath,
 > = TPath extends keyof TRouteInfoByPath['routeInfoByFullPath']
-  ? TRouteInfoByPath['routeInfoByFullPath'][TPath]
+  ? IsAny<
+      TRouteInfoByPath['routeInfoByFullPath'][TPath]['id'],
+      RouteInfo,
+      TRouteInfoByPath['routeInfoByFullPath'][TPath]
+    >
   : never
 
 type SearchParamOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
   TFrom,
   TTo,
-  TToSchema extends RouteInfoByPath<
-    TAllRouteInfo,
-    TTo
-  >['fullSearchSchema'] = RouteInfoByPath<
-    TAllRouteInfo,
-    TTo
-  >['fullSearchSchema'],
-  TFromSchema extends RouteInfoByPath<
-    TAllRouteInfo,
-    TFrom
-  >['fullSearchSchema'] = RouteInfoByPath<
-    TAllRouteInfo,
-    TFrom
-  >['fullSearchSchema'],
+  TFromSchema = RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema'],
+  TToSchema = RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema'],
 > =
   // If the next route search extend or cover the from route, params will be optional
-  TFromSchema extends TToSchema
+  StartsWith<TFrom, TTo> extends true
     ? {
-        search?: TToSchema | ((current: TFromSchema) => TToSchema)
+        search?: SearchReducer<TFromSchema, TToSchema>
       }
     : // Optional search params? Allow it
     keyof PickRequired<TToSchema> extends never
     ? {
-        search?: TToSchema | ((current: TFromSchema) => TToSchema)
+        search?: SearchReducer<TFromSchema, TToSchema>
       }
     : {
         // Must have required search params, enforce it
-        search: TToSchema | ((current: TFromSchema) => TToSchema)
+        search: SearchReducer<TFromSchema, TToSchema>
       }
+
+type SearchReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
 type PathParamOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
   TFrom,
   TTo,
-  TFromParams extends unknown = RouteInfoByPath<
-    TAllRouteInfo,
-    TFrom
-  >['allParams'],
-  TToParams extends unknown = RouteInfoByPath<TAllRouteInfo, TTo>['allParams'],
+  TFromParams = RouteInfoByPath<TAllRouteInfo, TFrom>['allParams'],
+  TToParams = RouteInfoByPath<TAllRouteInfo, TTo>['allParams'],
 > =
   // If the next routes params extend or cover the from route, params will be optional
   TFromParams extends TToParams
     ? {
-        params?: TToParams | ((current: TFromParams) => TToParams)
+        params?: ParamsReducer<TFromParams, TToParams>
       }
     : // If the next route doesn't have params, warn if any have been passed
     AnyPathParams extends TToParams
@@ -2274,8 +2227,10 @@ type PathParamOptions<
       }
     : // If the next route has params, enforce them
       {
-        params: TToParams | ((current: TFromParams) => TToParams)
+        params: ParamsReducer<TFromParams, TToParams>
       }
+
+type ParamsReducer<TFrom, TTo> = IsAny<TTo, {}, TTo> | ((current: TFrom) => TTo)
 
 export class RouteMatch<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,

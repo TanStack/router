@@ -130,8 +130,8 @@ export async function fetchUsers() {
   return loaderDelayFn(() => ensureUsers().then(() => users))
 }
 
-export async function fetchUserById(id: string) {
+export async function fetchUserById(id: number) {
   return loaderDelayFn(() =>
-    ensureUsers().then(() => users.find((d) => String(d.id) === id)),
+    ensureUsers().then(() => users.find((d) => d.id === id)),
   )
 }

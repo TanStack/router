@@ -5,13 +5,13 @@ import {
   Link,
   Outlet,
   RouterProvider,
-  useSearch,
   useNavigate,
   MatchRoute,
   useLoaderData,
   useAction,
   createRoutes,
   Router,
+  RouteDef,
 } from '@tanstack/react-router'
 import { ReactLocationDevtools } from '@tanstack/router-devtools'
 
@@ -29,7 +29,6 @@ import {
 import reallyExpensiveRoute from './reallyExpensive'
 import { loaderDelayFn } from './utils'
 import { z } from 'zod'
-import route from './reallyExpensive'
 
 //
 
@@ -121,10 +120,12 @@ const routes = createRoutes().addChildren((createRoute) => [
     }).addChildren((createRoute) => [
       createRoute({
         path: ':userId',
+        parseParams: ({ userId }) => ({ userId: Number(userId) }),
+        stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
         element: <UserView />,
         loader: async ({ params: { userId } }) => {
           return {
-            user: await fetchUserById(userId!),
+            user: await fetchUserById(userId),
           }
         },
       }),
@@ -528,7 +529,7 @@ function InvoiceView() {
 
   React.useEffect(() => {
     route.navigate({
-      to: '.',
+      // to: '.',
       search: (old) => ({ ...old, notes: notes ? notes : undefined }),
       replace: true,
     })
@@ -669,7 +670,7 @@ function Users() {
   }, [sortedUsers, filterBy])
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
-    navigate({
+    route.navigate({
       search: (old) => {
         return {
           ...old,
@@ -683,7 +684,7 @@ function Users() {
     })
 
   React.useEffect(() => {
-    navigate({
+    route.navigate({
       search: (old) => {
         return {
           ...old,
@@ -725,7 +726,12 @@ function Users() {
           return (
             <div key={user.id}>
               <Link
-                to={user.id}
+                {...route.link({
+                  to: './:userId',
+                  params: {
+                    userId: user.id,
+                  },
+                })}
                 className="block py-2 px-3 text-blue-700"
                 activeProps={{ className: `font-bold` }}
               >
@@ -748,7 +754,8 @@ function Users() {
 }
 
 function UserView() {
-  const { user } = useLoaderData()
+  const route = router.getRoute('/dashboard/users/:userId')
+  const { user } = route.getLoaderData()
 
   return (
     <>

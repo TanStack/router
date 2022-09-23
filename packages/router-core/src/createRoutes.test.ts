@@ -7,16 +7,22 @@ import { createRoutes, Router, AnyRouteDef, AllRouteInfo } from '.'
 const routes = createRoutes().addChildren((createRoute) => [
   createRoute({
     path: '/',
-    validateSearch: z.object({
-      version: z.number(),
-    }).parse,
+    validateSearch: (search) =>
+      z
+        .object({
+          version: z.number(),
+        })
+        .parse(search),
   }),
   createRoute({
     path: '/test',
-    validateSearch: z.object({
-      version: z.number(),
-      isGood: z.boolean(),
-    }).parse,
+    validateSearch: (search) =>
+      z
+        .object({
+          version: z.number(),
+          isGood: z.boolean(),
+        })
+        .parse(search),
   }),
   createRoute({
     path: 'dashboard',
@@ -63,14 +69,17 @@ const routes = createRoutes().addChildren((createRoute) => [
           users: 'await fetchUsers()',
         }
       },
-      validateSearch: z.object({
-        usersView: z
+      validateSearch: (search) =>
+        z
           .object({
-            sortBy: z.enum(['name', 'id', 'email']).optional(),
-            filterBy: z.string().optional(),
+            usersView: z
+              .object({
+                sortBy: z.enum(['name', 'id', 'email']).optional(),
+                filterBy: z.string().optional(),
+              })
+              .optional(),
           })
-          .optional(),
-      }).parse,
+          .parse(search),
       preSearchFilters: [
         // Keep the usersView search param around
         // while in this route (or it's children!)
@@ -223,12 +232,21 @@ router.getRoute('/dashboard/invoices/:invoiceId').link({
   params: (current) => ({
     userId: `${current?.invoiceId}`,
   }),
-  search: () => {
+  search: (prev) => {
     return {
       usersView: {
         sortBy: 'name' as const,
         filterBy: 'tanner',
       },
+    }
+  },
+})
+
+router.getRoute('/dashboard/users/:userId').link({
+  to: '/',
+  search: (prev) => {
+    return {
+      version: 2,
     }
   },
 })
@@ -241,9 +259,17 @@ router.link({
   },
   search: (prev) => ({
     usersView: {
-      sortBy: 'id' as const,
+      sortBy: 'id',
       filterBy: `${prev.version}`,
     },
+  }),
+})
+
+router.getRoute('/').navigate({
+  // to: '.',
+  test: (arg) => {},
+  search: (prev) => ({
+    version: prev.version,
   }),
 })
 
@@ -260,7 +286,7 @@ router.getRoute('/').link({
 })
 
 router.getRoute('/dashboard/invoices/:invoiceId').link({
-  // to: '',
+  to: '.',
   params: (d) => ({
     invoiceId: d.invoiceId,
   }),
