@@ -99,6 +99,8 @@ export function decodeFromBinary(str: string): string {
 }
 ```
 
+> [⚠️ Why does this snippet not use atob/btoa?](#safe-binary-encodingdecoding)
+
 ## Using JSURL
 
 [JSURL](https://github.com/Sage/jsurl) is a non-standard library that can both compress URLs while still maintaining readability. This can be done with the following code:
