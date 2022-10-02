@@ -73,10 +73,10 @@ import { stringify, parse } from 'zipson'
 
 const reactLocation = new ReactLocation({
   parseSearch: parseSearchWith((value) =>
-    parse(decodeURIComponent(atob(value))),
+    parse(decodeURIComponent(decodeFromBinary(value))),
   ),
   stringifySearch: stringifySearchWith((value) =>
-    btoa(encodeURIComponent(stringify(value))),
+    encodeToBinary(encodeURIComponent(stringify(value))),
   ),
 })
 
