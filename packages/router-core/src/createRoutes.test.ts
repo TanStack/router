@@ -1,10 +1,9 @@
-import { AnyAllRouteInfo, Route } from '@tanstack/router-core'
-import * as React from 'react'
+import { Route } from '@tanstack/router-core'
 import { z } from 'zod'
-import { createRoutes, Router, AnyRouteDef, AllRouteInfo } from '.'
+import { createRouter, AllRouteInfo, createRouteConfig } from '.'
 
 // Build our routes. We could do this in our component, too.
-const routes = createRoutes().addChildren((createRoute) => [
+const routeConfig = createRouteConfig().addChildren((createRoute) => [
   createRoute({
     path: '/',
     validateSearch: (search) =>
@@ -93,7 +92,7 @@ const routes = createRoutes().addChildren((createRoute) => [
     }).addChildren((createRoute) => [
       createRoute({
         path: ':userId',
-        loader: async ({ params: { userId } }) => {
+        loader: async ({ params: { userId }, search }) => {
           return {
             user: 'await fetchUserById(userId!)',
           }
@@ -122,14 +121,11 @@ const routes = createRoutes().addChildren((createRoute) => [
   ]),
 ])
 
-type MyRoutesInfo = AllRouteInfo<typeof routes>
+type MyRoutesInfo = AllRouteInfo<typeof routeConfig>
 //   ^?
 type RouteInfo = MyRoutesInfo['routeInfo']
 type RoutesById = MyRoutesInfo['routeInfoById']
-type RoutesTest = Route<
-  MyRoutesInfo,
-  MyRoutesInfo['routeInfoByFullPath']['/dashboard/invoices']
->
+type RoutesTest = Route<MyRoutesInfo, MyRoutesInfo['routeInfoByFullPath']['/']>
 //   ^?
 type RoutePaths = MyRoutesInfo['routeInfoByFullPath']
 //   ^?
@@ -140,30 +136,38 @@ type InvoiceLoaderData = InvoiceRouteInfo['allLoaderData']
 type InvoiceAction = InvoiceRouteInfo['actionPayload']
 //   ^?
 
-const router = new Router({
-  routes,
+const router = createRouter({
+  routeConfig,
 })
 
-const loaderData = router.getRoute('/dashboard/users/:userId').getLoaderData()
+const loaderData = router.useRoute('/dashboard/users/:userId').getLoaderData()
 //    ^?
-const route = router.getRoute('/dashboard/users/:userId')
+const route = router.useRoute('/dashboard/users/:userId')
 //    ^?
 const action = route.getAction()
 //    ^?
 const result = action.submit({ amount: 10000 })
 //    ^?
 
-router.link({
-  from: '/dashboard/invoices/:invoiceId',
+router.buildLink({
+  to: '/dashboard/users/:userId',
+  params: {
+    userId: '2',
+  },
+  search: (prev) => ({
+    usersView: {
+      sortBy: 'email',
+    },
+  }),
 })
 
 // @ts-expect-error
-router.link({
+router.buildLink({
   from: '/',
   to: '/test',
 })
 
-router.link({
+router.buildLink({
   from: '/',
   to: '/test',
   search: () => {
@@ -174,23 +178,24 @@ router.link({
   },
 })
 
-router.link({
+router.buildLink({
   from: '/test',
   to: '/',
 })
 
-route.link({
+route.buildLink({
   to: '',
 })
 
-router.getRoute('/dashboard').link({
+router.useRoute('/dashboard').buildLink({
   to: '/dashboard/invoices',
   params: {
+    // @ts-expect-error
     invoiceId: 2,
   },
 })
 
-router.getRoute('/dashboard').link({
+router.useRoute('/dashboard').buildLink({
   to: '/dashboard/invoices/:invoiceId',
   params: {
     // @ts-expect-error
@@ -198,21 +203,21 @@ router.getRoute('/dashboard').link({
   },
 })
 
-router.getRoute('/').link({
+router.useRoute('/').buildLink({
   to: '/dashboard/invoices/:invoiceId',
   params: {
     invoiceId: 2,
   },
 })
 
-router.getRoute('/').link({
+router.useRoute('/').buildLink({
   to: '/',
   search: {
     version: 2,
   },
 })
 
-router.getRoute('/').link({
+router.useRoute('/').buildLink({
   to: '/dashboard/users/:userId',
   params: (current) => ({
     userId:
@@ -227,7 +232,7 @@ router.getRoute('/').link({
   }),
 })
 
-router.getRoute('/dashboard/invoices/:invoiceId').link({
+router.useRoute('/dashboard/invoices/:invoiceId').buildLink({
   to: '/dashboard/users/:userId',
   params: (current) => ({
     userId: `${current?.invoiceId}`,
@@ -242,7 +247,7 @@ router.getRoute('/dashboard/invoices/:invoiceId').link({
   },
 })
 
-router.getRoute('/dashboard/users/:userId').link({
+router.useRoute('/dashboard/users/:userId').buildLink({
   to: '/',
   search: (prev) => {
     return {
@@ -251,7 +256,7 @@ router.getRoute('/dashboard/users/:userId').link({
   },
 })
 
-router.link({
+router.buildLink({
   from: '/',
   to: '/dashboard/users/:userId',
   params: {
@@ -265,27 +270,26 @@ router.link({
   }),
 })
 
-router.getRoute('/').navigate({
+router.useRoute('/').navigate({
   // to: '.',
-  test: (arg) => {},
   search: (prev) => ({
     version: prev.version,
   }),
 })
 
-router.link({
+router.buildLink({
   from: '/dashboard/invoices',
   to: '/dashboard',
 })
 
-router.getRoute('/').link({
+router.useRoute('/').buildLink({
   to: '/dashboard/invoices/:invoiceId',
   params: {
     invoiceId: 2,
   },
 })
 
-router.getRoute('/dashboard/invoices/:invoiceId').link({
+router.useRoute('/dashboard/invoices/:invoiceId').buildLink({
   to: '.',
   params: (d) => ({
     invoiceId: d.invoiceId,
