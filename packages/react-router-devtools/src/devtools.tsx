@@ -1,5 +1,5 @@
 import React from 'react'
-import { RouterInstance, useRouter } from '@tanstack/react-router'
+import { Router, useRouter, last } from '@tanstack/react-router'
 import { formatDistanceStrict } from 'date-fns'
 
 import useLocalStorage from './useLocalStorage'
@@ -366,7 +366,7 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
     ...panelProps
   } = props
 
-  const router = useRouter() as RouterInstance
+  const router = useRouter() as Router
 
   const [activeMatchId, setActiveRouteId] = useLocalStorage(
     'reactLocationDevtoolsActiveRouteId',
@@ -605,13 +605,9 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
                     getOutletElement,
                     resolvePath,
                     matchRoute,
-                    buildLinkInfo,
+                    buildLink,
                     __experimental__createSnapshot,
-                    stringifySearch,
-                    parseSearch,
                     destroy,
-                    defaultPendingElement,
-                    rootMatch,
                     ...rest
                   } = router
                   return rest
@@ -650,14 +646,13 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
             }}
           >
             <Explorer
-              value={router.state.loaderData}
-              defaultExpanded={Object.keys(router.state.loaderData).reduce(
-                (obj: any, next) => {
-                  obj[next] = {}
-                  return obj
-                },
-                {},
-              )}
+              value={last(router.state.matches)?.loaderData || {}}
+              defaultExpanded={Object.keys(
+                (last(router.state.matches)?.loaderData as {}) || {},
+              ).reduce((obj: any, next) => {
+                obj[next] = {}
+                return obj
+              }, {})}
             />
           </div>
         </div>

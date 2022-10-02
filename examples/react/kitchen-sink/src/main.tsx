@@ -2,10 +2,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
-  Link,
   Outlet,
   RouterProvider,
-  MatchRoute,
   createRouter,
   createReactRouter,
   createRouteConfig,
@@ -735,9 +733,15 @@ function Users() {
               >
                 <pre className="text-sm">
                   {user.name}{' '}
-                  <MatchRoute to={user.id} pending>
+                  <route.MatchRoute
+                    to={`./:userId`}
+                    params={{
+                      userId: user.id,
+                    }}
+                    pending
+                  >
                     <Spinner />
-                  </MatchRoute>
+                  </route.MatchRoute>
                 </pre>
               </route.Link>
             </div>

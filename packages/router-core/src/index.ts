@@ -2021,7 +2021,7 @@ export function createRouter<
   router.update(userOptions)
 
   // Allow frameworks to hook into the router creation
-  router = router.options.createRouter?.(router as any) ?? router
+  Object.assign(router, router.options.createRouter?.(router as any) ?? router)
 
   return router
 }
@@ -2140,7 +2140,7 @@ export function createRoute<
     },
   }
 
-  route = router.options.createRoute?.({ router, route }) ?? route
+  Object.assign(route, router.options.createRoute?.({ router, route }) ?? route)
 
   return route
 }
@@ -2984,6 +2984,6 @@ function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
 }
 
-function last<T>(arr: T[]) {
+export function last<T>(arr: T[]) {
   return arr[arr.length - 1]
 }

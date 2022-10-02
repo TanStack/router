@@ -247,7 +247,7 @@ export function createReactRouter<
                   'aria-disabled': true,
                 }
               : undefined),
-            ['data-isActive']: isActive ? 'active' : undefined,
+            ['data-status']: isActive ? 'active' : undefined,
           }
         },
         Link: React.forwardRef((props, ref) => {
@@ -256,12 +256,12 @@ export function createReactRouter<
             <a
               {...{
                 ref: ref as any,
-                ...props,
                 ...linkProps,
                 children:
                   typeof props.children === 'function'
                     ? props.children({
-                        isActive: (linkProps as any)['data-isActive'],
+                        isActive:
+                          (linkProps as any)['data-status'] === 'active',
                       })
                     : props.children,
               }}
