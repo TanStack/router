@@ -140,9 +140,9 @@ const router = createRouter({
   routeConfig,
 })
 
-const loaderData = router.useRoute('/dashboard/users/:userId').getLoaderData()
+const loaderData = router.getRoute('/dashboard/users/:userId')
 //    ^?
-const route = router.useRoute('/dashboard/users/:userId')
+const route = router.getRoute('/dashboard/users/:userId')
 //    ^?
 const action = route.getAction()
 //    ^?
@@ -187,7 +187,7 @@ route.buildLink({
   to: '',
 })
 
-router.useRoute('/dashboard').buildLink({
+router.getRoute('/dashboard').buildLink({
   to: '/dashboard/invoices',
   params: {
     // @ts-expect-error
@@ -195,7 +195,7 @@ router.useRoute('/dashboard').buildLink({
   },
 })
 
-router.useRoute('/dashboard').buildLink({
+router.getRoute('/dashboard').buildLink({
   to: '/dashboard/invoices/:invoiceId',
   params: {
     // @ts-expect-error
@@ -203,21 +203,21 @@ router.useRoute('/dashboard').buildLink({
   },
 })
 
-router.useRoute('/').buildLink({
+router.getRoute('/').buildLink({
   to: '/dashboard/invoices/:invoiceId',
   params: {
     invoiceId: 2,
   },
 })
 
-router.useRoute('/').buildLink({
+router.getRoute('/').buildLink({
   to: '/',
   search: {
     version: 2,
   },
 })
 
-router.useRoute('/').buildLink({
+router.getRoute('/').buildLink({
   to: '/dashboard/users/:userId',
   params: (current) => ({
     userId:
@@ -232,7 +232,7 @@ router.useRoute('/').buildLink({
   }),
 })
 
-router.useRoute('/dashboard/invoices/:invoiceId').buildLink({
+router.getRoute('/dashboard/invoices/:invoiceId').buildLink({
   to: '/dashboard/users/:userId',
   params: (current) => ({
     userId: `${current?.invoiceId}`,
@@ -247,7 +247,7 @@ router.useRoute('/dashboard/invoices/:invoiceId').buildLink({
   },
 })
 
-router.useRoute('/dashboard/users/:userId').buildLink({
+router.getRoute('/dashboard/users/:userId').buildLink({
   to: '/',
   search: (prev) => {
     return {
@@ -270,7 +270,7 @@ router.buildLink({
   }),
 })
 
-router.useRoute('/').navigate({
+router.getRoute('/').navigate({
   // to: '.',
   search: (prev) => ({
     version: prev.version,
@@ -282,14 +282,14 @@ router.buildLink({
   to: '/dashboard',
 })
 
-router.useRoute('/').buildLink({
+router.getRoute('/').buildLink({
   to: '/dashboard/invoices/:invoiceId',
   params: {
     invoiceId: 2,
   },
 })
 
-router.useRoute('/dashboard/invoices/:invoiceId').buildLink({
+router.getRoute('/dashboard/invoices/:invoiceId').buildLink({
   to: '.',
   params: (d) => ({
     invoiceId: d.invoiceId,

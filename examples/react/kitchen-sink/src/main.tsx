@@ -4,11 +4,10 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  createRouter,
   createReactRouter,
   createRouteConfig,
 } from '@tanstack/react-router'
-import { ReactLocationDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 import {
   fetchInvoices,
@@ -104,7 +103,7 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
           .optional(),
       }).parse,
       preSearchFilters: [
-        // Keep the usersView search param around
+        // Keep/prefill the usersView search param around
         // while in this route (or it's children!)
         (search) => ({
           ...search,
@@ -152,8 +151,6 @@ const router = createReactRouter({
   routeConfig,
 })
 
-window.router = router
-
 // Provide our location and routes to our application
 function App() {
   // This stuff is just to tweak our sandbox setup in real-time
@@ -165,10 +162,10 @@ function App() {
   )
   const [defaultPendingMinMs, setDefaulPendingMinMs] = useSessionStorage(
     'defaultPendingMinMs',
-    1000,
+    500,
   )
   const [defaultLinkPreloadMaxAge, setDefaultLinkPreloadMaxAge] =
-    useSessionStorage('defaultLinkPreloadMaxAge', 0)
+    useSessionStorage('defaultLinkPreloadMaxAge', 2000)
 
   return (
     <>
@@ -270,7 +267,7 @@ function App() {
           ].join('.')}
         >
           <Root />
-          <ReactLocationDevtools position="bottom-right" />
+          <TanStackRouterDevtools position="bottom-right" />
         </RouterProvider>
       </AuthProvider>
     </>
@@ -430,7 +427,7 @@ function Invoices() {
   const {
     loaderData: { invoices },
     route,
-  } = router.useMatch('/dashboard/invoices')
+  } = router.useMatch('/dashboard/invoices/')
 
   // Get the action for a child route
   const addInvoiceAction = router.useAction('/dashboard/invoices/')
@@ -453,7 +450,7 @@ function Invoices() {
                 <pre className="text-sm">
                   #{invoice.id} - {invoice.title.slice(0, 10)}{' '}
                   <route.MatchRoute
-                    to="./"
+                    to="./:invoiceId"
                     params={{
                       invoiceId: invoice.id,
                     }}

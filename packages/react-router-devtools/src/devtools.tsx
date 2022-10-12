@@ -46,7 +46,7 @@ interface DevtoolsOptions {
     HTMLButtonElement
   >
   /**
-   * The position of the TanStack Location logo to open and close the devtools panel.
+   * The position of the TanStack Router logo to open and close the devtools panel.
    * Defaults to 'bottom-left'.
    */
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
@@ -91,7 +91,7 @@ interface DevtoolsPanelOptions {
 
 const isServer = typeof window === 'undefined'
 
-export function ReactLocationDevtools({
+export function TanStackRouterDevtools({
   initialIsOpen,
   panelProps = {},
   closeButtonProps = {},
@@ -103,11 +103,11 @@ export function ReactLocationDevtools({
   const rootRef = React.useRef<HTMLDivElement>(null)
   const panelRef = React.useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useLocalStorage(
-    'reactLocationDevtoolsOpen',
+    'tanstackRouterDevtoolsOpen',
     initialIsOpen,
   )
   const [devtoolsHeight, setDevtoolsHeight] = useLocalStorage<number | null>(
-    'reactLocationDevtoolsHeight',
+    'tanstackRouterDevtoolsHeight',
     null,
   )
   const [isResolvedOpen, setIsResolvedOpen] = useSafeState(false)
@@ -158,6 +158,7 @@ export function ReactLocationDevtools({
   // Prevents focusing in a closed panel.
   React.useEffect(() => {
     const ref = panelRef.current
+
     if (ref) {
       const handlePanelTransitionStart = () => {
         if (ref && isResolvedOpen) {
@@ -179,6 +180,8 @@ export function ReactLocationDevtools({
         ref.removeEventListener('transitionend', handlePanelTransitionEnd)
       }
     }
+
+    return
   }, [isResolvedOpen])
 
   React[isServer ? 'useEffect' : 'useLayoutEffect'](() => {
@@ -208,6 +211,7 @@ export function ReactLocationDevtools({
         }
       }
     }
+    return
   }, [isResolvedOpen])
 
   const { style: panelStyle = {}, ...otherPanelProps } = panelProps
@@ -228,9 +232,9 @@ export function ReactLocationDevtools({
   if (!isMounted()) return null
 
   return (
-    <Container ref={rootRef} className="ReactLocationDevtools">
+    <Container ref={rootRef} className="TanStackRouterDevtools">
       <ThemeProvider theme={theme}>
-        <ReactLocationDevtoolsPanel
+        <TanStackRouterDevtoolsPanel
           ref={panelRef as any}
           {...otherPanelProps}
           useRouter={useRouterImpl}
@@ -272,7 +276,7 @@ export function ReactLocationDevtools({
         {isResolvedOpen ? (
           <Button
             type="button"
-            aria-label="Close TanStack Location Devtools"
+            aria-label="Close TanStack Router Devtools"
             {...(otherCloseButtonProps as any)}
             onClick={(e) => {
               setIsOpen(false)
@@ -309,7 +313,7 @@ export function ReactLocationDevtools({
         <button
           type="button"
           {...otherToggleButtonProps}
-          aria-label="Open TanStack Location Devtools"
+          aria-label="Open TanStack Router Devtools"
           onClick={(e) => {
             setIsOpen(true)
             onToggleClick && onToggleClick(e)
@@ -354,10 +358,10 @@ export function ReactLocationDevtools({
   )
 }
 
-export const ReactLocationDevtoolsPanel = React.forwardRef<
+export const TanStackRouterDevtoolsPanel = React.forwardRef<
   HTMLDivElement,
   DevtoolsPanelOptions
->(function ReactLocationDevtoolsPanel(props, ref): React.ReactElement {
+>(function TanStackRouterDevtoolsPanel(props, ref): React.ReactElement {
   const {
     isOpen = true,
     setIsOpen,
@@ -369,7 +373,7 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
   const router = useRouter() as Router
 
   const [activeMatchId, setActiveRouteId] = useLocalStorage(
-    'reactLocationDevtoolsActiveRouteId',
+    'tanstackRouterDevtoolsActiveRouteId',
     '',
   )
 
@@ -377,48 +381,48 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
 
   return (
     <ThemeProvider theme={theme}>
-      <Panel ref={ref} className="ReactLocationDevtoolsPanel" {...panelProps}>
+      <Panel ref={ref} className="TanStackRouterDevtoolsPanel" {...panelProps}>
         <style
           dangerouslySetInnerHTML={{
             __html: `
 
-            .ReactLocationDevtoolsPanel * {
+            .TanStackRouterDevtoolsPanel * {
               scrollbar-color: ${theme.backgroundAlt} ${theme.gray};
             }
 
-            .ReactLocationDevtoolsPanel *::-webkit-scrollbar, .ReactLocationDevtoolsPanel scrollbar {
+            .TanStackRouterDevtoolsPanel *::-webkit-scrollbar, .TanStackRouterDevtoolsPanel scrollbar {
               width: 1em;
               height: 1em;
             }
 
-            .ReactLocationDevtoolsPanel *::-webkit-scrollbar-track, .ReactLocationDevtoolsPanel scrollbar-track {
+            .TanStackRouterDevtoolsPanel *::-webkit-scrollbar-track, .TanStackRouterDevtoolsPanel scrollbar-track {
               background: ${theme.backgroundAlt};
             }
 
-            .ReactLocationDevtoolsPanel *::-webkit-scrollbar-thumb, .ReactLocationDevtoolsPanel scrollbar-thumb {
+            .TanStackRouterDevtoolsPanel *::-webkit-scrollbar-thumb, .TanStackRouterDevtoolsPanel scrollbar-thumb {
               background: ${theme.gray};
               border-radius: .5em;
               border: 3px solid ${theme.backgroundAlt};
             }
 
-            .ReactLocationDevtoolsPanel table {
+            .TanStackRouterDevtoolsPanel table {
               width: 100%;
             }
 
-            .ReactLocationDevtoolsPanel table tr {
+            .TanStackRouterDevtoolsPanel table tr {
               border-bottom: 2px dotted rgba(255, 255, 255, .2);
             }
 
-            .ReactLocationDevtoolsPanel table tr:last-child {
+            .TanStackRouterDevtoolsPanel table tr:last-child {
               border-bottom: none
             }
 
-            .ReactLocationDevtoolsPanel table td {
+            .TanStackRouterDevtoolsPanel table td {
               padding: .25rem .5rem;
               border-right: 2px dotted rgba(255, 255, 255, .05);
             }
 
-            .ReactLocationDevtoolsPanel table td:last-child {
+            .TanStackRouterDevtoolsPanel table td:last-child {
               border-right: none
             }
 
@@ -471,7 +475,7 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
                 fontWeight: 'bold',
               }}
             >
-              TanStack Location{' '}
+              TanStack Router{' '}
               <span
                 style={{
                   fontWeight: 100,
@@ -479,98 +483,6 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
               >
                 Devtools
               </span>
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              {/* <QueryKeys style={{ marginBottom: '.5em' }}>
-                <QueryKey
-                  style={{
-                    background: theme.success,
-                    opacity: hasFresh ? 1 : 0.3,
-                  }}
-                >
-                  fresh <Code>({hasFresh})</Code>
-                </QueryKey>{' '}
-                <QueryKey
-                  style={{
-                    background: theme.active,
-                    opacity: hasFetching ? 1 : 0.3,
-                  }}
-                >
-                  fetching <Code>({hasFetching})</Code>
-                </QueryKey>{' '}
-                <QueryKey
-                  style={{
-                    background: theme.warning,
-                    color: 'black',
-                    textShadow: '0',
-                    opacity: hasStale ? 1 : 0.3,
-                  }}
-                >
-                  stale <Code>({hasStale})</Code>
-                </QueryKey>{' '}
-                <QueryKey
-                  style={{
-                    background: theme.gray,
-                    opacity: hasInactive ? 1 : 0.3,
-                  }}
-                >
-                  inactive <Code>({hasInactive})</Code>
-                </QueryKey>
-              </QueryKeys> */}
-              {/* <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                <Input
-                  placeholder="Filter"
-                  aria-label="Filter by matchhash"
-                  value={filter ?? ''}
-                  onChange={(e) => setFilter(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') setFilter('')
-                  }}
-                  style={{
-                    flex: '1',
-                    marginRight: '.5em',
-                  }}
-                />
-                {!filter ? (
-                  <>
-                    <Select
-                      aria-label="Sort queries"
-                      value={sort}
-                      onChange={(e) => setSort(e.target.value)}
-                      style={{
-                        flex: '1',
-                        minWidth: 75,
-                        marginRight: '.5em',
-                      }}
-                    >
-                      {Object.keys(sortFns).map((key) => (
-                        <option key={key} value={key}>
-                          Sort by {key}
-                        </option>
-                      ))}
-                    </Select>
-                    <Button
-                      type="button"
-                      onClick={() => setSortDesc((old) => !old)}
-                      style={{
-                        padding: '.3em .4em',
-                      }}
-                    >
-                      {sortDesc ? '⬇ Desc' : '⬆ Asc'}
-                    </Button>
-                  </>
-                ) : null}
-              </div> */}
             </div>
           </div>
           <div
@@ -602,7 +514,6 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
                     resolveMatches,
                     loadMatches,
                     invalidateRoute,
-                    getOutletElement,
                     resolvePath,
                     matchRoute,
                     buildLink,
@@ -790,10 +701,14 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
           </div>
           {Object.keys(router.preloadCache)
             .filter((key) => {
-              return router.preloadCache[key]!.expiresAt > Date.now()
+              const cacheEntry = router.preloadCache[key]!
+              return (
+                (cacheEntry.match.updatedAt ?? Date.now()) + cacheEntry.maxAge >
+                Date.now()
+              )
             })
             .map((key, i) => {
-              const { match, expiresAt } = router.preloadCache[key]!
+              const { match, maxAge } = router.preloadCache[key]!
 
               return (
                 <div
@@ -849,9 +764,13 @@ export const ReactLocationDevtoolsPanel = React.forwardRef<
                       }}
                     >
                       Expires{' '}
-                      {formatDistanceStrict(new Date(), new Date(expiresAt), {
-                        addSuffix: true,
-                      })}
+                      {formatDistanceStrict(
+                        new Date(),
+                        new Date((match.updatedAt ?? Date.now()) + maxAge),
+                        {
+                          addSuffix: true,
+                        },
+                      )}
                     </span>
                   </div>
                 </div>

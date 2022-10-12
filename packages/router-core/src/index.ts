@@ -731,6 +731,9 @@ export interface RouteLoaders<
   // An asynchronous function made available to the route for performing asynchronous or mutative actions that
   // might invalidate the route's data.
   action?: ActionFn<TActionPayload, TActionData>
+  // Set this to true to rethrow errors up the component tree to either the nearest error boundary or
+  // route with error element, whichever comes first.
+  useErrorBoundary?: boolean
   // This function is called
   // when moving from an inactive state to an active one. Likewise, when moving from
   // an active to an inactive state, the return function (if provided) is called.
@@ -877,11 +880,7 @@ const isDOM = Boolean(
 const createDefaultHistory = () =>
   isDOM ? createBrowserHistory() : createMemoryHistory()
 
-export type MatchRouteOptions<
-  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-  TFrom extends ValidFromPath<TAllRouteInfo> = '/',
-  TTo extends string = '.',
-> = ToOptions<TAllRouteInfo, TFrom, TTo> & {
+export interface MatchRouteOptions {
   pending: boolean
   caseSensitive?: boolean
 }
@@ -903,7 +902,7 @@ export type LinkInfo =
     }
 
 export type PreloadCacheEntry = {
-  expiresAt: number
+  maxAge: number
   match: RouteMatch
 }
 
@@ -1016,9 +1015,6 @@ export interface Router<
   buildRouteTree: (
     routeConfig: RouteConfig,
   ) => Route<TAllRouteInfo, AnyRouteInfo>
-  useRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
-    routeId: TId,
-  ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
   parseLocation: (
     location: History['location'],
     previousLocation?: Location,
@@ -1030,6 +1026,9 @@ export interface Router<
   loadLocation: (next?: Location) => Promise<void>
   preloadCache: Record<string, PreloadCacheEntry>
   cleanPreloadCache: () => void
+  getRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
+    id: TId,
+  ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
   loadRoute: (
     navigateOpts: BuildNextOptions,
     loaderOpts: { maxAge: number },
@@ -1056,7 +1055,6 @@ export interface Router<
     TAllRouteInfo['routeInfoById'][TId]['actionPayload'],
     TAllRouteInfo['routeInfoById'][TId]['actionResponse']
   >
-  getOutletElement: (match: RouteMatch) => JSX.Element
   resolvePath: (from: string, path: string) => string
   _navigate: (
     location: BuildNextOptions & { replace?: boolean },
@@ -1071,7 +1069,8 @@ export interface Router<
     TFrom extends ValidFromPath<TAllRouteInfo> = '/',
     TTo extends string = '.',
   >(
-    opts: MatchRouteOptions<TAllRouteInfo, TFrom, TTo>,
+    matchLocation: ToOptions<TAllRouteInfo, TFrom, TTo>,
+    opts?: MatchRouteOptions,
   ) => boolean
   buildLink: <
     TFrom extends ValidFromPath<TAllRouteInfo> = '/',
@@ -1124,8 +1123,13 @@ export function createRouter<
         router.listeners = router.listeners.filter((x) => x !== listener)
       }
     },
-
+    getRoute: (id) => {
+      return router.routesById[id]
+    },
     notify: (): void => {
+      router.state = {
+        ...router.state,
+      }
       router.listeners.forEach((listener) => listener())
     },
 
@@ -1146,8 +1150,9 @@ export function createRouter<
     },
 
     update: (opts) => {
-      const { basepath, routeConfig, ...rest } = opts ?? {}
-      Object.assign(router, rest)
+      Object.assign(router.options, opts)
+
+      const { basepath, routeConfig } = router.options
 
       router.basepath = cleanPath(`/${basepath ?? ''}`)
 
@@ -1207,16 +1212,6 @@ export function createRouter<
       return routes[0]!
     },
 
-    useRoute: (routeId) => {
-      const route = router.routesById[routeId]
-
-      if (!route) {
-        throw new Error('Route not found!')
-      }
-
-      return route as any
-    },
-
     parseLocation: (
       location: History['location'],
       previousLocation?: Location,
@@ -1256,7 +1251,7 @@ export function createRouter<
       const prevParams = last(fromMatches)?.params
 
       let nextParams =
-        dest.params === true
+        (dest.params ?? true) === true
           ? prevParams
           : functionalUpdate(dest.params, prevParams)
 
@@ -1421,6 +1416,8 @@ export function createRouter<
       const unloadedMatches = router.matchRoutes(location.pathname, {
         strictParseParams: true,
       })
+
+      // Resolve the matches to any existing matches
       const resolvedMatches = router.resolveMatches(unloadedMatches)
 
       router.state = {
@@ -1431,8 +1428,6 @@ export function createRouter<
         },
       }
       router.notify()
-
-      console.log(unloadedMatches)
 
       // Load the matches
       const matches = await router.loadMatches(resolvedMatches, {
@@ -1491,8 +1486,6 @@ export function createRouter<
       router.resolveNavigation()
     },
 
-    // preloadCache: Record<string, PreloadCacheEntry> = {},
-
     cleanPreloadCache: () => {
       const activeMatchIds = [
         ...(router.state.matches ?? []),
@@ -1504,13 +1497,26 @@ export function createRouter<
       Object.keys(router.preloadCache).forEach((matchId) => {
         const entry = router.preloadCache[matchId]!
 
+        // Don't remove active matches
         if (activeMatchIds.includes(matchId)) {
           return
         }
 
-        if (entry.expiresAt < now) {
-          delete router.preloadCache[matchId]
+        // Don't remove loading matches
+        if (entry.match.status === 'loading') {
+          return
         }
+
+        // Do not remove successful matches that are still valid
+        if (
+          entry.match.updatedAt &&
+          entry.match.updatedAt + entry.maxAge > now
+        ) {
+          return
+        }
+
+        // Everything else gets removed
+        delete router.preloadCache[matchId]
       })
     },
 
@@ -1531,8 +1537,6 @@ export function createRouter<
     },
 
     matchRoutes: (pathname, opts) => {
-      router.cleanPreloadCache()
-
       const matches: UnloadedMatch[] = []
 
       if (!router.routeTree) {
@@ -1618,17 +1622,24 @@ export function createRouter<
         ...(router.state.pending?.matches ?? []),
       ]
 
-      const matches = unloadedMatches.map((unloadedMatch, i) => {
-        return (
+      const matches: RouteMatch[] = []
+
+      router.cleanPreloadCache()
+      unloadedMatches.forEach((unloadedMatch, i) => {
+        const match =
           existingMatches.find((d) => d.id === unloadedMatch.id) ||
           router.preloadCache[unloadedMatch.id]?.match ||
           createRouteMatch(router, unloadedMatch)
-        )
+
+        matches.push(match)
       })
 
       matches.forEach((match, index) => {
-        match.setParentMatch(matches[index - 1])
-        match.setChildMatch(matches[index + 1])
+        const parent = matches[index - 1]
+        const child = matches[index + 1]
+
+        if (parent) match.setParentMatch(parent)
+        if (child) match.addChildMatch(child)
       })
 
       return matches
@@ -1642,22 +1653,36 @@ export function createRouter<
       ),
     ): Promise<RouteMatch[]> => {
       const matchPromises = resolvedMatches.map(async (match) => {
+        // Validate the match (loads search params etc)
+        match.validate()
+
+        // If this is a preload, add it to the preload cache
+        if (loaderOpts?.preload) {
+          router.preloadCache[match.id] = {
+            maxAge: loaderOpts?.maxAge,
+            match,
+          }
+          console.log(router.preloadCache)
+        }
+
+        // If the match is invalid, errored or idle, trigger it to load
         if (
           (match.status === 'success' && match.isInvalid) ||
           match.status === 'error' ||
           match.status === 'idle'
         ) {
-          const promise = match.load()
-          if (loaderOpts?.withPending) match.startPending()
-          if (loaderOpts?.preload) {
-            router.preloadCache[match.id] = {
-              expiresAt: Date.now() + loaderOpts?.maxAge!,
-              match,
-            }
-          }
-          return promise
+          match.load()
         }
+
+        // If requested, start the pending timers
+        if (loaderOpts?.withPending) match.startPending()
+
+        // Wait for the first sign of activity from the match
+        // This might be completion, error, or a pending state
+        await match.loadPromise
       })
+
+      router.notify()
 
       await Promise.all(matchPromises)
 
@@ -1741,7 +1766,10 @@ export function createRouter<
           action.pending.push(actionState)
 
           if (opts?.isActive) {
-            router.state.action = actionState
+            router.state = {
+              ...router.state,
+              action: actionState,
+            }
           }
 
           router.notify()
@@ -1772,73 +1800,36 @@ export function createRouter<
       return action
     },
 
-    getOutletElement: (match: RouteMatch): JSX.Element => {
-      const element = ((): React.ReactNode => {
-        if (!match) {
-          return null
-        }
-
-        const errorElement =
-          match.errorElement ?? router.options.defaultErrorElement
-
-        if (match.status === 'error') {
-          if (errorElement) {
-            return errorElement as any
-          }
-
-          if (!router.options.useErrorBoundary) {
-            return match.error
-              ? `${match.error}`
-              : 'An unknown/unhandled error occurred!'
-          }
-
-          throw match.error
-        }
-
-        if (match.status === 'loading' || match.status === 'idle') {
-          if (match.isPending) {
-            const pendingElement =
-              match.pendingElement ?? router.options.defaultPendingElement
-
-            if (match.route.options.pendingMs || pendingElement) {
-              return (pendingElement as any) ?? null
-            }
-          }
-
-          return null
-        }
-
-        return (match.element as any) ?? router.options.defaultElement
-      })() as JSX.Element
-
-      return element
-    },
-
     resolvePath: (from: string, path: string) => {
       return resolvePath(router.basepath!, from, cleanPath(path))
     },
 
-    matchRoute: (opts) => {
-      // const matchLocation = router.buildNext(opts)
+    matchRoute: (location, opts) => {
+      // const location = router.buildNext(opts)
 
-      const toOptions = {
-        ...opts,
-        to: opts.to
-          ? router.resolvePath(opts.from || router.basepath, `${opts.to}`)
+      location = {
+        ...location,
+        to: location.to
+          ? router.resolvePath(location.from ?? '', location.to)
           : undefined,
       }
+
+      const next = router.buildNext(location)
 
       if (opts?.pending) {
         if (!router.state.pending?.location) {
           return false
         }
-        return !!matchPathname(
-          router.state.pending.location.pathname,
-          toOptions,
-        )
+        return !!matchPathname(router.state.pending.location.pathname, {
+          ...opts,
+          to: next.pathname,
+        })
       }
 
-      return !!matchPathname(router.state.location.pathname, toOptions)
+      return !!matchPathname(router.state.location.pathname, {
+        ...opts,
+        to: next.pathname,
+      })
     },
 
     _navigate: (location: BuildNextOptions & { replace?: boolean }) => {
@@ -1958,6 +1949,7 @@ export function createRouter<
         }
       }
 
+      console.log(preloadMaxAge)
       // The click handler
       const handleFocus = (e: MouseEvent) => {
         if (preload && preloadMaxAge > 0) {
@@ -2058,12 +2050,13 @@ export interface Route<
     TTo extends string = '.',
     TResolved extends string = ResolveRelativePath<TRouteInfo['id'], TTo>,
   >(
-    options: // CheckRelativePath<
+    matchLocation: // CheckRelativePath<
     //   TAllRouteInfo,
     //   TRouteInfo['fullPath'],
     //   NoInfer<TTo>
     // > &
-    Omit<MatchRouteOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>, 'from'>,
+    Omit<ToOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>, 'from'>,
+    opts?: MatchRouteOptions,
   ) => RouteInfoByPath<TAllRouteInfo, TResolved>['allParams']
   navigate: <TTo extends string = '.'>(
     options: Omit<LinkOptions<TAllRouteInfo, TRouteInfo['id'], TTo>, 'from'>,
@@ -2132,11 +2125,14 @@ export function createRoute<
       return router.useAction(id)
     },
 
-    matchRoute: (options) => {
-      return router.matchRoute({
-        ...options,
-        from: fullPath,
-      } as any)
+    matchRoute: (matchLocation, opts) => {
+      return router.matchRoute(
+        {
+          ...matchLocation,
+          from: fullPath,
+        } as any,
+        opts,
+      )
     },
   }
 
@@ -2350,22 +2346,25 @@ export interface RouteMatch<
   id: string
   router: unknown
   parentMatch?: RouteMatch
-  childMatch?: RouteMatch
+  childMatches: RouteMatch[]
   route: Route<TAllRouteInfo, TRouteInfo>
   pathname: string
   params: TRouteInfo['allParams']
   search: TRouteInfo['searchSchema']
+  fullSearch: TRouteInfo['fullSearchSchema']
   updatedAt?: number
   element?: GetFrameworkGeneric<'Element', TRouteInfo['allLoaderData']>
   errorElement?: GetFrameworkGeneric<'Element', TRouteInfo['allLoaderData']>
   catchElement?: GetFrameworkGeneric<'Element', TRouteInfo['allLoaderData']>
   pendingElement?: GetFrameworkGeneric<'Element', TRouteInfo['allLoaderData']>
   error?: unknown
+  loadPromise?: Promise<void>
   loaderPromise?: Promise<void>
   importPromise?: Promise<void>
   elementsPromise?: Promise<void>
   dataPromise?: Promise<void>
   pendingTimeout?: Timeout
+  pendingMinTimeout?: Timeout
   pendingMinPromise?: Promise<void>
   onExit?: void | ((match: RouteMatch<TAllRouteInfo, TRouteInfo>) => void)
   isInvalid: boolean
@@ -2380,8 +2379,9 @@ export interface RouteMatch<
   cancel: () => void
   startPending: () => void
   cancelPending: () => void
-  setParentMatch: (parentMatch?: RouteMatch) => void
-  setChildMatch: (childMatch?: RouteMatch) => void
+  setParentMatch: (parentMatch: RouteMatch) => void
+  addChildMatch: (childMatch: RouteMatch) => void
+  validate: () => void
   load: () => Promise<void>
 }
 
@@ -2400,7 +2400,8 @@ export function createRouteMatch<
   const routeMatch: RouteMatch<TAllRouteInfo, TRouteInfo> = {
     ...unloadedMatch,
     router,
-    search: router.location.search, // TODO: EH?
+    search: {},
+    fullSearch: {},
     status: 'idle',
     loaderData: {} as TRouteInfo['allLoaderData'],
     isPending: false,
@@ -2408,6 +2409,7 @@ export function createRouteMatch<
     isInvalid: false,
     abortController: new AbortController(),
     latestId: '',
+    childMatches: [],
     resolve: () => {},
     notify: () => {
       routeMatch.resolve()
@@ -2418,10 +2420,16 @@ export function createRouteMatch<
       routeMatch.cancelPending()
     },
     startPending: () => {
+      const pendingMs =
+        routeMatch.route.options.pendingMs ?? router.options.defaultPendingMs
+      const pendingMinMs =
+        routeMatch.route.options.pendingMinMs ??
+        router.options.defaultPendingMinMs
+
       if (
         routeMatch.pendingTimeout ||
         routeMatch.status !== 'loading' ||
-        typeof routeMatch.route.options.pendingMs === 'undefined'
+        typeof pendingMs === 'undefined'
       ) {
         return
       }
@@ -2429,26 +2437,70 @@ export function createRouteMatch<
       routeMatch.pendingTimeout = setTimeout(() => {
         routeMatch.isPending = true
         routeMatch.resolve()
-        if (typeof routeMatch.route.options.pendingMinMs !== 'undefined') {
-          routeMatch.pendingMinPromise = new Promise((r) =>
-            setTimeout(r, routeMatch.route.options.pendingMinMs),
+        console.log({ pendingMinMs })
+        if (typeof pendingMinMs !== 'undefined') {
+          routeMatch.pendingMinPromise = new Promise(
+            (r) => (routeMatch.pendingMinTimeout = setTimeout(r, pendingMinMs)),
           )
         }
-      }, routeMatch.route.options.pendingMs)
+      }, pendingMs)
     },
     cancelPending: () => {
       routeMatch.isPending = false
       clearTimeout(routeMatch.pendingTimeout)
+      clearTimeout(routeMatch.pendingMinTimeout)
+      delete routeMatch.pendingMinPromise
     },
     setParentMatch: (parentMatch?: RouteMatch) => {
       routeMatch.parentMatch = parentMatch
     },
-    setChildMatch: (childMatch?: RouteMatch) => {
-      routeMatch.childMatch = childMatch
+    addChildMatch: (childMatch: RouteMatch) => {
+      if (routeMatch.childMatches.find((d) => d.id === childMatch.id)) {
+        return
+      }
+
+      routeMatch.childMatches.push(childMatch)
     },
-    load: () => {
+    validate: () => {
+      // Validate the search params and stabilize them
+      const parentSearch =
+        routeMatch.parentMatch?.fullSearch ?? router.location.search
+
+      try {
+        const prevSearch = routeMatch.search
+
+        let nextSearch = replaceEqualDeep(
+          prevSearch,
+          unloadedMatch.route.options.validateSearch?.(parentSearch),
+        )
+
+        // Invalidate route matches when search param stability changes
+        if (prevSearch !== nextSearch) {
+          routeMatch.isInvalid = true
+        }
+
+        routeMatch.search = nextSearch
+
+        routeMatch.fullSearch = replaceEqualDeep(parentSearch, {
+          ...parentSearch,
+          ...nextSearch,
+        })
+      } catch (err: any) {
+        console.error(err)
+        const error = new (Error as any)('Invalid search params found', {
+          cause: err,
+        })
+        error.code = 'INVALID_SEARCH_PARAMS'
+        routeMatch.status = 'error'
+        routeMatch.error = error
+        // Do not proceed with loading the route
+        return
+      }
+    },
+    load: async () => {
       const id = '' + Date.now() + Math.random()
       routeMatch.latestId = id
+
       // If the match was in an error state, set it
       // to a loading state again. Otherwise, keep it
       // as loading or resolved
@@ -2456,14 +2508,13 @@ export function createRouteMatch<
         routeMatch.status = 'loading'
       }
 
-      // We are now fetching, even if it's in the background of a
-      // resolved state
-      routeMatch.isFetching = true
-
       // We started loading the route, so it's no longer invalid
       routeMatch.isInvalid = false
 
-      return new Promise(async (resolve) => {
+      routeMatch.loadPromise = new Promise(async (resolve) => {
+        // We are now fetching, even if it's in the background of a
+        // resolved state
+        routeMatch.isFetching = true
         routeMatch.resolve = resolve as () => void
 
         const loaderPromise = (async () => {
@@ -2583,6 +2634,8 @@ export function createRouteMatch<
         }
         delete routeMatch.loaderPromise
       })
+
+      return await routeMatch.loadPromise
     },
   }
 
@@ -2596,8 +2649,10 @@ function cascadeLoaderData(routeMatch: RouteMatch<any, any>) {
       ...routeMatch.loaderData,
     })
   }
-  if (routeMatch.childMatch) {
-    cascadeLoaderData(routeMatch.childMatch)
+  if (routeMatch.childMatches.length) {
+    routeMatch.childMatches.forEach((childMatch) => {
+      cascadeLoaderData(childMatch)
+    })
   }
 }
 
