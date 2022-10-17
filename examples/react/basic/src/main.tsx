@@ -1,4 +1,3 @@
-// @sts-nocheck
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
@@ -9,7 +8,6 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
-import { z } from 'zod'
 import axios from 'axios'
 
 type PostType = {
