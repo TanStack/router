@@ -18,13 +18,8 @@
     "paths": {
       "@tanstack/router-core": ["packages/router-core"],
       "@tanstack/react-router": ["packages/react-router"],
-      "@tanstack/router-lite-experimental": [
-        "packages/react-router-lite-experimental"
-      ],
-      "@tanstack/router-devtools": ["packages/react-router-devtools"],
-      "@tanstack/router-jsurl": ["packages/react-router-jsurl"],
-      "@tanstack/router-rank-routes": ["packages/react-router-rank-routes"],
-      "@tanstack/router-simple-cach": ["packages/react-router-simple-cache"]
+      "@tanstack/react-router-devtools": ["packages/react-router-devtools"],
+      "@tanstack/router-rank-routes": ["packages/react-router-rank-routes"]
     }
   }
 }
