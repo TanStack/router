@@ -16,13 +16,14 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@tanstack/router-core@0.0.1-beta.0":
-  version "0.0.1-beta.0"
-  resolved "https://registry.yarnpkg.com/@tanstack/router-core/-/router-core-0.0.1-beta.0.tgz#597921274c912889c4980b4957656b3ba9e141c9"
-  integrity sha512-cLQOzq3s8xYwiCtbRiJst12NZneLppgO3baQkcLTIMzzcz567gnCAT/MxpkHn8xAwN67CsIAK0jMGj7cYjaGZA==
+"@tanstack/router-core@0.0.1-alpha.1":
+  version "0.0.1-alpha.1"
+  resolved "https://registry.yarnpkg.com/@tanstack/router-core/-/router-core-0.0.1-alpha.1.tgz#f4443da38cdca18c5ec68f6793467ba652b5b7e4"
+  integrity sha512-yDJaclB74sEg92ljnEt7y1+otak57TEOSp44pUu5npQ5gwM6nRuYakNJM7ecrCxPOAqpDEUR/AmmkkJykG0/fg==
   dependencies:
     "@babel/runtime" "^7.16.7"
     history "^5.2.0"
+    ts-toolbelt "^9.6.0"
 
 "@types/use-sync-external-store@^0.0.3":
   version "0.0.3"
@@ -45,6 +46,11 @@ regenerator-runtime@^0.13.4:
   version "0.13.9"
   resolved "https://registry.yarnpkg.com/regenerator-runtime/-/regenerator-runtime-0.13.9.tgz#8925742a98ffd90814988d7566ad30ca3b263b52"
   integrity sha512-p3VT+cOEgxFsRRA9X4lkI1E+k2/CtnKtU4gcxyaCUreilL/vqI6CdZ3wxVUx3UOUg+gnUOQQcRI7BmSI656MYA==
+
+ts-toolbelt@^9.6.0:
+  version "9.6.0"
+  resolved "https://registry.yarnpkg.com/ts-toolbelt/-/ts-toolbelt-9.6.0.tgz#50a25426cfed500d4a09bd1b3afb6f28879edfd5"
+  integrity sha512-nsZd8ZeNUzukXPlJmTBwUAuABDe/9qtVDelJeT/qW0ow3ZS3BsQJtNkan1802aM9Uf68/Y8ljw86Hu0h5IUW3w==
 
 use-sync-external-store@^1.2.0:
   version "1.2.0"
