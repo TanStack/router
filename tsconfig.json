@@ -2,7 +2,8 @@
   "files": [],
   "references": [
     { "path": "packages/router-core" },
-    { "path": "packages/react-router" }
+    { "path": "packages/react-router" },
+    { "path": "packages/react-router-devtools" }
     // { "path": "packages/react-router-lite-experimental" },
     // { "path": "packages/react-router-devtools" },
     // { "path": "packages/react-router-jsurl" },

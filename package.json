@@ -21,11 +21,9 @@
   "workspaces": [
     "./packages/router-core",
     "./packages/react-router",
-    "./packages/react-router-lite-experimental",
     "./packages/react-router-devtools",
-    "./packages/react-router-simple-cache",
     "./packages/react-router-rank-routes",
-    "./packages/react-router-jsurl",
+    "./examples/react/basic",
     "./examples/react/kitchen-sink"
   ],
   "devDependencies": {
