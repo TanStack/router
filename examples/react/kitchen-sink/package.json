@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^1.1.3",
-    "@tanstack/react-router": "0.0.1-alpha.0",
+    "@tanstack/react-router": "0.0.1-alpha.1",
     "immer": "^9.0.15",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

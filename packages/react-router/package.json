@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/react-router",
   "author": "Tanner Linsley",
-  "version": "0.0.1-alpha.0",
+  "version": "0.0.1-alpha.1",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://react-router.tanstack.com/",
@@ -24,8 +24,8 @@
     "url": "https://github.com/sponsors/tannerlinsley"
   },
   "module": "build/esm/index.js",
-  "main": "build/cjs/index.js",
-  "browser": "build/umd/index.production.min.js",
+  "main": "build/cjs/react-router/src/index.js",
+  "browser": "build/umd/index.production.js",
   "types": "build/types/index.d.ts",
   "engines": {
     "node": ">=12"
@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.16.7",
-    "@tanstack/router-core": "0.0.1-alpha.0",
+    "@tanstack/router-core": "0.0.1-alpha.1",
     "use-sync-external-store": "^1.2.0"
   },
   "devDependencies": {

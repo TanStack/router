@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-core",
   "author": "Tanner Linsley",
-  "version": "0.0.1-alpha.0",
+  "version": "0.0.1-alpha.1",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
@@ -23,7 +23,7 @@
     "url": "https://github.com/sponsors/tannerlinsley"
   },
   "module": "build/esm/index.js",
-  "main": "build/cjs/index.js",
+  "main": "build/cjs/packages/router-core/src/index.js",
   "browser": "build/umd/index.production.js",
   "types": "build/types/index.d.ts",
   "engines": {

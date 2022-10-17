@@ -2,7 +2,7 @@
   "private": true,
   "repository": "https://github.com/tanstack/router.git",
   "scripts": {
-    "clean": "yarn exec --workspaces \"rm -rf build || true\"",
+    "clean": "lerna exec 'rm -rf build || true' --parallel",
     "test": "(is-ci && yarn test:ci) || yarn test:dev",
     "test:ci": "jest",
     "test:dev": "jest --watch",
