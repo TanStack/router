@@ -25,7 +25,7 @@ export const packages: Package[] = [
     },
   },
   {
-    name: '@tanstack/router-devtools',
+    name: '@tanstack/react-router-devtools',
     packageDir: 'react-router-devtools',
     peerDependencies: ['@tanstack/react-router'],
     srcDir: 'src',
