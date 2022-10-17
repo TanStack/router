@@ -1,4 +1,4 @@
-import { Route } from '@tanstack/router-core'
+import { Route } from './'
 import { z } from 'zod'
 import {
   createRouter,

@@ -55,34 +55,34 @@ declare module '@tanstack/router-core' {
     useMatch: <TId extends keyof TAllRouteInfo['routeInfoById']>(
       routeId: TId,
     ) => RouteMatch<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
-    // linkProps: <TTo extends string = '.'>(
-    //   props: LinkPropsOptions<TAllRouteInfo, '/', TTo> &
-    //     React.AnchorHTMLAttributes<HTMLAnchorElement>,
-    // ) => React.AnchorHTMLAttributes<HTMLAnchorElement>
-    // Link: <TTo extends string = '.'>(
-    //   props: LinkPropsOptions<TAllRouteInfo, '/', TTo> &
-    //     React.AnchorHTMLAttributes<HTMLAnchorElement> &
-    //     Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
-    //       // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-    //       children?:
-    //         | React.ReactNode
-    //         | ((state: { isActive: boolean }) => React.ReactNode)
-    //     },
-    // ) => JSX.Element
-    // MatchRoute: <TTo extends string = '.'>(
-    //   props: ToOptions<TAllRouteInfo, '/', TTo> &
-    //     MatchRouteOptions & {
-    //       // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-    //       children?:
-    //         | React.ReactNode
-    //         | ((
-    //             params: RouteInfoByPath<
-    //               TAllRouteInfo,
-    //               ResolveRelativePath<'/', NoInfer<TTo>>
-    //             >['allParams'],
-    //           ) => React.ReactNode)
-    //     },
-    // ) => JSX.Element
+    linkProps: <TTo extends string = '.'>(
+      props: LinkPropsOptions<TAllRouteInfo, '/', TTo> &
+        React.AnchorHTMLAttributes<HTMLAnchorElement>,
+    ) => React.AnchorHTMLAttributes<HTMLAnchorElement>
+    Link: <TTo extends string = '.'>(
+      props: LinkPropsOptions<TAllRouteInfo, '/', TTo> &
+        React.AnchorHTMLAttributes<HTMLAnchorElement> &
+        Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
+          // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+          children?:
+            | React.ReactNode
+            | ((state: { isActive: boolean }) => React.ReactNode)
+        },
+    ) => JSX.Element
+    MatchRoute: <TTo extends string = '.'>(
+      props: ToOptions<TAllRouteInfo, '/', TTo> &
+        MatchRouteOptions & {
+          // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+          children?:
+            | React.ReactNode
+            | ((
+                params: RouteInfoByPath<
+                  TAllRouteInfo,
+                  ResolveRelativePath<'/', NoInfer<TTo>>
+                >['allParams'],
+              ) => React.ReactNode)
+        },
+    ) => JSX.Element
   }
 
   interface Route<
@@ -174,6 +174,148 @@ const useRouterSubscription = (router: Router<any, any>) => {
 export function createReactRouter<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
 >(opts: RouterOptions<TRouteConfig>): Router<TRouteConfig> {
+  const makeRouteExt = (
+    route: AnyRoute,
+    router: Router<any, any>,
+  ): Pick<AnyRoute, 'linkProps' | 'Link' | 'MatchRoute'> => {
+    return {
+      linkProps: (options) => {
+        const {
+          // custom props
+          type,
+          children,
+          target,
+          activeProps = () => ({ className: 'active' }),
+          inactiveProps = () => ({}),
+          activeOptions,
+          disabled,
+          // fromCurrent,
+          hash,
+          search,
+          params,
+          to,
+          preload,
+          preloadDelay,
+          preloadMaxAge,
+          replace,
+          // element props
+          style,
+          className,
+          onClick,
+          onFocus,
+          onMouseEnter,
+          onMouseLeave,
+          onTouchStart,
+          onTouchEnd,
+          ...rest
+        } = options
+
+        const linkInfo = route.buildLink(options)
+
+        if (linkInfo.type === 'external') {
+          const { href } = linkInfo
+          return { href }
+        }
+
+        const {
+          handleClick,
+          handleFocus,
+          handleEnter,
+          handleLeave,
+          isActive,
+          next,
+        } = linkInfo
+
+        const composeHandlers =
+          (handlers: (undefined | ((e: any) => void))[]) =>
+          (e: React.SyntheticEvent) => {
+            e.persist()
+            handlers.forEach((handler) => {
+              if (handler) handler(e)
+            })
+          }
+
+        // Get the active props
+        const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+          isActive ? functionalUpdate(activeProps) ?? {} : {}
+
+        // Get the inactive props
+        const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+          isActive ? {} : functionalUpdate(inactiveProps) ?? {}
+
+        return {
+          ...resolvedActiveProps,
+          ...resolvedInactiveProps,
+          ...rest,
+          href: disabled ? undefined : next.href,
+          onClick: composeHandlers([handleClick, onClick]),
+          onFocus: composeHandlers([handleFocus, onFocus]),
+          onMouseEnter: composeHandlers([handleEnter, onMouseEnter]),
+          onMouseLeave: composeHandlers([handleLeave, onMouseLeave]),
+          target,
+          style: {
+            ...style,
+            ...resolvedActiveProps.style,
+            ...resolvedInactiveProps.style,
+          },
+          className:
+            [
+              className,
+              resolvedActiveProps.className,
+              resolvedInactiveProps.className,
+            ]
+              .filter(Boolean)
+              .join(' ') || undefined,
+          ...(disabled
+            ? {
+                role: 'link',
+                'aria-disabled': true,
+              }
+            : undefined),
+          ['data-status']: isActive ? 'active' : undefined,
+        }
+      },
+      Link: React.forwardRef((props: any, ref) => {
+        const linkProps = route.linkProps(props)
+
+        useRouterSubscription(router)
+
+        return (
+          <a
+            {...{
+              ref: ref as any,
+              ...linkProps,
+              children:
+                typeof props.children === 'function'
+                  ? props.children({
+                      isActive: (linkProps as any)['data-status'] === 'active',
+                    })
+                  : props.children,
+            }}
+          />
+        )
+      }) as any,
+      MatchRoute: (opts) => {
+        const { pending, caseSensitive, children, ...rest } = opts
+
+        const params = route.matchRoute(rest as any, {
+          pending,
+          caseSensitive,
+        })
+
+        // useRouterSubscription(router)
+
+        if (!params) {
+          return null
+        }
+
+        return typeof opts.children === 'function'
+          ? opts.children(params as any)
+          : (opts.children as any)
+      },
+    }
+  }
+
   const coreRouter = createRouter<TRouteConfig>({
     ...opts,
     createRouter: (router) => {
@@ -229,146 +371,12 @@ export function createReactRouter<
         },
       }
 
-      Object.assign(router, routerExt)
+      const routeExt = makeRouteExt(router.getRoute('/'), router)
+
+      Object.assign(router, routerExt, routeExt)
     },
     createRoute: ({ router, route }) => {
-      const routeExt: Pick<AnyRoute, 'linkProps' | 'Link' | 'MatchRoute'> = {
-        linkProps: (options) => {
-          const {
-            // custom props
-            type,
-            children,
-            target,
-            activeProps = () => ({ className: 'active' }),
-            inactiveProps = () => ({}),
-            activeOptions,
-            disabled,
-            // fromCurrent,
-            hash,
-            search,
-            params,
-            to,
-            preload,
-            preloadDelay,
-            preloadMaxAge,
-            replace,
-            // element props
-            style,
-            className,
-            onClick,
-            onFocus,
-            onMouseEnter,
-            onMouseLeave,
-            onTouchStart,
-            onTouchEnd,
-            ...rest
-          } = options
-
-          const linkInfo = route.buildLink(options)
-
-          if (linkInfo.type === 'external') {
-            const { href } = linkInfo
-            return { href }
-          }
-
-          const {
-            handleClick,
-            handleFocus,
-            handleEnter,
-            handleLeave,
-            isActive,
-            next,
-          } = linkInfo
-
-          const composeHandlers =
-            (handlers: (undefined | ((e: any) => void))[]) =>
-            (e: React.SyntheticEvent) => {
-              e.persist()
-              handlers.forEach((handler) => {
-                if (handler) handler(e)
-              })
-            }
-
-          // Get the active props
-          const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-            isActive ? functionalUpdate(activeProps) ?? {} : {}
-
-          // Get the inactive props
-          const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-            isActive ? {} : functionalUpdate(inactiveProps) ?? {}
-
-          return {
-            ...resolvedActiveProps,
-            ...resolvedInactiveProps,
-            ...rest,
-            href: disabled ? undefined : next.href,
-            onClick: composeHandlers([handleClick, onClick]),
-            onFocus: composeHandlers([handleFocus, onFocus]),
-            onMouseEnter: composeHandlers([handleEnter, onMouseEnter]),
-            onMouseLeave: composeHandlers([handleLeave, onMouseLeave]),
-            target,
-            style: {
-              ...style,
-              ...resolvedActiveProps.style,
-              ...resolvedInactiveProps.style,
-            },
-            className:
-              [
-                className,
-                resolvedActiveProps.className,
-                resolvedInactiveProps.className,
-              ]
-                .filter(Boolean)
-                .join(' ') || undefined,
-            ...(disabled
-              ? {
-                  role: 'link',
-                  'aria-disabled': true,
-                }
-              : undefined),
-            ['data-status']: isActive ? 'active' : undefined,
-          }
-        },
-        Link: React.forwardRef((props: any, ref) => {
-          const linkProps = route.linkProps(props)
-
-          useRouterSubscription(router)
-
-          return (
-            <a
-              {...{
-                ref: ref as any,
-                ...linkProps,
-                children:
-                  typeof props.children === 'function'
-                    ? props.children({
-                        isActive:
-                          (linkProps as any)['data-status'] === 'active',
-                      })
-                    : props.children,
-              }}
-            />
-          )
-        }) as any,
-        MatchRoute: (opts) => {
-          const { pending, caseSensitive, children, ...rest } = opts
-
-          const params = route.matchRoute(rest as any, {
-            pending,
-            caseSensitive,
-          })
-
-          // useRouterSubscription(router)
-
-          if (!params) {
-            return null
-          }
-
-          return typeof opts.children === 'function'
-            ? opts.children(params as any)
-            : (opts.children as any)
-        },
-      }
+      const routeExt = makeRouteExt(route, router)
 
       Object.assign(route, routeExt)
     },

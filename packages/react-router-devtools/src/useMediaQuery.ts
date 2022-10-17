@@ -6,6 +6,7 @@ export default function useMediaQuery(query: string): boolean | undefined {
     if (typeof window !== 'undefined') {
       return window.matchMedia && window.matchMedia(query).matches
     }
+    return
   })
 
   // Watch for changes
@@ -30,6 +31,8 @@ export default function useMediaQuery(query: string): boolean | undefined {
         matcher.removeListener(onChange)
       }
     }
+
+    return
   }, [isMatch, query, setIsMatch])
 
   return isMatch
