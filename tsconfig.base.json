@@ -22,9 +22,6 @@
         "packages/react-router-lite-experimental"
       ],
       "@tanstack/router-devtools": ["packages/react-router-devtools"],
-      "@tanstack/router-elements-to-routes": [
-        "packages/react-router-elements-to-routes"
-      ],
       "@tanstack/router-jsurl": ["packages/react-router-jsurl"],
       "@tanstack/router-rank-routes": ["packages/react-router-rank-routes"],
       "@tanstack/router-simple-cach": ["packages/react-router-simple-cache"]

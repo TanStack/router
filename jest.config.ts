@@ -16,7 +16,6 @@ module.exports = {
     makeConfig('router-core'),
     makeConfig('react-router'),
     // makeConfig('react-router-devtools'),
-    // makeConfig('react-router-elements-to-routes'),
     // makeConfig('react-router-simple-cache'),
     // makeConfig('react-router-rank-routes'),
     // makeConfig('react-router-jsurl'),

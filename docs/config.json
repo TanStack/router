@@ -89,19 +89,6 @@
       ]
     },
     {
-      "label": "Tools",
-      "children": [
-        {
-          "label": "React Elements to Routes",
-          "to": "tools/react-elements-to-routes"
-        },
-        {
-          "label": "Ranked Routes",
-          "to": "tools/ranked-routes"
-        }
-      ]
-    },
-    {
       "label": "React Examples",
       "children": [
         {

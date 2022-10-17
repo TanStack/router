@@ -6,13 +6,13 @@ export function rankRoutes<T extends Route>(routes: T[]): T[] {
       return { ...d, index: i }
     })
     .sort((a, b) => {
-      if (a.search || b.search) {
-        if (!b.search) return -1
-        if (!a.search) return 1
-      }
+      // if (a.search || b.search) {
+      //   if (!b.search) return -1
+      //   if (!a.search) return 1
+      // }
 
-      const aSegments = parsePathname(a.path)
-      const bSegments = parsePathname(b.path)
+      const aSegments = parsePathname(a.fullPath)
+      const bSegments = parsePathname(b.fullPath)
 
       // Multi-sort by each segment
       for (let i = 0; i < aSegments.length; i++) {

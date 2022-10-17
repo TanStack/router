@@ -5,7 +5,6 @@
     { "path": "packages/react-router" }
     // { "path": "packages/react-router-lite-experimental" },
     // { "path": "packages/react-router-devtools" },
-    // { "path": "packages/react-router-elements-to-routes" },
     // { "path": "packages/react-router-jsurl" },
     // { "path": "packages/react-router-rank-routes" },
     // { "path": "packages/react-router-simple-cache" },
