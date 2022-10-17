@@ -1,6 +1,11 @@
 import { Route } from '@tanstack/router-core'
 import { z } from 'zod'
-import { createRouter, AllRouteInfo, createRouteConfig } from '.'
+import {
+  createRouter,
+  AllRouteInfo,
+  createRouteConfig,
+  RelativeToPathAutoComplete,
+} from '.'
 
 // Build our routes. We could do this in our component, too.
 const routeConfig = createRouteConfig().addChildren((createRoute) => [
@@ -131,7 +136,7 @@ type RoutePaths = MyRoutesInfo['routeInfoByFullPath']
 //   ^?
 type InvoiceRouteInfo = RoutesById['/dashboard/invoices/']
 //   ^?
-type InvoiceLoaderData = InvoiceRouteInfo['allLoaderData']
+type InvoiceLoaderData = InvoiceRouteInfo['loaderData']
 //   ^?//
 type InvoiceAction = InvoiceRouteInfo['actionPayload']
 //   ^?
@@ -144,7 +149,7 @@ const loaderData = router.getRoute('/dashboard/users/:userId')
 //    ^?
 const route = router.getRoute('/dashboard/users/:userId')
 //    ^?
-const action = route.getAction()
+const action = route.action
 //    ^?
 const result = action.submit({ amount: 10000 })
 //    ^?
@@ -272,7 +277,8 @@ router.buildLink({
 
 router.getRoute('/').navigate({
   // to: '.',
-  search: (prev) => ({
+  // TODO: What the heck? Why is any required here?
+  search: (prev: any) => ({
     version: prev.version,
   }),
 })
@@ -294,4 +300,19 @@ router.getRoute('/dashboard/invoices/:invoiceId').buildLink({
   params: (d) => ({
     invoiceId: d.invoiceId,
   }),
+})
+
+type test = RelativeToPathAutoComplete<
+  //   ^?
+  MyRoutesInfo['fullPath'],
+  '/dashboard/invoices',
+  '..'
+>
+
+router.getRoute('/dashboard/invoices/:invoiceId').buildLink({
+  to: '../test',
+  search: {
+    version: 2,
+    isGood: true,
+  },
 })

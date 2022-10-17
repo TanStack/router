@@ -4,14 +4,7 @@ import { formatDistanceStrict } from 'date-fns'
 
 import useLocalStorage from './useLocalStorage'
 import { getStatusColor, useIsMounted, useSafeState } from './utils'
-import {
-  Panel,
-  Button,
-  Code,
-  // Input,
-  // Select,
-  ActivePanel,
-} from './styledComponents'
+import { Panel, Button, Code, ActivePanel } from './styledComponents'
 import { ThemeProvider, defaultTheme as theme } from './theme'
 // import { getQueryStatusLabel, getQueryStatusColor } from './utils'
 import Explorer from './Explorer'
@@ -319,6 +312,7 @@ export function TanStackRouterDevtools({
             onToggleClick && onToggleClick(e)
           }}
           style={{
+            appearance: 'none',
             background: 'none',
             border: 0,
             padding: 0,
@@ -372,12 +366,25 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
   const router = useRouter() as Router
 
-  const [activeMatchId, setActiveRouteId] = useLocalStorage(
+  React.useEffect(() => {
+    let interval = setInterval(() => {
+      router.cleanPreloadCache()
+      router.notify()
+    }, 1000)
+
+    return () => {
+      clearInterval(interval)
+    }
+  }, [])
+
+  const [activeRouteId, setActiveRouteId] = useLocalStorage(
     'tanstackRouterDevtoolsActiveRouteId',
     '',
   )
 
-  const activeMatch = router.state.matches?.find((d) => d.id === activeMatchId)
+  const activeMatch = router.state.matches?.find(
+    (d) => d.routeId === activeRouteId,
+  )
 
   return (
     <ThemeProvider theme={theme}>
@@ -511,7 +518,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                     cleanPreloadCache,
                     loadRoute,
                     matchRoutes,
-                    resolveMatches,
                     loadMatches,
                     invalidateRoute,
                     resolvePath,
@@ -528,46 +534,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             </div>
           </div>
         </div>
-
-        <div
-          style={{
-            flex: '1 1 500px',
-            minHeight: '40%',
-            maxHeight: '100%',
-            overflow: 'auto',
-            borderRight: `1px solid ${theme.grayAlt}`,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div
-            style={{
-              padding: '.5em',
-              background: theme.backgroundAlt,
-              position: 'sticky',
-              top: 0,
-              zIndex: 1,
-            }}
-          >
-            Loader Data
-          </div>
-          <div
-            style={{
-              padding: '.5em',
-            }}
-          >
-            <Explorer
-              value={last(router.state.matches)?.loaderData || {}}
-              defaultExpanded={Object.keys(
-                (last(router.state.matches)?.loaderData as {}) || {},
-              ).reduce((obj: any, next) => {
-                obj[next] = {}
-                return obj
-              }, {})}
-            />
-          </div>
-        </div>
-
         <div
           style={{
             flex: '1 1 500px',
@@ -593,11 +559,13 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           {router.state.matches.map((match, i) => {
             return (
               <div
-                key={match.id || i}
+                key={match.routeId || i}
                 role="button"
-                aria-label={`Open match details for ${match.id}`}
+                aria-label={`Open match details for ${match.routeId}`}
                 onClick={() =>
-                  setActiveRouteId(activeMatchId === match.id ? '' : match.id)
+                  setActiveRouteId(
+                    activeRouteId === match.routeId ? '' : match.routeId,
+                  )
                 }
                 style={{
                   display: 'flex',
@@ -628,7 +596,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                     padding: '.5em',
                   }}
                 >
-                  {`${match.id}`}
+                  {`${match.matchId}`}
                 </Code>
               </div>
             )
@@ -648,11 +616,13 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           {router.state.pending?.matches.map((match, i) => {
             return (
               <div
-                key={match.id || i}
+                key={match.routeId || i}
                 role="button"
-                aria-label={`Open match details for ${match.id}`}
+                aria-label={`Open match details for ${match.routeId}`}
                 onClick={() =>
-                  setActiveRouteId(activeMatchId === match.id ? '' : match.id)
+                  setActiveRouteId(
+                    activeRouteId === match.routeId ? '' : match.routeId,
+                  )
                 }
                 style={{
                   display: 'flex',
@@ -682,7 +652,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                     padding: '.5em',
                   }}
                 >
-                  {`${match.id}`}
+                  {`${match.matchId}`}
                 </Code>
               </div>
             )
@@ -712,11 +682,13 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
               return (
                 <div
-                  key={match.id || i}
+                  key={match.matchId || i}
                   role="button"
-                  aria-label={`Open match details for ${match.id}`}
+                  aria-label={`Open match details for ${match.matchId}`}
                   onClick={() =>
-                    setActiveRouteId(activeMatchId === match.id ? '' : match.id)
+                    setActiveRouteId(
+                      activeRouteId === match.routeId ? '' : match.routeId,
+                    )
                   }
                   style={{
                     display: 'flex',
@@ -756,7 +728,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                           transition: 'all .2s ease-out',
                         }}
                       />
-                      <Code>{`${match.id}`}</Code>
+                      <Code>{`${match.matchId}`}</Code>
                     </div>
                     <span
                       style={{
@@ -802,7 +774,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                           lineHeight: '1.8em',
                         }}
                       >
-                        {JSON.stringify(activeMatch.id, null, 2)}
+                        {JSON.stringify(activeMatch.matchId, null, 2)}
                       </Code>
                     </td>
                   </tr>
@@ -890,25 +862,15 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 label="Match"
                 value={(() => {
                   const {
-                    abortController,
-                    resolve,
-                    notify,
-                    elementsPromise,
-                    importPromise,
-                    loaderPromise,
-                    pendingMinPromise,
-                    pendingTimeout,
                     cancel,
-                    startPending,
-                    cancelPending,
-                    setParentMatch,
                     load,
                     router,
-                    element,
-                    errorElement,
-                    pendingElement,
-                    dataPromise,
-                    onExit,
+                    Link,
+                    MatchRoute,
+                    buildLink,
+                    linkProps,
+                    matchRoute,
+                    navigate,
                     ...rest
                   } = activeMatch
 
@@ -919,6 +881,79 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             </div>
           </ActivePanel>
         ) : null}
+        <div
+          style={{
+            flex: '1 1 500px',
+            minHeight: '40%',
+            maxHeight: '100%',
+            overflow: 'auto',
+            borderRight: `1px solid ${theme.grayAlt}`,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div
+            style={{
+              padding: '.5em',
+              background: theme.backgroundAlt,
+              position: 'sticky',
+              top: 0,
+              zIndex: 1,
+            }}
+          >
+            Loader Data
+          </div>
+          <div
+            style={{
+              padding: '.5em',
+            }}
+          >
+            {Object.keys(last(router.state.matches)?.loaderData || {})
+              .length ? (
+              <Explorer
+                value={last(router.state.matches)?.loaderData || {}}
+                defaultExpanded={Object.keys(
+                  (last(router.state.matches)?.loaderData as {}) || {},
+                ).reduce((obj: any, next) => {
+                  obj[next] = {}
+                  return obj
+                }, {})}
+              />
+            ) : (
+              <em style={{ opacity: 0.5 }}>{'{ }'}</em>
+            )}
+          </div>
+          <div
+            style={{
+              padding: '.5em',
+              background: theme.backgroundAlt,
+              position: 'sticky',
+              top: 0,
+              zIndex: 1,
+            }}
+          >
+            Search Params
+          </div>
+          <div
+            style={{
+              padding: '.5em',
+            }}
+          >
+            {Object.keys(last(router.state.matches)?.search || {}).length ? (
+              <Explorer
+                value={last(router.state.matches)?.search || {}}
+                defaultExpanded={Object.keys(
+                  (last(router.state.matches)?.search as {}) || {},
+                ).reduce((obj: any, next) => {
+                  obj[next] = {}
+                  return obj
+                }, {})}
+              />
+            ) : (
+              <em style={{ opacity: 0.5 }}>{'{ }'}</em>
+            )}
+          </div>
+        </div>
       </Panel>
     </ThemeProvider>
   )

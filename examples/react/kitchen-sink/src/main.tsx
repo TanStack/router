@@ -6,6 +6,7 @@ import {
   RouterProvider,
   createReactRouter,
   createRouteConfig,
+  RouteConfig,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
@@ -275,7 +276,9 @@ function App() {
 }
 
 function Root() {
-  const route = router.useRoute('__root__')
+  const route = router.useRoute('/')
+
+  const test = <router.Link to="" />
 
   return (
     <div className={`min-h-screen flex flex-col`}>
@@ -329,7 +332,7 @@ function Root() {
 }
 
 function Home() {
-  const route = router.useRoute('/')
+  const route = router.useMatch('/')
 
   return (
     <div className={`p-2`}>
@@ -364,7 +367,7 @@ function Home() {
 }
 
 function Dashboard() {
-  const route = router.useRoute('/dashboard')
+  const route = router.useMatch('/dashboard')
 
   return (
     <>
@@ -426,11 +429,12 @@ function DashboardHome() {
 function Invoices() {
   const {
     loaderData: { invoices },
-    route,
-  } = router.useMatch('/dashboard/invoices/')
+    Link,
+    MatchRoute,
+  } = router.useMatch('/dashboard/invoices')
 
   // Get the action for a child route
-  const addInvoiceAction = router.useAction('/dashboard/invoices/')
+  const invoiceIndexRoute = router.useMatch('/dashboard/invoices/')
 
   return (
     <div className="flex-1 flex">
@@ -438,7 +442,7 @@ function Invoices() {
         {invoices?.map((invoice) => {
           return (
             <div key={invoice.id}>
-              <route.Link
+              <Link
                 to="/dashboard/invoices/:invoiceId"
                 params={{
                   invoiceId: invoice.id,
@@ -449,7 +453,7 @@ function Invoices() {
               >
                 <pre className="text-sm">
                   #{invoice.id} - {invoice.title.slice(0, 10)}{' '}
-                  <route.MatchRoute
+                  <MatchRoute
                     to="./:invoiceId"
                     params={{
                       invoiceId: invoice.id,
@@ -457,13 +461,13 @@ function Invoices() {
                     pending
                   >
                     <Spinner />
-                  </route.MatchRoute>
+                  </MatchRoute>
                 </pre>
-              </route.Link>
+              </Link>
             </div>
           )
         })}
-        {addInvoiceAction.pending.map((action) => (
+        {invoiceIndexRoute.action.pending.map((action) => (
           <div key={action.submittedAt}>
             <a href="#" className="block py-2 px-3 text-blue-700">
               <pre className="text-sm">
@@ -481,8 +485,7 @@ function Invoices() {
 }
 
 function InvoicesHome() {
-  const route = router.useRoute('/dashboard/invoices/')
-  const action = route.useAction()
+  const route = router.useMatch('/dashboard/invoices/')
 
   return (
     <>
@@ -492,7 +495,7 @@ function InvoicesHome() {
             event.preventDefault()
             event.stopPropagation()
             const formData = new FormData(event.target as HTMLFormElement)
-            action.submit({
+            route.action.submit({
               title: formData.get('title') as string,
               body: formData.get('body') as string,
             })
@@ -515,20 +518,21 @@ function InvoicesHome() {
 function InvoiceView() {
   const {
     loaderData: { invoice },
+    action,
     search,
-    route,
+    Link,
+    navigate,
   } = router.useMatch('/dashboard/invoices/:invoiceId')
-  const action = route.getAction()
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
 
-  // React.useEffect(() => {
-  //   route.navigate({
-  //     // to: '.',
-  //     search: (old) => ({ ...old, notes: notes ? notes : undefined }),
-  //     replace: true,
-  //   })
-  // }, [notes])
+  React.useEffect(() => {
+    navigate({
+      // to: '.',
+      search: (old) => ({ ...old, notes: notes ? notes : undefined }),
+      replace: true,
+    })
+  }, [notes])
 
   return (
     <form
@@ -549,7 +553,7 @@ function InvoiceView() {
         disabled={action.latest?.status === 'pending'}
       />
       <div>
-        <route.Link
+        <Link
           search={(old) => ({
             ...old,
             showNotes: old?.showNotes ? undefined : true,
@@ -557,7 +561,7 @@ function InvoiceView() {
           className="text-blue-700"
         >
           {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
-        </route.Link>
+        </Link>
         {search.showNotes ? (
           <>
             <div>
@@ -584,16 +588,13 @@ function InvoiceView() {
           Save
         </button>
       </div>
-      <div
-        key={action.latest?.submittedAt}
-        className="animate-bounce [animation-iteration-count:1.5] [animation-duration:.3s]"
-      >
+      <div key={action.latest?.submittedAt}>
         {action.latest?.status === 'success' ? (
-          <div className="inline-block px-2 py-1 rounded bg-green-500 text-white">
+          <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
             Saved!
           </div>
         ) : action.latest?.status === 'error' ? (
-          <div className="inline-block px-2 py-1 rounded bg-red-500 text-white">
+          <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
             Failed to save.
           </div>
         ) : null}
@@ -638,7 +639,9 @@ function Users() {
   const {
     loaderData: { users },
     search: { usersView },
-    route,
+    Link,
+    MatchRoute,
+    navigate,
   } = router.useMatch('/dashboard/users')
 
   const sortBy = usersView?.sortBy ?? 'name'
@@ -665,7 +668,7 @@ function Users() {
   }, [sortedUsers, filterBy])
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
-    route.navigate({
+    navigate({
       search: (old) => {
         return {
           ...old,
@@ -679,7 +682,7 @@ function Users() {
     })
 
   React.useEffect(() => {
-    route.navigate({
+    navigate({
       search: (old) => {
         return {
           ...old,
@@ -720,7 +723,7 @@ function Users() {
         {filteredUsers?.map((user) => {
           return (
             <div key={user.id}>
-              <route.Link
+              <Link
                 to="./:userId"
                 params={{
                   userId: user.id,
@@ -730,7 +733,7 @@ function Users() {
               >
                 <pre className="text-sm">
                   {user.name}{' '}
-                  <route.MatchRoute
+                  <MatchRoute
                     to={`./:userId`}
                     params={{
                       userId: user.id,
@@ -738,9 +741,9 @@ function Users() {
                     pending
                   >
                     <Spinner />
-                  </route.MatchRoute>
+                  </MatchRoute>
                 </pre>
-              </route.Link>
+              </Link>
             </div>
           )
         })}

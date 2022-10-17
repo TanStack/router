@@ -64,8 +64,8 @@ export interface RouteConfig<
   TId extends string = string,
   TPath extends string = string,
   TFullPath extends string = string,
+  TRouteLoaderData extends AnyLoaderData = AnyLoaderData,
   TLoaderData extends AnyLoaderData = AnyLoaderData,
-  TAllLoaderData extends AnyLoaderData = AnyLoaderData,
   TActionPayload = unknown,
   TActionResponse = unknown,
   TParentSearchSchema extends {} = {},
@@ -84,8 +84,8 @@ export interface RouteConfig<
   fullPath: TFullPath
   options: RouteOptions<
     TPath,
+    TRouteLoaderData,
     TLoaderData,
-    TAllLoaderData,
     TActionPayload,
     TActionResponse,
     TParentSearchSchema,
@@ -104,7 +104,7 @@ export interface RouteConfig<
         createChildRoute: CreateRouteConfigFn<
           false,
           TId,
-          TAllLoaderData,
+          TLoaderData,
           TFullSearchSchema,
           TAllParams
         >,
@@ -115,8 +115,8 @@ export interface RouteConfig<
       TId,
       TPath,
       TFullPath,
+      TRouteLoaderData,
       TLoaderData,
-      TAllLoaderData,
       TActionPayload,
       TActionResponse,
       TParentSearchSchema,
@@ -138,7 +138,7 @@ type CreateRouteConfigFn<
   TParentParams extends AnyPathParams = {},
 > = <
   TPath extends string,
-  TLoaderData extends AnyLoaderData,
+  TRouteLoaderData extends AnyLoaderData,
   TActionPayload,
   TActionResponse,
   TSearchSchema extends AnySearchSchema = AnySearchSchema,
@@ -157,8 +157,8 @@ type CreateRouteConfigFn<
     ? Omit<
         RouteOptions<
           TPath,
-          TLoaderData,
-          Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TLoaderData>>>,
+          TRouteLoaderData,
+          Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
           TActionPayload,
           TActionResponse,
           TParentSearchSchema,
@@ -172,8 +172,8 @@ type CreateRouteConfigFn<
       > & { path?: never }
     : RouteOptions<
         TPath,
-        TLoaderData,
-        Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TLoaderData>>>,
+        TRouteLoaderData,
+        Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
         TActionPayload,
         TActionResponse,
         TParentSearchSchema,
@@ -190,8 +190,8 @@ type CreateRouteConfigFn<
   RouteId<TParentId, TPath>,
   TPath,
   RouteIdToPath<RouteId<TParentId, TPath>>,
-  TLoaderData,
-  Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TLoaderData>>>,
+  TRouteLoaderData,
+  Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
   TActionPayload,
   TActionResponse,
   TParentSearchSchema,
@@ -399,8 +399,8 @@ export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
   infer TId,
   infer TPath,
   infer TFullPath,
+  infer TRouteLoaderData,
   infer TLoaderData,
-  infer TAllLoaderData,
   infer TActionPayload,
   infer TActionResponse,
   infer TParentSearchSchema,
@@ -417,8 +417,8 @@ export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
         TId,
         TPath,
         TFullPath,
+        TRouteLoaderData,
         TLoaderData,
-        TAllLoaderData,
         TActionPayload,
         TActionResponse,
         TParentSearchSchema,
@@ -434,8 +434,8 @@ export interface RouteInfo<
   TId extends string = string,
   TPath extends string = string,
   TFullPath extends {} = string,
+  TRouteLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = {},
-  TAllLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
   TParentSearchSchema extends {} = {},
@@ -451,8 +451,8 @@ export interface RouteInfo<
   id: TId
   path: TPath
   fullPath: TFullPath
+  routeLoaderData: TRouteLoaderData
   loaderData: TLoaderData
-  allLoaderData: TAllLoaderData
   actionPayload: TActionPayload
   actionResponse: TActionResponse
   searchSchema: TSearchSchema
@@ -462,8 +462,8 @@ export interface RouteInfo<
   allParams: TAllParams
   options: RouteOptions<
     TPath,
+    TRouteLoaderData,
     TLoaderData,
-    TAllLoaderData,
     TActionPayload,
     TActionResponse,
     TParentSearchSchema,
@@ -481,7 +481,7 @@ type DeepAwaited<T> = T extends Promise<infer A>
   ? { [K in A]: DeepAwaited<B> }
   : T
 
-const rootRouteId = '__root__' as const
+export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
 
 type RouteId<
@@ -516,10 +516,7 @@ type TrimPathRight<T extends string> = T extends '/'
   ? TrimPathRight<U>
   : T
 
-export type ParsePathParams<T extends string> = Split<
-  T,
-  '/'
->[number] extends infer U
+export type ParsePathParams<T extends string> = Split<T>[number] extends infer U
   ? U extends `:${infer V}`
     ? V
     : never
@@ -532,36 +529,33 @@ export type PathParamMask<TRoutePath extends string> =
     ? PathParamMask<`${L}/${string}`>
     : TRoutePath
 
-type Split<S, D extends string = '/'> = S extends unknown
+type Split<S, TTrailing = true> = S extends unknown
   ? string extends S
     ? string[]
     : S extends string
     ? CleanPath<S> extends ''
       ? []
-      : CleanPath<S> extends `${infer T}${D}${infer U}`
-      ? [T, ...Split<U, D>]
+      : TTrailing extends true
+      ? CleanPath<S> extends `${infer T}/`
+        ? [T, '/']
+        : CleanPath<S> extends `/${infer U}`
+        ? ['/', U]
+        : CleanPath<S> extends `${infer T}/${infer U}`
+        ? [T, ...Split<U>]
+        : [S]
+      : CleanPath<S> extends `${infer T}/${infer U}`
+      ? [T, ...Split<U>]
       : [S]
     : never
   : never
 
-type Join<T, D extends string = '/'> = T extends []
+type Join<T> = T extends []
   ? ''
   : T extends [infer L extends string]
   ? L
   : T extends [infer L extends string, ...infer Tail extends [...string[]]]
-  ? `${L}/${Join<Tail, D>}`
+  ? CleanPath<`${L}/${Join<Tail>}`>
   : never
-
-export type ResolvePath<
-  TBase extends string,
-  TTo extends string,
-> = Split<TTo> extends ['.', ...infer R]
-  ? ResolvePath<TBase, Join<R>>
-  : Split<TTo> extends ['..', ...infer R]
-  ? Split<TBase, '/'> extends [...infer L, any]
-    ? ResolvePath<Join<L>, Join<R>>
-    : never
-  : `${TBase}/${TTo}`
 
 export type AnySearchSchema = {}
 export type AnyLoaderData = {}
@@ -628,8 +622,8 @@ export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
 
 export type RouteOptions<
   TPath extends string = string,
+  TRouteLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = {},
-  TAllLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
   TParentSearchSchema extends {} = {},
@@ -676,8 +670,8 @@ export type RouteOptions<
 ) &
   RouteLoaders<
     // Route Loaders (see below) can be inline on the route, or resolved async
+    TRouteLoaderData,
     TLoaderData,
-    TAllLoaderData,
     TActionPayload,
     TActionResponse,
     TFullSearchSchema,
@@ -689,8 +683,8 @@ export type RouteOptions<
       params: AnyPathParams
     }) => Promise<
       RouteLoaders<
+        TRouteLoaderData,
         TLoaderData,
-        TAllLoaderData,
         TActionPayload,
         TActionResponse,
         TFullSearchSchema,
@@ -702,35 +696,29 @@ export type RouteOptions<
     : 'Cannot redefined path params in child routes!')
 
 export interface RouteLoaders<
+  TRouteLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = {},
-  TAllLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
-  TActionData = unknown,
+  TActionResponse = unknown,
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams extends AnyPathParams = {},
 > {
   // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
-  element?: GetFrameworkGeneric<'SyncOrAsyncElement', NoInfer<TAllLoaderData>>
+  element?: GetFrameworkGeneric<'SyncOrAsyncElement', NoInfer<TLoaderData>>
   // The content to be rendered when `loader` encounters an error
-  errorElement?: GetFrameworkGeneric<
-    'SyncOrAsyncElement',
-    NoInfer<TAllLoaderData>
-  >
+  errorElement?: GetFrameworkGeneric<'SyncOrAsyncElement', NoInfer<TLoaderData>>
   // The content to be rendered when rendering encounters an error
-  catchElement?: GetFrameworkGeneric<
-    'SyncOrAsyncElement',
-    NoInfer<TAllLoaderData>
-  >
+  catchElement?: GetFrameworkGeneric<'SyncOrAsyncElement', NoInfer<TLoaderData>>
   // The content to be rendered when the duration of `loader` execution surpasses the `pendingMs` duration
   pendingElement?: GetFrameworkGeneric<
     'SyncOrAsyncElement',
-    NoInfer<TAllLoaderData>
+    NoInfer<TLoaderData>
   >
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-  loader?: LoaderFn<TLoaderData, TFullSearchSchema, TAllParams>
+  loader?: LoaderFn<TRouteLoaderData, TFullSearchSchema, TAllParams>
   // An asynchronous function made available to the route for performing asynchronous or mutative actions that
   // might invalidate the route's data.
-  action?: ActionFn<TActionPayload, TActionData>
+  action?: ActionFn<TActionPayload, TActionResponse>
   // Set this to true to rethrow errors up the component tree to either the nearest error boundary or
   // route with error element, whichever comes first.
   useErrorBoundary?: boolean
@@ -750,7 +738,7 @@ export interface RouteLoaders<
     search: TFullSearchSchema
   }) => void
   // An object of whatever you want! This object is accessible anywhere matches are.
-  meta?: RouteMeta
+  meta?: RouteMeta // TODO: Make this nested and mergeable
 }
 
 export type SearchFilter<T, U = T> = (prev: T) => U
@@ -767,27 +755,15 @@ export type SearchPredicate<TSearch extends AnySearchSchema = {}> = (
   search: TSearch,
 ) => any
 
-export interface UnloadedMatch<
-  TPath extends string = string,
-  TLoaderData extends AnyLoaderData = {},
-  TActionPayload = unknown,
-  TActionResponse = unknown,
-> {
-  id: string
-  route: AnyRoute
-  pathname: string
-  params: AnyPathParams
-}
-
 export type LoaderFn<
-  TLoaderData extends AnyLoaderData,
+  TRouteLoaderData extends AnyLoaderData,
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams extends AnyPathParams = {},
 > = (loaderContext: {
   params: TAllParams
   search: TFullSearchSchema
   signal?: AbortSignal
-}) => Promise<TLoaderData>
+}) => Promise<TRouteLoaderData>
 
 export type ActionFn<TActionPayload = unknown, TActionResponse = unknown> = (
   submission: TActionPayload,
@@ -796,17 +772,6 @@ export type ActionFn<TActionPayload = unknown, TActionResponse = unknown> = (
 export type UnloaderFn<TPath extends string> = (
   routeMatch: RouteMatch<any, RouteInfo<string, TPath>>,
 ) => void
-
-export interface RouteMatchContext<
-  TPath extends string,
-  TLoaderData extends AnyLoaderData = {},
-  TActionPayload = unknown,
-  TActionResponse = unknown,
-> {
-  match: UnloadedMatch<TPath, TLoaderData, TActionPayload, TActionResponse>
-  signal?: AbortSignal
-  // router: Router
-}
 
 export interface RouterState {
   status: 'idle' | 'loading'
@@ -841,7 +806,7 @@ export interface __Experimental__RouterSnapshot {
 }
 
 export interface SnapshotRouteMatch<TData> {
-  id: string
+  matchId: string
   loaderData: TData
 }
 
@@ -925,11 +890,8 @@ export interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
   __experimental__snapshot?: __Experimental__RouterSnapshot
   routeConfig?: TRouteConfig
   basepath?: string
-  createRouter?: (router: Router<any, any>) => Router<any, any>
-  createRoute?: <T extends AnyRoute>(opts: {
-    route: T
-    router: Router<any, any>
-  }) => T
+  createRouter?: (router: Router<any, any>) => void
+  createRoute?: (opts: { route: AnyRoute; router: Router<any, any> }) => void
 }
 
 export interface Action<
@@ -1036,8 +998,7 @@ export interface Router<
   matchRoutes: (
     pathname: string,
     opts?: { strictParseParams?: boolean },
-  ) => UnloadedMatch[]
-  resolveMatches: (unloadedMatches: UnloadedMatch[]) => RouteMatch[]
+  ) => RouteMatch[]
   loadMatches: (
     resolvedMatches: RouteMatch[],
     loaderOpts?: { withPending?: boolean } & (
@@ -1047,14 +1008,6 @@ export interface Router<
   ) => Promise<RouteMatch[]>
   invalidateRoute: (opts: MatchLocation) => void
   reload: () => Promise<void>
-  // getLoaderData: () => LoaderData
-  useAction: <TId extends keyof TAllRouteInfo['routeInfoById']>(
-    routeId: TId,
-    opts?: { isActive?: boolean },
-  ) => Action<
-    TAllRouteInfo['routeInfoById'][TId]['actionPayload'],
-    TAllRouteInfo['routeInfoById'][TId]['actionResponse']
-  >
   resolvePath: (from: string, path: string) => string
   _navigate: (
     location: BuildNextOptions & { replace?: boolean },
@@ -1182,12 +1135,12 @@ export function createRouter<
           //   pendingMinMs: routeOptions.pendingMinMs ?? router.defaultPendingMinMs,
           // }
 
-          const existingRoute = (router.routesById as any)[route.id]
+          const existingRoute = (router.routesById as any)[route.routeId]
 
           if (existingRoute) {
             if (process.env.NODE_ENV !== 'production') {
               console.warn(
-                `Duplicate routes found with id: ${String(route.id)}`,
+                `Duplicate routes found with id: ${String(route.routeId)}`,
                 router.routesById,
                 route,
               )
@@ -1195,11 +1148,11 @@ export function createRouter<
             throw new Error()
           }
 
-          ;(router.routesById as any)[route.id] = route
+          ;(router.routesById as any)[route.routeId] = route
 
           const children = routeConfig.children as RouteConfig[]
 
-          route.children = children?.length
+          route.childRoutes = children?.length
             ? recurseRoutes(children, route)
             : undefined
 
@@ -1257,7 +1210,7 @@ export function createRouter<
 
       if (nextParams) {
         toMatches
-          .map((d) => d.route.options.stringifyParams)
+          .map((d) => d.options.stringifyParams)
           .filter(Boolean)
           .forEach((fn) => {
             Object.assign(nextParams!, fn!(nextParams!))
@@ -1375,12 +1328,12 @@ export function createRouter<
       const matches = router.matchRoutes(next.pathname)
 
       const __preSearchFilters = matches
-        .map((match) => match.route.options.preSearchFilters ?? [])
+        .map((match) => match.options.preSearchFilters ?? [])
         .flat()
         .filter(Boolean)
 
       const __postSearchFilters = matches
-        .map((match) => match.route.options.postSearchFilters ?? [])
+        .map((match) => match.options.postSearchFilters ?? [])
         .flat()
         .filter(Boolean)
 
@@ -1417,20 +1370,25 @@ export function createRouter<
         strictParseParams: true,
       })
 
-      // Resolve the matches to any existing matches
-      const resolvedMatches = router.resolveMatches(unloadedMatches)
+      unloadedMatches.forEach((match, index) => {
+        const parent = unloadedMatches[index - 1]
+        const child = unloadedMatches[index + 1]
+
+        if (parent) match.__.setParentMatch(parent)
+        if (child) match.__.addChildMatch(child)
+      })
 
       router.state = {
         ...router.state,
         pending: {
-          matches: resolvedMatches,
+          matches: unloadedMatches,
           location: router.location,
         },
       }
       router.notify()
 
       // Load the matches
-      const matches = await router.loadMatches(resolvedMatches, {
+      const matches = await router.loadMatches(unloadedMatches, {
         withPending: true,
       })
 
@@ -1443,26 +1401,35 @@ export function createRouter<
 
       previousMatches
         .filter((d) => {
-          return !matches.find((dd) => dd.id === d.id)
+          return !matches.find((dd) => dd.matchId === d.matchId)
         })
         .forEach((d) => {
-          d.onExit?.(d)
+          d.__.onExit?.({
+            params: d.params,
+            search: d.routeSearch,
+          })
         })
 
       previousMatches
         .filter((d) => {
-          return matches.find((dd) => dd.id === d.id)
+          return matches.find((dd) => dd.matchId === d.matchId)
         })
         .forEach((d) => {
-          d.route.options.onTransition?.(d)
+          d.options.onTransition?.({
+            params: d.params,
+            search: d.routeSearch,
+          })
         })
 
       matches
         .filter((d) => {
-          return !previousMatches.find((dd) => dd.id === d.id)
+          return !previousMatches.find((dd) => dd.matchId === d.matchId)
         })
         .forEach((d) => {
-          d.onExit = d.route.options.onMatch?.(d)
+          d.__.onExit = d.options.onMatch?.({
+            params: d.params,
+            search: d.search,
+          })
         })
 
       router.state = {
@@ -1475,7 +1442,7 @@ export function createRouter<
       if (matches.some((d) => d.status === 'loading')) {
         router.notify()
         await Promise.all(
-          matches.map((d) => d.loaderPromise || Promise.resolve()),
+          matches.map((d) => d.__.loaderPromise || Promise.resolve()),
         )
       }
       if (router.startedLoadingAt !== id) {
@@ -1487,20 +1454,10 @@ export function createRouter<
     },
 
     cleanPreloadCache: () => {
-      const activeMatchIds = [
-        ...(router.state.matches ?? []),
-        ...(router.state.pending?.matches ?? []),
-      ].map((d) => d.id)
-
       const now = Date.now()
 
       Object.keys(router.preloadCache).forEach((matchId) => {
         const entry = router.preloadCache[matchId]!
-
-        // Don't remove active matches
-        if (activeMatchIds.includes(matchId)) {
-          return
-        }
 
         // Don't remove loading matches
         if (entry.match.status === 'loading') {
@@ -1525,10 +1482,9 @@ export function createRouter<
       loaderOpts: { maxAge: number },
     ) => {
       const next = router.buildNext(navigateOpts)
-      const unloadedMatches = router.matchRoutes(next.pathname, {
+      const matches = router.matchRoutes(next.pathname, {
         strictParseParams: true,
       })
-      const matches = router.resolveMatches(unloadedMatches)
       await router.loadMatches(matches, {
         preload: true,
         maxAge: loaderOpts.maxAge,
@@ -1537,22 +1493,29 @@ export function createRouter<
     },
 
     matchRoutes: (pathname, opts) => {
-      const matches: UnloadedMatch[] = []
+      router.cleanPreloadCache()
+
+      const matches: RouteMatch[] = []
 
       if (!router.routeTree) {
         return matches
       }
 
+      const existingMatches = [
+        ...router.state.matches,
+        ...(router.state.pending?.matches ?? []),
+      ]
+
       const recurse = async (
         routes: Route<any, any>[],
-        parentMatch: { params: Record<string, string>; pathname: string },
+        parentMatch?: RouteMatch,
       ): Promise<void> => {
-        let { params } = parentMatch
+        let params = parentMatch?.params ?? {}
 
         const filteredRoutes = router.options.filterRoutes?.(routes) ?? routes
 
         const route = filteredRoutes?.find((route) => {
-          const fuzzy = !!(route.path !== '/' || route.children?.length)
+          const fuzzy = !!(route.routePath !== '/' || route.childRoutes?.length)
           const matchParams = matchPathname(pathname, {
             to: route.fullPath,
             fuzzy,
@@ -1564,7 +1527,8 @@ export function createRouter<
             let parsedParams
 
             try {
-              parsedParams = route.options.parseParams?.(matchParams!)
+              parsedParams =
+                route.options.parseParams?.(matchParams!) ?? matchParams
             } catch (err) {
               if (opts?.strictParseParams) {
                 throw err
@@ -1584,63 +1548,26 @@ export function createRouter<
           return
         }
 
-        const interpolatedPath = interpolatePath(route.path, params)
-        const interpolatedId = interpolatePath(route.id, params, true)
+        const interpolatedPath = interpolatePath(route.routePath, params)
+        const matchId = interpolatePath(route.routeId, params, true)
 
-        const match: UnloadedMatch = {
-          id: interpolatedId,
-          route,
-          params,
-          pathname: joinPaths([pathname, interpolatedPath]),
-        }
-
-        matches.push(match)
-
-        if (route.children?.length) {
-          recurse(route.children, {
-            params: match.params,
-            pathname: match.pathname,
-          })
-        }
-      }
-
-      recurse([router.routeTree], {
-        params: {},
-        pathname: router.basepath,
-      })
-
-      return matches
-    },
-
-    resolveMatches: (unloadedMatches: UnloadedMatch[]): RouteMatch[] => {
-      if (!unloadedMatches?.length) {
-        return []
-      }
-
-      const existingMatches = [
-        ...router.state.matches,
-        ...(router.state.pending?.matches ?? []),
-      ]
-
-      const matches: RouteMatch[] = []
-
-      router.cleanPreloadCache()
-      unloadedMatches.forEach((unloadedMatch, i) => {
         const match =
-          existingMatches.find((d) => d.id === unloadedMatch.id) ||
-          router.preloadCache[unloadedMatch.id]?.match ||
-          createRouteMatch(router, unloadedMatch)
+          existingMatches.find((d) => d.matchId === matchId) ||
+          router.preloadCache[matchId]?.match ||
+          createRouteMatch(router, route, {
+            matchId,
+            params,
+            pathname: joinPaths([pathname, interpolatedPath]),
+          })
 
         matches.push(match)
-      })
 
-      matches.forEach((match, index) => {
-        const parent = matches[index - 1]
-        const child = matches[index + 1]
+        if (route.childRoutes?.length) {
+          recurse(route.childRoutes, match)
+        }
+      }
 
-        if (parent) match.setParentMatch(parent)
-        if (child) match.addChildMatch(child)
-      })
+      recurse([router.routeTree])
 
       return matches
     },
@@ -1654,15 +1581,14 @@ export function createRouter<
     ): Promise<RouteMatch[]> => {
       const matchPromises = resolvedMatches.map(async (match) => {
         // Validate the match (loads search params etc)
-        match.validate()
+        match.__.validate()
 
         // If this is a preload, add it to the preload cache
         if (loaderOpts?.preload) {
-          router.preloadCache[match.id] = {
+          router.preloadCache[match.matchId] = {
             maxAge: loaderOpts?.maxAge,
             match,
           }
-          console.log(router.preloadCache)
         }
 
         // If the match is invalid, errored or idle, trigger it to load
@@ -1675,11 +1601,11 @@ export function createRouter<
         }
 
         // If requested, start the pending timers
-        if (loaderOpts?.withPending) match.startPending()
+        if (loaderOpts?.withPending) match.__.startPending()
 
         // Wait for the first sign of activity from the match
         // This might be completion, error, or a pending state
-        await match.loadPromise
+        await match.__.loadPromise
       })
 
       router.notify()
@@ -1693,19 +1619,15 @@ export function createRouter<
       const next = router.buildNext(opts)
       const unloadedMatchIds = router
         .matchRoutes(next.pathname)
-        .map((d) => d.id)
+        .map((d) => d.matchId)
       ;[
         ...router.state.matches,
         ...(router.state.pending?.matches ?? []),
       ].forEach((match) => {
-        if (unloadedMatchIds.includes(match.id)) {
+        if (unloadedMatchIds.includes(match.matchId)) {
           match.isInvalid = true
         }
       })
-
-      if (process.env.NODE_ENV !== 'production') {
-        router.notify()
-      }
     },
 
     reload: () =>
@@ -1714,91 +1636,6 @@ export function createRouter<
         replace: true,
         search: true,
       }),
-
-    // getLoaderData: () => {
-    //   return router.state.loaderData
-    // },
-
-    useAction: (routeId, opts) => {
-      const route = router.routesById[routeId]
-
-      if (!route) {
-        throw new Error('Route not found!')
-      }
-
-      let action =
-        router.state.actions[route.id] ||
-        (() => {
-          router.state.actions[route.id] = {
-            submit: null!,
-            pending: [],
-          }
-          return router.state.actions[route.id]!
-        })()
-
-      // if (!route.options.action) {
-      //   throw new Error(
-      //     `Warning: No action was found for "${cleanPath(
-      //       matches.map((d) => d.route.path).join('/'),
-      //     )}". Please add an 'action' option to this route.`,
-      //   )
-      // }
-
-      Object.assign(action, {
-        route,
-        submit: async <T, U>(
-          submission: T,
-          actionOpts?: { invalidate?: boolean },
-        ) => {
-          if (!route) {
-            return
-          }
-
-          const invalidate = actionOpts?.invalidate ?? true
-
-          const actionState: ActionState<T, U> = {
-            submittedAt: Date.now(),
-            status: 'pending',
-            submission,
-          }
-
-          action.latest = actionState
-          action.pending.push(actionState)
-
-          if (opts?.isActive) {
-            router.state = {
-              ...router.state,
-              action: actionState,
-            }
-          }
-
-          router.notify()
-
-          try {
-            const res = await route.options.action?.(submission)
-            actionState.data = res as U
-            if (invalidate) {
-              router.invalidateRoute({ to: '.', fromCurrent: true })
-              await router.reload()
-            }
-            actionState.status = 'success'
-            return res
-          } catch (err) {
-            console.error(err)
-            actionState.error = err
-            actionState.status = 'error'
-          } finally {
-            action.pending = action.pending.filter((d) => d !== actionState)
-            if (actionState === router.state.action) {
-              router.state.action = undefined
-            }
-            router.notify()
-          }
-        },
-      })
-
-      return action
-    },
 
     resolvePath: (from: string, path: string) => {
       return resolvePath(router.basepath!, from, cleanPath(path))
@@ -1949,7 +1786,6 @@ export function createRouter<
         }
       }
 
-      console.log(preloadMaxAge)
       // The click handler
       const handleFocus = (e: MouseEvent) => {
         if (preload && preloadMaxAge > 0) {
@@ -1996,12 +1832,14 @@ export function createRouter<
     __experimental__createSnapshot: (): __Experimental__RouterSnapshot => {
       return {
         ...router.state,
-        matches: router.state.matches.map(({ loaderData, id }) => {
-          return {
-            id,
-            loaderData,
-          }
-        }),
+        matches: router.state.matches.map(
+          ({ routeLoaderData: loaderData, matchId }) => {
+            return {
+              matchId,
+              loaderData,
+            }
+          },
+        ),
       }
     },
   }
@@ -2013,7 +1851,9 @@ export function createRouter<
   router.update(userOptions)
 
   // Allow frameworks to hook into the router creation
-  Object.assign(router, router.options.createRouter?.(router as any) ?? router)
+  router.options.createRouter?.(router)
+
+  // router.mount()
 
   return router
 }
@@ -2026,18 +1866,13 @@ export interface Route<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TRouteInfo extends AnyRouteInfo = RouteInfo,
 > {
-  id: TRouteInfo['id']
-  path: TRouteInfo['path']
+  routeId: TRouteInfo['id']
+  routePath: TRouteInfo['path']
   fullPath: TRouteInfo['fullPath']
-  parent?: AnyRoute
-  children?: AnyRoute[]
+  parentRoute?: AnyRoute
+  childRoutes?: AnyRoute[]
   options: RouteOptions
   router: Router<TAllRouteInfo['routeConfig'], TAllRouteInfo>
-  getSearch: () => TRouteInfo['searchSchema']
-  getAction: () => Action<
-    TRouteInfo['actionPayload'],
-    TRouteInfo['actionResponse']
-  >
   buildLink: <TTo extends string = '.'>(
     options: // CheckRelativePath<
     //   TAllRouteInfo,
@@ -2061,10 +1896,11 @@ export interface Route<
   navigate: <TTo extends string = '.'>(
     options: Omit<LinkOptions<TAllRouteInfo, TRouteInfo['id'], TTo>, 'from'>,
   ) => Promise<void>
-  useAction: () => Action<
-    TRouteInfo['actionPayload'],
-    TRouteInfo['actionResponse']
-  >
+  action: unknown extends TRouteInfo['actionResponse']
+    ?
+        | Action<TRouteInfo['actionPayload'], TRouteInfo['actionResponse']>
+        | undefined
+    : Action<TRouteInfo['actionPayload'], TRouteInfo['actionResponse']>
 }
 
 export function createRoute<
@@ -2085,27 +1921,73 @@ export function createRoute<
   //       ]).replace(new RegExp(`^${rootRouteId}`), '')
   // ) as TRouteInfo['id']
 
-  const { id, path, fullPath } = routeConfig
+  const { id: routeId, path: routePath, fullPath } = routeConfig
+
+  const action =
+    router.state.actions[routeId] ||
+    (() => {
+      router.state.actions[routeId] = {
+        pending: [],
+        submit: async <T, U>(
+          submission: T,
+          actionOpts?: { invalidate?: boolean },
+        ) => {
+          if (!route) {
+            return
+          }
+
+          const invalidate = actionOpts?.invalidate ?? true
+
+          const actionState: ActionState<T, U> = {
+            submittedAt: Date.now(),
+            status: 'pending',
+            submission,
+          }
+
+          action.latest = actionState
+          action.pending.push(actionState)
+
+          router.state = {
+            ...router.state,
+            action: actionState,
+          }
+
+          router.notify()
+
+          try {
+            const res = await route.options.action?.(submission)
+            actionState.data = res as U
+            if (invalidate) {
+              router.invalidateRoute({ to: '.', fromCurrent: true })
+              await router.reload()
+            }
+            actionState.status = 'success'
+            return res
+          } catch (err) {
+            console.error(err)
+            actionState.error = err
+            actionState.status = 'error'
+          } finally {
+            action.pending = action.pending.filter((d) => d !== actionState)
+            if (actionState === router.state.action) {
+              router.state.action = undefined
+            }
+            router.notify()
+          }
+        },
+      }
+      return router.state.actions[routeId]!
+    })()
 
   let route: Route<TAllRouteInfo, TRouteInfo> = {
-    id,
-    path: path as any,
+    routeId,
+    routePath,
     fullPath,
     options,
     router,
-    children: undefined!,
-    parent,
-
-    getSearch: (): TRouteInfo['searchSchema'] => {
-      return {} as any
-    },
-
-    getAction: (): Action<
-      TRouteInfo['actionPayload'],
-      TRouteInfo['actionResponse']
-    > => {
-      return {} as any
-    },
+    childRoutes: undefined!,
+    parentRoute: parent,
+    action,
 
     buildLink: (options) => {
       return router.buildLink({
@@ -2121,10 +2003,6 @@ export function createRoute<
       } as any) as any
     },
 
-    useAction: () => {
-      return router.useAction(id)
-    },
-
     matchRoute: (matchLocation, opts) => {
       return router.matchRoute(
         {
@@ -2136,28 +2014,31 @@ export function createRoute<
     },
   }
 
-  Object.assign(route, router.options.createRoute?.({ router, route }) ?? route)
+  router.options.createRoute?.({ router, route })
 
   return route
 }
 
-type RelativeLinkAutoComplete<
+export type RelativeToPathAutoComplete<
   AllPaths extends string,
   TFrom extends string,
   TTo extends string,
-  SplitPaths extends string[] = Split<AllPaths>,
+  SplitPaths extends string[] = Split<AllPaths, false>,
 > = TTo extends `..${infer _}`
   ? SplitPaths extends [
-      ...Split<ResolveRelativePath<TFrom, TTo>>,
+      ...Split<ResolveRelativePath<TFrom, TTo>, false>,
       ...infer TToRest,
     ]
     ? `${CleanPath<
         Join<
           [
-            ...Split<TTo>,
+            ...Split<TTo, false>,
             ...(
               | TToRest
-              | (Split<ResolveRelativePath<TFrom, TTo>>['length'] extends 1
+              | (Split<
+                  ResolveRelativePath<TFrom, TTo>,
+                  false
+                >['length'] extends 1
                   ? never
                   : ['../'])
             ),
@@ -2166,7 +2047,11 @@ type RelativeLinkAutoComplete<
       >}`
     : never
   : TTo extends `./${infer RestTTo}`
-  ? SplitPaths extends [...Split<TFrom>, ...Split<RestTTo>, ...infer RestPath]
+  ? SplitPaths extends [
+      ...Split<TFrom, false>,
+      ...Split<RestTTo, false>,
+      ...infer RestPath,
+    ]
     ? `${TTo}${Join<RestPath>}`
     : never
   : './' | '../' | AllPaths
@@ -2206,26 +2091,40 @@ export type ToOptions<
   TFrom extends ValidFromPath<TAllRouteInfo> = '/',
   TTo extends string = '.',
   TResolvedTo = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+> = {
+  to?: ToPathOption<TAllRouteInfo, TFrom, TTo>
+  // The new has string or a function to update it
+  hash?: Updater<string>
+  // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
+  from?: TFrom
+  // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
+  // fromCurrent?: boolean
+} & SearchParamOptions<TAllRouteInfo, TFrom, TResolvedTo> &
+  PathParamOptions<TAllRouteInfo, TFrom, TResolvedTo>
+
+export type ToPathOption<
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+  TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+  TTo extends string = '.',
 > =
-  //  CheckRelativePath<TAllRouteInfo, TFrom, NoInfer<TTo>> &
-  {
-    // The destination route path
-    // (An absolute path is preferred for type-safety, but relative is also allowed)
-    to?:
-      | TTo
-      | RelativeLinkAutoComplete<
-          TAllRouteInfo['fullPath'],
-          NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
-          NoInfer<TTo> & string
-        >
-    // The new has string or a function to update it
-    hash?: Updater<string>
-    // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
-    from?: TFrom
-    // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
-    // fromCurrent?: boolean
-  } & SearchParamOptions<TAllRouteInfo, TFrom, TResolvedTo> &
-    PathParamOptions<TAllRouteInfo, TFrom, TResolvedTo>
+  | TTo
+  | RelativeToPathAutoComplete<
+      TAllRouteInfo['fullPath'],
+      NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
+      NoInfer<TTo> & string
+    >
+
+export type ToIdOption<
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+  TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+  TTo extends string = '.',
+> =
+  | TTo
+  | RelativeToPathAutoComplete<
+      TAllRouteInfo['routeInfo']['id'],
+      NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
+      NoInfer<TTo> & string
+    >
 
 export type LinkOptions<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
@@ -2264,10 +2163,18 @@ export type CheckRelativePath<
     : {}
   : {}
 
-export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
+export type ResolveRelativePath<
+  TFrom,
+  TTo = '.',
+  TRooted = false,
+> = TFrom extends string
   ? TTo extends string
     ? TTo extends '.'
       ? TFrom
+      : TTo extends `./`
+      ? Join<[TFrom, '/']>
+      : TTo extends `./${infer TRest}`
+      ? ResolveRelativePath<TFrom, TRest>
       : TTo extends `/${infer TRest}`
       ? TTo
       : Split<TTo> extends ['..', ...infer ToRest]
@@ -2280,14 +2187,25 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
     : never
   : never
 
-export type RouteInfoByPath<
-  TRouteInfoByPath extends AnyAllRouteInfo,
-  TPath,
-> = TPath extends keyof TRouteInfoByPath['routeInfoByFullPath']
+export type RouteInfoById<
+  TAllRouteInfo extends AnyAllRouteInfo,
+  TId,
+> = TId extends keyof TAllRouteInfo['routeInfoById']
   ? IsAny<
-      TRouteInfoByPath['routeInfoByFullPath'][TPath]['id'],
+      TAllRouteInfo['routeInfoById'][TId]['id'],
       RouteInfo,
-      TRouteInfoByPath['routeInfoByFullPath'][TPath]
+      TAllRouteInfo['routeInfoById'][TId]
+    >
+  : never
+
+export type RouteInfoByPath<
+  TAllRouteInfo extends AnyAllRouteInfo,
+  TPath,
+> = TPath extends keyof TAllRouteInfo['routeInfoByFullPath']
+  ? IsAny<
+      TAllRouteInfo['routeInfoByFullPath'][TPath]['id'],
+      RouteInfo,
+      TAllRouteInfo['routeInfoByFullPath'][TPath]
     >
   : never
 
@@ -2342,46 +2260,52 @@ type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 export interface RouteMatch<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TRouteInfo extends AnyRouteInfo = RouteInfo,
-> {
-  id: string
-  router: unknown
+> extends Route<TAllRouteInfo, TRouteInfo> {
+  matchId: string
+  pathname: string
+  params: AnyPathParams
   parentMatch?: RouteMatch
   childMatches: RouteMatch[]
-  route: Route<TAllRouteInfo, TRouteInfo>
-  pathname: string
-  params: TRouteInfo['allParams']
-  search: TRouteInfo['searchSchema']
-  fullSearch: TRouteInfo['fullSearchSchema']
-  updatedAt?: number
-  element?: GetFrameworkGeneric<'Element', TRouteInfo['allLoaderData']>
-  errorElement?: GetFrameworkGeneric<'Element', TRouteInfo['allLoaderData']>
-  catchElement?: GetFrameworkGeneric<'Element', TRouteInfo['allLoaderData']>
-  pendingElement?: GetFrameworkGeneric<'Element', TRouteInfo['allLoaderData']>
-  error?: unknown
-  loadPromise?: Promise<void>
-  loaderPromise?: Promise<void>
-  importPromise?: Promise<void>
-  elementsPromise?: Promise<void>
-  dataPromise?: Promise<void>
-  pendingTimeout?: Timeout
-  pendingMinTimeout?: Timeout
-  pendingMinPromise?: Promise<void>
-  onExit?: void | ((match: RouteMatch<TAllRouteInfo, TRouteInfo>) => void)
-  isInvalid: boolean
+  routeSearch: TRouteInfo['searchSchema']
+  search: TRouteInfo['fullSearchSchema']
   status: 'idle' | 'loading' | 'success' | 'error'
-  loaderData: TRouteInfo['allLoaderData']
+  updatedAt?: number
+  error?: unknown
+  isInvalid: boolean
+  loaderData: TRouteInfo['loaderData']
+  routeLoaderData: TRouteInfo['routeLoaderData']
   isFetching: boolean
   isPending: boolean
-  abortController: AbortController
-  latestId: string
-  resolve: () => void
-  notify: () => void
+  __: {
+    element?: GetFrameworkGeneric<'Element', TRouteInfo['loaderData']>
+    errorElement?: GetFrameworkGeneric<'Element', TRouteInfo['loaderData']>
+    catchElement?: GetFrameworkGeneric<'Element', TRouteInfo['loaderData']>
+    pendingElement?: GetFrameworkGeneric<'Element', TRouteInfo['loaderData']>
+    loadPromise?: Promise<void>
+    loaderPromise?: Promise<void>
+    importPromise?: Promise<void>
+    elementsPromise?: Promise<void>
+    dataPromise?: Promise<void>
+    pendingTimeout?: Timeout
+    pendingMinTimeout?: Timeout
+    pendingMinPromise?: Promise<void>
+    onExit?:
+      | void
+      | ((matchContext: {
+          params: TRouteInfo['allParams']
+          search: TRouteInfo['fullSearchSchema']
+        }) => void)
+    abortController: AbortController
+    latestId: string
+    setParentMatch: (parentMatch: RouteMatch) => void
+    addChildMatch: (childMatch: RouteMatch) => void
+    validate: () => void
+    startPending: () => void
+    cancelPending: () => void
+    notify: () => void
+    resolve: () => void
+  }
   cancel: () => void
-  startPending: () => void
-  cancelPending: () => void
-  setParentMatch: (parentMatch: RouteMatch) => void
-  addChildMatch: (childMatch: RouteMatch) => void
-  validate: () => void
   load: () => Promise<void>
 }
 
@@ -2390,116 +2314,121 @@ export function createRouteMatch<
   TRouteInfo extends AnyRouteInfo = RouteInfo,
 >(
   router: Router<any, any>,
-  unloadedMatch: UnloadedMatch<
-    TRouteInfo['path'],
-    TRouteInfo['allLoaderData'],
-    TRouteInfo['actionPayload'],
-    TRouteInfo['actionResponse']
-  >,
+  route: Route<TAllRouteInfo, TRouteInfo>,
+  opts: {
+    matchId: string
+    params: TRouteInfo['allParams']
+    pathname: string
+  },
 ): RouteMatch<TAllRouteInfo, TRouteInfo> {
   const routeMatch: RouteMatch<TAllRouteInfo, TRouteInfo> = {
-    ...unloadedMatch,
+    ...route,
+    ...opts,
     router,
+    routeSearch: {},
     search: {},
-    fullSearch: {},
+    childMatches: [],
     status: 'idle',
-    loaderData: {} as TRouteInfo['allLoaderData'],
+    routeLoaderData: {} as TRouteInfo['routeLoaderData'],
+    loaderData: {} as TRouteInfo['loaderData'],
     isPending: false,
     isFetching: false,
     isInvalid: false,
-    abortController: new AbortController(),
-    latestId: '',
-    childMatches: [],
-    resolve: () => {},
-    notify: () => {
-      routeMatch.resolve()
-      ;(routeMatch.router as Router).notify()
+    __: {
+      abortController: new AbortController(),
+      latestId: '',
+      resolve: () => {},
+      notify: () => {
+        routeMatch.__.resolve()
+        routeMatch.router.notify()
+      },
+      startPending: () => {
+        const pendingMs =
+          routeMatch.options.pendingMs ?? router.options.defaultPendingMs
+        const pendingMinMs =
+          routeMatch.options.pendingMinMs ?? router.options.defaultPendingMinMs
+
+        if (
+          routeMatch.__.pendingTimeout ||
+          routeMatch.status !== 'loading' ||
+          typeof pendingMs === 'undefined'
+        ) {
+          return
+        }
+
+        routeMatch.__.pendingTimeout = setTimeout(() => {
+          routeMatch.isPending = true
+          routeMatch.__.resolve()
+          if (typeof pendingMinMs !== 'undefined') {
+            routeMatch.__.pendingMinPromise = new Promise(
+              (r) =>
+                (routeMatch.__.pendingMinTimeout = setTimeout(r, pendingMinMs)),
+            )
+          }
+        }, pendingMs)
+      },
+      cancelPending: () => {
+        routeMatch.isPending = false
+        clearTimeout(routeMatch.__.pendingTimeout)
+        clearTimeout(routeMatch.__.pendingMinTimeout)
+        delete routeMatch.__.pendingMinPromise
+      },
+      setParentMatch: (parentMatch?: RouteMatch) => {
+        routeMatch.parentMatch = parentMatch
+      },
+      addChildMatch: (childMatch: RouteMatch) => {
+        if (
+          routeMatch.childMatches.find((d) => d.matchId === childMatch.matchId)
+        ) {
+          return
+        }
+
+        routeMatch.childMatches.push(childMatch)
+      },
+      validate: () => {
+        // Validate the search params and stabilize them
+        const parentSearch =
+          routeMatch.parentMatch?.search ?? router.location.search
+
+        try {
+          const prevSearch = routeMatch.routeSearch
+
+          let nextSearch = replaceEqualDeep(
+            prevSearch,
+            routeMatch.options.validateSearch?.(parentSearch),
+          )
+
+          // Invalidate route matches when search param stability changes
+          if (prevSearch !== nextSearch) {
+            routeMatch.isInvalid = true
+          }
+
+          routeMatch.routeSearch = nextSearch
+
+          routeMatch.search = replaceEqualDeep(parentSearch, {
+            ...parentSearch,
+            ...nextSearch,
+          })
+        } catch (err: any) {
+          console.error(err)
+          const error = new (Error as any)('Invalid search params found', {
+            cause: err,
+          })
+          error.code = 'INVALID_SEARCH_PARAMS'
+          routeMatch.status = 'error'
+          routeMatch.error = error
+          // Do not proceed with loading the route
+          return
+        }
+      },
     },
     cancel: () => {
-      routeMatch.abortController?.abort()
-      routeMatch.cancelPending()
-    },
-    startPending: () => {
-      const pendingMs =
-        routeMatch.route.options.pendingMs ?? router.options.defaultPendingMs
-      const pendingMinMs =
-        routeMatch.route.options.pendingMinMs ??
-        router.options.defaultPendingMinMs
-
-      if (
-        routeMatch.pendingTimeout ||
-        routeMatch.status !== 'loading' ||
-        typeof pendingMs === 'undefined'
-      ) {
-        return
-      }
-
-      routeMatch.pendingTimeout = setTimeout(() => {
-        routeMatch.isPending = true
-        routeMatch.resolve()
-        console.log({ pendingMinMs })
-        if (typeof pendingMinMs !== 'undefined') {
-          routeMatch.pendingMinPromise = new Promise(
-            (r) => (routeMatch.pendingMinTimeout = setTimeout(r, pendingMinMs)),
-          )
-        }
-      }, pendingMs)
-    },
-    cancelPending: () => {
-      routeMatch.isPending = false
-      clearTimeout(routeMatch.pendingTimeout)
-      clearTimeout(routeMatch.pendingMinTimeout)
-      delete routeMatch.pendingMinPromise
-    },
-    setParentMatch: (parentMatch?: RouteMatch) => {
-      routeMatch.parentMatch = parentMatch
-    },
-    addChildMatch: (childMatch: RouteMatch) => {
-      if (routeMatch.childMatches.find((d) => d.id === childMatch.id)) {
-        return
-      }
-
-      routeMatch.childMatches.push(childMatch)
-    },
-    validate: () => {
-      // Validate the search params and stabilize them
-      const parentSearch =
-        routeMatch.parentMatch?.fullSearch ?? router.location.search
-
-      try {
-        const prevSearch = routeMatch.search
-
-        let nextSearch = replaceEqualDeep(
-          prevSearch,
-          unloadedMatch.route.options.validateSearch?.(parentSearch),
-        )
-
-        // Invalidate route matches when search param stability changes
-        if (prevSearch !== nextSearch) {
-          routeMatch.isInvalid = true
-        }
-
-        routeMatch.search = nextSearch
-
-        routeMatch.fullSearch = replaceEqualDeep(parentSearch, {
-          ...parentSearch,
-          ...nextSearch,
-        })
-      } catch (err: any) {
-        console.error(err)
-        const error = new (Error as any)('Invalid search params found', {
-          cause: err,
-        })
-        error.code = 'INVALID_SEARCH_PARAMS'
-        routeMatch.status = 'error'
-        routeMatch.error = error
-        // Do not proceed with loading the route
-        return
-      }
+      routeMatch.__.abortController?.abort()
+      routeMatch.__.cancelPending()
     },
     load: async () => {
       const id = '' + Date.now() + Math.random()
-      routeMatch.latestId = id
+      routeMatch.__.latestId = id
 
       // If the match was in an error state, set it
       // to a loading state again. Otherwise, keep it
@@ -2511,23 +2440,23 @@ export function createRouteMatch<
       // We started loading the route, so it's no longer invalid
       routeMatch.isInvalid = false
 
-      routeMatch.loadPromise = new Promise(async (resolve) => {
+      routeMatch.__.loadPromise = new Promise(async (resolve) => {
         // We are now fetching, even if it's in the background of a
         // resolved state
         routeMatch.isFetching = true
-        routeMatch.resolve = resolve as () => void
+        routeMatch.__.resolve = resolve as () => void
 
         const loaderPromise = (async () => {
-          const importer = routeMatch.route.options.import
+          const importer = routeMatch.options.import
 
           // First, run any importers
           if (importer) {
-            routeMatch.importPromise = importer({
+            routeMatch.__.importPromise = importer({
               params: routeMatch.params,
               // search: routeMatch.search,
             }).then((imported) => {
-              routeMatch.route = {
-                ...routeMatch.route,
+              routeMatch.__ = {
+                ...routeMatch.__,
                 ...imported,
               }
             })
@@ -2535,11 +2464,11 @@ export function createRouteMatch<
 
           // Wait for the importer to finish before
           // attempting to load elements and data
-          await routeMatch.importPromise
+          await routeMatch.__.importPromise
 
           // Next, load the elements and data in parallel
 
-          routeMatch.elementsPromise = (async () => {
+          routeMatch.__.elementsPromise = (async () => {
             // then run all element and data loaders in parallel
             // For each element type, potentially load it asynchronously
             const elementTypes = [
@@ -2551,46 +2480,46 @@ export function createRouteMatch<
 
             await Promise.all(
               elementTypes.map(async (type) => {
-                const routeElement = routeMatch.route.options[type]
+                const routeElement = routeMatch.options[type]
 
-                if (routeMatch[type]) {
+                if (routeMatch.__[type]) {
                   return
                 }
 
                 if (typeof routeElement === 'function') {
                   const res = await (routeElement as any)(routeMatch)
 
-                  routeMatch[type] = res
+                  routeMatch.__[type] = res
                 } else {
-                  routeMatch[type] = routeMatch.route.options[type] as any
+                  routeMatch.__[type] = routeMatch.options[type] as any
                 }
               }),
             )
           })()
 
-          routeMatch.dataPromise = Promise.resolve().then(async () => {
+          routeMatch.__.dataPromise = Promise.resolve().then(async () => {
             try {
-              const data = await routeMatch.route.options.loader?.({
+              const data = await routeMatch.options.loader?.({
                 params: routeMatch.params,
-                search: routeMatch.search,
-                signal: routeMatch.abortController.signal,
+                search: routeMatch.routeSearch,
+                signal: routeMatch.__.abortController.signal,
               })
-              if (id !== routeMatch.latestId) {
-                return routeMatch.loaderPromise
+              if (id !== routeMatch.__.latestId) {
+                return routeMatch.__.loaderPromise
               }
 
-              routeMatch.loaderData = replaceEqualDeep(routeMatch.loaderData, {
-                ...routeMatch.loaderData,
-                ...data,
-              })
+              routeMatch.routeLoaderData = replaceEqualDeep(
+                routeMatch.routeLoaderData,
+                data,
+              )
 
               cascadeLoaderData(routeMatch)
               routeMatch.error = undefined
               routeMatch.status = 'success'
               routeMatch.updatedAt = Date.now()
             } catch (err) {
-              if (id !== routeMatch.latestId) {
-                return routeMatch.loaderPromise
+              if (id !== routeMatch.__.latestId) {
+                return routeMatch.__.loaderPromise
               }
 
               if (process.env.NODE_ENV !== 'production') {
@@ -2604,38 +2533,38 @@ export function createRouteMatch<
 
           try {
             await Promise.all([
-              routeMatch.elementsPromise,
-              routeMatch.dataPromise,
+              routeMatch.__.elementsPromise,
+              routeMatch.__.dataPromise,
             ])
-            if (id !== routeMatch.latestId) {
-              return routeMatch.loaderPromise
+            if (id !== routeMatch.__.latestId) {
+              return routeMatch.__.loaderPromise
             }
 
-            if (routeMatch.pendingMinPromise) {
-              await routeMatch.pendingMinPromise
-              delete routeMatch.pendingMinPromise
+            if (routeMatch.__.pendingMinPromise) {
+              await routeMatch.__.pendingMinPromise
+              delete routeMatch.__.pendingMinPromise
             }
           } finally {
-            if (id !== routeMatch.latestId) {
-              return routeMatch.loaderPromise
+            if (id !== routeMatch.__.latestId) {
+              return routeMatch.__.loaderPromise
             }
-            routeMatch.cancelPending()
+            routeMatch.__.cancelPending()
             routeMatch.isPending = false
             routeMatch.isFetching = false
-            routeMatch.notify()
+            routeMatch.__.notify()
           }
         })()
 
-        routeMatch.loaderPromise = loaderPromise
+        routeMatch.__.loaderPromise = loaderPromise
         await loaderPromise
 
-        if (id !== routeMatch.latestId) {
-          return routeMatch.loaderPromise
+        if (id !== routeMatch.__.latestId) {
+          return routeMatch.__.loaderPromise
         }
-        delete routeMatch.loaderPromise
+        delete routeMatch.__.loaderPromise
       })
 
-      return await routeMatch.loadPromise
+      return await routeMatch.__.loadPromise
     },
   }
 
@@ -2646,9 +2575,10 @@ function cascadeLoaderData(routeMatch: RouteMatch<any, any>) {
   if (routeMatch.parentMatch) {
     routeMatch.loaderData = replaceEqualDeep(routeMatch.loaderData, {
       ...routeMatch.parentMatch.loaderData,
-      ...routeMatch.loaderData,
+      ...routeMatch.routeLoaderData,
     })
   }
+
   if (routeMatch.childMatches.length) {
     routeMatch.childMatches.forEach((childMatch) => {
       cascadeLoaderData(childMatch)

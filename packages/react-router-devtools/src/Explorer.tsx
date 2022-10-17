@@ -174,7 +174,14 @@ export const DefaultRenderer: Renderer = ({
           <Explorer
             renderer={renderer}
             label={
-              <button onClick={refreshValueSnapshot}>
+              <button
+                onClick={refreshValueSnapshot}
+                style={{
+                  appearance: 'none',
+                  border: '0',
+                  background: 'transparent',
+                }}
+              >
                 <Label>{label}</Label> 🔄{' '}
               </button>
             }

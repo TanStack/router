@@ -2,20 +2,23 @@ import * as React from 'react'
 
 import { useSyncExternalStore } from 'use-sync-external-store/shim'
 
-import type { Router } from '@tanstack/router-core'
+import {
+  AnyRoute,
+  RootRouteId,
+  rootRouteId,
+  Route,
+  Router,
+} from '@tanstack/router-core'
 import {
   warning,
   RouterOptions,
   RouteMatch,
-  MatchLocation,
   MatchRouteOptions,
   RouteConfig,
-  AnyPathParams,
   AnyRouteConfig,
   AnyAllRouteInfo,
   DefaultAllRouteInfo,
   functionalUpdate,
-  BuildNextOptions,
   createRouter,
   AnyRouteInfo,
   AllRouteInfo,
@@ -42,13 +45,44 @@ declare module '@tanstack/router-core' {
   interface Router<
     TRouteConfig extends AnyRouteConfig = RouteConfig,
     TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
-  > {
+  > extends Pick<
+      Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][RootRouteId]>,
+      'linkProps' | 'Link' | 'MatchRoute'
+    > {
     useRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
       routeId: TId,
     ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
     useMatch: <TId extends keyof TAllRouteInfo['routeInfoById']>(
       routeId: TId,
     ) => RouteMatch<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
+    // linkProps: <TTo extends string = '.'>(
+    //   props: LinkPropsOptions<TAllRouteInfo, '/', TTo> &
+    //     React.AnchorHTMLAttributes<HTMLAnchorElement>,
+    // ) => React.AnchorHTMLAttributes<HTMLAnchorElement>
+    // Link: <TTo extends string = '.'>(
+    //   props: LinkPropsOptions<TAllRouteInfo, '/', TTo> &
+    //     React.AnchorHTMLAttributes<HTMLAnchorElement> &
+    //     Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
+    //       // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+    //       children?:
+    //         | React.ReactNode
+    //         | ((state: { isActive: boolean }) => React.ReactNode)
+    //     },
+    // ) => JSX.Element
+    // MatchRoute: <TTo extends string = '.'>(
+    //   props: ToOptions<TAllRouteInfo, '/', TTo> &
+    //     MatchRouteOptions & {
+    //       // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+    //       children?:
+    //         | React.ReactNode
+    //         | ((
+    //             params: RouteInfoByPath<
+    //               TAllRouteInfo,
+    //               ResolveRelativePath<'/', NoInfer<TTo>>
+    //             >['allParams'],
+    //           ) => React.ReactNode)
+    //     },
+    // ) => JSX.Element
   }
 
   interface Route<
@@ -130,7 +164,7 @@ export function MatchesProvider(props: MatchesProviderProps) {
   return <matchesContext.Provider {...props} />
 }
 
-const useRouterSubscription = (router: Router) => {
+const useRouterSubscription = (router: Router<any, any>) => {
   useSyncExternalStore(
     (cb) => router.subscribe(() => cb()),
     () => router.state,
@@ -143,27 +177,44 @@ export function createReactRouter<
   const coreRouter = createRouter<TRouteConfig>({
     ...opts,
     createRouter: (router) => {
-      return {
-        ...router,
-        useRoute: (id) => {
-          const route = router.getRoute(id)
-
+      const routerExt: Pick<Router<any, any>, 'useRoute' | 'useMatch'> = {
+        useRoute: (routeId) => {
+          const route = router.getRoute(routeId)
           useRouterSubscription(router)
-
-          return route as any
+          if (!route) {
+            throw new Error(
+              `Could not find a route for route "${
+                routeId as string
+              }"! Did you forget to add it to your route config?`,
+            )
+          }
+          return route
         },
         useMatch: (routeId) => {
+          if (routeId === rootRouteId) {
+            throw new Error(
+              `"${rootRouteId}" cannot be used with useMatch! Did you mean to useRoute("${rootRouteId}")?`,
+            )
+          }
           const runtimeMatch = useMatch()
-          const match = router.state.matches.find((d) => d.route.id === routeId)
+          const match = router.state.matches.find((d) => d.routeId === routeId)
 
-          if (runtimeMatch !== match) {
+          if (!match) {
+            throw new Error(
+              `Could not find a match for route "${
+                routeId as string
+              }" being rendered in this component!`,
+            )
+          }
+
+          if (runtimeMatch.routeId !== match?.routeId) {
             throw new Error(
               `useMatch('${
-                routeId as string
+                match?.routeId as string
               }') is being called in a component that is meant to render the '${
-                runtimeMatch.id
+                runtimeMatch.routeId
               }' route. Did you mean to 'useRoute(${
-                routeId as string
+                match?.routeId as string
               })' instead?`,
             )
           }
@@ -174,13 +225,14 @@ export function createReactRouter<
             throw new Error('Match not found!')
           }
 
-          return match as any
+          return match
         },
       }
+
+      Object.assign(router, routerExt)
     },
     createRoute: ({ router, route }) => {
-      return {
-        ...route,
+      const routeExt: Pick<AnyRoute, 'linkProps' | 'Link' | 'MatchRoute'> = {
         linkProps: (options) => {
           const {
             // custom props
@@ -277,7 +329,7 @@ export function createReactRouter<
             ['data-status']: isActive ? 'active' : undefined,
           }
         },
-        Link: React.forwardRef((props, ref) => {
+        Link: React.forwardRef((props: any, ref) => {
           const linkProps = route.linkProps(props)
 
           useRouterSubscription(router)
@@ -297,7 +349,7 @@ export function createReactRouter<
               }}
             />
           )
-        }),
+        }) as any,
         MatchRoute: (opts) => {
           const { pending, caseSensitive, children, ...rest } = opts
 
@@ -314,13 +366,15 @@ export function createReactRouter<
 
           return typeof opts.children === 'function'
             ? opts.children(params as any)
-            : opts.children
+            : (opts.children as any)
         },
       }
+
+      Object.assign(route, routeExt)
     },
   })
 
-  return coreRouter
+  return coreRouter as any
 }
 
 export type RouterProps<
@@ -365,146 +419,23 @@ export function useRouter(): Router {
   return value.router as Router
 }
 
-// function useLatestCallback<TCallback extends (...args: any[]) => any>(
-//   cb: TCallback,
-// ) {
-//   const cbRef = React.useRef<TCallback>(cb)
-//   cbRef.current = cb
-//   return React.useCallback(
-//     (...args: Parameters<TCallback>): ReturnType<TCallback> =>
-//       cbRef.current(...args),
-//     [],
-//   )
-// }
-
 export function useMatches(): RouteMatch[] {
   return React.useContext(matchesContext)
 }
 
-// export function useParentMatches(): RouteMatch[] {
-//   const router = useRouter()
-//   const match = useMatch()
-//   const matches = router.state.matches
-//   return matches.slice(0, matches.findIndex((d) => d.id === match.id) - 1)
-// }
+export function useParentMatches(): RouteMatch[] {
+  const router = useRouter()
+  const match = useMatch()
+  const matches = router.state.matches
+  return matches.slice(
+    0,
+    matches.findIndex((d) => d.matchId === match.matchId) - 1,
+  )
+}
 
 export function useMatch<T>(): RouteMatch {
   return useMatches()?.[0] as RouteMatch
 }
-
-// export function useAction<
-//   TPayload = unknown,
-//   TResponse = unknown,
-//   TError = unknown,
-// >(opts?: Pick<BuildNextOptions, 'to' | 'from'>) {
-//   const match = useMatch()
-//   const router = useRouter()
-//   return router.getAction<TPayload, TResponse>(
-//     { from: match.pathname, to: '.', ...opts },
-//     {
-//       isActive: !opts?.to,
-//     },
-//   )
-// }
-
-// export function Form(props: React.HTMLProps<HTMLFormElement>) {
-//   const action = useAction()
-
-//   return (
-//     <form
-//       {...props}
-
-//     >
-//       {props.children}
-//     </form>
-//   )
-// }
-
-// export function useMatchRoute() {
-//   const router = useRouter()
-//   const match = useMatch()
-
-//   return useLatestCallback(
-//     (matchLocation: MatchLocation, opts?: MatchRouteOptions) => {
-//       return router.matchRoute(
-//         {
-//           ...matchLocation,
-//           from: match.pathname,
-//         },
-//         opts,
-//       )
-//     },
-//   )
-// }
-
-// export type MatchRouteProps = MatchLocation &
-//   MatchRouteOptions & {
-//     children:
-//       | React.ReactNode
-//       | ((routeParams?: AnyPathParams) => React.ReactNode)
-//   }
-
-// export function MatchRoute(props: MatchRouteProps & LinkInfo): JSX.Element {
-//   const { children, pending, caseSensitive, type, ...rest } = props
-
-//   const router = useRouter()
-
-//   if (type === 'external') {
-//     return <></>
-//   }
-
-//   const { next } = props
-
-//   router.matchRoute({}, { pending })
-
-//   const matchRoute = useMatchRoute()
-//   const match = matchRoute(rest, { pending, caseSensitive })
-
-//   if (typeof children === 'function') {
-//     return children(match as any) as JSX.Element
-//   }
-
-//   return (match ? children : null) as JSX.Element
-// }
-
-// export function useLoadRoute() {
-//   const match = useMatch()
-//   const router = useRouter()
-
-//   return useLatestCallback(
-//     async (navigateOpts: BuildNextOptions, loaderOpts: { maxAge: number }) =>
-//       router.loadRoute({ ...navigateOpts, from: match.pathname }, loaderOpts),
-//   )
-// }
-
-// export function useInvalidateRoute() {
-//   const match = useMatch()
-//   const router = useRouter()
-
-//   return useLatestCallback(async (navigateOpts: MatchLocation = { to: '.' }) =>
-//     router.invalidateRoute({ ...navigateOpts, from: match.pathname }),
-//   )
-// }
-
-// export function useNavigate() {
-//   const router = useRouter()
-//   const match = useMatch()
-
-//   return useLatestCallback((options: BuildNextOptions) =>
-//     // @ts-ignore-next // TODO: fix this
-//     router.navigate({ ...options, from: match.pathname }),
-//   )
-// }
-
-// export function Navigate(options: BuildNextOptions) {
-//   let navigate = useNavigate()
-
-//   useLayoutEffect(() => {
-//     navigate(options)
-//   }, [navigate])
-
-//   return null
-// }
 
 export function Outlet() {
   const router = useRouter()
@@ -520,7 +451,7 @@ export function Outlet() {
     }
 
     const errorElement =
-      childMatch.errorElement ?? router.options.defaultErrorElement
+      childMatch.__.errorElement ?? router.options.defaultErrorElement
 
     if (childMatch.status === 'error') {
       if (errorElement) {
@@ -528,7 +459,7 @@ export function Outlet() {
       }
 
       if (
-        childMatch.route.options.useErrorBoundary ||
+        childMatch.options.useErrorBoundary ||
         router.options.useErrorBoundary
       ) {
         throw childMatch.error
@@ -540,9 +471,9 @@ export function Outlet() {
     if (childMatch.status === 'loading' || childMatch.status === 'idle') {
       if (childMatch.isPending) {
         const pendingElement =
-          childMatch.pendingElement ?? router.options.defaultPendingElement
+          childMatch.__.pendingElement ?? router.options.defaultPendingElement
 
-        if (childMatch.route.options.pendingMs || pendingElement) {
+        if (childMatch.options.pendingMs || pendingElement) {
           return (pendingElement as any) ?? null
         }
       }
@@ -550,26 +481,18 @@ export function Outlet() {
       return null
     }
 
-    return (childMatch.element as any) ?? router.options.defaultElement
+    return (childMatch.__.element as any) ?? router.options.defaultElement
   })() as JSX.Element) ?? <Outlet />
 
   const catchElement =
-    childMatch?.route.options.catchElement ?? router.options.defaultCatchElement
+    childMatch?.options.catchElement ?? router.options.defaultCatchElement
 
   return (
-    <MatchesProvider value={matches}>
+    <MatchesProvider value={matches} key={childMatch.matchId}>
       <CatchBoundary catchElement={catchElement}>{element}</CatchBoundary>
     </MatchesProvider>
   )
 }
-
-// export function useResolvePath() {
-//   const router = useRouter()
-//   const match = useMatch()
-//   return useLatestCallback((path: string) =>
-//     router.resolvePath(match.pathname, path),
-//   )
-// }
 
 class CatchBoundary extends React.Component<{
   children: any
