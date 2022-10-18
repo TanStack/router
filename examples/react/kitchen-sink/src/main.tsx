@@ -277,8 +277,6 @@ function App() {
 function Root() {
   const route = router.useRoute('/')
 
-  const test = <router.Link to="" />
-
   return (
     <div className={`min-h-screen flex flex-col`}>
       <div className={`flex items-center border-b gap-2`}>
@@ -433,7 +431,7 @@ function Invoices() {
   } = router.useMatch('/dashboard/invoices')
 
   // Get the action for a child route
-  const invoiceIndexRoute = router.useMatch('/dashboard/invoices/')
+  const invoiceIndexRoute = router.useRoute('/dashboard/invoices/')
 
   return (
     <div className="flex-1 flex">

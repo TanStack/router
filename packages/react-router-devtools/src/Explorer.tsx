@@ -121,7 +121,7 @@ export const DefaultRenderer: Renderer = ({
   }
 
   return (
-    <Entry key={label as string}>
+    <Entry>
       {subEntryPages.length ? (
         <>
           <ExpandButton onClick={() => toggleExpanded()}>
@@ -273,8 +273,11 @@ export default function Explorer({
   const subEntryPages = chunkArray(subEntries, pageSize)
 
   return renderer({
-    HandleEntry: ({ entry }) => (
-      <Explorer value={value} renderer={renderer} {...rest} {...entry} />
+    HandleEntry: React.useCallback(
+      ({ entry }) => (
+        <Explorer value={value} renderer={renderer} {...rest} {...entry} />
+      ),
+      [value, renderer],
     ),
     type,
     subEntries,
