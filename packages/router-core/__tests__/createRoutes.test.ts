@@ -1,11 +1,11 @@
-import { Route } from './'
+import { Route } from '../src'
 import { z } from 'zod'
 import {
   createRouter,
   AllRouteInfo,
   createRouteConfig,
   RelativeToPathAutoComplete,
-} from '.'
+} from '../src'
 
 // Write a test
 describe('everything', () => {
@@ -127,6 +127,25 @@ describe('everything', () => {
       }).addChildren((createRoute) => [
         createRoute({
           path: '/',
+        }),
+      ]),
+      createRoute({
+        id: 'layout',
+        element: 'layout-wrapper',
+        validateSearch: (search) =>
+          z
+            .object({
+              isLayout: z.boolean(),
+            })
+            .parse(search),
+      }).addChildren((createRoute) => [
+        createRoute({
+          path: 'layout-a',
+          element: 'layout-a',
+        }),
+        createRoute({
+          path: 'layout-b',
+          element: 'layout-b',
         }),
       ]),
     ])
@@ -296,6 +315,12 @@ describe('everything', () => {
       to: '/dashboard',
     })
 
+    // @ts-expect-error
+    router.buildLink({
+      from: '/',
+      to: '/does-not-exist',
+    })
+
     router.getRoute('/').buildLink({
       to: '/dashboard/invoices/:invoiceId',
       params: {
@@ -310,19 +335,19 @@ describe('everything', () => {
       }),
     })
 
-    type test = RelativeToPathAutoComplete<
-      //   ^?
-      MyRoutesInfo['fullPath'],
-      '/dashboard/invoices',
-      '..'
-    >
-
     router.getRoute('/dashboard/invoices/:invoiceId').buildLink({
       to: '../test',
       search: {
         version: 2,
         isGood: true,
       },
+    })
+
+    router.getRoute('/').buildLink({
+      to: '/layout-a',
+      search: (current) => ({
+        isLayout: !!current.version,
+      }),
     })
   })
 })

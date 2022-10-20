@@ -145,6 +145,19 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
       element: <Authenticated />,
     }),
   ]),
+  createRoute({
+    id: 'layout',
+    element: <LayoutWrapper />,
+  }).addChildren((createRoute) => [
+    createRoute({
+      path: 'layout-a',
+      element: <LayoutA />,
+    }),
+    createRoute({
+      path: 'layout-b',
+      element: <LayoutB />,
+    }),
+  ]),
 ])
 
 const router = createReactRouter({
@@ -297,18 +310,22 @@ function Root() {
               ['.', 'Home'],
               ['/dashboard', 'Dashboard'],
               ['/expensive', 'Expensive'],
-              ['/authenticated', 'Authenticated'], // This route has a trailing slash on purpose.
+              ['/authenticated', 'Authenticated'],
+              ['/layout-a', 'Layout A'],
+              ['/layout-b', 'Layout B'],
             ] as const
           ).map(([to, label]) => {
             return (
               <div key={to}>
                 <route.Link
                   to={to}
-                  activeOptions={{
-                    // If the route points to the root of it's parent,
-                    // make sure it's only active if it's exact
-                    exact: to === '.',
-                  }}
+                  activeOptions={
+                    {
+                      // If the route points to the root of it's parent,
+                      // make sure it's only active if it's exact
+                      // exact: to === '.',
+                    }
+                  }
                   className={`block py-2 px-3 text-blue-700`}
                   // Make "active" links bold
                   activeProps={{ className: `font-bold` }}
@@ -863,6 +880,31 @@ function Authenticated() {
         either show a login prompt or redirect (probably with the `Navigate`
         component).
       </div>
+    </div>
+  )
+}
+
+function LayoutWrapper() {
+  return (
+    <div>
+      <div>Layout</div>
+      <hr />
+      <Outlet />
+    </div>
+  )
+}
+
+function LayoutA() {
+  return (
+    <div>
+      <div>Layout A</div>
+    </div>
+  )
+}
+function LayoutB() {
+  return (
+    <div>
+      <div>Layout B</div>
     </div>
   )
 }

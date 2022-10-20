@@ -7,9 +7,10 @@ import {
   History,
   HashHistory,
 } from 'history'
-import React from 'react'
+import invariant from 'tiny-invariant'
 
 export { createHashHistory, createBrowserHistory, createMemoryHistory }
+export { invariant }
 
 import { decode, encode } from './qss'
 
@@ -62,6 +63,7 @@ export interface FrameworkGenerics {
 
 export interface RouteConfig<
   TId extends string = string,
+  TRouteId extends string = string,
   TPath extends string = string,
   TFullPath extends string = string,
   TRouteLoaderData extends AnyLoaderData = AnyLoaderData,
@@ -80,9 +82,11 @@ export interface RouteConfig<
   TKnownChildren = unknown,
 > {
   id: TId
+  routeId: TRouteId
   path: NoInfer<TPath>
   fullPath: TFullPath
   options: RouteOptions<
+    TRouteId,
     TPath,
     TRouteLoaderData,
     TLoaderData,
@@ -104,6 +108,7 @@ export interface RouteConfig<
         createChildRoute: CreateRouteConfigFn<
           false,
           TId,
+          TFullPath,
           TLoaderData,
           TFullSearchSchema,
           TAllParams
@@ -113,6 +118,7 @@ export interface RouteConfig<
         : { error: 'Invalid route detected'; route: TNewChildren },
     ) => RouteConfig<
       TId,
+      TRouteId,
       TPath,
       TFullPath,
       TRouteLoaderData,
@@ -133,10 +139,12 @@ export interface RouteConfig<
 type CreateRouteConfigFn<
   TIsRoot extends boolean = false,
   TParentId extends string = string,
+  TParentPath extends string = string,
   TParentAllLoaderData extends AnyLoaderData = {},
   TParentSearchSchema extends AnySearchSchema = {},
   TParentParams extends AnyPathParams = {},
 > = <
+  TRouteId extends string,
   TPath extends string,
   TRouteLoaderData extends AnyLoaderData,
   TActionPayload,
@@ -152,10 +160,16 @@ type CreateRouteConfigFn<
     ? Record<ParsePathParams<TPath>, string>
     : NoInfer<TParams>,
   TKnownChildren extends RouteConfig[] = RouteConfig[],
+  TResolvedId extends string = string extends TRouteId
+    ? string extends TPath
+      ? string
+      : TPath
+    : TRouteId,
 >(
   options?: TIsRoot extends true
     ? Omit<
         RouteOptions<
+          TRouteId,
           TPath,
           TRouteLoaderData,
           Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
@@ -171,6 +185,7 @@ type CreateRouteConfigFn<
         'path'
       > & { path?: never }
     : RouteOptions<
+        TRouteId,
         TPath,
         TRouteLoaderData,
         Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
@@ -186,10 +201,12 @@ type CreateRouteConfigFn<
   children?: TKnownChildren,
   isRoot?: boolean,
   parentId?: string,
+  parentPath?: string,
 ) => RouteConfig<
-  RouteId<TParentId, TPath>,
+  RoutePrefix<TParentId, TResolvedId>,
+  TResolvedId,
   TPath,
-  RouteIdToPath<RouteId<TParentId, TPath>>,
+  string extends TPath ? '' : RoutePath<RoutePrefix<TParentPath, TPath>>,
   TRouteLoaderData,
   Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
   TActionPayload,
@@ -208,11 +225,10 @@ export const createRouteConfig: CreateRouteConfigFn<true> = (
   children,
   isRoot = true,
   parentId,
+  parentPath,
 ) => {
   if (isRoot) {
     ;(options as any).path = rootRouteId
-  } else {
-    warning(!options.path, 'Routes must have a path property.')
   }
 
   // Strip the root from parentIds
@@ -220,14 +236,16 @@ export const createRouteConfig: CreateRouteConfigFn<true> = (
     parentId = ''
   }
 
-  let path = String(isRoot ? rootRouteId : options.path)
+  let path: undefined | string = isRoot ? rootRouteId : options.path
 
   // If the path is anything other than an index path, trim it up
-  if (path !== '/') {
+  if (path && path !== '/') {
     path = trimPath(path)
   }
 
-  let id = joinPaths([parentId, path])
+  const routeId = path || (options as { id?: string }).id
+
+  let id = joinPaths([parentId, routeId])
 
   if (path === rootRouteId) {
     path = '/'
@@ -237,10 +255,12 @@ export const createRouteConfig: CreateRouteConfigFn<true> = (
     id = joinPaths(['/', id])
   }
 
-  const fullPath = id === rootRouteId ? '/' : trimPathRight(id)
+  const fullPath =
+    id === rootRouteId ? '/' : trimPathRight(joinPaths([parentPath, path]))
 
   return {
     id: id as any,
+    routeId: routeId as any,
     path: path as any,
     fullPath: fullPath as any,
     options: options as any,
@@ -249,16 +269,19 @@ export const createRouteConfig: CreateRouteConfigFn<true> = (
       createRouteConfig(
         options,
         cb((childOptions: any) =>
-          createRouteConfig(childOptions, undefined, false, id),
+          createRouteConfig(childOptions, undefined, false, id, fullPath),
         ),
         false,
         parentId,
+        parentPath,
       ),
   }
 }
 
 export interface AnyRouteConfig
   extends RouteConfig<
+    any,
+    any,
     any,
     any,
     any,
@@ -289,6 +312,7 @@ export interface AnyRouteConfigWithChildren<TChildren>
     any,
     any,
     any,
+    any,
     TChildren
   > {}
 
@@ -297,7 +321,8 @@ export interface AnyAllRouteInfo {
   routeInfo: AnyRouteInfo
   routeInfoById: Record<string, AnyRouteInfo>
   routeInfoByFullPath: Record<string, AnyRouteInfo>
-  fullPath: string
+  routeIds: any
+  routePaths: any
 }
 
 export interface DefaultAllRouteInfo {
@@ -305,7 +330,8 @@ export interface DefaultAllRouteInfo {
   routeInfo: RouteInfo
   routeInfoById: Record<string, RouteInfo>
   routeInfoByFullPath: Record<string, RouteInfo>
-  fullPath: string
+  routeIds: string
+  routePaths: string
 }
 
 export interface AllRouteInfo<TRouteConfig extends AnyRouteConfig = RouteConfig>
@@ -325,25 +351,33 @@ export interface RoutesInfoInner<
     any,
     any,
     any,
+    any,
+    any,
     any
   > = RouteInfo,
+  TRouteInfoById = {
+    [TInfo in TRouteInfo as TInfo['id']]: TInfo
+  },
+  TRouteInfoByFullPath = {
+    [TInfo in TRouteInfo as TInfo['fullPath'] extends RootRouteId
+      ? never
+      : string extends TInfo['fullPath']
+      ? never
+      : TInfo['fullPath']]: TInfo
+  },
 > {
   routeConfig: TRouteConfig
   routeInfo: TRouteInfo
-  routeInfoById: {
-    [TInfo in TRouteInfo as TInfo['id']]: TInfo
-  }
-  routeInfoByFullPath: {
-    [TInfo in TRouteInfo as TInfo['id'] extends RootRouteId
-      ? never
-      : RouteIdToPath<TInfo['id']>]: TInfo
-  }
-  fullPath: RouteIdToPath<TRouteInfo['id']>
+  routeInfoById: TRouteInfoById
+  routeInfoByFullPath: TRouteInfoByFullPath
+  routeIds: keyof TRouteInfoById
+  routePaths: keyof TRouteInfoByFullPath
 }
 
 export interface AnyRoute extends Route<any, any> {}
 export interface AnyRouteInfo
   extends RouteInfo<
+    any,
     any,
     any,
     any,
@@ -363,7 +397,7 @@ export interface AnyRouteInfo
 //   [E in T as E[TKey]]: E
 // }
 
-type RouteIdToPath<T extends string> = T extends RootRouteId
+type RoutePath<T extends string> = T extends RootRouteId
   ? '/'
   : TrimPathRight<`${T}`>
 
@@ -397,6 +431,7 @@ export type ValueKeys<O> = Extract<keyof O, PropertyKey>
 
 export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
   infer TId,
+  infer TRouteId,
   infer TPath,
   infer TFullPath,
   infer TRouteLoaderData,
@@ -411,10 +446,11 @@ export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
   infer TAllParams,
   any
 >
-  ? string extends TId
+  ? string extends TRouteId
     ? never
     : RouteInfo<
         TId,
+        TRouteId,
         TPath,
         TFullPath,
         TRouteLoaderData,
@@ -432,8 +468,9 @@ export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
 
 export interface RouteInfo<
   TId extends string = string,
+  TRouteId extends string = string,
   TPath extends string = string,
-  TFullPath extends {} = string,
+  TFullPath extends string = string,
   TRouteLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
@@ -449,6 +486,7 @@ export interface RouteInfo<
   TAllParams extends AnyPathParams = {},
 > {
   id: TId
+  routeId: TRouteId
   path: TPath
   fullPath: TFullPath
   routeLoaderData: TRouteLoaderData
@@ -461,6 +499,7 @@ export interface RouteInfo<
   params: TParams
   allParams: TAllParams
   options: RouteOptions<
+    TRouteId,
     TPath,
     TRouteLoaderData,
     TLoaderData,
@@ -484,14 +523,16 @@ type DeepAwaited<T> = T extends Promise<infer A>
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
 
-type RouteId<
+type RoutePrefix<
   TPrefix extends string,
-  TPath extends string,
-> = string extends TPath
+  TId extends string,
+> = string extends TId
   ? RootRouteId
-  : `${TPrefix}/${TPath}` extends '/'
-  ? '/'
-  : `/${TrimPathLeft<`${TrimPathRight<TPrefix>}/${TrimPath<TPath>}`>}`
+  : TId extends string
+  ? `${TPrefix}/${TId}` extends '/'
+    ? '/'
+    : `/${TrimPathLeft<`${TrimPathRight<TPrefix>}/${TrimPath<TId>}`>}`
+  : never
 
 type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
   ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
@@ -621,6 +662,7 @@ export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
     }
 
 export type RouteOptions<
+  TRouteId extends string = string,
   TPath extends string = string,
   TRouteLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = {},
@@ -635,9 +677,15 @@ export type RouteOptions<
     string
   >,
   TAllParams extends AnyPathParams = {},
-> = {
-  // The path to match (relative to the nearest parent `Route` component or root basepath)
-  path: TPath
+> = (
+  | {
+      // The path to match (relative to the nearest parent `Route` component or root basepath)
+      path: TPath
+    }
+  | {
+      id: TRouteId
+    }
+) & {
   // If true, this route will be matched as case-sensitive
   caseSensitive?: boolean
   validateSearch?: SearchSchemaValidator<TSearchSchema, TParentSearchSchema>
@@ -654,20 +702,20 @@ export type RouteOptions<
   // // An array of child routes
   // children?: Route<any, any, any, any>[]
 } & (
-  | {
-      parseParams?: never
-      stringifyParams?: never
-    }
-  | {
-      // Parse params optionally receives path params as strings and returns them in a parsed format (like a number or boolean)
-      parseParams: (
-        rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
-      ) => TParams
-      stringifyParams: (
-        params: TParams,
-      ) => Record<ParsePathParams<TPath>, string>
-    }
-) &
+    | {
+        parseParams?: never
+        stringifyParams?: never
+      }
+    | {
+        // Parse params optionally receives path params as strings and returns them in a parsed format (like a number or boolean)
+        parseParams: (
+          rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
+        ) => TParams
+        stringifyParams: (
+          params: TParams,
+        ) => Record<ParsePathParams<TPath>, string>
+      }
+  ) &
   RouteLoaders<
     // Route Loaders (see below) can be inline on the route, or resolved async
     TRouteLoaderData,
@@ -924,7 +972,7 @@ type RoutesById<TAllRouteInfo extends AnyAllRouteInfo> = {
 }
 
 // type RoutesByPath<TAllRouteInfo extends AnyAllRouteInfo> = {
-//   [K in TAllRouteInfo['fullPath']]: Route<
+//   [K in TAllRouteInfo['routePaths']]: Route<
 //     TAllRouteInfo,
 //     TAllRouteInfo['routeInfoByFullPath'][K]
 //   >
@@ -934,16 +982,16 @@ export type ValidFromPath<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
 > =
   | undefined
-  | (string extends TAllRouteInfo['fullPath']
+  | (string extends TAllRouteInfo['routePaths']
       ? string
-      : TAllRouteInfo['fullPath'])
+      : TAllRouteInfo['routePaths'])
 
 // type ValidToPath<
 //   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
 //   TFrom = undefined,
 // > = TFrom extends undefined
-//   ? TAllRouteInfo['fullPath'] | `...unsafe-relative-path (cast "as any")`
-//   : LooseAutocomplete<'.' | TAllRouteInfo['fullPath']>
+//   ? TAllRouteInfo['routePaths'] | `...unsafe-relative-path (cast "as any")`
+//   : LooseAutocomplete<'.' | TAllRouteInfo['routePaths']>
 
 export interface Router<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
@@ -1506,64 +1554,88 @@ export function createRouter<
         ...(router.state.pending?.matches ?? []),
       ]
 
-      const recurse = async (
-        routes: Route<any, any>[],
-        parentMatch?: RouteMatch,
-      ): Promise<void> => {
+      const recurse = async (routes: Route<any, any>[]): Promise<void> => {
+        const parentMatch = last(matches)
         let params = parentMatch?.params ?? {}
 
         const filteredRoutes = router.options.filterRoutes?.(routes) ?? routes
 
-        const route = filteredRoutes?.find((route) => {
-          const fuzzy = !!(route.routePath !== '/' || route.childRoutes?.length)
-          const matchParams = matchPathname(pathname, {
-            to: route.fullPath,
-            fuzzy,
-            caseSensitive:
-              route.options.caseSensitive ?? router.options.caseSensitive,
-          })
+        let foundRoutes: Route[] = []
 
-          if (matchParams) {
-            let parsedParams
+        const findMatchInRoutes = (parentRoutes: Route[], routes: Route[]) => {
+          routes.some((route) => {
+            if (!route.routePath && route.childRoutes?.length) {
+              return findMatchInRoutes(
+                [...foundRoutes, route],
+                route.childRoutes,
+              )
+            }
 
-            try {
-              parsedParams =
-                route.options.parseParams?.(matchParams!) ?? matchParams
-            } catch (err) {
-              if (opts?.strictParseParams) {
-                throw err
+            const fuzzy = !!(
+              route.routePath !== '/' || route.childRoutes?.length
+            )
+
+            const matchParams = matchPathname(pathname, {
+              to: route.fullPath,
+              fuzzy,
+              caseSensitive:
+                route.options.caseSensitive ?? router.options.caseSensitive,
+            })
+
+            if (matchParams) {
+              let parsedParams
+
+              try {
+                parsedParams =
+                  route.options.parseParams?.(matchParams!) ?? matchParams
+              } catch (err) {
+                if (opts?.strictParseParams) {
+                  throw err
+                }
+              }
+
+              params = {
+                ...params,
+                ...parsedParams,
               }
             }
 
-            params = {
-              ...params,
-              ...parsedParams,
+            if (!!matchParams) {
+              foundRoutes = [...parentRoutes, route]
             }
-          }
 
-          return !!matchParams
-        })
+            return !!foundRoutes.length
+          })
 
-        if (!route) {
+          return !!foundRoutes.length
+        }
+
+        findMatchInRoutes([], filteredRoutes)
+
+        if (!foundRoutes.length) {
           return
         }
 
-        const interpolatedPath = interpolatePath(route.routePath, params)
-        const matchId = interpolatePath(route.routeId, params, true)
+        foundRoutes.forEach((foundRoute) => {
+          const interpolatedPath = interpolatePath(foundRoute.routePath, params)
+          const matchId = interpolatePath(foundRoute.routeId, params, true)
 
-        const match =
-          existingMatches.find((d) => d.matchId === matchId) ||
-          router.preloadCache[matchId]?.match ||
-          createRouteMatch(router, route, {
-            matchId,
-            params,
-            pathname: joinPaths([pathname, interpolatedPath]),
-          })
+          const match =
+            existingMatches.find((d) => d.matchId === matchId) ||
+            router.preloadCache[matchId]?.match ||
+            createRouteMatch(router, foundRoute, {
+              matchId,
+              params,
+              pathname: joinPaths([pathname, interpolatedPath]),
+            })
 
-        matches.push(match)
+          matches.push(match)
+        })
 
-        if (route.childRoutes?.length) {
-          recurse(route.childRoutes, match)
+        const foundRoute = last(foundRoutes)!
+
+        if (foundRoute.childRoutes?.length) {
+          recurse(foundRoute.childRoutes)
         }
       }
 
@@ -1690,14 +1762,10 @@ export function createRouter<
         isExternal = true
       } catch (e) {}
 
-      if (isExternal) {
-        if (process.env.NODE_ENV !== 'production') {
-          throw new Error(
-            'Attempting to navigate to external url with router.navigate!',
-          )
-        }
-        return
-      }
+      invariant(
+        !isExternal,
+        'Attempting to navigate to external url with router.navigate!',
+      )
 
       return router._navigate({
         from: fromString,
@@ -1867,6 +1935,7 @@ export interface Route<
   TRouteInfo extends AnyRouteInfo = RouteInfo,
 > {
   routeId: TRouteInfo['id']
+  routeRouteId: TRouteInfo['routeId']
   routePath: TRouteInfo['path']
   fullPath: TRouteInfo['fullPath']
   parentRoute?: AnyRoute
@@ -1874,23 +1943,21 @@ export interface Route<
   options: RouteOptions
   router: Router<TAllRouteInfo['routeConfig'], TAllRouteInfo>
   buildLink: <TTo extends string = '.'>(
-    options: // CheckRelativePath<
-    //   TAllRouteInfo,
-    //   TRouteInfo['fullPath'],
-    //   NoInfer<TTo>
-    // > &
-    Omit<LinkOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>, 'from'>,
+    options: Omit<
+      LinkOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
+      'from'
+    >,
   ) => LinkInfo
   matchRoute: <
     TTo extends string = '.',
     TResolved extends string = ResolveRelativePath<TRouteInfo['id'], TTo>,
   >(
-    matchLocation: // CheckRelativePath<
-    //   TAllRouteInfo,
-    //   TRouteInfo['fullPath'],
-    //   NoInfer<TTo>
-    // > &
-    Omit<ToOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>, 'from'>,
+    matchLocation: CheckRelativePath<
+      TAllRouteInfo,
+      TRouteInfo['fullPath'],
+      NoInfer<TTo>
+    > &
+      Omit<ToOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>, 'from'>,
     opts?: MatchRouteOptions,
   ) => RouteInfoByPath<TAllRouteInfo, TResolved>['allParams']
   navigate: <TTo extends string = '.'>(
@@ -1921,12 +1988,12 @@ export function createRoute<
   //       ]).replace(new RegExp(`^${rootRouteId}`), '')
   // ) as TRouteInfo['id']
 
-  const { id: routeId, path: routePath, fullPath } = routeConfig
+  const { id, routeId, path: routePath, fullPath } = routeConfig
 
   const action =
-    router.state.actions[routeId] ||
+    router.state.actions[id] ||
     (() => {
-      router.state.actions[routeId] = {
+      router.state.actions[id] = {
         pending: [],
         submit: async <T, U>(
           submission: T,
@@ -1976,11 +2043,12 @@ export function createRoute<
           }
         },
       }
-      return router.state.actions[routeId]!
+      return router.state.actions[id]!
     })()
 
   let route: Route<TAllRouteInfo, TRouteInfo> = {
-    routeId,
+    routeId: id,
+    routeRouteId: routeId,
     routePath,
     fullPath,
     options,
@@ -2099,7 +2167,8 @@ export type ToOptions<
   from?: TFrom
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
   // fromCurrent?: boolean
-} & SearchParamOptions<TAllRouteInfo, TFrom, TResolvedTo> &
+} & CheckPath<TAllRouteInfo, NoInfer<TResolvedTo>> &
+  SearchParamOptions<TAllRouteInfo, TFrom, TResolvedTo> &
   PathParamOptions<TAllRouteInfo, TFrom, TResolvedTo>
 
 export type ToPathOption<
@@ -2109,7 +2178,7 @@ export type ToPathOption<
 > =
   | TTo
   | RelativeToPathAutoComplete<
-      TAllRouteInfo['fullPath'],
+      TAllRouteInfo['routePaths'],
       NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
       NoInfer<TTo> & string
     >
@@ -2121,7 +2190,7 @@ export type ToIdOption<
 > =
   | TTo
   | RelativeToPathAutoComplete<
-      TAllRouteInfo['routeInfo']['id'],
+      TAllRouteInfo['routeIds'],
       NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
       NoInfer<TTo> & string
     >
@@ -2151,23 +2220,33 @@ export type CheckRelativePath<
   TTo,
 > = TTo extends string
   ? TFrom extends string
-    ? ResolveRelativePath<TFrom, TTo> extends TAllRouteInfo['fullPath']
+    ? ResolveRelativePath<TFrom, TTo> extends TAllRouteInfo['routePaths']
       ? {}
       : {
           Error: `${TFrom} + ${TTo} resolves to ${ResolveRelativePath<
             TFrom,
             TTo
           >}, which is not a valid route path.`
-          'Valid Route Paths': TAllRouteInfo['fullPath']
+          'Valid Route Paths': TAllRouteInfo['routePaths']
         }
     : {}
   : {}
 
-export type ResolveRelativePath<
-  TFrom,
-  TTo = '.',
-  TRooted = false,
-> = TFrom extends string
+export type CheckPath<TAllRouteInfo extends AnyAllRouteInfo, TPath> = Exclude<
+  TPath,
+  TAllRouteInfo['routePaths']
+> extends never
+  ? {}
+  : CheckPathError<TAllRouteInfo, Exclude<TPath, TAllRouteInfo['routePaths']>>
+
+export type CheckPathError<TAllRouteInfo extends AnyAllRouteInfo, TInvalids> = {
+  Error: `${TInvalids extends string
+    ? TInvalids
+    : never} is not a valid route path.`
+  'Valid Route Paths': TAllRouteInfo['routePaths']
+}
+
+export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
   ? TTo extends string
     ? TTo extends '.'
       ? TFrom
@@ -2215,21 +2294,19 @@ type SearchParamOptions<
   TTo,
   TFromSchema = RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema'],
   TToSchema = RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema'],
-> =
-  // If the next route search extend or cover the from route, params will be optional
-  StartsWith<TFrom, TTo> extends true
-    ? {
-        search?: SearchReducer<TFromSchema, TToSchema>
-      }
-    : // Optional search params? Allow it
-    keyof PickRequired<TToSchema> extends never
-    ? {
-        search?: SearchReducer<TFromSchema, TToSchema>
-      }
-    : {
-        // Must have required search params, enforce it
-        search: SearchReducer<TFromSchema, TToSchema>
-      }
+> = StartsWith<TFrom, TTo> extends true // If the next route search extend or cover the from route, params will be optional
+  ? {
+      search?: SearchReducer<TFromSchema, TToSchema>
+    }
+  : // Optional search params? Allow it
+  keyof PickRequired<TToSchema> extends never
+  ? {
+      search?: SearchReducer<TFromSchema, TToSchema>
+    }
+  : {
+      // Must have required search params, enforce it
+      search: SearchReducer<TFromSchema, TToSchema>
+    }
 
 type SearchReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 

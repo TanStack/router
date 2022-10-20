@@ -5,8 +5,5 @@
     "outDir": "./build/types"
   },
   "files": ["src/index.ts"],
-  "include": [
-    "src",
-    "../react-router/src/createRoutes.test.tsx" //  "__tests__/**/*.test.*"
-  ]
+  "include": ["src"]
 }

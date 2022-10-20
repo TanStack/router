@@ -6,7 +6,6 @@ import {
   AnyRoute,
   RootRouteId,
   rootRouteId,
-  Route,
   Router,
 } from '@tanstack/router-core'
 import {
@@ -29,6 +28,7 @@ import {
   ResolveRelativePath,
   NoInfer,
   ToOptions,
+  invariant,
 } from '@tanstack/router-core'
 
 export * from '@tanstack/router-core'
@@ -323,48 +323,45 @@ export function createReactRouter<
         useRoute: (routeId) => {
           const route = router.getRoute(routeId)
           useRouterSubscription(router)
-          if (!route) {
-            throw new Error(
-              `Could not find a route for route "${
-                routeId as string
-              }"! Did you forget to add it to your route config?`,
-            )
-          }
+          invariant(
+            route,
+            `Could not find a route for route "${
+              routeId as string
+            }"! Did you forget to add it to your route config?`,
+          )
           return route
         },
         useMatch: (routeId) => {
-          if (routeId === rootRouteId) {
-            throw new Error(
-              `"${rootRouteId}" cannot be used with useMatch! Did you mean to useRoute("${rootRouteId}")?`,
-            )
-          }
+          invariant(
+            routeId !== rootRouteId,
+            `"${rootRouteId}" cannot be used with useMatch! Did you mean to useRoute("${rootRouteId}")?`,
+          )
+
           const runtimeMatch = useMatch()
           const match = router.state.matches.find((d) => d.routeId === routeId)
 
-          if (!match) {
-            throw new Error(
-              `Could not find a match for route "${
-                routeId as string
-              }" being rendered in this component!`,
-            )
-          }
+          invariant(
+            match,
+            `Could not find a match for route "${
+              routeId as string
+            }" being rendered in this component!`,
+          )
 
-          if (runtimeMatch.routeId !== match?.routeId) {
-            throw new Error(
-              `useMatch('${
-                match?.routeId as string
-              }') is being called in a component that is meant to render the '${
-                runtimeMatch.routeId
-              }' route. Did you mean to 'useRoute(${
-                match?.routeId as string
-              })' instead?`,
-            )
-          }
+          invariant(
+            runtimeMatch.routeId == match?.routeId,
+            `useMatch('${
+              match?.routeId as string
+            }') is being called in a component that is meant to render the '${
+              runtimeMatch.routeId
+            }' route. Did you mean to 'useRoute(${
+              match?.routeId as string
+            })' instead?`,
+          )
 
           useRouterSubscription(router)
 
           if (!match) {
-            throw new Error('Match not found!')
+            invariant('Match not found!')
           }
 
           return match
