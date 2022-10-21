@@ -77,14 +77,7 @@ export async function fetchInvoices() {
 export async function fetchInvoiceById(id: number) {
   return loaderDelayFn(() =>
     ensureInvoices().then(() => {
-      const invoice = invoices.find((d) => d.id === id)
-      if (invoice) {
-        return {
-          ...invoice,
-          body: `${invoice.body} ${Date.now()}`,
-        }
-      }
-      return invoice
+      return invoices.find((d) => d.id === id)
     }),
   )
 }
