@@ -827,7 +827,8 @@ export interface RouterState {
   matches: RouteMatch[]
   lastUpdated: number
   loaderData: unknown
-  action?: ActionState
+  currentAction?: ActionState
+  latestAction?: ActionState
   actions: Record<string, Action>
   pending?: PendingState
 }
@@ -948,7 +949,8 @@ export interface Action<
   // TError = unknown,
 > {
   submit: (submission?: TPayload) => Promise<TResponse>
-  latest?: ActionState
+  current?: ActionState<TPayload, TResponse>
+  latest?: ActionState<TPayload, TResponse>
   pending: ActionState<TPayload, TResponse>[]
 }
 
@@ -1013,6 +1015,7 @@ export interface Router<
   routeTree: Route<TAllRouteInfo, RouteInfo>
   routesById: RoutesById<TAllRouteInfo>
   navigationPromise: Promise<void>
+  removeActionQueue: { action: Action; actionState: ActionState }[]
   startedLoadingAt: number
   destroy: () => void
   resolveNavigation: () => void
@@ -1099,6 +1102,7 @@ export function createRouter<
   let router: Router<TRouteConfig, TAllRouteInfo> = {
     options: originalOptions,
     listeners: [],
+    removeActionQueue: [],
     // Resolved after construction
     basepath: '',
     routeTree: undefined!,
@@ -1249,7 +1253,7 @@ export function createRouter<
 
       const toMatches = router.matchRoutes(pathname)
 
-      const prevParams = last(fromMatches)?.params
+      const prevParams = { ...last(fromMatches)?.params }
 
       let nextParams =
         (dest.params ?? true) === true
@@ -1261,7 +1265,7 @@ export function createRouter<
           .map((d) => d.options.stringifyParams)
           .filter(Boolean)
           .forEach((fn) => {
-            Object.assign(nextParams!, fn!(nextParams!))
+            Object.assign({}, nextParams!, fn!(nextParams!))
           })
       }
 
@@ -1406,9 +1410,22 @@ export function createRouter<
       router.startedLoadingAt = id
 
       if (next) {
+        // If the location.href has changed
+
         // Ingest the new location
         router.location = next
       }
+
+      // Clear out old actions
+      router.removeActionQueue.forEach(({ action, actionState }) => {
+        if (router.state.currentAction === actionState) {
+          router.state.currentAction = undefined
+        }
+        if (action.current === actionState) {
+          action.current = undefined
+        }
+      })
+      router.removeActionQueue = []
 
       // Cancel any pending matches
       router.cancelMatches()
@@ -1416,14 +1433,6 @@ export function createRouter<
       // Match the routes
       const unloadedMatches = router.matchRoutes(location.pathname, {
         strictParseParams: true,
-      })
-
-      unloadedMatches.forEach((match, index) => {
-        const parent = unloadedMatches[index - 1]
-        const child = unloadedMatches[index + 1]
-
-        if (parent) match.__.setParentMatch(parent)
-        if (child) match.__.addChildMatch(child)
       })
 
       router.state = {
@@ -1640,6 +1649,8 @@ export function createRouter<
       }
 
       recurse([router.routeTree])
+
+      cascadeLoaderData(matches)
 
       return matches
     },
@@ -2011,12 +2022,14 @@ export function createRoute<
             submission,
           }
 
+          action.current = actionState
           action.latest = actionState
           action.pending.push(actionState)
 
           router.state = {
             ...router.state,
-            action: actionState,
+            currentAction: actionState,
+            latestAction: actionState,
           }
 
           router.notify()
@@ -2036,9 +2049,7 @@ export function createRoute<
             actionState.status = 'error'
           } finally {
             action.pending = action.pending.filter((d) => d !== actionState)
-            if (actionState === router.state.action) {
-              router.state.action = undefined
-            }
+            router.removeActionQueue.push({ action, actionState })
             router.notify()
           }
         },
@@ -2374,8 +2385,8 @@ export interface RouteMatch<
         }) => void)
     abortController: AbortController
     latestId: string
-    setParentMatch: (parentMatch: RouteMatch) => void
-    addChildMatch: (childMatch: RouteMatch) => void
+    // setParentMatch: (parentMatch: RouteMatch) => void
+    // addChildMatch: (childMatch: RouteMatch) => void
     validate: () => void
     startPending: () => void
     cancelPending: () => void
@@ -2450,18 +2461,18 @@ export function createRouteMatch<
         clearTimeout(routeMatch.__.pendingMinTimeout)
         delete routeMatch.__.pendingMinPromise
       },
-      setParentMatch: (parentMatch?: RouteMatch) => {
-        routeMatch.parentMatch = parentMatch
-      },
-      addChildMatch: (childMatch: RouteMatch) => {
-        if (
-          routeMatch.childMatches.find((d) => d.matchId === childMatch.matchId)
-        ) {
-          return
-        }
+      // setParentMatch: (parentMatch?: RouteMatch) => {
+      //   routeMatch.parentMatch = parentMatch
+      // },
+      // addChildMatch: (childMatch: RouteMatch) => {
+      //   if (
+      //     routeMatch.childMatches.find((d) => d.matchId === childMatch.matchId)
+      //   ) {
+      //     return
+      //   }
 
-        routeMatch.childMatches.push(childMatch)
-      },
+      //   routeMatch.childMatches.push(childMatch)
+      // },
       validate: () => {
         // Validate the search params and stabilize them
         const parentSearch =
@@ -2590,7 +2601,6 @@ export function createRouteMatch<
                 data,
               )
 
-              cascadeLoaderData(routeMatch)
               routeMatch.error = undefined
               routeMatch.status = 'success'
               routeMatch.updatedAt = Date.now()
@@ -2648,19 +2658,17 @@ export function createRouteMatch<
   return routeMatch
 }
 
-function cascadeLoaderData(routeMatch: RouteMatch<any, any>) {
-  if (routeMatch.parentMatch) {
-    routeMatch.loaderData = replaceEqualDeep(routeMatch.loaderData, {
-      ...routeMatch.parentMatch.loaderData,
-      ...routeMatch.routeLoaderData,
-    })
-  }
+function cascadeLoaderData(matches: RouteMatch<any, any>[]) {
+  matches.forEach((match, index) => {
+    const parent = matches[index - 1]
 
-  if (routeMatch.childMatches.length) {
-    routeMatch.childMatches.forEach((childMatch) => {
-      cascadeLoaderData(childMatch)
-    })
-  }
+    if (parent) {
+      match.loaderData = replaceEqualDeep(match.loaderData, {
+        ...parent.loaderData,
+        ...match.routeLoaderData,
+      })
+    }
+  })
 }
 
 export function matchPathname(

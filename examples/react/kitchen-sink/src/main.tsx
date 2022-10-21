@@ -5,7 +5,6 @@ import {
   RouterProvider,
   createReactRouter,
   createRouteConfig,
-  RouteConfig,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -15,7 +14,6 @@ import {
   fetchUsers,
   fetchUserById,
   Invoice,
-  User,
   postInvoice,
   patchInvoice,
 } from './mockTodos'
@@ -51,11 +49,13 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
         action: async (partialInvoice: Partial<Invoice>) => {
           const invoice = await postInvoice(partialInvoice)
           // // Redirect to the new invoice
-          // router.navigate({
-          //   to: invoice.id,
-          //   // Use the current match for relative paths
-          //   from: ctx.match.pathname,
-          // })
+          router.navigate({
+            // from: '/',
+            to: '/dashboard/invoices/:invoiceId',
+            params: {
+              invoiceId: invoice.id,
+            },
+          })
           return invoice
         },
       }),
@@ -72,7 +72,7 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
         element: <InvoiceView />,
         loader: async ({ params: { invoiceId } }) => {
           console.log('Fetching invoice...')
-          const invoice = await fetchInvoiceById(invoiceId!)
+          const invoice = await fetchInvoiceById(invoiceId)
 
           if (!invoice) {
             throw new Error('Invoice not found!')
@@ -449,11 +449,20 @@ function Invoices() {
 
   // Get the action for a child route
   const invoiceIndexRoute = router.useRoute('/dashboard/invoices/')
+  const invoiceDetailRoute = router.useRoute('/dashboard/invoices/:invoiceId')
 
   return (
     <div className="flex-1 flex">
       <div className="divide-y w-48">
         {invoices?.map((invoice) => {
+          const foundPending = invoiceDetailRoute.action.pending.find(
+            (d) => d.submission?.id === invoice.id,
+          )
+
+          if (foundPending?.submission) {
+            invoice = { ...invoice, ...foundPending.submission }
+          }
+
           return (
             <div key={invoice.id}>
               <Link
@@ -467,15 +476,19 @@ function Invoices() {
               >
                 <pre className="text-sm">
                   #{invoice.id} - {invoice.title.slice(0, 10)}{' '}
-                  <MatchRoute
-                    to="./:invoiceId"
-                    params={{
-                      invoiceId: invoice.id,
-                    }}
-                    pending
-                  >
+                  {foundPending ? (
                     <Spinner />
-                  </MatchRoute>
+                  ) : (
+                    <MatchRoute
+                      to="./:invoiceId"
+                      params={{
+                        invoiceId: invoice.id,
+                      }}
+                      pending
+                    >
+                      <Spinner />
+                    </MatchRoute>
+                  )}
                 </pre>
               </Link>
             </div>
@@ -499,7 +512,7 @@ function Invoices() {
 }
 
 function InvoicesHome() {
-  const route = router.useMatch('/dashboard/invoices/')
+  const { action } = router.useMatch('/dashboard/invoices/')
 
   return (
     <>
@@ -509,7 +522,7 @@ function InvoicesHome() {
             event.preventDefault()
             event.stopPropagation()
             const formData = new FormData(event.target as HTMLFormElement)
-            route.action.submit({
+            action.submit({
               title: formData.get('title') as string,
               body: formData.get('body') as string,
             })
@@ -519,10 +532,22 @@ function InvoicesHome() {
           <div>Create a new Invoice:</div>
           <InvoiceFields invoice={{} as Invoice} />
           <div>
-            <button className="bg-blue-500 rounded p-2 uppercase text-white font-black">
-              Save
+            <button
+              className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
+              disabled={action.current?.status === 'pending'}
+            >
+              Create
             </button>
           </div>
+          {action.current?.status === 'success' ? (
+            <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+              Created!
+            </div>
+          ) : action.current?.status === 'error' ? (
+            <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+              Failed to create.
+            </div>
+          ) : null}
         </form>
       </div>
     </>
@@ -550,12 +575,13 @@ function InvoiceView() {
 
   return (
     <form
-      key={invoice?.id}
+      key={invoice.id}
       onSubmit={(event) => {
         event.preventDefault()
         event.stopPropagation()
         const formData = new FormData(event.target as HTMLFormElement)
         action.submit({
+          id: invoice.id,
           title: formData.get('title') as string,
           body: formData.get('body') as string,
         })
@@ -564,7 +590,7 @@ function InvoiceView() {
     >
       <InvoiceFields
         invoice={invoice}
-        disabled={action.latest?.status === 'pending'}
+        disabled={action.current?.status === 'pending'}
       />
       <div>
         <Link
@@ -596,23 +622,25 @@ function InvoiceView() {
       </div>
       <div>
         <button
-          className="bg-blue-500 rounded p-2 uppercase text-white font-black"
-          disabled={action.latest?.status === 'pending'}
+          className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
+          disabled={action.current?.status === 'pending'}
         >
           Save
         </button>
       </div>
-      <div key={action.latest?.submittedAt}>
-        {action.latest?.status === 'success' ? (
-          <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-            Saved!
-          </div>
-        ) : action.latest?.status === 'error' ? (
-          <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-            Failed to save.
-          </div>
-        ) : null}
-      </div>
+      {action.current?.submission?.id === invoice.id ? (
+        <div key={action.current?.submittedAt}>
+          {action.current?.status === 'success' ? (
+            <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+              Saved!
+            </div>
+          ) : action.current?.status === 'error' ? (
+            <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+              Failed to save.
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </form>
   )
 }

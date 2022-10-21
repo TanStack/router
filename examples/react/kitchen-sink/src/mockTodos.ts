@@ -1,3 +1,4 @@
+import { PickAsPartial, PickAsRequired } from '@tanstack/react-router'
 import { match } from 'assert'
 import axios from 'axios'
 import { produce } from 'immer'
@@ -112,17 +113,23 @@ export async function postInvoice(partialInvoice: Partial<Invoice>) {
   })
 }
 
-export async function patchInvoice(updatedInvoice: Partial<Invoice>) {
+export async function patchInvoice({
+  id,
+  ...updatedInvoice
+}: PickAsRequired<Partial<Invoice>, 'id'>) {
   return actionDelayFn(() => {
     invoices = produce(invoices, (draft) => {
-      let invoice = draft.find((d) => d.id === updatedInvoice.id)
+      let invoice = draft.find((d) => d.id === id)
       if (!invoice) {
         throw new Error('Invoice not found.')
+      }
+      if (updatedInvoice.title?.toLocaleLowerCase()?.includes('error')) {
+        throw new Error('Ouch!')
       }
       Object.assign(invoice, updatedInvoice)
     })
 
-    return invoices.find((d) => d.id === updatedInvoice.id)
+    return invoices.find((d) => d.id === id)
   })
 }
 
