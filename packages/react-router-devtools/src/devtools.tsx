@@ -365,12 +365,40 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   } = props
 
   const router = useRouter() as Router
+  const routerExplorerValue = React.useMemo(() => {
+    const {
+      listeners,
+      buildLocation,
+      mount,
+      update,
+      buildNext,
+      navigate,
+      cancelMatches,
+      loadLocation,
+      cleanPreloadCache,
+      loadRoute,
+      matchRoutes,
+      loadMatches,
+      invalidateRoute,
+      resolvePath,
+      matchRoute,
+      buildLink,
+      __experimental__createSnapshot,
+      destroy,
+      ...rest
+    } = router
+
+    return rest
+  }, [router.state])
+
+  const rerender = React.useReducer(() => ({}), {})[1]
 
   React.useEffect(() => {
     let interval = setInterval(() => {
       router.cleanPreloadCache()
-      router.notify()
-    }, 1000)
+      // router.notify()
+      rerender()
+    }, 250)
 
     return () => {
       clearInterval(interval)
@@ -385,6 +413,27 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   const activeMatch = router.state.matches?.find(
     (d) => d.routeId === activeRouteId,
   )
+
+  const activeMatchExplorerValue = React.useMemo(() => {
+    if (!activeMatch) {
+      return {}
+    }
+
+    const {
+      cancel,
+      load,
+      router,
+      Link,
+      MatchRoute,
+      buildLink,
+      linkProps,
+      matchRoute,
+      navigate,
+      ...rest
+    } = activeMatch
+
+    return rest
+  }, [activeMatch])
 
   return (
     <ThemeProvider theme={theme}>
@@ -505,30 +554,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             >
               <Explorer
                 label="Router"
-                value={(() => {
-                  const {
-                    listeners,
-                    buildLocation,
-                    mount,
-                    update,
-                    buildNext,
-                    navigate,
-                    cancelMatches,
-                    loadLocation,
-                    cleanPreloadCache,
-                    loadRoute,
-                    matchRoutes,
-                    loadMatches,
-                    invalidateRoute,
-                    resolvePath,
-                    matchRoute,
-                    buildLink,
-                    __experimental__createSnapshot,
-                    destroy,
-                    ...rest
-                  } = router
-                  return rest
-                })()}
+                value={routerExplorerValue}
                 defaultExpanded={{}}
               />
             </div>
@@ -860,22 +886,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             >
               <Explorer
                 label="Match"
-                value={(() => {
-                  const {
-                    cancel,
-                    load,
-                    router,
-                    Link,
-                    MatchRoute,
-                    buildLink,
-                    linkProps,
-                    matchRoute,
-                    navigate,
-                    ...rest
-                  } = activeMatch
-
-                  return rest
-                })()}
+                value={activeMatchExplorerValue}
                 defaultExpanded={{}}
               />
             </div>
