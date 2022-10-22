@@ -1410,8 +1410,6 @@ export function createRouter<
       router.startedLoadingAt = id
 
       if (next) {
-        // If the location.href has changed
-
         // Ingest the new location
         router.location = next
       }
@@ -1708,7 +1706,7 @@ export function createRouter<
         ...(router.state.pending?.matches ?? []),
       ].forEach((match) => {
         if (unloadedMatchIds.includes(match.matchId)) {
-          match.isInvalid = true
+          match.invalidate()
         }
       })
     },
@@ -1757,7 +1755,7 @@ export function createRouter<
       return router.commitLocation(next, location.replace)
     },
 
-    navigate: async ({ from, to = '.', search, hash, replace }) => {
+    navigate: async ({ from, to = '.', search, hash, replace, params }) => {
       // If this link simply reloads the current route,
       // make sure it has a new key so it will trigger a data refresh
 
@@ -1783,6 +1781,8 @@ export function createRouter<
         to: toString,
         search,
         hash,
+        replace,
+        params,
       })
     },
 
@@ -2319,7 +2319,9 @@ type SearchParamOptions<
       search: SearchReducer<TFromSchema, TToSchema>
     }
 
-type SearchReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
+type SearchReducer<TFrom, TTo> =
+  | { [TKey in keyof TTo]: TTo[TKey] }
+  | ((current: TFrom) => TTo)
 
 type PathParamOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
@@ -2395,6 +2397,7 @@ export interface RouteMatch<
   }
   cancel: () => void
   load: () => Promise<void>
+  invalidate: () => void
 }
 
 export function createRouteMatch<
@@ -2513,6 +2516,9 @@ export function createRouteMatch<
     cancel: () => {
       routeMatch.__.abortController?.abort()
       routeMatch.__.cancelPending()
+    },
+    invalidate: () => {
+      routeMatch.isInvalid = true
     },
     load: async () => {
       const id = '' + Date.now() + Math.random()

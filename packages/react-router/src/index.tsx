@@ -415,7 +415,7 @@ export function RouterProvider<
   )
 }
 
-export function useRouter(): Router {
+function useRouter(): Router {
   const value = React.useContext(routerContext)
   warning(!value, 'useRouter must be used inside a <Router> component!')
 
@@ -424,21 +424,21 @@ export function useRouter(): Router {
   return value.router as Router
 }
 
-export function useMatches(): RouteMatch[] {
+function useMatches(): RouteMatch[] {
   return React.useContext(matchesContext)
 }
 
-export function useParentMatches(): RouteMatch[] {
-  const router = useRouter()
-  const match = useMatch()
-  const matches = router.state.matches
-  return matches.slice(
-    0,
-    matches.findIndex((d) => d.matchId === match.matchId) - 1,
-  )
-}
+// function useParentMatches(): RouteMatch[] {
+//   const router = useRouter()
+//   const match = useMatch()
+//   const matches = router.state.matches
+//   return matches.slice(
+//     0,
+//     matches.findIndex((d) => d.matchId === match.matchId) - 1,
+//   )
+// }
 
-export function useMatch<T>(): RouteMatch {
+function useMatch<T>(): RouteMatch {
   return useMatches()?.[0] as RouteMatch
 }
 

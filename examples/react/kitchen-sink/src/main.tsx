@@ -50,7 +50,6 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
           const invoice = await postInvoice(partialInvoice)
           // // Redirect to the new invoice
           router.navigate({
-            // from: '/',
             to: '/dashboard/invoices/:invoiceId',
             params: {
               invoiceId: invoice.id,
@@ -280,9 +279,9 @@ function App() {
           ].join('.')}
         >
           <Root />
-          <TanStackRouterDevtools position="bottom-right" />
         </RouterProvider>
       </AuthProvider>
+      <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
   )
 }
@@ -561,13 +560,13 @@ function InvoiceView() {
     search,
     Link,
     navigate,
+    params,
   } = router.useMatch('/dashboard/invoices/:invoiceId')
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
 
   React.useEffect(() => {
     navigate({
-      // to: '.',
       search: (old) => ({ ...old, notes: notes ? notes : undefined }),
       replace: true,
     })

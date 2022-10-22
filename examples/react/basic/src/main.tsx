@@ -48,30 +48,32 @@ const router = createReactRouter({
 function App() {
   return (
     // Build our routes and render our router
-    <RouterProvider router={router}>
-      <div>
-        <router.Link
-          to="/"
-          activeProps={{
-            className: 'font-bold',
-          }}
-          activeOptions={{ exact: true }}
-        >
-          Home
-        </router.Link>{' '}
-        <router.Link
-          to="/posts"
-          activeProps={{
-            className: 'font-bold',
-          }}
-        >
-          Posts
-        </router.Link>
-      </div>
-      <hr />
-      <Outlet /> {/* Start rendering router matches */}
-      <TanStackRouterDevtools position="bottom-right" />
-    </RouterProvider>
+    <>
+      <RouterProvider router={router}>
+        <div>
+          <router.Link
+            to="/"
+            activeProps={{
+              className: 'font-bold',
+            }}
+            activeOptions={{ exact: true }}
+          >
+            Home
+          </router.Link>{' '}
+          <router.Link
+            to="/posts"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Posts
+          </router.Link>
+        </div>
+        <hr />
+        <Outlet /> {/* Start rendering router matches */}
+      </RouterProvider>
+      <TanStackRouterDevtools router={router} position="bottom-right" />
+    </>
   )
 }
 

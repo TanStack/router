@@ -1,5 +1,5 @@
 import React from 'react'
-import { Router, useRouter, last } from '@tanstack/react-router'
+import { Router, last } from '@tanstack/react-router'
 import { formatDistanceStrict } from 'date-fns'
 
 import useLocalStorage from './useLocalStorage'
@@ -52,7 +52,7 @@ interface DevtoolsOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  useRouter?: () => unknown
+  router: Router<any, any>
 }
 
 interface DevtoolsPanelOptions {
@@ -79,7 +79,7 @@ interface DevtoolsPanelOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  useRouter: () => unknown
+  router: Router<any, any>
 }
 
 const isServer = typeof window === 'undefined'
@@ -91,7 +91,7 @@ export function TanStackRouterDevtools({
   toggleButtonProps = {},
   position = 'bottom-left',
   containerElement: Container = 'footer',
-  useRouter: useRouterImpl = useRouter,
+  router,
 }: DevtoolsOptions): React.ReactElement | null {
   const rootRef = React.useRef<HTMLDivElement>(null)
   const panelRef = React.useRef<HTMLDivElement>(null)
@@ -230,7 +230,7 @@ export function TanStackRouterDevtools({
         <TanStackRouterDevtoolsPanel
           ref={panelRef as any}
           {...otherPanelProps}
-          useRouter={useRouterImpl}
+          router={router}
           style={{
             position: 'fixed',
             bottom: '0',
@@ -360,11 +360,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     isOpen = true,
     setIsOpen,
     handleDragStart,
-    useRouter,
+    router,
     ...panelProps
   } = props
-
-  const router = useRouter() as Router
   const routerExplorerValue = React.useMemo(() => {
     const {
       listeners,
@@ -848,7 +846,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               <Button
                 type="button"
                 onClick={() => {
-                  router.invalidateRoute(activeMatch as any)
+                  activeMatch.invalidate()
                   router.notify()
                 }}
                 style={{
@@ -860,7 +858,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               </Button>{' '}
               <Button
                 type="button"
-                onClick={() => router.reload()}
+                onClick={() => activeMatch.load()}
                 style={{
                   background: theme.gray,
                 }}
