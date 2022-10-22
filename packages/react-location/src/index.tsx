@@ -94,35 +94,35 @@ export type Route<TGenerics extends PartialGenerics = DefaultGenerics> = {
     }) => Promise<RouteLoaders<TGenerics>>
   }
 
-export type RouteLoaders<TGenerics> = {
-  // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
-  element?: SyncOrAsyncElement<TGenerics>
-  // The content to be rendered when `loader` encounters an error
-  errorElement?: SyncOrAsyncElement<TGenerics>
-  // The content to be rendered when the duration of `loader` execution surpasses the `pendingMs` duration
-  pendingElement?: SyncOrAsyncElement<TGenerics>
-  // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-  loader?: LoaderFn<TGenerics>
-  // An asynchronous function responsible for cleaning up when the match cache is cleared. This is useful when
-  // the loader function has side effects that need to be cleaned up when the match is no longer in use.
-  unloader?: UnloaderFn<TGenerics>
-  // An integer of milliseconds representing how long data should be cached for the route
-  loaderMaxAge?: number
-  // Similar to React's useEffect hook, this function is called
-  // when moving from an inactive state to an active one. Likewise, when moving from
-  // an active to an inactive state, the return function (if provided) is called.
-  onMatch?: (
-    match: RouteMatch<TGenerics>,
-  ) => void | undefined | ((match: RouteMatch<TGenerics>) => void)
-  // This function is called when the route remains active from one transition to the next.
-  onTransition?: (match: RouteMatch<TGenerics>) => void
-  // An object of whatever you want! This object is accessible anywhere matches are.
-  meta?: UseGeneric<TGenerics, 'RouteMeta'>
-}
+export type RouteLoaders<TGenerics extends PartialGenerics = DefaultGenerics> =
+  {
+    // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
+    element?: SyncOrAsyncElement<TGenerics>
+    // The content to be rendered when `loader` encounters an error
+    errorElement?: SyncOrAsyncElement<TGenerics>
+    // The content to be rendered when the duration of `loader` execution surpasses the `pendingMs` duration
+    pendingElement?: SyncOrAsyncElement<TGenerics>
+    // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
+    loader?: LoaderFn<TGenerics>
+    // An asynchronous function responsible for cleaning up when the match cache is cleared. This is useful when
+    // the loader function has side effects that need to be cleaned up when the match is no longer in use.
+    unloader?: UnloaderFn<TGenerics>
+    // An integer of milliseconds representing how long data should be cached for the route
+    loaderMaxAge?: number
+    // Similar to React's useEffect hook, this function is called
+    // when moving from an inactive state to an active one. Likewise, when moving from
+    // an active to an inactive state, the return function (if provided) is called.
+    onMatch?: (
+      match: RouteMatch<TGenerics>,
+    ) => void | undefined | ((match: RouteMatch<TGenerics>) => void)
+    // This function is called when the route remains active from one transition to the next.
+    onTransition?: (match: RouteMatch<TGenerics>) => void
+    // An object of whatever you want! This object is accessible anywhere matches are.
+    meta?: UseGeneric<TGenerics, 'RouteMeta'>
+  }
 
-export type SearchFilter<TGenerics> = (
-  prev: UseGeneric<TGenerics, 'Search'>,
-) => UseGeneric<TGenerics, 'Search'>
+export type SearchFilter<TGenerics extends PartialGenerics = DefaultGenerics> =
+  (prev: UseGeneric<TGenerics, 'Search'>) => UseGeneric<TGenerics, 'Search'>
 
 export type MatchLocation<TGenerics extends PartialGenerics = DefaultGenerics> =
   {
@@ -183,30 +183,35 @@ export type RouterProps<TGenerics extends PartialGenerics = DefaultGenerics> = {
   location: ReactLocation<TGenerics>
 } & RouterOptions<TGenerics>
 
-export type RouterOptions<TGenerics> = {
-  // An array of route objects to match
-  routes: Route<TGenerics>[]
-  basepath?: string
-  filterRoutes?: FilterRoutesFn
-  defaultLinkPreloadMaxAge?: number
-  defaultLoaderMaxAge?: number
-  useErrorBoundary?: boolean
-  defaultElement?: SyncOrAsyncElement<TGenerics>
-  defaultErrorElement?: SyncOrAsyncElement<TGenerics>
-  defaultPendingElement?: SyncOrAsyncElement<TGenerics>
-  defaultPendingMs?: number
-  defaultPendingMinMs?: number
-  caseSensitive?: boolean
-  __experimental__snapshot?: __Experimental__RouterSnapshot<TGenerics>
-}
+export type RouterOptions<TGenerics extends PartialGenerics = DefaultGenerics> =
+  {
+    // An array of route objects to match
+    routes: Route<TGenerics>[]
+    basepath?: string
+    filterRoutes?: FilterRoutesFn
+    defaultLinkPreloadMaxAge?: number
+    defaultLoaderMaxAge?: number
+    useErrorBoundary?: boolean
+    defaultElement?: SyncOrAsyncElement<TGenerics>
+    defaultErrorElement?: SyncOrAsyncElement<TGenerics>
+    defaultPendingElement?: SyncOrAsyncElement<TGenerics>
+    defaultPendingMs?: number
+    defaultPendingMinMs?: number
+    caseSensitive?: boolean
+    __experimental__snapshot?: __Experimental__RouterSnapshot<TGenerics>
+  }
 
-export type __Experimental__RouterSnapshot<TGenerics> = {
+export type __Experimental__RouterSnapshot<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = {
   // matches: Partial<RouteMatch<TGenerics>>[]
   location: Location<TGenerics>
   matches: SnapshotRouteMatch<TGenerics>[]
 }
 
-export type SnapshotRouteMatch<TGenerics> = {
+export type SnapshotRouteMatch<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = {
   id: string
   ownData: UseGeneric<TGenerics, 'LoaderData'>
 }
@@ -222,7 +227,9 @@ export type BuildNextOptions<
   __searchFilters?: SearchFilter<TGenerics>[]
 }
 
-export type NavigateOptions<TGenerics> = BuildNextOptions<TGenerics> & {
+export type NavigateOptions<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = BuildNextOptions<TGenerics> & {
   replace?: boolean
   fromCurrent?: boolean
 }
@@ -288,11 +295,13 @@ export type LoaderDispatchEvent<
       error: unknown
     }
 
-export type LoadRouteFn<TGenerics> = (
+export type LoadRouteFn<TGenerics extends PartialGenerics = DefaultGenerics> = (
   next: Location<TGenerics>,
 ) => MatchLoader<TGenerics>
 
-export type TransitionState<TGenerics> = {
+export type TransitionState<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = {
   location: Location<TGenerics>
   matches: RouteMatch<TGenerics>[]
 }
@@ -477,14 +486,16 @@ export class ReactLocation<
   }
 }
 
-export type MatchesProviderProps<TGenerics> = {
+export type MatchesProviderProps<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = {
   value: RouteMatch<TGenerics>[]
   children: React.ReactNode
 }
 
-export function MatchesProvider<TGenerics>(
-  props: MatchesProviderProps<TGenerics>,
-) {
+export function MatchesProvider<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>(props: MatchesProviderProps<TGenerics>) {
   return <MatchesContext.Provider {...props} />
 }
 
@@ -556,10 +567,11 @@ function InitialSideEffects() {
   return null
 }
 
-type RouterInstanceState<TGenerics> = {
-  state: TransitionState<TGenerics>
-  pending?: TransitionState<TGenerics>
-}
+type RouterInstanceState<TGenerics extends PartialGenerics = DefaultGenerics> =
+  {
+    state: TransitionState<TGenerics>
+    pending?: TransitionState<TGenerics>
+  }
 
 export class RouterInstance<
   TGenerics extends PartialGenerics = DefaultGenerics,
@@ -1086,7 +1098,9 @@ class MatchLoader<
   }
 }
 
-function cascadeMatchData<TGenerics>(matches?: RouteMatch<TGenerics>[]) {
+function cascadeMatchData<TGenerics extends PartialGenerics = DefaultGenerics>(
+  matches?: RouteMatch<TGenerics>[],
+) {
   matches?.forEach((match, index) => {
     const parentMatch = matches?.[index - 1]
 
@@ -1112,7 +1126,9 @@ export function useRouter<
   return value.router as RouterInstance<TGenerics>
 }
 
-export interface MatchRoutesOptions<TGenerics> {
+export interface MatchRoutesOptions<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> {
   filterRoutes?: FilterRoutesFn
   defaultPendingMs?: number
   defaultPendingMinMs?: number
@@ -1334,7 +1350,7 @@ export function Navigate<TGenerics extends PartialGenerics = DefaultGenerics>(
   return null
 }
 
-function useBuildNext<TGenerics>() {
+function useBuildNext<TGenerics extends PartialGenerics = DefaultGenerics>() {
   const location = useLocation<TGenerics>()
   const router = useRouter<TGenerics>()
 
@@ -1650,7 +1666,9 @@ export type UseMatchRouteType<
   matchLocation: MatchLocation<TGenerics>,
 ) => Maybe<TGenerics['Params'], Params<any>> | undefined
 
-export type UseMatchRouteOptions<TGenerics> = MatchLocation<TGenerics> & {
+export type UseMatchRouteOptions<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = MatchLocation<TGenerics> & {
   pending?: boolean
 }
 
