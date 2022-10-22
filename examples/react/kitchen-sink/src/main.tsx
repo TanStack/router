@@ -102,8 +102,8 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
           .optional(),
       }).parse,
       preSearchFilters: [
-        // Keep/prefill the usersView search param around
-        // while in this route (or it's children!)
+        // Persist (or set as default) the usersView search param
+        // while navigating within or to this route (or it's children!)
         (search) => ({
           ...search,
           usersView: {
@@ -112,6 +112,7 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
         }),
       ],
     }).addChildren((createRoute) => [
+      createRoute({ path: '/', element: <UsersIndex /> }),
       createRoute({
         path: ':userId',
         parseParams: ({ userId }) => ({ userId: Number(userId) }),
@@ -147,6 +148,13 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
   createRoute({
     id: 'layout',
     element: <LayoutWrapper />,
+    loader: async () => {
+      return loaderDelayFn(() => {
+        return {
+          random: Math.random(),
+        }
+      })
+    },
   }).addChildren((createRoute) => [
     createRoute({
       path: 'layout-a',
@@ -796,6 +804,30 @@ function Users() {
   )
 }
 
+function UsersIndex() {
+  return (
+    <div className="p-2 space-y-2">
+      <p>
+        Normally, setting default search parameters would either need to be done
+        manually in every link to a page, or as a side-effect (not a great
+        experience).
+      </p>
+      <p>
+        Instead, we can use <strong>search filters</strong> to provide defaults
+        or even persist search params for links to routes (and child routes).
+      </p>
+      <p>
+        A good example of this is the sorting and filtering of the users list.
+        In a traditional router, both would be lost while navigating around
+        individual users or even changing each sort/filter option unless each
+        state was manually passed from the current route into each new link we
+        created (that's a lot of tedious and error-prone work). With TanStack
+        router and search filters, they are persisted with little effort.
+      </p>
+    </div>
+  )
+}
+
 function UserView() {
   const {
     loaderData: { user },
@@ -912,9 +944,11 @@ function Authenticated() {
 }
 
 function LayoutWrapper() {
+  const { loaderData } = router.useMatch('/layout')
   return (
     <div>
       <div>Layout</div>
+      <div>Random #: {loaderData.random}</div>
       <hr />
       <Outlet />
     </div>
