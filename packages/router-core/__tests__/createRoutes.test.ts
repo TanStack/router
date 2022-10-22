@@ -303,8 +303,6 @@ describe('everything', () => {
     })
 
     router.getRoute('/').navigate({
-      // to: '.',
-      // TODO: What the heck? Why is any required here?
       search: (prev: any) => ({
         version: prev.version,
       }),
