@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-// We're inlining qss here for compression's sake, but we've included it as a hard dependency for the MIT license it requires.
+// qss has been slightly modified and inlined here for our use cases (and compression's sake). We've included it as a hard dependency for MIT license attribution.
 
 export function encode(obj, pfx?: string) {
   var k,

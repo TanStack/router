@@ -1,0 +1,81 @@
+import { createRouteConfig, Outlet } from '@tanstack/react-router'
+import * as React from 'react'
+import { router } from '../../../router'
+import { Spinner } from '../../../components/Spinner'
+import { dashboardRoute } from '..'
+
+export const invoicesRoute = dashboardRoute.createRoute({
+  path: 'invoices',
+  element: <Invoices />,
+})
+
+function Invoices() {
+  const {
+    loaderData: { invoices },
+    Link,
+    MatchRoute,
+  } = router.useMatch('/dashboard/invoices')
+
+  // Get the action for a child route
+  const invoiceIndexRoute = router.useRoute('/dashboard/invoices/')
+  const invoiceDetailRoute = router.useRoute('/dashboard/invoices/:invoiceId')
+
+  return (
+    <div className="flex-1 flex">
+      <div className="divide-y w-48">
+        {invoices?.map((invoice) => {
+          const foundPending = invoiceDetailRoute.action.pending.find(
+            (d) => d.submission?.id === invoice.id,
+          )
+
+          if (foundPending?.submission) {
+            invoice = { ...invoice, ...foundPending.submission }
+          }
+
+          return (
+            <div key={invoice.id}>
+              <Link
+                to="/dashboard/invoices/:invoiceId"
+                params={{
+                  invoiceId: invoice.id,
+                }}
+                preload="intent"
+                className="block py-2 px-3 text-blue-700"
+                activeProps={{ className: `font-bold` }}
+              >
+                <pre className="text-sm">
+                  #{invoice.id} - {invoice.title.slice(0, 10)}{' '}
+                  {foundPending ? (
+                    <Spinner />
+                  ) : (
+                    <MatchRoute
+                      to="./:invoiceId"
+                      params={{
+                        invoiceId: invoice.id,
+                      }}
+                      pending
+                    >
+                      <Spinner />
+                    </MatchRoute>
+                  )}
+                </pre>
+              </Link>
+            </div>
+          )
+        })}
+        {invoiceIndexRoute.action.pending.map((action) => (
+          <div key={action.submittedAt}>
+            <a href="#" className="block py-2 px-3 text-blue-700">
+              <pre className="text-sm">
+                #<Spinner /> - {action.submission.title?.slice(0, 10)}
+              </pre>
+            </a>
+          </div>
+        ))}
+      </div>
+      <div className="flex-1 border-l border-gray-200">
+        <Outlet />
+      </div>
+    </div>
+  )
+}

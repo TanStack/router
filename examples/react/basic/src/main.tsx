@@ -16,17 +16,18 @@ type PostType = {
   body: string
 }
 
-const routeConfig = createRouteConfig().addChildren((createRoute) => [
+const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({ path: '/', element: <Index /> }),
   createRoute({
     path: 'posts',
     element: <Posts />,
+    errorElement: 'Oh crap!',
     loader: async () => {
       return {
         posts: await fetchPosts(),
       }
     },
-  }).addChildren((createRoute) => [
+  }).createChildren((createRoute) => [
     createRoute({ path: '/', element: <PostsIndex /> }),
     createRoute({
       path: ':postId',
@@ -43,6 +44,7 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
 // Set up a ReactLocation instance
 const router = createReactRouter({
   routeConfig,
+  defaultLinkPreload: 'intent',
 })
 
 function App() {
@@ -78,14 +80,14 @@ function App() {
 }
 
 async function fetchPosts() {
-  await new Promise((r) => setTimeout(r, 300))
-  return await axios
+  await new Promise((r) => setTimeout(r, 500))
+  return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
-    .then((r) => r.data.slice(0, 5))
+    .then((r) => r.data.slice(0, 10))
 }
 
 async function fetchPostById(postId: string) {
-  await new Promise((r) => setTimeout(r, 300))
+  await new Promise((r) => setTimeout(r, 500))
 
   return await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
@@ -108,7 +110,12 @@ function Posts() {
 
   return (
     <div>
-      <div>
+      <div
+        style={{
+          float: 'left',
+          marginRight: '1rem',
+        }}
+      >
         {posts?.map((post) => {
           return (
             <div key={post.id}>
@@ -119,7 +126,7 @@ function Posts() {
                 }}
                 activeProps={{ className: 'font-bold' }}
               >
-                <pre>{post.title}</pre>
+                <pre>{post.title.substring(0, 20)}</pre>
               </Link>
             </div>
           )
@@ -134,7 +141,7 @@ function Posts() {
 function PostsIndex() {
   return (
     <>
-      <div>Select an post.</div>
+      <div>Select a post.</div>
     </>
   )
 }

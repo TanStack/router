@@ -3,7 +3,12 @@ import { Router, last } from '@tanstack/react-router'
 import { formatDistanceStrict } from 'date-fns'
 
 import useLocalStorage from './useLocalStorage'
-import { getStatusColor, useIsMounted, useSafeState } from './utils'
+import {
+  getStatusColor,
+  multiSortBy,
+  useIsMounted,
+  useSafeState,
+} from './utils'
 import { Panel, Button, Code, ActivePanel } from './styledComponents'
 import { ThemeProvider, defaultTheme as theme } from './theme'
 // import { getQueryStatusLabel, getQueryStatusColor } from './utils'
@@ -363,37 +368,12 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     router,
     ...panelProps
   } = props
-  const routerExplorerValue = React.useMemo(() => {
-    const {
-      listeners,
-      buildLocation,
-      mount,
-      update,
-      buildNext,
-      navigate,
-      cancelMatches,
-      loadLocation,
-      cleanPreloadCache,
-      loadRoute,
-      matchRoutes,
-      loadMatches,
-      invalidateRoute,
-      resolvePath,
-      matchRoute,
-      buildLink,
-      __experimental__createSnapshot,
-      destroy,
-      ...rest
-    } = router
-
-    return rest
-  }, [router.state])
 
   const rerender = React.useReducer(() => ({}), {})[1]
 
   React.useEffect(() => {
     let interval = setInterval(() => {
-      router.cleanPreloadCache()
+      router.cleanMatchCache()
       // router.notify()
       rerender()
     }, 250)
@@ -408,30 +388,29 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     '',
   )
 
-  const activeMatch = router.state.matches?.find(
-    (d) => d.routeId === activeRouteId,
+  const [activeMatchId, setActiveMatchId] = useLocalStorage(
+    'tanstackRouterDevtoolsActiveMatchId',
+    '',
   )
 
-  const activeMatchExplorerValue = React.useMemo(() => {
-    if (!activeMatch) {
-      return {}
-    }
+  React.useEffect(() => {
+    setActiveMatchId('')
+  }, [activeRouteId])
 
-    const {
-      cancel,
-      load,
-      router,
-      Link,
-      MatchRoute,
-      buildLink,
-      linkProps,
-      matchRoute,
-      navigate,
-      ...rest
-    } = activeMatch
+  const activeMatch =
+    Object.values(router.matchCache)?.find(
+      (d) => d.match.matchId === activeMatchId,
+    )?.match ?? router.state.matches?.find((d) => d.routeId === activeRouteId)
 
-    return rest
-  }, [activeMatch])
+  const matchCacheValues = multiSortBy(
+    Object.keys(router.matchCache)
+      .filter((key) => {
+        const cacheEntry = router.matchCache[key]!
+        return cacheEntry.gc > Date.now()
+      })
+      .map((key) => router.matchCache[key]!),
+    [(d) => (d.match.isFetching ? -1 : 1), (d) => -d.match.updatedAt!],
+  )
 
   return (
     <ThemeProvider theme={theme}>
@@ -550,11 +529,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 padding: '.5em',
               }}
             >
-              <Explorer
-                label="Router"
-                value={routerExplorerValue}
-                defaultExpanded={{}}
-              />
+              <Explorer label="Router" value={router} defaultExpanded={{}} />
             </div>
           </div>
         </div>
@@ -578,7 +553,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               zIndex: 1,
             }}
           >
-            Current Matches
+            Active Matches
           </div>
           {router.state.matches.map((match, i) => {
             return (
@@ -625,153 +600,162 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               </div>
             )
           })}
-          <div
-            style={{
-              marginTop: '2rem',
-              padding: '.5em',
-              background: theme.backgroundAlt,
-              position: 'sticky',
-              top: 0,
-              zIndex: 1,
-            }}
-          >
-            Pending Matches
-          </div>
-          {router.state.pending?.matches.map((match, i) => {
-            return (
+          {router.state.pending?.matches.length ? (
+            <>
               <div
-                key={match.routeId || i}
-                role="button"
-                aria-label={`Open match details for ${match.routeId}`}
-                onClick={() =>
-                  setActiveRouteId(
-                    activeRouteId === match.routeId ? '' : match.routeId,
-                  )
-                }
                 style={{
-                  display: 'flex',
-                  borderBottom: `solid 1px ${theme.grayAlt}`,
-                  cursor: 'pointer',
-                  background:
-                    match === activeMatch ? 'rgba(255,255,255,.1)' : undefined,
+                  marginTop: '2rem',
+                  padding: '.5em',
+                  background: theme.backgroundAlt,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 1,
                 }}
               >
-                <div
-                  style={{
-                    flex: '0 0 auto',
-                    width: '1.3rem',
-                    height: '1.3rem',
-                    marginLeft: '.25rem',
-                    background: getStatusColor(match, theme),
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 'bold',
-                    borderRadius: '.25rem',
-                    transition: 'all .2s ease-out',
-                  }}
-                />
-
-                <Code
-                  style={{
-                    padding: '.5em',
-                  }}
-                >
-                  {`${match.matchId}`}
-                </Code>
+                Pending Matches
               </div>
-            )
-          })}
-          <div
-            style={{
-              marginTop: '2rem',
-              padding: '.5em',
-              background: theme.backgroundAlt,
-              position: 'sticky',
-              top: 0,
-              zIndex: 1,
-            }}
-          >
-            Preloading Matches
-          </div>
-          {Object.keys(router.preloadCache)
-            .filter((key) => {
-              const cacheEntry = router.preloadCache[key]!
-              return (
-                (cacheEntry.match.updatedAt ?? Date.now()) + cacheEntry.maxAge >
-                Date.now()
-              )
-            })
-            .map((key, i) => {
-              const { match, maxAge } = router.preloadCache[key]!
-
-              return (
-                <div
-                  key={match.matchId || i}
-                  role="button"
-                  aria-label={`Open match details for ${match.matchId}`}
-                  onClick={() =>
-                    setActiveRouteId(
-                      activeRouteId === match.routeId ? '' : match.routeId,
-                    )
-                  }
-                  style={{
-                    display: 'flex',
-                    borderBottom: `solid 1px ${theme.grayAlt}`,
-                    cursor: 'pointer',
-                    background:
-                      match === activeMatch
-                        ? 'rgba(255,255,255,.1)'
-                        : undefined,
-                  }}
-                >
+              {router.state.pending?.matches.map((match, i) => {
+                return (
                   <div
+                    key={match.routeId || i}
+                    role="button"
+                    aria-label={`Open match details for ${match.routeId}`}
+                    onClick={() =>
+                      setActiveRouteId(
+                        activeRouteId === match.routeId ? '' : match.routeId,
+                      )
+                    }
                     style={{
                       display: 'flex',
-                      flexDirection: 'column',
-                      padding: '.5rem',
-                      gap: '.3rem',
+                      borderBottom: `solid 1px ${theme.grayAlt}`,
+                      cursor: 'pointer',
+                      background:
+                        match === activeMatch
+                          ? 'rgba(255,255,255,.1)'
+                          : undefined,
+                    }}
+                  >
+                    <div
+                      style={{
+                        flex: '0 0 auto',
+                        width: '1.3rem',
+                        height: '1.3rem',
+                        marginLeft: '.25rem',
+                        background: getStatusColor(match, theme),
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 'bold',
+                        borderRadius: '.25rem',
+                        transition: 'all .2s ease-out',
+                      }}
+                    />
+
+                    <Code
+                      style={{
+                        padding: '.5em',
+                      }}
+                    >
+                      {`${match.matchId}`}
+                    </Code>
+                  </div>
+                )
+              })}
+            </>
+          ) : null}
+          {matchCacheValues.length ? (
+            <>
+              <div
+                style={{
+                  marginTop: '2rem',
+                  padding: '.5em',
+                  background: theme.backgroundAlt,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div>Match Cache</div>
+                <Button
+                  onClick={() => {
+                    router.matchCache = {}
+                    router.notify()
+                  }}
+                >
+                  Clear
+                </Button>
+              </div>
+              {matchCacheValues.map((d, i) => {
+                const { match, gc } = d
+
+                return (
+                  <div
+                    key={match.matchId || i}
+                    role="button"
+                    aria-label={`Open match details for ${match.matchId}`}
+                    onClick={() =>
+                      setActiveMatchId(
+                        activeMatchId === match.matchId ? '' : match.matchId,
+                      )
+                    }
+                    style={{
+                      display: 'flex',
+                      borderBottom: `solid 1px ${theme.grayAlt}`,
+                      cursor: 'pointer',
+                      background:
+                        match === activeMatch
+                          ? 'rgba(255,255,255,.1)'
+                          : undefined,
                     }}
                   >
                     <div
                       style={{
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: '.5rem',
+                        flexDirection: 'column',
+                        padding: '.5rem',
+                        gap: '.3rem',
                       }}
                     >
                       <div
                         style={{
-                          flex: '0 0 auto',
-                          width: '1.3rem',
-                          height: '1.3rem',
-                          background: getStatusColor(match, theme),
+                          display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 'bold',
-                          borderRadius: '.25rem',
-                          transition: 'all .2s ease-out',
+                          gap: '.5rem',
                         }}
-                      />
-                      <Code>{`${match.matchId}`}</Code>
-                    </div>
-                    <span
-                      style={{
-                        opacity: '.5',
-                      }}
-                    >
-                      Expires{' '}
-                      {formatDistanceStrict(
-                        new Date(),
-                        new Date((match.updatedAt ?? Date.now()) + maxAge),
-                        {
+                      >
+                        <div
+                          style={{
+                            flex: '0 0 auto',
+                            width: '1.3rem',
+                            height: '1.3rem',
+                            background: getStatusColor(match, theme),
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            borderRadius: '.25rem',
+                            transition: 'all .2s ease-out',
+                          }}
+                        />
+                        <Code>{`${match.matchId}`}</Code>
+                      </div>
+                      <span
+                        style={{
+                          opacity: '.5',
+                        }}
+                      >
+                        Expires{' '}
+                        {formatDistanceStrict(new Date(), new Date(gc), {
                           addSuffix: true,
-                        },
-                      )}
-                    </span>
+                        })}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </>
+          ) : null}
         </div>
 
         {activeMatch ? (
@@ -884,7 +868,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             >
               <Explorer
                 label="Match"
-                value={activeMatchExplorerValue}
+                value={activeMatch}
                 defaultExpanded={{}}
               />
             </div>

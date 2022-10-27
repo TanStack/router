@@ -26,8 +26,11 @@ import { z } from 'zod'
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
 // Build our routes. We could do this in our component, too.
-const routeConfig = createRouteConfig().addChildren((createRoute) => [
-  createRoute({ path: '/', element: <Home /> }),
+const routeConfig = createRouteConfig().createChildren((createRoute) => [
+  createRoute({
+    path: '/',
+    element: <Home />,
+  }),
   createRoute({
     path: 'dashboard',
     element: <Dashboard />,
@@ -37,12 +40,14 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
         invoices: await fetchInvoices(),
       }
     },
-  }).addChildren((createRoute) => [
+    loaderMaxAge: 100000,
+    loaderGcMaxAge: 5000000,
+  }).createChildren((createRoute) => [
     createRoute({ path: '/', element: <DashboardHome /> }),
     createRoute({
       path: 'invoices',
       element: <Invoices />,
-    }).addChildren((createRoute) => [
+    }).createChildren((createRoute) => [
       createRoute({
         path: '/',
         element: <InvoicesHome />,
@@ -67,9 +72,9 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
         validateSearch: z.object({
           showNotes: z.boolean().optional(),
           notes: z.string().optional(),
-        }).parse,
+        }),
         element: <InvoiceView />,
-        loader: async ({ params: { invoiceId } }) => {
+        loader: async ({ params: { invoiceId }, search: {} }) => {
           console.log('Fetching invoice...')
           const invoice = await fetchInvoiceById(invoiceId)
 
@@ -111,7 +116,7 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
           },
         }),
       ],
-    }).addChildren((createRoute) => [
+    }).createChildren((createRoute) => [
       createRoute({ path: '/', element: <UsersIndex /> }),
       createRoute({
         path: ':userId',
@@ -139,7 +144,7 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
   createRoute({
     path: 'authenticated/', // Trailing slash doesn't mean anything
     element: <Auth />,
-  }).addChildren((createRoute) => [
+  }).createChildren((createRoute) => [
     createRoute({
       path: '/',
       element: <Authenticated />,
@@ -150,12 +155,14 @@ const routeConfig = createRouteConfig().addChildren((createRoute) => [
     element: <LayoutWrapper />,
     loader: async () => {
       return loaderDelayFn(() => {
+        const rand = Math.random()
+        console.log(rand)
         return {
-          random: Math.random(),
+          random: rand,
         }
       })
     },
-  }).addChildren((createRoute) => [
+  }).createChildren((createRoute) => [
     createRoute({
       path: 'layout-a',
       element: <LayoutA />,
@@ -275,9 +282,12 @@ function App() {
               <Spinner />
             </div>
           }
+          defaultLinkPreload="intent"
           defaultLinkPreloadMaxAge={defaultLinkPreloadMaxAge}
           defaultPendingMs={defaultPendingMs}
           defaultPendingMinMs={defaultPendingMinMs}
+          // defaultLoaderMaxAge={5 * 1000}
+          // defaultLoaderGcMaxAge={10 * 1000}
           // Normally, the options above aren't changing, but for this particular
           // example, we need to key the router when they change
           key={[
@@ -295,20 +305,24 @@ function App() {
 }
 
 function Root() {
-  const route = router.useRoute('/')
+  const routerState = router.useState()
 
   return (
     <div className={`min-h-screen flex flex-col`}>
       <div className={`flex items-center border-b gap-2`}>
         <h1 className={`text-3xl p-2`}>Kitchen Sink</h1>
         {/* Show a global spinner when the router is transitioning */}
-        <div
-          className={`text-3xl duration-100 delay-0 opacity-0 ${
-            router.state.status === 'loading' ? ` duration-300 opacity-40` : ''
-          }`}
-        >
-          <Spinner />
-        </div>
+        {routerState.isFetching ? (
+          <div
+            className={`text-3xl duration-100 delay-0 opacity-0 ${
+              routerState.isFetching ? ` duration-300 opacity-40` : ''
+            }`}
+          >
+            <Spinner />
+          </div>
+        ) : (
+          '-'
+        )}
       </div>
       <div className={`flex-1 flex`}>
         <div className={`divide-y w-56`}>
@@ -324,7 +338,7 @@ function Root() {
           ).map(([to, label]) => {
             return (
               <div key={to}>
-                <route.Link
+                <router.Link
                   to={to}
                   activeOptions={
                     {
@@ -333,12 +347,13 @@ function Root() {
                       // exact: to === '.',
                     }
                   }
+                  preload="intent"
                   className={`block py-2 px-3 text-blue-700`}
                   // Make "active" links bold
                   activeProps={{ className: `font-bold` }}
                 >
                   {label}
-                </route.Link>
+                </router.Link>
               </div>
             )
           })}
@@ -541,7 +556,7 @@ function InvoicesHome() {
           <div>
             <button
               className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-              disabled={action.current?.status === 'pending'}
+              // disabled={action.current?.status === 'pending'}
             >
               Create
             </button>
@@ -945,6 +960,7 @@ function Authenticated() {
 
 function LayoutWrapper() {
   const { loaderData } = router.useMatch('/layout')
+
   return (
     <div>
       <div>Layout</div>

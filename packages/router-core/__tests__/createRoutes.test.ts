@@ -11,7 +11,7 @@ import {
 describe('everything', () => {
   it('should work', () => {
     // Build our routes. We could do this in our component, too.
-    const routeConfig = createRouteConfig().addChildren((createRoute) => [
+    const routeConfig = createRouteConfig().createChildren((createRoute) => [
       createRoute({
         path: '/',
         validateSearch: (search) =>
@@ -39,11 +39,11 @@ describe('everything', () => {
             invoices: 'await fetchInvoices()',
           }
         },
-      }).addChildren((createRoute) => [
+      }).createChildren((createRoute) => [
         createRoute({ path: '/' }),
         createRoute({
           path: 'invoices',
-        }).addChildren((createRoute) => [
+        }).createChildren((createRoute) => [
           createRoute({
             path: '/',
             action: async (partialInvoice: { amount: number }) => {
@@ -99,7 +99,7 @@ describe('everything', () => {
               },
             }),
           ],
-        }).addChildren((createRoute) => [
+        }).createChildren((createRoute) => [
           createRoute({
             path: ':userId',
             loader: async ({ params: { userId }, search }) => {
@@ -124,7 +124,7 @@ describe('everything', () => {
       // reallyExpensiveRoute,
       createRoute({
         path: 'authenticated/', // Trailing slash doesn't mean anything
-      }).addChildren((createRoute) => [
+      }).createChildren((createRoute) => [
         createRoute({
           path: '/',
         }),
@@ -138,7 +138,7 @@ describe('everything', () => {
               isLayout: z.boolean(),
             })
             .parse(search),
-      }).addChildren((createRoute) => [
+      }).createChildren((createRoute) => [
         createRoute({
           path: 'layout-a',
           element: 'layout-a',

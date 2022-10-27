@@ -7,6 +7,7 @@ import {
   RootRouteId,
   rootRouteId,
   Router,
+  RouterState,
 } from '@tanstack/router-core'
 import {
   warning,
@@ -49,6 +50,7 @@ declare module '@tanstack/router-core' {
       Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][RootRouteId]>,
       'linkProps' | 'Link' | 'MatchRoute'
     > {
+    useState: () => RouterState
     useRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
       routeId: TId,
     ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
@@ -237,11 +239,11 @@ export function createReactRouter<
 
         // Get the active props
         const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-          isActive ? functionalUpdate(activeProps) ?? {} : {}
+          isActive ? functionalUpdate(activeProps, {}) ?? {} : {}
 
         // Get the inactive props
         const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-          isActive ? {} : functionalUpdate(inactiveProps) ?? {}
+          isActive ? {} : functionalUpdate(inactiveProps, {}) ?? {}
 
         return {
           ...resolvedActiveProps,
@@ -303,8 +305,6 @@ export function createReactRouter<
           caseSensitive,
         })
 
-        // useRouterSubscription(router)
-
         if (!params) {
           return null
         }
@@ -319,7 +319,14 @@ export function createReactRouter<
   const coreRouter = createRouter<TRouteConfig>({
     ...opts,
     createRouter: (router) => {
-      const routerExt: Pick<Router<any, any>, 'useRoute' | 'useMatch'> = {
+      const routerExt: Pick<
+        Router<any, any>,
+        'useRoute' | 'useMatch' | 'useState'
+      > = {
+        useState: () => {
+          useRouterSubscription(router)
+          return router.state
+        },
         useRoute: (routeId) => {
           const route = router.getRoute(routeId)
           useRouterSubscription(router)
@@ -332,6 +339,8 @@ export function createReactRouter<
           return route
         },
         useMatch: (routeId) => {
+          useRouterSubscription(router)
+
           invariant(
             routeId !== rootRouteId,
             `"${rootRouteId}" cannot be used with useMatch! Did you mean to useRoute("${rootRouteId}")?`,
@@ -357,8 +366,6 @@ export function createReactRouter<
               match?.routeId as string
             })' instead?`,
           )
-
-          useRouterSubscription(router)
 
           if (!match) {
             invariant('Match not found!')
@@ -397,14 +404,11 @@ export function RouterProvider<
 >({ children, router, ...rest }: RouterProps<TRouteConfig, TAllRouteInfo>) {
   router.update(rest)
 
-  useSyncExternalStore(
-    (cb) => router.subscribe(() => cb()),
-    () => router.state,
-  )
+  useRouterSubscription(router)
 
   useLayoutEffect(() => {
-    router.mount()
-  }, [])
+    return router.mount()
+  }, [router])
 
   return (
     <routerContext.Provider value={{ router }}>
@@ -450,7 +454,7 @@ export function Outlet() {
 
   if (!childMatch) return null
 
-  const element = (((): React.ReactNode => {
+  const element = ((): React.ReactNode => {
     if (!childMatch) {
       return null
     }
@@ -470,7 +474,7 @@ export function Outlet() {
         throw childMatch.error
       }
 
-      return <DefaultCatchBoundary error={childMatch.error} />
+      return <DefaultErrorBoundary error={childMatch.error} />
     }
 
     if (childMatch.status === 'loading' || childMatch.status === 'idle') {
@@ -487,7 +491,7 @@ export function Outlet() {
     }
 
     return (childMatch.__.element as any) ?? router.options.defaultElement
-  })() as JSX.Element) ?? <Outlet />
+  })() as JSX.Element
 
   const catchElement =
     childMatch?.options.catchElement ?? router.options.defaultCatchElement
@@ -521,7 +525,7 @@ class CatchBoundary extends React.Component<{
     })
   }
   render() {
-    const catchElement = this.props.catchElement ?? DefaultCatchBoundary
+    const catchElement = this.props.catchElement ?? DefaultErrorBoundary
 
     if (this.state.error) {
       return typeof catchElement === 'function'
@@ -533,7 +537,7 @@ class CatchBoundary extends React.Component<{
   }
 }
 
-export function DefaultCatchBoundary({ error }: { error: any }) {
+export function DefaultErrorBoundary({ error }: { error: any }) {
   return (
     <div style={{ padding: '.5rem', maxWidth: '100%' }}>
       <strong style={{ fontSize: '1.2rem' }}>Something went wrong!</strong>
@@ -571,3 +575,5 @@ export function DefaultCatchBoundary({ error }: { error: any }) {
     </div>
   )
 }
+
+// TODO: Add prompt
