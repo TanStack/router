@@ -191,8 +191,10 @@ function App() {
     'defaultPendingMinMs',
     500,
   )
-  const [defaultLinkPreloadMaxAge, setDefaultLinkPreloadMaxAge] =
-    useSessionStorage('defaultLinkPreloadMaxAge', 2000)
+  const [defaultPreloadMaxAge, setDefaultPreloadMaxAge] = useSessionStorage(
+    'defaultPreloadMaxAge',
+    2000,
+  )
 
   return (
     <>
@@ -253,7 +255,7 @@ function App() {
         </div>
         <div>
           Link Preload Max Age:{' '}
-          {defaultLinkPreloadMaxAge ? `${defaultLinkPreloadMaxAge}ms` : 'Off'}
+          {defaultPreloadMaxAge ? `${defaultPreloadMaxAge}ms` : 'Off'}
         </div>
         <div>
           <input
@@ -261,10 +263,8 @@ function App() {
             min="0"
             max="10000"
             step="250"
-            value={defaultLinkPreloadMaxAge}
-            onChange={(e) =>
-              setDefaultLinkPreloadMaxAge(e.target.valueAsNumber)
-            }
+            value={defaultPreloadMaxAge}
+            onChange={(e) => setDefaultPreloadMaxAge(e.target.valueAsNumber)}
             className={`w-full`}
           />
         </div>
@@ -282,8 +282,8 @@ function App() {
               <Spinner />
             </div>
           }
-          defaultLinkPreload="intent"
-          defaultLinkPreloadMaxAge={defaultLinkPreloadMaxAge}
+          defaultPreload="intent"
+          defaultPreloadMaxAge={defaultPreloadMaxAge}
           defaultPendingMs={defaultPendingMs}
           defaultPendingMinMs={defaultPendingMinMs}
           // defaultLoaderMaxAge={5 * 1000}
@@ -291,7 +291,7 @@ function App() {
           // Normally, the options above aren't changing, but for this particular
           // example, we need to key the router when they change
           key={[
-            defaultLinkPreloadMaxAge,
+            defaultPreloadMaxAge,
             defaultPendingMs,
             defaultPendingMinMs,
           ].join('.')}

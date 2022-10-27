@@ -81,9 +81,10 @@ export interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
   filterRoutes?: FilterRoutesFn
-  defaultLinkPreload?: false | 'intent'
-  defaultLinkPreloadMaxAge?: number
-  defaultLinkPreloadDelay?: number
+  defaultPreload?: false | 'intent'
+  defaultPreloadMaxAge?: number
+  defaultPreloadGcMaxAge?: number
+  defaultPreloadDelay?: number
   useErrorBoundary?: boolean
   defaultElement?: GetFrameworkGeneric<'Element'>
   defaultErrorElement?: GetFrameworkGeneric<'Element'>
@@ -227,9 +228,10 @@ export interface Router<
   getRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
     id: TId,
   ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
-  loadRoute: (
+  loadRoute: (navigateOpts: BuildNextOptions) => Promise<RouteMatch[]>
+  preloadRoute: (
     navigateOpts: BuildNextOptions,
-    loaderOpts: { maxAge: number },
+    loaderOpts: { maxAge?: number; gcMaxAge?: number },
   ) => Promise<RouteMatch[]>
   matchRoutes: (
     pathname: string,
@@ -238,8 +240,8 @@ export interface Router<
   loadMatches: (
     resolvedMatches: RouteMatch[],
     loaderOpts?: { withPending?: boolean } & (
-      | { preload: true; maxAge: number }
-      | { preload?: false; maxAge?: never }
+      | { preload: true; maxAge: number; gcMaxAge: number }
+      | { preload?: false; maxAge?: never; gcMaxAge?: never }
     ),
   ) => Promise<void>
   invalidateRoute: (opts: MatchLocation) => void
@@ -289,7 +291,8 @@ export function createRouter<
   const originalOptions = {
     defaultLoaderGcMaxAge: 5 * 60 * 1000,
     defaultLoaderMaxAge: 0,
-    defaultLinkPreloadDelay: 50,
+    defaultPreloadMaxAge: 2000,
+    defaultPreloadDelay: 50,
     ...userOptions,
     stringifySearch: userOptions?.stringifySearch ?? defaultStringifySearch,
     parseSearch: userOptions?.parseSearch ?? defaultParseSearch,
@@ -782,17 +785,32 @@ export function createRouter<
       })
     },
 
-    loadRoute: async (
-      navigateOpts: BuildNextOptions = router.location,
-      loaderOpts: { maxAge: number },
-    ) => {
+    loadRoute: async (navigateOpts = router.location) => {
+      const next = router.buildNext(navigateOpts)
+      const matches = router.matchRoutes(next.pathname, {
+        strictParseParams: true,
+      })
+      await router.loadMatches(matches)
+      return matches
+    },
+
+    preloadRoute: async (navigateOpts = router.location, loaderOpts) => {
       const next = router.buildNext(navigateOpts)
       const matches = router.matchRoutes(next.pathname, {
         strictParseParams: true,
       })
       await router.loadMatches(matches, {
         preload: true,
-        maxAge: loaderOpts.maxAge,
+        maxAge:
+          loaderOpts.maxAge ??
+          router.options.defaultPreloadMaxAge ??
+          router.options.defaultLoaderMaxAge ??
+          0,
+        gcMaxAge:
+          loaderOpts.gcMaxAge ??
+          router.options.defaultPreloadGcMaxAge ??
+          router.options.defaultLoaderGcMaxAge ??
+          0,
       })
       return matches
     },
@@ -905,25 +923,23 @@ export function createRouter<
 
     loadMatches: async (resolvedMatches, loaderOpts) => {
       const now = Date.now()
+      const minMaxAge = loaderOpts?.preload
+        ? Math.max(loaderOpts?.maxAge, loaderOpts?.gcMaxAge)
+        : 0
 
       const matchPromises = resolvedMatches.map(async (match) => {
         // Validate the match (loads search params etc)
         match.__.validate()
 
-        // // If the match doesn't have a loader, don't attempt to load it
-        // if (!match.hasLoaders()) {
-        //   return
-        // }
-
         // If this is a preload, add it to the preload cache
-        if (loaderOpts?.preload && loaderOpts?.maxAge > 0) {
+        if (loaderOpts?.preload && minMaxAge > 0) {
           // If the match is currently active, don't preload it
           if (router.state.matches.find((d) => d.matchId === match.matchId)) {
             return
           }
 
           router.matchCache[match.matchId] = {
-            gc: now + loaderOpts.maxAge, // TODO: Should this use the route's maxAge?
+            gc: now + loaderOpts.gcMaxAge,
             match,
           }
         }
@@ -934,7 +950,9 @@ export function createRouter<
           match.status === 'error' ||
           match.status === 'idle'
         ) {
-          match.load()
+          const maxAge = loaderOpts?.preload ? loaderOpts?.maxAge : undefined
+
+          match.load({ maxAge })
         }
 
         if (match.status === 'loading') {
@@ -1053,6 +1071,7 @@ export function createRouter<
       activeOptions,
       preload,
       preloadMaxAge: userPreloadMaxAge,
+      preloadGcMaxAge: userPreloadGcMaxAge,
       preloadDelay: userPreloadDelay,
       disabled,
     }) => {
@@ -1081,14 +1100,9 @@ export function createRouter<
 
       const next = router.buildNext(nextOpts)
 
-      preload = preload ?? router.options.defaultLinkPreload
-      const preloadMaxAge =
-        userPreloadMaxAge ??
-        router.options.defaultLinkPreloadMaxAge ??
-        router.options.defaultLoaderGcMaxAge ??
-        0
+      preload = preload ?? router.options.defaultPreload
       const preloadDelay =
-        userPreloadDelay ?? router.options.defaultLinkPreloadDelay ?? 0
+        userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
       // Compare path/hash for matches
       const pathIsEqual = router.state.location.pathname === next.pathname
@@ -1126,22 +1140,28 @@ export function createRouter<
 
       // The click handler
       const handleFocus = (e: MouseEvent) => {
-        if (preload && preloadMaxAge > 0) {
-          router.loadRoute(nextOpts, { maxAge: preloadMaxAge })
+        if (preload) {
+          router.preloadRoute(nextOpts, {
+            maxAge: userPreloadMaxAge,
+            gcMaxAge: userPreloadGcMaxAge,
+          })
         }
       }
 
       const handleEnter = (e: MouseEvent) => {
         const target = (e.target || {}) as LinkCurrentTargetElement
 
-        if (preload && preloadMaxAge > 0) {
+        if (preload) {
           if (target.preloadTimeout) {
             return
           }
 
           target.preloadTimeout = setTimeout(() => {
             target.preloadTimeout = null
-            router.loadRoute(nextOpts, { maxAge: preloadMaxAge })
+            router.preloadRoute(nextOpts, {
+              maxAge: userPreloadMaxAge,
+              gcMaxAge: userPreloadGcMaxAge,
+            })
           }, preloadDelay)
         }
       }

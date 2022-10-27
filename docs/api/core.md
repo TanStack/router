@@ -52,7 +52,7 @@ export type RouterProps<TGenerics> = {
   // An array of route objects to match
   routes?: Route<TGenerics>[]
   filterRoutes?: FilterRoutesFn
-  defaultLinkPreloadMaxAge?: number
+  defaultPreloadMaxAge?: number
   defaultLoaderMaxAge?: number
   useErrorBoundary?: boolean
   defaultElement?: SyncOrAsyncElement<TGenerics>

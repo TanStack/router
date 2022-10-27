@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Outlet,
@@ -44,7 +44,7 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
 // Set up a ReactLocation instance
 const router = createReactRouter({
   routeConfig,
-  defaultLinkPreload: 'intent',
+  // defaultPreload: 'intent',
 })
 
 function App() {
@@ -80,6 +80,7 @@ function App() {
 }
 
 async function fetchPosts() {
+  console.log('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
@@ -87,6 +88,7 @@ async function fetchPosts() {
 }
 
 async function fetchPostById(postId: string) {
+  console.log(`Fetching post with id ${postId}...`)
   await new Promise((r) => setTimeout(r, 500))
 
   return await axios
@@ -162,5 +164,9 @@ function Post() {
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
-  root.render(<App />)
+  root.render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
 }

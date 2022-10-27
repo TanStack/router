@@ -30,6 +30,7 @@ export interface RouteMatch<
   routeLoaderData: TRouteInfo['routeLoaderData']
   isFetching: boolean
   isPending: boolean
+  invalidAt: number
   __: {
     element?: GetFrameworkGeneric<'Element'> // , TRouteInfo['loaderData']>
     errorElement?: GetFrameworkGeneric<'Element'> // , TRouteInfo['loaderData']>
@@ -60,7 +61,7 @@ export interface RouteMatch<
     resolve: () => void
   }
   cancel: () => void
-  load: () => Promise<void>
+  load: (opts?: { maxAge?: number }) => Promise<void>
   invalidate: () => void
   hasLoaders: () => boolean
 }
@@ -97,13 +98,10 @@ export function createRouteMatch<
     isPending: false,
     isFetching: false,
     isInvalid: false,
+    invalidAt: Infinity,
     getIsInvalid: () => {
       const now = Date.now()
-      const maxAge =
-        routeMatch.options.loaderMaxAge ??
-        router.options.defaultLoaderMaxAge ??
-        0
-      return routeMatch.isInvalid || routeMatch.updatedAt! + maxAge < now
+      return routeMatch.isInvalid || routeMatch.invalidAt < now
     },
     __: {
       abortController: new AbortController(),
@@ -212,7 +210,7 @@ export function createRouteMatch<
         elementTypes.some((d) => typeof route.options[d] === 'function')
       )
     },
-    load: async () => {
+    load: async (opts) => {
       const id = '' + Date.now() + Math.random()
       routeMatch.__.latestId = id
 
@@ -298,6 +296,12 @@ export function createRouteMatch<
               routeMatch.error = undefined
               routeMatch.status = 'success'
               routeMatch.updatedAt = Date.now()
+              routeMatch.invalidAt =
+                routeMatch.updatedAt +
+                (opts?.maxAge ??
+                  routeMatch.options.loaderMaxAge ??
+                  router.options.defaultLoaderMaxAge ??
+                  0)
             } catch (err) {
               if (id !== routeMatch.__.latestId) {
                 return routeMatch.__.loaderPromise
