@@ -739,6 +739,7 @@ export function createRouter<
           params: d.params,
           search: d.search,
         })
+        delete router.matchCache[d.matchId]
       })
 
       if (matches.some((d) => d.status === 'loading')) {
