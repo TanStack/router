@@ -910,16 +910,18 @@ export function createRouter<
         // Validate the match (loads search params etc)
         match.__.validate()
 
-        // If the match doesn't have a loader, don't attempt to load it
-        if (!match.hasLoaders()) {
-          return
-        }
+        // // If the match doesn't have a loader, don't attempt to load it
+        // if (!match.hasLoaders()) {
+        //   return
+        // }
+
         // If this is a preload, add it to the preload cache
         if (loaderOpts?.preload && loaderOpts?.maxAge > 0) {
           // If the match is currently active, don't preload it
           if (router.state.matches.find((d) => d.matchId === match.matchId)) {
             return
           }
+
           router.matchCache[match.matchId] = {
             gc: now + loaderOpts.maxAge, // TODO: Should this use the route's maxAge?
             match,

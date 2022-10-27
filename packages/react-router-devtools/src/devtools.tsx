@@ -671,6 +671,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   background: theme.backgroundAlt,
                   position: 'sticky',
                   top: 0,
+                  bottom: 0,
                   zIndex: 1,
                   display: 'flex',
                   alignItems: 'center',
@@ -742,11 +743,13 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                       </div>
                       <span
                         style={{
+                          fontSize: '.7rem',
                           opacity: '.5',
+                          lineHeight: 1,
                         }}
                       >
                         Expires{' '}
-                        {formatDistanceStrict(new Date(), new Date(gc), {
+                        {formatDistanceStrict(new Date(gc), new Date(), {
                           addSuffix: true,
                         })}
                       </span>
@@ -766,6 +769,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 background: theme.backgroundAlt,
                 position: 'sticky',
                 top: 0,
+                bottom: 0,
                 zIndex: 1,
               }}
             >
@@ -817,6 +821,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 padding: '.5em',
                 position: 'sticky',
                 top: 0,
+                bottom: 0,
                 zIndex: 1,
               }}
             >
@@ -856,6 +861,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 padding: '.5em',
                 position: 'sticky',
                 top: 0,
+                bottom: 0,
                 zIndex: 1,
               }}
             >
@@ -891,10 +897,11 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               background: theme.backgroundAlt,
               position: 'sticky',
               top: 0,
+              bottom: 0,
               zIndex: 1,
             }}
           >
-            Loader Data
+            All Loader Data
           </div>
           <div
             style={{
@@ -922,6 +929,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               background: theme.backgroundAlt,
               position: 'sticky',
               top: 0,
+              bottom: 0,
               zIndex: 1,
             }}
           >
