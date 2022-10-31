@@ -47,7 +47,7 @@ function Users() {
     Link,
     MatchRoute,
     navigate,
-  } = router.useMatch('/dashboard/users')
+  } = router.useMatch(usersRoute.id)
 
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy

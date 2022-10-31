@@ -38,7 +38,6 @@ export interface RouteMatch<
     pendingElement?: GetFrameworkGeneric<'Element'> // , TRouteInfo['loaderData']>
     loadPromise?: Promise<void>
     loaderPromise?: Promise<void>
-    importPromise?: Promise<void>
     elementsPromise?: Promise<void>
     dataPromise?: Promise<void>
     pendingTimeout?: Timeout
@@ -206,7 +205,6 @@ export function createRouteMatch<
     hasLoaders: () => {
       return !!(
         route.options.loader ||
-        route.options.import ||
         elementTypes.some((d) => typeof route.options[d] === 'function')
       )
     },
@@ -231,26 +229,7 @@ export function createRouteMatch<
         routeMatch.__.resolve = resolve as () => void
 
         const loaderPromise = (async () => {
-          const importer = routeMatch.options.import
-
-          // First, run any importers
-          if (importer) {
-            routeMatch.__.importPromise = importer({
-              params: routeMatch.params,
-              // search: routeMatch.search,
-            }).then((imported) => {
-              routeMatch.__ = {
-                ...routeMatch.__,
-                ...imported,
-              }
-            })
-          }
-
-          // Wait for the importer to finish before
-          // attempting to load elements and data
-          await routeMatch.__.importPromise
-
-          // Next, load the elements and data in parallel
+          // Load the elements and data in parallel
 
           routeMatch.__.elementsPromise = (async () => {
             // then run all element and data loaders in parallel

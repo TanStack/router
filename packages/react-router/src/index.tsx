@@ -576,4 +576,26 @@ export function DefaultErrorBoundary({ error }: { error: any }) {
   )
 }
 
-// TODO: Add prompt
+export function usePrompt(message: string, when: boolean | any): void {
+  const router = useRouter()
+
+  React.useEffect(() => {
+    if (!when) return
+
+    let unblock = router.history.block((transition) => {
+      if (window.confirm(message)) {
+        unblock()
+        transition.retry()
+      } else {
+        router.location.pathname = window.location.pathname
+      }
+    })
+
+    return unblock
+  }, [when, location, message])
+}
+
+export function Prompt({ message, when, children }: PromptProps) {
+  usePrompt(message, when ?? true)
+  return (children ?? null) as React.ReactNode
+}

@@ -3,6 +3,8 @@ import * as React from 'react'
 import { router } from '../../../router'
 import { Spinner } from '../../../components/Spinner'
 import { dashboardRoute } from '..'
+import { invoicesIndexRoute } from './invoices'
+import { invoiceRoute } from './invoice'
 
 export const invoicesRoute = dashboardRoute.createRoute({
   path: 'invoices',
@@ -14,11 +16,11 @@ function Invoices() {
     loaderData: { invoices },
     Link,
     MatchRoute,
-  } = router.useMatch('/dashboard/invoices')
+  } = router.useMatch(invoicesRoute.id)
 
   // Get the action for a child route
-  const invoiceIndexRoute = router.useRoute('/dashboard/invoices/')
-  const invoiceDetailRoute = router.useRoute('/dashboard/invoices/:invoiceId')
+  const invoiceIndexRoute = router.useRoute(invoicesIndexRoute.id)
+  const invoiceDetailRoute = router.useRoute(invoiceRoute.id)
 
   return (
     <div className="flex-1 flex">

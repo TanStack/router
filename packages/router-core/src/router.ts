@@ -185,6 +185,7 @@ export interface Router<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
   TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
 > {
+  history: BrowserHistory | MemoryHistory | HashHistory
   options: PickAsRequired<
     RouterOptions<TRouteConfig>,
     'stringifySearch' | 'parseSearch'
@@ -211,15 +212,7 @@ export interface Router<
   update: <TRouteConfig extends RouteConfig = RouteConfig>(
     opts?: RouterOptions<TRouteConfig>,
   ) => Router<TRouteConfig>
-  buildRouteTree: (
-    routeConfig: RouteConfig,
-  ) => Route<TAllRouteInfo, AnyRouteInfo>
-  parseLocation: (
-    location: History['location'],
-    previousLocation?: Location,
-  ) => Location
-  buildLocation: (dest: BuildNextOptions) => Location
-  commitLocation: (next: Location, replace?: boolean) => Promise<void>
+
   buildNext: (opts: BuildNextOptions) => Location
   cancelMatches: () => void
   loadLocation: (next?: Location) => Promise<void>
@@ -247,9 +240,6 @@ export interface Router<
   invalidateRoute: (opts: MatchLocation) => void
   reload: () => Promise<void>
   resolvePath: (from: string, path: string) => string
-  _navigate: (
-    location: BuildNextOptions & { replace?: boolean },
-  ) => Promise<void>
   navigate: <
     TFrom extends ValidFromPath<TAllRouteInfo> = '/',
     TTo extends string = '.',
@@ -269,6 +259,20 @@ export interface Router<
   >(
     opts: LinkOptions<TAllRouteInfo, TFrom, TTo>,
   ) => LinkInfo
+  __: {
+    buildRouteTree: (
+      routeConfig: RouteConfig,
+    ) => Route<TAllRouteInfo, AnyRouteInfo>
+    parseLocation: (
+      location: History['location'],
+      previousLocation?: Location,
+    ) => Location
+    buildLocation: (dest: BuildNextOptions) => Location
+    commitLocation: (next: Location, replace?: boolean) => Promise<void>
+    navigate: (
+      location: BuildNextOptions & { replace?: boolean },
+    ) => Promise<void>
+  }
 }
 
 // Detect if we're in the DOM
@@ -299,6 +303,7 @@ export function createRouter<
   }
 
   let router: Router<TRouteConfig, TAllRouteInfo> = {
+    history,
     options: originalOptions,
     listeners: [],
     removeActionQueue: [],
@@ -350,7 +355,7 @@ export function createRouter<
     },
 
     mount: () => {
-      const next = router.buildLocation({
+      const next = router.__.buildLocation({
         to: '.',
         search: true,
         hash: true,
@@ -359,14 +364,14 @@ export function createRouter<
       // If the current location isn't updated, trigger a navigation
       // to the current location. Otherwise, load the current location.
       if (next.href !== router.location.href) {
-        router.commitLocation(next, true)
+        router.__.commitLocation(next, true)
       } else {
         router.loadLocation()
       }
 
       const unsub = history.listen((event) => {
         router.loadLocation(
-          router.parseLocation(event.location, router.location),
+          router.__.parseLocation(event.location, router.location),
         )
       })
 
@@ -399,233 +404,10 @@ export function createRouter<
 
       if (routeConfig) {
         router.routesById = {} as any
-        router.routeTree = router.buildRouteTree(routeConfig)
+        router.routeTree = router.__.buildRouteTree(routeConfig)
       }
 
       return router as any
-    },
-
-    buildRouteTree: (rootRouteConfig: RouteConfig) => {
-      const recurseRoutes = (
-        routeConfigs: RouteConfig[],
-        parent?: Route<TAllRouteInfo, any>,
-      ): Route<TAllRouteInfo, any>[] => {
-        return routeConfigs.map((routeConfig) => {
-          const routeOptions = routeConfig.options
-          const route = createRoute(routeConfig, routeOptions, parent, router)
-
-          // {
-          //   pendingMs: routeOptions.pendingMs ?? router.defaultPendingMs,
-          //   pendingMinMs: routeOptions.pendingMinMs ?? router.defaultPendingMinMs,
-          // }
-
-          const existingRoute = (router.routesById as any)[route.routeId]
-
-          if (existingRoute) {
-            if (process.env.NODE_ENV !== 'production') {
-              console.warn(
-                `Duplicate routes found with id: ${String(route.routeId)}`,
-                router.routesById,
-                route,
-              )
-            }
-            throw new Error()
-          }
-
-          ;(router.routesById as any)[route.routeId] = route
-
-          const children = routeConfig.children as RouteConfig[]
-
-          route.childRoutes = children?.length
-            ? recurseRoutes(children, route)
-            : undefined
-
-          return route
-        })
-      }
-
-      const routes = recurseRoutes([rootRouteConfig])
-
-      return routes[0]!
-    },
-
-    parseLocation: (
-      location: History['location'],
-      previousLocation?: Location,
-    ): Location => {
-      const parsedSearch = router.options.parseSearch(location.search)
-
-      return {
-        pathname: location.pathname,
-        searchStr: location.search,
-        search: replaceEqualDeep(previousLocation?.search, parsedSearch),
-        hash: location.hash.split('#').reverse()[0] ?? '',
-        href: `${location.pathname}${location.search}${location.hash}`,
-        state: location.state as LocationState,
-        key: location.key,
-      }
-    },
-
-    buildLocation: (dest: BuildNextOptions = {}): Location => {
-      // const resolvedFrom: Location = {
-      //   ...router.location,
-      const fromPathname = dest.fromCurrent
-        ? router.location.pathname
-        : dest.from ?? router.location.pathname
-
-      let pathname = resolvePath(
-        router.basepath ?? '/',
-        fromPathname,
-        `${dest.to ?? '.'}`,
-      )
-
-      const fromMatches = router.matchRoutes(router.location.pathname, {
-        strictParseParams: true,
-      })
-
-      const toMatches = router.matchRoutes(pathname)
-
-      const prevParams = { ...last(fromMatches)?.params }
-
-      let nextParams =
-        (dest.params ?? true) === true
-          ? prevParams
-          : functionalUpdate(dest.params!, prevParams)
-
-      if (nextParams) {
-        toMatches
-          .map((d) => d.options.stringifyParams)
-          .filter(Boolean)
-          .forEach((fn) => {
-            Object.assign({}, nextParams!, fn!(nextParams!))
-          })
-      }
-
-      pathname = interpolatePath(pathname, nextParams ?? {})
-
-      // Pre filters first
-      const preFilteredSearch = dest.__preSearchFilters?.length
-        ? dest.__preSearchFilters.reduce(
-            (prev, next) => next(prev),
-            router.location.search,
-          )
-        : router.location.search
-
-      // Then the link/navigate function
-      const destSearch =
-        dest.search === true
-          ? preFilteredSearch // Preserve resolvedFrom true
-          : dest.search
-          ? functionalUpdate(dest.search, preFilteredSearch) ?? {} // Updater
-          : dest.__preSearchFilters?.length
-          ? preFilteredSearch // Preserve resolvedFrom filters
-          : {}
-
-      // Then post filters
-      const postFilteredSearch = dest.__postSearchFilters?.length
-        ? dest.__postSearchFilters.reduce(
-            (prev, next) => next(prev),
-            destSearch,
-          )
-        : destSearch
-
-      const search = replaceEqualDeep(
-        router.location.search,
-        postFilteredSearch,
-      )
-
-      const searchStr = router.options.stringifySearch(search)
-      let hash =
-        dest.hash === true
-          ? router.location.hash
-          : functionalUpdate(dest.hash!, router.location.hash)
-      hash = hash ? `#${hash}` : ''
-
-      return {
-        pathname,
-        search,
-        searchStr,
-        state: router.location.state,
-        hash,
-        href: `${pathname}${searchStr}${hash}`,
-        key: dest.key,
-      }
-    },
-
-    commitLocation: (next: Location, replace?: boolean): Promise<void> => {
-      const id = '' + Date.now() + Math.random()
-
-      if (router.navigateTimeout) clearTimeout(router.navigateTimeout)
-
-      let nextAction: 'push' | 'replace' = 'replace'
-
-      if (!replace) {
-        nextAction = 'push'
-      }
-
-      const isSameUrl =
-        router.parseLocation(history.location).href === next.href
-
-      if (isSameUrl && !next.key) {
-        nextAction = 'replace'
-      }
-
-      if (nextAction === 'replace') {
-        history.replace(
-          {
-            pathname: next.pathname,
-            hash: next.hash,
-            search: next.searchStr,
-          },
-          {
-            id,
-          },
-        )
-      } else {
-        history.push(
-          {
-            pathname: next.pathname,
-            hash: next.hash,
-            search: next.searchStr,
-          },
-          {
-            id,
-          },
-        )
-      }
-
-      router.navigationPromise = new Promise((resolve) => {
-        const previousNavigationResolve = router.resolveNavigation
-
-        router.resolveNavigation = () => {
-          previousNavigationResolve()
-          resolve()
-        }
-      })
-
-      return router.navigationPromise
-    },
-
-    buildNext: (opts: BuildNextOptions) => {
-      const next = router.buildLocation(opts)
-
-      const matches = router.matchRoutes(next.pathname)
-
-      const __preSearchFilters = matches
-        .map((match) => match.options.preSearchFilters ?? [])
-        .flat()
-        .filter(Boolean)
-
-      const __postSearchFilters = matches
-        .map((match) => match.options.postSearchFilters ?? [])
-        .flat()
-        .filter(Boolean)
-
-      return router.buildLocation({
-        ...opts,
-        __preSearchFilters,
-        __postSearchFilters,
-      })
     },
 
     cancelMatches: () => {
@@ -987,7 +769,7 @@ export function createRouter<
     },
 
     reload: () =>
-      router._navigate({
+      router.__.navigate({
         fromCurrent: true,
         replace: true,
         search: true,
@@ -1025,11 +807,6 @@ export function createRouter<
       })
     },
 
-    _navigate: (location: BuildNextOptions & { replace?: boolean }) => {
-      const next = router.buildNext(location)
-      return router.commitLocation(next, location.replace)
-    },
-
     navigate: async ({ from, to = '.', search, hash, replace, params }) => {
       // If this link simply reloads the current route,
       // make sure it has a new key so it will trigger a data refresh
@@ -1051,7 +828,7 @@ export function createRouter<
         'Attempting to navigate to external url with router.navigate!',
       )
 
-      return router._navigate({
+      return router.__.navigate({
         from: fromString,
         to: toString,
         search,
@@ -1135,7 +912,7 @@ export function createRouter<
           }
 
           // All is well? Navigate!)
-          router._navigate(nextOpts)
+          router.__.navigate(nextOpts)
         }
       }
 
@@ -1187,9 +964,238 @@ export function createRouter<
         disabled,
       }
     },
+    buildNext: (opts: BuildNextOptions) => {
+      const next = router.__.buildLocation(opts)
+
+      const matches = router.matchRoutes(next.pathname)
+
+      const __preSearchFilters = matches
+        .map((match) => match.options.preSearchFilters ?? [])
+        .flat()
+        .filter(Boolean)
+
+      const __postSearchFilters = matches
+        .map((match) => match.options.postSearchFilters ?? [])
+        .flat()
+        .filter(Boolean)
+
+      return router.__.buildLocation({
+        ...opts,
+        __preSearchFilters,
+        __postSearchFilters,
+      })
+    },
+
+    __: {
+      buildRouteTree: (rootRouteConfig: RouteConfig) => {
+        const recurseRoutes = (
+          routeConfigs: RouteConfig[],
+          parent?: Route<TAllRouteInfo, any>,
+        ): Route<TAllRouteInfo, any>[] => {
+          return routeConfigs.map((routeConfig) => {
+            const routeOptions = routeConfig.options
+            const route = createRoute(routeConfig, routeOptions, parent, router)
+
+            // {
+            //   pendingMs: routeOptions.pendingMs ?? router.defaultPendingMs,
+            //   pendingMinMs: routeOptions.pendingMinMs ?? router.defaultPendingMinMs,
+            // }
+
+            const existingRoute = (router.routesById as any)[route.routeId]
+
+            if (existingRoute) {
+              if (process.env.NODE_ENV !== 'production') {
+                console.warn(
+                  `Duplicate routes found with id: ${String(route.routeId)}`,
+                  router.routesById,
+                  route,
+                )
+              }
+              throw new Error()
+            }
+
+            ;(router.routesById as any)[route.routeId] = route
+
+            const children = routeConfig.children as RouteConfig[]
+
+            route.childRoutes = children?.length
+              ? recurseRoutes(children, route)
+              : undefined
+
+            return route
+          })
+        }
+
+        const routes = recurseRoutes([rootRouteConfig])
+
+        return routes[0]!
+      },
+
+      parseLocation: (
+        location: History['location'],
+        previousLocation?: Location,
+      ): Location => {
+        const parsedSearch = router.options.parseSearch(location.search)
+
+        return {
+          pathname: location.pathname,
+          searchStr: location.search,
+          search: replaceEqualDeep(previousLocation?.search, parsedSearch),
+          hash: location.hash.split('#').reverse()[0] ?? '',
+          href: `${location.pathname}${location.search}${location.hash}`,
+          state: location.state as LocationState,
+          key: location.key,
+        }
+      },
+
+      navigate: (location: BuildNextOptions & { replace?: boolean }) => {
+        const next = router.buildNext(location)
+        return router.__.commitLocation(next, location.replace)
+      },
+
+      buildLocation: (dest: BuildNextOptions = {}): Location => {
+        // const resolvedFrom: Location = {
+        //   ...router.location,
+        const fromPathname = dest.fromCurrent
+          ? router.location.pathname
+          : dest.from ?? router.location.pathname
+
+        let pathname = resolvePath(
+          router.basepath ?? '/',
+          fromPathname,
+          `${dest.to ?? '.'}`,
+        )
+
+        const fromMatches = router.matchRoutes(router.location.pathname, {
+          strictParseParams: true,
+        })
+
+        const toMatches = router.matchRoutes(pathname)
+
+        const prevParams = { ...last(fromMatches)?.params }
+
+        let nextParams =
+          (dest.params ?? true) === true
+            ? prevParams
+            : functionalUpdate(dest.params!, prevParams)
+
+        if (nextParams) {
+          toMatches
+            .map((d) => d.options.stringifyParams)
+            .filter(Boolean)
+            .forEach((fn) => {
+              Object.assign({}, nextParams!, fn!(nextParams!))
+            })
+        }
+
+        pathname = interpolatePath(pathname, nextParams ?? {})
+
+        // Pre filters first
+        const preFilteredSearch = dest.__preSearchFilters?.length
+          ? dest.__preSearchFilters.reduce(
+              (prev, next) => next(prev),
+              router.location.search,
+            )
+          : router.location.search
+
+        // Then the link/navigate function
+        const destSearch =
+          dest.search === true
+            ? preFilteredSearch // Preserve resolvedFrom true
+            : dest.search
+            ? functionalUpdate(dest.search, preFilteredSearch) ?? {} // Updater
+            : dest.__preSearchFilters?.length
+            ? preFilteredSearch // Preserve resolvedFrom filters
+            : {}
+
+        // Then post filters
+        const postFilteredSearch = dest.__postSearchFilters?.length
+          ? dest.__postSearchFilters.reduce(
+              (prev, next) => next(prev),
+              destSearch,
+            )
+          : destSearch
+
+        const search = replaceEqualDeep(
+          router.location.search,
+          postFilteredSearch,
+        )
+
+        const searchStr = router.options.stringifySearch(search)
+        let hash =
+          dest.hash === true
+            ? router.location.hash
+            : functionalUpdate(dest.hash!, router.location.hash)
+        hash = hash ? `#${hash}` : ''
+
+        return {
+          pathname,
+          search,
+          searchStr,
+          state: router.location.state,
+          hash,
+          href: `${pathname}${searchStr}${hash}`,
+          key: dest.key,
+        }
+      },
+
+      commitLocation: (next: Location, replace?: boolean): Promise<void> => {
+        const id = '' + Date.now() + Math.random()
+
+        if (router.navigateTimeout) clearTimeout(router.navigateTimeout)
+
+        let nextAction: 'push' | 'replace' = 'replace'
+
+        if (!replace) {
+          nextAction = 'push'
+        }
+
+        const isSameUrl =
+          router.__.parseLocation(history.location).href === next.href
+
+        if (isSameUrl && !next.key) {
+          nextAction = 'replace'
+        }
+
+        if (nextAction === 'replace') {
+          history.replace(
+            {
+              pathname: next.pathname,
+              hash: next.hash,
+              search: next.searchStr,
+            },
+            {
+              id,
+            },
+          )
+        } else {
+          history.push(
+            {
+              pathname: next.pathname,
+              hash: next.hash,
+              search: next.searchStr,
+            },
+            {
+              id,
+            },
+          )
+        }
+
+        router.navigationPromise = new Promise((resolve) => {
+          const previousNavigationResolve = router.resolveNavigation
+
+          router.resolveNavigation = () => {
+            previousNavigationResolve()
+            resolve()
+          }
+        })
+
+        return router.navigationPromise
+      },
+    },
   }
 
-  router.location = router.parseLocation(history.location)
+  router.location = router.__.parseLocation(history.location)
   router.state.location = router.location
 
   router.update(userOptions)

@@ -17,7 +17,7 @@ export const layoutRoute = createRouteConfig().createRoute({
 })
 
 function LayoutWrapper() {
-  const { loaderData } = router.useMatch('/layout')
+  const { loaderData } = router.useMatch(layoutRoute.id)
   return (
     <div>
       <div>Layout</div>

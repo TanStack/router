@@ -7,7 +7,7 @@ import {
   MakeGenerics,
   MatchRoute,
   Outlet,
-  ReactLocation,
+  ReactRouter,
   Router,
   useLoadRoute,
   useMatch,
@@ -34,7 +34,7 @@ type LocationGenerics = MakeGenerics<{
 
 //
 
-const location = new ReactLocation<LocationGenerics>();
+const location = new ReactRouter<LocationGenerics>();
 const queryClient = new QueryClient();
 
 function App() {

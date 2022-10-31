@@ -38,7 +38,7 @@ function InvoiceView() {
     search,
     Link,
     navigate,
-  } = router.useMatch('/dashboard/invoices/:invoiceId')
+  } = router.useMatch(invoiceRoute)
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
 

@@ -8,7 +8,7 @@ export const indexRoute = createRouteConfig().createRoute({
 })
 
 function Home() {
-  const route = router.useMatch('/')
+  const route = router.useMatch(indexRoute.id)
 
   return (
     <div className={`p-2`}>

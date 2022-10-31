@@ -10,7 +10,7 @@ export const dashboardIndexRoute = dashboardRoute.createRoute({
 function DashboardHome() {
   const {
     loaderData: { invoices },
-  } = router.useMatch('/dashboard/')
+  } = router.useMatch(dashboardIndexRoute.id)
 
   return (
     <div className="p-2">

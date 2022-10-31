@@ -17,7 +17,7 @@ export const packages: Package[] = [
     packageDir: 'react-router',
     dependencies: ['@tanstack/router-core'],
     srcDir: 'src',
-    jsName: 'ReactLocation',
+    jsName: 'ReactRouter',
     entryFile: 'src/index.tsx',
     outputFile: 'react-router',
     globals: {
@@ -29,20 +29,20 @@ export const packages: Package[] = [
     packageDir: 'react-router-devtools',
     peerDependencies: ['@tanstack/react-router'],
     srcDir: 'src',
-    jsName: 'ReactLocationDevtools',
+    jsName: 'ReactRouterDevtools',
     entryFile: 'src/index.tsx',
     outputFile: 'react-router-devtools',
-    globals: { react: 'React', '@tanstack/react-router': 'ReactLocation' },
+    globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
   },
   {
     name: '@tanstack/router-rank-routes',
     packageDir: 'react-router-rank-routes',
     peerDependencies: ['@tanstack/react-router'],
     srcDir: 'src',
-    jsName: 'ReactLocationRankRoutes',
+    jsName: 'ReactRouterRankRoutes',
     entryFile: 'src/index.tsx',
     outputFile: 'react-router-rank-routes',
-    globals: { react: 'React', '@tanstack/react-router': 'ReactLocation' },
+    globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
   },
 ]
 

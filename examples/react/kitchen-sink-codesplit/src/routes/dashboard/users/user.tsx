@@ -18,7 +18,7 @@ export const userRoute = usersRoute.createRoute({
 function User() {
   const {
     loaderData: { user },
-  } = router.useMatch('/dashboard/users/:userId')
+  } = router.useMatch(userRoute.id)
 
   return (
     <>

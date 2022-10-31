@@ -16,7 +16,7 @@ export const dashboardRoute = createRouteConfig().createRoute({
 })
 
 function Dashboard() {
-  const route = router.useMatch('/dashboard')
+  const route = router.useMatch(dashboardRoute.id)
 
   return (
     <>

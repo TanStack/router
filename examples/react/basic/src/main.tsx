@@ -42,6 +42,7 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
 ])
 
 // Set up a ReactLocation instance
+// Set up a ReactRouter instance
 const router = createReactRouter({
   routeConfig,
   // defaultPreload: 'intent',
