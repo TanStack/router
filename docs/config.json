@@ -6,6 +6,31 @@
   },
   "menu": [
     {
+      "label": "Getting Started",
+      "children": [
+        {
+          "label": "Overview",
+          "to": "overview"
+        },
+        {
+          "label": "Installation",
+          "to": "installation"
+        },
+        {
+          "label": "Quick Start",
+          "to": "quick-start"
+        },
+        {
+          "label": "Devtools",
+          "to": "devtools"
+        },
+        {
+          "label": "Comparison",
+          "to": "comparison"
+        }
+      ]
+    },
+    {
       "label": "Adapters",
       "children": [
         {
@@ -33,18 +58,6 @@
     {
       "label": "Guide",
       "children": [
-        {
-          "label": "Introduction",
-          "to": "guide/introduction"
-        },
-        {
-          "label": "Installation",
-          "to": "guide/installation"
-        },
-        {
-          "label": "Devtools",
-          "to": "guide/devtools"
-        },
         {
           "label": "Routes",
           "to": "guide/routes"

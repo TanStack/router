@@ -4,18 +4,18 @@ title: Custom Search Param Serialization
 
 By default, TanStack Router parses and serializes your search params automatically. Depending on your needs though, you may want to customize the serialization process.
 
-To do so, you can [use `ReactLocation`'s `parseSearch` and `stringifySearch` options combined with the `parseSearchWith` and `stringifySearchWith` utilities](../docs/api#search-param-parsing-and-serialization).
+To do so, you can [use `ReactRouter`'s `parseSearch` and `stringifySearch` options combined with the `parseSearchWith` and `stringifySearchWith` utilities](../docs/api#search-param-parsing-and-serialization).
 
 For example: We can reimplement the default parser/serializer with the following code:
 
 ```tsx
 import {
-  ReactLocation,
+  ReactRouter,
   parseSearchWith,
   stringifySearchWith,
 } from '@tanstack/react-router'
 
-const reactLocation = new ReactLocation({
+const router = new ReactRouter({
   parseSearch: parseSearchWith(JSON.parse),
   stringifySearch: stringifySearchWith(JSON.stringify),
 })
@@ -27,12 +27,12 @@ It's common to base64 encode your search params to achieve maximum compatibility
 
 ```tsx
 import {
-  ReactLocation,
+  ReactRouter,
   parseSearchWith,
   stringifySearchWith,
 } from '@tanstack/react-router'
 
-const reactLocation = new ReactLocation({
+const router = new ReactRouter({
   parseSearch: parseSearchWith((value) => JSON.parse(decodeFromBinary(value))),
   stringifySearch: stringifySearchWith((value) =>
     encodeToBinary(JSON.stringify(value)),
@@ -65,13 +65,13 @@ export function encodeToBinary(str: string): string {
 
 ```tsx
 import {
-  ReactLocation,
+  ReactRouter,
   parseSearchWith,
   stringifySearchWith,
 } from '@tanstack/react-router'
 import { stringify, parse } from 'zipson'
 
-const reactLocation = new ReactLocation({
+const router = new ReactRouter({
   parseSearch: parseSearchWith((value) =>
     parse(decodeURIComponent(decodeFromBinary(value))),
   ),
@@ -106,13 +106,13 @@ export function encodeToBinary(str: string): string {
 
 ```tsx
 import {
-  ReactLocation,
+  ReactRouter,
   parseSearchWith,
   stringifySearchWith,
 } from '@tanstack/react-router'
 import jsurl from 'jsurl'
 
-const reactLocation = new ReactLocation({
+const router = new ReactRouter({
   parseSearch: parseSearchWith(jsurl.parse),
   stringifySearch: stringifySearchWith(jsurl.stringify),
 })

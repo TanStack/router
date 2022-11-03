@@ -1,15 +1,15 @@
 ---
-title: API
+title: Router
 ---
 
-## ReactLocation
+## Router
 
 **Required: true**
 
-The foundation of TanStack Router 🚀. An instance of the `ReactLocation` class is required and must be provided to your application via the `Router` component.
+The foundation of TanStack Router 🚀. An instance of the `Router` class is required and must be provided to your application via the `Router` component.
 
 ```tsx
-export type ReactLocationOptions<TGenerics> = {
+export type RouterOptions<TGenerics> = {
   // The history object to be used internally by react-router
   // A history will be created automatically if not provided.
   history?: BrowserHistory | MemoryHistory | HashHistory
@@ -27,10 +27,10 @@ import { Router } from '@tanstack/react-router'
 **Example: Memory History**
 
 ```tsx
-import { createMemoryHistory, ReactLocation } from '@tanstack/react-router'
+import { createMemoryHistory, Router } from '@tanstack/react-router'
 
 const history = createMemoryHistory()
-const reactLocation = new ReactLocation({ history })
+const router = new Router({ history })
 ```
 
 ## Router
@@ -44,8 +44,8 @@ The `Router` component is the root Provider component for the TanStack Router in
 
 ```tsx
 export type RouterProps<TGenerics> = {
-  // An instance of the `ReactLocation` class
-  location: ReactLocation<TGenerics>
+  // An instance of the `Router` class
+  location: Router<TGenerics>
   basepath?: string
   // Children will default to `<Outlet />` if not provided
   children?: React.ReactNode
@@ -55,9 +55,9 @@ export type RouterProps<TGenerics> = {
   defaultPreloadMaxAge?: number
   defaultLoaderMaxAge?: number
   useErrorBoundary?: boolean
-  defaultElement?: SyncOrAsyncElement<TGenerics>
-  defaultErrorElement?: SyncOrAsyncElement<TGenerics>
-  defaultPendingElement?: SyncOrAsyncElement<TGenerics>
+  defaultElement?: SyncOrAsyncElement
+  defaultErrorElement?: SyncOrAsyncElement
+  defaultPendingElement?: SyncOrAsyncElement
   defaultPendingMs?: number
   defaultPendingMinMs?: number
   caseSensitive?: boolean
@@ -67,13 +67,13 @@ export type RouterProps<TGenerics> = {
 **Example: Basic**
 
 ```tsx
-import { ReactLocation, Router } from '@tanstack/react-router'
+import { Router, Router } from '@tanstack/react-router'
 
-const reactLocation = new ReactLocation()
+const router = new Router()
 
 return (
   <Router
-    location={reactLocation}
+    location={router}
     routes={[
       {
         path: '/',
@@ -87,13 +87,13 @@ return (
 **Example: With Children**
 
 ```tsx
-import { ReactLocation, Router, Outlet } from '@tanstack/react-router'
+import { Router, Router, Outlet } from '@tanstack/react-router'
 
-const reactLocation = new ReactLocation()
+const router = new Router()
 
 return (
   <Router
-    location={reactLocation}
+    location={router}
     routes={[
       {
         path: '/',
@@ -423,7 +423,7 @@ For every search param **value**, TanStack Router follows the following schema:
 - Top-level, primitive, non-object-like values are serialized normally as strings/numbers/booleans.
 - Top-level object-like values are serialized using `JSON.stringify` and parsed using `JSON.parse`
 
-Custom `stringifySearch` and `parseSearch` functions can be provided to your `ReactLocation` instance to further enhance the way search objects are encoded.
+Custom `stringifySearch` and `parseSearch` functions can be provided to your `Router` instance to further enhance the way search objects are encoded.
 
 **Regardless of how your search params are serialized or parsed**, TanStack Router willl **always provide a stable, immutable and structurally-safe object reference**. This means that even though your search params' source of truth is technically a string that is changing over time, it will behave as a structurally shared immutable object.
 
@@ -450,12 +450,12 @@ While unnecessary, here is an example of how to re-implement the default search 
 
 ```tsx
 import {
-  ReactLocation,
+  Router,
   parseSearchWith,
   stringifySearchWith,
 } from '@tanstack/react-router'
 
-const reactLocation = new ReactLocation({
+const router = new Router({
   parseSearch: (search: string) => {
     return parseSearchWith(JSON.parse)(search)
   },
@@ -942,11 +942,11 @@ function App() {
 
 If you at all serious about SSR Routing, then you should probably investigate using a framework like [Remix](https://remix.run) or [Next.js](https://nextjs.org).
 
-However, if you truly desire to fudge around with SSR in TanStack Router to avoid that initial pending state, you can! Use `createMemoryHistory` and `ReactLocation` to mock your app into a specific state for SSR, then use the manual routing tools to match and load the correct route information. You can then serialize this initial match info into your document to be rehydrated on the client.
+However, if you truly desire to fudge around with SSR in TanStack Router to avoid that initial pending state, you can! Use `createMemoryHistory` and `Router` to mock your app into a specific state for SSR, then use the manual routing tools to match and load the correct route information. You can then serialize this initial match info into your document to be rehydrated on the client.
 
 ```tsx
 // Server.tsx
-import { createMemoryHistory, ReactLocation, Router } from '@tanstack/react-router'
+import { createMemoryHistory, Router, Router } from '@tanstack/react-router'
 
 export async function render(requestUrl) {
   // Get the URL pathname
@@ -954,7 +954,7 @@ export async function render(requestUrl) {
   // Create a memory history with the pathname
   let history = createMemoryHistory([url.pathname])
   // Create the location instance
-  const location = new ReactLocation({ history })
+  const location = new Router({ history })
   // Define your routes
   const routes: Route[] = [
     // ...
@@ -983,9 +983,9 @@ export async function render(requestUrl) {
 
 ```tsx
 // Client.tsx
-import { createBrowserHistory, ReactLocation, Router } from '@tanstack/react-router'
+import { createBrowserHistory, Router, Router } from '@tanstack/react-router'
 
-const location = new ReactLocation({ history })
+const location = new Router({ history })
 
 export function App() {
   return (
