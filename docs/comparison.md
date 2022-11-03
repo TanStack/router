@@ -62,19 +62,11 @@ Feature/Capability Key:
 | Deferred Loader Streaming                      | 🛑 (Coming Soon)                               | ✅                                                    |
 | `<Form>` API                                   | 🛑                                             | ✅                                                    |
 
-<!-- ### Notes
-
-> **<sup>1</sup> stuff** -->
-
-<!-- -->
-
 [bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router@alpha?label=💾
 [bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/react-router@alpha
 [gh-tanstack-router]: https://github.com/tanstack/router
 [stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?label=%F0%9F%8C%9F
-
-<!-- -->
-
+[_]: _
 [react-router]: https://github.com/remix-run/react-router
 [bp-react-router]: https://badgen.net/bundlephobia/minzip/react-router-dom?label=💾
 [bp-history]: https://badgen.net/bundlephobia/minzip/history?label=💾
@@ -82,5 +74,3 @@ Feature/Capability Key:
 [stars-react-router]: https://img.shields.io/github/stars/remix-run/react-router?label=%F0%9F%8C%9F
 [bpl-react-router]: https://bundlephobia.com/result?p=react-router-dom
 [bpl-history]: https://bundlephobia.com/result?p=history
-
-<!-- -->

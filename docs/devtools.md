@@ -12,7 +12,7 @@ When you begin your TanStack Router journey, you'll want these devtools by your 
 
 ## Import the Devtools
 
-The devtools are bundle split into the `react-router-devtools` package. No need to install anything extra, just:
+The devtools are bundle split into the `@tanstack/react-router-devtools` package. No need to install anything extra, just:
 
 ```js
 import { ReactRouterDevtools } from '@tanstack/react-router-devtools'
@@ -56,6 +56,8 @@ function App() {
 
 ### Options
 
+- `router: Router`
+  - The router instance to connect to
 - `initialIsOpen: Boolean`
   - Set this `true` if you want the devtools to default to being open
 - `panelProps: PropsObject`

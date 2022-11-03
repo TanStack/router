@@ -2,7 +2,7 @@
 title: Overview
 ---
 
-TanStack Router is a UI router for building applications in React, Vue, Svelte, Solid and other modern web frameworks. Some of it's features include:
+TanStack Router is a UI router for building applications in React, Preact, Vue, Svelte, Solid and other modern web frameworks. Some of it's features include:
 
 - 100% inferred TypeScript support
 - Typesafe absolute and relative navigation
@@ -23,13 +23,13 @@ TanStack Router is a UI router for building applications in React, Vue, Svelte, 
 
 ## Acknowledgements
 
-TanStack Router builds on concepts popularized by many other OSS projects, including:
+TanStack Router builds on concepts and patterns popularized by many other OSS projects, including:
 
 - [Remix](https://remix.run)
 - [Next.js](https://nextjs.org)
 - [TRPC](https://trpc.io/)
 
-We acknowledge the investment, risk and research that went into their development and are excited to continue pushing the bar they have set even higher.
+We acknowledge the investment, risk and research that went into their development, but are excited to push the bar they have set even higher.
 
 ## Let's go!
 
