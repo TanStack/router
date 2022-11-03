@@ -5,7 +5,7 @@ import {
   ResolveRelativePath,
   ToOptions,
 } from './link'
-import { RouteConfig, RouteOptions } from './routeConfig'
+import { LoaderContext, RouteConfig, RouteOptions } from './routeConfig'
 import {
   AnyAllRouteInfo,
   AnyRouteInfo,
@@ -14,7 +14,14 @@ import {
   RouteInfoByPath,
 } from './routeInfo'
 import { RouteMatch } from './routeMatch'
-import { Action, ActionState, MatchRouteOptions, Router } from './router'
+import {
+  Action,
+  ActionState,
+  Loader,
+  LoaderState,
+  MatchRouteOptions,
+  Router,
+} from './router'
 import { NoInfer, replaceEqualDeep } from './utils'
 
 export interface AnyRoute extends Route<any, any> {}
@@ -57,6 +64,21 @@ export interface Route<
         | Action<TRouteInfo['actionPayload'], TRouteInfo['actionResponse']>
         | undefined
     : Action<TRouteInfo['actionPayload'], TRouteInfo['actionResponse']>
+  loader: unknown extends TRouteInfo['routeLoaderData']
+    ?
+        | Action<
+            LoaderContext<
+              TRouteInfo['fullSearchSchema'],
+              TRouteInfo['allParams']
+            >,
+            TRouteInfo['routeLoaderData']
+          >
+        | undefined
+    : Loader<
+        TRouteInfo['fullSearchSchema'],
+        TRouteInfo['allParams'],
+        TRouteInfo['routeLoaderData']
+      >
 }
 
 export function createRoute<
@@ -126,6 +148,45 @@ export function createRoute<
       return router.state.actions[id]!
     })()
 
+  const loader =
+    router.state.loaders[id] ||
+    (() => {
+      router.state.loaders[id] = {
+        pending: [],
+        fetch: (async (loaderContext: LoaderContext<any, any>) => {
+          if (!route) {
+            return
+          }
+
+          const loaderState: LoaderState<any, any> = {
+            loadedAt: Date.now(),
+            loaderContext,
+          }
+
+          loader.current = loaderState
+          loader.latest = loaderState
+          loader.pending.push(loaderState)
+
+          // router.state = {
+          //   ...router.state,
+          //   currentAction: loaderState,
+          //   latestAction: loaderState,
+          // }
+
+          router.notify()
+
+          try {
+            return await route.options.loader?.(loaderContext)
+          } finally {
+            loader.pending = loader.pending.filter((d) => d !== loaderState)
+            // router.removeActionQueue.push({ loader, loaderState })
+            router.notify()
+          }
+        }) as any,
+      }
+      return router.state.loaders[id]!
+    })()
+
   let route: Route<TAllRouteInfo, TRouteInfo> = {
     routeId: id,
     routeRouteId: routeId,
@@ -136,6 +197,7 @@ export function createRoute<
     childRoutes: undefined!,
     parentRoute: parent,
     action,
+    loader: loader as any,
 
     buildLink: (options) => {
       return router.buildLink({

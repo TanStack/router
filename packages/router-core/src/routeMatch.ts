@@ -16,7 +16,7 @@ export interface RouteMatch<
 > extends Route<TAllRouteInfo, TRouteInfo> {
   matchId: string
   pathname: string
-  params: AnyPathParams
+  params: TRouteInfo['params']
   parentMatch?: RouteMatch
   childMatches: RouteMatch[]
   routeSearch: TRouteInfo['searchSchema']
@@ -60,7 +60,13 @@ export interface RouteMatch<
     resolve: () => void
   }
   cancel: () => void
-  load: (opts?: { maxAge?: number }) => Promise<void>
+  load: (
+    loaderOpts?: { withPending?: boolean } & (
+      | { preload: true; maxAge: number; gcMaxAge: number }
+      | { preload?: false; maxAge?: never; gcMaxAge?: never }
+    ),
+  ) => Promise<TRouteInfo['routeLoaderData']>
+  fetch: (opts?: { maxAge?: number }) => Promise<TRouteInfo['routeLoaderData']>
   invalidate: () => void
   hasLoaders: () => boolean
 }
@@ -208,7 +214,39 @@ export function createRouteMatch<
         elementTypes.some((d) => typeof route.options[d] === 'function')
       )
     },
-    load: async (opts) => {
+    load: async (loaderOpts) => {
+      const now = Date.now()
+      const minMaxAge = loaderOpts?.preload
+        ? Math.max(loaderOpts?.maxAge, loaderOpts?.gcMaxAge)
+        : 0
+
+      // If this is a preload, add it to the preload cache
+      if (loaderOpts?.preload && minMaxAge > 0) {
+        // If the match is currently active, don't preload it
+        if (
+          router.state.matches.find((d) => d.matchId === routeMatch.matchId)
+        ) {
+          return
+        }
+
+        router.matchCache[routeMatch.matchId] = {
+          gc: now + loaderOpts.gcMaxAge,
+          match: routeMatch as RouteMatch<any, any>,
+        }
+      }
+
+      // If the match is invalid, errored or idle, trigger it to load
+      if (
+        (routeMatch.status === 'success' && routeMatch.getIsInvalid()) ||
+        routeMatch.status === 'error' ||
+        routeMatch.status === 'idle'
+      ) {
+        const maxAge = loaderOpts?.preload ? loaderOpts?.maxAge : undefined
+
+        routeMatch.fetch({ maxAge })
+      }
+    },
+    fetch: async (opts) => {
       const id = '' + Date.now() + Math.random()
       routeMatch.__.latestId = id
 
@@ -243,13 +281,9 @@ export function createRouteMatch<
                   return
                 }
 
-                if (typeof routeElement === 'function') {
-                  const res = await (routeElement as any)(routeMatch)
-
-                  routeMatch.__[type] = res
-                } else {
-                  routeMatch.__[type] = routeMatch.options[type] as any
-                }
+                routeMatch.__[type] = await router.options.createElement!(
+                  routeElement,
+                )
               }),
             )
           })()

@@ -191,6 +191,10 @@ function App() {
     'defaultPendingMinMs',
     500,
   )
+  const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useSessionStorage(
+    'defaultLoaderMaxAge',
+    5000,
+  )
   const [defaultPreloadMaxAge, setDefaultPreloadMaxAge] = useSessionStorage(
     'defaultPreloadMaxAge',
     2000,
@@ -254,7 +258,22 @@ function App() {
           />
         </div>
         <div>
-          Link Preload Max Age:{' '}
+          Loader Max Age:{' '}
+          {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : 'Off'}
+        </div>
+        <div>
+          <input
+            type="range"
+            min="0"
+            max="10000"
+            step="250"
+            value={defaultLoaderMaxAge}
+            onChange={(e) => setDefaultLoaderMaxAge(e.target.valueAsNumber)}
+            className={`w-full`}
+          />
+        </div>
+        <div>
+          Preload Max Age:{' '}
           {defaultPreloadMaxAge ? `${defaultPreloadMaxAge}ms` : 'Off'}
         </div>
         <div>
@@ -283,6 +302,7 @@ function App() {
             </div>
           }
           defaultPreload="intent"
+          defaultLoaderMaxAge={defaultLoaderMaxAge}
           defaultPreloadMaxAge={defaultPreloadMaxAge}
           defaultPendingMs={defaultPendingMs}
           defaultPendingMinMs={defaultPendingMinMs}

@@ -21,7 +21,7 @@ export const invoicesIndexRoute = invoicesRoute.createRoute({
 })
 
 function InvoicesHome() {
-  const { action } = router.useMatch('/dashboard/invoices/')
+  const { action } = router.useMatch(invoicesIndexRoute.id)
 
   return (
     <>

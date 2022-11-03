@@ -53,11 +53,18 @@ export type LoaderFn<
   TRouteLoaderData extends AnyLoaderData,
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams extends AnyPathParams = {},
-> = (loaderContext: {
+> = (
+  loaderContext: LoaderContext<TFullSearchSchema, TAllParams>,
+) => Promise<TRouteLoaderData>
+
+export interface LoaderContext<
+  TFullSearchSchema extends AnySearchSchema = {},
+  TAllParams extends AnyPathParams = {},
+> {
   params: TAllParams
   search: TFullSearchSchema
   signal?: AbortSignal
-}) => Promise<TRouteLoaderData>
+}
 
 export type ActionFn<TActionPayload = unknown, TActionResponse = unknown> = (
   submission: TActionPayload,
@@ -105,58 +112,6 @@ export type RouteOptions<
   pendingMs?: number
   // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
   pendingMinMs?: number
-  // // An array of child routes
-  // children?: Route<any, any, any, any>[]
-} & (
-    | {
-        parseParams?: never
-        stringifyParams?: never
-      }
-    | {
-        // Parse params optionally receives path params as strings and returns them in a parsed format (like a number or boolean)
-        parseParams: (
-          rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
-        ) => TParams
-        stringifyParams: (
-          params: TParams,
-        ) => Record<ParsePathParams<TPath>, string>
-      }
-  ) &
-  RouteLoaders<
-    // Route Loaders (see below) can be inline on the route, or resolved async
-    TRouteLoaderData,
-    TLoaderData,
-    TActionPayload,
-    TActionResponse,
-    TFullSearchSchema,
-    TAllParams
-  > & {
-    // If `import` is defined, this route can resolve its elements and loaders in a single asynchronous call
-    // This is particularly useful for code-splitting or module federation
-    import?: (opts: {
-      params: AnyPathParams
-    }) => Promise<
-      RouteLoaders<
-        TRouteLoaderData,
-        TLoaderData,
-        TActionPayload,
-        TActionResponse,
-        TFullSearchSchema,
-        TAllParams
-      >
-    >
-  } & (PickUnsafe<TParentParams, ParsePathParams<TPath>> extends never // Detect if an existing path param is being redefined
-    ? {}
-    : 'Cannot redefined path params in child routes!')
-
-export interface RouteLoaders<
-  TRouteLoaderData extends AnyLoaderData = {},
-  TLoaderData extends AnyLoaderData = {},
-  TActionPayload = unknown,
-  TActionResponse = unknown,
-  TFullSearchSchema extends AnySearchSchema = {},
-  TAllParams extends AnyPathParams = {},
-> {
   // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
   element?: GetFrameworkGeneric<'SyncOrAsyncElement'> // , NoInfer<TLoaderData>>
   // The content to be rendered when `loader` encounters an error
@@ -196,7 +151,24 @@ export interface RouteLoaders<
   }) => void
   // An object of whatever you want! This object is accessible anywhere matches are.
   meta?: RouteMeta // TODO: Make this nested and mergeable
-}
+} & (
+    | {
+        parseParams?: never
+        stringifyParams?: never
+      }
+    | {
+        // Parse params optionally receives path params as strings and returns them in a parsed format (like a number or boolean)
+        parseParams: (
+          rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
+        ) => TParams
+        stringifyParams: (
+          params: TParams,
+        ) => Record<ParsePathParams<TPath>, string>
+      }
+  ) &
+  (PickUnsafe<TParentParams, ParsePathParams<TPath>> extends never // Detect if an existing path param is being redefined
+    ? {}
+    : 'Cannot redefined path params in child routes!')
 
 export type SearchFilter<T, U = T> = (prev: T) => U
 

@@ -19,6 +19,10 @@ function App() {
     'defaultPendingMinMs',
     500,
   )
+  const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useSessionStorage(
+    'defaultLoaderMaxAge',
+    5000,
+  )
   const [defaultPreloadMaxAge, setDefaultPreloadMaxAge] = useSessionStorage(
     'defaultPreloadMaxAge',
     2000,
@@ -82,7 +86,22 @@ function App() {
           />
         </div>
         <div>
-          Link Preload Max Age:{' '}
+          Loader Max Age:{' '}
+          {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : 'Off'}
+        </div>
+        <div>
+          <input
+            type="range"
+            min="0"
+            max="10000"
+            step="250"
+            value={defaultLoaderMaxAge}
+            onChange={(e) => setDefaultLoaderMaxAge(e.target.valueAsNumber)}
+            className={`w-full`}
+          />
+        </div>
+        <div>
+          Preload Max Age:{' '}
           {defaultPreloadMaxAge ? `${defaultPreloadMaxAge}ms` : 'Off'}
         </div>
         <div>
@@ -105,6 +124,7 @@ function App() {
               <Spinner />
             </div>
           }
+          defaultLoaderMaxAge={defaultLoaderMaxAge}
           defaultPreloadMaxAge={defaultPreloadMaxAge}
           defaultPendingMs={defaultPendingMs}
           defaultPendingMinMs={defaultPendingMinMs}
@@ -137,7 +157,9 @@ function Root() {
         {/* Show a global spinner when the router is transitioning */}
         <div
           className={`text-3xl duration-100 delay-0 opacity-0 ${
-            routerState.status === 'loading' ? ` duration-300 opacity-40` : ''
+            routerState.status === 'loading' || routerState.isFetching
+              ? ` duration-300 opacity-40`
+              : ''
           }`}
         >
           <Spinner />

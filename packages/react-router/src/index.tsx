@@ -4,10 +4,15 @@ import { useSyncExternalStore } from 'use-sync-external-store/shim'
 
 import {
   AnyRoute,
+  CheckId,
+  CheckPath,
+  Expand,
+  resolvePath,
   RootRouteId,
   rootRouteId,
   Router,
   RouterState,
+  ToIdOption,
 } from '@tanstack/router-core'
 import {
   warning,
@@ -37,19 +42,14 @@ export * from '@tanstack/router-core'
 declare module '@tanstack/router-core' {
   interface FrameworkGenerics {
     Element: React.ReactNode
-    AsyncElement: (opts: {
-      params: Record<string, string>
-    }) => Promise<React.ReactNode>
-    SyncOrAsyncElement: React.ReactNode | FrameworkGenerics['AsyncElement']
+    // Any is required here so import() will work without having to do import().then(d => d.default)
+    SyncOrAsyncElement: React.ReactNode | (() => Promise<any>)
   }
 
   interface Router<
     TRouteConfig extends AnyRouteConfig = RouteConfig,
     TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
-  > extends Pick<
-      Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][RootRouteId]>,
-      'linkProps' | 'Link' | 'MatchRoute'
-    > {
+  > {
     useState: () => RouterState
     useRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
       routeId: TId,
@@ -91,6 +91,19 @@ declare module '@tanstack/router-core' {
     TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
     TRouteInfo extends AnyRouteInfo = RouteInfo,
   > {
+    useRoute: <
+      TTo extends string = '.',
+      TResolved extends string = ResolveRelativePath<
+        TRouteInfo['id'],
+        NoInfer<TTo>
+      >,
+    >(
+      routeId: CheckId<
+        TAllRouteInfo,
+        TResolved,
+        ToIdOption<TAllRouteInfo, TRouteInfo['id'], TTo>
+      >,
+    ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TResolved]>
     linkProps: <TTo extends string = '.'>(
       props: LinkPropsOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo> &
         React.AnchorHTMLAttributes<HTMLAnchorElement>,
@@ -179,8 +192,23 @@ export function createReactRouter<
   const makeRouteExt = (
     route: AnyRoute,
     router: Router<any, any>,
-  ): Pick<AnyRoute, 'linkProps' | 'Link' | 'MatchRoute'> => {
+  ): Pick<AnyRoute, 'useRoute' | 'linkProps' | 'Link' | 'MatchRoute'> => {
     return {
+      useRoute: (subRouteId = '.' as any) => {
+        const resolvedRouteId = router.resolvePath(
+          route.routeId,
+          subRouteId as string,
+        )
+        const resolvedRoute = router.getRoute(resolvedRouteId)
+        useRouterSubscription(router)
+        invariant(
+          resolvedRoute,
+          `Could not find a route for route "${
+            resolvedRouteId as string
+          }"! Did you forget to add it to your route config?`,
+        )
+        return resolvedRoute
+      },
       linkProps: (options) => {
         const {
           // custom props
@@ -319,24 +347,10 @@ export function createReactRouter<
   const coreRouter = createRouter<TRouteConfig>({
     ...opts,
     createRouter: (router) => {
-      const routerExt: Pick<
-        Router<any, any>,
-        'useRoute' | 'useMatch' | 'useState'
-      > = {
+      const routerExt: Pick<Router<any, any>, 'useMatch' | 'useState'> = {
         useState: () => {
           useRouterSubscription(router)
           return router.state
-        },
-        useRoute: (routeId) => {
-          const route = router.getRoute(routeId)
-          useRouterSubscription(router)
-          invariant(
-            route,
-            `Could not find a route for route "${
-              routeId as string
-            }"! Did you forget to add it to your route config?`,
-          )
-          return route
         },
         useMatch: (routeId) => {
           useRouterSubscription(router)
@@ -383,6 +397,20 @@ export function createReactRouter<
       const routeExt = makeRouteExt(route, router)
 
       Object.assign(route, routeExt)
+    },
+    createElement: async (element) => {
+      if (typeof element === 'function') {
+        const res = (await element()) as any
+
+        // Support direct import() calls
+        if (typeof res === 'object' && res.default) {
+          return React.createElement(res.default)
+        } else {
+          return res
+        }
+      }
+
+      return element
     },
   })
 

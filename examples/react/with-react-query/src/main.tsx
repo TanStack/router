@@ -7,6 +7,13 @@ import {
   createRouteConfig,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import {
+  useQuery,
+  useQueryClient,
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 import axios from 'axios'
 
@@ -26,9 +33,9 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
     element: <Posts />,
     errorElement: 'Oh crap!',
     loader: async () => {
-      return {
-        posts: await fetchPosts(),
-      }
+      queryClient.getQueryData(['posts']) ??
+        (await queryClient.prefetchQuery(['posts'], fetchPosts))
+      return {}
     },
   }).createChildren((createRoute) => [
     createRoute({ path: '/', element: <PostsIndex /> }),
@@ -36,9 +43,11 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
       path: ':postId',
       element: <Post />,
       loader: async ({ params: { postId } }) => {
-        return {
-          post: await fetchPostById(postId),
-        }
+        queryClient.getQueryData(['posts', postId]) ??
+          (await queryClient.prefetchQuery(['posts', postId], () =>
+            fetchPostById(postId),
+          ))
+        return {}
       },
     }),
   ]),
@@ -47,37 +56,42 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
 // Set up a ReactRouter instance
 const router = createReactRouter({
   routeConfig,
-  // defaultPreload: 'intent',
+  defaultPreload: 'intent',
 })
+
+const queryClient = new QueryClient()
 
 function App() {
   return (
     // Build our routes and render our router
     <>
-      <RouterProvider router={router}>
-        <div>
-          <router.Link
-            to="/"
-            activeProps={{
-              className: 'font-bold',
-            }}
-            activeOptions={{ exact: true }}
-          >
-            Home
-          </router.Link>{' '}
-          <router.Link
-            to="/posts"
-            activeProps={{
-              className: 'font-bold',
-            }}
-          >
-            Posts
-          </router.Link>
-        </div>
-        <hr />
-        <Outlet /> {/* Start rendering router matches */}
-      </RouterProvider>
-      <TanStackRouterDevtools router={router} position="bottom-right" />
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router}>
+          <div>
+            <router.Link
+              to="/"
+              activeProps={{
+                className: 'font-bold',
+              }}
+              activeOptions={{ exact: true }}
+            >
+              Home
+            </router.Link>{' '}
+            <router.Link
+              to="/posts"
+              activeProps={{
+                className: 'font-bold',
+              }}
+            >
+              Posts
+            </router.Link>
+          </div>
+          <hr />
+          <Outlet /> {/* Start rendering router matches */}
+        </RouterProvider>
+        <TanStackRouterDevtools router={router} position="bottom-right" />
+        <ReactQueryDevtools initialIsOpen position="bottom-right" />
+      </QueryClientProvider>
     </>
   )
 }
@@ -99,6 +113,16 @@ async function fetchPostById(postId: string) {
     .then((r) => r.data)
 }
 
+function usePosts() {
+  return useQuery(['posts'], fetchPosts)
+}
+
+function usePost(postId: string) {
+  return useQuery(['posts', postId], () => fetchPostById(postId), {
+    enabled: !!postId,
+  })
+}
+
 function Index() {
   return (
     <div>
@@ -108,10 +132,9 @@ function Index() {
 }
 
 function Posts() {
-  const {
-    loaderData: { posts },
-    Link,
-  } = router.useMatch('/posts')
+  const { Link } = router.useMatch('/posts')
+
+  const postsQuery = usePosts()
 
   return (
     <div>
@@ -121,7 +144,7 @@ function Posts() {
           marginRight: '1rem',
         }}
       >
-        {posts?.map((post) => {
+        {postsQuery.data?.map((post) => {
           return (
             <div key={post.id}>
               <Link
@@ -152,14 +175,13 @@ function PostsIndex() {
 }
 
 function Post() {
-  const {
-    loaderData: { post },
-  } = router.useMatch('/posts/:postId')
+  const { params } = router.useMatch('/posts/:postId')
+  const postQuery = usePost(params.postId)
 
   return (
     <div>
-      <h4>{post.title}</h4>
-      <p>{post.body}</p>
+      <h4>{postQuery.data?.title}</h4>
+      <p>{postQuery.data?.body}</p>
     </div>
   )
 }

@@ -1,10 +1,8 @@
-import { createRouteConfig, Outlet } from '@tanstack/react-router'
+import { Outlet } from '@tanstack/react-router'
 import * as React from 'react'
 import { router } from '../../../router'
 import { Spinner } from '../../../components/Spinner'
 import { dashboardRoute } from '..'
-import { invoicesIndexRoute } from './invoices'
-import { invoiceRoute } from './invoice'
 
 export const invoicesRoute = dashboardRoute.createRoute({
   path: 'invoices',
@@ -16,11 +14,12 @@ function Invoices() {
     loaderData: { invoices },
     Link,
     MatchRoute,
+    useRoute,
   } = router.useMatch(invoicesRoute.id)
 
   // Get the action for a child route
-  const invoiceIndexRoute = router.useRoute(invoicesIndexRoute.id)
-  const invoiceDetailRoute = router.useRoute(invoiceRoute.id)
+  const invoiceIndexRoute = useRoute('./')
+  const invoiceDetailRoute = useRoute('./:invoiceId')
 
   return (
     <div className="flex-1 flex">

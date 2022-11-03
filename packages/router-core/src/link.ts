@@ -5,7 +5,7 @@ import {
   RouteInfoByPath,
 } from './routeInfo'
 import { Location } from './router'
-import { NoInfer, PickAsRequired, PickRequired, Updater } from './utils'
+import { Expand, NoInfer, PickAsRequired, PickRequired, Updater } from './utils'
 
 export type LinkInfo =
   | {
@@ -35,23 +35,25 @@ type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
   ? `/${CleanPath<L>}`
   : T
 
-export type Split<S, TTrailing = true> = S extends unknown
+export type Split<S, TIncludeTrailingSlash = true> = S extends unknown
   ? string extends S
     ? string[]
     : S extends string
     ? CleanPath<S> extends ''
       ? []
-      : TTrailing extends true
+      : TIncludeTrailingSlash extends true
       ? CleanPath<S> extends `${infer T}/`
-        ? [T, '/']
+        ? [...Split<T>, '/']
         : CleanPath<S> extends `/${infer U}`
-        ? ['/', U]
+        ? Split<U>
         : CleanPath<S> extends `${infer T}/${infer U}`
-        ? [T, ...Split<U>]
+        ? [...Split<T>, ...Split<U>]
         : [S]
       : CleanPath<S> extends `${infer T}/${infer U}`
-      ? [T, ...Split<U>]
-      : [S]
+      ? [...Split<T>, ...Split<U>]
+      : S extends string
+      ? [S]
+      : never
     : never
   : never
 
@@ -128,7 +130,7 @@ export type ToOptions<
   from?: TFrom
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
   // fromCurrent?: boolean
-} & CheckPath<TAllRouteInfo, NoInfer<TResolvedTo>> &
+} & CheckPath<TAllRouteInfo, NoInfer<TResolvedTo>, {}> &
   SearchParamOptions<TAllRouteInfo, TFrom, TResolvedTo> &
   PathParamOptions<TAllRouteInfo, TFrom, TResolvedTo>
 
@@ -248,19 +250,41 @@ export type CheckRelativePath<
     : {}
   : {}
 
-export type CheckPath<TAllRouteInfo extends AnyAllRouteInfo, TPath> = Exclude<
+export type CheckPath<
+  TAllRouteInfo extends AnyAllRouteInfo,
   TPath,
-  TAllRouteInfo['routePaths']
-> extends never
-  ? {}
+  TPass,
+> = Exclude<TPath, TAllRouteInfo['routePaths']> extends never
+  ? TPass
   : CheckPathError<TAllRouteInfo, Exclude<TPath, TAllRouteInfo['routePaths']>>
 
-export type CheckPathError<TAllRouteInfo extends AnyAllRouteInfo, TInvalids> = {
+export type CheckPathError<
+  TAllRouteInfo extends AnyAllRouteInfo,
+  TInvalids,
+> = Expand<{
   Error: `${TInvalids extends string
     ? TInvalids
     : never} is not a valid route path.`
   'Valid Route Paths': TAllRouteInfo['routePaths']
-}
+}>
+
+export type CheckId<
+  TAllRouteInfo extends AnyAllRouteInfo,
+  TPath,
+  TPass,
+> = Exclude<TPath, TAllRouteInfo['routeIds']> extends never
+  ? TPass
+  : CheckIdError<TAllRouteInfo, Exclude<TPath, TAllRouteInfo['routeIds']>>
+
+export type CheckIdError<
+  TAllRouteInfo extends AnyAllRouteInfo,
+  TInvalids,
+> = Expand<{
+  Error: `${TInvalids extends string
+    ? TInvalids
+    : never} is not a valid route ID.`
+  'Valid Route IDs': TAllRouteInfo['routeIds']
+}>
 
 export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
   ? TTo extends string
@@ -274,10 +298,14 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
       ? TTo
       : Split<TTo> extends ['..', ...infer ToRest]
       ? Split<TFrom> extends [...infer FromRest, infer FromTail]
-        ? ResolveRelativePath<Join<FromRest>, Join<ToRest>>
+        ? ToRest extends ['/']
+          ? Join<[...FromRest, '/']>
+          : ResolveRelativePath<Join<FromRest>, Join<ToRest>>
         : never
       : Split<TTo> extends ['.', ...infer ToRest]
-      ? ResolveRelativePath<TFrom, Join<ToRest>>
+      ? ToRest extends ['/']
+        ? Join<[TFrom, '/']>
+        : ResolveRelativePath<TFrom, Join<ToRest>>
       : CleanPath<Join<['/', ...Split<TFrom>, ...Split<TTo>]>>
     : never
   : never

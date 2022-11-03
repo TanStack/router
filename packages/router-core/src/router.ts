@@ -25,8 +25,11 @@ import {
 } from './path'
 import { AnyRoute, cascadeLoaderData, createRoute, Route } from './route'
 import {
+  AnyLoaderData,
+  AnyPathParams,
   AnyRouteConfig,
   AnySearchSchema,
+  LoaderContext,
   RouteConfig,
   SearchFilter,
 } from './routeConfig'
@@ -43,6 +46,7 @@ import {
   functionalUpdate,
   last,
   PickAsRequired,
+  PickRequired,
   replaceEqualDeep,
   Timeout,
   Updater,
@@ -99,6 +103,11 @@ export interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
   basepath?: string
   createRouter?: (router: Router<any, any>) => void
   createRoute?: (opts: { route: AnyRoute; router: Router<any, any> }) => void
+  createElement?: (
+    element:
+      | GetFrameworkGeneric<'Element'>
+      | (() => Promise<GetFrameworkGeneric<'Element'>>),
+  ) => Promise<GetFrameworkGeneric<'Element'>>
 }
 
 export interface Action<
@@ -124,6 +133,42 @@ export interface ActionState<
   error?: unknown
 }
 
+export interface Loader<
+  TFullSearchSchema extends AnySearchSchema = {},
+  TAllParams extends AnyPathParams = {},
+  TRouteLoaderData = AnyLoaderData,
+> {
+  fetch: keyof PickRequired<TFullSearchSchema> extends never
+    ? keyof TAllParams extends never
+      ? (loaderContext: { signal?: AbortSignal }) => Promise<TRouteLoaderData>
+      : (loaderContext: {
+          params: TAllParams
+          search?: TFullSearchSchema
+          signal?: AbortSignal
+        }) => Promise<TRouteLoaderData>
+    : keyof TAllParams extends never
+    ? (loaderContext: {
+        search: TFullSearchSchema
+        params: TAllParams
+        signal?: AbortSignal
+      }) => Promise<TRouteLoaderData>
+    : (loaderContext: {
+        search: TFullSearchSchema
+        signal?: AbortSignal
+      }) => Promise<TRouteLoaderData>
+  current?: LoaderState<TFullSearchSchema, TAllParams>
+  latest?: LoaderState<TFullSearchSchema, TAllParams>
+  pending: LoaderState<TFullSearchSchema, TAllParams>[]
+}
+
+export interface LoaderState<
+  TFullSearchSchema = unknown,
+  TAllParams = unknown,
+> {
+  loadedAt: number
+  loaderContext: LoaderContext<TFullSearchSchema, TAllParams>
+}
+
 export interface RouterState {
   status: 'idle' | 'loading'
   location: Location
@@ -133,6 +178,7 @@ export interface RouterState {
   currentAction?: ActionState
   latestAction?: ActionState
   actions: Record<string, Action>
+  loaders: Record<string, Loader>
   pending?: PendingState
   isFetching: boolean
   isPreloading: boolean
@@ -322,6 +368,7 @@ export function createRouter<
       location: null!,
       matches: [],
       actions: {},
+      loaders: {},
       loaderData: {} as any,
       lastUpdated: Date.now(),
       isFetching: false,
@@ -705,38 +752,10 @@ export function createRouter<
     },
 
     loadMatches: async (resolvedMatches, loaderOpts) => {
-      const now = Date.now()
-      const minMaxAge = loaderOpts?.preload
-        ? Math.max(loaderOpts?.maxAge, loaderOpts?.gcMaxAge)
-        : 0
-
       const matchPromises = resolvedMatches.map(async (match) => {
         // Validate the match (loads search params etc)
         match.__.validate()
-
-        // If this is a preload, add it to the preload cache
-        if (loaderOpts?.preload && minMaxAge > 0) {
-          // If the match is currently active, don't preload it
-          if (router.state.matches.find((d) => d.matchId === match.matchId)) {
-            return
-          }
-
-          router.matchCache[match.matchId] = {
-            gc: now + loaderOpts.gcMaxAge,
-            match,
-          }
-        }
-
-        // If the match is invalid, errored or idle, trigger it to load
-        if (
-          (match.status === 'success' && match.getIsInvalid()) ||
-          match.status === 'error' ||
-          match.status === 'idle'
-        ) {
-          const maxAge = loaderOpts?.preload ? loaderOpts?.maxAge : undefined
-
-          match.load({ maxAge })
-        }
+        match.load(loaderOpts)
 
         if (match.status === 'loading') {
           // If requested, start the pending timers

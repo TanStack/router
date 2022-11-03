@@ -4,7 +4,6 @@ export interface FrameworkGenerics {
   // pre-defined as constraints:
   //
   // Element: any
-  // AsyncElement: any
   // SyncOrAsyncElement?: any
 }
 

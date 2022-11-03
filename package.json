@@ -24,7 +24,8 @@
     "./packages/react-router-devtools",
     "./packages/react-router-rank-routes",
     "./examples/react/basic",
-    "./examples/react/kitchen-sink"
+    "./examples/react/kitchen-sink",
+    "./examples/react/with-react-query"
   ],
   "devDependencies": {
     "@babel/core": "^7.17.9",
