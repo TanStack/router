@@ -161,8 +161,20 @@
           "to": "examples/react/kitchen-sink"
         },
         {
+          "label": "Kitchen Sink (Code Split)",
+          "to": "examples/react/kitchen-sink-codesplit"
+        },
+        {
           "label": "With React Query",
           "to": "examples/react/with-react-query"
+        },
+        {
+          "label": "With TRPC",
+          "to": "examples/react/kitchen-sink"
+        },
+        {
+          "label": "With TRPC & React Query",
+          "to": "examples/react/kitchen-sink"
         }
       ]
     },
