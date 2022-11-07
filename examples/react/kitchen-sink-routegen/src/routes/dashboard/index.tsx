@@ -2,17 +2,17 @@ import * as React from 'react'
 import dashboardRoute from '../dashboard'
 import { router } from '../../router'
 
-const routeDef = dashboardRoute.createRoute({
+const routeConfig = dashboardRoute.createRoute({
   path: '/',
   element: <DashboardHome />,
 })
 
-export default routeDef
+export default routeConfig
 
 function DashboardHome() {
   const {
     loaderData: { invoices },
-  } = router.useMatch(routeDef.id)
+  } = router.useMatch(routeConfig.id)
 
   return (
     <div className="p-2">

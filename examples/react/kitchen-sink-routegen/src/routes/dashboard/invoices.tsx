@@ -4,12 +4,12 @@ import { router } from '../../router'
 import { Spinner } from '../../components/Spinner'
 import dashboardRoute from '../dashboard'
 
-const routeDef = dashboardRoute.createRoute({
+const routeConfig = dashboardRoute.createRoute({
   path: 'invoices',
   element: <Invoices />,
 })
 
-export default routeDef
+export default routeConfig
 
 function Invoices() {
   const {
@@ -17,7 +17,7 @@ function Invoices() {
     Link,
     MatchRoute,
     useRoute,
-  } = router.useMatch(routeDef.id)
+  } = router.useMatch(routeConfig.id)
 
   // Get the action for a child route
   const invoiceIndexRoute = useRoute('./')

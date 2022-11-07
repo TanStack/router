@@ -4,7 +4,7 @@ import * as React from 'react'
 import { router } from '../router'
 import { fetchInvoices } from '../mockTodos'
 
-const routeDef = createRouteConfig().createRoute({
+const routeConfig = createRouteConfig().createRoute({
   path: 'dashboard',
   element: <Dashboard />,
   loader: async () => {
@@ -15,10 +15,10 @@ const routeDef = createRouteConfig().createRoute({
   },
 })
 
-export default routeDef
+export default routeConfig
 
 function Dashboard() {
-  const route = router.useMatch(routeDef.id)
+  const route = router.useMatch(routeConfig.id)
 
   return (
     <>

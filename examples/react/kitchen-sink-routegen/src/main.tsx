@@ -156,9 +156,9 @@ function Root() {
         <h1 className={`text-3xl p-2`}>Kitchen Sink</h1>
         {/* Show a global spinner when the router is transitioning */}
         <div
-          className={`text-3xl duration-100 delay-0 opacity-0 ${
+          className={`text-3xl duration-300 delay-0 opacity-0 ${
             routerState.status === 'loading' || routerState.isFetching
-              ? ` duration-300 opacity-40`
+              ? ` duration-1000 opacity-40`
               : ''
           }`}
         >

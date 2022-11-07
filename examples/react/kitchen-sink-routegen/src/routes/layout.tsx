@@ -4,7 +4,7 @@ import * as React from 'react'
 import { router } from '../router'
 import { loaderDelayFn } from '../utils'
 
-const routeDef = createRouteConfig().createRoute({
+const routeConfig = createRouteConfig().createRoute({
   id: 'layout',
   element: <LayoutWrapper />,
   loader: async () => {
@@ -16,10 +16,10 @@ const routeDef = createRouteConfig().createRoute({
   },
 })
 
-export default routeDef
+export default routeConfig
 
 function LayoutWrapper() {
-  const { loaderData } = router.useMatch(routeDef.id)
+  const { loaderData } = router.useMatch(routeConfig.id)
   return (
     <div>
       <div>Layout</div>

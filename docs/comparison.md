@@ -22,7 +22,7 @@ Feature/Capability Key:
 | History, Memory & Hash Routers                 | ✅                                             | ✅                                                    |
 | Nested / Layout Routes                         | ✅                                             | ✅                                                    |
 | Suspense-like Route Transitions                | ✅                                             | ✅                                                    |
-| Typesafe Route Definitions                     | ✅                                             | 🛑                                                    |
+| Typesafe Route Configurations                  | ✅                                             | 🛑                                                    |
 | Loaders                                        | ✅                                             | ✅                                                    |
 | Typesafe Loaders                               | ✅                                             | 🔶                                                    |
 | Loader Caching (SWR + Invalidation)            | ✅                                             | 🛑                                                    |

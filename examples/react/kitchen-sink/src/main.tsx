@@ -40,8 +40,6 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
         invoices: await fetchInvoices(),
       }
     },
-    loaderMaxAge: 100000,
-    loaderGcMaxAge: 5000000,
   }).createChildren((createRoute) => [
     createRoute({ path: '/', element: <DashboardHome /> }),
     createRoute({
@@ -332,17 +330,13 @@ function Root() {
       <div className={`flex items-center border-b gap-2`}>
         <h1 className={`text-3xl p-2`}>Kitchen Sink</h1>
         {/* Show a global spinner when the router is transitioning */}
-        {routerState.isFetching ? (
-          <div
-            className={`text-3xl duration-100 delay-0 opacity-0 ${
-              routerState.isFetching ? ` duration-300 opacity-40` : ''
-            }`}
-          >
-            <Spinner />
-          </div>
-        ) : (
-          '-'
-        )}
+        <div
+          className={`text-3xl duration-300 delay-0 opacity-0 ${
+            routerState.isFetching ? ` duration-1000 opacity-40` : ''
+          }`}
+        >
+          <Spinner />
+        </div>
       </div>
       <div className={`flex-1 flex`}>
         <div className={`divide-y w-56`}>

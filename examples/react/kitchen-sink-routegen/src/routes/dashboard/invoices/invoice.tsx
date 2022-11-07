@@ -5,7 +5,7 @@ import { fetchInvoiceById, patchInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import invoicesRoute from '../invoices'
 
-const routeDef = invoicesRoute.createRoute({
+const routeConfig = invoicesRoute.createRoute({
   path: ':invoiceId',
   parseParams: (params) => ({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),
@@ -31,7 +31,7 @@ const routeDef = invoicesRoute.createRoute({
   action: patchInvoice,
 })
 
-export default routeDef
+export default routeConfig
 
 function InvoiceView() {
   const {
@@ -40,7 +40,7 @@ function InvoiceView() {
     search,
     Link,
     navigate,
-  } = router.useMatch(routeDef.id)
+  } = router.useMatch(routeConfig.id)
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
 

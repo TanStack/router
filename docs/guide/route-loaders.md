@@ -161,7 +161,7 @@ The `maxAge` of a route loader represents the amount of time in milliseconds to 
 
 - Dispatching a `maxAge` event from the loader using the [loader dispatcher](#loader-dispatcher)
 - Passing a `maxAge` option to `useLoadRoute() when prefetching`
-- Passing a `loaderMaxAge` option to the route definition itself
+- Passing a `loaderMaxAge` option to the route configuration itself
 - Passing a `defaultLoaderMaxAge` to the `Router` component
 
 ## Loader Dispatcher

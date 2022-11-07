@@ -48,7 +48,6 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
   - Optional Compression w/ JSURL plugin or your own custom parser/serializer!
 - Hooks for everything: Router, Matches, Route Matching, Preloading
 - Optional route filtering/ranking
-- Optional JSX route definitions
 - Prepackaged simple cache implementation for route loader caching
 - Easy Integration w/ external caches and storage (eg. React Query, Apollo, SWR, RTKQuery)
 

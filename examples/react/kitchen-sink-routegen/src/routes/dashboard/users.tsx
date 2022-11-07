@@ -11,7 +11,7 @@ import dashboardRoute from '../dashboard'
 const usersViewSortBy = z.enum(['name', 'id', 'email'])
 export type UsersViewSortBy = z.infer<typeof usersViewSortBy>
 
-const routeDef = dashboardRoute.createRoute({
+const routeConfig = dashboardRoute.createRoute({
   path: 'users',
   element: <Users />,
   loader: async ({ search }) => {
@@ -40,7 +40,7 @@ const routeDef = dashboardRoute.createRoute({
   ],
 })
 
-export default routeDef
+export default routeConfig
 
 function Users() {
   const {
@@ -49,7 +49,7 @@ function Users() {
     Link,
     MatchRoute,
     navigate,
-  } = router.useMatch(routeDef.id)
+  } = router.useMatch(routeConfig.id)
 
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy

@@ -4,7 +4,7 @@ import { Invoice, postInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import invoicesRoute from '../invoices'
 
-const routeDef = invoicesRoute.createRoute({
+const routeConfig = invoicesRoute.createRoute({
   path: '/',
   element: <InvoicesHome />,
   action: async (partialInvoice: Partial<Invoice>) => {
@@ -20,10 +20,10 @@ const routeDef = invoicesRoute.createRoute({
   },
 })
 
-export default routeDef
+export default routeConfig
 
 function InvoicesHome() {
-  const { action } = router.useMatch(routeDef.id)
+  const { action } = router.useMatch(routeConfig.id)
 
   return (
     <>

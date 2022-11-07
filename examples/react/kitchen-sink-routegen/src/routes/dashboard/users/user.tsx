@@ -3,7 +3,7 @@ import { router } from '../../../router'
 import { fetchUserById } from '../../../mockTodos'
 import usersRoute from '../users'
 
-const routeDef = usersRoute.createRoute({
+const routeConfig = usersRoute.createRoute({
   path: ':userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
@@ -16,12 +16,12 @@ const routeDef = usersRoute.createRoute({
   },
 })
 
-export default routeDef
+export default routeConfig
 
 function User() {
   const {
     loaderData: { user },
-  } = router.useMatch(routeDef.id)
+  } = router.useMatch(routeConfig.id)
 
   return (
     <>

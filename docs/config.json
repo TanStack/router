@@ -67,6 +67,14 @@
           "to": "guide/route-configs"
         },
         {
+          "label": "Route Paths",
+          "to": "guide/route-paths"
+        },
+        {
+          "label": "Layout Routes",
+          "to": "guide/layout-routes"
+        },
+        {
           "label": "Router",
           "to": "guide/router"
         },

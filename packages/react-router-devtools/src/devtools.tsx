@@ -13,7 +13,6 @@ import { Panel, Button, Code, ActivePanel } from './styledComponents'
 import { ThemeProvider, defaultTheme as theme } from './theme'
 // import { getQueryStatusLabel, getQueryStatusColor } from './utils'
 import Explorer from './Explorer'
-import Logo from './Logo'
 
 export type PartialKeys<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
 
@@ -88,6 +87,20 @@ interface DevtoolsPanelOptions {
 }
 
 const isServer = typeof window === 'undefined'
+
+function Logo() {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+      }}
+    >
+      <div>TANSTACK</div>
+      <div>ROUTER</div>
+    </div>
+  )
+}
 
 export function TanStackRouterDevtools({
   initialIsOpen,
