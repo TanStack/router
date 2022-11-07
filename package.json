@@ -26,6 +26,7 @@
     "./examples/react/basic",
     "./examples/react/kitchen-sink",
     "./examples/react/kitchen-sink-codesplit",
+    "./examples/react/kitchen-sink-routegen",
     "./examples/react/with-react-query"
   ],
   "devDependencies": {

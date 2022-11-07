@@ -1,0 +1,35 @@
+{
+  "name": "tanstack-router-react-example-kitchen-sink-routegen",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "run-p dev:*",
+    "dev:build": "vite",
+    "dev:generate": "nodemon --exec 'ts-node ./scripts/generate.ts' ./scripts/generate.ts",
+    "build": "vite build",
+    "serve": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "0.0.1-alpha.11",
+    "@tanstack/react-router-devtools": "0.0.1-alpha.8",
+    "@types/react": "^18.0.14",
+    "@types/react-dom": "^18.0.5",
+    "@vitejs/plugin-react": "^1.1.3",
+    "axios": "^1.1.3",
+    "immer": "^9.0.15",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "vite": "^2.8.6",
+    "zod": "^3.19.1"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.9",
+    "@types/watch": "^1.0.3",
+    "nodemon": "^2.0.20",
+    "npm-run-all": "^4.1.5",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.8.4",
+    "watch": "^1.0.2"
+  }
+}
