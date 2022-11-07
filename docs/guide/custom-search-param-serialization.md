@@ -2,6 +2,8 @@
 title: Custom Search Param Serialization
 ---
 
+> TODO This portion of documentation is currently under construction
+
 By default, TanStack Router parses and serializes your search params automatically. Depending on your needs though, you may want to customize the serialization process.
 
 To do so, you can [use `ReactRouter`'s `parseSearch` and `stringifySearch` options combined with the `parseSearchWith` and `stringifySearchWith` utilities](../docs/api#search-param-parsing-and-serialization).

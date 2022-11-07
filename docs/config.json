@@ -54,8 +54,8 @@
           "to": "adapters/vue-router"
         },
         {
-          "label": "Vanilla JS/TS",
-          "to": "adapters/vanilla"
+          "label": "Angular",
+          "to": "adapters/angular-router"
         }
       ]
     },
