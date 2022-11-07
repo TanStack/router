@@ -19,15 +19,8 @@
     "typecheck-perf": "tsc -b --generateTrace ts-perf"
   },
   "workspaces": [
-    "./packages/router-core",
-    "./packages/react-router",
-    "./packages/react-router-devtools",
-    "./packages/react-router-rank-routes",
-    "./examples/react/basic",
-    "./examples/react/kitchen-sink",
-    "./examples/react/kitchen-sink-codesplit",
-    "./examples/react/kitchen-sink-routegen",
-    "./examples/react/with-react-query"
+    "./packages/*",
+    "./examples/react/*"
   ],
   "devDependencies": {
     "@babel/core": "^7.17.9",
