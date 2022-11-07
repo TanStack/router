@@ -5,10 +5,6 @@ import { useSyncExternalStore } from 'use-sync-external-store/shim'
 import {
   AnyRoute,
   CheckId,
-  CheckPath,
-  Expand,
-  resolvePath,
-  RootRouteId,
   rootRouteId,
   Router,
   RouterState,

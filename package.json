@@ -25,6 +25,7 @@
     "./packages/react-router-rank-routes",
     "./examples/react/basic",
     "./examples/react/kitchen-sink",
+    "./examples/react/kitchen-sink-codesplit",
     "./examples/react/with-react-query"
   ],
   "devDependencies": {

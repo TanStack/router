@@ -1,5 +1,5 @@
 ---
-title: History Types & Location
+title: History Types
 ---
 
 > NOTE: If you don't need **hash or memory routing, then you can skip this section**.

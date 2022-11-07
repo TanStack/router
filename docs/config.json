@@ -34,19 +34,23 @@
       "label": "Adapters",
       "children": [
         {
-          "label": "React Router",
+          "label": "React",
           "to": "adapters/react-router"
         },
         {
-          "label": "Solid Router",
+          "label": "Preact",
+          "to": "adapters/preact-router"
+        },
+        {
+          "label": "Solid",
           "to": "adapters/solid-router"
         },
         {
-          "label": "Svelte Router",
+          "label": "Svelte",
           "to": "adapters/svelte-router"
         },
         {
-          "label": "Vue Router",
+          "label": "Vue",
           "to": "adapters/vue-router"
         },
         {
@@ -59,19 +63,51 @@
       "label": "Guide",
       "children": [
         {
+          "label": "Route Configs",
+          "to": "guide/route-configs"
+        },
+        {
+          "label": "Router",
+          "to": "guide/router"
+        },
+        {
+          "label": "Links",
+          "to": "guide/links"
+        },
+        {
           "label": "Routes",
           "to": "guide/routes"
         },
         {
-          "label": "Route Loaders",
-          "to": "guide/route-loaders"
+          "label": "Route Matches",
+          "to": "guide/route-matches"
         },
         {
-          "label": "Prompts",
-          "to": "guide/prompts"
+          "label": "Search Params",
+          "to": "guide/search-params"
+        },
+        {
+          "label": "Loaders",
+          "to": "guide/loaders"
+        },
+        {
+          "label": "Actions",
+          "to": "guide/actions"
+        },
+        {
+          "label": "Caching",
+          "to": "guide/caching"
+        },
+        {
+          "label": "Preloading",
+          "to": "guide/preloading"
         },
         {
           "label": "Route Elements",
+          "to": "guide/route-elements"
+        },
+        {
+          "label": "Code-Splitting",
           "to": "guide/route-elements"
         },
         {
@@ -79,12 +115,16 @@
           "to": "guide/pending-states"
         },
         {
+          "label": "Prompts",
+          "to": "guide/prompts"
+        },
+        {
           "label": "Custom Search Param Serialization",
           "to": "guide/custom-search-param-serialization"
         },
         {
-          "label": "History Types And Location",
-          "to": "guide/history-types-and-location"
+          "label": "History Types",
+          "to": "guide/history-types"
         },
         {
           "label": "Breadcrumbs",
