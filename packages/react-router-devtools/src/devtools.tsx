@@ -88,16 +88,36 @@ interface DevtoolsPanelOptions {
 
 const isServer = typeof window === 'undefined'
 
-function Logo() {
+function Logo(props: React.HTMLProps<HTMLDivElement>) {
   return (
     <div
+      {...props}
       style={{
+        ...(props.style ?? {}),
         display: 'flex',
         alignItems: 'center',
+        flexDirection: 'column',
+        fontSize: '0.7rem',
+        fontWeight: '900',
+        lineHeight: '1',
       }}
     >
-      <div>TANSTACK</div>
-      <div>ROUTER</div>
+      <div
+        style={{
+          letterSpacing: '-0.05rem',
+        }}
+      >
+        TANSTACK
+      </div>
+      <div
+        className="text-transparent bg-clip-text bg-gradient-to-r from-lime-500 to-emerald-500"
+        style={{
+          letterSpacing: '0.1rem',
+          marginRight: '-0.2rem',
+        }}
+      >
+        ROUTER
+      </div>
     </div>
   )
 }
@@ -427,6 +447,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
   return (
     <ThemeProvider theme={theme}>
+      <script src="https://cdn.tailwindcss.com"></script>
       <Panel ref={ref} className="TanStackRouterDevtoolsPanel" {...panelProps}>
         <style
           dangerouslySetInnerHTML={{
@@ -500,28 +521,18 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           }}
         >
           <div
+            className="flex justify-start gap-2 p-2 items-center"
             style={{
-              padding: '.5em',
               background: theme.backgroundAlt,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
             }}
           >
-            <Logo
-              aria-hidden
-              style={{
-                marginRight: '.5em',
-              }}
-            />
+            <Logo aria-hidden />
             <div
               style={{
-                marginRight: 'auto',
                 fontSize: 'clamp(.8rem, 2vw, 1.3rem)',
                 fontWeight: 'bold',
               }}
             >
-              TanStack Router{' '}
               <span
                 style={{
                   fontWeight: 100,

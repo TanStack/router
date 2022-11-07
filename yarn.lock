@@ -2311,6 +2311,12 @@
     "@babel/runtime" "^7.16.7"
     date-fns "^2.29.1"
 
+"@tanstack/react-router-devtools@0.0.1-beta.0":
+  version "0.0.1-beta.1"
+  dependencies:
+    "@babel/runtime" "^7.16.7"
+    date-fns "^2.29.1"
+
 "@tanstack/react-router@0.0.1-alpha.11":
   version "0.0.1-alpha.11"
   resolved "https://registry.yarnpkg.com/@tanstack/react-router/-/react-router-0.0.1-alpha.11.tgz#9b56e58e8f433e78f6b46ba98b12cc3172459cdb"
@@ -2318,6 +2324,13 @@
   dependencies:
     "@babel/runtime" "^7.16.7"
     "@tanstack/router-core" "0.0.1-alpha.11"
+    use-sync-external-store "^1.2.0"
+
+"@tanstack/react-router@0.0.1-beta.0":
+  version "0.0.1-beta.1"
+  dependencies:
+    "@babel/runtime" "^7.16.7"
+    "@tanstack/router-core" "0.0.1-beta.1"
     use-sync-external-store "^1.2.0"
 
 "@tanstack/router-core@0.0.1-alpha.11":

@@ -1,4 +1,4 @@
-import React, { StrictMode, useState } from 'react'
+import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Outlet,
@@ -8,194 +8,315 @@ import {
 } from '@tanstack/react-router'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import {
-  useQuery,
-  useQueryClient,
-  QueryClient,
-  QueryClientProvider,
-} from '@tanstack/react-query'
-import { httpBatchLink } from '@trpc/client'
-import { createTRPCReact } from '@trpc/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
 
-import axios from 'axios'
+import { z } from 'zod'
 
-type PostType = {
-  id: string
-  title: string
-  body: string
-}
+export const trpc = createTRPCProxyClient<AppRouter>({
+  links: [
+    httpBatchLink({
+      url: 'http://localhost:4000',
+    }),
+  ],
+})
 
-const queryClient = new QueryClient()
-
+// Build our routes. We could do this in our component, too.
 const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
     path: '/',
-    element: <Index />,
+    element: <Home />,
   }),
   createRoute({
-    path: 'posts',
-    loaderMaxAge: 0,
-    element: <Posts />,
-    errorElement: 'Oh crap!',
+    path: 'dashboard',
+    element: <Dashboard />,
     loader: async () => {
-      queryClient.getQueryData(['posts']) ??
-        (await queryClient.prefetchQuery(['posts'], fetchPosts))
-      return {}
+      return {
+        posts: await trpc.posts.query(),
+      }
     },
   }).createChildren((createRoute) => [
-    createRoute({ path: '/', element: <PostsIndex /> }),
+    createRoute({ path: '/', element: <DashboardHome /> }),
     createRoute({
-      path: ':postId',
-      element: <Post />,
-      loader: async ({ params: { postId } }) => {
-        queryClient.getQueryData(['posts', postId]) ??
-          (await queryClient.prefetchQuery(['posts', postId], () =>
-            fetchPostById(postId),
-          ))
-        return {}
-      },
-    }),
+      path: 'posts',
+      element: <Posts />,
+    }).createChildren((createRoute) => [
+      createRoute({
+        path: '/',
+        element: <PostsIndex />,
+      }),
+      createRoute({
+        path: ':postId',
+        parseParams: (params) => ({
+          postId: z.number().int().parse(Number(params.postId)),
+        }),
+        stringifyParams: ({ postId }) => ({ postId: `${postId}` }),
+        validateSearch: z.object({
+          showNotes: z.boolean().optional(),
+          notes: z.string().optional(),
+        }),
+        element: <PostView />,
+        loader: async ({ params: { postId }, search: {} }) => {
+          const post = await trpc.post.query(postId)
+
+          if (!post) {
+            throw new Error('Post not found!')
+          }
+
+          return {
+            post,
+          }
+        },
+      }),
+    ]),
   ]),
 ])
 
-// Set up a ReactRouter instance
 const router = createReactRouter({
   routeConfig,
-  defaultPreload: 'intent',
 })
 
-export const trpc = createTRPCReact<AppRouter>({})
+// Provide our location and routes to our application
 function App() {
-  const [trpcClient] = useState(() =>
-    trpc.createClient({
-      links: [
-        httpBatchLink({
-          url: 'http://localhost:4000',
-          // optional
-          headers() {
-            return {
-              // authorization: getAuthCookie(),
-            }
-          },
-        }),
-      ],
-    }),
-  )
-
   return (
-    // Build our routes and render our router
     <>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router}>
-            <div>
-              <router.Link
-                to="/"
-                activeProps={{
-                  className: 'font-bold',
-                }}
-                activeOptions={{ exact: true }}
-              >
-                Home
-              </router.Link>{' '}
-              <router.Link
-                to="/posts"
-                activeProps={{
-                  className: 'font-bold',
-                }}
-              >
-                Posts
-              </router.Link>
-            </div>
-            <hr />
-            <Outlet /> {/* Start rendering router matches */}
-          </RouterProvider>
-          <TanStackRouterDevtools router={router} position="bottom-right" />
-          <ReactQueryDevtools initialIsOpen position="bottom-right" />
-        </QueryClientProvider>
-      </trpc.Provider>
+      {/* Normally <Router /> matches and renders our
+      routes, but when we pass our own children, we can use
+      <Outlet /> to start rendering our matches when we're
+      // ready. This also let's us use router API's
+      in <Root /> before rendering any routes */}
+      <RouterProvider
+        router={router}
+        defaultPendingElement={
+          <div className={`p-2 text-2xl`}>
+            <Spinner />
+          </div>
+        }
+        defaultPreload="intent"
+      >
+        <Root />
+      </RouterProvider>
+      <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
   )
 }
 
-async function fetchPosts() {
-  console.log('Fetching posts...')
-  await new Promise((r) => setTimeout(r, 500))
-  return axios
-    .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
-    .then((r) => r.data.slice(0, 10))
-}
+function Root() {
+  const routerState = router.useState()
 
-async function fetchPostById(postId: string) {
-  console.log(`Fetching post with id ${postId}...`)
-  await new Promise((r) => setTimeout(r, 500))
-
-  return await axios
-    .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-    .then((r) => r.data)
-}
-
-function usePosts() {
-  return useQuery(['posts'], fetchPosts)
-}
-
-function usePost(postId: string) {
-  return useQuery(['posts', postId], () => fetchPostById(postId), {
-    enabled: !!postId,
-  })
-}
-
-function Index() {
-  const hello = trpc.hello.useQuery()
-  const posts = trpc.posts.useQuery()
-  if (!hello.data || !posts.data) return <p>{'Loading...'}</p>
   return (
-    <div className="p-5">
-      <h1 className="text-xl pb-2">{hello.data}</h1>
-      <ul className="list-disc list-inside">
-        {posts.data.map((post) => (
-          <li key={post.id}>{post.title}</li>
-        ))}
-      </ul>
+    <div className={`min-h-screen flex flex-col`}>
+      <div className={`flex items-center border-b gap-2`}>
+        <h1 className={`text-3xl p-2`}>Kitchen Sink</h1>
+        {/* Show a global spinner when the router is transitioning */}
+        <div
+          className={`text-3xl duration-300 delay-0 opacity-0 ${
+            routerState.isFetching ? ` duration-1000 opacity-40` : ''
+          }`}
+        >
+          <Spinner />
+        </div>
+      </div>
+      <div className={`flex-1 flex`}>
+        <div className={`divide-y w-56`}>
+          {(
+            [
+              ['.', 'Home'],
+              ['/dashboard', 'Dashboard'],
+            ] as const
+          ).map(([to, label]) => {
+            return (
+              <div key={to}>
+                <router.Link
+                  to={to}
+                  activeOptions={
+                    {
+                      // If the route points to the root of it's parent,
+                      // make sure it's only active if it's exact
+                      // exact: to === '.',
+                    }
+                  }
+                  preload="intent"
+                  className={`block py-2 px-3 text-blue-700`}
+                  // Make "active" links bold
+                  activeProps={{ className: `font-bold` }}
+                >
+                  {label}
+                </router.Link>
+              </div>
+            )
+          })}
+        </div>
+        <div className={`flex-1 border-l border-gray-200`}>
+          {/* Render our first route match */}
+          <Outlet />
+        </div>
+      </div>
     </div>
   )
 }
 
-function Posts() {
-  const { Link } = router.useMatch('/posts')
-
-  const hello = trpc.hello
-  ;({ text: 'client' })
-
-  const postsQuery = usePosts()
+function Home() {
+  const route = router.useMatch('/')
 
   return (
-    <div>
-      <div
-        style={{
-          float: 'left',
-          marginRight: '1rem',
+    <div className={`p-2`}>
+      <div className={`text-lg`}>Welcome Home!</div>
+      <hr className={`my-2`} />
+      <route.Link
+        to="/dashboard/posts/:postId"
+        params={{
+          postId: 3,
         }}
+        className={`py-1 px-2 text-xs bg-blue-500 text-white rounded-full`}
       >
-        {postsQuery.data?.map((post) => {
+        1 New Invoice
+      </route.Link>
+      <hr className={`my-2`} />
+      <div className={`max-w-xl`}>
+        As you navigate around take note of the UX. It should feel
+        suspense-like, where routes are only rendered once all of their data and
+        elements are ready.
+        <hr className={`my-2`} />
+        To exaggerate async effects, play with the artificial request delay
+        slider in the bottom-left corner. You can also play with the default
+        timings for displaying the pending fallbacks and the minimum time any
+        pending fallbacks will remain shown.
+        <hr className={`my-2`} />
+        The last 2 sliders determine if link-hover preloading is enabled (and
+        how long those preloads stick around) and also whether to cache rendered
+        route data (and for how long). Both of these default to 0 (or off).
+      </div>
+    </div>
+  )
+}
+
+function Dashboard() {
+  const route = router.useMatch('/dashboard')
+
+  return (
+    <>
+      <div className="flex items-center border-b">
+        <h2 className="text-xl p-2">Dashboard</h2>
+        <route.Link
+          to="/dashboard/posts/:postId"
+          params={{
+            postId: 3,
+          }}
+          className="py-1 px-2 text-xs bg-blue-500 text-white rounded-full"
+        >
+          1 New Invoice
+        </route.Link>
+      </div>
+      <div className="flex flex-wrap divide-x">
+        {(
+          [
+            ['.', 'Summary'],
+            ['/dashboard/posts', 'Posts'],
+          ] as const
+        ).map(([to, label]) => {
           return (
-            <div key={post.id}>
-              <Link
-                to="/posts/:postId"
-                params={{
-                  postId: post.id,
-                }}
-                activeProps={{ className: 'font-bold' }}
-              >
-                <pre>{post.title.substring(0, 20)}</pre>
-              </Link>
-            </div>
+            <route.Link
+              key={to}
+              to={to}
+              activeOptions={{ exact: to === '.' }}
+              activeProps={{ className: `font-bold` }}
+              className="p-2"
+            >
+              {label}
+            </route.Link>
           )
         })}
       </div>
       <hr />
       <Outlet />
+    </>
+  )
+}
+
+function DashboardHome() {
+  const {
+    loaderData: { posts },
+  } = router.useMatch('/dashboard/')
+
+  return (
+    <div className="p-2">
+      <div className="p-2">
+        Welcome to the dashboard! You have{' '}
+        <strong>{posts.length} total posts</strong>.
+      </div>
+    </div>
+  )
+}
+
+function Posts() {
+  const {
+    loaderData: { posts },
+    Link,
+    MatchRoute,
+  } = router.useMatch('/dashboard/posts')
+
+  // Get the action for a child route
+  const invoiceIndexRoute = router.useRoute('/dashboard/posts/')
+  const invoiceDetailRoute = router.useRoute('/dashboard/posts/:postId')
+
+  return (
+    <div className="flex-1 flex">
+      <div className="divide-y w-48">
+        {posts?.map((post) => {
+          let foundPending
+
+          // const foundPending = invoiceDetailRoute.action.pending.find(
+          //   (d) => d.submission?.id === post.id,
+          // )
+
+          // if (foundPending?.submission) {
+          //   post = { ...post, ...foundPending.submission }
+          // }
+
+          return (
+            <div key={post.id}>
+              <Link
+                to="/dashboard/posts/:postId"
+                params={{
+                  postId: post.id,
+                }}
+                preload="intent"
+                className="block py-2 px-3 text-blue-700"
+                activeProps={{ className: `font-bold` }}
+              >
+                <pre className="text-sm">
+                  #{post.id} - {post.title.slice(0, 10)}{' '}
+                  {foundPending ? (
+                    <Spinner />
+                  ) : (
+                    <MatchRoute
+                      to="./:postId"
+                      params={{
+                        postId: post.id,
+                      }}
+                      pending
+                    >
+                      <Spinner />
+                    </MatchRoute>
+                  )}
+                </pre>
+              </Link>
+            </div>
+          )
+        })}
+        {/* {invoiceIndexRoute.action.pending.map((action) => (
+          <div key={action.submittedAt}>
+            <a href="#" className="block py-2 px-3 text-blue-700">
+              <pre className="text-sm">
+                #<Spinner /> - {action.submission.title?.slice(0, 10)}
+              </pre>
+            </a>
+          </div>
+        ))} */}
+      </div>
+      <div className="flex-1 border-l border-gray-200">
+        <Outlet />
+      </div>
     </div>
   )
 }
@@ -203,29 +324,100 @@ function Posts() {
 function PostsIndex() {
   return (
     <>
-      <div>Select a post.</div>
+      <div className="p-2">Select a post to view.</div>
     </>
   )
 }
 
-function Post() {
-  const { params } = router.useMatch('/posts/:postId')
-  const postQuery = usePost(params.postId)
+function PostView() {
+  const {
+    loaderData: { post },
+    action,
+    search,
+    Link,
+    navigate,
+    params,
+  } = router.useMatch('/dashboard/posts/:postId')
+
+  const [notes, setNotes] = React.useState(search.notes ?? ``)
+
+  React.useEffect(() => {
+    navigate({
+      search: (old) => ({ ...old, notes: notes ? notes : undefined }),
+      replace: true,
+    })
+  }, [notes])
 
   return (
-    <div>
-      <h4>{postQuery.data?.title}</h4>
-      <p>{postQuery.data?.body}</p>
+    <div className="p-2 space-y-2">
+      <div className="space-y-2">
+        <h2 className="font-bold text-lg">
+          <input
+            defaultValue={post?.id}
+            className="border border-opacity-50 rounded p-2 w-full"
+            disabled
+          />
+        </h2>
+        <div>
+          <textarea
+            defaultValue={post?.title}
+            rows={6}
+            className="border border-opacity-50 p-2 rounded w-full"
+            disabled
+          />
+        </div>
+      </div>
+      <div>
+        <Link
+          search={(old) => ({
+            ...old,
+            showNotes: old?.showNotes ? undefined : true,
+          })}
+          className="text-blue-700"
+        >
+          {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
+        </Link>
+        {search.showNotes ? (
+          <>
+            <div>
+              <div className="h-2" />
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={5}
+                className="shadow w-full p-2 rounded"
+                placeholder="Write some notes here..."
+              />
+              <div className="italic text-xs">
+                Notes are stored in the URL. Try copying the URL into a new tab!
+              </div>
+            </div>
+          </>
+        ) : null}
+      </div>
     </div>
   )
+}
+
+function Spinner() {
+  return <div className="inline-block animate-spin px-3">⍥</div>
+}
+
+function useSessionStorage<T>(key: string, initialValue: T) {
+  const state = React.useState<T>(() => {
+    const stored = sessionStorage.getItem(key)
+    return stored ? JSON.parse(stored) : initialValue
+  })
+
+  React.useEffect(() => {
+    sessionStorage.setItem(key, JSON.stringify(state[0]))
+  }, [state[0]])
+
+  return state
 }
 
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  )
+  root.render(<App />)
 }
