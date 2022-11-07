@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/react-router",
   "author": "Tanner Linsley",
-  "version": "0.0.1-alpha.11",
+  "version": "0.0.1-beta.1",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://react-router.tanstack.com/",
@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.16.7",
-    "@tanstack/router-core": "0.0.1-alpha.11",
+    "@tanstack/router-core": "0.0.1-beta.1",
     "use-sync-external-store": "^1.2.0"
   },
   "devDependencies": {
