@@ -300,31 +300,57 @@
     estree-walker "^2.0.1"
     picomatch "^2.2.2"
 
-"@tanstack/react-router-devtools@^0.0.1-alpha.1":
-  version "0.0.1-alpha.1"
-  resolved "https://registry.yarnpkg.com/@tanstack/react-router-devtools/-/react-router-devtools-0.0.1-alpha.1.tgz#0a54fc4f7aeebf7f64e649377bdb719494ee56e1"
-  integrity sha512-GwYSq37F5kro5QzcH+NMGbCEhmSqhLowSLUC65hzxSA44w9qHhA/SBId/G2iaxF6I6U9ZtIO+3W4sScqH8DLTw==
+"@tanstack/react-router-devtools@0.0.1-beta.1":
+  version "0.0.1-beta.1"
+  resolved "https://registry.yarnpkg.com/@tanstack/react-router-devtools/-/react-router-devtools-0.0.1-beta.1.tgz#370395f85aeef1de60eaa2b3acf7e990fee3d0f8"
+  integrity sha512-LBgH3A6CC4EZxWJhtXX3epJ8kIVY5qn54uVHRzwsnJX1AnJ58YH4u9NvEweeODaSxvZWrXzhahS+dxwe6JSzfA==
   dependencies:
     "@babel/runtime" "^7.16.7"
     date-fns "^2.29.1"
 
-"@tanstack/react-router@0.0.1-alpha.2":
-  version "0.0.1-alpha.2"
-  resolved "https://registry.yarnpkg.com/@tanstack/react-router/-/react-router-0.0.1-alpha.2.tgz#e853faeccaba8d6a471b8ada851a1f60c6118011"
-  integrity sha512-X5b/ELDnWPWhTD2hcawmBcw4U5Q/XiAHZ0Wof9ednzvMrsrcLIfKWiaWGCAtSGywSazoNF3iMwyajb4mvnfVUA==
+"@tanstack/react-router@0.0.1-beta.1":
+  version "0.0.1-beta.1"
+  resolved "https://registry.yarnpkg.com/@tanstack/react-router/-/react-router-0.0.1-beta.1.tgz#b0846d14c908df5bbf0112762ee2c70a8ceca99c"
+  integrity sha512-YHl9OujhkHCuTk0le0oZ+UaKzl5Q/btFB8vDa/Z1er0FX9M9OnxpitThioHzDInX4FsOv6xJZ3LIlD+ohyvcCw==
   dependencies:
     "@babel/runtime" "^7.16.7"
-    "@tanstack/router-core" "0.0.1-alpha.2"
+    "@tanstack/router-core" "0.0.1-beta.1"
     use-sync-external-store "^1.2.0"
 
-"@tanstack/router-core@0.0.1-alpha.2":
-  version "0.0.1-alpha.2"
-  resolved "https://registry.yarnpkg.com/@tanstack/router-core/-/router-core-0.0.1-alpha.2.tgz#956db010097e5d03ab644584ad03487b06868bac"
-  integrity sha512-/pxoBrXw5E5PYklDxNcqYz/HLnEY77xM2zDuK0Jb442Pdk/0FOOjNinIOQaXNLM6bPyhKqOu4wy353fTJrxwLQ==
+"@tanstack/router-core@0.0.1-beta.1":
+  version "0.0.1-beta.1"
+  resolved "https://registry.yarnpkg.com/@tanstack/router-core/-/router-core-0.0.1-beta.1.tgz#b6ea09793cd7f32257de1438b20d7b1f63c4079f"
+  integrity sha512-NN/pNT7GoE6vSPk4PEinh5NvceqtkjPmR4XzAsiv+t/vuLuh3Xd8hf6i16h5eg1xoGHuQDvOmMf8jqD5vB+/fA==
   dependencies:
     "@babel/runtime" "^7.16.7"
     history "^5.2.0"
-    ts-toolbelt "^9.6.0"
+    tiny-invariant "^1.3.1"
+
+"@types/prop-types@*":
+  version "15.7.5"
+  resolved "https://registry.yarnpkg.com/@types/prop-types/-/prop-types-15.7.5.tgz#5f19d2b85a98e9558036f6a3cacc8819420f05cf"
+  integrity sha512-JCB8C6SnDoQf0cNycqd/35A7MjcnK+ZTqE7judS6o7utxUCg6imJg3QK2qzHKszlTjcj2cn+NwMB2i96ubpj7w==
+
+"@types/react-dom@^18.0.5":
+  version "18.0.8"
+  resolved "https://registry.yarnpkg.com/@types/react-dom/-/react-dom-18.0.8.tgz#d2606d855186cd42cc1b11e63a71c39525441685"
+  integrity sha512-C3GYO0HLaOkk9dDAz3Dl4sbe4AKUGTCfFIZsz3n/82dPNN8Du533HzKatDxeUYWu24wJgMP1xICqkWk1YOLOIw==
+  dependencies:
+    "@types/react" "*"
+
+"@types/react@*", "@types/react@^18.0.14":
+  version "18.0.25"
+  resolved "https://registry.yarnpkg.com/@types/react/-/react-18.0.25.tgz#8b1dcd7e56fe7315535a4af25435e0bb55c8ae44"
+  integrity sha512-xD6c0KDT4m7n9uD4ZHi02lzskaiqcBxf4zi+tXZY98a04wvc0hi/TcCPC2FOESZi51Nd7tlUeOJY8RofL799/g==
+  dependencies:
+    "@types/prop-types" "*"
+    "@types/scheduler" "*"
+    csstype "^3.0.2"
+
+"@types/scheduler@*":
+  version "0.16.2"
+  resolved "https://registry.yarnpkg.com/@types/scheduler/-/scheduler-0.16.2.tgz#1a62f89525723dde24ba1b01b092bf5df8ad4d39"
+  integrity sha512-hppQEBDmlwhFAXKJX2KnWLYu5yMfi91yazPb2l+lbJiwW+wdo1gNeRA+3RgNSO39WYX2euey41KEwnqesU2Jew==
 
 "@vitejs/plugin-react@^1.1.3":
   version "1.3.2"
@@ -410,6 +436,11 @@ convert-source-map@^1.7.0:
   integrity sha512-+OQdjP49zViI/6i7nIJpA8rAl4sV/JdPfU9nZs3VqOwGIgizICvuN2ru6fMd+4llL0tar18UYJXfZ/TWtmhUjA==
   dependencies:
     safe-buffer "~5.1.1"
+
+csstype@^3.0.2:
+  version "3.1.1"
+  resolved "https://registry.yarnpkg.com/csstype/-/csstype-3.1.1.tgz#841b532c45c758ee546a11d5bd7b7b473c8c30b9"
+  integrity sha512-DJR/VvkAvSZW9bTouZue2sSxDwdTN92uHjqeKVm+0dAqdfNykRzQ95tay8aXMBAAPpUiq4Qcug2L7neoRh2Egw==
 
 date-fns@^2.29.1:
   version "2.29.3"
@@ -793,15 +824,15 @@ supports-preserve-symlinks-flag@^1.0.0:
   resolved "https://registry.yarnpkg.com/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz#6eda4bd344a3c94aea376d4cc31bc77311039e09"
   integrity sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==
 
+tiny-invariant@^1.3.1:
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/tiny-invariant/-/tiny-invariant-1.3.1.tgz#8560808c916ef02ecfd55e66090df23a4b7aa642"
+  integrity sha512-AD5ih2NlSssTCwsMznbvwMZpJ1cbhkGd2uueNxzv2jDlEeZdU04JQfRnggJQ8DrcVBGjAsCKwFBbDlVNtEMlzw==
+
 to-fast-properties@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/to-fast-properties/-/to-fast-properties-2.0.0.tgz#dc5e698cbd079265bc73e0377681a4e4e83f616e"
   integrity sha512-/OaKK0xYrs3DmxRYqL/yDc+FxFUVYhDlXMhRmv3z915w2HF1tnN1omB354j8VUGO/hbRzyD6Y3sA7v7GS/ceog==
-
-ts-toolbelt@^9.6.0:
-  version "9.6.0"
-  resolved "https://registry.yarnpkg.com/ts-toolbelt/-/ts-toolbelt-9.6.0.tgz#50a25426cfed500d4a09bd1b3afb6f28879edfd5"
-  integrity sha512-nsZd8ZeNUzukXPlJmTBwUAuABDe/9qtVDelJeT/qW0ow3ZS3BsQJtNkan1802aM9Uf68/Y8ljw86Hu0h5IUW3w==
 
 update-browserslist-db@^1.0.5:
   version "1.0.5"
