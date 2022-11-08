@@ -104,9 +104,7 @@ export interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
   createRouter?: (router: Router<any, any>) => void
   createRoute?: (opts: { route: AnyRoute; router: Router<any, any> }) => void
   createElement?: (
-    element:
-      | GetFrameworkGeneric<'Element'>
-      | (() => Promise<GetFrameworkGeneric<'Element'>>),
+    element: GetFrameworkGeneric<'SyncOrAsyncElement'>,
   ) => Promise<GetFrameworkGeneric<'Element'>>
 }
 
@@ -189,7 +187,7 @@ export interface PendingState {
   matches: RouteMatch[]
 }
 
-type Listener = () => void
+type Listener = (router: Router<any, any>) => void
 
 export type ListenerFn = () => void
 
@@ -398,7 +396,7 @@ export function createRouter<
       }
 
       cascadeLoaderData(router.state.matches)
-      router.listeners.forEach((listener) => listener())
+      router.listeners.forEach((listener) => listener(router))
     },
 
     mount: () => {

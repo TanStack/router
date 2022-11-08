@@ -4,7 +4,7 @@
   "version": "0.0.1-beta.1",
   "license": "MIT",
   "repository": "tanstack/router",
-  "homepage": "https://react-router.tanstack.com/",
+  "homepage": "https://tanstack.com/router/",
   "description": "",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"

@@ -179,6 +179,7 @@ const useRouterSubscription = (router: Router<any, any>) => {
   useSyncExternalStore(
     (cb) => router.subscribe(() => cb()),
     () => router.state,
+    () => router.state,
   )
 }
 

@@ -1,3 +1,3 @@
 # TanStack React Router Devtools
 
-See https://react-router.tanstack.com/tools/devtools
+See https://tanstack.com/router/tools/devtools
