@@ -17,7 +17,7 @@ Feature/Capability Key:
 
 |                                                | TanStack Router                                | React Router DOM [_(Website)_][react-router]          |
 | ---------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------- |
-| Github Repo / Stars                            | [![][stars-tanstack-router]][gh-react-router]  | [![][stars-react-router]][gh-react-router]            |
+| Github Repo / Stars                            | [![][stars-tanstack-router]][gh-tanstack-router]  | [![][stars-react-router]][gh-react-router]            |
 | Bundle Size                                    | [![][bp-tanstack-router]][bpl-tanstack-router] | [![][bp-react-router]][bpl-react-router]              |
 | History, Memory & Hash Routers                 | ✅                                             | ✅                                                    |
 | Nested / Layout Routes                         | ✅                                             | ✅                                                    |
