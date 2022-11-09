@@ -14,8 +14,6 @@ import {
   createRouteConfig,
 } from '@tanstack/react-router'
 
-import axios from 'axios'
-
 const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
     path: '/',
