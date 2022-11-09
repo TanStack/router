@@ -170,11 +170,11 @@
         },
         {
           "label": "With TRPC",
-          "to": "examples/react/kitchen-sink"
+          "to": "examples/react/with-trpc"
         },
         {
           "label": "With TRPC & React Query",
-          "to": "examples/react/kitchen-sink"
+          "to": "examples/react/with-trpc-react-query"
         }
       ]
     },
