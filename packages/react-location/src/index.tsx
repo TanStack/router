@@ -942,8 +942,8 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
 
               const loaderReady = (status: 'resolved' | 'rejected') => {
                 this.updatedAt = Date.now()
-                resolveLoader(this.ownData)
                 this.status = status
+                resolveLoader(this.ownData)
               }
 
               const resolve = (data: any) => {
@@ -985,7 +985,9 @@ export class RouteMatch<TGenerics extends PartialGenerics = DefaultGenerics> {
 
         return Promise.all([...elementPromises, dataPromise])
           .then(() => {
-            this.status = 'resolved'
+            if (!loader) {
+              this.status = 'resolved'
+            }
             this.isLoading = false
             this.startPending = undefined
           })
