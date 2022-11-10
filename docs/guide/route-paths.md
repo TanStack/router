@@ -29,7 +29,7 @@ A route with a path of `/` is considered the root or index route for its parent 
 
 ```tsx
 const routeConfig = createRouteConfig().createChildren(createRoute => [
-  createRoute({ path: '/' }) // This is the index route for the root of your router
+  createRoute({ path: '/' }), // This is the index route for the root of your router
   createRoute({ path: '/todos' }).createChildren(createRoute => [
     createRoute({ path: '/' }), // This is the index route for the /todos route
     createRoute({ path: ':todoId' }),
