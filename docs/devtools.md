@@ -18,7 +18,21 @@ The devtools are bundle split into the `@tanstack/react-router-devtools` package
 import { ReactRouterDevtools } from '@tanstack/react-router-devtools'
 ```
 
-By default, TanStack Router Devtools are only included in bundles when `process.env.NODE_ENV === 'development'`, so you don't need to worry about excluding them during a production build.
+## Only importing and using Devtools in Production
+
+To do this, simply use lazy and the env variable of your choice to optionally return a dummy component:
+
+```tsx
+const ReactRouterDevtools =
+  process.env.NODE_ENV === 'production'
+    ? () => null // Render nothing in production
+    : React.lazy(() =>
+        // Lazy load in development
+        import('@tanstack/react-router-devtools').then(
+          (res) => res.ReactRouterDevtools,
+        ),
+      )
+```
 
 ## Passing the Router Instance
 
