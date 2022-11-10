@@ -83,17 +83,17 @@ export type Route<TGenerics extends PartialGenerics = DefaultGenerics> = {
   pendingElement?: React.ReactNode
 } & RouteLoaders<TGenerics>
 
-export type RouteLoaders<TGenerics> = {
-  // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
-  element?: React.ReactNode
-  // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-  // An object of whatever you want! This object is accessible anywhere matches are.
-  meta?: UseGeneric<TGenerics, 'RouteMeta'>
-}
+export type RouteLoaders<TGenerics extends PartialGenerics = DefaultGenerics> =
+  {
+    // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
+    element?: React.ReactNode
+    // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
+    // An object of whatever you want! This object is accessible anywhere matches are.
+    meta?: UseGeneric<TGenerics, 'RouteMeta'>
+  }
 
-export type SearchFilter<TGenerics> = (
-  prev: UseGeneric<TGenerics, 'Search'>,
-) => UseGeneric<TGenerics, 'Search'>
+export type SearchFilter<TGenerics extends PartialGenerics = DefaultGenerics> =
+  (prev: UseGeneric<TGenerics, 'Search'>) => UseGeneric<TGenerics, 'Search'>
 
 export type MatchLocation<TGenerics extends PartialGenerics = DefaultGenerics> =
   {
@@ -118,18 +118,19 @@ export type RouterProps<TGenerics extends PartialGenerics = DefaultGenerics> = {
   location: ReactLocation<TGenerics>
 } & RouterOptions<TGenerics>
 
-export type RouterOptions<TGenerics> = {
-  // An array of route objects to match
-  routes: Route<TGenerics>[]
-  basepath?: string
-  filterRoutes?: FilterRoutesFn
-  useErrorBoundary?: boolean
-  defaultElement?: React.ReactNode
-  defaultPendingElement?: React.ReactNode
-  caseSensitive?: boolean
-  // An array of route match objects that have been both _matched_ and _loaded_. See the [SRR](#ssr) section for more details
-  // snapshot?: RouterSnapshot<TGenerics>
-}
+export type RouterOptions<TGenerics extends PartialGenerics = DefaultGenerics> =
+  {
+    // An array of route objects to match
+    routes: Route<TGenerics>[]
+    basepath?: string
+    filterRoutes?: FilterRoutesFn
+    useErrorBoundary?: boolean
+    defaultElement?: React.ReactNode
+    defaultPendingElement?: React.ReactNode
+    caseSensitive?: boolean
+    // An array of route match objects that have been both _matched_ and _loaded_. See the [SRR](#ssr) section for more details
+    // snapshot?: RouterSnapshot<TGenerics>
+  }
 
 export type BuildNextOptions<
   TGenerics extends PartialGenerics = DefaultGenerics,
@@ -143,7 +144,9 @@ export type BuildNextOptions<
   __postSearchFilters?: SearchFilter<TGenerics>[]
 }
 
-export type NavigateOptions<TGenerics> = BuildNextOptions<TGenerics> & {
+export type NavigateOptions<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = BuildNextOptions<TGenerics> & {
   replace?: boolean
   fromCurrent?: boolean
 }
@@ -188,7 +191,9 @@ type ActiveOptions = {
 export type LinkPropsType<TGenerics extends PartialGenerics = DefaultGenerics> =
   LinkProps<TGenerics>
 
-export type TransitionState<TGenerics> = {
+export type TransitionState<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = {
   location: Location<TGenerics>
   matches: RouteMatch<TGenerics>[]
 }
@@ -372,18 +377,22 @@ export class ReactLocation<
   }
 }
 
-export type MatchesProviderProps<TGenerics> = {
+export type MatchesProviderProps<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = {
   value: RouteMatch<TGenerics>[]
   children: React.ReactNode
 }
 
-export function MatchesProvider<TGenerics>(
-  props: MatchesProviderProps<TGenerics>,
-) {
+export function MatchesProvider<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+>(props: MatchesProviderProps<TGenerics>) {
   return <MatchesContext.Provider {...props} />
 }
 
-export type RouterInstance<TGenerics> = {
+export type RouterInstance<
+  TGenerics extends PartialGenerics = DefaultGenerics,
+> = {
   routesById: Record<string, Route<TGenerics>>
   basepath: string
   rootMatch?: RouteMatch<TGenerics>
@@ -754,7 +763,7 @@ export function Navigate<TGenerics extends PartialGenerics = DefaultGenerics>(
   return null
 }
 
-function useBuildNext<TGenerics>() {
+function useBuildNext<TGenerics extends PartialGenerics = DefaultGenerics>() {
   const location = useLocation<TGenerics>()
   const router = useRouter<TGenerics>()
 
