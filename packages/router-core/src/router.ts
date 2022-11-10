@@ -320,13 +320,12 @@ export interface Router<
 }
 
 // Detect if we're in the DOM
-const isServer = Boolean(
-  typeof window === 'undefined' || !window.document?.createElement,
-)
+const isServer =
+  typeof window === 'undefined' || !window.document?.createElement
 
 // This is the default history object if none is defined
 const createDefaultHistory = () =>
-  !isServer ? createBrowserHistory() : createMemoryHistory()
+  isServer ? createMemoryHistory() : createBrowserHistory()
 
 export function createRouter<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
