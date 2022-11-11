@@ -8,10 +8,10 @@
   <img alt="#TanStack" src="https://img.shields.io/twitter/url?color=%2308a0e9&label=%23TanStack&style=social&url=https%3A%2F%2Ftwitter.com%2Fintent%2Ftweet%3Fbutton_hashtag%3DTanStack">
 </a><a href="https://discord.com/invite/WrRKjPJ" target="\_parent">
   <img alt="" src="https://img.shields.io/badge/Discord-TanStack-%235865F2" />
-</a><a href="https://npmjs.com/package/react-router" target="\_parent">
-  <img alt="" src="https://img.shields.io/npm/dm/react-router.svg" />
-</a><a href="https://bundlephobia.com/result?p=react-router" target="\_parent">
-  <img alt="" src="https://badgen.net/bundlephobia/minzip/react-router" />
+</a><a href="https://npmjs.com/package/@tanstack/react-router" target="\_parent">
+  <img alt="" src="https://img.shields.io/npm/dm/@tanstack/react-router.svg" />
+</a><a href="https://bundlephobia.com/result?p=@tanstack/react-router" target="\_parent">
+  <img alt="" src="https://badgen.net/bundlephobia/minzip/@tanstack/react-router" />
 </a><a href="#badge">
     <img alt="semantic-release" src="https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg">
   </a><a href="https://github.com/tanstack/router/discussions">
@@ -30,25 +30,32 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 
 ## Quick Features
 
-- Asynchronous routing
-  - Promise-based route loaders & actions
-  - Asynchronous route elements
-  - Threshold-based pending route elements
-  - Error boundary route elements
-  - Code-splitting
-  - Post-render async loader APIs (stale-while-revalidate, external cache integration)
-  - Navigation batching with graceful replace/push escalation
-- Deeply integrated Search Params API
-  - JSON-first Search Params
-  - Full `<Link>` and `useNavigate` integration
-  - Full `cmd+click` support
-  - Search Param Immutability w/ Structural Sharing
-  - Batched Updates / Functional Updates
-  - Route Matching
-  - Optional Compression w/ JSURL plugin or your own custom parser/serializer!
-- Hooks for everything: Router, Matches, Route Matching, Preloading
-- Optional route filtering/ranking
-- Prepackaged simple cache implementation for route loader caching
+- 100% TypeSafe
+  - Route Defs
+  - Navigation
+  - Relative Navigation
+  - Search Params
+  - Path Params
+  - Loaders
+  - Actions
+- 1st Class Search Params
+  - Schemas + Validation
+  - Parsing + Serialization
+  - Immutable
+  - Structural Sharing
+  - Pre/Post Processing
+- Built-in Caching
+  - Stale-While-Revalidate
+  - Max-Age
+  - Auto Garbage Collection
+  - Invalidation
+- Prefetching
+- Automatic Prefetching
+- Transitions
+- Pending States
+- Error Boundaries
+- Code Splitting
+- Layout Routes
 - Easy Integration w/ external caches and storage (eg. React Query, Apollo, SWR, RTKQuery)
 
 <!-- Use the force, Luke! -->
