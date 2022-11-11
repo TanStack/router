@@ -172,7 +172,6 @@ export interface RouterState {
   location: Location
   matches: RouteMatch[]
   lastUpdated: number
-  loaderData: unknown
   currentAction?: ActionState
   latestAction?: ActionState
   actions: Record<string, Action>
@@ -366,7 +365,6 @@ export function createRouter<
       matches: [],
       actions: {},
       loaders: {},
-      loaderData: {} as any,
       lastUpdated: Date.now(),
       isFetching: false,
       isPreloading: false,
@@ -409,11 +407,12 @@ export function createRouter<
       // to the current location. Otherwise, load the current location.
       if (next.href !== router.location.href) {
         router.__.commitLocation(next, true)
-      } else {
-        router.loadLocation()
       }
 
-      const unsub = history.listen((event) => {
+      router.loadLocation()
+
+      const unsub = router.history.listen((event) => {
+        console.log(event.location)
         router.loadLocation(
           router.__.parseLocation(event.location, router.location),
         )
@@ -440,6 +439,15 @@ export function createRouter<
     },
 
     update: (opts) => {
+      const newHistory = opts?.history !== router.history
+      if (!router.location || newHistory) {
+        if (opts?.history) {
+          router.history = opts.history
+        }
+        router.location = router.__.parseLocation(router.history.location)
+        router.state.location = router.location
+      }
+
       Object.assign(router.options, opts)
 
       const { basepath, routeConfig } = router.options
@@ -487,7 +495,7 @@ export function createRouter<
       router.cancelMatches()
 
       // Match the routes
-      const matches = router.matchRoutes(location.pathname, {
+      const matches = router.matchRoutes(router.location.pathname, {
         strictParseParams: true,
       })
 
@@ -1210,9 +1218,6 @@ export function createRouter<
       },
     },
   }
-
-  router.location = router.__.parseLocation(history.location)
-  router.state.location = router.location
 
   router.update(userOptions)
 
