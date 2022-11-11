@@ -42,5 +42,5 @@ node_modules
 dist
 ts-perf
 
-examples/*/*/yarn.lock
-examples/*/*/packag-lock.json
+/examples/*/*/yarn.lock
+/examples/*/*/package-lock.json
