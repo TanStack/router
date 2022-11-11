@@ -159,5 +159,6 @@ export function functionalUpdate<TResult>(
 export function pick<T, K extends keyof T>(parent: T, keys: K[]): Pick<T, K> {
   return keys.reduce((obj: any, key: K) => {
     obj[key] = parent[key]
+    return obj
   }, {} as any)
 }

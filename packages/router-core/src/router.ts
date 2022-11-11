@@ -416,8 +416,6 @@ export function createRouter<
     },
 
     dehydrateState: () => {
-      const {} = router.state
-
       return {
         ...pick(router.state, ['status', 'location', 'lastUpdated']),
         matches: router.state.matches.map((match) =>
