@@ -92,7 +92,6 @@ function Posts() {
           )
         })}
       </div>
-      <hr />
       <Outlet />
     </div>
   )

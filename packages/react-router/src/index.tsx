@@ -543,12 +543,6 @@ class CatchBoundary extends React.Component<{
       info,
     })
   }
-  reset = () => {
-    this.setState({
-      error: false,
-      info: false,
-    })
-  }
   render() {
     const catchElement = this.props.catchElement ?? DefaultErrorBoundary
 

@@ -7,19 +7,7 @@ import { App } from './App'
 
 const state = (window as any).__TANSTACK_ROUTER_STATE__
 
-console.log(state)
-
-router.state = {
-  ...router.state,
-  ...state,
-  matches: router.state.matches.map((match) => {
-    const serverMatch = state.matches.find(
-      (serverMatch: any) => serverMatch.route === match.matchId,
-    )
-    Object.assign(match, serverMatch)
-    return match
-  }),
-}
+router.hydrateState(state)
 
 ReactDOM.hydrateRoot(
   document.getElementById('root')!,
@@ -27,3 +15,9 @@ ReactDOM.hydrateRoot(
     <App />
   </RouterProvider>,
 )
+
+// ReactDOM.createRoot(document.getElementById('root')!).render(
+//   <RouterProvider router={router}>
+//     <App />
+//   </RouterProvider>,
+// )

@@ -45,6 +45,7 @@ import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
   functionalUpdate,
   last,
+  pick,
   PickAsRequired,
   PickRequired,
   replaceEqualDeep,
@@ -224,6 +225,22 @@ type LinkCurrentTargetElement = {
   preloadTimeout?: null | ReturnType<typeof setTimeout>
 }
 
+interface DehydratedRouterState
+  extends Pick<RouterState, 'status' | 'location' | 'lastUpdated'> {
+  matches: DehydratedRouteMatch[]
+}
+
+interface DehydratedRouteMatch
+  extends Pick<
+    RouteMatch<any, any>,
+    | 'matchId'
+    | 'status'
+    | 'routeLoaderData'
+    | 'loaderData'
+    | 'isInvalid'
+    | 'invalidAt'
+  > {}
+
 export interface Router<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
   TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
@@ -302,6 +319,8 @@ export interface Router<
   >(
     opts: LinkOptions<TAllRouteInfo, TFrom, TTo>,
   ) => LinkInfo
+  dehydrateState: () => DehydratedRouterState
+  hydrateState: (state: DehydratedRouterState) => void
   __: {
     buildRouteTree: (
       routeConfig: RouteConfig,
@@ -394,6 +413,47 @@ export function createRouter<
 
       cascadeLoaderData(router.state.matches)
       router.listeners.forEach((listener) => listener(router))
+    },
+
+    dehydrateState: () => {
+      const {} = router.state
+
+      return {
+        ...pick(router.state, ['status', 'location', 'lastUpdated']),
+        matches: router.state.matches.map((match) =>
+          pick(match, [
+            'matchId',
+            'status',
+            'routeLoaderData',
+            'loaderData',
+            'isInvalid',
+            'invalidAt',
+          ]),
+        ),
+      }
+    },
+
+    hydrateState: (dehydratedState) => {
+      // Match the routes
+      const matches = router.matchRoutes(router.location.pathname, {
+        strictParseParams: true,
+      })
+
+      router.state = {
+        ...router.state,
+        ...dehydratedState,
+        matches: matches.map((match) => {
+          const dehydratedMatch = dehydratedState.matches.find(
+            (d: any) => d.matchId === match.matchId,
+          )
+          invariant(
+            dehydratedMatch,
+            'Oh no! Dehydrated route matches did not match the active state of the router 😬',
+          )
+          Object.assign(match, dehydratedMatch)
+          return match
+        }),
+      }
     },
 
     mount: () => {
@@ -1019,12 +1079,6 @@ export function createRouter<
           return routeConfigs.map((routeConfig) => {
             const routeOptions = routeConfig.options
             const route = createRoute(routeConfig, routeOptions, parent, router)
-
-            // {
-            //   pendingMs: routeOptions.pendingMs ?? router.defaultPendingMs,
-            //   pendingMinMs: routeOptions.pendingMinMs ?? router.defaultPendingMinMs,
-            // }
-
             const existingRoute = (router.routesById as any)[route.routeId]
 
             if (existingRoute) {

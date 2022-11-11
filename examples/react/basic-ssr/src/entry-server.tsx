@@ -17,30 +17,11 @@ export async function render(url: string) {
   router.mount()
 
   await router.loadLocation()
-
-  const { status, location, matches, lastUpdated } = router.state
-
-  const payload = {
-    status,
-    location,
-    matches: matches.map((match) => {
-      const { status, routeLoaderData, loaderData, isInvalid, invalidAt } =
-        match
-
-      return {
-        status,
-        routeLoaderData,
-        loaderData,
-        isInvalid,
-        invalidAt,
-      }
-    }),
-    lastUpdated,
-  }
+  const routerState = router.dehydrateState()
 
   return [
     `<script>window.__TANSTACK_ROUTER_STATE__ = JSON.parse(${jsesc(
-      JSON.stringify(payload),
+      JSON.stringify(routerState),
       {
         isScriptContext: true,
         wrap: true,
