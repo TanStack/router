@@ -35,7 +35,7 @@
     "src"
   ],
   "peerDependencies": {
-    "@tanstack/react-router": "0.0.1-beta.4",
+    "@tanstack/react-router": "0.0.1-beta.5",
     "react": ">=16",
     "react-dom": ">=16"
   },
