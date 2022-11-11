@@ -490,8 +490,12 @@ async function run() {
         if (!stat.isDirectory()) continue
 
         await Promise.all([
-          fsp.rm(path.resolve(exampleDir, 'package-lock.json')),
-          fsp.rm(path.resolve(exampleDir, 'yarn.lock')),
+          fsp.rm(path.resolve(exampleDir, 'package-lock.json'), {
+            force: true,
+          }),
+          fsp.rm(path.resolve(exampleDir, 'yarn.lock'), {
+            force: true,
+          }),
           updatePackageJson(
             path.resolve(exampleDir, 'package.json'),
             async (config) => {
