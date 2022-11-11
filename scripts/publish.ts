@@ -489,33 +489,37 @@ async function run() {
         const stat = await fsp.stat(exampleDir)
         if (!stat.isDirectory()) continue
 
-        await updatePackageJson(
-          path.resolve(exampleDir, 'package.json'),
-          async (config) => {
-            await Promise.all(
-              changedPackages.map(async (pkg) => {
-                const depVersion = await getPackageVersion(
-                  path.resolve(
-                    rootDir,
-                    'packages',
-                    pkg.packageDir,
-                    'package.json',
-                  ),
-                )
-
-                if (
-                  config.dependencies?.[pkg.name] &&
-                  config.dependencies[pkg.name] !== depVersion
-                ) {
-                  console.info(
-                    `  Updating ${exampleName}'s dependency on ${pkg.name} to version ${depVersion}.`,
+        await Promise.all([
+          fsp.rm(path.resolve(exampleDir, 'package-lock.json')),
+          fsp.rm(path.resolve(exampleDir, 'yarn.lock')),
+          updatePackageJson(
+            path.resolve(exampleDir, 'package.json'),
+            async (config) => {
+              await Promise.all(
+                changedPackages.map(async (pkg) => {
+                  const depVersion = await getPackageVersion(
+                    path.resolve(
+                      rootDir,
+                      'packages',
+                      pkg.packageDir,
+                      'package.json',
+                    ),
                   )
-                  config.dependencies[pkg.name] = depVersion
-                }
-              }),
-            )
-          },
-        )
+
+                  if (
+                    config.dependencies?.[pkg.name] &&
+                    config.dependencies[pkg.name] !== depVersion
+                  ) {
+                    console.info(
+                      `  Updating ${exampleName}'s dependency on ${pkg.name} to version ${depVersion}.`,
+                    )
+                    config.dependencies[pkg.name] = depVersion
+                  }
+                }),
+              )
+            },
+          ),
+        ])
       }
     }),
   )
@@ -550,19 +554,6 @@ async function run() {
     )
     execSync(`${cmd} --token ${process.env.NPM_TOKEN}`)
   })
-
-  // TODO: currently, the package registry isn't fast enough for us to do
-  // this immediately after publishing. So not sure what to do here...
-
-  // Update example lock files to use new dependencies
-  // for (const example of examples) {
-  //   let stat = await fsp.stat(path.join(examplesDir, example))
-  //   if (!stat.isDirectory()) continue
-
-  //   console.info(`  Updating example ${example} dependencies/lockfile...`)
-
-  //   updateExampleLockfile(example)
-  // }
 
   console.info()
 
