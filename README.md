@@ -1,6 +1,6 @@
 <img src="https://static.scarf.sh/a.png?x-pxid=d988eb79-b0fc-4a2b-8514-6a1ab932d188" />
 
-![TanStack Router Header](https://github.com/tanstack/router/raw/main/media/repo-dark.png)
+![TanStack Router Header](https://github.com/tanstack/router/raw/beta/media/header.png)
 
 🤖 Application Routing for JS/TS, React, Solid, Vue and Svelte
 
