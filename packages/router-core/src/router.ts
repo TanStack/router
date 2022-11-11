@@ -23,7 +23,7 @@ import {
   matchPathname,
   resolvePath,
 } from './path'
-import { AnyRoute, cascadeLoaderData, createRoute, Route } from './route'
+import { AnyRoute, createRoute, Route } from './route'
 import {
   AnyLoaderData,
   AnyPathParams,
@@ -1281,4 +1281,17 @@ export function createRouter<
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+}
+
+function cascadeLoaderData(matches: RouteMatch<any, any>[]) {
+  matches.forEach((match, index) => {
+    const parent = matches[index - 1]
+
+    if (parent) {
+      match.loaderData = replaceEqualDeep(match.loaderData, {
+        ...parent.loaderData,
+        ...match.routeLoaderData,
+      })
+    }
+  })
 }

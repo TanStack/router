@@ -228,16 +228,3 @@ export function createRoute<
 
   return route
 }
-
-export function cascadeLoaderData(matches: RouteMatch<any, any>[]) {
-  matches.forEach((match, index) => {
-    const parent = matches[index - 1]
-
-    if (parent) {
-      match.loaderData = replaceEqualDeep(match.loaderData, {
-        ...parent.loaderData,
-        ...match.routeLoaderData,
-      })
-    }
-  })
-}

@@ -3,11 +3,7 @@ import { Outlet } from '@tanstack/react-router'
 
 import { router } from './router'
 
-console.log(router.state)
-
 export function App() {
-  console.log(router.state)
-
   return (
     // Build our routes and render our router
     <>
