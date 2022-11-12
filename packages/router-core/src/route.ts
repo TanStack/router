@@ -13,7 +13,6 @@ import {
   RouteInfo,
   RouteInfoByPath,
 } from './routeInfo'
-import { RouteMatch } from './routeMatch'
 import {
   Action,
   ActionState,
@@ -22,7 +21,7 @@ import {
   MatchRouteOptions,
   Router,
 } from './router'
-import { NoInfer, replaceEqualDeep } from './utils'
+import { NoInfer } from './utils'
 
 export interface AnyRoute extends Route<any, any> {}
 
@@ -96,10 +95,10 @@ export function createRoute<
     router.state.actions[id] ||
     (() => {
       router.state.actions[id] = {
-        pending: [],
+        submissions: [],
         submit: async <T, U>(
           submission: T,
-          actionOpts?: { invalidate?: boolean },
+          actionOpts?: { invalidate?: boolean; multi?: boolean },
         ) => {
           if (!route) {
             return
@@ -107,27 +106,27 @@ export function createRoute<
 
           const invalidate = actionOpts?.invalidate ?? true
 
+          if (!actionOpts?.multi) {
+            action.submissions = action.submissions.filter((d) => d.isMulti)
+          }
+
           const actionState: ActionState<T, U> = {
             submittedAt: Date.now(),
             status: 'pending',
             submission,
+            isMulti: !!actionOpts?.multi,
           }
 
           action.current = actionState
           action.latest = actionState
-          action.pending.push(actionState)
-
-          router.state = {
-            ...router.state,
-            currentAction: actionState,
-            latestAction: actionState,
-          }
+          action.submissions.push(actionState)
 
           router.notify()
 
           try {
             const res = await route.options.action?.(submission)
             actionState.data = res as U
+
             if (invalidate) {
               router.invalidateRoute({ to: '.', fromCurrent: true })
               await router.reload()
@@ -139,8 +138,6 @@ export function createRoute<
             actionState.error = err
             actionState.status = 'error'
           } finally {
-            action.pending = action.pending.filter((d) => d !== actionState)
-            router.removeActionQueue.push({ action, actionState })
             router.notify()
           }
         },

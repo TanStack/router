@@ -50,15 +50,7 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
         path: '/',
         element: <InvoicesHome />,
         action: async (partialInvoice: Partial<Invoice>) => {
-          const invoice = await postInvoice(partialInvoice)
-          // // Redirect to the new invoice
-          router.navigate({
-            to: '/dashboard/invoices/:invoiceId',
-            params: {
-              invoiceId: invoice.id,
-            },
-          })
-          return invoice
+          return postInvoice(partialInvoice)
         },
       }),
       createRoute({
@@ -133,9 +125,7 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
     // Your elements can be asynchronous, which means you can code-split!
     path: 'expensive',
     element: () =>
-      loaderDelayFn(() => import('./Expensive')).then((res) => (
-        <res.Expensive />
-      )),
+      loaderDelayFn(() => import('./Expensive').then((d) => <d.Expensive />)),
   }),
   // Obviously, you can put routes in other files, too
   // reallyExpensiveRoute,
@@ -484,14 +474,19 @@ function Invoices() {
   } = router.useMatch('/dashboard/invoices')
 
   // Get the action for a child route
-  const invoiceIndexRoute = router.useRoute('/dashboard/invoices/')
-  const invoiceDetailRoute = router.useRoute('/dashboard/invoices/:invoiceId')
+  const invoiceIndexMatch = router.useMatch('/dashboard/invoices/', {
+    strict: false,
+  })
+
+  const invoiceDetailMatch = router.useMatch('/dashboard/invoices/:invoiceId', {
+    strict: false,
+  })
 
   return (
     <div className="flex-1 flex">
       <div className="divide-y w-48">
         {invoices?.map((invoice) => {
-          const foundPending = invoiceDetailRoute.action.pending.find(
+          const foundPending = invoiceDetailMatch?.action.submissions.find(
             (d) => d.submission?.id === invoice.id,
           )
 
@@ -530,7 +525,7 @@ function Invoices() {
             </div>
           )
         })}
-        {invoiceIndexRoute.action.pending.map((action) => (
+        {invoiceIndexMatch?.action.submissions.map((action) => (
           <div key={action.submittedAt}>
             <a href="#" className="block py-2 px-3 text-blue-700">
               <pre className="text-sm">
@@ -558,10 +553,13 @@ function InvoicesHome() {
             event.preventDefault()
             event.stopPropagation()
             const formData = new FormData(event.target as HTMLFormElement)
-            action.submit({
-              title: formData.get('title') as string,
-              body: formData.get('body') as string,
-            })
+            action.submit(
+              {
+                title: formData.get('title') as string,
+                body: formData.get('body') as string,
+              },
+              { multi: true },
+            )
           }}
           className="space-y-2"
         >
@@ -597,7 +595,6 @@ function InvoiceView() {
     search,
     Link,
     navigate,
-    params,
   } = router.useMatch('/dashboard/invoices/:invoiceId')
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
@@ -664,19 +661,17 @@ function InvoiceView() {
           Save
         </button>
       </div>
-      {action.current?.submission?.id === invoice.id ? (
-        <div key={action.current?.submittedAt}>
-          {action.current?.status === 'success' ? (
-            <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-              Saved!
-            </div>
-          ) : action.current?.status === 'error' ? (
-            <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-              Failed to save.
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      <div key={action.current?.submittedAt}>
+        {action.current?.status === 'success' ? (
+          <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+            Saved!
+          </div>
+        ) : action.current?.status === 'error' ? (
+          <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+            Failed to save.
+          </div>
+        ) : null}
+      </div>
     </form>
   )
 }

@@ -97,8 +97,8 @@ function Logo(props: React.HTMLProps<HTMLDivElement>) {
         display: 'flex',
         alignItems: 'center',
         flexDirection: 'column',
-        fontSize: '0.7rem',
-        fontWeight: '900',
+        fontSize: '0.8rem',
+        fontWeight: 'bolder',
         lineHeight: '1',
       }}
     >
@@ -110,8 +110,15 @@ function Logo(props: React.HTMLProps<HTMLDivElement>) {
         TANSTACK
       </div>
       <div
-        className="text-transparent bg-clip-text bg-gradient-to-r from-lime-500 to-emerald-500"
         style={{
+          backgroundImage:
+            'linear-gradient(to right, var(--tw-gradient-stops))',
+          '--tw-gradient-from': '#84cc16',
+          '--tw-gradient-stops':
+            'var(--tw-gradient-from), var(--tw-gradient-to)',
+          '--tw-gradient-to': '#10b981',
+          WebkitBackgroundClip: 'text',
+          color: 'transparent',
           letterSpacing: '0.1rem',
           marginRight: '-0.2rem',
         }}
@@ -447,7 +454,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
   return (
     <ThemeProvider theme={theme}>
-      <script src="https://cdn.tailwindcss.com"></script>
       <Panel ref={ref} className="TanStackRouterDevtoolsPanel" {...panelProps}>
         <style
           dangerouslySetInnerHTML={{
@@ -521,8 +527,12 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           }}
         >
           <div
-            className="flex justify-start gap-2 p-2 items-center"
             style={{
+              display: 'flex',
+              justifyContent: 'start',
+              gap: '1rem',
+              padding: '1rem',
+              alignItems: 'center',
               background: theme.backgroundAlt,
             }}
           >

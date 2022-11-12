@@ -14,12 +14,12 @@ export async function render(url: string) {
     history: memoryHistory,
   })
 
-  router.mount()
+  const unsub = router.mount()
+  await router.load()
 
-  await router.loadLocation()
   const routerState = router.dehydrateState()
 
-  return [
+  const res = [
     `<script>window.__TANSTACK_ROUTER_STATE__ = JSON.parse(${jsesc(
       JSON.stringify(routerState),
       {
@@ -34,4 +34,9 @@ export async function render(url: string) {
       </RouterProvider>,
     ),
   ]
+
+  unsub()
+  router.reset()
+
+  return res
 }

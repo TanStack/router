@@ -39,7 +39,7 @@ export const routeConfig = createRouteConfig().createChildren((createRoute) => [
 
 async function fetchPosts() {
   console.log('Fetching posts...')
-  await new Promise((r) => setTimeout(r, 500))
+  await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
   return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
@@ -47,7 +47,7 @@ async function fetchPosts() {
 
 async function fetchPostById(postId: string) {
   console.log(`Fetching post with id ${postId}...`)
-  await new Promise((r) => setTimeout(r, 500))
+  await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
 
   return await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)

@@ -61,7 +61,13 @@ export async function createServer(
     try {
       const url = req.originalUrl
 
+      if (url.includes('.')) {
+        console.warn(`${url} is not valid router path`)
+        return res.status(404)
+      }
+
       let template, render
+
       if (!isProd) {
         // always read fresh template in dev
         template = fs.readFileSync(resolve('index.html'), 'utf-8')

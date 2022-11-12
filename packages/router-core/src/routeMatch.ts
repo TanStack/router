@@ -1,13 +1,12 @@
 import { GetFrameworkGeneric } from './frameworks'
 import { Route } from './route'
-import { AnyPathParams } from './routeConfig'
 import {
   AnyAllRouteInfo,
   AnyRouteInfo,
   DefaultAllRouteInfo,
   RouteInfo,
 } from './routeInfo'
-import { Router } from './router'
+import { ActionState, Router } from './router'
 import { replaceEqualDeep, Timeout } from './utils'
 
 export interface RouteMatch<
@@ -37,7 +36,7 @@ export interface RouteMatch<
     catchElement?: GetFrameworkGeneric<'Element'> // , TRouteInfo['loaderData']>
     pendingElement?: GetFrameworkGeneric<'Element'> // , TRouteInfo['loaderData']>
     loadPromise?: Promise<void>
-    loaderPromise?: Promise<void>
+    loaderDataPromise?: Promise<void>
     elementsPromise?: Promise<void>
     dataPromise?: Promise<void>
     pendingTimeout?: Timeout
@@ -104,6 +103,7 @@ export function createRouteMatch<
     isFetching: false,
     isInvalid: false,
     invalidAt: Infinity,
+    // pendingActions: [],
     getIsInvalid: () => {
       const now = Date.now()
       return routeMatch.isInvalid || routeMatch.invalidAt < now
@@ -147,18 +147,6 @@ export function createRouteMatch<
         clearTimeout(routeMatch.__.pendingMinTimeout)
         delete routeMatch.__.pendingMinPromise
       },
-      // setParentMatch: (parentMatch?: RouteMatch) => {
-      //   routeMatch.parentMatch = parentMatch
-      // },
-      // addChildMatch: (childMatch: RouteMatch) => {
-      //   if (
-      //     routeMatch.childMatches.find((d) => d.matchId === childMatch.matchId)
-      //   ) {
-      //     return
-      //   }
-
-      //   routeMatch.childMatches.push(childMatch)
-      // },
       validate: () => {
         // Validate the search params and stabilize them
         const parentSearch =
@@ -174,7 +162,7 @@ export function createRouteMatch<
 
           let nextSearch = replaceEqualDeep(
             prevSearch,
-            validator?.(parentSearch),
+            validator?.(parentSearch) ?? {},
           )
 
           // Invalidate route matches when search param stability changes
@@ -187,6 +175,14 @@ export function createRouteMatch<
           routeMatch.search = replaceEqualDeep(parentSearch, {
             ...parentSearch,
             ...nextSearch,
+          })
+
+          elementTypes.map(async (type) => {
+            const routeElement = routeMatch.options[type]
+
+            if (typeof routeMatch.__[type] !== 'function') {
+              routeMatch.__[type] = routeElement
+            }
           })
         } catch (err: any) {
           console.error(err)
@@ -243,7 +239,7 @@ export function createRouteMatch<
       ) {
         const maxAge = loaderOpts?.preload ? loaderOpts?.maxAge : undefined
 
-        routeMatch.fetch({ maxAge })
+        await routeMatch.fetch({ maxAge })
       }
     },
     fetch: async (opts) => {
@@ -266,7 +262,7 @@ export function createRouteMatch<
         routeMatch.isFetching = true
         routeMatch.__.resolve = resolve as () => void
 
-        const loaderPromise = (async () => {
+        routeMatch.__.loaderDataPromise = (async () => {
           // Load the elements and data in parallel
 
           routeMatch.__.elementsPromise = (async () => {
@@ -277,13 +273,11 @@ export function createRouteMatch<
               elementTypes.map(async (type) => {
                 const routeElement = routeMatch.options[type]
 
-                if (routeMatch.__[type]) {
-                  return
+                if (typeof routeMatch.__[type] === 'function') {
+                  routeMatch.__[type] = await router.options.createElement!(
+                    routeElement,
+                  )
                 }
-
-                routeMatch.__[type] = await router.options.createElement!(
-                  routeElement,
-                )
               }),
             )
           })()
@@ -297,7 +291,7 @@ export function createRouteMatch<
                   signal: routeMatch.__.abortController.signal,
                 })
                 if (id !== routeMatch.__.latestId) {
-                  return routeMatch.__.loaderPromise
+                  return routeMatch.__.loadPromise
                 }
 
                 routeMatch.routeLoaderData = replaceEqualDeep(
@@ -317,7 +311,7 @@ export function createRouteMatch<
                   0)
             } catch (err) {
               if (id !== routeMatch.__.latestId) {
-                return routeMatch.__.loaderPromise
+                return routeMatch.__.loadPromise
               }
 
               if (process.env.NODE_ENV !== 'production') {
@@ -335,7 +329,7 @@ export function createRouteMatch<
               routeMatch.__.dataPromise,
             ])
             if (id !== routeMatch.__.latestId) {
-              return routeMatch.__.loaderPromise
+              return routeMatch.__.loadPromise
             }
 
             if (routeMatch.__.pendingMinPromise) {
@@ -344,7 +338,7 @@ export function createRouteMatch<
             }
           } finally {
             if (id !== routeMatch.__.latestId) {
-              return routeMatch.__.loaderPromise
+              return routeMatch.__.loadPromise
             }
             routeMatch.__.cancelPending()
             routeMatch.isPending = false
@@ -353,16 +347,18 @@ export function createRouteMatch<
           }
         })()
 
-        routeMatch.__.loaderPromise = loaderPromise
-        await loaderPromise
+        await routeMatch.__.loaderDataPromise
 
         if (id !== routeMatch.__.latestId) {
-          return routeMatch.__.loaderPromise
+          return routeMatch.__.loadPromise
         }
-        delete routeMatch.__.loaderPromise
+
+        delete routeMatch.__.loaderDataPromise
       })
 
-      return await routeMatch.__.loadPromise
+      await routeMatch.__.loadPromise
+
+      delete routeMatch.__.loadPromise
     },
   }
 

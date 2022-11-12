@@ -50,9 +50,17 @@ declare module '@tanstack/router-core' {
     useRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
       routeId: TId,
     ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
-    useMatch: <TId extends keyof TAllRouteInfo['routeInfoById']>(
+    useMatch: <
+      TId extends keyof TAllRouteInfo['routeInfoById'],
+      TStrict extends true | false = true,
+    >(
       routeId: TId,
-    ) => RouteMatch<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
+      opts?: { strict?: TStrict },
+    ) => TStrict extends true
+      ? RouteMatch<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
+      :
+          | RouteMatch<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
+          | undefined
     linkProps: <TTo extends string = '.'>(
       props: LinkPropsOptions<TAllRouteInfo, '/', TTo> &
         React.AnchorHTMLAttributes<HTMLAnchorElement>,
@@ -99,6 +107,7 @@ declare module '@tanstack/router-core' {
         TResolved,
         ToIdOption<TAllRouteInfo, TRouteInfo['id'], TTo>
       >,
+      opts?: { strict?: boolean },
     ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TResolved]>
     linkProps: <TTo extends string = '.'>(
       props: LinkPropsOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo> &
@@ -349,7 +358,7 @@ export function createReactRouter<
           useRouterSubscription(router)
           return router.state
         },
-        useMatch: (routeId) => {
+        useMatch: (routeId, opts) => {
           useRouterSubscription(router)
 
           invariant(
@@ -357,32 +366,30 @@ export function createReactRouter<
             `"${rootRouteId}" cannot be used with useMatch! Did you mean to useRoute("${rootRouteId}")?`,
           )
 
-          const runtimeMatch = useMatch()
+          const runtimeMatch = useMatches()?.[0]!
           const match = router.state.matches.find((d) => d.routeId === routeId)
 
-          invariant(
-            match,
-            `Could not find a match for route "${
-              routeId as string
-            }" being rendered in this component!`,
-          )
+          if (opts?.strict ?? true) {
+            invariant(
+              match,
+              `Could not find an active match for "${routeId as string}"!`,
+            )
 
-          invariant(
-            runtimeMatch.routeId == match?.routeId,
-            `useMatch('${
-              match?.routeId as string
-            }') is being called in a component that is meant to render the '${
-              runtimeMatch.routeId
-            }' route. Did you mean to 'useRoute(${
-              match?.routeId as string
-            })' instead?`,
-          )
-
-          if (!match) {
-            invariant('Match not found!')
+            invariant(
+              runtimeMatch.routeId == match?.routeId,
+              `useMatch('${
+                match?.routeId as string
+              }') is being called in a component that is meant to render the '${
+                runtimeMatch.routeId
+              }' route. Did you mean to 'useMatch(${
+                match?.routeId as string
+              }, { strict: false })' or 'useRoute(${
+                match?.routeId as string
+              })' instead?`,
+            )
           }
 
-          return match
+          return match as any
         },
       }
 
@@ -430,9 +437,10 @@ export function RouterProvider<
   router.update(rest)
 
   useRouterSubscription(router)
-
   useLayoutEffect(() => {
-    return router.mount()
+    const unsub = router.mount()
+    router.load()
+    return unsub
   }, [router])
 
   return (
@@ -457,57 +465,41 @@ function useMatches(): RouteMatch[] {
   return React.useContext(matchesContext)
 }
 
-// function useParentMatches(): RouteMatch[] {
-//   const router = useRouter()
-//   const match = useMatch()
-//   const matches = router.state.matches
-//   return matches.slice(
-//     0,
-//     matches.findIndex((d) => d.matchId === match.matchId) - 1,
-//   )
-// }
-
-function useMatch<T>(): RouteMatch {
-  return useMatches()?.[0] as RouteMatch
-}
-
 export function Outlet() {
   const router = useRouter()
-  const [, ...matches] = useMatches()
+  const matches = useMatches().slice(1)
+  const match = matches[0]
 
-  const childMatch = matches[0]
-
-  if (!childMatch) return null
+  if (!match) {
+    return null
+  }
 
   const element = ((): React.ReactNode => {
-    if (!childMatch) {
+    if (!match) {
       return null
     }
 
     const errorElement =
-      childMatch.__.errorElement ?? router.options.defaultErrorElement
+      match.__.errorElement ?? router.options.defaultErrorElement
 
-    if (childMatch.status === 'error') {
+    if (match.status === 'error') {
       if (errorElement) {
         return errorElement as any
       }
 
-      if (
-        childMatch.options.useErrorBoundary ||
-        router.options.useErrorBoundary
-      ) {
-        throw childMatch.error
+      if (match.options.useErrorBoundary || router.options.useErrorBoundary) {
+        throw match.error
       }
 
-      return <DefaultErrorBoundary error={childMatch.error} />
+      return <DefaultErrorBoundary error={match.error} />
     }
 
-    if (childMatch.status === 'loading' || childMatch.status === 'idle') {
-      if (childMatch.isPending) {
+    if (match.status === 'loading' || match.status === 'idle') {
+      if (match.isPending) {
         const pendingElement =
-          childMatch.__.pendingElement ?? router.options.defaultPendingElement
+          match.__.pendingElement ?? router.options.defaultPendingElement
 
-        if (childMatch.options.pendingMs || pendingElement) {
+        if (match.options.pendingMs || pendingElement) {
           return (pendingElement as any) ?? null
         }
       }
@@ -515,14 +507,16 @@ export function Outlet() {
       return null
     }
 
-    return (childMatch.__.element as any) ?? router.options.defaultElement
+    return (
+      (match.__.element as any) ?? router.options.defaultElement ?? <Outlet />
+    )
   })() as JSX.Element
 
   const catchElement =
-    childMatch?.options.catchElement ?? router.options.defaultCatchElement
+    match?.options.catchElement ?? router.options.defaultCatchElement
 
   return (
-    <MatchesProvider value={matches} key={childMatch.matchId}>
+    <MatchesProvider value={matches}>
       <CatchBoundary catchElement={catchElement}>{element}</CatchBoundary>
     </MatchesProvider>
   )
@@ -578,7 +572,7 @@ export function DefaultErrorBoundary({ error }: { error: any }) {
           ) : null}
         </pre>
       </div>
-      <div style={{ height: '1rem' }} />
+      {/* <div style={{ height: '1rem' }} />
       <div
         style={{
           fontSize: '.8em',
@@ -590,7 +584,7 @@ export function DefaultErrorBoundary({ error }: { error: any }) {
         If you are the owner of this website, it's highly recommended that you
         configure your own custom Catch/Error boundaries for the router. You can
         optionally configure a boundary for each route.
-      </div>
+      </div> */}
     </div>
   )
 }

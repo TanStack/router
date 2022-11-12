@@ -114,10 +114,13 @@ export interface Action<
   TResponse = unknown,
   // TError = unknown,
 > {
-  submit: (submission?: TPayload) => Promise<TResponse>
+  submit: (
+    submission?: TPayload,
+    actionOpts?: { invalidate?: boolean; multi?: boolean },
+  ) => Promise<TResponse>
   current?: ActionState<TPayload, TResponse>
   latest?: ActionState<TPayload, TResponse>
-  pending: ActionState<TPayload, TResponse>[]
+  submissions: ActionState<TPayload, TResponse>[]
 }
 
 export interface ActionState<
@@ -128,6 +131,7 @@ export interface ActionState<
   submittedAt: number
   status: 'idle' | 'pending' | 'success' | 'error'
   submission: TPayload
+  isMulti: boolean
   data?: TResponse
   error?: unknown
 }
@@ -173,8 +177,6 @@ export interface RouterState {
   location: Location
   matches: RouteMatch[]
   lastUpdated: number
-  currentAction?: ActionState
-  latestAction?: ActionState
   actions: Record<string, Action>
   loaders: Record<string, Loader>
   pending?: PendingState
@@ -262,10 +264,10 @@ export interface Router<
   routeTree: Route<TAllRouteInfo, RouteInfo>
   routesById: RoutesById<TAllRouteInfo>
   navigationPromise: Promise<void>
-  removeActionQueue: { action: Action; actionState: ActionState }[]
   startedLoadingAt: number
   resolveNavigation: () => void
   subscribe: (listener: Listener) => () => void
+  reset: () => void
   notify: () => void
   mount: () => () => void
   onFocus: () => void
@@ -275,7 +277,7 @@ export interface Router<
 
   buildNext: (opts: BuildNextOptions) => Location
   cancelMatches: () => void
-  loadLocation: (next?: Location) => Promise<void>
+  load: (next?: Location) => Promise<void>
   matchCache: Record<string, MatchCacheEntry>
   cleanMatchCache: () => void
   getRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
@@ -345,6 +347,19 @@ const isServer =
 const createDefaultHistory = () =>
   isServer ? createMemoryHistory() : createBrowserHistory()
 
+function getInitialRouterState(): RouterState {
+  return {
+    status: 'idle',
+    location: null!,
+    matches: [],
+    actions: {},
+    loaders: {},
+    lastUpdated: Date.now(),
+    isFetching: false,
+    isPreloading: false,
+  }
+}
+
 export function createRouter<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
   TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
@@ -367,7 +382,6 @@ export function createRouter<
     history,
     options: originalOptions,
     listeners: [],
-    removeActionQueue: [],
     // Resolved after construction
     basepath: '',
     routeTree: undefined!,
@@ -378,15 +392,10 @@ export function createRouter<
     navigationPromise: Promise.resolve(),
     resolveNavigation: () => {},
     matchCache: {},
-    state: {
-      status: 'idle',
-      location: null!,
-      matches: [],
-      actions: {},
-      loaders: {},
-      lastUpdated: Date.now(),
-      isFetching: false,
-      isPreloading: false,
+    state: getInitialRouterState(),
+    reset: () => {
+      router.state = getInitialRouterState()
+      router.notify()
     },
     startedLoadingAt: Date.now(),
     subscribe: (listener: Listener): (() => void) => {
@@ -437,20 +446,21 @@ export function createRouter<
         strictParseParams: true,
       })
 
+      matches.forEach((match, index) => {
+        const dehydratedMatch = dehydratedState.matches[index]
+        invariant(
+          dehydratedMatch,
+          'Oh no! Dehydrated route matches did not match the active state of the router 😬',
+        )
+        Object.assign(match, dehydratedMatch)
+      })
+
+      router.loadMatches(matches)
+
       router.state = {
         ...router.state,
         ...dehydratedState,
-        matches: matches.map((match) => {
-          const dehydratedMatch = dehydratedState.matches.find(
-            (d: any) => d.matchId === match.matchId,
-          )
-          invariant(
-            dehydratedMatch,
-            'Oh no! Dehydrated route matches did not match the active state of the router 😬',
-          )
-          Object.assign(match, dehydratedMatch)
-          return match
-        }),
+        matches,
       }
     },
 
@@ -467,13 +477,10 @@ export function createRouter<
         router.__.commitLocation(next, true)
       }
 
-      router.loadLocation()
+      // router.load()
 
       const unsub = router.history.listen((event) => {
-        console.log(event.location)
-        router.loadLocation(
-          router.__.parseLocation(event.location, router.location),
-        )
+        router.load(router.__.parseLocation(event.location, router.location))
       })
 
       // addEventListener does not exist in React Native, but window does
@@ -486,14 +493,16 @@ export function createRouter<
 
       return () => {
         unsub()
-        // Be sure to unsubscribe if a new handler is set
-        window.removeEventListener('visibilitychange', router.onFocus)
-        window.removeEventListener('focus', router.onFocus)
+        if (!isServer && window.removeEventListener) {
+          // Be sure to unsubscribe if a new handler is set
+          window.removeEventListener('visibilitychange', router.onFocus)
+          window.removeEventListener('focus', router.onFocus)
+        }
       }
     },
 
     onFocus: () => {
-      router.loadLocation()
+      router.load()
     },
 
     update: (opts) => {
@@ -529,7 +538,7 @@ export function createRouter<
       })
     },
 
-    loadLocation: async (next?: Location) => {
+    load: async (next?: Location) => {
       const id = Math.random()
       router.startedLoadingAt = id
 
@@ -537,17 +546,6 @@ export function createRouter<
         // Ingest the new location
         router.location = next
       }
-
-      // Clear out old actions
-      router.removeActionQueue.forEach(({ action, actionState }) => {
-        if (router.state.currentAction === actionState) {
-          router.state.currentAction = undefined
-        }
-        if (action.current === actionState) {
-          action.current = undefined
-        }
-      })
-      router.removeActionQueue = []
 
       // Cancel any pending matches
       router.cancelMatches()
@@ -598,6 +596,13 @@ export function createRouter<
           params: d.params,
           search: d.routeSearch,
         })
+
+        // // Clear actions
+        // if (d.action) {
+        //   d.action.current = undefined
+        //   d.action.submissions = []
+        // }
+
         // Clear idle error states when match leaves
         if (d.status === 'error' && !d.isFetching) {
           d.status = 'idle'
@@ -634,16 +639,20 @@ export function createRouter<
         delete router.matchCache[d.matchId]
       })
 
-      if (matches.some((d) => d.status === 'loading')) {
-        router.notify()
-        await Promise.all(
-          matches.map((d) => d.__.loaderPromise || Promise.resolve()),
-        )
-      }
+      // router.notify()
+
       if (router.startedLoadingAt !== id) {
         // Ignore side-effects of match loading
         return
       }
+
+      matches.forEach((match) => {
+        // Clear actions
+        if (match.action) {
+          match.action.current = undefined
+          match.action.submissions = []
+        }
+      })
 
       router.state = {
         ...router.state,
@@ -823,7 +832,9 @@ export function createRouter<
         if (match.status === 'loading') {
           // If requested, start the pending timers
           if (loaderOpts?.withPending) match.__.startPending()
+        }
 
+        if (match.__.loadPromise) {
           // Wait for the first sign of activity from the match
           // This might be completion, error, or a pending state
           await match.__.loadPromise

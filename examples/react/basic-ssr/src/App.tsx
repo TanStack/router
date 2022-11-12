@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { Outlet } from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 import { router } from './router'
 
@@ -28,6 +29,7 @@ export function App() {
       </div>
       <hr />
       <Outlet />
+      <TanStackRouterDevtools router={router} />
     </>
   )
 }
