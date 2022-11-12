@@ -20,8 +20,8 @@ To create children routes and have them automatically added to the parent route,
 
 ```ts
 const routeConfig = createRouteConfig().createChildren((createRoute) => [
-  createRoute({ path: '/' })
-  createRoute({ path: '/about' })
+  createRoute({ path: '/' }),
+  createRoute({ path: '/about' }),
   createRoute({ path: '/contact' })
 ])
 ```
@@ -34,12 +34,12 @@ The `routeConfig.createChildren(...)` utility can continue to be used on child r
 
 ```ts
 const routeConfig = createRouteConfig().createChildren((createRoute) => [
-  createRoute({ path: '/' })
-  createRoute({ path: '/about' })
-  createRoute({ path: '/contact' })
+  createRoute({ path: '/' }),
+  createRoute({ path: '/about' }),
+  createRoute({ path: '/contact' }),
   createRoute({ path: '/blog' }).createChildren((createRoute) => [
-    createRoute({ path: '/' })
-    createRoute({ path: '/:slug' })
+    createRoute({ path: '/' }),
+    createRoute({ path: '/:slug' }),
   ])
 ])
 ```
