@@ -33,6 +33,7 @@
     "build/**",
     "src"
   ],
+  "sideEffects": false,
   "peerDependencies": {
     "react": ">=16",
     "react-dom": ">=16"

@@ -589,6 +589,10 @@ export function createRouter<
         }
       })
 
+      const entering = matches.filter((d) => {
+        return !previousMatches.find((dd) => dd.matchId === d.matchId)
+      })
+
       const now = Date.now()
 
       exiting.forEach((d) => {
@@ -596,12 +600,6 @@ export function createRouter<
           params: d.params,
           search: d.routeSearch,
         })
-
-        // // Clear actions
-        // if (d.action) {
-        //   d.action.current = undefined
-        //   d.action.submissions = []
-        // }
 
         // Clear idle error states when match leaves
         if (d.status === 'error' && !d.isFetching) {
@@ -627,10 +625,6 @@ export function createRouter<
         })
       })
 
-      const entering = matches.filter((d) => {
-        return !previousMatches.find((dd) => dd.matchId === d.matchId)
-      })
-
       entering.forEach((d) => {
         d.__.onExit = d.options.onMatch?.({
           params: d.params,
@@ -638,8 +632,6 @@ export function createRouter<
         })
         delete router.matchCache[d.matchId]
       })
-
-      // router.notify()
 
       if (router.startedLoadingAt !== id) {
         // Ignore side-effects of match loading
