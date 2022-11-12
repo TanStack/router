@@ -113,6 +113,7 @@ function Logo(props: React.HTMLProps<HTMLDivElement>) {
         style={{
           backgroundImage:
             'linear-gradient(to right, var(--tw-gradient-stops))',
+          // @ts-ignore
           '--tw-gradient-from': '#84cc16',
           '--tw-gradient-stops':
             'var(--tw-gradient-from), var(--tw-gradient-to)',
