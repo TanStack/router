@@ -25,7 +25,7 @@ function Invoices() {
     <div className="flex-1 flex">
       <div className="divide-y w-48">
         {invoices?.map((invoice) => {
-          const foundPending = invoiceDetailRoute.action.pending.find(
+          const foundPending = invoiceDetailRoute.action.submissions.find(
             (d) => d.submission?.id === invoice.id,
           )
 
@@ -64,7 +64,7 @@ function Invoices() {
             </div>
           )
         })}
-        {invoiceIndexRoute.action.pending.map((action) => (
+        {invoiceIndexRoute.action.submissions.map((action) => (
           <div key={action.submittedAt}>
             <a href="#" className="block py-2 px-3 text-blue-700">
               <pre className="text-sm">

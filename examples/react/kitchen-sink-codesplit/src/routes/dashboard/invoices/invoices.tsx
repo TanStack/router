@@ -7,17 +7,7 @@ import { invoicesRoute } from '.'
 export const invoicesIndexRoute = invoicesRoute.createRoute({
   path: '/',
   element: <InvoicesHome />,
-  action: async (partialInvoice: Partial<Invoice>) => {
-    const invoice = await postInvoice(partialInvoice)
-    // // Redirect to the new invoice
-    router.navigate({
-      to: '/dashboard/invoices/:invoiceId',
-      params: {
-        invoiceId: invoice.id, // The router doesn't know about this yet
-      },
-    })
-    return invoice
-  },
+  action: postInvoice,
 })
 
 function InvoicesHome() {
@@ -31,10 +21,15 @@ function InvoicesHome() {
             event.preventDefault()
             event.stopPropagation()
             const formData = new FormData(event.target as HTMLFormElement)
-            action.submit({
-              title: formData.get('title') as string,
-              body: formData.get('body') as string,
-            })
+            action.submit(
+              {
+                title: formData.get('title') as string,
+                body: formData.get('body') as string,
+              },
+              {
+                multi: true,
+              },
+            )
           }}
           className="space-y-2"
         >
@@ -43,7 +38,7 @@ function InvoicesHome() {
           <div>
             <button
               className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-              disabled={action.current?.status === 'pending'}
+              // disabled={action.current?.status === 'pending'}
             >
               Create
             </button>
