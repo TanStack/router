@@ -18,7 +18,7 @@ The devtools are bundle split into the `@tanstack/react-router-devtools` package
 import { ReactRouterDevtools } from '@tanstack/react-router-devtools'
 ```
 
-## Only importing and using Devtools in Production
+## Only importing and using Devtools in Development
 
 To do this, simply use lazy and the env variable of your choice to optionally return a dummy component:
 
