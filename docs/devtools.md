@@ -10,20 +10,30 @@ When you begin your TanStack Router journey, you'll want these devtools by your 
 
 > Please note that for now, the devtools **are only supported in React**. If you would like to help us make the devtools platform-agnostic, please let us know!
 
-## Import the Devtools
+## Installation
 
-The devtools are bundle split into the `@tanstack/react-router-devtools` package. No need to install anything extra, just:
-
-```js
-import { ReactRouterDevtools } from '@tanstack/react-router-devtools'
+```sh
+npm install @tanstack/react-router-devtools@beta --save
 ```
 
-## Only importing and using Devtools in Production
+or
+
+```sh
+yarn add @tanstack/react-router-devtools@beta
+```
+
+## Import the Devtools
+
+```js
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+```
+
+## Only importing and using Devtools in Development
 
 To do this, simply use lazy and the env variable of your choice to optionally return a dummy component:
 
 ```tsx
-const ReactRouterDevtools =
+const TanStackRouterDevtools =
   process.env.NODE_ENV === 'production'
     ? () => null // Render nothing in production
     : React.lazy(() =>
@@ -43,7 +53,7 @@ function App() {
   return (
     <>
       <Router router={router} />
-      <ReactRouterDevtools router={router} />
+      <TanStackRouterDevtools router={router} />
     </>
   )
 }
@@ -56,13 +66,13 @@ Floating Mode will mount the devtools as a fixed, floating element in your app a
 Place the following code as high in your React app as you can. The closer it is to the root of the page, the better it will work!
 
 ```js
-import { ReactRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 function App() {
   return (
     <>
       <Router />
-      <ReactRouterDevtools router={router} initialIsOpen={false} />
+      <TanStackRouterDevtools router={router} initialIsOpen={false} />
     </>
   )
 }
@@ -89,13 +99,13 @@ function App() {
 Embedded Mode will embed the devtools as a regular component in your application. You can style it however you'd like after that!
 
 ```js
-import { ReactRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 
 function App() {
   return (
     <>
       <Router />
-      <ReactRouterDevtoolsPanel
+      <TanStackRouterDevtoolsPanel
         router={router}
         style={styles}
         className={className}
