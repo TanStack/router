@@ -452,7 +452,7 @@ export function RouterProvider<
   )
 }
 
-function useRouter(): Router {
+export function useRouter(): Router {
   const value = React.useContext(routerContext)
   warning(!value, 'useRouter must be used inside a <Router> component!')
 
@@ -461,7 +461,7 @@ function useRouter(): Router {
   return value.router as Router
 }
 
-function useMatches(): RouteMatch[] {
+export function useMatches(): RouteMatch[] {
   return React.useContext(matchesContext)
 }
 
