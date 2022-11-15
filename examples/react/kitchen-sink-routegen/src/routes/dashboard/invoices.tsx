@@ -6,7 +6,7 @@ import dashboardRoute from '../dashboard'
 
 const routeConfig = dashboardRoute.createRoute({
   path: 'invoices',
-  element: <Invoices />,
+  component: Invoices,
 })
 
 export default routeConfig

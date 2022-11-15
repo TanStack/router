@@ -91,10 +91,9 @@ export interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
   defaultPreloadGcMaxAge?: number
   defaultPreloadDelay?: number
   useErrorBoundary?: boolean
-  defaultElement?: GetFrameworkGeneric<'Element'>
-  defaultErrorElement?: GetFrameworkGeneric<'Element'>
-  defaultCatchElement?: GetFrameworkGeneric<'Element'>
-  defaultPendingElement?: GetFrameworkGeneric<'Element'>
+  defaultComponent?: GetFrameworkGeneric<'Component'>
+  defaultErrorComponent?: GetFrameworkGeneric<'Component'>
+  defaultPendingComponent?: GetFrameworkGeneric<'Component'>
   defaultPendingMs?: number
   defaultPendingMinMs?: number
   defaultLoaderMaxAge?: number
@@ -104,9 +103,12 @@ export interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
   basepath?: string
   createRouter?: (router: Router<any, any>) => void
   createRoute?: (opts: { route: AnyRoute; router: Router<any, any> }) => void
-  createElement?: (
-    element: GetFrameworkGeneric<'SyncOrAsyncElement'>,
-  ) => Promise<GetFrameworkGeneric<'Element'>>
+  loadComponent?: (
+    component: GetFrameworkGeneric<'Component'>,
+  ) => Promise<GetFrameworkGeneric<'Component'>>
+  // renderComponent?: (
+  //   component: GetFrameworkGeneric<'Component'>,
+  // ) => GetFrameworkGeneric<'Element'>
 }
 
 export interface Action<
@@ -555,13 +557,22 @@ export function createRouter<
         strictParseParams: true,
       })
 
-      router.state = {
-        ...router.state,
-        pending: {
+      if (typeof document !== 'undefined') {
+        router.state = {
+          ...router.state,
+          pending: {
+            matches: matches,
+            location: router.location,
+          },
+          status: 'loading',
+        }
+      } else {
+        router.state = {
+          ...router.state,
           matches: matches,
           location: router.location,
-        },
-        status: 'loading',
+          status: 'loading',
+        }
       }
 
       router.notify()

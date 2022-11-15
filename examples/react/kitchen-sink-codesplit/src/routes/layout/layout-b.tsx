@@ -3,7 +3,7 @@ import { layoutRoute } from '.'
 
 export const layoutRouteB = layoutRoute.createRoute({
   path: 'layout-b',
-  element: <LayoutB />,
+  component: LayoutB,
 })
 
 function LayoutB() {

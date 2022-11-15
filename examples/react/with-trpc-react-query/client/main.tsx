@@ -31,12 +31,12 @@ const queryClient = new QueryClient()
 const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
     path: '/',
-    element: <Index />,
+    component: Index,
   }),
   createRoute({
     path: 'posts',
     loaderMaxAge: 0,
-    element: <Posts />,
+    component: Posts,
     errorElement: 'Oh crap!',
     loader: async () => {
       queryClient.getQueryData(['posts']) ??
@@ -44,10 +44,10 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
       return {}
     },
   }).createChildren((createRoute) => [
-    createRoute({ path: '/', element: <PostsIndex /> }),
+    createRoute({ path: '/', component: PostsIndex }),
     createRoute({
       path: ':postId',
-      element: <Post />,
+      component: Post,
       loader: async ({ params: { postId } }) => {
         queryClient.getQueryData(['posts', postId]) ??
           (await queryClient.prefetchQuery(['posts', postId], () =>

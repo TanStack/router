@@ -3,7 +3,7 @@ import usersRoute from '../users'
 
 export default usersRoute.createRoute({
   path: '/',
-  element: <UsersIndex />,
+  component: UsersIndex,
 })
 
 function UsersIndex() {

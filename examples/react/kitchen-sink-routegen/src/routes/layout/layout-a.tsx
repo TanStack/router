@@ -3,7 +3,7 @@ import layoutRoute from '../layout'
 
 export default layoutRoute.createRoute({
   path: 'layout-a',
-  element: <LayoutA />,
+  component: LayoutA,
 })
 
 function LayoutA() {

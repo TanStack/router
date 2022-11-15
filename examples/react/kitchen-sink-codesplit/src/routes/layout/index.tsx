@@ -6,7 +6,7 @@ import { loaderDelayFn } from '../../utils'
 
 export const layoutRoute = createRouteConfig().createRoute({
   id: 'layout',
-  element: <LayoutWrapper />,
+  component: LayoutWrapper,
   loader: async () => {
     return loaderDelayFn(() => {
       return {

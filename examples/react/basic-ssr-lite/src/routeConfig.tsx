@@ -1,14 +1,7 @@
-import React, { StrictMode } from 'react'
-import ReactDOM from 'react-dom/client'
-import {
-  Outlet,
-  RouterProvider,
-  createReactRouter,
-  createRouteConfig,
-} from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-
+import * as React from 'react'
+import { createRouteConfig, Outlet } from '@tanstack/react-router'
 import axios from 'axios'
+import { router } from './router'
 
 type PostType = {
   id: string
@@ -16,7 +9,7 @@ type PostType = {
   body: string
 }
 
-const routeConfig = createRouteConfig().createChildren((createRoute) => [
+export const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
     path: '/',
     component: Index,
@@ -24,7 +17,7 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
     path: 'posts',
     component: Posts,
-    errorComponent: () => 'Oh crap',
+    errorComponent: () => 'Oh crap!',
     loader: async () => {
       return {
         posts: await fetchPosts(),
@@ -44,47 +37,9 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
   ]),
 ])
 
-// Set up a ReactRouter instance
-const router = createReactRouter({
-  routeConfig,
-  // defaultPreload: 'intent',
-})
-
-function App() {
-  return (
-    // Build our routes and render our router
-    <>
-      <RouterProvider router={router}>
-        <div>
-          <router.Link
-            to="/"
-            activeProps={{
-              className: 'font-bold',
-            }}
-            activeOptions={{ exact: true }}
-          >
-            Home
-          </router.Link>{' '}
-          <router.Link
-            to="/posts"
-            activeProps={{
-              className: 'font-bold',
-            }}
-          >
-            Posts
-          </router.Link>
-        </div>
-        <hr />
-        <Outlet /> {/* Start rendering router matches */}
-      </RouterProvider>
-      <TanStackRouterDevtools router={router} position="bottom-right" />
-    </>
-  )
-}
-
 async function fetchPosts() {
   console.log('Fetching posts...')
-  await new Promise((r) => setTimeout(r, 500))
+  await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
   return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
@@ -92,7 +47,7 @@ async function fetchPosts() {
 
 async function fetchPostById(postId: string) {
   console.log(`Fetching post with id ${postId}...`)
-  await new Promise((r) => setTimeout(r, 500))
+  await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
 
   return await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
@@ -137,7 +92,6 @@ function Posts() {
           )
         })}
       </div>
-      <hr />
       <Outlet />
     </div>
   )
@@ -161,15 +115,5 @@ function Post() {
       <h4>{post.title}</h4>
       <p>{post.body}</p>
     </div>
-  )
-}
-
-const rootElement = document.getElementById('app')!
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
   )
 }

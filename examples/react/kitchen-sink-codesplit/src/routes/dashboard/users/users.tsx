@@ -3,7 +3,7 @@ import { usersRoute } from '.'
 
 export const usersIndexRoute = usersRoute.createRoute({
   path: '/',
-  element: <UsersIndex />,
+  component: UsersIndex,
 })
 
 function UsersIndex() {

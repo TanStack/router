@@ -7,7 +7,6 @@ export {
 export { default as invariant } from 'tiny-invariant'
 
 export * from './frameworks'
-export * from './index'
 export * from './link'
 export * from './path'
 export * from './qss'

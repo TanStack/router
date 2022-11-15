@@ -8,8 +8,7 @@ The `FrameworksGenerics` interface is available for framework adapters to extend
 
 Primarily these include:
 
-- Element
-- SyncOrAsyncElement
+- Component
 
 Internally, the `GetFrameworkGeneric` function is used to retrieve these generics.
 
@@ -19,8 +18,7 @@ export interface FrameworkGenerics {
   // and are extended by framework adapters, but cannot be
   // pre-defined as constraints:
   //
-  // Element: any
-  // SyncOrAsyncElement?: any
+  // Component: any
 }
 
 export type GetFrameworkGeneric<U> = U extends keyof FrameworkGenerics

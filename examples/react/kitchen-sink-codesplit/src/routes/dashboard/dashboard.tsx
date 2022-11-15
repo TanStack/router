@@ -4,7 +4,7 @@ import { router } from '../../router'
 
 export const dashboardIndexRoute = dashboardRoute.createRoute({
   path: '/',
-  element: <DashboardHome />,
+  component: DashboardHome,
 })
 
 function DashboardHome() {

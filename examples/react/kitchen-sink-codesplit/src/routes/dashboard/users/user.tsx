@@ -7,7 +7,7 @@ export const userRoute = usersRoute.createRoute({
   path: ':userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
-  element: <User />,
+  component: User,
   loader: async ({ params: { userId } }) => {
     return {
       user: await fetchUserById(userId),

@@ -35,11 +35,19 @@ import {
 
 export * from '@tanstack/router-core'
 
+export { lazyWithPreload as lazy } from 'react-lazy-with-preload/lib/index'
+export type { PreloadableComponent as LazyComponent } from 'react-lazy-with-preload'
+
+type SyncRouteComponent = (props?: {}) => React.ReactNode
+export type RouteComponent = SyncRouteComponent & {
+  preload?: () => Promise<{
+    default: SyncRouteComponent
+  }>
+}
+
 declare module '@tanstack/router-core' {
   interface FrameworkGenerics {
-    Element: React.ReactNode
-    // Any is required here so import() will work without having to do import().then(d => d.default)
-    SyncOrAsyncElement: React.ReactNode | (() => Promise<any>)
+    Component: RouteComponent
   }
 
   interface Router<
@@ -402,19 +410,13 @@ export function createReactRouter<
 
       Object.assign(route, routeExt)
     },
-    createElement: async (element) => {
-      if (typeof element === 'function') {
-        const res = (await element()) as any
-
-        // Support direct import() calls
-        if (typeof res === 'object' && res.default) {
-          return React.createElement(res.default)
-        } else {
-          return res
-        }
+    loadComponent: async (component) => {
+      if (component.preload && typeof document !== 'undefined') {
+        component.preload()
+        // return await component.preload()
       }
 
-      return element
+      return component as any
     },
   })
 
@@ -474,57 +476,64 @@ export function Outlet() {
     return null
   }
 
-  const element = ((): React.ReactNode => {
-    if (!match) {
-      return null
-    }
+  const defaultPending = React.useCallback(() => null, [])
 
-    const errorElement =
-      match.__.errorElement ?? router.options.defaultErrorElement
+  const PendingComponent = (match.__.pendingComponent ??
+    router.options.defaultPendingComponent ??
+    defaultPending) as any
 
-    if (match.status === 'error') {
-      if (errorElement) {
-        return errorElement as any
-      }
-
-      if (match.options.useErrorBoundary || router.options.useErrorBoundary) {
-        throw match.error
-      }
-
-      return <DefaultErrorBoundary error={match.error} />
-    }
-
-    if (match.status === 'loading' || match.status === 'idle') {
-      if (match.isPending) {
-        const pendingElement =
-          match.__.pendingElement ?? router.options.defaultPendingElement
-
-        if (match.options.pendingMs || pendingElement) {
-          return (pendingElement as any) ?? null
-        }
-      }
-
-      return null
-    }
-
-    return (
-      (match.__.element as any) ?? router.options.defaultElement ?? <Outlet />
-    )
-  })() as JSX.Element
-
-  const catchElement =
-    match?.options.catchElement ?? router.options.defaultCatchElement
+  const errorComponent =
+    match.__.errorComponent ?? router.options.defaultErrorComponent
 
   return (
     <MatchesProvider value={matches}>
-      <CatchBoundary catchElement={catchElement}>{element}</CatchBoundary>
+      <React.Suspense fallback={<PendingComponent />}>
+        <CatchBoundary errorComponent={errorComponent}>
+          {
+            ((): React.ReactNode => {
+              if (match.status === 'error') {
+                if (errorComponent) {
+                  return React.createElement(errorComponent as any)
+                }
+
+                // if (
+                //   match.options.useErrorBoundary ||
+                //   router.options.useErrorBoundary
+                // ) {
+                throw match.error
+                // }
+              }
+
+              if (match.status !== 'success' && match.__.loadPromise) {
+                console.log(match.matchId, 'suspend')
+                throw match.__.loadPromise
+
+                // if (match.isPending) {
+
+                //   if (match.options.pendingMs || pendingComponent) {
+                //     return React.createElement(pendingComponent as any) ?? null
+                //   }
+                // }
+              }
+
+              console.log(match.matchId, match.status)
+
+              return React.createElement(
+                (match.__.component as any) ??
+                  router.options.defaultComponent ??
+                  Outlet,
+              )
+            })() as JSX.Element
+          }
+        </CatchBoundary>
+      </React.Suspense>
     </MatchesProvider>
   )
 }
 
 class CatchBoundary extends React.Component<{
   children: any
-  catchElement: any
+  errorComponent: any
 }> {
   state = {
     error: false,
@@ -538,12 +547,10 @@ class CatchBoundary extends React.Component<{
     })
   }
   render() {
-    const catchElement = this.props.catchElement ?? DefaultErrorBoundary
+    const errorComponent = this.props.errorComponent ?? DefaultErrorBoundary
 
     if (this.state.error) {
-      return typeof catchElement === 'function'
-        ? catchElement(this.state)
-        : catchElement
+      return React.createElement(errorComponent, this.state)
     }
 
     return this.props.children
@@ -572,19 +579,6 @@ export function DefaultErrorBoundary({ error }: { error: any }) {
           ) : null}
         </pre>
       </div>
-      {/* <div style={{ height: '1rem' }} />
-      <div
-        style={{
-          fontSize: '.8em',
-          borderLeft: '3px solid rgba(127, 127, 127, 1)',
-          paddingLeft: '.5rem',
-          opacity: 0.5,
-        }}
-      >
-        If you are the owner of this website, it's highly recommended that you
-        configure your own custom Catch/Error boundaries for the router. You can
-        optionally configure a boundary for each route.
-      </div> */}
     </div>
   )
 }

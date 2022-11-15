@@ -5,12 +5,12 @@ import { useAuth } from '../../main'
 export const authenticatedRoute = createRouteConfig()
   .createRoute({
     path: 'authenticated/',
-    element: <Auth />,
+    component: Auth,
   })
   .createChildren((createRoute) => [
     createRoute({
       path: '/',
-      element: <Authenticated />,
+      component: Authenticated,
     }),
   ])
 

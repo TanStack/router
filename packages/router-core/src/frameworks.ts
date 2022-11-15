@@ -3,8 +3,7 @@ export interface FrameworkGenerics {
   // and are extended by framework adapters, but cannot be
   // pre-defined as constraints:
   //
-  // Element: any
-  // SyncOrAsyncElement?: any
+  // Component: any
 }
 
 export type GetFrameworkGeneric<U> = U extends keyof FrameworkGenerics

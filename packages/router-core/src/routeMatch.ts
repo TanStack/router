@@ -31,13 +31,11 @@ export interface RouteMatch<
   isPending: boolean
   invalidAt: number
   __: {
-    element?: GetFrameworkGeneric<'Element'> // , TRouteInfo['loaderData']>
-    errorElement?: GetFrameworkGeneric<'Element'> // , TRouteInfo['loaderData']>
-    catchElement?: GetFrameworkGeneric<'Element'> // , TRouteInfo['loaderData']>
-    pendingElement?: GetFrameworkGeneric<'Element'> // , TRouteInfo['loaderData']>
+    component?: GetFrameworkGeneric<'Component'> // , TRouteInfo['loaderData']>
+    errorComponent?: GetFrameworkGeneric<'Component'> // , TRouteInfo['loaderData']>
+    pendingComponent?: GetFrameworkGeneric<'Component'> // , TRouteInfo['loaderData']>
     loadPromise?: Promise<void>
-    loaderDataPromise?: Promise<void>
-    elementsPromise?: Promise<void>
+    componentsPromise?: Promise<void>
     dataPromise?: Promise<void>
     pendingTimeout?: Timeout
     pendingMinTimeout?: Timeout
@@ -70,11 +68,10 @@ export interface RouteMatch<
   hasLoaders: () => boolean
 }
 
-const elementTypes = [
-  'element',
-  'errorElement',
-  'catchElement',
-  'pendingElement',
+const componentTypes = [
+  'component',
+  'errorComponent',
+  'pendingComponent',
 ] as const
 
 export function createRouteMatch<
@@ -177,11 +174,11 @@ export function createRouteMatch<
             ...nextSearch,
           })
 
-          elementTypes.map(async (type) => {
-            const routeElement = routeMatch.options[type]
+          componentTypes.map(async (type) => {
+            const component = routeMatch.options[type]
 
             if (typeof routeMatch.__[type] !== 'function') {
-              routeMatch.__[type] = routeElement
+              routeMatch.__[type] = component
             }
           })
         } catch (err: any) {
@@ -207,7 +204,7 @@ export function createRouteMatch<
     hasLoaders: () => {
       return !!(
         route.options.loader ||
-        elementTypes.some((d) => typeof route.options[d] === 'function')
+        componentTypes.some((d) => route.options[d]?.preload)
       )
     },
     load: async (loaderOpts) => {
@@ -262,101 +259,93 @@ export function createRouteMatch<
         routeMatch.isFetching = true
         routeMatch.__.resolve = resolve as () => void
 
-        routeMatch.__.loaderDataPromise = (async () => {
-          // Load the elements and data in parallel
+        routeMatch.__.componentsPromise = (async () => {
+          // then run all component and data loaders in parallel
+          // For each component type, potentially load it asynchronously
 
-          routeMatch.__.elementsPromise = (async () => {
-            // then run all element and data loaders in parallel
-            // For each element type, potentially load it asynchronously
+          await Promise.all(
+            componentTypes.map(async (type) => {
+              const component = routeMatch.options[type]
 
-            await Promise.all(
-              elementTypes.map(async (type) => {
-                const routeElement = routeMatch.options[type]
-
-                if (typeof routeMatch.__[type] === 'function') {
-                  routeMatch.__[type] = await router.options.createElement!(
-                    routeElement,
-                  )
-                }
-              }),
-            )
-          })()
-
-          routeMatch.__.dataPromise = Promise.resolve().then(async () => {
-            try {
-              if (routeMatch.options.loader) {
-                const data = await routeMatch.options.loader({
-                  params: routeMatch.params,
-                  search: routeMatch.routeSearch,
-                  signal: routeMatch.__.abortController.signal,
-                })
-                if (id !== routeMatch.__.latestId) {
-                  return routeMatch.__.loadPromise
-                }
-
-                routeMatch.routeLoaderData = replaceEqualDeep(
-                  routeMatch.routeLoaderData,
-                  data,
+              if (routeMatch.__[type]?.preload) {
+                routeMatch.__[type] = await router.options.loadComponent!(
+                  component,
                 )
               }
+            }),
+          )
+        })()
 
-              routeMatch.error = undefined
-              routeMatch.status = 'success'
-              routeMatch.updatedAt = Date.now()
-              routeMatch.invalidAt =
-                routeMatch.updatedAt +
-                (opts?.maxAge ??
-                  routeMatch.options.loaderMaxAge ??
-                  router.options.defaultLoaderMaxAge ??
-                  0)
-            } catch (err) {
+        routeMatch.__.dataPromise = Promise.resolve().then(async () => {
+          try {
+            if (routeMatch.options.loader) {
+              const data = await routeMatch.options.loader({
+                params: routeMatch.params,
+                search: routeMatch.routeSearch,
+                signal: routeMatch.__.abortController.signal,
+              })
               if (id !== routeMatch.__.latestId) {
                 return routeMatch.__.loadPromise
               }
 
-              if (process.env.NODE_ENV !== 'production') {
-                console.error(err)
-              }
-              routeMatch.error = err
-              routeMatch.status = 'error'
-              routeMatch.updatedAt = Date.now()
+              routeMatch.routeLoaderData = replaceEqualDeep(
+                routeMatch.routeLoaderData,
+                data,
+              )
             }
-          })
 
-          try {
-            await Promise.all([
-              routeMatch.__.elementsPromise,
-              routeMatch.__.dataPromise,
-            ])
+            routeMatch.error = undefined
+            routeMatch.status = 'success'
+            routeMatch.updatedAt = Date.now()
+            routeMatch.invalidAt =
+              routeMatch.updatedAt +
+              (opts?.maxAge ??
+                routeMatch.options.loaderMaxAge ??
+                router.options.defaultLoaderMaxAge ??
+                0)
+          } catch (err) {
             if (id !== routeMatch.__.latestId) {
               return routeMatch.__.loadPromise
             }
 
-            if (routeMatch.__.pendingMinPromise) {
-              await routeMatch.__.pendingMinPromise
-              delete routeMatch.__.pendingMinPromise
+            if (process.env.NODE_ENV !== 'production') {
+              console.error(err)
             }
-          } finally {
-            if (id !== routeMatch.__.latestId) {
-              return routeMatch.__.loadPromise
-            }
-            routeMatch.__.cancelPending()
-            routeMatch.isPending = false
-            routeMatch.isFetching = false
-            routeMatch.__.notify()
+            routeMatch.error = err
+            routeMatch.status = 'error'
+            routeMatch.updatedAt = Date.now()
           }
-        })()
+        })
 
-        await routeMatch.__.loaderDataPromise
+        try {
+          await Promise.all([
+            routeMatch.__.componentsPromise,
+            routeMatch.__.dataPromise,
+          ])
+          if (id !== routeMatch.__.latestId) {
+            return routeMatch.__.loadPromise
+          }
 
-        if (id !== routeMatch.__.latestId) {
-          return routeMatch.__.loadPromise
+          if (routeMatch.__.pendingMinPromise) {
+            await routeMatch.__.pendingMinPromise
+            delete routeMatch.__.pendingMinPromise
+          }
+        } finally {
+          if (id !== routeMatch.__.latestId) {
+            return routeMatch.__.loadPromise
+          }
+          routeMatch.__.cancelPending()
+          routeMatch.isPending = false
+          routeMatch.isFetching = false
+          routeMatch.__.notify()
         }
-
-        delete routeMatch.__.loaderDataPromise
       })
 
       await routeMatch.__.loadPromise
+
+      if (id !== routeMatch.__.latestId) {
+        return routeMatch.__.loadPromise
+      }
 
       delete routeMatch.__.loadPromise
     },

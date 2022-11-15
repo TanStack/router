@@ -12,23 +12,25 @@ type PostType = {
 export const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
     path: '/',
-    element: <Index />,
+    component: Index,
   }),
   createRoute({
     path: 'posts',
-    element: <Posts />,
-    errorElement: 'Oh crap!',
+    component: Posts,
+    errorComponent: () => 'Oh crap!',
     loader: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 2000))
       return {
         posts: await fetchPosts(),
       }
     },
   }).createChildren((createRoute) => [
-    createRoute({ path: '/', element: <PostsIndex /> }),
+    createRoute({ path: '/', component: PostsIndex }),
     createRoute({
       path: ':postId',
-      element: <Post />,
+      component: Post,
       loader: async ({ params: { postId } }) => {
+        await new Promise((resolve) => setTimeout(resolve, 4000))
         return {
           post: await fetchPostById(postId),
         }

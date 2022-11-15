@@ -4,7 +4,7 @@ import { router } from '../router'
 
 export const indexRoute = createRouteConfig().createRoute({
   path: '/',
-  element: <Home />,
+  component: Home,
 })
 
 function Home() {

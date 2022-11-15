@@ -4,7 +4,7 @@ import { router } from '../../router'
 
 const routeConfig = dashboardRoute.createRoute({
   path: '/',
-  element: <DashboardHome />,
+  component: DashboardHome,
 })
 
 export default routeConfig

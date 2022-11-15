@@ -13,7 +13,7 @@ export type UsersViewSortBy = z.infer<typeof usersViewSortBy>
 
 const routeConfig = dashboardRoute.createRoute({
   path: 'users',
-  element: <Users />,
+  component: Users,
   loader: async ({ search }) => {
     search
     return {

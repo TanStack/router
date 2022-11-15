@@ -108,18 +108,16 @@ export type RouteOptions<
   // Filter functions that can manipulate search params *after* they are passed to links and navigate
   // calls that match this route.
   postSearchFilters?: SearchFilter<TFullSearchSchema>[]
-  // The duration to wait during `loader` execution before showing the `pendingElement`
+  // The duration to wait during `loader` execution before showing the `pendingComponent`
   pendingMs?: number
-  // _If the `pendingElement` is shown_, the minimum duration for which it will be visible.
+  // _If the `pendingComponent` is shown_, the minimum duration for which it will be visible.
   pendingMinMs?: number
-  // The content to be rendered when the route is matched. If no element is provided, defaults to `<Outlet />`
-  element?: GetFrameworkGeneric<'SyncOrAsyncElement'> // , NoInfer<TLoaderData>>
-  // The content to be rendered when `loader` encounters an error
-  errorElement?: GetFrameworkGeneric<'SyncOrAsyncElement'> // , NoInfer<TLoaderData>>
-  // The content to be rendered when rendering encounters an error
-  catchElement?: GetFrameworkGeneric<'SyncOrAsyncElement'> // , NoInfer<TLoaderData>>
+  // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
+  component?: GetFrameworkGeneric<'Component'> // , NoInfer<TLoaderData>>
+  // The content to be rendered when the route encounters an error
+  errorComponent?: GetFrameworkGeneric<'Component'> // , NoInfer<TLoaderData>>
   // The content to be rendered when the duration of `loader` execution surpasses the `pendingMs` duration
-  pendingElement?: GetFrameworkGeneric<'SyncOrAsyncElement'> //, NoInfer<TLoaderData>>
+  pendingComponent?: GetFrameworkGeneric<'Component'> //, NoInfer<TLoaderData>>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: LoaderFn<TRouteLoaderData, TFullSearchSchema, TAllParams>
   // The max age to consider loader data fresh (not-stale) for this route in milliseconds from the time of fetch
@@ -132,7 +130,7 @@ export type RouteOptions<
   // might invalidate the route's data.
   action?: ActionFn<TActionPayload, TActionResponse>
   // Set this to true to rethrow errors up the component tree to either the nearest error boundary or
-  // route with error element, whichever comes first.
+  // route with error component, whichever comes first.
   useErrorBoundary?: boolean
   // This function is called
   // when moving from an inactive state to an active one. Likewise, when moving from

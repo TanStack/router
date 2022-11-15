@@ -6,7 +6,7 @@ import { invoicesRoute } from '.'
 
 export const invoicesIndexRoute = invoicesRoute.createRoute({
   path: '/',
-  element: <InvoicesHome />,
+  component: InvoicesHome,
   action: postInvoice,
 })
 

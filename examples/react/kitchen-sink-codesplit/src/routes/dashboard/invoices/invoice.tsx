@@ -15,7 +15,7 @@ export const invoiceRoute = invoicesRoute.createRoute({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
   }),
-  element: <InvoiceView />,
+  component: InvoiceView,
   loader: async ({ params: { invoiceId } }) => {
     console.log('Fetching invoice...')
     const invoice = await fetchInvoiceById(invoiceId)

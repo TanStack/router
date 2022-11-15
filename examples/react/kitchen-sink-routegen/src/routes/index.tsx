@@ -4,7 +4,7 @@ import { router } from '../router'
 
 const routeConfig = createRouteConfig().createRoute({
   path: '/',
-  element: <Home />,
+  component: Home,
 })
 
 export default routeConfig

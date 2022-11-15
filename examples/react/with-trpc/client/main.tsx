@@ -24,25 +24,25 @@ export const trpc = createTRPCProxyClient<AppRouter>({
 const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
     path: '/',
-    element: <Home />,
+    component: Home,
   }),
   createRoute({
     path: 'dashboard',
-    element: <Dashboard />,
+    component: Dashboard,
     loader: async () => {
       return {
         posts: await trpc.posts.query(),
       }
     },
   }).createChildren((createRoute) => [
-    createRoute({ path: '/', element: <DashboardHome /> }),
+    createRoute({ path: '/', component: DashboardHome }),
     createRoute({
       path: 'posts',
-      element: <Posts />,
+      component: Posts,
     }).createChildren((createRoute) => [
       createRoute({
         path: '/',
-        element: <PostsIndex />,
+        component: PostsIndex,
       }),
       createRoute({
         path: ':postId',
@@ -54,7 +54,7 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
           showNotes: z.boolean().optional(),
           notes: z.string().optional(),
         }),
-        element: <PostView />,
+        component: PostView,
         loader: async ({ params: { postId }, search: {} }) => {
           const post = await trpc.post.query(postId)
 

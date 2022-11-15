@@ -17,11 +17,11 @@ import {
 const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
     path: '/',
-    element: <Index />,
+    component: Index,
   }),
   createRoute({
     path: 'about',
-    element: <About />,
+    component: About,
   }),
 ])
 

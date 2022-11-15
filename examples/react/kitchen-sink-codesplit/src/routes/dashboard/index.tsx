@@ -6,7 +6,7 @@ import { fetchInvoices } from '../../mockTodos'
 
 export const dashboardRoute = createRouteConfig().createRoute({
   path: 'dashboard',
-  element: <Dashboard />,
+  component: Dashboard,
   loader: async () => {
     console.log('Fetching all invoices...')
     return {

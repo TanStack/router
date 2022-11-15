@@ -2,12 +2,12 @@
 title: Layout Routes
 ---
 
-Layout routes are routes that do not have a path, but allows wrapping it's child routes with wrapper elements or shared logic. Layout routes are useful for:
+Layout routes are routes that do not have a path, but allows wrapping it's child routes with wrapper components or shared logic. Layout routes are useful for:
 
-- Wrapping child routes with a layout element
+- Wrapping child routes with a layout component
 - Sharing a loader between all of the child routes
 - Sharing search params between all of the child routes
-- Sharing a error element with all child routes
+- Sharing an error component with all child routes
 
 To create a layout route, define a route config with an `id` property instead of a `path`:
 

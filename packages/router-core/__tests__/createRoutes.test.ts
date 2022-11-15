@@ -131,7 +131,7 @@ describe('everything', () => {
       ]),
       createRoute({
         id: 'layout',
-        element: 'layout-wrapper',
+        component: () => 'layout-wrapper',
         validateSearch: (search) =>
           z
             .object({
@@ -141,11 +141,11 @@ describe('everything', () => {
       }).createChildren((createRoute) => [
         createRoute({
           path: 'layout-a',
-          element: 'layout-a',
+          component: () => 'layout-a',
         }),
         createRoute({
           path: 'layout-b',
-          element: 'layout-b',
+          component: () => 'layout-b',
         }),
       ]),
     ])

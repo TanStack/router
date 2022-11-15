@@ -5,6 +5,7 @@ import {
   RouterProvider,
   createReactRouter,
   createRouteConfig,
+  lazy,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -29,11 +30,11 @@ type UsersViewSortBy = 'name' | 'id' | 'email'
 const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
     path: '/',
-    element: <Home />,
+    component: Home,
   }),
   createRoute({
     path: 'dashboard',
-    element: <Dashboard />,
+    component: Dashboard,
     loader: async () => {
       console.log('Fetching all invoices...')
       return {
@@ -41,14 +42,14 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
       }
     },
   }).createChildren((createRoute) => [
-    createRoute({ path: '/', element: <DashboardHome /> }),
+    createRoute({ path: '/', component: DashboardHome }),
     createRoute({
       path: 'invoices',
-      element: <Invoices />,
+      component: Invoices,
     }).createChildren((createRoute) => [
       createRoute({
         path: '/',
-        element: <InvoicesHome />,
+        component: InvoicesHome,
         action: async (partialInvoice: Partial<Invoice>) => {
           return postInvoice(partialInvoice)
         },
@@ -63,7 +64,7 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
           showNotes: z.boolean().optional(),
           notes: z.string().optional(),
         }),
-        element: <InvoiceView />,
+        component: InvoiceView,
         loader: async ({ params: { invoiceId }, search: {} }) => {
           console.log('Fetching invoice...')
           const invoice = await fetchInvoiceById(invoiceId)
@@ -81,7 +82,7 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
     ]),
     createRoute({
       path: 'users',
-      element: <Users />,
+      component: Users,
       loader: async ({ search }) => {
         search
         return {
@@ -107,12 +108,12 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
         }),
       ],
     }).createChildren((createRoute) => [
-      createRoute({ path: '/', element: <UsersIndex /> }),
+      createRoute({ path: '/', component: UsersIndex }),
       createRoute({
         path: ':userId',
         parseParams: ({ userId }) => ({ userId: Number(userId) }),
         stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
-        element: <UserView />,
+        component: UserView,
         loader: async ({ params: { userId } }) => {
           return {
             user: await fetchUserById(userId),
@@ -124,23 +125,22 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
     // Your elements can be asynchronous, which means you can code-split!
     path: 'expensive',
-    element: () =>
-      loaderDelayFn(() => import('./Expensive').then((d) => <d.Expensive />)),
+    component: lazy(() => loaderDelayFn(() => import('./Expensive'))),
   }),
   // Obviously, you can put routes in other files, too
   // reallyExpensiveRoute,
   createRoute({
     path: 'authenticated/', // Trailing slash doesn't mean anything
-    element: <Auth />,
+    component: Auth,
   }).createChildren((createRoute) => [
     createRoute({
       path: '/',
-      element: <Authenticated />,
+      component: Authenticated,
     }),
   ]),
   createRoute({
     id: 'layout',
-    element: <LayoutWrapper />,
+    component: LayoutWrapper,
     loader: async () => {
       return loaderDelayFn(() => {
         const rand = Math.random()
@@ -153,11 +153,11 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
   }).createChildren((createRoute) => [
     createRoute({
       path: 'layout-a',
-      element: <LayoutA />,
+      component: LayoutA,
     }),
     createRoute({
       path: 'layout-b',
-      element: <LayoutB />,
+      component: LayoutB,
     }),
   ]),
 ])
@@ -284,11 +284,7 @@ function App() {
       <AuthProvider>
         <RouterProvider
           router={router}
-          defaultPendingElement={
-            <div className={`p-2 text-2xl`}>
-              <Spinner />
-            </div>
-          }
+          defaultPendingComponent={PendingComponent}
           defaultPreload="intent"
           defaultLoaderMaxAge={defaultLoaderMaxAge}
           defaultPreloadMaxAge={defaultPreloadMaxAge}
@@ -309,6 +305,14 @@ function App() {
       </AuthProvider>
       <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
+  )
+}
+
+function PendingComponent() {
+  return (
+    <div className={`p-2 text-2xl`}>
+      <Spinner />
+    </div>
   )
 }
 
