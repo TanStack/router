@@ -492,37 +492,23 @@ export function Outlet() {
           {
             ((): React.ReactNode => {
               if (match.status === 'error') {
-                if (errorComponent) {
-                  return React.createElement(errorComponent as any)
-                }
-
-                // if (
-                //   match.options.useErrorBoundary ||
-                //   router.options.useErrorBoundary
-                // ) {
                 throw match.error
-                // }
               }
 
-              if (match.status !== 'success' && match.__.loadPromise) {
+              if (match.status === 'success') {
+                return React.createElement(
+                  (match.__.component as any) ??
+                    router.options.defaultComponent ??
+                    Outlet,
+                )
+              }
+
+              if (match.__.loadPromise) {
                 console.log(match.matchId, 'suspend')
                 throw match.__.loadPromise
-
-                // if (match.isPending) {
-
-                //   if (match.options.pendingMs || pendingComponent) {
-                //     return React.createElement(pendingComponent as any) ?? null
-                //   }
-                // }
               }
 
-              console.log(match.matchId, match.status)
-
-              return React.createElement(
-                (match.__.component as any) ??
-                  router.options.defaultComponent ??
-                  Outlet,
-              )
+              invariant(false, 'This should never happen!')
             })() as JSX.Element
           }
         </CatchBoundary>

@@ -32,9 +32,7 @@ function Home() {
         elements are ready.
         <hr className={`my-2`} />
         To exaggerate async effects, play with the artificial request delay
-        slider in the bottom-left corner. You can also play with the default
-        timings for displaying the pending fallbacks and the minimum time any
-        pending fallbacks will remain shown.
+        slider in the bottom-left corner.
         <hr className={`my-2`} />
         The last 2 sliders determine if link-hover preloading is enabled (and
         how long those preloads stick around) and also whether to cache rendered

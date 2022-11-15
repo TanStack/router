@@ -94,8 +94,6 @@ export interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
   defaultComponent?: GetFrameworkGeneric<'Component'>
   defaultErrorComponent?: GetFrameworkGeneric<'Component'>
   defaultPendingComponent?: GetFrameworkGeneric<'Component'>
-  defaultPendingMs?: number
-  defaultPendingMinMs?: number
   defaultLoaderMaxAge?: number
   defaultLoaderGcMaxAge?: number
   caseSensitive?: boolean
@@ -296,10 +294,9 @@ export interface Router<
   ) => RouteMatch[]
   loadMatches: (
     resolvedMatches: RouteMatch[],
-    loaderOpts?: { withPending?: boolean } & (
+    loaderOpts?:
       | { preload: true; maxAge: number; gcMaxAge: number }
-      | { preload?: false; maxAge?: never; gcMaxAge?: never }
-    ),
+      | { preload?: false; maxAge?: never; gcMaxAge?: never },
   ) => Promise<void>
   invalidateRoute: (opts: MatchLocation) => void
   reload: () => Promise<void>
@@ -578,9 +575,7 @@ export function createRouter<
       router.notify()
 
       // Load the matches
-      await router.loadMatches(matches, {
-        withPending: true,
-      })
+      await router.loadMatches(matches)
 
       if (router.startedLoadingAt !== id) {
         // Ignore side-effects of match loading
@@ -832,14 +827,8 @@ export function createRouter<
         match.__.validate()
         match.load(loaderOpts)
 
-        if (match.status === 'loading') {
-          // If requested, start the pending timers
-          if (loaderOpts?.withPending) match.__.startPending()
-        }
-
         if (match.__.loadPromise) {
           // Wait for the first sign of activity from the match
-          // This might be completion, error, or a pending state
           await match.__.loadPromise
         }
       })

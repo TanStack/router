@@ -171,14 +171,7 @@ function App() {
   // This stuff is just to tweak our sandbox setup in real-time
   const [loaderDelay, setLoaderDelay] = useSessionStorage('loaderDelay', 500)
   const [actionDelay, setActionDelay] = useSessionStorage('actionDelay', 500)
-  const [defaultPendingMs, setDefaultPendingMs] = useSessionStorage(
-    'defaultPendingMs',
-    2000,
-  )
-  const [defaultPendingMinMs, setDefaulPendingMinMs] = useSessionStorage(
-    'defaultPendingMinMs',
-    500,
-  )
+
   const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useSessionStorage(
     'defaultLoaderMaxAge',
     5000,
@@ -204,35 +197,7 @@ function App() {
             className="w-full"
           />
         </div>
-        <div>
-          Default Pending Ms: {defaultPendingMs}ms{' '}
-          {defaultPendingMs > loaderDelay ? <>🔴</> : <>🟢</>}
-        </div>
-        <div>
-          <input
-            type="range"
-            min="0"
-            max="5000"
-            step="100"
-            value={defaultPendingMs}
-            onChange={(e) => setDefaultPendingMs(e.target.valueAsNumber)}
-            className="w-full"
-          />
-        </div>
-        <div className={`${!defaultPendingMs ? 'opacity-30' : ''}`}>
-          <div>Default Min Pending Ms: {defaultPendingMinMs}ms</div>
-          <div>
-            <input
-              type="range"
-              min="0"
-              max="5000"
-              step="100"
-              value={defaultPendingMinMs}
-              onChange={(e) => setDefaulPendingMinMs(e.target.valueAsNumber)}
-              className={`w-full`}
-            />
-          </div>
-        </div>
+
         <div>Action Delay: {actionDelay}ms</div>
         <div>
           <input
@@ -288,17 +253,11 @@ function App() {
           defaultPreload="intent"
           defaultLoaderMaxAge={defaultLoaderMaxAge}
           defaultPreloadMaxAge={defaultPreloadMaxAge}
-          defaultPendingMs={defaultPendingMs}
-          defaultPendingMinMs={defaultPendingMinMs}
           // defaultLoaderMaxAge={5 * 1000}
           // defaultLoaderGcMaxAge={10 * 1000}
           // Normally, the options above aren't changing, but for this particular
           // example, we need to key the router when they change
-          key={[
-            defaultPreloadMaxAge,
-            defaultPendingMs,
-            defaultPendingMinMs,
-          ].join('.')}
+          key={[defaultPreloadMaxAge].join('.')}
         >
           <Root />
         </RouterProvider>
@@ -398,9 +357,7 @@ function Home() {
         elements are ready.
         <hr className={`my-2`} />
         To exaggerate async effects, play with the artificial request delay
-        slider in the bottom-left corner. You can also play with the default
-        timings for displaying the pending fallbacks and the minimum time any
-        pending fallbacks will remain shown.
+        slider in the bottom-left corner.
         <hr className={`my-2`} />
         The last 2 sliders determine if link-hover preloading is enabled (and
         how long those preloads stick around) and also whether to cache rendered

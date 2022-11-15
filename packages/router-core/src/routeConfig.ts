@@ -108,15 +108,11 @@ export type RouteOptions<
   // Filter functions that can manipulate search params *after* they are passed to links and navigate
   // calls that match this route.
   postSearchFilters?: SearchFilter<TFullSearchSchema>[]
-  // The duration to wait during `loader` execution before showing the `pendingComponent`
-  pendingMs?: number
-  // _If the `pendingComponent` is shown_, the minimum duration for which it will be visible.
-  pendingMinMs?: number
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
   component?: GetFrameworkGeneric<'Component'> // , NoInfer<TLoaderData>>
   // The content to be rendered when the route encounters an error
   errorComponent?: GetFrameworkGeneric<'Component'> // , NoInfer<TLoaderData>>
-  // The content to be rendered when the duration of `loader` execution surpasses the `pendingMs` duration
+  // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
   pendingComponent?: GetFrameworkGeneric<'Component'> //, NoInfer<TLoaderData>>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: LoaderFn<TRouteLoaderData, TFullSearchSchema, TAllParams>

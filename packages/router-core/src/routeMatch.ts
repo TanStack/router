@@ -28,7 +28,6 @@ export interface RouteMatch<
   loaderData: TRouteInfo['loaderData']
   routeLoaderData: TRouteInfo['routeLoaderData']
   isFetching: boolean
-  isPending: boolean
   invalidAt: number
   __: {
     component?: GetFrameworkGeneric<'Component'> // , TRouteInfo['loaderData']>
@@ -37,9 +36,6 @@ export interface RouteMatch<
     loadPromise?: Promise<void>
     componentsPromise?: Promise<void>
     dataPromise?: Promise<void>
-    pendingTimeout?: Timeout
-    pendingMinTimeout?: Timeout
-    pendingMinPromise?: Promise<void>
     onExit?:
       | void
       | ((matchContext: {
@@ -51,17 +47,14 @@ export interface RouteMatch<
     // setParentMatch: (parentMatch: RouteMatch) => void
     // addChildMatch: (childMatch: RouteMatch) => void
     validate: () => void
-    startPending: () => void
-    cancelPending: () => void
     notify: () => void
     resolve: () => void
   }
   cancel: () => void
   load: (
-    loaderOpts?: { withPending?: boolean } & (
+    loaderOpts?:
       | { preload: true; maxAge: number; gcMaxAge: number }
-      | { preload?: false; maxAge?: never; gcMaxAge?: never }
-    ),
+      | { preload?: false; maxAge?: never; gcMaxAge?: never },
   ) => Promise<TRouteInfo['routeLoaderData']>
   fetch: (opts?: { maxAge?: number }) => Promise<TRouteInfo['routeLoaderData']>
   invalidate: () => void
@@ -96,7 +89,6 @@ export function createRouteMatch<
     status: 'idle',
     routeLoaderData: {} as TRouteInfo['routeLoaderData'],
     loaderData: {} as TRouteInfo['loaderData'],
-    isPending: false,
     isFetching: false,
     isInvalid: false,
     invalidAt: Infinity,
@@ -112,37 +104,6 @@ export function createRouteMatch<
       notify: () => {
         routeMatch.__.resolve()
         routeMatch.router.notify()
-      },
-      startPending: () => {
-        const pendingMs =
-          routeMatch.options.pendingMs ?? router.options.defaultPendingMs
-        const pendingMinMs =
-          routeMatch.options.pendingMinMs ?? router.options.defaultPendingMinMs
-
-        if (
-          routeMatch.__.pendingTimeout ||
-          routeMatch.status !== 'loading' ||
-          typeof pendingMs === 'undefined'
-        ) {
-          return
-        }
-
-        routeMatch.__.pendingTimeout = setTimeout(() => {
-          routeMatch.isPending = true
-          routeMatch.__.resolve()
-          if (typeof pendingMinMs !== 'undefined') {
-            routeMatch.__.pendingMinPromise = new Promise(
-              (r) =>
-                (routeMatch.__.pendingMinTimeout = setTimeout(r, pendingMinMs)),
-            )
-          }
-        }, pendingMs)
-      },
-      cancelPending: () => {
-        routeMatch.isPending = false
-        clearTimeout(routeMatch.__.pendingTimeout)
-        clearTimeout(routeMatch.__.pendingMinTimeout)
-        delete routeMatch.__.pendingMinPromise
       },
       validate: () => {
         // Validate the search params and stabilize them
@@ -196,7 +157,6 @@ export function createRouteMatch<
     },
     cancel: () => {
       routeMatch.__.abortController?.abort()
-      routeMatch.__.cancelPending()
     },
     invalidate: () => {
       routeMatch.isInvalid = true
@@ -325,17 +285,10 @@ export function createRouteMatch<
           if (id !== routeMatch.__.latestId) {
             return routeMatch.__.loadPromise
           }
-
-          if (routeMatch.__.pendingMinPromise) {
-            await routeMatch.__.pendingMinPromise
-            delete routeMatch.__.pendingMinPromise
-          }
         } finally {
           if (id !== routeMatch.__.latestId) {
             return routeMatch.__.loadPromise
           }
-          routeMatch.__.cancelPending()
-          routeMatch.isPending = false
           routeMatch.isFetching = false
           routeMatch.__.notify()
         }
