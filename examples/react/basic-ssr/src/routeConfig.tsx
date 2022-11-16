@@ -17,18 +17,20 @@ export const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
     path: 'posts',
     component: Posts,
-    errorComponent: () => 'Oh crap!',
+    loaderMaxAge: 5000,
     loader: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500))
       return {
         posts: await fetchPosts(),
       }
     },
+    errorComponent: () => 'Oh crap!',
   }).createChildren((createRoute) => [
     createRoute({ path: '/', component: PostsIndex }),
     createRoute({
       path: ':postId',
       component: Post,
+      loaderMaxAge: 5000,
       loader: async ({ params: { postId } }) => {
         await new Promise((resolve) => setTimeout(resolve, 300))
         return {

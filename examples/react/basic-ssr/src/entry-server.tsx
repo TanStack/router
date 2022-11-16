@@ -6,10 +6,11 @@ import { App } from './App'
 import { router } from './router'
 import { ServerResponse } from 'http'
 
-export async function render(
-  opts: { url: string; template: string },
-  res: ServerResponse,
-) {
+export async function render(opts: {
+  url: string
+  template: string
+  res: ServerResponse
+}) {
   router.reset()
 
   const memoryHistory = createMemoryHistory({
@@ -33,7 +34,7 @@ export async function render(
       },
     )})</script>`
 
-    res.write(routerScript)
+    opts.res.write(routerScript)
   })
 
   const leadingHtml = opts.template.substring(
@@ -45,20 +46,22 @@ export async function render(
     opts.template.indexOf('<!--app-html-->') + '<!--app-html-->'.length,
   )
 
+  opts.res.setHeader('Content-Type', 'text/html')
+
   const stream = ReactDOMServer.renderToPipeableStream(
     <RouterProvider router={router}>
       <App />
     </RouterProvider>,
     {
       onShellReady: () => {
-        res.write(leadingHtml)
-        stream.pipe(res)
+        opts.res.write(leadingHtml)
+        stream.pipe(opts.res)
       },
       onError: (err) => {
         console.log(err)
       },
       onAllReady: () => {
-        res.end(tailingHtml)
+        opts.res.end(tailingHtml)
       },
     },
   )
