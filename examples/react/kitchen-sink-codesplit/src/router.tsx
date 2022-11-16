@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { createReactRouter, createRouteConfig } from '@tanstack/react-router'
 
 import { indexRoute } from './routes'
@@ -14,6 +15,7 @@ import { usersIndexRoute } from './routes/dashboard/users/users'
 import { userRoute } from './routes/dashboard/users/user'
 import { layoutRouteA } from './routes/layout/layout-a'
 import { layoutRouteB } from './routes/layout/layout-b'
+import { Spinner } from './components/Spinner'
 
 const routeConfig = createRouteConfig().addChildren([
   indexRoute,
@@ -29,4 +31,9 @@ const routeConfig = createRouteConfig().addChildren([
 
 export const router = createReactRouter({
   routeConfig,
+  defaultPendingComponent: () => (
+    <div className={`p-2 text-2xl`}>
+      <Spinner />
+    </div>
+  ),
 })

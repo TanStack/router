@@ -164,6 +164,11 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
 
 const router = createReactRouter({
   routeConfig,
+  defaultPendingComponent: () => (
+    <div className={`p-2 text-2xl`}>
+      <Spinner />
+    </div>
+  ),
 })
 
 // Provide our location and routes to our application
@@ -249,7 +254,6 @@ function App() {
       <AuthProvider>
         <RouterProvider
           router={router}
-          defaultPendingComponent={PendingComponent}
           defaultPreload="intent"
           defaultLoaderMaxAge={defaultLoaderMaxAge}
           defaultPreloadMaxAge={defaultPreloadMaxAge}
@@ -264,14 +268,6 @@ function App() {
       </AuthProvider>
       <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
-  )
-}
-
-function PendingComponent() {
-  return (
-    <div className={`p-2 text-2xl`}>
-      <Spinner />
-    </div>
   )
 }
 

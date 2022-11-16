@@ -11,7 +11,7 @@ TanStack Router is a UI router for building applications in React, Preact, Vue, 
 - Stale-while-revalidate Loader Cache
 - Automatic (and manual) cache invalidation
 - Automatic route prefetching
-- Suspense-like route transitions with optional pending states
+- Suspense-like route transitions
 - Asynchronous route elements and error boundaries
 - File-Splitting & Code-splitting
 - Typesafe JSON-first Search Params w/ Immutable Structural Sharing
@@ -24,7 +24,6 @@ TanStack Router is a UI router for building applications in React, Preact, Vue, 
 ## Acknowledgements
 
 TanStack Router builds on concepts and patterns popularized by many other OSS projects, including:
-
 
 - [TRPC](https://trpc.io/)
 - [Remix](https://remix.run)

@@ -21,15 +21,6 @@ function App() {
     2000,
   )
 
-  const PendingComponent = React.useCallback(
-    () => (
-      <div className={`p-2 text-2xl`}>
-        <Spinner />
-      </div>
-    ),
-    [],
-  )
-
   return (
     <>
       {/* More stuff to tweak our sandbox setup in real-time */}
@@ -93,7 +84,6 @@ function App() {
       <AuthProvider>
         <RouterProvider
           router={router}
-          defaultPendingComponent={PendingComponent}
           defaultLoaderMaxAge={defaultLoaderMaxAge}
           defaultPreloadMaxAge={defaultPreloadMaxAge}
           // Normally, the options above aren't changing, but for this particular

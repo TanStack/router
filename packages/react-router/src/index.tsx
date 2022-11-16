@@ -445,10 +445,8 @@ export function RouterProvider<
   router.update(rest)
 
   useRouterSubscription(router)
-  useLayoutEffect(() => {
-    const unsub = router.mount()
-    router.load()
-    return unsub
+  React.useEffect(() => {
+    return router.mount()
   }, [router])
 
   return (

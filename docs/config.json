@@ -119,10 +119,6 @@
           "to": "guide/route-elements"
         },
         {
-          "label": "Pending States",
-          "to": "guide/pending-states"
-        },
-        {
           "label": "Prompts",
           "to": "guide/prompts"
         },

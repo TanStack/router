@@ -52,7 +52,6 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 - Prefetching
 - Automatic Prefetching
 - Transitions
-- Pending States
 - Error Boundaries
 - Code Splitting
 - Layout Routes

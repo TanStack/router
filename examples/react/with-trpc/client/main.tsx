@@ -73,6 +73,11 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
 
 const router = createReactRouter({
   routeConfig,
+  defaultPendingComponent: () => (
+    <div className={`p-2 text-2xl`}>
+      <Spinner />
+    </div>
+  ),
 })
 
 // Provide our location and routes to our application
@@ -84,15 +89,7 @@ function App() {
       <Outlet /> to start rendering our matches when we're
       // ready. This also let's us use router API's
       in <Root /> before rendering any routes */}
-      <RouterProvider
-        router={router}
-        defaultPendingComponent={
-          <div className={`p-2 text-2xl`}>
-            <Spinner />
-          </div>
-        }
-        defaultPreload="intent"
-      >
+      <RouterProvider router={router} defaultPreload="intent">
         <Root />
       </RouterProvider>
       <TanStackRouterDevtools router={router} position="bottom-right" />

@@ -78,19 +78,7 @@ export async function createServer(
         render = (await import('./dist/server/entry-server.tsx')).render
       }
 
-      const context = {}
-      const [appHead, appHtml] = await render(url, context)
-
-      if (context.url) {
-        // Somewhere a `<Redirect>` was rendered
-        return res.redirect(301, context.url)
-      }
-
-      const html = template
-        .replace('<!--app-head-->', appHead)
-        .replace(`<!--app-html-->`, appHtml)
-
-      res.status(200).set({ 'Content-Type': 'text/html' }).end(html)
+      render({ template, url, res })
     } catch (e) {
       !isProd && vite.ssrFixStacktrace(e)
       console.log(e.stack)

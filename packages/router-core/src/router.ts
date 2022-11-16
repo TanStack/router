@@ -6,6 +6,7 @@ import {
   History,
   MemoryHistory,
 } from 'history'
+import React from 'react'
 import invariant from 'tiny-invariant'
 import { GetFrameworkGeneric } from './frameworks'
 
@@ -407,16 +408,25 @@ export function createRouter<
       return router.routesById[id]
     },
     notify: (): void => {
-      router.state = {
-        ...router.state,
-        isFetching:
-          router.state.status === 'loading' ||
-          router.state.matches.some((d) => d.isFetching),
-        isPreloading: Object.values(router.matchCache).some(
-          (d) =>
-            d.match.isFetching &&
-            !router.state.matches.find((dd) => dd.matchId === d.match.matchId),
-        ),
+      const isFetching =
+        router.state.status === 'loading' ||
+        router.state.matches.some((d) => d.isFetching)
+
+      const isPreloading = Object.values(router.matchCache).some(
+        (d) =>
+          d.match.isFetching &&
+          !router.state.matches.find((dd) => dd.matchId === d.match.matchId),
+      )
+
+      if (
+        router.state.isFetching !== isFetching ||
+        router.state.isPreloading !== isPreloading
+      ) {
+        router.state = {
+          ...router.state,
+          isFetching,
+          isPreloading,
+        }
       }
 
       cascadeLoaderData(router.state.matches)
@@ -454,7 +464,7 @@ export function createRouter<
         Object.assign(match, dehydratedMatch)
       })
 
-      router.loadMatches(matches)
+      matches.forEach((match) => match.__.validate())
 
       router.state = {
         ...router.state,
@@ -476,7 +486,9 @@ export function createRouter<
         router.__.commitLocation(next, true)
       }
 
-      // router.load()
+      if (!router.state.matches.length) {
+        router.load()
+      }
 
       const unsub = router.history.listen((event) => {
         router.load(router.__.parseLocation(event.location, router.location))

@@ -4,39 +4,69 @@ import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import jsesc from 'jsesc'
 import { App } from './App'
 import { router } from './router'
+import { ServerResponse } from 'http'
 
-export async function render(url: string) {
+export async function render(opts: {
+  url: string
+  template: string
+  res: ServerResponse
+}) {
+  router.reset()
+
   const memoryHistory = createMemoryHistory({
-    initialEntries: [url],
+    initialEntries: [opts.url],
   })
 
   router.update({
     history: memoryHistory,
   })
 
-  const unsub = router.mount()
-  await router.load()
+  router.mount()() // and unsubscribe immediately
 
-  const routerState = router.dehydrateState()
-
-  const res = [
-    `<script>window.__TANSTACK_ROUTER_STATE__ = JSON.parse(${jsesc(
+  router.load().then(() => {
+    const routerState = router.dehydrateState()
+    const routerScript = `<script>window.__TANSTACK_ROUTER_STATE__ = JSON.parse(${jsesc(
       JSON.stringify(routerState),
       {
         isScriptContext: true,
         wrap: true,
         json: true,
       },
-    )})</script>`,
-    ReactDOMServer.renderToString(
-      <RouterProvider router={router}>
-        <App />
-      </RouterProvider>,
-    ),
-  ]
+    )})</script>`
 
-  unsub()
-  router.reset()
+    opts.res.write(routerScript)
+  })
 
-  return res
+  const leadingHtml = opts.template.substring(
+    0,
+    opts.template.indexOf('<!--app-html-->'),
+  )
+
+  const tailingHtml = opts.template.substring(
+    opts.template.indexOf('<!--app-html-->') + '<!--app-html-->'.length,
+  )
+
+  opts.res.setHeader('Content-Type', 'text/html')
+
+  const stream = ReactDOMServer.renderToPipeableStream(
+    <RouterProvider router={router}>
+      <App />
+    </RouterProvider>,
+    {
+      onShellReady: () => {
+        opts.res.write(leadingHtml)
+        stream.pipe(opts.res)
+      },
+      onError: (err) => {
+        console.log(err)
+      },
+      onAllReady: () => {
+        opts.res.end(tailingHtml)
+      },
+    },
+  )
+
+  // router.reset()
+
+  // return res
 }
