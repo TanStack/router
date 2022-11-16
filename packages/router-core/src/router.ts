@@ -199,6 +199,7 @@ export interface BuildNextOptions {
   params?: true | Updater<Record<string, any>>
   search?: true | Updater<unknown>
   hash?: true | Updater<string>
+  state?: LocationState
   key?: string
   from?: string
   fromCurrent?: boolean
@@ -1258,6 +1259,7 @@ export function createRouter<
             },
             {
               id,
+              ...next.state,
             },
           )
         } else {

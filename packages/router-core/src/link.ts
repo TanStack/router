@@ -4,7 +4,7 @@ import {
   DefaultAllRouteInfo,
   RouteInfoByPath,
 } from './routeInfo'
-import { Location } from './router'
+import { Location, LocationState } from './router'
 import { Expand, NoInfer, PickAsRequired, PickRequired, Updater } from './utils'
 
 export type LinkInfo =
@@ -126,6 +126,8 @@ export type ToOptions<
   to?: ToPathOption<TAllRouteInfo, TFrom, TTo>
   // The new has string or a function to update it
   hash?: Updater<string>
+  // State to pass to the history stack
+  state?: LocationState
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
   from?: TFrom
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
