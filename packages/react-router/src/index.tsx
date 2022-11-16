@@ -270,6 +270,12 @@ export function createReactRouter<
           next,
         } = linkInfo
 
+        const reactHandleClick = (e: Event) => {
+          React.startTransition(() => {
+            handleClick(e)
+          })
+        }
+
         const composeHandlers =
           (handlers: (undefined | ((e: any) => void))[]) =>
           (e: React.SyntheticEvent) => {
@@ -292,7 +298,7 @@ export function createReactRouter<
           ...resolvedInactiveProps,
           ...rest,
           href: disabled ? undefined : next.href,
-          onClick: composeHandlers([handleClick, onClick]),
+          onClick: composeHandlers([reactHandleClick, onClick]),
           onFocus: composeHandlers([handleFocus, onFocus]),
           onMouseEnter: composeHandlers([handleEnter, onMouseEnter]),
           onMouseLeave: composeHandlers([handleLeave, onMouseLeave]),
@@ -472,11 +478,11 @@ export function Outlet() {
   const matches = useMatches().slice(1)
   const match = matches[0]
 
+  const defaultPending = React.useCallback(() => null, [])
+
   if (!match) {
     return null
   }
-
-  const defaultPending = React.useCallback(() => null, [])
 
   const PendingComponent = (match.__.pendingComponent ??
     router.options.defaultPendingComponent ??

@@ -19,7 +19,7 @@ export const routeConfig = createRouteConfig().createChildren((createRoute) => [
     component: Posts,
     errorComponent: () => 'Oh crap!',
     loader: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      await new Promise((resolve) => setTimeout(resolve, 500))
       return {
         posts: await fetchPosts(),
       }
@@ -30,7 +30,7 @@ export const routeConfig = createRouteConfig().createChildren((createRoute) => [
       path: ':postId',
       component: Post,
       loader: async ({ params: { postId } }) => {
-        await new Promise((resolve) => setTimeout(resolve, 4000))
+        await new Promise((resolve) => setTimeout(resolve, 300))
         return {
           post: await fetchPostById(postId),
         }

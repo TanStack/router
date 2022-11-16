@@ -830,10 +830,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                     <td>{activeMatch.status}</td>
                   </tr>
                   <tr>
-                    <td style={{ opacity: '.5' }}>Pending</td>
-                    <td>{activeMatch.isPending.toString()}</td>
-                  </tr>
-                  <tr>
                     <td style={{ opacity: '.5' }}>Invalid</td>
                     <td>{activeMatch.isInvalid.toString()}</td>
                   </tr>
