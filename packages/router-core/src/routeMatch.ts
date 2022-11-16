@@ -35,7 +35,7 @@ export interface RouteMatch<
     pendingComponent?: GetFrameworkGeneric<'Component'> // , TRouteInfo['loaderData']>
     loadPromise?: Promise<void>
     componentsPromise?: Promise<void>
-    dataPromise?: Promise<void>
+    dataPromise?: Promise<TRouteInfo['routeLoaderData']>
     onExit?:
       | void
       | ((matchContext: {
@@ -74,6 +74,7 @@ export function createRouteMatch<
   router: Router<any, any>,
   route: Route<TAllRouteInfo, TRouteInfo>,
   opts: {
+    parentMatch?: RouteMatch<any, any>
     matchId: string
     params: TRouteInfo['allParams']
     pathname: string
@@ -240,6 +241,7 @@ export function createRouteMatch<
           try {
             if (routeMatch.options.loader) {
               const data = await routeMatch.options.loader({
+                parentLoaderPromise: routeMatch.parentMatch?.__.dataPromise,
                 params: routeMatch.params,
                 search: routeMatch.routeSearch,
                 signal: routeMatch.__.abortController.signal,
@@ -263,6 +265,8 @@ export function createRouteMatch<
                 routeMatch.options.loaderMaxAge ??
                 router.options.defaultLoaderMaxAge ??
                 0)
+
+            return routeMatch.routeLoaderData
           } catch (err) {
             if (id !== routeMatch.__.latestId) {
               return routeMatch.__.loadPromise
@@ -271,16 +275,19 @@ export function createRouteMatch<
             if (process.env.NODE_ENV !== 'production') {
               console.error(err)
             }
+
             routeMatch.error = err
             routeMatch.status = 'error'
             routeMatch.updatedAt = Date.now()
+
+            throw err
           }
         })
 
         try {
           await Promise.all([
             routeMatch.__.componentsPromise,
-            routeMatch.__.dataPromise,
+            routeMatch.__.dataPromise.catch(() => {}),
           ])
           if (id !== routeMatch.__.latestId) {
             return routeMatch.__.loadPromise

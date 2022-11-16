@@ -811,6 +811,7 @@ export function createRouter<
             existingMatches.find((d) => d.matchId === matchId) ||
             router.matchCache[matchId]?.match ||
             createRouteMatch(router, foundRoute, {
+              parentMatch,
               matchId,
               params,
               pathname: joinPaths([pathname, interpolatedPath]),

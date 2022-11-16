@@ -58,3 +58,5 @@ function myBabelPlugin(): babel.PluginObj {
     },
   }
 }
+
+function test() {}

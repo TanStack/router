@@ -18,21 +18,23 @@ export const routeConfig = createRouteConfig().createChildren((createRoute) => [
     path: 'posts',
     component: Posts,
     errorComponent: () => 'Oh crap!',
-    loader: async () => {
-      return {
-        posts: await fetchPosts(),
-      }
-    },
+    // loader: async () => {
+    //   return {
+    //     posts: await fetchPosts(),
+    //   }
+    // },
+    // loader: {...}
   }).createChildren((createRoute) => [
     createRoute({ path: '/', component: PostsIndex }),
     createRoute({
       path: ':postId',
       component: Post,
-      loader: async ({ params: { postId } }) => {
-        return {
-          post: await fetchPostById(postId),
-        }
-      },
+      // loader: async ({ params: { postId } }) => {
+      //   return {
+      //     post: await fetchPostById(postId),
+      //   }
+      // },
+      // loader: {...}
     }),
   ]),
 ])

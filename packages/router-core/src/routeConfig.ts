@@ -50,20 +50,27 @@ export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
     }
 
 export type LoaderFn<
-  TRouteLoaderData extends AnyLoaderData,
+  TParentRouteLoaderData extends AnyLoaderData = {},
+  TRouteLoaderData extends AnyLoaderData = {},
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams extends AnyPathParams = {},
 > = (
-  loaderContext: LoaderContext<TFullSearchSchema, TAllParams>,
+  loaderContext: LoaderContext<
+    TParentRouteLoaderData,
+    TFullSearchSchema,
+    TAllParams
+  >,
 ) => Promise<TRouteLoaderData>
 
 export interface LoaderContext<
+  TParentRouteLoaderData extends AnyLoaderData = {},
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams extends AnyPathParams = {},
 > {
   params: TAllParams
   search: TFullSearchSchema
   signal?: AbortSignal
+  parentLoaderPromise?: Promise<TParentRouteLoaderData>
 }
 
 export type ActionFn<TActionPayload = unknown, TActionResponse = unknown> = (
@@ -77,6 +84,7 @@ export type UnloaderFn<TPath extends string> = (
 export type RouteOptions<
   TRouteId extends string = string,
   TPath extends string = string,
+  TParentRouteLoaderData extends AnyLoaderData = {},
   TRouteLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
@@ -109,13 +117,18 @@ export type RouteOptions<
   // calls that match this route.
   postSearchFilters?: SearchFilter<TFullSearchSchema>[]
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
-  component?: GetFrameworkGeneric<'Component'> // , NoInfer<TLoaderData>>
+  component?: GetFrameworkGeneric<'Component'> // , NoInfer<TParentLoaderData>>
   // The content to be rendered when the route encounters an error
-  errorComponent?: GetFrameworkGeneric<'Component'> // , NoInfer<TLoaderData>>
+  errorComponent?: GetFrameworkGeneric<'Component'> // , NoInfer<TParentLoaderData>>
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
-  pendingComponent?: GetFrameworkGeneric<'Component'> //, NoInfer<TLoaderData>>
+  pendingComponent?: GetFrameworkGeneric<'Component'> //, NoInfer<TParentLoaderData>>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-  loader?: LoaderFn<TRouteLoaderData, TFullSearchSchema, TAllParams>
+  loader?: LoaderFn<
+    TParentRouteLoaderData,
+    TRouteLoaderData,
+    TFullSearchSchema,
+    TAllParams
+  >
   // The max age to consider loader data fresh (not-stale) for this route in milliseconds from the time of fetch
   // Defaults to 0. Only stale loader data is refetched.
   loaderMaxAge?: number
@@ -171,6 +184,7 @@ export interface RouteConfig<
   TRouteId extends string = string,
   TPath extends string = string,
   TFullPath extends string = string,
+  TParentRouteLoaderData extends AnyLoaderData = AnyLoaderData,
   TRouteLoaderData extends AnyLoaderData = AnyLoaderData,
   TLoaderData extends AnyLoaderData = AnyLoaderData,
   TActionPayload = unknown,
@@ -193,6 +207,7 @@ export interface RouteConfig<
   options: RouteOptions<
     TRouteId,
     TPath,
+    TParentRouteLoaderData,
     TRouteLoaderData,
     TLoaderData,
     TActionPayload,
@@ -217,6 +232,7 @@ export interface RouteConfig<
       TRouteId,
       TPath,
       TFullPath,
+      TParentRouteLoaderData,
       TRouteLoaderData,
       TLoaderData,
       TActionPayload,
@@ -239,6 +255,7 @@ export interface RouteConfig<
           false,
           TId,
           TFullPath,
+          TRouteLoaderData,
           TLoaderData,
           TFullSearchSchema,
           TAllParams
@@ -251,6 +268,7 @@ export interface RouteConfig<
       TRouteId,
       TPath,
       TFullPath,
+      TParentRouteLoaderData,
       TRouteLoaderData,
       TLoaderData,
       TActionPayload,
@@ -268,6 +286,7 @@ export interface RouteConfig<
     false,
     TId,
     TFullPath,
+    TRouteLoaderData,
     TLoaderData,
     TFullSearchSchema,
     TAllParams
@@ -278,7 +297,8 @@ type CreateRouteConfigFn<
   TIsRoot extends boolean = false,
   TParentId extends string = string,
   TParentPath extends string = string,
-  TParentAllLoaderData extends AnyLoaderData = {},
+  TParentRouteLoaderData extends AnyLoaderData = {},
+  TParentLoaderData extends AnyLoaderData = {},
   TParentSearchSchema extends AnySearchSchema = {},
   TParentParams extends AnyPathParams = {},
 > = <
@@ -309,8 +329,9 @@ type CreateRouteConfigFn<
         RouteOptions<
           TRouteId,
           TPath,
+          TParentRouteLoaderData,
           TRouteLoaderData,
-          Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
+          Expand<TParentLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
           TActionPayload,
           TActionResponse,
           TParentSearchSchema,
@@ -325,8 +346,9 @@ type CreateRouteConfigFn<
     : RouteOptions<
         TRouteId,
         TPath,
+        TParentRouteLoaderData,
         TRouteLoaderData,
-        Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
+        Expand<TParentLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
         TActionPayload,
         TActionResponse,
         TParentSearchSchema,
@@ -345,8 +367,9 @@ type CreateRouteConfigFn<
   TResolvedId,
   TPath,
   string extends TPath ? '' : RoutePath<RoutePrefix<TParentPath, TPath>>,
+  TParentRouteLoaderData,
   TRouteLoaderData,
-  Expand<TParentAllLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
+  Expand<TParentLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
   TActionPayload,
   TActionResponse,
   TParentSearchSchema,
@@ -389,11 +412,13 @@ export interface AnyRouteConfig
     any,
     any,
     any,
+    any,
     any
   > {}
 
 export interface AnyRouteConfigWithChildren<TChildren>
   extends RouteConfig<
+    any,
     any,
     any,
     any,

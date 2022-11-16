@@ -63,6 +63,7 @@ export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
   infer TRouteId,
   infer TPath,
   infer TFullPath,
+  infer TParentLoaderData,
   infer TRouteLoaderData,
   infer TLoaderData,
   infer TActionPayload,
@@ -82,6 +83,7 @@ export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
         TRouteId,
         TPath,
         TFullPath,
+        TParentLoaderData,
         TRouteLoaderData,
         TLoaderData,
         TActionPayload,
@@ -100,6 +102,7 @@ export interface RoutesInfoInner<
   TRouteInfo extends RouteInfo<
     string,
     string,
+    any,
     any,
     any,
     any,
@@ -147,6 +150,7 @@ export interface AnyRouteInfo
     any,
     any,
     any,
+    any,
     any
   > {}
 
@@ -155,6 +159,7 @@ export interface RouteInfo<
   TRouteId extends string = string,
   TPath extends string = string,
   TFullPath extends string = string,
+  TParentRouteLoaderData extends AnyLoaderData = {},
   TRouteLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
@@ -173,6 +178,7 @@ export interface RouteInfo<
   routeId: TRouteId
   path: TPath
   fullPath: TFullPath
+  parentRouteLoaderData: TParentRouteLoaderData
   routeLoaderData: TRouteLoaderData
   loaderData: TLoaderData
   actionPayload: TActionPayload
@@ -185,6 +191,7 @@ export interface RouteInfo<
   options: RouteOptions<
     TRouteId,
     TPath,
+    TParentRouteLoaderData,
     TRouteLoaderData,
     TLoaderData,
     TActionPayload,
