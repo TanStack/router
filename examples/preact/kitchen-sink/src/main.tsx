@@ -1,61 +1,63 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
+import { createContext, render } from "preact";
+import { useContext, useEffect, useMemo, useState } from "preact/hooks";
+import { JSX, VNode } from "preact";
+
 import {
-  Outlet,
-  RouterProvider,
   createReactRouter,
   createRouteConfig,
   lazy,
-} from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
 import {
-  fetchInvoices,
   fetchInvoiceById,
-  fetchUsers,
+  fetchInvoices,
   fetchUserById,
+  fetchUsers,
   Invoice,
-  postInvoice,
   patchInvoice,
-} from './mockTodos'
+  postInvoice,
+} from "./mockTodos";
 
-import { loaderDelayFn } from './utils'
-import { z } from 'zod'
+import { loaderDelayFn } from "./utils";
+import { z } from "zod";
 
 //
 
-type UsersViewSortBy = 'name' | 'id' | 'email'
+type UsersViewSortBy = "name" | "id" | "email";
 
 // Build our routes. We could do this in our component, too.
 const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
-    path: '/',
+    path: "/",
     component: Home,
   }),
   createRoute({
-    path: 'dashboard',
+    path: "dashboard",
     component: Dashboard,
     loader: async () => {
-      console.log('Fetching all invoices...')
+      console.log("Fetching all invoices...");
       return {
         invoices: await fetchInvoices(),
-      }
+      };
     },
   }).createChildren((createRoute) => [
-    createRoute({ path: '/', component: DashboardHome }),
+    createRoute({ path: "/", component: DashboardHome }),
     createRoute({
-      path: 'invoices',
+      path: "invoices",
       component: Invoices,
     }).createChildren((createRoute) => [
       createRoute({
-        path: '/',
+        path: "/",
         component: InvoicesHome,
         action: async (partialInvoice: Partial<Invoice>) => {
-          return postInvoice(partialInvoice)
+          return postInvoice(partialInvoice);
         },
       }),
       createRoute({
-        path: ':invoiceId',
+        path: ":invoiceId",
         parseParams: (params) => ({
           invoiceId: z.number().int().parse(Number(params.invoiceId)),
         }),
@@ -66,33 +68,33 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
         }),
         component: InvoiceView,
         loader: async ({ params: { invoiceId }, search: {} }) => {
-          console.log('Fetching invoice...')
-          const invoice = await fetchInvoiceById(invoiceId)
+          console.log("Fetching invoice...");
+          const invoice = await fetchInvoiceById(invoiceId);
 
           if (!invoice) {
-            throw new Error('Invoice not found!')
+            throw new Error("Invoice not found!");
           }
 
           return {
             invoice,
-          }
+          };
         },
         action: patchInvoice,
       }),
     ]),
     createRoute({
-      path: 'users',
+      path: "users",
       component: Users,
       loader: async ({ search }) => {
-        search
+        search;
         return {
           users: await fetchUsers(),
-        }
+        };
       },
       validateSearch: z.object({
         usersView: z
           .object({
-            sortBy: z.enum(['name', 'id', 'email']).optional(),
+            sortBy: z.enum(["name", "id", "email"]).optional(),
             filterBy: z.string().optional(),
           })
           .optional(),
@@ -108,78 +110,78 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
         }),
       ],
     }).createChildren((createRoute) => [
-      createRoute({ path: '/', component: UsersIndex }),
+      createRoute({ path: "/", component: UsersIndex }),
       createRoute({
-        path: ':userId',
+        path: ":userId",
         parseParams: ({ userId }) => ({ userId: Number(userId) }),
         stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
         component: UserView,
         loader: async ({ params: { userId } }) => {
           return {
             user: await fetchUserById(userId),
-          }
+          };
         },
       }),
     ]),
   ]),
   createRoute({
     // Your elements can be asynchronous, which means you can code-split!
-    path: 'expensive',
-    component: lazy(() => loaderDelayFn(() => import('./Expensive'))),
+    path: "expensive",
+    component: lazy(() => loaderDelayFn(() => import("./Expensive"))),
   }),
   // Obviously, you can put routes in other files, too
   // reallyExpensiveRoute,
   createRoute({
-    path: 'authenticated/', // Trailing slash doesn't mean anything
+    path: "authenticated/", // Trailing slash doesn't mean anything
     component: Auth,
   }).createChildren((createRoute) => [
     createRoute({
-      path: '/',
+      path: "/",
       component: Authenticated,
     }),
   ]),
   createRoute({
-    id: 'layout',
+    id: "layout",
     component: LayoutWrapper,
     loader: async () => {
       return loaderDelayFn(() => {
-        const rand = Math.random()
-        console.log(rand)
+        const rand = Math.random();
+        console.log(rand);
         return {
           random: rand,
-        }
-      })
+        };
+      });
     },
   }).createChildren((createRoute) => [
     createRoute({
-      path: 'layout-a',
+      path: "layout-a",
       component: LayoutA,
     }),
     createRoute({
-      path: 'layout-b',
+      path: "layout-b",
       component: LayoutB,
     }),
   ]),
-])
+]);
 
 const router = createReactRouter({
   routeConfig,
-})
+});
 
 // Provide our location and routes to our application
 function App() {
   // This stuff is just to tweak our sandbox setup in real-time
-  const [loaderDelay, setLoaderDelay] = useSessionStorage('loaderDelay', 500)
-  const [actionDelay, setActionDelay] = useSessionStorage('actionDelay', 500)
+  const [loaderDelay, setLoaderDelay] = useSessionStorage("loaderDelay", 500);
+  const [actionDelay, setActionDelay] = useSessionStorage("actionDelay", 500);
 
   const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useSessionStorage(
-    'defaultLoaderMaxAge',
+    "defaultLoaderMaxAge",
     5000,
-  )
+  );
   const [defaultPreloadMaxAge, setDefaultPreloadMaxAge] = useSessionStorage(
-    'defaultPreloadMaxAge',
+    "defaultPreloadMaxAge",
     2000,
-  )
+  );
 
   return (
     <>
@@ -211,8 +213,8 @@ function App() {
           />
         </div>
         <div>
-          Loader Max Age:{' '}
-          {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : 'Off'}
+          Loader Max Age:{" "}
+          {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : "Off"}
         </div>
         <div>
           <input
@@ -226,8 +228,8 @@ function App() {
           />
         </div>
         <div>
-          Preload Max Age:{' '}
-          {defaultPreloadMaxAge ? `${defaultPreloadMaxAge}ms` : 'Off'}
+          Preload Max Age:{" "}
+          {defaultPreloadMaxAge ? `${defaultPreloadMaxAge}ms` : "Off"}
         </div>
         <div>
           <input
@@ -241,11 +243,13 @@ function App() {
           />
         </div>
       </div>
-      {/* Normally <Router /> matches and renders our
+      {
+        /* Normally <Router /> matches and renders our
       routes, but when we pass our own children, we can use
       <Outlet /> to start rendering our matches when we're
       // ready. This also let's us use router API's
-      in <Root /> before rendering any routes */}
+      in <Root /> before rendering any routes */
+      }
       <AuthProvider>
         <RouterProvider
           router={router}
@@ -257,14 +261,14 @@ function App() {
           // defaultLoaderGcMaxAge={10 * 1000}
           // Normally, the options above aren't changing, but for this particular
           // example, we need to key the router when they change
-          key={[defaultPreloadMaxAge].join('.')}
+          key={[defaultPreloadMaxAge].join(".")}
         >
           <Root />
         </RouterProvider>
       </AuthProvider>
       <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
-  )
+  );
 }
 
 function PendingComponent() {
@@ -272,11 +276,11 @@ function PendingComponent() {
     <div className={`p-2 text-2xl`}>
       <Spinner />
     </div>
-  )
+  );
 }
 
 function Root() {
-  const routerState = router.useState()
+  const routerState = router.useState();
 
   return (
     <div className={`min-h-screen flex flex-col`}>
@@ -285,7 +289,7 @@ function Root() {
         {/* Show a global spinner when the router is transitioning */}
         <div
           className={`text-3xl duration-300 delay-0 opacity-0 ${
-            routerState.isFetching ? ` duration-1000 opacity-40` : ''
+            routerState.isFetching ? ` duration-1000 opacity-40` : ""
           }`}
         >
           <Spinner />
@@ -295,25 +299,23 @@ function Root() {
         <div className={`divide-y w-56`}>
           {(
             [
-              ['.', 'Home'],
-              ['/dashboard', 'Dashboard'],
-              ['/expensive', 'Expensive'],
-              ['/authenticated', 'Authenticated'],
-              ['/layout-a', 'Layout A'],
-              ['/layout-b', 'Layout B'],
+              [".", "Home"],
+              ["/dashboard", "Dashboard"],
+              ["/expensive", "Expensive"],
+              ["/authenticated", "Authenticated"],
+              ["/layout-a", "Layout A"],
+              ["/layout-b", "Layout B"],
             ] as const
           ).map(([to, label]) => {
             return (
               <div key={to}>
                 <router.Link
                   to={to}
-                  activeOptions={
-                    {
-                      // If the route points to the root of it's parent,
-                      // make sure it's only active if it's exact
-                      // exact: to === '.',
-                    }
-                  }
+                  activeOptions={{
+                    // If the route points to the root of it's parent,
+                    // make sure it's only active if it's exact
+                    // exact: to === '.',
+                  }}
                   preload="intent"
                   className={`block py-2 px-3 text-blue-700`}
                   // Make "active" links bold
@@ -322,7 +324,7 @@ function Root() {
                   {label}
                 </router.Link>
               </div>
-            )
+            );
           })}
         </div>
         <div className={`flex-1 border-l border-gray-200`}>
@@ -331,11 +333,11 @@ function Root() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function Home() {
-  const route = router.useMatch('/')
+  const route = router.useMatch("/");
 
   return (
     <div className={`p-2`}>
@@ -364,11 +366,11 @@ function Home() {
         route data (and for how long). Both of these default to 0 (or off).
       </div>
     </div>
-  )
+  );
 }
 
 function Dashboard() {
-  const route = router.useMatch('/dashboard')
+  const route = router.useMatch("/dashboard");
 
   return (
     <>
@@ -387,9 +389,9 @@ function Dashboard() {
       <div className="flex flex-wrap divide-x">
         {(
           [
-            ['.', 'Summary'],
-            ['/dashboard/invoices', 'Invoices'],
-            ['/dashboard/users', 'Users', true],
+            [".", "Summary"],
+            ["/dashboard/invoices", "Invoices"],
+            ["/dashboard/users", "Users", true],
           ] as const
         ).map(([to, label, search]) => {
           return (
@@ -397,34 +399,34 @@ function Dashboard() {
               key={to}
               to={to}
               search={search}
-              activeOptions={{ exact: to === '.' }}
+              activeOptions={{ exact: to === "." }}
               activeProps={{ className: `font-bold` }}
               className="p-2"
             >
               {label}
             </route.Link>
-          )
+          );
         })}
       </div>
       <hr />
       <Outlet />
     </>
-  )
+  );
 }
 
 function DashboardHome() {
   const {
     loaderData: { invoices },
-  } = router.useMatch('/dashboard/')
+  } = router.useMatch("/dashboard/");
 
   return (
     <div className="p-2">
       <div className="p-2">
-        Welcome to the dashboard! You have{' '}
+        Welcome to the dashboard! You have{" "}
         <strong>{invoices.length} total invoices</strong>.
       </div>
     </div>
-  )
+  );
 }
 
 function Invoices() {
@@ -432,16 +434,16 @@ function Invoices() {
     loaderData: { invoices },
     Link,
     MatchRoute,
-  } = router.useMatch('/dashboard/invoices')
+  } = router.useMatch("/dashboard/invoices");
 
   // Get the action for a child route
-  const invoiceIndexMatch = router.useMatch('/dashboard/invoices/', {
+  const invoiceIndexMatch = router.useMatch("/dashboard/invoices/", {
     strict: false,
-  })
+  });
 
-  const invoiceDetailMatch = router.useMatch('/dashboard/invoices/:invoiceId', {
+  const invoiceDetailMatch = router.useMatch("/dashboard/invoices/:invoiceId", {
     strict: false,
-  })
+  });
 
   return (
     <div className="flex-1 flex">
@@ -449,10 +451,10 @@ function Invoices() {
         {invoices?.map((invoice) => {
           const foundPending = invoiceDetailMatch?.action.submissions.find(
             (d) => d.submission?.id === invoice.id,
-          )
+          );
 
           if (foundPending?.submission) {
-            invoice = { ...invoice, ...foundPending.submission }
+            invoice = { ...invoice, ...foundPending.submission };
           }
 
           return (
@@ -484,7 +486,7 @@ function Invoices() {
                 </pre>
               </Link>
             </div>
-          )
+          );
         })}
         {invoiceIndexMatch?.action.submissions.map((action) => (
           <div key={action.submittedAt}>
@@ -500,53 +502,55 @@ function Invoices() {
         <Outlet />
       </div>
     </div>
-  )
+  );
 }
 
 function InvoicesHome() {
-  const { action } = router.useMatch('/dashboard/invoices/')
+  const { action } = router.useMatch("/dashboard/invoices/");
 
   return (
     <>
       <div className="p-2">
         <form
           onSubmit={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            const formData = new FormData(event.target as HTMLFormElement)
+            event.preventDefault();
+            event.stopPropagation();
+            const formData = new FormData(event.target as HTMLFormElement);
             action.submit(
               {
-                title: formData.get('title') as string,
-                body: formData.get('body') as string,
+                title: formData.get("title") as string,
+                body: formData.get("body") as string,
               },
               { multi: true },
-            )
+            );
           }}
           className="space-y-2"
         >
           <div>Create a new Invoice:</div>
           <InvoiceFields invoice={{} as Invoice} />
           <div>
-            <button
-              className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-              // disabled={action.current?.status === 'pending'}
+            <button className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50" // disabled={action.current?.status === 'pending'}
             >
               Create
             </button>
           </div>
-          {action.current?.status === 'success' ? (
-            <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-              Created!
-            </div>
-          ) : action.current?.status === 'error' ? (
-            <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-              Failed to create.
-            </div>
-          ) : null}
+          {action.current?.status === "success"
+            ? (
+              <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+                Created!
+              </div>
+            )
+            : action.current?.status === "error"
+            ? (
+              <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+                Failed to create.
+              </div>
+            )
+            : null}
         </form>
       </div>
     </>
-  )
+  );
 }
 
 function InvoiceView() {
@@ -556,35 +560,35 @@ function InvoiceView() {
     search,
     Link,
     navigate,
-  } = router.useMatch('/dashboard/invoices/:invoiceId')
+  } = router.useMatch("/dashboard/invoices/:invoiceId");
 
-  const [notes, setNotes] = React.useState(search.notes ?? ``)
+  const [notes, setNotes] = useState(search.notes ?? ``);
 
-  React.useEffect(() => {
+  useEffect(() => {
     navigate({
       search: (old) => ({ ...old, notes: notes ? notes : undefined }),
       replace: true,
-    })
-  }, [notes])
+    });
+  }, [notes]);
 
   return (
     <form
       key={invoice.id}
       onSubmit={(event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        const formData = new FormData(event.target as HTMLFormElement)
+        event.preventDefault();
+        event.stopPropagation();
+        const formData = new FormData(event.target as HTMLFormElement);
         action.submit({
           id: invoice.id,
-          title: formData.get('title') as string,
-          body: formData.get('body') as string,
-        })
+          title: formData.get("title") as string,
+          body: formData.get("body") as string,
+        });
       }}
       className="p-2 space-y-2"
     >
       <InvoiceFields
         invoice={invoice}
-        disabled={action.current?.status === 'pending'}
+        disabled={action.current?.status === "pending"}
       />
       <div>
         <Link
@@ -594,55 +598,63 @@ function InvoiceView() {
           })}
           className="text-blue-700"
         >
-          {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
+          {search.showNotes ? "Close Notes" : "Show Notes"}
+          {" "}
         </Link>
-        {search.showNotes ? (
-          <>
-            <div>
-              <div className="h-2" />
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={5}
-                className="shadow w-full p-2 rounded"
-                placeholder="Write some notes here..."
-              />
-              <div className="italic text-xs">
-                Notes are stored in the URL. Try copying the URL into a new tab!
+        {search.showNotes
+          ? (
+            <>
+              <div>
+                <div className="h-2" />
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={5}
+                  className="shadow w-full p-2 rounded"
+                  placeholder="Write some notes here..."
+                />
+                <div className="italic text-xs">
+                  Notes are stored in the URL. Try copying the URL into a new
+                  tab!
+                </div>
               </div>
-            </div>
-          </>
-        ) : null}
+            </>
+          )
+          : null}
       </div>
       <div>
         <button
           className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-          disabled={action.current?.status === 'pending'}
+          disabled={action.current?.status === "pending"}
         >
           Save
         </button>
       </div>
       <div key={action.current?.submittedAt}>
-        {action.current?.status === 'success' ? (
-          <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-            Saved!
-          </div>
-        ) : action.current?.status === 'error' ? (
-          <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-            Failed to save.
-          </div>
-        ) : null}
+        {action.current?.status === "success"
+          ? (
+            <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+              Saved!
+            </div>
+          )
+          : action.current?.status === "error"
+          ? (
+            <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+              Failed to save.
+            </div>
+          )
+          : null}
       </div>
     </form>
-  )
+  );
 }
 
 function InvoiceFields({
   invoice,
   disabled,
 }: {
-  invoice: Invoice
-  disabled?: boolean
+  invoice: Invoice;
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-2">
@@ -666,7 +678,7 @@ function InvoiceFields({
         />
       </div>
     </div>
-  )
+  );
 }
 
 function Users() {
@@ -676,30 +688,28 @@ function Users() {
     Link,
     MatchRoute,
     navigate,
-  } = router.useMatch('/dashboard/users')
+  } = router.useMatch("/dashboard/users");
 
-  const sortBy = usersView?.sortBy ?? 'name'
-  const filterBy = usersView?.filterBy
+  const sortBy = usersView?.sortBy ?? "name";
+  const filterBy = usersView?.filterBy;
 
-  const [filterDraft, setFilterDraft] = React.useState(filterBy ?? '')
+  const [filterDraft, setFilterDraft] = useState(filterBy ?? "");
 
-  const sortedUsers = React.useMemo(() => {
-    if (!users) return []
+  const sortedUsers = useMemo(() => {
+    if (!users) return [];
 
-    return !sortBy
-      ? users
-      : [...users].sort((a, b) => {
-          return a[sortBy] > b[sortBy] ? 1 : -1
-        })
-  }, [users, sortBy])
+    return !sortBy ? users : [...users].sort((a, b) => {
+      return a[sortBy] > b[sortBy] ? 1 : -1;
+    });
+  }, [users, sortBy]);
 
-  const filteredUsers = React.useMemo(() => {
-    if (!filterBy) return sortedUsers
+  const filteredUsers = useMemo(() => {
+    if (!filterBy) return sortedUsers;
 
     return sortedUsers.filter((user) =>
-      user.name.toLowerCase().includes(filterBy.toLowerCase()),
-    )
-  }, [sortedUsers, filterBy])
+      user.name.toLowerCase().includes(filterBy.toLowerCase())
+    );
+  }, [sortedUsers, filterBy]);
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
@@ -710,12 +720,12 @@ function Users() {
             ...(old?.usersView ?? {}),
             sortBy,
           },
-        }
+        };
       },
       replace: true,
-    })
+    });
 
-  React.useEffect(() => {
+  useEffect(() => {
     navigate({
       search: (old) => {
         return {
@@ -724,11 +734,11 @@ function Users() {
             ...old?.usersView,
             filterBy: filterDraft || undefined,
           },
-        }
+        };
       },
       replace: true,
-    })
-  }, [filterDraft])
+    });
+  }, [filterDraft]);
 
   return (
     <div className="flex-1 flex">
@@ -740,8 +750,8 @@ function Users() {
             onChange={(e) => setSortBy(e.target.value as UsersViewSortBy)}
             className="flex-1 border p-1 px-2 rounded"
           >
-            {['name', 'id', 'email'].map((d) => {
-              return <option key={d} value={d} children={d} />
+            {["name", "id", "email"].map((d) => {
+              return <option key={d} value={d} children={d} />;
             })}
           </select>
         </div>
@@ -779,14 +789,14 @@ function Users() {
                 </pre>
               </Link>
             </div>
-          )
+          );
         })}
       </div>
       <div className="flex-initial border-l border-gray-200">
         <Outlet />
       </div>
     </div>
-  )
+  );
 }
 
 function UsersIndex() {
@@ -798,8 +808,9 @@ function UsersIndex() {
         experience).
       </p>
       <p>
-        Instead, we can use <strong>search filters</strong> to provide defaults
-        or even persist search params for links to routes (and child routes).
+        Instead, we can use <strong>search filters</strong>{" "}
+        to provide defaults or even persist search params for links to routes
+        (and child routes).
       </p>
       <p>
         A good example of this is the sorting and filtering of the users list.
@@ -810,13 +821,13 @@ function UsersIndex() {
         router and search filters, they are persisted with little effort.
       </p>
     </div>
-  )
+  );
 }
 
 function UserView() {
   const {
     loaderData: { user },
-  } = router.useMatch('/dashboard/users/:userId')
+  } = router.useMatch("/dashboard/users/:userId");
 
   return (
     <>
@@ -825,63 +836,66 @@ function UserView() {
         {JSON.stringify(user, null, 2)}
       </pre>
     </>
-  )
+  );
 }
 
 type AuthContext = {
-  login: (username: string) => void
-  logout: () => void
-} & AuthContextState
+  login: (username: string) => void;
+  logout: () => void;
+} & AuthContextState;
 
 type AuthContextState = {
-  status: 'loggedOut' | 'loggedIn'
-  username?: string
-}
+  status: "loggedOut" | "loggedIn";
+  username?: string;
+};
 
-const AuthContext = React.createContext<AuthContext>(null!)
+const AuthContext = createContext<AuthContext>(null!);
 
-function AuthProvider(props: { children: React.ReactNode }) {
-  const [state, setState] = React.useState<AuthContextState>({
-    status: 'loggedOut',
-  })
+function AuthProvider(props: { children: VNode }) {
+  const [state, setState] = useState<AuthContextState>({
+    status: "loggedOut",
+  });
 
   const login = (username: string) => {
-    setState({ status: 'loggedIn', username })
-  }
+    setState({ status: "loggedIn", username });
+  };
 
   const logout = () => {
-    setState({ status: 'loggedOut' })
-  }
+    setState({ status: "loggedOut" });
+  };
 
-  const contextValue = React.useMemo(
+  const contextValue = useMemo(
     () => ({
       ...state,
       login,
       logout,
     }),
     [state],
-  )
+  );
 
-  return <AuthContext.Provider value={contextValue} children={props.children} />
+  return (
+    <AuthContext.Provider
+      value={contextValue}
+      children={props.children}
+    />
+  );
 }
 
 function useAuth() {
-  return React.useContext(AuthContext)
+  return useContext(AuthContext);
 }
 
 function Auth() {
-  const auth = useAuth()
-  const [username, setUsername] = React.useState('')
+  const auth = useAuth();
+  const [username, setUsername] = useState("");
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  const onSubmit = (e: JSX.TargetedEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-    auth.login(username)
-  }
+    auth.login(username);
+  };
 
-  return auth.status === 'loggedIn' ? (
-    <Outlet />
-  ) : (
+  return auth.status === "loggedIn" ? <Outlet /> : (
     <div className="p-2">
       <div>You must log in!</div>
       <div className="h-2" />
@@ -900,11 +914,11 @@ function Auth() {
         </button>
       </form>
     </div>
-  )
+  );
 }
 
 function Authenticated() {
-  const auth = useAuth()
+  const auth = useAuth();
 
   return (
     <div className="p-2">
@@ -925,11 +939,11 @@ function Authenticated() {
         component).
       </div>
     </div>
-  )
+  );
 }
 
 function LayoutWrapper() {
-  const { loaderData } = router.useMatch('/layout')
+  const { loaderData } = router.useMatch("/layout");
 
   return (
     <div>
@@ -938,7 +952,7 @@ function LayoutWrapper() {
       <hr />
       <Outlet />
     </div>
-  )
+  );
 }
 
 function LayoutA() {
@@ -946,35 +960,30 @@ function LayoutA() {
     <div>
       <div>Layout A</div>
     </div>
-  )
+  );
 }
 function LayoutB() {
   return (
     <div>
       <div>Layout B</div>
     </div>
-  )
+  );
 }
 
 function Spinner() {
-  return <div className="inline-block animate-spin px-3">⍥</div>
+  return <div className="inline-block animate-spin px-3">⍥</div>;
 }
 
 function useSessionStorage<T>(key: string, initialValue: T) {
-  const state = React.useState<T>(() => {
-    const stored = sessionStorage.getItem(key)
-    return stored ? JSON.parse(stored) : initialValue
-  })
+  const state = useState<T>(() => {
+    const stored = sessionStorage.getItem(key);
+    return stored ? JSON.parse(stored) : initialValue;
+  });
 
-  React.useEffect(() => {
-    sessionStorage.setItem(key, JSON.stringify(state[0]))
-  }, [state[0]])
+  useEffect(() => {
+    sessionStorage.setItem(key, JSON.stringify(state[0]));
+  }, [state[0]]);
 
-  return state
+  return state;
 }
-
-const rootElement = document.getElementById('app')!
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
-  root.render(<App />)
-}
+render(<App />, document.getElementById("app") as HTMLElement);

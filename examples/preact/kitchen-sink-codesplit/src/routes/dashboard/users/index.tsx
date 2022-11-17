@@ -1,24 +1,25 @@
-import { Outlet } from '@tanstack/react-router'
-import * as React from 'react'
-import { z } from 'zod'
-import { router } from '../../../router'
-import { Spinner } from '../../../components/Spinner'
-import { fetchUsers } from '../../../mockTodos'
-import { usersIndexRoute } from './users'
-import { userRoute } from './user'
-import { dashboardRoute } from '..'
+import { Outlet } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "preact/hooks";
 
-const usersViewSortBy = z.enum(['name', 'id', 'email'])
-export type UsersViewSortBy = z.infer<typeof usersViewSortBy>
+import { z } from "zod";
+import { router } from "../../../router";
+import { Spinner } from "../../../components/Spinner";
+import { fetchUsers } from "../../../mockTodos";
+import { usersIndexRoute } from "./users";
+import { userRoute } from "./user";
+import { dashboardRoute } from "..";
+
+const usersViewSortBy = z.enum(["name", "id", "email"]);
+export type UsersViewSortBy = z.infer<typeof usersViewSortBy>;
 
 export const usersRoute = dashboardRoute.createRoute({
-  path: 'users',
+  path: "users",
   component: Users,
   loader: async ({ search }) => {
-    search
+    search;
     return {
       users: await fetchUsers(),
-    }
+    };
   },
   validateSearch: z.object({
     usersView: z
@@ -38,7 +39,7 @@ export const usersRoute = dashboardRoute.createRoute({
       },
     }),
   ],
-})
+});
 
 function Users() {
   const {
@@ -47,30 +48,28 @@ function Users() {
     Link,
     MatchRoute,
     navigate,
-  } = router.useMatch(usersRoute.id)
+  } = router.useMatch(usersRoute.id);
 
-  const sortBy = usersView?.sortBy ?? 'name'
-  const filterBy = usersView?.filterBy
+  const sortBy = usersView?.sortBy ?? "name";
+  const filterBy = usersView?.filterBy;
 
-  const [filterDraft, setFilterDraft] = React.useState(filterBy ?? '')
+  const [filterDraft, setFilterDraft] = useState(filterBy ?? "");
 
-  const sortedUsers = React.useMemo(() => {
-    if (!users) return []
+  const sortedUsers = useMemo(() => {
+    if (!users) return [];
 
-    return !sortBy
-      ? users
-      : [...users].sort((a, b) => {
-          return a[sortBy] > b[sortBy] ? 1 : -1
-        })
-  }, [users, sortBy])
+    return !sortBy ? users : [...users].sort((a, b) => {
+      return a[sortBy] > b[sortBy] ? 1 : -1;
+    });
+  }, [users, sortBy]);
 
-  const filteredUsers = React.useMemo(() => {
-    if (!filterBy) return sortedUsers
+  const filteredUsers = useMemo(() => {
+    if (!filterBy) return sortedUsers;
 
     return sortedUsers.filter((user) =>
-      user.name.toLowerCase().includes(filterBy.toLowerCase()),
-    )
-  }, [sortedUsers, filterBy])
+      user.name.toLowerCase().includes(filterBy.toLowerCase())
+    );
+  }, [sortedUsers, filterBy]);
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
@@ -80,12 +79,12 @@ function Users() {
           usersView: {
             sortBy,
           },
-        }
+        };
       },
       replace: true,
-    })
+    });
 
-  React.useEffect(() => {
+  useEffect(() => {
     navigate({
       search: (old) => {
         return {
@@ -94,11 +93,11 @@ function Users() {
             ...old?.usersView,
             filterBy: filterDraft || undefined,
           },
-        }
+        };
       },
       replace: true,
-    })
-  }, [filterDraft])
+    });
+  }, [filterDraft]);
 
   return (
     <div className="flex-1 flex">
@@ -110,8 +109,8 @@ function Users() {
             onChange={(e) => setSortBy(e.target.value as UsersViewSortBy)}
             className="flex-1 border p-1 px-2 rounded"
           >
-            {['name', 'id', 'email'].map((d) => {
-              return <option key={d} value={d} children={d} />
+            {["name", "id", "email"].map((d) => {
+              return <option key={d} value={d} children={d} />;
             })}
           </select>
         </div>
@@ -149,12 +148,12 @@ function Users() {
                 </pre>
               </Link>
             </div>
-          )
+          );
         })}
       </div>
       <div className="flex-initial border-l border-gray-200">
         <Outlet />
       </div>
     </div>
-  )
+  );
 }

@@ -1,12 +1,12 @@
-import * as React from 'react'
-import { z } from 'zod'
-import { router } from '../../../router'
-import { fetchInvoiceById, patchInvoice } from '../../../mockTodos'
-import { InvoiceFields } from '../../../components/InvoiceFields'
-import invoicesRoute from '../invoices'
+import { z } from "zod";
+import { router } from "../../../router";
+import { fetchInvoiceById, patchInvoice } from "../../../mockTodos";
+import { InvoiceFields } from "../../../components/InvoiceFields";
+import invoicesRoute from "../invoices";
+import { useEffect, useState } from "preact/compat";
 
 const routeConfig = invoicesRoute.createRoute({
-  path: ':invoiceId',
+  path: ":invoiceId",
   parseParams: (params) => ({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),
   }),
@@ -17,21 +17,21 @@ const routeConfig = invoicesRoute.createRoute({
   }),
   component: InvoiceView,
   loader: async ({ params: { invoiceId } }) => {
-    console.log('Fetching invoice...')
-    const invoice = await fetchInvoiceById(invoiceId)
+    console.log("Fetching invoice...");
+    const invoice = await fetchInvoiceById(invoiceId);
 
     if (!invoice) {
-      throw new Error('Invoice not found!')
+      throw new Error("Invoice not found!");
     }
 
     return {
       invoice,
-    }
+    };
   },
   action: patchInvoice,
-})
+});
 
-export default routeConfig
+export default routeConfig;
 
 function InvoiceView() {
   const {
@@ -40,35 +40,35 @@ function InvoiceView() {
     search,
     Link,
     navigate,
-  } = router.useMatch(routeConfig.id)
+  } = router.useMatch(routeConfig.id);
 
-  const [notes, setNotes] = React.useState(search.notes ?? ``)
+  const [notes, setNotes] = useState(search.notes ?? ``);
 
-  React.useEffect(() => {
+  useEffect(() => {
     navigate({
       search: (old) => ({ ...old, notes: notes ? notes : undefined }),
       replace: true,
-    })
-  }, [notes])
+    });
+  }, [notes]);
 
   return (
     <form
       key={invoice.id}
       onSubmit={(event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        const formData = new FormData(event.target as HTMLFormElement)
+        event.preventDefault();
+        event.stopPropagation();
+        const formData = new FormData(event.target as HTMLFormElement);
         action.submit({
           id: invoice.id,
-          title: formData.get('title') as string,
-          body: formData.get('body') as string,
-        })
+          title: formData.get("title") as string,
+          body: formData.get("body") as string,
+        });
       }}
       className="p-2 space-y-2"
     >
       <InvoiceFields
         invoice={invoice}
-        disabled={action.current?.status === 'pending'}
+        disabled={action.current?.status === "pending"}
       />
       <div>
         <Link
@@ -78,47 +78,57 @@ function InvoiceView() {
           })}
           className="text-blue-700"
         >
-          {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
+          {search.showNotes ? "Close Notes" : "Show Notes"}
+          {" "}
         </Link>
-        {search.showNotes ? (
-          <>
-            <div>
-              <div className="h-2" />
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={5}
-                className="shadow w-full p-2 rounded"
-                placeholder="Write some notes here..."
-              />
-              <div className="italic text-xs">
-                Notes are stored in the URL. Try copying the URL into a new tab!
+        {search.showNotes
+          ? (
+            <>
+              <div>
+                <div className="h-2" />
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={5}
+                  className="shadow w-full p-2 rounded"
+                  placeholder="Write some notes here..."
+                />
+                <div className="italic text-xs">
+                  Notes are stored in the URL. Try copying the URL into a new
+                  tab!
+                </div>
               </div>
-            </div>
-          </>
-        ) : null}
+            </>
+          )
+          : null}
       </div>
       <div>
         <button
           className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-          disabled={action.current?.status === 'pending'}
+          disabled={action.current?.status === "pending"}
         >
           Save
         </button>
       </div>
-      {action.current?.submission?.id === invoice.id ? (
-        <div key={action.current?.submittedAt}>
-          {action.current?.status === 'success' ? (
-            <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-              Saved!
-            </div>
-          ) : action.current?.status === 'error' ? (
-            <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-              Failed to save.
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      {action.current?.submission?.id === invoice.id
+        ? (
+          <div key={action.current?.submittedAt}>
+            {action.current?.status === "success"
+              ? (
+                <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+                  Saved!
+                </div>
+              )
+              : action.current?.status === "error"
+              ? (
+                <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+                  Failed to save.
+                </div>
+              )
+              : null}
+          </div>
+        )
+        : null}
     </form>
-  )
+  );
 }

@@ -1,25 +1,24 @@
-import * as React from 'react'
-import dashboardRoute from '../dashboard'
-import { router } from '../../router'
+import dashboardRoute from "../dashboard";
+import { router } from "../../router";
 
 const routeConfig = dashboardRoute.createRoute({
-  path: '/',
+  path: "/",
   component: DashboardHome,
-})
+});
 
-export default routeConfig
+export default routeConfig;
 
 function DashboardHome() {
   const {
     loaderData: { invoices },
-  } = router.useMatch(routeConfig.id)
+  } = router.useMatch(routeConfig.id);
 
   return (
     <div className="p-2">
       <div className="p-2">
-        Welcome to the dashboard! You have{' '}
+        Welcome to the dashboard! You have{" "}
         <strong>{invoices.length} total invoices</strong>.
       </div>
     </div>
-  )
+  );
 }

@@ -1,23 +1,22 @@
-import * as React from 'react'
-import { dashboardRoute } from '.'
-import { router } from '../../router'
+import { dashboardRoute } from ".";
+import { router } from "../../router";
 
 export const dashboardIndexRoute = dashboardRoute.createRoute({
-  path: '/',
+  path: "/",
   component: DashboardHome,
-})
+});
 
 function DashboardHome() {
   const {
     loaderData: { invoices },
-  } = router.useMatch(dashboardIndexRoute.id)
+  } = router.useMatch(dashboardIndexRoute.id);
 
   return (
     <div className="p-2">
       <div className="p-2">
-        Welcome to the dashboard! You have{' '}
+        Welcome to the dashboard! You have{" "}
         <strong>{invoices.length} total invoices</strong>.
       </div>
     </div>
-  )
+  );
 }

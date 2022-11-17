@@ -1,14 +1,13 @@
-import { createRouteConfig } from '@tanstack/react-router'
-import * as React from 'react'
-import { router } from '../router'
+import { createRouteConfig } from "@tanstack/react-router";
+import { router } from "../router";
 
 export const indexRoute = createRouteConfig().createRoute({
-  path: '/',
+  path: "/",
   component: Home,
-})
+});
 
 function Home() {
-  const route = router.useMatch(indexRoute.id)
+  const route = router.useMatch(indexRoute.id);
 
   return (
     <div className={`p-2`}>
@@ -37,5 +36,5 @@ function Home() {
         route data (and for how long). Both of these default to 0 (or off).
       </div>
     </div>
-  )
+  );
 }

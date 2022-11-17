@@ -1,10 +1,9 @@
-import * as React from 'react'
-import { usersRoute } from '.'
+import { usersRoute } from ".";
 
 export const usersIndexRoute = usersRoute.createRoute({
-  path: '/',
+  path: "/",
   component: UsersIndex,
-})
+});
 
 function UsersIndex() {
   return (
@@ -15,8 +14,9 @@ function UsersIndex() {
         experience).
       </p>
       <p>
-        Instead, we can use <strong>search filters</strong> to provide defaults
-        or even persist search params for links to routes (and child routes).
+        Instead, we can use <strong>search filters</strong>{" "}
+        to provide defaults or even persist search params for links to routes
+        (and child routes).
       </p>
       <p>
         A good example of this is the sorting and filtering of the users list.
@@ -27,5 +27,5 @@ function UsersIndex() {
         router and search filters, they are persisted with little effort.
       </p>
     </div>
-  )
+  );
 }

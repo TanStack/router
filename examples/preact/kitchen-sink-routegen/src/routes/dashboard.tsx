@@ -1,24 +1,23 @@
-import { createRouteConfig, Outlet } from '@tanstack/react-router'
-import * as React from 'react'
+import { createRouteConfig, Outlet } from "@tanstack/react-router";
 
-import { router } from '../router'
-import { fetchInvoices } from '../mockTodos'
+import { router } from "../router";
+import { fetchInvoices } from "../mockTodos";
 
 const routeConfig = createRouteConfig().createRoute({
-  path: 'dashboard',
+  path: "dashboard",
   component: Dashboard,
   loader: async () => {
-    console.log('Fetching all invoices...')
+    console.log("Fetching all invoices...");
     return {
       invoices: await fetchInvoices(),
-    }
+    };
   },
-})
+});
 
-export default routeConfig
+export default routeConfig;
 
 function Dashboard() {
-  const route = router.useMatch(routeConfig.id)
+  const route = router.useMatch(routeConfig.id);
 
   return (
     <>
@@ -37,9 +36,9 @@ function Dashboard() {
       <div className="flex flex-wrap divide-x">
         {(
           [
-            ['.', 'Summary'],
-            ['/dashboard/invoices', 'Invoices'],
-            ['/dashboard/users', 'Users', true],
+            [".", "Summary"],
+            ["/dashboard/invoices", "Invoices"],
+            ["/dashboard/users", "Users", true],
           ] as const
         ).map(([to, label, search]) => {
           return (
@@ -47,17 +46,17 @@ function Dashboard() {
               key={to}
               to={to}
               search={search}
-              activeOptions={{ exact: to === '.' }}
+              activeOptions={{ exact: to === "." }}
               activeProps={{ className: `font-bold` }}
               className="p-2"
             >
               {label}
             </route.Link>
-          )
+          );
         })}
       </div>
       <hr />
       <Outlet />
     </>
-  )
+  );
 }

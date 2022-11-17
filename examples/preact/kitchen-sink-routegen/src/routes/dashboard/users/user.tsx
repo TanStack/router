@@ -1,10 +1,9 @@
-import * as React from 'react'
-import { router } from '../../../router'
-import { fetchUserById } from '../../../mockTodos'
-import usersRoute from '../users'
+import { router } from "../../../router";
+import { fetchUserById } from "../../../mockTodos";
+import usersRoute from "../users";
 
 const routeConfig = usersRoute.createRoute({
-  path: ':userId',
+  path: ":userId",
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
   component: User,
@@ -12,16 +11,16 @@ const routeConfig = usersRoute.createRoute({
     return {
       user: await fetchUserById(userId),
       test: true,
-    }
+    };
   },
-})
+});
 
-export default routeConfig
+export default routeConfig;
 
 function User() {
   const {
     loaderData: { user },
-  } = router.useMatch(routeConfig.id)
+  } = router.useMatch(routeConfig.id);
 
   return (
     <>
@@ -30,5 +29,5 @@ function User() {
         {JSON.stringify(user, null, 2)}
       </pre>
     </>
-  )
+  );
 }

@@ -1,34 +1,34 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { Outlet, RouterProvider } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { Outlet, RouterProvider } from "@tanstack/react-router";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import { router } from './router'
-import { Spinner } from './components/Spinner'
-import { useSessionStorage } from './utils'
-
+import { router } from "./router";
+import { Spinner } from "./components/Spinner";
+import { useSessionStorage } from "./utils";
+import { useCallback, useContext, useMemo, useState } from "preact/hooks";
+import { createContext, render } from "preact";
+import type { VNode } from "preact";
 function App() {
   // This stuff is just to tweak our sandbox setup in real-time
-  const [loaderDelay, setLoaderDelay] = useSessionStorage('loaderDelay', 500)
-  const [actionDelay, setActionDelay] = useSessionStorage('actionDelay', 500)
+  const [loaderDelay, setLoaderDelay] = useSessionStorage("loaderDelay", 500);
+  const [actionDelay, setActionDelay] = useSessionStorage("actionDelay", 500);
 
   const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useSessionStorage(
-    'defaultLoaderMaxAge',
+    "defaultLoaderMaxAge",
     5000,
-  )
+  );
   const [defaultPreloadMaxAge, setDefaultPreloadMaxAge] = useSessionStorage(
-    'defaultPreloadMaxAge',
+    "defaultPreloadMaxAge",
     2000,
-  )
+  );
 
-  const PendingComponent = React.useCallback(
+  const PendingComponent = useCallback(
     () => (
       <div className={`p-2 text-2xl`}>
         <Spinner />
       </div>
     ),
     [],
-  )
+  );
 
   return (
     <>
@@ -60,8 +60,8 @@ function App() {
           />
         </div>
         <div>
-          Loader Max Age:{' '}
-          {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : 'Off'}
+          Loader Max Age:{" "}
+          {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : "Off"}
         </div>
         <div>
           <input
@@ -75,8 +75,8 @@ function App() {
           />
         </div>
         <div>
-          Preload Max Age:{' '}
-          {defaultPreloadMaxAge ? `${defaultPreloadMaxAge}ms` : 'Off'}
+          Preload Max Age:{" "}
+          {defaultPreloadMaxAge ? `${defaultPreloadMaxAge}ms` : "Off"}
         </div>
         <div>
           <input
@@ -98,21 +98,23 @@ function App() {
           defaultPreloadMaxAge={defaultPreloadMaxAge}
           // Normally, the options above aren't changing, but for this particular
           // example, we need to key the router when they change
-          key={[defaultPreloadMaxAge].join('.')}
+          key={[defaultPreloadMaxAge].join(".")}
         >
-          {/* Normally <Router /> acts as it's own outlet,
+          {
+            /* Normally <Router /> acts as it's own outlet,
             but if we pass it children, route matching is
-            deferred until the first <Outlet /> is found. */}
+            deferred until the first <Outlet /> is found. */
+          }
           <Root />
         </RouterProvider>
       </AuthProvider>
       <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
-  )
+  );
 }
 
 function Root() {
-  const routerState = router.useState()
+  const routerState = router.useState();
 
   return (
     <div className={`min-h-screen flex flex-col`}>
@@ -121,9 +123,9 @@ function Root() {
         {/* Show a global spinner when the router is transitioning */}
         <div
           className={`text-3xl duration-300 delay-0 opacity-0 ${
-            routerState.status === 'loading' || routerState.isFetching
+            routerState.status === "loading" || routerState.isFetching
               ? ` duration-1000 opacity-40`
-              : ''
+              : ""
           }`}
         >
           <Spinner />
@@ -133,25 +135,23 @@ function Root() {
         <div className={`divide-y w-56`}>
           {(
             [
-              ['.', 'Home'],
-              ['/dashboard', 'Dashboard'],
-              ['/expensive', 'Expensive'],
-              ['/authenticated', 'Authenticated'],
-              ['/layout-a', 'Layout A'],
-              ['/layout-b', 'Layout B'],
+              [".", "Home"],
+              ["/dashboard", "Dashboard"],
+              ["/expensive", "Expensive"],
+              ["/authenticated", "Authenticated"],
+              ["/layout-a", "Layout A"],
+              ["/layout-b", "Layout B"],
             ] as const
           ).map(([to, label]) => {
             return (
               <div key={to}>
                 <router.Link
                   to={to}
-                  activeOptions={
-                    {
-                      // If the route points to the root of it's parent,
-                      // make sure it's only active if it's exact
-                      // exact: to === '.',
-                    }
-                  }
+                  activeOptions={{
+                    // If the route points to the root of it's parent,
+                    // make sure it's only active if it's exact
+                    // exact: to === '.',
+                  }}
                   className={`block py-2 px-3 text-blue-700`}
                   // Make "active" links bold
                   activeProps={{ className: `font-bold` }}
@@ -159,7 +159,7 @@ function Root() {
                   {label}
                 </router.Link>
               </div>
-            )
+            );
           })}
         </div>
         <div className={`flex-1 border-l border-gray-200`}>
@@ -168,52 +168,52 @@ function Root() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 type AuthContext = {
-  login: (username: string) => void
-  logout: () => void
-} & AuthContextState
+  login: (username: string) => void;
+  logout: () => void;
+} & AuthContextState;
 
 type AuthContextState = {
-  status: 'loggedOut' | 'loggedIn'
-  username?: string
-}
+  status: "loggedOut" | "loggedIn";
+  username?: string;
+};
 
-const AuthContext = React.createContext<AuthContext>(null!)
+const AuthContext = createContext<AuthContext>(null!);
 
-export function AuthProvider(props: { children: React.ReactNode }) {
-  const [state, setState] = React.useState<AuthContextState>({
-    status: 'loggedOut',
-  })
+export function AuthProvider(props: { children: VNode }) {
+  const [state, setState] = useState<AuthContextState>({
+    status: "loggedOut",
+  });
 
   const login = (username: string) => {
-    setState({ status: 'loggedIn', username })
-  }
+    setState({ status: "loggedIn", username });
+  };
 
   const logout = () => {
-    setState({ status: 'loggedOut' })
-  }
+    setState({ status: "loggedOut" });
+  };
 
-  const contextValue = React.useMemo(
+  const contextValue = useMemo(
     () => ({
       ...state,
       login,
       logout,
     }),
     [state],
-  )
+  );
 
-  return <AuthContext.Provider value={contextValue} children={props.children} />
+  return (
+    <AuthContext.Provider
+      value={contextValue}
+      children={props.children}
+    />
+  );
 }
 
 export function useAuth() {
-  return React.useContext(AuthContext)
+  return useContext(AuthContext);
 }
-
-const rootElement = document.getElementById('app')!
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
-  root.render(<App />)
-}
+render(<App />, document.getElementById("app") as HTMLElement);

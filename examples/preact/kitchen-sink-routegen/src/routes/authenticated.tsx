@@ -1,32 +1,31 @@
-import { createRouteConfig, Outlet } from '@tanstack/react-router'
-import * as React from 'react'
-import { useAuth } from '../main'
+import { createRouteConfig, Outlet } from "@tanstack/react-router";
+import { JSX } from "preact";
+import { useState } from "preact/compat";
+import { useAuth } from "../main";
 
 export default createRouteConfig()
   .createRoute({
-    path: 'authenticated/',
+    path: "authenticated/",
     component: Auth,
   })
   .createChildren((createRoute) => [
     createRoute({
-      path: '/',
+      path: "/",
       component: Authenticated,
     }),
-  ])
+  ]);
 
 function Auth() {
-  const auth = useAuth()
-  const [username, setUsername] = React.useState('')
+  const auth = useAuth();
+  const [username, setUsername] = useState("");
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  const onSubmit = (e: JSX.TargetedEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-    auth.login(username)
-  }
+    auth.login(username);
+  };
 
-  return auth.status === 'loggedIn' ? (
-    <Outlet />
-  ) : (
+  return auth.status === "loggedIn" ? <Outlet /> : (
     <div className="p-2">
       <div>You must log in!</div>
       <div className="h-2" />
@@ -45,11 +44,11 @@ function Auth() {
         </button>
       </form>
     </div>
-  )
+  );
 }
 
 function Authenticated() {
-  const auth = useAuth()
+  const auth = useAuth();
 
   return (
     <div className="p-2">
@@ -70,5 +69,5 @@ function Authenticated() {
         component).
       </div>
     </div>
-  )
+  );
 }

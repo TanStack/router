@@ -1,37 +1,36 @@
-import * as React from 'react'
-import { router } from '../../../router'
-import { Invoice, postInvoice } from '../../../mockTodos'
-import { InvoiceFields } from '../../../components/InvoiceFields'
-import invoicesRoute from '../invoices'
+import { router } from "../../../router";
+import { Invoice, postInvoice } from "../../../mockTodos";
+import { InvoiceFields } from "../../../components/InvoiceFields";
+import invoicesRoute from "../invoices";
 
 const routeConfig = invoicesRoute.createRoute({
-  path: '/',
+  path: "/",
   component: InvoicesHome,
   action: postInvoice,
-})
+});
 
-export default routeConfig
+export default routeConfig;
 
 function InvoicesHome() {
-  const { action } = router.useMatch(routeConfig.id)
+  const { action } = router.useMatch(routeConfig.id);
 
   return (
     <>
       <div className="p-2">
         <form
           onSubmit={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            const formData = new FormData(event.target as HTMLFormElement)
+            event.preventDefault();
+            event.stopPropagation();
+            const formData = new FormData(event.target as HTMLFormElement);
             action.submit(
               {
-                title: formData.get('title') as string,
-                body: formData.get('body') as string,
+                title: formData.get("title") as string,
+                body: formData.get("body") as string,
               },
               {
                 multi: true,
               },
-            )
+            );
           }}
           className="space-y-2"
         >
@@ -42,17 +41,21 @@ function InvoicesHome() {
               Create
             </button>
           </div>
-          {action.current?.status === 'success' ? (
-            <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-              Created!
-            </div>
-          ) : action.current?.status === 'error' ? (
-            <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-              Failed to create.
-            </div>
-          ) : null}
+          {action.current?.status === "success"
+            ? (
+              <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+                Created!
+              </div>
+            )
+            : action.current?.status === "error"
+            ? (
+              <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+                Failed to create.
+              </div>
+            )
+            : null}
         </form>
       </div>
     </>
-  )
+  );
 }

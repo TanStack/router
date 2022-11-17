@@ -1,51 +1,51 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
+import { render } from "preact";
+import { useEffect, useState } from "preact/hooks";
 import {
-  Outlet,
-  RouterProvider,
   createReactRouter,
   createRouteConfig,
-} from '@tanstack/react-router'
-import { AppRouter } from '../server/server'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { AppRouter } from "../server/server";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
 
-import { z } from 'zod'
+import { z } from "zod";
 
 export const trpc = createTRPCProxyClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: 'http://localhost:4000',
+      url: "http://localhost:4000",
     }),
   ],
-})
+});
 
 // Build our routes. We could do this in our component, too.
 const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
-    path: '/',
+    path: "/",
     component: Home,
   }),
   createRoute({
-    path: 'dashboard',
+    path: "dashboard",
     component: Dashboard,
     loader: async () => {
       return {
         posts: await trpc.posts.query(),
-      }
+      };
     },
   }).createChildren((createRoute) => [
-    createRoute({ path: '/', component: DashboardHome }),
+    createRoute({ path: "/", component: DashboardHome }),
     createRoute({
-      path: 'posts',
+      path: "posts",
       component: Posts,
     }).createChildren((createRoute) => [
       createRoute({
-        path: '/',
+        path: "/",
         component: PostsIndex,
       }),
       createRoute({
-        path: ':postId',
+        path: ":postId",
         parseParams: (params) => ({
           postId: z.number().int().parse(Number(params.postId)),
         }),
@@ -56,34 +56,36 @@ const routeConfig = createRouteConfig().createChildren((createRoute) => [
         }),
         component: PostView,
         loader: async ({ params: { postId }, search: {} }) => {
-          const post = await trpc.post.query(postId)
+          const post = await trpc.post.query(postId);
 
           if (!post) {
-            throw new Error('Post not found!')
+            throw new Error("Post not found!");
           }
 
           return {
             post,
-          }
+          };
         },
       }),
     ]),
   ]),
-])
+]);
 
 const router = createReactRouter({
   routeConfig,
-})
+});
 
 // Provide our location and routes to our application
 function App() {
   return (
     <>
-      {/* Normally <Router /> matches and renders our
+      {
+        /* Normally <Router /> matches and renders our
       routes, but when we pass our own children, we can use
       <Outlet /> to start rendering our matches when we're
       // ready. This also let's us use router API's
-      in <Root /> before rendering any routes */}
+      in <Root /> before rendering any routes */
+      }
       <RouterProvider
         router={router}
         defaultPendingComponent={
@@ -97,11 +99,11 @@ function App() {
       </RouterProvider>
       <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
-  )
+  );
 }
 
 function Root() {
-  const routerState = router.useState()
+  const routerState = router.useState();
 
   return (
     <div className={`min-h-screen flex flex-col`}>
@@ -110,7 +112,7 @@ function Root() {
         {/* Show a global spinner when the router is transitioning */}
         <div
           className={`text-3xl duration-300 delay-0 opacity-0 ${
-            routerState.isFetching ? ` duration-1000 opacity-40` : ''
+            routerState.isFetching ? ` duration-1000 opacity-40` : ""
           }`}
         >
           <Spinner />
@@ -120,21 +122,19 @@ function Root() {
         <div className={`divide-y w-56`}>
           {(
             [
-              ['.', 'Home'],
-              ['/dashboard', 'Dashboard'],
+              [".", "Home"],
+              ["/dashboard", "Dashboard"],
             ] as const
           ).map(([to, label]) => {
             return (
               <div key={to}>
                 <router.Link
                   to={to}
-                  activeOptions={
-                    {
-                      // If the route points to the root of it's parent,
-                      // make sure it's only active if it's exact
-                      // exact: to === '.',
-                    }
-                  }
+                  activeOptions={{
+                    // If the route points to the root of it's parent,
+                    // make sure it's only active if it's exact
+                    // exact: to === '.',
+                  }}
                   preload="intent"
                   className={`block py-2 px-3 text-blue-700`}
                   // Make "active" links bold
@@ -143,7 +143,7 @@ function Root() {
                   {label}
                 </router.Link>
               </div>
-            )
+            );
           })}
         </div>
         <div className={`flex-1 border-l border-gray-200`}>
@@ -152,11 +152,11 @@ function Root() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function Home() {
-  const route = router.useMatch('/')
+  const route = router.useMatch("/");
 
   return (
     <div className={`p-2`}>
@@ -185,11 +185,11 @@ function Home() {
         route data (and for how long). Both of these default to 0 (or off).
       </div>
     </div>
-  )
+  );
 }
 
 function Dashboard() {
-  const route = router.useMatch('/dashboard')
+  const route = router.useMatch("/dashboard");
 
   return (
     <>
@@ -208,42 +208,42 @@ function Dashboard() {
       <div className="flex flex-wrap divide-x">
         {(
           [
-            ['.', 'Summary'],
-            ['/dashboard/posts', 'Posts'],
+            [".", "Summary"],
+            ["/dashboard/posts", "Posts"],
           ] as const
         ).map(([to, label]) => {
           return (
             <route.Link
               key={to}
               to={to}
-              activeOptions={{ exact: to === '.' }}
+              activeOptions={{ exact: to === "." }}
               activeProps={{ className: `font-bold` }}
               className="p-2"
             >
               {label}
             </route.Link>
-          )
+          );
         })}
       </div>
       <hr />
       <Outlet />
     </>
-  )
+  );
 }
 
 function DashboardHome() {
   const {
     loaderData: { posts },
-  } = router.useMatch('/dashboard/')
+  } = router.useMatch("/dashboard/");
 
   return (
     <div className="p-2">
       <div className="p-2">
-        Welcome to the dashboard! You have{' '}
+        Welcome to the dashboard! You have{" "}
         <strong>{posts.length} total posts</strong>.
       </div>
     </div>
-  )
+  );
 }
 
 function Posts() {
@@ -251,17 +251,17 @@ function Posts() {
     loaderData: { posts },
     Link,
     MatchRoute,
-  } = router.useMatch('/dashboard/posts')
+  } = router.useMatch("/dashboard/posts");
 
   // Get the action for a child route
-  const invoiceIndexRoute = router.useRoute('/dashboard/posts/')
-  const invoiceDetailRoute = router.useRoute('/dashboard/posts/:postId')
+  const invoiceIndexRoute = router.useRoute("/dashboard/posts/");
+  const invoiceDetailRoute = router.useRoute("/dashboard/posts/:postId");
 
   return (
     <div className="flex-1 flex">
       <div className="divide-y w-48">
         {posts?.map((post) => {
-          let foundPending
+          let foundPending;
 
           // const foundPending = invoiceDetailRoute.action.pending.find(
           //   (d) => d.submission?.id === post.id,
@@ -300,9 +300,10 @@ function Posts() {
                 </pre>
               </Link>
             </div>
-          )
+          );
         })}
-        {/* {invoiceIndexRoute.action.pending.map((action) => (
+        {
+          /* {invoiceIndexRoute.action.pending.map((action) => (
           <div key={action.submittedAt}>
             <a href="#" className="block py-2 px-3 text-blue-700">
               <pre className="text-sm">
@@ -310,13 +311,14 @@ function Posts() {
               </pre>
             </a>
           </div>
-        ))} */}
+        ))} */
+        }
       </div>
       <div className="flex-1 border-l border-gray-200">
         <Outlet />
       </div>
     </div>
-  )
+  );
 }
 
 function PostsIndex() {
@@ -324,7 +326,7 @@ function PostsIndex() {
     <>
       <div className="p-2">Select a post to view.</div>
     </>
-  )
+  );
 }
 
 function PostView() {
@@ -335,16 +337,16 @@ function PostView() {
     Link,
     navigate,
     params,
-  } = router.useMatch('/dashboard/posts/:postId')
+  } = router.useMatch("/dashboard/posts/:postId");
 
-  const [notes, setNotes] = React.useState(search.notes ?? ``)
+  const [notes, setNotes] = useState(search.notes ?? ``);
 
-  React.useEffect(() => {
+  useEffect(() => {
     navigate({
       search: (old) => ({ ...old, notes: notes ? notes : undefined }),
       replace: true,
-    })
-  }, [notes])
+    });
+  }, [notes]);
 
   return (
     <div className="p-2 space-y-2">
@@ -373,49 +375,49 @@ function PostView() {
           })}
           className="text-blue-700"
         >
-          {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
+          {search.showNotes ? "Close Notes" : "Show Notes"}
+          {" "}
         </Link>
-        {search.showNotes ? (
-          <>
-            <div>
-              <div className="h-2" />
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={5}
-                className="shadow w-full p-2 rounded"
-                placeholder="Write some notes here..."
-              />
-              <div className="italic text-xs">
-                Notes are stored in the URL. Try copying the URL into a new tab!
+        {search.showNotes
+          ? (
+            <>
+              <div>
+                <div className="h-2" />
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={5}
+                  className="shadow w-full p-2 rounded"
+                  placeholder="Write some notes here..."
+                />
+                <div className="italic text-xs">
+                  Notes are stored in the URL. Try copying the URL into a new
+                  tab!
+                </div>
               </div>
-            </div>
-          </>
-        ) : null}
+            </>
+          )
+          : null}
       </div>
     </div>
-  )
+  );
 }
 
 function Spinner() {
-  return <div className="inline-block animate-spin px-3">⍥</div>
+  return <div className="inline-block animate-spin px-3">⍥</div>;
 }
 
 function useSessionStorage<T>(key: string, initialValue: T) {
-  const state = React.useState<T>(() => {
-    const stored = sessionStorage.getItem(key)
-    return stored ? JSON.parse(stored) : initialValue
-  })
+  const state = useState<T>(() => {
+    const stored = sessionStorage.getItem(key);
+    return stored ? JSON.parse(stored) : initialValue;
+  });
 
-  React.useEffect(() => {
-    sessionStorage.setItem(key, JSON.stringify(state[0]))
-  }, [state[0]])
+  useEffect(() => {
+    sessionStorage.setItem(key, JSON.stringify(state[0]));
+  }, [state[0]]);
 
-  return state
+  return state;
 }
 
-const rootElement = document.getElementById('app')!
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
-  root.render(<App />)
-}
+render(<App />, document.getElementById("app") as HTMLElement);

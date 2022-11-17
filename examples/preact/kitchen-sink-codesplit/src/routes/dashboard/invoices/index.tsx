@@ -1,13 +1,13 @@
-import { Outlet } from '@tanstack/react-router'
-import * as React from 'react'
-import { router } from '../../../router'
-import { Spinner } from '../../../components/Spinner'
-import { dashboardRoute } from '..'
+import { Outlet } from "@tanstack/react-router";
+
+import { router } from "../../../router";
+import { Spinner } from "../../../components/Spinner";
+import { dashboardRoute } from "..";
 
 export const invoicesRoute = dashboardRoute.createRoute({
-  path: 'invoices',
+  path: "invoices",
   component: Invoices,
-})
+});
 
 function Invoices() {
   const {
@@ -15,11 +15,11 @@ function Invoices() {
     Link,
     MatchRoute,
     useRoute,
-  } = router.useMatch(invoicesRoute.id)
+  } = router.useMatch(invoicesRoute.id);
 
   // Get the action for a child route
-  const invoiceIndexRoute = useRoute('./')
-  const invoiceDetailRoute = useRoute('./:invoiceId')
+  const invoiceIndexRoute = useRoute("./");
+  const invoiceDetailRoute = useRoute("./:invoiceId");
 
   return (
     <div className="flex-1 flex">
@@ -27,10 +27,10 @@ function Invoices() {
         {invoices?.map((invoice) => {
           const foundPending = invoiceDetailRoute.action.submissions.find(
             (d) => d.submission?.id === invoice.id,
-          )
+          );
 
           if (foundPending?.submission) {
-            invoice = { ...invoice, ...foundPending.submission }
+            invoice = { ...invoice, ...foundPending.submission };
           }
 
           return (
@@ -62,7 +62,7 @@ function Invoices() {
                 </pre>
               </Link>
             </div>
-          )
+          );
         })}
         {invoiceIndexRoute.action.submissions.map((action) => (
           <div key={action.submittedAt}>
@@ -78,5 +78,5 @@ function Invoices() {
         <Outlet />
       </div>
     </div>
-  )
+  );
 }

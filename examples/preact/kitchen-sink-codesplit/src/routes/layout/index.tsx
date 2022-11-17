@@ -1,23 +1,22 @@
-import { createRouteConfig, Outlet } from '@tanstack/react-router'
-import * as React from 'react'
+import { createRouteConfig, Outlet } from "@tanstack/react-router";
 
-import { router } from '../../router'
-import { loaderDelayFn } from '../../utils'
+import { router } from "../../router";
+import { loaderDelayFn } from "../../utils";
 
 export const layoutRoute = createRouteConfig().createRoute({
-  id: 'layout',
+  id: "layout",
   component: LayoutWrapper,
   loader: async () => {
     return loaderDelayFn(() => {
       return {
         random: Math.random(),
-      }
-    })
+      };
+    });
   },
-})
+});
 
 function LayoutWrapper() {
-  const { loaderData } = router.useMatch(layoutRoute.id)
+  const { loaderData } = router.useMatch(layoutRoute.id);
   return (
     <div>
       <div>Layout</div>
@@ -25,5 +24,5 @@ function LayoutWrapper() {
       <hr />
       <Outlet />
     </div>
-  )
+  );
 }

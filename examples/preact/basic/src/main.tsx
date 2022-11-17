@@ -1,54 +1,53 @@
-import React, { StrictMode } from 'react'
-import ReactDOM from 'react-dom/client'
+import { render } from "preact";
 import {
-  Outlet,
-  RouterProvider,
   createReactRouter,
   createRouteConfig,
-} from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import axios from 'axios'
+import axios from "axios";
 
 type PostType = {
-  id: string
-  title: string
-  body: string
-}
+  id: string;
+  title: string;
+  body: string;
+};
 
 const routeConfig = createRouteConfig().createChildren((createRoute) => [
   createRoute({
-    path: '/',
+    path: "/",
     component: Index,
   }),
   createRoute({
-    path: 'posts',
+    path: "posts",
     component: Posts,
-    errorComponent: () => 'Oh crap',
+    errorComponent: () => "Oh crap",
     loader: async () => {
       return {
         posts: await fetchPosts(),
-      }
+      };
     },
   }).createChildren((createRoute) => [
-    createRoute({ path: '/', component: PostsIndex }),
+    createRoute({ path: "/", component: PostsIndex }),
     createRoute({
-      path: ':postId',
+      path: ":postId",
       component: Post,
       loader: async ({ params: { postId } }) => {
         return {
           post: await fetchPostById(postId),
-        }
+        };
       },
     }),
   ]),
-])
+]);
 
 // Set up a ReactRouter instance
 const router = createReactRouter({
   routeConfig,
   // defaultPreload: 'intent',
-})
+});
 
 function App() {
   return (
@@ -59,16 +58,16 @@ function App() {
           <router.Link
             to="/"
             activeProps={{
-              className: 'font-bold',
+              className: "font-bold",
             }}
             activeOptions={{ exact: true }}
           >
             Home
-          </router.Link>{' '}
+          </router.Link>{" "}
           <router.Link
             to="/posts"
             activeProps={{
-              className: 'font-bold',
+              className: "font-bold",
             }}
           >
             Posts
@@ -79,24 +78,24 @@ function App() {
       </RouterProvider>
       <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
-  )
+  );
 }
 
 async function fetchPosts() {
-  console.log('Fetching posts...')
-  await new Promise((r) => setTimeout(r, 500))
+  console.log("Fetching posts...");
+  await new Promise((r) => setTimeout(r, 500));
   return axios
-    .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
-    .then((r) => r.data.slice(0, 10))
+    .get<PostType[]>("https://jsonplaceholder.typicode.com/posts")
+    .then((r) => r.data.slice(0, 10));
 }
 
 async function fetchPostById(postId: string) {
-  console.log(`Fetching post with id ${postId}...`)
-  await new Promise((r) => setTimeout(r, 500))
+  console.log(`Fetching post with id ${postId}...`);
+  await new Promise((r) => setTimeout(r, 500));
 
   return await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-    .then((r) => r.data)
+    .then((r) => r.data);
 }
 
 function Index() {
@@ -104,21 +103,21 @@ function Index() {
     <div>
       <h3>Welcome Home!</h3>
     </div>
-  )
+  );
 }
 
 function Posts() {
   const {
     loaderData: { posts },
     Link,
-  } = router.useMatch('/posts')
+  } = router.useMatch("/posts");
 
   return (
     <div>
       <div
         style={{
-          float: 'left',
-          marginRight: '1rem',
+          float: "left",
+          marginRight: "1rem",
         }}
       >
         {posts?.map((post) => {
@@ -129,18 +128,18 @@ function Posts() {
                 params={{
                   postId: post.id,
                 }}
-                activeProps={{ className: 'font-bold' }}
+                activeProps={{ className: "font-bold" }}
               >
                 <pre>{post.title.substring(0, 20)}</pre>
               </Link>
             </div>
-          )
+          );
         })}
       </div>
       <hr />
       <Outlet />
     </div>
-  )
+  );
 }
 
 function PostsIndex() {
@@ -148,28 +147,20 @@ function PostsIndex() {
     <>
       <div>Select a post.</div>
     </>
-  )
+  );
 }
 
 function Post() {
   const {
     loaderData: { post },
-  } = router.useMatch('/posts/:postId')
+  } = router.useMatch("/posts/:postId");
 
   return (
     <div>
       <h4>{post.title}</h4>
       <p>{post.body}</p>
     </div>
-  )
+  );
 }
 
-const rootElement = document.getElementById('app')!
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  )
-}
+render(<App />, document.getElementById("app") as HTMLElement);
