@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-react-example-with-trpc",
+  "name": "tanstack-router-preact-example-with-trpc",
   "version": "0.0.0",
   "private": true,
   "scripts": {

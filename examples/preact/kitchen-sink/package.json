@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-react-example-kitchen-sink",
+  "name": "tanstack-router-preact-example-kitchen-sink",
   "version": "0.0.0",
   "private": true,
   "scripts": {
