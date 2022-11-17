@@ -1,6 +1,7 @@
-# Example
+# Example 
+This example imports the @tanstack/react-router into a preact project thanks to @preact/preset-vite tha is doing preact/compat under the hood
 
 To run this example:
 
 - `npm install` or `yarn`
-- `yarn start` or `yarn start`
+- `npm start` or `yarn start`
