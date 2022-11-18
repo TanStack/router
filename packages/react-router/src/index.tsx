@@ -440,15 +440,15 @@ export function createReactRouter<
 
             invariant(
               runtimeMatch.routeId == match?.routeId,
-              `useMatch('${
+              `useMatch("${
                 match?.routeId as string
-              }') is being called in a component that is meant to render the '${
+              }") is being called in a component that is meant to render the '${
                 runtimeMatch.routeId
-              }' route. Did you mean to 'useMatch(${
+              }' route. Did you mean to 'useMatch("${
                 match?.routeId as string
-              }, { strict: false })' or 'useRoute(${
+              }", { strict: false })' or 'useRoute("${
                 match?.routeId as string
-              })' instead?`,
+              }")' instead?`,
             )
           }
 
