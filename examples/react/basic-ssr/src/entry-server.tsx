@@ -3,7 +3,7 @@ import ReactDOMServer from 'react-dom/server'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import jsesc from 'jsesc'
 import { App } from './App'
-import { router } from './router'
+import { createRouter } from './router'
 import { ServerResponse } from 'http'
 
 export async function render(opts: {
@@ -11,7 +11,7 @@ export async function render(opts: {
   template: string
   res: ServerResponse
 }) {
-  router.reset()
+  const router = createRouter()
 
   const memoryHistory = createMemoryHistory({
     initialEntries: [opts.url],
@@ -34,6 +34,7 @@ export async function render(opts: {
       },
     )})</script>`
 
+    console.log('state')
     opts.res.write(routerScript)
   })
 
@@ -55,18 +56,16 @@ export async function render(opts: {
     {
       onShellReady: () => {
         opts.res.write(leadingHtml)
+        console.log('shell')
         stream.pipe(opts.res)
       },
       onError: (err) => {
         console.log(err)
       },
       onAllReady: () => {
+        console.log('done')
         opts.res.end(tailingHtml)
       },
     },
   )
-
-  // router.reset()
-
-  // return res
 }

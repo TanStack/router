@@ -7,7 +7,7 @@
     "dev": "node server",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build --outDir dist/client",
-    "build:server": "vite build --ssr src/entry-server.jsx --outDir dist/server",
+    "build:server": "vite build --ssr src/entry-server.tsx --outDir dist/server",
     "serve": "NODE_ENV=production node server",
     "debug": "node --inspect-brk server"
   },
@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.2",
+    "@babel/generator": "^7.20.4",
     "@rollup/plugin-babel": "^6.0.2",
     "@types/jsesc": "^3.0.1",
     "@vitejs/plugin-react": "^2.2.0",

@@ -16,10 +16,10 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@tanstack/router-core@0.0.1-beta.11":
-  version "0.0.1-beta.11"
-  resolved "https://registry.yarnpkg.com/@tanstack/router-core/-/router-core-0.0.1-beta.11.tgz#a2edda98ea88af9c5e6df5c160e39390896cf628"
-  integrity sha512-k3j7mHs7NtN9iuF2ETNTDQIQur4OgJpTJTJiHzuooc7v2fxfeK9cPUmU8lGQw2/1dltEUhtcCVfVpnmtDQXmbg==
+"@tanstack/router-core@0.0.1-beta.16":
+  version "0.0.1-beta.16"
+  resolved "https://registry.yarnpkg.com/@tanstack/router-core/-/router-core-0.0.1-beta.16.tgz#d9073937371224ac14add0640587019972c7ff1b"
+  integrity sha512-DTOFaZqc6soW33Q1NGjreZeR9iazA7bRPxfIEfUeTyjgKetdZUA0aXj+ymtDXuKxah1/NMHlUjXITtCycnCfng==
   dependencies:
     "@babel/runtime" "^7.16.7"
     history "^5.2.0"
@@ -41,11 +41,6 @@ history@^5.2.0:
   integrity sha512-ZqaKwjjrAYUYfLG+htGaIIZ4nioX2L70ZUMIFysS3xvBsSG4x/n1V6TXV3N8ZYNuFGlDirFg32T7B6WOUPDYcQ==
   dependencies:
     "@babel/runtime" "^7.7.6"
-
-react-lazy-with-preload@^2.2.1:
-  version "2.2.1"
-  resolved "https://registry.yarnpkg.com/react-lazy-with-preload/-/react-lazy-with-preload-2.2.1.tgz#241edca4621a6e5f16026eec5ecbe64f4ce9ebd4"
-  integrity sha512-ONSb8gizLE5jFpdHAclZ6EAAKuFX2JydnFXPPPjoUImZlLjGtKzyBS8SJgJq7CpLgsGKh9QCZdugJyEEOVC16Q==
 
 regenerator-runtime@^0.13.4:
   version "0.13.9"

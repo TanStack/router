@@ -5,6 +5,13 @@ import {
   RouterProvider,
   createReactRouter,
   createRouteConfig,
+  Link,
+  useMatch,
+  ResolvedRouter,
+  ResolvedAllRouteInfo,
+  ResolveRouter,
+  Router,
+  AnyAllRouteInfo,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -16,32 +23,42 @@ type PostType = {
   body: string
 }
 
-const routeConfig = createRouteConfig().createChildren((createRoute) => [
-  createRoute({
-    path: '/',
-    component: Index,
-  }),
-  createRoute({
-    path: 'posts',
-    component: Posts,
-    errorComponent: () => 'Oh crap',
-    loader: async () => {
-      return {
-        posts: await fetchPosts(),
-      }
-    },
-  }).createChildren((createRoute) => [
-    createRoute({ path: '/', component: PostsIndex }),
-    createRoute({
-      path: ':postId',
-      component: Post,
-      loader: async ({ params: { postId } }) => {
-        return {
-          post: await fetchPostById(postId),
-        }
-      },
-    }),
-  ]),
+const rootRoute = createRouteConfig()
+
+const indexRoute = rootRoute.createRoute({
+  path: '/',
+  component: Index,
+})
+
+const postsRoute = rootRoute.createRoute({
+  path: 'posts',
+  component: Posts,
+  errorComponent: () => 'Oh crap',
+  loader: async () => {
+    return {
+      posts: await fetchPosts(),
+    }
+  },
+})
+
+const PostsIndexRoute = postsRoute.createRoute({
+  path: '/',
+  component: PostsIndex,
+})
+
+const postRoute = postsRoute.createRoute({
+  path: ':postId',
+  component: Post,
+  loader: async ({ params: { postId } }) => {
+    return {
+      post: await fetchPostById(postId),
+    }
+  },
+})
+
+const routeConfig = createRouteConfig().addChildren([
+  indexRoute,
+  postsRoute.addChildren([PostsIndexRoute, postRoute]),
 ])
 
 // Set up a ReactRouter instance
@@ -50,13 +67,19 @@ const router = createReactRouter({
   // defaultPreload: 'intent',
 })
 
+declare module '@tanstack/react-router' {
+  interface ResolveRouter {
+    router: typeof router
+  }
+}
+
 function App() {
   return (
     // Build our routes and render our router
     <>
       <RouterProvider router={router}>
         <div>
-          <router.Link
+          <Link
             to="/"
             activeProps={{
               className: 'font-bold',
@@ -64,20 +87,20 @@ function App() {
             activeOptions={{ exact: true }}
           >
             Home
-          </router.Link>{' '}
-          <router.Link
+          </Link>{' '}
+          <Link
             to="/posts"
             activeProps={{
               className: 'font-bold',
             }}
           >
             Posts
-          </router.Link>
+          </Link>
         </div>
         <hr />
         <Outlet /> {/* Start rendering router matches */}
+        <TanStackRouterDevtools position="bottom-right" />
       </RouterProvider>
-      <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
   )
 }
@@ -111,7 +134,7 @@ function Posts() {
   const {
     loaderData: { posts },
     Link,
-  } = router.useMatch('/posts')
+  } = useMatch(postsRoute.id)
 
   return (
     <div>
@@ -154,7 +177,7 @@ function PostsIndex() {
 function Post() {
   const {
     loaderData: { post },
-  } = router.useMatch('/posts/:postId')
+  } = useMatch(postRoute.id)
 
   return (
     <div>

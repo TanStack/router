@@ -1,5 +1,5 @@
 import React from 'react'
-import { Router, last } from '@tanstack/react-router'
+import { Router, last, routerContext, invariant } from '@tanstack/react-router'
 import { formatDistanceStrict } from 'date-fns'
 
 import useLocalStorage from './useLocalStorage'
@@ -56,7 +56,7 @@ interface DevtoolsOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router: Router<any, any>
+  router?: Router<any, any>
 }
 
 interface DevtoolsPanelOptions {
@@ -83,7 +83,7 @@ interface DevtoolsPanelOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router: Router<any, any>
+  router?: Router<any, any>
 }
 
 const isServer = typeof window === 'undefined'
@@ -406,9 +406,17 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     isOpen = true,
     setIsOpen,
     handleDragStart,
-    router,
+    router: userRouter,
     ...panelProps
   } = props
+
+  const routerContextValue = React.useContext(routerContext)
+  const router = userRouter ?? routerContextValue?.router
+
+  invariant(
+    router,
+    'No router was found for the TanStack Router Devtools. Please place the devtools in the <RouterProvider> component tree or pass the router instance to the devtools manually.',
+  )
 
   const rerender = React.useReducer(() => ({}), {})[1]
 

@@ -116,10 +116,10 @@ export interface RoutesInfoInner<
     any,
     any
   > = RouteInfo,
-  TRouteInfoById = {
+  TRouteInfoById = { '/': TRouteInfo } & {
     [TInfo in TRouteInfo as TInfo['id']]: TInfo
   },
-  TRouteInfoByFullPath = {
+  TRouteInfoByFullPath = { '/': TRouteInfo } & {
     [TInfo in TRouteInfo as TInfo['fullPath'] extends RootRouteId
       ? never
       : string extends TInfo['fullPath']

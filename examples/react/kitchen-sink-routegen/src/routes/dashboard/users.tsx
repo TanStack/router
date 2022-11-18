@@ -1,11 +1,8 @@
-import { Outlet } from '@tanstack/react-router'
+import { Outlet, useMatch } from '@tanstack/react-router'
 import * as React from 'react'
 import { z } from 'zod'
-import { router } from '../../router'
 import { Spinner } from '../../components/Spinner'
 import { fetchUsers } from '../../mockTodos'
-import usersIndexRoute from './users'
-import userRoute from './users/user'
 import dashboardRoute from '../dashboard'
 
 const usersViewSortBy = z.enum(['name', 'id', 'email'])
@@ -49,7 +46,7 @@ function Users() {
     Link,
     MatchRoute,
     navigate,
-  } = router.useMatch(routeConfig.id)
+  } = useMatch(routeConfig.id)
 
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy

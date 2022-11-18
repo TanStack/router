@@ -1,6 +1,5 @@
-import { createRouteConfig } from '@tanstack/react-router'
+import { createRouteConfig, useMatch } from '@tanstack/react-router'
 import * as React from 'react'
-import { router } from '../router'
 
 const routeConfig = createRouteConfig().createRoute({
   path: '/',
@@ -10,7 +9,7 @@ const routeConfig = createRouteConfig().createRoute({
 export default routeConfig
 
 function Home() {
-  const route = router.useMatch(routeConfig.id)
+  const route = useMatch(routeConfig.id)
 
   return (
     <div className={`p-2`}>

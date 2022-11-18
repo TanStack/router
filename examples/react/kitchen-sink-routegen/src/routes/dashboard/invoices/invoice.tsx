@@ -1,9 +1,9 @@
 import * as React from 'react'
 import { z } from 'zod'
-import { router } from '../../../router'
 import { fetchInvoiceById, patchInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import invoicesRoute from '../invoices'
+import { useMatch } from '@tanstack/react-router'
 
 const routeConfig = invoicesRoute.createRoute({
   path: ':invoiceId',
@@ -40,7 +40,7 @@ function InvoiceView() {
     search,
     Link,
     navigate,
-  } = router.useMatch(routeConfig.id)
+  } = useMatch(routeConfig.id)
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
 

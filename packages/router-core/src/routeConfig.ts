@@ -70,7 +70,7 @@ export interface LoaderContext<
   params: TAllParams
   search: TFullSearchSchema
   signal?: AbortSignal
-  parentLoaderPromise?: Promise<TParentRouteLoaderData>
+  // parentLoaderPromise?: Promise<TParentRouteLoaderData>
 }
 
 export type ActionFn<TActionPayload = unknown, TActionResponse = unknown> = (
@@ -138,9 +138,6 @@ export type RouteOptions<
   // An asynchronous function made available to the route for performing asynchronous or mutative actions that
   // might invalidate the route's data.
   action?: ActionFn<TActionPayload, TActionResponse>
-  // Set this to true to rethrow errors up the component tree to either the nearest error boundary or
-  // route with error component, whichever comes first.
-  useErrorBoundary?: boolean
   // This function is called
   // when moving from an inactive state to an active one. Likewise, when moving from
   // an active to an inactive state, the return function (if provided) is called.

@@ -1,7 +1,5 @@
-import { createRouteConfig, Outlet } from '@tanstack/react-router'
 import * as React from 'react'
-
-import { router } from '../router'
+import { createRouteConfig, Outlet, useMatch } from '@tanstack/react-router'
 import { fetchInvoices } from '../mockTodos'
 
 const routeConfig = createRouteConfig().createRoute({
@@ -18,7 +16,7 @@ const routeConfig = createRouteConfig().createRoute({
 export default routeConfig
 
 function Dashboard() {
-  const route = router.useMatch(routeConfig.id)
+  const route = useMatch(routeConfig.id)
 
   return (
     <>

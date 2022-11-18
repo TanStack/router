@@ -21,7 +21,7 @@ export default routeConfig
 function User() {
   const {
     loaderData: { user },
-  } = router.useMatch(routeConfig.id)
+  } = useMatch(routeConfig.id)
 
   return (
     <>

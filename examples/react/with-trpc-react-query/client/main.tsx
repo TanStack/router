@@ -5,12 +5,13 @@ import {
   RouterProvider,
   createReactRouter,
   createRouteConfig,
+  Link,
+  useMatch,
 } from '@tanstack/react-router'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import {
   useQuery,
-  useQueryClient,
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query'
@@ -28,35 +29,45 @@ type PostType = {
 
 const queryClient = new QueryClient()
 
-const routeConfig = createRouteConfig().createChildren((createRoute) => [
-  createRoute({
-    path: '/',
-    component: Index,
-  }),
-  createRoute({
-    path: 'posts',
-    loaderMaxAge: 0,
-    component: Posts,
-    errorElement: 'Oh crap!',
-    loader: async () => {
-      queryClient.getQueryData(['posts']) ??
-        (await queryClient.prefetchQuery(['posts'], fetchPosts))
-      return {}
-    },
-  }).createChildren((createRoute) => [
-    createRoute({ path: '/', component: PostsIndex }),
-    createRoute({
-      path: ':postId',
-      component: Post,
-      loader: async ({ params: { postId } }) => {
-        queryClient.getQueryData(['posts', postId]) ??
-          (await queryClient.prefetchQuery(['posts', postId], () =>
-            fetchPostById(postId),
-          ))
-        return {}
-      },
-    }),
-  ]),
+const rootRoute = createRouteConfig()
+
+const indexRoute = rootRoute.createRoute({
+  path: '/',
+  component: Index,
+})
+
+const postsRoute = rootRoute.createRoute({
+  path: 'posts',
+  loaderMaxAge: 0,
+  component: Posts,
+  errorComponent: () => 'Oh crap!',
+  loader: async () => {
+    queryClient.getQueryData(['posts']) ??
+      (await queryClient.prefetchQuery(['posts'], fetchPosts))
+    return {}
+  },
+})
+
+const postsIndexRoute = postsRoute.createRoute({
+  path: '/',
+  component: PostsIndex,
+})
+
+const postRoute = postsRoute.createRoute({
+  path: ':postId',
+  component: Post,
+  loader: async ({ params: { postId } }) => {
+    queryClient.getQueryData(['posts', postId]) ??
+      (await queryClient.prefetchQuery(['posts', postId], () =>
+        fetchPostById(postId),
+      ))
+    return {}
+  },
+})
+
+const routeConfig = rootRoute.addChildren([
+  indexRoute,
+  postsRoute.addChildren([postsIndexRoute, postRoute]),
 ])
 
 // Set up a ReactRouter instance
@@ -64,6 +75,12 @@ const router = createReactRouter({
   routeConfig,
   defaultPreload: 'intent',
 })
+
+declare module '@tanstack/react-router' {
+  interface ResolveRouter {
+    router: typeof router
+  }
+}
 
 export const trpc = createTRPCReact<AppRouter>({})
 function App() {
@@ -90,7 +107,7 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <RouterProvider router={router}>
             <div>
-              <router.Link
+              <Link
                 to="/"
                 activeProps={{
                   className: 'font-bold',
@@ -98,21 +115,31 @@ function App() {
                 activeOptions={{ exact: true }}
               >
                 Home
-              </router.Link>{' '}
-              <router.Link
+              </Link>{' '}
+              <Link
                 to="/posts"
                 activeProps={{
                   className: 'font-bold',
                 }}
               >
                 Posts
-              </router.Link>
+              </Link>
             </div>
             <hr />
             <Outlet /> {/* Start rendering router matches */}
+            <TanStackRouterDevtools position="bottom-left" />
           </RouterProvider>
-          <TanStackRouterDevtools router={router} position="bottom-right" />
-          <ReactQueryDevtools initialIsOpen position="bottom-right" />
+          <ReactQueryDevtools
+            initialIsOpen
+            position="bottom-left"
+            toggleButtonProps={{
+              style: {
+                marginLeft: '5.5rem',
+                transform: `scale(.7)`,
+                transformOrigin: 'bottom left',
+              },
+            }}
+          />
         </QueryClientProvider>
       </trpc.Provider>
     </>
@@ -163,7 +190,7 @@ function Index() {
 }
 
 function Posts() {
-  const { Link } = router.useMatch('/posts')
+  const { Link } = useMatch(postsRoute.id)
 
   const hello = trpc.hello
   ;({ text: 'client' })
@@ -209,7 +236,7 @@ function PostsIndex() {
 }
 
 function Post() {
-  const { params } = router.useMatch('/posts/:postId')
+  const { params } = useMatch(postRoute.id)
   const postQuery = usePost(params.postId)
 
   return (

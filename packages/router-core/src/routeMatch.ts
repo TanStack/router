@@ -6,8 +6,8 @@ import {
   DefaultAllRouteInfo,
   RouteInfo,
 } from './routeInfo'
-import { ActionState, Router } from './router'
-import { replaceEqualDeep, Timeout } from './utils'
+import { Router } from './router'
+import { replaceEqualDeep, warning } from './utils'
 
 export interface RouteMatch<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
@@ -201,8 +201,14 @@ export function createRouteMatch<
       }
     },
     fetch: async (opts) => {
-      const id = '' + Date.now() + Math.random()
-      routeMatch.__.latestId = id
+      const loadId = '' + Date.now() + Math.random()
+      routeMatch.__.latestId = loadId
+      const checkLatest = async () => {
+        if (loadId !== routeMatch.__.latestId) {
+          // warning(true, 'Data loader is out of date!')
+          return new Promise(() => {})
+        }
+      }
 
       // If the match was in an error state, set it
       // to a loading state again. Otherwise, keep it
@@ -240,15 +246,8 @@ export function createRouteMatch<
         routeMatch.__.dataPromise = Promise.resolve().then(async () => {
           try {
             if (routeMatch.options.loader) {
-              const data = await routeMatch.options.loader({
-                parentLoaderPromise: routeMatch.parentMatch?.__.dataPromise,
-                params: routeMatch.params,
-                search: routeMatch.routeSearch,
-                signal: routeMatch.__.abortController.signal,
-              })
-              if (id !== routeMatch.__.latestId) {
-                return routeMatch.__.loadPromise
-              }
+              const data = await router.loadMatchData(routeMatch)
+              await checkLatest()
 
               routeMatch.routeLoaderData = replaceEqualDeep(
                 routeMatch.routeLoaderData,
@@ -268,9 +267,7 @@ export function createRouteMatch<
 
             return routeMatch.routeLoaderData
           } catch (err) {
-            if (id !== routeMatch.__.latestId) {
-              return routeMatch.__.loadPromise
-            }
+            await checkLatest()
 
             if (process.env.NODE_ENV !== 'production') {
               console.error(err)
@@ -284,30 +281,26 @@ export function createRouteMatch<
           }
         })
 
+        const after = async () => {
+          await checkLatest()
+          routeMatch.isFetching = false
+          delete routeMatch.__.loadPromise
+          routeMatch.__.notify()
+        }
+
         try {
           await Promise.all([
             routeMatch.__.componentsPromise,
             routeMatch.__.dataPromise.catch(() => {}),
           ])
-          if (id !== routeMatch.__.latestId) {
-            return routeMatch.__.loadPromise
-          }
-        } finally {
-          if (id !== routeMatch.__.latestId) {
-            return routeMatch.__.loadPromise
-          }
-          routeMatch.isFetching = false
-          routeMatch.__.notify()
+          after()
+        } catch {
+          after()
         }
       })
 
       await routeMatch.__.loadPromise
-
-      if (id !== routeMatch.__.latestId) {
-        return routeMatch.__.loadPromise
-      }
-
-      delete routeMatch.__.loadPromise
+      await checkLatest()
     },
   }
 

@@ -6,7 +6,6 @@ import {
   AnyRoute,
   CheckId,
   rootRouteId,
-  Router,
   RouterState,
   ToIdOption,
 } from '@tanstack/router-core'
@@ -31,18 +30,62 @@ import {
   NoInfer,
   ToOptions,
   invariant,
+  Router,
 } from '@tanstack/router-core'
 
 export * from '@tanstack/router-core'
 
-export { lazyWithPreload as lazy } from 'react-lazy-with-preload/lib/index'
-export type { PreloadableComponent as LazyComponent } from 'react-lazy-with-preload'
+export interface ResolveRouter {
+  // router: Router
+}
 
-type SyncRouteComponent = (props?: {}) => React.ReactNode
+export type ResolvedRouter = ResolveRouter extends {
+  router: Router<infer TRouteConfig, infer TAllRouteInfo>
+}
+  ? Router<TRouteConfig, TAllRouteInfo>
+  : Router
+
+export type ResolvedAllRouteInfo = ResolveRouter extends {
+  router: Router<infer TRouteConfig, infer TAllRouteInfo>
+}
+  ? TAllRouteInfo
+  : AnyAllRouteInfo
+
+export type SyncRouteComponent = (props?: {}) => JSX.Element | React.ReactNode
+
 export type RouteComponent = SyncRouteComponent & {
-  preload?: () => Promise<{
-    default: SyncRouteComponent
-  }>
+  preload?: () => Promise<SyncRouteComponent>
+}
+
+export function lazy(
+  importer: () => Promise<{ default: SyncRouteComponent }>,
+): RouteComponent {
+  const lazyComp = React.lazy(importer as any)
+  let promise: Promise<SyncRouteComponent>
+  let resolvedComp: SyncRouteComponent
+
+  const forwardedComp = React.forwardRef((props, ref) => {
+    const resolvedCompRef = React.useRef(resolvedComp || lazyComp)
+    return React.createElement(
+      resolvedCompRef.current as any,
+      { ...(ref ? { ref } : {}), ...props } as any,
+    )
+  })
+
+  const finalComp = forwardedComp as unknown as RouteComponent
+
+  finalComp.preload = () => {
+    if (!promise) {
+      promise = importer().then((module) => {
+        resolvedComp = module.default
+        return resolvedComp
+      })
+    }
+
+    return promise
+  }
+
+  return finalComp
 }
 
 declare module '@tanstack/router-core' {
@@ -171,17 +214,23 @@ export type PromptProps = {
 
 //
 
-const matchesContext = React.createContext<RouteMatch[]>(null!)
-const routerContext = React.createContext<{ router: Router<any, any> }>(null!)
+export function Link<TTo extends string = '.'>(
+  props: LinkPropsOptions<ResolvedAllRouteInfo, '/', TTo> &
+    React.AnchorHTMLAttributes<HTMLAnchorElement> &
+    Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
+      children?:
+        | React.ReactNode
+        | ((state: { isActive: boolean }) => React.ReactNode)
+    },
+): JSX.Element {
+  const router = useRouter()
+  return <router.Link {...(props as any)} />
+}
 
-// Detect if we're in the DOM
-const isDOM = Boolean(
-  typeof window !== 'undefined' &&
-    window.document &&
-    window.document.createElement,
+export const matchesContext = React.createContext<RouteMatch[]>(null!)
+export const routerContext = React.createContext<{ router: ResolvedRouter }>(
+  null!,
 )
-
-const useLayoutEffect = isDOM ? React.useLayoutEffect : React.useEffect
 
 export type MatchesProviderProps = {
   value: RouteMatch[]
@@ -446,11 +495,12 @@ export function RouterProvider<
 
   useRouterSubscription(router)
   React.useEffect(() => {
+    console.log('hello')
     return router.mount()
   }, [router])
 
   return (
-    <routerContext.Provider value={{ router }}>
+    <routerContext.Provider value={{ router: router as any }}>
       <MatchesProvider value={router.state.matches}>
         {children ?? <Outlet />}
       </MatchesProvider>
@@ -458,17 +508,35 @@ export function RouterProvider<
   )
 }
 
-export function useRouter(): Router {
+export function useRouter(): ResolvedRouter {
   const value = React.useContext(routerContext)
   warning(!value, 'useRouter must be used inside a <Router> component!')
 
   useRouterSubscription(value.router)
 
-  return value.router as Router
+  return value.router
 }
 
 export function useMatches(): RouteMatch[] {
   return React.useContext(matchesContext)
+}
+
+export function useMatch<
+  TId extends keyof ResolvedAllRouteInfo['routeInfoById'],
+  TStrict extends true | false = true,
+>(
+  routeId: TId,
+  opts?: { strict?: TStrict },
+): TStrict extends true
+  ? RouteMatch<ResolvedAllRouteInfo, ResolvedAllRouteInfo['routeInfoById'][TId]>
+  :
+      | RouteMatch<
+          ResolvedAllRouteInfo,
+          ResolvedAllRouteInfo['routeInfoById'][TId]
+        >
+      | undefined {
+  const router = useRouter()
+  return router.useMatch(routeId as any, opts) as any
 }
 
 export function Outlet() {
@@ -507,12 +575,8 @@ export function Outlet() {
                 )
               }
 
-              if (match.__.loadPromise) {
-                console.log(match.matchId, 'suspend')
-                throw match.__.loadPromise
-              }
-
-              invariant(false, 'This should never happen!')
+              console.log(match.matchId, 'suspend')
+              throw match.__.loadPromise
             })() as JSX.Element
           }
         </CatchBoundary>

@@ -53,7 +53,7 @@ function App() {
   return (
     <>
       <Router router={router} />
-      <TanStackRouterDevtools router={router} />
+      <TanStackRouterDevtools />
     </>
   )
 }
@@ -72,7 +72,7 @@ function App() {
   return (
     <>
       <Router />
-      <TanStackRouterDevtools router={router} initialIsOpen={false} />
+      <TanStackRouterDevtools initialIsOpen={false} />
     </>
   )
 }

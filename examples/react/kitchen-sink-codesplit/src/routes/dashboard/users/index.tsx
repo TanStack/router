@@ -47,7 +47,7 @@ function Users() {
     Link,
     MatchRoute,
     navigate,
-  } = router.useMatch(usersRoute.id)
+  } = useMatch(usersRoute.id)
 
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy

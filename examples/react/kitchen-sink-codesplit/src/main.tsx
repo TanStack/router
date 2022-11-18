@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { Outlet, RouterProvider } from '@tanstack/react-router'
+import { Link, Outlet, RouterProvider } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 import { router } from './router'
@@ -94,9 +94,9 @@ function App() {
             but if we pass it children, route matching is
             deferred until the first <Outlet /> is found. */}
           <Root />
+          <TanStackRouterDevtools position="bottom-right" />
         </RouterProvider>
       </AuthProvider>
-      <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
   )
 }
@@ -133,7 +133,7 @@ function Root() {
           ).map(([to, label]) => {
             return (
               <div key={to}>
-                <router.Link
+                <Link
                   to={to}
                   activeOptions={
                     {
@@ -147,7 +147,7 @@ function Root() {
                   activeProps={{ className: `font-bold` }}
                 >
                   {label}
-                </router.Link>
+                </Link>
               </div>
             )
           })}

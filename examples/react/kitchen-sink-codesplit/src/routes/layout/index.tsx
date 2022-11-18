@@ -1,7 +1,6 @@
-import { createRouteConfig, Outlet } from '@tanstack/react-router'
+import { createRouteConfig, Outlet, useMatch } from '@tanstack/react-router'
 import * as React from 'react'
 
-import { router } from '../../router'
 import { loaderDelayFn } from '../../utils'
 
 export const layoutRoute = createRouteConfig().createRoute({
@@ -17,7 +16,7 @@ export const layoutRoute = createRouteConfig().createRoute({
 })
 
 function LayoutWrapper() {
-  const { loaderData } = router.useMatch(layoutRoute.id)
+  const { loaderData } = useMatch(layoutRoute.id)
   return (
     <div>
       <div>Layout</div>

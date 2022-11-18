@@ -1,7 +1,6 @@
 import * as React from 'react'
-import { createRouteConfig, Outlet } from '@tanstack/react-router'
+import { createRouteConfig, Outlet, useMatch } from '@tanstack/react-router'
 import axios from 'axios'
-import { router } from './router'
 
 type PostType = {
   id: string
@@ -9,34 +8,42 @@ type PostType = {
   body: string
 }
 
-export const routeConfig = createRouteConfig().createChildren((createRoute) => [
-  createRoute({
-    path: '/',
-    component: Index,
-  }),
-  createRoute({
-    path: 'posts',
-    component: Posts,
-    errorComponent: () => 'Oh crap!',
-    loader: async () => {
-      return {
-        posts: await fetchPosts(),
-      }
-    },
-    // loader: {...}
-  }).createChildren((createRoute) => [
-    createRoute({ path: '/', component: PostsIndex }),
-    createRoute({
-      path: ':postId',
-      component: Post,
-      loader: async ({ params: { postId } }) => {
-        return {
-          post: await fetchPostById(postId),
-        }
-      },
-      // loader: {...}
-    }),
-  ]),
+const rootRoute = createRouteConfig()
+
+const indexRoute = rootRoute.createRoute({
+  path: '/',
+  component: Index,
+})
+
+const postsRoute = rootRoute.createRoute({
+  path: 'posts',
+  component: Posts,
+  errorComponent: () => 'Oh crap',
+  loader: async () => {
+    return {
+      posts: await fetchPosts(),
+    }
+  },
+})
+
+const PostsIndexRoute = postsRoute.createRoute({
+  path: '/',
+  component: PostsIndex,
+})
+
+const postRoute = postsRoute.createRoute({
+  path: ':postId',
+  component: Post,
+  loader: async ({ params: { postId } }) => {
+    return {
+      post: await fetchPostById(postId),
+    }
+  },
+})
+
+export const routeConfig = createRouteConfig().addChildren([
+  indexRoute,
+  postsRoute.addChildren([PostsIndexRoute, postRoute]),
 ])
 
 async function fetchPosts() {
@@ -68,7 +75,7 @@ function Posts() {
   const {
     loaderData: { posts },
     Link,
-  } = router.useMatch('/posts')
+  } = useMatch(postsRoute.id)
 
   return (
     <div>
@@ -110,7 +117,7 @@ function PostsIndex() {
 function Post() {
   const {
     loaderData: { post },
-  } = router.useMatch('/posts/:postId')
+  } = useMatch(postRoute.id)
 
   return (
     <div>

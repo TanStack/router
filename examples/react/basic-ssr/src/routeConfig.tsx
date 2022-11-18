@@ -1,7 +1,6 @@
 import * as React from 'react'
-import { createRouteConfig, Outlet } from '@tanstack/react-router'
+import { createRouteConfig, Outlet, useMatch } from '@tanstack/react-router'
 import axios from 'axios'
-import { router } from './router'
 
 type PostType = {
   id: string
@@ -9,41 +8,47 @@ type PostType = {
   body: string
 }
 
-export const routeConfig = createRouteConfig().createChildren((createRoute) => [
-  createRoute({
-    path: '/',
-    component: Index,
-  }),
-  createRoute({
-    path: 'posts',
-    component: Posts,
-    loaderMaxAge: 5000,
-    loader: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      return {
-        posts: await fetchPosts(),
-      }
-    },
-    errorComponent: () => 'Oh crap!',
-  }).createChildren((createRoute) => [
-    createRoute({ path: '/', component: PostsIndex }),
-    createRoute({
-      path: ':postId',
-      component: Post,
-      loaderMaxAge: 5000,
-      loader: async ({ params: { postId } }) => {
-        await new Promise((resolve) => setTimeout(resolve, 300))
-        return {
-          post: await fetchPostById(postId),
-        }
-      },
-    }),
-  ]),
+const rootRoute = createRouteConfig()
+
+const indexRoute = rootRoute.createRoute({
+  path: '/',
+  component: Index,
+})
+
+const postsRoute = rootRoute.createRoute({
+  path: 'posts',
+  component: Posts,
+  errorComponent: () => 'Oh crap',
+  loader: async () => {
+    return {
+      posts: await fetchPosts(),
+    }
+  },
+})
+
+const PostsIndexRoute = postsRoute.createRoute({
+  path: '/',
+  component: PostsIndex,
+})
+
+const postRoute = postsRoute.createRoute({
+  path: ':postId',
+  component: Post,
+  loader: async ({ params: { postId } }) => {
+    return {
+      post: await fetchPostById(postId),
+    }
+  },
+})
+
+export const routeConfig = createRouteConfig().addChildren([
+  indexRoute,
+  postsRoute.addChildren([PostsIndexRoute, postRoute]),
 ])
 
 async function fetchPosts() {
   console.log('Fetching posts...')
-  await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
+  await new Promise((r) => setTimeout(r, Math.round(500)))
   return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
@@ -51,7 +56,7 @@ async function fetchPosts() {
 
 async function fetchPostById(postId: string) {
   console.log(`Fetching post with id ${postId}...`)
-  await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
+  await new Promise((r) => setTimeout(r, Math.round(1000)))
 
   return await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
@@ -70,7 +75,7 @@ function Posts() {
   const {
     loaderData: { posts },
     Link,
-  } = router.useMatch('/posts')
+  } = useMatch(postsRoute.id)
 
   return (
     <div>
@@ -112,7 +117,7 @@ function PostsIndex() {
 function Post() {
   const {
     loaderData: { post },
-  } = router.useMatch('/posts/:postId')
+  } = useMatch(postRoute.id)
 
   return (
     <div>

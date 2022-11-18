@@ -42,7 +42,6 @@
   "dependencies": {
     "@babel/runtime": "^7.16.7",
     "@tanstack/router-core": "0.0.1-beta.16",
-    "react-lazy-with-preload": "^2.2.1",
     "use-sync-external-store": "^1.2.0"
   },
   "devDependencies": {

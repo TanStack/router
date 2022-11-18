@@ -1,9 +1,14 @@
 import { createReactRouter } from '@tanstack/react-router'
 import { routeConfig } from './routeConfig'
 
-// Set up a ReactRouter instance
+export const createRouter = () =>
+  createReactRouter({
+    routeConfig,
+    // defaultPreload: 'intent',
+  })
 
-export const router = createReactRouter({
-  routeConfig,
-  // defaultPreload: 'intent',
-})
+declare module '@tanstack/react-router' {
+  interface ResolveRouter {
+    router: ReturnType<typeof createRouter>
+  }
+}

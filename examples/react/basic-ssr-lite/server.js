@@ -66,16 +66,28 @@ export async function createServer(
         return res.status(404)
       }
 
-      let template, render
+      const { template, render, load } = await (async () => {
+        if (!isProd) {
+          // always read fresh template in dev
+          let template = fs.readFileSync(resolve('index.html'), 'utf-8')
+          template = await vite.transformIndexHtml(url, template)
+          return {
+            template,
+            ...(await vite.ssrLoadModule('/src/entry-server.tsx')),
+          }
+        } else {
+          return {
+            template: indexProd,
+            ...(await import('./dist/server/entry-server.tsx')),
+          }
+        }
+      })()
 
-      if (!isProd) {
-        // always read fresh template in dev
-        template = fs.readFileSync(resolve('index.html'), 'utf-8')
-        template = await vite.transformIndexHtml(url, template)
-        render = (await vite.ssrLoadModule('/src/entry-server.tsx')).render
-      } else {
-        template = indexProd
-        render = (await import('./dist/server/entry-server.tsx')).render
+      if (url.includes('__data=')) {
+        const data = await load({
+          url,
+        })
+        return res.json(data)
       }
 
       render({ template, url, res })

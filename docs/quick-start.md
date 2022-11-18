@@ -32,8 +32,7 @@ function App() {
     <>
       <RouterProvider router={router}>
         <div>
-          <router.Link to="/">Home</router.Link>{' '}
-          <router.Link to="/about">About</router.Link>
+          <Link to="/">Home</Link> <Link to="/about">About</Link>
         </div>
         <hr />
         <Outlet />

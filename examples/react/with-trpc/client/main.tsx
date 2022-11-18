@@ -5,6 +5,8 @@ import {
   RouterProvider,
   createReactRouter,
   createRouteConfig,
+  Link,
+  useMatch,
 } from '@tanstack/react-router'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
@@ -20,54 +22,67 @@ export const trpc = createTRPCProxyClient<AppRouter>({
   ],
 })
 
-// Build our routes. We could do this in our component, too.
-const routeConfig = createRouteConfig().createChildren((createRoute) => [
-  createRoute({
-    path: '/',
-    component: Home,
+const rootRoute = createRouteConfig()
+
+const indexRoute = rootRoute.createRoute({
+  path: '/',
+  component: Home,
+})
+
+const dashboardRoute = rootRoute.createRoute({
+  path: 'dashboard',
+  component: Dashboard,
+  loader: async () => {
+    return {
+      posts: await trpc.posts.query(),
+    }
+  },
+})
+
+const postsRoute = dashboardRoute.createRoute({
+  path: 'posts',
+  component: Posts,
+})
+
+const postsIndexRoute = postsRoute.createRoute({
+  path: '/',
+  component: PostsIndex,
+})
+
+const postRoute = postsRoute.createRoute({
+  path: ':postId',
+  parseParams: (params) => ({
+    postId: z.number().int().parse(Number(params.postId)),
   }),
-  createRoute({
-    path: 'dashboard',
-    component: Dashboard,
-    loader: async () => {
-      return {
-        posts: await trpc.posts.query(),
-      }
-    },
-  }).createChildren((createRoute) => [
-    createRoute({ path: '/', component: DashboardHome }),
-    createRoute({
-      path: 'posts',
-      component: Posts,
-    }).createChildren((createRoute) => [
-      createRoute({
-        path: '/',
-        component: PostsIndex,
-      }),
-      createRoute({
-        path: ':postId',
-        parseParams: (params) => ({
-          postId: z.number().int().parse(Number(params.postId)),
-        }),
-        stringifyParams: ({ postId }) => ({ postId: `${postId}` }),
-        validateSearch: z.object({
-          showNotes: z.boolean().optional(),
-          notes: z.string().optional(),
-        }),
-        component: PostView,
-        loader: async ({ params: { postId }, search: {} }) => {
-          const post = await trpc.post.query(postId)
+  stringifyParams: ({ postId }) => ({ postId: `${postId}` }),
+  validateSearch: z.object({
+    showNotes: z.boolean().optional(),
+    notes: z.string().optional(),
+  }),
+  component: PostView,
+  loader: async ({ params: { postId }, search: {} }) => {
+    const post = await trpc.post.query(postId)
 
-          if (!post) {
-            throw new Error('Post not found!')
-          }
+    if (!post) {
+      throw new Error('Post not found!')
+    }
 
-          return {
-            post,
-          }
-        },
-      }),
-    ]),
+    return {
+      post,
+    }
+  },
+})
+
+const dashboardIndexRoute = dashboardRoute.createRoute({
+  path: '/',
+  component: DashboardHome,
+})
+
+const routeConfig = rootRoute.addChildren([
+  indexRoute,
+  dashboardRoute.addChildren([
+    dashboardIndexRoute,
+    postsRoute.addChildren([postsIndexRoute, postRoute]),
   ]),
 ])
 
@@ -80,6 +95,12 @@ const router = createReactRouter({
   ),
 })
 
+declare module '@tanstack/react-router' {
+  interface ResolveRouter {
+    router: typeof router
+  }
+}
+
 // Provide our location and routes to our application
 function App() {
   return (
@@ -91,8 +112,8 @@ function App() {
       in <Root /> before rendering any routes */}
       <RouterProvider router={router} defaultPreload="intent">
         <Root />
+        <TanStackRouterDevtools position="bottom-right" />
       </RouterProvider>
-      <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
   )
 }
@@ -123,7 +144,7 @@ function Root() {
           ).map(([to, label]) => {
             return (
               <div key={to}>
-                <router.Link
+                <Link
                   to={to}
                   activeOptions={
                     {
@@ -138,7 +159,7 @@ function Root() {
                   activeProps={{ className: `font-bold` }}
                 >
                   {label}
-                </router.Link>
+                </Link>
               </div>
             )
           })}
@@ -153,7 +174,7 @@ function Root() {
 }
 
 function Home() {
-  const route = router.useMatch('/')
+  const route = useMatch(indexRoute.id)
 
   return (
     <div className={`p-2`}>
@@ -186,7 +207,7 @@ function Home() {
 }
 
 function Dashboard() {
-  const route = router.useMatch('/dashboard')
+  const route = useMatch(dashboardRoute.id)
 
   return (
     <>
@@ -231,7 +252,7 @@ function Dashboard() {
 function DashboardHome() {
   const {
     loaderData: { posts },
-  } = router.useMatch('/dashboard/')
+  } = useMatch(dashboardIndexRoute.id)
 
   return (
     <div className="p-2">
@@ -248,26 +269,12 @@ function Posts() {
     loaderData: { posts },
     Link,
     MatchRoute,
-  } = router.useMatch('/dashboard/posts')
-
-  // Get the action for a child route
-  const invoiceIndexRoute = router.useRoute('/dashboard/posts/')
-  const invoiceDetailRoute = router.useRoute('/dashboard/posts/:postId')
+  } = useMatch(postsRoute.id)
 
   return (
     <div className="flex-1 flex">
       <div className="divide-y w-48">
         {posts?.map((post) => {
-          let foundPending
-
-          // const foundPending = invoiceDetailRoute.action.pending.find(
-          //   (d) => d.submission?.id === post.id,
-          // )
-
-          // if (foundPending?.submission) {
-          //   post = { ...post, ...foundPending.submission }
-          // }
-
           return (
             <div key={post.id}>
               <Link
@@ -281,33 +288,20 @@ function Posts() {
               >
                 <pre className="text-sm">
                   #{post.id} - {post.title.slice(0, 10)}{' '}
-                  {foundPending ? (
+                  <MatchRoute
+                    to="./:postId"
+                    params={{
+                      postId: post.id,
+                    }}
+                    pending
+                  >
                     <Spinner />
-                  ) : (
-                    <MatchRoute
-                      to="./:postId"
-                      params={{
-                        postId: post.id,
-                      }}
-                      pending
-                    >
-                      <Spinner />
-                    </MatchRoute>
-                  )}
+                  </MatchRoute>
                 </pre>
               </Link>
             </div>
           )
         })}
-        {/* {invoiceIndexRoute.action.pending.map((action) => (
-          <div key={action.submittedAt}>
-            <a href="#" className="block py-2 px-3 text-blue-700">
-              <pre className="text-sm">
-                #<Spinner /> - {action.submission.title?.slice(0, 10)}
-              </pre>
-            </a>
-          </div>
-        ))} */}
       </div>
       <div className="flex-1 border-l border-gray-200">
         <Outlet />
@@ -327,12 +321,10 @@ function PostsIndex() {
 function PostView() {
   const {
     loaderData: { post },
-    action,
     search,
     Link,
     navigate,
-    params,
-  } = router.useMatch('/dashboard/posts/:postId')
+  } = useMatch(postRoute.id)
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
 
@@ -344,7 +336,7 @@ function PostView() {
   }, [notes])
 
   return (
-    <div className="p-2 space-y-2">
+    <div className="p-2 space-y-2" key={post.id}>
       <div className="space-y-2">
         <h2 className="font-bold text-lg">
           <input
@@ -396,19 +388,6 @@ function PostView() {
 
 function Spinner() {
   return <div className="inline-block animate-spin px-3">⍥</div>
-}
-
-function useSessionStorage<T>(key: string, initialValue: T) {
-  const state = React.useState<T>(() => {
-    const stored = sessionStorage.getItem(key)
-    return stored ? JSON.parse(stored) : initialValue
-  })
-
-  React.useEffect(() => {
-    sessionStorage.setItem(key, JSON.stringify(state[0]))
-  }, [state[0]])
-
-  return state
 }
 
 const rootElement = document.getElementById('app')!

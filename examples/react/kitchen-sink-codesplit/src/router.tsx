@@ -37,3 +37,9 @@ export const router = createReactRouter({
     </div>
   ),
 })
+
+declare module '@tanstack/react-router' {
+  interface ResolveRouter {
+    router: typeof router
+  }
+}

@@ -3,14 +3,12 @@ import ReactDOMServer from 'react-dom/server'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import jsesc from 'jsesc'
 import { App } from './App'
-import { router } from './router'
 import { ServerResponse } from 'http'
+import { createRouter } from './router'
 
-export async function render(opts: {
-  url: string
-  template: string
-  res: ServerResponse
-}) {
+async function getRouter(opts: { url: string }) {
+  const router = createRouter()
+
   router.reset()
 
   const memoryHistory = createMemoryHistory({
@@ -22,6 +20,27 @@ export async function render(opts: {
   })
 
   router.mount()() // and unsubscribe immediately
+
+  return router
+}
+
+export async function load(opts: { url: string }) {
+  const router = await getRouter(opts)
+
+  await router.load()
+
+  const search = router.state.location.search as { __data: { matchId: string } }
+
+  return router.state.matches.find((d) => d.matchId === search.__data.matchId)
+    ?.routeLoaderData
+}
+
+export async function render(opts: {
+  url: string
+  template: string
+  res: ServerResponse
+}) {
+  const router = await getRouter(opts)
 
   router.load().then(() => {
     const routerState = router.dehydrateState()
@@ -35,6 +54,8 @@ export async function render(opts: {
     )})</script>`
 
     opts.res.write(routerScript)
+
+    return router
   })
 
   const leadingHtml = opts.template.substring(

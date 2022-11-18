@@ -1,6 +1,5 @@
-import { Outlet } from '@tanstack/react-router'
+import { Outlet, useMatch } from '@tanstack/react-router'
 import * as React from 'react'
-import { router } from '../../../router'
 import { Spinner } from '../../../components/Spinner'
 import { dashboardRoute } from '..'
 
@@ -15,7 +14,7 @@ function Invoices() {
     Link,
     MatchRoute,
     useRoute,
-  } = router.useMatch(invoicesRoute.id)
+  } = useMatch(invoicesRoute.id)
 
   // Get the action for a child route
   const invoiceIndexRoute = useRoute('./')

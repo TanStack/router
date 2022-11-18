@@ -1,15 +1,12 @@
 import * as React from 'react'
-import { Outlet } from '@tanstack/react-router'
+import { Link, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-
-import { router } from './router'
 
 export function App() {
   return (
-    // Build our routes and render our router
     <>
       <div>
-        <router.Link
+        <Link
           to="/"
           activeProps={{
             className: 'font-bold',
@@ -17,19 +14,19 @@ export function App() {
           activeOptions={{ exact: true }}
         >
           Home
-        </router.Link>{' '}
-        <router.Link
+        </Link>{' '}
+        <Link
           to="/posts"
           activeProps={{
             className: 'font-bold',
           }}
         >
           Posts
-        </router.Link>
+        </Link>
       </div>
       <hr />
       <Outlet />
-      <TanStackRouterDevtools router={router} />
+      <TanStackRouterDevtools />
     </>
   )
 }

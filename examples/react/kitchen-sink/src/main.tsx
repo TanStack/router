@@ -6,6 +6,8 @@ import {
   createReactRouter,
   createRouteConfig,
   lazy,
+  Link,
+  useMatch,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -27,139 +29,166 @@ import { z } from 'zod'
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
 // Build our routes. We could do this in our component, too.
-const routeConfig = createRouteConfig().createChildren((createRoute) => [
-  createRoute({
-    path: '/',
-    component: Home,
-  }),
-  createRoute({
-    path: 'dashboard',
-    component: Dashboard,
-    loader: async () => {
-      console.log('Fetching all invoices...')
-      return {
-        invoices: await fetchInvoices(),
-      }
-    },
-  }).createChildren((createRoute) => [
-    createRoute({ path: '/', component: DashboardHome }),
-    createRoute({
-      path: 'invoices',
-      component: Invoices,
-    }).createChildren((createRoute) => [
-      createRoute({
-        path: '/',
-        component: InvoicesHome,
-        action: async (partialInvoice: Partial<Invoice>) => {
-          return postInvoice(partialInvoice)
-        },
-      }),
-      createRoute({
-        path: ':invoiceId',
-        parseParams: (params) => ({
-          invoiceId: z.number().int().parse(Number(params.invoiceId)),
-        }),
-        stringifyParams: ({ invoiceId }) => ({ invoiceId: `${invoiceId}` }),
-        validateSearch: z.object({
-          showNotes: z.boolean().optional(),
-          notes: z.string().optional(),
-        }),
-        component: InvoiceView,
-        loader: async ({ params: { invoiceId }, search: {} }) => {
-          console.log('Fetching invoice...')
-          const invoice = await fetchInvoiceById(invoiceId)
+const rootRoute = createRouteConfig()
 
-          if (!invoice) {
-            throw new Error('Invoice not found!')
-          }
+const indexRoute = rootRoute.createRoute({
+  path: '/',
+  component: Home,
+})
 
-          return {
-            invoice,
-          }
-        },
-        action: patchInvoice,
-      }),
-    ]),
-    createRoute({
-      path: 'users',
-      component: Users,
-      loader: async ({ search }) => {
-        search
-        return {
-          users: await fetchUsers(),
-        }
-      },
-      validateSearch: z.object({
-        usersView: z
-          .object({
-            sortBy: z.enum(['name', 'id', 'email']).optional(),
-            filterBy: z.string().optional(),
-          })
-          .optional(),
-      }).parse,
-      preSearchFilters: [
-        // Persist (or set as default) the usersView search param
-        // while navigating within or to this route (or it's children!)
-        (search) => ({
-          ...search,
-          usersView: {
-            ...search.usersView,
-          },
-        }),
-      ],
-    }).createChildren((createRoute) => [
-      createRoute({ path: '/', component: UsersIndex }),
-      createRoute({
-        path: ':userId',
-        parseParams: ({ userId }) => ({ userId: Number(userId) }),
-        stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
-        component: UserView,
-        loader: async ({ params: { userId } }) => {
-          return {
-            user: await fetchUserById(userId),
-          }
-        },
-      }),
-    ]),
-  ]),
-  createRoute({
-    // Your elements can be asynchronous, which means you can code-split!
-    path: 'expensive',
-    component: lazy(() => loaderDelayFn(() => import('./Expensive'))),
+const dashboardRoute = rootRoute.createRoute({
+  path: 'dashboard',
+  component: Dashboard,
+  loader: async () => {
+    console.log('Fetching all invoices...')
+    return {
+      invoices: await fetchInvoices(),
+    }
+  },
+})
+
+const dashboardIndexRoute = dashboardRoute.createRoute({
+  path: '/',
+  component: DashboardHome,
+})
+
+const invoicesRoute = dashboardRoute.createRoute({
+  path: 'invoices',
+  component: Invoices,
+})
+
+const invoicesIndexRoute = invoicesRoute.createRoute({
+  path: '/',
+  component: InvoicesHome,
+  action: async (partialInvoice: Partial<Invoice>) => {
+    return postInvoice(partialInvoice)
+  },
+})
+
+const invoiceRoute = invoicesRoute.createRoute({
+  path: ':invoiceId',
+  parseParams: (params) => ({
+    invoiceId: z.number().int().parse(Number(params.invoiceId)),
   }),
-  // Obviously, you can put routes in other files, too
-  // reallyExpensiveRoute,
-  createRoute({
-    path: 'authenticated/', // Trailing slash doesn't mean anything
-    component: Auth,
-  }).createChildren((createRoute) => [
-    createRoute({
-      path: '/',
-      component: Authenticated,
-    }),
-  ]),
-  createRoute({
-    id: 'layout',
-    component: LayoutWrapper,
-    loader: async () => {
-      return loaderDelayFn(() => {
-        const rand = Math.random()
-        console.log(rand)
-        return {
-          random: rand,
-        }
+  stringifyParams: ({ invoiceId }) => ({ invoiceId: `${invoiceId}` }),
+  validateSearch: z.object({
+    showNotes: z.boolean().optional(),
+    notes: z.string().optional(),
+  }),
+  component: InvoiceView,
+  loader: async ({ params: { invoiceId }, search: {} }) => {
+    console.log('Fetching invoice...')
+    const invoice = await fetchInvoiceById(invoiceId)
+
+    if (!invoice) {
+      throw new Error('Invoice not found!')
+    }
+
+    return {
+      invoice,
+    }
+  },
+  action: patchInvoice,
+})
+
+const usersRoute = dashboardRoute.createRoute({
+  path: 'users',
+  component: Users,
+  loader: async ({ search }) => {
+    search
+    return {
+      users: await fetchUsers(),
+    }
+  },
+  validateSearch: z.object({
+    usersView: z
+      .object({
+        sortBy: z.enum(['name', 'id', 'email']).optional(),
+        filterBy: z.string().optional(),
       })
-    },
-  }).createChildren((createRoute) => [
-    createRoute({
-      path: 'layout-a',
-      component: LayoutA,
+      .optional(),
+  }).parse,
+  preSearchFilters: [
+    // Persist (or set as default) the usersView search param
+    // while navigating within or to this route (or it's children!)
+    (search) => ({
+      ...search,
+      usersView: {
+        ...search.usersView,
+      },
     }),
-    createRoute({
-      path: 'layout-b',
-      component: LayoutB,
-    }),
+  ],
+})
+
+const usersIndexRoute = usersRoute.createRoute({
+  path: '/',
+  component: UsersIndex,
+})
+
+const userRoute = usersRoute.createRoute({
+  path: ':userId',
+  parseParams: ({ userId }) => ({ userId: Number(userId) }),
+  stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
+  component: UserView,
+  loader: async ({ params: { userId } }) => {
+    return {
+      user: await fetchUserById(userId),
+    }
+  },
+})
+
+const tanner = lazy(() => loaderDelayFn(() => import('./Expensive')))
+
+const expensiveRoute = rootRoute.createRoute({
+  // Your elements can be asynchronous, which means you can code-split!
+  path: 'expensive',
+  component: tanner,
+})
+
+const authenticatedRoute = rootRoute.createRoute({
+  path: 'authenticated/', // Trailing slash doesn't mean anything
+  component: Auth,
+})
+
+const authenticatedIndexRoute = authenticatedRoute.createRoute({
+  path: '/',
+  component: Authenticated,
+})
+
+const layoutRoute = rootRoute.createRoute({
+  id: 'layout',
+  component: LayoutWrapper,
+  loader: async () => {
+    return loaderDelayFn(() => {
+      const rand = Math.random()
+      console.log(rand)
+      return {
+        random: rand,
+      }
+    })
+  },
+})
+
+const layoutARoute = layoutRoute.createRoute({
+  path: 'layout-a',
+  component: LayoutA,
+})
+
+const layoutBRoute = layoutRoute.createRoute({
+  path: 'layout-b',
+  component: LayoutB,
+})
+
+const routeConfig = rootRoute.addChildren([
+  indexRoute,
+  dashboardRoute.addChildren([
+    dashboardIndexRoute,
+    invoicesRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
+    usersRoute.addChildren([usersIndexRoute, userRoute]),
   ]),
+  expensiveRoute,
+  authenticatedRoute.addChildren([authenticatedIndexRoute]),
+  layoutRoute.addChildren([layoutARoute, layoutBRoute]),
 ])
 
 const router = createReactRouter({
@@ -170,6 +199,12 @@ const router = createReactRouter({
     </div>
   ),
 })
+
+declare module '@tanstack/react-router' {
+  interface ResolveRouter {
+    router: typeof router
+  }
+}
 
 // Provide our location and routes to our application
 function App() {
@@ -264,9 +299,9 @@ function App() {
           key={[defaultPreloadMaxAge].join('.')}
         >
           <Root />
+          <TanStackRouterDevtools position="bottom-right" />
         </RouterProvider>
       </AuthProvider>
-      <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
   )
 }
@@ -301,7 +336,7 @@ function Root() {
           ).map(([to, label]) => {
             return (
               <div key={to}>
-                <router.Link
+                <Link
                   to={to}
                   activeOptions={
                     {
@@ -316,7 +351,7 @@ function Root() {
                   activeProps={{ className: `font-bold` }}
                 >
                   {label}
-                </router.Link>
+                </Link>
               </div>
             )
           })}
@@ -331,14 +366,14 @@ function Root() {
 }
 
 function Home() {
-  const route = router.useMatch('/')
+  const route = useMatch(indexRoute.id)
 
   return (
     <div className={`p-2`}>
       <div className={`text-lg`}>Welcome Home!</div>
       <hr className={`my-2`} />
       <route.Link
-        to="/dashboard/invoices/:invoiceId"
+        to={invoiceRoute.id}
         params={{
           invoiceId: 3,
         }}
@@ -364,7 +399,7 @@ function Home() {
 }
 
 function Dashboard() {
-  const route = router.useMatch('/dashboard')
+  const route = useMatch(dashboardRoute.id)
 
   return (
     <>
@@ -411,7 +446,7 @@ function Dashboard() {
 function DashboardHome() {
   const {
     loaderData: { invoices },
-  } = router.useMatch('/dashboard/')
+  } = useMatch(dashboardIndexRoute.id)
 
   return (
     <div className="p-2">
@@ -428,14 +463,14 @@ function Invoices() {
     loaderData: { invoices },
     Link,
     MatchRoute,
-  } = router.useMatch('/dashboard/invoices')
+  } = useMatch(invoicesRoute.id)
 
   // Get the action for a child route
-  const invoiceIndexMatch = router.useMatch('/dashboard/invoices/', {
+  const invoiceIndexMatch = useMatch(invoicesIndexRoute.id, {
     strict: false,
   })
 
-  const invoiceDetailMatch = router.useMatch('/dashboard/invoices/:invoiceId', {
+  const invoiceDetailMatch = useMatch(invoiceRoute.id, {
     strict: false,
   })
 
@@ -500,7 +535,7 @@ function Invoices() {
 }
 
 function InvoicesHome() {
-  const { action } = router.useMatch('/dashboard/invoices/')
+  const { action } = useMatch(invoicesIndexRoute.id)
 
   return (
     <>
@@ -552,7 +587,7 @@ function InvoiceView() {
     search,
     Link,
     navigate,
-  } = router.useMatch('/dashboard/invoices/:invoiceId')
+  } = useMatch(invoiceRoute.id)
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
 
@@ -672,7 +707,7 @@ function Users() {
     Link,
     MatchRoute,
     navigate,
-  } = router.useMatch('/dashboard/users')
+  } = useMatch(usersRoute.id)
 
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy
@@ -812,7 +847,7 @@ function UsersIndex() {
 function UserView() {
   const {
     loaderData: { user },
-  } = router.useMatch('/dashboard/users/:userId')
+  } = useMatch(userRoute.id)
 
   return (
     <>
@@ -925,7 +960,7 @@ function Authenticated() {
 }
 
 function LayoutWrapper() {
-  const { loaderData } = router.useMatch('/layout')
+  const { loaderData } = useMatch(layoutRoute.id)
 
   return (
     <div>

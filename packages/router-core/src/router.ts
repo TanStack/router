@@ -6,7 +6,6 @@ import {
   History,
   MemoryHistory,
 } from 'history'
-import React from 'react'
 import invariant from 'tiny-invariant'
 import { GetFrameworkGeneric } from './frameworks'
 
@@ -91,7 +90,6 @@ export interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
   defaultPreloadMaxAge?: number
   defaultPreloadGcMaxAge?: number
   defaultPreloadDelay?: number
-  useErrorBoundary?: boolean
   defaultComponent?: GetFrameworkGeneric<'Component'>
   defaultErrorComponent?: GetFrameworkGeneric<'Component'>
   defaultPendingComponent?: GetFrameworkGeneric<'Component'>
@@ -100,6 +98,7 @@ export interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
   caseSensitive?: boolean
   routeConfig?: TRouteConfig
   basepath?: string
+  useServerData?: boolean
   createRouter?: (router: Router<any, any>) => void
   createRoute?: (opts: { route: AnyRoute; router: Router<any, any> }) => void
   loadComponent?: (
@@ -166,11 +165,11 @@ export interface Loader<
 }
 
 export interface LoaderState<
-  TFullSearchSchema = unknown,
-  TAllParams = unknown,
+  TFullSearchSchema extends AnySearchSchema = {},
+  TAllParams extends AnyPathParams = {},
 > {
   loadedAt: number
-  loaderContext: LoaderContext<TFullSearchSchema, TAllParams>
+  loaderContext: LoaderContext<AnyLoaderData, TFullSearchSchema, TAllParams>
 }
 
 export interface RouterState {
@@ -249,6 +248,13 @@ export interface Router<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
   TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
 > {
+  types: {
+    // Super secret internal stuff
+    RouteConfig: TRouteConfig
+    AllRouteInfo: TAllRouteInfo
+  }
+
+  // Public API
   history: BrowserHistory | MemoryHistory | HashHistory
   options: PickAsRequired<
     RouterOptions<TRouteConfig>,
@@ -257,7 +263,6 @@ export interface Router<
   // Computed in this.update()
   basepath: string
   // Internal:
-  allRouteInfo: TAllRouteInfo
   listeners: Listener[]
   location: Location
   navigateTimeout?: Timeout
@@ -300,6 +305,9 @@ export interface Router<
       | { preload: true; maxAge: number; gcMaxAge: number }
       | { preload?: false; maxAge?: never; gcMaxAge?: never },
   ) => Promise<void>
+  loadMatchData: (
+    routeMatch: RouteMatch<any, any>,
+  ) => Promise<Record<string, unknown>>
   invalidateRoute: (opts: MatchLocation) => void
   reload: () => Promise<void>
   resolvePath: (from: string, path: string) => string
@@ -380,6 +388,9 @@ export function createRouter<
   }
 
   let router: Router<TRouteConfig, TAllRouteInfo> = {
+    types: undefined!,
+
+    // public api
     history,
     options: originalOptions,
     listeners: [],
@@ -388,7 +399,6 @@ export function createRouter<
     routeTree: undefined!,
     routesById: {} as any,
     location: undefined!,
-    allRouteInfo: undefined!,
     //
     navigationPromise: Promise.resolve(),
     resolveNavigation: () => {},
@@ -841,6 +851,12 @@ export function createRouter<
         match.__.validate()
         match.load(loaderOpts)
 
+        const search = match.search as { __data?: any }
+
+        if (search.__data && search.__data.matchId !== match.matchId) {
+          return
+        }
+
         if (match.__.loadPromise) {
           // Wait for the first sign of activity from the match
           await match.__.loadPromise
@@ -850,6 +866,40 @@ export function createRouter<
       router.notify()
 
       await Promise.all(matchPromises)
+    },
+
+    loadMatchData: async (routeMatch) => {
+      if (isServer || !router.options.useServerData) {
+        return (
+          (await routeMatch.options.loader?.({
+            // parentLoaderPromise: routeMatch.parentMatch?.__.dataPromise,
+            params: routeMatch.params,
+            search: routeMatch.routeSearch,
+            signal: routeMatch.__.abortController.signal,
+          })) ?? {}
+        )
+      } else {
+        const next = router.buildNext({
+          to: '.',
+          search: (d: any) => ({
+            ...(d ?? {}),
+            __data: {
+              matchId: routeMatch.matchId,
+            },
+          }),
+        })
+
+        const res = await fetch(next.href, {
+          method: 'GET',
+          // signal: routeMatch.__.abortController.signal,
+        })
+
+        if (res.ok) {
+          return res.json()
+        }
+
+        throw new Error('Failed to fetch match data')
+      }
     },
 
     invalidateRoute: (opts: MatchLocation) => {

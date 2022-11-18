@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { router } from '../../../router'
 import { Invoice, postInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import { invoicesRoute } from '.'
+import { useMatch } from '@tanstack/react-router'
 
 export const invoicesIndexRoute = invoicesRoute.createRoute({
   path: '/',
@@ -11,7 +11,7 @@ export const invoicesIndexRoute = invoicesRoute.createRoute({
 })
 
 function InvoicesHome() {
-  const { action } = router.useMatch(invoicesIndexRoute.id)
+  const { action } = useMatch(invoicesIndexRoute.id)
 
   return (
     <>
