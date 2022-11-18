@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Outlet, Link } from '@tanstack/react-router'
-// import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 export function App() {
   return (
@@ -27,7 +27,7 @@ export function App() {
       </div>
       <hr />
       <Outlet />
-      {/* <TanStackRouterDevtools /> */}
+      <TanStackRouterDevtools />
     </>
   )
 }

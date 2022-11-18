@@ -7,8 +7,8 @@ export const createRouter = () =>
     // defaultPreload: 'intent',
   })
 
-// declare module '@tanstack/react-router' {
-//   interface RegisterRouter {
-//     router: ReturnType<typeof createRouter>
-//   }
-// }
+declare module '@tanstack/react-router' {
+  interface RegisterRouter {
+    router: ReturnType<typeof createRouter>
+  }
+}
