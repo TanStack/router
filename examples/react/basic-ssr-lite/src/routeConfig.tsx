@@ -48,7 +48,7 @@ export const routeConfig = createRouteConfig().addChildren([
 
 async function fetchPosts() {
   console.log('Fetching posts...')
-  await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
+  await new Promise((r) => setTimeout(r, 300 + Math.round(Math.random() * 300)))
   return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
