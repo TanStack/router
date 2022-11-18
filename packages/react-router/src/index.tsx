@@ -451,7 +451,7 @@ export function createReactRouter<
         },
       }
 
-      const routeExt = makeRouteExt(router.getRoute('/'), router)
+      const routeExt = makeRouteExt(router.getRoute(rootRouteId), router)
 
       Object.assign(router, routerExt, routeExt)
     },

@@ -7,7 +7,6 @@ import {
   createRouteConfig,
   Link,
   useMatch,
-  RegisteredRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -53,7 +52,7 @@ const postRoute = postsRoute.createRoute({
 })
 
 const routeConfig = createRouteConfig().addChildren([
-  indexRoute,
+  // indexRoute,
   postsRoute.addChildren([PostsIndexRoute, postRoute]),
 ])
 
