@@ -161,7 +161,7 @@ const authenticatedRoute = rootRoute.createRoute({
   component: Authenticated,
   beforeLoad: ({ context }) => {
     if (context.auth.status === 'loggedOut') {
-      router.navigate({
+      throw router.navigate({
         to: loginRoute.id,
         search: {
           redirect: router.location.href,
