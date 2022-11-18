@@ -24,11 +24,11 @@ export type Expand<T> = T extends object
     : never
   : T
 
-// type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
-//   k: infer I,
-// ) => any
-//   ? I
-//   : never
+export type UnionToIntersection<U> = (
+  U extends any ? (k: U) => void : never
+) extends (k: infer I) => any
+  ? I
+  : never
 
 export type Values<O> = O[ValueKeys<O>]
 export type ValueKeys<O> = Extract<keyof O, PropertyKey>

@@ -8,6 +8,11 @@ import {
   lazy,
   Link,
   useMatch,
+  useRouter,
+  useRoute,
+  useSearch,
+  RegisteredAllRouteInfo,
+  RegisteredRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -27,6 +32,12 @@ import { z } from 'zod'
 //
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
+
+declare module '@tanstack/react-router' {
+  interface RouterContext {
+    auth: AuthContext
+  }
+}
 
 // Build our routes. We could do this in our component, too.
 const rootRoute = createRouteConfig()
@@ -146,13 +157,26 @@ const expensiveRoute = rootRoute.createRoute({
 })
 
 const authenticatedRoute = rootRoute.createRoute({
-  path: 'authenticated/', // Trailing slash doesn't mean anything
-  component: Auth,
+  path: 'authenticated',
+  component: Authenticated,
+  beforeLoad: ({ context }) => {
+    if (context.auth.status === 'loggedOut') {
+      router.navigate({
+        to: loginRoute.id,
+        search: {
+          redirect: router.location.href,
+        },
+      })
+    }
+  },
 })
 
-const authenticatedIndexRoute = authenticatedRoute.createRoute({
-  path: '/',
-  component: Authenticated,
+const loginRoute = rootRoute.createRoute({
+  path: 'login',
+  component: Login,
+  validateSearch: z.object({
+    redirect: z.string().optional(),
+  }),
 })
 
 const layoutRoute = rootRoute.createRoute({
@@ -187,7 +211,8 @@ const routeConfig = rootRoute.addChildren([
     usersRoute.addChildren([usersIndexRoute, userRoute]),
   ]),
   expensiveRoute,
-  authenticatedRoute.addChildren([authenticatedIndexRoute]),
+  authenticatedRoute,
+  loginRoute,
   layoutRoute.addChildren([layoutARoute, layoutBRoute]),
 ])
 
@@ -198,13 +223,18 @@ const router = createReactRouter({
       <Spinner />
     </div>
   ),
+  useContext: () => {
+    return {
+      auth: React.useContext(AuthContext),
+    }
+  },
 })
 
-// declare module '@tanstack/react-router' {
-//   interface RegisterRouter {
-//     router: typeof router
-//   }
-// }
+declare module '@tanstack/react-router' {
+  interface RegisterRouter {
+    router: typeof router
+  }
+}
 
 // Provide our location and routes to our application
 function App() {
@@ -224,69 +254,69 @@ function App() {
   return (
     <>
       {/* More stuff to tweak our sandbox setup in real-time */}
-      <div className="text-xs fixed w-52 shadow rounded bottom-2 left-2 bg-white bg-opacity-75 p-2 border-b flex flex-col gap-1 flex-wrap items-left">
-        <div>Loader Delay: {loaderDelay}ms</div>
-        <div>
-          <input
-            type="range"
-            min="0"
-            max="5000"
-            step="100"
-            value={loaderDelay}
-            onChange={(e) => setLoaderDelay(e.target.valueAsNumber)}
-            className="w-full"
-          />
-        </div>
+      <AuthProvider>
+        <div className="text-xs fixed w-52 shadow rounded bottom-2 left-2 bg-white bg-opacity-75 p-2 border-b flex flex-col gap-1 flex-wrap items-left">
+          <div>Loader Delay: {loaderDelay}ms</div>
+          <div>
+            <input
+              type="range"
+              min="0"
+              max="5000"
+              step="100"
+              value={loaderDelay}
+              onChange={(e) => setLoaderDelay(e.target.valueAsNumber)}
+              className="w-full"
+            />
+          </div>
 
-        <div>Action Delay: {actionDelay}ms</div>
-        <div>
-          <input
-            type="range"
-            min="0"
-            max="5000"
-            step="100"
-            value={actionDelay}
-            onChange={(e) => setActionDelay(e.target.valueAsNumber)}
-            className="w-full"
-          />
+          <div>Action Delay: {actionDelay}ms</div>
+          <div>
+            <input
+              type="range"
+              min="0"
+              max="5000"
+              step="100"
+              value={actionDelay}
+              onChange={(e) => setActionDelay(e.target.valueAsNumber)}
+              className="w-full"
+            />
+          </div>
+          <div>
+            Loader Max Age:{' '}
+            {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : 'Off'}
+          </div>
+          <div>
+            <input
+              type="range"
+              min="0"
+              max="10000"
+              step="250"
+              value={defaultLoaderMaxAge}
+              onChange={(e) => setDefaultLoaderMaxAge(e.target.valueAsNumber)}
+              className={`w-full`}
+            />
+          </div>
+          <div>
+            Preload Max Age:{' '}
+            {defaultPreloadMaxAge ? `${defaultPreloadMaxAge}ms` : 'Off'}
+          </div>
+          <div>
+            <input
+              type="range"
+              min="0"
+              max="10000"
+              step="250"
+              value={defaultPreloadMaxAge}
+              onChange={(e) => setDefaultPreloadMaxAge(e.target.valueAsNumber)}
+              className={`w-full`}
+            />
+          </div>
         </div>
-        <div>
-          Loader Max Age:{' '}
-          {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : 'Off'}
-        </div>
-        <div>
-          <input
-            type="range"
-            min="0"
-            max="10000"
-            step="250"
-            value={defaultLoaderMaxAge}
-            onChange={(e) => setDefaultLoaderMaxAge(e.target.valueAsNumber)}
-            className={`w-full`}
-          />
-        </div>
-        <div>
-          Preload Max Age:{' '}
-          {defaultPreloadMaxAge ? `${defaultPreloadMaxAge}ms` : 'Off'}
-        </div>
-        <div>
-          <input
-            type="range"
-            min="0"
-            max="10000"
-            step="250"
-            value={defaultPreloadMaxAge}
-            onChange={(e) => setDefaultPreloadMaxAge(e.target.valueAsNumber)}
-            className={`w-full`}
-          />
-        </div>
-      </div>
-      {/* Normally <Router /> matches and renders our
+        {/* Normally <Router /> matches and renders our
       routes, but when we pass our own children, we can use
       <Outlet /> to start rendering our matches when we're
       // ready. This also let's us use router API's
       in <Root /> before rendering any routes */}
-      <AuthProvider>
         <RouterProvider
           router={router}
           defaultPreload="intent"
@@ -329,9 +359,10 @@ function Root() {
               ['.', 'Home'],
               ['/dashboard', 'Dashboard'],
               ['/expensive', 'Expensive'],
-              ['/authenticated', 'Authenticated'],
               ['/layout-a', 'Layout A'],
               ['/layout-b', 'Layout B'],
+              ['/authenticated', 'Authenticated'],
+              ['/login', 'Login'],
             ] as const
           ).map(([to, label]) => {
             return (
@@ -900,18 +931,34 @@ function useAuth() {
   return React.useContext(AuthContext)
 }
 
-function Auth() {
+function Login() {
+  const { search } = useMatch(loginRoute.id)
   const auth = useAuth()
   const [username, setUsername] = React.useState('')
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-
     auth.login(username)
   }
 
+  React.useEffect(() => {
+    if (auth.status === 'loggedIn' && search.redirect) {
+      router.history.push(search.redirect)
+    }
+  }, [auth.status, search.redirect])
+
   return auth.status === 'loggedIn' ? (
-    <Outlet />
+    <div>
+      Logged in as <strong>{auth.username}</strong>
+      <div className="h-2" />
+      <button
+        onClick={() => auth.logout()}
+        className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
+      >
+        Log out
+      </button>
+      <div className="h-2" />
+    </div>
   ) : (
     <div className="p-2">
       <div>You must log in!</div>
@@ -938,22 +985,10 @@ function Authenticated() {
   const auth = useAuth()
 
   return (
-    <div className="p-2">
-      You're authenticated! Your username is <strong>{auth.username}</strong>
-      <div className="h-2" />
-      <button
-        onClick={() => auth.logout()}
-        className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
-      >
-        Log out
-      </button>
-      <div className="h-2" />
+    <div className="p-2 space-y-2">
+      <div>Super secret authenticated route!</div>
       <div>
-        This authentication example is obviously very contrived and simple. It
-        doesn't cover the use case of a redirected login page, but does
-        illustrate how easy it is to simply wrap routes with ternary logic to
-        either show a login prompt or redirect (probably with the `Navigate`
-        component).
+        Your username is <strong>{auth.username}</strong>
       </div>
     </div>
   )

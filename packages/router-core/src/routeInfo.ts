@@ -10,7 +10,7 @@ import {
   RouteConfig,
   RouteOptions,
 } from './routeConfig'
-import { IsAny, Values } from './utils'
+import { IsAny, UnionToIntersection, Values } from './utils'
 
 export interface AnyAllRouteInfo {
   routeConfig: AnyRouteConfig
@@ -19,6 +19,7 @@ export interface AnyAllRouteInfo {
   routeInfoByFullPath: Record<string, AnyRouteInfo>
   routeIds: any
   routePaths: any
+  fullSearchSchema: Record<string, any>
 }
 
 export interface DefaultAllRouteInfo {
@@ -28,6 +29,7 @@ export interface DefaultAllRouteInfo {
   routeInfoByFullPath: Record<string, RouteInfo>
   routeIds: string
   routePaths: string
+  fullSearchSchema: AnySearchSchema
 }
 
 export interface AllRouteInfo<TRouteConfig extends AnyRouteConfig = RouteConfig>
@@ -133,6 +135,7 @@ export interface RoutesInfoInner<
   routeInfoByFullPath: TRouteInfoByFullPath
   routeIds: keyof TRouteInfoById
   routePaths: keyof TRouteInfoByFullPath
+  fullSearchSchema: Partial<UnionToIntersection<TRouteInfo['fullSearchSchema']>>
 }
 
 export interface AnyRouteInfo

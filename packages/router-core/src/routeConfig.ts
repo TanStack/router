@@ -3,6 +3,7 @@ import { ParsePathParams } from './link'
 import { joinPaths, trimPath, trimPathRight } from './path'
 import { RouteInfo } from './routeInfo'
 import { RouteMatch } from './routeMatch'
+import { RouterContext } from './router'
 import {
   DeepAwaited,
   Expand,
@@ -127,10 +128,13 @@ export type RouteOptions<
   // An asynchronous function made available to the route for performing asynchronous or mutative actions that
   // might invalidate the route's data.
   action?: ActionFn<TActionPayload, TActionResponse>
+  // This async function is called before a route is loaded. If an error is thrown, the navigation is cancelled.
+  // If you want to redirect instead, throw a call to the `router.navigate()` function
+  beforeLoad?: (opts: { context: RouterContext }) => Promise<void> | void
   // This function is called
   // when moving from an inactive state to an active one. Likewise, when moving from
   // an active to an inactive state, the return function (if provided) is called.
-  onMatch?: (matchContext: {
+  onLoaded?: (matchContext: {
     params: TAllParams
     search: TFullSearchSchema
   }) =>

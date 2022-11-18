@@ -172,9 +172,12 @@ export interface LoaderState<
   loaderContext: LoaderContext<TFullSearchSchema, TAllParams>
 }
 
-export interface RouterState {
+export interface RouterState<
+  TSearchObj extends AnySearchSchema = {},
+  TState extends LocationState = LocationState,
+> {
   status: 'idle' | 'loading'
-  location: Location
+  location: Location<TSearchObj, TState>
   matches: RouteMatch[]
   lastUpdated: number
   actions: Record<string, Action>
@@ -244,6 +247,8 @@ interface DehydratedRouteMatch
     | 'invalidAt'
   > {}
 
+export interface RouterContext {}
+
 export interface Router<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
   TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
@@ -263,11 +268,12 @@ export interface Router<
   // Computed in this.update()
   basepath: string
   // Internal:
+  context: RouterContext
   listeners: Listener[]
-  location: Location
+  location: Location<TAllRouteInfo['fullSearchSchema']>
   navigateTimeout?: Timeout
   nextAction?: 'push' | 'replace'
-  state: RouterState
+  state: RouterState<TAllRouteInfo['fullSearchSchema']>
   routeTree: Route<TAllRouteInfo, RouteInfo>
   routesById: RoutesById<TAllRouteInfo>
   navigationPromise: Promise<void>
@@ -395,6 +401,7 @@ export function createRouter<
     options: originalOptions,
     listeners: [],
     // Resolved after construction
+    context: {},
     basepath: '',
     routeTree: undefined!,
     routesById: {} as any,
@@ -577,6 +584,22 @@ export function createRouter<
         strictParseParams: true,
       })
 
+      // Check if each match middleware to see if the route can be accessed
+      try {
+        await Promise.all(
+          matches.map((match) =>
+            match.options.beforeLoad?.({
+              context: router.context,
+            }),
+          ),
+        )
+      } catch (err: any) {
+        if (err?.then) {
+          await new Promise(() => {})
+        }
+        throw err
+      }
+
       if (typeof document !== 'undefined') {
         router.state = {
           ...router.state,
@@ -655,7 +678,7 @@ export function createRouter<
       })
 
       entering.forEach((d) => {
-        d.__.onExit = d.options.onMatch?.({
+        d.__.onExit = d.options.onLoaded?.({
           params: d.params,
           search: d.search,
         })

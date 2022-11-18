@@ -7,8 +7,10 @@ import {
   CheckId,
   rootRouteId,
   Route,
+  RouterContext,
   RouterState,
   ToIdOption,
+  UnionToIntersection,
 } from '@tanstack/router-core'
 import {
   warning,
@@ -144,6 +146,10 @@ type MakeLinkOptions<
 declare module '@tanstack/router-core' {
   interface FrameworkGenerics {
     Component: RouteComponent
+  }
+
+  interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
+    useContext?: () => RouterContext
   }
 
   interface Router<
@@ -488,9 +494,15 @@ export function RouterProvider<
 >({ children, router, ...rest }: RouterProps<TRouteConfig, TAllRouteInfo>) {
   router.update(rest)
 
+  const defaultRouterContext = React.useRef({})
+
+  const userContext =
+    router.options.useContext?.() ?? defaultRouterContext.current
+
+  router.context = userContext
+
   useRouterSubscription(router)
   React.useEffect(() => {
-    console.log('hello')
     return router.mount()
   }, [router])
 
@@ -557,6 +569,12 @@ export function useRoute<
   return router.useRoute(routeId as any) as any
 }
 
+export function useSearch<
+  TId extends keyof RegisteredAllRouteInfo['routeInfoById'] = keyof RegisteredAllRouteInfo['routeInfoById'],
+>(_routeId?: TId): RegisteredAllRouteInfo['fullSearchSchema'] {
+  return useRouter().state.location.search
+}
+
 export function linkProps<TTo extends string = '.'>(
   props: MakeLinkPropsOptions<RegisteredAllRouteInfo, '/', TTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
@@ -606,8 +624,6 @@ export function Outlet() {
                     Outlet,
                 )
               }
-
-              console.log(match.matchId, 'suspend')
               throw match.__.loadPromise
             })() as JSX.Element
           }

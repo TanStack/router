@@ -155,10 +155,6 @@ export function matchPathname(
     return
   }
 
-  // if (matchLocation.search && !searchMatched) {
-  //   return
-  // }
-
   return pathParams ?? {}
 }
 
