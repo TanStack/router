@@ -38,8 +38,8 @@ export const router = createReactRouter({
   ),
 })
 
-declare module '@tanstack/react-router' {
-  interface RegisterRouter {
-    router: typeof router
-  }
-}
+// declare module '@tanstack/react-router' {
+//   interface RegisterRouter {
+//     router: typeof router
+//   }
+// }

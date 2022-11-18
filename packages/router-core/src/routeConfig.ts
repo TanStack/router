@@ -50,20 +50,14 @@ export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
     }
 
 export type LoaderFn<
-  TParentRouteLoaderData extends AnyLoaderData = {},
   TRouteLoaderData extends AnyLoaderData = {},
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams extends AnyPathParams = {},
 > = (
-  loaderContext: LoaderContext<
-    TParentRouteLoaderData,
-    TFullSearchSchema,
-    TAllParams
-  >,
+  loaderContext: LoaderContext<TFullSearchSchema, TAllParams>,
 ) => Promise<TRouteLoaderData>
 
 export interface LoaderContext<
-  TParentRouteLoaderData extends AnyLoaderData = {},
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams extends AnyPathParams = {},
 > {
@@ -123,12 +117,7 @@ export type RouteOptions<
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
   pendingComponent?: GetFrameworkGeneric<'Component'> //, NoInfer<TParentLoaderData>>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-  loader?: LoaderFn<
-    TParentRouteLoaderData,
-    TRouteLoaderData,
-    TFullSearchSchema,
-    TAllParams
-  >
+  loader?: LoaderFn<TRouteLoaderData, TFullSearchSchema, TAllParams>
   // The max age to consider loader data fresh (not-stale) for this route in milliseconds from the time of fetch
   // Defaults to 0. Only stale loader data is refetched.
   loaderMaxAge?: number

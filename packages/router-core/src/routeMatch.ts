@@ -7,7 +7,7 @@ import {
   RouteInfo,
 } from './routeInfo'
 import { Router } from './router'
-import { replaceEqualDeep, warning } from './utils'
+import { replaceEqualDeep } from './utils'
 
 export interface RouteMatch<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
@@ -15,7 +15,7 @@ export interface RouteMatch<
 > extends Route<TAllRouteInfo, TRouteInfo> {
   matchId: string
   pathname: string
-  params: TRouteInfo['params']
+  params: TRouteInfo['allParams']
   parentMatch?: RouteMatch
   childMatches: RouteMatch[]
   routeSearch: TRouteInfo['searchSchema']

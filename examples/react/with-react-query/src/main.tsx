@@ -71,11 +71,11 @@ const router = createReactRouter({
   defaultPreload: 'intent',
 })
 
-declare module '@tanstack/react-router' {
-  interface RegisterRouter {
-    router: typeof router
-  }
-}
+// declare module '@tanstack/react-router' {
+//   interface RegisterRouter {
+//     router: typeof router
+//   }
+// }
 
 const queryClient = new QueryClient()
 

@@ -169,7 +169,7 @@ export interface LoaderState<
   TAllParams extends AnyPathParams = {},
 > {
   loadedAt: number
-  loaderContext: LoaderContext<AnyLoaderData, TFullSearchSchema, TAllParams>
+  loaderContext: LoaderContext<TFullSearchSchema, TAllParams>
 }
 
 export interface RouterState {

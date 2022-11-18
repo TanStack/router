@@ -200,11 +200,11 @@ const router = createReactRouter({
   ),
 })
 
-declare module '@tanstack/react-router' {
-  interface RegisterRouter {
-    router: typeof router
-  }
-}
+// declare module '@tanstack/react-router' {
+//   interface RegisterRouter {
+//     router: typeof router
+//   }
+// }
 
 // Provide our location and routes to our application
 function App() {

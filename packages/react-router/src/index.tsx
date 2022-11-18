@@ -6,6 +6,7 @@ import {
   AnyRoute,
   CheckId,
   rootRouteId,
+  Route,
   RouterState,
   ToIdOption,
 } from '@tanstack/router-core'
@@ -39,13 +40,13 @@ export interface RegisterRouter {
   // router: Router
 }
 
-export type ResolvedRouter = RegisterRouter extends {
+export type RegisteredRouter = RegisterRouter extends {
   router: Router<infer TRouteConfig, infer TAllRouteInfo>
 }
   ? Router<TRouteConfig, TAllRouteInfo>
   : Router
 
-export type ResolvedAllRouteInfo = RegisterRouter extends {
+export type RegisteredAllRouteInfo = RegisterRouter extends {
   router: Router<infer TRouteConfig, infer TAllRouteInfo>
 }
   ? TAllRouteInfo
@@ -88,6 +89,58 @@ export function lazy(
   return finalComp
 }
 
+type LinkPropsOptions<
+  TAllRouteInfo extends AnyAllRouteInfo,
+  TFrom extends ValidFromPath<TAllRouteInfo>,
+  TTo extends string,
+> = LinkOptions<TAllRouteInfo, TFrom, TTo> & {
+  // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+  activeProps?:
+    | React.AnchorHTMLAttributes<HTMLAnchorElement>
+    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+  // A function that returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+  inactiveProps?:
+    | React.AnchorHTMLAttributes<HTMLAnchorElement>
+    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+}
+
+type MakeMatchRouteOptions<
+  TAllRouteInfo extends AnyAllRouteInfo,
+  TFrom extends ValidFromPath<TAllRouteInfo>,
+  TTo extends string,
+> = ToOptions<TAllRouteInfo, TFrom, TTo> &
+  MatchRouteOptions & {
+    // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+    children?:
+      | React.ReactNode
+      | ((
+          params: RouteInfoByPath<
+            TAllRouteInfo,
+            ResolveRelativePath<TFrom, NoInfer<TTo>>
+          >['allParams'],
+        ) => React.ReactNode)
+  }
+
+type MakeLinkPropsOptions<
+  TAllRouteInfo extends AnyAllRouteInfo,
+  TFrom extends ValidFromPath<TAllRouteInfo>,
+  TTo extends string,
+> = LinkPropsOptions<TAllRouteInfo, TFrom, TTo> &
+  React.AnchorHTMLAttributes<HTMLAnchorElement>
+
+type MakeLinkOptions<
+  TAllRouteInfo extends AnyAllRouteInfo,
+  TFrom extends ValidFromPath<TAllRouteInfo>,
+  TTo extends string,
+> = LinkPropsOptions<TAllRouteInfo, TFrom, TTo> &
+  React.AnchorHTMLAttributes<HTMLAnchorElement> &
+  Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
+    // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+    children?:
+      | React.ReactNode
+      | ((state: { isActive: boolean }) => React.ReactNode)
+  }
+
 declare module '@tanstack/router-core' {
   interface FrameworkGenerics {
     Component: RouteComponent
@@ -101,9 +154,10 @@ declare module '@tanstack/router-core' {
     useRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
       routeId: TId,
     ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
+    useNearestMatch: () => RouteMatch<TAllRouteInfo, RouteInfo>
     useMatch: <
       TId extends keyof TAllRouteInfo['routeInfoById'],
-      TStrict extends true | false = true,
+      TStrict extends boolean = true,
     >(
       routeId: TId,
       opts?: { strict?: TStrict },
@@ -113,32 +167,13 @@ declare module '@tanstack/router-core' {
           | RouteMatch<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
           | undefined
     linkProps: <TTo extends string = '.'>(
-      props: LinkPropsOptions<TAllRouteInfo, '/', TTo> &
-        React.AnchorHTMLAttributes<HTMLAnchorElement>,
+      props: MakeLinkPropsOptions<TAllRouteInfo, '/', TTo>,
     ) => React.AnchorHTMLAttributes<HTMLAnchorElement>
     Link: <TTo extends string = '.'>(
-      props: LinkPropsOptions<TAllRouteInfo, '/', TTo> &
-        React.AnchorHTMLAttributes<HTMLAnchorElement> &
-        Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
-          // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-          children?:
-            | React.ReactNode
-            | ((state: { isActive: boolean }) => React.ReactNode)
-        },
+      props: MakeLinkOptions<TAllRouteInfo, '/', TTo>,
     ) => JSX.Element
     MatchRoute: <TTo extends string = '.'>(
-      props: ToOptions<TAllRouteInfo, '/', TTo> &
-        MatchRouteOptions & {
-          // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-          children?:
-            | React.ReactNode
-            | ((
-                params: RouteInfoByPath<
-                  TAllRouteInfo,
-                  ResolveRelativePath<'/', NoInfer<TTo>>
-                >['allParams'],
-              ) => React.ReactNode)
-        },
+      props: MakeMatchRouteOptions<TAllRouteInfo, '/', TTo>,
     ) => JSX.Element
   }
 
@@ -161,49 +196,15 @@ declare module '@tanstack/router-core' {
       opts?: { strict?: boolean },
     ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TResolved]>
     linkProps: <TTo extends string = '.'>(
-      props: LinkPropsOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo> &
-        React.AnchorHTMLAttributes<HTMLAnchorElement>,
+      props: MakeLinkPropsOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
     ) => React.AnchorHTMLAttributes<HTMLAnchorElement>
     Link: <TTo extends string = '.'>(
-      props: LinkPropsOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo> &
-        React.AnchorHTMLAttributes<HTMLAnchorElement> &
-        Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
-          // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-          children?:
-            | React.ReactNode
-            | ((state: { isActive: boolean }) => React.ReactNode)
-        },
+      props: MakeLinkOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
     ) => JSX.Element
     MatchRoute: <TTo extends string = '.'>(
-      props: ToOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo> &
-        MatchRouteOptions & {
-          // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-          children?:
-            | React.ReactNode
-            | ((
-                params: RouteInfoByPath<
-                  TAllRouteInfo,
-                  ResolveRelativePath<TRouteInfo['fullPath'], NoInfer<TTo>>
-                >['allParams'],
-              ) => React.ReactNode)
-        },
+      props: MakeMatchRouteOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
     ) => JSX.Element
   }
-}
-
-type LinkPropsOptions<
-  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-  TFrom extends ValidFromPath<TAllRouteInfo> = '/',
-  TTo extends string = '.',
-> = LinkOptions<TAllRouteInfo, TFrom, TTo> & {
-  // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
-  activeProps?:
-    | React.AnchorHTMLAttributes<HTMLAnchorElement>
-    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
-  // A function that returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
-  inactiveProps?:
-    | React.AnchorHTMLAttributes<HTMLAnchorElement>
-    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
 }
 
 export type PromptProps = {
@@ -215,20 +216,14 @@ export type PromptProps = {
 //
 
 export function Link<TTo extends string = '.'>(
-  props: LinkPropsOptions<ResolvedAllRouteInfo, '/', TTo> &
-    React.AnchorHTMLAttributes<HTMLAnchorElement> &
-    Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
-      children?:
-        | React.ReactNode
-        | ((state: { isActive: boolean }) => React.ReactNode)
-    },
+  props: MakeLinkOptions<RegisteredAllRouteInfo, '/', TTo>,
 ): JSX.Element {
   const router = useRouter()
   return <router.Link {...(props as any)} />
 }
 
 export const matchesContext = React.createContext<RouteMatch[]>(null!)
-export const routerContext = React.createContext<{ router: ResolvedRouter }>(
+export const routerContext = React.createContext<{ router: RegisteredRouter }>(
   null!,
 )
 
@@ -303,7 +298,7 @@ export function createReactRouter<
           ...rest
         } = options
 
-        const linkInfo = route.buildLink(options)
+        const linkInfo = route.buildLink(options as any)
 
         if (linkInfo.type === 'external') {
           const { href } = linkInfo
@@ -508,7 +503,7 @@ export function RouterProvider<
   )
 }
 
-export function useRouter(): ResolvedRouter {
+export function useRouter(): RegisteredRouter {
   const value = React.useContext(routerContext)
   warning(!value, 'useRouter must be used inside a <Router> component!')
 
@@ -522,21 +517,58 @@ export function useMatches(): RouteMatch[] {
 }
 
 export function useMatch<
-  TId extends keyof ResolvedAllRouteInfo['routeInfoById'],
-  TStrict extends true | false = true,
+  TId extends keyof RegisteredAllRouteInfo['routeInfoById'],
+  TStrict extends boolean = true,
 >(
   routeId: TId,
   opts?: { strict?: TStrict },
 ): TStrict extends true
-  ? RouteMatch<ResolvedAllRouteInfo, ResolvedAllRouteInfo['routeInfoById'][TId]>
+  ? RouteMatch<
+      RegisteredAllRouteInfo,
+      RegisteredAllRouteInfo['routeInfoById'][TId]
+    >
   :
       | RouteMatch<
-          ResolvedAllRouteInfo,
-          ResolvedAllRouteInfo['routeInfoById'][TId]
+          RegisteredAllRouteInfo,
+          RegisteredAllRouteInfo['routeInfoById'][TId]
         >
       | undefined {
   const router = useRouter()
   return router.useMatch(routeId as any, opts) as any
+}
+
+export function useNearestMatch(): RouteMatch<
+  RegisteredAllRouteInfo,
+  RouteInfo
+> {
+  const runtimeMatch = useMatches()?.[0]!
+
+  invariant(runtimeMatch, `Could not find a nearest match!`)
+
+  return runtimeMatch as any
+}
+
+export function useRoute<
+  TId extends keyof RegisteredAllRouteInfo['routeInfoById'],
+>(
+  routeId: TId,
+): Route<RegisteredAllRouteInfo, RegisteredAllRouteInfo['routeInfoById'][TId]> {
+  const router = useRouter()
+  return router.useRoute(routeId as any) as any
+}
+
+export function linkProps<TTo extends string = '.'>(
+  props: MakeLinkPropsOptions<RegisteredAllRouteInfo, '/', TTo>,
+): React.AnchorHTMLAttributes<HTMLAnchorElement> {
+  const router = useRouter()
+  return router.linkProps(props as any)
+}
+
+export function MatchRoute<TTo extends string = '.'>(
+  props: MakeMatchRouteOptions<RegisteredAllRouteInfo, '/', TTo>,
+): JSX.Element {
+  const router = useRouter()
+  return React.createElement(router.MatchRoute, props as any)
 }
 
 export function Outlet() {

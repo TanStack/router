@@ -76,11 +76,11 @@ const router = createReactRouter({
   defaultPreload: 'intent',
 })
 
-declare module '@tanstack/react-router' {
-  interface RegisterRouter {
-    router: typeof router
-  }
-}
+// declare module '@tanstack/react-router' {
+//   interface RegisterRouter {
+//     router: typeof router
+//   }
+// }
 
 export const trpc = createTRPCReact<AppRouter>({})
 function App() {
@@ -191,10 +191,6 @@ function Index() {
 
 function Posts() {
   const { Link } = useMatch(postsRoute.id)
-
-  const hello = trpc.hello
-  ;({ text: 'client' })
-
   const postsQuery = usePosts()
 
   return (

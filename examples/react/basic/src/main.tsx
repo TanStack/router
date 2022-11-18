@@ -7,11 +7,7 @@ import {
   createRouteConfig,
   Link,
   useMatch,
-  ResolvedRouter,
-  ResolvedAllRouteInfo,
-  RegisterRouter,
-  Router,
-  AnyAllRouteInfo,
+  RegisteredRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -47,7 +43,17 @@ const PostsIndexRoute = postsRoute.createRoute({
 })
 
 const postRoute = postsRoute.createRoute({
-  path: ':postId',
+  path: 'post/:postId',
+  component: Post,
+  loader: async ({ params: { postId } }) => {
+    return {
+      post: await fetchPostById(postId),
+    }
+  },
+})
+
+const postDetailRoute = postRoute.createRoute({
+  path: 'detail',
   component: Post,
   loader: async ({ params: { postId } }) => {
     return {
@@ -58,7 +64,10 @@ const postRoute = postsRoute.createRoute({
 
 const routeConfig = createRouteConfig().addChildren([
   indexRoute,
-  postsRoute.addChildren([PostsIndexRoute, postRoute]),
+  postsRoute.addChildren([
+    PostsIndexRoute,
+    postRoute.addChildren([postDetailRoute]),
+  ]),
 ])
 
 // Set up a ReactRouter instance
@@ -148,7 +157,7 @@ function Posts() {
           return (
             <div key={post.id}>
               <Link
-                to="/posts/:postId"
+                to={postRoute.id}
                 params={{
                   postId: post.id,
                 }}
@@ -177,7 +186,27 @@ function PostsIndex() {
 function Post() {
   const {
     loaderData: { post },
+    params: { postId },
   } = useMatch(postRoute.id)
+
+  return (
+    <div>
+      <h4>{post.title}</h4>
+      <p>{post.body}</p>
+    </div>
+  )
+}
+
+function PostDetail() {
+  const {
+    loaderData: { post },
+    params: { postId },
+  } = useMatch(postDetailRoute.id)
+
+  const test = useMatch(postRoute.id, { strict: false })
+
+  test?.params.postId
+  //           ^?
 
   return (
     <div>
