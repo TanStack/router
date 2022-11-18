@@ -52,22 +52,9 @@ const postRoute = postsRoute.createRoute({
   },
 })
 
-const postDetailRoute = postRoute.createRoute({
-  path: 'detail',
-  component: Post,
-  loader: async ({ params: { postId } }) => {
-    return {
-      post: await fetchPostById(postId),
-    }
-  },
-})
-
 const routeConfig = createRouteConfig().addChildren([
   indexRoute,
-  postsRoute.addChildren([
-    PostsIndexRoute,
-    postRoute.addChildren([postDetailRoute]),
-  ]),
+  postsRoute.addChildren([PostsIndexRoute, postRoute]),
 ])
 
 // Set up a ReactRouter instance
@@ -188,25 +175,6 @@ function Post() {
     loaderData: { post },
     params: { postId },
   } = useMatch(postRoute.id)
-
-  return (
-    <div>
-      <h4>{post.title}</h4>
-      <p>{post.body}</p>
-    </div>
-  )
-}
-
-function PostDetail() {
-  const {
-    loaderData: { post },
-    params: { postId },
-  } = useMatch(postDetailRoute.id)
-
-  const test = useMatch(postRoute.id, { strict: false })
-
-  test?.params.postId
-  //           ^?
 
   return (
     <div>
