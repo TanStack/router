@@ -35,17 +35,17 @@ import {
 
 export * from '@tanstack/router-core'
 
-export interface ResolveRouter {
+export interface RegisterRouter {
   // router: Router
 }
 
-export type ResolvedRouter = ResolveRouter extends {
+export type ResolvedRouter = RegisterRouter extends {
   router: Router<infer TRouteConfig, infer TAllRouteInfo>
 }
   ? Router<TRouteConfig, TAllRouteInfo>
   : Router
 
-export type ResolvedAllRouteInfo = ResolveRouter extends {
+export type ResolvedAllRouteInfo = RegisterRouter extends {
   router: Router<infer TRouteConfig, infer TAllRouteInfo>
 }
   ? TAllRouteInfo

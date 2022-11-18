@@ -8,7 +8,7 @@ export const createRouter = () =>
   })
 
 declare module '@tanstack/react-router' {
-  interface ResolveRouter {
+  interface RegisterRouter {
     router: ReturnType<typeof createRouter>
   }
 }

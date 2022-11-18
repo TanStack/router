@@ -9,7 +9,7 @@ import {
   useMatch,
   ResolvedRouter,
   ResolvedAllRouteInfo,
-  ResolveRouter,
+  RegisterRouter,
   Router,
   AnyAllRouteInfo,
 } from '@tanstack/react-router'
@@ -68,7 +68,7 @@ const router = createReactRouter({
 })
 
 declare module '@tanstack/react-router' {
-  interface ResolveRouter {
+  interface RegisterRouter {
     router: typeof router
   }
 }
