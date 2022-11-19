@@ -91,7 +91,7 @@ export interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
   defaultPreloadGcMaxAge?: number
   defaultPreloadDelay?: number
   defaultComponent?: GetFrameworkGeneric<'Component'>
-  defaultErrorComponent?: GetFrameworkGeneric<'Component'>
+  defaultErrorComponent?: GetFrameworkGeneric<'ErrorComponent'>
   defaultPendingComponent?: GetFrameworkGeneric<'Component'>
   defaultLoaderMaxAge?: number
   defaultLoaderGcMaxAge?: number

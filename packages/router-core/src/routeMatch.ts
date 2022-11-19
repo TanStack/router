@@ -30,9 +30,9 @@ export interface RouteMatch<
   isFetching: boolean
   invalidAt: number
   __: {
-    component?: GetFrameworkGeneric<'Component'> // , TRouteInfo['loaderData']>
-    errorComponent?: GetFrameworkGeneric<'Component'> // , TRouteInfo['loaderData']>
-    pendingComponent?: GetFrameworkGeneric<'Component'> // , TRouteInfo['loaderData']>
+    component?: GetFrameworkGeneric<'Component'>
+    errorComponent?: GetFrameworkGeneric<'ErrorComponent'>
+    pendingComponent?: GetFrameworkGeneric<'Component'>
     loadPromise?: Promise<void>
     componentsPromise?: Promise<void>
     dataPromise?: Promise<TRouteInfo['routeLoaderData']>

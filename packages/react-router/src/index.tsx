@@ -53,10 +53,12 @@ export type RegisteredAllRouteInfo = RegisterRouter extends {
   ? TAllRouteInfo
   : AnyAllRouteInfo
 
-export type SyncRouteComponent = (props?: {}) => JSX.Element | React.ReactNode
+export type SyncRouteComponent<TProps = {}> = (
+  props: TProps,
+) => JSX.Element | React.ReactNode
 
-export type RouteComponent = SyncRouteComponent & {
-  preload?: () => Promise<SyncRouteComponent>
+export type RouteComponent<TProps = {}> = SyncRouteComponent<TProps> & {
+  preload?: () => Promise<SyncRouteComponent<TProps>>
 }
 
 export function lazy(
@@ -145,6 +147,10 @@ type MakeLinkOptions<
 declare module '@tanstack/router-core' {
   interface FrameworkGenerics {
     Component: RouteComponent
+    ErrorComponent: RouteComponent<{
+      error: unknown
+      info: { componentStack: string }
+    }>
   }
 
   interface RouterOptions<TRouteConfig extends AnyRouteConfig> {

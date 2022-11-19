@@ -114,7 +114,7 @@ export type RouteOptions<
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
   component?: GetFrameworkGeneric<'Component'> // , NoInfer<TParentLoaderData>>
   // The content to be rendered when the route encounters an error
-  errorComponent?: GetFrameworkGeneric<'Component'> // , NoInfer<TParentLoaderData>>
+  errorComponent?: GetFrameworkGeneric<'ErrorComponent'> // , NoInfer<TParentLoaderData>>
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
   pendingComponent?: GetFrameworkGeneric<'Component'> //, NoInfer<TParentLoaderData>>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered

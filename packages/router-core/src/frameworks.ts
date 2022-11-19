@@ -4,6 +4,7 @@ export interface FrameworkGenerics {
   // pre-defined as constraints:
   //
   // Component: any
+  // ErrorComponent: any
 }
 
 export type GetFrameworkGeneric<U> = U extends keyof FrameworkGenerics
