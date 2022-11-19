@@ -54,8 +54,6 @@ export async function render(opts: {
     )})</script>`
 
     opts.res.write(routerScript)
-
-    return router
   })
 
   const leadingHtml = opts.template.substring(
