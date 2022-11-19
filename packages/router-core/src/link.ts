@@ -142,8 +142,9 @@ type SearchParamOptions<
   TTo,
   TFromSchema = RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema'],
   TToSchema = RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema'],
-> = StartsWith<TFrom, TTo> extends true // If the next route search extend or cover the from route, params will be optional
-  ? {
+> = StartsWith<TFrom, TTo> extends true
+  ? // If the next route search extend or cover the from route, params will be optional
+    {
       search?: SearchReducer<TFromSchema, TToSchema>
     }
   : // Optional search params? Allow it

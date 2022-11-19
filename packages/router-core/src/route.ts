@@ -29,6 +29,7 @@ export interface Route<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TRouteInfo extends AnyRouteInfo = RouteInfo,
 > {
+  routeInfo: TRouteInfo
   routeId: TRouteInfo['id']
   routeRouteId: TRouteInfo['routeId']
   routePath: TRouteInfo['path']
@@ -56,7 +57,10 @@ export interface Route<
     opts?: MatchRouteOptions,
   ) => RouteInfoByPath<TAllRouteInfo, TResolved>['allParams']
   navigate: <TTo extends string = '.'>(
-    options: Omit<LinkOptions<TAllRouteInfo, TRouteInfo['id'], TTo>, 'from'>,
+    options: Omit<
+      LinkOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
+      'from'
+    >,
   ) => Promise<void>
   action: unknown extends TRouteInfo['actionResponse']
     ?
@@ -185,6 +189,7 @@ export function createRoute<
     })()
 
   let route: Route<TAllRouteInfo, TRouteInfo> = {
+    routeInfo: undefined!,
     routeId: id,
     routeRouteId: routeId,
     routePath,

@@ -10,7 +10,6 @@ import {
   RouterContext,
   RouterState,
   ToIdOption,
-  UnionToIntersection,
 } from '@tanstack/router-core'
 import {
   warning,
