@@ -35,6 +35,20 @@ export const packages: Package[] = [
     globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
   },
   {
+    name: '@tanstack/preact-router',
+    packageDir: 'preact-router',
+    dependencies: ['@tanstack/router-core'],
+    srcDir: 'src',
+    jsName: 'PreactRouter',
+    entryFile: 'src/index.tsx',
+    outputFile: 'preact-router',
+    globals: {
+      preact: 'preact',
+      'preact/hooks': 'preact/hooks',
+      'preact/compat': 'preact/compat',
+    },
+  },
+  {
     name: '@tanstack/router-rank-routes',
     packageDir: 'react-router-rank-routes',
     peerDependencies: ['@tanstack/react-router'],

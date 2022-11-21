@@ -1,0 +1,50 @@
+{
+  "name": "@tanstack/preact-router",
+  "author": "Tanner Linsley",
+  "version": "0.0.1-beta.25",
+  "license": "MIT",
+  "repository": "tanstack/router",
+  "homepage": "https://tanstack.com/router/",
+  "description": "",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "preact",
+    "location",
+    "@tanstack/preact-router",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "module": "build/esm/index.js",
+  "main": "build/cjs/react-router/src/index.js",
+  "browser": "build/umd/index.production.js",
+  "types": "build/types/index.d.ts",
+  "engines": {
+    "node": ">=12"
+  },
+  "files": [
+    "build/**",
+    "src"
+  ],
+  "sideEffects": false,
+  "peerDependencies": {
+    "preact": ">=10"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.16.7",
+    "@tanstack/router-core": "0.0.1-beta.25",
+    "use-sync-external-store": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/use-sync-external-store": "^0.0.3",
+    "babel-plugin-transform-async-to-promises": "^0.8.18"
+  }
+}

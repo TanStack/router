@@ -1,0 +1,14 @@
+{
+  "composite": true,
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./build/types",
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
+  },
+  "files": ["src/index.tsx"],
+  "include": [
+    "src"
+    //  "__tests__/**/*.test.*"
+  ]
+}
