@@ -2,7 +2,7 @@
 title: Search Params
 ---
 
-Similar to how TanStack Query made handling server-state in your React applications a breeze, TanStack Router aims to **unlocks the power of URL search params**.
+Similar to how TanStack Query made handling server-state in your React applications a breeze, TanStack Router aims to **unlock the power of URL search params**.
 
 Most applications, even large ones will get away with requiring only a few string-based search query params in the URL, probably something like `?page=3` or `?filter-name=tanner`. The main reason you'll find this **state** inside of the URL is that while it may not fit the hierarchical patterns of the pathname section of the URL, it's still very important to the output of a page. Both the ability to consume these search params and manipulate them without restriction is paramount to your app's developer and user experience. Your users should be able to bookmark/copy-paste/share a link from your app and have consistency with the original state of the page.
 
