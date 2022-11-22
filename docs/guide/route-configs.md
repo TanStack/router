@@ -9,7 +9,7 @@ Route configs (or route configurations) are the primary way of defining routing 
 To build a new route configuration, you can use the `createRouteConfig()` utility. This utility accepts a single argument, which is the route config's parent config. If you are creating a root config, you can pass `undefined` as the argument.
 
 ```ts
-import { createRouteConfig } from '@tanstack/router'
+import { createRouteConfig } from '@tanstack/react-router'
 
 const routeConfig = createRouteConfig()
 ```
