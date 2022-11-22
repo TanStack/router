@@ -13,7 +13,10 @@ module.exports = {
         // exclude: ['@babel/plugin-transform-regenerator'],
       },
     ],
-    '@babel/react',
+    ['@babel/react', {
+      runtime: 'automatic',
+      importSource: 'preact',
+    }],
     '@babel/preset-typescript',
   ],
   plugins: [
