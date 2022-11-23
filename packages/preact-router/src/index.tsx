@@ -1,6 +1,7 @@
-import * as React from 'react'
-
-import { useSyncExternalStore } from 'use-sync-external-store/shim'
+import * as Preact from 'preact'
+import { Suspense, lazy as preactLazy } from 'preact/compat/src/suspense'
+import { useRef, useEffect, useContext, useCallback } from 'preact/hooks'
+import { useSyncExternalStore } from 'preact/compat'
 
 import {
   AnyRoute,
@@ -55,7 +56,7 @@ export type RegisteredAllRouteInfo = RegisterRouter extends {
 
 export type SyncRouteComponent<TProps = {}> = (
   props: TProps,
-) => JSX.Element | React.ReactNode
+) => Preact.ComponentChild
 
 export type RouteComponent<TProps = {}> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<SyncRouteComponent<TProps>>
@@ -64,13 +65,13 @@ export type RouteComponent<TProps = {}> = SyncRouteComponent<TProps> & {
 export function lazy(
   importer: () => Promise<{ default: SyncRouteComponent }>,
 ): RouteComponent {
-  const lazyComp = React.lazy(importer as any)
+  const lazyComp = preactLazy(importer as any)
   let promise: Promise<SyncRouteComponent>
   let resolvedComp: SyncRouteComponent
 
-  const forwardedComp = React.forwardRef((props, ref) => {
-    const resolvedCompRef = React.useRef(resolvedComp || lazyComp)
-    return React.createElement(
+  const forwardedComp = forwardRef((props, ref) => {
+    const resolvedCompRef = useRef(resolvedComp || lazyComp)
+    return Preact.createElement(
       resolvedCompRef.current as any,
       { ...(ref ? { ref } : {}), ...props } as any,
     )
@@ -99,12 +100,12 @@ type LinkPropsOptions<
 > = LinkOptions<TAllRouteInfo, TFrom, TTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   activeProps?:
-    | React.AnchorHTMLAttributes<HTMLAnchorElement>
-    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+    | Preact.JSX.HTMLAttributes<HTMLAnchorElement>
+    | (() => Preact.JSX.HTMLAttributes<HTMLAnchorElement>)
   // A function that returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   inactiveProps?:
-    | React.AnchorHTMLAttributes<HTMLAnchorElement>
-    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+    | Preact.JSX.HTMLAttributes<HTMLAnchorElement>
+    | (() => Preact.JSX.HTMLAttributes<HTMLAnchorElement>)
 }
 
 type MakeMatchRouteOptions<
@@ -115,13 +116,13 @@ type MakeMatchRouteOptions<
   MatchRouteOptions & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
-      | React.ReactNode
+      | Preact.ComponentChildren
       | ((
           params: RouteInfoByPath<
             TAllRouteInfo,
             ResolveRelativePath<TFrom, NoInfer<TTo>>
           >['allParams'],
-        ) => React.ReactNode)
+        ) => Preact.ComponentChildren)
   }
 
 type MakeLinkPropsOptions<
@@ -129,19 +130,19 @@ type MakeLinkPropsOptions<
   TFrom extends ValidFromPath<TAllRouteInfo>,
   TTo extends string,
 > = LinkPropsOptions<TAllRouteInfo, TFrom, TTo> &
-  React.AnchorHTMLAttributes<HTMLAnchorElement>
+  Preact.JSX.HTMLAttributes<HTMLAnchorElement>
 
 type MakeLinkOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
   TFrom extends ValidFromPath<TAllRouteInfo>,
   TTo extends string,
 > = LinkPropsOptions<TAllRouteInfo, TFrom, TTo> &
-  React.AnchorHTMLAttributes<HTMLAnchorElement> &
-  Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
+  Preact.JSX.HTMLAttributes<HTMLAnchorElement> &
+  Omit<Preact.JSX.HTMLAttributes<HTMLAnchorElement>, 'children'> & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
-      | React.ReactNode
-      | ((state: { isActive: boolean }) => React.ReactNode)
+      | Preact.ComponentChildren
+      | ((state: { isActive: boolean }) => Preact.ComponentChildren)
   }
 
 declare module '@tanstack/router-core' {
@@ -179,7 +180,7 @@ declare module '@tanstack/router-core' {
           | undefined
     linkProps: <TTo extends string = '.'>(
       props: MakeLinkPropsOptions<TAllRouteInfo, '/', TTo>,
-    ) => React.AnchorHTMLAttributes<HTMLAnchorElement>
+    ) => Preact.JSX.HTMLAttributes<HTMLAnchorElement>
     Link: <TTo extends string = '.'>(
       props: MakeLinkOptions<TAllRouteInfo, '/', TTo>,
     ) => JSX.Element
@@ -208,7 +209,7 @@ declare module '@tanstack/router-core' {
     ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TResolved]>
     linkProps: <TTo extends string = '.'>(
       props: MakeLinkPropsOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
-    ) => React.AnchorHTMLAttributes<HTMLAnchorElement>
+    ) => Preact.JSX.HTMLAttributes<HTMLAnchorElement>
     Link: <TTo extends string = '.'>(
       props: MakeLinkOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
     ) => JSX.Element
@@ -221,10 +222,8 @@ declare module '@tanstack/router-core' {
 export type PromptProps = {
   message: string
   when?: boolean | any
-  children?: React.ReactNode
+  children?: Preact.ComponentChildren
 }
-
-//
 
 export function Link<TTo extends string = '.'>(
   props: MakeLinkOptions<RegisteredAllRouteInfo, '/', TTo>,
@@ -233,14 +232,14 @@ export function Link<TTo extends string = '.'>(
   return <router.Link {...(props as any)} />
 }
 
-export const matchesContext = React.createContext<RouteMatch[]>(null!)
-export const routerContext = React.createContext<{ router: RegisteredRouter }>(
+export const matchesContext = Preact.createContext<RouteMatch[]>(null!)
+export const routerContext = Preact.createContext<{ router: RegisteredRouter }>(
   null!,
 )
 
 export type MatchesProviderProps = {
   value: RouteMatch[]
-  children: React.ReactNode
+  children: Preact.ComponentChildren
 }
 
 export function MatchesProvider(props: MatchesProviderProps) {
@@ -250,7 +249,6 @@ export function MatchesProvider(props: MatchesProviderProps) {
 const useRouterSubscription = (router: Router<any, any>) => {
   useSyncExternalStore(
     (cb) => router.subscribe(() => cb()),
-    () => router.state,
     () => router.state,
   )
 }
@@ -325,44 +323,55 @@ export function createReactRouter<
           next,
         } = linkInfo
 
-        const reactHandleClick = (e: Event) => {
-          React.startTransition(() => {
-            handleClick(e)
-          })
-        }
-
         const composeHandlers =
-          (handlers: (undefined | ((e: any) => void))[]) =>
-          (e: React.SyntheticEvent) => {
-            e.persist()
+          (handlers: (undefined | ((e: any) => void))[]) => (e: Event) => {
+            // it should be OK to ignore in Preact
+            // As of React@17, e.persist() doesn't do anything. https://reactjs.org/docs/legacy-event-pooling.html
+            // e.persist()
             handlers.forEach((handler) => {
               if (handler) handler(e)
             })
           }
 
         // Get the active props
-        const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+        const resolvedActiveProps: Preact.JSX.HTMLAttributes<HTMLAnchorElement> =
           isActive ? functionalUpdate(activeProps, {}) ?? {} : {}
 
         // Get the inactive props
-        const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+        const resolvedInactiveProps: Preact.JSX.HTMLAttributes<HTMLAnchorElement> =
           isActive ? {} : functionalUpdate(inactiveProps, {}) ?? {}
+
+        function mergeStyleProps(
+          ...styles: (
+            | string
+            | Preact.JSX.CSSProperties
+            | Preact.JSX.SignalLike<string | Preact.JSX.CSSProperties>
+            | undefined
+          )[]
+        ):
+          | string
+          | Preact.JSX.CSSProperties
+          | Preact.JSX.SignalLike<string | Preact.JSX.CSSProperties>
+          | undefined {
+          // TODO
+          return styles[0]
+        }
 
         return {
           ...resolvedActiveProps,
           ...resolvedInactiveProps,
           ...rest,
           href: disabled ? undefined : next.href,
-          onClick: composeHandlers([reactHandleClick, onClick]),
+          onClick: composeHandlers([handleClick, onClick]),
           onFocus: composeHandlers([handleFocus, onFocus]),
           onMouseEnter: composeHandlers([handleEnter, onMouseEnter]),
           onMouseLeave: composeHandlers([handleLeave, onMouseLeave]),
           target,
-          style: {
-            ...style,
-            ...resolvedActiveProps.style,
-            ...resolvedInactiveProps.style,
-          },
+          style: mergeStyleProps(
+            style,
+            resolvedActiveProps.style,
+            resolvedInactiveProps.style,
+          ),
           className:
             [
               className,
@@ -380,7 +389,7 @@ export function createReactRouter<
           ['data-status']: isActive ? 'active' : undefined,
         }
       },
-      Link: React.forwardRef((props: any, ref) => {
+      Link: forwardRef((props: any, ref) => {
         const linkProps = route.linkProps(props)
 
         useRouterSubscription(router)
@@ -490,7 +499,7 @@ export type RouterProps<
 > = RouterOptions<TRouteConfig> & {
   router: Router<TRouteConfig, TAllRouteInfo>
   // Children will default to `<Outlet />` if not provided
-  children?: React.ReactNode
+  children?: Preact.ComponentChildren
 }
 
 export function RouterProvider<
@@ -499,7 +508,7 @@ export function RouterProvider<
 >({ children, router, ...rest }: RouterProps<TRouteConfig, TAllRouteInfo>) {
   router.update(rest)
 
-  const defaultRouterContext = React.useRef({})
+  const defaultRouterContext = useRef({})
 
   const userContext =
     router.options.useContext?.() ?? defaultRouterContext.current
@@ -507,7 +516,7 @@ export function RouterProvider<
   router.context = userContext
 
   useRouterSubscription(router)
-  React.useEffect(() => {
+  useEffect(() => {
     return router.mount()
   }, [router])
 
@@ -521,7 +530,7 @@ export function RouterProvider<
 }
 
 export function useRouter(): RegisteredRouter {
-  const value = React.useContext(routerContext)
+  const value = useContext(routerContext)
   warning(!value, 'useRouter must be used inside a <Router> component!')
 
   useRouterSubscription(value.router)
@@ -530,7 +539,7 @@ export function useRouter(): RegisteredRouter {
 }
 
 export function useMatches(): RouteMatch[] {
-  return React.useContext(matchesContext)
+  return useContext(matchesContext)
 }
 
 export function useMatch<
@@ -582,7 +591,7 @@ export function useSearch<
 
 export function linkProps<TTo extends string = '.'>(
   props: MakeLinkPropsOptions<RegisteredAllRouteInfo, '/', TTo>,
-): React.AnchorHTMLAttributes<HTMLAnchorElement> {
+): Preact.JSX.HTMLAttributes<HTMLAnchorElement> {
   const router = useRouter()
   return router.linkProps(props as any)
 }
@@ -591,7 +600,7 @@ export function MatchRoute<TTo extends string = '.'>(
   props: MakeMatchRouteOptions<RegisteredAllRouteInfo, '/', TTo>,
 ): JSX.Element {
   const router = useRouter()
-  return React.createElement(router.MatchRoute, props as any)
+  return Preact.createElement(router.MatchRoute, props as any)
 }
 
 export function Outlet() {
@@ -599,7 +608,7 @@ export function Outlet() {
   const matches = useMatches().slice(1)
   const match = matches[0]
 
-  const defaultPending = React.useCallback(() => null, [])
+  const defaultPending = useCallback(() => null, [])
 
   if (!match) {
     return null
@@ -614,37 +623,39 @@ export function Outlet() {
 
   return (
     <MatchesProvider value={matches}>
-      <React.Suspense fallback={<PendingComponent />}>
+      <Suspense fallback={<PendingComponent />}>
         <CatchBoundary errorComponent={errorComponent}>
           {
-            ((): React.ReactNode => {
+            ((): Preact.VNode => {
               if (match.status === 'error') {
                 throw match.error
               }
 
               if (match.status === 'success') {
-                return React.createElement(
+                return Preact.createElement(
                   (match.__.component as any) ??
                     router.options.defaultComponent ??
                     Outlet,
+                  null,
                 )
               }
               throw match.__.loadPromise
             })() as JSX.Element
           }
         </CatchBoundary>
-      </React.Suspense>
+      </Suspense>
     </MatchesProvider>
   )
 }
 
-class CatchBoundary extends React.Component<{
-  children: any
+class CatchBoundary extends Preact.Component<{
+  children: Preact.ComponentChildren
   errorComponent: any
 }> {
   state = {
     error: false,
   }
+
   componentDidCatch(error: any, info: any) {
     console.error(error)
 
@@ -653,11 +664,12 @@ class CatchBoundary extends React.Component<{
       info,
     })
   }
+
   render() {
     const errorComponent = this.props.errorComponent ?? DefaultErrorBoundary
 
     if (this.state.error) {
-      return React.createElement(errorComponent, this.state)
+      return Preact.createElement(errorComponent, this.state)
     }
 
     return this.props.children
@@ -693,7 +705,7 @@ export function DefaultErrorBoundary({ error }: { error: any }) {
 export function usePrompt(message: string, when: boolean | any): void {
   const router = useRouter()
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!when) return
 
     let unblock = router.history.block((transition) => {
@@ -709,7 +721,24 @@ export function usePrompt(message: string, when: boolean | any): void {
   }, [when, location, message])
 }
 
-export function Prompt({ message, when, children }: PromptProps) {
+export function Prompt({
+  message,
+  when,
+  children,
+}: PromptProps): Preact.ComponentChildren | null {
   usePrompt(message, when ?? true)
-  return (children ?? null) as React.ReactNode
+  return children ?? null
+}
+
+function forwardRef<TRef, T extends { ref?: Preact.RefObject<TRef> }>(
+  fn: (props: T, ref: Preact.RefObject<TRef> | null) => any,
+) {
+  function Forwarded(props: T) {
+    let clone = { ...props }
+    delete clone.ref
+    return fn(clone, props.ref || null)
+  }
+
+  // Forwarded.displayName = 'ForwardRef(' + (fn.displayName || fn.name) + ')';
+  return Forwarded
 }
