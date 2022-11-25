@@ -33,7 +33,8 @@ function App() {
     <>
       <RouterProvider router={router}>
         <div>
-          <Link to="/">Home</Link> <Link to="/about">About</Link>
+          <Link to="/">Home</Link>
+          <Link to="/about">About</Link>
         </div>
         <hr />
         <Outlet />
