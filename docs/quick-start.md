@@ -10,6 +10,7 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
+  Link,
   createReactRouter,
   createRouteConfig,
 } from '@tanstack/react-router'
