@@ -18,7 +18,7 @@ function Invoices() {
 
   // Get the action for a child route
   const invoiceIndexRoute = useRoute('./')
-  const invoiceDetailRoute = useRoute('./:invoiceId')
+  const invoiceDetailRoute = useRoute('./$invoiceId')
 
   return (
     <div className="flex-1 flex">
@@ -35,7 +35,7 @@ function Invoices() {
           return (
             <div key={invoice.id}>
               <Link
-                to="/dashboard/invoices/:invoiceId"
+                to="/dashboard/invoices/$invoiceId"
                 params={{
                   invoiceId: invoice.id,
                 }}
@@ -49,7 +49,7 @@ function Invoices() {
                     <Spinner />
                   ) : (
                     <MatchRoute
-                      to="./:invoiceId"
+                      to="./$invoiceId"
                       params={{
                         invoiceId: invoice.id,
                       }}

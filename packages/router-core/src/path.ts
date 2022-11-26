@@ -97,7 +97,7 @@ export function parsePathname(pathname?: string): Segment[] {
         }
       }
 
-      if (part.charAt(0) === ':') {
+      if (part.charAt(0) === '$') {
         return {
           type: 'param',
           value: part,
@@ -215,7 +215,7 @@ export function matchByPath(
           if (baseSegment?.value === '/') {
             return false
           }
-          if (!baseSegment.value.startsWith(':')) {
+          if (baseSegment.value.charAt(0) !== '$') {
             params[routeSegment.value.substring(1)] = baseSegment.value
           }
         }

@@ -50,7 +50,7 @@ const postsIndexRoute = postsRoute.createRoute({
 })
 
 const postRoute = postsRoute.createRoute({
-  path: ':postId',
+  path: '$postId',
   parseParams: (params) => ({
     postId: z.number().int().parse(Number(params.postId)),
   }),
@@ -181,7 +181,7 @@ function Home() {
       <div className={`text-lg`}>Welcome Home!</div>
       <hr className={`my-2`} />
       <route.Link
-        to="/dashboard/posts/:postId"
+        to="/dashboard/posts/$postId"
         params={{
           postId: 3,
         }}
@@ -214,7 +214,7 @@ function Dashboard() {
       <div className="flex items-center border-b">
         <h2 className="text-xl p-2">Dashboard</h2>
         <route.Link
-          to="/dashboard/posts/:postId"
+          to="/dashboard/posts/$postId"
           params={{
             postId: 3,
           }}
@@ -278,7 +278,7 @@ function Posts() {
           return (
             <div key={post.id}>
               <Link
-                to="/dashboard/posts/:postId"
+                to="/dashboard/posts/$postId"
                 params={{
                   postId: post.id,
                 }}
@@ -289,7 +289,7 @@ function Posts() {
                 <pre className="text-sm">
                   #{post.id} - {post.title.slice(0, 10)}{' '}
                   <MatchRoute
-                    to="./:postId"
+                    to="./$postId"
                     params={{
                       postId: post.id,
                     }}

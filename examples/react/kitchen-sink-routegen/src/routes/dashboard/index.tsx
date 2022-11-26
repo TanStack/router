@@ -1,17 +1,19 @@
 import { useMatch } from '@tanstack/react-router'
 import * as React from 'react'
-import dashboardRoute from '../dashboard'
+import { routeConfig } from '../../routes.generated/dashboard/index'
 
-const routeConfig = dashboardRoute.createRoute({
-  path: '/',
+routeConfig.generate({
   component: DashboardHome,
+  loader: () => {
+    return {
+      tanner: 'test',
+    }
+  },
 })
-
-export default routeConfig
 
 function DashboardHome() {
   const {
-    loaderData: { invoices },
+    loaderData: { invoices, tanner },
   } = useMatch(routeConfig.id)
 
   return (

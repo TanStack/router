@@ -1,3 +1,4 @@
+import invariant from 'tiny-invariant'
 import { GetFrameworkGeneric } from './frameworks'
 import { ParsePathParams } from './link'
 import { joinPaths, trimPath, trimPathRight } from './path'
@@ -56,7 +57,7 @@ export type LoaderFn<
   TAllParams extends AnyPathParams = {},
 > = (
   loaderContext: LoaderContext<TFullSearchSchema, TAllParams>,
-) => Promise<TRouteLoaderData>
+) => TRouteLoaderData | Promise<TRouteLoaderData>
 
 export interface LoaderContext<
   TFullSearchSchema extends AnySearchSchema = {},
@@ -81,6 +82,7 @@ export type RouteOptions<
   TPath extends string = string,
   TParentRouteLoaderData extends AnyLoaderData = {},
   TRouteLoaderData extends AnyLoaderData = {},
+  TParentLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
@@ -176,6 +178,7 @@ export interface RouteConfig<
   TFullPath extends string = string,
   TParentRouteLoaderData extends AnyLoaderData = AnyLoaderData,
   TRouteLoaderData extends AnyLoaderData = AnyLoaderData,
+  TParentLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = AnyLoaderData,
   TActionPayload = unknown,
   TActionResponse = unknown,
@@ -183,10 +186,7 @@ export interface RouteConfig<
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = {},
   TParentParams extends AnyPathParams = {},
-  TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
-    ParsePathParams<TPath>,
-    string
-  >,
+  TParams extends AnyPathParams = {},
   TAllParams extends AnyPathParams = {},
   TKnownChildren = unknown,
 > {
@@ -199,6 +199,7 @@ export interface RouteConfig<
     TPath,
     TParentRouteLoaderData,
     TRouteLoaderData,
+    TParentLoaderData,
     TLoaderData,
     TActionPayload,
     TActionResponse,
@@ -224,42 +225,7 @@ export interface RouteConfig<
       TFullPath,
       TParentRouteLoaderData,
       TRouteLoaderData,
-      TLoaderData,
-      TActionPayload,
-      TActionResponse,
-      TParentSearchSchema,
-      TSearchSchema,
-      TFullSearchSchema,
-      TParentParams,
-      TParams,
-      TAllParams,
-      TNewChildren
-    >
-  >
-  createChildren: IsAny<
-    TId,
-    any,
-    <TNewChildren extends any>(
-      cb: (
-        createChildRoute: CreateRouteConfigFn<
-          false,
-          TId,
-          TFullPath,
-          TRouteLoaderData,
-          TLoaderData,
-          TFullSearchSchema,
-          TAllParams
-        >,
-      ) => TNewChildren extends AnyRouteConfig[]
-        ? TNewChildren
-        : { error: 'Invalid route detected'; route: TNewChildren },
-    ) => RouteConfig<
-      TId,
-      TRouteId,
-      TPath,
-      TFullPath,
-      TParentRouteLoaderData,
-      TRouteLoaderData,
+      TParentLoaderData,
       TLoaderData,
       TActionPayload,
       TActionResponse,
@@ -281,7 +247,58 @@ export interface RouteConfig<
     TFullSearchSchema,
     TAllParams
   >
+  generate: GenerateFn<
+    TRouteId,
+    TPath,
+    TParentRouteLoaderData,
+    TParentLoaderData,
+    TParentSearchSchema,
+    TParentParams
+  >
 }
+
+type GenerateFn<
+  TRouteId extends string = string,
+  TPath extends string = string,
+  TParentRouteLoaderData extends AnyLoaderData = AnyLoaderData,
+  TParentLoaderData extends AnyLoaderData = {},
+  TParentSearchSchema extends {} = {},
+  TParentParams extends AnyPathParams = {},
+> = <
+  TRouteLoaderData extends AnyLoaderData = AnyLoaderData,
+  TActionPayload = unknown,
+  TActionResponse = unknown,
+  TSearchSchema extends AnySearchSchema = {},
+  TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
+    ParsePathParams<TPath>,
+    string
+  >,
+  TAllParams extends AnyPathParams extends TParams
+    ? Record<ParsePathParams<TPath>, string>
+    : NoInfer<TParams> = AnyPathParams extends TParams
+    ? Record<ParsePathParams<TPath>, string>
+    : NoInfer<TParams>,
+>(
+  options: Omit<
+    RouteOptions<
+      TRouteId,
+      TPath,
+      TParentRouteLoaderData,
+      TRouteLoaderData,
+      TParentLoaderData,
+      Expand<TParentLoaderData & NoInfer<TRouteLoaderData>>,
+      TActionPayload,
+      TActionResponse,
+      TParentSearchSchema,
+      TSearchSchema,
+      Expand<TParentSearchSchema & TSearchSchema>,
+      TParentParams,
+      TParams,
+      Expand<TParentParams & TAllParams>
+    >,
+    'path'
+  >,
+) => void
 
 type CreateRouteConfigFn<
   TIsRoot extends boolean = false,
@@ -321,7 +338,8 @@ type CreateRouteConfigFn<
           TPath,
           TParentRouteLoaderData,
           TRouteLoaderData,
-          Expand<TParentLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
+          TParentLoaderData,
+          Expand<TParentLoaderData & NoInfer<TRouteLoaderData>>,
           TActionPayload,
           TActionResponse,
           TParentSearchSchema,
@@ -338,7 +356,8 @@ type CreateRouteConfigFn<
         TPath,
         TParentRouteLoaderData,
         TRouteLoaderData,
-        Expand<TParentLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
+        TParentLoaderData,
+        Expand<TParentLoaderData & NoInfer<TRouteLoaderData>>,
         TActionPayload,
         TActionResponse,
         TParentSearchSchema,
@@ -359,7 +378,8 @@ type CreateRouteConfigFn<
   string extends TPath ? '' : RoutePath<RoutePrefix<TParentPath, TPath>>,
   TParentRouteLoaderData,
   TRouteLoaderData,
-  Expand<TParentLoaderData & DeepAwaited<NoInfer<TRouteLoaderData>>>,
+  TParentLoaderData,
+  Expand<TParentLoaderData & NoInfer<TRouteLoaderData>>,
   TActionPayload,
   TActionResponse,
   TParentSearchSchema,
@@ -403,11 +423,13 @@ export interface AnyRouteConfig
     any,
     any,
     any,
+    any,
     any
   > {}
 
 export interface AnyRouteConfigWithChildren<TChildren>
   extends RouteConfig<
+    any,
     any,
     any,
     any,
@@ -486,19 +508,15 @@ export const createRouteConfig: CreateRouteConfigFn<true> = (
     fullPath: fullPath as any,
     options: options as any,
     children,
-    createChildren: (cb: any) =>
-      createRouteConfig(
-        options,
-        cb((childOptions: any) =>
-          createRouteConfig(childOptions, undefined, false, id, fullPath),
-        ),
-        false,
-        parentId,
-        parentPath,
-      ),
     addChildren: (children: any) =>
       createRouteConfig(options, children, false, parentId, parentPath),
     createRoute: (childOptions: any) =>
       createRouteConfig(childOptions, undefined, false, id, fullPath) as any,
+    generate: () => {
+      invariant(
+        false,
+        `routeConfig.generate() is used by TanStack Router's file-based routing code generation and should not actually be called during runtime. `,
+      )
+    },
   }
 }

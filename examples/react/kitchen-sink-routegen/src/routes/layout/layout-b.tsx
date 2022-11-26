@@ -1,8 +1,7 @@
 import * as React from 'react'
-import layoutRoute from '../layout'
+import { routeConfig } from '../../routes.generated/layout/layout-b'
 
-export default layoutRoute.createRoute({
-  path: 'layout-b',
+routeConfig.generate({
   component: LayoutB,
 })
 

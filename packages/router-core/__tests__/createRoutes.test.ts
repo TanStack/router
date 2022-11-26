@@ -1,153 +1,152 @@
 import { Route } from '../src'
 import { z } from 'zod'
-import {
-  createRouter,
-  AllRouteInfo,
-  createRouteConfig,
-  RelativeToPathAutoComplete,
-} from '../src'
+import { createRouter, AllRouteInfo, createRouteConfig } from '../src'
 
 // Write a test
 describe('everything', () => {
   it('should work', () => {
     // Build our routes. We could do this in our component, too.
-    const routeConfig = createRouteConfig().createChildren((createRoute) => [
-      createRoute({
-        path: '/',
-        validateSearch: (search) =>
-          z
-            .object({
-              version: z.number(),
-            })
-            .parse(search),
+    const rootRoute = createRouteConfig()
+    const indexRoute = rootRoute.createRoute({
+      path: '/',
+      validateSearch: (search) =>
+        z
+          .object({
+            version: z.number(),
+          })
+          .parse(search),
+    })
+    const testRoute = rootRoute.createRoute({
+      path: 'test',
+      validateSearch: (search) =>
+        z
+          .object({
+            version: z.number(),
+            isGood: z.boolean(),
+          })
+          .parse(search),
+    })
+    const dashboardRoute = rootRoute.createRoute({
+      path: 'dashboard',
+      loader: async () => {
+        console.log('Fetching all invoices...')
+        return {
+          invoices: 'await fetchInvoices()',
+        }
+      },
+    })
+    const dashboardIndexRoute = dashboardRoute.createRoute({ path: '/' })
+    const invoicesRoute = dashboardRoute.createRoute({
+      path: 'invoices',
+    })
+    const invoicesIndexRoute = invoicesRoute.createRoute({
+      path: '/',
+      action: async (partialInvoice: { amount: number }) => {
+        const invoice: { id: number; amount: number } = null!
+        // // Redirect to the new invoice
+        // ctx.router.navigate({
+        //   to: invoice.id,
+        //   // Use the current match for relative paths
+        //   from: ctx.match.pathname,
+        // })
+        return invoice
+      },
+    })
+    const invoiceRoute = invoicesRoute.createRoute({
+      path: '$invoiceId',
+      parseParams: ({ invoiceId }) => ({ invoiceId: Number(invoiceId) }),
+      stringifyParams: ({ invoiceId }) => ({
+        invoiceId: String(invoiceId),
       }),
-      createRoute({
-        path: '/test',
-        validateSearch: (search) =>
-          z
-            .object({
-              version: z.number(),
-              isGood: z.boolean(),
-            })
-            .parse(search),
-      }),
-      createRoute({
-        path: 'dashboard',
-        loader: async () => {
-          console.log('Fetching all invoices...')
-          return {
-            invoices: 'await fetchInvoices()',
-          }
-        },
-      }).createChildren((createRoute) => [
-        createRoute({ path: '/' }),
-        createRoute({
-          path: 'invoices',
-        }).createChildren((createRoute) => [
-          createRoute({
-            path: '/',
-            action: async (partialInvoice: { amount: number }) => {
-              const invoice: { id: number; amount: number } = null!
-              // // Redirect to the new invoice
-              // ctx.router.navigate({
-              //   to: invoice.id,
-              //   // Use the current match for relative paths
-              //   from: ctx.match.pathname,
-              // })
-              return invoice
-            },
-          }),
-          createRoute({
-            path: ':invoiceId',
-            parseParams: ({ invoiceId }) => ({ invoiceId: Number(invoiceId) }),
-            stringifyParams: ({ invoiceId }) => ({
-              invoiceId: String(invoiceId),
-            }),
-            loader: async ({ params: { invoiceId } }) => {
-              console.log('Fetching invoice...')
-              return {
-                invoice: 'await fetchInvoiceById(invoiceId!)',
-              }
-            },
-          }),
-        ]),
-        createRoute({
-          path: 'users',
-          loader: async () => {
-            return {
-              users: 'await fetchUsers()',
-            }
-          },
-          validateSearch: (search) =>
-            z
+      loader: async ({ params: { invoiceId } }) => {
+        console.log('Fetching invoice...')
+        return {
+          invoice: 'await fetchInvoiceById(invoiceId!)',
+        }
+      },
+    })
+    const usersRoute = dashboardRoute.createRoute({
+      path: 'users',
+      loader: async () => {
+        return {
+          users: 'await fetchUsers()',
+        }
+      },
+      validateSearch: (search) =>
+        z
+          .object({
+            usersView: z
               .object({
-                usersView: z
-                  .object({
-                    sortBy: z.enum(['name', 'id', 'email']).optional(),
-                    filterBy: z.string().optional(),
-                  })
-                  .optional(),
+                sortBy: z.enum(['name', 'id', 'email']).optional(),
+                filterBy: z.string().optional(),
               })
-              .parse(search),
-          preSearchFilters: [
-            // Keep the usersView search param around
-            // while in this route (or it's children!)
-            (search) => ({
-              ...search,
-              usersView: {
-                ...search.usersView,
-              },
-            }),
-          ],
-        }).createChildren((createRoute) => [
-          createRoute({
-            path: ':userId',
-            loader: async ({ params: { userId }, search }) => {
-              return {
-                user: 'await fetchUserById(userId!)',
-              }
-            },
-            action: async (partialUser: { amount: number }) => {
-              const invoice: { id: number; amount: number } = null!
-              // // Redirect to the new invoice
-              // ctx.router.navigate({
-              //   to: invoice.id,
-              //   // Use the current match for relative paths
-              //   from: ctx.match.pathname,
-              // })
-              return invoice
-            },
-          }),
-        ]),
-      ]),
-      // Obviously, you can put routes in other files, too
-      // reallyExpensiveRoute,
-      createRoute({
-        path: 'authenticated/', // Trailing slash doesn't mean anything
-      }).createChildren((createRoute) => [
-        createRoute({
-          path: '/',
+              .optional(),
+          })
+          .parse(search),
+      preSearchFilters: [
+        // Keep the usersView search param around
+        // while in this route (or it's children!)
+        (search) => ({
+          ...search,
+          usersView: {
+            ...search.usersView,
+          },
         }),
+      ],
+    })
+    const userRoute = usersRoute.createRoute({
+      path: '$userId',
+      loader: async ({ params: { userId }, search }) => {
+        return {
+          user: 'await fetchUserById(userId!)',
+        }
+      },
+      action: async (partialUser: { amount: number }) => {
+        const invoice: { id: number; amount: number } = null!
+        // // Redirect to the new invoice
+        // ctx.router.navigate({
+        //   to: invoice.id,
+        //   // Use the current match for relative paths
+        //   from: ctx.match.pathname,
+        // })
+        return invoice
+      },
+    })
+    const authenticatedRoute = rootRoute.createRoute({
+      path: 'authenticated/', // Trailing slash doesn't mean anything
+    })
+    const authenticatedIndexRoute = authenticatedRoute.createRoute({
+      path: '/',
+    })
+    const layoutRoute = rootRoute.createRoute({
+      id: 'layout',
+      component: () => 'layout-wrapper',
+      validateSearch: (search) =>
+        z
+          .object({
+            isLayout: z.boolean(),
+          })
+          .parse(search),
+    })
+    const layoutARoute = layoutRoute.createRoute({
+      path: 'layout-a',
+      component: () => 'layout-a',
+    })
+    const layoutBRoute = layoutRoute.createRoute({
+      path: 'layout-b',
+      component: () => 'layout-b',
+    })
+
+    const routeConfig = rootRoute.addChildren([
+      indexRoute,
+      testRoute,
+      dashboardRoute.addChildren([
+        dashboardIndexRoute,
+        invoicesRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
+        usersRoute.addChildren([userRoute]),
       ]),
-      createRoute({
-        id: 'layout',
-        component: () => 'layout-wrapper',
-        validateSearch: (search) =>
-          z
-            .object({
-              isLayout: z.boolean(),
-            })
-            .parse(search),
-      }).createChildren((createRoute) => [
-        createRoute({
-          path: 'layout-a',
-          component: () => 'layout-a',
-        }),
-        createRoute({
-          path: 'layout-b',
-          component: () => 'layout-b',
-        }),
-      ]),
+      authenticatedRoute.addChildren([authenticatedIndexRoute]),
+      layoutRoute.addChildren([layoutARoute, layoutBRoute]),
     ])
 
     type MyRoutesInfo = AllRouteInfo<typeof routeConfig>
@@ -172,9 +171,9 @@ describe('everything', () => {
       routeConfig,
     })
 
-    const loaderData = router.getRoute('/dashboard/users/:userId')
+    const loaderData = router.getRoute('/dashboard/users/$userId')
     //    ^?
-    const route = router.getRoute('/dashboard/users/:userId')
+    const route = router.getRoute('/dashboard/users/$userId')
     //    ^?
     const action = route.action
     //    ^?
@@ -182,7 +181,7 @@ describe('everything', () => {
     //    ^?
 
     router.buildLink({
-      to: '/dashboard/users/:userId',
+      to: '/dashboard/users/$userId',
       params: {
         userId: '2',
       },
@@ -228,7 +227,7 @@ describe('everything', () => {
     })
 
     router.getRoute('/dashboard').buildLink({
-      to: '/dashboard/invoices/:invoiceId',
+      to: '/dashboard/invoices/$invoiceId',
       params: {
         // @ts-expect-error
         invoiceId: '2',
@@ -236,7 +235,7 @@ describe('everything', () => {
     })
 
     router.getRoute('/').buildLink({
-      to: '/dashboard/invoices/:invoiceId',
+      to: '/dashboard/invoices/$invoiceId',
       params: {
         invoiceId: 2,
       },
@@ -250,7 +249,7 @@ describe('everything', () => {
     })
 
     router.getRoute('/').buildLink({
-      to: '/dashboard/users/:userId',
+      to: '/dashboard/users/$userId',
       params: (current) => ({
         userId:
           // @ts-expect-error
@@ -264,8 +263,8 @@ describe('everything', () => {
       }),
     })
 
-    router.getRoute('/dashboard/invoices/:invoiceId').buildLink({
-      to: '/dashboard/users/:userId',
+    router.getRoute('/dashboard/invoices/$invoiceId').buildLink({
+      to: '/dashboard/users/$userId',
       params: (current) => ({
         userId: `${current?.invoiceId}`,
       }),
@@ -279,7 +278,7 @@ describe('everything', () => {
       },
     })
 
-    router.getRoute('/dashboard/users/:userId').buildLink({
+    router.getRoute('/dashboard/users/$userId').buildLink({
       to: '/',
       search: (prev) => {
         return {
@@ -290,7 +289,7 @@ describe('everything', () => {
 
     router.buildLink({
       from: '/',
-      to: '/dashboard/users/:userId',
+      to: '/dashboard/users/$userId',
       params: {
         userId: '2',
       },
@@ -320,21 +319,21 @@ describe('everything', () => {
     })
 
     router.getRoute('/').buildLink({
-      to: '/dashboard/invoices/:invoiceId',
+      to: '/dashboard/invoices/$invoiceId',
       params: {
         invoiceId: 2,
       },
     })
 
-    router.getRoute('/dashboard/invoices/:invoiceId').buildLink({
+    router.getRoute('/dashboard/invoices/$invoiceId').buildLink({
       to: '.',
       params: (d) => ({
         invoiceId: d.invoiceId,
       }),
     })
 
-    router.getRoute('/dashboard/invoices/:invoiceId').buildLink({
-      to: '../test',
+    router.getRoute('/dashboard/invoices/$invoiceId').buildLink({
+      to: testRoute.id,
       search: {
         version: 2,
         isGood: true,

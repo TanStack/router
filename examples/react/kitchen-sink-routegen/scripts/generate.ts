@@ -1,65 +1,90 @@
-import watch from 'watch'
+import chokidar from 'chokidar'
+import klaw from 'klaw'
+import through2 from 'through2'
 import path, { relative } from 'path'
-import fs from 'fs/promises'
+import fs from 'fs-extra'
+import {
+  detectExports,
+  generateRouteConfig,
+  isolatedProperties,
+  isolateOptionToExport,
+} from './transformCode'
 
 const config = {
   rootDirectory: path.resolve(__dirname, '..'),
   sourceDirectory: path.resolve(__dirname, '../src/'),
   routesDirectory: path.resolve(__dirname, '../src/routes'),
-  routeConfigFile: path.resolve(__dirname, '../src/routeConfig.gen.tsx'),
+  routeGenDirectory: path.resolve(__dirname, '../src/routes.generated'),
 }
+
+export type GeneratorConfig = typeof config
+
+let latestTask = 0
 
 main()
 
-function main() {
-  watch.watchTree(config.routesDirectory, function (f, curr, prev) {
-    // if (typeof f == 'object' && prev === null && curr === null) {
-    //   console.log('done')
-    // } else if (prev === null) {
-    //   console.log('new file')
-    // } else if (curr.nlink === 0) {
-    //   console.log('removed')
-    // } else {
-    //   console.log('changed')
-    // }
-    generate()
+async function main() {
+  const watcher = chokidar.watch(config.routesDirectory, {})
+
+  watcher.on('ready', () => {
+    try {
+      generate()
+    } catch (err) {
+      console.error(err)
+    }
+
+    watcher.on('change', () => {
+      try {
+        generate()
+      } catch (err) {
+        console.error(err)
+      }
+    })
   })
 }
 
-// const routeConfig = createRouteConfig().addChildren([
-//   indexRoute,
-//   dashboardRoute.addChildren([
-//     dashboardIndexRoute,
-//     invoicesRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
-//     usersRoute.addChildren([usersIndexRoute, userRoute]),
-//   ]),
-//   expensiveRoute,
-//   authenticatedRoute,
-//   layoutRoute.addChildren([layoutRouteA, layoutRouteB]),
-// ])
-
-type RouteNode = {
-  partialPath: string
-  partialPathNoExt: string
+export type RouteNode = {
+  filename: string
+  fileNameNoExt: string
   fullPath: string
   relativePathToSrc: string
   relativePathToRoutes: string
   isDirectory: boolean
+  isIndex: boolean
   variable: string
   childRoutesDir?: string
+  genPath: string
+  genDir: string
+  genPathNoExt: string
+  parent?: RouteNode
   children?: RouteNode[]
 }
 
+export type IsolatedExport = {
+  key: string
+  exported: boolean
+  code?: string | null
+}
+
 async function generate() {
-  const flatNodes: RouteNode[] = []
+  const taskId = latestTask + 1
+  latestTask = taskId
+  console.log('Generating routes...')
+  const start = Date.now()
+  let routeConfigImports: string[] = []
+
+  const fileQueue: [string, string][] = []
+  const queueWriteFile = (filename: string, content: string) => {
+    fileQueue.push([filename, content])
+  }
 
   async function reparent(dir: string): Promise<RouteNode[]> {
     const dirList = await fs.readdir(dir)
 
     const dirListCombo = multiSortBy(
       await Promise.all(
-        dirList.map(async (d): Promise<RouteNode> => {
-          const fullPath = path.resolve(dir, d)
+        dirList.map(async (filename): Promise<RouteNode> => {
+          const fullPath = path.resolve(dir, filename)
           const stat = await fs.lstat(fullPath)
 
           const relativePathToSrc = relative(config.sourceDirectory, fullPath)
@@ -67,20 +92,34 @@ async function generate() {
             config.routesDirectory,
             fullPath,
           )
+
+          const genPath = path.resolve(
+            config.routeGenDirectory,
+            relativePathToRoutes,
+          )
+          const genPathNoExt = removeExt(genPath)
+          const genDir = path.resolve(genPath, '..')
+
+          const fileNameNoExt = removeExt(filename)
+
           return {
-            partialPath: d,
-            partialPathNoExt: removeExt(d),
+            filename,
+            fileNameNoExt,
             fullPath,
             relativePathToSrc,
             relativePathToRoutes,
+            genPath,
+            genDir,
+            genPathNoExt,
             variable: fileToVariable(removeExt(relativePathToRoutes)),
             isDirectory: stat.isDirectory(),
+            isIndex: fileNameNoExt === 'index',
           }
         }),
       ),
       [
-        (d) => (d.partialPathNoExt === 'index' ? -1 : 1),
-        (d) => d.partialPathNoExt,
+        (d) => (d.fileNameNoExt === 'index' ? -1 : 1),
+        (d) => d.fileNameNoExt,
         (d) => (d.isDirectory ? 1 : -1),
       ],
     )
@@ -90,7 +129,7 @@ async function generate() {
     dirListCombo.forEach(async (d, i) => {
       if (d.isDirectory) {
         const parent = reparented.find(
-          (dd) => !dd.isDirectory && dd.partialPathNoExt === d.partialPath,
+          (dd) => !dd.isDirectory && dd.fileNameNoExt === d.filename,
         )
 
         if (parent) {
@@ -106,28 +145,90 @@ async function generate() {
     return Promise.all(
       reparented.map(async (d) => {
         if (d.childRoutesDir) {
-          return {
+          const children = await reparent(d.childRoutesDir)
+
+          d = {
             ...d,
-            children: await reparent(d.childRoutesDir),
+            children,
           }
+
+          children.forEach((child) => (child.parent = d))
+
+          return d
         }
         return d
       }),
     )
   }
 
-  // return `\n[${children.map((f) => f).join(',\n')}]`
-
   const reparented = await reparent(config.routesDirectory)
 
-  function buildRouteConfig(nodes: RouteNode[], depth = 1): string {
+  async function buildRouteConfig(
+    nodes: RouteNode[],
+    depth = 1,
+  ): Promise<string> {
     const children = nodes
-      .map((node) => {
-        flatNodes.push(node)
-        const route = fileToVariable(removeExt(node.relativePathToRoutes))
+      .filter((d) => {
+        if (
+          removeExt(d.fullPath) === path.resolve(config.routesDirectory, 'root')
+        ) {
+          return false
+        }
+
+        return true
+      })
+      .map(async (node) => {
+        // Generate the isolated files
+        const routeCode = await fs.readFile(node.fullPath, 'utf-8')
+
+        const transforms = await Promise.all(
+          isolatedProperties.map(async (key): Promise<IsolatedExport> => {
+            let exported = false
+            let exports: string[] = []
+
+            const transformed = await isolateOptionToExport(routeCode, {
+              ssr: true,
+              isolate: key,
+            })
+
+            if (transformed?.code) {
+              exports = await detectExports(transformed?.code)
+              if (exports.includes(key)) {
+                exported = true
+              }
+            }
+
+            return { key, exported, code: transformed?.code }
+          }),
+        )
+
+        const imports = transforms.filter(({ exported }) => exported)
+
+        await Promise.all(
+          imports.map(({ key, code }) =>
+            queueWriteFile(`${node.genPathNoExt}-${key}.tsx`, code!),
+          ),
+        )
+
+        const routeConfigCode = await generateRouteConfig(
+          routeCode,
+          node,
+          config,
+          imports,
+        )
+
+        queueWriteFile(node.genPath, routeConfigCode)
+
+        routeConfigImports.push(
+          `import { ${node.variable}Route } from './${removeExt(
+            path.relative(config.routeGenDirectory, node.genPath),
+          )}'`,
+        )
+
+        const route = `${node.variable}Route`
 
         if (node.children?.length) {
-          const childConfigs = buildRouteConfig(node.children, depth + 1)
+          const childConfigs = await buildRouteConfig(node.children, depth + 1)
           return `${route}.addChildren([\n${spaces(
             depth * 4,
           )}${childConfigs}\n${spaces(depth * 2)}])`
@@ -135,33 +236,109 @@ async function generate() {
 
         return route
       })
-      .join(`,\n${spaces(depth * 2)}`)
 
-    return children
+    return (await Promise.all(children)).join(`,\n${spaces(depth * 2)}`)
   }
 
-  const routeConfigChildrenText = buildRouteConfig(reparented)
+  const routeConfigChildrenText = await buildRouteConfig(reparented)
 
-  const imports = `import { createRouteConfig } from '@tanstack/react-router'`
+  routeConfigImports.unshift(
+    `import { rootRoute } from '${path.relative(
+      config.routeGenDirectory,
+      path.resolve(config.routesDirectory, 'root'),
+    )}'`,
+  )
 
-  const routeImports = flatNodes
-    .map((d) => {
-      return `import ${d.variable} from './${removeExt(d.relativePathToSrc)}'`
+  routeConfigImports = multiSortBy(routeConfigImports, [
+    (d) => d.split('/').length,
+    (d) => (d.endsWith("index'") ? -1 : 1),
+    (d) => d,
+  ])
+
+  const routeConfig = `export const routeConfig = rootRoute.addChildren([\n  ${routeConfigChildrenText}\n])`
+
+  const fileText = [routeConfigImports.join('\n'), routeConfig].join('\n\n')
+
+  queueWriteFile(
+    path.resolve(config.routeGenDirectory, 'routeConfig.ts'),
+    fileText,
+  )
+
+  // Do all of our file system manipulation at the end
+  await fs.mkdir(config.routeGenDirectory, { recursive: true })
+
+  let newFileCount = 0
+
+  if (latestTask !== taskId) {
+    console.log(`- Skipping since file changes were made while generating.`)
+    return
+  }
+
+  await Promise.all(
+    fileQueue.map(async ([filename, content]) => {
+      await fs.ensureDir(path.dirname(filename))
+      const exists = await fs.pathExists(filename)
+      let current = ''
+      if (exists) {
+        current = await fs.readFile(filename, 'utf-8')
+      }
+      if (current !== content) {
+        newFileCount++
+        await fs.writeFile(filename, content)
+      }
+    }),
+  )
+
+  const allFiles = await getAllFiles(config.routeGenDirectory)
+  const unusedFiles = allFiles.filter(
+    (d) => !fileQueue.find(([filename]) => filename === d),
+  )
+
+  await Promise.all(unusedFiles.map((d) => fs.remove(d)))
+
+  console.log(
+    `- Done! Built ${fileQueue.length} files in ${Date.now() - start}ms`,
+  )
+
+  if (!newFileCount) {
+    console.log(`- No changes were found. Carry on!`)
+  } else {
+    console.log(
+      `- Updated ${routeConfigImports.length} routes (${fileQueue.length} files)`,
+    )
+  }
+
+  if (unusedFiles.length) {
+    console.log(`- Removed ${unusedFiles.length} old files.`)
+  }
+}
+
+function getAllFiles(dir: string): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    const excludeDirFilter = through2.obj(function (item, enc, next) {
+      if (!item.stats.isDirectory()) this.push(item)
+      next()
     })
-    .join('\n')
 
-  const routeConfig = `export const routeConfig = createRouteConfig().addChildren([\n  ${routeConfigChildrenText}\n])`
+    const items: string[] = []
 
-  const fileText = [imports, routeImports, routeConfig].join('\n\n')
-
-  await fs.writeFile(config.routeConfigFile, fileText)
+    klaw(dir)
+      .pipe(excludeDirFilter)
+      .on('data', (item) => items.push(item.path))
+      .on('error', (err) => reject(err))
+      .on('end', () => resolve(items))
+  })
 }
 
 function fileToVariable(d: string) {
-  return d.replace(/([^a-zA-Z0-9]|[\.])/gm, '')
+  return d
+    .split('/')
+    .map((d, i) => (i > 0 ? capitalize(d) : d))
+    .join('')
+    .replace(/([^a-zA-Z0-9]|[\.])/gm, '')
 }
 
-function removeExt(d: string) {
+export function removeExt(d: string) {
   return d.substring(0, d.lastIndexOf('.')) || d
 }
 
@@ -199,4 +376,9 @@ export function multiSortBy<T>(
       return ai - bi
     })
     .map(([d]) => d)
+}
+
+function capitalize(s: string) {
+  if (typeof s !== 'string') return ''
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }

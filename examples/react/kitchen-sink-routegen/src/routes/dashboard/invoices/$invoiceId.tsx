@@ -2,11 +2,10 @@ import * as React from 'react'
 import { z } from 'zod'
 import { fetchInvoiceById, patchInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
-import invoicesRoute from '../invoices'
 import { useMatch } from '@tanstack/react-router'
+import { routeConfig } from '../../../routes.generated/dashboard/invoices/$invoiceId'
 
-const routeConfig = invoicesRoute.createRoute({
-  path: ':invoiceId',
+routeConfig.generate({
   parseParams: (params) => ({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),
   }),
@@ -30,8 +29,6 @@ const routeConfig = invoicesRoute.createRoute({
   },
   action: patchInvoice,
 })
-
-export default routeConfig
 
 function InvoiceView() {
   const {

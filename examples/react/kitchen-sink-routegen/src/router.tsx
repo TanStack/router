@@ -1,11 +1,12 @@
 import * as React from 'react'
 import { createReactRouter } from '@tanstack/react-router'
 
-import { routeConfig } from './routeConfig.gen'
+import { routeConfig } from './routes.generated/routeConfig'
 import { Spinner } from './components/Spinner'
 
 export const router = createReactRouter({
   routeConfig,
+  // useServerData: true,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>
       <Spinner />
@@ -13,8 +14,8 @@ export const router = createReactRouter({
   ),
 })
 
-// declare module '@tanstack/react-router' {
-//   interface RegisterRouter {
-//     router: typeof router
-//   }
-// }
+declare module '@tanstack/react-router' {
+  interface RegisterRouter {
+    router: typeof router
+  }
+}

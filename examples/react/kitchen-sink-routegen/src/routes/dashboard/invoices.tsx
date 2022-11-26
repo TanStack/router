@@ -1,14 +1,11 @@
 import { Outlet, useMatch } from '@tanstack/react-router'
 import * as React from 'react'
 import { Spinner } from '../../components/Spinner'
-import dashboardRoute from '../dashboard'
+import { routeConfig } from '../../routes.generated/dashboard/invoices'
 
-const routeConfig = dashboardRoute.createRoute({
-  path: 'invoices',
+routeConfig.generate({
   component: Invoices,
 })
-
-export default routeConfig
 
 function Invoices() {
   const {
@@ -20,7 +17,7 @@ function Invoices() {
 
   // Get the action for a child route
   const invoiceIndexRoute = useRoute('./')
-  const invoiceDetailRoute = useRoute('./:invoiceId')
+  const invoiceDetailRoute = useRoute('./$invoiceId')
 
   return (
     <div className="flex-1 flex">
@@ -37,7 +34,7 @@ function Invoices() {
           return (
             <div key={invoice.id}>
               <Link
-                to="/dashboard/invoices/:invoiceId"
+                to="/dashboard/invoices/$invoiceId"
                 params={{
                   invoiceId: invoice.id,
                 }}
@@ -51,7 +48,7 @@ function Invoices() {
                     <Spinner />
                   ) : (
                     <MatchRoute
-                      to="./:invoiceId"
+                      to="./$invoiceId"
                       params={{
                         invoiceId: invoice.id,
                       }}

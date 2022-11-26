@@ -77,7 +77,7 @@ const invoicesIndexRoute = invoicesRoute.createRoute({
 })
 
 const invoiceRoute = invoicesRoute.createRoute({
-  path: ':invoiceId',
+  path: '$invoiceId',
   parseParams: (params) => ({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),
   }),
@@ -137,7 +137,7 @@ const usersIndexRoute = usersRoute.createRoute({
 })
 
 const userRoute = usersRoute.createRoute({
-  path: ':userId',
+  path: '$userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
   component: UserView,
@@ -437,7 +437,7 @@ function Dashboard() {
       <div className="flex items-center border-b">
         <h2 className="text-xl p-2">Dashboard</h2>
         <route.Link
-          to="/dashboard/invoices/:invoiceId"
+          to="/dashboard/invoices/$invoiceId"
           params={{
             invoiceId: 3,
           }}
@@ -520,7 +520,7 @@ function Invoices() {
           return (
             <div key={invoice.id}>
               <Link
-                to="/dashboard/invoices/:invoiceId"
+                to="/dashboard/invoices/$invoiceId"
                 params={{
                   invoiceId: invoice.id,
                 }}
@@ -534,7 +534,7 @@ function Invoices() {
                     <Spinner />
                   ) : (
                     <MatchRoute
-                      to="./:invoiceId"
+                      to="./$invoiceId"
                       params={{
                         invoiceId: invoice.id,
                       }}
@@ -820,7 +820,7 @@ function Users() {
           return (
             <div key={user.id}>
               <Link
-                to="./:userId"
+                to="./$userId"
                 params={{
                   userId: user.id,
                 }}
@@ -830,7 +830,7 @@ function Users() {
                 <pre className="text-sm">
                   {user.name}{' '}
                   <MatchRoute
-                    to={`./:userId`}
+                    to={`./$userId`}
                     params={{
                       userId: user.id,
                     }}

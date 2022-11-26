@@ -32,7 +32,7 @@ function App() {
           path: '/todos',
         },
         {
-          path: '/todos/:todoId',
+          path: '/todos/$todoId',
           children: [
             {
               path: '/',
@@ -41,7 +41,7 @@ function App() {
               path: '/tasks',
             },
             {
-              path: '/tasks/:taskId',
+              path: '/tasks/$taskId',
             },
             {
               path: '/',
@@ -65,13 +65,13 @@ const routes = [
     path: '/',
   },
   {
-    path: '/todos/:todoId',
+    path: '/todos/$todoId',
     children: [
       {
         path: '/',
       },
       {
-        path: '/tasks/:taskId',
+        path: '/tasks/$taskId',
       },
       {
         path: '/tasks',

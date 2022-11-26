@@ -1,8 +1,7 @@
 import * as React from 'react'
-import usersRoute from '../users'
+import { routeConfig } from '../../../routes.generated/dashboard/users'
 
-export default usersRoute.createRoute({
-  path: '/',
+routeConfig.generate({
   component: UsersIndex,
 })
 

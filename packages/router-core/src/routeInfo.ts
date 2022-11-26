@@ -60,13 +60,15 @@ type ParseRouteChild<TRouteConfig, TId> = TRouteConfig & {
   ? ParseRouteConfig<TRouteConfig>
   : never
 
+// Generics!
 export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
   infer TId,
   infer TRouteId,
   infer TPath,
   infer TFullPath,
-  infer TParentLoaderData,
+  infer TParentRouteLoaderData,
   infer TRouteLoaderData,
+  infer TParentLoaderData,
   infer TLoaderData,
   infer TActionPayload,
   infer TActionResponse,
@@ -85,8 +87,9 @@ export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
         TRouteId,
         TPath,
         TFullPath,
-        TParentLoaderData,
+        TParentRouteLoaderData,
         TRouteLoaderData,
+        TParentLoaderData,
         TLoaderData,
         TActionPayload,
         TActionResponse,
@@ -104,6 +107,7 @@ export interface RoutesInfoInner<
   TRouteInfo extends RouteInfo<
     string,
     string,
+    any,
     any,
     any,
     any,
@@ -154,6 +158,7 @@ export interface AnyRouteInfo
     any,
     any,
     any,
+    any,
     any
   > {}
 
@@ -164,6 +169,7 @@ export interface RouteInfo<
   TFullPath extends string = string,
   TParentRouteLoaderData extends AnyLoaderData = {},
   TRouteLoaderData extends AnyLoaderData = {},
+  TParentLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = {},
   TActionPayload = unknown,
   TActionResponse = unknown,
@@ -171,10 +177,7 @@ export interface RouteInfo<
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = {},
   TParentParams extends AnyPathParams = {},
-  TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
-    ParsePathParams<TPath>,
-    string
-  >,
+  TParams extends AnyPathParams = {},
   TAllParams extends AnyPathParams = {},
 > {
   id: TId
@@ -183,6 +186,7 @@ export interface RouteInfo<
   fullPath: TFullPath
   parentRouteLoaderData: TParentRouteLoaderData
   routeLoaderData: TRouteLoaderData
+  parentLoaderData: TParentLoaderData
   loaderData: TLoaderData
   actionPayload: TActionPayload
   actionResponse: TActionResponse
@@ -196,6 +200,7 @@ export interface RouteInfo<
     TPath,
     TParentRouteLoaderData,
     TRouteLoaderData,
+    TParentLoaderData,
     TLoaderData,
     TActionPayload,
     TActionResponse,

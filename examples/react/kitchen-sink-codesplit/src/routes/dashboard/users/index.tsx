@@ -128,7 +128,7 @@ function Users() {
           return (
             <div key={user.id}>
               <Link
-                to="./:userId"
+                to="./$userId"
                 params={{
                   userId: user.id,
                 }}
@@ -138,7 +138,7 @@ function Users() {
                 <pre className="text-sm">
                   {user.name}{' '}
                   <MatchRoute
-                    to={`./:userId`}
+                    to={`./$userId`}
                     params={{
                       userId: user.id,
                     }}

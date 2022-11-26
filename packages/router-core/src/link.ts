@@ -5,7 +5,7 @@ import {
   RouteInfoByPath,
 } from './routeInfo'
 import { Location, LocationState } from './router'
-import { Expand, NoInfer, PickAsRequired, PickRequired, Updater } from './utils'
+import { Expand, NoInfer, PickRequired, Updater } from './utils'
 
 export type LinkInfo =
   | {
@@ -58,7 +58,7 @@ export type Split<S, TIncludeTrailingSlash = true> = S extends unknown
   : never
 
 export type ParsePathParams<T extends string> = Split<T>[number] extends infer U
-  ? U extends `:${infer V}`
+  ? U extends `$${infer V}`
     ? V
     : never
   : never

@@ -4,6 +4,7 @@ import { routeConfig } from './routeConfig'
 export const createRouter = () =>
   createReactRouter({
     routeConfig,
+    useServerData: true,
     // defaultPreload: 'intent',
   })
 

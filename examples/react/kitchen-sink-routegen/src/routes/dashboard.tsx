@@ -1,9 +1,10 @@
 import * as React from 'react'
-import { createRouteConfig, Outlet, useMatch } from '@tanstack/react-router'
+import { Outlet, useMatch } from '@tanstack/react-router'
 import { fetchInvoices } from '../mockTodos'
+import { routeConfig } from '../routes.generated/dashboard'
+import { dashboardInvoicesinvoiceIdRoute } from '../routes.generated/dashboard/invoices/$invoiceId'
 
-const routeConfig = createRouteConfig().createRoute({
-  path: 'dashboard',
+routeConfig.generate({
   component: Dashboard,
   loader: async () => {
     console.log('Fetching all invoices...')
@@ -13,8 +14,6 @@ const routeConfig = createRouteConfig().createRoute({
   },
 })
 
-export default routeConfig
-
 function Dashboard() {
   const route = useMatch(routeConfig.id)
 
@@ -23,7 +22,7 @@ function Dashboard() {
       <div className="flex items-center border-b">
         <h2 className="text-xl p-2">Dashboard</h2>
         <route.Link
-          to="/dashboard/invoices/:invoiceId"
+          to={dashboardInvoicesinvoiceIdRoute.id}
           params={{
             invoiceId: 3,
           }}

@@ -42,6 +42,9 @@ export async function render(opts: {
 }) {
   const router = await getRouter(opts)
 
+  // router.getHeadTags()
+  // router.getRequestReponse()
+
   router.load().then(() => {
     const routerState = router.dehydrateState()
     const routerScript = `<script>window.__TANSTACK_ROUTER_STATE__ = JSON.parse(${jsesc(

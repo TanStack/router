@@ -1,16 +1,13 @@
 import * as React from 'react'
 import { Invoice, postInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
-import invoicesRoute from '../invoices'
 import { useMatch } from '@tanstack/react-router'
+import { routeConfig } from '../../../routes.generated/dashboard/invoices'
 
-const routeConfig = invoicesRoute.createRoute({
-  path: '/',
+routeConfig.generate({
   component: InvoicesHome,
   action: postInvoice,
 })
-
-export default routeConfig
 
 function InvoicesHome() {
   const { action } = useMatch(routeConfig.id)

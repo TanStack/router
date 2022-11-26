@@ -7,6 +7,7 @@ import {
   createRouteConfig,
   Link,
   useMatch,
+  RegisteredAllRouteInfo,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -42,7 +43,13 @@ const PostsIndexRoute = postsRoute.createRoute({
 })
 
 const postRoute = postsRoute.createRoute({
-  path: 'post/:postId',
+  path: 'post/$postId',
+  // parseParams: (params) => ({
+  //   postId: Number(params.postId),
+  // }),
+  // stringifyParams: ({ postId }) => ({
+  //   postId: `${postId}`,
+  // }),
   component: Post,
   loader: async ({ params: { postId } }) => {
     return {
@@ -52,7 +59,7 @@ const postRoute = postsRoute.createRoute({
 })
 
 const routeConfig = createRouteConfig().addChildren([
-  // indexRoute,
+  indexRoute,
   postsRoute.addChildren([PostsIndexRoute, postRoute]),
 ])
 
@@ -124,6 +131,7 @@ function Index() {
     </div>
   )
 }
+//    ^?
 
 function Posts() {
   const {

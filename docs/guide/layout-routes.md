@@ -12,17 +12,27 @@ Layout routes are routes that do not have a path, but allows wrapping it's child
 To create a layout route, define a route config with an `id` property instead of a `path`:
 
 ```tsx
-const routeConfig = createRouteConfig().createChildren((createRoute) => [
+const rootRoute = createRouteConfig()
+
+// Our layout route
+const layoutRoute = rootRoute.createRoute({
+  id: 'layout',
+})
+
+const layoutARoute = layoutRoute.createRoute(
   createRoute({
-    id: 'layout',
-  }).createChildren((createRoute) => [
-    createRoute({
-      path: 'layout-a',
-    }),
-    createRoute({
-      path: 'layout-b',
-    }),
-  ]),
+    path: 'layout-a',
+  }),
+)
+
+const layoutBRoute = layoutRoute.createRoute(
+  createRoute({
+    path: 'layout-b',
+  }),
+)
+
+const routeConfig = rootRoute.addChildren([
+  layoutRoute.addChildren([layoutARoute, layoutBRoute]),
 ])
 ```
 

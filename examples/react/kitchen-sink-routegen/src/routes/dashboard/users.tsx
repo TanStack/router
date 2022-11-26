@@ -3,13 +3,12 @@ import * as React from 'react'
 import { z } from 'zod'
 import { Spinner } from '../../components/Spinner'
 import { fetchUsers } from '../../mockTodos'
-import dashboardRoute from '../dashboard'
+import { routeConfig } from '../../routes.generated/dashboard/users'
 
 const usersViewSortBy = z.enum(['name', 'id', 'email'])
-export type UsersViewSortBy = z.infer<typeof usersViewSortBy>
+type UsersViewSortBy = z.infer<typeof usersViewSortBy>
 
-const routeConfig = dashboardRoute.createRoute({
-  path: 'users',
+routeConfig.generate({
   component: Users,
   loader: async ({ search }) => {
     search
@@ -36,8 +35,6 @@ const routeConfig = dashboardRoute.createRoute({
     }),
   ],
 })
-
-export default routeConfig
 
 function Users() {
   const {
@@ -127,7 +124,7 @@ function Users() {
           return (
             <div key={user.id}>
               <Link
-                to="./:userId"
+                to="./$userId"
                 params={{
                   userId: user.id,
                 }}
@@ -137,7 +134,7 @@ function Users() {
                 <pre className="text-sm">
                   {user.name}{' '}
                   <MatchRoute
-                    to={`./:userId`}
+                    to={`./$userId`}
                     params={{
                       userId: user.id,
                     }}

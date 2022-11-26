@@ -13,7 +13,7 @@ router.hydrateState(state)
 
 ReactDOM.hydrateRoot(
   document.getElementById('root')!,
-  <RouterProvider router={router} useServerData>
+  <RouterProvider router={router}>
     <App />
   </RouterProvider>,
 )

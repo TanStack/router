@@ -1,10 +1,9 @@
 import * as React from 'react'
-import { router } from '../../../router'
 import { fetchUserById } from '../../../mockTodos'
-import usersRoute from '../users'
+import { routeConfig } from '../../../routes.generated/dashboard/users/$userId'
+import { useMatch } from '@tanstack/react-router'
 
-const routeConfig = usersRoute.createRoute({
-  path: ':userId',
+routeConfig.generate({
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
   component: User,
@@ -15,8 +14,6 @@ const routeConfig = usersRoute.createRoute({
     }
   },
 })
-
-export default routeConfig
 
 function User() {
   const {

@@ -4,7 +4,10 @@ import { createReactRouter, createRouteConfig } from '@tanstack/react-router'
 import { indexRoute } from './routes'
 import { dashboardRoute } from './routes/dashboard'
 import { expensiveRoute } from './routes/expensive'
-import { authenticatedRoute } from './routes/authenticated'
+import {
+  authenticatedIndexRoute,
+  authenticatedRoute,
+} from './routes/authenticated'
 import { layoutRoute } from './routes/layout'
 import { dashboardIndexRoute } from './routes/dashboard/dashboard'
 import { invoicesRoute } from './routes/dashboard/invoices'
@@ -25,7 +28,7 @@ const routeConfig = createRouteConfig().addChildren([
     usersRoute.addChildren([usersIndexRoute, userRoute]),
   ]),
   expensiveRoute,
-  authenticatedRoute,
+  authenticatedRoute.addChildren([authenticatedIndexRoute]),
   layoutRoute.addChildren([layoutRouteA, layoutRouteB]),
 ])
 

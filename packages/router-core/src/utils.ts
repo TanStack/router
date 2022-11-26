@@ -40,9 +40,9 @@ export type DeepAwaited<T> = T extends Promise<infer A>
   : T
 
 export type PathParamMask<TRoutePath extends string> =
-  TRoutePath extends `${infer L}/:${infer C}/${infer R}`
+  TRoutePath extends `${infer L}/$${infer C}/${infer R}`
     ? PathParamMask<`${L}/${string}/${R}`>
-    : TRoutePath extends `${infer L}/:${infer C}`
+    : TRoutePath extends `${infer L}/$${infer C}`
     ? PathParamMask<`${L}/${string}`>
     : TRoutePath
 

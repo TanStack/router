@@ -28,12 +28,19 @@ To build route hierarchy **outside** of your route path, please use the [route c
 A route with a path of `/` is considered the root or index route for its parent route and is used to render content for a parent route when no child path is present. For example:
 
 ```tsx
-const routeConfig = createRouteConfig().createChildren(createRoute => [
-  createRoute({ path: '/' }), // This is the index route for the root of your router
-  createRoute({ path: '/todos' }).createChildren(createRoute => [
-    createRoute({ path: '/' }), // This is the index route for the /todos route
-    createRoute({ path: ':todoId' }),
-  ])
+let rootRoute = createRouteConfig()
+
+// This is the index route for the entire router
+const indexRoute = rootRoute.createRoute({ path: '/' })
+
+const blogRoute = rootRoute.createRoute({ path: 'blog' })
+
+// This is the index route for the `/blog` route
+const blogIndexRoute = blogRoute.createRoute({ path: '/' })
+
+const routeConfig = rootRoute.addChildren([
+  indexRoute,
+  blogRoute.addChildren([blogIndexRoute]),
 ])
 ```
 

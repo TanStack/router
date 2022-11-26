@@ -14,16 +14,19 @@ import {
   createRouteConfig,
 } from '@tanstack/react-router'
 
-const routeConfig = createRouteConfig().createChildren((createRoute) => [
-  createRoute({
-    path: '/',
-    component: Index,
-  }),
-  createRoute({
-    path: 'about',
-    component: About,
-  }),
-])
+const rootRoute = createRouteConfig()
+
+const indexRoute = rootRoute.createRoute({
+  path: '/',
+  component: Index,
+})
+
+const aboutRoute = rootRoute.createRoute({
+  path: '/about',
+  component: About,
+})
+
+const routeConfig = rootRoute.addChildren([indexRoute, aboutRoute])
 
 const router = createReactRouter({ routeConfig })
 

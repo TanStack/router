@@ -14,7 +14,7 @@ function Home() {
       <div className={`text-lg`}>Welcome Home!</div>
       <hr className={`my-2`} />
       <route.Link
-        to="/dashboard/invoices/:invoiceId"
+        to="/dashboard/invoices/$invoiceId"
         params={{
           invoiceId: 3,
         }}

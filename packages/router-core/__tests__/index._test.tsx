@@ -465,7 +465,7 @@ describe('matchRoute', () => {
           pathname: '/a/b',
         },
         {
-          to: '/a/:b',
+          to: '/a/$b',
         },
         { b: 'b' },
       ],
@@ -474,7 +474,7 @@ describe('matchRoute', () => {
           pathname: '/a/b/c',
         },
         {
-          to: '/a/:b/:c',
+          to: '/a/$b/$c',
         },
         { b: 'b', c: 'c' },
       ],
@@ -483,7 +483,7 @@ describe('matchRoute', () => {
           pathname: '/a/b/c',
         },
         {
-          to: '/:a/:b/:c',
+          to: '/$a/$b/$c',
         },
         { a: 'a', b: 'b', c: 'c' },
       ],
@@ -492,7 +492,7 @@ describe('matchRoute', () => {
           pathname: '/a/b/c',
         },
         {
-          to: '/:a/*',
+          to: '/$a/*',
         },
         { a: 'a', '*': 'b/c' },
       ],
@@ -501,7 +501,7 @@ describe('matchRoute', () => {
           pathname: '/a/b/c',
         },
         {
-          to: '/a/:b/c',
+          to: '/a/$b/c',
         },
         { b: 'b' },
       ],

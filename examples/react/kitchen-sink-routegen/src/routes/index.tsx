@@ -1,12 +1,14 @@
-import { createRouteConfig, useMatch } from '@tanstack/react-router'
+import { useMatch } from '@tanstack/react-router'
 import * as React from 'react'
+import { fetchUsers } from '../mockTodos'
+import { routeConfig } from '../routes.generated/index'
 
-const routeConfig = createRouteConfig().createRoute({
-  path: '/',
+routeConfig.generate({
+  loader: async () => {
+    return fetchUsers()
+  },
   component: Home,
 })
-
-export default routeConfig
 
 function Home() {
   const route = useMatch(routeConfig.id)
@@ -16,7 +18,7 @@ function Home() {
       <div className={`text-lg`}>Welcome Home!</div>
       <hr className={`my-2`} />
       <route.Link
-        to="/dashboard/invoices/:invoiceId"
+        to="/dashboard/invoices/$invoiceId"
         params={{
           invoiceId: 3,
         }}

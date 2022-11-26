@@ -67,6 +67,8 @@
     "vue": "^3.2.33"
   },
   "dependencies": {
+    "@types/fs-extra": "^9.0.13",
+    "fs-extra": "^10.1.0",
     "zod": "^3.18.0"
   }
 }

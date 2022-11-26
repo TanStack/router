@@ -21,7 +21,7 @@ function Dashboard() {
       <div className="flex items-center border-b">
         <h2 className="text-xl p-2">Dashboard</h2>
         <route.Link
-          to="/dashboard/invoices/:invoiceId"
+          to="/dashboard/invoices/$invoiceId"
           params={{
             invoiceId: 3,
           }}

@@ -125,7 +125,6 @@ function Root() {
             [
               ['.', 'Home'],
               ['/dashboard', 'Dashboard'],
-              ['/expensive', 'Expensive'],
               ['/authenticated', 'Authenticated'],
               ['/layout-a', 'Layout A'],
               ['/layout-b', 'Layout B'],

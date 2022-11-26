@@ -4,7 +4,7 @@ import { fetchUserById } from '../../../mockTodos'
 import { usersRoute } from '.'
 
 export const userRoute = usersRoute.createRoute({
-  path: ':userId',
+  path: '$userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
   component: User,

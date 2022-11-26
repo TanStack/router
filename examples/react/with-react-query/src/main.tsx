@@ -49,7 +49,7 @@ const postsIndexRoute = postsRoute.createRoute({
 })
 
 const postRoute = postsRoute.createRoute({
-  path: ':postId',
+  path: '$postId',
   component: Post,
   loader: async ({ params: { postId } }) => {
     queryClient.getQueryData(['posts', postId]) ??
@@ -176,7 +176,7 @@ function Posts() {
           return (
             <div key={post.id}>
               <Link
-                to="/posts/:postId"
+                to="/posts/$postId"
                 params={{
                   postId: post.id,
                 }}
@@ -203,7 +203,7 @@ function PostsIndex() {
 }
 
 function Post() {
-  const { params } = useMatch('/posts/:postId')
+  const { params } = useMatch('/posts/$postId')
   const postQuery = usePost(params.postId)
 
   return (

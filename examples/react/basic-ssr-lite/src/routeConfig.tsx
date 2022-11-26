@@ -32,7 +32,7 @@ const PostsIndexRoute = postsRoute.createRoute({
 })
 
 const postRoute = postsRoute.createRoute({
-  path: ':postId',
+  path: '$postId',
   component: Post,
   loader: async ({ params: { postId } }) => {
     return {
@@ -40,6 +40,8 @@ const postRoute = postsRoute.createRoute({
     }
   },
 })
+
+console.log(postRoute)
 
 export const routeConfig = createRouteConfig().addChildren([
   indexRoute,
@@ -89,7 +91,7 @@ function Posts() {
           return (
             <div key={post.id}>
               <Link
-                to="/posts/:postId"
+                to="/posts/$postId"
                 params={{
                   postId: post.id,
                 }}
