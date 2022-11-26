@@ -12,7 +12,7 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/react-router": "0.0.1-beta.25",
+    "@tanstack/react-router": "0.0.1-beta.26",
     "@tanstack/react-router-devtools": "0.0.1-beta.19",
     "@tanstack/vite-plugin-router-ssr": "link:../../../../packages/vite-plugin-router-ssr",
     "axios": "^1.1.3",
