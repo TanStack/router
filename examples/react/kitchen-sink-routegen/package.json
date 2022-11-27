@@ -13,7 +13,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "0.0.1-beta.26",
+    "@tanstack/react-router": "0.0.1-beta.27",
     "@tanstack/react-router-devtools": "0.0.1-beta.19",
     "@tanstack/vite-plugin-router-ssr": "link:../../../../packages/vite-plugin-router-ssr",
     "@types/klaw": "^3.0.3",
