@@ -13,9 +13,8 @@ function Invoices() {
     Link,
     MatchRoute,
     useRoute,
-  } = useMatch(routeConfig.id)
+  } = useMatch(routeConfig.id) // Get the action for a child route
 
-  // Get the action for a child route
   const invoiceIndexRoute = useRoute('./')
   const invoiceDetailRoute = useRoute('./$invoiceId')
 
@@ -40,7 +39,9 @@ function Invoices() {
                 }}
                 preload="intent"
                 className="block py-2 px-3 text-blue-700"
-                activeProps={{ className: `font-bold` }}
+                activeProps={{
+                  className: `font-bold`,
+                }}
               >
                 <pre className="text-sm">
                   #{invoice.id} - {invoice.title.slice(0, 10)}{' '}

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "run-p dev:* -c",
     "dev:build": "vite",
-    "dev:generate": "nodemon --watch ./scripts --exec \"yarn generate\" -e ts",
+    "dev:generate": "nodemon --watch ./scripts --exec \"yarn generate:watch\" -e ts",
+    "generate:watch": "ts-node ./scripts/watch.ts",
     "generate": "ts-node ./scripts/generate.ts",
     "build": "yarn generate && vite build",
     "serve": "vite preview",

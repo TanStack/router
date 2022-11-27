@@ -9,7 +9,9 @@ routeConfig.generate({
   parseParams: (params) => ({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),
   }),
-  stringifyParams: ({ invoiceId }) => ({ invoiceId: `${invoiceId}` }),
+  stringifyParams: ({ invoiceId }) => ({
+    invoiceId: `${invoiceId}`,
+  }),
   validateSearch: z.object({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
@@ -38,7 +40,6 @@ function InvoiceView() {
     Link,
     navigate,
   } = useMatch(routeConfig.id)
-
   const [notes, setNotes] = React.useState(search.notes ?? ``)
 
   React.useEffect(() => {
@@ -47,6 +48,10 @@ function InvoiceView() {
       replace: true,
     })
   }, [notes])
+
+  React.useEffect(() => {
+    console.log('mount')
+  }, [])
 
   return (
     <form

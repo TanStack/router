@@ -44,8 +44,12 @@ function Dashboard() {
               key={to}
               to={to}
               search={search}
-              activeOptions={{ exact: to === '.' }}
-              activeProps={{ className: `font-bold` }}
+              activeOptions={{
+                exact: to === '.',
+              }}
+              activeProps={{
+                className: `font-bold`,
+              }}
               className="p-2"
             >
               {label}

@@ -4,7 +4,6 @@ import { z } from 'zod'
 import { Spinner } from '../../components/Spinner'
 import { fetchUsers } from '../../mockTodos'
 import { routeConfig } from '../../routes.generated/dashboard/users'
-
 const usersViewSortBy = z.enum(['name', 'id', 'email'])
 type UsersViewSortBy = z.infer<typeof usersViewSortBy>
 
@@ -27,12 +26,7 @@ routeConfig.generate({
   preSearchFilters: [
     // Persist (or set as default) the usersView search param
     // while navigating within or to this route (or it's children!)
-    (search) => ({
-      ...search,
-      usersView: {
-        ...search.usersView,
-      },
-    }),
+    (search) => ({ ...search, usersView: { ...search.usersView } }),
   ],
 })
 
@@ -47,12 +41,10 @@ function Users() {
 
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy
-
   const [filterDraft, setFilterDraft] = React.useState(filterBy ?? '')
 
   const sortedUsers = React.useMemo(() => {
     if (!users) return []
-
     return !sortBy
       ? users
       : [...users].sort((a, b) => {
@@ -62,7 +54,6 @@ function Users() {
 
   const filteredUsers = React.useMemo(() => {
     if (!filterBy) return sortedUsers
-
     return sortedUsers.filter((user) =>
       user.name.toLowerCase().includes(filterBy.toLowerCase()),
     )
@@ -86,10 +77,7 @@ function Users() {
       search: (old) => {
         return {
           ...old,
-          usersView: {
-            ...old?.usersView,
-            filterBy: filterDraft || undefined,
-          },
+          usersView: { ...old?.usersView, filterBy: filterDraft || undefined },
         }
       },
       replace: true,
@@ -129,7 +117,9 @@ function Users() {
                   userId: user.id,
                 }}
                 className="block py-2 px-3 text-blue-700"
-                activeProps={{ className: `font-bold` }}
+                activeProps={{
+                  className: `font-bold`,
+                }}
               >
                 <pre className="text-sm">
                   {user.name}{' '}

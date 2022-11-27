@@ -4,8 +4,12 @@ import { routeConfig } from '../../../routes.generated/dashboard/users/$userId'
 import { useMatch } from '@tanstack/react-router'
 
 routeConfig.generate({
-  parseParams: ({ userId }) => ({ userId: Number(userId) }),
-  stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
+  parseParams: ({ userId }) => ({
+    userId: Number(userId),
+  }),
+  stringifyParams: ({ userId }) => ({
+    userId: `${userId}`,
+  }),
   component: User,
   loader: async ({ params: { userId } }) => {
     return {
