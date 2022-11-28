@@ -327,9 +327,9 @@ export function createReactRouter<
         } = linkInfo
 
         const reactHandleClick = (e: Event) => {
-          React.startTransition(() => {
-            handleClick(e)
-          })
+          if (React.startTransition) // This is a hack for react < 18
+            React.startTransition(() => {handleClick(e)})
+          else handleClick(e)
         }
 
         const composeHandlers =
