@@ -4,7 +4,7 @@ import * as t from '@babel/types'
 import syntaxTS from '@babel/plugin-syntax-typescript'
 import { IsolatedExport, removeExt, RouteNode } from './generator'
 import path from 'path'
-import { GeneratorConfig } from './config'
+import { Config } from './config'
 
 export const isolatedProperties = [
   'loader',
@@ -104,6 +104,8 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
       originalFile?.code?.indexOf(separator),
     )}`
   }
+
+  return
 }
 
 export async function isolateOptionToExport(code: string, opts: Opts) {
@@ -202,7 +204,7 @@ export async function detectExports(code: string) {
 export async function generateRouteConfig(
   routeCode: string,
   node: RouteNode,
-  config: GeneratorConfig,
+  config: Config,
   imports: IsolatedExport[],
 ) {
   const relativeParentRoutePath = node.parent

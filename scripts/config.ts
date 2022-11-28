@@ -44,6 +44,15 @@ export const packages: Package[] = [
     outputFile: 'react-router-rank-routes',
     globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
   },
+  {
+    name: '@tanstack/router-cli',
+    packageDir: 'router-cli',
+    srcDir: 'src',
+    jsName: 'RouterCli',
+    entryFile: 'src/index.ts',
+    outputFile: 'router-cli',
+    globals: {},
+  },
 ]
 
 export const latestBranch = 'main'

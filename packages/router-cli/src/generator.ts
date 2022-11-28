@@ -9,8 +9,7 @@ import {
   isolatedProperties,
   isolateOptionToExport,
 } from './transformCode'
-
-import { config } from './config'
+import { Config } from './config'
 
 let latestTask = 0
 
@@ -38,7 +37,7 @@ export type IsolatedExport = {
   code?: string | null
 }
 
-export async function generate() {
+export async function generator(config: Config) {
   const taskId = latestTask + 1
   latestTask = taskId
   console.log('Generating routes...')

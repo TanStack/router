@@ -1,10 +1,8 @@
-import path from 'path'
+const path = require('path')
 
-export const config = {
+module.exports = {
   rootDirectory: path.resolve(__dirname, '..'),
   sourceDirectory: path.resolve(__dirname, '../src/'),
   routesDirectory: path.resolve(__dirname, '../src/routes'),
   routeGenDirectory: path.resolve(__dirname, '../src/routes.generated'),
 }
-
-export type GeneratorConfig = typeof config

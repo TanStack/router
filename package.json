@@ -22,6 +22,9 @@
     "./packages/*",
     "./examples/react/*"
   ],
+  "bin": {
+    "tsr": "./packages/router-cli/bin/tsr"
+  },
   "devDependencies": {
     "@babel/core": "^7.17.9",
     "@babel/preset-env": "^7.16.11",

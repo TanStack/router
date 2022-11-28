@@ -1,9 +1,8 @@
 // vite.config.ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { tanStackRouterSSR } from '@tanstack/vite-plugin-router-ssr'
 var vite_config_default = defineConfig({
-  plugins: [react(), tanStackRouterSSR()],
+  plugins: [react()],
   build: {
     minify: false,
   },
