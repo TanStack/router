@@ -46,4 +46,4 @@ const routeConfig = rootRoute.addChildren([
 
 ## Layout Routes
 
-A layout route is a route that does not have a path, but allows wrapping it's child routes with wrapper elements or shared logic. See [Layout Routes](./layout-routes) for more information.
+A layout route is a route that does not have a path, but allows wrapping it's child routes with wrapper elements or shared logic. See [Layout Routes](./guide/layout-routes) for more information.
