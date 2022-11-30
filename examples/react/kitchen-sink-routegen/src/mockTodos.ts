@@ -1,7 +1,4 @@
-import { PickAsPartial, PickAsRequired } from '@tanstack/react-router'
-import { match } from 'assert'
-import axios from 'axios'
-import { produce } from 'immer'
+import { PickAsRequired } from '@tanstack/react-router'
 import { actionDelayFn, loaderDelayFn, shuffle } from './utils'
 export type Invoice = {
   id: number
@@ -47,10 +44,12 @@ let usersPromise: Promise<void>
 const ensureInvoices = async () => {
   if (!invoicesPromise) {
     invoicesPromise = Promise.resolve().then(async () => {
-      const { data } = await axios.get(
-        'https://jsonplaceholder.typicode.com/posts',
-      )
-      invoices = data.slice(0, 10)
+      const res = await fetch('https://jsonplaceholder.typicode.com/posts')
+      if (!res.ok) {
+        throw new Error('Failed to fetch')
+      }
+
+      invoices = (await res.json()).slice(0, 10)
     })
   }
 
@@ -60,10 +59,12 @@ const ensureInvoices = async () => {
 const ensureUsers = async () => {
   if (!usersPromise) {
     usersPromise = Promise.resolve().then(async () => {
-      const { data } = await axios.get(
-        'https://jsonplaceholder.typicode.com/users',
-      )
-      users = data.slice(0, 10)
+      const res = await fetch('https://jsonplaceholder.typicode.com/users')
+      if (!res.ok) {
+        throw new Error('Failed to fetch')
+      }
+
+      users = (await res.json()).slice(0, 10)
     })
   }
 
@@ -111,15 +112,27 @@ export async function patchInvoice({
   ...updatedInvoice
 }: PickAsRequired<Partial<Invoice>, 'id'>) {
   return actionDelayFn(() => {
-    invoices = produce(invoices, (draft) => {
-      let invoice = draft.find((d) => d.id === id)
-      if (!invoice) {
-        throw new Error('Invoice not found.')
+    const found = invoices.find((d) => d.id === id)
+
+    if (!found) {
+      throw new Error('Invoice not found.')
+    }
+
+    invoices = invoices.map((invoice) => {
+      if (invoice.id === id) {
+        const newInvoice = {
+          ...invoice,
+          ...updatedInvoice,
+        }
+
+        if (newInvoice.title?.toLocaleLowerCase()?.includes('error')) {
+          throw new Error('Ouch!')
+        }
+
+        return newInvoice
       }
-      if (updatedInvoice.title?.toLocaleLowerCase()?.includes('error')) {
-        throw new Error('Ouch!')
-      }
-      Object.assign(invoice, updatedInvoice)
+
+      return invoice
     })
 
     return invoices.find((d) => d.id === id)

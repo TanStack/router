@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { routeConfig } from '../../../routes.generated/dashboard/users'
+import { routeConfig } from '../../../routes.generated/dashboard/users/index'
 
 routeConfig.generate({
   component: UsersIndex,

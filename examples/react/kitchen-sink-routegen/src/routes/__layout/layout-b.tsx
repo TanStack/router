@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { routeConfig } from '../../routes.generated/layout/layout-b'
+import { routeConfig } from '../../routes.generated/__layout/layout-b'
 
 routeConfig.generate({
   component: LayoutB,

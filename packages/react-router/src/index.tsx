@@ -34,6 +34,7 @@ import {
   invariant,
   Router,
 } from '@tanstack/router-core'
+import { restElement } from '@babel/types'
 
 export * from '@tanstack/router-core'
 
@@ -326,9 +327,9 @@ export function createReactRouter<
         } = linkInfo
 
         const reactHandleClick = (e: Event) => {
-          React.startTransition(() => {
-            handleClick(e)
-          })
+          if (React.startTransition) // This is a hack for react < 18
+            React.startTransition(() => {handleClick(e)})
+          else handleClick(e)
         }
 
         const composeHandlers =
@@ -615,7 +616,7 @@ export function Outlet() {
   return (
     <MatchesProvider value={matches}>
       <React.Suspense fallback={<PendingComponent />}>
-        <CatchBoundary errorComponent={errorComponent}>
+        <CatchBoundary errorComponent={errorComponent} key={match.routeId}>
           {
             ((): React.ReactNode => {
               if (match.status === 'error') {
@@ -644,7 +645,9 @@ class CatchBoundary extends React.Component<{
 }> {
   state = {
     error: false,
+    info: undefined,
   }
+
   componentDidCatch(error: any, info: any) {
     console.error(error)
 
@@ -653,15 +656,59 @@ class CatchBoundary extends React.Component<{
       info,
     })
   }
-  render() {
-    const errorComponent = this.props.errorComponent ?? DefaultErrorBoundary
 
-    if (this.state.error) {
-      return React.createElement(errorComponent, this.state)
+  render() {
+    return (
+      <CatchBoundaryInner
+        {...this.props}
+        errorState={this.state}
+        reset={() => this.setState({})}
+      />
+    )
+  }
+}
+
+// This is the messiest thing ever... I'm either seriously tired (likely) or
+// there has to be a better way to reset error boundaries when the
+// router's location key changes.
+function CatchBoundaryInner(props: {
+  children: any
+  errorComponent: any
+  errorState: { error: unknown; info: any }
+  reset: () => void
+}) {
+  const [activeErrorState, setActiveErrorState] = React.useState(
+    props.errorState,
+  )
+  const router = useRouter()
+  const errorComponent = props.errorComponent ?? DefaultErrorBoundary
+
+  React.useEffect(() => {
+    if (activeErrorState) {
+      let prevKey = router.state.location.key
+      return router.subscribe(() => {
+        if (router.state.location.key !== prevKey) {
+          prevKey = router.state.location.key
+          setActiveErrorState({} as any)
+        }
+      })
     }
 
-    return this.props.children
+    return
+  }, [activeErrorState])
+
+  React.useEffect(() => {
+    if (props.errorState.error) {
+      setActiveErrorState(props.errorState)
+    }
+    props.reset()
+  }, [props.errorState.error])
+
+  if (activeErrorState.error) {
+    return React.createElement(errorComponent, activeErrorState)
   }
+
+  return props.children
 }
 
 export function DefaultErrorBoundary({ error }: { error: any }) {

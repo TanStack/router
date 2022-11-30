@@ -5,14 +5,15 @@
   "scripts": {
     "dev": "run-p dev:* -c",
     "dev:build": "vite",
-    "dev:generate": "nodemon --watch ./scripts --exec \"yarn generate\" -e ts",
+    "dev:generate": "nodemon --watch ./scripts --exec \"yarn generate:watch\" -e ts",
+    "generate:watch": "ts-node ./scripts/watch.ts",
     "generate": "ts-node ./scripts/generate.ts",
     "build": "yarn generate && vite build",
     "serve": "vite preview",
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "0.0.1-beta.26",
+    "@tanstack/react-router": "0.0.1-beta.28",
     "@tanstack/react-router-devtools": "0.0.1-beta.19",
     "@tanstack/vite-plugin-router-ssr": "link:../../../../packages/vite-plugin-router-ssr",
     "@types/klaw": "^3.0.3",

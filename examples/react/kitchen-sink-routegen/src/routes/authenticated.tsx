@@ -13,7 +13,6 @@ function Auth() {
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-
     auth.login(username)
   }
 

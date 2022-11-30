@@ -1,22 +1,10 @@
-// All credit for this work goes to the amazing Next.js team (and the Solid.js team for their derivative work).
-// https://github.com/vercel/next.js/blob/canary/packages/next/build/babel/plugins/next-ssg-transform.ts
-// https://github.com/solidjs/solid-start/blob/main/packages/start/server/routeData.js
-// This is adapted to work with routeConfig.generate() and remove all code except for the parts we need for each type of file
-
 import * as babel from '@babel/core'
 import * as t from '@babel/types'
 // @ts-ignore
-// import syntaxJSX from '@babel/plugin-syntax-jsx'
-// @ts-ignore
 import syntaxTS from '@babel/plugin-syntax-typescript'
-import {
-  GeneratorConfig,
-  IsolatedExport,
-  removeExt,
-  RouteNode,
-} from './generate'
+import { IsolatedExport, removeExt, RouteNode } from './generator'
 import path from 'path'
-// @ts-ignore
+import { GeneratorConfig } from './config'
 
 export const isolatedProperties = [
   'loader',
@@ -42,6 +30,81 @@ const getBasePlugins = () => [
     },
   ],
 ]
+
+export async function ensureBoilerplate(node: RouteNode, code: string) {
+  const relativeImportPath = path.relative(node.fullDir, node.genPathNoExt)
+
+  const originalFile = await babel.transformAsync(code, {
+    configFile: false,
+    babelrc: false,
+    plugins: [...getBasePlugins()],
+  })
+
+  const file = await babel.transformAsync(code, {
+    configFile: false,
+    babelrc: false,
+    plugins: [
+      ...getBasePlugins(),
+      {
+        visitor: {
+          Program: {
+            enter(programPath, state) {
+              // Remove all properties except for our isolated one
+              let foundImport = false
+
+              programPath.traverse({
+                ImportSpecifier(importPath) {
+                  if (
+                    t.isIdentifier(importPath.node.imported) &&
+                    importPath.node.imported.name === 'routeConfig'
+                  ) {
+                    foundImport = true
+                    if (t.isImportDeclaration(importPath.parentPath.node)) {
+                      if (
+                        importPath.parentPath.node.source.value !==
+                        relativeImportPath
+                      ) {
+                        importPath.parentPath.node.source.value =
+                          relativeImportPath
+                      }
+                    }
+                  }
+                },
+              })
+
+              if (!foundImport) {
+                programPath.node.body.unshift(
+                  babel.template.statement(
+                    `import { routeConfig } from '${relativeImportPath}'`,
+                  )(),
+                )
+              }
+            },
+          },
+        },
+      },
+    ],
+  })
+
+  if (!originalFile?.code) {
+    return `${file?.code}\n\nrouteConfig.generate({\n\n})`
+  }
+
+  const separator = 'routeConfig.generate('
+
+  const originalHead = originalFile?.code?.substring(
+    0,
+    originalFile?.code?.indexOf(separator),
+  )
+
+  const generatedHead = file?.code?.substring(0, file?.code?.indexOf(separator))
+
+  if (originalHead !== generatedHead) {
+    return `${generatedHead}\n\n${originalFile?.code?.substring(
+      originalFile?.code?.indexOf(separator),
+    )}`
+  }
+}
 
 export async function isolateOptionToExport(code: string, opts: Opts) {
   return babel.transformAsync(code, {
@@ -146,7 +209,13 @@ export async function generateRouteConfig(
     ? removeExt(path.relative(node.genDir, node.parent?.genPath))
     : path.relative(node.genDir, path.resolve(config.routesDirectory, 'root'))
 
-  const pathName = node.fileNameNoExt === 'index' ? '/' : node.fileNameNoExt
+  const pathName = node.fileNameNoExt.startsWith('__')
+    ? undefined
+    : node.fileNameNoExt === 'index'
+    ? '/'
+    : node.fileNameNoExt
+
+  const routeId = node.fileNameNoExt
 
   function plugin(): babel.PluginItem {
     return {
@@ -191,10 +260,15 @@ export async function generateRouteConfig(
 
                       if (options) {
                         options.properties = [
-                          t.objectProperty(
-                            t.identifier('path'),
-                            t.stringLiteral(pathName),
-                          ),
+                          pathName
+                            ? t.objectProperty(
+                                t.identifier('path'),
+                                t.stringLiteral(pathName),
+                              )
+                            : t.objectProperty(
+                                t.identifier('id'),
+                                t.stringLiteral(routeId),
+                              ),
                           ...options.properties.filter((property) => {
                             return t.isObjectProperty(property) &&
                               t.isIdentifier(property.key) &&
@@ -212,7 +286,7 @@ export async function generateRouteConfig(
                                   `(...args) => import('./${path.relative(
                                     node.genDir,
                                     node.genPathNoExt,
-                                  )}-${key}').then(d => d.${key}.call(d.${key}, (args as any)))`,
+                                  )}-${key}').then(d => d.${key}.apply(d.${key}, (args as any)))`,
                                   {
                                     plugins: ['typescript'],
                                   },
@@ -230,7 +304,7 @@ export async function generateRouteConfig(
                                   )}-${key}').action>) => import('./${path.relative(
                                     node.genDir,
                                     node.genPathNoExt,
-                                  )}-${key}').then(d => d.${key}.call(d.${key}, (payload as any)))`,
+                                  )}-${key}').then(d => d.${key}.apply(d.${key}, (payload as any)))`,
                                   {
                                     plugins: ['typescript'],
                                   },
@@ -372,6 +446,11 @@ function getOptions(path: any): t.ObjectExpression | void {
     return tryOptions(options)
   }
 }
+
+// All credit for this amazing function goes to the Next.js team
+// (and the Solid.js team for their derivative work).
+// https://github.com/vercel/next.js/blob/canary/packages/next/build/babel/plugins/next-ssg-transform.ts
+// https://github.com/solidjs/solid-start/blob/main/packages/start/server/routeData.js
 
 function cleanUnusedCode(
   programPath: babel.NodePath<babel.types.Program>,

@@ -4,16 +4,11 @@ import { routeConfig } from '../../routes.generated/dashboard/index'
 
 routeConfig.generate({
   component: DashboardHome,
-  loader: () => {
-    return {
-      tanner: 'test',
-    }
-  },
 })
 
 function DashboardHome() {
   const {
-    loaderData: { invoices, tanner },
+    loaderData: { invoices },
   } = useMatch(routeConfig.id)
 
   return (

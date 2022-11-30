@@ -1,4 +1,4 @@
-import { routeConfig } from '../../../routes.generated/dashboard/invoices/index'
+import { routeConfig } from '../../../routes.generated/dashboard/invoices/foo'
 import * as React from 'react'
 import { Invoice, postInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
