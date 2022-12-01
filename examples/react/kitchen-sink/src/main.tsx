@@ -13,6 +13,7 @@ import {
   useSearch,
   RegisteredAllRouteInfo,
   RegisteredRouter,
+  Navigate,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -180,7 +181,7 @@ const loginRoute = rootRoute.createRoute({
 })
 
 const layoutRoute = rootRoute.createRoute({
-  id: 'layout',
+  path: 'layout',
   component: LayoutWrapper,
   loader: async () => {
     return loaderDelayFn(() => {
@@ -203,6 +204,11 @@ const layoutBRoute = layoutRoute.createRoute({
   component: LayoutB,
 })
 
+const LayoutNavigateRoute = layoutRoute.createRoute({
+  id: 'navigate',
+  component: () => <Navigate to={layoutARoute.id} />,
+})
+
 const routeConfig = rootRoute.addChildren([
   indexRoute,
   dashboardRoute.addChildren([
@@ -213,7 +219,7 @@ const routeConfig = rootRoute.addChildren([
   expensiveRoute,
   authenticatedRoute,
   loginRoute,
-  layoutRoute.addChildren([layoutARoute, layoutBRoute]),
+  layoutRoute.addChildren([layoutARoute, layoutBRoute, LayoutNavigateRoute]),
 ])
 
 const router = createReactRouter({
@@ -359,8 +365,7 @@ function Root() {
               ['.', 'Home'],
               ['/dashboard', 'Dashboard'],
               ['/expensive', 'Expensive'],
-              ['/layout-a', 'Layout A'],
-              ['/layout-b', 'Layout B'],
+              ['/layout', 'Layouts'],
               ['/authenticated', 'Authenticated'],
               ['/login', 'Login'],
             ] as const
@@ -995,12 +1000,34 @@ function Authenticated() {
 }
 
 function LayoutWrapper() {
-  const { loaderData } = useMatch(layoutRoute.id)
+  const { loaderData, Link } = useMatch(layoutRoute.id)
 
   return (
     <div>
       <div>Layout</div>
       <div>Random #: {loaderData.random}</div>
+      <div className="flex flex-wrap divide-x">
+        {(
+          [
+            ['./layout-a', 'Layout A'],
+            ['./layout-b', 'Layout B'],
+          ] as const
+        ).map(([to, label]) => {
+          return (
+            <div key={to}>
+              <Link
+                to={to}
+                preload="intent"
+                className="p-2"
+                // Make "active" links bold
+                activeProps={{ className: `font-bold` }}
+              >
+                {label}
+              </Link>
+            </div>
+          )
+        })}
+      </div>
       <hr />
       <Outlet />
     </div>

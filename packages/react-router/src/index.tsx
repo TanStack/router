@@ -3,37 +3,37 @@ import * as React from 'react'
 import { useSyncExternalStore } from 'use-sync-external-store/shim'
 
 import {
-  AnyRoute,
-  CheckId,
-  rootRouteId,
-  Route,
-  RouterContext,
-  RouterState,
-  ToIdOption,
-} from '@tanstack/router-core'
-import {
-  warning,
-  RouterOptions,
-  RouteMatch,
-  MatchRouteOptions,
-  RouteConfig,
-  AnyRouteConfig,
+  AllRouteInfo,
   AnyAllRouteInfo,
+  AnyRoute,
+  AnyRouteConfig,
+  AnyRouteInfo,
+  CheckId,
+  createRouter,
   DefaultAllRouteInfo,
   functionalUpdate,
-  createRouter,
-  AnyRouteInfo,
-  AllRouteInfo,
-  RouteInfo,
-  ValidFromPath,
-  LinkOptions,
-  RouteInfoByPath,
-  ResolveRelativePath,
-  NoInfer,
-  ToOptions,
   invariant,
+  LinkOptions,
+  MatchRouteOptions,
+  NavigateOptionsAbsolute,
+  NoInfer,
+  ResolveRelativePath,
+  rootRouteId,
+  Route,
+  RouteConfig,
+  RouteInfo,
+  RouteInfoByPath,
+  RouteMatch,
   Router,
+  RouterContext,
+  RouterOptions,
+  RouterState,
+  ToIdOption,
+  ToOptions,
+  ValidFromPath,
+  warning,
 } from '@tanstack/router-core'
+
 import { restElement } from '@babel/types'
 
 export * from '@tanstack/router-core'
@@ -92,6 +92,12 @@ export function lazy(
 
   return finalComp
 }
+
+type MakeNavigateOptions<
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+  TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+  TTo extends string = '.',
+> = NavigateOptionsAbsolute<TAllRouteInfo, TFrom, TTo>
 
 type LinkPropsOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
@@ -184,6 +190,9 @@ declare module '@tanstack/router-core' {
     Link: <TTo extends string = '.'>(
       props: MakeLinkOptions<TAllRouteInfo, '/', TTo>,
     ) => JSX.Element
+    Navigate: <TTo extends string = '.'>(
+      props: MakeNavigateOptions<TAllRouteInfo, '/', TTo>,
+    ) => JSX.Element
     MatchRoute: <TTo extends string = '.'>(
       props: MakeMatchRouteOptions<TAllRouteInfo, '/', TTo>,
     ) => JSX.Element
@@ -213,6 +222,9 @@ declare module '@tanstack/router-core' {
     Link: <TTo extends string = '.'>(
       props: MakeLinkOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
     ) => JSX.Element
+    Navigate: <TTo extends string = '.'>(
+      props: MakeNavigateOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
+    ) => JSX.Element
     MatchRoute: <TTo extends string = '.'>(
       props: MakeMatchRouteOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
     ) => JSX.Element
@@ -232,6 +244,13 @@ export function Link<TTo extends string = '.'>(
 ): JSX.Element {
   const router = useRouter()
   return <router.Link {...(props as any)} />
+}
+
+export function Navigate<TTo extends string = '.'>(
+  props: MakeNavigateOptions<RegisteredAllRouteInfo, '/', TTo>,
+): JSX.Element {
+  const router = useRouter()
+  return <router.Navigate {...(props as any)} />
 }
 
 export const matchesContext = React.createContext<RouteMatch[]>(null!)
@@ -262,7 +281,10 @@ export function createReactRouter<
   const makeRouteExt = (
     route: AnyRoute,
     router: Router<any, any>,
-  ): Pick<AnyRoute, 'useRoute' | 'linkProps' | 'Link' | 'MatchRoute'> => {
+  ): Pick<
+    AnyRoute,
+    'useRoute' | 'linkProps' | 'Link' | 'MatchRoute' | 'Navigate'
+  > => {
     return {
       useRoute: (subRouteId = '.' as any) => {
         const resolvedRouteId = router.resolvePath(
@@ -327,8 +349,11 @@ export function createReactRouter<
         } = linkInfo
 
         const reactHandleClick = (e: Event) => {
-          if (React.startTransition) // This is a hack for react < 18
-            React.startTransition(() => {handleClick(e)})
+          if (React.startTransition)
+            // This is a hack for react < 18
+            React.startTransition(() => {
+              handleClick(e)
+            })
           else handleClick(e)
         }
 
@@ -400,6 +425,13 @@ export function createReactRouter<
             }}
           />
         )
+      }) as any,
+      Navigate: React.forwardRef((props: any, ref) => {
+        const router = useRouter()
+        React.useLayoutEffect(() => {
+          router.navigate(props)
+        }, [router])
+        return null
       }) as any,
       MatchRoute: (opts) => {
         const { pending, caseSensitive, children, ...rest } = opts
