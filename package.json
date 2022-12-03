@@ -3,18 +3,18 @@
   "repository": "https://github.com/tanstack/router.git",
   "scripts": {
     "clean": "lerna exec 'rm -rf build; rm -rf dist; rm -rf node_modules;' --parallel",
-    "test": "(is-ci && yarn test:ci) || yarn test:dev",
+    "test": "(is-ci && pnpm test:ci) || pnpm test:dev",
     "test:ci": "jest",
     "test:dev": "jest --watch",
     "build": "rollup --config rollup.config.js",
     "watch": "concurrently --kill-others \"rollup --config rollup.config.js -w\" \"tsc -b --watch\"",
-    "linkAll": "lerna exec 'yarn link' --parallel",
-    "unlinkAll": "lerna exec 'yarn unlink' --parallel",
-    "dev": "yarn watch",
+    "linkAll": "lerna exec 'pnpm link' --parallel",
+    "unlinkAll": "lerna exec 'pnpm unlink' --parallel",
+    "dev": "pnpm watch",
     "prettier": "prettier \"packages/*/{src/**,examples/**/src/**}.{md,js,jsx,ts,tsx,json}\" --write",
     "visualize": "lerna exec 'open build/stats-html.html'",
     "cipublish": "ts-node scripts/publish.ts",
-    "cipublishforce": "CI=true yarn cipublish",
+    "cipublishforce": "CI=true pnpm cipublish",
     "typecheck": "tsc -b",
     "typecheck-perf": "tsc -b --generateTrace ts-perf"
   },
@@ -70,6 +70,7 @@
     "vue": "^3.2.33"
   },
   "dependencies": {
+    "@rollup/plugin-commonjs": "^23.0.3",
     "@types/fs-extra": "^9.0.13",
     "fs-extra": "^10.1.0",
     "zod": "^3.18.0"

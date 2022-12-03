@@ -1,20 +1,21 @@
 import chokidar from 'chokidar'
 import path from 'path'
-import { getFreshConfig } from './config'
+import { getConfig } from './config'
 import { generator } from './generator'
 
-export function watch() {
+export async function watch() {
   const configWatcher = chokidar.watch(
     path.resolve(process.cwd(), 'tsr.config.js'),
   )
 
   let watcher = new chokidar.FSWatcher()
 
-  configWatcher.on('change', () => {
-    const config = getFreshConfig()
+  const generatorWatcher = async () => {
+    const config = await getConfig()
 
     watcher.close()
 
+    console.log(`TSR: Watching routes (${config.routesDirectory})...`)
     watcher = chokidar.watch(config.routesDirectory)
 
     watcher.on('ready', async () => {
@@ -22,6 +23,7 @@ export function watch() {
         await generator(config)
       } catch (err) {
         console.error(err)
+        console.log()
       }
 
       const handle = async () => {
@@ -29,6 +31,7 @@ export function watch() {
           await generator(config)
         } catch (err) {
           console.error(err)
+          console.log()
         }
       }
 
@@ -38,5 +41,8 @@ export function watch() {
       watcher.on('unlink', handle)
       watcher.on('unlinkDir', handle)
     })
-  })
+  }
+
+  configWatcher.on('ready', generatorWatcher)
+  configWatcher.on('change', generatorWatcher)
 }

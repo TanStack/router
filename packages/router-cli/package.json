@@ -22,12 +22,9 @@
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
   },
-  "module": "build/esm/index.js",
-  "main": "build/cjs/index.js",
-  "browser": "build/umd/index.production.js",
-  "types": "build/types/index.d.ts",
+  "type": "commonjs",
   "bin": {
-    "tsr": "bin/tsr.js"
+    "tsr": "build/cjs/index.js"
   },
   "engines": {
     "node": ">=12"
@@ -40,20 +37,20 @@
   "sideEffects": false,
   "dependencies": {
     "@babel/core": "^7.20.2",
-    "@babel/template": "^7.18.10",
-    "@babel/types": "^7.20.2",
-    "commander": "^9.4.1",
-    "@types/klaw": "^3.0.3",
-    "@types/through2": "^2.0.38",
-    "chokidar": "^3.5.3",
-    "klaw": "^4.0.1",
-    "through2": "^4.0.2",
     "@babel/plugin-syntax-jsx": "^7.18.6",
     "@babel/plugin-syntax-typescript": "^7.20.0",
     "@babel/preset-env": "^7.20.2",
+    "@babel/template": "^7.18.10",
+    "@babel/types": "^7.20.2",
     "@types/fs-extra": "^9.0.13",
+    "@types/klaw": "^3.0.3",
+    "@types/through2": "^2.0.38",
+    "chokidar": "^3.5.3",
     "dedent": "^0.7.0",
     "fs-extra": "^10.1.0",
-    "nodemon": "^2.0.20"
+    "klaw": "^4.0.1",
+    "nodemon": "^2.0.20",
+    "through2": "^4.0.2",
+    "yargs": "^17.6.2"
   }
 }

@@ -29,39 +29,128 @@ type PostType = {
 
 const queryClient = new QueryClient()
 
-const rootRoute = createRouteConfig()
+const rootRoute = createRouteConfig({
+  component: () => {
+    return (
+      <>
+        <div>
+          <Link
+            to="/"
+            activeProps={{
+              className: 'font-bold',
+            }}
+            activeOptions={{ exact: true }}
+          >
+            Home
+          </Link>{' '}
+          <Link
+            to="/posts"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Posts
+          </Link>
+        </div>
+        <hr />
+        <Outlet /> {/* Start rendering router matches */}
+        <TanStackRouterDevtools position="bottom-left" />
+      </>
+    )
+  },
+})
 
 const indexRoute = rootRoute.createRoute({
   path: '/',
-  component: Index,
+  component: () => {
+    const hello = trpc.hello.useQuery()
+    const posts = trpc.posts.useQuery()
+    if (!hello.data || !posts.data) return <p>{'Loading...'}</p>
+    return (
+      <div className="p-5">
+        <h1 className="text-xl pb-2">{hello.data}</h1>
+        <ul className="list-disc list-inside">
+          {posts.data.map((post) => (
+            <li key={post.id}>{post.title}</li>
+          ))}
+        </ul>
+      </div>
+    )
+  },
 })
 
 const postsRoute = rootRoute.createRoute({
   path: 'posts',
   loaderMaxAge: 0,
-  component: Posts,
   errorComponent: () => 'Oh crap!',
   loader: async () => {
-    queryClient.getQueryData(['posts']) ??
-      (await queryClient.prefetchQuery(['posts'], fetchPosts))
+    // TODO: Prefetch posts using TRPC
     return {}
+  },
+  component: () => {
+    const { Link } = useMatch(postsRoute.id)
+
+    // TODO: fetch postsQuery using the tPRC client
+
+    return (
+      <div>
+        <div
+          style={{
+            float: 'left',
+            marginRight: '1rem',
+          }}
+        >
+          {postsQuery.data?.map((post) => {
+            return (
+              <div key={post.id}>
+                <Link
+                  to="/posts/$postId"
+                  params={{
+                    postId: post.id,
+                  }}
+                  activeProps={{ className: 'font-bold' }}
+                >
+                  <pre>{post.title.substring(0, 20)}</pre>
+                </Link>
+              </div>
+            )
+          })}
+        </div>
+        <hr />
+        <Outlet />
+      </div>
+    )
   },
 })
 
 const postsIndexRoute = postsRoute.createRoute({
   path: '/',
-  component: PostsIndex,
+  component: () => {
+    return (
+      <>
+        <div>Select a post.</div>
+      </>
+    )
+  },
 })
 
 const postRoute = postsRoute.createRoute({
   path: '$postId',
-  component: Post,
   loader: async ({ params: { postId } }) => {
-    queryClient.getQueryData(['posts', postId]) ??
-      (await queryClient.prefetchQuery(['posts', postId], () =>
-        fetchPostById(postId),
-      ))
+    // TODO: Prefetch post using TRPC
     return {}
+  },
+  component: () => {
+    const { params } = useMatch(postRoute.id)
+
+    // TODO: fetch postQuery using the tPRC client
+
+    return (
+      <div>
+        <h4>{postQuery.data?.title}</h4>
+        <p>{postQuery.data?.body}</p>
+      </div>
+    )
   },
 })
 
@@ -76,59 +165,35 @@ const router = createReactRouter({
   defaultPreload: 'intent',
 })
 
-// declare module '@tanstack/react-router' {
-//   interface RegisterRouter {
-//     router: typeof router
-//   }
-// }
+declare module '@tanstack/react-router' {
+  interface RegisterRouter {
+    router: typeof router
+  }
+}
 
 export const trpc = createTRPCReact<AppRouter>({})
-function App() {
-  const [trpcClient] = useState(() =>
-    trpc.createClient({
-      links: [
-        httpBatchLink({
-          url: 'http://localhost:4000',
-          // optional
-          headers() {
-            return {
-              // authorization: getAuthCookie(),
-            }
-          },
-        }),
-      ],
-    }),
-  )
 
+const trpcClient = trpc.createClient({
+  links: [
+    httpBatchLink({
+      url: 'http://localhost:4000',
+      // optional
+      headers() {
+        return {
+          // authorization: getAuthCookie(),
+        }
+      },
+    }),
+  ],
+})
+
+function App() {
   return (
     // Build our routes and render our router
     <>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router}>
-            <div>
-              <Link
-                to="/"
-                activeProps={{
-                  className: 'font-bold',
-                }}
-                activeOptions={{ exact: true }}
-              >
-                Home
-              </Link>{' '}
-              <Link
-                to="/posts"
-                activeProps={{
-                  className: 'font-bold',
-                }}
-              >
-                Posts
-              </Link>
-            </div>
-            <hr />
-            <Outlet /> {/* Start rendering router matches */}
-            <TanStackRouterDevtools position="bottom-left" />
-          </RouterProvider>
+          <RouterProvider router={router} />
           <ReactQueryDevtools
             initialIsOpen
             position="bottom-left"
@@ -143,103 +208,6 @@ function App() {
         </QueryClientProvider>
       </trpc.Provider>
     </>
-  )
-}
-
-async function fetchPosts() {
-  console.log('Fetching posts...')
-  await new Promise((r) => setTimeout(r, 500))
-  return axios
-    .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
-    .then((r) => r.data.slice(0, 10))
-}
-
-async function fetchPostById(postId: string) {
-  console.log(`Fetching post with id ${postId}...`)
-  await new Promise((r) => setTimeout(r, 500))
-
-  return await axios
-    .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-    .then((r) => r.data)
-}
-
-function usePosts() {
-  return useQuery(['posts'], fetchPosts)
-}
-
-function usePost(postId: string) {
-  return useQuery(['posts', postId], () => fetchPostById(postId), {
-    enabled: !!postId,
-  })
-}
-
-function Index() {
-  const hello = trpc.hello.useQuery()
-  const posts = trpc.posts.useQuery()
-  if (!hello.data || !posts.data) return <p>{'Loading...'}</p>
-  return (
-    <div className="p-5">
-      <h1 className="text-xl pb-2">{hello.data}</h1>
-      <ul className="list-disc list-inside">
-        {posts.data.map((post) => (
-          <li key={post.id}>{post.title}</li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-function Posts() {
-  const { Link } = useMatch(postsRoute.id)
-  const postsQuery = usePosts()
-
-  return (
-    <div>
-      <div
-        style={{
-          float: 'left',
-          marginRight: '1rem',
-        }}
-      >
-        {postsQuery.data?.map((post) => {
-          return (
-            <div key={post.id}>
-              <Link
-                to="/posts/$postId"
-                params={{
-                  postId: post.id,
-                }}
-                activeProps={{ className: 'font-bold' }}
-              >
-                <pre>{post.title.substring(0, 20)}</pre>
-              </Link>
-            </div>
-          )
-        })}
-      </div>
-      <hr />
-      <Outlet />
-    </div>
-  )
-}
-
-function PostsIndex() {
-  return (
-    <>
-      <div>Select a post.</div>
-    </>
-  )
-}
-
-function Post() {
-  const { params } = useMatch(postRoute.id)
-  const postQuery = usePost(params.postId)
-
-  return (
-    <div>
-      <h4>{postQuery.data?.title}</h4>
-      <p>{postQuery.data?.body}</p>
-    </div>
   )
 }
 

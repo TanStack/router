@@ -2,9 +2,16 @@ import * as babel from '@babel/core'
 import * as t from '@babel/types'
 // @ts-ignore
 import syntaxTS from '@babel/plugin-syntax-typescript'
-import { IsolatedExport, removeExt, RouteNode } from './generator'
+import {
+  IsolatedExport,
+  removeExt,
+  rootRouteName,
+  rootRouteClientName,
+  RouteNode,
+} from './generator'
 import path from 'path'
 import { Config } from './config'
+import { isVariableDeclaration } from '@babel/types'
 
 export const isolatedProperties = [
   'loader',
@@ -17,7 +24,6 @@ export const isolatedProperties = [
 export type IsolatedProperty = typeof isolatedProperties[number]
 
 type Opts = {
-  ssr: boolean
   isolate: IsolatedProperty
 }
 
@@ -48,36 +54,58 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
       {
         visitor: {
           Program: {
-            enter(programPath, state) {
+            enter(programPath) {
               // Remove all properties except for our isolated one
-              let foundImport = false
 
-              programPath.traverse({
-                ImportSpecifier(importPath) {
-                  if (
-                    t.isIdentifier(importPath.node.imported) &&
-                    importPath.node.imported.name === 'routeConfig'
-                  ) {
-                    foundImport = true
-                    if (t.isImportDeclaration(importPath.parentPath.node)) {
-                      if (
-                        importPath.parentPath.node.source.value !==
-                        relativeImportPath
-                      ) {
-                        importPath.parentPath.node.source.value =
+              if (node.isRoot) {
+                let foundImport = false
+
+                programPath.traverse({
+                  ImportSpecifier(importPath) {
+                    if (
+                      t.isIdentifier(importPath.node.imported) &&
+                      importPath.node.imported.name === 'createRouteConfig'
+                    ) {
+                      foundImport = true
+                    }
+                  },
+                })
+
+                if (!foundImport) {
+                  programPath.node.body.unshift(
+                    babel.template.statement(
+                      `import { createRouteConfig } from '@tanstack/react-router'`,
+                    )(),
+                  )
+                }
+              } else {
+                let foundImport = false
+                programPath.traverse({
+                  ImportSpecifier(importPath) {
+                    if (
+                      t.isIdentifier(importPath.node.imported) &&
+                      importPath.node.imported.name === 'routeConfig'
+                    ) {
+                      foundImport = true
+                      if (t.isImportDeclaration(importPath.parentPath.node)) {
+                        if (
+                          importPath.parentPath.node.source.value !==
                           relativeImportPath
+                        ) {
+                          importPath.parentPath.node.source.value =
+                            relativeImportPath
+                        }
                       }
                     }
-                  }
-                },
-              })
-
-              if (!foundImport) {
-                programPath.node.body.unshift(
-                  babel.template.statement(
-                    `import { routeConfig } from '${relativeImportPath}'`,
-                  )(),
-                )
+                  },
+                })
+                if (!foundImport) {
+                  programPath.node.body.unshift(
+                    babel.template.statement(
+                      `import { routeConfig } from '${relativeImportPath}'`,
+                    )(),
+                  )
+                }
               }
             },
           },
@@ -86,11 +114,11 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
     ],
   })
 
-  if (!originalFile?.code) {
-    return `${file?.code}\n\nrouteConfig.generate({\n\n})`
-  }
+  const separator = node.isRoot ? 'createRouteConfig(' : 'routeConfig.generate('
 
-  const separator = 'routeConfig.generate('
+  if (!originalFile?.code) {
+    return `${file?.code}\n\n${separator}{\n\n})`
+  }
 
   const originalHead = originalFile?.code?.substring(
     0,
@@ -108,61 +136,113 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
   return
 }
 
-export async function isolateOptionToExport(code: string, opts: Opts) {
-  return babel.transformAsync(code, {
-    configFile: false,
-    babelrc: false,
-    plugins: [...getBasePlugins(), plugin()],
-    ast: true,
-  })
+export async function isolateOptionToExport(
+  node: RouteNode,
+  code: string,
+  opts: Opts,
+) {
+  return (
+    await babel.transformAsync(code, {
+      configFile: false,
+      babelrc: false,
+      plugins: [...getBasePlugins(), plugin()],
+      ast: true,
+    })
+  )?.code
 
   function plugin(): babel.PluginItem {
     return {
       visitor: {
         Program: {
           enter(programPath, state) {
-            // Remove all properties except for our isolated one
-            programPath.traverse({
-              ExportDefaultDeclaration(exportNamedPath) {
-                exportNamedPath.remove()
-              },
-              ExportNamedDeclaration(exportNamedPath) {
-                exportNamedPath.remove()
-              },
-              Identifier(path) {
-                if (path.node.name === 'generate') {
-                  const options = getOptions(path)
+            // If we're the root, handle things a bit differently
+            if (node.isRoot) {
+              programPath.traverse({
+                Identifier(path) {
+                  if (
+                    path.node.name === 'createRouteConfig' &&
+                    t.isCallExpression(path.parentPath.node)
+                  ) {
+                    const options = getCreateRouteConfigOptions(path)
 
-                  if (options) {
-                    const property = options.properties.find((property) => {
-                      return (
-                        t.isObjectProperty(property) &&
-                        t.isIdentifier(property.key) &&
-                        property.key.name === opts.isolate
-                      )
-                    })
-
-                    if (t.isObjectProperty(property)) {
-                      const program = path.findParent((d) => d.isProgram())
-
-                      if (program?.isProgram()) {
-                        program.node.body.push(
-                          babel.template.statement(
-                            `export const ${opts.isolate} = $LOADER`,
-                          )({
-                            $LOADER: property.value,
-                          }),
+                    if (options) {
+                      const property = options.properties.find((property) => {
+                        return (
+                          t.isObjectProperty(property) &&
+                          t.isIdentifier(property.key) &&
+                          property.key.name === opts.isolate
                         )
+                      })
+
+                      if (t.isObjectProperty(property)) {
+                        const program = path.findParent((d) => d.isProgram())
+
+                        if (program?.isProgram()) {
+                          program.node.body.push(
+                            babel.template.statement(
+                              `export const ${opts.isolate} = $LOADER`,
+                            )({
+                              $LOADER: property.value,
+                            }),
+                          )
+                        }
                       }
+
+                      path
+                        .findParent((d) => d.isExpressionStatement())
+                        ?.remove()
                     }
-
-                    path.findParent((d) => d.isExpressionStatement())?.remove()
                   }
-                }
-              },
-            })
+                },
+              })
+            }
 
-            cleanUnusedCode(programPath, state)
+            // We're not in the root, handle things normally
+            if (!node.isRoot) {
+              // Remove all properties except for our isolated one
+              programPath.traverse({
+                Identifier(path) {
+                  if (path.node.name === 'generate') {
+                    const options = getRouteConfigGenerateOptions(path)
+
+                    if (options) {
+                      const property = options.properties.find((property) => {
+                        return (
+                          t.isObjectProperty(property) &&
+                          t.isIdentifier(property.key) &&
+                          property.key.name === opts.isolate
+                        )
+                      })
+
+                      if (
+                        t.isObjectProperty(property) &&
+                        t.isIdentifier(property.key)
+                      ) {
+                        if (property.key.name === opts.isolate) {
+                          const program = path.findParent((d) => d.isProgram())
+
+                          if (program?.isProgram()) {
+                            program.node.body.push(
+                              babel.template.statement(
+                                `export const ${opts.isolate} = $LOADER`,
+                              )({
+                                $LOADER: property.value,
+                              }),
+                            )
+                          }
+                        }
+                      }
+
+                      path
+                        .findParent((d) => d.isExpressionStatement())
+                        ?.remove()
+                    }
+                  }
+                },
+              })
+            }
+
+            cleanUnusedCode(programPath, state, [opts.isolate])
           },
         },
       },
@@ -202,161 +282,243 @@ export async function detectExports(code: string) {
 }
 
 export async function generateRouteConfig(
-  routeCode: string,
   node: RouteNode,
-  config: Config,
+  routeCode: string,
   imports: IsolatedExport[],
+  clientOnly: boolean,
 ) {
-  const relativeParentRoutePath = node.parent
-    ? removeExt(path.relative(node.genDir, node.parent?.genPath))
-    : path.relative(node.genDir, path.resolve(config.routesDirectory, 'root'))
+  const relativeParentRoutePath = clientOnly
+    ? node.parent
+      ? removeExt(
+          path.relative(
+            node.genDir,
+            path.resolve(node.parent?.genDir, node.parent?.clientFilename),
+          ),
+        )
+      : `./${rootRouteClientName}`
+    : node.parent
+    ? removeExt(
+        path.relative(
+          node.genDir,
+          path.resolve(node.parent?.genDir, node.parent?.filename),
+        ),
+      )
+    : `./${rootRouteName}`
 
-  const pathName = node.fileNameNoExt.startsWith('__')
+  const pathName = node.isRoot
+    ? undefined
+    : node.fileNameNoExt.startsWith('__')
     ? undefined
     : node.fileNameNoExt === 'index'
     ? '/'
     : node.fileNameNoExt
 
-  const routeId = node.fileNameNoExt
+  const routeId = node.isRoot ? undefined : node.fileNameNoExt
 
   function plugin(): babel.PluginItem {
     return {
       visitor: {
         Program: {
           enter(programPath, state) {
-            programPath.node.body.unshift(
-              babel.template.statement(
-                `import { lazy } from '@tanstack/react-router'`,
-              )(),
-            )
-
             // Remove all of the isolated import properties from the config
             programPath.traverse({
               ImportSpecifier(path) {
                 if (t.isIdentifier(path.node.imported)) {
-                  if (path.node.imported.name === 'routeConfig') {
-                    path.parentPath.remove()
+                  if (!node.isRoot) {
+                    if (path.node.imported.name === 'routeConfig') {
+                      path.parentPath.remove()
 
-                    const program = path.findParent((d) => d.isProgram())
+                      const program = path.findParent((d) => d.isProgram())
 
-                    if (program?.isProgram()) {
-                      program.node.body.unshift(
-                        babel.template.statement(
-                          `import { routeConfig as parentRouteConfig } from '$IMPORT'`,
-                        )({
-                          $IMPORT: relativeParentRoutePath,
-                        }),
-                      )
+                      if (program?.isProgram()) {
+                        program.node.body.unshift(
+                          babel.template.statement(
+                            `import { routeConfig as parentRouteConfig } from '$IMPORT'`,
+                          )({
+                            $IMPORT: relativeParentRoutePath,
+                          }),
+                        )
+                      }
                     }
                   }
                 }
               },
               Identifier(iPath) {
-                if (iPath.node.name === 'generate') {
-                  if (t.isMemberExpression(iPath.parentPath.node)) {
-                    if (t.isIdentifier(iPath.parentPath.node.object)) {
-                      iPath.node.name = 'createRoute'
-                      iPath.parentPath.node.object.name = 'parentRouteConfig'
+                let options
 
-                      const options = getOptions(iPath)
-
-                      if (options) {
-                        options.properties = [
-                          pathName
-                            ? t.objectProperty(
-                                t.identifier('path'),
-                                t.stringLiteral(pathName),
-                              )
-                            : t.objectProperty(
-                                t.identifier('id'),
-                                t.stringLiteral(routeId),
-                              ),
-                          ...options.properties.filter((property) => {
-                            return t.isObjectProperty(property) &&
-                              t.isIdentifier(property.key) &&
-                              isolatedProperties.includes(
-                                property.key.name as IsolatedProperty,
-                              )
-                              ? false
-                              : true
-                          }),
-                          ...imports.map(({ key }) => {
-                            if (key === 'loader') {
-                              return t.objectProperty(
-                                t.identifier(key),
-                                babel.template.expression(
-                                  `(...args) => import('./${path.relative(
-                                    node.genDir,
-                                    node.genPathNoExt,
-                                  )}-${key}').then(d => d.${key}.apply(d.${key}, (args as any)))`,
-                                  {
-                                    plugins: ['typescript'],
-                                  },
-                                )({}),
-                              )
-                            }
-
-                            if (key === 'action') {
-                              return t.objectProperty(
-                                t.identifier(key),
-                                babel.template.expression(
-                                  `(...payload: Parameters<typeof import('./${path.relative(
-                                    node.genDir,
-                                    node.genPathNoExt,
-                                  )}-${key}').action>) => import('./${path.relative(
-                                    node.genDir,
-                                    node.genPathNoExt,
-                                  )}-${key}').then(d => d.${key}.apply(d.${key}, (payload as any)))`,
-                                  {
-                                    plugins: ['typescript'],
-                                  },
-                                )({}),
-                              )
-                            }
-
-                            return t.objectProperty(
-                              t.identifier(key),
-                              babel.template.expression(`
-                                lazy(() => import('./${path.relative(
-                                  node.genDir,
-                                  node.genPathNoExt,
-                                )}-${key}').then(d => ({ default: d.${key} }) ))`)(),
-                            )
-                          }),
-                        ]
-
-                        const program = iPath.findParent((d) => d.isProgram())
-
-                        if (program?.isProgram() && options) {
-                          const index = program.node.body.findIndex(
-                            (d) =>
-                              d.start ===
-                              iPath.parentPath.parentPath?.node.start,
-                          )
-
-                          program.node.body[index] = babel.template.statement(
-                            `const routeConfig = parentRouteConfig.createRoute(
-                                $OPTIONS
-                              )`,
-                          )({
-                            $OPTIONS: options,
-                          })
-                        }
+                if (node.isRoot) {
+                  if (iPath.node.name === 'createRouteConfig') {
+                    if (t.isCallExpression(iPath.parentPath.node)) {
+                      if (
+                        t.isExpressionStatement(
+                          iPath.parentPath.parentPath?.node,
+                        )
+                      ) {
+                        iPath.parentPath.parentPath?.replaceWith(
+                          t.variableDeclaration('const', [
+                            t.variableDeclarator(
+                              t.identifier('routeConfig'),
+                              iPath.parentPath.node,
+                            ),
+                          ]) as any,
+                        )
                       }
+                    }
+                  }
+                } else {
+                  if (iPath.node.name === 'generate') {
+                    if (t.isMemberExpression(iPath.parentPath.node)) {
+                      if (t.isIdentifier(iPath.parentPath.node.object)) {
+                        iPath.node.name = 'createRoute'
+                        iPath.parentPath.node.object.name = 'parentRouteConfig'
+
+                        options = getRouteConfigGenerateOptions(iPath)
+                      }
+                    }
+                  }
+                }
+
+                if (options) {
+                  options.properties = [
+                    ...(pathName
+                      ? [
+                          t.objectProperty(
+                            t.identifier('path'),
+                            t.stringLiteral(pathName),
+                          ),
+                        ]
+                      : routeId
+                      ? [
+                          t.objectProperty(
+                            t.identifier('id'),
+                            t.stringLiteral(routeId),
+                          ),
+                        ]
+                      : []),
+                    ...options.properties.map((property) => {
+                      if (
+                        t.isObjectProperty(property) &&
+                        t.isIdentifier(property.key) &&
+                        isolatedProperties.includes(
+                          property.key.name as IsolatedProperty,
+                        )
+                      ) {
+                        const key = property.key.name
+
+                        if (key === 'loader') {
+                          if (clientOnly) {
+                            return t.objectProperty(
+                              t.identifier('loader'),
+                              t.tSAsExpression(
+                                t.booleanLiteral(true),
+                                t.tsAnyKeyword(),
+                              ),
+                            )
+                          }
+                          return t.objectProperty(
+                            t.identifier(key),
+                            babel.template.expression(
+                              `(...args) => import('./${path.relative(
+                                node.genDir,
+                                node.genPathNoExt,
+                              )}-${key}').then(d => d.${key}.apply(d.${key}, (args as any)))`,
+                              {
+                                plugins: ['typescript'],
+                              },
+                            )({}),
+                          )
+                        }
+
+                        if (key === 'action') {
+                          if (clientOnly) {
+                            return t.objectProperty(
+                              t.identifier('action'),
+                              t.tSAsExpression(
+                                t.booleanLiteral(true),
+                                t.tSAnyKeyword(),
+                              ),
+                            )
+                          }
+                          return t.objectProperty(
+                            t.identifier(key),
+                            babel.template.expression(
+                              `(...payload: Parameters<typeof import('./${path.relative(
+                                node.genDir,
+                                node.genPathNoExt,
+                              )}-${key}').action>) => import('./${path.relative(
+                                node.genDir,
+                                node.genPathNoExt,
+                              )}-${key}').then(d => d.${key}.apply(d.${key}, (payload as any)))`,
+                              {
+                                plugins: ['typescript'],
+                              },
+                            )({}),
+                          )
+                        }
+
+                        return t.objectProperty(
+                          t.identifier(key),
+                          babel.template.expression(`
+                              lazy(() => import('./${path.relative(
+                                node.genDir,
+                                node.genPathNoExt,
+                              )}-${key}').then(d => ({ default: d.${key} }) ))`)(),
+                        )
+                      }
+
+                      return property
+                    }),
+                  ]
+
+                  const program = iPath.findParent((d) => d.isProgram())
+
+                  if (program?.isProgram() && options) {
+                    const index = program.node.body.findIndex(
+                      (d) =>
+                        d.start === iPath.parentPath.parentPath?.node.start,
+                    )
+
+                    if (node.isRoot) {
+                      program.node.body[index] = babel.template.statement(
+                        `const routeConfig = createRouteConfig(
+                          $OPTIONS
+                          )`,
+                      )({
+                        $OPTIONS: options,
+                      })
+                    } else {
+                      program.node.body[index] = babel.template.statement(
+                        `const routeConfig = parentRouteConfig.createRoute(
+                          $OPTIONS
+                          )`,
+                      )({
+                        $OPTIONS: options,
+                      })
                     }
                   }
                 }
               },
             })
 
-            // Add the routeConfig exports
-            programPath.node.body.push(
+            programPath.node.body.unshift(
               babel.template.statement(
-                `export { routeConfig, routeConfig as ${node.variable}Route }`,
+                `import { lazy } from '@tanstack/react-router'`,
               )(),
             )
 
-            cleanUnusedCode(programPath, state)
+            // Add the routeConfig exports
+            programPath.node.body.push(
+              babel.template.statement(
+                clientOnly
+                  ? `export { routeConfig, routeConfig as ${node.variable}Route }`
+                  : `export { routeConfig }`,
+              )(),
+            )
+
+            cleanUnusedCode(programPath, state, [
+              'routeConfig',
+              `${node.variable}Route`,
+            ])
           },
         },
       },
@@ -373,7 +535,7 @@ export async function generateRouteConfig(
   )?.code
 
   if (!code) {
-    console.log(code, node, imports)
+    // console.log(code, node, imports)
     throw new Error('Error while generating a route file!')
   }
 
@@ -425,25 +587,46 @@ function markImport(path: any, state: any) {
   }
 }
 
-function getOptions(path: any): t.ObjectExpression | void {
+function getRouteConfigGenerateOptions(path: any): t.ObjectExpression | void {
+  const tryOptions = (node: any): t.ObjectExpression | void => {
+    if (t.isIdentifier(node)) {
+      const initNode = path.scope.getBinding(node.name)?.path.node
+      if (t.isVariableDeclarator(initNode)) {
+        return tryOptions(initNode.init)
+      }
+    } else if (t.isObjectExpression(node)) {
+      return node
+    }
+
+    return
+  }
+
   if (
     t.isMemberExpression(path.parentPath.node) &&
     t.isCallExpression(path.parentPath.parentPath?.node)
   ) {
     const options = path.parentPath.parentPath?.node.arguments[0]
 
-    const tryOptions = (node: any): t.ObjectExpression | void => {
-      if (t.isIdentifier(node)) {
-        const initNode = path.scope.getBinding(node.name)?.path.node
-        if (t.isVariableDeclarator(initNode)) {
-          return tryOptions(initNode.init)
-        }
-      } else if (t.isObjectExpression(node)) {
-        return node
-      }
+    return tryOptions(options)
+  }
+}
 
-      return
+function getCreateRouteConfigOptions(path: any): t.ObjectExpression | void {
+  const tryOptions = (node: any): t.ObjectExpression | void => {
+    if (t.isIdentifier(node)) {
+      const initNode = path.scope.getBinding(node.name)?.path.node
+      if (t.isVariableDeclarator(initNode)) {
+        return tryOptions(initNode.init)
+      }
+    } else if (t.isObjectExpression(node)) {
+      return node
     }
+
+    return
+  }
+
+  if (t.isCallExpression(path.parentPath?.node)) {
+    const options = path.parentPath?.node.arguments[0]
 
     return tryOptions(options)
   }
@@ -457,60 +640,82 @@ function getOptions(path: any): t.ObjectExpression | void {
 function cleanUnusedCode(
   programPath: babel.NodePath<babel.types.Program>,
   state: any,
+  keepExports: string[] = [],
 ) {
   state.refs = new Set()
   state.done = false
 
+  function markVariable(variablePath: any, variableState: any) {
+    if (variablePath.node.id.type === 'Identifier') {
+      const local = variablePath.get('id')
+      if (isIdentifierReferenced(local)) {
+        variableState.refs.add(local)
+      }
+    } else if (variablePath.node.id.type === 'ObjectPattern') {
+      const pattern = variablePath.get('id')
+      const properties: any = pattern.get('properties')
+      properties.forEach((p: any) => {
+        const local = p.get(
+          p.node.type === 'ObjectProperty'
+            ? 'value'
+            : p.node.type === 'RestElement'
+            ? 'argument'
+            : (function () {
+                throw new Error('invariant')
+              })(),
+        )
+        if (isIdentifierReferenced(local)) {
+          variableState.refs.add(local)
+        }
+      })
+    } else if (variablePath.node.id.type === 'ArrayPattern') {
+      const pattern = variablePath.get('id')
+      const elements: any = pattern.get('elements')
+      elements.forEach((e: any) => {
+        let local
+        if (e.node && e.node.type === 'Identifier') {
+          local = e
+        } else if (e.node && e.node.type === 'RestElement') {
+          local = e.get('argument')
+        } else {
+          return
+        }
+        if (isIdentifierReferenced(local)) {
+          variableState.refs.add(local)
+        }
+      })
+    }
+  }
+
   // Mark all variables and functions if used
   programPath.traverse(
     {
-      VariableDeclarator(variablePath, variableState: any) {
-        if (variablePath.node.id.type === 'Identifier') {
-          const local = variablePath.get('id')
-          if (isIdentifierReferenced(local)) {
-            variableState.refs.add(local)
-          }
-        } else if (variablePath.node.id.type === 'ObjectPattern') {
-          const pattern = variablePath.get('id')
-          const properties: any = pattern.get('properties')
-          properties.forEach((p: any) => {
-            const local = p.get(
-              p.node.type === 'ObjectProperty'
-                ? 'value'
-                : p.node.type === 'RestElement'
-                ? 'argument'
-                : (function () {
-                    throw new Error('invariant')
-                  })(),
-            )
-            if (isIdentifierReferenced(local)) {
-              variableState.refs.add(local)
-            }
-          })
-        } else if (variablePath.node.id.type === 'ArrayPattern') {
-          const pattern = variablePath.get('id')
-          const elements: any = pattern.get('elements')
-          elements.forEach((e: any) => {
-            let local
-            if (e.node && e.node.type === 'Identifier') {
-              local = e
-            } else if (e.node && e.node.type === 'RestElement') {
-              local = e.get('argument')
-            } else {
-              return
-            }
-            if (isIdentifierReferenced(local)) {
-              variableState.refs.add(local)
-            }
-          })
-        }
-      },
+      VariableDeclarator: markVariable,
       FunctionDeclaration: markFunction,
       FunctionExpression: markFunction,
       ArrowFunctionExpression: markFunction,
       ImportSpecifier: markImport,
       ImportDefaultSpecifier: markImport,
       ImportNamespaceSpecifier: markImport,
+      ExportDefaultDeclaration: markImport,
+      // ExportNamedDeclaration(path, state) {
+      //   if (t.isVariableDeclaration(path.node.declaration)) {
+      //     if (t.isVariableDeclarator(path.node.declaration.declarations?.[0])) {
+      //       if (t.isIdentifier(path.node.declaration.declarations[0].id)) {
+      //         if (
+      //           keepExports.includes(
+      //             path.node.declaration.declarations[0].id.name,
+      //           )
+      //         ) {
+      //           return
+      //         }
+      //       }
+      //       path.replaceWith(path.node.declaration.declarations[0])
+      //       return
+      //     }
+      //   }
+      //   path.remove()
+      // },
       ImportDeclaration: (path) => {
         if (path.node.source.value.endsWith('.css')) {
           path.remove()
@@ -561,6 +766,7 @@ function cleanUnusedCode(
           const local = variablePath.get('id')
           if (refs.has(local) && !isIdentifierReferenced(local)) {
             ++count
+
             variablePath.remove()
           }
         } else if (variablePath.node.id.type === 'ObjectPattern') {
@@ -603,6 +809,7 @@ function cleanUnusedCode(
             }
             if (refs.has(local) && !isIdentifierReferenced(local)) {
               ++count
+
               e.remove()
             }
           })

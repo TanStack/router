@@ -1,4 +1,5 @@
 import path from 'path'
+import fs from 'fs-extra'
 
 export type Config = {
   rootDirectory: string
@@ -7,13 +8,8 @@ export type Config = {
   routeGenDirectory: string
 }
 
-const configFilePath = path.resolve(process.cwd(), 'tsr.config.js')
+const configFilePathJson = path.resolve(process.cwd(), 'tsr.config.json')
 
-export function getConfig() {
-  return require(configFilePath) as Config
-}
-
-export function getFreshConfig() {
-  delete require.cache[configFilePath]
-  return getConfig()
+export async function getConfig() {
+  return fs.readJson(configFilePathJson)
 }

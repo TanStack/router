@@ -7,7 +7,8 @@ import {
   CheckId,
   rootRouteId,
   Route,
-  RouterContext,
+  RegisteredAllRouteInfo,
+  RegisteredRouter,
   RouterState,
   ToIdOption,
 } from '@tanstack/router-core'
@@ -34,25 +35,8 @@ import {
   invariant,
   Router,
 } from '@tanstack/router-core'
-import { restElement } from '@babel/types'
 
 export * from '@tanstack/router-core'
-
-export interface RegisterRouter {
-  // router: Router
-}
-
-export type RegisteredRouter = RegisterRouter extends {
-  router: Router<infer TRouteConfig, infer TAllRouteInfo>
-}
-  ? Router<TRouteConfig, TAllRouteInfo>
-  : Router
-
-export type RegisteredAllRouteInfo = RegisterRouter extends {
-  router: Router<infer TRouteConfig, infer TAllRouteInfo>
-}
-  ? TAllRouteInfo
-  : AnyAllRouteInfo
 
 export type SyncRouteComponent<TProps = {}> = (
   props: TProps,
@@ -154,8 +138,8 @@ declare module '@tanstack/router-core' {
     }>
   }
 
-  interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
-    useContext?: () => RouterContext
+  interface RouterOptions<TRouteConfig, TRouterContext> {
+    // ssrFooter?: () => JSX.Element | React.ReactNode
   }
 
   interface Router<
@@ -234,13 +218,15 @@ export function Link<TTo extends string = '.'>(
   return <router.Link {...(props as any)} />
 }
 
-export const matchesContext = React.createContext<RouteMatch[]>(null!)
+type MatchesContextValue = RouteMatch[]
+
+export const matchesContext = React.createContext<MatchesContextValue>(null!)
 export const routerContext = React.createContext<{ router: RegisteredRouter }>(
   null!,
 )
 
 export type MatchesProviderProps = {
-  value: RouteMatch[]
+  value: MatchesContextValue
   children: React.ReactNode
 }
 
@@ -248,7 +234,7 @@ export function MatchesProvider(props: MatchesProviderProps) {
   return <matchesContext.Provider {...props} />
 }
 
-const useRouterSubscription = (router: Router<any, any>) => {
+const useRouterSubscription = (router: Router<any, any, any>) => {
   useSyncExternalStore(
     (cb) => router.subscribe(() => cb()),
     () => router.state,
@@ -258,10 +244,14 @@ const useRouterSubscription = (router: Router<any, any>) => {
 
 export function createReactRouter<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
->(opts: RouterOptions<TRouteConfig>): Router<TRouteConfig> {
+  TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
+  TRouterContext = unknown,
+>(
+  opts: RouterOptions<TRouteConfig, TRouterContext>,
+): Router<TRouteConfig, TAllRouteInfo, TRouterContext> {
   const makeRouteExt = (
     route: AnyRoute,
-    router: Router<any, any>,
+    router: Router<any, any, any>,
   ): Pick<AnyRoute, 'useRoute' | 'linkProps' | 'Link' | 'MatchRoute'> => {
     return {
       useRoute: (subRouteId = '.' as any) => {
@@ -327,8 +317,11 @@ export function createReactRouter<
         } = linkInfo
 
         const reactHandleClick = (e: Event) => {
-          if (React.startTransition) // This is a hack for react < 18
-            React.startTransition(() => {handleClick(e)})
+          if (React.startTransition)
+            // This is a hack for react < 18
+            React.startTransition(() => {
+              handleClick(e)
+            })
           else handleClick(e)
         }
 
@@ -423,7 +416,7 @@ export function createReactRouter<
   const coreRouter = createRouter<TRouteConfig>({
     ...opts,
     createRouter: (router) => {
-      const routerExt: Pick<Router<any, any>, 'useMatch' | 'useState'> = {
+      const routerExt: Pick<Router<any, any, any>, 'useMatch' | 'useState'> = {
         useState: () => {
           useRouterSubscription(router)
           return router.state
@@ -436,7 +429,7 @@ export function createReactRouter<
             `"${rootRouteId}" cannot be used with useMatch! Did you mean to useRoute("${rootRouteId}")?`,
           )
 
-          const runtimeMatch = useMatches()?.[0]!
+          const nearestMatch = useNearestMatch()
           const match = router.state.matches.find((d) => d.routeId === routeId)
 
           if (opts?.strict ?? true) {
@@ -446,11 +439,11 @@ export function createReactRouter<
             )
 
             invariant(
-              runtimeMatch.routeId == match?.routeId,
+              nearestMatch.routeId == match?.routeId,
               `useMatch("${
                 match?.routeId as string
               }") is being called in a component that is meant to render the '${
-                runtimeMatch.routeId
+                nearestMatch.routeId
               }' route. Did you mean to 'useMatch("${
                 match?.routeId as string
               }", { strict: false })' or 'useRoute("${
@@ -488,24 +481,20 @@ export function createReactRouter<
 export type RouterProps<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-> = RouterOptions<TRouteConfig> & {
-  router: Router<TRouteConfig, TAllRouteInfo>
-  // Children will default to `<Outlet />` if not provided
-  children?: React.ReactNode
+  TRouterContext = unknown,
+> = RouterOptions<TRouteConfig, TRouterContext> & {
+  router: Router<TRouteConfig, TAllRouteInfo, TRouterContext>
 }
 
 export function RouterProvider<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
->({ children, router, ...rest }: RouterProps<TRouteConfig, TAllRouteInfo>) {
+  TRouterContext = unknown,
+>({
+  router,
+  ...rest
+}: RouterProps<TRouteConfig, TAllRouteInfo, TRouterContext>) {
   router.update(rest)
-
-  const defaultRouterContext = React.useRef({})
-
-  const userContext =
-    router.options.useContext?.() ?? defaultRouterContext.current
-
-  router.context = userContext
 
   useRouterSubscription(router)
   React.useEffect(() => {
@@ -513,11 +502,13 @@ export function RouterProvider<
   }, [router])
 
   return (
-    <routerContext.Provider value={{ router: router as any }}>
-      <MatchesProvider value={router.state.matches}>
-        {children ?? <Outlet />}
-      </MatchesProvider>
-    </routerContext.Provider>
+    <>
+      <routerContext.Provider value={{ router: router as any }}>
+        <MatchesProvider value={[undefined!, ...router.state.matches]}>
+          <Outlet />
+        </MatchesProvider>
+      </routerContext.Provider>
+    </>
   )
 }
 
@@ -559,7 +550,7 @@ export function useNearestMatch(): RouteMatch<
   RegisteredAllRouteInfo,
   RouteInfo
 > {
-  const runtimeMatch = useMatches()?.[0]!
+  const runtimeMatch = useMatches()[0]
 
   invariant(runtimeMatch, `Could not find a nearest match!`)
 
@@ -616,7 +607,11 @@ export function Outlet() {
   return (
     <MatchesProvider value={matches}>
       <React.Suspense fallback={<PendingComponent />}>
-        <CatchBoundary errorComponent={errorComponent} key={match.routeId}>
+        <CatchBoundary
+          key={match.routeId}
+          errorComponent={errorComponent}
+          match={match as any}
+        >
           {
             ((): React.ReactNode => {
               if (match.status === 'error') {
@@ -635,6 +630,19 @@ export function Outlet() {
           }
         </CatchBoundary>
       </React.Suspense>
+      {/* Provide a suffix suspense boundary to make sure the router is
+  ready to be dehydrated on the server */}
+      {/* {router.options.ssrFooter && match.matchId === rootRouteId ? (
+        <React.Suspense fallback={null}>
+          {(() => {
+            if (router.state.pending) {
+              throw router.navigationPromise
+            }
+
+            return router.options.ssrFooter()
+          })()}
+        </React.Suspense>
+      ) : null} */}
     </MatchesProvider>
   )
 }
@@ -642,6 +650,7 @@ export function Outlet() {
 class CatchBoundary extends React.Component<{
   children: any
   errorComponent: any
+  match: RouteMatch
 }> {
   state = {
     error: false,
@@ -649,6 +658,7 @@ class CatchBoundary extends React.Component<{
   }
 
   componentDidCatch(error: any, info: any) {
+    console.error(`Error in route match: ${this.props.match.matchId}`)
     console.error(error)
 
     this.setState({

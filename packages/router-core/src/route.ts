@@ -23,11 +23,12 @@ import {
 } from './router'
 import { NoInfer } from './utils'
 
-export interface AnyRoute extends Route<any, any> {}
+export interface AnyRoute extends Route<any, any, any> {}
 
 export interface Route<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TRouteInfo extends AnyRouteInfo = RouteInfo,
+  TRouterContext = unknown,
 > {
   routeInfo: TRouteInfo
   routeId: TRouteInfo['id']
@@ -37,7 +38,7 @@ export interface Route<
   parentRoute?: AnyRoute
   childRoutes?: AnyRoute[]
   options: RouteOptions
-  router: Router<TAllRouteInfo['routeConfig'], TAllRouteInfo>
+  router: Router<TAllRouteInfo['routeConfig'], TAllRouteInfo, TRouterContext>
   buildLink: <TTo extends string = '.'>(
     options: Omit<
       LinkOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
@@ -87,12 +88,13 @@ export interface Route<
 export function createRoute<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TRouteInfo extends AnyRouteInfo = RouteInfo,
+  TRouterContext = unknown,
 >(
   routeConfig: RouteConfig,
   options: TRouteInfo['options'],
   parent: undefined | Route<TAllRouteInfo, any>,
-  router: Router<TAllRouteInfo['routeConfig'], TAllRouteInfo>,
-): Route<TAllRouteInfo, TRouteInfo> {
+  router: Router<TAllRouteInfo['routeConfig'], TAllRouteInfo, TRouterContext>,
+): Route<TAllRouteInfo, TRouteInfo, TRouterContext> {
   const { id, routeId, path: routePath, fullPath } = routeConfig
 
   const action =
@@ -138,6 +140,7 @@ export function createRoute<
             actionState.status = 'success'
             return res
           } catch (err) {
+            console.log('tanner')
             console.error(err)
             actionState.error = err
             actionState.status = 'error'
@@ -188,7 +191,7 @@ export function createRoute<
       return router.state.loaders[id]!
     })()
 
-  let route: Route<TAllRouteInfo, TRouteInfo> = {
+  let route: Route<TAllRouteInfo, TRouteInfo, TRouterContext> = {
     routeInfo: undefined!,
     routeId: id,
     routeRouteId: routeId,

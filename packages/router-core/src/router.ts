@@ -53,6 +53,22 @@ import {
   Updater,
 } from './utils'
 
+export interface RegisterRouter {
+  // router: Router
+}
+
+export type RegisteredRouter = RegisterRouter extends {
+  router: Router<infer TRouteConfig, infer TAllRouteInfo, infer TRouterContext>
+}
+  ? Router<TRouteConfig, TAllRouteInfo, TRouterContext>
+  : Router
+
+export type RegisteredAllRouteInfo = RegisterRouter extends {
+  router: Router<infer TRouteConfig, infer TAllRouteInfo, infer TRouterContext>
+}
+  ? TAllRouteInfo
+  : AnyAllRouteInfo
+
 export interface LocationState {}
 
 export interface Location<
@@ -81,7 +97,10 @@ export type FilterRoutesFn = <TRoute extends Route<any, RouteInfo>>(
   routeConfigs: TRoute[],
 ) => TRoute[]
 
-export interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
+export interface RouterOptions<
+  TRouteConfig extends AnyRouteConfig,
+  TRouterContext,
+> {
   history?: BrowserHistory | MemoryHistory | HashHistory
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
@@ -99,8 +118,12 @@ export interface RouterOptions<TRouteConfig extends AnyRouteConfig> {
   routeConfig?: TRouteConfig
   basepath?: string
   useServerData?: boolean
-  createRouter?: (router: Router<any, any>) => void
-  createRoute?: (opts: { route: AnyRoute; router: Router<any, any> }) => void
+  createRouter?: (router: Router<any, any, any>) => void
+  createRoute?: (opts: {
+    route: AnyRoute
+    router: Router<any, any, any>
+  }) => void
+  context?: TRouterContext
   loadComponent?: (
     component: GetFrameworkGeneric<'Component'>,
   ) => Promise<GetFrameworkGeneric<'Component'>>
@@ -192,7 +215,7 @@ export interface PendingState {
   matches: RouteMatch[]
 }
 
-type Listener = (router: Router<any, any>) => void
+type Listener = (router: Router<any, any, any>) => void
 
 export type ListenerFn = () => void
 
@@ -236,6 +259,11 @@ interface DehydratedRouterState
   matches: DehydratedRouteMatch[]
 }
 
+interface DehydratedRouter<TRouterContext> {
+  state: DehydratedRouterState
+  context: TRouterContext
+}
+
 interface DehydratedRouteMatch
   extends Pick<
     RouteMatch<any, any>,
@@ -252,6 +280,7 @@ export interface RouterContext {}
 export interface Router<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
   TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
+  TRouterContext = unknown,
 > {
   types: {
     // Super secret internal stuff
@@ -262,13 +291,12 @@ export interface Router<
   // Public API
   history: BrowserHistory | MemoryHistory | HashHistory
   options: PickAsRequired<
-    RouterOptions<TRouteConfig>,
-    'stringifySearch' | 'parseSearch'
+    RouterOptions<TRouteConfig, TRouterContext>,
+    'stringifySearch' | 'parseSearch' | 'context'
   >
   // Computed in this.update()
   basepath: string
   // Internal:
-  context: RouterContext
   listeners: Listener[]
   location: Location<TAllRouteInfo['fullSearchSchema']>
   navigateTimeout?: Timeout
@@ -276,7 +304,7 @@ export interface Router<
   state: RouterState<TAllRouteInfo['fullSearchSchema']>
   routeTree: Route<TAllRouteInfo, RouteInfo>
   routesById: RoutesById<TAllRouteInfo>
-  navigationPromise: Promise<void>
+  navigationPromise?: Promise<void>
   startedLoadingAt: number
   resolveNavigation: () => void
   subscribe: (listener: Listener) => () => void
@@ -284,9 +312,13 @@ export interface Router<
   notify: () => void
   mount: () => () => void
   onFocus: () => void
-  update: <TRouteConfig extends RouteConfig = RouteConfig>(
-    opts?: RouterOptions<TRouteConfig>,
-  ) => Router<TRouteConfig>
+  update: <
+    TRouteConfig extends RouteConfig = RouteConfig,
+    TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
+    TRouterContext = unknown,
+  >(
+    opts?: RouterOptions<TRouteConfig, TRouterContext>,
+  ) => Router<TRouteConfig, TAllRouteInfo, TRouterContext>
 
   buildNext: (opts: BuildNextOptions) => Location
   cancelMatches: () => void
@@ -336,8 +368,8 @@ export interface Router<
   >(
     opts: LinkOptions<TAllRouteInfo, TFrom, TTo>,
   ) => LinkInfo
-  dehydrateState: () => DehydratedRouterState
-  hydrateState: (state: DehydratedRouterState) => void
+  dehydrate: () => DehydratedRouter<TRouterContext>
+  hydrate: (dehydratedRouter: DehydratedRouter<TRouterContext>) => void
   __: {
     buildRouteTree: (
       routeConfig: RouteConfig,
@@ -378,9 +410,10 @@ function getInitialRouterState(): RouterState {
 export function createRouter<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
   TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
+  TRouterContext = unknown,
 >(
-  userOptions?: RouterOptions<TRouteConfig>,
-): Router<TRouteConfig, TAllRouteInfo> {
+  userOptions?: RouterOptions<TRouteConfig, TRouterContext>,
+): Router<TRouteConfig, TAllRouteInfo, TRouterContext> {
   const history = userOptions?.history || createDefaultHistory()
 
   const originalOptions = {
@@ -388,12 +421,13 @@ export function createRouter<
     defaultLoaderMaxAge: 0,
     defaultPreloadMaxAge: 2000,
     defaultPreloadDelay: 50,
+    context: undefined!,
     ...userOptions,
     stringifySearch: userOptions?.stringifySearch ?? defaultStringifySearch,
     parseSearch: userOptions?.parseSearch ?? defaultParseSearch,
   }
 
-  let router: Router<TRouteConfig, TAllRouteInfo> = {
+  let router: Router<TRouteConfig, TAllRouteInfo, TRouterContext> = {
     types: undefined!,
 
     // public api
@@ -401,13 +435,11 @@ export function createRouter<
     options: originalOptions,
     listeners: [],
     // Resolved after construction
-    context: {},
     basepath: '',
     routeTree: undefined!,
     routesById: {} as any,
     location: undefined!,
     //
-    navigationPromise: Promise.resolve(),
     resolveNavigation: () => {},
     matchCache: {},
     state: getInitialRouterState(),
@@ -451,30 +483,36 @@ export function createRouter<
       router.listeners.forEach((listener) => listener(router))
     },
 
-    dehydrateState: () => {
+    dehydrate: () => {
       return {
-        ...pick(router.state, ['status', 'location', 'lastUpdated']),
-        matches: router.state.matches.map((match) =>
-          pick(match, [
-            'matchId',
-            'status',
-            'routeLoaderData',
-            'loaderData',
-            'isInvalid',
-            'invalidAt',
-          ]),
-        ),
+        state: {
+          ...pick(router.state, ['status', 'location', 'lastUpdated']),
+          matches: router.state.matches.map((match) =>
+            pick(match, [
+              'matchId',
+              'status',
+              'routeLoaderData',
+              'loaderData',
+              'isInvalid',
+              'invalidAt',
+            ]),
+          ),
+        },
+        context: router.options.context as TRouterContext,
       }
     },
 
-    hydrateState: (dehydratedState) => {
+    hydrate: (dehydratedState) => {
+      // Update the context
+      router.options.context = dehydratedState.context
+
       // Match the routes
       const matches = router.matchRoutes(router.location.pathname, {
         strictParseParams: true,
       })
 
       matches.forEach((match, index) => {
-        const dehydratedMatch = dehydratedState.matches[index]
+        const dehydratedMatch = dehydratedState.state.matches[index]
         invariant(
           dehydratedMatch,
           'Oh no! Dehydrated route matches did not match the active state of the router 😬',
@@ -584,22 +622,6 @@ export function createRouter<
         strictParseParams: true,
       })
 
-      // Check if each match middleware to see if the route can be accessed
-      try {
-        await Promise.all(
-          matches.map((match) =>
-            match.options.beforeLoad?.({
-              context: router.context,
-            }),
-          ),
-        )
-      } catch (err: any) {
-        if (err?.then) {
-          await new Promise(() => {})
-        }
-        throw err
-      }
-
       if (typeof document !== 'undefined') {
         router.state = {
           ...router.state,
@@ -616,6 +638,23 @@ export function createRouter<
           location: router.location,
           status: 'loading',
         }
+      }
+
+      // Check if each match middleware to see if the route can be accessed
+      try {
+        await Promise.all(
+          matches.map((match) =>
+            match.options.beforeLoad?.({
+              router: router as any,
+              match,
+            }),
+          ),
+        )
+      } catch (err: any) {
+        if (err?.then) {
+          await new Promise(() => {})
+        }
+        throw err
       }
 
       router.notify()
@@ -848,7 +887,7 @@ export function createRouter<
               parentMatch,
               matchId,
               params,
-              pathname: joinPaths([pathname, interpolatedPath]),
+              pathname: joinPaths([router.basepath, interpolatedPath]),
             })
 
           matches.push(match)
@@ -911,6 +950,16 @@ export function createRouter<
             },
           }),
         })
+
+        // Refresh:
+        // '/dashboard'
+        // '/dashboard/invoices/'
+        // '/dashboard/invoices/123'
+
+        // New:
+        // '/dashboard/invoices/456'
+
+        // TODO: batch requests when possible
 
         const res = await fetch(next.href, {
           method: 'GET',
@@ -1162,8 +1211,8 @@ export function createRouter<
       buildRouteTree: (rootRouteConfig: RouteConfig) => {
         const recurseRoutes = (
           routeConfigs: RouteConfig[],
-          parent?: Route<TAllRouteInfo, any>,
-        ): Route<TAllRouteInfo, any>[] => {
+          parent?: Route<TAllRouteInfo, any, any>,
+        ): Route<TAllRouteInfo, any, any>[] => {
           return routeConfigs.map((routeConfig) => {
             const routeOptions = routeConfig.options
             const route = createRoute(routeConfig, routeOptions, parent, router)
@@ -1354,6 +1403,7 @@ export function createRouter<
           router.resolveNavigation = () => {
             previousNavigationResolve()
             resolve()
+            delete router.navigationPromise
           }
         })
 

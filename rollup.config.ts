@@ -5,19 +5,21 @@ import size from 'rollup-plugin-size'
 import visualizer from 'rollup-plugin-visualizer'
 import replace from '@rollup/plugin-replace'
 import nodeResolve from '@rollup/plugin-node-resolve'
+import commonjs from '@rollup/plugin-commonjs'
 import path from 'path'
-import svelte from 'rollup-plugin-svelte'
+// import svelte from 'rollup-plugin-svelte'
 import dts from 'rollup-plugin-dts'
 //
 import { packages } from './scripts/config'
+import { readJsonSync } from 'fs-extra'
 
 type Options = {
   input: string
   packageDir: string
+  umdExternal: RollupOptions['external']
   external: RollupOptions['external']
   banner: string
   jsName: string
-  outputFile: string
   globals: Record<string, string>
 }
 
@@ -42,12 +44,18 @@ export default function rollup(options: RollupOptions): RollupOptions[] {
       jsName: pkg.jsName,
       outputFile: pkg.packageDir,
       entryFile: pkg.entryFile,
-      globals: pkg.globals,
+      globals: pkg.globals ?? {},
+      esm: pkg.esm ?? true,
+      cjs: pkg.cjs ?? true,
+      umd: pkg.umd ?? true,
     })
   })
 }
 
 function buildConfigs(opts: {
+  esm: boolean
+  cjs: boolean
+  umd: boolean
   packageDir: string
   name: string
   jsName: string
@@ -56,28 +64,34 @@ function buildConfigs(opts: {
   globals: Record<string, string>
 }): RollupOptions[] {
   const input = path.resolve(opts.packageDir, opts.entryFile)
-  const externalDeps = Object.keys(opts.globals)
 
-  const external = (moduleName) => externalDeps.includes(moduleName)
+  const packageJson =
+    readJsonSync(
+      path.resolve(process.cwd(), opts.packageDir, 'package.json'),
+    ) ?? {}
+
   const banner = createBanner(opts.name)
 
   const options: Options = {
     input,
     jsName: opts.jsName,
-    outputFile: opts.outputFile,
     packageDir: opts.packageDir,
-    external,
+    external: [
+      ...Object.keys(packageJson.dependencies ?? {}),
+      ...Object.keys(packageJson.peerDependencies ?? {}),
+    ],
+    umdExternal: Object.keys(packageJson.peerDependencies ?? {}),
     banner,
     globals: opts.globals,
   }
 
   return [
-    esm(options),
-    cjs(options),
-    umdDev(options),
-    umdProd(options),
+    opts.esm ? esm(options) : null,
+    opts.cjs ? cjs(options) : null,
+    opts.umd ? umdDev(options) : null,
+    opts.umd ? umdProd(options) : null,
     types(options),
-  ]
+  ].filter(Boolean) as any
 }
 
 function esm({ input, packageDir, external, banner }: Options): RollupOptions {
@@ -92,11 +106,11 @@ function esm({ input, packageDir, external, banner }: Options): RollupOptions {
       banner,
     },
     plugins: [
-      svelte({
-        compilerOptions: {
-          hydratable: true,
-        },
-      }),
+      // svelte({
+      //   compilerOptions: {
+      //     hydratable: true,
+      //   },
+      // }),
       babelPlugin,
       nodeResolve({ extensions: ['.ts', '.tsx'] }),
     ],
@@ -117,8 +131,9 @@ function cjs({ input, external, packageDir, banner }: Options): RollupOptions {
       banner,
     },
     plugins: [
-      svelte(),
+      // svelte(),
       babelPlugin,
+      commonjs(),
       nodeResolve({ extensions: ['.ts', '.tsx'] }),
     ],
   }
@@ -126,16 +141,15 @@ function cjs({ input, external, packageDir, banner }: Options): RollupOptions {
 
 function umdDev({
   input,
-  external,
+  umdExternal,
   packageDir,
-  outputFile,
   globals,
   banner,
   jsName,
 }: Options): RollupOptions {
   return {
     // UMD (Dev)
-    external,
+    external: umdExternal,
     input,
     output: {
       format: 'umd',
@@ -146,7 +160,7 @@ function umdDev({
       banner,
     },
     plugins: [
-      svelte(),
+      // svelte(),
       babelPlugin,
       nodeResolve({ extensions: ['.ts', '.tsx'] }),
       umdDevPlugin('development'),
@@ -156,16 +170,15 @@ function umdDev({
 
 function umdProd({
   input,
-  external,
+  umdExternal,
   packageDir,
-  outputFile,
   globals,
   banner,
   jsName,
 }: Options): RollupOptions {
   return {
     // UMD (Prod)
-    external,
+    external: umdExternal,
     input,
     output: {
       format: 'umd',
@@ -176,7 +189,7 @@ function umdProd({
       banner,
     },
     plugins: [
-      svelte(),
+      // svelte(),
       babelPlugin,
       nodeResolve({ extensions: ['.ts', '.tsx'] }),
       umdDevPlugin('production'),

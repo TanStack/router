@@ -56,7 +56,7 @@ interface DevtoolsOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router?: Router<any, any>
+  router?: Router<any, any, any>
 }
 
 interface DevtoolsPanelOptions {
@@ -83,7 +83,7 @@ interface DevtoolsPanelOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router?: Router<any, any>
+  router?: Router<any, any, any>
 }
 
 const isServer = typeof window === 'undefined'

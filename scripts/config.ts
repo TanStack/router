@@ -9,7 +9,6 @@ export const packages: Package[] = [
     srcDir: 'src',
     jsName: 'RouterCore',
     entryFile: 'src/index.ts',
-    outputFile: 'router-core',
     globals: {},
   },
   {
@@ -19,7 +18,6 @@ export const packages: Package[] = [
     srcDir: 'src',
     jsName: 'ReactRouter',
     entryFile: 'src/index.tsx',
-    outputFile: 'react-router',
     globals: {
       react: 'React',
     },
@@ -31,7 +29,6 @@ export const packages: Package[] = [
     srcDir: 'src',
     jsName: 'ReactRouterDevtools',
     entryFile: 'src/index.tsx',
-    outputFile: 'react-router-devtools',
     globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
   },
   {
@@ -41,7 +38,6 @@ export const packages: Package[] = [
     srcDir: 'src',
     jsName: 'ReactRouterRankRoutes',
     entryFile: 'src/index.tsx',
-    outputFile: 'react-router-rank-routes',
     globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
   },
   {
@@ -50,8 +46,8 @@ export const packages: Package[] = [
     srcDir: 'src',
     jsName: 'RouterCli',
     entryFile: 'src/index.ts',
-    outputFile: 'router-cli',
-    globals: {},
+    // esm: false,
+    umd: false,
   },
 ]
 

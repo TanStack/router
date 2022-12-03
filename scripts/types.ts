@@ -41,9 +41,12 @@ export type Package = {
   dependencies?: string[]
   peerDependencies?: string[]
   jsName: string
-  outputFile: string
   entryFile: string
-  globals: Record<string, string>
+  external?: (d: string) => any
+  globals?: Record<string, string>
+  esm?: boolean
+  cjs?: boolean
+  umd?: boolean
 }
 
 export type BranchConfig = {

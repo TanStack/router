@@ -4,15 +4,8 @@ import { ParsePathParams } from './link'
 import { joinPaths, trimPath, trimPathRight } from './path'
 import { RouteInfo } from './routeInfo'
 import { RouteMatch } from './routeMatch'
-import { RouterContext } from './router'
-import {
-  DeepAwaited,
-  Expand,
-  IsAny,
-  NoInfer,
-  PickUnsafe,
-  Values,
-} from './utils'
+import { RegisteredRouter, Router } from './router'
+import { Expand, IsAny, NoInfer, PickUnsafe } from './utils'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -132,7 +125,10 @@ export type RouteOptions<
   action?: ActionFn<TActionPayload, TActionResponse>
   // This async function is called before a route is loaded. If an error is thrown, the navigation is cancelled.
   // If you want to redirect instead, throw a call to the `router.navigate()` function
-  beforeLoad?: (opts: { context: RouterContext }) => Promise<void> | void
+  beforeLoad?: (opts: {
+    router: Router<any, any, unknown>
+    match: RouteMatch
+  }) => Promise<void> | void
   // This function is called
   // when moving from an inactive state to an active one. Likewise, when moving from
   // an active to an inactive state, the return function (if provided) is called.

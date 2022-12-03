@@ -25,38 +25,118 @@ type PostType = {
   body: string
 }
 
-const rootRoute = createRouteConfig()
+const rootRoute = createRouteConfig({
+  component: () => {
+    return (
+      <>
+        <div className="p-2 flex gap-2 text-lg">
+          <Link
+            to="/"
+            activeProps={{
+              className: 'font-bold',
+            }}
+            activeOptions={{ exact: true }}
+          >
+            Home
+          </Link>{' '}
+          <Link
+            to="/posts"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Posts
+          </Link>
+        </div>
+        <hr />
+        <Outlet /> {/* Start rendering router matches */}
+        <TanStackRouterDevtools position="bottom-left" />
+      </>
+    )
+  },
+})
 
 const indexRoute = rootRoute.createRoute({
   path: '/',
-  component: Index,
+  component: () => {
+    return (
+      <div className="p-2">
+        <h3>Welcome Home!</h3>
+      </div>
+    )
+  },
 })
 
 const postsRoute = rootRoute.createRoute({
   path: 'posts',
-  component: Posts,
-  errorComponent: () => 'Oh crap!',
   loader: async () => {
     queryClient.getQueryData(['posts']) ??
       (await queryClient.prefetchQuery(['posts'], fetchPosts))
     return {}
   },
+  component: () => {
+    const { Link } = useMatch('/posts')
+
+    const postsQuery = usePosts()
+
+    return (
+      <div className="p-2 flex gap-2">
+        <ul className="list-disc pl-4">
+          {postsQuery.data?.map((post) => {
+            return (
+              <li key={post.id} className="whitespace-nowrap">
+                <Link
+                  to={postRoute.id}
+                  params={{
+                    postId: post.id,
+                  }}
+                  className="block py-1 text-blue-800 hover:text-blue-600"
+                  activeProps={{ className: 'text-black font-bold' }}
+                >
+                  <div>{post.title.substring(0, 20)}</div>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+        <hr />
+        <Outlet />
+      </div>
+    )
+  },
+  errorComponent: () => 'Oh crap!',
 })
 
 const postsIndexRoute = postsRoute.createRoute({
   path: '/',
-  component: PostsIndex,
+  component: () => {
+    return (
+      <>
+        <div>Select a post.</div>
+      </>
+    )
+  },
 })
 
 const postRoute = postsRoute.createRoute({
   path: '$postId',
-  component: Post,
   loader: async ({ params: { postId } }) => {
     queryClient.getQueryData(['posts', postId]) ??
       (await queryClient.prefetchQuery(['posts', postId], () =>
         fetchPostById(postId),
       ))
     return {}
+  },
+  component: () => {
+    const { params } = useMatch('/posts/$postId')
+    const postQuery = usePost(params.postId)
+
+    return (
+      <div className="space-y-2">
+        <h4 className="text-xl font-bold underline">{postQuery.data?.title}</h4>
+        <div className="text-sm">{postQuery.data?.body}</div>
+      </div>
+    )
   },
 })
 
@@ -71,11 +151,11 @@ const router = createReactRouter({
   defaultPreload: 'intent',
 })
 
-// declare module '@tanstack/react-router' {
-//   interface RegisterRouter {
-//     router: typeof router
-//   }
-// }
+declare module '@tanstack/react-router' {
+  interface RegisterRouter {
+    router: typeof router
+  }
+}
 
 const queryClient = new QueryClient()
 
@@ -84,30 +164,7 @@ function App() {
     // Build our routes and render our router
     <>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router}>
-          <div>
-            <Link
-              to="/"
-              activeProps={{
-                className: 'font-bold',
-              }}
-              activeOptions={{ exact: true }}
-            >
-              Home
-            </Link>{' '}
-            <Link
-              to="/posts"
-              activeProps={{
-                className: 'font-bold',
-              }}
-            >
-              Posts
-            </Link>
-          </div>
-          <hr />
-          <Outlet /> {/* Start rendering router matches */}
-          <TanStackRouterDevtools position="bottom-left" />
-        </RouterProvider>
+        <RouterProvider router={router} />
         <ReactQueryDevtools
           initialIsOpen
           position="bottom-left"
@@ -149,69 +206,6 @@ function usePost(postId: string) {
   return useQuery(['posts', postId], () => fetchPostById(postId), {
     enabled: !!postId,
   })
-}
-
-function Index() {
-  return (
-    <div>
-      <h3>Welcome Home!</h3>
-    </div>
-  )
-}
-
-function Posts() {
-  const { Link } = useMatch('/posts')
-
-  const postsQuery = usePosts()
-
-  return (
-    <div>
-      <div
-        style={{
-          float: 'left',
-          marginRight: '1rem',
-        }}
-      >
-        {postsQuery.data?.map((post) => {
-          return (
-            <div key={post.id}>
-              <Link
-                to="/posts/$postId"
-                params={{
-                  postId: post.id,
-                }}
-                activeProps={{ className: 'font-bold' }}
-              >
-                <pre>{post.title.substring(0, 20)}</pre>
-              </Link>
-            </div>
-          )
-        })}
-      </div>
-      <hr />
-      <Outlet />
-    </div>
-  )
-}
-
-function PostsIndex() {
-  return (
-    <>
-      <div>Select a post.</div>
-    </>
-  )
-}
-
-function Post() {
-  const { params } = useMatch('/posts/$postId')
-  const postQuery = usePost(params.postId)
-
-  return (
-    <div>
-      <h4>{postQuery.data?.title}</h4>
-      <p>{postQuery.data?.body}</p>
-    </div>
-  )
 }
 
 const rootElement = document.getElementById('app')!

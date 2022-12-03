@@ -1,25 +1,24 @@
-import { Command } from 'commander'
+import * as yargs from 'yargs'
+import { getConfig } from './config'
+import { generate } from './generate'
+import { watch } from './watch'
 
 main()
 
 export function main() {
-  const program = new Command()
-
-  program
-    .name('string-util')
-    .description('CLI to some JavaScript string utilities')
-    .version('0.8.0')
-
-  program
-    .command('split')
-    .description('Split a string into substrings and display as an array')
-    .argument('<string>', 'string to split')
-    .option('--first', 'display just the first substring')
-    .option('-s, --separator <char>', 'separator character', ',')
-    .action((str, options) => {
-      const limit = options.first ? 1 : undefined
-      console.log(str.split(options.separator, limit))
+  yargs
+    .scriptName('tsr')
+    .usage('$0 <cmd> [args]')
+    .command('generate', 'Generate the routes for a project', async (argv) => {
+      const config = await getConfig()
+      await generate(config)
     })
-
-  program.parse()
+    .command(
+      'watch',
+      'Continuously watch and generate the routes for a project',
+      async (argv) => {
+        watch()
+      },
+    )
+    .help().argv
 }

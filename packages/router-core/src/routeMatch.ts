@@ -71,7 +71,7 @@ export function createRouteMatch<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TRouteInfo extends AnyRouteInfo = RouteInfo,
 >(
-  router: Router<any, any>,
+  router: Router<any, any, any>,
   route: Route<TAllRouteInfo, TRouteInfo>,
   opts: {
     parentMatch?: RouteMatch<any, any>
