@@ -116,7 +116,7 @@
         },
         {
           "label": "Code-Splitting",
-          "to": "guide/route-elements"
+          "to": "guide/code-splitting"
         },
         {
           "label": "Prompts",
