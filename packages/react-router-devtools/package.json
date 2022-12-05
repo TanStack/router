@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/react-router-devtools",
   "author": "Tanner Linsley",
-  "version": "0.0.1-beta.29",
+  "version": "0.0.1-beta.30",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router/",
@@ -36,7 +36,7 @@
   ],
   "sideEffects": false,
   "peerDependencies": {
-    "@tanstack/react-router": "0.0.1-beta.29",
+    "@tanstack/react-router": "0.0.1-beta.30",
     "react": ">=16",
     "react-dom": ">=16"
   },
