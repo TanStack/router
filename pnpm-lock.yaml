@@ -314,6 +314,7 @@ importers:
       '@astrojs/netlify': ^1.2.1
       '@astrojs/react': ^1.2.2
       '@tanstack/react-router': workspace:0.0.1-beta.28
+      '@tanstack/router-cli': workspace:^0.0.1-beta.24
       astro: ^1.6.12
       react: ^18.2.0
       react-dom: ^18.2.0
@@ -321,6 +322,7 @@ importers:
       '@astrojs/netlify': 1.2.1
       '@astrojs/react': 1.2.2_biqbaboplfbrettd7655fr4n2y
       '@tanstack/react-router': link:../../../packages/react-router
+      '@tanstack/router-cli': link:../../../packages/router-cli
       astro: 1.6.12
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
