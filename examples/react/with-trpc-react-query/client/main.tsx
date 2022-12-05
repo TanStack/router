@@ -52,16 +52,10 @@ const indexRoute = rootRoute.createRoute({
   path: '/',
   component: () => {
     const hello = trpc.hello.useQuery()
-    const posts = trpc.posts.useQuery()
-    if (!hello.data || !posts.data) return <p>{'Loading...'}</p>
+    if (!hello.data) return <p>{'Loading...'}</p>
     return (
       <div className="p-5">
         <h1 className="text-xl pb-2">{hello.data}</h1>
-        <ul className="list-disc list-inside">
-          {posts.data.map((post) => (
-            <li key={post.id}>{post.title}</li>
-          ))}
-        </ul>
       </div>
     )
   },
