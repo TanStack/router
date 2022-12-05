@@ -1,0 +1,71 @@
+---
+
+import { createMemoryHistory } from "@tanstack/router-core"
+import App from "../components/App";
+import { createRouter } from "../router"
+
+
+const req = Astro.request
+const fullUrl = new URL(req.url)
+const url = fullUrl.href.replace(fullUrl.origin, '')
+
+console.log(url)
+
+const router = createRouter()
+
+const memoryHistory = createMemoryHistory({
+	initialEntries: [url],
+})
+
+router.update({
+	history: memoryHistory,
+})
+
+router.mount()() // and unsubscribe immediately
+
+await router.load()
+
+if (url.includes('__data=')) {
+	const search = router.state.location.search as { __data: { matchId: string } }
+	
+  const data = router.state.matches.find((d) => d.matchId === search.__data.matchId)?.routeLoaderData
+	
+	return new Response(JSON.stringify(data), {
+		status: 200,
+		headers: {
+			"Content-Type": "application/json",
+		},
+	});
+}
+
+const dehydratedRouter = router.dehydrate()
+---
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Astro + TanStack Router</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+	</head>
+	<body>
+		<App dehydratedRouter={dehydratedRouter} client:load />
+	</body>
+ </html>
+
+<style is:global>
+	:root {
+		--accent: 124, 58, 237;
+		--accent-gradient: linear-gradient(45deg, rgb(var(--accent)), #da62c4 30%, white 60%);
+	}
+	html {
+		font-family: system-ui, sans-serif;
+		background-color: #F6F6F6;
+	}
+	code {
+		font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono,
+			Bitstream Vera Sans Mono, Courier New, monospace;
+	}
+</style>
+

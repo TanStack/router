@@ -254,12 +254,16 @@ type LinkCurrentTargetElement = {
   preloadTimeout?: null | ReturnType<typeof setTimeout>
 }
 
-interface DehydratedRouterState
-  extends Pick<RouterState, 'status' | 'location' | 'lastUpdated'> {
+export interface DehydratedRouterState
+  extends Pick<
+    RouterState,
+    'status' | 'location' | 'lastUpdated' | 'location'
+  > {
   matches: DehydratedRouteMatch[]
 }
 
-interface DehydratedRouter<TRouterContext> {
+export interface DehydratedRouter<TRouterContext = unknown> {
+  location: Router['location']
   state: DehydratedRouterState
   context: TRouterContext
 }
@@ -485,8 +489,14 @@ export function createRouter<
 
     dehydrate: () => {
       return {
+        location: router.location,
         state: {
-          ...pick(router.state, ['status', 'location', 'lastUpdated']),
+          ...pick(router.state, [
+            'status',
+            'location',
+            'lastUpdated',
+            'location',
+          ]),
           matches: router.state.matches.map((match) =>
             pick(match, [
               'matchId',
@@ -503,6 +513,9 @@ export function createRouter<
     },
 
     hydrate: (dehydratedState) => {
+      // Update the location
+      router.location = dehydratedState.location
+
       // Update the context
       router.options.context = dehydratedState.context
 

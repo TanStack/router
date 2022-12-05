@@ -1,0 +1,22 @@
+{
+  "name": "@example/basics",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "tsr watch & astro dev",
+    "start": "tsr build & astro dev",
+    "build": "tsr build & astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/netlify": "^1.2.1",
+    "@astrojs/react": "^1.2.2",
+    "@tanstack/react-router": "workspace:0.0.1-beta.28",
+    "@tanstack/router-cli": "workspace:^0.0.1-beta.24",
+    "astro": "^1.6.12",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
