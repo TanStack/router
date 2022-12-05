@@ -53,11 +53,7 @@ const indexRoute = rootRoute.createRoute({
   component: () => {
     const hello = trpc.hello.useQuery()
     if (!hello.data) return <p>{'Loading...'}</p>
-    return (
-      <div className="p-5">
-        <h1 className="text-xl pb-2">{hello.data}</h1>
-      </div>
-    )
+    return <div className="p-2 text-xl">{hello.data}</div>
   },
 })
 
