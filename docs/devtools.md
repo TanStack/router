@@ -36,15 +36,13 @@ To do this, simply use lazy and the env variable of your choice to optionally re
 const TanStackRouterDevtools =
   process.env.NODE_ENV === 'production'
     ? () => null // Render nothing in production
-    : React.lazy(() =>
+    : lazy(() =>
         // Lazy load in development
-        import('@tanstack/react-router-devtools').then(
-          (res) => ({
-            default: res.TanStackRouterDevtools
-            // For Embedded Mode
-            // default: res.TanStackRouterDevtoolsPanel
+        import("@tanstack/react-router-devtools").then(
+          ({ TanStackRouterDevtools }) => ({
+            default: TanStackRouterDevtools,
           })
-        ),
+        )
       )
 ```
 
