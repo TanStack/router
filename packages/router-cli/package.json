@@ -45,6 +45,7 @@
     "@types/fs-extra": "^9.0.13",
     "@types/klaw": "^3.0.3",
     "@types/through2": "^2.0.38",
+    "@types/yargs": "^17.0.15",
     "chokidar": "^3.5.3",
     "dedent": "^0.7.0",
     "fs-extra": "^10.1.0",
