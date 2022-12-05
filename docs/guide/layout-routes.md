@@ -19,17 +19,13 @@ const layoutRoute = rootRoute.createRoute({
   id: 'layout',
 })
 
-const layoutARoute = layoutRoute.createRoute(
-  createRoute({
-    path: 'layout-a',
-  }),
-)
+const layoutARoute = layoutRoute.createRoute({
+  path: 'layout-a',
+})
 
-const layoutBRoute = layoutRoute.createRoute(
-  createRoute({
-    path: 'layout-b',
-  }),
-)
+const layoutBRoute = layoutRoute.createRoute({
+  path: 'layout-b',
+})
 
 const routeConfig = rootRoute.addChildren([
   layoutRoute.addChildren([layoutARoute, layoutBRoute]),
