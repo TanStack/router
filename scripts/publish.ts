@@ -344,7 +344,7 @@ async function run() {
   console.info()
 
   console.info('Building packages...')
-  execSync(`yarn build`, { encoding: 'utf8', stdio: 'inherit' })
+  execSync(`pnpm build`, { encoding: 'utf8', stdio: 'inherit' })
   console.info('')
 
   // console.info('Building types...')
@@ -396,7 +396,7 @@ async function run() {
   }
 
   console.info('Testing packages...')
-  execSync(`yarn test:ci`, { encoding: 'utf8' })
+  execSync(`pnpm test:ci`, { encoding: 'utf8' })
   console.info('')
 
   console.info(`Updating all changed packages to version ${version}...`)
@@ -631,7 +631,7 @@ async function getPackageVersion(pathName: string) {
 function updateExampleLockfile(example: string) {
   // execute npm to update lockfile, ignoring any stdout or stderr
   const exampleDir = path.join(rootDir, 'examples', example)
-  execSync(`cd ${exampleDir} && yarn`, { stdio: 'ignore' })
+  execSync(`cd ${exampleDir} && pnpm install`, { stdio: 'ignore' })
 }
 
 function getPackageNameDirectory(pathName: string) {
