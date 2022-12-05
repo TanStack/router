@@ -5,22 +5,36 @@ concurrency:
 on: [push]
 jobs:
   test-and-publish:
-    name: "Test & Publish"
+    name: 'Test & Publish'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        id: pnpm-install
         with:
-          fetch-depth: "0"
-      - uses: actions/setup-node@v2
+          version: 7
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v3
+        name: Setup pnpm cache
         with:
-          node-version: 16
-          registry-url: https://registry.npmjs.org/
-          cache: "yarn"
-      - run: |
-          yarn install --frozen-lockfile
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Publish
+        run: |
+          pnpm install
           git config --global user.name 'Tanner Linsley'
           git config --global user.email 'tannerlinsley@users.noreply.github.com'
-          yarn cipublish
+          pnpm cipublish
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}

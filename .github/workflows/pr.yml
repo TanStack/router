@@ -2,17 +2,32 @@ name: pr
 on: [pull_request]
 jobs:
   test:
-    name: 'Test (node ${{ matrix.node }})'
+    name: 'Test'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [12, 14, 16]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        id: pnpm-install
         with:
-          node-version: ${{ matrix.node }}
-      - run: |
-          yarn
-          yarn build
-          yarn test
+          version: 7
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v3
+        name: Setup pnpm cache
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Build & Test
+        run: |
+          pnpm install
+          pnpm build
+          pnpm test
