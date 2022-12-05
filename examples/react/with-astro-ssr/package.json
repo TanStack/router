@@ -4,9 +4,11 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "tsr watch & astro dev",
-    "start": "tsr build & astro dev",
-    "build": "tsr build & astro build",
+    "dev": "run-p dev:* -c",
+    "dev:astro": "astro dev",
+    "dev:tsr": "tsr watch",
+    "start": "npm run dev",
+    "build": "tsr build && astro build",
     "preview": "astro preview",
     "astro": "astro"
   },
@@ -17,6 +19,7 @@
     "@tanstack/router-cli": "0.0.1-beta.29",
     "astro": "^1.6.12",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "npm-run-all": "^4.1.5"
   }
 }
