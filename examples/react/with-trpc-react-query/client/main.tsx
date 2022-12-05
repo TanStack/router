@@ -19,12 +19,6 @@ import { httpBatchLink } from '@trpc/client'
 import { createTRPCReact } from '@trpc/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
-type PostType = {
-  id: string
-  title: string
-  body: string
-}
-
 const queryClient = new QueryClient()
 
 const rootRoute = createRouteConfig({
@@ -138,8 +132,6 @@ const postRoute = postsRoute.createRoute({
   },
   component: () => {
     const { params } = useMatch(postRoute.id)
-
-    // TODO: fetch postQuery using the tPRC client
     const postQuery = trpc.post.useQuery(params.postId)
 
     return (
