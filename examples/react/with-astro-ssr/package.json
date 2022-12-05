@@ -15,8 +15,8 @@
   "dependencies": {
     "@astrojs/netlify": "^1.2.1",
     "@astrojs/react": "^1.2.2",
-    "@tanstack/react-router": "0.0.1-beta.29",
-    "@tanstack/router-cli": "0.0.1-beta.29",
+    "@tanstack/react-router": "0.0.1-beta.30",
+    "@tanstack/router-cli": "0.0.1-beta.30",
     "astro": "^1.6.12",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
