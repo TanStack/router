@@ -36,7 +36,7 @@ To do this, simply use lazy and the env variable of your choice to optionally re
 const TanStackRouterDevtools =
   process.env.NODE_ENV === 'production'
     ? () => null // Render nothing in production
-    : lazy(() =>
+    : React.lazy(() =>
         // Lazy load in development
         import("@tanstack/react-router-devtools").then(
           ({ TanStackRouterDevtools }) => ({
