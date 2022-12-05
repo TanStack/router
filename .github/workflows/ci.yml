@@ -17,6 +17,8 @@ jobs:
         with:
           version: 7
           run_install: false
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Get pnpm store directory
         id: pnpm-cache
