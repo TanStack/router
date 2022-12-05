@@ -1,5 +1,5 @@
 {
-  "name": "@example/basics",
+  "name": "tanstack-router-examples-react-with-astro-ssr",
   "type": "module",
   "version": "0.0.1",
   "private": true,
