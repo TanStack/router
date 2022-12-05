@@ -39,7 +39,11 @@ const TanStackRouterDevtools =
     : React.lazy(() =>
         // Lazy load in development
         import('@tanstack/react-router-devtools').then(
-          (res) => res.ReactRouterDevtools,
+          (res) => ({
+            default: res.TanStackRouterDevtools
+            // For Embedded Mode
+            // default: res.TanStackRouterDevtoolsPanel
+          })
         ),
       )
 ```
