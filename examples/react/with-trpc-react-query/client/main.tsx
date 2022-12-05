@@ -1,4 +1,4 @@
-import React, { StrictMode, useState } from 'react'
+import React, { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Outlet,
@@ -10,11 +10,7 @@ import {
 } from '@tanstack/react-router'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import {
-  useQuery,
-  QueryClient,
-  QueryClientProvider,
-} from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { httpBatchLink } from '@trpc/client'
 import { createTRPCReact } from '@trpc/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
@@ -25,7 +21,7 @@ const rootRoute = createRouteConfig({
   component: () => {
     return (
       <>
-        <div>
+        <div className="p-2 flex gap-2 text-lg">
           <Link
             to="/"
             activeProps={{
@@ -83,29 +79,25 @@ const postsRoute = rootRoute.createRoute({
     const postsQuery = trpc.posts.useQuery()
 
     return (
-      <div>
-        <div
-          style={{
-            float: 'left',
-            marginRight: '1rem',
-          }}
-        >
+      <div className="p-2 flex gap-2">
+        <ul className="list-disc pl-4">
           {postsQuery.data?.map((post) => {
             return (
-              <div key={post.id}>
+              <li key={post.id} className="whitespace-nowrap">
                 <Link
-                  to="/posts/$postId"
+                  to={postRoute.id}
                   params={{
                     postId: post.id,
                   }}
-                  activeProps={{ className: 'font-bold' }}
+                  className="block py-1 text-blue-800 hover:text-blue-600"
+                  activeProps={{ className: 'text-black font-bold' }}
                 >
-                  <pre>{post.title.substring(0, 20)}</pre>
+                  <div>{post.title.substring(0, 20)}</div>
                 </Link>
-              </div>
+              </li>
             )
           })}
-        </div>
+        </ul>
         <hr />
         <Outlet />
       </div>
@@ -135,8 +127,8 @@ const postRoute = postsRoute.createRoute({
     const postQuery = trpc.post.useQuery(params.postId)
 
     return (
-      <div>
-        <h4>{postQuery.data?.title}</h4>
+      <div className="space-y-2">
+        <h4 className="text-xl font-bold underline">{postQuery.data?.title}</h4>
       </div>
     )
   },
