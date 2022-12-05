@@ -19,8 +19,6 @@ import { httpBatchLink } from '@trpc/client'
 import { createTRPCReact } from '@trpc/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
-import axios from 'axios'
-
 type PostType = {
   id: string
   title: string
@@ -88,9 +86,7 @@ const postsRoute = rootRoute.createRoute({
     return {}
   },
   component: () => {
-    const { Link } = useMatch(postsRoute.id)
-
-    // TODO: fetch postsQuery using the tPRC client
+    const postsQuery = trpc.posts.useQuery()
 
     return (
       <div>
@@ -144,11 +140,11 @@ const postRoute = postsRoute.createRoute({
     const { params } = useMatch(postRoute.id)
 
     // TODO: fetch postQuery using the tPRC client
+    const postQuery = trpc.post.useQuery(params.postId)
 
     return (
       <div>
         <h4>{postQuery.data?.title}</h4>
-        <p>{postQuery.data?.body}</p>
       </div>
     )
   },
