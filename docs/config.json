@@ -153,12 +153,28 @@
           "to": "examples/react/basic?file=src%2Fmain.tsx"
         },
         {
-          "label": "Kitchen Sink",
-          "to": "examples/react/kitchen-sink?file=src%2Fmain.tsx"
+          "label": "Basic SSR",
+          "to": "examples/react/basic-ssr?file=src%2Froutes%2F__root.tsx"
         },
         {
-          "label": "Kitchen Sink (Code Split)",
-          "to": "examples/react/kitchen-sink-codesplit?file=src%2Fmain.tsx"
+          "label": "Basic SSR Streaming (WIP)",
+          "to": "examples/react/basic-ssr-streaming?file=src%2Froutes%2F__root.tsx"
+        },
+        {
+          "label": "Kitchen Sink Single File",
+          "to": "examples/react/kitchen-sink-single-file?file=src%2Fmain.tsx"
+        },
+        {
+          "label": "Kitchen Sink Multi-File",
+          "to": "examples/react/kitchen-sink-multi-file?file=src%2Fmain.tsx"
+        },
+        {
+          "label": "Kitchen Sink SSR",
+          "to": "examples/react/kitchen-sink-ssr?file=src%2Froutes%2F__root.tsx"
+        },
+        {
+          "label": "Astro SSR",
+          "to": "examples/react/with-astro-ssr?file=src%2Froutes%2F__root.tsx"
         },
         {
           "label": "With React Query",
