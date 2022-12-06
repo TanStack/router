@@ -46,11 +46,11 @@ export async function createServer(
     app.use(vite.middlewares)
   } else {
     app.use((await import('compression')).default())
-    app.use(
-      (await import('serve-static')).default(resolve('dist/client'), {
-        index: false,
-      }),
-    )
+    // app.use(
+    //   (await import('serve-static')).default(resolve('dist/client'), {
+    //     index: false,
+    //   }),
+    // )
   }
 
   app.use('*', async (req, res) => {
@@ -59,7 +59,9 @@ export async function createServer(
 
       if (url.includes('.')) {
         console.warn(`${url} is not valid router path`)
-        return res.status(404)
+        res.status(404)
+        res.end(`${url} is not valid router path`)
+        return
       }
 
       // Extract the head from vite's index transformation hook
@@ -96,6 +98,7 @@ export async function createServer(
       // Modify head
       // Request/Response control at the route level
 
+      console.log('Rendering: ', url, '...')
       entry.render({ req, res, url, head: viteHead })
     } catch (e) {
       !isProd && vite.ssrFixStacktrace(e)

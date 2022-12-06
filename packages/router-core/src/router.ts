@@ -924,15 +924,16 @@ export function createRouter<
       const matchPromises = resolvedMatches.map(async (match) => {
         // Validate the match (loads search params etc)
         match.__.validate()
-        match.load(loaderOpts)
 
         const search = match.search as { __data?: any }
 
-        if (search.__data && search.__data.matchId !== match.matchId) {
+        if (search.__data?.matchId && search.__data.matchId !== match.matchId) {
           return
         }
 
-        if (match.__.loadPromise) {
+        match.load(loaderOpts)
+
+        if (match.status !== 'success' && match.__.loadPromise) {
           // Wait for the first sign of activity from the match
           await match.__.loadPromise
         }
