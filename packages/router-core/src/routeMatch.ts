@@ -7,7 +7,7 @@ import {
   RouteInfo,
 } from './routeInfo'
 import { Router } from './router'
-import { replaceEqualDeep } from './utils'
+import { Expand, replaceEqualDeep } from './utils'
 
 export interface RouteMatch<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
@@ -19,7 +19,9 @@ export interface RouteMatch<
   parentMatch?: RouteMatch
   childMatches: RouteMatch[]
   routeSearch: TRouteInfo['searchSchema']
-  search: TRouteInfo['fullSearchSchema']
+  search: Expand<
+    TAllRouteInfo['fullSearchSchema'] & TRouteInfo['fullSearchSchema']
+  >
   status: 'idle' | 'loading' | 'success' | 'error'
   updatedAt?: number
   error?: unknown
@@ -85,7 +87,7 @@ export function createRouteMatch<
     ...opts,
     router,
     routeSearch: {},
-    search: {},
+    search: {} as any,
     childMatches: [],
     status: 'idle',
     routeLoaderData: {} as TRouteInfo['routeLoaderData'],
@@ -109,7 +111,7 @@ export function createRouteMatch<
       validate: () => {
         // Validate the search params and stabilize them
         const parentSearch =
-          routeMatch.parentMatch?.search ?? router.location.search
+          routeMatch.parentMatch?.search ?? router.__location.search
 
         try {
           const prevSearch = routeMatch.routeSearch

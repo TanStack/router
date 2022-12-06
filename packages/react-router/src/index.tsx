@@ -150,7 +150,6 @@ declare module '@tanstack/router-core' {
     useRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
       routeId: TId,
     ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
-    useNearestMatch: () => RouteMatch<TAllRouteInfo, RouteInfo>
     useMatch: <
       TId extends keyof TAllRouteInfo['routeInfoById'],
       TStrict extends boolean = true,
@@ -328,8 +327,9 @@ export function createReactRouter<
         const composeHandlers =
           (handlers: (undefined | ((e: any) => void))[]) =>
           (e: React.SyntheticEvent) => {
-            e.persist()
+            if (e.persist) e.persist()
             handlers.forEach((handler) => {
+              if (e.defaultPrevented) return
               if (handler) handler(e)
             })
           }
@@ -758,7 +758,7 @@ export function usePrompt(message: string, when: boolean | any): void {
         unblock()
         transition.retry()
       } else {
-        router.location.pathname = window.location.pathname
+        router.state.location.pathname = window.location.pathname
       }
     })
 

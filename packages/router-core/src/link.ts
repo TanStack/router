@@ -5,7 +5,13 @@ import {
   RouteInfoByPath,
 } from './routeInfo'
 import { Location, LocationState } from './router'
-import { Expand, NoInfer, PickRequired, Updater } from './utils'
+import {
+  Expand,
+  NoInfer,
+  PickRequired,
+  UnionToIntersection,
+  Updater,
+} from './utils'
 
 export type LinkInfo =
   | {
@@ -140,21 +146,37 @@ type SearchParamOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
   TFrom,
   TTo,
-  TFromSchema = RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema'],
-  TToSchema = RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema'],
-> = StartsWith<TFrom, TTo> extends true
-  ? // If the next route search extend or cover the from route, params will be optional
-    {
-      search?: SearchReducer<TFromSchema, TToSchema>
-    }
-  : // Optional search params? Allow it
-  keyof PickRequired<TToSchema> extends never
+  TFromSchema = Expand<
+    UnionToIntersection<
+      TAllRouteInfo['fullSearchSchema'] &
+        RouteInfoByPath<TAllRouteInfo, TFrom> extends never
+        ? {}
+        : RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema']
+    >
+  >,
+  // Find the schema for the new path, and make optional any keys
+  // that are already defined in the current schema
+  TToSchema = Partial<
+    RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema']
+  > &
+    Omit<
+      RouteInfoByPath<TAllRouteInfo, TTo>['fullSearchSchema'],
+      keyof PickRequired<
+        RouteInfoByPath<TAllRouteInfo, TFrom>['fullSearchSchema']
+      >
+    >,
+  TFromFullSchema = Expand<
+    UnionToIntersection<TAllRouteInfo['fullSearchSchema'] & TFromSchema>
+  >,
+  TToFullSchema = Expand<
+    UnionToIntersection<TAllRouteInfo['fullSearchSchema'] & TToSchema>
+  >,
+> = keyof PickRequired<TToSchema> extends never
   ? {
-      search?: SearchReducer<TFromSchema, TToSchema>
+      search?: true | SearchReducer<TFromFullSchema, TToFullSchema>
     }
   : {
-      // Must have required search params, enforce it
-      search: SearchReducer<TFromSchema, TToSchema>
+      search: SearchReducer<TFromFullSchema, TToFullSchema>
     }
 
 type SearchReducer<TFrom, TTo> =
@@ -165,23 +187,33 @@ type PathParamOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
   TFrom,
   TTo,
-  TFromParams = RouteInfoByPath<TAllRouteInfo, TFrom>['allParams'],
-  TToParams = RouteInfoByPath<TAllRouteInfo, TTo>['allParams'],
-> =
-  // If the next routes params extend or cover the from route, params will be optional
-  StartsWith<TFrom, TTo> extends true
-    ? {
-        params?: ParamsReducer<TFromParams, TToParams>
-      }
-    : // If the next route doesn't have params, warn if any have been passed
-    AnyPathParams extends TToParams
-    ? {
-        params?: ParamsReducer<TFromParams, Record<string, never>>
-      }
-    : // If the next route has params, enforce them
-      {
-        params: ParamsReducer<TFromParams, TToParams>
-      }
+  TFromSchema = Expand<
+    UnionToIntersection<
+      RouteInfoByPath<TAllRouteInfo, TFrom> extends never
+        ? {}
+        : RouteInfoByPath<TAllRouteInfo, TFrom>['allParams']
+    >
+  >,
+  // Find the schema for the new path, and make optional any keys
+  // that are already defined in the current schema
+  TToSchema = Partial<RouteInfoByPath<TAllRouteInfo, TFrom>['allParams']> &
+    Omit<
+      RouteInfoByPath<TAllRouteInfo, TTo>['allParams'],
+      keyof PickRequired<RouteInfoByPath<TAllRouteInfo, TFrom>['allParams']>
+    >,
+  TFromFullParams = Expand<
+    UnionToIntersection<TAllRouteInfo['allParams'] & TFromSchema>
+  >,
+  TToFullParams = Expand<
+    UnionToIntersection<TAllRouteInfo['allParams'] & TToSchema>
+  >,
+> = keyof PickRequired<TToSchema> extends never
+  ? {
+      params?: ParamsReducer<TFromFullParams, TToFullParams>
+    }
+  : {
+      params: ParamsReducer<TFromFullParams, TToFullParams>
+    }
 
 type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 

@@ -20,6 +20,7 @@ export interface AnyAllRouteInfo {
   routeIds: any
   routePaths: any
   fullSearchSchema: Record<string, any>
+  allParams: Record<string, any>
 }
 
 export interface DefaultAllRouteInfo {
@@ -30,6 +31,7 @@ export interface DefaultAllRouteInfo {
   routeIds: string
   routePaths: string
   fullSearchSchema: AnySearchSchema
+  allParams: AnyPathParams
 }
 
 export interface AllRouteInfo<TRouteConfig extends AnyRouteConfig = RouteConfig>
@@ -140,6 +142,7 @@ export interface RoutesInfoInner<
   routeIds: keyof TRouteInfoById
   routePaths: keyof TRouteInfoByFullPath
   fullSearchSchema: Partial<UnionToIntersection<TRouteInfo['fullSearchSchema']>>
+  allParams: Partial<UnionToIntersection<TRouteInfo['allParams']>>
 }
 
 export interface AnyRouteInfo
@@ -166,7 +169,7 @@ export interface RouteInfo<
   TId extends string = string,
   TRouteId extends string = string,
   TPath extends string = string,
-  TFullPath extends string = string,
+  TFullPath extends string = '/',
   TParentRouteLoaderData extends AnyLoaderData = {},
   TRouteLoaderData extends AnyLoaderData = {},
   TParentLoaderData extends AnyLoaderData = {},

@@ -225,7 +225,7 @@ export function createRoute<
           from: fullPath,
         } as any,
         opts,
-      )
+      ) as any
     },
   }
 

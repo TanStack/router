@@ -665,7 +665,7 @@ const authenticatedRoute = rootRoute.createRoute({
       throw router.navigate({
         to: loginRoute.id,
         search: {
-          redirect: router.location.href,
+          redirect: router.state.location.href,
         },
       })
     }

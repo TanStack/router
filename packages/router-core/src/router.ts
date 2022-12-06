@@ -221,7 +221,7 @@ export type ListenerFn = () => void
 
 export interface BuildNextOptions {
   to?: string | number | null
-  params?: true | Updater<Record<string, any>>
+  params?: true | Updater<unknown>
   search?: true | Updater<unknown>
   hash?: true | Updater<string>
   state?: LocationState
@@ -263,7 +263,7 @@ export interface DehydratedRouterState
 }
 
 export interface DehydratedRouter<TRouterContext = unknown> {
-  location: Router['location']
+  location: Router['__location']
   state: DehydratedRouterState
   context: TRouterContext
 }
@@ -302,7 +302,7 @@ export interface Router<
   basepath: string
   // Internal:
   listeners: Listener[]
-  location: Location<TAllRouteInfo['fullSearchSchema']>
+  __location: Location<TAllRouteInfo['fullSearchSchema']>
   navigateTimeout?: Timeout
   nextAction?: 'push' | 'replace'
   state: RouterState<TAllRouteInfo['fullSearchSchema']>
@@ -442,7 +442,7 @@ export function createRouter<
     basepath: '',
     routeTree: undefined!,
     routesById: {} as any,
-    location: undefined!,
+    __location: undefined!,
     //
     resolveNavigation: () => {},
     matchCache: {},
@@ -489,7 +489,7 @@ export function createRouter<
 
     dehydrate: () => {
       return {
-        location: router.location,
+        location: router.__location,
         state: {
           ...pick(router.state, [
             'status',
@@ -514,13 +514,13 @@ export function createRouter<
 
     hydrate: (dehydratedState) => {
       // Update the location
-      router.location = dehydratedState.location
+      router.__location = dehydratedState.location
 
       // Update the context
       router.options.context = dehydratedState.context
 
       // Match the routes
-      const matches = router.matchRoutes(router.location.pathname, {
+      const matches = router.matchRoutes(router.__location.pathname, {
         strictParseParams: true,
       })
 
@@ -551,7 +551,7 @@ export function createRouter<
 
       // If the current location isn't updated, trigger a navigation
       // to the current location. Otherwise, load the current location.
-      if (next.href !== router.location.href) {
+      if (next.href !== router.__location.href) {
         router.__.commitLocation(next, true)
       }
 
@@ -560,7 +560,7 @@ export function createRouter<
       }
 
       const unsub = router.history.listen((event) => {
-        router.load(router.__.parseLocation(event.location, router.location))
+        router.load(router.__.parseLocation(event.location, router.__location))
       })
 
       // addEventListener does not exist in React Native, but window does
@@ -587,12 +587,12 @@ export function createRouter<
 
     update: (opts) => {
       const newHistory = opts?.history !== router.history
-      if (!router.location || newHistory) {
+      if (!router.__location || newHistory) {
         if (opts?.history) {
           router.history = opts.history
         }
-        router.location = router.__.parseLocation(router.history.location)
-        router.state.location = router.location
+        router.__location = router.__.parseLocation(router.history.location)
+        router.state.location = router.__location
       }
 
       Object.assign(router.options, opts)
@@ -624,14 +624,14 @@ export function createRouter<
 
       if (next) {
         // Ingest the new location
-        router.location = next
+        router.__location = next
       }
 
       // Cancel any pending matches
       router.cancelMatches()
 
       // Match the routes
-      const matches = router.matchRoutes(router.location.pathname, {
+      const matches = router.matchRoutes(router.__location.pathname, {
         strictParseParams: true,
       })
 
@@ -640,7 +640,7 @@ export function createRouter<
           ...router.state,
           pending: {
             matches: matches,
-            location: router.location,
+            location: router.__location,
           },
           status: 'loading',
         }
@@ -648,7 +648,7 @@ export function createRouter<
         router.state = {
           ...router.state,
           matches: matches,
-          location: router.location,
+          location: router.__location,
           status: 'loading',
         }
       }
@@ -752,7 +752,7 @@ export function createRouter<
 
       router.state = {
         ...router.state,
-        location: router.location,
+        location: router.__location,
         matches,
         pending: undefined,
         status: 'idle',
@@ -783,7 +783,7 @@ export function createRouter<
       })
     },
 
-    loadRoute: async (navigateOpts = router.location) => {
+    loadRoute: async (navigateOpts = router.__location) => {
       const next = router.buildNext(navigateOpts)
       const matches = router.matchRoutes(next.pathname, {
         strictParseParams: true,
@@ -792,7 +792,7 @@ export function createRouter<
       return matches
     },
 
-    preloadRoute: async (navigateOpts = router.location, loaderOpts) => {
+    preloadRoute: async (navigateOpts = router.__location, loaderOpts) => {
       const next = router.buildNext(navigateOpts)
       const matches = router.matchRoutes(next.pathname, {
         strictParseParams: true,
@@ -1282,11 +1282,9 @@ export function createRouter<
       },
 
       buildLocation: (dest: BuildNextOptions = {}): Location => {
-        // const resolvedFrom: Location = {
-        //   ...router.location,
         const fromPathname = dest.fromCurrent
-          ? router.location.pathname
-          : dest.from ?? router.location.pathname
+          ? router.__location.pathname
+          : dest.from ?? router.__location.pathname
 
         let pathname = resolvePath(
           router.basepath ?? '/',
@@ -1294,7 +1292,7 @@ export function createRouter<
           `${dest.to ?? '.'}`,
         )
 
-        const fromMatches = router.matchRoutes(router.location.pathname, {
+        const fromMatches = router.matchRoutes(router.__location.pathname, {
           strictParseParams: true,
         })
 
@@ -1322,9 +1320,9 @@ export function createRouter<
         const preFilteredSearch = dest.__preSearchFilters?.length
           ? dest.__preSearchFilters.reduce(
               (prev, next) => next(prev),
-              router.location.search,
+              router.__location.search,
             )
-          : router.location.search
+          : router.__location.search
 
         // Then the link/navigate function
         const destSearch =
@@ -1345,22 +1343,22 @@ export function createRouter<
           : destSearch
 
         const search = replaceEqualDeep(
-          router.location.search,
+          router.__location.search,
           postFilteredSearch,
         )
 
         const searchStr = router.options.stringifySearch(search)
         let hash =
           dest.hash === true
-            ? router.location.hash
-            : functionalUpdate(dest.hash!, router.location.hash)
+            ? router.__location.hash
+            : functionalUpdate(dest.hash!, router.__location.hash)
         hash = hash ? `#${hash}` : ''
 
         return {
           pathname,
           search,
           searchStr,
-          state: router.location.state,
+          state: router.__location.state,
           hash,
           href: `${pathname}${searchStr}${hash}`,
           key: dest.key,
