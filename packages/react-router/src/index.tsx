@@ -77,7 +77,7 @@ export function lazy(
   return finalComp
 }
 
-type LinkPropsOptions<
+export type LinkPropsOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
   TFrom extends ValidFromPath<TAllRouteInfo>,
   TTo extends string,
@@ -92,7 +92,7 @@ type LinkPropsOptions<
     | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
 }
 
-type MakeMatchRouteOptions<
+export type MakeMatchRouteOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
   TFrom extends ValidFromPath<TAllRouteInfo>,
   TTo extends string,
@@ -109,14 +109,14 @@ type MakeMatchRouteOptions<
         ) => React.ReactNode)
   }
 
-type MakeLinkPropsOptions<
+export type MakeLinkPropsOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
   TFrom extends ValidFromPath<TAllRouteInfo>,
   TTo extends string,
 > = LinkPropsOptions<TAllRouteInfo, TFrom, TTo> &
   React.AnchorHTMLAttributes<HTMLAnchorElement>
 
-type MakeLinkOptions<
+export type MakeLinkOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
   TFrom extends ValidFromPath<TAllRouteInfo>,
   TTo extends string,
