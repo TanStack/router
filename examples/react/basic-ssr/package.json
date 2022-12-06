@@ -15,7 +15,7 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/react-router": "0.0.1-beta.31",
+    "@tanstack/react-router": "0.0.1-beta.32",
     "@tanstack/react-router-devtools": "0.0.1-beta.30",
     "@tanstack/router-cli": "0.0.1-beta.30",
     "axios": "^1.1.3",
