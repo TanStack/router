@@ -246,8 +246,9 @@ export interface MatchLocation {
 }
 
 export interface MatchRouteOptions {
-  pending: boolean
+  pending?: boolean
   caseSensitive?: boolean
+  fuzzy?: boolean
 }
 
 type LinkCurrentTargetElement = {
