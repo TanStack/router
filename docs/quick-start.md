@@ -16,17 +16,16 @@ import {
 } from '@tanstack/react-router'
 
 const rootRoute = createRouteConfig({
-	component: () => (
-		<>
-			<div>
-				<Link to="/">Home</Link> <Link to="/about">About</Link>
-			</div>
-			<hr />
-			<Outlet />
-		</>
-	)
+  component: () => (
+    <>
+      <div>
+        <Link to="/">Home</Link> <Link to="/about">About</Link>
+      </div>
+      <hr />
+      <Outlet />
+    </>
+  )
 })
-
 
 const indexRoute = rootRoute.createRoute({
   path: '/',
