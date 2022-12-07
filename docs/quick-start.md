@@ -15,7 +15,18 @@ import {
   createRouteConfig,
 } from '@tanstack/react-router'
 
-const rootRoute = createRouteConfig()
+const rootRoute = createRouteConfig({
+	component: () => (
+		<>
+			<div>
+				<Link to="/">Home</Link> <Link to="/about">About</Link>
+			</div>
+			<hr />
+			<Outlet />
+		</>
+	)
+})
+
 
 const indexRoute = rootRoute.createRoute({
   path: '/',
@@ -32,17 +43,7 @@ const routeConfig = rootRoute.addChildren([indexRoute, aboutRoute])
 const router = createReactRouter({ routeConfig })
 
 function App() {
-  return (
-    <>
-      <RouterProvider router={router}>
-        <div>
-          <Link to="/">Home</Link> <Link to="/about">About</Link>
-        </div>
-        <hr />
-        <Outlet />
-      </RouterProvider>
-    </>
-  )
+  return <RouterProvider router={router} />
 }
 
 function Index() {
