@@ -22,6 +22,7 @@ import {
   joinPaths,
   matchPathname,
   resolvePath,
+  trimPath,
 } from './path'
 import { AnyRoute, createRoute, Route } from './route'
 import {
@@ -552,9 +553,9 @@ export function createRouter<
 
       // If the current location isn't updated, trigger a navigation
       // to the current location. Otherwise, load the current location.
-      if (next.href !== router.__location.href) {
-        router.__.commitLocation(next, true)
-      }
+      // if (next.href !== router.__location.href) {
+      //   router.__.commitLocation(next, true)
+      // }
 
       if (!router.state.matches.length) {
         router.load()
@@ -600,7 +601,7 @@ export function createRouter<
 
       const { basepath, routeConfig } = router.options
 
-      router.basepath = cleanPath(`/${basepath ?? ''}`)
+      router.basepath = `/${trimPath(basepath ?? '') ?? ''}`
 
       if (routeConfig) {
         router.routesById = {} as any
@@ -849,7 +850,7 @@ export function createRouter<
               route.routePath !== '/' || route.childRoutes?.length
             )
 
-            const matchParams = matchPathname(pathname, {
+            const matchParams = matchPathname(router.basepath, pathname, {
               to: route.fullPath,
               fuzzy,
               caseSensitive:
@@ -1031,13 +1032,17 @@ export function createRouter<
         if (!router.state.pending?.location) {
           return false
         }
-        return !!matchPathname(router.state.pending.location.pathname, {
-          ...opts,
-          to: next.pathname,
-        })
+        return !!matchPathname(
+          router.basepath,
+          router.state.pending.location.pathname,
+          {
+            ...opts,
+            to: next.pathname,
+          },
+        )
       }
 
-      return !!matchPathname(router.state.location.pathname, {
+      return !!matchPathname(router.basepath, router.state.location.pathname, {
         ...opts,
         to: next.pathname,
       })

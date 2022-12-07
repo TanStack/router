@@ -1,3 +1,4 @@
+import invariant from 'tiny-invariant'
 import { AnyPathParams } from './routeConfig'
 import { MatchLocation } from './router'
 import { last } from './utils'
@@ -145,10 +146,11 @@ export function interpolatePath(
 }
 
 export function matchPathname(
+  basepath: string,
   currentPathname: string,
   matchLocation: Pick<MatchLocation, 'to' | 'fuzzy' | 'caseSensitive'>,
 ): AnyPathParams | undefined {
-  const pathParams = matchByPath(currentPathname, matchLocation)
+  const pathParams = matchByPath(basepath, currentPathname, matchLocation)
   // const searchMatched = matchBySearch(currentLocation.search, matchLocation)
 
   if (matchLocation.to && !pathParams) {
@@ -159,11 +161,17 @@ export function matchPathname(
 }
 
 export function matchByPath(
+  basepath: string,
   from: string,
   matchLocation: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
 ): Record<string, string> | undefined {
+  if (basepath && !from.startsWith(basepath)) {
+    return undefined
+  }
+  from = from.startsWith(basepath) ? from.substring(basepath.length) : from
   const baseSegments = parsePathname(from)
-  const routeSegments = parsePathname(`${matchLocation.to ?? '*'}`)
+  const to = `${matchLocation.to ?? '*'}`
+  const routeSegments = parsePathname(to)
 
   const params: Record<string, string> = {}
 
