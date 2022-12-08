@@ -140,7 +140,6 @@ export function createRoute<
             actionState.status = 'success'
             return res
           } catch (err) {
-            console.log('tanner')
             console.error(err)
             actionState.error = err
             actionState.status = 'error'

@@ -123,12 +123,17 @@ export type RouteOptions<
   // An asynchronous function made available to the route for performing asynchronous or mutative actions that
   // might invalidate the route's data.
   action?: ActionFn<TActionPayload, TActionResponse>
-  // This async function is called before a route is loaded. If an error is thrown, the navigation is cancelled.
-  // If you want to redirect instead, throw a call to the `router.navigate()` function
+  // This async function is called before a route is loaded.
+  // If an error is thrown here, the route's loader will not be called.
+  // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onLoadError` function.
+  // If thrown during a preload event, the error will be logged to the console.
   beforeLoad?: (opts: {
     router: Router<any, any, unknown>
     match: RouteMatch
   }) => Promise<void> | void
+  // This function will be called if the route's loader throws an error **during an attempted navigation**.
+  // If you want to redirect due to an error, call `router.navigate()` from within this function.
+  onLoadError?: (err: any) => void
   // This function is called
   // when moving from an inactive state to an active one. Likewise, when moving from
   // an active to an inactive state, the return function (if provided) is called.

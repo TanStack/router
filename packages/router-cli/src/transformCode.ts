@@ -535,7 +535,6 @@ export async function generateRouteConfig(
   )?.code
 
   if (!code) {
-    // console.log(code, node, imports)
     throw new Error('Error while generating a route file!')
   }
 

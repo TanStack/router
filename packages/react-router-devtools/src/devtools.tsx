@@ -449,7 +449,8 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   const activeMatch =
     Object.values(router.matchCache)?.find(
       (d) => d.match.matchId === activeMatchId,
-    )?.match ?? router.state.matches?.find((d) => d.routeId === activeRouteId)
+    )?.match ??
+    router.state.currentMatches?.find((d) => d.routeId === activeRouteId)
 
   const matchCacheValues = multiSortBy(
     Object.keys(router.matchCache)
@@ -598,7 +599,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           >
             Active Matches
           </div>
-          {router.state.matches.map((match, i) => {
+          {router.state.currentMatches.map((match, i) => {
             return (
               <div
                 key={match.routeId || i}
@@ -643,7 +644,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               </div>
             )
           })}
-          {router.state.pending?.matches.length ? (
+          {router.state.pendingMatches?.length ? (
             <>
               <div
                 style={{
@@ -657,7 +658,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               >
                 Pending Matches
               </div>
-              {router.state.pending?.matches.map((match, i) => {
+              {router.state.pendingMatches?.map((match, i) => {
                 return (
                   <div
                     key={match.routeId || i}
@@ -947,12 +948,12 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               padding: '.5em',
             }}
           >
-            {Object.keys(last(router.state.matches)?.loaderData || {})
+            {Object.keys(last(router.state.currentMatches)?.loaderData || {})
               .length ? (
               <Explorer
-                value={last(router.state.matches)?.loaderData || {}}
+                value={last(router.state.currentMatches)?.loaderData || {}}
                 defaultExpanded={Object.keys(
-                  (last(router.state.matches)?.loaderData as {}) || {},
+                  (last(router.state.currentMatches)?.loaderData as {}) || {},
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj
@@ -979,11 +980,12 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               padding: '.5em',
             }}
           >
-            {Object.keys(last(router.state.matches)?.search || {}).length ? (
+            {Object.keys(last(router.state.currentMatches)?.search || {})
+              .length ? (
               <Explorer
-                value={last(router.state.matches)?.search || {}}
+                value={last(router.state.currentMatches)?.search || {}}
                 defaultExpanded={Object.keys(
-                  (last(router.state.matches)?.search as {}) || {},
+                  (last(router.state.currentMatches)?.search as {}) || {},
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj

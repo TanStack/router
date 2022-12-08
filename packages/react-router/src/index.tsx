@@ -430,7 +430,9 @@ export function createReactRouter<
           )
 
           const nearestMatch = useNearestMatch()
-          const match = router.state.matches.find((d) => d.routeId === routeId)
+          const match = router.state.currentMatches.find(
+            (d) => d.routeId === routeId,
+          )
 
           if (opts?.strict ?? true) {
             invariant(
@@ -504,7 +506,7 @@ export function RouterProvider<
   return (
     <>
       <routerContext.Provider value={{ router: router as any }}>
-        <MatchesProvider value={[undefined!, ...router.state.matches]}>
+        <MatchesProvider value={[undefined!, ...router.state.currentMatches]}>
           <Outlet />
         </MatchesProvider>
       </routerContext.Provider>
@@ -569,7 +571,7 @@ export function useRoute<
 export function useSearch<
   TId extends keyof RegisteredAllRouteInfo['routeInfoById'] = keyof RegisteredAllRouteInfo['routeInfoById'],
 >(_routeId?: TId): RegisteredAllRouteInfo['fullSearchSchema'] {
-  return useRouter().state.location.search
+  return useRouter().state.currentLocation.search
 }
 
 export function linkProps<TTo extends string = '.'>(
@@ -695,10 +697,10 @@ function CatchBoundaryInner(props: {
 
   React.useEffect(() => {
     if (activeErrorState) {
-      let prevKey = router.state.location.key
+      let prevKey = router.state.currentLocation.key
       return router.subscribe(() => {
-        if (router.state.location.key !== prevKey) {
-          prevKey = router.state.location.key
+        if (router.state.currentLocation.key !== prevKey) {
+          prevKey = router.state.currentLocation.key
           setActiveErrorState({} as any)
         }
       })
@@ -758,12 +760,12 @@ export function usePrompt(message: string, when: boolean | any): void {
         unblock()
         transition.retry()
       } else {
-        router.state.location.pathname = window.location.pathname
+        router.state.currentLocation.pathname = window.location.pathname
       }
     })
 
     return unblock
-  }, [when, location, message])
+  }, [when, message])
 }
 
 export function Prompt({ message, when, children }: PromptProps) {

@@ -33,10 +33,13 @@ export async function load(opts: { url: string }) {
 
   await router.load()
 
-  const search = router.state.location.search as { __data: { matchId: string } }
+  const search = router.state.currentLocation.search as {
+    __data: { matchId: string }
+  }
 
-  return router.state.matches.find((d) => d.matchId === search.__data.matchId)
-    ?.routeLoaderData
+  return router.state.currentMatches.find(
+    (d) => d.matchId === search.__data.matchId,
+  )?.routeLoaderData
 }
 
 export async function render(opts: {
@@ -51,32 +54,32 @@ export async function render(opts: {
     context: {
       head: opts.head,
     },
-    ssrFooter: () => {
-      // After the router has been fully loaded, serialize its
-      // state right into the HTML. This way, the client can
-      // hydrate the router with the same state that the server
-      // used to render the HTML.
-      const routerState = router.dehydrate()
-      return (
-        <>
-          <script
-            suppressHydrationWarning
-            dangerouslySetInnerHTML={{
-              __html: `
-                window.__TANSTACK_ROUTER_STATE__ = JSON.parse(${jsesc(
-                  JSON.stringify(routerState),
-                  {
-                    isScriptContext: true,
-                    wrap: true,
-                    json: true,
-                  },
-                )})
-              `,
-            }}
-          ></script>
-        </>
-      )
-    },
+    // ssrFooter: () => {
+    //   // After the router has been fully loaded, serialize its
+    //   // state right into the HTML. This way, the client can
+    //   // hydrate the router with the same state that the server
+    //   // used to render the HTML.
+    //   const routerState = router.dehydrate()
+    //   return (
+    //     <>
+    //       <script
+    //         suppressHydrationWarning
+    //         dangerouslySetInnerHTML={{
+    //           __html: `
+    //             window.__TANSTACK_ROUTER_STATE__ = JSON.parse(${jsesc(
+    //               JSON.stringify(routerState),
+    //               {
+    //                 isScriptContext: true,
+    //                 wrap: true,
+    //                 json: true,
+    //               },
+    //             )})
+    //           `,
+    //         }}
+    //       ></script>
+    //     </>
+    //   )
+    // },
   })
 
   // Kick off the router loading sequence, but don't wait for it to finish
@@ -84,8 +87,8 @@ export async function render(opts: {
 
   // Because our app is rendering <html> and <body> tags, we need to
   // wait for the root route to finish before we start streaming
-  const matches = (router.state.pending || router.state).matches
-  console.log(matches)
+  const matches = router.state.pendingMatches || router.state.currentMatches
+
   await matches[0].__.loadPromise
 
   // Track errors

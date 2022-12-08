@@ -111,7 +111,7 @@ export function createRouteMatch<
       validate: () => {
         // Validate the search params and stabilize them
         const parentSearch =
-          routeMatch.parentMatch?.search ?? router.__location.search
+          routeMatch.parentMatch?.search ?? router.state.currentLocation.search
 
         try {
           const prevSearch = routeMatch.routeSearch
@@ -180,7 +180,9 @@ export function createRouteMatch<
       if (loaderOpts?.preload && minMaxAge > 0) {
         // If the match is currently active, don't preload it
         if (
-          router.state.matches.find((d) => d.matchId === routeMatch.matchId)
+          router.state.currentMatches.find(
+            (d) => d.matchId === routeMatch.matchId,
+          )
         ) {
           return
         }
