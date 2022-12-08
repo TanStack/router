@@ -680,10 +680,9 @@ const authenticatedRoute = rootRoute.createRoute({
     }
   },
   loader: () => {
-    console.log()
+    console.log('I should only run when authenticated!')
     return {}
   },
-
   component: () => {
     const auth = useAuth()
 
