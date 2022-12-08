@@ -424,11 +424,6 @@ export function createReactRouter<
         useMatch: (routeId, opts) => {
           useRouterSubscription(router)
 
-          invariant(
-            routeId !== rootRouteId,
-            `"${rootRouteId}" cannot be used with useMatch! Did you mean to useRoute("${rootRouteId}")?`,
-          )
-
           const nearestMatch = useNearestMatch()
           const match = router.state.currentMatches.find(
             (d) => d.routeId === routeId,
