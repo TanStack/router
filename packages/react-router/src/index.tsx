@@ -11,6 +11,7 @@ import {
   RegisteredRouter,
   RouterState,
   ToIdOption,
+  last,
 } from '@tanstack/router-core'
 import {
   warning,
@@ -563,10 +564,12 @@ export function useRoute<
   return router.useRoute(routeId as any) as any
 }
 
-export function useSearch<
-  TId extends keyof RegisteredAllRouteInfo['routeInfoById'] = keyof RegisteredAllRouteInfo['routeInfoById'],
->(_routeId?: TId): RegisteredAllRouteInfo['fullSearchSchema'] {
+export function useSearch(): RegisteredAllRouteInfo['fullSearchSchema'] {
   return useRouter().state.currentLocation.search
+}
+
+export function useParams(): RegisteredAllRouteInfo['allParams'] {
+  return last(useRouter().state.currentMatches)?.params as any
 }
 
 export function linkProps<TTo extends string = '.'>(
