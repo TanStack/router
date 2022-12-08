@@ -132,7 +132,7 @@ async function run() {
     `Parsing ${commitsSinceLatestTag.length} commits since ${latestTag}...`,
   )
 
-  // Pares the commit messsages, log them, and determine the type of release needed
+  // Pares the commit messages, log them, and determine the type of release needed
   let recommendedReleaseLevel: number = commitsSinceLatestTag.reduce(
     (releaseLevel, commit) => {
       if (['fix', 'refactor', 'perf'].includes(commit.parsed.type!)) {
@@ -567,7 +567,7 @@ async function run() {
 
   if (branchConfig.ghRelease) {
     console.info(`Creating github release...`)
-    // Stringify the markdown to excape any quotes
+    // Stringify the markdown to escape any quotes
     execSync(
       `gh release create v${version} ${
         !isLatestBranch ? '--prerelease' : ''

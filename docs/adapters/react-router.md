@@ -2,19 +2,13 @@
 title: React Router
 ---
 
-You can install TanStack Router with [NPM](https://npmjs.com),
-[Yarn](https://yarnpkg.com), or a good ol' `<script>` via
-[unpkg.com](https://unpkg.com).
+You can install TanStack Router with [NPM](https://npmjs.com), [Yarn](https://yarnpkg.com), or a good ol' `<script>` via [unpkg.com](https://unpkg.com).
 
 ### NPM
 
 ```sh
 npm install @tanstack/react-router@beta --save
-```
-
-or
-
-```sh
+# or
 yarn add @tanstack/react-router@beta
 ```
 

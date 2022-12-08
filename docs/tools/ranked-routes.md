@@ -18,8 +18,6 @@ npm i @tanstack/router-rank-routes
 import { Router } from '@tanstack/react-router'
 import { rankRoutes } from '@tanstack/router-rank-routes'
 
-//
-
 function App() {
   return (
     <Router
