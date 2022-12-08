@@ -140,6 +140,7 @@ const dashboardRoute = rootRoute.createRoute({
   path: 'dashboard',
   loader: async () => {
     console.log('Fetching all invoices...')
+
     return {
       invoices: await fetchInvoices(),
     }
@@ -660,16 +661,29 @@ const expensiveRoute = rootRoute.createRoute({
 
 const authenticatedRoute = rootRoute.createRoute({
   path: 'authenticated',
-  beforeLoad: () => {
-    if (router.options.context.auth.status === 'loggedOut') {
-      throw router.navigate({
+  onLoadError: (error: Error) => {
+    if (error.message === 'Not logged in') {
+      router.navigate({
         to: loginRoute.id,
         search: {
-          redirect: router.state.location.href,
+          // Use latestLocation (not currentLocation) to get the live url
+          // (as opposed to the committed url, which is technically async
+          // and resolved after the pending state)
+          redirect: router.state.latestLocation.href,
         },
       })
     }
   },
+  beforeLoad: () => {
+    if (router.options.context.auth.status === 'loggedOut') {
+      throw new Error('Not logged in')
+    }
+  },
+  loader: () => {
+    console.log()
+    return {}
+  },
+
   component: () => {
     const auth = useAuth()
 
