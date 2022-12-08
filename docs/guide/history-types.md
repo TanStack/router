@@ -23,7 +23,7 @@ import {
   createMemoryHistory,
   createReactRouter,
   createRouteConfig,
-} from '@tanstack/router'
+} from '@tanstack/react-router'
 
 const rootRoute = createRouteConfig()
 
@@ -49,7 +49,7 @@ import {
   createHashHistory,
   createReactRouter,
   createRouteConfig,
-} from '@tanstack/router'
+} from '@tanstack/react-router'
 
 const rootRoute = createRouteConfig()
 
