@@ -36,7 +36,7 @@
   ],
   "sideEffects": false,
   "peerDependencies": {
-    "@tanstack/react-router": "0.0.1-beta.37",
+    "@tanstack/react-router": "0.0.1-beta.38",
     "react": ">=16",
     "react-dom": ">=16"
   },
