@@ -659,10 +659,12 @@ const expensiveRoute = rootRoute.createRoute({
   component: lazy(() => loaderDelayFn(() => import('./Expensive'))),
 })
 
+const AuthError = new Error('Not logged in')
+
 const authenticatedRoute = rootRoute.createRoute({
   path: 'authenticated',
-  onLoadError: (error: Error) => {
-    if (error.message === 'Not logged in') {
+  onLoadError: (error) => {
+    if (error === AuthError) {
       router.navigate({
         to: loginRoute.id,
         search: {
@@ -676,7 +678,7 @@ const authenticatedRoute = rootRoute.createRoute({
   },
   beforeLoad: () => {
     if (router.options.context.auth.status === 'loggedOut') {
-      throw new Error('Not logged in')
+      throw AuthError
     }
   },
   loader: () => {
