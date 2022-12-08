@@ -12,7 +12,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "0.0.1-beta.33",
+    "@tanstack/react-router": "0.0.1-beta.34",
     "@tanstack/react-router-devtools": "0.0.1-beta.30",
     "@tanstack/router-cli": "0.0.1-beta.30",
     "@vitejs/plugin-react": "^1.1.3",

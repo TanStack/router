@@ -57,7 +57,7 @@ function App() {
   return (
     <>
       <Router router={router} />
-      <TanStackRouterDevtools />
+      <TanStackRouterDevtools router={router} />
     </>
   )
 }
