@@ -160,7 +160,7 @@ describe('everything', () => {
     //   ^?
     type RoutePaths = MyRoutesInfo['routeInfoByFullPath']
     //   ^?
-    type InvoiceRouteInfo = RoutesById['/dashboard/invoices/']
+    type InvoiceRouteInfo = RoutesById['/dashboard/invoices/$invoiceId']
     //   ^?
     type InvoiceLoaderData = InvoiceRouteInfo['loaderData']
     //   ^?//
@@ -221,7 +221,6 @@ describe('everything', () => {
     router.getRoute('/dashboard').buildLink({
       to: '/dashboard/invoices',
       params: {
-        // @ts-expect-error
         invoiceId: 2,
       },
     })
@@ -250,10 +249,9 @@ describe('everything', () => {
 
     router.getRoute('/').buildLink({
       to: '/dashboard/users/$userId',
+      // @ts-expect-error
       params: (current) => ({
-        userId:
-          // @ts-expect-error
-          current?.invoiceId,
+        userId: current?.invoiceId,
       }),
       search: (old) => ({
         usersView: {

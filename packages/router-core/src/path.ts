@@ -165,10 +165,10 @@ export function matchByPath(
   from: string,
   matchLocation: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
 ): Record<string, string> | undefined {
-  if (basepath && !from.startsWith(basepath)) {
+  if (!from.startsWith(basepath)) {
     return undefined
   }
-  from = from.startsWith(basepath) ? from.substring(basepath.length) : from
+  from = basepath != '/' ? from.substring(basepath.length) : from
   const baseSegments = parsePathname(from)
   const to = `${matchLocation.to ?? '*'}`
   const routeSegments = parsePathname(to)

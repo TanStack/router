@@ -666,10 +666,8 @@ export function createRouter<
           ),
         )
       } catch (err: any) {
-        if (err?.then) {
-          await new Promise(() => {})
-        }
-        throw err
+        console.info(err)
+        invariant(false, `A route's beforeLoad middleware failed! 👆`)
       }
 
       router.notify()
@@ -712,10 +710,12 @@ export function createRouter<
           d.status = 'idle'
           d.error = undefined
         }
+
         const gc = Math.max(
           d.options.loaderGcMaxAge ?? router.options.defaultLoaderGcMaxAge ?? 0,
           d.options.loaderMaxAge ?? router.options.defaultLoaderMaxAge ?? 0,
         )
+
         if (gc > 0) {
           router.matchCache[d.matchId] = {
             gc: gc == Infinity ? Number.MAX_SAFE_INTEGER : now + gc,
@@ -856,6 +856,14 @@ export function createRouter<
               caseSensitive:
                 route.options.caseSensitive ?? router.options.caseSensitive,
             })
+
+            console.log(
+              router.basepath,
+              route.fullPath,
+              fuzzy,
+              pathname,
+              matchParams,
+            )
 
             if (matchParams) {
               let parsedParams
@@ -1032,6 +1040,7 @@ export function createRouter<
         if (!router.state.pending?.location) {
           return false
         }
+
         return !!matchPathname(
           router.basepath,
           router.state.pending.location.pathname,
