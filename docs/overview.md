@@ -25,7 +25,7 @@ TanStack Router is a UI router for building applications in React, Preact, Vue, 
 
 TanStack Router builds on concepts and patterns popularized by many other OSS projects, including:
 
-- [TRPC](https://trpc.io/)
+- [tRPC](https://trpc.io/)
 - [Remix](https://remix.run)
 - [Chicane](https://swan-io.github.io/chicane/)
 - [Next.js](https://nextjs.org)

@@ -181,11 +181,11 @@
           "to": "examples/react/with-react-query?file=src%2Fmain.tsx"
         },
         {
-          "label": "With TRPC",
+          "label": "With tRPC",
           "to": "examples/react/with-trpc?file=client%2Fmain.tsx"
         },
         {
-          "label": "With TRPC & React Query",
+          "label": "With tRPC & React Query",
           "to": "examples/react/with-trpc-react-query?file=client%2Fmain.tsx"
         }
       ]

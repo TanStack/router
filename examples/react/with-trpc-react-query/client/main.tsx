@@ -62,7 +62,7 @@ const postsRoute = rootRoute.createRoute({
   loaderMaxAge: 0,
   errorComponent: () => 'Oh crap!',
   loader: async () => {
-    // TODO: Prefetch posts using TRPC
+    // TODO: Prefetch posts using tRPC
     return {}
   },
   component: () => {
@@ -109,7 +109,7 @@ const postsIndexRoute = postsRoute.createRoute({
 const postRoute = postsRoute.createRoute({
   path: '$postId',
   loader: async ({ params: { postId } }) => {
-    // TODO: Prefetch post using TRPC
+    // TODO: Prefetch post using tRPC
     return {}
   },
   component: () => {
