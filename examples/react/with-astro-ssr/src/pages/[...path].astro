@@ -26,9 +26,9 @@ router.mount()() // and unsubscribe immediately
 await router.load()
 
 if (url.includes('__data=')) {
-	const search = router.state.currentLocation.search as { __data: { matchId: string } }
+	const search = router.store.currentLocation.search as { __data: { matchId: string } }
 	
-  const data = router.state.currentMatches.find((d) => d.matchId === search.__data.matchId)?.routeLoaderData
+  const data = router.store.currentMatches.find((d) => d.matchId === search.__data.matchId)?.routeLoaderData
 
 	const res = JSON.stringify(data)
 	

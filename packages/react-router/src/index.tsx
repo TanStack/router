@@ -1,6 +1,7 @@
 import * as React from 'react'
 
 import { useSyncExternalStore } from 'use-sync-external-store/shim'
+import { createEffect, createRoot, unwrap } from '@solidjs/reactivity'
 
 import {
   AnyRoute,
@@ -12,6 +13,7 @@ import {
   RouterState,
   ToIdOption,
   last,
+  replaceEqualDeep,
 } from '@tanstack/router-core'
 import {
   warning,
@@ -234,11 +236,32 @@ export function MatchesProvider(props: MatchesProviderProps) {
   return <matchesContext.Provider {...props} />
 }
 
-const useRouterSubscription = (router: Router<any, any, any>) => {
-  useSyncExternalStore(
-    (cb) => router.subscribe(() => cb()),
-    () => router.state,
-    () => router.state,
+const empty = {}
+export const __useStoreValue = <T,>(fn: () => T, label?: string): T => {
+  const prevRef = React.useRef<T | typeof empty>(empty)
+
+  const getSnapshot = () => {
+    const unwrapped = unwrap(fn())
+    if (prevRef.current === empty) {
+      prevRef.current = unwrapped
+      return unwrapped
+    }
+    const value = replaceEqualDeep(prevRef.current ?? unwrapped, unwrapped)
+    prevRef.current = value
+    return value
+  }
+
+  return useSyncExternalStore(
+    (cb) => {
+      return createRoot(() => {
+        createEffect(() => {
+          trackRecursively(fn())
+          cb()
+        })
+      })
+    },
+    getSnapshot,
+    getSnapshot,
   )
 }
 
@@ -259,14 +282,16 @@ export function createReactRouter<
           route.routeId,
           subRouteId as string,
         )
+
         const resolvedRoute = router.getRoute(resolvedRouteId)
-        useRouterSubscription(router)
+
         invariant(
           resolvedRoute,
           `Could not find a route for route "${
             resolvedRouteId as string
           }"! Did you forget to add it to your route config?`,
         )
+
         return resolvedRoute
       },
       linkProps: (options) => {
@@ -378,8 +403,6 @@ export function createReactRouter<
       Link: React.forwardRef((props: any, ref) => {
         const linkProps = route.linkProps(props)
 
-        useRouterSubscription(router)
-
         return (
           <a
             {...{
@@ -416,17 +439,14 @@ export function createReactRouter<
 
   const coreRouter = createRouter<TRouteConfig>({
     ...opts,
-    createRouter: (router) => {
+    createRouter: (router: Router<any, any, any>) => {
       const routerExt: Pick<Router<any, any, any>, 'useMatch' | 'useState'> = {
         useState: () => {
-          useRouterSubscription(router)
-          return router.state
+          return __useStoreValue(() => router.store)
         },
         useMatch: (routeId, opts) => {
-          useRouterSubscription(router)
-
           const nearestMatch = useNearestMatch()
-          const match = router.state.currentMatches.find(
+          const match = router.store.currentMatches.find(
             (d) => d.routeId === routeId,
           )
 
@@ -449,6 +469,8 @@ export function createReactRouter<
               }")' instead?`,
             )
           }
+
+          __useStoreValue(() => match!.store)
 
           return match as any
         },
@@ -494,15 +516,18 @@ export function RouterProvider<
 }: RouterProps<TRouteConfig, TAllRouteInfo, TRouterContext>) {
   router.update(rest)
 
-  useRouterSubscription(router)
+  __useStoreValue(() => router.store, 'store')
+
   React.useEffect(() => {
     return router.mount()
   }, [router])
 
+  console.log(router.store.status, router.store.currentMatches)
+
   return (
     <>
       <routerContext.Provider value={{ router: router as any }}>
-        <MatchesProvider value={[undefined!, ...router.state.currentMatches]}>
+        <MatchesProvider value={[undefined!, ...router.store.currentMatches]}>
           <Outlet />
         </MatchesProvider>
       </routerContext.Provider>
@@ -510,13 +535,16 @@ export function RouterProvider<
   )
 }
 
-export function useRouter(): RegisteredRouter {
+function useRouterContext(): RegisteredRouter {
   const value = React.useContext(routerContext)
   warning(!value, 'useRouter must be used inside a <Router> component!')
-
-  useRouterSubscription(value.router)
-
   return value.router
+}
+
+export function useRouter(): RegisteredRouter {
+  const router = useRouterContext()
+  __useStoreValue(() => router.store)
+  return router
 }
 
 export function useMatches(): RouteMatch[] {
@@ -540,8 +568,10 @@ export function useMatch<
           RegisteredAllRouteInfo['routeInfoById'][TId]
         >
       | undefined {
-  const router = useRouter()
-  return router.useMatch(routeId as any, opts) as any
+  const router = useRouterContext()
+  const match = router.useMatch(routeId as any, opts) as any
+  __useStoreValue(() => match?.store)
+  return match
 }
 
 export function useNearestMatch(): RouteMatch<
@@ -560,38 +590,42 @@ export function useRoute<
 >(
   routeId: TId,
 ): Route<RegisteredAllRouteInfo, RegisteredAllRouteInfo['routeInfoById'][TId]> {
-  const router = useRouter()
+  const router = useRouterContext()
   return router.useRoute(routeId as any) as any
 }
 
 export function useSearch(): RegisteredAllRouteInfo['fullSearchSchema'] {
-  return useRouter().state.currentLocation.search
+  const router = useRouterContext()
+  return __useStoreValue(() => router.store.currentLocation.search)
 }
 
 export function useParams(): RegisteredAllRouteInfo['allParams'] {
-  return last(useRouter().state.currentMatches)?.params as any
+  const router = useRouterContext()
+  return __useStoreValue(() => last(router.store.currentMatches)?.params as any)
 }
 
 export function linkProps<TTo extends string = '.'>(
   props: MakeLinkPropsOptions<RegisteredAllRouteInfo, '/', TTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
-  const router = useRouter()
+  const router = useRouterContext()
   return router.linkProps(props as any)
 }
 
 export function MatchRoute<TTo extends string = '.'>(
   props: MakeMatchRouteOptions<RegisteredAllRouteInfo, '/', TTo>,
 ): JSX.Element {
-  const router = useRouter()
+  const router = useRouterContext()
   return React.createElement(router.MatchRoute, props as any)
 }
 
 export function Outlet() {
-  const router = useRouter()
+  const router = useRouterContext()
   const matches = useMatches().slice(1)
   const match = matches[0]
 
   const defaultPending = React.useCallback(() => null, [])
+
+  __useStoreValue(() => match?.store)
 
   if (!match) {
     return null
@@ -614,11 +648,11 @@ export function Outlet() {
         >
           {
             ((): React.ReactNode => {
-              if (match.status === 'error') {
-                throw match.error
+              if (match.store.status === 'error') {
+                throw match.store.error
               }
 
-              if (match.status === 'success') {
+              if (match.store.status === 'success') {
                 return React.createElement(
                   (match.__.component as any) ??
                     router.options.defaultComponent ??
@@ -635,7 +669,7 @@ export function Outlet() {
       {/* {router.options.ssrFooter && match.matchId === rootRouteId ? (
         <React.Suspense fallback={null}>
           {(() => {
-            if (router.state.pending) {
+            if (router.store.pending) {
               throw router.navigationPromise
             }
 
@@ -690,18 +724,20 @@ function CatchBoundaryInner(props: {
   const [activeErrorState, setActiveErrorState] = React.useState(
     props.errorState,
   )
-  const router = useRouter()
+  const router = useRouterContext()
   const errorComponent = props.errorComponent ?? DefaultErrorBoundary
 
   React.useEffect(() => {
     if (activeErrorState) {
-      let prevKey = router.state.currentLocation.key
-      return router.subscribe(() => {
-        if (router.state.currentLocation.key !== prevKey) {
-          prevKey = router.state.currentLocation.key
-          setActiveErrorState({} as any)
-        }
-      })
+      let prevKey = router.store.currentLocation.key
+      return createRoot(() =>
+        createEffect(() => {
+          if (router.store.currentLocation.key !== prevKey) {
+            prevKey = router.store.currentLocation.key
+            setActiveErrorState({} as any)
+          }
+        }),
+      )
     }
 
     return
@@ -748,7 +784,7 @@ export function DefaultErrorBoundary({ error }: { error: any }) {
 }
 
 export function usePrompt(message: string, when: boolean | any): void {
-  const router = useRouter()
+  const router = useRouterContext()
 
   React.useEffect(() => {
     if (!when) return
@@ -758,7 +794,7 @@ export function usePrompt(message: string, when: boolean | any): void {
         unblock()
         transition.retry()
       } else {
-        router.state.currentLocation.pathname = window.location.pathname
+        router.store.currentLocation.pathname = window.location.pathname
       }
     })
 
@@ -769,4 +805,24 @@ export function usePrompt(message: string, when: boolean | any): void {
 export function Prompt({ message, when, children }: PromptProps) {
   usePrompt(message, when ?? true)
   return (children ?? null) as React.ReactNode
+}
+
+export function trackRecursively<T>(obj: T): T {
+  // circularStringify(obj)
+  const seen = new Set()
+  function recurse(nested: any) {
+    if (seen.has(nested)) return
+    seen.add(nested)
+    if (Array.isArray(nested)) {
+      nested.forEach((item) => recurse(item)) as any
+    } else if (typeof nested === 'object' && nested !== null) {
+      Object.keys(nested).reduce((acc, key) => {
+        recurse(nested[key])
+      }, {} as any)
+    }
+  }
+
+  recurse(obj)
+
+  return obj
 }

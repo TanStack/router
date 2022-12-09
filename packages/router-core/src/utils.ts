@@ -82,7 +82,11 @@ export function replaceEqualDeep(prev: any, next: any) {
 
     for (let i = 0; i < bSize; i++) {
       const key = array ? i : bItems[i]
-      copy[key] = replaceEqualDeep(prev[key], next[key])
+      if (typeof bItems[i] === 'function') {
+        copy[key] = prev[key]
+      } else {
+        copy[key] = replaceEqualDeep(prev[key], next[key])
+      }
       if (copy[key] === prev[key]) {
         equalItems++
       }

@@ -42,7 +42,7 @@ const rootRoute = createRouteConfig({
           </Link>
         </div>
         <hr />
-        <Outlet /> {/* Start rendering router matches */}
+        <Outlet /> Start rendering router matches
         <TanStackRouterDevtools position="bottom-right" />
       </>
     )
@@ -75,7 +75,9 @@ const postsRoute = rootRoute.createRoute({
   },
   component: () => {
     const {
-      loaderData: { posts },
+      store: {
+        loaderData: { posts },
+      },
       Link,
     } = useMatch(postsRoute.id)
 
@@ -134,7 +136,9 @@ const postRoute = postsRoute.createRoute({
   },
   component: () => {
     const {
-      loaderData: { post },
+      store: {
+        loaderData: { post },
+      },
     } = useMatch(postRoute.id)
 
     return (
@@ -157,6 +161,7 @@ const router = createReactRouter({
   defaultPreload: 'intent',
 })
 
+// Register your router for typesafety
 declare module '@tanstack/react-router' {
   interface RegisterRouter {
     router: typeof router
@@ -164,8 +169,10 @@ declare module '@tanstack/react-router' {
 }
 
 const rootElement = document.getElementById('app')!
+
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
+
   root.render(
     <StrictMode>
       <RouterProvider router={router} />

@@ -22,6 +22,7 @@ import {
   Router,
 } from './router'
 import { NoInfer } from './utils'
+import { createStore } from '@solidjs/reactivity'
 
 export interface AnyRoute extends Route<any, any, any> {}
 
@@ -98,96 +99,109 @@ export function createRoute<
   const { id, routeId, path: routePath, fullPath } = routeConfig
 
   const action =
-    router.state.actions[id] ||
+    router.store.actions[id] ||
     (() => {
-      router.state.actions[id] = {
-        submissions: [],
-        submit: async <T, U>(
-          submission: T,
-          actionOpts?: { invalidate?: boolean; multi?: boolean },
-        ) => {
-          if (!route) {
-            return
-          }
-
-          const invalidate = actionOpts?.invalidate ?? true
-
-          if (!actionOpts?.multi) {
-            action.submissions = action.submissions.filter((d) => d.isMulti)
-          }
-
-          const actionState: ActionState<T, U> = {
-            submittedAt: Date.now(),
-            status: 'pending',
-            submission,
-            isMulti: !!actionOpts?.multi,
-          }
-
-          action.current = actionState
-          action.latest = actionState
-          action.submissions.push(actionState)
-
-          router.notify()
-
-          try {
-            const res = await route.options.action?.(submission)
-            actionState.data = res as U
-
-            if (invalidate) {
-              router.invalidateRoute({ to: '.', fromCurrent: true })
-              await router.reload()
+      router.setStore((s) => {
+        s.actions[id] = {
+          submissions: [],
+          submit: async <T, U>(
+            submission: T,
+            actionOpts?: { invalidate?: boolean; multi?: boolean },
+          ) => {
+            if (!route) {
+              return
             }
-            actionState.status = 'success'
-            return res
-          } catch (err) {
-            console.error(err)
-            actionState.error = err
-            actionState.status = 'error'
-          } finally {
-            router.notify()
-          }
-        },
-      }
-      return router.state.actions[id]!
+
+            const invalidate = actionOpts?.invalidate ?? true
+
+            const [actionStore, setActionStore] = createStore<
+              ActionState<T, U>
+            >({
+              submittedAt: Date.now(),
+              status: 'pending',
+              submission,
+              isMulti: !!actionOpts?.multi,
+            })
+
+            router.setStore((s) => {
+              if (!actionOpts?.multi) {
+                s.actions[id]!.submissions = action.submissions.filter(
+                  (d) => d.isMulti,
+                )
+              }
+
+              s.actions[id]!.current = actionStore
+              s.actions[id]!.latest = actionStore
+              s.actions[id]!.submissions.push(actionStore)
+            })
+
+            try {
+              const res = await route.options.action?.(submission)
+
+              setActionStore((s) => {
+                s.data = res as U
+              })
+
+              if (invalidate) {
+                router.invalidateRoute({ to: '.', fromCurrent: true })
+                await router.reload()
+              }
+
+              setActionStore((s) => {
+                s.status = 'success'
+              })
+
+              return res
+            } catch (err) {
+              console.error(err)
+              setActionStore((s) => {
+                s.error = err
+                s.status = 'error'
+              })
+            }
+          },
+        }
+      })
+
+      return router.store.actions[id]!
     })()
 
   const loader =
-    router.state.loaders[id] ||
+    router.store.loaders[id] ||
     (() => {
-      router.state.loaders[id] = {
-        pending: [],
-        fetch: (async (loaderContext: LoaderContext<any, any>) => {
-          if (!route) {
-            return
-          }
+      router.setStore((s) => {
+        s.loaders[id] = {
+          pending: [],
+          // fetch: (async (loaderContext: LoaderContext<any, any>) => {
+          //   if (!route) {
+          //     return
+          //   }
 
-          const loaderState: LoaderState<any, any> = {
-            loadedAt: Date.now(),
-            loaderContext,
-          }
+          //   const loaderState: LoaderState<any, any> = {
+          //     loadedAt: Date.now(),
+          //     loaderContext,
+          //   }
 
-          loader.current = loaderState
-          loader.latest = loaderState
-          loader.pending.push(loaderState)
+          //   router.setStore((s) => {
+          //     s.loaders[id]!.current = loaderState
+          //     s.loaders[id]!.latest = loaderState
+          //     s.loaders[id]!.pending.push(loaderState)
+          //   })
 
-          // router.state = {
-          //   ...router.state,
-          //   currentAction: loaderState,
-          //   latestAction: loaderState,
-          // }
+          //   try {
+          //     return await route.options.loader?.(loaderContext)
+          //   } finally {
+          //     router.setStore((s) => {
+          //       s.loaders[id]!.pending = s.loaders[id]!.pending.filter(
+          //         (d) => d !== loaderState,
+          //       )
+          //     })
+          //   }
+          // }) as any,
+        }
+      })
 
-          router.notify()
-
-          try {
-            return await route.options.loader?.(loaderContext)
-          } finally {
-            loader.pending = loader.pending.filter((d) => d !== loaderState)
-            // router.removeActionQueue.push({ loader, loaderState })
-            router.notify()
-          }
-        }) as any,
-      }
-      return router.state.loaders[id]!
+      return router.store.loaders[id]!
     })()
 
   let route: Route<TAllRouteInfo, TRouteInfo, TRouterContext> = {

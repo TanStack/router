@@ -1,3 +1,4 @@
+import { boolean } from 'zod'
 import { GetFrameworkGeneric } from './frameworks'
 import { Route } from './route'
 import {
@@ -7,17 +8,14 @@ import {
   RouteInfo,
 } from './routeInfo'
 import { Router } from './router'
+import { batch, createMemo, createStore } from '@solidjs/reactivity'
 import { Expand, replaceEqualDeep } from './utils'
 
-export interface RouteMatch<
+export interface RouteMatchStore<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TRouteInfo extends AnyRouteInfo = RouteInfo,
-> extends Route<TAllRouteInfo, TRouteInfo> {
-  matchId: string
-  pathname: string
-  params: TRouteInfo['allParams']
+> {
   parentMatch?: RouteMatch
-  childMatches: RouteMatch[]
   routeSearch: TRouteInfo['searchSchema']
   search: Expand<
     TAllRouteInfo['fullSearchSchema'] & TRouteInfo['fullSearchSchema']
@@ -25,13 +23,35 @@ export interface RouteMatch<
   status: 'idle' | 'loading' | 'success' | 'error'
   updatedAt?: number
   error?: unknown
+  invalid: boolean
   isInvalid: boolean
-  getIsInvalid: () => boolean
   loaderData: TRouteInfo['loaderData']
   routeLoaderData: TRouteInfo['routeLoaderData']
   isFetching: boolean
   invalidAt: number
+}
+
+export interface RouteMatch<
+  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+  TRouteInfo extends AnyRouteInfo = RouteInfo,
+> extends Route<TAllRouteInfo, TRouteInfo> {
+  store: RouteMatchStore<TAllRouteInfo, TRouteInfo>
+  // setStore: WritableStore<RouteMatchStore<TAllRouteInfo, TRouteInfo>>
+  matchId: string
+  pathname: string
+  params: TRouteInfo['allParams']
+  childMatches: RouteMatch[]
+  cancel: () => void
+  load: (
+    loaderOpts?:
+      | { preload: true; maxAge: number; gcMaxAge: number }
+      | { preload?: false; maxAge?: never; gcMaxAge?: never },
+  ) => Promise<TRouteInfo['routeLoaderData']>
+  fetch: (opts?: { maxAge?: number }) => Promise<TRouteInfo['routeLoaderData']>
+  invalidate: () => void
+  hasLoaders: () => boolean
   __: {
+    setParentMatch: (parentMatch?: RouteMatch) => void
     component?: GetFrameworkGeneric<'Component'>
     errorComponent?: GetFrameworkGeneric<'ErrorComponent'>
     pendingComponent?: GetFrameworkGeneric<'Component'>
@@ -49,18 +69,8 @@ export interface RouteMatch<
     // setParentMatch: (parentMatch: RouteMatch) => void
     // addChildMatch: (childMatch: RouteMatch) => void
     validate: () => void
-    notify: () => void
     resolve: () => void
   }
-  cancel: () => void
-  load: (
-    loaderOpts?:
-      | { preload: true; maxAge: number; gcMaxAge: number }
-      | { preload?: false; maxAge?: never; gcMaxAge?: never },
-  ) => Promise<TRouteInfo['routeLoaderData']>
-  fetch: (opts?: { maxAge?: number }) => Promise<TRouteInfo['routeLoaderData']>
-  invalidate: () => void
-  hasLoaders: () => boolean
 }
 
 const componentTypes = [
@@ -82,39 +92,69 @@ export function createRouteMatch<
     pathname: string
   },
 ): RouteMatch<TAllRouteInfo, TRouteInfo> {
+  let cachedLoaderData = {}
+
+  const [store, setStore] = createStore<
+    RouteMatchStore<TAllRouteInfo, TRouteInfo>
+  >({
+    routeSearch: {},
+    search: {} as any,
+    status: 'idle',
+    routeLoaderData: {} as TRouteInfo['routeLoaderData'],
+    get loaderData(): TRouteInfo['loaderData'] {
+      const cached = replaceEqualDeep(cachedLoaderData, {
+        ...store.parentMatch?.store.loaderData,
+        ...store.routeLoaderData,
+      }) as TRouteInfo['loaderData']
+
+      cachedLoaderData = cached
+
+      return cached
+      // return loaderData()
+    },
+    isFetching: false,
+    invalid: false,
+    invalidAt: Infinity,
+    get isInvalid(): boolean {
+      const now = Date.now()
+      return this.invalid || this.invalidAt < now
+    },
+  })
+
+  // const loaderData = createMemo(
+  //   () =>
+  //     replaceEqualDeep(store.loaderData, {
+  //       ...store.parentMatch?.store.loaderData,
+  //       ...store.routeLoaderData,
+  //     }) as TRouteInfo['loaderData'],
+  // )
+
   const routeMatch: RouteMatch<TAllRouteInfo, TRouteInfo> = {
     ...route,
     ...opts,
+    store,
+    // setStore,
     router,
-    routeSearch: {},
-    search: {} as any,
     childMatches: [],
-    status: 'idle',
-    routeLoaderData: {} as TRouteInfo['routeLoaderData'],
-    loaderData: {} as TRouteInfo['loaderData'],
-    isFetching: false,
-    isInvalid: false,
-    invalidAt: Infinity,
-    // pendingActions: [],
-    getIsInvalid: () => {
-      const now = Date.now()
-      return routeMatch.isInvalid || routeMatch.invalidAt < now
-    },
     __: {
+      setParentMatch: (parentMatch?: RouteMatch) => {
+        setStore((s) => {
+          s.parentMatch = parentMatch
+        })
+      },
       abortController: new AbortController(),
       latestId: '',
       resolve: () => {},
-      notify: () => {
-        routeMatch.__.resolve()
-        routeMatch.router.notify()
-      },
+      // notify: () => {
+      //   routeMatch.router.notify() TODO: ????
+      // },
       validate: () => {
         // Validate the search params and stabilize them
         const parentSearch =
-          routeMatch.parentMatch?.search ?? router.state.currentLocation.search
+          store.parentMatch?.store.search ?? router.store.currentLocation.search
 
         try {
-          const prevSearch = routeMatch.routeSearch
+          const prevSearch = store.routeSearch
 
           const validator =
             typeof routeMatch.options.validateSearch === 'object'
@@ -126,16 +166,20 @@ export function createRouteMatch<
             validator?.(parentSearch) ?? {},
           )
 
-          // Invalidate route matches when search param stability changes
-          if (prevSearch !== nextSearch) {
-            routeMatch.isInvalid = true
-          }
+          batch(() => {
+            // Invalidate route matches when search param stability changes
+            if (prevSearch !== nextSearch) {
+              setStore((s) => (s.invalid = true))
+            }
 
-          routeMatch.routeSearch = nextSearch
-
-          routeMatch.search = replaceEqualDeep(parentSearch, {
-            ...parentSearch,
-            ...nextSearch,
+            // TODO: Alright, do we need batch() here?
+            setStore((s) => {
+              s.routeSearch = nextSearch
+              s.search = replaceEqualDeep(parentSearch, {
+                ...parentSearch,
+                ...nextSearch,
+              })
+            })
           })
 
           componentTypes.map(async (type) => {
@@ -151,8 +195,12 @@ export function createRouteMatch<
             cause: err,
           })
           error.code = 'INVALID_SEARCH_PARAMS'
-          routeMatch.status = 'error'
-          routeMatch.error = error
+
+          setStore((s) => {
+            s.status = 'error'
+            s.error = error
+          })
+
           // Do not proceed with loading the route
           return
         }
@@ -162,7 +210,7 @@ export function createRouteMatch<
       routeMatch.__.abortController?.abort()
     },
     invalidate: () => {
-      routeMatch.isInvalid = true
+      setStore((s) => (s.invalid = true))
     },
     hasLoaders: () => {
       return !!(
@@ -180,14 +228,14 @@ export function createRouteMatch<
       if (loaderOpts?.preload && minMaxAge > 0) {
         // If the match is currently active, don't preload it
         if (
-          router.state.currentMatches.find(
+          router.store.currentMatches.find(
             (d) => d.matchId === routeMatch.matchId,
           )
         ) {
           return
         }
 
-        router.matchCache[routeMatch.matchId] = {
+        router.store.matchCache[routeMatch.matchId] = {
           gc: now + loaderOpts.gcMaxAge,
           match: routeMatch as RouteMatch<any, any>,
         }
@@ -195,9 +243,9 @@ export function createRouteMatch<
 
       // If the match is invalid, errored or idle, trigger it to load
       if (
-        (routeMatch.status === 'success' && routeMatch.getIsInvalid()) ||
-        routeMatch.status === 'error' ||
-        routeMatch.status === 'idle'
+        (store.status === 'success' && store.isInvalid) ||
+        store.status === 'error' ||
+        store.status === 'idle'
       ) {
         const maxAge = loaderOpts?.preload ? loaderOpts?.maxAge : undefined
 
@@ -214,20 +262,22 @@ export function createRouteMatch<
         }
       }
 
-      // If the match was in an error state, set it
-      // to a loading state again. Otherwise, keep it
-      // as loading or resolved
-      if (routeMatch.status === 'idle') {
-        routeMatch.status = 'loading'
-      }
+      batch(() => {
+        // If the match was in an error state, set it
+        // to a loading state again. Otherwise, keep it
+        // as loading or resolved
+        if (store.status === 'idle') {
+          setStore((s) => (s.status = 'loading'))
+        }
 
-      // We started loading the route, so it's no longer invalid
-      routeMatch.isInvalid = false
+        // We started loading the route, so it's no longer invalid
+        setStore((s) => (s.invalid = false))
+      })
 
       routeMatch.__.loadPromise = new Promise(async (resolve) => {
         // We are now fetching, even if it's in the background of a
         // resolved state
-        routeMatch.isFetching = true
+        setStore((s) => (s.isFetching = true))
         routeMatch.__.resolve = resolve as () => void
 
         routeMatch.__.componentsPromise = (async () => {
@@ -253,23 +303,28 @@ export function createRouteMatch<
               const data = await router.loadMatchData(routeMatch)
               await checkLatest()
 
-              routeMatch.routeLoaderData = replaceEqualDeep(
-                routeMatch.routeLoaderData,
-                data,
+              setStore(
+                (s) =>
+                  (s.routeLoaderData = replaceEqualDeep(
+                    store.routeLoaderData,
+                    data,
+                  )),
               )
             }
 
-            routeMatch.error = undefined
-            routeMatch.status = 'success'
-            routeMatch.updatedAt = Date.now()
-            routeMatch.invalidAt =
-              routeMatch.updatedAt +
-              (opts?.maxAge ??
-                routeMatch.options.loaderMaxAge ??
-                router.options.defaultLoaderMaxAge ??
-                0)
+            setStore((s) => {
+              s.error = undefined
+              s.status = 'success'
+              s.updatedAt = Date.now()
+              s.invalidAt =
+                s.updatedAt +
+                (opts?.maxAge ??
+                  routeMatch.options.loaderMaxAge ??
+                  router.options.defaultLoaderMaxAge ??
+                  0)
+            })
 
-            return routeMatch.routeLoaderData
+            return store.routeLoaderData
           } catch (err) {
             await checkLatest()
 
@@ -277,9 +332,11 @@ export function createRouteMatch<
               console.error(err)
             }
 
-            routeMatch.error = err
-            routeMatch.status = 'error'
-            routeMatch.updatedAt = Date.now()
+            setStore((s) => {
+              s.error = err
+              s.status = 'error'
+              s.updatedAt = Date.now()
+            })
 
             throw err
           }
@@ -287,9 +344,9 @@ export function createRouteMatch<
 
         const after = async () => {
           await checkLatest()
-          routeMatch.isFetching = false
+          setStore((s) => (s.isFetching = false))
           delete routeMatch.__.loadPromise
-          routeMatch.__.notify()
+          routeMatch.__.resolve()
         }
 
         try {
@@ -309,7 +366,7 @@ export function createRouteMatch<
   }
 
   if (!routeMatch.hasLoaders()) {
-    routeMatch.status = 'success'
+    setStore((s) => (s.status = 'success'))
   }
 
   return routeMatch

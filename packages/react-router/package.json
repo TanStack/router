@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.16.7",
+    "@solidjs/reactivity": "^0.0.5",
     "@tanstack/router-core": "0.0.1-beta.36",
     "use-sync-external-store": "^1.2.0"
   },

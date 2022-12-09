@@ -41,8 +41,14 @@ import {
   RouteInfo,
   RoutesById,
 } from './routeInfo'
-import { createRouteMatch, RouteMatch } from './routeMatch'
+import { createRouteMatch, RouteMatch, RouteMatchStore } from './routeMatch'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
+import {
+  createRoot,
+  createStore,
+  batch,
+  SetStoreFunction,
+} from '@solidjs/reactivity'
 import {
   functionalUpdate,
   last,
@@ -211,6 +217,7 @@ export interface RouterState<
   loaders: Record<string, Loader>
   isFetching: boolean
   isPreloading: boolean
+  matchCache: Record<string, MatchCacheEntry>
 }
 
 type Listener = (router: Router<any, any, any>) => void
@@ -267,16 +274,15 @@ export interface DehydratedRouter<TRouterContext = unknown> {
   context: TRouterContext
 }
 
-interface DehydratedRouteMatch
-  extends Pick<
-    RouteMatch<any, any>,
-    | 'matchId'
-    | 'status'
-    | 'routeLoaderData'
-    | 'loaderData'
-    | 'isInvalid'
-    | 'invalidAt'
-  > {}
+export type MatchCache = Record<string, MatchCacheEntry>
+
+interface DehydratedRouteMatch {
+  matchId: string
+  store: Pick<
+    RouteMatchStore<any, any>,
+    'status' | 'routeLoaderData' | 'loaderData' | 'isInvalid' | 'invalidAt'
+  >
+}
 
 export interface RouterContext {}
 
@@ -299,20 +305,17 @@ export interface Router<
   >
   // Computed in this.update()
   basepath: string
-  // Internal:
-  listeners: Listener[]
   // __location: Location<TAllRouteInfo['fullSearchSchema']>
   navigateTimeout?: Timeout
   nextAction?: 'push' | 'replace'
-  state: RouterState<TAllRouteInfo['fullSearchSchema']>
+  store: RouterState<TAllRouteInfo['fullSearchSchema']>
+  setStore: SetStoreFunction<RouterState<TAllRouteInfo['fullSearchSchema']>>
   routeTree: Route<TAllRouteInfo, RouteInfo>
   routesById: RoutesById<TAllRouteInfo>
   navigationPromise?: Promise<void>
   startedLoadingAt: number
   resolveNavigation: () => void
-  subscribe: (listener: Listener) => () => void
   reset: () => void
-  notify: () => void
   mount: () => () => void
   onFocus: () => void
   update: <
@@ -326,7 +329,6 @@ export interface Router<
   buildNext: (opts: BuildNextOptions) => Location
   cancelMatches: () => void
   load: (next?: Location) => Promise<void>
-  matchCache: Record<string, MatchCacheEntry>
   cleanMatchCache: () => void
   getRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
     id: TId,
@@ -406,8 +408,20 @@ function getInitialRouterState(): RouterState {
     actions: {},
     loaders: {},
     lastUpdated: Date.now(),
-    isFetching: false,
-    isPreloading: false,
+    matchCache: {},
+    get isFetching() {
+      return (
+        this.status === 'loading' ||
+        this.currentMatches.some((d) => d.store.isFetching)
+      )
+    },
+    get isPreloading() {
+      return Object.values(this.matchCache).some(
+        (d) =>
+          d.match.store.isFetching &&
+          !this.currentMatches.find((dd) => dd.matchId === d.match.matchId),
+      )
+    },
   }
 }
 
@@ -420,6 +434,8 @@ export function createRouter<
 ): Router<TRouteConfig, TAllRouteInfo, TRouterContext> {
   const history = userOptions?.history || createDefaultHistory()
 
+  let destroy = () => {}
+
   const originalOptions = {
     defaultLoaderGcMaxAge: 5 * 60 * 1000,
     defaultLoaderMaxAge: 0,
@@ -431,133 +447,98 @@ export function createRouter<
     parseSearch: userOptions?.parseSearch ?? defaultParseSearch,
   }
 
-  let router: Router<TRouteConfig, TAllRouteInfo, TRouterContext> = {
+  const [store, setStore] = createStore<RouterState>(getInitialRouterState())
+
+  const router: Router<TRouteConfig, TAllRouteInfo, TRouterContext> = {
     types: undefined!,
 
     // public api
     history,
     options: originalOptions,
-    listeners: [],
     // Resolved after construction
     basepath: '',
     routeTree: undefined!,
     routesById: {} as any,
     //
     resolveNavigation: () => {},
-    matchCache: {},
-    state: getInitialRouterState(),
+    store,
+    setStore,
     reset: () => {
-      router.state = getInitialRouterState()
-      router.notify()
+      setStore((s) => Object.assign(s, getInitialRouterState()))
     },
     startedLoadingAt: Date.now(),
-    subscribe: (listener: Listener): (() => void) => {
-      router.listeners.push(listener as Listener)
-      return () => {
-        router.listeners = router.listeners.filter((x) => x !== listener)
-      }
-    },
     getRoute: (id) => {
       return router.routesById[id]
     },
-    notify: (): void => {
-      const isFetching =
-        router.state.status === 'loading' ||
-        router.state.currentMatches.some((d) => d.isFetching)
-
-      const isPreloading = Object.values(router.matchCache).some(
-        (d) =>
-          d.match.isFetching &&
-          !router.state.currentMatches.find(
-            (dd) => dd.matchId === d.match.matchId,
-          ),
-      )
-
-      if (
-        router.state.isFetching !== isFetching ||
-        router.state.isPreloading !== isPreloading
-      ) {
-        router.state = {
-          ...router.state,
-          isFetching,
-          isPreloading,
-        }
-      }
-
-      cascadeLoaderData(router.state.currentMatches)
-      router.listeners.forEach((listener) => listener(router))
-    },
+    // notify: (): void => {
+    //   linkMatches(store.currentMatches) // TODO: this needs to be computed
+    // },
 
     dehydrate: () => {
       return {
         state: {
-          ...pick(router.state, [
+          ...pick(store, [
             'latestLocation',
             'currentLocation',
             'status',
             'lastUpdated',
           ]),
-          currentMatches: router.state.currentMatches.map((match) =>
-            pick(match, [
-              'matchId',
+          currentMatches: store.currentMatches.map((match) => ({
+            matchId: match.matchId,
+            store: pick(match.store, [
               'status',
               'routeLoaderData',
               'loaderData',
               'isInvalid',
               'invalidAt',
             ]),
-          ),
+          })),
         },
         context: router.options.context as TRouterContext,
       }
     },
 
-    hydrate: (dehydratedState) => {
-      // Update the location
-      router.state.latestLocation = dehydratedState.state.latestLocation
-      router.state.currentLocation = dehydratedState.state.currentLocation
+    hydrate: (dehydratedRouter) => {
+      setStore((s) => {
+        // Update the context TODO: make this part of state???
+        router.options.context = dehydratedRouter.context
 
-      // Update the context
-      router.options.context = dehydratedState.context
+        Object.assign(s, dehydratedRouter.state)
 
-      // Match the routes
-      const currentMatches = router.matchRoutes(
-        router.state.latestLocation.pathname,
-        {
+        // Match the routes
+        const currentMatches = router.matchRoutes(s.latestLocation.pathname, {
           strictParseParams: true,
-        },
-      )
+        })
 
-      currentMatches.forEach((match, index) => {
-        const dehydratedMatch = dehydratedState.state.currentMatches[index]
-        invariant(
-          dehydratedMatch,
-          'Oh no! Dehydrated route matches did not match the active state of the router 😬',
-        )
-        Object.assign(match, dehydratedMatch)
+        currentMatches.forEach((match, index) => {
+          const dehydratedMatch = dehydratedRouter.state.currentMatches[index]
+          invariant(
+            dehydratedMatch,
+            'Oh no! Dehydrated route matches did not match the active state of the router 😬',
+          )
+          Object.assign(match, dehydratedMatch)
+        })
+
+        currentMatches.forEach((match) => match.__.validate())
+
+        s.currentMatches = currentMatches
       })
-
-      currentMatches.forEach((match) => match.__.validate())
-
-      router.state = {
-        ...router.state,
-        ...dehydratedState,
-        currentMatches,
-      }
     },
 
     mount: () => {
-      if (!router.state.currentMatches.length) {
+      // If the router matches are empty, load the matches
+      if (!store.currentMatches.length) {
         router.load()
       }
 
       const unsub = router.history.listen((event) => {
         router.load(
-          router.__.parseLocation(event.location, router.state.latestLocation),
+          router.__.parseLocation(event.location, store.latestLocation),
         )
       })
 
       // addEventListener does not exist in React Native, but window does
+      // In the future, we might need to invert control here for more adapters
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!isServer && window.addEventListener) {
         // Listen to visibillitychange and focus
@@ -572,6 +553,7 @@ export function createRouter<
           window.removeEventListener('visibilitychange', router.onFocus)
           window.removeEventListener('focus', router.onFocus)
         }
+        destroy()
       }
     },
 
@@ -581,14 +563,14 @@ export function createRouter<
 
     update: (opts) => {
       const newHistory = opts?.history !== router.history
-      if (!router.state.latestLocation || newHistory) {
+      if (!store.latestLocation || newHistory) {
         if (opts?.history) {
           router.history = opts.history
         }
-        router.state.latestLocation = router.__.parseLocation(
-          router.history.location,
-        )
-        router.state.currentLocation = router.state.latestLocation
+        setStore((s) => {
+          s.latestLocation = router.__.parseLocation(router.history.location)
+          s.currentLocation = s.latestLocation
+        })
       }
 
       Object.assign(router.options, opts)
@@ -606,48 +588,48 @@ export function createRouter<
     },
 
     cancelMatches: () => {
-      ;[
-        ...router.state.currentMatches,
-        ...(router.state.pendingMatches ?? []),
-      ].forEach((match) => {
-        match.cancel()
-      })
+      ;[...store.currentMatches, ...(store.pendingMatches || [])].forEach(
+        (match) => {
+          match.cancel()
+        },
+      )
     },
 
     load: async (next?: Location) => {
-      const id = Math.random()
-      router.startedLoadingAt = id
-
-      if (next) {
-        // Ingest the new location
-        router.state.latestLocation = next
-      }
+      let now = Date.now()
+      const startedAt = now
+      router.startedLoadingAt = startedAt
 
       // Cancel any pending matches
       router.cancelMatches()
 
-      // Match the routes
-      const matches = router.matchRoutes(router.state.latestLocation.pathname, {
-        strictParseParams: true,
+      let matches!: RouteMatch<any, any>[]
+
+      batch(() => {
+        if (next) {
+          // Ingest the new location
+          setStore((s) => {
+            s.latestLocation = next
+          })
+        }
+
+        // Match the routes
+        matches = router.matchRoutes(store.latestLocation.pathname, {
+          strictParseParams: true,
+        })
+
+        setStore((s) => {
+          s.status = 'loading'
+
+          if (typeof document !== 'undefined') {
+            s.pendingMatches = matches
+            s.pendingLocation = store.latestLocation
+          } else {
+            s.currentMatches = matches
+            s.currentLocation = store.latestLocation
+          }
+        })
       })
-
-      if (typeof document !== 'undefined') {
-        router.state = {
-          ...router.state,
-          status: 'loading',
-          pendingMatches: matches,
-          pendingLocation: router.state.latestLocation,
-        }
-      } else {
-        router.state = {
-          ...router.state,
-          status: 'loading',
-          currentMatches: matches,
-          currentLocation: router.state.latestLocation,
-        }
-      }
-
-      router.notify()
 
       // Load the matches
       try {
@@ -660,12 +642,12 @@ export function createRouter<
         )
       }
 
-      if (router.startedLoadingAt !== id) {
-        // Ignore side-effects of match loading
+      if (router.startedLoadingAt !== startedAt) {
+        // Ignore side-effects of outdated side-effects
         return router.navigationPromise
       }
 
-      const previousMatches = router.state.currentMatches
+      const previousMatches = store.currentMatches
 
       const exiting: RouteMatch[] = [],
         staying: RouteMatch[] = []
@@ -682,18 +664,18 @@ export function createRouter<
         return !previousMatches.find((dd) => dd.matchId === d.matchId)
       })
 
-      const now = Date.now()
+      now = Date.now()
 
       exiting.forEach((d) => {
         d.__.onExit?.({
           params: d.params,
-          search: d.routeSearch,
+          search: d.store.routeSearch,
         })
 
         // Clear idle error states when match leaves
-        if (d.status === 'error' && !d.isFetching) {
-          d.status = 'idle'
-          d.error = undefined
+        if (d.store.status === 'error' && !d.store.isFetching) {
+          d.store.status = 'idle'
+          d.store.error = undefined
         }
 
         const gc = Math.max(
@@ -702,7 +684,7 @@ export function createRouter<
         )
 
         if (gc > 0) {
-          router.matchCache[d.matchId] = {
+          store.matchCache[d.matchId] = {
             gc: gc == Infinity ? Number.MAX_SAFE_INTEGER : now + gc,
             match: d,
           }
@@ -712,19 +694,19 @@ export function createRouter<
       staying.forEach((d) => {
         d.options.onTransition?.({
           params: d.params,
-          search: d.routeSearch,
+          search: d.store.routeSearch,
         })
       })
 
       entering.forEach((d) => {
         d.__.onExit = d.options.onLoaded?.({
           params: d.params,
-          search: d.search,
+          search: d.store.search,
         })
-        delete router.matchCache[d.matchId]
+        delete store.matchCache[d.matchId]
       })
 
-      if (router.startedLoadingAt !== id) {
+      if (router.startedLoadingAt !== startedAt) {
         // Ignore side-effects of match loading
         return
       }
@@ -732,46 +714,49 @@ export function createRouter<
       matches.forEach((match) => {
         // Clear actions
         if (match.action) {
+          // TODO: Check reactivity here
           match.action.current = undefined
           match.action.submissions = []
         }
       })
 
-      router.state = {
-        ...router.state,
-        status: 'idle',
-        currentLocation: router.state.latestLocation,
-        currentMatches: matches,
-        pendingLocation: undefined,
-        pendingMatches: undefined,
-      }
+      setStore((s) => {
+        Object.assign(s, {
+          status: 'idle',
+          currentLocation: store.latestLocation,
+          currentMatches: matches,
+          pendingLocation: undefined,
+          pendingMatches: undefined,
+        })
+      })
 
-      router.notify()
       router.resolveNavigation()
     },
 
     cleanMatchCache: () => {
       const now = Date.now()
 
-      Object.keys(router.matchCache).forEach((matchId) => {
-        const entry = router.matchCache[matchId]!
+      setStore((s) => {
+        Object.keys(s.matchCache).forEach((matchId) => {
+          const entry = s.matchCache[matchId]!
 
-        // Don't remove loading matches
-        if (entry.match.status === 'loading') {
-          return
-        }
+          // Don't remove loading matches
+          if (entry.match.store.status === 'loading') {
+            return
+          }
 
-        // Do not remove successful matches that are still valid
-        if (entry.gc > 0 && entry.gc > now) {
-          return
-        }
+          // Do not remove successful matches that are still valid
+          if (entry.gc > 0 && entry.gc > now) {
+            return
+          }
 
-        // Everything else gets removed
-        delete router.matchCache[matchId]
+          // Everything else gets removed
+          delete s.matchCache[matchId]
+        })
       })
     },
 
-    loadRoute: async (navigateOpts = router.state.latestLocation) => {
+    loadRoute: async (navigateOpts = store.latestLocation) => {
       const next = router.buildNext(navigateOpts)
       const matches = router.matchRoutes(next.pathname, {
         strictParseParams: true,
@@ -780,10 +765,7 @@ export function createRouter<
       return matches
     },
 
-    preloadRoute: async (
-      navigateOpts = router.state.latestLocation,
-      loaderOpts,
-    ) => {
+    preloadRoute: async (navigateOpts = store.latestLocation, loaderOpts) => {
       const next = router.buildNext(navigateOpts)
       const matches = router.matchRoutes(next.pathname, {
         strictParseParams: true,
@@ -815,8 +797,8 @@ export function createRouter<
       }
 
       const existingMatches = [
-        ...router.state.currentMatches,
-        ...(router.state.pendingMatches ?? []),
+        ...store.currentMatches,
+        ...(store.pendingMatches ?? []),
       ]
 
       const recurse = async (routes: Route<any, any>[]): Promise<void> => {
@@ -846,14 +828,6 @@ export function createRouter<
               caseSensitive:
                 route.options.caseSensitive ?? router.options.caseSensitive,
             })
-
-            // console.log(
-            //   router.basepath,
-            //   route.fullPath,
-            //   fuzzy,
-            //   pathname,
-            //   matchParams,
-            // )
 
             if (matchParams) {
               let parsedParams
@@ -895,7 +869,7 @@ export function createRouter<
 
           const match =
             existingMatches.find((d) => d.matchId === matchId) ||
-            router.matchCache[matchId]?.match ||
+            store.matchCache[matchId]?.match ||
             createRouteMatch(router, foundRoute, {
               parentMatch,
               matchId,
@@ -915,7 +889,7 @@ export function createRouter<
 
       recurse([router.routeTree])
 
-      cascadeLoaderData(matches)
+      linkMatches(matches)
 
       return matches
     },
@@ -945,7 +919,7 @@ export function createRouter<
       )
 
       const matchPromises = resolvedMatches.map(async (match) => {
-        const search = match.search as { __data?: any }
+        const search = match.store.search as { __data?: any }
 
         if (search.__data?.matchId && search.__data.matchId !== match.matchId) {
           return
@@ -953,13 +927,14 @@ export function createRouter<
 
         match.load(loaderOpts)
 
-        if (match.status !== 'success' && match.__.loadPromise) {
+        if (match.store.status !== 'success' && match.__.loadPromise) {
           // Wait for the first sign of activity from the match
           await match.__.loadPromise
         }
       })
 
-      router.notify()
+      // TODO: make sure this stuff above is triggering effects
+      // router.notify()
 
       await Promise.all(matchPromises)
     },
@@ -970,9 +945,9 @@ export function createRouter<
           (await routeMatch.options.loader?.({
             // parentLoaderPromise: routeMatch.parentMatch?.__.dataPromise,
             params: routeMatch.params,
-            search: routeMatch.routeSearch,
+            search: routeMatch.store.routeSearch,
             signal: routeMatch.__.abortController.signal,
-          })) ?? {}
+          })) || {}
         )
       } else {
         const next = router.buildNext({
@@ -1013,14 +988,13 @@ export function createRouter<
       const unloadedMatchIds = router
         .matchRoutes(next.pathname)
         .map((d) => d.matchId)
-      ;[
-        ...router.state.currentMatches,
-        ...(router.state.pendingMatches ?? []),
-      ].forEach((match) => {
-        if (unloadedMatchIds.includes(match.matchId)) {
-          match.invalidate()
-        }
-      })
+      ;[...store.currentMatches, ...(store.pendingMatches ?? [])].forEach(
+        (match) => {
+          if (unloadedMatchIds.includes(match.matchId)) {
+            match.invalidate()
+          }
+        },
+      )
     },
 
     reload: () =>
@@ -1047,13 +1021,13 @@ export function createRouter<
       const next = router.buildNext(location)
 
       if (opts?.pending) {
-        if (!router.state.pendingLocation) {
+        if (!store.pendingLocation) {
           return false
         }
 
         return !!matchPathname(
           router.basepath,
-          router.state.pendingLocation.pathname,
+          store.pendingLocation.pathname,
           {
             ...opts,
             to: next.pathname,
@@ -1061,14 +1035,10 @@ export function createRouter<
         )
       }
 
-      return !!matchPathname(
-        router.basepath,
-        router.state.currentLocation.pathname,
-        {
-          ...opts,
-          to: next.pathname,
-        },
-      )
+      return !!matchPathname(router.basepath, store.currentLocation.pathname, {
+        ...opts,
+        to: next.pathname,
+      })
     },
 
     navigate: async ({ from, to = '.', search, hash, replace, params }) => {
@@ -1147,14 +1117,13 @@ export function createRouter<
         userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
       // Compare path/hash for matches
-      const pathIsEqual =
-        router.state.currentLocation.pathname === next.pathname
-      const currentPathSplit = router.state.currentLocation.pathname.split('/')
+      const pathIsEqual = store.currentLocation.pathname === next.pathname
+      const currentPathSplit = store.currentLocation.pathname.split('/')
       const nextPathSplit = next.pathname.split('/')
       const pathIsFuzzyEqual = nextPathSplit.every(
         (d, i) => d === currentPathSplit[i],
       )
-      const hashIsEqual = router.state.currentLocation.hash === next.hash
+      const hashIsEqual = store.currentLocation.hash === next.hash
       // Combine the matches based on user options
       const pathTest = activeOptions?.exact ? pathIsEqual : pathIsFuzzyEqual
       const hashTest = activeOptions?.includeHash ? hashIsEqual : true
@@ -1324,8 +1293,8 @@ export function createRouter<
 
       buildLocation: (dest: BuildNextOptions = {}): Location => {
         const fromPathname = dest.fromCurrent
-          ? router.state.latestLocation.pathname
-          : dest.from ?? router.state.latestLocation.pathname
+          ? store.latestLocation.pathname
+          : dest.from ?? store.latestLocation.pathname
 
         let pathname = resolvePath(
           router.basepath ?? '/',
@@ -1333,12 +1302,9 @@ export function createRouter<
           `${dest.to ?? '.'}`,
         )
 
-        const fromMatches = router.matchRoutes(
-          router.state.latestLocation.pathname,
-          {
-            strictParseParams: true,
-          },
-        )
+        const fromMatches = router.matchRoutes(store.latestLocation.pathname, {
+          strictParseParams: true,
+        })
 
         const toMatches = router.matchRoutes(pathname)
 
@@ -1364,9 +1330,9 @@ export function createRouter<
         const preFilteredSearch = dest.__preSearchFilters?.length
           ? dest.__preSearchFilters.reduce(
               (prev, next) => next(prev),
-              router.state.latestLocation.search,
+              store.latestLocation.search,
             )
-          : router.state.latestLocation.search
+          : store.latestLocation.search
 
         // Then the link/navigate function
         const destSearch =
@@ -1387,22 +1353,22 @@ export function createRouter<
           : destSearch
 
         const search = replaceEqualDeep(
-          router.state.latestLocation.search,
+          store.latestLocation.search,
           postFilteredSearch,
         )
 
         const searchStr = router.options.stringifySearch(search)
         let hash =
           dest.hash === true
-            ? router.state.latestLocation.hash
-            : functionalUpdate(dest.hash!, router.state.latestLocation.hash)
+            ? store.latestLocation.hash
+            : functionalUpdate(dest.hash!, store.latestLocation.hash)
         hash = hash ? `#${hash}` : ''
 
         return {
           pathname,
           search,
           searchStr,
-          state: router.state.latestLocation.state,
+          state: store.latestLocation.state,
           hash,
           href: `${pathname}${searchStr}${hash}`,
           key: dest.key,
@@ -1472,6 +1438,8 @@ export function createRouter<
   // Allow frameworks to hook into the router creation
   router.options.createRouter?.(router)
 
+  const dispose = createRoot(() => {})
+
   return router
 }
 
@@ -1479,15 +1447,14 @@ function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
 }
 
-function cascadeLoaderData(matches: RouteMatch<any, any>[]) {
+function linkMatches(matches: RouteMatch<any, any>[]) {
   matches.forEach((match, index) => {
     const parent = matches[index - 1]
 
     if (parent) {
-      match.loaderData = replaceEqualDeep(match.loaderData, {
-        ...parent.loaderData,
-        ...match.routeLoaderData,
-      })
+      match.__.setParentMatch(parent)
+    } else {
+      match.__.setParentMatch(undefined)
     }
   })
 }
