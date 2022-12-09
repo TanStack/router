@@ -30,7 +30,7 @@ body:
       description: |
         Which website or app were you using when the bug happened?
         Note:
-        - Please provide a link via our [pre-configured project](stackblitz.com/github/tanstack/router/tree/beta/examples/react/quickstart?file=src%2Fmain.tsx) or a link to a repo that can reproduce the issue.
+        - Please provide a link via our pre-configured [Stackblitz project](https://stackblitz.com/github/tanstack/router/tree/beta/examples/react/quickstart?file=src%2Fmain.tsx) or a link to a repo that can reproduce the issue.
         - Your bug will may get fixed much faster if we can run your code and it doesn't have dependencies other than the `react-router` npm package / dependency.
         - To create a shareable code example you can use Stackblitz. Please no localhost URLs.
         - Please read these tips for providing a minimal example: https://stackoverflow.com/help/mcve.
