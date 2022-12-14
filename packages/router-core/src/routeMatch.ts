@@ -8,8 +8,8 @@ import {
   RouteInfo,
 } from './routeInfo'
 import { Router } from './router'
-import { batch, createMemo, createStore } from '@solidjs/reactivity'
-import { Expand, replaceEqualDeep } from './utils'
+import { batch, createStore } from '@solidjs/reactivity'
+import { Expand, sharedClone } from './utils'
 
 export interface RouteMatchStore<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
@@ -66,8 +66,6 @@ export interface RouteMatch<
         }) => void)
     abortController: AbortController
     latestId: string
-    // setParentMatch: (parentMatch: RouteMatch) => void
-    // addChildMatch: (childMatch: RouteMatch) => void
     validate: () => void
     resolve: () => void
   }
@@ -102,15 +100,13 @@ export function createRouteMatch<
     status: 'idle',
     routeLoaderData: {} as TRouteInfo['routeLoaderData'],
     get loaderData(): TRouteInfo['loaderData'] {
-      const cached = replaceEqualDeep(cachedLoaderData, {
+      const cached = sharedClone(cachedLoaderData, {
         ...store.parentMatch?.store.loaderData,
         ...store.routeLoaderData,
       }) as TRouteInfo['loaderData']
 
       cachedLoaderData = cached
-
       return cached
-      // return loaderData()
     },
     isFetching: false,
     invalid: false,
@@ -120,14 +116,6 @@ export function createRouteMatch<
       return this.invalid || this.invalidAt < now
     },
   })
-
-  // const loaderData = createMemo(
-  //   () =>
-  //     replaceEqualDeep(store.loaderData, {
-  //       ...store.parentMatch?.store.loaderData,
-  //       ...store.routeLoaderData,
-  //     }) as TRouteInfo['loaderData'],
-  // )
 
   const routeMatch: RouteMatch<TAllRouteInfo, TRouteInfo> = {
     ...route,
@@ -145,9 +133,6 @@ export function createRouteMatch<
       abortController: new AbortController(),
       latestId: '',
       resolve: () => {},
-      // notify: () => {
-      //   routeMatch.router.notify() TODO: ????
-      // },
       validate: () => {
         // Validate the search params and stabilize them
         const parentSearch =
@@ -161,7 +146,7 @@ export function createRouteMatch<
               ? routeMatch.options.validateSearch.parse
               : routeMatch.options.validateSearch
 
-          let nextSearch = replaceEqualDeep(
+          let nextSearch = sharedClone(
             prevSearch,
             validator?.(parentSearch) ?? {},
           )
@@ -175,7 +160,7 @@ export function createRouteMatch<
             // TODO: Alright, do we need batch() here?
             setStore((s) => {
               s.routeSearch = nextSearch
-              s.search = replaceEqualDeep(parentSearch, {
+              s.search = sharedClone(parentSearch, {
                 ...parentSearch,
                 ...nextSearch,
               })
@@ -305,7 +290,7 @@ export function createRouteMatch<
 
               setStore(
                 (s) =>
-                  (s.routeLoaderData = replaceEqualDeep(
+                  (s.routeLoaderData = sharedClone(
                     store.routeLoaderData,
                     data,
                   )),

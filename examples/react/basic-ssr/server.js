@@ -14,8 +14,6 @@ export async function createServer(
   isProd = process.env.NODE_ENV === 'production',
   hmrPort,
 ) {
-  const resolve = (p) => path.resolve(__dirname, p)
-
   const app = express()
 
   /**
@@ -46,11 +44,6 @@ export async function createServer(
     app.use(vite.middlewares)
   } else {
     app.use((await import('compression')).default())
-    // app.use(
-    //   (await import('serve-static')).default(resolve('dist/client'), {
-    //     index: false,
-    //   }),
-    // )
   }
 
   app.use('*', async (req, res) => {

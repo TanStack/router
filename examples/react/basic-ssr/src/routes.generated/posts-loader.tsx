@@ -1,3 +1,4 @@
+import { useMatch } from '@tanstack/react-router';
 import { PostType } from './posts/$postId';
 async function fetchPosts() {
   console.log('Fetching posts...');

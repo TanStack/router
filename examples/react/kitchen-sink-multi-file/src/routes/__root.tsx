@@ -1,12 +1,16 @@
 import * as React from 'react'
-import { createRouteConfig, Link, Outlet } from '@tanstack/react-router'
-import { router } from '../router'
+import {
+  createRouteConfig,
+  Link,
+  Outlet,
+  useRouterStore,
+} from '@tanstack/react-router'
 import { Spinner } from '../components/Spinner'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 export const rootRoute = createRouteConfig({
   component: () => {
-    const routerState = router.useState()
+    const routerStore = useRouterStore()
 
     return (
       <>
@@ -16,7 +20,7 @@ export const rootRoute = createRouteConfig({
             {/* Show a global spinner when the router is transitioning */}
             <div
               className={`text-3xl duration-300 delay-0 opacity-0 ${
-                routerState.status === 'loading' || routerState.isFetching
+                routerStore.status === 'loading' || routerStore.isFetching
                   ? ` duration-1000 opacity-40`
                   : ''
               }`}

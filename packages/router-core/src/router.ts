@@ -43,19 +43,14 @@ import {
 } from './routeInfo'
 import { createRouteMatch, RouteMatch, RouteMatchStore } from './routeMatch'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
-import {
-  createRoot,
-  createStore,
-  batch,
-  SetStoreFunction,
-} from '@solidjs/reactivity'
+import { createStore, batch, SetStoreFunction } from '@solidjs/reactivity'
 import {
   functionalUpdate,
   last,
   pick,
   PickAsRequired,
   PickRequired,
-  replaceEqualDeep,
+  sharedClone,
   Timeout,
   Updater,
 } from './utils'
@@ -134,9 +129,6 @@ export interface RouterOptions<
   loadComponent?: (
     component: GetFrameworkGeneric<'Component'>,
   ) => Promise<GetFrameworkGeneric<'Component'>>
-  // renderComponent?: (
-  //   component: GetFrameworkGeneric<'Component'>,
-  // ) => GetFrameworkGeneric<'Element'>
 }
 
 export interface Action<
@@ -202,7 +194,7 @@ export interface LoaderState<
   loaderContext: LoaderContext<TFullSearchSchema, TAllParams>
 }
 
-export interface RouterState<
+export interface RouterStore<
   TSearchObj extends AnySearchSchema = {},
   TState extends LocationState = LocationState,
 > {
@@ -262,7 +254,7 @@ type LinkCurrentTargetElement = {
 
 export interface DehydratedRouterState
   extends Pick<
-    RouterState,
+    RouterStore,
     'status' | 'latestLocation' | 'currentLocation' | 'lastUpdated'
   > {
   currentMatches: DehydratedRouteMatch[]
@@ -270,7 +262,7 @@ export interface DehydratedRouterState
 
 export interface DehydratedRouter<TRouterContext = unknown> {
   // location: Router['__location']
-  state: DehydratedRouterState
+  store: DehydratedRouterState
   context: TRouterContext
 }
 
@@ -280,7 +272,7 @@ interface DehydratedRouteMatch {
   matchId: string
   store: Pick<
     RouteMatchStore<any, any>,
-    'status' | 'routeLoaderData' | 'loaderData' | 'isInvalid' | 'invalidAt'
+    'status' | 'routeLoaderData' | 'isInvalid' | 'invalidAt'
   >
 }
 
@@ -298,26 +290,19 @@ export interface Router<
   }
 
   // Public API
-  history: BrowserHistory | MemoryHistory | HashHistory
+  // history: BrowserHistory | MemoryHistory | HashHistory
   options: PickAsRequired<
     RouterOptions<TRouteConfig, TRouterContext>,
     'stringifySearch' | 'parseSearch' | 'context'
   >
-  // Computed in this.update()
+  store: RouterStore<TAllRouteInfo['fullSearchSchema']>
+  setStore: SetStoreFunction<RouterStore<TAllRouteInfo['fullSearchSchema']>>
   basepath: string
   // __location: Location<TAllRouteInfo['fullSearchSchema']>
-  navigateTimeout?: Timeout
-  nextAction?: 'push' | 'replace'
-  store: RouterState<TAllRouteInfo['fullSearchSchema']>
-  setStore: SetStoreFunction<RouterState<TAllRouteInfo['fullSearchSchema']>>
   routeTree: Route<TAllRouteInfo, RouteInfo>
   routesById: RoutesById<TAllRouteInfo>
-  navigationPromise?: Promise<void>
-  startedLoadingAt: number
-  resolveNavigation: () => void
   reset: () => void
   mount: () => () => void
-  onFocus: () => void
   update: <
     TRouteConfig extends RouteConfig = RouteConfig,
     TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
@@ -376,6 +361,12 @@ export interface Router<
   dehydrate: () => DehydratedRouter<TRouterContext>
   hydrate: (dehydratedRouter: DehydratedRouter<TRouterContext>) => void
   __: {
+    navigateTimeout?: Timeout
+    nextAction?: 'push' | 'replace'
+    navigationPromise?: Promise<void>
+    startedLoadingAt: number
+    resolveNavigation: () => void
+    onFocus: () => void
     buildRouteTree: (
       routeConfig: RouteConfig,
     ) => Route<TAllRouteInfo, AnyRouteInfo>
@@ -399,7 +390,7 @@ const isServer =
 const createDefaultHistory = () =>
   isServer ? createMemoryHistory() : createBrowserHistory()
 
-function getInitialRouterState(): RouterState {
+function getInitialRouterState(): RouterStore {
   return {
     status: 'idle',
     latestLocation: null!,
@@ -432,9 +423,7 @@ export function createRouter<
 >(
   userOptions?: RouterOptions<TRouteConfig, TRouterContext>,
 ): Router<TRouteConfig, TAllRouteInfo, TRouterContext> {
-  const history = userOptions?.history || createDefaultHistory()
-
-  let destroy = () => {}
+  let history = userOptions?.history || createDefaultHistory()
 
   const originalOptions = {
     defaultLoaderGcMaxAge: 5 * 60 * 1000,
@@ -447,36 +436,31 @@ export function createRouter<
     parseSearch: userOptions?.parseSearch ?? defaultParseSearch,
   }
 
-  const [store, setStore] = createStore<RouterState>(getInitialRouterState())
+  const [store, setStore] = createStore<RouterStore>(getInitialRouterState())
 
   const router: Router<TRouteConfig, TAllRouteInfo, TRouterContext> = {
     types: undefined!,
 
     // public api
-    history,
+    // history,
+    store,
+    setStore,
     options: originalOptions,
-    // Resolved after construction
     basepath: '',
     routeTree: undefined!,
     routesById: {} as any,
-    //
-    resolveNavigation: () => {},
-    store,
-    setStore,
+
     reset: () => {
       setStore((s) => Object.assign(s, getInitialRouterState()))
     },
-    startedLoadingAt: Date.now(),
+
     getRoute: (id) => {
       return router.routesById[id]
     },
-    // notify: (): void => {
-    //   linkMatches(store.currentMatches) // TODO: this needs to be computed
-    // },
 
     dehydrate: () => {
       return {
-        state: {
+        store: {
           ...pick(store, [
             'latestLocation',
             'currentLocation',
@@ -488,7 +472,6 @@ export function createRouter<
             store: pick(match.store, [
               'status',
               'routeLoaderData',
-              'loaderData',
               'isInvalid',
               'invalidAt',
             ]),
@@ -503,72 +486,71 @@ export function createRouter<
         // Update the context TODO: make this part of state???
         router.options.context = dehydratedRouter.context
 
-        Object.assign(s, dehydratedRouter.state)
-
         // Match the routes
         const currentMatches = router.matchRoutes(s.latestLocation.pathname, {
           strictParseParams: true,
         })
 
         currentMatches.forEach((match, index) => {
-          const dehydratedMatch = dehydratedRouter.state.currentMatches[index]
+          const dehydratedMatch = dehydratedRouter.store.currentMatches[index]
           invariant(
-            dehydratedMatch,
-            'Oh no! Dehydrated route matches did not match the active state of the router 😬',
+            dehydratedMatch && dehydratedMatch.matchId === match.matchId,
+            'Oh no! There was a hydration mismatch when attempting to restore the state of the router! 😬',
           )
           Object.assign(match, dehydratedMatch)
         })
 
         currentMatches.forEach((match) => match.__.validate())
 
-        s.currentMatches = currentMatches
+        Object.assign(s, { ...dehydratedRouter.store, currentMatches })
       })
     },
 
     mount: () => {
-      // If the router matches are empty, load the matches
-      if (!store.currentMatches.length) {
-        router.load()
-      }
-
-      const unsub = router.history.listen((event) => {
-        router.load(
-          router.__.parseLocation(event.location, store.latestLocation),
-        )
-      })
-
-      // addEventListener does not exist in React Native, but window does
-      // In the future, we might need to invert control here for more adapters
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (!isServer && window.addEventListener) {
-        // Listen to visibillitychange and focus
-        window.addEventListener('visibilitychange', router.onFocus, false)
-        window.addEventListener('focus', router.onFocus, false)
-      }
-
-      return () => {
-        unsub()
-        if (!isServer && window.removeEventListener) {
-          // Be sure to unsubscribe if a new handler is set
-          window.removeEventListener('visibilitychange', router.onFocus)
-          window.removeEventListener('focus', router.onFocus)
+      // Mount only does anything on the client
+      if (!isServer) {
+        // If the router matches are empty, load the matches
+        if (!store.currentMatches.length) {
+          router.load()
         }
-        destroy()
-      }
-    },
 
-    onFocus: () => {
-      router.load()
+        const unsub = history.listen((event) => {
+          // const unsub = router.history.listen((event) => {
+          router.load(
+            router.__.parseLocation(event.location, store.latestLocation),
+          )
+        })
+
+        // addEventListener does not exist in React Native, but window does
+        // In the future, we might need to invert control here for more adapters
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (window.addEventListener) {
+          // Listen to visibillitychange and focus
+          window.addEventListener('visibilitychange', router.__.onFocus, false)
+          window.addEventListener('focus', router.__.onFocus, false)
+        }
+
+        return () => {
+          unsub()
+          if (window.removeEventListener) {
+            // Be sure to unsubscribe if a new handler is set
+            window.removeEventListener('visibilitychange', router.__.onFocus)
+            window.removeEventListener('focus', router.__.onFocus)
+          }
+        }
+      }
+
+      return () => {}
     },
 
     update: (opts) => {
-      const newHistory = opts?.history !== router.history
+      const newHistory = opts?.history !== history
       if (!store.latestLocation || newHistory) {
         if (opts?.history) {
-          router.history = opts.history
+          history = opts.history
         }
         setStore((s) => {
-          s.latestLocation = router.__.parseLocation(router.history.location)
+          s.latestLocation = router.__.parseLocation(history.location)
           s.currentLocation = s.latestLocation
         })
       }
@@ -598,7 +580,7 @@ export function createRouter<
     load: async (next?: Location) => {
       let now = Date.now()
       const startedAt = now
-      router.startedLoadingAt = startedAt
+      router.__.startedLoadingAt = startedAt
 
       // Cancel any pending matches
       router.cancelMatches()
@@ -620,14 +602,8 @@ export function createRouter<
 
         setStore((s) => {
           s.status = 'loading'
-
-          if (typeof document !== 'undefined') {
-            s.pendingMatches = matches
-            s.pendingLocation = store.latestLocation
-          } else {
-            s.currentMatches = matches
-            s.currentLocation = store.latestLocation
-          }
+          s.pendingMatches = matches
+          s.pendingLocation = store.latestLocation
         })
       })
 
@@ -642,9 +618,9 @@ export function createRouter<
         )
       }
 
-      if (router.startedLoadingAt !== startedAt) {
+      if (router.__.startedLoadingAt !== startedAt) {
         // Ignore side-effects of outdated side-effects
-        return router.navigationPromise
+        return router.__.navigationPromise
       }
 
       const previousMatches = store.currentMatches
@@ -706,7 +682,7 @@ export function createRouter<
         delete store.matchCache[d.matchId]
       })
 
-      if (router.startedLoadingAt !== startedAt) {
+      if (router.__.startedLoadingAt !== startedAt) {
         // Ignore side-effects of match loading
         return
       }
@@ -730,7 +706,7 @@ export function createRouter<
         })
       })
 
-      router.resolveNavigation()
+      router.__.resolveNavigation()
     },
 
     cleanMatchCache: () => {
@@ -932,9 +908,6 @@ export function createRouter<
           await match.__.loadPromise
         }
       })
-
-      // TODO: make sure this stuff above is triggering effects
-      // router.notify()
 
       await Promise.all(matchPromises)
     },
@@ -1145,7 +1118,7 @@ export function createRouter<
             router.invalidateRoute(nextOpts)
           }
 
-          // All is well? Navigate!)
+          // All is well? Navigate!
           router.__.navigate(nextOpts)
         }
       }
@@ -1231,6 +1204,11 @@ export function createRouter<
     },
 
     __: {
+      resolveNavigation: () => {},
+      startedLoadingAt: Date.now(),
+      onFocus: () => {
+        router.load()
+      },
       buildRouteTree: (rootRouteConfig: RouteConfig) => {
         const recurseRoutes = (
           routeConfigs: RouteConfig[],
@@ -1278,7 +1256,7 @@ export function createRouter<
         return {
           pathname: location.pathname,
           searchStr: location.search,
-          search: replaceEqualDeep(previousLocation?.search, parsedSearch),
+          search: sharedClone(previousLocation?.search, parsedSearch),
           hash: location.hash.split('#').reverse()[0] ?? '',
           href: `${location.pathname}${location.search}${location.hash}`,
           state: location.state as LocationState,
@@ -1352,7 +1330,7 @@ export function createRouter<
             )
           : destSearch
 
-        const search = replaceEqualDeep(
+        const search = sharedClone(
           store.latestLocation.search,
           postFilteredSearch,
         )
@@ -1378,7 +1356,7 @@ export function createRouter<
       commitLocation: (next: Location, replace?: boolean): Promise<void> => {
         const id = '' + Date.now() + Math.random()
 
-        if (router.navigateTimeout) clearTimeout(router.navigateTimeout)
+        if (router.__.navigateTimeout) clearTimeout(router.__.navigateTimeout)
 
         let nextAction: 'push' | 'replace' = 'replace'
 
@@ -1393,42 +1371,26 @@ export function createRouter<
           nextAction = 'replace'
         }
 
-        if (nextAction === 'replace') {
-          history.replace(
-            {
-              pathname: next.pathname,
-              hash: next.hash,
-              search: next.searchStr,
-            },
-            {
-              id,
-              ...next.state,
-            },
-          )
-        } else {
-          history.push(
-            {
-              pathname: next.pathname,
-              hash: next.hash,
-              search: next.searchStr,
-            },
-            {
-              id,
-            },
-          )
-        }
+        history[nextAction](
+          {
+            pathname: next.pathname,
+            hash: next.hash,
+            search: next.searchStr,
+          },
+          {
+            id,
+            ...next.state,
+          },
+        )
 
-        router.navigationPromise = new Promise((resolve) => {
-          const previousNavigationResolve = router.resolveNavigation
+        return (router.__.navigationPromise = new Promise((resolve) => {
+          const previousNavigationResolve = router.__.resolveNavigation
 
-          router.resolveNavigation = () => {
+          router.__.resolveNavigation = () => {
             previousNavigationResolve()
             resolve()
-            delete router.navigationPromise
           }
-        })
-
-        return router.navigationPromise
+        }))
       },
     },
   }
@@ -1437,8 +1399,6 @@ export function createRouter<
 
   // Allow frameworks to hook into the router creation
   router.options.createRouter?.(router)
-
-  const dispose = createRoot(() => {})
 
   return router
 }

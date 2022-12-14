@@ -1,7 +1,6 @@
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
-import isbot from 'isbot'
 import jsesc from 'jsesc'
 import { ServerResponse } from 'http'
 import { createRouter } from './router'
@@ -23,7 +22,7 @@ async function getRouter(opts: { url: string }) {
     history: memoryHistory,
   })
 
-  router.mount()() // and unsubscribe immediately
+  await router.load()
 
   return router
 }
@@ -31,15 +30,13 @@ async function getRouter(opts: { url: string }) {
 export async function load(opts: { url: string }) {
   const router = await getRouter(opts)
 
-  await router.load()
-
   const search = router.store.currentLocation.search as {
     __data: { matchId: string }
   }
 
   return router.store.currentMatches.find(
     (d) => d.matchId === search.__data.matchId,
-  )?.routeLoaderData
+  )?.store.routeLoaderData
 }
 
 export async function render(opts: {
@@ -50,9 +47,8 @@ export async function render(opts: {
 }) {
   const router = await getRouter(opts)
 
-  await router.load()
-
   const routerState = router.dehydrate()
+
   const routerStateScript = `<script>
     window.__TANSTACK_ROUTER_STATE__ = JSON.parse(${jsesc(
       JSON.stringify(routerState),

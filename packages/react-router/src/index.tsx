@@ -1,7 +1,7 @@
 import * as React from 'react'
 
 import { useSyncExternalStore } from 'use-sync-external-store/shim'
-import { createEffect, createRoot, unwrap } from '@solidjs/reactivity'
+import { createEffect, createRoot, untrack, unwrap } from '@solidjs/reactivity'
 
 import {
   AnyRoute,
@@ -10,10 +10,10 @@ import {
   Route,
   RegisteredAllRouteInfo,
   RegisteredRouter,
-  RouterState,
+  RouterStore,
   ToIdOption,
   last,
-  replaceEqualDeep,
+  sharedClone,
 } from '@tanstack/router-core'
 import {
   warning,
@@ -149,7 +149,7 @@ declare module '@tanstack/router-core' {
     TRouteConfig extends AnyRouteConfig = RouteConfig,
     TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
   > {
-    useState: () => RouterState
+    useStore: <T = RouterStore>(selector?: (state: Router['store']) => T) => T
     useRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
       routeId: TId,
     ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
@@ -232,37 +232,46 @@ export type MatchesProviderProps = {
   children: React.ReactNode
 }
 
-export function MatchesProvider(props: MatchesProviderProps) {
-  return <matchesContext.Provider {...props} />
-}
+const EMPTY = {}
 
-const empty = {}
-export const __useStoreValue = <T,>(fn: () => T, label?: string): T => {
-  const prevRef = React.useRef<T | typeof empty>(empty)
+export const __useStoreValue = <TSeed, TReturn>(
+  seed: () => TSeed,
+  selector?: (seed: TSeed) => TReturn,
+): TReturn => {
+  const valueRef = React.useRef<TReturn>(EMPTY as any)
 
-  const getSnapshot = () => {
-    const unwrapped = unwrap(fn())
-    if (prevRef.current === empty) {
-      prevRef.current = unwrapped
-      return unwrapped
-    }
-    const value = replaceEqualDeep(prevRef.current ?? unwrapped, unwrapped)
-    prevRef.current = value
-    return value
+  // If there is no selector, track the seed
+  // If there is a selector, do not track the seed
+  const getValue = () =>
+    (!selector
+      ? unwrap(seed())
+      : selector(untrack(() => unwrap(seed())))) as TReturn
+
+  // If empty, initialize the value
+  if (valueRef.current === EMPTY) {
+    valueRef.current = sharedClone(undefined, getValue())
   }
 
-  return useSyncExternalStore(
-    (cb) => {
-      return createRoot(() => {
-        createEffect(() => {
-          trackRecursively(fn())
-          cb()
-        })
+  // Snapshot should just return the current cached value
+  const getSnapshot = React.useCallback(() => valueRef.current, [])
+
+  const getStore = React.useCallback((cb: () => void) => {
+    // A root is necessary to track effects
+    return createRoot(() => {
+      createEffect(() => {
+        // Read and update the value
+        // getValue will handle which values are acccessed and
+        // thus tracked.
+        // sharedClone will both recursively track the end result
+        // and ensure that the previous value is structurally shared
+        // into the new version.
+        valueRef.current = sharedClone(valueRef.current, getValue())
+        cb()
       })
-    },
-    getSnapshot,
-    getSnapshot,
-  )
+    })
+  }, [])
+
+  return useSyncExternalStore(getStore, getSnapshot, getSnapshot)
 }
 
 export function createReactRouter<
@@ -440,12 +449,13 @@ export function createReactRouter<
   const coreRouter = createRouter<TRouteConfig>({
     ...opts,
     createRouter: (router: Router<any, any, any>) => {
-      const routerExt: Pick<Router<any, any, any>, 'useMatch' | 'useState'> = {
-        useState: () => {
-          return __useStoreValue(() => router.store)
+      const routerExt: Pick<Router<any, any, any>, 'useMatch' | 'useStore'> = {
+        useStore: <T,>(selector?: (store: Router['store']) => T) => {
+          return __useStoreValue(() => router.store, selector)
         },
         useMatch: (routeId, opts) => {
           const nearestMatch = useNearestMatch()
+
           const match = router.store.currentMatches.find(
             (d) => d.routeId === routeId,
           )
@@ -516,35 +526,33 @@ export function RouterProvider<
 }: RouterProps<TRouteConfig, TAllRouteInfo, TRouterContext>) {
   router.update(rest)
 
-  __useStoreValue(() => router.store, 'store')
+  const [, , currentMatches] = __useStoreValue(
+    () => router.store,
+    (s) => [s.status, s.pendingMatches, s.currentMatches],
+  )
 
-  React.useEffect(() => {
-    return router.mount()
-  }, [router])
-
-  console.log(router.store.status, router.store.currentMatches)
+  React.useEffect(router.mount, [router])
 
   return (
     <>
       <routerContext.Provider value={{ router: router as any }}>
-        <MatchesProvider value={[undefined!, ...router.store.currentMatches]}>
+        <matchesContext.Provider value={[undefined!, ...currentMatches]}>
           <Outlet />
-        </MatchesProvider>
+        </matchesContext.Provider>
       </routerContext.Provider>
     </>
   )
 }
 
-function useRouterContext(): RegisteredRouter {
+export function useRouter(): RegisteredRouter {
   const value = React.useContext(routerContext)
   warning(!value, 'useRouter must be used inside a <Router> component!')
   return value.router
 }
 
-export function useRouter(): RegisteredRouter {
-  const router = useRouterContext()
-  __useStoreValue(() => router.store)
-  return router
+export function useRouterStore(): RegisteredRouter['store'] {
+  const router = useRouter()
+  return __useStoreValue(() => router.store)
 }
 
 export function useMatches(): RouteMatch[] {
@@ -568,7 +576,7 @@ export function useMatch<
           RegisteredAllRouteInfo['routeInfoById'][TId]
         >
       | undefined {
-  const router = useRouterContext()
+  const router = useRouter()
   const match = router.useMatch(routeId as any, opts) as any
   __useStoreValue(() => match?.store)
   return match
@@ -579,9 +587,8 @@ export function useNearestMatch(): RouteMatch<
   RouteInfo
 > {
   const runtimeMatch = useMatches()[0]
-
   invariant(runtimeMatch, `Could not find a nearest match!`)
-
+  __useStoreValue(() => runtimeMatch.store)
   return runtimeMatch as any
 }
 
@@ -590,42 +597,86 @@ export function useRoute<
 >(
   routeId: TId,
 ): Route<RegisteredAllRouteInfo, RegisteredAllRouteInfo['routeInfoById'][TId]> {
-  const router = useRouterContext()
+  const router = useRouter()
   return router.useRoute(routeId as any) as any
 }
 
-export function useSearch(): RegisteredAllRouteInfo['fullSearchSchema'] {
-  const router = useRouterContext()
-  return __useStoreValue(() => router.store.currentLocation.search)
+export function useLoaderData<
+  TId extends keyof RegisteredAllRouteInfo['routeInfoById'],
+  TStrict extends boolean = true,
+>(
+  routeId: TId,
+  opts?: { strict?: TStrict },
+): TStrict extends true
+  ? RegisteredAllRouteInfo['routeInfoById'][TId]['loaderData']
+  : RegisteredAllRouteInfo['routeInfoById'][TId]['loaderData'] | undefined {
+  const router = useRouter()
+  const match = router.useMatch(routeId as any, opts) as any
+  return __useStoreValue(() => match?.store.loaderData)
 }
 
-export function useParams(): RegisteredAllRouteInfo['allParams'] {
-  const router = useRouterContext()
-  return __useStoreValue(() => last(router.store.currentMatches)?.params as any)
+export function useSearch<T = RegisteredAllRouteInfo['fullSearchSchema']>(
+  selector?: (search: RegisteredAllRouteInfo['fullSearchSchema']) => T,
+): T {
+  const router = useRouter()
+  return __useStoreValue(() => router.store.currentLocation.search, selector)
+}
+
+export function useParams<T = RegisteredAllRouteInfo['allParams']>(
+  selector?: (params: RegisteredAllRouteInfo['allParams']) => T,
+): T {
+  const router = useRouter()
+  return __useStoreValue(
+    () => last(router.store.currentMatches)?.params as any,
+    selector,
+  )
 }
 
 export function linkProps<TTo extends string = '.'>(
   props: MakeLinkPropsOptions<RegisteredAllRouteInfo, '/', TTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
-  const router = useRouterContext()
+  const router = useRouter()
   return router.linkProps(props as any)
 }
 
 export function MatchRoute<TTo extends string = '.'>(
   props: MakeMatchRouteOptions<RegisteredAllRouteInfo, '/', TTo>,
 ): JSX.Element {
-  const router = useRouterContext()
+  const router = useRouter()
   return React.createElement(router.MatchRoute, props as any)
 }
 
 export function Outlet() {
-  const router = useRouterContext()
+  const router = useRouter()
   const matches = useMatches().slice(1)
   const match = matches[0]
 
   const defaultPending = React.useCallback(() => null, [])
 
   __useStoreValue(() => match?.store)
+
+  const Inner = React.useCallback((props: { match: RouteMatch }): any => {
+    if (props.match.store.status === 'error') {
+      throw props.match.store.error
+    }
+
+    if (props.match.store.status === 'success') {
+      return React.createElement(
+        (props.match.__.component as any) ??
+          router.options.defaultComponent ??
+          Outlet,
+      )
+    }
+
+    if (props.match.store.status === 'loading') {
+      throw props.match.__.loadPromise
+    }
+
+    invariant(
+      false,
+      'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
+    )
+  }, [])
 
   if (!match) {
     return null
@@ -639,29 +690,14 @@ export function Outlet() {
     match.__.errorComponent ?? router.options.defaultErrorComponent
 
   return (
-    <MatchesProvider value={matches}>
+    <matchesContext.Provider value={matches}>
       <React.Suspense fallback={<PendingComponent />}>
         <CatchBoundary
           key={match.routeId}
           errorComponent={errorComponent}
           match={match as any}
         >
-          {
-            ((): React.ReactNode => {
-              if (match.store.status === 'error') {
-                throw match.store.error
-              }
-
-              if (match.store.status === 'success') {
-                return React.createElement(
-                  (match.__.component as any) ??
-                    router.options.defaultComponent ??
-                    Outlet,
-                )
-              }
-              throw match.__.loadPromise
-            })() as JSX.Element
-          }
+          <Inner match={match} />
         </CatchBoundary>
       </React.Suspense>
       {/* Provide a suffix suspense boundary to make sure the router is
@@ -677,7 +713,7 @@ export function Outlet() {
           })()}
         </React.Suspense>
       ) : null} */}
-    </MatchesProvider>
+    </matchesContext.Provider>
   )
 }
 
@@ -724,7 +760,7 @@ function CatchBoundaryInner(props: {
   const [activeErrorState, setActiveErrorState] = React.useState(
     props.errorState,
   )
-  const router = useRouterContext()
+  const router = useRouter()
   const errorComponent = props.errorComponent ?? DefaultErrorBoundary
 
   React.useEffect(() => {
@@ -784,21 +820,22 @@ export function DefaultErrorBoundary({ error }: { error: any }) {
 }
 
 export function usePrompt(message: string, when: boolean | any): void {
-  const router = useRouterContext()
+  const router = useRouter()
 
   React.useEffect(() => {
     if (!when) return
 
-    let unblock = router.history.block((transition) => {
-      if (window.confirm(message)) {
-        unblock()
-        transition.retry()
-      } else {
-        router.store.currentLocation.pathname = window.location.pathname
-      }
-    })
+    // TODO: bring this back
+    // let unblock = router.history.block((transition) => {
+    //   if (window.confirm(message)) {
+    //     unblock()
+    //     transition.retry()
+    //   } else {
+    //     router.store.currentLocation.pathname = window.location.pathname
+    //   }
+    // })
 
-    return unblock
+    // return unblock
   }, [when, message])
 }
 
@@ -807,22 +844,19 @@ export function Prompt({ message, when, children }: PromptProps) {
   return (children ?? null) as React.ReactNode
 }
 
-export function trackRecursively<T>(obj: T): T {
-  // circularStringify(obj)
+function circularStringify(obj: any) {
   const seen = new Set()
-  function recurse(nested: any) {
-    if (seen.has(nested)) return
-    seen.add(nested)
-    if (Array.isArray(nested)) {
-      nested.forEach((item) => recurse(item)) as any
-    } else if (typeof nested === 'object' && nested !== null) {
-      Object.keys(nested).reduce((acc, key) => {
-        recurse(nested[key])
-      }, {} as any)
-    }
-  }
 
-  recurse(obj)
-
-  return obj
+  return (
+    JSON.stringify(obj, (_, value) => {
+      if (typeof value === 'function') {
+        return undefined
+      }
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) return
+        seen.add(value)
+      }
+      return value
+    }) || ''
+  )
 }

@@ -1,14 +1,11 @@
 import * as React from 'react';
-import { Outlet, useMatch } from '@tanstack/react-router';
+import { Link, Outlet, useLoaderData, useMatch } from '@tanstack/react-router';
 import { routeConfig } from '../routes.generated/posts';
 import { postspostIdRoute } from '../routes.generated/posts/$postId.client';
 function Posts() {
   const {
-    loaderData: {
-      posts
-    },
-    Link
-  } = useMatch(routeConfig.id);
+    posts
+  } = useLoaderData(routeConfig.id);
   return <div className="p-2 flex gap-2">
       <ul className="list-disc pl-4">
         {posts?.map(post => {

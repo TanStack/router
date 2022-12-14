@@ -42,7 +42,8 @@ const rootRoute = createRouteConfig({
           </Link>
         </div>
         <hr />
-        <Outlet /> Start rendering router matches
+        <Outlet />
+        {/* Start rendering router matches */}
         <TanStackRouterDevtools position="bottom-right" />
       </>
     )
