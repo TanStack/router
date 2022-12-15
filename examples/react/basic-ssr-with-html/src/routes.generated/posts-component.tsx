@@ -1,14 +1,7 @@
-import { lazy } from '@tanstack/react-router';
-import { routeConfig as parentRouteConfig } from "./__root";
 import * as React from 'react';
 import { Link, Outlet, useLoaderData, useMatch } from '@tanstack/react-router';
+import { routeConfig } from '../routes.generated/posts';
 import { postspostIdRoute } from '../routes.generated/posts/$postId.client';
-const routeConfig = parentRouteConfig.createRoute({
-  path: "posts",
-  component: Posts,
-  loader: (...args) => import('./posts-loader').then(d => d.loader.apply(d.loader, (args as any))),
-  errorComponent: () => 'Oh crap'
-});
 function Posts() {
   const {
     posts
@@ -31,4 +24,4 @@ function Posts() {
       <Outlet />
     </div>;
 }
-export { routeConfig };
+export const component = Posts;

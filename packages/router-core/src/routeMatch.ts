@@ -51,6 +51,8 @@ export interface RouteMatch<
   invalidate: () => void
   hasLoaders: () => boolean
   __: {
+    setLoaderData: (loaderData: TRouteInfo['routeLoaderData']) => void
+    updateLoaderData: () => void
     setParentMatch: (parentMatch?: RouteMatch) => void
     component?: GetFrameworkGeneric<'Component'>
     errorComponent?: GetFrameworkGeneric<'ErrorComponent'>
@@ -99,15 +101,7 @@ export function createRouteMatch<
     search: {} as any,
     status: 'idle',
     routeLoaderData: {} as TRouteInfo['routeLoaderData'],
-    get loaderData(): TRouteInfo['loaderData'] {
-      const cached = sharedClone(cachedLoaderData, {
-        ...store.parentMatch?.store.loaderData,
-        ...store.routeLoaderData,
-      }) as TRouteInfo['loaderData']
-
-      cachedLoaderData = cached
-      return cached
-    },
+    loaderData: {} as TRouteInfo['loaderData'],
     isFetching: false,
     invalid: false,
     invalidAt: Infinity,
@@ -125,9 +119,29 @@ export function createRouteMatch<
     router,
     childMatches: [],
     __: {
-      setParentMatch: (parentMatch?: RouteMatch) => {
+      setLoaderData: (loaderData) => {
+        batch(() => {
+          setStore((s) => {
+            s.routeLoaderData = sharedClone(s.routeLoaderData, loaderData)
+          })
+          routeMatch.__.updateLoaderData()
+        })
+      },
+      updateLoaderData: () => {
         setStore((s) => {
-          s.parentMatch = parentMatch
+          s.loaderData = sharedClone(s.loaderData, {
+            ...store.parentMatch?.store.loaderData,
+            ...s.routeLoaderData,
+          }) as TRouteInfo['loaderData']
+        })
+      },
+      setParentMatch: (parentMatch?: RouteMatch) => {
+        batch(() => {
+          setStore((s) => {
+            s.parentMatch = parentMatch
+          })
+
+          routeMatch.__.updateLoaderData()
         })
       },
       abortController: new AbortController(),
@@ -288,13 +302,7 @@ export function createRouteMatch<
               const data = await router.loadMatchData(routeMatch)
               await checkLatest()
 
-              setStore(
-                (s) =>
-                  (s.routeLoaderData = sharedClone(
-                    store.routeLoaderData,
-                    data,
-                  )),
-              )
+              routeMatch.__.setLoaderData(data)
             }
 
             setStore((s) => {

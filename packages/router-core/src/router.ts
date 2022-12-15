@@ -483,13 +483,16 @@ export function createRouter<
 
     hydrate: (dehydratedRouter) => {
       setStore((s) => {
-        // Update the context TODO: make this part of state???
+        // Update the context TODO: make this part of state?
         router.options.context = dehydratedRouter.context
 
         // Match the routes
-        const currentMatches = router.matchRoutes(s.latestLocation.pathname, {
-          strictParseParams: true,
-        })
+        const currentMatches = router.matchRoutes(
+          dehydratedRouter.store.latestLocation.pathname,
+          {
+            strictParseParams: true,
+          },
+        )
 
         currentMatches.forEach((match, index) => {
           const dehydratedMatch = dehydratedRouter.store.currentMatches[index]
@@ -515,7 +518,6 @@ export function createRouter<
         }
 
         const unsub = history.listen((event) => {
-          // const unsub = router.history.listen((event) => {
           router.load(
             router.__.parseLocation(event.location, store.latestLocation),
           )

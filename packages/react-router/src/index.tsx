@@ -41,40 +41,28 @@ import {
 
 export * from '@tanstack/router-core'
 
+export * from '@solidjs/reactivity'
+
 export type SyncRouteComponent<TProps = {}> = (
   props: TProps,
 ) => JSX.Element | React.ReactNode
 
 export type RouteComponent<TProps = {}> = SyncRouteComponent<TProps> & {
-  preload?: () => Promise<SyncRouteComponent<TProps>>
+  preload?: () => Promise<void>
 }
 
 export function lazy(
   importer: () => Promise<{ default: SyncRouteComponent }>,
 ): RouteComponent {
   const lazyComp = React.lazy(importer as any)
-  let promise: Promise<SyncRouteComponent>
-  let resolvedComp: SyncRouteComponent
+  let preloaded: Promise<SyncRouteComponent>
 
-  const forwardedComp = React.forwardRef((props, ref) => {
-    const resolvedCompRef = React.useRef(resolvedComp || lazyComp)
-    return React.createElement(
-      resolvedCompRef.current as any,
-      { ...(ref ? { ref } : {}), ...props } as any,
-    )
-  })
+  const finalComp = lazyComp as unknown as RouteComponent
 
-  const finalComp = forwardedComp as unknown as RouteComponent
-
-  finalComp.preload = () => {
-    if (!promise) {
-      promise = importer().then((module) => {
-        resolvedComp = module.default
-        return resolvedComp
-      })
+  finalComp.preload = async () => {
+    if (!preloaded) {
+      await importer()
     }
-
-    return promise
   }
 
   return finalComp
@@ -351,21 +339,23 @@ export function createReactRouter<
         } = linkInfo
 
         const reactHandleClick = (e: Event) => {
-          if (React.startTransition)
+          if (React.startTransition) {
             // This is a hack for react < 18
             React.startTransition(() => {
               handleClick(e)
             })
-          else handleClick(e)
+          } else {
+            handleClick(e)
+          }
         }
 
         const composeHandlers =
           (handlers: (undefined | ((e: any) => void))[]) =>
           (e: React.SyntheticEvent) => {
             if (e.persist) e.persist()
-            handlers.forEach((handler) => {
+            handlers.filter(Boolean).forEach((handler) => {
               if (e.defaultPrevented) return
-              if (handler) handler(e)
+              handler!(e)
             })
           }
 
@@ -382,10 +372,10 @@ export function createReactRouter<
           ...resolvedInactiveProps,
           ...rest,
           href: disabled ? undefined : next.href,
-          onClick: composeHandlers([reactHandleClick, onClick]),
-          onFocus: composeHandlers([handleFocus, onFocus]),
-          onMouseEnter: composeHandlers([handleEnter, onMouseEnter]),
-          onMouseLeave: composeHandlers([handleLeave, onMouseLeave]),
+          onClick: composeHandlers([onClick, reactHandleClick]),
+          onFocus: composeHandlers([onFocus, handleFocus]),
+          onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
+          onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
           target,
           style: {
             ...style,
@@ -496,9 +486,8 @@ export function createReactRouter<
       Object.assign(route, routeExt)
     },
     loadComponent: async (component) => {
-      if (component.preload && typeof document !== 'undefined') {
-        component.preload()
-        // return await component.preload()
+      if (component.preload) {
+        await component.preload()
       }
 
       return component as any
@@ -694,7 +683,7 @@ export function Outlet() {
       <React.Suspense fallback={<PendingComponent />}>
         <CatchBoundary
           key={match.routeId}
-          errorComponent={errorComponent}
+          errorComponent={() => 'hello'}
           match={match as any}
         >
           <Inner match={match} />
@@ -786,7 +775,7 @@ function CatchBoundaryInner(props: {
     props.reset()
   }, [props.errorState.error])
 
-  if (activeErrorState.error) {
+  if (props.errorState.error) {
     return React.createElement(errorComponent, activeErrorState)
   }
 

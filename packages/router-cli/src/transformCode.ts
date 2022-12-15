@@ -456,13 +456,20 @@ export async function generateRouteConfig(
                           )
                         }
 
+                        if (clientOnly) {
+                          return t.objectProperty(
+                            t.identifier(key),
+                            babel.template.expression(`
+                                lazy(() => import('./${path.relative(
+                                  node.genDir,
+                                  node.genPathNoExt,
+                                )}-${key}').then(d => ({ default: d.${key} }) ))`)(),
+                          )
+                        }
+
                         return t.objectProperty(
                           t.identifier(key),
-                          babel.template.expression(`
-                              lazy(() => import('./${path.relative(
-                                node.genDir,
-                                node.genPathNoExt,
-                              )}-${key}').then(d => ({ default: d.${key} }) ))`)(),
+                          property.value as any,
                         )
                       }
 

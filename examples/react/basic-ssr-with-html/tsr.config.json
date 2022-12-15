@@ -1,0 +1,6 @@
+{
+  "rootDirectory": ".",
+  "sourceDirectory": "./src/",
+  "routesDirectory": "./src/routes",
+  "routeGenDirectory": "./src/routes.generated"
+}

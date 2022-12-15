@@ -1,6 +1,6 @@
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import { createMemoryHistory } from '@tanstack/react-router'
+import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import jsesc from 'jsesc'
 import { ServerResponse } from 'http'
 import { createRouter } from './router'
@@ -8,7 +8,6 @@ import express from 'express'
 
 // index.js
 import './fetch-polyfill'
-import { App } from '.'
 
 async function getRouter(opts: { url: string }) {
   const router = createRouter()
@@ -64,11 +63,9 @@ export async function render(opts: {
     head: `${opts.head}${routerStateScript}`,
   }
 
-  router.update({
-    context,
-  })
-
-  const appHtml = ReactDOMServer.renderToString(<App router={router} />)
+  const appHtml = ReactDOMServer.renderToString(
+    <RouterProvider router={router} context={context} />,
+  )
 
   opts.res.statusCode = 200
   opts.res.setHeader('Content-Type', 'text/html')
