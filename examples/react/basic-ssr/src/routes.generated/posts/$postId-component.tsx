@@ -10,12 +10,6 @@ function Post() {
   const {
     post
   } = useLoaderData(routeConfig.id);
-  // const {
-  //   store: {
-  //     loaderData: { post },
-  //   },
-  // } = useMatch(routeConfig.id)
-
   return <div className="space-y-2">
       <h4 className="text-xl font-bold underline">{post.title}</h4>
       <div className="text-sm">{post.body}</div>

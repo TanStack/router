@@ -13,8 +13,6 @@ import './fetch-polyfill'
 async function getRouter(opts: { url: string }) {
   const router = createRouter()
 
-  router.reset()
-
   const memoryHistory = createMemoryHistory({
     initialEntries: [opts.url],
   })
@@ -22,8 +20,6 @@ async function getRouter(opts: { url: string }) {
   router.update({
     history: memoryHistory,
   })
-
-  router.mount()() // and unsubscribe immediately
 
   return router
 }
@@ -39,7 +35,7 @@ export async function load(opts: { url: string }) {
 
   return router.store.currentMatches.find(
     (d) => d.matchId === search.__data.matchId,
-  )?.routeLoaderData
+  )?.store.routeLoaderData
 }
 
 export async function render(opts: {

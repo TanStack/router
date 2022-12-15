@@ -27,11 +27,6 @@ routeConfig.generate({
 
 function Post() {
   const { post } = useLoaderData(routeConfig.id)
-  // const {
-  //   store: {
-  //     loaderData: { post },
-  //   },
-  // } = useMatch(routeConfig.id)
 
   return (
     <div className="space-y-2">
