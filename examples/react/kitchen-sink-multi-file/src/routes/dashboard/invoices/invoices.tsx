@@ -11,7 +11,7 @@ export const invoicesIndexRoute = invoicesRoute.createRoute({
 })
 
 function InvoicesHome() {
-  const { action } = useMatch(invoicesIndexRoute.id)
+  const { action } = useMatch({ from: invoicesIndexRoute.id })
 
   return (
     <>

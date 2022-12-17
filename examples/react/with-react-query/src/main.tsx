@@ -7,6 +7,7 @@ import {
   createRouteConfig,
   Link,
   useMatch,
+  useParams,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import {
@@ -75,8 +76,6 @@ const postsRoute = rootRoute.createRoute({
     return {}
   },
   component: () => {
-    const { Link } = useMatch('/posts')
-
     const postsQuery = usePosts()
 
     return (
@@ -128,8 +127,8 @@ const postRoute = postsRoute.createRoute({
     return {}
   },
   component: () => {
-    const { params } = useMatch('/posts/$postId')
-    const postQuery = usePost(params.postId)
+    const { postId } = useParams({ from: postRoute.id })
+    const postQuery = usePost(postId)
 
     return (
       <div className="space-y-2">

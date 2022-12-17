@@ -1,19 +1,16 @@
 import * as React from 'react'
 
 import { useSyncExternalStore } from 'use-sync-external-store/shim'
+import { createEffect, createRoot, untrack, unwrap } from '@solidjs/reactivity'
 
 import {
-  AnyRoute,
-  CheckId,
-  rootRouteId,
   Route,
   RegisteredAllRouteInfo,
   RegisteredRouter,
-  RouterState,
-  ToIdOption,
+  RouterStore,
   last,
-} from '@tanstack/router-core'
-import {
+  sharedClone,
+  Action,
   warning,
   RouterOptions,
   RouteMatch,
@@ -24,9 +21,7 @@ import {
   DefaultAllRouteInfo,
   functionalUpdate,
   createRouter,
-  AnyRouteInfo,
   AllRouteInfo,
-  RouteInfo,
   ValidFromPath,
   LinkOptions,
   RouteInfoByPath,
@@ -35,54 +30,42 @@ import {
   ToOptions,
   invariant,
   Router,
+  Expand,
 } from '@tanstack/router-core'
 
 export * from '@tanstack/router-core'
+
+export * from '@solidjs/reactivity'
 
 export type SyncRouteComponent<TProps = {}> = (
   props: TProps,
 ) => JSX.Element | React.ReactNode
 
 export type RouteComponent<TProps = {}> = SyncRouteComponent<TProps> & {
-  preload?: () => Promise<SyncRouteComponent<TProps>>
+  preload?: () => Promise<void>
 }
 
 export function lazy(
   importer: () => Promise<{ default: SyncRouteComponent }>,
 ): RouteComponent {
   const lazyComp = React.lazy(importer as any)
-  let promise: Promise<SyncRouteComponent>
-  let resolvedComp: SyncRouteComponent
+  let preloaded: Promise<SyncRouteComponent>
 
-  const forwardedComp = React.forwardRef((props, ref) => {
-    const resolvedCompRef = React.useRef(resolvedComp || lazyComp)
-    return React.createElement(
-      resolvedCompRef.current as any,
-      { ...(ref ? { ref } : {}), ...props } as any,
-    )
-  })
+  const finalComp = lazyComp as unknown as RouteComponent
 
-  const finalComp = forwardedComp as unknown as RouteComponent
-
-  finalComp.preload = () => {
-    if (!promise) {
-      promise = importer().then((module) => {
-        resolvedComp = module.default
-        return resolvedComp
-      })
+  finalComp.preload = async () => {
+    if (!preloaded) {
+      await importer()
     }
-
-    return promise
   }
 
   return finalComp
 }
 
 export type LinkPropsOptions<
-  TAllRouteInfo extends AnyAllRouteInfo,
-  TFrom extends ValidFromPath<TAllRouteInfo>,
-  TTo extends string,
-> = LinkOptions<TAllRouteInfo, TFrom, TTo> & {
+  TFrom extends RegisteredAllRouteInfo['routePaths'] = '/',
+  TTo extends string = '.',
+> = LinkOptions<RegisteredAllRouteInfo, TFrom, TTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   activeProps?:
     | React.AnchorHTMLAttributes<HTMLAnchorElement>
@@ -93,35 +76,36 @@ export type LinkPropsOptions<
     | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
 }
 
+export type MakeUseMatchRouteOptions<
+  TFrom extends RegisteredAllRouteInfo['routePaths'] = '/',
+  TTo extends string = '.',
+> = ToOptions<RegisteredAllRouteInfo, TFrom, TTo> & MatchRouteOptions
+
 export type MakeMatchRouteOptions<
-  TAllRouteInfo extends AnyAllRouteInfo,
-  TFrom extends ValidFromPath<TAllRouteInfo>,
-  TTo extends string,
-> = ToOptions<TAllRouteInfo, TFrom, TTo> &
+  TFrom extends RegisteredAllRouteInfo['routePaths'] = '/',
+  TTo extends string = '.',
+> = ToOptions<RegisteredAllRouteInfo, TFrom, TTo> &
   MatchRouteOptions & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
       | React.ReactNode
       | ((
           params: RouteInfoByPath<
-            TAllRouteInfo,
+            RegisteredAllRouteInfo,
             ResolveRelativePath<TFrom, NoInfer<TTo>>
           >['allParams'],
         ) => React.ReactNode)
   }
 
 export type MakeLinkPropsOptions<
-  TAllRouteInfo extends AnyAllRouteInfo,
-  TFrom extends ValidFromPath<TAllRouteInfo>,
-  TTo extends string,
-> = LinkPropsOptions<TAllRouteInfo, TFrom, TTo> &
-  React.AnchorHTMLAttributes<HTMLAnchorElement>
+  TFrom extends ValidFromPath<RegisteredAllRouteInfo> = '/',
+  TTo extends string = '.',
+> = LinkPropsOptions<TFrom, TTo> & React.AnchorHTMLAttributes<HTMLAnchorElement>
 
 export type MakeLinkOptions<
-  TAllRouteInfo extends AnyAllRouteInfo,
-  TFrom extends ValidFromPath<TAllRouteInfo>,
-  TTo extends string,
-> = LinkPropsOptions<TAllRouteInfo, TFrom, TTo> &
+  TFrom extends RegisteredAllRouteInfo['routePaths'] = '/',
+  TTo extends string = '.',
+> = LinkPropsOptions<TFrom, TTo> &
   React.AnchorHTMLAttributes<HTMLAnchorElement> &
   Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
@@ -142,65 +126,6 @@ declare module '@tanstack/router-core' {
   interface RouterOptions<TRouteConfig, TRouterContext> {
     // ssrFooter?: () => JSX.Element | React.ReactNode
   }
-
-  interface Router<
-    TRouteConfig extends AnyRouteConfig = RouteConfig,
-    TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
-  > {
-    useState: () => RouterState
-    useRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
-      routeId: TId,
-    ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
-    useMatch: <
-      TId extends keyof TAllRouteInfo['routeInfoById'],
-      TStrict extends boolean = true,
-    >(
-      routeId: TId,
-      opts?: { strict?: TStrict },
-    ) => TStrict extends true
-      ? RouteMatch<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
-      :
-          | RouteMatch<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]>
-          | undefined
-    linkProps: <TTo extends string = '.'>(
-      props: MakeLinkPropsOptions<TAllRouteInfo, '/', TTo>,
-    ) => React.AnchorHTMLAttributes<HTMLAnchorElement>
-    Link: <TTo extends string = '.'>(
-      props: MakeLinkOptions<TAllRouteInfo, '/', TTo>,
-    ) => JSX.Element
-    MatchRoute: <TTo extends string = '.'>(
-      props: MakeMatchRouteOptions<TAllRouteInfo, '/', TTo>,
-    ) => JSX.Element
-  }
-
-  interface Route<
-    TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-    TRouteInfo extends AnyRouteInfo = RouteInfo,
-  > {
-    useRoute: <
-      TTo extends string = '.',
-      TResolved extends string = ResolveRelativePath<
-        TRouteInfo['id'],
-        NoInfer<TTo>
-      >,
-    >(
-      routeId: CheckId<
-        TAllRouteInfo,
-        TResolved,
-        ToIdOption<TAllRouteInfo, TRouteInfo['id'], TTo>
-      >,
-      opts?: { strict?: boolean },
-    ) => Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TResolved]>
-    linkProps: <TTo extends string = '.'>(
-      props: MakeLinkPropsOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
-    ) => React.AnchorHTMLAttributes<HTMLAnchorElement>
-    Link: <TTo extends string = '.'>(
-      props: MakeLinkOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
-    ) => JSX.Element
-    MatchRoute: <TTo extends string = '.'>(
-      props: MakeMatchRouteOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
-    ) => JSX.Element
-  }
 }
 
 export type PromptProps = {
@@ -211,12 +136,150 @@ export type PromptProps = {
 
 //
 
-export function Link<TTo extends string = '.'>(
-  props: MakeLinkOptions<RegisteredAllRouteInfo, '/', TTo>,
-): JSX.Element {
+export function useLinkProps<
+  TFrom extends ValidFromPath<RegisteredAllRouteInfo> = '/',
+  TTo extends string = '.',
+>(
+  options: MakeLinkPropsOptions<TFrom, TTo>,
+): React.AnchorHTMLAttributes<HTMLAnchorElement> {
   const router = useRouter()
-  return <router.Link {...(props as any)} />
+
+  const {
+    // custom props
+    type,
+    children,
+    target,
+    activeProps = () => ({ className: 'active' }),
+    inactiveProps = () => ({}),
+    activeOptions,
+    disabled,
+    // fromCurrent,
+    hash,
+    search,
+    params,
+    to,
+    preload,
+    preloadDelay,
+    preloadMaxAge,
+    replace,
+    // element props
+    style,
+    className,
+    onClick,
+    onFocus,
+    onMouseEnter,
+    onMouseLeave,
+    onTouchStart,
+    onTouchEnd,
+    ...rest
+  } = options
+
+  const linkInfo = router.buildLink(options as any)
+
+  if (linkInfo.type === 'external') {
+    const { href } = linkInfo
+    return { href }
+  }
+
+  const { handleClick, handleFocus, handleEnter, handleLeave, isActive, next } =
+    linkInfo
+
+  const reactHandleClick = (e: Event) => {
+    if (React.startTransition) {
+      // This is a hack for react < 18
+      React.startTransition(() => {
+        handleClick(e)
+      })
+    } else {
+      handleClick(e)
+    }
+  }
+
+  const composeHandlers =
+    (handlers: (undefined | ((e: any) => void))[]) =>
+    (e: React.SyntheticEvent) => {
+      if (e.persist) e.persist()
+      handlers.filter(Boolean).forEach((handler) => {
+        if (e.defaultPrevented) return
+        handler!(e)
+      })
+    }
+
+  // Get the active props
+  const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
+    ? functionalUpdate(activeProps, {}) ?? {}
+    : {}
+
+  // Get the inactive props
+  const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+    isActive ? {} : functionalUpdate(inactiveProps, {}) ?? {}
+
+  return {
+    ...resolvedActiveProps,
+    ...resolvedInactiveProps,
+    ...rest,
+    href: disabled ? undefined : next.href,
+    onClick: composeHandlers([onClick, reactHandleClick]),
+    onFocus: composeHandlers([onFocus, handleFocus]),
+    onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
+    onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
+    target,
+    style: {
+      ...style,
+      ...resolvedActiveProps.style,
+      ...resolvedInactiveProps.style,
+    },
+    className:
+      [
+        className,
+        resolvedActiveProps.className,
+        resolvedInactiveProps.className,
+      ]
+        .filter(Boolean)
+        .join(' ') || undefined,
+    ...(disabled
+      ? {
+          role: 'link',
+          'aria-disabled': true,
+        }
+      : undefined),
+    ['data-status']: isActive ? 'active' : undefined,
+  }
 }
+
+type LinkFn<
+  TDefaultFrom extends RegisteredAllRouteInfo['routePaths'] = '/',
+  TDefaultTo extends string = '.',
+> = {
+  <
+    TFrom extends RegisteredAllRouteInfo['routePaths'] = TDefaultFrom,
+    TTo extends string = TDefaultTo,
+  >(
+    props: MakeLinkOptions<TFrom, TTo>,
+  ): JSX.Element
+  from: <TRelativeFrom>(
+    from: TRelativeFrom,
+  ) => LinkFn<TRelativeFrom, TDefaultTo>
+}
+
+export const Link: LinkFn = React.forwardRef((props: any, ref) => {
+  const linkProps = useLinkProps(props)
+
+  return (
+    <a
+      {...{
+        ref: ref as any,
+        ...linkProps,
+        children:
+          typeof props.children === 'function'
+            ? props.children({
+                isActive: (linkProps as any)['data-status'] === 'active',
+              })
+            : props.children,
+      }}
+    />
+  )
+}) as any
 
 type MatchesContextValue = RouteMatch[]
 
@@ -230,16 +293,46 @@ export type MatchesProviderProps = {
   children: React.ReactNode
 }
 
-export function MatchesProvider(props: MatchesProviderProps) {
-  return <matchesContext.Provider {...props} />
-}
+const EMPTY = {}
 
-const useRouterSubscription = (router: Router<any, any, any>) => {
-  useSyncExternalStore(
-    (cb) => router.subscribe(() => cb()),
-    () => router.state,
-    () => router.state,
-  )
+export const __useStoreValue = <TSeed, TReturn>(
+  seed: () => TSeed,
+  selector?: (seed: TSeed) => TReturn,
+): TReturn => {
+  const valueRef = React.useRef<TReturn>(EMPTY as any)
+
+  // If there is no selector, track the seed
+  // If there is a selector, do not track the seed
+  const getValue = () =>
+    (!selector
+      ? unwrap(seed())
+      : selector(untrack(() => unwrap(seed())))) as TReturn
+
+  // If empty, initialize the value
+  if (valueRef.current === EMPTY) {
+    valueRef.current = sharedClone(undefined, getValue())
+  }
+
+  // Snapshot should just return the current cached value
+  const getSnapshot = React.useCallback(() => valueRef.current, [])
+
+  const getStore = React.useCallback((cb: () => void) => {
+    // A root is necessary to track effects
+    return createRoot(() => {
+      createEffect(() => {
+        // Read and update the value
+        // getValue will handle which values are acccessed and
+        // thus tracked.
+        // sharedClone will both recursively track the end result
+        // and ensure that the previous value is structurally shared
+        // into the new version.
+        valueRef.current = sharedClone(valueRef.current, getValue())
+        cb()
+      })
+    })
+  }, [])
+
+  return useSyncExternalStore(getStore, getSnapshot, getSnapshot)
 }
 
 export function createReactRouter<
@@ -249,224 +342,11 @@ export function createReactRouter<
 >(
   opts: RouterOptions<TRouteConfig, TRouterContext>,
 ): Router<TRouteConfig, TAllRouteInfo, TRouterContext> {
-  const makeRouteExt = (
-    route: AnyRoute,
-    router: Router<any, any, any>,
-  ): Pick<AnyRoute, 'useRoute' | 'linkProps' | 'Link' | 'MatchRoute'> => {
-    return {
-      useRoute: (subRouteId = '.' as any) => {
-        const resolvedRouteId = router.resolvePath(
-          route.routeId,
-          subRouteId as string,
-        )
-        const resolvedRoute = router.getRoute(resolvedRouteId)
-        useRouterSubscription(router)
-        invariant(
-          resolvedRoute,
-          `Could not find a route for route "${
-            resolvedRouteId as string
-          }"! Did you forget to add it to your route config?`,
-        )
-        return resolvedRoute
-      },
-      linkProps: (options) => {
-        const {
-          // custom props
-          type,
-          children,
-          target,
-          activeProps = () => ({ className: 'active' }),
-          inactiveProps = () => ({}),
-          activeOptions,
-          disabled,
-          // fromCurrent,
-          hash,
-          search,
-          params,
-          to,
-          preload,
-          preloadDelay,
-          preloadMaxAge,
-          replace,
-          // element props
-          style,
-          className,
-          onClick,
-          onFocus,
-          onMouseEnter,
-          onMouseLeave,
-          onTouchStart,
-          onTouchEnd,
-          ...rest
-        } = options
-
-        const linkInfo = route.buildLink(options as any)
-
-        if (linkInfo.type === 'external') {
-          const { href } = linkInfo
-          return { href }
-        }
-
-        const {
-          handleClick,
-          handleFocus,
-          handleEnter,
-          handleLeave,
-          isActive,
-          next,
-        } = linkInfo
-
-        const reactHandleClick = (e: Event) => {
-          if (React.startTransition)
-            // This is a hack for react < 18
-            React.startTransition(() => {
-              handleClick(e)
-            })
-          else handleClick(e)
-        }
-
-        const composeHandlers =
-          (handlers: (undefined | ((e: any) => void))[]) =>
-          (e: React.SyntheticEvent) => {
-            if (e.persist) e.persist()
-            handlers.forEach((handler) => {
-              if (e.defaultPrevented) return
-              if (handler) handler(e)
-            })
-          }
-
-        // Get the active props
-        const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-          isActive ? functionalUpdate(activeProps, {}) ?? {} : {}
-
-        // Get the inactive props
-        const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-          isActive ? {} : functionalUpdate(inactiveProps, {}) ?? {}
-
-        return {
-          ...resolvedActiveProps,
-          ...resolvedInactiveProps,
-          ...rest,
-          href: disabled ? undefined : next.href,
-          onClick: composeHandlers([reactHandleClick, onClick]),
-          onFocus: composeHandlers([handleFocus, onFocus]),
-          onMouseEnter: composeHandlers([handleEnter, onMouseEnter]),
-          onMouseLeave: composeHandlers([handleLeave, onMouseLeave]),
-          target,
-          style: {
-            ...style,
-            ...resolvedActiveProps.style,
-            ...resolvedInactiveProps.style,
-          },
-          className:
-            [
-              className,
-              resolvedActiveProps.className,
-              resolvedInactiveProps.className,
-            ]
-              .filter(Boolean)
-              .join(' ') || undefined,
-          ...(disabled
-            ? {
-                role: 'link',
-                'aria-disabled': true,
-              }
-            : undefined),
-          ['data-status']: isActive ? 'active' : undefined,
-        }
-      },
-      Link: React.forwardRef((props: any, ref) => {
-        const linkProps = route.linkProps(props)
-
-        useRouterSubscription(router)
-
-        return (
-          <a
-            {...{
-              ref: ref as any,
-              ...linkProps,
-              children:
-                typeof props.children === 'function'
-                  ? props.children({
-                      isActive: (linkProps as any)['data-status'] === 'active',
-                    })
-                  : props.children,
-            }}
-          />
-        )
-      }) as any,
-      MatchRoute: (opts) => {
-        const { pending, caseSensitive, children, ...rest } = opts
-
-        const params = route.matchRoute(rest as any, {
-          pending,
-          caseSensitive,
-        })
-
-        if (!params) {
-          return null
-        }
-
-        return typeof opts.children === 'function'
-          ? opts.children(params as any)
-          : (opts.children as any)
-      },
-    }
-  }
-
   const coreRouter = createRouter<TRouteConfig>({
     ...opts,
-    createRouter: (router) => {
-      const routerExt: Pick<Router<any, any, any>, 'useMatch' | 'useState'> = {
-        useState: () => {
-          useRouterSubscription(router)
-          return router.state
-        },
-        useMatch: (routeId, opts) => {
-          useRouterSubscription(router)
-
-          const nearestMatch = useNearestMatch()
-          const match = router.state.currentMatches.find(
-            (d) => d.routeId === routeId,
-          )
-
-          if (opts?.strict ?? true) {
-            invariant(
-              match,
-              `Could not find an active match for "${routeId as string}"!`,
-            )
-
-            invariant(
-              nearestMatch.routeId == match?.routeId,
-              `useMatch("${
-                match?.routeId as string
-              }") is being called in a component that is meant to render the '${
-                nearestMatch.routeId
-              }' route. Did you mean to 'useMatch("${
-                match?.routeId as string
-              }", { strict: false })' or 'useRoute("${
-                match?.routeId as string
-              }")' instead?`,
-            )
-          }
-
-          return match as any
-        },
-      }
-
-      const routeExt = makeRouteExt(router.getRoute(rootRouteId), router)
-
-      Object.assign(router, routerExt, routeExt)
-    },
-    createRoute: ({ router, route }) => {
-      const routeExt = makeRouteExt(route, router)
-
-      Object.assign(route, routeExt)
-    },
     loadComponent: async (component) => {
-      if (component.preload && typeof document !== 'undefined') {
-        component.preload()
-        // return await component.preload()
+      if (component.preload) {
+        await component.preload()
       }
 
       return component as any
@@ -494,17 +374,19 @@ export function RouterProvider<
 }: RouterProps<TRouteConfig, TAllRouteInfo, TRouterContext>) {
   router.update(rest)
 
-  useRouterSubscription(router)
-  React.useEffect(() => {
-    return router.mount()
-  }, [router])
+  const [, , currentMatches] = __useStoreValue(
+    () => router.store,
+    (s) => [s.status, s.pendingMatches, s.currentMatches],
+  )
+
+  React.useEffect(router.mount, [router])
 
   return (
     <>
       <routerContext.Provider value={{ router: router as any }}>
-        <MatchesProvider value={[undefined!, ...router.state.currentMatches]}>
+        <matchesContext.Provider value={[undefined!, ...currentMatches]}>
           <Outlet />
-        </MatchesProvider>
+        </matchesContext.Provider>
       </routerContext.Provider>
     </>
   )
@@ -513,10 +395,14 @@ export function RouterProvider<
 export function useRouter(): RegisteredRouter {
   const value = React.useContext(routerContext)
   warning(!value, 'useRouter must be used inside a <Router> component!')
-
-  useRouterSubscription(value.router)
-
   return value.router
+}
+
+export function useRouterStore<T = RouterStore>(
+  selector?: (state: Router['store']) => T,
+): T {
+  const router = useRouter()
+  return __useStoreValue(() => router.store, selector)
 }
 
 export function useMatches(): RouteMatch[] {
@@ -524,66 +410,176 @@ export function useMatches(): RouteMatch[] {
 }
 
 export function useMatch<
-  TId extends keyof RegisteredAllRouteInfo['routeInfoById'],
+  TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'],
   TStrict extends boolean = true,
->(
-  routeId: TId,
-  opts?: { strict?: TStrict },
-): TStrict extends true
-  ? RouteMatch<
-      RegisteredAllRouteInfo,
-      RegisteredAllRouteInfo['routeInfoById'][TId]
-    >
-  :
-      | RouteMatch<
-          RegisteredAllRouteInfo,
-          RegisteredAllRouteInfo['routeInfoById'][TId]
-        >
-      | undefined {
+  TRouteMatch = RouteMatch<
+    RegisteredAllRouteInfo,
+    RegisteredAllRouteInfo['routeInfoById'][TFrom]
+  >,
+  // TSelected = TRouteMatch,
+>(opts?: {
+  from: TFrom
+  strict?: TStrict
+  // select?: (match: TRouteMatch) => TSelected
+}): TStrict extends true ? TRouteMatch : TRouteMatch | undefined {
   const router = useRouter()
-  return router.useMatch(routeId as any, opts) as any
-}
+  const nearestMatch = useMatches()[0]!
+  const match = opts?.from
+    ? router.store.currentMatches.find((d) => d.routeId === opts?.from)
+    : nearestMatch
 
-export function useNearestMatch(): RouteMatch<
-  RegisteredAllRouteInfo,
-  RouteInfo
-> {
-  const runtimeMatch = useMatches()[0]
+  invariant(
+    match,
+    `Could not find ${
+      opts?.from ? `an active match from "${opts.from}"` : 'a nearest match!'
+    }`,
+  )
 
-  invariant(runtimeMatch, `Could not find a nearest match!`)
+  if (opts?.strict ?? true) {
+    invariant(
+      nearestMatch.routeId == match?.routeId,
+      `useMatch("${
+        match?.routeId as string
+      }") is being called in a component that is meant to render the '${
+        nearestMatch.routeId
+      }' route. Did you mean to 'useMatch("${
+        match?.routeId as string
+      }", { strict: false })' or 'useRoute("${
+        match?.routeId as string
+      }")' instead?`,
+    )
+  }
 
-  return runtimeMatch as any
+  __useStoreValue(() => match!.store)
+
+  return match as any
 }
 
 export function useRoute<
-  TId extends keyof RegisteredAllRouteInfo['routeInfoById'],
+  TId extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
 >(
   routeId: TId,
 ): Route<RegisteredAllRouteInfo, RegisteredAllRouteInfo['routeInfoById'][TId]> {
   const router = useRouter()
-  return router.useRoute(routeId as any) as any
+  const resolvedRoute = router.getRoute(routeId as any)
+
+  invariant(
+    resolvedRoute,
+    `Could not find a route for route "${
+      routeId as string
+    }"! Did you forget to add it to your route config?`,
+  )
+
+  return resolvedRoute as any
 }
 
-export function useSearch(): RegisteredAllRouteInfo['fullSearchSchema'] {
-  return useRouter().state.currentLocation.search
+export function useLoaderData<
+  TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
+  TStrict extends boolean = true,
+  TLoaderData = RegisteredAllRouteInfo['routeInfoById'][TFrom]['loaderData'],
+  TSelected = TLoaderData,
+>(opts?: {
+  from: TFrom
+  strict?: TStrict
+  select?: (loaderData: TLoaderData) => TSelected
+}): TStrict extends true ? TSelected : TSelected | undefined {
+  const match = useMatch(opts) as any
+  return __useStoreValue(() => match?.store.loaderData, opts?.select)
 }
 
-export function useParams(): RegisteredAllRouteInfo['allParams'] {
-  return last(useRouter().state.currentMatches)?.params as any
+export function useSearch<
+  TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'],
+  TStrict extends boolean = true,
+  TSearch = RegisteredAllRouteInfo['routeInfoById'][TFrom]['fullSearchSchema'],
+  TSelected = TSearch,
+>(opts?: {
+  from: TFrom
+  strict?: TStrict
+  select?: (search: TSearch) => TSelected
+}): TStrict extends true ? TSelected : TSelected | undefined {
+  const match = useMatch(opts)
+  return __useStoreValue(() => match?.store.search, opts?.select) as any
 }
 
-export function linkProps<TTo extends string = '.'>(
-  props: MakeLinkPropsOptions<RegisteredAllRouteInfo, '/', TTo>,
-): React.AnchorHTMLAttributes<HTMLAnchorElement> {
+export function useParams<
+  TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
+  TDefaultSelected = Expand<
+    RegisteredAllRouteInfo['allParams'] &
+      RegisteredAllRouteInfo['routeInfoById'][TFrom]['allParams']
+  >,
+  TSelected = TDefaultSelected,
+>(opts?: {
+  from: TFrom
+  select?: (search: TDefaultSelected) => TSelected
+}): TSelected {
   const router = useRouter()
-  return router.linkProps(props as any)
+  return __useStoreValue(
+    () => last(router.store.currentMatches)?.params as any,
+    opts?.select,
+  )
 }
 
-export function MatchRoute<TTo extends string = '.'>(
-  props: MakeMatchRouteOptions<RegisteredAllRouteInfo, '/', TTo>,
-): JSX.Element {
+export function useNavigate<
+  TDefaultFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
+>(defaultOpts: { from?: TDefaultFrom }) {
+  return <
+    TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = TDefaultFrom,
+    TTo extends string = '.',
+  >(
+    opts: MakeLinkOptions<TFrom, TTo>,
+  ) => {
+    const router = useRouter()
+    return router.navigate({ ...defaultOpts, ...(opts as any) })
+  }
+}
+
+export function useAction<
+  TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
+  TFromRoute extends RegisteredAllRouteInfo['routeInfoById'][TFrom] = RegisteredAllRouteInfo['routeInfoById'][TFrom],
+>(opts: {
+  from: TFrom
+}): Action<TFromRoute['actionPayload'], TFromRoute['actionResponse']> {
+  const route = useRoute(opts.from)
+  const action = route.action
+  __useStoreValue(() => action)
+  return action as any
+}
+
+export function useMatchRoute() {
   const router = useRouter()
-  return React.createElement(router.MatchRoute, props as any)
+
+  return <
+    TFrom extends ValidFromPath<RegisteredAllRouteInfo> = '/',
+    TTo extends string = '.',
+  >(
+    opts: MakeUseMatchRouteOptions<TFrom, TTo>,
+  ) => {
+    const { pending, caseSensitive, ...rest } = opts
+
+    return router.matchRoute(rest as any, {
+      pending,
+      caseSensitive,
+    })
+  }
+}
+
+export function MatchRoute<
+  TFrom extends ValidFromPath<RegisteredAllRouteInfo> = '/',
+  TTo extends string = '.',
+>(props: MakeMatchRouteOptions<TFrom, TTo>): any {
+  const matchRoute = useMatchRoute()
+  const params = matchRoute(props)
+
+  if (!params) {
+    return null
+  }
+
+  return React.createElement(
+    typeof props.children === 'function'
+      ? (props.children as any)(params)
+      : props.children,
+    props as any,
+  )
 }
 
 export function Outlet() {
@@ -592,6 +588,31 @@ export function Outlet() {
   const match = matches[0]
 
   const defaultPending = React.useCallback(() => null, [])
+
+  __useStoreValue(() => match?.store)
+
+  const Inner = React.useCallback((props: { match: RouteMatch }): any => {
+    if (props.match.store.status === 'error') {
+      throw props.match.store.error
+    }
+
+    if (props.match.store.status === 'success') {
+      return React.createElement(
+        (props.match.__.component as any) ??
+          router.options.defaultComponent ??
+          Outlet,
+      )
+    }
+
+    if (props.match.store.status === 'loading') {
+      throw props.match.__.loadPromise
+    }
+
+    invariant(
+      false,
+      'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
+    )
+  }, [])
 
   if (!match) {
     return null
@@ -605,29 +626,14 @@ export function Outlet() {
     match.__.errorComponent ?? router.options.defaultErrorComponent
 
   return (
-    <MatchesProvider value={matches}>
+    <matchesContext.Provider value={matches}>
       <React.Suspense fallback={<PendingComponent />}>
         <CatchBoundary
           key={match.routeId}
           errorComponent={errorComponent}
           match={match as any}
         >
-          {
-            ((): React.ReactNode => {
-              if (match.status === 'error') {
-                throw match.error
-              }
-
-              if (match.status === 'success') {
-                return React.createElement(
-                  (match.__.component as any) ??
-                    router.options.defaultComponent ??
-                    Outlet,
-                )
-              }
-              throw match.__.loadPromise
-            })() as JSX.Element
-          }
+          <Inner match={match} />
         </CatchBoundary>
       </React.Suspense>
       {/* Provide a suffix suspense boundary to make sure the router is
@@ -635,7 +641,7 @@ export function Outlet() {
       {/* {router.options.ssrFooter && match.matchId === rootRouteId ? (
         <React.Suspense fallback={null}>
           {(() => {
-            if (router.state.pending) {
+            if (router.store.pending) {
               throw router.navigationPromise
             }
 
@@ -643,7 +649,7 @@ export function Outlet() {
           })()}
         </React.Suspense>
       ) : null} */}
-    </MatchesProvider>
+    </matchesContext.Provider>
   )
 }
 
@@ -695,13 +701,15 @@ function CatchBoundaryInner(props: {
 
   React.useEffect(() => {
     if (activeErrorState) {
-      let prevKey = router.state.currentLocation.key
-      return router.subscribe(() => {
-        if (router.state.currentLocation.key !== prevKey) {
-          prevKey = router.state.currentLocation.key
-          setActiveErrorState({} as any)
-        }
-      })
+      let prevKey = router.store.currentLocation.key
+      return createRoot(() =>
+        createEffect(() => {
+          if (router.store.currentLocation.key !== prevKey) {
+            prevKey = router.store.currentLocation.key
+            setActiveErrorState({} as any)
+          }
+        }),
+      )
     }
 
     return
@@ -714,7 +722,7 @@ function CatchBoundaryInner(props: {
     props.reset()
   }, [props.errorState.error])
 
-  if (activeErrorState.error) {
+  if (props.errorState.error) {
     return React.createElement(errorComponent, activeErrorState)
   }
 
@@ -753,20 +761,38 @@ export function usePrompt(message: string, when: boolean | any): void {
   React.useEffect(() => {
     if (!when) return
 
-    let unblock = router.history.block((transition) => {
-      if (window.confirm(message)) {
-        unblock()
-        transition.retry()
-      } else {
-        router.state.currentLocation.pathname = window.location.pathname
-      }
-    })
+    // TODO: bring this back
+    // let unblock = router.history.block((transition) => {
+    //   if (window.confirm(message)) {
+    //     unblock()
+    //     transition.retry()
+    //   } else {
+    //     router.store.currentLocation.pathname = window.location.pathname
+    //   }
+    // })
 
-    return unblock
+    // return unblock
   }, [when, message])
 }
 
 export function Prompt({ message, when, children }: PromptProps) {
   usePrompt(message, when ?? true)
   return (children ?? null) as React.ReactNode
+}
+
+function circularStringify(obj: any) {
+  const seen = new Set()
+
+  return (
+    JSON.stringify(obj, (_, value) => {
+      if (typeof value === 'function') {
+        return undefined
+      }
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) return
+        seen.add(value)
+      }
+      return value
+    }) || ''
+  )
 }

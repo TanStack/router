@@ -9,7 +9,7 @@ const req = Astro.request
 const fullUrl = new URL(req.url)
 const url = fullUrl.href.replace(fullUrl.origin, '')
 
-console.log(url)
+console.log('Loading...', url)
 
 const router = createRouter()
 
@@ -21,14 +21,12 @@ router.update({
 	history: memoryHistory,
 })
 
-router.mount()() // and unsubscribe immediately
-
 await router.load()
 
 if (url.includes('__data=')) {
-	const search = router.state.currentLocation.search as { __data: { matchId: string } }
+	const search = router.store.currentLocation.search as { __data: { matchId: string } }
 	
-  const data = router.state.currentMatches.find((d) => d.matchId === search.__data.matchId)?.routeLoaderData
+  const data = router.store.currentMatches.find((d) => d.matchId === search.__data.matchId)?.store.routeLoaderData
 
 	const res = JSON.stringify(data)
 	

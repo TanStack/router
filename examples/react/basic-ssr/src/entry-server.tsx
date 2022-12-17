@@ -1,7 +1,6 @@
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
-import isbot from 'isbot'
+import { createMemoryHistory } from '@tanstack/react-router'
 import jsesc from 'jsesc'
 import { ServerResponse } from 'http'
 import { createRouter } from './router'
@@ -9,11 +8,10 @@ import express from 'express'
 
 // index.js
 import './fetch-polyfill'
+import { App } from '.'
 
 async function getRouter(opts: { url: string }) {
   const router = createRouter()
-
-  router.reset()
 
   const memoryHistory = createMemoryHistory({
     initialEntries: [opts.url],
@@ -23,7 +21,7 @@ async function getRouter(opts: { url: string }) {
     history: memoryHistory,
   })
 
-  router.mount()() // and unsubscribe immediately
+  await router.load()
 
   return router
 }
@@ -31,15 +29,13 @@ async function getRouter(opts: { url: string }) {
 export async function load(opts: { url: string }) {
   const router = await getRouter(opts)
 
-  await router.load()
-
-  const search = router.state.currentLocation.search as {
+  const search = router.store.currentLocation.search as {
     __data: { matchId: string }
   }
 
-  return router.state.currentMatches.find(
+  return router.store.currentMatches.find(
     (d) => d.matchId === search.__data.matchId,
-  )?.routeLoaderData
+  )?.store.routeLoaderData
 }
 
 export async function render(opts: {
@@ -50,29 +46,29 @@ export async function render(opts: {
 }) {
   const router = await getRouter(opts)
 
-  await router.load()
-
   const routerState = router.dehydrate()
-  const routerStateScript = `<script>
-    window.__TANSTACK_ROUTER_STATE__ = JSON.parse(${jsesc(
-      JSON.stringify(routerState),
-      {
-        isScriptContext: true,
-        wrap: true,
-        json: true,
-      },
-    )}
-    )
-  </script>`
 
-  const appHtml = ReactDOMServer.renderToString(
-    <RouterProvider
-      router={router}
-      context={{
-        head: `${opts.head}${routerStateScript}`,
-      }}
-    />,
-  )
+  const routerStateScript = `<script>
+  window.__TANSTACK_ROUTER_STATE__ = JSON.parse(${jsesc(
+    JSON.stringify(routerState),
+    {
+      isScriptContext: true,
+      wrap: true,
+      json: true,
+    },
+  )}
+    )
+    </script>`
+
+  const context = {
+    head: `${opts.head}${routerStateScript}`,
+  }
+
+  router.update({
+    context,
+  })
+
+  const appHtml = ReactDOMServer.renderToString(<App router={router} />)
 
   opts.res.statusCode = 200
   opts.res.setHeader('Content-Type', 'text/html')

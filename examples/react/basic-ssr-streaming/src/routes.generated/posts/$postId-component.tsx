@@ -8,9 +8,7 @@ export type PostType = {
 }
 export const tanner = 'foo'
 function Post() {
-  const {
-    loaderData: { post },
-  } = useMatch(routeConfig.id)
+  const { post } = useLoaderData({ from: routeConfig.id })
   return (
     <div>
       <h4>{post.title}</h4>

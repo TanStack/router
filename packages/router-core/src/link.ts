@@ -116,7 +116,7 @@ export type RelativeToPathAutoComplete<
 
 export type NavigateOptionsAbsolute<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-  TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+  TFrom extends TAllRouteInfo['routePaths'] = '/',
   TTo extends string = '.',
 > = ToOptions<TAllRouteInfo, TFrom, TTo> & {
   // Whether to replace the current history stack instead of pushing a new one
@@ -125,7 +125,7 @@ export type NavigateOptionsAbsolute<
 
 export type ToOptions<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-  TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+  TFrom extends TAllRouteInfo['routePaths'] = '/',
   TTo extends string = '.',
   TResolvedTo = ResolveRelativePath<TFrom, NoInfer<TTo>>,
 > = {
@@ -142,7 +142,7 @@ export type ToOptions<
   SearchParamOptions<TAllRouteInfo, TFrom, TResolvedTo> &
   PathParamOptions<TAllRouteInfo, TFrom, TResolvedTo>
 
-type SearchParamOptions<
+export type SearchParamOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
   TFrom,
   TTo,
@@ -183,7 +183,7 @@ type SearchReducer<TFrom, TTo> =
   | { [TKey in keyof TTo]: TTo[TKey] }
   | ((current: TFrom) => TTo)
 
-type PathParamOptions<
+export type PathParamOptions<
   TAllRouteInfo extends AnyAllRouteInfo,
   TFrom,
   TTo,
@@ -219,7 +219,7 @@ type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
 export type ToPathOption<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-  TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+  TFrom extends TAllRouteInfo['routePaths'] = '/',
   TTo extends string = '.',
 > =
   | TTo
@@ -231,7 +231,7 @@ export type ToPathOption<
 
 export type ToIdOption<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-  TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+  TFrom extends TAllRouteInfo['routePaths'] = '/',
   TTo extends string = '.',
 > =
   | TTo
@@ -241,14 +241,14 @@ export type ToIdOption<
       NoInfer<TTo> & string
     >
 
-interface ActiveOptions {
+export interface ActiveOptions {
   exact?: boolean
   includeHash?: boolean
 }
 
 export type LinkOptions<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-  TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+  TFrom extends TAllRouteInfo['routePaths'] = '/',
   TTo extends string = '.',
 > = NavigateOptionsAbsolute<TAllRouteInfo, TFrom, TTo> & {
   // The standard anchor tag target attribute

@@ -2,7 +2,7 @@ import { routeConfig } from '../../../routes.generated/dashboard/invoices/index'
 import * as React from 'react'
 import { Invoice, postInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
-import { useMatch } from '@tanstack/react-router'
+import { useAction, useMatch } from '@tanstack/react-router'
 
 routeConfig.generate({
   component: InvoicesHome,
@@ -10,7 +10,7 @@ routeConfig.generate({
 })
 
 function InvoicesHome() {
-  const { action } = useMatch(routeConfig.id)
+  const action = useAction({ from: routeConfig.id })
 
   return (
     <>

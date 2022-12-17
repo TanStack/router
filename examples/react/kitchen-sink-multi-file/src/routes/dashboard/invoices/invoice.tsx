@@ -3,7 +3,13 @@ import { z } from 'zod'
 import { fetchInvoiceById, patchInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import { invoicesRoute } from '.'
-import { useMatch } from '@tanstack/react-router'
+import {
+  useAction,
+  useLoaderData,
+  useNavigate,
+  useSearch,
+  Link,
+} from '@tanstack/react-router'
 
 export const invoiceRoute = invoicesRoute.createRoute({
   path: '$invoiceId',
@@ -32,13 +38,10 @@ export const invoiceRoute = invoicesRoute.createRoute({
 })
 
 function InvoiceView() {
-  const {
-    loaderData: { invoice },
-    action,
-    search,
-    Link,
-    navigate,
-  } = useMatch(invoiceRoute.id)
+  const { invoice } = useLoaderData({ from: invoiceRoute.id })
+  const search = useSearch({ from: invoiceRoute.id })
+  const action = useAction({ from: invoiceRoute.id })
+  const navigate = useNavigate({ from: invoiceRoute.id })
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
 

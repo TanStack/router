@@ -7,6 +7,11 @@ import {
   createRouteConfig,
   Link,
   useMatch,
+  useRouterStore,
+  useLoaderData,
+  MatchRoute,
+  useSearch,
+  useNavigate,
 } from '@tanstack/react-router'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
@@ -28,7 +33,7 @@ function Spinner() {
 
 const rootRoute = createRouteConfig({
   component: () => {
-    const routerState = router.useState()
+    const { isFetching } = useRouterStore()
 
     return (
       <>
@@ -38,7 +43,7 @@ const rootRoute = createRouteConfig({
             {/* Show a global spinner when the router is transitioning */}
             <div
               className={`text-3xl duration-300 delay-0 opacity-0 ${
-                routerState.isFetching ? ` duration-1000 opacity-40` : ''
+                isFetching ? ` duration-1000 opacity-40` : ''
               }`}
             >
               <Spinner />
@@ -89,21 +94,19 @@ const rootRoute = createRouteConfig({
 const indexRoute = rootRoute.createRoute({
   path: '/',
   component: () => {
-    const route = useMatch(indexRoute.id)
-
     return (
       <div className={`p-2`}>
         <div className={`text-lg`}>Welcome Home!</div>
         <hr className={`my-2`} />
-        <route.Link
-          to="/dashboard/posts/$postId"
+        <Link
+          to={postRoute.id}
           params={{
             postId: 3,
           }}
           className={`py-1 px-2 text-xs bg-blue-500 text-white rounded-full`}
         >
           1 New Invoice
-        </route.Link>
+        </Link>
         <hr className={`my-2`} />
         <div className={`max-w-xl`}>
           As you navigate around take note of the UX. It should feel
@@ -131,13 +134,11 @@ const dashboardRoute = rootRoute.createRoute({
     }
   },
   component: () => {
-    const route = useMatch(dashboardRoute.id)
-
     return (
       <>
         <div className="flex items-center border-b">
           <h2 className="text-xl p-2">Dashboard</h2>
-          <route.Link
+          <Link
             to="/dashboard/posts/$postId"
             params={{
               postId: 3,
@@ -145,7 +146,7 @@ const dashboardRoute = rootRoute.createRoute({
             className="py-1 px-2 text-xs bg-blue-500 text-white rounded-full"
           >
             1 New Invoice
-          </route.Link>
+          </Link>
         </div>
         <div className="flex flex-wrap divide-x">
           {(
@@ -155,7 +156,7 @@ const dashboardRoute = rootRoute.createRoute({
             ] as const
           ).map(([to, label]) => {
             return (
-              <route.Link
+              <Link
                 key={to}
                 to={to}
                 activeOptions={{ exact: to === '.' }}
@@ -163,7 +164,7 @@ const dashboardRoute = rootRoute.createRoute({
                 className="p-2"
               >
                 {label}
-              </route.Link>
+              </Link>
             )
           })}
         </div>
@@ -177,11 +178,7 @@ const dashboardRoute = rootRoute.createRoute({
 const postsRoute = dashboardRoute.createRoute({
   path: 'posts',
   component: () => {
-    const {
-      loaderData: { posts },
-      Link,
-      MatchRoute,
-    } = useMatch(postsRoute.id)
+    const { posts } = useLoaderData({ from: postsRoute.id })
 
     return (
       <div className="flex-1 flex">
@@ -190,7 +187,7 @@ const postsRoute = dashboardRoute.createRoute({
             return (
               <div key={post.id}>
                 <Link
-                  to="/dashboard/posts/$postId"
+                  to={postRoute.id}
                   params={{
                     postId: post.id,
                   }}
@@ -201,7 +198,7 @@ const postsRoute = dashboardRoute.createRoute({
                   <pre className="text-sm">
                     #{post.id} - {post.title.slice(0, 10)}{' '}
                     <MatchRoute
-                      to="./$postId"
+                      to={postRoute.id}
                       params={{
                         postId: post.id,
                       }}
@@ -256,12 +253,9 @@ const postRoute = postsRoute.createRoute({
     }
   },
   component: () => {
-    const {
-      loaderData: { post },
-      search,
-      Link,
-      navigate,
-    } = useMatch(postRoute.id)
+    const { post } = useLoaderData({ from: postRoute.id })
+    const search = useSearch({ from: postRoute.id })
+    const navigate = useNavigate({ from: postRoute.id })
 
     const [notes, setNotes] = React.useState(search.notes ?? ``)
 
@@ -328,9 +322,7 @@ const postRoute = postsRoute.createRoute({
 const dashboardIndexRoute = dashboardRoute.createRoute({
   path: '/',
   component: () => {
-    const {
-      loaderData: { posts },
-    } = useMatch(dashboardIndexRoute.id)
+    const { posts } = useLoaderData({ from: dashboardIndexRoute.id })
 
     return (
       <div className="p-2">

@@ -1,4 +1,4 @@
-import { Link, useMatch } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import * as React from 'react'
 import { rootRoute } from './__root'
 

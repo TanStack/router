@@ -1,5 +1,4 @@
-import * as React from 'react'
-import { useMatch } from '@tanstack/react-router'
+import { useLoaderData } from '@tanstack/react-router'
 import { routeConfig } from '../../routes.generated/posts/$postId'
 
 export type PostType = {
@@ -29,9 +28,7 @@ async function fetchPostById(postId: string) {
 }
 
 function Post() {
-  const {
-    loaderData: { post },
-  } = useMatch(routeConfig.id)
+  const { post } = useLoaderData({ from: routeConfig.id })
 
   return (
     <div className="space-y-2">
