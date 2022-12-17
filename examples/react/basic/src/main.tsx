@@ -6,7 +6,7 @@ import {
   createReactRouter,
   createRouteConfig,
   Link,
-  useMatch,
+  useLoaderData,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -75,12 +75,7 @@ const postsRoute = rootRoute.createRoute({
     }
   },
   component: () => {
-    const {
-      store: {
-        loaderData: { posts },
-      },
-      Link,
-    } = useMatch(postsRoute.id)
+    const { posts } = useLoaderData({ from: postsRoute.id })
 
     return (
       <div className="p-2 flex gap-2">
@@ -136,11 +131,7 @@ const postRoute = postsRoute.createRoute({
     }
   },
   component: () => {
-    const {
-      store: {
-        loaderData: { post },
-      },
-    } = useMatch(postRoute.id)
+    const { post } = useLoaderData({ from: postRoute.id })
 
     return (
       <div className="space-y-2">

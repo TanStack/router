@@ -26,7 +26,7 @@ routeConfig.generate({
 })
 
 function Post() {
-  const { post } = useLoaderData(routeConfig.id)
+  const { post } = useLoaderData({ from: routeConfig.id })
 
   return (
     <div className="space-y-2">

@@ -1,9 +1,8 @@
 import * as React from 'react'
-import { Outlet, useMatch } from '@tanstack/react-router'
+import { Link, Outlet } from '@tanstack/react-router'
 import { fetchInvoices } from '../mockTodos'
 
 import { routeConfig } from '../routes.generated/dashboard'
-import { dashboardInvoicesinvoiceIdRoute } from '../routes.generated/dashboard/invoices/$invoiceId.client'
 
 routeConfig.generate({
   component: Dashboard,
@@ -15,22 +14,22 @@ routeConfig.generate({
   },
 })
 
-function Dashboard() {
-  const route = useMatch(routeConfig.id)
+const RelativeLink = Link.from(routeConfig.id)
 
+function Dashboard() {
   return (
     <>
       <div className="flex items-center border-b">
         <h2 className="text-xl p-2">Dashboard</h2>
-        <route.Link
-          to={dashboardInvoicesinvoiceIdRoute.id}
+        <RelativeLink
+          to={'./invoices/$invoiceId'}
           params={{
             invoiceId: 3,
           }}
           className="py-1 px-2 text-xs bg-blue-500 text-white rounded-full"
         >
           1 New Invoice
-        </route.Link>
+        </RelativeLink>
       </div>
       <div className="flex flex-wrap divide-x">
         {(
@@ -41,7 +40,7 @@ function Dashboard() {
           ] as const
         ).map(([to, label, search]) => {
           return (
-            <route.Link
+            <Link
               key={to}
               to={to}
               search={search}
@@ -54,7 +53,7 @@ function Dashboard() {
               className="p-2"
             >
               {label}
-            </route.Link>
+            </Link>
           )
         })}
       </div>

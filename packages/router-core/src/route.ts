@@ -40,30 +40,6 @@ export interface Route<
   childRoutes?: AnyRoute[]
   options: RouteOptions
   router: Router<TAllRouteInfo['routeConfig'], TAllRouteInfo, TRouterContext>
-  buildLink: <TTo extends string = '.'>(
-    options: Omit<
-      LinkOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
-      'from'
-    >,
-  ) => LinkInfo
-  matchRoute: <
-    TTo extends string = '.',
-    TResolved extends string = ResolveRelativePath<TRouteInfo['id'], TTo>,
-  >(
-    matchLocation: CheckRelativePath<
-      TAllRouteInfo,
-      TRouteInfo['fullPath'],
-      NoInfer<TTo>
-    > &
-      Omit<ToOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>, 'from'>,
-    opts?: MatchRouteOptions,
-  ) => RouteInfoByPath<TAllRouteInfo, TResolved>['allParams']
-  navigate: <TTo extends string = '.'>(
-    options: Omit<
-      LinkOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
-      'from'
-    >,
-  ) => Promise<void>
   action: unknown extends TRouteInfo['actionResponse']
     ?
         | Action<TRouteInfo['actionPayload'], TRouteInfo['actionResponse']>
@@ -84,6 +60,30 @@ export interface Route<
         TRouteInfo['allParams'],
         TRouteInfo['routeLoaderData']
       >
+  // buildLink: <TTo extends string = '.'>(
+  //   options: Omit<
+  //     LinkOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
+  //     'from'
+  //   >,
+  // ) => LinkInfo
+  // matchRoute: <
+  //   TTo extends string = '.',
+  //   TResolved extends string = ResolveRelativePath<TRouteInfo['id'], TTo>,
+  // >(
+  //   matchLocation: CheckRelativePath<
+  //     TAllRouteInfo,
+  //     TRouteInfo['fullPath'],
+  //     NoInfer<TTo>
+  //   > &
+  //     Omit<ToOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>, 'from'>,
+  //   opts?: MatchRouteOptions,
+  // ) => RouteInfoByPath<TAllRouteInfo, TResolved>['allParams']
+  // navigate: <TTo extends string = '.'>(
+  //   options: Omit<
+  //     LinkOptions<TAllRouteInfo, TRouteInfo['fullPath'], TTo>,
+  //     'from'
+  //   >,
+  // ) => Promise<void>
 }
 
 export function createRoute<
@@ -222,29 +222,29 @@ export function createRoute<
       return loader as any
     },
 
-    buildLink: (options) => {
-      return router.buildLink({
-        ...options,
-        from: fullPath,
-      } as any) as any
-    },
+    // buildLink: (options) => {
+    //   return router.buildLink({
+    //     ...options,
+    //     from: fullPath,
+    //   } as any) as any
+    // },
 
-    navigate: (options) => {
-      return router.navigate({
-        ...options,
-        from: fullPath,
-      } as any) as any
-    },
+    // navigate: (options) => {
+    //   return router.navigate({
+    //     ...options,
+    //     from: fullPath,
+    //   } as any) as any
+    // },
 
-    matchRoute: (matchLocation, opts) => {
-      return router.matchRoute(
-        {
-          ...matchLocation,
-          from: fullPath,
-        } as any,
-        opts,
-      ) as any
-    },
+    // matchRoute: (matchLocation, opts) => {
+    //   return router.matchRoute(
+    //     {
+    //       ...matchLocation,
+    //       from: fullPath,
+    //     } as any,
+    //     opts,
+    //   ) as any
+    // },
   }
 
   router.options.createRoute?.({ router, route })

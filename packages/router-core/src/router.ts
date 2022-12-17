@@ -15,6 +15,7 @@ import {
   NavigateOptionsAbsolute,
   ToOptions,
   ValidFromPath,
+  ResolveRelativePath,
 } from './link'
 import {
   cleanPath,
@@ -47,6 +48,7 @@ import { createStore, batch, SetStoreFunction } from '@solidjs/reactivity'
 import {
   functionalUpdate,
   last,
+  NoInfer,
   pick,
   PickAsRequired,
   PickRequired,
@@ -351,7 +353,12 @@ export interface Router<
   >(
     matchLocation: ToOptions<TAllRouteInfo, TFrom, TTo>,
     opts?: MatchRouteOptions,
-  ) => boolean
+  ) =>
+    | false
+    | TAllRouteInfo['routeInfoById'][ResolveRelativePath<
+        TFrom,
+        NoInfer<TTo>
+      >]['allParams']
   buildLink: <
     TFrom extends ValidFromPath<TAllRouteInfo> = '/',
     TTo extends string = '.',
@@ -360,26 +367,6 @@ export interface Router<
   ) => LinkInfo
   dehydrate: () => DehydratedRouter<TRouterContext>
   hydrate: (dehydratedRouter: DehydratedRouter<TRouterContext>) => void
-  __: {
-    navigateTimeout?: Timeout
-    nextAction?: 'push' | 'replace'
-    navigationPromise?: Promise<void>
-    startedLoadingAt: number
-    resolveNavigation: () => void
-    onFocus: () => void
-    buildRouteTree: (
-      routeConfig: RouteConfig,
-    ) => Route<TAllRouteInfo, AnyRouteInfo>
-    parseLocation: (
-      location: History['location'],
-      previousLocation?: Location,
-    ) => Location
-    buildLocation: (dest: BuildNextOptions) => Location
-    commitLocation: (next: Location, replace?: boolean) => Promise<void>
-    navigate: (
-      location: BuildNextOptions & { replace?: boolean },
-    ) => Promise<void>
-  }
 }
 
 // Detect if we're in the DOM
@@ -437,6 +424,194 @@ export function createRouter<
   }
 
   const [store, setStore] = createStore<RouterStore>(getInitialRouterState())
+
+  let navigateTimeout: undefined | Timeout
+  let nextAction: undefined | 'push' | 'replace'
+  let navigationPromise: undefined | Promise<void>
+
+  let startedLoadingAt = Date.now()
+  let resolveNavigation = () => {}
+
+  function onFocus() {
+    router.load()
+  }
+
+  function buildRouteTree(rootRouteConfig: RouteConfig) {
+    const recurseRoutes = (
+      routeConfigs: RouteConfig[],
+      parent?: Route<TAllRouteInfo, any, any>,
+    ): Route<TAllRouteInfo, any, any>[] => {
+      return routeConfigs.map((routeConfig) => {
+        const routeOptions = routeConfig.options
+        const route = createRoute(routeConfig, routeOptions, parent, router)
+        const existingRoute = (router.routesById as any)[route.routeId]
+
+        if (existingRoute) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(
+              `Duplicate routes found with id: ${String(route.routeId)}`,
+              router.routesById,
+              route,
+            )
+          }
+          throw new Error()
+        }
+
+        ;(router.routesById as any)[route.routeId] = route
+
+        const children = routeConfig.children as RouteConfig[]
+
+        route.childRoutes = children?.length
+          ? recurseRoutes(children, route)
+          : undefined
+
+        return route
+      })
+    }
+
+    const routes = recurseRoutes([rootRouteConfig])
+
+    return routes[0]!
+  }
+
+  function parseLocation(
+    location: History['location'],
+    previousLocation?: Location,
+  ): Location {
+    const parsedSearch = router.options.parseSearch(location.search)
+
+    return {
+      pathname: location.pathname,
+      searchStr: location.search,
+      search: sharedClone(previousLocation?.search, parsedSearch),
+      hash: location.hash.split('#').reverse()[0] ?? '',
+      href: `${location.pathname}${location.search}${location.hash}`,
+      state: location.state as LocationState,
+      key: location.key,
+    }
+  }
+
+  function navigate(location: BuildNextOptions & { replace?: boolean }) {
+    const next = router.buildNext(location)
+    return commitLocation(next, location.replace)
+  }
+
+  function buildLocation(dest: BuildNextOptions = {}): Location {
+    const fromPathname = dest.fromCurrent
+      ? store.latestLocation.pathname
+      : dest.from ?? store.latestLocation.pathname
+
+    let pathname = resolvePath(
+      router.basepath ?? '/',
+      fromPathname,
+      `${dest.to ?? '.'}`,
+    )
+
+    const fromMatches = router.matchRoutes(store.latestLocation.pathname, {
+      strictParseParams: true,
+    })
+
+    const toMatches = router.matchRoutes(pathname)
+
+    const prevParams = { ...last(fromMatches)?.params }
+
+    let nextParams =
+      (dest.params ?? true) === true
+        ? prevParams
+        : functionalUpdate(dest.params!, prevParams)
+
+    if (nextParams) {
+      toMatches
+        .map((d) => d.options.stringifyParams)
+        .filter(Boolean)
+        .forEach((fn) => {
+          Object.assign({}, nextParams!, fn!(nextParams!))
+        })
+    }
+
+    pathname = interpolatePath(pathname, nextParams ?? {})
+
+    // Pre filters first
+    const preFilteredSearch = dest.__preSearchFilters?.length
+      ? dest.__preSearchFilters.reduce(
+          (prev, next) => next(prev),
+          store.latestLocation.search,
+        )
+      : store.latestLocation.search
+
+    // Then the link/navigate function
+    const destSearch =
+      dest.search === true
+        ? preFilteredSearch // Preserve resolvedFrom true
+        : dest.search
+        ? functionalUpdate(dest.search, preFilteredSearch) ?? {} // Updater
+        : dest.__preSearchFilters?.length
+        ? preFilteredSearch // Preserve resolvedFrom filters
+        : {}
+
+    // Then post filters
+    const postFilteredSearch = dest.__postSearchFilters?.length
+      ? dest.__postSearchFilters.reduce((prev, next) => next(prev), destSearch)
+      : destSearch
+
+    const search = sharedClone(store.latestLocation.search, postFilteredSearch)
+
+    const searchStr = router.options.stringifySearch(search)
+    let hash =
+      dest.hash === true
+        ? store.latestLocation.hash
+        : functionalUpdate(dest.hash!, store.latestLocation.hash)
+    hash = hash ? `#${hash}` : ''
+
+    return {
+      pathname,
+      search,
+      searchStr,
+      state: store.latestLocation.state,
+      hash,
+      href: `${pathname}${searchStr}${hash}`,
+      key: dest.key,
+    }
+  }
+
+  function commitLocation(next: Location, replace?: boolean): Promise<void> {
+    const id = '' + Date.now() + Math.random()
+
+    if (navigateTimeout) clearTimeout(navigateTimeout)
+
+    let nextAction: 'push' | 'replace' = 'replace'
+
+    if (!replace) {
+      nextAction = 'push'
+    }
+
+    const isSameUrl = parseLocation(history.location).href === next.href
+
+    if (isSameUrl && !next.key) {
+      nextAction = 'replace'
+    }
+
+    history[nextAction](
+      {
+        pathname: next.pathname,
+        hash: next.hash,
+        search: next.searchStr,
+      },
+      {
+        id,
+        ...next.state,
+      },
+    )
+
+    return (navigationPromise = new Promise((resolve) => {
+      const previousNavigationResolve = resolveNavigation
+
+      resolveNavigation = () => {
+        previousNavigationResolve()
+        resolve()
+      }
+    }))
+  }
 
   const router: Router<TRouteConfig, TAllRouteInfo, TRouterContext> = {
     types: undefined!,
@@ -518,9 +693,7 @@ export function createRouter<
         }
 
         const unsub = history.listen((event) => {
-          router.load(
-            router.__.parseLocation(event.location, store.latestLocation),
-          )
+          router.load(parseLocation(event.location, store.latestLocation))
         })
 
         // addEventListener does not exist in React Native, but window does
@@ -528,16 +701,16 @@ export function createRouter<
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (window.addEventListener) {
           // Listen to visibillitychange and focus
-          window.addEventListener('visibilitychange', router.__.onFocus, false)
-          window.addEventListener('focus', router.__.onFocus, false)
+          window.addEventListener('visibilitychange', onFocus, false)
+          window.addEventListener('focus', onFocus, false)
         }
 
         return () => {
           unsub()
           if (window.removeEventListener) {
             // Be sure to unsubscribe if a new handler is set
-            window.removeEventListener('visibilitychange', router.__.onFocus)
-            window.removeEventListener('focus', router.__.onFocus)
+            window.removeEventListener('visibilitychange', onFocus)
+            window.removeEventListener('focus', onFocus)
           }
         }
       }
@@ -552,7 +725,7 @@ export function createRouter<
           history = opts.history
         }
         setStore((s) => {
-          s.latestLocation = router.__.parseLocation(history.location)
+          s.latestLocation = parseLocation(history.location)
           s.currentLocation = s.latestLocation
         })
       }
@@ -565,7 +738,7 @@ export function createRouter<
 
       if (routeConfig) {
         router.routesById = {} as any
-        router.routeTree = router.__.buildRouteTree(routeConfig)
+        router.routeTree = buildRouteTree(routeConfig)
       }
 
       return router as any
@@ -582,7 +755,7 @@ export function createRouter<
     load: async (next?: Location) => {
       let now = Date.now()
       const startedAt = now
-      router.__.startedLoadingAt = startedAt
+      startedLoadingAt = startedAt
 
       // Cancel any pending matches
       router.cancelMatches()
@@ -620,9 +793,9 @@ export function createRouter<
         )
       }
 
-      if (router.__.startedLoadingAt !== startedAt) {
+      if (startedLoadingAt !== startedAt) {
         // Ignore side-effects of outdated side-effects
-        return router.__.navigationPromise
+        return navigationPromise
       }
 
       const previousMatches = store.currentMatches
@@ -684,7 +857,7 @@ export function createRouter<
         delete store.matchCache[d.matchId]
       })
 
-      if (router.__.startedLoadingAt !== startedAt) {
+      if (startedLoadingAt !== startedAt) {
         // Ignore side-effects of match loading
         return
       }
@@ -708,7 +881,7 @@ export function createRouter<
         })
       })
 
-      router.__.resolveNavigation()
+      resolveNavigation()
     },
 
     cleanMatchCache: () => {
@@ -973,7 +1146,7 @@ export function createRouter<
     },
 
     reload: () =>
-      router.__.navigate({
+      navigate({
         fromCurrent: true,
         replace: true,
         search: true,
@@ -1010,10 +1183,10 @@ export function createRouter<
         )
       }
 
-      return !!matchPathname(router.basepath, store.currentLocation.pathname, {
+      return matchPathname(router.basepath, store.currentLocation.pathname, {
         ...opts,
         to: next.pathname,
-      })
+      }) as any
     },
 
     navigate: async ({ from, to = '.', search, hash, replace, params }) => {
@@ -1037,7 +1210,7 @@ export function createRouter<
         'Attempting to navigate to external url with router.navigate!',
       )
 
-      return router.__.navigate({
+      return navigate({
         from: fromString,
         to: toString,
         search,
@@ -1121,7 +1294,7 @@ export function createRouter<
           }
 
           // All is well? Navigate!
-          router.__.navigate(nextOpts)
+          navigate(nextOpts)
         }
       }
 
@@ -1184,7 +1357,7 @@ export function createRouter<
       }
     },
     buildNext: (opts: BuildNextOptions) => {
-      const next = router.__.buildLocation(opts)
+      const next = buildLocation(opts)
 
       const matches = router.matchRoutes(next.pathname)
 
@@ -1198,202 +1371,11 @@ export function createRouter<
         .flat()
         .filter(Boolean)
 
-      return router.__.buildLocation({
+      return buildLocation({
         ...opts,
         __preSearchFilters,
         __postSearchFilters,
       })
-    },
-
-    __: {
-      resolveNavigation: () => {},
-      startedLoadingAt: Date.now(),
-      onFocus: () => {
-        router.load()
-      },
-      buildRouteTree: (rootRouteConfig: RouteConfig) => {
-        const recurseRoutes = (
-          routeConfigs: RouteConfig[],
-          parent?: Route<TAllRouteInfo, any, any>,
-        ): Route<TAllRouteInfo, any, any>[] => {
-          return routeConfigs.map((routeConfig) => {
-            const routeOptions = routeConfig.options
-            const route = createRoute(routeConfig, routeOptions, parent, router)
-            const existingRoute = (router.routesById as any)[route.routeId]
-
-            if (existingRoute) {
-              if (process.env.NODE_ENV !== 'production') {
-                console.warn(
-                  `Duplicate routes found with id: ${String(route.routeId)}`,
-                  router.routesById,
-                  route,
-                )
-              }
-              throw new Error()
-            }
-
-            ;(router.routesById as any)[route.routeId] = route
-
-            const children = routeConfig.children as RouteConfig[]
-
-            route.childRoutes = children?.length
-              ? recurseRoutes(children, route)
-              : undefined
-
-            return route
-          })
-        }
-
-        const routes = recurseRoutes([rootRouteConfig])
-
-        return routes[0]!
-      },
-
-      parseLocation: (
-        location: History['location'],
-        previousLocation?: Location,
-      ): Location => {
-        const parsedSearch = router.options.parseSearch(location.search)
-
-        return {
-          pathname: location.pathname,
-          searchStr: location.search,
-          search: sharedClone(previousLocation?.search, parsedSearch),
-          hash: location.hash.split('#').reverse()[0] ?? '',
-          href: `${location.pathname}${location.search}${location.hash}`,
-          state: location.state as LocationState,
-          key: location.key,
-        }
-      },
-
-      navigate: (location: BuildNextOptions & { replace?: boolean }) => {
-        const next = router.buildNext(location)
-        return router.__.commitLocation(next, location.replace)
-      },
-
-      buildLocation: (dest: BuildNextOptions = {}): Location => {
-        const fromPathname = dest.fromCurrent
-          ? store.latestLocation.pathname
-          : dest.from ?? store.latestLocation.pathname
-
-        let pathname = resolvePath(
-          router.basepath ?? '/',
-          fromPathname,
-          `${dest.to ?? '.'}`,
-        )
-
-        const fromMatches = router.matchRoutes(store.latestLocation.pathname, {
-          strictParseParams: true,
-        })
-
-        const toMatches = router.matchRoutes(pathname)
-
-        const prevParams = { ...last(fromMatches)?.params }
-
-        let nextParams =
-          (dest.params ?? true) === true
-            ? prevParams
-            : functionalUpdate(dest.params!, prevParams)
-
-        if (nextParams) {
-          toMatches
-            .map((d) => d.options.stringifyParams)
-            .filter(Boolean)
-            .forEach((fn) => {
-              Object.assign({}, nextParams!, fn!(nextParams!))
-            })
-        }
-
-        pathname = interpolatePath(pathname, nextParams ?? {})
-
-        // Pre filters first
-        const preFilteredSearch = dest.__preSearchFilters?.length
-          ? dest.__preSearchFilters.reduce(
-              (prev, next) => next(prev),
-              store.latestLocation.search,
-            )
-          : store.latestLocation.search
-
-        // Then the link/navigate function
-        const destSearch =
-          dest.search === true
-            ? preFilteredSearch // Preserve resolvedFrom true
-            : dest.search
-            ? functionalUpdate(dest.search, preFilteredSearch) ?? {} // Updater
-            : dest.__preSearchFilters?.length
-            ? preFilteredSearch // Preserve resolvedFrom filters
-            : {}
-
-        // Then post filters
-        const postFilteredSearch = dest.__postSearchFilters?.length
-          ? dest.__postSearchFilters.reduce(
-              (prev, next) => next(prev),
-              destSearch,
-            )
-          : destSearch
-
-        const search = sharedClone(
-          store.latestLocation.search,
-          postFilteredSearch,
-        )
-
-        const searchStr = router.options.stringifySearch(search)
-        let hash =
-          dest.hash === true
-            ? store.latestLocation.hash
-            : functionalUpdate(dest.hash!, store.latestLocation.hash)
-        hash = hash ? `#${hash}` : ''
-
-        return {
-          pathname,
-          search,
-          searchStr,
-          state: store.latestLocation.state,
-          hash,
-          href: `${pathname}${searchStr}${hash}`,
-          key: dest.key,
-        }
-      },
-
-      commitLocation: (next: Location, replace?: boolean): Promise<void> => {
-        const id = '' + Date.now() + Math.random()
-
-        if (router.__.navigateTimeout) clearTimeout(router.__.navigateTimeout)
-
-        let nextAction: 'push' | 'replace' = 'replace'
-
-        if (!replace) {
-          nextAction = 'push'
-        }
-
-        const isSameUrl =
-          router.__.parseLocation(history.location).href === next.href
-
-        if (isSameUrl && !next.key) {
-          nextAction = 'replace'
-        }
-
-        history[nextAction](
-          {
-            pathname: next.pathname,
-            hash: next.hash,
-            search: next.searchStr,
-          },
-          {
-            id,
-            ...next.state,
-          },
-        )
-
-        return (router.__.navigationPromise = new Promise((resolve) => {
-          const previousNavigationResolve = router.__.resolveNavigation
-
-          router.__.resolveNavigation = () => {
-            previousNavigationResolve()
-            resolve()
-          }
-        }))
-      },
     },
   }
 

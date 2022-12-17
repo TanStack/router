@@ -23,7 +23,7 @@ async function fetchPosts() {
 }
 
 function Posts() {
-  const { posts } = useLoaderData(routeConfig.id)
+  const { posts } = useLoaderData({ from: routeConfig.id })
 
   return (
     <div className="p-2 flex gap-2">

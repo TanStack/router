@@ -51,15 +51,11 @@ export interface RouteMatch<
   invalidate: () => void
   hasLoaders: () => boolean
   __: {
-    setLoaderData: (loaderData: TRouteInfo['routeLoaderData']) => void
-    updateLoaderData: () => void
     setParentMatch: (parentMatch?: RouteMatch) => void
     component?: GetFrameworkGeneric<'Component'>
     errorComponent?: GetFrameworkGeneric<'ErrorComponent'>
     pendingComponent?: GetFrameworkGeneric<'Component'>
     loadPromise?: Promise<void>
-    componentsPromise?: Promise<void>
-    dataPromise?: Promise<TRouteInfo['routeLoaderData']>
     onExit?:
       | void
       | ((matchContext: {
@@ -67,9 +63,7 @@ export interface RouteMatch<
           search: TRouteInfo['fullSearchSchema']
         }) => void)
     abortController: AbortController
-    latestId: string
     validate: () => void
-    resolve: () => void
   }
 }
 
@@ -92,7 +86,28 @@ export function createRouteMatch<
     pathname: string
   },
 ): RouteMatch<TAllRouteInfo, TRouteInfo> {
-  let cachedLoaderData = {}
+  let componentsPromise: Promise<void>
+  let dataPromise: Promise<TRouteInfo['routeLoaderData']>
+  let latestId = ''
+  let resolve = () => {}
+
+  function setLoaderData(loaderData: TRouteInfo['routeLoaderData']) {
+    batch(() => {
+      setStore((s) => {
+        s.routeLoaderData = sharedClone(s.routeLoaderData, loaderData)
+      })
+      updateLoaderData()
+    })
+  }
+
+  function updateLoaderData() {
+    setStore((s) => {
+      s.loaderData = sharedClone(s.loaderData, {
+        ...store.parentMatch?.store.loaderData,
+        ...s.routeLoaderData,
+      }) as TRouteInfo['loaderData']
+    })
+  }
 
   const [store, setStore] = createStore<
     RouteMatchStore<TAllRouteInfo, TRouteInfo>
@@ -119,34 +134,16 @@ export function createRouteMatch<
     router,
     childMatches: [],
     __: {
-      setLoaderData: (loaderData) => {
-        batch(() => {
-          setStore((s) => {
-            s.routeLoaderData = sharedClone(s.routeLoaderData, loaderData)
-          })
-          routeMatch.__.updateLoaderData()
-        })
-      },
-      updateLoaderData: () => {
-        setStore((s) => {
-          s.loaderData = sharedClone(s.loaderData, {
-            ...store.parentMatch?.store.loaderData,
-            ...s.routeLoaderData,
-          }) as TRouteInfo['loaderData']
-        })
-      },
       setParentMatch: (parentMatch?: RouteMatch) => {
         batch(() => {
           setStore((s) => {
             s.parentMatch = parentMatch
           })
 
-          routeMatch.__.updateLoaderData()
+          updateLoaderData()
         })
       },
       abortController: new AbortController(),
-      latestId: '',
-      resolve: () => {},
       validate: () => {
         // Validate the search params and stabilize them
         const parentSearch =
@@ -253,9 +250,9 @@ export function createRouteMatch<
     },
     fetch: async (opts) => {
       const loadId = '' + Date.now() + Math.random()
-      routeMatch.__.latestId = loadId
+      latestId = loadId
       const checkLatest = async () => {
-        if (loadId !== routeMatch.__.latestId) {
+        if (loadId !== latestId) {
           // warning(true, 'Data loader is out of date!')
           return new Promise(() => {})
         }
@@ -273,13 +270,13 @@ export function createRouteMatch<
         setStore((s) => (s.invalid = false))
       })
 
-      routeMatch.__.loadPromise = new Promise(async (resolve) => {
+      routeMatch.__.loadPromise = new Promise(async (r) => {
         // We are now fetching, even if it's in the background of a
         // resolved state
         setStore((s) => (s.isFetching = true))
-        routeMatch.__.resolve = resolve as () => void
+        resolve = r as () => void
 
-        routeMatch.__.componentsPromise = (async () => {
+        componentsPromise = (async () => {
           // then run all component and data loaders in parallel
           // For each component type, potentially load it asynchronously
 
@@ -296,13 +293,13 @@ export function createRouteMatch<
           )
         })()
 
-        routeMatch.__.dataPromise = Promise.resolve().then(async () => {
+        dataPromise = Promise.resolve().then(async () => {
           try {
             if (routeMatch.options.loader) {
               const data = await router.loadMatchData(routeMatch)
               await checkLatest()
 
-              routeMatch.__.setLoaderData(data)
+              setLoaderData(data)
             }
 
             setStore((s) => {
@@ -339,14 +336,11 @@ export function createRouteMatch<
           await checkLatest()
           setStore((s) => (s.isFetching = false))
           delete routeMatch.__.loadPromise
-          routeMatch.__.resolve()
+          resolve()
         }
 
         try {
-          await Promise.all([
-            routeMatch.__.componentsPromise,
-            routeMatch.__.dataPromise.catch(() => {}),
-          ])
+          await Promise.all([componentsPromise, dataPromise.catch(() => {})])
           after()
         } catch {
           after()

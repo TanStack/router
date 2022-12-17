@@ -8,6 +8,12 @@ import {
   lazy,
   Link,
   useMatch,
+  useRouterStore,
+  useLoaderData,
+  MatchRoute,
+  useNavigate,
+  useSearch,
+  useAction,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -37,7 +43,8 @@ declare module '@tanstack/react-router' {
 // Build our routes. We could do this in our component, too.
 const rootRoute = createRouteConfig({
   component: () => {
-    const routerState = router.useState()
+    const routerStore = useRouterStore()
+
     return (
       <>
         <div className={`min-h-screen flex flex-col`}>
@@ -46,7 +53,7 @@ const rootRoute = createRouteConfig({
             {/* Show a global spinner when the router is transitioning */}
             <div
               className={`text-3xl duration-300 delay-0 opacity-0 ${
-                routerState.isFetching ? ` duration-1000 opacity-40` : ''
+                routerStore.isFetching ? ` duration-1000 opacity-40` : ''
               }`}
             >
               <Spinner />
@@ -102,13 +109,13 @@ const rootRoute = createRouteConfig({
 const indexRoute = rootRoute.createRoute({
   path: '/',
   component: () => {
-    const route = useMatch(indexRoute.id)
+    const route = useMatch({ from: indexRoute.id })
 
     return (
       <div className={`p-2`}>
         <div className={`text-lg`}>Welcome Home!</div>
         <hr className={`my-2`} />
-        <route.Link
+        <Link
           to={invoiceRoute.id}
           params={{
             invoiceId: 3,
@@ -116,7 +123,7 @@ const indexRoute = rootRoute.createRoute({
           className={`py-1 px-2 text-xs bg-blue-500 text-white rounded-full`}
         >
           1 New Invoice
-        </route.Link>
+        </Link>
         <hr className={`my-2`} />
         <div className={`max-w-xl`}>
           As you navigate around take note of the UX. It should feel
@@ -146,13 +153,13 @@ const dashboardRoute = rootRoute.createRoute({
     }
   },
   component: () => {
-    const route = useMatch(dashboardRoute.id)
+    const route = useMatch({ from: dashboardRoute.id })
 
     return (
       <>
         <div className="flex items-center border-b">
           <h2 className="text-xl p-2">Dashboard</h2>
-          <route.Link
+          <Link
             to="/dashboard/invoices/$invoiceId"
             params={{
               invoiceId: 3,
@@ -160,7 +167,7 @@ const dashboardRoute = rootRoute.createRoute({
             className="py-1 px-2 text-xs bg-blue-500 text-white rounded-full"
           >
             1 New Invoice
-          </route.Link>
+          </Link>
         </div>
         <div className="flex flex-wrap divide-x">
           {(
@@ -171,7 +178,7 @@ const dashboardRoute = rootRoute.createRoute({
             ] as const
           ).map(([to, label, search]) => {
             return (
-              <route.Link
+              <Link
                 key={to}
                 to={to}
                 search={search}
@@ -180,7 +187,7 @@ const dashboardRoute = rootRoute.createRoute({
                 className="p-2"
               >
                 {label}
-              </route.Link>
+              </Link>
             )
           })}
         </div>
@@ -194,9 +201,7 @@ const dashboardRoute = rootRoute.createRoute({
 const dashboardIndexRoute = dashboardRoute.createRoute({
   path: '/',
   component: () => {
-    const {
-      loaderData: { invoices },
-    } = useMatch(dashboardIndexRoute.id)
+    const { invoices } = useLoaderData({ from: dashboardIndexRoute.id })
 
     return (
       <div className="p-2">
@@ -212,18 +217,16 @@ const dashboardIndexRoute = dashboardRoute.createRoute({
 const invoicesRoute = dashboardRoute.createRoute({
   path: 'invoices',
   component: () => {
-    const {
-      loaderData: { invoices },
-      Link,
-      MatchRoute,
-    } = useMatch(invoicesRoute.id)
+    const { invoices } = useLoaderData({ from: invoicesRoute.id })
 
     // Get the action for a child route
-    const invoiceIndexMatch = useMatch(invoicesIndexRoute.id, {
+    const invoiceIndexMatch = useMatch({
+      from: invoicesIndexRoute.id,
       strict: false,
     })
 
-    const invoiceDetailMatch = useMatch(invoiceRoute.id, {
+    const invoiceDetailMatch = useMatch({
+      from: invoiceRoute.id,
       strict: false,
     })
 
@@ -256,7 +259,7 @@ const invoicesRoute = dashboardRoute.createRoute({
                       <Spinner />
                     ) : (
                       <MatchRoute
-                        to="./$invoiceId"
+                        to={invoiceRoute.id}
                         params={{
                           invoiceId: invoice.id,
                         }}
@@ -294,7 +297,7 @@ const invoicesIndexRoute = invoicesRoute.createRoute({
     return postInvoice(partialInvoice)
   },
   component: () => {
-    const { action } = useMatch(invoicesIndexRoute.id)
+    const { action } = useMatch({ from: invoicesIndexRoute.id })
 
     return (
       <>
@@ -364,13 +367,10 @@ const invoiceRoute = invoicesRoute.createRoute({
   },
   action: patchInvoice,
   component: () => {
-    const {
-      loaderData: { invoice },
-      action,
-      search,
-      Link,
-      navigate,
-    } = useMatch(invoiceRoute.id)
+    const { invoice } = useLoaderData({ from: invoiceRoute.id })
+    const search = useSearch({ from: invoiceRoute.id })
+    const action = useAction({ from: invoiceRoute.id })
+    const navigate = useNavigate({ from: invoiceRoute.id })
 
     const [notes, setNotes] = React.useState(search.notes ?? ``)
 
@@ -480,13 +480,9 @@ const usersRoute = dashboardRoute.createRoute({
     }),
   ],
   component: () => {
-    const {
-      loaderData: { users },
-      search: { usersView },
-      Link,
-      MatchRoute,
-      navigate,
-    } = useMatch(usersRoute.id)
+    const { users } = useLoaderData({ from: usersRoute.id })
+    const { usersView } = useSearch({ from: usersRoute.id })
+    const navigate = useNavigate({ from: usersRoute.id })
 
     const sortBy = usersView?.sortBy ?? 'name'
     const filterBy = usersView?.filterBy
@@ -568,7 +564,7 @@ const usersRoute = dashboardRoute.createRoute({
             return (
               <div key={user.id}>
                 <Link
-                  to="./$userId"
+                  to={userRoute.id}
                   params={{
                     userId: user.id,
                   }}
@@ -578,7 +574,7 @@ const usersRoute = dashboardRoute.createRoute({
                   <pre className="text-sm">
                     {user.name}{' '}
                     <MatchRoute
-                      to={`./$userId`}
+                      to={userRoute.id}
                       params={{
                         userId: user.id,
                       }}
@@ -638,9 +634,7 @@ const userRoute = usersRoute.createRoute({
     }
   },
   component: () => {
-    const {
-      loaderData: { user },
-    } = useMatch(userRoute.id)
+    const { user } = useLoaderData({ from: userRoute.id })
 
     return (
       <>
@@ -705,7 +699,7 @@ const loginRoute = rootRoute.createRoute({
     redirect: z.string().optional(),
   }),
   component: () => {
-    const { search } = useMatch(loginRoute.id)
+    const search = useSearch({ from: loginRoute.id })
     const auth = useAuth()
     const [username, setUsername] = React.useState('')
 
@@ -767,12 +761,12 @@ const layoutRoute = rootRoute.createRoute({
     })
   },
   component: () => {
-    const { loaderData } = useMatch(layoutRoute.id)
+    const { random } = useLoaderData({ from: layoutRoute.id })
 
     return (
       <div>
         <div>Layout</div>
-        <div>Random #: {loaderData.random}</div>
+        <div>Random #: {random}</div>
         <hr />
         <Outlet />
       </div>

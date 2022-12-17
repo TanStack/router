@@ -81,12 +81,6 @@ export async function render(opts: {
   // Kick off the router loading sequence, but don't wait for it to finish
   router.load()
 
-  // Because our app is rendering <html> and <body> tags, we need to
-  // wait for the root route to finish before we start streaming
-  const matches = router.store.pendingMatches || router.store.currentMatches
-
-  await matches[0].__.loadPromise
-
   // Track errors
   let didError = false
 

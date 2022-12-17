@@ -1,28 +1,35 @@
-import { Outlet, useMatch } from '@tanstack/react-router'
+import {
+  Link,
+  MatchRoute,
+  Outlet,
+  useAction,
+  useLoaderData,
+  useMatch,
+  useRoute,
+} from '@tanstack/react-router'
 import * as React from 'react'
 import { Spinner } from '../../components/Spinner'
 import { routeConfig } from '../../routes.generated/dashboard/invoices'
+import { dashboardInvoicesinvoiceIdRoute } from '../../routes.generated/dashboard/invoices/$invoiceId.client'
+import { dashboardInvoicesIndexRoute } from '../../routes.generated/dashboard/invoices/index.client'
 
 routeConfig.generate({
   component: Invoices,
 })
 
 function Invoices() {
-  const {
-    loaderData: { invoices },
-    Link,
-    MatchRoute,
-    useRoute,
-  } = useMatch(routeConfig.id) // Get the action for a child route
+  const { invoices } = useLoaderData({ from: routeConfig.id })
 
-  const invoiceIndexRoute = useRoute('./')
-  const invoiceDetailRoute = useRoute('./$invoiceId')
+  const invoiceIndexAction = useAction({ from: dashboardInvoicesIndexRoute.id })
+  const invoiceDetailAction = useAction({
+    from: dashboardInvoicesinvoiceIdRoute.id,
+  })
 
   return (
     <div className="flex-1 flex">
       <div className="divide-y w-48">
         {invoices?.map((invoice) => {
-          const foundPending = invoiceDetailRoute.action.submissions.find(
+          const foundPending = invoiceDetailAction.submissions.find(
             (d) => d.submission?.id === invoice.id,
           )
           if (foundPending?.submission) {
@@ -50,7 +57,7 @@ function Invoices() {
                     <Spinner />
                   ) : (
                     <MatchRoute
-                      to="./$invoiceId"
+                      to={dashboardInvoicesinvoiceIdRoute.id}
                       params={{
                         invoiceId: invoice.id,
                       }}
@@ -64,7 +71,7 @@ function Invoices() {
             </div>
           )
         })}
-        {invoiceIndexRoute.action.submissions.map((action) => (
+        {invoiceIndexAction.submissions.map((action) => (
           <div key={action.submittedAt}>
             <a href="#" className="block py-2 px-3 text-blue-700">
               <pre className="text-sm">

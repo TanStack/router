@@ -1,4 +1,4 @@
-import { useMatch } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import * as React from 'react'
 import { fetchUsers } from '../mockTodos'
 import { routeConfig } from '../routes.generated/index'
@@ -11,12 +11,11 @@ routeConfig.generate({
 })
 
 function Home() {
-  const route = useMatch(routeConfig.id)
   return (
     <div className={`p-2`}>
       <div className={`text-lg`}>Welcome Home!</div>
       <hr className={`my-2`} />
-      <route.Link
+      <Link
         to="/dashboard/invoices/$invoiceId"
         params={{
           invoiceId: 3,
@@ -24,7 +23,7 @@ function Home() {
         className={`py-1 px-2 text-xs bg-blue-500 text-white rounded-full`}
       >
         1 New Invoice
-      </route.Link>
+      </Link>
       <hr className={`my-2`} />
       <div className={`max-w-xl`}>
         As you navigate around take note of the UX. It should feel

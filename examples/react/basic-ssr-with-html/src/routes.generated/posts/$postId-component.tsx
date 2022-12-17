@@ -1,24 +1,24 @@
-import * as React from 'react';
-import { useLoaderData, useMatch } from '@tanstack/react-router';
-import { routeConfig } from '../../routes.generated/posts/$postId';
+import * as React from 'react'
+import { useLoaderData, useMatch } from '@tanstack/react-router'
+import { routeConfig } from '../../routes.generated/posts/$postId'
 export type PostType = {
-  id: string;
-  title: string;
-  body: string;
-};
+  id: string
+  title: string
+  body: string
+}
 function Post() {
-  const {
-    post
-  } = useLoaderData(routeConfig.id);
+  const { post } = useLoaderData({ from: routeConfig.id })
   // const {
   //   store: {
-  //     loaderData: { post },
+  //     post,
   //   },
   // } = useMatch(routeConfig.id)
 
-  return <div className="space-y-2">
+  return (
+    <div className="space-y-2">
       <h4 className="text-xl font-bold underline">{post.title}</h4>
       <div className="text-sm">{post.body}</div>
-    </div>;
+    </div>
+  )
 }
-export const component = Post;
+export const component = Post

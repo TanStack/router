@@ -1,9 +1,17 @@
-import { Outlet, useMatch } from '@tanstack/react-router'
+import {
+  Link,
+  MatchRoute,
+  Outlet,
+  useLoaderData,
+  useNavigate,
+  useSearch,
+} from '@tanstack/react-router'
 import * as React from 'react'
 import { z } from 'zod'
 import { Spinner } from '../../components/Spinner'
 import { fetchUsers } from '../../mockTodos'
 import { routeConfig } from '../../routes.generated/dashboard/users'
+import { dashboardUsersuserIdRoute } from '../../routes.generated/dashboard/users/$userId.client'
 const usersViewSortBy = z.enum(['name', 'id', 'email'])
 type UsersViewSortBy = z.infer<typeof usersViewSortBy>
 
@@ -36,13 +44,9 @@ routeConfig.generate({
 })
 
 function Users() {
-  const {
-    loaderData: { users },
-    search: { usersView },
-    Link,
-    MatchRoute,
-    navigate,
-  } = useMatch(routeConfig.id)
+  const { users } = useLoaderData({ from: routeConfig.id })
+  const { usersView } = useSearch({ from: routeConfig.id })
+  const navigate = useNavigate({ from: routeConfig.id })
 
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy
@@ -120,7 +124,7 @@ function Users() {
           return (
             <div key={user.id}>
               <Link
-                to="./$userId"
+                to={dashboardUsersuserIdRoute.id}
                 params={{
                   userId: user.id,
                 }}
@@ -132,7 +136,7 @@ function Users() {
                 <pre className="text-sm">
                   {user.name}{' '}
                   <MatchRoute
-                    to={`./$userId`}
+                    to={dashboardUsersuserIdRoute.id}
                     params={{
                       userId: user.id,
                     }}

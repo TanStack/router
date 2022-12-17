@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { fetchUserById } from '../../../mockTodos'
 import { routeConfig } from '../../../routes.generated/dashboard/users/$userId'
-import { useMatch } from '@tanstack/react-router'
+import { useLoaderData, useMatch } from '@tanstack/react-router'
 
 routeConfig.generate({
   parseParams: ({ userId }) => ({
@@ -20,9 +20,7 @@ routeConfig.generate({
 })
 
 function User() {
-  const {
-    loaderData: { user },
-  } = useMatch(routeConfig.id)
+  const { user } = useLoaderData({ from: routeConfig.id })
 
   return (
     <>
