@@ -349,10 +349,13 @@ const invoiceRoute = invoicesRoute.createRoute({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),
   }),
   stringifyParams: ({ invoiceId }) => ({ invoiceId: `${invoiceId}` }),
-  validateSearch: z.object({
-    showNotes: z.boolean().optional(),
-    notes: z.string().optional(),
-  }),
+  validateSearch: (search) =>
+    z
+      .object({
+        showNotes: z.boolean().optional(),
+        notes: z.string().optional(),
+      })
+      .parse(search),
   loader: async ({ params: { invoiceId }, search: {} }) => {
     console.log('Fetching invoice...')
     const invoice = await fetchInvoiceById(invoiceId)
@@ -564,7 +567,6 @@ const usersRoute = dashboardRoute.createRoute({
             return (
               <div key={user.id}>
                 <Link
-                  to={userRoute.id}
                   params={{
                     userId: user.id,
                   }}
