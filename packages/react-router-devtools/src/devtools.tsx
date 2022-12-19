@@ -5,6 +5,7 @@ import {
   routerContext,
   invariant,
   __useStoreValue,
+  useRouterStore,
 } from '@tanstack/react-router'
 import { formatDistanceStrict } from 'date-fns'
 
@@ -424,7 +425,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     'No router was found for the TanStack Router Devtools. Please place the devtools in the <RouterProvider> component tree or pass the router instance to the devtools manually.',
   )
 
-  router.useStore()
+  useRouterStore()
 
   const [activeRouteId, setActiveRouteId] = useLocalStorage(
     'tanstackRouterDevtoolsActiveRouteId',

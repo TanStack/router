@@ -19,7 +19,6 @@
       "@tanstack/router-core": ["packages/router-core"],
       "@tanstack/react-router": ["packages/react-router"],
       "@tanstack/react-router-devtools": ["packages/react-router-devtools"],
-      "@tanstack/router-rank-routes": ["packages/react-router-rank-routes"],
       "@tanstack/router-cli": ["packages/router-cli"]
     }
   }

@@ -39,6 +39,7 @@ export interface Route<
   parentRoute?: AnyRoute
   childRoutes?: AnyRoute[]
   options: RouteOptions
+  originalIndex: number
   router: Router<TAllRouteInfo['routeConfig'], TAllRouteInfo, TRouterContext>
   action: unknown extends TRouteInfo['actionResponse']
     ?
@@ -93,6 +94,7 @@ export function createRoute<
 >(
   routeConfig: RouteConfig,
   options: TRouteInfo['options'],
+  originalIndex: number,
   parent: undefined | Route<TAllRouteInfo, any>,
   router: Router<TAllRouteInfo['routeConfig'], TAllRouteInfo, TRouterContext>,
 ): Route<TAllRouteInfo, TRouteInfo, TRouterContext> {
@@ -102,6 +104,7 @@ export function createRoute<
     routeInfo: undefined!,
     routeId: id,
     routeRouteId: routeId,
+    originalIndex,
     routePath,
     fullPath,
     options,

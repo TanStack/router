@@ -1,6 +1,6 @@
 import { RollupOptions } from 'rollup'
 import babel from '@rollup/plugin-babel'
-import { terser } from 'rollup-plugin-terser'
+import terser from '@rollup/plugin-terser'
 import size from 'rollup-plugin-size'
 import visualizer from 'rollup-plugin-visualizer'
 import replace from '@rollup/plugin-replace'
@@ -194,6 +194,7 @@ function umdProd({
       nodeResolve({ extensions: ['.ts', '.tsx'] }),
       umdDevPlugin('production'),
       terser({
+        sourceMap: true,
         mangle: true,
         compress: true,
       }),
@@ -204,7 +205,7 @@ function umdProd({
       }),
       visualizer({
         filename: `${packageDir}/build/stats-react.json`,
-        json: true,
+        template: 'raw-data',
         gzipSize: true,
       }),
     ],

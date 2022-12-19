@@ -441,9 +441,9 @@ export function createRouter<
       routeConfigs: RouteConfig[],
       parent?: Route<TAllRouteInfo, any, any>,
     ): Route<TAllRouteInfo, any, any>[] => {
-      return routeConfigs.map((routeConfig) => {
+      return routeConfigs.map((routeConfig, i) => {
         const routeOptions = routeConfig.options
-        const route = createRoute(routeConfig, routeOptions, parent, router)
+        const route = createRoute(routeConfig, routeOptions, i, parent, router)
         const existingRoute = (router.routesById as any)[route.routeId]
 
         if (existingRoute) {

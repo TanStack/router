@@ -5,11 +5,7 @@
     { "path": "packages/react-router" },
     { "path": "packages/react-router-devtools" },
     { "path": "packages/router-cli" }
-    // { "path": "packages/react-router-lite-experimental" },
     // { "path": "packages/react-router-devtools" },
-    // { "path": "packages/react-router-jsurl" },
-    // { "path": "packages/react-router-rank-routes" },
-    // { "path": "packages/react-router-simple-cache" },
     // { "path": "examples/react/kitchen-sink/tsconfig.dev.json" }
   ]
   // "exclude": ["node_modules"]

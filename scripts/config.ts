@@ -32,15 +32,6 @@ export const packages: Package[] = [
     globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
   },
   {
-    name: '@tanstack/router-rank-routes',
-    packageDir: 'react-router-rank-routes',
-    peerDependencies: ['@tanstack/react-router'],
-    srcDir: 'src',
-    jsName: 'ReactRouterRankRoutes',
-    entryFile: 'src/index.tsx',
-    globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
-  },
-  {
     name: '@tanstack/router-cli',
     packageDir: 'router-cli',
     srcDir: 'src',

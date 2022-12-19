@@ -1,3 +1,5 @@
+const esModules = ['@solidjs/reactivity'].join('|')
+
 function makeConfig(name: string) {
   return {
     displayName: name,
@@ -12,12 +14,11 @@ function makeConfig(name: string) {
 
 module.exports = {
   modulePathIgnorePatterns: ['/build/'],
+  transformIgnorePatterns: [`/node_modules/(?!${esModules})`],
   projects: [
     makeConfig('router-core'),
     makeConfig('react-router'),
     // makeConfig('react-router-devtools'),
-    // makeConfig('react-router-simple-cache'),
-    // makeConfig('react-router-rank-routes'),
     // makeConfig('react-router-jsurl'),
   ],
 }
