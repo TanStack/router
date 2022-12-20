@@ -292,7 +292,7 @@ export interface Router<
   }
 
   // Public API
-  // history: BrowserHistory | MemoryHistory | HashHistory
+  history: BrowserHistory | MemoryHistory | HashHistory
   options: PickAsRequired<
     RouterOptions<TRouteConfig, TRouterContext>,
     'stringifySearch' | 'parseSearch' | 'context'
@@ -617,7 +617,7 @@ export function createRouter<
     types: undefined!,
 
     // public api
-    // history,
+    history,
     store,
     setStore,
     options: originalOptions,
