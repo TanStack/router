@@ -146,6 +146,106 @@
       ]
     },
     {
+      "label": "React Routers",
+      "children": [
+        {
+          "label": "RouterProvider",
+          "to": "api/react/RouterProvider"
+        },
+        {
+          "label": "createReactRouter",
+          "to": "api/react/createReactRouter"
+        }
+      ]
+    },
+    {
+      "label": "React Components",
+      "children": [
+        {
+          "label": "Link",
+          "to": "api/react/Link"
+        },
+        {
+          "label": "MatchRoute",
+          "to": "api/react/MatchRoute"
+        },
+        {
+          "label": "Outlet",
+          "to": "api/react/Outlet"
+        },
+        {
+          "label": "Prompt",
+          "to": "api/react/Prompt"
+        },
+        {
+          "label": "Route",
+          "to": "api/react/Route"
+        }
+      ]
+    },
+    {
+      "label": "React Hooks",
+      "children": [
+        {
+          "label": "useAction",
+          "to": "api/react/useAction"
+        },
+        {
+          "label": "useLinkProps",
+          "to": "api/react/useLinkProps"
+        },
+        {
+          "label": "useLoaderData",
+          "to": "api/react/useLoaderData"
+        },
+        {
+          "label": "useMatch",
+          "to": "api/react/useMatch"
+        },
+        {
+          "label": "useMatchRoute",
+          "to": "api/react/useMatchRoute"
+        },
+        {
+          "label": "useNavigate",
+          "to": "api/react/useNavigate"
+        },
+        {
+          "label": "useParams",
+          "to": "api/react/useParams"
+        },
+        {
+          "label": "usePrompt",
+          "to": "api/react/usePrompt"
+        },
+        {
+          "label": "useRoute",
+          "to": "api/react/useRoute"
+        },
+        {
+          "label": "useRouter",
+          "to": "api/react/useRouter"
+        },
+        {
+          "label": "useRouterStore",
+          "to": "api/react/useRouterStore"
+        },
+        {
+          "label": "useSearch",
+          "to": "api/react/useSearch"
+        }
+      ]
+    },
+    {
+      "label": "React Utilities",
+      "children": [
+        {
+          "label": "lazy",
+          "to": "api/react/lazy"
+        }
+      ]
+    },
+    {
       "label": "React Examples",
       "children": [
         {
