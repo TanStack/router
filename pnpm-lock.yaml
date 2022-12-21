@@ -220,6 +220,53 @@ importers:
       vite: 3.2.4
       vite-plugin-babel: 1.1.2_yir2gkbviqtcjobrstk32prrje
 
+  examples/react/basic-ssr-with-html:
+    specifiers:
+      '@babel/core': ^7.20.2
+      '@babel/generator': ^7.20.4
+      '@rollup/plugin-babel': ^6.0.2
+      '@tanstack/react-router': 0.0.1-beta.38
+      '@tanstack/react-router-devtools': 0.0.1-beta.36
+      '@tanstack/router-cli': 0.0.1-beta.36
+      '@types/express': ^4.17.14
+      '@types/jsesc': ^3.0.1
+      '@vitejs/plugin-react': ^2.2.0
+      axios: ^1.1.3
+      compression: ^1.7.4
+      concurrently: ^7.6.0
+      express: ^4.18.2
+      isbot: ^3.6.5
+      jsesc: ^3.0.2
+      node-fetch: ^3.3.0
+      react: ^18.2.0
+      react-dom: ^18.2.0
+      serve-static: ^1.15.0
+      vite: ^3.2.3
+      vite-plugin-babel: ^1.1.2
+    dependencies:
+      '@tanstack/react-router': link:../../../packages/react-router
+      '@tanstack/react-router-devtools': link:../../../packages/react-router-devtools
+      '@tanstack/router-cli': link:../../../packages/router-cli
+      axios: 1.2.0
+      react: 18.2.0
+      react-dom: 18.2.0_react@18.2.0
+    devDependencies:
+      '@babel/core': 7.20.5
+      '@babel/generator': 7.20.5
+      '@rollup/plugin-babel': 6.0.3_@babel+core@7.20.5
+      '@types/express': 4.17.14
+      '@types/jsesc': 3.0.1
+      '@vitejs/plugin-react': 2.2.0_vite@3.2.4
+      compression: 1.7.4
+      concurrently: 7.6.0
+      express: 4.18.2
+      isbot: 3.6.5
+      jsesc: 3.0.2
+      node-fetch: 3.3.0
+      serve-static: 1.15.0
+      vite: 3.2.4
+      vite-plugin-babel: 1.1.2_yir2gkbviqtcjobrstk32prrje
+
   examples/react/kitchen-sink-multi-file:
     specifiers:
       '@tanstack/react-router': 0.0.1-beta.38
@@ -312,6 +359,27 @@ importers:
       concurrently: 7.6.0
       ts-node: 10.9.1_wup25etrarvlqkprac7h35hj7u
       typescript: 4.9.3
+
+  examples/react/quickstart:
+    specifiers:
+      '@tanstack/react-router': 0.0.1-beta.36
+      '@tanstack/react-router-devtools': 0.0.1-beta.36
+      '@types/react': ^18.0.25
+      '@types/react-dom': ^18.0.8
+      '@vitejs/plugin-react': ^1.1.3
+      react: ^18.2.0
+      react-dom: ^18.2.0
+      vite: ^2.8.6
+    dependencies:
+      '@tanstack/react-router': 0.0.1-beta.36_biqbaboplfbrettd7655fr4n2y
+      '@tanstack/react-router-devtools': link:../../../packages/react-router-devtools
+      '@vitejs/plugin-react': 1.3.2
+      react: 18.2.0
+      react-dom: 18.2.0_react@18.2.0
+      vite: 2.9.15
+    devDependencies:
+      '@types/react': 18.0.26
+      '@types/react-dom': 18.0.9
 
   examples/react/with-astro-ssr:
     specifiers:
@@ -2183,7 +2251,7 @@ packages:
       '@jest/schemas': 29.0.0
       '@types/istanbul-lib-coverage': 2.0.4
       '@types/istanbul-reports': 3.0.1
-      '@types/node': 17.0.45
+      '@types/node': 18.11.9
       '@types/yargs': 17.0.14
       chalk: 4.1.2
     dev: true
@@ -3352,6 +3420,34 @@ packages:
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
       use-sync-external-store: 1.2.0_react@18.2.0
+    dev: false
+
+  /@tanstack/react-router/0.0.1-beta.36_biqbaboplfbrettd7655fr4n2y:
+    resolution: {integrity: sha512-kv5nSKxU5IyNUewdN9S6x1mKfNGSrRCKngZesEJ3RnZoW8uyFkRnxzvcLN5T9qgCPFSSe0CwqjE2yB3tWyJ39Q==}
+    engines: {node: '>=12'}
+    peerDependencies:
+      react: '>=16'
+      react-dom: '>=16'
+    dependencies:
+      '@babel/runtime': 7.20.6
+      '@tanstack/router-core': 0.0.1-beta.36_biqbaboplfbrettd7655fr4n2y
+      react: 18.2.0
+      react-dom: 18.2.0_react@18.2.0
+      use-sync-external-store: 1.2.0_react@18.2.0
+    dev: false
+
+  /@tanstack/router-core/0.0.1-beta.36_biqbaboplfbrettd7655fr4n2y:
+    resolution: {integrity: sha512-debjgkz4v1b0BqgEOaaBN9GVPHibB9IdURa8sE62YZ6xCRfmwPkglxwqx9zbOm1qGBG0edJy2FhXuI0meAHHzQ==}
+    engines: {node: '>=12'}
+    peerDependencies:
+      react: '>=16'
+      react-dom: '>=16'
+    dependencies:
+      '@babel/runtime': 7.20.6
+      history: 5.3.0
+      react: 18.2.0
+      react-dom: 18.2.0_react@18.2.0
+      tiny-invariant: 1.3.1
     dev: false
 
   /@testing-library/dom/8.19.0:
@@ -7910,7 +8006,7 @@ packages:
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     dependencies:
       '@jest/types': 29.3.1
-      '@types/node': 17.0.45
+      '@types/node': 18.11.9
       chalk: 4.1.2
       ci-info: 3.7.0
       graceful-fs: 4.2.10
