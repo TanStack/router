@@ -137,11 +137,23 @@
       ]
     },
     {
-      "label": "API",
+      "label": "Core API",
       "children": [
         {
-          "label": "Core API",
-          "to": "api/core"
+          "label": "createRoute",
+          "to": "api/core/createRoute"
+        },
+        {
+          "label": "createRouteConfig",
+          "to": "api/core/createRouteConfig"
+        },
+        {
+          "label": "createRouteMatch",
+          "to": "api/core/createRouteMatch"
+        },
+        {
+          "label": "createRouter",
+          "to": "api/core/createRouter"
         }
       ]
     },
