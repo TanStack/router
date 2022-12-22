@@ -1,4 +1,4 @@
-import React, { useSyncExternalStore } from 'react'
+import React from 'react'
 import {
   Router,
   last,

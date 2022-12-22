@@ -26,6 +26,14 @@
   "bin": {
     "tsr": "./packages/router-cli/bin/tsr"
   },
+  "spnpm": {
+    "overrides": {
+      "@tanstack/router-core": "workspace:*",
+      "@tanstack/react-router": "workspace:*",
+      "@tanstack/router-cli": "workspace:*",
+      "@tanstack/react-router-devtools": "workspace:*"
+    }
+  },
   "devDependencies": {
     "@babel/core": "^7.17.9",
     "@babel/preset-env": "^7.16.11",
@@ -72,6 +80,7 @@
   },
   "dependencies": {
     "@rollup/plugin-commonjs": "^23.0.4",
+    "@types/babel__core": "^7.1.20",
     "@types/fs-extra": "^9.0.13",
     "fs-extra": "^10.1.0",
     "zod": "^3.20.2"

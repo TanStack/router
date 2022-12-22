@@ -12,7 +12,7 @@ import { GetFrameworkGeneric } from './frameworks'
 import {
   LinkInfo,
   LinkOptions,
-  NavigateOptionsAbsolute,
+  NavigateOptions,
   ToOptions,
   ValidFromPath,
   ResolveRelativePath,
@@ -345,7 +345,7 @@ export interface Router<
     TFrom extends ValidFromPath<TAllRouteInfo> = '/',
     TTo extends string = '.',
   >(
-    opts: NavigateOptionsAbsolute<TAllRouteInfo, TFrom, TTo>,
+    opts: NavigateOptions<TAllRouteInfo, TFrom, TTo>,
   ) => Promise<void>
   matchRoute: <
     TFrom extends ValidFromPath<TAllRouteInfo> = '/',
@@ -410,7 +410,6 @@ export function createRouter<
 >(
   userOptions?: RouterOptions<TRouteConfig, TRouterContext>,
 ): Router<TRouteConfig, TAllRouteInfo, TRouterContext> {
-
   const originalOptions = {
     defaultLoaderGcMaxAge: 5 * 60 * 1000,
     defaultLoaderMaxAge: 0,

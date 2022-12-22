@@ -10,8 +10,6 @@ import {
   RouteNode,
 } from './generator'
 import path from 'path'
-import { Config } from './config'
-import { isVariableDeclaration } from '@babel/types'
 
 export const isolatedProperties = [
   'loader',
@@ -32,7 +30,6 @@ const getBasePlugins = () => [
     syntaxTS,
     {
       isTSX: true,
-      // disallowAmbiguousJSXLike: true,
     },
   ],
 ]

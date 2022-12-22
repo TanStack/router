@@ -14,14 +14,13 @@ routeConfig.generate({
   },
 })
 
-const RelativeLink = Link.from(routeConfig.id)
-
 function Dashboard() {
   return (
     <>
       <div className="flex items-center border-b">
         <h2 className="text-xl p-2">Dashboard</h2>
-        <RelativeLink
+        <Link
+          from={routeConfig.id}
           to={'./invoices/$invoiceId'}
           params={{
             invoiceId: 3,
@@ -29,7 +28,7 @@ function Dashboard() {
           className="py-1 px-2 text-xs bg-blue-500 text-white rounded-full"
         >
           1 New Invoice
-        </RelativeLink>
+        </Link>
       </div>
       <div className="flex flex-wrap divide-x">
         {(

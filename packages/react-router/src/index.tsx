@@ -1,6 +1,8 @@
 import * as React from 'react'
 
-import { useSyncExternalStore } from 'use-sync-external-store/shim'
+// import { useSyncExternalStore } from 'use-sync-external-store/shim'
+// @ts-ignore
+import { useSyncExternalStore } from './uSES/useSyncExternalStoreShim'
 import { createEffect, createRoot, untrack, unwrap } from '@solidjs/reactivity'
 
 import {
@@ -247,19 +249,16 @@ export function useLinkProps<
   }
 }
 
-type LinkFn<
+export interface LinkFn<
   TDefaultFrom extends RegisteredAllRouteInfo['routePaths'] = '/',
   TDefaultTo extends string = '.',
-> = {
+> {
   <
     TFrom extends RegisteredAllRouteInfo['routePaths'] = TDefaultFrom,
     TTo extends string = TDefaultTo,
   >(
     props: MakeLinkOptions<TFrom, TTo>,
   ): JSX.Element
-  from: <TRelativeFrom>(
-    from: TRelativeFrom,
-  ) => LinkFn<TRelativeFrom, TDefaultTo>
 }
 
 export const Link: LinkFn = React.forwardRef((props: any, ref) => {
