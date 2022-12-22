@@ -410,7 +410,6 @@ export function createRouter<
 >(
   userOptions?: RouterOptions<TRouteConfig, TRouterContext>,
 ): Router<TRouteConfig, TAllRouteInfo, TRouterContext> {
-
   const originalOptions = {
     defaultLoaderGcMaxAge: 5 * 60 * 1000,
     defaultLoaderMaxAge: 0,

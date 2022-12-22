@@ -155,6 +155,10 @@
         {
           "label": "createReactRouter",
           "to": "api/react/createReactRouter"
+        },
+        {
+          "label": "createRouteConfig",
+          "to": "api/react/createRouteConfig"
         }
       ]
     },
