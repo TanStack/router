@@ -761,17 +761,16 @@ export function usePrompt(message: string, when: boolean | any): void {
   React.useEffect(() => {
     if (!when) return
 
-    // TODO: bring this back
-    // let unblock = router.history.block((transition) => {
-    //   if (window.confirm(message)) {
-    //     unblock()
-    //     transition.retry()
-    //   } else {
-    //     router.store.currentLocation.pathname = window.location.pathname
-    //   }
-    // })
+    let unblock = router.history.block((transition) => {
+      if (window.confirm(message)) {
+        unblock()
+        transition.retry()
+      } else {
+        router.store.currentLocation.pathname = window.location.pathname
+      }
+    })
 
-    // return unblock
+    return unblock
   }, [when, message])
 }
 
