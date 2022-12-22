@@ -292,7 +292,7 @@ export interface Router<
   }
 
   // Public API
-  // history: BrowserHistory | MemoryHistory | HashHistory
+  history: BrowserHistory | MemoryHistory | HashHistory
   options: PickAsRequired<
     RouterOptions<TRouteConfig, TRouterContext>,
     'stringifySearch' | 'parseSearch' | 'context'
@@ -410,7 +410,6 @@ export function createRouter<
 >(
   userOptions?: RouterOptions<TRouteConfig, TRouterContext>,
 ): Router<TRouteConfig, TAllRouteInfo, TRouterContext> {
-  let history = userOptions?.history || createDefaultHistory()
 
   const originalOptions = {
     defaultLoaderGcMaxAge: 5 * 60 * 1000,
@@ -585,13 +584,13 @@ export function createRouter<
       nextAction = 'push'
     }
 
-    const isSameUrl = parseLocation(history.location).href === next.href
+    const isSameUrl = parseLocation(router.history.location).href === next.href
 
     if (isSameUrl && !next.key) {
       nextAction = 'replace'
     }
 
-    history[nextAction](
+    router.history[nextAction](
       {
         pathname: next.pathname,
         hash: next.hash,
@@ -617,7 +616,7 @@ export function createRouter<
     types: undefined!,
 
     // public api
-    // history,
+    history: userOptions?.history || createDefaultHistory(),
     store,
     setStore,
     options: originalOptions,
@@ -692,7 +691,7 @@ export function createRouter<
           router.load()
         }
 
-        const unsub = history.listen((event) => {
+        const unsub = router.history.listen((event) => {
           router.load(parseLocation(event.location, store.latestLocation))
         })
 
@@ -719,13 +718,13 @@ export function createRouter<
     },
 
     update: (opts) => {
-      const newHistory = opts?.history !== history
+      const newHistory = opts?.history !== router.history
       if (!store.latestLocation || newHistory) {
         if (opts?.history) {
-          history = opts.history
+          router.history = opts.history
         }
         setStore((s) => {
-          s.latestLocation = parseLocation(history.location)
+          s.latestLocation = parseLocation(router.history.location)
           s.currentLocation = s.latestLocation
         })
       }
