@@ -193,11 +193,7 @@ function umdProd({
       babelPlugin,
       nodeResolve({ extensions: ['.ts', '.tsx'] }),
       umdDevPlugin('production'),
-      terser({
-        sourceMap: true,
-        mangle: true,
-        compress: true,
-      }),
+      terser(),
       size({}),
       visualizer({
         filename: `${packageDir}/build/stats-html.html`,
