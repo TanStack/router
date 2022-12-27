@@ -3,11 +3,18 @@ id: createReactRouter
 title: createReactRouter
 ---
 
+use the 'createReactRouter' to create a router to provide it to the Router Provider, 'createReactRouter' takes in routes config in the options.
+
 ```tsx
 import { createReactRouter } from '@tanstack/react-router'
 
-const router = createReactRouter({
+const routeConfig = rootRoute.addChildren([
+  indexRoute,
+])
 
+const router = createReactRouter({
+  routeConfig,
+  //add other options here
 })
 ```
 
