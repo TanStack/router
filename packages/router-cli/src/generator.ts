@@ -280,16 +280,20 @@ export async function generator(config: Config) {
 
       routeConfigImports.push(
         `import { routeConfig as ${node.variable}Route } from './${removeExt(
-          path.relative(config.routeGenDirectory, node.genPath),
+          path
+            .relative(config.routeGenDirectory, node.genPath)
+            .replace(/\\/gi, '/'),
         )}'`,
       )
 
       routeConfigClientImports.push(
         `import { routeConfig as ${node.variable}Route } from './${removeExt(
-          path.relative(
-            config.routeGenDirectory,
-            path.resolve(node.genDir, node.clientFilename),
-          ),
+          path
+            .relative(
+              config.routeGenDirectory,
+              path.resolve(node.genDir, node.clientFilename),
+            )
+            .replace(/\\/gi, '/'),
         )}'`,
       )
 
