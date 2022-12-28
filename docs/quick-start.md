@@ -66,6 +66,13 @@ if (!rootElement.innerHTML) {
     </StrictMode>,
   )
 }
+
+
+declare module '@tanstack/react-router' {
+  interface RegisterRouter {
+    router: typeof router
+  }
+}
 ```
 
 If you skipped that example, we don't blame you, because there's so much more to learn to really take advantage of TanStack Router! Let's move on.
