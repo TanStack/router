@@ -1,10 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { Link, Outlet, RouterProvider } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { RouterProvider } from '@tanstack/react-router'
 
 import { router } from './router'
-import { Spinner } from './components/Spinner'
 import { useSessionStorage } from './utils'
 
 function App() {

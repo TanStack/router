@@ -380,6 +380,8 @@ export function RouterProvider<
 
   React.useEffect(router.mount, [router])
 
+  console.log(currentMatches)
+
   return (
     <>
       <routerContext.Provider value={{ router: router as any }}>

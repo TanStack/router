@@ -1,4 +1,3 @@
-import { AnyPathParams } from './routeConfig'
 import {
   AnyAllRouteInfo,
   DefaultAllRouteInfo,
@@ -113,8 +112,14 @@ export type RelativeToPathAutoComplete<
     ? `${TTo}${Join<RestPath>}`
     : never
   :
-      | './'
-      | (TFrom extends `/${infer T extends string}` ? '../' : never)
+      | (TFrom extends `/`
+          ? never
+          : SplitPaths extends [...Split<TFrom, false>, ...infer RestPath]
+          ? Join<RestPath> extends { length: 0 }
+            ? never
+            : './'
+          : never)
+      | (TFrom extends `/` ? never : '../')
       | AllPaths
 
 export type NavigateOptions<
