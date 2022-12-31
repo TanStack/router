@@ -103,8 +103,8 @@ importers:
 
   examples/react/basic:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.38
-      '@tanstack/react-router-devtools': 0.0.1-beta.36
+      '@tanstack/react-router': 0.0.1-beta.39
+      '@tanstack/react-router-devtools': 0.0.1-beta.39
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
       '@vitejs/plugin-react': ^1.1.3
@@ -133,9 +133,9 @@ importers:
       '@babel/core': ^7.20.2
       '@babel/generator': ^7.20.4
       '@rollup/plugin-babel': ^6.0.2
-      '@tanstack/react-router': 0.0.1-beta.38
-      '@tanstack/react-router-devtools': 0.0.1-beta.36
-      '@tanstack/router-cli': 0.0.1-beta.36
+      '@tanstack/react-router': 0.0.1-beta.39
+      '@tanstack/react-router-devtools': 0.0.1-beta.39
+      '@tanstack/router-cli': 0.0.1-beta.39
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -180,9 +180,9 @@ importers:
       '@babel/core': ^7.20.2
       '@babel/generator': ^7.20.4
       '@rollup/plugin-babel': ^6.0.2
-      '@tanstack/react-router': 0.0.1-beta.38
-      '@tanstack/react-router-devtools': 0.0.1-beta.36
-      '@tanstack/router-cli': 0.0.1-beta.36
+      '@tanstack/react-router': 0.0.1-beta.39
+      '@tanstack/react-router-devtools': 0.0.1-beta.39
+      '@tanstack/router-cli': 0.0.1-beta.39
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -227,9 +227,9 @@ importers:
       '@babel/core': ^7.20.2
       '@babel/generator': ^7.20.4
       '@rollup/plugin-babel': ^6.0.2
-      '@tanstack/react-router': 0.0.1-beta.38
-      '@tanstack/react-router-devtools': 0.0.1-beta.36
-      '@tanstack/router-cli': 0.0.1-beta.36
+      '@tanstack/react-router': 0.0.1-beta.39
+      '@tanstack/react-router-devtools': 0.0.1-beta.39
+      '@tanstack/router-cli': 0.0.1-beta.39
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -271,8 +271,8 @@ importers:
 
   examples/react/kitchen-sink-multi-file:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.38
-      '@tanstack/react-router-devtools': 0.0.1-beta.36
+      '@tanstack/react-router': 0.0.1-beta.39
+      '@tanstack/react-router-devtools': 0.0.1-beta.39
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
       '@vitejs/plugin-react': ^1.1.3
@@ -298,9 +298,9 @@ importers:
 
   examples/react/kitchen-sink-route-gen:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.38
-      '@tanstack/react-router-devtools': 0.0.1-beta.36
-      '@tanstack/router-cli': 0.0.1-beta.36
+      '@tanstack/react-router': 0.0.1-beta.39
+      '@tanstack/react-router-devtools': 0.0.1-beta.39
+      '@tanstack/router-cli': 0.0.1-beta.39
       '@types/node': ^18.11.9
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
@@ -337,8 +337,8 @@ importers:
 
   examples/react/kitchen-sink-single-file:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.38
-      '@tanstack/react-router-devtools': 0.0.1-beta.36
+      '@tanstack/react-router': 0.0.1-beta.39
+      '@tanstack/react-router-devtools': 0.0.1-beta.39
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
       '@vitejs/plugin-react': ^1.1.3
@@ -364,8 +364,8 @@ importers:
 
   examples/react/quickstart:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.36
-      '@tanstack/react-router-devtools': 0.0.1-beta.36
+      '@tanstack/react-router': 0.0.1-beta.39
+      '@tanstack/react-router-devtools': 0.0.1-beta.39
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
       '@vitejs/plugin-react': ^1.1.3
@@ -373,7 +373,7 @@ importers:
       react-dom: ^18.2.0
       vite: ^2.8.6
     dependencies:
-      '@tanstack/react-router': 0.0.1-beta.36_biqbaboplfbrettd7655fr4n2y
+      '@tanstack/react-router': link:../../../packages/react-router
       '@tanstack/react-router-devtools': link:../../../packages/react-router-devtools
       '@vitejs/plugin-react': 1.3.2
       react: 18.2.0
@@ -387,8 +387,8 @@ importers:
     specifiers:
       '@astrojs/netlify': ^1.2.1
       '@astrojs/react': ^1.2.2
-      '@tanstack/react-router': 0.0.1-beta.38
-      '@tanstack/router-cli': 0.0.1-beta.36
+      '@tanstack/react-router': 0.0.1-beta.39
+      '@tanstack/router-cli': 0.0.1-beta.39
       astro: ^1.6.12
       concurrently: ^7.6.0
       react: ^18.2.0
@@ -407,8 +407,8 @@ importers:
     specifiers:
       '@tanstack/react-query': ^4.14.1
       '@tanstack/react-query-devtools': ^4.14.1
-      '@tanstack/react-router': 0.0.1-beta.38
-      '@tanstack/react-router-devtools': 0.0.1-beta.36
+      '@tanstack/react-router': 0.0.1-beta.39
+      '@tanstack/react-router-devtools': 0.0.1-beta.39
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
       '@vitejs/plugin-react': ^1.1.3
@@ -438,8 +438,8 @@ importers:
     specifiers:
       '@tanstack/react-query': ^4.14.1
       '@tanstack/react-query-devtools': ^4.14.1
-      '@tanstack/react-router': 0.0.1-beta.38
-      '@tanstack/react-router-devtools': 0.0.1-beta.36
+      '@tanstack/react-router': 0.0.1-beta.39
+      '@tanstack/react-router-devtools': 0.0.1-beta.39
       '@trpc/client': ^10.0.0-rc.6
       '@trpc/react-query': ^10.0.0-rc.6
       '@trpc/server': ^10.0.0-rc.6
@@ -483,8 +483,8 @@ importers:
     specifiers:
       '@tanstack/react-query': ^4.14.1
       '@tanstack/react-query-devtools': ^4.14.1
-      '@tanstack/react-router': 0.0.1-beta.38
-      '@tanstack/react-router-devtools': 0.0.1-beta.36
+      '@tanstack/react-router': 0.0.1-beta.39
+      '@tanstack/react-router-devtools': 0.0.1-beta.39
       '@trpc/client': ^10.0.0-rc.6
       '@trpc/react-query': ^10.0.0-rc.6
       '@trpc/server': ^10.0.0-rc.6
@@ -528,7 +528,7 @@ importers:
     specifiers:
       '@babel/runtime': ^7.16.7
       '@solidjs/reactivity': ^0.0.6
-      '@tanstack/router-core': workspace:*
+      '@tanstack/router-core': workspace:^
       '@types/use-sync-external-store': ^0.0.3
       babel-plugin-transform-async-to-promises: ^0.8.18
       use-sync-external-store: ^1.2.0
@@ -544,7 +544,7 @@ importers:
   packages/react-router-devtools:
     specifiers:
       '@babel/runtime': ^7.16.7
-      '@tanstack/react-router': 0.0.1-beta.38
+      '@tanstack/react-router': workspace:^
       babel-plugin-transform-async-to-promises: ^0.8.18
       date-fns: ^2.29.1
     dependencies:
@@ -3139,34 +3139,6 @@ packages:
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
       use-sync-external-store: 1.2.0_react@18.2.0
-    dev: false
-
-  /@tanstack/react-router/0.0.1-beta.36_biqbaboplfbrettd7655fr4n2y:
-    resolution: {integrity: sha512-kv5nSKxU5IyNUewdN9S6x1mKfNGSrRCKngZesEJ3RnZoW8uyFkRnxzvcLN5T9qgCPFSSe0CwqjE2yB3tWyJ39Q==}
-    engines: {node: '>=12'}
-    peerDependencies:
-      react: '>=16'
-      react-dom: '>=16'
-    dependencies:
-      '@babel/runtime': 7.20.6
-      '@tanstack/router-core': 0.0.1-beta.36_biqbaboplfbrettd7655fr4n2y
-      react: 18.2.0
-      react-dom: 18.2.0_react@18.2.0
-      use-sync-external-store: 1.2.0_react@18.2.0
-    dev: false
-
-  /@tanstack/router-core/0.0.1-beta.36_biqbaboplfbrettd7655fr4n2y:
-    resolution: {integrity: sha512-debjgkz4v1b0BqgEOaaBN9GVPHibB9IdURa8sE62YZ6xCRfmwPkglxwqx9zbOm1qGBG0edJy2FhXuI0meAHHzQ==}
-    engines: {node: '>=12'}
-    peerDependencies:
-      react: '>=16'
-      react-dom: '>=16'
-    dependencies:
-      '@babel/runtime': 7.20.6
-      history: 5.3.0
-      react: 18.2.0
-      react-dom: 18.2.0_react@18.2.0
-      tiny-invariant: 1.3.1
     dev: false
 
   /@testing-library/dom/8.19.0:

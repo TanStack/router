@@ -28,10 +28,10 @@
   },
   "spnpm": {
     "overrides": {
-      "@tanstack/router-core": "workspace:*",
-      "@tanstack/react-router": "workspace:*",
-      "@tanstack/router-cli": "workspace:*",
-      "@tanstack/react-router-devtools": "workspace:*"
+      "@tanstack/router-core": "workspace:^",
+      "@tanstack/react-router": "workspace:^",
+      "@tanstack/router-cli": "workspace:^",
+      "@tanstack/react-router-devtools": "workspace:^"
     }
   },
   "devDependencies": {
