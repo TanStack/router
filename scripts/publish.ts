@@ -412,72 +412,72 @@ async function run() {
     )
   }
 
-  console.info(`Updating all package dependencies to latest versions...`)
-  // Update all changed package dependencies to their correct versions
-  for (const pkg of packages) {
-    await updatePackageJson(
-      path.resolve(rootDir, 'packages', pkg.packageDir, 'package.json'),
-      async (config) => {
-        await Promise.all(
-          (pkg.dependencies ?? []).map(async (dep) => {
-            const depPackage = packages.find((d) => d.name === dep)
+  // console.info(`Updating all package dependencies to latest versions...`)
+  // // Update all changed package dependencies to their correct versions
+  // for (const pkg of packages) {
+  //   await updatePackageJson(
+  //     path.resolve(rootDir, 'packages', pkg.packageDir, 'package.json'),
+  //     async (config) => {
+  //       await Promise.all(
+  //         (pkg.dependencies ?? []).map(async (dep) => {
+  //           const depPackage = packages.find((d) => d.name === dep)
 
-            if (!depPackage) {
-              throw new Error(`Could not find package ${dep}`)
-            }
+  //           if (!depPackage) {
+  //             throw new Error(`Could not find package ${dep}`)
+  //           }
 
-            const depVersion = await getPackageVersion(
-              path.resolve(
-                rootDir,
-                'packages',
-                depPackage.packageDir,
-                'package.json',
-              ),
-            )
+  //           const depVersion = await getPackageVersion(
+  //             path.resolve(
+  //               rootDir,
+  //               'packages',
+  //               depPackage.packageDir,
+  //               'package.json',
+  //             ),
+  //           )
 
-            if (
-              config.dependencies?.[dep] &&
-              config.dependencies[dep] !== depVersion
-            ) {
-              console.info(
-                `  Updating ${pkg.name}'s dependency on ${dep} to version ${depVersion}.`,
-              )
-              config.dependencies[dep] = depVersion
-            }
-          }),
-        )
+  //           if (
+  //             config.dependencies?.[dep] &&
+  //             config.dependencies[dep] !== depVersion
+  //           ) {
+  //             console.info(
+  //               `  Updating ${pkg.name}'s dependency on ${dep} to version ${depVersion}.`,
+  //             )
+  //             config.dependencies[dep] = depVersion
+  //           }
+  //         }),
+  //       )
 
-        await Promise.all(
-          (pkg.peerDependencies ?? []).map(async (peerDep) => {
-            const peerDepPackage = packages.find((d) => d.name === peerDep)
+  //       await Promise.all(
+  //         (pkg.peerDependencies ?? []).map(async (peerDep) => {
+  //           const peerDepPackage = packages.find((d) => d.name === peerDep)
 
-            if (!peerDepPackage) {
-              throw new Error(`Could not find package ${peerDep}`)
-            }
+  //           if (!peerDepPackage) {
+  //             throw new Error(`Could not find package ${peerDep}`)
+  //           }
 
-            const depVersion = await getPackageVersion(
-              path.resolve(
-                rootDir,
-                'packages',
-                peerDepPackage.packageDir,
-                'package.json',
-              ),
-            )
+  //           const depVersion = await getPackageVersion(
+  //             path.resolve(
+  //               rootDir,
+  //               'packages',
+  //               peerDepPackage.packageDir,
+  //               'package.json',
+  //             ),
+  //           )
 
-            if (
-              config.peerDependencies?.[peerDep] &&
-              config.peerDependencies[peerDep] !== depVersion
-            ) {
-              console.info(
-                `  Updating ${pkg.name}'s peerDependency on ${peerDep} to version ${depVersion}.`,
-              )
-              config.peerDependencies[peerDep] = depVersion
-            }
-          }),
-        )
-      },
-    )
-  }
+  //           if (
+  //             config.peerDependencies?.[peerDep] &&
+  //             config.peerDependencies[peerDep] !== depVersion
+  //           ) {
+  //             console.info(
+  //               `  Updating ${pkg.name}'s peerDependency on ${peerDep} to version ${depVersion}.`,
+  //             )
+  //             config.peerDependencies[peerDep] = depVersion
+  //           }
+  //         }),
+  //       )
+  //     },
+  //   )
+  // }
 
   console.info(`Updating all example dependencies...`)
   await Promise.all(
