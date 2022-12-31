@@ -1,3 +1,4 @@
+import { describe, it } from 'vitest'
 import { Route } from '../src'
 import { z } from 'zod'
 import { createRouter, AllRouteInfo, createRouteConfig } from '../src'
@@ -214,18 +215,21 @@ describe('everything', () => {
       to: '/',
     })
 
-    route.buildLink({
+    router.buildLink({
+      from: route.routeId,
       to: '',
     })
 
-    router.getRoute('/dashboard').buildLink({
+    router.buildLink({
+      from: '/dashboard',
       to: '/dashboard/invoices',
       params: {
         invoiceId: 2,
       },
     })
 
-    router.getRoute('/dashboard').buildLink({
+    router.buildLink({
+      from: '/dashboard',
       to: '/dashboard/invoices/$invoiceId',
       params: {
         // @ts-expect-error
@@ -233,21 +237,21 @@ describe('everything', () => {
       },
     })
 
-    router.getRoute('/').buildLink({
+    router.buildLink({
       to: '/dashboard/invoices/$invoiceId',
       params: {
         invoiceId: 2,
       },
     })
 
-    router.getRoute('/').buildLink({
+    router.buildLink({
       to: '/',
       search: {
         version: 2,
       },
     })
 
-    router.getRoute('/').buildLink({
+    router.buildLink({
       to: '/dashboard/users/$userId',
       // @ts-expect-error
       params: (current) => ({
@@ -261,7 +265,8 @@ describe('everything', () => {
       }),
     })
 
-    router.getRoute('/dashboard/invoices/$invoiceId').buildLink({
+    router.buildLink({
+      from: '/dashboard/invoices/$invoiceId',
       to: '/dashboard/users/$userId',
       params: (current) => ({
         userId: `${current?.invoiceId}`,
@@ -276,7 +281,8 @@ describe('everything', () => {
       },
     })
 
-    router.getRoute('/dashboard/users/$userId').buildLink({
+    router.buildLink({
+      from: '/dashboard/users/$userId',
       to: '/',
       search: (prev) => {
         return {
@@ -299,7 +305,7 @@ describe('everything', () => {
       }),
     })
 
-    router.getRoute('/').navigate({
+    router.navigate({
       search: (prev: any) => ({
         version: prev.version,
       }),
@@ -316,21 +322,23 @@ describe('everything', () => {
       to: '/does-not-exist',
     })
 
-    router.getRoute('/').buildLink({
+    router.buildLink({
       to: '/dashboard/invoices/$invoiceId',
       params: {
         invoiceId: 2,
       },
     })
 
-    router.getRoute('/dashboard/invoices/$invoiceId').buildLink({
+    router.buildLink({
+      from: '/dashboard/invoices/$invoiceId',
       to: '.',
       params: (d) => ({
         invoiceId: d.invoiceId,
       }),
     })
 
-    router.getRoute('/dashboard/invoices/$invoiceId').buildLink({
+    router.buildLink({
+      from: '/dashboard/invoices/$invoiceId',
       to: testRoute.id,
       search: {
         version: 2,
@@ -338,7 +346,7 @@ describe('everything', () => {
       },
     })
 
-    router.getRoute('/').buildLink({
+    router.buildLink({
       to: '/layout-a',
       search: (current) => ({
         isLayout: !!current.version,

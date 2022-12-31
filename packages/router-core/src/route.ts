@@ -122,7 +122,6 @@ export function createRoute<
                 submission: T,
                 actionOpts?: { invalidate?: boolean; multi?: boolean },
               ) => {
-                console.log('hello')
                 if (!route) {
                   return
                 }

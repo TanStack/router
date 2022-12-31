@@ -9,7 +9,8 @@ import {
 } from './routeInfo'
 import { Router } from './router'
 import { batch, createStore } from '@solidjs/reactivity'
-import { Expand, sharedClone } from './utils'
+import { Expand } from './utils'
+import { sharedClone } from './sharedClone'
 
 export interface RouteMatchStore<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
