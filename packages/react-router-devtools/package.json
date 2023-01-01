@@ -42,7 +42,7 @@
   "dependencies": {
     "@babel/runtime": "^7.16.7",
     "date-fns": "^2.29.1",
-    "@tanstack/react-router": "workspace:^"
+    "@tanstack/react-router": "workspace:*"
   },
   "devDependencies": {
     "babel-plugin-transform-async-to-promises": "^0.8.18"
