@@ -778,7 +778,7 @@ function Root() {
   matchRoute({ to: '/' }) // {}
   matchRoute({ to: ':teamId' }) // undefined
 
-  // If the current path is `/team-1'
+  // If the current path is `/team-1`
   matchRoute({ to: '/' }) // undefined
   matchRoute({ to: '/', fuzzy: true }) // {}
   matchRoute({ to: '/*' }) // { '*': 'team-1' }
