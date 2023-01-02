@@ -596,6 +596,12 @@ async function run() {
 
 run().catch((err) => {
   console.info(err)
+  if (err.stdout) {
+    console.log(err.stdout.toString())
+  }
+  if (err.stderr) {
+    console.log(err.stderr.toString())
+  }
   process.exit(1)
 })
 

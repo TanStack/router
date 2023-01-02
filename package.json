@@ -26,14 +26,6 @@
   "bin": {
     "tsr": "./packages/router-cli/bin/tsr"
   },
-  "spnpm": {
-    "overrides": {
-      "@tanstack/router-core": "workspace:^",
-      "@tanstack/react-router": "workspace:^",
-      "@tanstack/router-cli": "workspace:^",
-      "@tanstack/react-router-devtools": "workspace:^"
-    }
-  },
   "devDependencies": {
     "@babel/core": "^7.17.9",
     "@babel/preset-env": "^7.16.11",
