@@ -57,4 +57,4 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 - Layout Routes
 - Easy Integration w/ external caches and storage (eg. React Query, Apollo, SWR, RTKQuery)
 
-<!-- Use the force, Luke! -->
+<!-- Use the force, Luke -->
