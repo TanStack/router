@@ -552,11 +552,12 @@ async function run() {
   // Publish each package
   changedPackages.map((pkg) => {
     const packageDir = path.join(rootDir, 'packages', pkg.packageDir)
-    const cmd = `cd ${packageDir} && pnpm publish --tag ${npmTag} --access=public --non-interactive`
+    const cmd = `cd ${packageDir} && pnpm publish --tag ${npmTag} --access=public`
     console.info(
       `  Publishing ${pkg.name}@${version} to npm with tag "${npmTag}"...`,
     )
-    execSync(`${cmd} --token ${process.env.NPM_TOKEN}`)
+    // execSync(`${cmd} --token ${process.env.NPM_TOKEN}`)
+    execSync(cmd)
   })
 
   console.info()
