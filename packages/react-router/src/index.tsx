@@ -256,7 +256,7 @@ export interface LinkFn<
     TFrom extends RegisteredAllRouteInfo['routePaths'] = TDefaultFrom,
     TTo extends string = TDefaultTo,
   >(
-    props: MakeLinkOptions<TFrom, TTo>,
+    props: MakeLinkOptions<TFrom, TTo> & React.RefAttributes<HTMLAnchorElement>,
   ): ReactNode
 }
 
