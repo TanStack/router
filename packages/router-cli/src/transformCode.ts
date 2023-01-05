@@ -99,7 +99,7 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
                 if (!foundImport) {
                   programPath.node.body.unshift(
                     babel.template.statement(
-                      `import { routeConfig } from '${relativeImportPath}'`,
+                      `import { routeConfig } from '${relativeImportPath.replace(/\\/gi, '/')}'`,
                     )(),
                   )
                 }
