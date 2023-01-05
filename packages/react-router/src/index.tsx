@@ -4,7 +4,6 @@ import { useSyncExternalStore } from 'use-sync-external-store/shim'
 // @ts-ignore
 // import { useSyncExternalStore } from './uSES/useSyncExternalStoreShim'
 import { createEffect, createRoot, untrack, unwrap } from '@solidjs/reactivity'
-import { createStore } from '@solidjs/reactivity'
 
 import {
   Route,
@@ -333,27 +332,6 @@ export const __useStoreValue = <TSeed, TReturn>(
 
   return useSyncExternalStore(getStore, getSnapshot, getSnapshot)
 }
-
-const [store, setStore] = createStore({ foo: 'foo', bar: { baz: 'baz' } })
-
-createRoot(() => {
-  let prev: any
-
-  createEffect(() => {
-    console.log('effect')
-    const next = sharedClone(prev, store)
-    console.log(next)
-    prev = untrack(() => next)
-  })
-})
-
-setStore((s) => {
-  s.foo = '1'
-})
-
-setStore((s) => {
-  s.bar.baz = '2'
-})
 
 export function createReactRouter<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
