@@ -544,13 +544,13 @@ export function useParams<
 export function useNavigate<
   TDefaultFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
 >(defaultOpts: { from?: TDefaultFrom }) {
+  const router = useRouter()
   return <
     TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = TDefaultFrom,
     TTo extends string = '.',
   >(
     opts: MakeLinkOptions<TFrom, TTo>,
   ) => {
-    const router = useRouter()
     return router.navigate({ ...defaultOpts, ...(opts as any) })
   }
 }
