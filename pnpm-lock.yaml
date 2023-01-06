@@ -135,7 +135,7 @@ importers:
       '@rollup/plugin-babel': ^6.0.2
       '@tanstack/react-router': 0.0.1-beta.46
       '@tanstack/react-router-devtools': 0.0.1-beta.45
-      '@tanstack/router-cli': 0.0.1-beta.45
+      '@tanstack/router-cli': 0.0.1-beta.47
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -182,7 +182,7 @@ importers:
       '@rollup/plugin-babel': ^6.0.2
       '@tanstack/react-router': 0.0.1-beta.46
       '@tanstack/react-router-devtools': 0.0.1-beta.45
-      '@tanstack/router-cli': 0.0.1-beta.45
+      '@tanstack/router-cli': 0.0.1-beta.47
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -229,7 +229,7 @@ importers:
       '@rollup/plugin-babel': ^6.0.2
       '@tanstack/react-router': 0.0.1-beta.46
       '@tanstack/react-router-devtools': 0.0.1-beta.45
-      '@tanstack/router-cli': 0.0.1-beta.45
+      '@tanstack/router-cli': 0.0.1-beta.47
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -300,7 +300,7 @@ importers:
     specifiers:
       '@tanstack/react-router': 0.0.1-beta.46
       '@tanstack/react-router-devtools': 0.0.1-beta.45
-      '@tanstack/router-cli': 0.0.1-beta.45
+      '@tanstack/router-cli': 0.0.1-beta.47
       '@types/node': ^18.11.9
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
@@ -388,7 +388,7 @@ importers:
       '@astrojs/netlify': ^1.2.1
       '@astrojs/react': ^1.2.2
       '@tanstack/react-router': 0.0.1-beta.46
-      '@tanstack/router-cli': 0.0.1-beta.45
+      '@tanstack/router-cli': 0.0.1-beta.47
       astro: ^1.6.12
       concurrently: ^7.6.0
       react: ^18.2.0
