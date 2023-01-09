@@ -334,26 +334,26 @@ export const __useStoreValue = <TSeed, TReturn>(
   return useSyncExternalStore(getStore, getSnapshot, getSnapshot)
 }
 
-const [store, setStore] = createStore({ foo: 'foo', bar: { baz: 'baz' } })
+// const [store, setStore] = createStore({ foo: 'foo', bar: { baz: 'baz' } })
 
-createRoot(() => {
-  let prev: any
+// createRoot(() => {
+//   let prev: any
 
-  createEffect(() => {
-    console.log('effect')
-    const next = sharedClone(prev, store)
-    console.log(next)
-    prev = untrack(() => next)
-  })
-})
+//   createEffect(() => {
+//     console.log('effect')
+//     const next = sharedClone(prev, store)
+//     console.log(next)
+//     prev = untrack(() => next)
+//   })
+// })
 
-setStore((s) => {
-  s.foo = '1'
-})
+// setStore((s) => {
+//   s.foo = '1'
+// })
 
-setStore((s) => {
-  s.bar.baz = '2'
-})
+// setStore((s) => {
+//   s.bar.baz = '2'
+// })
 
 export function createReactRouter<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
@@ -558,13 +558,30 @@ export function useNavigate<
 export function useAction<
   TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
   TFromRoute extends RegisteredAllRouteInfo['routeInfoById'][TFrom] = RegisteredAllRouteInfo['routeInfoById'][TFrom],
+  TStrict extends boolean = true,
+  TAction = Action<TFromRoute['actionPayload'], TFromRoute['actionResponse']>,
 >(opts: {
   from: TFrom
-}): Action<TFromRoute['actionPayload'], TFromRoute['actionResponse']> {
-  const route = useRoute(opts.from)
-  const action = route.action
-  __useStoreValue(() => action)
-  return action as any
+  strict?: TStrict
+}): TStrict extends true ? TAction : TAction | undefined {
+  const router = useRouter()
+  const match = useMatch()
+  const action = router.getAction(opts as any)
+
+  if (opts?.strict ?? true) {
+    invariant(
+      match.routeId == opts.from,
+      `useAction("${
+        opts.from as string
+      }") is being called in a component that is meant to render the '${
+        match.routeId
+      }' route. Did you mean to 'useAction("${
+        opts.from as string
+      }", { strict: false })' instead?`,
+    )
+  }
+
+  return __useStoreValue(() => action)
 }
 
 export function useMatchRoute() {
@@ -596,12 +613,11 @@ export function MatchRoute<
     return null
   }
 
-  return React.createElement(
-    typeof props.children === 'function'
-      ? (props.children as any)(params)
-      : props.children,
-    props as any,
-  )
+  if (typeof props.children === 'function') {
+    return (props.children as any)(params)
+  }
+
+  return params ? props.children : null
 }
 
 export function Outlet() {

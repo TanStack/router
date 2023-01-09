@@ -220,12 +220,12 @@ const invoicesRoute = dashboardRoute.createRoute({
     const { invoices } = useLoaderData({ from: invoicesRoute.id })
 
     // Get the action for a child route
-    const invoiceIndexMatch = useMatch({
+    const invoiceIndexAction = useAction({
       from: invoicesIndexRoute.id,
       strict: false,
     })
 
-    const invoiceDetailMatch = useMatch({
+    const invoiceDetailAction = useAction({
       from: invoiceRoute.id,
       strict: false,
     })
@@ -234,7 +234,7 @@ const invoicesRoute = dashboardRoute.createRoute({
       <div className="flex-1 flex">
         <div className="divide-y w-48">
           {invoices?.map((invoice) => {
-            const foundPending = invoiceDetailMatch?.action.submissions.find(
+            const foundPending = invoiceDetailAction?.submissions.find(
               (d) => d.submission?.id === invoice.id,
             )
 
@@ -273,7 +273,7 @@ const invoicesRoute = dashboardRoute.createRoute({
               </div>
             )
           })}
-          {invoiceIndexMatch?.action.submissions.map((action) => (
+          {invoiceIndexAction?.submissions.map((action) => (
             <div key={action.submittedAt}>
               <a href="#" className="block py-2 px-3 text-blue-700">
                 <pre className="text-sm">
@@ -297,7 +297,7 @@ const invoicesIndexRoute = invoicesRoute.createRoute({
     return postInvoice(partialInvoice)
   },
   component: () => {
-    const { action } = useMatch({ from: invoicesIndexRoute.id })
+    const action = useAction({ from: invoicesIndexRoute.id })
 
     return (
       <>

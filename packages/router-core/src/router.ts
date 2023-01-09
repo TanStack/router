@@ -367,6 +367,36 @@ export interface Router<
   ) => LinkInfo
   dehydrate: () => DehydratedRouter<TRouterContext>
   hydrate: (dehydratedRouter: DehydratedRouter<TRouterContext>) => void
+  getAction: <TFrom extends keyof TAllRouteInfo['routeInfoById'] = '/'>(opts: {
+    from: TFrom
+  }) => unknown extends TAllRouteInfo['routeInfoById'][TFrom]['actionResponse']
+    ?
+        | Action<
+            TAllRouteInfo['routeInfoById'][TFrom]['actionPayload'],
+            TAllRouteInfo['routeInfoById'][TFrom]['actionResponse']
+          >
+        | undefined
+    : Action<
+        TAllRouteInfo['routeInfoById'][TFrom]['actionPayload'],
+        TAllRouteInfo['routeInfoById'][TFrom]['actionResponse']
+      >
+  getLoader: <TFrom extends keyof TAllRouteInfo['routeInfoById'] = '/'>(opts: {
+    from: TFrom
+  }) => unknown extends TAllRouteInfo['routeInfoById'][TFrom]['routeLoaderData']
+    ?
+        | Action<
+            LoaderContext<
+              TAllRouteInfo['routeInfoById'][TFrom]['fullSearchSchema'],
+              TAllRouteInfo['routeInfoById'][TFrom]['allParams']
+            >,
+            TAllRouteInfo['routeInfoById'][TFrom]['routeLoaderData']
+          >
+        | undefined
+    : Loader<
+        TAllRouteInfo['routeInfoById'][TFrom]['fullSearchSchema'],
+        TAllRouteInfo['routeInfoById'][TFrom]['allParams'],
+        TAllRouteInfo['routeInfoById'][TFrom]['routeLoaderData']
+      >
 }
 
 // Detect if we're in the DOM
@@ -628,7 +658,11 @@ export function createRouter<
     },
 
     getRoute: (id) => {
-      return router.routesById[id]
+      const route = router.routesById[id]
+
+      invariant(route, `Route with id "${id as string}" not found`)
+
+      return route
     },
 
     dehydrate: () => {
@@ -863,10 +897,12 @@ export function createRouter<
 
       matches.forEach((match) => {
         // Clear actions
-        if (match.action) {
+        const action = store.actions[match.routeId]
+
+        if (action) {
           // TODO: Check reactivity here
-          match.action.current = undefined
-          match.action.submissions = []
+          action.current = undefined
+          action.submissions = []
         }
       })
 
@@ -1376,6 +1412,117 @@ export function createRouter<
         __preSearchFilters,
         __postSearchFilters,
       })
+    },
+    getAction: ({ from }) => {
+      const id = from || ('/' as any)
+
+      const route = router.getRoute(id)
+
+      if (!route) return
+
+      let action =
+        store.actions[id] ||
+        (() => {
+          router.setStore((s) => {
+            s.actions[id] = {
+              submissions: [],
+              submit: async <T, U>(
+                submission: T,
+                actionOpts?: { invalidate?: boolean; multi?: boolean },
+              ) => {
+                if (!route) {
+                  return
+                }
+
+                const invalidate = actionOpts?.invalidate ?? true
+                const [actionStore, setActionStore] = createStore<
+                  ActionState<T, U>
+                >({
+                  submittedAt: Date.now(),
+                  status: 'pending',
+                  submission,
+                  isMulti: !!actionOpts?.multi,
+                })
+                router.setStore((s) => {
+                  if (!actionOpts?.multi) {
+                    s.actions[id]!.submissions = action.submissions.filter(
+                      (d) => d.isMulti,
+                    )
+                  }
+                  s.actions[id]!.current = actionStore
+                  s.actions[id]!.latest = actionStore
+                  s.actions[id]!.submissions.push(actionStore)
+                })
+                try {
+                  const res = await route.options.action?.(submission)
+                  setActionStore((s) => {
+                    s.data = res as U
+                  })
+                  if (invalidate) {
+                    router.invalidateRoute({ to: '.', fromCurrent: true })
+                    await router.reload()
+                  }
+                  setActionStore((s) => {
+                    s.status = 'success'
+                  })
+                  return res
+                } catch (err) {
+                  console.error(err)
+                  setActionStore((s) => {
+                    s.error = err
+                    s.status = 'error'
+                  })
+                }
+              },
+            }
+          })
+          return router.store.actions[id]!
+        })()
+
+      return action as any
+    },
+    getLoader: ({ from }) => {
+      const id = from || ('/' as any)
+
+      const route = router.getRoute(id)
+
+      if (!route) return
+
+      let loader =
+        router.store.loaders[id] ||
+        (() => {
+          router.setStore((s) => {
+            s.loaders[id] = {
+              pending: [],
+              fetch: (async (loaderContext: LoaderContext<any, any>) => {
+                if (!route) {
+                  return
+                }
+                const loaderState: LoaderState<any, any> = {
+                  loadedAt: Date.now(),
+                  loaderContext,
+                }
+                router.setStore((s) => {
+                  s.loaders[id]!.current = loaderState
+                  s.loaders[id]!.latest = loaderState
+                  s.loaders[id]!.pending.push(loaderState)
+                })
+                try {
+                  return await route.options.loader?.(loaderContext)
+                } finally {
+                  router.setStore((s) => {
+                    s.loaders[id]!.pending = s.loaders[id]!.pending.filter(
+                      (d) => d !== loaderState,
+                    )
+                  })
+                }
+              }) as any,
+            }
+          })
+          return router.store.loaders[id]!
+        })()
+
+      return loader as any
     },
   }
 
