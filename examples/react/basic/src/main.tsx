@@ -166,8 +166,8 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
 
   root.render(
-    <StrictMode>
+    <React.Fragment>
       <RouterProvider router={router} />
-    </StrictMode>,
+    </React.Fragment>,
   )
 }
