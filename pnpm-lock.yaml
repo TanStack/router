@@ -14,6 +14,7 @@ importers:
       '@rollup/plugin-commonjs': ^23.0.4
       '@rollup/plugin-node-resolve': ^13.2.1
       '@rollup/plugin-replace': ^4.0.0
+      '@solidjs/reactivity': ^0.0.6
       '@testing-library/react': ^12.1.2
       '@testing-library/react-hooks': ^7.0.2
       '@tsconfig/svelte': ^3.0.0
@@ -53,6 +54,7 @@ importers:
       zod: ^3.20.2
     dependencies:
       '@rollup/plugin-commonjs': 23.0.4_rollup@2.79.1
+      '@solidjs/reactivity': 0.0.6
       '@types/babel__core': 7.1.20
       '@types/fs-extra': 9.0.13
       fs-extra: 10.1.0
@@ -103,7 +105,7 @@ importers:
 
   examples/react/basic:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.46
+      '@tanstack/react-router': 0.0.1-beta.48
       '@tanstack/react-router-devtools': 0.0.1-beta.45
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
@@ -133,7 +135,7 @@ importers:
       '@babel/core': ^7.20.2
       '@babel/generator': ^7.20.4
       '@rollup/plugin-babel': ^6.0.2
-      '@tanstack/react-router': 0.0.1-beta.46
+      '@tanstack/react-router': 0.0.1-beta.48
       '@tanstack/react-router-devtools': 0.0.1-beta.45
       '@tanstack/router-cli': 0.0.1-beta.47
       '@types/express': ^4.17.14
@@ -180,7 +182,7 @@ importers:
       '@babel/core': ^7.20.2
       '@babel/generator': ^7.20.4
       '@rollup/plugin-babel': ^6.0.2
-      '@tanstack/react-router': 0.0.1-beta.46
+      '@tanstack/react-router': 0.0.1-beta.48
       '@tanstack/react-router-devtools': 0.0.1-beta.45
       '@tanstack/router-cli': 0.0.1-beta.47
       '@types/express': ^4.17.14
@@ -227,7 +229,7 @@ importers:
       '@babel/core': ^7.20.2
       '@babel/generator': ^7.20.4
       '@rollup/plugin-babel': ^6.0.2
-      '@tanstack/react-router': 0.0.1-beta.46
+      '@tanstack/react-router': 0.0.1-beta.48
       '@tanstack/react-router-devtools': 0.0.1-beta.45
       '@tanstack/router-cli': 0.0.1-beta.47
       '@types/express': ^4.17.14
@@ -271,7 +273,7 @@ importers:
 
   examples/react/kitchen-sink-multi-file:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.46
+      '@tanstack/react-router': 0.0.1-beta.48
       '@tanstack/react-router-devtools': 0.0.1-beta.45
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
@@ -298,7 +300,7 @@ importers:
 
   examples/react/kitchen-sink-route-gen:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.46
+      '@tanstack/react-router': 0.0.1-beta.48
       '@tanstack/react-router-devtools': 0.0.1-beta.45
       '@tanstack/router-cli': 0.0.1-beta.47
       '@types/node': ^18.11.9
@@ -337,7 +339,7 @@ importers:
 
   examples/react/kitchen-sink-single-file:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.46
+      '@tanstack/react-router': 0.0.1-beta.48
       '@tanstack/react-router-devtools': 0.0.1-beta.45
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
@@ -364,7 +366,7 @@ importers:
 
   examples/react/quickstart:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.46
+      '@tanstack/react-router': 0.0.1-beta.48
       '@tanstack/react-router-devtools': 0.0.1-beta.45
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
@@ -387,7 +389,7 @@ importers:
     specifiers:
       '@astrojs/netlify': ^1.2.1
       '@astrojs/react': ^1.2.2
-      '@tanstack/react-router': 0.0.1-beta.46
+      '@tanstack/react-router': 0.0.1-beta.48
       '@tanstack/router-cli': 0.0.1-beta.47
       astro: ^1.6.12
       concurrently: ^7.6.0
@@ -407,7 +409,7 @@ importers:
     specifiers:
       '@tanstack/react-query': ^4.14.1
       '@tanstack/react-query-devtools': ^4.14.1
-      '@tanstack/react-router': 0.0.1-beta.46
+      '@tanstack/react-router': 0.0.1-beta.48
       '@tanstack/react-router-devtools': 0.0.1-beta.45
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
@@ -438,7 +440,7 @@ importers:
     specifiers:
       '@tanstack/react-query': ^4.14.1
       '@tanstack/react-query-devtools': ^4.14.1
-      '@tanstack/react-router': 0.0.1-beta.46
+      '@tanstack/react-router': 0.0.1-beta.48
       '@tanstack/react-router-devtools': 0.0.1-beta.45
       '@trpc/client': ^10.0.0-rc.6
       '@trpc/react-query': ^10.0.0-rc.6
@@ -483,7 +485,7 @@ importers:
     specifiers:
       '@tanstack/react-query': ^4.14.1
       '@tanstack/react-query-devtools': ^4.14.1
-      '@tanstack/react-router': 0.0.1-beta.46
+      '@tanstack/react-router': 0.0.1-beta.48
       '@tanstack/react-router-devtools': 0.0.1-beta.45
       '@trpc/client': ^10.0.0-rc.6
       '@trpc/react-query': ^10.0.0-rc.6

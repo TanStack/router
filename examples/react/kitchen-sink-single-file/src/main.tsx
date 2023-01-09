@@ -712,7 +712,7 @@ const loginRoute = rootRoute.createRoute({
 
     React.useEffect(() => {
       if (auth.status === 'loggedIn' && search.redirect) {
-        router.history.push(search.redirect)
+        router.getHistory().push(search.redirect)
       }
     }, [auth.status, search.redirect])
 

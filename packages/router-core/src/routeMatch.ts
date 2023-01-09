@@ -11,6 +11,7 @@ import { Router } from './router'
 import { batch, createStore } from '@solidjs/reactivity'
 import { Expand } from './utils'
 import { sharedClone } from './sharedClone'
+import { s } from 'vitest/dist/index-40ebba2b'
 
 export interface RouteMatchStore<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
@@ -136,6 +137,10 @@ export function createRouteMatch<
     childMatches: [],
     __: {
       setParentMatch: (parentMatch?: RouteMatch) => {
+        if (store.parentMatch) {
+          return
+        }
+
         batch(() => {
           setStore((s) => {
             s.parentMatch = parentMatch
@@ -271,11 +276,11 @@ export function createRouteMatch<
         setStore((s) => (s.invalid = false))
       })
 
-      routeMatch.__.loadPromise = new Promise(async (r) => {
+      routeMatch.__.loadPromise = new Promise(async (_resolve) => {
         // We are now fetching, even if it's in the background of a
         // resolved state
         setStore((s) => (s.isFetching = true))
-        resolve = r as () => void
+        resolve = _resolve as () => void
 
         componentsPromise = (async () => {
           // then run all component and data loaders in parallel
@@ -336,8 +341,8 @@ export function createRouteMatch<
         const after = async () => {
           await checkLatest()
           setStore((s) => (s.isFetching = false))
-          delete routeMatch.__.loadPromise
           resolve()
+          delete routeMatch.__.loadPromise
         }
 
         try {

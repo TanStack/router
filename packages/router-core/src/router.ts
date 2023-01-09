@@ -292,7 +292,7 @@ export interface Router<
   }
 
   // Public API
-  history: BrowserHistory | MemoryHistory | HashHistory
+  getHistory: () => BrowserHistory | MemoryHistory | HashHistory
   options: PickAsRequired<
     RouterOptions<TRouteConfig, TRouterContext>,
     'stringifySearch' | 'parseSearch' | 'context'
@@ -450,6 +450,8 @@ export function createRouter<
     stringifySearch: userOptions?.stringifySearch ?? defaultStringifySearch,
     parseSearch: userOptions?.parseSearch ?? defaultParseSearch,
   }
+
+  let currentHistory = userOptions?.history || createDefaultHistory()
 
   const [store, setStore] = createStore<RouterStore>(getInitialRouterState())
 
@@ -613,13 +615,13 @@ export function createRouter<
       nextAction = 'push'
     }
 
-    const isSameUrl = parseLocation(router.history.location).href === next.href
+    const isSameUrl = parseLocation(currentHistory.location).href === next.href
 
     if (isSameUrl && !next.key) {
       nextAction = 'replace'
     }
 
-    router.history[nextAction](
+    currentHistory[nextAction](
       {
         pathname: next.pathname,
         hash: next.hash,
@@ -645,7 +647,7 @@ export function createRouter<
     types: undefined!,
 
     // public api
-    history: userOptions?.history || createDefaultHistory(),
+    getHistory: () => currentHistory,
     store,
     setStore,
     options: originalOptions,
@@ -724,7 +726,7 @@ export function createRouter<
           router.load()
         }
 
-        const unsub = router.history.listen((event) => {
+        const unsub = currentHistory.listen((event) => {
           router.load(parseLocation(event.location, store.latestLocation))
         })
 
@@ -751,13 +753,13 @@ export function createRouter<
     },
 
     update: (opts) => {
-      const newHistory = opts?.history !== router.history
+      const newHistory = opts?.history && opts?.history !== currentHistory
       if (!store.latestLocation || newHistory) {
         if (opts?.history) {
-          router.history = opts.history
+          currentHistory = opts.history
         }
         setStore((s) => {
-          s.latestLocation = parseLocation(router.history.location)
+          s.latestLocation = parseLocation(currentHistory.location)
           s.currentLocation = s.latestLocation
         })
       }
@@ -907,7 +909,7 @@ export function createRouter<
       })
 
       setStore((s) => {
-        console.log('set', matches)
+        console.log('set currentMatches', matches)
         Object.assign(s, {
           status: 'idle',
           currentLocation: store.latestLocation,

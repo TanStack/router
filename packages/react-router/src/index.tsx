@@ -1,10 +1,7 @@
 import * as React from 'react'
 
 import { useSyncExternalStore } from 'use-sync-external-store/shim'
-// @ts-ignore
-// import { useSyncExternalStore } from './uSES/useSyncExternalStoreShim'
 import { createEffect, createRoot, untrack, unwrap } from '@solidjs/reactivity'
-import { createStore } from '@solidjs/reactivity'
 
 import {
   Route,
@@ -296,6 +293,7 @@ const EMPTY = {}
 export const __useStoreValue = <TSeed, TReturn>(
   seed: () => TSeed,
   selector?: (seed: TSeed) => TReturn,
+  debug?: boolean,
 ): TReturn => {
   const valueRef = React.useRef<TReturn>(EMPTY as any)
 
@@ -316,16 +314,19 @@ export const __useStoreValue = <TSeed, TReturn>(
     // A root is necessary to track effects
     return createRoot(() => {
       createEffect(() => {
+        if (debug) debugger
+        if (debug) console.log('effect', valueRef.current, unwrap(getValue()))
         // Read and update the value
         // getValue will handle which values are accessed and
         // thus tracked.
         // sharedClone will both recursively track the end result
         // and ensure that the previous value is structurally shared
         // into the new version.
-        valueRef.current = unwrap(
+        valueRef.current =
           // Unwrap the value to get rid of any proxy structures
-          sharedClone(valueRef.current, getValue()),
-        )
+          sharedClone(valueRef.current, unwrap(getValue()))
+
+        // Call the callback to notify the external store
         cb()
       })
     })
@@ -394,14 +395,15 @@ export function RouterProvider<
 }: RouterProps<TRouteConfig, TAllRouteInfo, TRouterContext>) {
   router.update(rest)
 
-  const [, , currentMatches] = __useStoreValue(
+  const [status, pendingMatches, currentMatches] = __useStoreValue(
     () => router.store,
     (s) => [s.status, s.pendingMatches, s.currentMatches],
+    true,
   )
 
   React.useEffect(router.mount, [router])
 
-  console.log('current', currentMatches)
+  console.log('rendered', [status, pendingMatches, currentMatches])
 
   return (
     <>
@@ -799,7 +801,7 @@ export function usePrompt(message: string, when: boolean | any): void {
   React.useEffect(() => {
     if (!when) return
 
-    let unblock = router.history.block((transition) => {
+    let unblock = router.getHistory().block((transition) => {
       if (window.confirm(message)) {
         unblock()
         transition.retry()
