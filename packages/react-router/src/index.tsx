@@ -314,7 +314,7 @@ export const __useStoreValue = <TSeed, TReturn>(
     // A root is necessary to track effects
     return createRoot(() => {
       createEffect(() => {
-        if (debug) console.log('effect', valueRef.current, unwrap(getValue()))
+        if (debug) console.log('effect')
         // Read and update the value
         // getValue will handle which values are accessed and
         // thus tracked.
