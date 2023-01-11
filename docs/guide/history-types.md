@@ -25,9 +25,9 @@ import {
   createRouteConfig,
 } from '@tanstack/react-router'
 
-const rootRoute = createRouteConfig()
+const routeConfig = createRouteConfig()
 
-const indexRoute = rootRoute.createRoute({ path: '/' })
+const indexRoute = routeConfig.createRoute({ path: '/' })
 
 const memoryHistory = createMemoryHistory({
   initialEntries: ['/'], // Pass your initial url
@@ -51,9 +51,9 @@ import {
   createRouteConfig,
 } from '@tanstack/react-router'
 
-const rootRoute = createRouteConfig()
+const routeConfig = createRouteConfig()
 
-const indexRoute = rootRoute.createRoute({ path: '/' })
+const indexRoute = routeConfig.createRoute({ path: '/' })
 
 const hashHistory = createHashHistory()
 
@@ -71,9 +71,9 @@ import {
   createRouteConfig,
 } from '@tanstack/router'
 
-const rootRoute = createRouteConfig()
+const routeConfig = createRouteConfig()
 
-const indexRoute = rootRoute.createRoute({ path: '/' })
+const indexRoute = routeConfig.createRoute({ path: '/' })
 
 const memoryHistory = createMemoryHistory({
   initialEntries: ['/'], // Pass your initial url
