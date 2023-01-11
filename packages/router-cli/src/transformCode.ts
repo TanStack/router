@@ -35,7 +35,7 @@ const getBasePlugins = () => [
 ]
 
 export async function ensureBoilerplate(node: RouteNode, code: string) {
-  const relativeImportPath = path.relative(node.fullDir, node.genPathNoExt)
+  const relativeImportPath = path.relative(node.fullDir, node.genPathNoExt).replace(/\\/gi, '/')
 
   const originalFile = await babel.transformAsync(code, {
     configFile: false,
@@ -99,7 +99,7 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
                 if (!foundImport) {
                   programPath.node.body.unshift(
                     babel.template.statement(
-                      `import { routeConfig } from '${relativeImportPath.replace(/\\/gi, '/')}'`,
+                      `import { routeConfig } from '${relativeImportPath}'`,
                     )(),
                   )
                 }
