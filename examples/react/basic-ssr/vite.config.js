@@ -6,4 +6,11 @@ export default defineConfig({
   build: {
     minify: false,
   },
+  ssr: {
+    noExternal: ['use-sync-external-store'],
+    optimizeDeps: ['use-sync-external-store'],
+  },
+  // optimizeDeps: {
+  //   include: ['use-sync-external-store'],
+  // },
 })

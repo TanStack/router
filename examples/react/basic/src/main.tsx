@@ -153,6 +153,8 @@ const router = createReactRouter({
   defaultPreload: 'intent',
 })
 
+window.router = router
+
 // Register your router for typesafety
 declare module '@tanstack/react-router' {
   interface RegisterRouter {
@@ -168,6 +170,7 @@ if (!rootElement.innerHTML) {
   root.render(
     <React.Fragment>
       <RouterProvider router={router} />
+      {/* <Test /> */}
     </React.Fragment>,
   )
 }

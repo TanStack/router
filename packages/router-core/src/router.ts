@@ -55,7 +55,7 @@ import {
   Timeout,
   Updater,
 } from './utils'
-import { sharedClone } from './sharedClone'
+import { replaceEqualDeep } from './interop'
 
 export interface RegisterRouter {
   // router: Router
@@ -139,7 +139,7 @@ export interface Action<
   // TError = unknown,
 > {
   submit: (
-    submission?: TPayload,
+    payload?: TPayload,
     actionOpts?: { invalidate?: boolean; multi?: boolean },
   ) => Promise<TResponse>
   current?: ActionState<TPayload, TResponse>
@@ -154,9 +154,9 @@ export interface ActionState<
 > {
   submittedAt: number
   status: 'idle' | 'pending' | 'success' | 'error'
-  submission: TPayload
+  payload: TPayload
   isMulti: boolean
-  data?: TResponse
+  response?: TResponse
   error?: unknown
 }
 
@@ -213,8 +213,6 @@ export interface RouterStore<
   isPreloading: boolean
   matchCache: Record<string, MatchCacheEntry>
 }
-
-type Listener = (router: Router<any, any, any>) => void
 
 export type ListenerFn = () => void
 
@@ -513,7 +511,7 @@ export function createRouter<
     return {
       pathname: location.pathname,
       searchStr: location.search,
-      search: sharedClone(previousLocation?.search, parsedSearch),
+      search: replaceEqualDeep(previousLocation?.search, parsedSearch),
       hash: location.hash.split('#').reverse()[0] ?? '',
       href: `${location.pathname}${location.search}${location.hash}`,
       state: location.state as LocationState,
@@ -584,7 +582,10 @@ export function createRouter<
       ? dest.__postSearchFilters.reduce((prev, next) => next(prev), destSearch)
       : destSearch
 
-    const search = sharedClone(store.latestLocation.search, postFilteredSearch)
+    const search = replaceEqualDeep(
+      store.latestLocation.search,
+      postFilteredSearch,
+    )
 
     const searchStr = router.options.stringifySearch(search)
     let hash =
@@ -809,7 +810,6 @@ export function createRouter<
           strictParseParams: true,
         })
 
-        console.log('set loading', matches)
         setStore((s) => {
           s.status = 'loading'
           s.pendingMatches = matches
@@ -821,7 +821,7 @@ export function createRouter<
       try {
         await router.loadMatches(matches)
       } catch (err: any) {
-        console.log(err)
+        console.warn(err)
         invariant(
           false,
           'Matches failed to load due to error above ☝️. Navigation cancelled!',
@@ -860,8 +860,10 @@ export function createRouter<
 
         // Clear idle error states when match leaves
         if (d.store.status === 'error' && !d.store.isFetching) {
-          d.store.status = 'idle'
-          d.store.error = undefined
+          d.__.setStore((s) => {
+            s.status = 'idle'
+            s.error = undefined
+          })
         }
 
         const gc = Math.max(
@@ -870,10 +872,12 @@ export function createRouter<
         )
 
         if (gc > 0) {
-          store.matchCache[d.matchId] = {
-            gc: gc == Infinity ? Number.MAX_SAFE_INTEGER : now + gc,
-            match: d,
-          }
+          setStore((s) => {
+            s.matchCache[d.matchId] = {
+              gc: gc == Infinity ? Number.MAX_SAFE_INTEGER : now + gc,
+              match: d,
+            }
+          })
         }
       })
 
@@ -897,19 +901,16 @@ export function createRouter<
         return
       }
 
-      matches.forEach((match) => {
-        // Clear actions
-        const action = store.actions[match.routeId]
-
-        if (action) {
-          // TODO: Check reactivity here
-          action.current = undefined
-          action.submissions = []
-        }
-      })
-
       setStore((s) => {
-        console.log('set currentMatches', matches)
+        // matches.forEach((match) => {
+        //   // Clear actions
+        //   const action = s.actions[match.routeId]
+
+        //   if (action) {
+        //     action.current = undefined
+        //   }
+        // })
+
         Object.assign(s, {
           status: 'idle',
           currentLocation: store.latestLocation,
@@ -1345,7 +1346,7 @@ export function createRouter<
               gcMaxAge: userPreloadGcMaxAge,
             })
             .catch((err) => {
-              console.log(err)
+              console.warn(err)
               console.warn('Error preloading route! ☝️')
             })
         }
@@ -1367,7 +1368,7 @@ export function createRouter<
                 gcMaxAge: userPreloadGcMaxAge,
               })
               .catch((err) => {
-                console.log(err)
+                console.warn(err)
                 console.warn('Error preloading route! ☝️')
               })
           }, preloadDelay)
@@ -1429,7 +1430,7 @@ export function createRouter<
             s.actions[id] = {
               submissions: [],
               submit: async <T, U>(
-                submission: T,
+                payload: T,
                 actionOpts?: { invalidate?: boolean; multi?: boolean },
               ) => {
                 if (!route) {
@@ -1442,23 +1443,24 @@ export function createRouter<
                 >({
                   submittedAt: Date.now(),
                   status: 'pending',
-                  submission,
+                  payload,
                   isMulti: !!actionOpts?.multi,
                 })
                 router.setStore((s) => {
+                  const action = s.actions[id]!
                   if (!actionOpts?.multi) {
-                    s.actions[id]!.submissions = action.submissions.filter(
+                    action.submissions = action.submissions.filter(
                       (d) => d.isMulti,
                     )
                   }
-                  s.actions[id]!.current = actionStore
-                  s.actions[id]!.latest = actionStore
-                  s.actions[id]!.submissions.push(actionStore)
+                  action.current = actionStore
+                  action.latest = actionStore
+                  action.submissions.push(actionStore)
                 })
                 try {
-                  const res = await route.options.action?.(submission)
+                  const res = await route.options.action?.(payload)
                   setActionStore((s) => {
-                    s.data = res as U
+                    s.response = res as U
                   })
                   if (invalidate) {
                     router.invalidateRoute({ to: '.', fromCurrent: true })
@@ -1473,6 +1475,11 @@ export function createRouter<
                   setActionStore((s) => {
                     s.error = err
                     s.status = 'error'
+                  })
+                  router.setStore((s) => {
+                    s.actions[id]!.submissions = action.submissions.filter(
+                      (d) => d !== actionStore,
+                    )
                   })
                 }
               },

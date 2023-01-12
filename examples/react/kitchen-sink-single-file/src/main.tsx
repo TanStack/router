@@ -63,7 +63,7 @@ const rootRoute = createRouteConfig({
             <div className={`divide-y w-56`}>
               {(
                 [
-                  ['.', 'Home'],
+                  ['/', 'Home'],
                   ['/dashboard', 'Dashboard'],
                   ['/expensive', 'Expensive'],
                   ['/layout-a', 'Layout A'],
@@ -109,8 +109,6 @@ const rootRoute = createRouteConfig({
 const indexRoute = rootRoute.createRoute({
   path: '/',
   component: () => {
-    const route = useMatch({ from: indexRoute.id })
-
     return (
       <div className={`p-2`}>
         <div className={`text-lg`}>Welcome Home!</div>
@@ -172,17 +170,17 @@ const dashboardRoute = rootRoute.createRoute({
         <div className="flex flex-wrap divide-x">
           {(
             [
-              ['.', 'Summary'],
+              ['/dashboard', 'Summary', undefined, true],
               ['/dashboard/invoices', 'Invoices'],
               ['/dashboard/users', 'Users', true],
             ] as const
-          ).map(([to, label, search]) => {
+          ).map(([to, label, search, exact]) => {
             return (
               <Link
                 key={to}
                 to={to}
                 search={search}
-                activeOptions={{ exact: to === '.' }}
+                activeOptions={{ exact }}
                 activeProps={{ className: `font-bold` }}
                 className="p-2"
               >
@@ -234,12 +232,14 @@ const invoicesRoute = dashboardRoute.createRoute({
       <div className="flex-1 flex">
         <div className="divide-y w-48">
           {invoices?.map((invoice) => {
-            const foundPending = invoiceDetailAction?.submissions.find(
-              (d) => d.submission?.id === invoice.id,
-            )
+            const currentPayload = invoiceDetailAction?.current?.payload
+            const isPending = currentPayload?.id === invoice.id
 
-            if (foundPending?.submission) {
-              invoice = { ...invoice, ...foundPending.submission }
+            if (isPending) {
+              invoice = {
+                ...invoice,
+                ...currentPayload,
+              }
             }
 
             return (
@@ -255,7 +255,7 @@ const invoicesRoute = dashboardRoute.createRoute({
                 >
                   <pre className="text-sm">
                     #{invoice.id} - {invoice.title.slice(0, 10)}{' '}
-                    {foundPending ? (
+                    {isPending ? (
                       <Spinner />
                     ) : (
                       <MatchRoute
@@ -277,7 +277,7 @@ const invoicesRoute = dashboardRoute.createRoute({
             <div key={action.submittedAt}>
               <a href="#" className="block py-2 px-3 text-blue-700">
                 <pre className="text-sm">
-                  #<Spinner /> - {action.submission.title?.slice(0, 10)}
+                  #<Spinner /> - {action.payload.title?.slice(0, 10)}
                 </pre>
               </a>
             </div>
@@ -368,7 +368,6 @@ const invoiceRoute = invoicesRoute.createRoute({
       invoice,
     }
   },
-  action: patchInvoice,
   component: () => {
     const { invoice } = useLoaderData({ from: invoiceRoute.id })
     const search = useSearch({ from: invoiceRoute.id })
@@ -567,6 +566,7 @@ const usersRoute = dashboardRoute.createRoute({
             return (
               <div key={user.id}>
                 <Link
+                  to="/dashboard/users/$userId"
                   params={{
                     userId: user.id,
                   }}
@@ -813,6 +813,7 @@ const routeConfig = rootRoute.addChildren([
 
 const router = createReactRouter({
   routeConfig,
+  actions: [patchInvoiceAction],
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>
       <Spinner />

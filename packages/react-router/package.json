@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.16.7",
-    "@solidjs/reactivity": "^0.0.6",
+    "@solidjs/reactivity": "^0.0.7",
     "@tanstack/router-core": "workspace:*",
     "use-sync-external-store": "^1.2.0"
   },

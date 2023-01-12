@@ -19,11 +19,15 @@ export interface Route<
   routeRouteId: TRouteInfo['routeId']
   routePath: TRouteInfo['path']
   fullPath: TRouteInfo['fullPath']
-  parentRoute?: AnyRoute
+  getParentRoute: () => undefined | AnyRoute
   childRoutes?: AnyRoute[]
   options: RouteOptions
   originalIndex: number
-  router: Router<TAllRouteInfo['routeConfig'], TAllRouteInfo, TRouterContext>
+  getRouter: () => Router<
+    TAllRouteInfo['routeConfig'],
+    TAllRouteInfo,
+    TRouterContext
+  >
 }
 
 export function createRoute<
@@ -47,9 +51,9 @@ export function createRoute<
     routePath,
     fullPath,
     options,
-    router,
+    getRouter: () => router,
     childRoutes: undefined!,
-    parentRoute: parent,
+    getParentRoute: () => parent,
   }
 
   router.options.createRoute?.({ router, route })

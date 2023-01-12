@@ -8,10 +8,9 @@ import {
   RouteInfo,
 } from './routeInfo'
 import { Router } from './router'
-import { batch, createStore } from '@solidjs/reactivity'
+import { batch, createStore, SetStoreFunction } from '@solidjs/reactivity'
 import { Expand } from './utils'
-import { sharedClone } from './sharedClone'
-import { s } from 'vitest/dist/index-40ebba2b'
+import { replaceEqualDeep } from './interop'
 
 export interface RouteMatchStore<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
@@ -38,7 +37,6 @@ export interface RouteMatch<
   TRouteInfo extends AnyRouteInfo = RouteInfo,
 > extends Route<TAllRouteInfo, TRouteInfo> {
   store: RouteMatchStore<TAllRouteInfo, TRouteInfo>
-  // setStore: WritableStore<RouteMatchStore<TAllRouteInfo, TRouteInfo>>
   matchId: string
   pathname: string
   params: TRouteInfo['allParams']
@@ -53,6 +51,7 @@ export interface RouteMatch<
   invalidate: () => void
   hasLoaders: () => boolean
   __: {
+    setStore: SetStoreFunction<RouteMatchStore<TAllRouteInfo, TRouteInfo>>
     setParentMatch: (parentMatch?: RouteMatch) => void
     component?: GetFrameworkGeneric<'Component'>
     errorComponent?: GetFrameworkGeneric<'ErrorComponent'>
@@ -96,7 +95,7 @@ export function createRouteMatch<
   function setLoaderData(loaderData: TRouteInfo['routeLoaderData']) {
     batch(() => {
       setStore((s) => {
-        s.routeLoaderData = sharedClone(s.routeLoaderData, loaderData)
+        s.routeLoaderData = replaceEqualDeep(s.routeLoaderData, loaderData)
       })
       updateLoaderData()
     })
@@ -104,7 +103,7 @@ export function createRouteMatch<
 
   function updateLoaderData() {
     setStore((s) => {
-      s.loaderData = sharedClone(s.loaderData, {
+      s.loaderData = replaceEqualDeep(s.loaderData, {
         ...store.parentMatch?.store.loaderData,
         ...s.routeLoaderData,
       }) as TRouteInfo['loaderData']
@@ -132,19 +131,16 @@ export function createRouteMatch<
     ...route,
     ...opts,
     store,
-    // setStore,
-    router,
     childMatches: [],
     __: {
+      setStore,
       setParentMatch: (parentMatch?: RouteMatch) => {
-        if (store.parentMatch) {
-          return
-        }
-
         batch(() => {
-          setStore((s) => {
-            s.parentMatch = parentMatch
-          })
+          if (!store.parentMatch) {
+            setStore((s) => {
+              s.parentMatch = parentMatch
+            })
+          }
 
           updateLoaderData()
         })
@@ -163,7 +159,7 @@ export function createRouteMatch<
               ? routeMatch.options.validateSearch.parse
               : routeMatch.options.validateSearch
 
-          let nextSearch = sharedClone(
+          let nextSearch = replaceEqualDeep(
             prevSearch,
             validator?.(parentSearch) ?? {},
           )
@@ -177,7 +173,7 @@ export function createRouteMatch<
             // TODO: Alright, do we need batch() here?
             setStore((s) => {
               s.routeSearch = nextSearch
-              s.search = sharedClone(parentSearch, {
+              s.search = replaceEqualDeep(parentSearch, {
                 ...parentSearch,
                 ...nextSearch,
               })
@@ -237,10 +233,12 @@ export function createRouteMatch<
           return
         }
 
-        router.store.matchCache[routeMatch.matchId] = {
-          gc: now + loaderOpts.gcMaxAge,
-          match: routeMatch as RouteMatch<any, any>,
-        }
+        router.setStore((s) => {
+          s.matchCache[routeMatch.matchId] = {
+            gc: now + loaderOpts.gcMaxAge,
+            match: routeMatch as RouteMatch<any, any>,
+          }
+        })
       }
 
       // If the match is invalid, errored or idle, trigger it to load
@@ -252,6 +250,18 @@ export function createRouteMatch<
         const maxAge = loaderOpts?.preload ? loaderOpts?.maxAge : undefined
 
         await routeMatch.fetch({ maxAge })
+      }
+
+      // Clear actions
+      const action = router.store.actions[routeMatch.routeId]
+
+      if (action) {
+        router.setStore((s) => {
+          Object.assign(s.actions[routeMatch.routeId]!, {
+            current: undefined,
+            submissions: [],
+          })
+        })
       }
     },
     fetch: async (opts) => {

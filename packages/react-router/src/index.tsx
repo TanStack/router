@@ -1,7 +1,13 @@
 import * as React from 'react'
 
 import { useSyncExternalStore } from 'use-sync-external-store/shim'
-import { createEffect, createRoot, untrack, unwrap } from '@solidjs/reactivity'
+import {
+  createEffect,
+  createRoot,
+  createStore,
+  untrack,
+  unwrap,
+} from '@solidjs/reactivity'
 
 import {
   Route,
@@ -9,7 +15,7 @@ import {
   RegisteredRouter,
   RouterStore,
   last,
-  sharedClone,
+  storeToImmutable,
   Action,
   warning,
   RouterOptions,
@@ -32,6 +38,7 @@ import {
   Router,
   Expand,
 } from '@tanstack/router-core'
+import { trackDeep } from '@tanstack/router-core'
 
 export * from '@tanstack/router-core'
 
@@ -293,7 +300,7 @@ const EMPTY = {}
 export const __useStoreValue = <TSeed, TReturn>(
   seed: () => TSeed,
   selector?: (seed: TSeed) => TReturn,
-  debug?: boolean,
+  debug?: string,
 ): TReturn => {
   const valueRef = React.useRef<TReturn>(EMPTY as any)
 
@@ -304,56 +311,133 @@ export const __useStoreValue = <TSeed, TReturn>(
 
   // If empty, initialize the value
   if (valueRef.current === EMPTY) {
-    valueRef.current = sharedClone(undefined, getValue())
+    valueRef.current = unwrap(storeToImmutable(undefined, getValue()))
   }
 
   // Snapshot should just return the current cached value
   const getSnapshot = React.useCallback(() => valueRef.current, [])
 
-  const getStore = React.useCallback((cb: () => void) => {
-    // A root is necessary to track effects
-    return createRoot(() => {
-      createEffect(() => {
-        if (debug) console.log('effect')
-        // Read and update the value
-        // getValue will handle which values are accessed and
-        // thus tracked.
-        // sharedClone will both recursively track the end result
-        // and ensure that the previous value is structurally shared
-        // into the new version.
-        valueRef.current =
-          // Unwrap the value to get rid of any proxy structures
-          sharedClone(valueRef.current, unwrap(getValue()))
+  const getStore = React.useCallback(
+    (cb: () => void) => {
+      // A root is necessary to track effects
+      return createRoot((dispose) => {
+        createEffect(() => {
+          const value = getValue()
 
-        // Call the callback to notify the external store
-        cb()
+          const next = storeToImmutable(valueRef.current, value)
+
+          if (debug)
+            console.log(
+              debug,
+              valueRef.current === next ? 'equal' : 'not equal',
+              next,
+            )
+
+          // Unwrap the value to get rid of any proxy structures
+          valueRef.current = unwrap(next)
+
+          // Call the callback to notify the external store
+          cb()
+        })
+
+        return dispose
       })
-    })
-  }, [])
+    },
+    [seed()],
+  )
 
   return useSyncExternalStore(getStore, getSnapshot, getSnapshot)
 }
 
-// const [store, setStore] = createStore({ foo: 'foo', bar: { baz: 'baz' } })
+// {
+//   const [store, setStore] = createStore({ a: 'a', b: { c: 0 } })
 
-// createRoot(() => {
-//   let prev: any
-
-//   createEffect(() => {
-//     console.log('effect')
-//     const next = sharedClone(prev, store)
-//     console.log(next)
-//     prev = untrack(() => next)
+//   createRoot(() => {
+//     createEffect(() => {
+//       console.log(trackDeep(store.b))
+//     })
 //   })
-// })
 
-// setStore((s) => {
-//   s.foo = '1'
-// })
+//   setStore((s) => {
+//     s.b = {
+//       c: 1,
+//     }
+//   })
 
-// setStore((s) => {
-//   s.bar.baz = '2'
-// })
+//   setStore((s) => {
+//     s.b.c = 2
+//   })
+// }
+
+// {
+//   const store1 = createStore({ a: 'a', b: { c: 0 } })
+//   const store2 = createStore({ a: 'a', b: { c: -100 } })
+
+//   createRoot(() => {
+//     createEffect(() => {
+//       console.log(store1[0].b.c, store2[0].b.c)
+//     })
+//   })
+
+//   export function Test() {
+//     const [activeStore, setActiveStore] = React.useState(() => store1)
+
+//     const result = __useStoreValue(() => activeStore[0], undefined, 'test')
+
+//     console.log('result', result)
+
+//     return (
+//       <div>
+//         <div>{JSON.stringify(result, null, 2)}</div>
+//         <button
+//           onClick={() =>
+//             activeStore[1]((s) => {
+//               s.b = { c: -1 }
+//             })
+//           }
+//         >
+//           Reset
+//         </button>
+//         <br />
+//         <button
+//           onClick={() =>
+//             activeStore[1]((s) => {
+//               s.b.c++
+//             })
+//           }
+//         >
+//           Increment
+//         </button>
+//         <br />
+//         <button
+//           onClick={() =>
+//             activeStore[1]((s) => {
+//               s.b = [{ c: 500 }]
+//             })
+//           }
+//         >
+//           Replace
+//         </button>
+//         <br />{' '}
+//         <button
+//           onClick={() => {
+//             setActiveStore(store1)
+//           }}
+//         >
+//           Store 1
+//         </button>
+//         <br />
+//         <button
+//           onClick={() => {
+//             setActiveStore(store2)
+//           }}
+//         >
+//           Store 2
+//         </button>
+//       </div>
+//     )
+//   }
+// }
 
 export function createReactRouter<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
@@ -394,15 +478,12 @@ export function RouterProvider<
 }: RouterProps<TRouteConfig, TAllRouteInfo, TRouterContext>) {
   router.update(rest)
 
-  const [status, pendingMatches, currentMatches] = __useStoreValue(
+  const [, , currentMatches] = __useStoreValue(
     () => router.store,
     (s) => [s.status, s.pendingMatches, s.currentMatches],
-    true,
   )
 
   React.useEffect(router.mount, [router])
-
-  console.log('rendered', [status, pendingMatches, currentMatches])
 
   return (
     <>
@@ -506,7 +587,8 @@ export function useLoaderData<
   strict?: TStrict
   select?: (loaderData: TLoaderData) => TSelected
 }): TStrict extends true ? TSelected : TSelected | undefined {
-  const match = useMatch(opts) as any
+  const match = useMatch(opts)
+
   return __useStoreValue(() => match?.store.loaderData, opts?.select)
 }
 
@@ -561,10 +643,13 @@ export function useAction<
   TFromRoute extends RegisteredAllRouteInfo['routeInfoById'][TFrom] = RegisteredAllRouteInfo['routeInfoById'][TFrom],
   TStrict extends boolean = true,
   TAction = Action<TFromRoute['actionPayload'], TFromRoute['actionResponse']>,
+  TResolvedAction = TStrict extends true ? TAction : TAction | undefined,
+  TSelected = TResolvedAction,
 >(opts: {
   from: TFrom
   strict?: TStrict
-}): TStrict extends true ? TAction : TAction | undefined {
+  select?: (action: TResolvedAction) => TSelected
+}): TSelected {
   const router = useRouter()
   const match = useMatch()
   const action = router.getAction(opts as any)
@@ -582,7 +667,7 @@ export function useAction<
     )
   }
 
-  return __useStoreValue(() => action)
+  return __useStoreValue(() => action as any, opts?.select)
 }
 
 export function useMatchRoute() {
@@ -741,14 +826,16 @@ function CatchBoundaryInner(props: {
   React.useEffect(() => {
     if (activeErrorState) {
       let prevKey = router.store.currentLocation.key
-      return createRoot(() =>
+      return createRoot((dispose) => {
         createEffect(() => {
           if (router.store.currentLocation.key !== prevKey) {
             prevKey = router.store.currentLocation.key
             setActiveErrorState({} as any)
           }
-        }),
-      )
+        })
+
+        return dispose
+      })
     }
 
     return
@@ -805,7 +892,9 @@ export function usePrompt(message: string, when: boolean | any): void {
         unblock()
         transition.retry()
       } else {
-        router.store.currentLocation.pathname = window.location.pathname
+        router.setStore((s) => {
+          s.currentLocation.pathname = window.location.pathname
+        })
       }
     })
 
@@ -817,20 +906,3 @@ export function Prompt({ message, when, children }: PromptProps) {
   usePrompt(message, when ?? true)
   return (children ?? null) as ReactNode
 }
-
-// function circularStringify(obj: any) {
-//   const seen = new Set()
-
-//   return (
-//     JSON.stringify(obj, (_, value) => {
-//       if (typeof value === 'function') {
-//         return undefined
-//       }
-//       if (typeof value === 'object' && value !== null) {
-//         if (seen.has(value)) return
-//         seen.add(value)
-//       }
-//       return value
-//     }) || ''
-//   )
-// }
