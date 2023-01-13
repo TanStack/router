@@ -6,7 +6,7 @@ Route configs (or route configurations) are the primary way of defining routing 
 
 ## Create a root route
 
-To start building your route hierarchy, you can use the `createRouteConfig()` utility to create a root route. This utility optionally accepts a route options object, exluding the `path` option, since this is the root.
+To start building your route hierarchy, you can use the `createRouteConfig()` utility to create a root route. This utility optionally accepts a route options object, excluding the `path` option, since this is the root.
 
 ```ts
 import { createRouteConfig } from '@tanstack/router'
