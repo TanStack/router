@@ -1,9 +1,3 @@
-export {
-  createHashHistory,
-  createBrowserHistory,
-  createMemoryHistory,
-} from 'history'
-
 export { default as invariant } from 'tiny-invariant'
 
 export * from './frameworks'
@@ -18,3 +12,4 @@ export * from './router'
 export * from './searchParams'
 export * from './utils'
 export * from './interop'
+export * from './actions'

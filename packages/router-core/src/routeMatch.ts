@@ -7,8 +7,8 @@ import {
   DefaultAllRouteInfo,
   RouteInfo,
 } from './routeInfo'
-import { Router } from './router'
-import { batch, createStore, SetStoreFunction } from '@solidjs/reactivity'
+import { AnyRouter, Router } from './router'
+import { batch, createStore, SetStoreFunction } from './reactivity'
 import { Expand } from './utils'
 import { replaceEqualDeep } from './interop'
 
@@ -48,7 +48,7 @@ export interface RouteMatch<
       | { preload?: false; maxAge?: never; gcMaxAge?: never },
   ) => Promise<TRouteInfo['routeLoaderData']>
   fetch: (opts?: { maxAge?: number }) => Promise<TRouteInfo['routeLoaderData']>
-  invalidate: () => void
+  invalidate: () => Promise<void>
   hasLoaders: () => boolean
   __: {
     setStore: SetStoreFunction<RouteMatchStore<TAllRouteInfo, TRouteInfo>>
@@ -78,7 +78,7 @@ export function createRouteMatch<
   TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
   TRouteInfo extends AnyRouteInfo = RouteInfo,
 >(
-  router: Router<any, any, any>,
+  router: AnyRouter,
   route: Route<TAllRouteInfo, TRouteInfo>,
   opts: {
     parentMatch?: RouteMatch<any, any>
@@ -95,7 +95,7 @@ export function createRouteMatch<
   function setLoaderData(loaderData: TRouteInfo['routeLoaderData']) {
     batch(() => {
       setStore((s) => {
-        s.routeLoaderData = replaceEqualDeep(s.routeLoaderData, loaderData)
+        s.routeLoaderData = loaderData
       })
       updateLoaderData()
     })
@@ -149,7 +149,7 @@ export function createRouteMatch<
       validate: () => {
         // Validate the search params and stabilize them
         const parentSearch =
-          store.parentMatch?.store.search ?? router.store.currentLocation.search
+          store.parentMatch?.store.search ?? router.store.latestLocation.search
 
         try {
           const prevSearch = store.routeSearch
@@ -159,10 +159,7 @@ export function createRouteMatch<
               ? routeMatch.options.validateSearch.parse
               : routeMatch.options.validateSearch
 
-          let nextSearch = replaceEqualDeep(
-            prevSearch,
-            validator?.(parentSearch) ?? {},
-          )
+          let nextSearch = validator?.(parentSearch) ?? {}
 
           batch(() => {
             // Invalidate route matches when search param stability changes
@@ -170,13 +167,12 @@ export function createRouteMatch<
               setStore((s) => (s.invalid = true))
             }
 
-            // TODO: Alright, do we need batch() here?
             setStore((s) => {
               s.routeSearch = nextSearch
-              s.search = replaceEqualDeep(parentSearch, {
+              s.search = {
                 ...parentSearch,
                 ...nextSearch,
-              })
+              }
             })
           })
 
@@ -207,8 +203,15 @@ export function createRouteMatch<
     cancel: () => {
       routeMatch.__.abortController?.abort()
     },
-    invalidate: () => {
+    invalidate: async () => {
       setStore((s) => (s.invalid = true))
+      if (
+        router.store.currentMatches.find(
+          (d) => d.matchId === routeMatch.matchId,
+        )
+      ) {
+        await routeMatch.load()
+      }
     },
     hasLoaders: () => {
       return !!(
@@ -251,42 +254,31 @@ export function createRouteMatch<
 
         await routeMatch.fetch({ maxAge })
       }
-
-      // Clear actions
-      const action = router.store.actions[routeMatch.routeId]
-
-      if (action) {
-        router.setStore((s) => {
-          Object.assign(s.actions[routeMatch.routeId]!, {
-            current: undefined,
-            submissions: [],
-          })
-        })
-      }
     },
     fetch: async (opts) => {
-      const loadId = '' + Date.now() + Math.random()
-      latestId = loadId
-      const checkLatest = async () => {
-        if (loadId !== latestId) {
-          // warning(true, 'Data loader is out of date!')
-          return new Promise(() => {})
-        }
-      }
-
-      batch(() => {
-        // If the match was in an error state, set it
-        // to a loading state again. Otherwise, keep it
-        // as loading or resolved
-        if (store.status === 'idle') {
-          setStore((s) => (s.status = 'loading'))
-        }
-
-        // We started loading the route, so it's no longer invalid
-        setStore((s) => (s.invalid = false))
-      })
-
       routeMatch.__.loadPromise = new Promise(async (_resolve) => {
+        const loadId = '' + Date.now() + Math.random()
+        latestId = loadId
+
+        const checkLatest = () =>
+          loadId !== latestId
+            ? routeMatch.__.loadPromise?.then(() => _resolve())
+            : undefined
+
+        let latestPromise
+
+        batch(() => {
+          // If the match was in an error state, set it
+          // to a loading state again. Otherwise, keep it
+          // as loading or resolved
+          if (store.status === 'idle') {
+            setStore((s) => (s.status = 'loading'))
+          }
+
+          // We started loading the route, so it's no longer invalid
+          setStore((s) => (s.invalid = false))
+        })
+
         // We are now fetching, even if it's in the background of a
         // resolved state
         setStore((s) => (s.isFetching = true))
@@ -313,7 +305,7 @@ export function createRouteMatch<
           try {
             if (routeMatch.options.loader) {
               const data = await router.loadMatchData(routeMatch)
-              await checkLatest()
+              if ((latestPromise = checkLatest())) return latestPromise
 
               setLoaderData(data)
             }
@@ -332,7 +324,7 @@ export function createRouteMatch<
 
             return store.routeLoaderData
           } catch (err) {
-            await checkLatest()
+            if ((latestPromise = checkLatest())) return latestPromise
 
             if (process.env.NODE_ENV !== 'production') {
               console.error(err)
@@ -349,7 +341,7 @@ export function createRouteMatch<
         })
 
         const after = async () => {
-          await checkLatest()
+          if ((latestPromise = checkLatest())) return latestPromise
           setStore((s) => (s.isFetching = false))
           resolve()
           delete routeMatch.__.loadPromise
@@ -364,7 +356,6 @@ export function createRouteMatch<
       })
 
       await routeMatch.__.loadPromise
-      await checkLatest()
     },
   }
 

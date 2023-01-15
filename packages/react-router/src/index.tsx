@@ -1,13 +1,14 @@
 import * as React from 'react'
 
 import { useSyncExternalStore } from 'use-sync-external-store/shim'
+// import { createEffect, createRoot, untrack, unwrap } from '@solidjs/reactivity'
 import {
   createEffect,
   createRoot,
-  createStore,
   untrack,
   unwrap,
-} from '@solidjs/reactivity'
+  useStore,
+} from '@tanstack/router-core'
 
 import {
   Route,
@@ -38,7 +39,6 @@ import {
   Router,
   Expand,
 } from '@tanstack/router-core'
-import { trackDeep } from '@tanstack/router-core'
 
 export * from '@tanstack/router-core'
 
@@ -295,150 +295,6 @@ export type MatchesProviderProps = {
   children: ReactNode
 }
 
-const EMPTY = {}
-
-export const __useStoreValue = <TSeed, TReturn>(
-  seed: () => TSeed,
-  selector?: (seed: TSeed) => TReturn,
-  debug?: string,
-): TReturn => {
-  const valueRef = React.useRef<TReturn>(EMPTY as any)
-
-  // If there is no selector, track the seed
-  // If there is a selector, do not track the seed
-  const getValue = () =>
-    (!selector ? seed() : selector(untrack(() => seed()))) as TReturn
-
-  // If empty, initialize the value
-  if (valueRef.current === EMPTY) {
-    valueRef.current = unwrap(storeToImmutable(undefined, getValue()))
-  }
-
-  // Snapshot should just return the current cached value
-  const getSnapshot = React.useCallback(() => valueRef.current, [])
-
-  const getStore = React.useCallback(
-    (cb: () => void) => {
-      // A root is necessary to track effects
-      return createRoot((dispose) => {
-        createEffect(() => {
-          const value = getValue()
-
-          const next = storeToImmutable(valueRef.current, value)
-
-          if (debug)
-            console.log(
-              debug,
-              valueRef.current === next ? 'equal' : 'not equal',
-              next,
-            )
-
-          // Unwrap the value to get rid of any proxy structures
-          valueRef.current = unwrap(next)
-
-          // Call the callback to notify the external store
-          cb()
-        })
-
-        return dispose
-      })
-    },
-    [seed()],
-  )
-
-  return useSyncExternalStore(getStore, getSnapshot, getSnapshot)
-}
-
-// {
-//   const [store, setStore] = createStore({ a: 'a', b: { c: 0 } })
-
-//   createRoot(() => {
-//     createEffect(() => {
-//       console.log(trackDeep(store.b))
-//     })
-//   })
-
-//   setStore((s) => {
-//     s.b = {
-//       c: 1,
-//     }
-//   })
-
-//   setStore((s) => {
-//     s.b.c = 2
-//   })
-// }
-
-// {
-//   const store1 = createStore({ a: 'a', b: { c: 0 } })
-//   const store2 = createStore({ a: 'a', b: { c: -100 } })
-
-//   createRoot(() => {
-//     createEffect(() => {
-//       console.log(store1[0].b.c, store2[0].b.c)
-//     })
-//   })
-
-//   export function Test() {
-//     const [activeStore, setActiveStore] = React.useState(() => store1)
-
-//     const result = __useStoreValue(() => activeStore[0], undefined, 'test')
-
-//     console.log('result', result)
-
-//     return (
-//       <div>
-//         <div>{JSON.stringify(result, null, 2)}</div>
-//         <button
-//           onClick={() =>
-//             activeStore[1]((s) => {
-//               s.b = { c: -1 }
-//             })
-//           }
-//         >
-//           Reset
-//         </button>
-//         <br />
-//         <button
-//           onClick={() =>
-//             activeStore[1]((s) => {
-//               s.b.c++
-//             })
-//           }
-//         >
-//           Increment
-//         </button>
-//         <br />
-//         <button
-//           onClick={() =>
-//             activeStore[1]((s) => {
-//               s.b = [{ c: 500 }]
-//             })
-//           }
-//         >
-//           Replace
-//         </button>
-//         <br />{' '}
-//         <button
-//           onClick={() => {
-//             setActiveStore(store1)
-//           }}
-//         >
-//           Store 1
-//         </button>
-//         <br />
-//         <button
-//           onClick={() => {
-//             setActiveStore(store2)
-//           }}
-//         >
-//           Store 2
-//         </button>
-//       </div>
-//     )
-//   }
-// }
-
 export function createReactRouter<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
   TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
@@ -478,7 +334,7 @@ export function RouterProvider<
 }: RouterProps<TRouteConfig, TAllRouteInfo, TRouterContext>) {
   router.update(rest)
 
-  const [, , currentMatches] = __useStoreValue(
+  const [, , currentMatches] = useStore(
     () => router.store,
     (s) => [s.status, s.pendingMatches, s.currentMatches],
   )
@@ -506,7 +362,7 @@ export function useRouterStore<T = RouterStore>(
   selector?: (state: Router['store']) => T,
 ): T {
   const router = useRouter()
-  return __useStoreValue(() => router.store, selector)
+  return useStore(() => router.store, selector)
 }
 
 export function useMatches(): RouteMatch[] {
@@ -554,7 +410,7 @@ export function useMatch<
     )
   }
 
-  __useStoreValue(() => match!.store)
+  useStore(() => match!.store)
 
   return match as any
 }
@@ -589,7 +445,7 @@ export function useLoaderData<
 }): TStrict extends true ? TSelected : TSelected | undefined {
   const match = useMatch(opts)
 
-  return __useStoreValue(() => match?.store.loaderData, opts?.select)
+  return useStore(() => match?.store.loaderData, opts?.select)
 }
 
 export function useSearch<
@@ -603,7 +459,7 @@ export function useSearch<
   select?: (search: TSearch) => TSelected
 }): TStrict extends true ? TSelected : TSelected | undefined {
   const match = useMatch(opts)
-  return __useStoreValue(() => match?.store.search, opts?.select) as any
+  return useStore(() => match?.store.search, opts?.select) as any
 }
 
 export function useParams<
@@ -618,7 +474,7 @@ export function useParams<
   select?: (search: TDefaultSelected) => TSelected
 }): TSelected {
   const router = useRouter()
-  return __useStoreValue(
+  return useStore(
     () => last(router.store.currentMatches)?.params as any,
     opts?.select,
   )
@@ -636,38 +492,6 @@ export function useNavigate<
   ) => {
     return router.navigate({ ...defaultOpts, ...(opts as any) })
   }
-}
-
-export function useAction<
-  TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
-  TFromRoute extends RegisteredAllRouteInfo['routeInfoById'][TFrom] = RegisteredAllRouteInfo['routeInfoById'][TFrom],
-  TStrict extends boolean = true,
-  TAction = Action<TFromRoute['actionPayload'], TFromRoute['actionResponse']>,
-  TResolvedAction = TStrict extends true ? TAction : TAction | undefined,
-  TSelected = TResolvedAction,
->(opts: {
-  from: TFrom
-  strict?: TStrict
-  select?: (action: TResolvedAction) => TSelected
-}): TSelected {
-  const router = useRouter()
-  const match = useMatch()
-  const action = router.getAction(opts as any)
-
-  if (opts?.strict ?? true) {
-    invariant(
-      match.routeId == opts.from,
-      `useAction("${
-        opts.from as string
-      }") is being called in a component that is meant to render the '${
-        match.routeId
-      }' route. Did you mean to 'useAction("${
-        opts.from as string
-      }", { strict: false })' instead?`,
-    )
-  }
-
-  return __useStoreValue(() => action as any, opts?.select)
 }
 
 export function useMatchRoute() {
@@ -713,7 +537,7 @@ export function Outlet() {
 
   const defaultPending = React.useCallback(() => null, [])
 
-  __useStoreValue(() => match?.store)
+  useStore(() => match?.store)
 
   const Inner = React.useCallback((props: { match: RouteMatch }): any => {
     if (props.match.store.status === 'error') {
@@ -881,28 +705,29 @@ export function DefaultErrorBoundary({ error }: { error: any }) {
   )
 }
 
-export function usePrompt(message: string, when: boolean | any): void {
-  const router = useRouter()
+// TODO: While we migrate away from the history package, these need to be disabled
+// export function usePrompt(message: string, when: boolean | any): void {
+//   const router = useRouter()
 
-  React.useEffect(() => {
-    if (!when) return
+//   React.useEffect(() => {
+//     if (!when) return
 
-    let unblock = router.getHistory().block((transition) => {
-      if (window.confirm(message)) {
-        unblock()
-        transition.retry()
-      } else {
-        router.setStore((s) => {
-          s.currentLocation.pathname = window.location.pathname
-        })
-      }
-    })
+//     let unblock = router.getHistory().block((transition) => {
+//       if (window.confirm(message)) {
+//         unblock()
+//         transition.retry()
+//       } else {
+//         router.setStore((s) => {
+//           s.currentLocation.pathname = window.location.pathname
+//         })
+//       }
+//     })
 
-    return unblock
-  }, [when, message])
-}
+//     return unblock
+//   }, [when, message])
+// }
 
-export function Prompt({ message, when, children }: PromptProps) {
-  usePrompt(message, when ?? true)
-  return (children ?? null) as ReactNode
-}
+// export function Prompt({ message, when, children }: PromptProps) {
+//   usePrompt(message, when ?? true)
+//   return (children ?? null) as ReactNode
+// }

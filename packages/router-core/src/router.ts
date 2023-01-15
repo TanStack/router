@@ -1,11 +1,3 @@
-import {
-  BrowserHistory,
-  createBrowserHistory,
-  createMemoryHistory,
-  HashHistory,
-  History,
-  MemoryHistory,
-} from 'history'
 import invariant from 'tiny-invariant'
 import { GetFrameworkGeneric } from './frameworks'
 
@@ -38,13 +30,12 @@ import {
 import {
   AllRouteInfo,
   AnyAllRouteInfo,
-  AnyRouteInfo,
   RouteInfo,
   RoutesById,
 } from './routeInfo'
 import { createRouteMatch, RouteMatch, RouteMatchStore } from './routeMatch'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
-import { createStore, batch, SetStoreFunction } from '@solidjs/reactivity'
+import { createStore, batch, SetStoreFunction } from './reactivity'
 import {
   functionalUpdate,
   last,
@@ -56,10 +47,13 @@ import {
   Updater,
 } from './utils'
 import { replaceEqualDeep } from './interop'
+import { Action, ActionOptions } from './actions'
 
 export interface RegisterRouter {
   // router: Router
 }
+
+export type AnyRouter = Router<any, any, any>
 
 export type RegisteredRouter = RegisterRouter extends {
   router: Router<infer TRouteConfig, infer TAllRouteInfo, infer TRouterContext>
@@ -75,7 +69,7 @@ export type RegisteredAllRouteInfo = RegisterRouter extends {
 
 export interface LocationState {}
 
-export interface Location<
+export interface ParsedLocation<
   TSearchObj extends AnySearchSchema = {},
   TState extends LocationState = LocationState,
 > {
@@ -105,7 +99,6 @@ export interface RouterOptions<
   TRouteConfig extends AnyRouteConfig,
   TRouterContext,
 > {
-  history?: BrowserHistory | MemoryHistory | HashHistory
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
   filterRoutes?: FilterRoutesFn
@@ -122,42 +115,12 @@ export interface RouterOptions<
   routeConfig?: TRouteConfig
   basepath?: string
   useServerData?: boolean
-  createRouter?: (router: Router<any, any, any>) => void
-  createRoute?: (opts: {
-    route: AnyRoute
-    router: Router<any, any, any>
-  }) => void
+  createRouter?: (router: AnyRouter) => void
+  createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
   context?: TRouterContext
   loadComponent?: (
     component: GetFrameworkGeneric<'Component'>,
   ) => Promise<GetFrameworkGeneric<'Component'>>
-}
-
-export interface Action<
-  TPayload = unknown,
-  TResponse = unknown,
-  // TError = unknown,
-> {
-  submit: (
-    payload?: TPayload,
-    actionOpts?: { invalidate?: boolean; multi?: boolean },
-  ) => Promise<TResponse>
-  current?: ActionState<TPayload, TResponse>
-  latest?: ActionState<TPayload, TResponse>
-  submissions: ActionState<TPayload, TResponse>[]
-}
-
-export interface ActionState<
-  TPayload = unknown,
-  TResponse = unknown,
-  // TError = unknown,
-> {
-  submittedAt: number
-  status: 'idle' | 'pending' | 'success' | 'error'
-  payload: TPayload
-  isMulti: boolean
-  response?: TResponse
-  error?: unknown
 }
 
 export interface Loader<
@@ -201,13 +164,12 @@ export interface RouterStore<
   TState extends LocationState = LocationState,
 > {
   status: 'idle' | 'loading'
-  latestLocation: Location<TSearchObj, TState>
+  latestLocation: ParsedLocation<TSearchObj, TState>
   currentMatches: RouteMatch[]
-  currentLocation: Location<TSearchObj, TState>
+  currentLocation: ParsedLocation<TSearchObj, TState>
   pendingMatches?: RouteMatch[]
-  pendingLocation?: Location<TSearchObj, TState>
+  pendingLocation?: ParsedLocation<TSearchObj, TState>
   lastUpdated: number
-  actions: Record<string, Action>
   loaders: Record<string, Loader>
   isFetching: boolean
   isPreloading: boolean
@@ -290,7 +252,6 @@ export interface Router<
   }
 
   // Public API
-  getHistory: () => BrowserHistory | MemoryHistory | HashHistory
   options: PickAsRequired<
     RouterOptions<TRouteConfig, TRouterContext>,
     'stringifySearch' | 'parseSearch' | 'context'
@@ -311,9 +272,9 @@ export interface Router<
     opts?: RouterOptions<TRouteConfig, TRouterContext>,
   ) => Router<TRouteConfig, TAllRouteInfo, TRouterContext>
 
-  buildNext: (opts: BuildNextOptions) => Location
+  buildNext: (opts: BuildNextOptions) => ParsedLocation
   cancelMatches: () => void
-  load: (next?: Location) => Promise<void>
+  load: (next?: ParsedLocation) => Promise<void>
   cleanMatchCache: () => void
   getRoute: <TId extends keyof TAllRouteInfo['routeInfoById']>(
     id: TId,
@@ -336,7 +297,7 @@ export interface Router<
   loadMatchData: (
     routeMatch: RouteMatch<any, any>,
   ) => Promise<Record<string, unknown>>
-  invalidateRoute: (opts: MatchLocation) => void
+  invalidateRoute: (opts: MatchLocation) => Promise<void>
   reload: () => Promise<void>
   resolvePath: (from: string, path: string) => string
   navigate: <
@@ -365,24 +326,11 @@ export interface Router<
   ) => LinkInfo
   dehydrate: () => DehydratedRouter<TRouterContext>
   hydrate: (dehydratedRouter: DehydratedRouter<TRouterContext>) => void
-  getAction: <TFrom extends keyof TAllRouteInfo['routeInfoById'] = '/'>(opts: {
-    from: TFrom
-  }) => unknown extends TAllRouteInfo['routeInfoById'][TFrom]['actionResponse']
-    ?
-        | Action<
-            TAllRouteInfo['routeInfoById'][TFrom]['actionPayload'],
-            TAllRouteInfo['routeInfoById'][TFrom]['actionResponse']
-          >
-        | undefined
-    : Action<
-        TAllRouteInfo['routeInfoById'][TFrom]['actionPayload'],
-        TAllRouteInfo['routeInfoById'][TFrom]['actionResponse']
-      >
   getLoader: <TFrom extends keyof TAllRouteInfo['routeInfoById'] = '/'>(opts: {
     from: TFrom
   }) => unknown extends TAllRouteInfo['routeInfoById'][TFrom]['routeLoaderData']
     ?
-        | Action<
+        | Loader<
             LoaderContext<
               TAllRouteInfo['routeInfoById'][TFrom]['fullSearchSchema'],
               TAllRouteInfo['routeInfoById'][TFrom]['allParams']
@@ -401,17 +349,12 @@ export interface Router<
 const isServer =
   typeof window === 'undefined' || !window.document?.createElement
 
-// This is the default history object if none is defined
-const createDefaultHistory = () =>
-  isServer ? createMemoryHistory() : createBrowserHistory()
-
 function getInitialRouterState(): RouterStore {
   return {
     status: 'idle',
     latestLocation: null!,
     currentLocation: null!,
     currentMatches: [],
-    actions: {},
     loaders: {},
     lastUpdated: Date.now(),
     matchCache: {},
@@ -448,8 +391,6 @@ export function createRouter<
     stringifySearch: userOptions?.stringifySearch ?? defaultStringifySearch,
     parseSearch: userOptions?.parseSearch ?? defaultParseSearch,
   }
-
-  let currentHistory = userOptions?.history || createDefaultHistory()
 
   const [store, setStore] = createStore<RouterStore>(getInitialRouterState())
 
@@ -502,29 +443,66 @@ export function createRouter<
     return routes[0]!
   }
 
-  function parseLocation(
-    location: History['location'],
-    previousLocation?: Location,
-  ): Location {
-    const parsedSearch = router.options.parseSearch(location.search)
+  function parseLocation(previousLocation?: ParsedLocation): ParsedLocation {
+    let { pathname, search, hash } = window.location
+    let state = window.history.state || {}
+    const parsedSearch = router.options.parseSearch(search)
 
     return {
-      pathname: location.pathname,
-      searchStr: location.search,
+      pathname: pathname,
+      searchStr: search,
       search: replaceEqualDeep(previousLocation?.search, parsedSearch),
-      hash: location.hash.split('#').reverse()[0] ?? '',
-      href: `${location.pathname}${location.search}${location.hash}`,
-      state: location.state as LocationState,
-      key: location.key,
+      hash: hash.split('#').reverse()[0] ?? '',
+      href: `${pathname}${search}${hash}`,
+      state: state.usr as LocationState,
+      key: state.key || '__init__',
     }
   }
 
   function navigate(location: BuildNextOptions & { replace?: boolean }) {
     const next = router.buildNext(location)
-    return commitLocation(next, location.replace)
+    const id = '' + Date.now() + Math.random()
+
+    if (navigateTimeout) clearTimeout(navigateTimeout)
+
+    let nextAction: 'push' | 'replace' = 'replace'
+
+    if (!location.replace) {
+      nextAction = 'push'
+    }
+
+    const isSameUrl = window.location.href === next.href
+
+    if (isSameUrl && !next.key) {
+      nextAction = 'replace'
+    }
+
+    const href = `${next.pathname}${next.searchStr}${
+      next.hash ? `#${next.hash}` : ''
+    }`
+
+    window.history[nextAction === 'push' ? 'pushState' : 'replaceState'](
+      {
+        id,
+        ...next.state,
+      },
+      '',
+      href,
+    )
+
+    router.load(parseLocation(store.latestLocation))
+
+    return (navigationPromise = new Promise((resolve) => {
+      const previousNavigationResolve = resolveNavigation
+
+      resolveNavigation = () => {
+        previousNavigationResolve()
+        resolve()
+      }
+    }))
   }
 
-  function buildLocation(dest: BuildNextOptions = {}): Location {
+  function buildLocation(dest: BuildNextOptions = {}): ParsedLocation {
     const fromPathname = dest.fromCurrent
       ? store.latestLocation.pathname
       : dest.from ?? store.latestLocation.pathname
@@ -605,50 +583,10 @@ export function createRouter<
     }
   }
 
-  function commitLocation(next: Location, replace?: boolean): Promise<void> {
-    const id = '' + Date.now() + Math.random()
-
-    if (navigateTimeout) clearTimeout(navigateTimeout)
-
-    let nextAction: 'push' | 'replace' = 'replace'
-
-    if (!replace) {
-      nextAction = 'push'
-    }
-
-    const isSameUrl = parseLocation(currentHistory.location).href === next.href
-
-    if (isSameUrl && !next.key) {
-      nextAction = 'replace'
-    }
-
-    currentHistory[nextAction](
-      {
-        pathname: next.pathname,
-        hash: next.hash,
-        search: next.searchStr,
-      },
-      {
-        id,
-        ...next.state,
-      },
-    )
-
-    return (navigationPromise = new Promise((resolve) => {
-      const previousNavigationResolve = resolveNavigation
-
-      resolveNavigation = () => {
-        previousNavigationResolve()
-        resolve()
-      }
-    }))
-  }
-
   const router: Router<TRouteConfig, TAllRouteInfo, TRouterContext> = {
     types: undefined!,
 
     // public api
-    getHistory: () => currentHistory,
     store,
     setStore,
     options: originalOptions,
@@ -727,23 +665,25 @@ export function createRouter<
           router.load()
         }
 
-        const unsub = currentHistory.listen((event) => {
-          router.load(parseLocation(event.location, store.latestLocation))
-        })
+        const cb = () => {
+          console.log('hello')
+          router.load(parseLocation(store.latestLocation))
+        }
 
         // addEventListener does not exist in React Native, but window does
         // In the future, we might need to invert control here for more adapters
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (window.addEventListener) {
           // Listen to visibilitychange and focus
+          window.addEventListener('popstate', cb)
           window.addEventListener('visibilitychange', onFocus, false)
           window.addEventListener('focus', onFocus, false)
         }
 
         return () => {
-          unsub()
           if (window.removeEventListener) {
             // Be sure to unsubscribe if a new handler is set
+            window.removeEventListener('popstate', cb)
             window.removeEventListener('visibilitychange', onFocus)
             window.removeEventListener('focus', onFocus)
           }
@@ -754,13 +694,9 @@ export function createRouter<
     },
 
     update: (opts) => {
-      const newHistory = opts?.history && opts?.history !== currentHistory
-      if (!store.latestLocation || newHistory) {
-        if (opts?.history) {
-          currentHistory = opts.history
-        }
+      if (!store.latestLocation) {
         setStore((s) => {
-          s.latestLocation = parseLocation(currentHistory.location)
+          s.latestLocation = parseLocation()
           s.currentLocation = s.latestLocation
         })
       }
@@ -787,7 +723,7 @@ export function createRouter<
       )
     },
 
-    load: async (next?: Location) => {
+    load: async (next?: ParsedLocation) => {
       let now = Date.now()
       const startedAt = now
       startedLoadingAt = startedAt
@@ -1170,17 +1106,20 @@ export function createRouter<
       }
     },
 
-    invalidateRoute: (opts: MatchLocation) => {
+    invalidateRoute: async (opts: MatchLocation) => {
       const next = router.buildNext(opts)
       const unloadedMatchIds = router
         .matchRoutes(next.pathname)
         .map((d) => d.matchId)
-      ;[...store.currentMatches, ...(store.pendingMatches ?? [])].forEach(
-        (match) => {
-          if (unloadedMatchIds.includes(match.matchId)) {
-            match.invalidate()
-          }
-        },
+
+      await Promise.allSettled(
+        [...store.currentMatches, ...(store.pendingMatches ?? [])].map(
+          async (match) => {
+            if (unloadedMatchIds.includes(match.matchId)) {
+              return match.invalidate()
+            }
+          },
+        ),
       )
     },
 
@@ -1415,80 +1354,6 @@ export function createRouter<
         __preSearchFilters,
         __postSearchFilters,
       })
-    },
-    getAction: ({ from }) => {
-      const id = from || ('/' as any)
-
-      const route = router.getRoute(id)
-
-      if (!route) return
-
-      let action =
-        store.actions[id] ||
-        (() => {
-          router.setStore((s) => {
-            s.actions[id] = {
-              submissions: [],
-              submit: async <T, U>(
-                payload: T,
-                actionOpts?: { invalidate?: boolean; multi?: boolean },
-              ) => {
-                if (!route) {
-                  return
-                }
-
-                const invalidate = actionOpts?.invalidate ?? true
-                const [actionStore, setActionStore] = createStore<
-                  ActionState<T, U>
-                >({
-                  submittedAt: Date.now(),
-                  status: 'pending',
-                  payload,
-                  isMulti: !!actionOpts?.multi,
-                })
-                router.setStore((s) => {
-                  const action = s.actions[id]!
-                  if (!actionOpts?.multi) {
-                    action.submissions = action.submissions.filter(
-                      (d) => d.isMulti,
-                    )
-                  }
-                  action.current = actionStore
-                  action.latest = actionStore
-                  action.submissions.push(actionStore)
-                })
-                try {
-                  const res = await route.options.action?.(payload)
-                  setActionStore((s) => {
-                    s.response = res as U
-                  })
-                  if (invalidate) {
-                    router.invalidateRoute({ to: '.', fromCurrent: true })
-                    await router.reload()
-                  }
-                  setActionStore((s) => {
-                    s.status = 'success'
-                  })
-                  return res
-                } catch (err) {
-                  console.error(err)
-                  setActionStore((s) => {
-                    s.error = err
-                    s.status = 'error'
-                  })
-                  router.setStore((s) => {
-                    s.actions[id]!.submissions = action.submissions.filter(
-                      (d) => d !== actionStore,
-                    )
-                  })
-                }
-              },
-            }
-          })
-          return router.store.actions[id]!
-        })()
-
-      return action as any
     },
     getLoader: ({ from }) => {
       const id = from || ('/' as any)

@@ -13,7 +13,8 @@ import {
   MatchRoute,
   useNavigate,
   useSearch,
-  useAction,
+  createAction,
+  useStore,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -39,6 +40,20 @@ declare module '@tanstack/react-router' {
     // auth: AuthContext
   }
 }
+
+const createInvoiceAction = createAction({
+  action: postInvoice,
+  onEachSuccess: async () => {
+    await router.invalidateRoute({ to: invoiceRoute.id })
+  },
+})
+
+const updateInvoiceAction = createAction({
+  action: patchInvoice,
+  onEachSuccess: async () => {
+    await router.invalidateRoute({ to: invoicesRoute.id })
+  },
+})
 
 // Build our routes. We could do this in our component, too.
 const rootRoute = createRouteConfig({
@@ -144,8 +159,6 @@ const indexRoute = rootRoute.createRoute({
 const dashboardRoute = rootRoute.createRoute({
   path: 'dashboard',
   loader: async () => {
-    console.log('Fetching all invoices...')
-
     return {
       invoices: await fetchInvoices(),
     }
@@ -217,28 +230,26 @@ const invoicesRoute = dashboardRoute.createRoute({
   component: () => {
     const { invoices } = useLoaderData({ from: invoicesRoute.id })
 
-    // Get the action for a child route
-    const invoiceIndexAction = useAction({
-      from: invoicesIndexRoute.id,
-      strict: false,
-    })
+    const updateSubmissions = useStore(
+      () => updateInvoiceAction.store.pendingSubmissions,
+    )
 
-    const invoiceDetailAction = useAction({
-      from: invoiceRoute.id,
-      strict: false,
-    })
+    const createSubmissions = useStore(
+      () => createInvoiceAction.store.pendingSubmissions,
+    )
 
     return (
       <div className="flex-1 flex">
         <div className="divide-y w-48">
           {invoices?.map((invoice) => {
-            const currentPayload = invoiceDetailAction?.current?.payload
-            const isPending = currentPayload?.id === invoice.id
+            const updateSubmission = updateSubmissions.find(
+              (d) => d.payload.id === invoice.id,
+            )
 
-            if (isPending) {
+            if (updateSubmission) {
               invoice = {
                 ...invoice,
-                ...currentPayload,
+                ...updateSubmission.payload,
               }
             }
 
@@ -255,7 +266,7 @@ const invoicesRoute = dashboardRoute.createRoute({
                 >
                   <pre className="text-sm">
                     #{invoice.id} - {invoice.title.slice(0, 10)}{' '}
-                    {isPending ? (
+                    {updateSubmission ? (
                       <Spinner />
                     ) : (
                       <MatchRoute
@@ -273,7 +284,7 @@ const invoicesRoute = dashboardRoute.createRoute({
               </div>
             )
           })}
-          {invoiceIndexAction?.submissions.map((action) => (
+          {createSubmissions.map((action) => (
             <div key={action.submittedAt}>
               <a href="#" className="block py-2 px-3 text-blue-700">
                 <pre className="text-sm">
@@ -293,11 +304,11 @@ const invoicesRoute = dashboardRoute.createRoute({
 
 const invoicesIndexRoute = invoicesRoute.createRoute({
   path: '/',
-  action: async (partialInvoice: Partial<Invoice>) => {
-    return postInvoice(partialInvoice)
-  },
   component: () => {
-    const action = useAction({ from: invoicesIndexRoute.id })
+    const submission = useStore(
+      () => createInvoiceAction.store,
+      (d) => d.latestSubmission,
+    )
 
     return (
       <>
@@ -307,13 +318,10 @@ const invoicesIndexRoute = invoicesRoute.createRoute({
               event.preventDefault()
               event.stopPropagation()
               const formData = new FormData(event.target as HTMLFormElement)
-              action.submit(
-                {
-                  title: formData.get('title') as string,
-                  body: formData.get('body') as string,
-                },
-                { multi: true },
-              )
+              createInvoiceAction.submit({
+                title: formData.get('title') as string,
+                body: formData.get('body') as string,
+              })
             }}
             className="space-y-2"
           >
@@ -327,11 +335,11 @@ const invoicesIndexRoute = invoicesRoute.createRoute({
                 Create
               </button>
             </div>
-            {action.current?.status === 'success' ? (
+            {submission?.status === 'success' ? (
               <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Created!
               </div>
-            ) : action.current?.status === 'error' ? (
+            ) : submission?.status === 'error' ? (
               <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Failed to create.
               </div>
@@ -357,7 +365,6 @@ const invoiceRoute = invoicesRoute.createRoute({
       })
       .parse(search),
   loader: async ({ params: { invoiceId }, search: {} }) => {
-    console.log('Fetching invoice...')
     const invoice = await fetchInvoiceById(invoiceId)
 
     if (!invoice) {
@@ -371,14 +378,20 @@ const invoiceRoute = invoicesRoute.createRoute({
   component: () => {
     const { invoice } = useLoaderData({ from: invoiceRoute.id })
     const search = useSearch({ from: invoiceRoute.id })
-    const action = useAction({ from: invoiceRoute.id })
+    const submission = useStore(
+      () => updateInvoiceAction.store,
+      (d) => d.latestSubmission,
+    )
     const navigate = useNavigate({ from: invoiceRoute.id })
 
-    const [notes, setNotes] = React.useState(search.notes ?? ``)
+    const [notes, setNotes] = React.useState(search.notes ?? '')
 
     React.useEffect(() => {
       navigate({
-        search: (old) => ({ ...old, notes: notes ? notes : undefined }),
+        search: (old) => ({
+          ...old,
+          notes: notes ? notes : undefined,
+        }),
         replace: true,
       })
     }, [notes])
@@ -390,7 +403,7 @@ const invoiceRoute = invoicesRoute.createRoute({
           event.preventDefault()
           event.stopPropagation()
           const formData = new FormData(event.target as HTMLFormElement)
-          action.submit({
+          updateInvoiceAction.submit({
             id: invoice.id,
             title: formData.get('title') as string,
             body: formData.get('body') as string,
@@ -400,7 +413,7 @@ const invoiceRoute = invoicesRoute.createRoute({
       >
         <InvoiceFields
           invoice={invoice}
-          disabled={action.current?.status === 'pending'}
+          disabled={submission?.status === 'pending'}
         />
         <div>
           <Link
@@ -418,7 +431,9 @@ const invoiceRoute = invoicesRoute.createRoute({
                 <div className="h-2" />
                 <textarea
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(e) => {
+                    setNotes(e.target.value)
+                  }}
                   rows={5}
                   className="shadow w-full p-2 rounded"
                   placeholder="Write some notes here..."
@@ -434,22 +449,24 @@ const invoiceRoute = invoicesRoute.createRoute({
         <div>
           <button
             className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-            disabled={action.current?.status === 'pending'}
+            disabled={submission?.status === 'pending'}
           >
             Save
           </button>
         </div>
-        <div key={action.current?.submittedAt}>
-          {action.current?.status === 'success' ? (
-            <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-              Saved!
-            </div>
-          ) : action.current?.status === 'error' ? (
-            <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
-              Failed to save.
-            </div>
-          ) : null}
-        </div>
+        {submission?.payload.id === invoice.id ? (
+          <div key={submission?.submittedAt}>
+            {submission?.status === 'success' ? (
+              <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+                Saved!
+              </div>
+            ) : submission?.status === 'error' ? (
+              <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+                Failed to save.
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </form>
     )
   },
@@ -678,7 +695,6 @@ const authenticatedRoute = rootRoute.createRoute({
     }
   },
   loader: () => {
-    console.log('I should only run when authenticated!')
     return {}
   },
   component: () => {
@@ -712,7 +728,7 @@ const loginRoute = rootRoute.createRoute({
 
     React.useEffect(() => {
       if (auth.status === 'loggedIn' && search.redirect) {
-        router.getHistory().push(search.redirect)
+        window.history.pushState({}, '', search.redirect)
       }
     }, [auth.status, search.redirect])
 
@@ -756,7 +772,6 @@ const layoutRoute = rootRoute.createRoute({
   loader: async () => {
     return loaderDelayFn(() => {
       const rand = Math.random()
-      console.log(rand)
       return {
         random: rand,
       }
@@ -813,7 +828,6 @@ const routeConfig = rootRoute.addChildren([
 
 const router = createReactRouter({
   routeConfig,
-  actions: [patchInvoiceAction],
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>
       <Spinner />

@@ -72,8 +72,6 @@ export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
   infer TRouteLoaderData,
   infer TParentLoaderData,
   infer TLoaderData,
-  infer TActionPayload,
-  infer TActionResponse,
   infer TParentSearchSchema,
   infer TSearchSchema,
   infer TFullSearchSchema,
@@ -93,8 +91,6 @@ export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
         TRouteLoaderData,
         TParentLoaderData,
         TLoaderData,
-        TActionPayload,
-        TActionResponse,
         TParentSearchSchema,
         TSearchSchema,
         TFullSearchSchema,
@@ -109,8 +105,6 @@ export interface RoutesInfoInner<
   TRouteInfo extends RouteInfo<
     string,
     string,
-    any,
-    any,
     any,
     any,
     any,
@@ -160,8 +154,6 @@ export interface AnyRouteInfo
     any,
     any,
     any,
-    any,
-    any,
     any
   > {}
 
@@ -174,8 +166,6 @@ export interface RouteInfo<
   TRouteLoaderData extends AnyLoaderData = {},
   TParentLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = {},
-  TActionPayload = unknown,
-  TActionResponse = unknown,
   TParentSearchSchema extends {} = {},
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = {},
@@ -191,8 +181,6 @@ export interface RouteInfo<
   routeLoaderData: TRouteLoaderData
   parentLoaderData: TParentLoaderData
   loaderData: TLoaderData
-  actionPayload: TActionPayload
-  actionResponse: TActionResponse
   searchSchema: TSearchSchema
   fullSearchSchema: TFullSearchSchema
   parentParams: TParentParams
@@ -205,8 +193,6 @@ export interface RouteInfo<
     TRouteLoaderData,
     TParentLoaderData,
     TLoaderData,
-    TActionPayload,
-    TActionResponse,
     TParentSearchSchema,
     TSearchSchema,
     TFullSearchSchema,

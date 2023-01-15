@@ -3,7 +3,7 @@ import {
   DefaultAllRouteInfo,
   RouteInfoByPath,
 } from './routeInfo'
-import { Location, LocationState } from './router'
+import { ParsedLocation, LocationState } from './router'
 import {
   Expand,
   NoInfer,
@@ -19,7 +19,7 @@ export type LinkInfo =
     }
   | {
       type: 'internal'
-      next: Location
+      next: ParsedLocation
       handleFocus: (e: any) => void
       handleClick: (e: any) => void
       handleEnter: (e: any) => void

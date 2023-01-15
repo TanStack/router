@@ -52,7 +52,7 @@ export function storeToImmutable<T>(prev: any, next: T): T {
 
         // Recurse the new value
         try {
-          // console.count(key)
+          console.count(key)
           copy[key] = recurse(prevValue, nextValue)
         } catch {}
 

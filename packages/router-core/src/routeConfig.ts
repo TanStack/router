@@ -4,7 +4,7 @@ import { ParsePathParams } from './link'
 import { joinPaths, trimPath, trimPathRight } from './path'
 import { RouteInfo } from './routeInfo'
 import { RouteMatch } from './routeMatch'
-import { RegisteredRouter, Router } from './router'
+import { AnyRouter, RegisteredRouter, Router } from './router'
 import { Expand, IsAny, NoInfer, PickUnsafe } from './utils'
 
 export const rootRouteId = '__root__' as const
@@ -62,10 +62,6 @@ export interface LoaderContext<
   // parentLoaderPromise?: Promise<TParentRouteLoaderData>
 }
 
-export type ActionFn<TActionPayload = unknown, TActionResponse = unknown> = (
-  submission: TActionPayload,
-) => TActionResponse | Promise<TActionResponse>
-
 export type UnloaderFn<TPath extends string> = (
   routeMatch: RouteMatch<any, RouteInfo<string, TPath>>,
 ) => void
@@ -77,8 +73,6 @@ export type RouteOptions<
   TRouteLoaderData extends AnyLoaderData = {},
   TParentLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = {},
-  TActionPayload = unknown,
-  TActionResponse = unknown,
   TParentSearchSchema extends {} = {},
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = TSearchSchema,
@@ -120,15 +114,12 @@ export type RouteOptions<
   // The max age to cache the loader data for this route in milliseconds from the time of route inactivity
   // before it is garbage collected.
   loaderGcMaxAge?: number
-  // An asynchronous function made available to the route for performing asynchronous or mutative actions that
-  // might invalidate the route's data.
-  action?: ActionFn<TActionPayload, TActionResponse>
   // This async function is called before a route is loaded.
   // If an error is thrown here, the route's loader will not be called.
   // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onLoadError` function.
   // If thrown during a preload event, the error will be logged to the console.
   beforeLoad?: (opts: {
-    router: Router<any, any, unknown>
+    router: AnyRouter
     match: RouteMatch
   }) => Promise<void> | void
   // This function will be called if the route's loader throws an error **during an attempted navigation**.
@@ -181,8 +172,6 @@ export interface RouteConfig<
   TRouteLoaderData extends AnyLoaderData = AnyLoaderData,
   TParentLoaderData extends AnyLoaderData = {},
   TLoaderData extends AnyLoaderData = AnyLoaderData,
-  TActionPayload = unknown,
-  TActionResponse = unknown,
   TParentSearchSchema extends {} = {},
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = {},
@@ -202,8 +191,6 @@ export interface RouteConfig<
     TRouteLoaderData,
     TParentLoaderData,
     TLoaderData,
-    TActionPayload,
-    TActionResponse,
     TParentSearchSchema,
     TSearchSchema,
     TFullSearchSchema,
@@ -228,8 +215,6 @@ export interface RouteConfig<
       TRouteLoaderData,
       TParentLoaderData,
       TLoaderData,
-      TActionPayload,
-      TActionResponse,
       TParentSearchSchema,
       TSearchSchema,
       TFullSearchSchema,
@@ -267,8 +252,6 @@ type GenerateFn<
   TParentParams extends AnyPathParams = {},
 > = <
   TRouteLoaderData extends AnyLoaderData = AnyLoaderData,
-  TActionPayload = unknown,
-  TActionResponse = unknown,
   TSearchSchema extends AnySearchSchema = {},
   TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
     ParsePathParams<TPath>,
@@ -288,8 +271,6 @@ type GenerateFn<
       TRouteLoaderData,
       TParentLoaderData,
       Expand<TParentLoaderData & NoInfer<TRouteLoaderData>>,
-      TActionPayload,
-      TActionResponse,
       TParentSearchSchema,
       TSearchSchema,
       Expand<TParentSearchSchema & TSearchSchema>,
@@ -313,8 +294,6 @@ type CreateRouteConfigFn<
   TRouteId extends string,
   TPath extends string,
   TRouteLoaderData extends AnyLoaderData,
-  TActionPayload,
-  TActionResponse,
   TSearchSchema extends AnySearchSchema = AnySearchSchema,
   TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
     ParsePathParams<TPath>,
@@ -341,8 +320,6 @@ type CreateRouteConfigFn<
           TRouteLoaderData,
           TParentLoaderData,
           Expand<TParentLoaderData & NoInfer<TRouteLoaderData>>,
-          TActionPayload,
-          TActionResponse,
           TParentSearchSchema,
           TSearchSchema,
           Expand<TParentSearchSchema & TSearchSchema>,
@@ -359,8 +336,6 @@ type CreateRouteConfigFn<
         TRouteLoaderData,
         TParentLoaderData,
         Expand<TParentLoaderData & NoInfer<TRouteLoaderData>>,
-        TActionPayload,
-        TActionResponse,
         TParentSearchSchema,
         TSearchSchema,
         Expand<TParentSearchSchema & TSearchSchema>,
@@ -381,8 +356,6 @@ type CreateRouteConfigFn<
   TRouteLoaderData,
   TParentLoaderData,
   Expand<TParentLoaderData & NoInfer<TRouteLoaderData>>,
-  TActionPayload,
-  TActionResponse,
   TParentSearchSchema,
   TSearchSchema,
   Expand<TParentSearchSchema & TSearchSchema>,
@@ -423,15 +396,11 @@ export interface AnyRouteConfig
     any,
     any,
     any,
-    any,
-    any,
     any
   > {}
 
 export interface AnyRouteConfigWithChildren<TChildren>
   extends RouteConfig<
-    any,
-    any,
     any,
     any,
     any,
