@@ -602,8 +602,11 @@ export function useSearch<
   strict?: TStrict
   select?: (search: TSearch) => TSelected
 }): TStrict extends true ? TSelected : TSelected | undefined {
-  const match = useMatch(opts)
-  return __useStoreValue(() => match?.store.search, opts?.select) as any
+  const router = useRouter()
+  return __useStoreValue(
+    () => router.store.latestLocation.search as any,
+    opts?.select,
+  ) as any
 }
 
 export function useParams<
