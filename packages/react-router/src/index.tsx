@@ -1,23 +1,11 @@
 import * as React from 'react'
 
-import { useSyncExternalStore } from 'use-sync-external-store/shim'
-// import { createEffect, createRoot, untrack, unwrap } from '@solidjs/reactivity'
-import {
-  createEffect,
-  createRoot,
-  untrack,
-  unwrap,
-  useStore,
-} from '@tanstack/router-core'
-
 import {
   Route,
   RegisteredAllRouteInfo,
   RegisteredRouter,
   RouterStore,
   last,
-  storeToImmutable,
-  Action,
   warning,
   RouterOptions,
   RouteMatch,
@@ -38,11 +26,19 @@ import {
   invariant,
   Router,
   Expand,
+  Action,
+  ActionStore,
+  ActionSubmission,
 } from '@tanstack/router-core'
+import { useStore } from './useStore'
+
+//
 
 export * from '@tanstack/router-core'
 
-export * from '@solidjs/reactivity'
+export { useStore }
+
+//
 
 type ReactNode = any
 
@@ -212,7 +208,7 @@ export function useLinkProps<
 
   // Get the active props
   const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
-    ? functionalUpdate(activeProps, {}) ?? {}
+    ? functionalUpdate(activeProps as any, {}) ?? {}
     : {}
 
   // Get the inactive props
@@ -335,8 +331,9 @@ export function RouterProvider<
   router.update(rest)
 
   const [, , currentMatches] = useStore(
-    () => router.store,
+    router.store,
     (s) => [s.status, s.pendingMatches, s.currentMatches],
+    true,
   )
 
   React.useEffect(router.mount, [router])
@@ -360,9 +357,10 @@ export function useRouter(): RegisteredRouter {
 
 export function useRouterStore<T = RouterStore>(
   selector?: (state: Router['store']) => T,
+  shallow?: boolean,
 ): T {
   const router = useRouter()
-  return useStore(() => router.store, selector)
+  return useStore(router.store, selector as any, shallow)
 }
 
 export function useMatches(): RouteMatch[] {
@@ -376,16 +374,16 @@ export function useMatch<
     RegisteredAllRouteInfo,
     RegisteredAllRouteInfo['routeInfoById'][TFrom]
   >,
-  // TSelected = TRouteMatch,
 >(opts?: {
   from: TFrom
   strict?: TStrict
-  // select?: (match: TRouteMatch) => TSelected
+  track?: (match: TRouteMatch) => any
+  shallow?: boolean
 }): TStrict extends true ? TRouteMatch : TRouteMatch | undefined {
   const router = useRouter()
   const nearestMatch = useMatches()[0]!
   const match = opts?.from
-    ? router.store.currentMatches.find((d) => d.routeId === opts?.from)
+    ? router.store.state.currentMatches.find((d) => d.routeId === opts?.from)
     : nearestMatch
 
   invariant(
@@ -410,7 +408,11 @@ export function useMatch<
     )
   }
 
-  useStore(() => match!.store)
+  useStore(
+    match!.store,
+    (d) => opts?.track?.(match as any) ?? match,
+    opts?.shallow,
+  )
 
   return match as any
 }
@@ -437,15 +439,26 @@ export function useLoaderData<
   TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
   TStrict extends boolean = true,
   TLoaderData = RegisteredAllRouteInfo['routeInfoById'][TFrom]['loaderData'],
-  TSelected = TLoaderData,
 >(opts?: {
   from: TFrom
   strict?: TStrict
-  select?: (loaderData: TLoaderData) => TSelected
-}): TStrict extends true ? TSelected : TSelected | undefined {
+  track?: (loaderData: TLoaderData) => any
+}): TStrict extends true ? TLoaderData : TLoaderData | undefined {
   const match = useMatch(opts)
 
-  return useStore(() => match?.store.loaderData, opts?.select)
+  invariant(
+    match,
+    `Could not find ${
+      opts?.from ? `an active match from "${opts.from}"` : 'a nearest match!'
+    }`,
+  )
+
+  useStore(
+    (match as any).store,
+    (d: any) => opts?.track?.(d.loaderData) ?? d.loaderData,
+  )
+
+  return (match as unknown as RouteMatch).store.state.loaderData as any
 }
 
 export function useSearch<
@@ -456,10 +469,15 @@ export function useSearch<
 >(opts?: {
   from: TFrom
   strict?: TStrict
-  select?: (search: TSearch) => TSelected
+  track?: (search: TSearch) => TSelected
 }): TStrict extends true ? TSelected : TSelected | undefined {
   const match = useMatch(opts)
-  return useStore(() => match?.store.search, opts?.select) as any
+  useStore(
+    (match as any).store,
+    (d: any) => opts?.track?.(d.search) ?? d.search,
+  )
+
+  return (match as unknown as RouteMatch).store.state.search as any
 }
 
 export function useParams<
@@ -471,13 +489,15 @@ export function useParams<
   TSelected = TDefaultSelected,
 >(opts?: {
   from: TFrom
-  select?: (search: TDefaultSelected) => TSelected
+  track?: (search: TDefaultSelected) => TSelected
 }): TSelected {
   const router = useRouter()
-  return useStore(
-    () => last(router.store.currentMatches)?.params as any,
-    opts?.select,
-  )
+  useStore(router.store, (d) => {
+    const params = last(d.currentMatches)?.params as any
+    return opts?.track?.(params) ?? params
+  })
+
+  return last(router.store.state.currentMatches)?.params as any
 }
 
 export function useNavigate<
@@ -531,20 +551,34 @@ export function MatchRoute<
 }
 
 export function Outlet() {
-  const router = useRouter()
   const matches = useMatches().slice(1)
   const match = matches[0]
 
+  if (!match) {
+    return null
+  }
+
+  return <SubOutlet matches={matches} match={match} />
+}
+
+function SubOutlet({
+  matches,
+  match,
+}: {
+  matches: RouteMatch[]
+  match: RouteMatch
+}) {
+  const router = useRouter()
+  useStore(match!.store)
+
   const defaultPending = React.useCallback(() => null, [])
 
-  useStore(() => match?.store)
-
   const Inner = React.useCallback((props: { match: RouteMatch }): any => {
-    if (props.match.store.status === 'error') {
-      throw props.match.store.error
+    if (props.match.store.state.status === 'error') {
+      throw props.match.store.state.error
     }
 
-    if (props.match.store.status === 'success') {
+    if (props.match.store.state.status === 'success') {
       return React.createElement(
         (props.match.__.component as any) ??
           router.options.defaultComponent ??
@@ -552,7 +586,7 @@ export function Outlet() {
       )
     }
 
-    if (props.match.store.status === 'loading') {
+    if (props.match.store.state.status === 'loading') {
       throw props.match.__.loadPromise
     }
 
@@ -561,10 +595,6 @@ export function Outlet() {
       'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
     )
   }, [])
-
-  if (!match) {
-    return null
-  }
 
   const PendingComponent = (match.__.pendingComponent ??
     router.options.defaultPendingComponent ??
@@ -647,23 +677,23 @@ function CatchBoundaryInner(props: {
   const router = useRouter()
   const errorComponent = props.errorComponent ?? DefaultErrorBoundary
 
-  React.useEffect(() => {
-    if (activeErrorState) {
-      let prevKey = router.store.currentLocation.key
-      return createRoot((dispose) => {
-        createEffect(() => {
-          if (router.store.currentLocation.key !== prevKey) {
-            prevKey = router.store.currentLocation.key
-            setActiveErrorState({} as any)
-          }
-        })
+  // React.useEffect(() => {
+  //   if (activeErrorState) {
+  //     let prevKey = router.store.currentLocation.key
+  //     return createRoot((dispose) => {
+  //       createEffect(() => {
+  //         if (router.store.currentLocation.key !== prevKey) {
+  //           prevKey = router.store.currentLocation.key
+  //           setActiveErrorState({} as any)
+  //         }
+  //       })
 
-        return dispose
-      })
-    }
+  //       return dispose
+  //     })
+  //   }
 
-    return
-  }, [activeErrorState])
+  //   return
+  // }, [activeErrorState])
 
   React.useEffect(() => {
     if (props.errorState.error) {
@@ -703,6 +733,38 @@ export function DefaultErrorBoundary({ error }: { error: any }) {
       </div>
     </div>
   )
+}
+
+export function useAction<
+  TKey extends string = string,
+  TPayload = unknown,
+  TResponse = unknown,
+  TError = Error,
+>(
+  action: Action<TKey, TPayload, TResponse, TError>,
+  opts?: {
+    track?: (actionStore: ActionStore<TPayload, TResponse, TError>) => any
+  },
+): Action & {
+  latestSubmission: ActionSubmission<TPayload, TResponse, TError>
+  pendingSubmissions: ActionSubmission<TPayload, TResponse, TError>[]
+} {
+  useStore(action.store, (d) => opts?.track?.(d) ?? d, true)
+
+  const [ref] = React.useState({})
+
+  Object.assign(ref, {
+    ...action,
+    latestSubmission:
+      action.store.state.submissions[action.store.state.submissions.length - 1],
+    pendingSubmissions: React.useMemo(
+      () =>
+        action.store.state.submissions.filter((d) => d.status === 'pending'),
+      [action.store.state.submissions],
+    ),
+  })
+
+  return ref as any
 }
 
 // TODO: While we migrate away from the history package, these need to be disabled

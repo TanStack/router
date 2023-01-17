@@ -1,6 +1,7 @@
 // createRouterAction is a constrained identify function that takes options: key, action, onSuccess, onError, onSettled, etc
 
-import { createStore } from './reactivity'
+import invariant from 'tiny-invariant'
+import { batch, createStore, Store } from './store'
 
 export interface ActionOptions<
   TKey extends string = string,
@@ -10,13 +11,14 @@ export interface ActionOptions<
 > {
   key?: TKey
   action: (payload: TPayload) => TResponse | Promise<TResponse>
-  onSuccess?: ActionCallback<TPayload, TResponse, TError>
+  onLatestSuccess?: ActionCallback<TPayload, TResponse, TError>
   onEachSuccess?: ActionCallback<TPayload, TResponse, TError>
-  onError?: ActionCallback<TPayload, TResponse, TError>
+  onLatestError?: ActionCallback<TPayload, TResponse, TError>
   onEachError?: ActionCallback<TPayload, TResponse, TError>
-  onSettled?: ActionCallback<TPayload, TResponse, TError>
+  onLatestSettled?: ActionCallback<TPayload, TResponse, TError>
   onEachSettled?: ActionCallback<TPayload, TResponse, TError>
   maxSubmissions?: number
+  debug?: boolean
 }
 
 type ActionCallback<TPayload, TResponse, TError> = (
@@ -31,7 +33,8 @@ export interface Action<
 > {
   options: ActionOptions<TKey, TPayload, TResponse, TError>
   submit: (payload?: TPayload) => Promise<TResponse>
-  store: ActionStore<TPayload, TResponse, TError>
+  reset: () => void
+  store: Store<ActionStore<TPayload, TResponse, TError>>
 }
 
 export interface ActionStore<
@@ -39,9 +42,7 @@ export interface ActionStore<
   TResponse = unknown,
   TError = Error,
 > {
-  latestSubmission?: ActionSubmission<TPayload, TResponse, TError>
   submissions: ActionSubmission<TPayload, TResponse, TError>[]
-  pendingSubmissions: ActionSubmission<TPayload, TResponse, TError>[]
 }
 
 export type ActionFn<TActionPayload = unknown, TActionResponse = unknown> = (
@@ -60,29 +61,27 @@ export interface ActionSubmission<
   error?: TError
   isInvalid?: boolean
   invalidate: () => void
-  isLatest: boolean
+  getIsLatest: () => boolean
 }
 
 export function createAction<TKey extends string, TPayload, TResponse, TError>(
   options: ActionOptions<TKey, TPayload, TResponse, TError>,
 ): Action<TKey, TPayload, TResponse, TError> {
-  const [store, setStore] = createStore<
-    ActionStore<TPayload, TResponse, TError>
-  >({
-    submissions: [],
-    get latestSubmission() {
-      return this.submissions[this.submissions.length - 1]
+  const store = createStore<ActionStore<TPayload, TResponse, TError>>(
+    {
+      submissions: [],
     },
-    get pendingSubmissions() {
-      return this.submissions.filter(
-        (s: ActionSubmission) => s.status === 'pending',
-      )
-    },
-  })
+    options.debug,
+  )
 
   return {
     options,
     store,
+    reset: () => {
+      store.setState((s) => {
+        s.submissions = []
+      })
+    },
     submit: async (payload) => {
       const submission: ActionSubmission<TPayload, TResponse, TError> = {
         submittedAt: Date.now(),
@@ -93,9 +92,9 @@ export function createAction<TKey extends string, TPayload, TResponse, TError>(
             s.isInvalid = true
           })
         },
-        get isLatest() {
-          return store.latestSubmission?.submittedAt === submission.submittedAt
-        },
+        getIsLatest: () =>
+          store.state.submissions[store.state.submissions.length - 1]
+            ?.submittedAt === submission.submittedAt,
       }
 
       const setSubmission = (
@@ -103,16 +102,18 @@ export function createAction<TKey extends string, TPayload, TResponse, TError>(
           submission: ActionSubmission<TPayload, TResponse, TError>,
         ) => void,
       ) => {
-        setStore((s) => {
-          updater(
-            s.submissions.find(
-              (d) => d.submittedAt === submission.submittedAt,
-            )!,
+        store.setState((s) => {
+          const a = s.submissions.find(
+            (d) => d.submittedAt === submission.submittedAt,
           )
+
+          invariant(a, 'Could not find submission in store')
+
+          updater(a)
         })
       }
 
-      setStore((s) => {
+      store.setState((s) => {
         s.submissions.push(submission)
         s.submissions.reverse()
         s.submissions = s.submissions.slice(0, options.maxSubmissions ?? 10)
@@ -121,7 +122,8 @@ export function createAction<TKey extends string, TPayload, TResponse, TError>(
 
       const after = async () => {
         options.onEachSettled?.(submission)
-        if (submission.isLatest) await options.onSettled?.(submission)
+        if (submission.getIsLatest())
+          await options.onLatestSettled?.(submission)
       }
 
       try {
@@ -130,7 +132,8 @@ export function createAction<TKey extends string, TPayload, TResponse, TError>(
           s.response = res
         })
         await options.onEachSuccess?.(submission)
-        if (submission.isLatest) await options.onSuccess?.(submission)
+        if (submission.getIsLatest())
+          await options.onLatestSuccess?.(submission)
         await after()
         setSubmission((s) => {
           s.status = 'success'
@@ -142,7 +145,7 @@ export function createAction<TKey extends string, TPayload, TResponse, TError>(
           s.error = err
         })
         await options.onEachError?.(submission)
-        if (submission.isLatest) await options.onError?.(submission)
+        if (submission.getIsLatest()) await options.onLatestError?.(submission)
         await after()
         setSubmission((s) => {
           s.status = 'error'

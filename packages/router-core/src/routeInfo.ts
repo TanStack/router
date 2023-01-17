@@ -1,4 +1,3 @@
-import { ParsePathParams } from './link'
 import { Route } from './route'
 import {
   AnyLoaderData,

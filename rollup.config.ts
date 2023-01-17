@@ -162,6 +162,7 @@ function umdDev({
     plugins: [
       // svelte(),
       babelPlugin,
+      commonjs(),
       nodeResolve({ extensions: ['.ts', '.tsx'] }),
       umdDevPlugin('development'),
     ],
@@ -191,6 +192,7 @@ function umdProd({
     plugins: [
       // svelte(),
       babelPlugin,
+      commonjs(),
       nodeResolve({ extensions: ['.ts', '.tsx'] }),
       umdDevPlugin('production'),
       terser(),

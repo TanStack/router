@@ -7,14 +7,13 @@ import {
   createRouteConfig,
   lazy,
   Link,
-  useMatch,
   useRouterStore,
   useLoaderData,
   MatchRoute,
   useNavigate,
   useSearch,
   createAction,
-  useStore,
+  useAction,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -164,8 +163,6 @@ const dashboardRoute = rootRoute.createRoute({
     }
   },
   component: () => {
-    const route = useMatch({ from: dashboardRoute.id })
-
     return (
       <>
         <div className="flex items-center border-b">
@@ -230,13 +227,11 @@ const invoicesRoute = dashboardRoute.createRoute({
   component: () => {
     const { invoices } = useLoaderData({ from: invoicesRoute.id })
 
-    const updateSubmissions = useStore(
-      () => updateInvoiceAction.store.pendingSubmissions,
-    )
+    const { pendingSubmissions: updateSubmissions } =
+      useAction(updateInvoiceAction)
 
-    const createSubmissions = useStore(
-      () => createInvoiceAction.store.pendingSubmissions,
-    )
+    const { pendingSubmissions: createSubmissions } =
+      useAction(createInvoiceAction)
 
     return (
       <div className="flex-1 flex">
@@ -305,10 +300,7 @@ const invoicesRoute = dashboardRoute.createRoute({
 const invoicesIndexRoute = invoicesRoute.createRoute({
   path: '/',
   component: () => {
-    const submission = useStore(
-      () => createInvoiceAction.store,
-      (d) => d.latestSubmission,
-    )
+    const { latestSubmission } = useAction(createInvoiceAction)
 
     return (
       <>
@@ -335,11 +327,11 @@ const invoicesIndexRoute = invoicesRoute.createRoute({
                 Create
               </button>
             </div>
-            {submission?.status === 'success' ? (
+            {latestSubmission?.status === 'success' ? (
               <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Created!
               </div>
-            ) : submission?.status === 'error' ? (
+            ) : latestSubmission?.status === 'error' ? (
               <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Failed to create.
               </div>
@@ -378,10 +370,7 @@ const invoiceRoute = invoicesRoute.createRoute({
   component: () => {
     const { invoice } = useLoaderData({ from: invoiceRoute.id })
     const search = useSearch({ from: invoiceRoute.id })
-    const submission = useStore(
-      () => updateInvoiceAction.store,
-      (d) => d.latestSubmission,
-    )
+    const { latestSubmission } = useAction(updateInvoiceAction)
     const navigate = useNavigate({ from: invoiceRoute.id })
 
     const [notes, setNotes] = React.useState(search.notes ?? '')
@@ -413,7 +402,7 @@ const invoiceRoute = invoicesRoute.createRoute({
       >
         <InvoiceFields
           invoice={invoice}
-          disabled={submission?.status === 'pending'}
+          disabled={latestSubmission?.status === 'pending'}
         />
         <div>
           <Link
@@ -449,18 +438,18 @@ const invoiceRoute = invoicesRoute.createRoute({
         <div>
           <button
             className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-            disabled={submission?.status === 'pending'}
+            disabled={latestSubmission?.status === 'pending'}
           >
             Save
           </button>
         </div>
-        {submission?.payload.id === invoice.id ? (
-          <div key={submission?.submittedAt}>
-            {submission?.status === 'success' ? (
+        {latestSubmission?.payload.id === invoice.id ? (
+          <div key={latestSubmission?.submittedAt}>
+            {latestSubmission?.status === 'success' ? (
               <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Saved!
               </div>
-            ) : submission?.status === 'error' ? (
+            ) : latestSubmission?.status === 'error' ? (
               <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Failed to save.
               </div>
@@ -684,7 +673,7 @@ const authenticatedRoute = rootRoute.createRoute({
           // Use latestLocation (not currentLocation) to get the live url
           // (as opposed to the committed url, which is technically async
           // and resolved after the pending state)
-          redirect: router.store.latestLocation.href,
+          redirect: router.store.state.latestLocation.href,
         },
       })
     }
@@ -837,6 +826,10 @@ const router = createReactRouter({
     auth: {
       status: 'loggedOut',
     } as AuthContext,
+  },
+  onRouteChange: () => {
+    createInvoiceAction.reset()
+    updateInvoiceAction.reset()
   },
 })
 

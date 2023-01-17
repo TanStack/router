@@ -1,86 +1,86 @@
-/**
- * This function converts a store to an immutable value, which is
- * more complex than you think. On first read, (when prev is undefined)
- * every value must be recursively touched so tracking is "deep".
- * Every object/array structure must also be cloned to
- * have a new reference, otherwise it will get mutated by subsequent
- * store updates.
- *
- * In the case that prev is supplied, we have to do deep comparisons
- * between prev and next objects/array references and if they are deeply
- * equal, we can return the prev version for referential equality.
- */
-export function storeToImmutable<T>(prev: any, next: T): T {
-  const cache = new Map()
+// /**
+//  * This function converts a store to an immutable value, which is
+//  * more complex than you think. On first read, (when prev is undefined)
+//  * every value must be recursively touched so tracking is "deep".
+//  * Every object/array structure must also be cloned to
+//  * have a new reference, otherwise it will get mutated by subsequent
+//  * store updates.
+//  *
+//  * In the case that prev is supplied, we have to do deep comparisons
+//  * between prev and next objects/array references and if they are deeply
+//  * equal, we can return the prev version for referential equality.
+//  */
+// export function storeToImmutable<T>(prev: any, next: T): T {
+//   const cache = new Map()
 
-  // Visit all nodes
-  // clone all next structures
-  // from bottom up, if prev === next, return prev
+//   // Visit all nodes
+//   // clone all next structures
+//   // from bottom up, if prev === next, return prev
 
-  function recurse(prev: any, next: any) {
-    if (cache.has(next)) {
-      return cache.get(next)
-    }
+//   function recurse(prev: any, next: any) {
+//     if (cache.has(next)) {
+//       return cache.get(next)
+//     }
 
-    const prevIsArray = Array.isArray(prev)
-    const nextIsArray = Array.isArray(next)
-    const prevIsObj = isPlainObject(prev)
-    const nextIsObj = isPlainObject(next)
-    const nextIsComplex = nextIsArray || nextIsObj
+//     const prevIsArray = Array.isArray(prev)
+//     const nextIsArray = Array.isArray(next)
+//     const prevIsObj = isPlainObject(prev)
+//     const nextIsObj = isPlainObject(next)
+//     const nextIsComplex = nextIsArray || nextIsObj
 
-    const isArray = prevIsArray && nextIsArray
-    const isObj = prevIsObj && nextIsObj
+//     const isArray = prevIsArray && nextIsArray
+//     const isObj = prevIsObj && nextIsObj
 
-    const isSameStructure = isArray || isObj
+//     const isSameStructure = isArray || isObj
 
-    if (nextIsComplex) {
-      const prevSize = isArray
-        ? prev.length
-        : isObj
-        ? Object.keys(prev).length
-        : -1
-      const nextKeys = isArray ? next : Object.keys(next)
-      const nextSize = nextKeys.length
+//     if (nextIsComplex) {
+//       const prevSize = isArray
+//         ? prev.length
+//         : isObj
+//         ? Object.keys(prev).length
+//         : -1
+//       const nextKeys = isArray ? next : Object.keys(next)
+//       const nextSize = nextKeys.length
 
-      let changed = false
-      const copy: any = nextIsArray ? [] : {}
+//       let changed = false
+//       const copy: any = nextIsArray ? [] : {}
 
-      for (let i = 0; i < nextSize; i++) {
-        const key = isArray ? i : nextKeys[i]
-        const prevValue = isSameStructure ? prev[key] : undefined
-        const nextValue = next[key]
+//       for (let i = 0; i < nextSize; i++) {
+//         const key = isArray ? i : nextKeys[i]
+//         const prevValue = isSameStructure ? prev[key] : undefined
+//         const nextValue = next[key]
 
-        // Recurse the new value
-        try {
-          console.count(key)
-          copy[key] = recurse(prevValue, nextValue)
-        } catch {}
+//         // Recurse the new value
+//         try {
+//           console.count(key)
+//           copy[key] = recurse(prevValue, nextValue)
+//         } catch {}
 
-        // If the new value has changed reference,
-        // mark the obj/array as changed
-        if (!changed && copy[key] !== prevValue) {
-          changed = true
-        }
-      }
+//         // If the new value has changed reference,
+//         // mark the obj/array as changed
+//         if (!changed && copy[key] !== prevValue) {
+//           changed = true
+//         }
+//       }
 
-      // No items have changed!
-      // If something has changed, return a clone of the next obj/array
-      if (changed || prevSize !== nextSize) {
-        cache.set(next, copy)
-        return copy
-      }
+//       // No items have changed!
+//       // If something has changed, return a clone of the next obj/array
+//       if (changed || prevSize !== nextSize) {
+//         cache.set(next, copy)
+//         return copy
+//       }
 
-      // If they are exactly the same, return the prev obj/array
-      cache.set(next, prev)
-      return prev
-    }
+//       // If they are exactly the same, return the prev obj/array
+//       cache.set(next, prev)
+//       return prev
+//     }
 
-    cache.set(next, next)
-    return next
-  }
+//     cache.set(next, next)
+//     return next
+//   }
 
-  return recurse(prev, next)
-}
+//   return recurse(prev, next)
+// }
 
 /**
  * This function returns `a` if `b` is deeply equal.

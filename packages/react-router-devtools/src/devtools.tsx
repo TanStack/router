@@ -4,7 +4,6 @@ import {
   last,
   routerContext,
   invariant,
-  __useStoreValue,
   useRouterStore,
 } from '@tanstack/react-router'
 import { formatDistanceStrict } from 'date-fns'
@@ -442,21 +441,21 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   }, [activeRouteId])
 
   const activeMatch =
-    Object.values(router.store.matchCache)?.find(
+    Object.values(router.store.state.matchCache)?.find(
       (d) => d.match.matchId === activeMatchId,
     )?.match ??
-    router.store.currentMatches?.find((d) => d.routeId === activeRouteId)
+    router.store.state.currentMatches?.find((d) => d.routeId === activeRouteId)
 
   const matchCacheValues = multiSortBy(
-    Object.keys(router.store.matchCache)
+    Object.keys(router.store.state.matchCache)
       .filter((key) => {
-        const cacheEntry = router.store.matchCache[key]!
+        const cacheEntry = router.store.state.matchCache[key]!
         return cacheEntry.gc > Date.now()
       })
-      .map((key) => router.store.matchCache[key]!),
+      .map((key) => router.store.state.matchCache[key]!),
     [
-      (d) => (d.match.store.isFetching ? -1 : 1),
-      (d) => -d.match.store.updatedAt!,
+      (d) => (d.match.store.state.isFetching ? -1 : 1),
+      (d) => -d.match.store.state.updatedAt!,
     ],
   )
 
@@ -597,7 +596,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           >
             Active Matches
           </div>
-          {router.store.currentMatches.map((match, i) => {
+          {router.store.state.currentMatches.map((match, i) => {
             return (
               <div
                 key={match.routeId || i}
@@ -642,7 +641,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               </div>
             )
           })}
-          {router.store.pendingMatches?.length ? (
+          {router.store.state.pendingMatches?.length ? (
             <>
               <div
                 style={{
@@ -656,7 +655,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               >
                 Pending Matches
               </div>
-              {router.store.pendingMatches?.map((match, i) => {
+              {router.store.state.pendingMatches?.map((match, i) => {
                 return (
                   <div
                     key={match.routeId || i}
@@ -723,7 +722,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 <div>Match Cache</div>
                 <Button
                   onClick={() => {
-                    router.setStore((s) => (s.matchCache = {}))
+                    router.store.setState((s) => (s.matchCache = {}))
                   }}
                 >
                   Clear
@@ -833,18 +832,18 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   </tr>
                   <tr>
                     <td style={{ opacity: '.5' }}>Status</td>
-                    <td>{activeMatch.store.status}</td>
+                    <td>{activeMatch.store.state.status}</td>
                   </tr>
                   <tr>
                     <td style={{ opacity: '.5' }}>Invalid</td>
-                    <td>{activeMatch.store.isInvalid.toString()}</td>
+                    <td>{activeMatch.getIsInvalid().toString()}</td>
                   </tr>
                   <tr>
                     <td style={{ opacity: '.5' }}>Last Updated</td>
                     <td>
-                      {activeMatch.store.updatedAt
+                      {activeMatch.store.state.updatedAt
                         ? new Date(
-                            activeMatch.store.updatedAt as number,
+                            activeMatch.store.state.updatedAt as number,
                           ).toLocaleTimeString()
                         : 'N/A'}
                     </td>
@@ -945,15 +944,17 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             }}
           >
             {Object.keys(
-              last(router.store.currentMatches)?.store.loaderData || {},
+              last(router.store.state.currentMatches)?.store.state.loaderData ||
+                {},
             ).length ? (
               <Explorer
                 value={
-                  last(router.store.currentMatches)?.store.loaderData || {}
+                  last(router.store.state.currentMatches)?.store.state
+                    .loaderData || {}
                 }
                 defaultExpanded={Object.keys(
-                  (last(router.store.currentMatches)?.store.loaderData as {}) ||
-                    {},
+                  (last(router.store.state.currentMatches)?.store.state
+                    .loaderData as {}) || {},
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj
@@ -980,12 +981,17 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               padding: '.5em',
             }}
           >
-            {Object.keys(last(router.store.currentMatches)?.store.search || {})
-              .length ? (
+            {Object.keys(
+              last(router.store.state.currentMatches)?.store.state.search || {},
+            ).length ? (
               <Explorer
-                value={last(router.store.currentMatches)?.store.search || {}}
+                value={
+                  last(router.store.state.currentMatches)?.store.state.search ||
+                  {}
+                }
                 defaultExpanded={Object.keys(
-                  (last(router.store.currentMatches)?.store.search as {}) || {},
+                  (last(router.store.state.currentMatches)?.store.state
+                    .search as {}) || {},
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj
