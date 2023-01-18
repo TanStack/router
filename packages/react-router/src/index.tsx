@@ -639,7 +639,7 @@ class CatchBoundary extends React.Component<{
   }
 
   componentDidCatch(error: any, info: any) {
-    console.error(`Error in route match: ${this.props.match.matchId}`)
+    console.error(`Error in route match: ${this.props.match.id}`)
     console.error(error)
 
     this.setState({
