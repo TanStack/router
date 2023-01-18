@@ -47,6 +47,11 @@ import {
   Updater,
 } from './utils'
 import { replaceEqualDeep } from './interop'
+import {
+  createBrowserHistory,
+  createMemoryHistory,
+  RouterHistory,
+} from './history'
 
 export interface RegisterRouter {
   // router: Router
@@ -98,6 +103,7 @@ export interface RouterOptions<
   TRouteConfig extends AnyRouteConfig,
   TRouterContext,
 > {
+  history?: RouterHistory
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
   filterRoutes?: FilterRoutesFn
@@ -283,6 +289,15 @@ export class Router<
     AllRouteInfo: TAllRouteInfo
   }
 
+  options: PickAsRequired<
+    RouterOptions<TRouteConfig, TRouterContext>,
+    'stringifySearch' | 'parseSearch' | 'context'
+  >
+  history: RouterHistory
+  basepath: string
+  // __location: Location<TAllRouteInfo['fullSearchSchema']>
+  routeTree!: Route<TAllRouteInfo, RouteInfo>
+  routesById!: RoutesById<TAllRouteInfo>
   navigateTimeout: undefined | Timeout
   nextAction: undefined | 'push' | 'replace'
   navigationPromise: undefined | Promise<void>
@@ -291,44 +306,36 @@ export class Router<
   startedLoadingAt = Date.now()
   resolveNavigation = () => {}
 
-  constructor(userOptions?: RouterOptions<TRouteConfig, TRouterContext>) {
-    const originalOptions = {
+  constructor(options?: RouterOptions<TRouteConfig, TRouterContext>) {
+    this.options = {
       defaultLoaderGcMaxAge: 5 * 60 * 1000,
       defaultLoaderMaxAge: 0,
       defaultPreloadMaxAge: 2000,
       defaultPreloadDelay: 50,
       context: undefined!,
-      ...userOptions,
-      stringifySearch: userOptions?.stringifySearch ?? defaultStringifySearch,
-      parseSearch: userOptions?.parseSearch ?? defaultParseSearch,
-      fetchServerDataFn:
-        userOptions?.fetchServerDataFn ?? defaultFetchServerDataFn,
+      ...options,
+      stringifySearch: options?.stringifySearch ?? defaultStringifySearch,
+      parseSearch: options?.parseSearch ?? defaultParseSearch,
+      fetchServerDataFn: options?.fetchServerDataFn ?? defaultFetchServerDataFn,
     }
 
+    this.history =
+      this.options?.history ?? isServer
+        ? createMemoryHistory()
+        : createBrowserHistory()
     this.store = createStore(getInitialRouterState())
-
-    this.store = this.store
-    this.options = originalOptions
     this.basepath = ''
 
-    this.update(userOptions)
+    this.update(options)
 
     // Allow frameworks to hook into the router creation
     this.options.createRouter?.(this)
   }
 
-  // Public API
-  options: PickAsRequired<
-    RouterOptions<TRouteConfig, TRouterContext>,
-    'stringifySearch' | 'parseSearch' | 'context'
-  >
-  basepath: string
-  // __location: Location<TAllRouteInfo['fullSearchSchema']>
-  routeTree!: Route<TAllRouteInfo, RouteInfo>
-  routesById!: RoutesById<TAllRouteInfo>
   reset = () => {
     this.store.setState((s) => Object.assign(s, getInitialRouterState()))
   }
+
   mount = () => {
     // Mount only does anything on the client
     if (!isServer) {
@@ -337,11 +344,10 @@ export class Router<
         this.load()
       }
 
-      const cb = () => {
+      const unsubHistory = this.history.listen(() => {
         this.load(this.#parseLocation(this.store.state.latestLocation))
-      }
+      })
 
-      const popStateEvent = 'popstate'
       const visibilityChangeEvent = 'visibilitychange'
       const focusEvent = 'focus'
 
@@ -350,15 +356,15 @@ export class Router<
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (window.addEventListener) {
         // Listen to visibilitychange and focus
-        window.addEventListener(popStateEvent, cb)
         window.addEventListener(visibilityChangeEvent, this.#onFocus, false)
         window.addEventListener(focusEvent, this.#onFocus, false)
       }
 
       return () => {
+        unsubHistory()
         if (window.removeEventListener) {
           // Be sure to unsubscribe if a new handler is set
-          window.removeEventListener(popStateEvent, cb)
+
           window.removeEventListener(visibilityChangeEvent, this.#onFocus)
           window.removeEventListener(focusEvent, this.#onFocus)
         }
@@ -367,6 +373,7 @@ export class Router<
 
     return () => {}
   }
+
   update = <
     TRouteConfig extends RouteConfig = RouteConfig,
     TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
@@ -416,6 +423,7 @@ export class Router<
       __postSearchFilters,
     })
   }
+
   cancelMatches = () => {
     ;[
       ...this.store.state.currentMatches,
@@ -424,6 +432,7 @@ export class Router<
       match.cancel()
     })
   }
+
   load = async (next?: ParsedLocation) => {
     let now = Date.now()
     const startedAt = now
@@ -549,6 +558,7 @@ export class Router<
 
     this.resolveNavigation()
   }
+
   cleanMatchCache = () => {
     const now = Date.now()
 
@@ -571,6 +581,7 @@ export class Router<
       })
     })
   }
+
   getRoute = <TId extends keyof TAllRouteInfo['routeInfoById']>(
     id: TId,
   ): Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]> => {
@@ -580,6 +591,7 @@ export class Router<
 
     return route
   }
+
   loadRoute = async (
     navigateOpts: BuildNextOptions = this.store.state.latestLocation,
   ): Promise<RouteMatch[]> => {
@@ -590,6 +602,7 @@ export class Router<
     await this.loadMatches(matches)
     return matches
   }
+
   preloadRoute = async (
     navigateOpts: BuildNextOptions = this.store.state.latestLocation,
     loaderOpts: { maxAge?: number; gcMaxAge?: number },
@@ -614,6 +627,7 @@ export class Router<
     })
     return matches
   }
+
   matchRoutes = (pathname: string, opts?: { strictParseParams?: boolean }) => {
     const matches: RouteMatch[] = []
 
@@ -712,6 +726,7 @@ export class Router<
 
     return matches
   }
+
   loadMatches = async (
     resolvedMatches: RouteMatch[],
     loaderOpts?:
@@ -764,6 +779,7 @@ export class Router<
 
     await Promise.all(matchPromises)
   }
+
   loadMatchData = async (
     routeMatch: RouteMatch<any, any>,
   ): Promise<Record<string, unknown>> => {
@@ -790,6 +806,7 @@ export class Router<
       return this.options.fetchServerDataFn!({ router: this, routeMatch })
     }
   }
+
   invalidateRoute = async (opts: MatchLocation) => {
     const next = this.buildNext(opts)
     const unloadedMatchIds = this.matchRoutes(next.pathname).map((d) => d.id)
@@ -805,6 +822,7 @@ export class Router<
       }),
     )
   }
+
   reload = () => {
     this.navigate({
       fromCurrent: true,
@@ -812,9 +830,11 @@ export class Router<
       search: true,
     } as any)
   }
+
   resolvePath = (from: string, path: string) => {
     return resolvePath(this.basepath!, from, cleanPath(path))
   }
+
   navigate = async <
     TFrom extends ValidFromPath<TAllRouteInfo> = '/',
     TTo extends string = '.',
@@ -855,6 +875,7 @@ export class Router<
       params,
     })
   }
+
   matchRoute = <
     TFrom extends ValidFromPath<TAllRouteInfo> = '/',
     TTo extends string = '.',
@@ -900,6 +921,7 @@ export class Router<
       },
     ) as any
   }
+
   buildLink = <
     TFrom extends ValidFromPath<TAllRouteInfo> = '/',
     TTo extends string = '.',
@@ -1037,6 +1059,7 @@ export class Router<
       disabled,
     }
   }
+
   dehydrate = (): DehydratedRouter<TRouterContext> => {
     return {
       state: {
@@ -1061,6 +1084,7 @@ export class Router<
       context: this.options.context as TRouterContext,
     }
   }
+
   hydrate = (dehydratedRouter: DehydratedRouter<TRouterContext>) => {
     this.store.setState((s) => {
       // Update the context TODO: make this part of state?
@@ -1088,6 +1112,7 @@ export class Router<
       Object.assign(s, { ...dehydratedRouter.state, currentMatches })
     })
   }
+
   getLoader = <TFrom extends keyof TAllRouteInfo['routeInfoById'] = '/'>(opts: {
     from: TFrom
   }): unknown extends TAllRouteInfo['routeInfoById'][TFrom]['routeLoaderData']
@@ -1147,6 +1172,7 @@ export class Router<
 
     return loader as any
   }
+
   #buildRouteTree = (rootRouteConfig: RouteConfig) => {
     const recurseRoutes = (
       routeConfigs: RouteConfig[],
@@ -1184,10 +1210,21 @@ export class Router<
 
     return routes[0]!
   }
+
   #parseLocation = (previousLocation?: ParsedLocation): ParsedLocation => {
-    let { pathname, search, hash } = window.location
-    let state = window.history.state || {}
+    let { pathname, search, hash, state } = this.history.location
+
     const parsedSearch = this.options.parseSearch(search)
+
+    console.log({
+      pathname: pathname,
+      searchStr: search,
+      search: replaceEqualDeep(previousLocation?.search, parsedSearch),
+      hash: hash.split('#').reverse()[0] ?? '',
+      href: `${pathname}${search}${hash}`,
+      state: state as LocationState,
+      key: state?.key || '__init__',
+    })
 
     return {
       pathname: pathname,
@@ -1195,13 +1232,15 @@ export class Router<
       search: replaceEqualDeep(previousLocation?.search, parsedSearch),
       hash: hash.split('#').reverse()[0] ?? '',
       href: `${pathname}${search}${hash}`,
-      state: state.usr as LocationState,
-      key: state.key || '__init__',
+      state: state as LocationState,
+      key: state?.key || '__init__',
     }
   }
+
   #onFocus = () => {
     this.load()
   }
+
   #buildLocation = (dest: BuildNextOptions = {}): ParsedLocation => {
     const fromPathname = dest.fromCurrent
       ? this.store.state.latestLocation.pathname
@@ -1285,6 +1324,7 @@ export class Router<
       key: dest.key,
     }
   }
+
   #commitLocation = (location: BuildNextOptions & { replace?: boolean }) => {
     const next = this.buildNext(location)
     const id = '' + Date.now() + Math.random()
@@ -1297,7 +1337,7 @@ export class Router<
       nextAction = 'push'
     }
 
-    const isSameUrl = window.location.href === next.href
+    const isSameUrl = this.store.state.latestLocation.href === next.href
 
     if (isSameUrl && !next.key) {
       nextAction = 'replace'
@@ -1307,14 +1347,10 @@ export class Router<
       next.hash ? `#${next.hash}` : ''
     }`
 
-    window.history[nextAction === 'push' ? 'pushState' : 'replaceState'](
-      {
-        id,
-        ...next.state,
-      },
-      '',
-      href,
-    )
+    this.history[nextAction === 'push' ? 'push' : 'replace'](href, {
+      id,
+      ...next.state,
+    })
 
     this.load(this.#parseLocation(this.store.state.latestLocation))
 

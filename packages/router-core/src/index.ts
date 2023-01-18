@@ -1,4 +1,5 @@
 export { default as invariant } from 'tiny-invariant'
+export * from './history'
 
 export * from './frameworks'
 export * from './link'
