@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest'
 import { Route } from '../src'
 import { z } from 'zod'
-import { createRouter, AllRouteInfo, createRouteConfig } from '../src'
+import { Router, AllRouteInfo, createRouteConfig } from '../src'
 
 // Write a test
 describe('everything', () => {
@@ -42,16 +42,6 @@ describe('everything', () => {
     })
     const invoicesIndexRoute = invoicesRoute.createRoute({
       path: '/',
-      action: async (partialInvoice: { amount: number }) => {
-        const invoice: { id: number; amount: number } = null!
-        // // Redirect to the new invoice
-        // ctx.router.navigate({
-        //   to: invoice.id,
-        //   // Use the current match for relative paths
-        //   from: ctx.match.pathname,
-        // })
-        return invoice
-      },
     })
     const invoiceRoute = invoicesRoute.createRoute({
       path: '$invoiceId',
@@ -101,16 +91,6 @@ describe('everything', () => {
         return {
           user: 'await fetchUserById(userId!)',
         }
-      },
-      action: async (partialUser: { amount: number }) => {
-        const invoice: { id: number; amount: number } = null!
-        // // Redirect to the new invoice
-        // ctx.router.navigate({
-        //   to: invoice.id,
-        //   // Use the current match for relative paths
-        //   from: ctx.match.pathname,
-        // })
-        return invoice
       },
     })
     const authenticatedRoute = rootRoute.createRoute({
@@ -165,20 +145,14 @@ describe('everything', () => {
     //   ^?
     type InvoiceLoaderData = InvoiceRouteInfo['loaderData']
     //   ^?//
-    type InvoiceAction = InvoiceRouteInfo['actionPayload']
-    //   ^?
 
-    const router = createRouter({
+    const router = new Router({
       routeConfig,
     })
 
     const loaderData = router.getRoute('/dashboard/users/$userId')
     //    ^?
     const route = router.getRoute('/dashboard/users/$userId')
-    //    ^?
-    const action = route.action
-    //    ^?
-    const result = action.submit({ amount: 10000 })
     //    ^?
 
     router.buildLink({
@@ -216,7 +190,7 @@ describe('everything', () => {
     })
 
     router.buildLink({
-      from: route.routeId,
+      from: route.id,
       to: '',
     })
 
