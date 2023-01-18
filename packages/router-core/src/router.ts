@@ -52,6 +52,7 @@ import {
   createMemoryHistory,
   RouterHistory,
 } from './history'
+import { createMemo } from '@solidjs/reactivity'
 
 export interface RegisterRouter {
   // router: Router
@@ -120,7 +121,7 @@ export interface RouterOptions<
   routeConfig?: TRouteConfig
   basepath?: string
   useServerData?: boolean
-  createRouter?: (router: AnyRouter) => void
+  Router?: (router: AnyRouter) => void
   createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
   context?: TRouterContext
   loadComponent?: (
@@ -243,7 +244,7 @@ export interface DehydratedRouter<TRouterContext = unknown> {
 export type MatchCache = Record<string, MatchCacheEntry>
 
 interface DehydratedRouteMatch {
-  matchId: string
+  id: string
   state: Pick<
     RouteMatchStore<any, any>,
     'status' | 'routeLoaderData' | 'invalid' | 'invalidAt'
@@ -293,7 +294,7 @@ export class Router<
     RouterOptions<TRouteConfig, TRouterContext>,
     'stringifySearch' | 'parseSearch' | 'context'
   >
-  history: RouterHistory
+  history!: RouterHistory
   basepath: string
   // __location: Location<TAllRouteInfo['fullSearchSchema']>
   routeTree!: Route<TAllRouteInfo, RouteInfo>
@@ -319,14 +320,13 @@ export class Router<
       fetchServerDataFn: options?.fetchServerDataFn ?? defaultFetchServerDataFn,
     }
 
-    this.history = this.options?.history ?? createBrowserHistory()
     this.store = createStore(getInitialRouterState())
     this.basepath = ''
 
     this.update(options)
 
     // Allow frameworks to hook into the router creation
-    this.options.createRouter?.(this)
+    this.options.Router?.(this)
   }
 
   reset = () => {
@@ -378,14 +378,22 @@ export class Router<
   >(
     opts?: RouterOptions<TRouteConfig, TRouterContext>,
   ): Router<TRouteConfig, TAllRouteInfo, TRouterContext> => {
-    if (!this.store.state.latestLocation) {
+    Object.assign(this.options, opts)
+
+    if (
+      !this.history ||
+      (this.options.history && this.options.history !== this.history)
+    ) {
+      this.history =
+        this.options?.history ?? isServer
+          ? createMemoryHistory()
+          : createBrowserHistory()!
+
       this.store.setState((s) => {
         s.latestLocation = this.#parseLocation()
         s.currentLocation = s.latestLocation
       })
     }
-
-    Object.assign(this.options, opts)
 
     const { basepath, routeConfig } = this.options
 
@@ -702,7 +710,7 @@ export class Router<
           existingMatches.find((d) => d.id === matchId) ||
           this.store.state.matchCache[matchId]?.match ||
           new RouteMatch(this, foundRoute, {
-            matchId,
+            id: matchId,
             params,
             pathname: joinPaths([this.basepath, interpolatedPath]),
           })
@@ -800,7 +808,12 @@ export class Router<
 
       // TODO: batch requests when possible
 
-      return this.options.fetchServerDataFn!({ router: this, routeMatch })
+      const res = await this.options.fetchServerDataFn!({
+        router: this,
+        routeMatch,
+      })
+
+      return res
     }
   }
 
@@ -1067,7 +1080,7 @@ export class Router<
           'lastUpdated',
         ]),
         currentMatches: this.store.state.currentMatches.map((match) => ({
-          matchId: match.id,
+          id: match.id,
           state: {
             ...pick(match.store.state, [
               'status',
@@ -1098,7 +1111,7 @@ export class Router<
       currentMatches.forEach((match, index) => {
         const dehydratedMatch = dehydratedRouter.state.currentMatches[index]
         invariant(
-          dehydratedMatch && dehydratedMatch.matchId === match.id,
+          dehydratedMatch && dehydratedMatch.id === match.id,
           'Oh no! There was a hydration mismatch when attempting to rethis.store the state of the router! 😬',
         )
         Object.assign(match, dehydratedMatch)
@@ -1339,7 +1352,7 @@ export class Router<
       ...next.state,
     })
 
-    this.load(this.#parseLocation(this.store.state.latestLocation))
+    // this.load(this.#parseLocation(this.store.state.latestLocation))
 
     return (this.navigationPromise = new Promise((resolve) => {
       const previousNavigationResolve = this.resolveNavigation

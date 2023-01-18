@@ -29,13 +29,13 @@ async function getRouter(opts: { url: string }) {
 export async function load(opts: { url: string }) {
   const router = await getRouter(opts)
 
-  const search = router.store.currentLocation.search as {
+  const search = router.store.state.currentLocation.search as {
     __data: { matchId: string }
   }
 
-  return router.store.currentMatches.find(
-    (d) => d.matchId === search.__data.matchId,
-  )?.store.routeLoaderData
+  return router.store.state.currentMatches.find(
+    (d) => d.id === search.__data.matchId,
+  )?.store.state.routeLoaderData
 }
 
 export async function render(opts: {

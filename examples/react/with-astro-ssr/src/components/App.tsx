@@ -1,8 +1,8 @@
 import { RouterProvider } from '@tanstack/react-router'
 import React from 'react'
-import { createRouter } from '../router'
+import { Router } from '../router'
 
-const router = createRouter()
+const router = new Router()
 
 export default function App(props: {
   dehydratedRouter: ReturnType<typeof router.dehydrate>

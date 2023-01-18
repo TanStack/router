@@ -1,10 +1,10 @@
 import * as React from 'react'
-import { createReactRouter } from '@tanstack/react-router'
+import { createMemoryHistory, ReactRouter } from '@tanstack/react-router'
 import { routeConfig } from './routes.generated/routeConfig'
 import { routeConfigClient } from './routes.generated/routeConfig.client'
 
 export const createRouter = () =>
-  createReactRouter({
+  new ReactRouter({
     routeConfig: routeConfig,
     // typeof document !== 'undefined' ? routeConfigClient : routeConfig,
     // useServerData: true,

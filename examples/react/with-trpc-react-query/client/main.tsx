@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  createReactRouter,
+  ReactRouter,
   createRouteConfig,
   Link,
   useMatch,
@@ -131,7 +131,7 @@ const routeConfig = rootRoute.addChildren([
 ])
 
 // Set up a ReactRouter instance
-const router = createReactRouter({
+const router = new ReactRouter({
   routeConfig,
   defaultPreload: 'intent',
 })

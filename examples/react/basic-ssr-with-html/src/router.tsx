@@ -1,10 +1,10 @@
 import * as React from 'react'
-import { createReactRouter } from '@tanstack/react-router'
+import { ReactRouter } from '@tanstack/react-router'
 import { routeConfig } from './routes.generated/routeConfig'
 import { routeConfigClient } from './routes.generated/routeConfig.client'
 
-export const createRouter = () =>
-  createReactRouter({
+export const Router = () =>
+  new ReactRouter({
     routeConfig: routeConfig,
     // typeof document !== 'undefined' ? routeConfigClient : routeConfig,
     // useServerData: true,
@@ -15,6 +15,6 @@ export const createRouter = () =>
 
 declare module '@tanstack/react-router' {
   interface RegisterRouter {
-    router: ReturnType<typeof createRouter>
+    router: ReturnType<typeof Router>
   }
 }

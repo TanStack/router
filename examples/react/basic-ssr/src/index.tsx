@@ -1,9 +1,9 @@
 import * as React from 'react'
 
 import { RouterProvider } from '@tanstack/react-router'
-import { createRouter } from './router'
+import { Router } from './router'
 
-export function App({ router }: { router: ReturnType<typeof createRouter> }) {
+export function App({ router }: { router: ReturnType<typeof Router> }) {
   return (
     <html lang="en">
       <head>

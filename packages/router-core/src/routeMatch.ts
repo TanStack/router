@@ -67,7 +67,7 @@ export class RouteMatch<
     router: AnyRouter,
     route: Route<TAllRouteInfo, TRouteInfo>,
     opts: {
-      matchId: string
+      id: string
       params: TRouteInfo['allParams']
       pathname: string
     },
@@ -75,7 +75,7 @@ export class RouteMatch<
     Object.assign(this, {
       route,
       router,
-      matchId: opts.matchId,
+      id: opts.id,
       pathname: opts.pathname,
       params: opts.params,
       store: createStore<RouteMatchStore<TAllRouteInfo, TRouteInfo>>({
@@ -197,7 +197,6 @@ export class RouteMatch<
           if (this.route.options.loader) {
             const data = await this.router.loadMatchData(this)
             if ((latestPromise = checkLatest())) return latestPromise
-
             this.#setLoaderData(data)
           }
 

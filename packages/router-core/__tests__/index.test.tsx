@@ -10,7 +10,7 @@ import {
 
 import { createTimer, sleep } from './utils'
 
-// function createRouterInstance(opts?: { initialEntries?: string[] }) {
+// function RouterInstance(opts?: { initialEntries?: string[] }) {
 //   return new RouterInstance({
 //     routes: [],
 //     history: createMemoryHistory({
@@ -33,7 +33,7 @@ function createLocation(location: Partial<Location>): Location {
 
 // describe('Router', () => {
 //   test('mounts to /', async () => {
-//     const router = createRouterInstance()
+//     const router = RouterInstance()
 
 //     const routes = [
 //       {
@@ -49,11 +49,11 @@ function createLocation(location: Partial<Location>): Location {
 //     expect(router.store.pendingMatches[0].id).toBe('/')
 
 //     await promise
-//     expect(router.store.currentMatches[0].id).toBe('/')
+//     expect(router.store.state.currentMatches[0].id).toBe('/')
 //   })
 
 //   test('mounts to /a', async () => {
-//     const router = createRouterInstance({ initialEntries: ['/a'] })
+//     const router = RouterInstance({ initialEntries: ['/a'] })
 //     const routes: Route[] = [
 //       {
 //         path: '/',
@@ -71,11 +71,11 @@ function createLocation(location: Partial<Location>): Location {
 
 //     expect(router.store.pendingMatches[0].id).toBe('/a')
 //     await promise
-//     expect(router.store.currentMatches[0].id).toBe('/a')
+//     expect(router.store.state.currentMatches[0].id).toBe('/a')
 //   })
 
 //   test('mounts to /a/b', async () => {
-//     const router = createRouterInstance({
+//     const router = RouterInstance({
 //       initialEntries: ['/a/b'],
 //     })
 
@@ -101,11 +101,11 @@ function createLocation(location: Partial<Location>): Location {
 
 //     expect(router.store.pendingMatches[1].id).toBe('/a/b')
 //     await promise
-//     expect(router.store.currentMatches[1].id).toBe('/a/b')
+//     expect(router.store.state.currentMatches[1].id).toBe('/a/b')
 //   })
 
 //   test('navigates to /a', async () => {
-//     const router = createRouterInstance()
+//     const router = RouterInstance()
 //     const routes: Route[] = [
 //       {
 //         path: '/',
@@ -124,19 +124,19 @@ function createLocation(location: Partial<Location>): Location {
 //     expect(router.store.pendingMatches[0].id).toBe('/')
 
 //     await promise
-//     expect(router.store.currentMatches[0].id).toBe('/')
+//     expect(router.store.state.currentMatches[0].id).toBe('/')
 
 //     promise = router.navigate({ to: 'a' })
-//     expect(router.store.currentMatches[0].id).toBe('/')
+//     expect(router.store.state.currentMatches[0].id).toBe('/')
 //     expect(router.store.pendingMatches[0].id).toBe('a')
 
 //     await promise
-//     expect(router.store.currentMatches[0].id).toBe('a')
+//     expect(router.store.state.currentMatches[0].id).toBe('a')
 //     expect(router.store.pending).toBe(undefined)
 //   })
 
 //   test('navigates to /a to /a/b', async () => {
-//     const router = createRouterInstance()
+//     const router = RouterInstance()
 //     const routes: Route[] = [
 //       {
 //         path: '/',
@@ -156,23 +156,23 @@ function createLocation(location: Partial<Location>): Location {
 //     })
 
 //     await router.mount()
-//     expect(router.store.currentLocation.href).toBe('/')
+//     expect(router.store.state.currentLocation.href).toBe('/')
 
 //     let promise = router.navigate({ to: 'a' })
 //     expect(router.store.pendingLocation.href).toBe('/a')
 //     await promise
-//     expect(router.store.currentLocation.href).toBe('/a')
+//     expect(router.store.state.currentLocation.href).toBe('/a')
 
 //     promise = router.navigate({ to: './b' })
 //     expect(router.store.pendingLocation.href).toBe('/a/b')
 //     await promise
-//     expect(router.store.currentLocation.href).toBe('/a/b')
+//     expect(router.store.state.currentLocation.href).toBe('/a/b')
 
 //     expect(router.store.pending).toBe(undefined)
 //   })
 
 //   test('async navigates to /a/b', async () => {
-//     const router = createRouterInstance()
+//     const router = RouterInstance()
 //     const routes: Route[] = [
 //       {
 //         path: '/',
@@ -207,7 +207,7 @@ function createLocation(location: Partial<Location>): Location {
 //   })
 
 //   test('async navigates with import + loader', async () => {
-//     const router = createRouterInstance()
+//     const router = RouterInstance()
 //     const routes: Route[] = [
 //       {
 //         path: '/',
@@ -255,7 +255,7 @@ function createLocation(location: Partial<Location>): Location {
 //   })
 
 //   test('async navigates with import + elements + loader', async () => {
-//     const router = createRouterInstance()
+//     const router = RouterInstance()
 //     const routes: Route[] = [
 //       {
 //         path: '/',
@@ -310,7 +310,7 @@ function createLocation(location: Partial<Location>): Location {
 //   })
 
 //   test('async navigates with pending state', async () => {
-//     const router = createRouterInstance()
+//     const router = RouterInstance()
 //     const routes: Route[] = [
 //       {
 //         path: '/',

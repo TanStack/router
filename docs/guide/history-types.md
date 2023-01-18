@@ -16,12 +16,12 @@ If you need a special history instance type, You can use the history package to 
 
 Each of these APIs behaves slightly differently and documentation for them can be found in the [history](https://github.com/remix-run/history) package.
 
-Once you have a history instance, you can pass it to the `createReactRouter` constructor:
+Once you have a history instance, you can pass it to the `ReactRouter` constructor:
 
 ```ts
 import {
   createMemoryHistory,
-  createReactRouter,
+  ReactRouter,
   createRouteConfig,
 } from '@tanstack/react-router'
 
@@ -33,7 +33,7 @@ const memoryHistory = createMemoryHistory({
   initialEntries: ['/'], // Pass your initial url
 })
 
-const router = createReactRouter({ routeConfig, history: memoryHistory })
+const router = new ReactRouter({ routeConfig, history: memoryHistory })
 ```
 
 ## Browser Routing
@@ -47,7 +47,7 @@ Hash routing can be helpful if your server doesn't support rewrites to index.htm
 ```ts
 import {
   createHashHistory,
-  createReactRouter,
+  ReactRouter,
   createRouteConfig,
 } from '@tanstack/react-router'
 
@@ -57,7 +57,7 @@ const indexRoute = rootRoute.createRoute({ path: '/' })
 
 const hashHistory = createHashHistory()
 
-const router = createReactRouter({ routeConfig, history: hashHistory })
+const router = new ReactRouter({ routeConfig, history: hashHistory })
 ```
 
 ## Memory Routing
@@ -67,7 +67,7 @@ Memory routing is useful in environments that are not a browser or when you do n
 ```ts
 import {
   createMemoryHistory,
-  createReactRouter,
+  ReactRouter,
   createRouteConfig,
 } from '@tanstack/router'
 
@@ -79,5 +79,5 @@ const memoryHistory = createMemoryHistory({
   initialEntries: ['/'], // Pass your initial url
 })
 
-const router = createReactRouter({ routeConfig, history: memoryHistory })
+const router = new ReactRouter({ routeConfig, history: memoryHistory })
 ```

@@ -1,4 +1,4 @@
-// createRouterAction is a constrained identify function that takes options: key, action, onSuccess, onError, onSettled, etc
+// RouterAction is a constrained identify function that takes options: key, action, onSuccess, onError, onSettled, etc
 
 import invariant from 'tiny-invariant'
 import { batch, createStore, Store } from './store'

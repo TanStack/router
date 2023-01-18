@@ -4,7 +4,7 @@ import {
   Outlet,
   RouterProvider,
   Link,
-  createReactRouter,
+  ReactRouter,
   createRouteConfig,
 } from '@tanstack/react-router'
 
@@ -32,7 +32,7 @@ const aboutRoute = rootRoute.createRoute({
 
 const routeConfig = rootRoute.addChildren([indexRoute, aboutRoute])
 
-const router = createReactRouter({ routeConfig })
+const router = new ReactRouter({ routeConfig })
 
 function App() {
   return <RouterProvider router={router} />

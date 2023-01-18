@@ -153,8 +153,8 @@
           "to": "api/react/RouterProvider"
         },
         {
-          "label": "createReactRouter",
-          "to": "api/react/createReactRouter"
+          "label": "ReactRouter",
+          "to": "api/react/ReactRouter"
         },
         {
           "label": "createRouteConfig",

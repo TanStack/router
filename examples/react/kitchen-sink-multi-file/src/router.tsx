@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createReactRouter } from '@tanstack/react-router'
+import { ReactRouter } from '@tanstack/react-router'
 
 import { rootRoute } from './routes/__root'
 import { indexRoute } from './routes'
@@ -33,7 +33,7 @@ const routeConfig = rootRoute.addChildren([
   layoutRoute.addChildren([layoutRouteA, layoutRouteB]),
 ])
 
-export const router = createReactRouter({
+export const router = new ReactRouter({
   routeConfig,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>

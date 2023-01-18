@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  createReactRouter,
+  ReactRouter,
   createRouteConfig,
   Link,
   useMatch,
@@ -343,7 +343,7 @@ const routeConfig = rootRoute.addChildren([
   ]),
 ])
 
-const router = createReactRouter({
+const router = new ReactRouter({
   routeConfig,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>

@@ -2,9 +2,9 @@ import * as React from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
 
-import { createRouter } from './router'
+import { Router } from './router'
 
-const router = createRouter()
+const router = new Router()
 
 const state = (window as any).__TANSTACK_ROUTER_STATE__
 

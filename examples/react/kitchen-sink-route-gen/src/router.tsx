@@ -1,10 +1,10 @@
 import * as React from 'react'
-import { createReactRouter } from '@tanstack/react-router'
+import { ReactRouter } from '@tanstack/react-router'
 
 import { routeConfig } from './routes.generated/routeConfig'
 import { Spinner } from './components/Spinner'
 
-export const router = createReactRouter({
+export const router = new ReactRouter({
   routeConfig: routeConfig,
   defaultPreload: 'intent',
   // useServerData: true,

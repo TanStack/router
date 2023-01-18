@@ -327,10 +327,10 @@ export function RouterProvider<
 }: RouterProps<TRouteConfig, TAllRouteInfo, TRouterContext>) {
   router.update(rest)
 
-  const [, , currentMatches] = useStore(
+  const currentMatches = useStore(
     router.store,
-    (s) => [s.status, s.pendingMatches, s.currentMatches],
-    true,
+    (s) => s.currentMatches,
+    undefined,
   )
 
   React.useEffect(router.mount, [router])
@@ -613,7 +613,7 @@ function SubOutlet({
       </React.Suspense>
       {/* Provide a suffix suspense boundary to make sure the router is
   ready to be dehydrated on the server */}
-      {/* {router.options.ssrFooter && match.matchId === rootRouteId ? (
+      {/* {router.options.ssrFooter && match.id === rootRouteId ? (
         <React.Suspense fallback={null}>
           {(() => {
             if (router.store.pending) {
@@ -676,11 +676,11 @@ function CatchBoundaryInner(props: {
 
   // React.useEffect(() => {
   //   if (activeErrorState) {
-  //     let prevKey = router.store.currentLocation.key
+  //     let prevKey = router.store.state.currentLocation.key
   //     return createRoot((dispose) => {
   //       createEffect(() => {
-  //         if (router.store.currentLocation.key !== prevKey) {
-  //           prevKey = router.store.currentLocation.key
+  //         if (router.store.state.currentLocation.key !== prevKey) {
+  //           prevKey = router.store.state.currentLocation.key
   //           setActiveErrorState({} as any)
   //         }
   //       })
