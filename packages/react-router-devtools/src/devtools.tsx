@@ -442,7 +442,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
   const activeMatch =
     Object.values(router.store.state.matchCache)?.find(
-      (d) => d.match.matchId === activeMatchId,
+      (d) => d.match.id === activeMatchId,
     )?.match ??
     router.store.state.currentMatches?.find((d) => d.route.id === activeRouteId)
 
@@ -636,7 +636,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                     padding: '.5em',
                   }}
                 >
-                  {`${match.matchId}`}
+                  {`${match.id}`}
                 </Code>
               </div>
             )
@@ -696,7 +696,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                         padding: '.5em',
                       }}
                     >
-                      {`${match.matchId}`}
+                      {`${match.id}`}
                     </Code>
                   </div>
                 )
@@ -733,12 +733,12 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
                 return (
                   <div
-                    key={match.matchId || i}
+                    key={match.id || i}
                     role="button"
-                    aria-label={`Open match details for ${match.matchId}`}
+                    aria-label={`Open match details for ${match.id}`}
                     onClick={() =>
                       setActiveMatchId(
-                        activeMatchId === match.matchId ? '' : match.matchId,
+                        activeMatchId === match.id ? '' : match.id,
                       )
                     }
                     style={{
@@ -779,7 +779,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                             transition: 'all .2s ease-out',
                           }}
                         />
-                        <Code>{`${match.matchId}`}</Code>
+                        <Code>{`${match.id}`}</Code>
                       </div>
                       <span
                         style={{
@@ -826,7 +826,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                           lineHeight: '1.8em',
                         }}
                       >
-                        {JSON.stringify(activeMatch.matchId, null, 2)}
+                        {JSON.stringify(activeMatch.id, null, 2)}
                       </Code>
                     </td>
                   </tr>
