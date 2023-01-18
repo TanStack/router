@@ -1,9 +1,9 @@
-import React, { StrictMode } from 'react'
+import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  createReactRouter,
+  ReactRouter,
   createRouteConfig,
   Link,
   useLoaderData,
@@ -148,12 +148,10 @@ const routeConfig = rootRoute.addChildren([
 ])
 
 // Set up a ReactRouter instance
-const router = createReactRouter({
+const router = new ReactRouter({
   routeConfig,
   defaultPreload: 'intent',
 })
-
-window.router = router
 
 // Register your router for typesafety
 declare module '@tanstack/react-router' {
@@ -168,9 +166,8 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
 
   root.render(
-    <React.Fragment>
+    <React.StrictMode>
       <RouterProvider router={router} />
-      {/* <Test /> */}
-    </React.Fragment>,
+    </React.StrictMode>,
   )
 }

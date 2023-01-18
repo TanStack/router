@@ -1,5 +1,5 @@
 import { describe, it } from 'vitest'
-import { Route } from '../src'
+import { createMemoryHistory, Route } from '../src'
 import { z } from 'zod'
 import { Router, AllRouteInfo, createRouteConfig } from '../src'
 
@@ -148,6 +148,7 @@ describe('everything', () => {
 
     const router = new Router({
       routeConfig,
+      history: createMemoryHistory(),
     })
 
     const loaderData = router.getRoute('/dashboard/users/$userId')

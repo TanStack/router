@@ -319,10 +319,7 @@ export class Router<
       fetchServerDataFn: options?.fetchServerDataFn ?? defaultFetchServerDataFn,
     }
 
-    this.history =
-      this.options?.history ?? isServer
-        ? createMemoryHistory()
-        : createBrowserHistory()
+    this.history = this.options?.history ?? createBrowserHistory()
     this.store = createStore(getInitialRouterState())
     this.basepath = ''
 
@@ -1215,16 +1212,6 @@ export class Router<
     let { pathname, search, hash, state } = this.history.location
 
     const parsedSearch = this.options.parseSearch(search)
-
-    console.log({
-      pathname: pathname,
-      searchStr: search,
-      search: replaceEqualDeep(previousLocation?.search, parsedSearch),
-      hash: hash.split('#').reverse()[0] ?? '',
-      href: `${pathname}${search}${hash}`,
-      state: state as LocationState,
-      key: state?.key || '__init__',
-    })
 
     return {
       pathname: pathname,
