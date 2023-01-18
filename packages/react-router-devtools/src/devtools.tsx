@@ -444,7 +444,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     Object.values(router.store.state.matchCache)?.find(
       (d) => d.match.matchId === activeMatchId,
     )?.match ??
-    router.store.state.currentMatches?.find((d) => d.routeId === activeRouteId)
+    router.store.state.currentMatches?.find((d) => d.route.id === activeRouteId)
 
   const matchCacheValues = multiSortBy(
     Object.keys(router.store.state.matchCache)
@@ -599,12 +599,12 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           {router.store.state.currentMatches.map((match, i) => {
             return (
               <div
-                key={match.routeId || i}
+                key={match.route.id || i}
                 role="button"
-                aria-label={`Open match details for ${match.routeId}`}
+                aria-label={`Open match details for ${match.route.id}`}
                 onClick={() =>
                   setActiveRouteId(
-                    activeRouteId === match.routeId ? '' : match.routeId,
+                    activeRouteId === match.route.id ? '' : match.route.id,
                   )
                 }
                 style={{
@@ -658,12 +658,12 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               {router.store.state.pendingMatches?.map((match, i) => {
                 return (
                   <div
-                    key={match.routeId || i}
+                    key={match.route.id || i}
                     role="button"
-                    aria-label={`Open match details for ${match.routeId}`}
+                    aria-label={`Open match details for ${match.route.id}`}
                     onClick={() =>
                       setActiveRouteId(
-                        activeRouteId === match.routeId ? '' : match.routeId,
+                        activeRouteId === match.route.id ? '' : match.route.id,
                       )
                     }
                     style={{

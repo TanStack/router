@@ -64,7 +64,7 @@ type ParseRouteChild<TRouteConfig, TId> = TRouteConfig & {
 // Generics!
 export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
   infer TId,
-  infer TRouteId,
+  infer TCustomId,
   infer TPath,
   infer TFullPath,
   infer TParentRouteLoaderData,
@@ -79,11 +79,11 @@ export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
   infer TAllParams,
   any
 >
-  ? string extends TRouteId
+  ? string extends TCustomId
     ? never
     : RouteInfo<
         TId,
-        TRouteId,
+        TCustomId,
         TPath,
         TFullPath,
         TParentRouteLoaderData,
@@ -158,7 +158,7 @@ export interface AnyRouteInfo
 
 export interface RouteInfo<
   TId extends string = string,
-  TRouteId extends string = string,
+  TCustomId extends string = string,
   TPath extends string = string,
   TFullPath extends string = '/',
   TParentRouteLoaderData extends AnyLoaderData = {},
@@ -173,7 +173,7 @@ export interface RouteInfo<
   TAllParams extends AnyPathParams = {},
 > {
   id: TId
-  routeId: TRouteId
+  customId: TCustomId
   path: TPath
   fullPath: TFullPath
   parentRouteLoaderData: TParentRouteLoaderData
@@ -186,7 +186,7 @@ export interface RouteInfo<
   params: TParams
   allParams: TAllParams
   options: RouteOptions<
-    TRouteId,
+    TCustomId,
     TPath,
     TParentRouteLoaderData,
     TRouteLoaderData,

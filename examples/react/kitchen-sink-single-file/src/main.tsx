@@ -3,8 +3,6 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  createReactRouter,
-  createRouteConfig,
   lazy,
   Link,
   useRouterStore,
@@ -14,6 +12,8 @@ import {
   useSearch,
   createAction,
   useAction,
+  ReactRouter,
+  createRouteConfig,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -815,7 +815,7 @@ const routeConfig = rootRoute.addChildren([
   layoutRoute.addChildren([layoutARoute, layoutBRoute]),
 ])
 
-const router = createReactRouter({
+const router = new ReactRouter({
   routeConfig,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>

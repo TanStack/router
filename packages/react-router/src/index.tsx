@@ -15,7 +15,6 @@ import {
   AnyAllRouteInfo,
   DefaultAllRouteInfo,
   functionalUpdate,
-  createRouter,
   AllRouteInfo,
   ValidFromPath,
   LinkOptions,
@@ -158,7 +157,7 @@ export function useLinkProps<
     hash,
     search,
     params,
-    to,
+    to = '.',
     preload,
     preloadDelay,
     preloadMaxAge,
@@ -291,25 +290,23 @@ export type MatchesProviderProps = {
   children: ReactNode
 }
 
-export function createReactRouter<
+export class ReactRouter<
   TRouteConfig extends AnyRouteConfig = RouteConfig,
   TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
   TRouterContext = unknown,
->(
-  opts: RouterOptions<TRouteConfig, TRouterContext>,
-): Router<TRouteConfig, TAllRouteInfo, TRouterContext> {
-  const coreRouter = createRouter<TRouteConfig>({
-    ...opts,
-    loadComponent: async (component) => {
-      if (component.preload) {
-        await component.preload()
-      }
+> extends Router<TRouteConfig, TAllRouteInfo, TRouterContext> {
+  constructor(opts: RouterOptions<TRouteConfig, TRouterContext>) {
+    super({
+      ...opts,
+      loadComponent: async (component) => {
+        if (component.preload) {
+          await component.preload()
+        }
 
-      return component as any
-    },
-  })
-
-  return coreRouter as any
+        return component as any
+      },
+    })
+  }
 }
 
 export type RouterProps<
@@ -383,7 +380,7 @@ export function useMatch<
   const router = useRouter()
   const nearestMatch = useMatches()[0]!
   const match = opts?.from
-    ? router.store.state.currentMatches.find((d) => d.routeId === opts?.from)
+    ? router.store.state.currentMatches.find((d) => d.route.id === opts?.from)
     : nearestMatch
 
   invariant(
@@ -395,15 +392,15 @@ export function useMatch<
 
   if (opts?.strict ?? true) {
     invariant(
-      nearestMatch.routeId == match?.routeId,
+      nearestMatch.route.id == match?.route.id,
       `useMatch("${
-        match?.routeId as string
+        match?.route.id as string
       }") is being called in a component that is meant to render the '${
-        nearestMatch.routeId
+        nearestMatch.route.id
       }' route. Did you mean to 'useMatch("${
-        match?.routeId as string
+        match?.route.id as string
       }", { strict: false })' or 'useRoute("${
-        match?.routeId as string
+        match?.route.id as string
       }")' instead?`,
     )
   }
@@ -580,14 +577,14 @@ function SubOutlet({
 
     if (props.match.store.state.status === 'success') {
       return React.createElement(
-        (props.match.__.component as any) ??
+        (props.match.component as any) ??
           router.options.defaultComponent ??
           Outlet,
       )
     }
 
     if (props.match.store.state.status === 'loading') {
-      throw props.match.__.loadPromise
+      throw props.match.__loadPromise
     }
 
     invariant(
@@ -596,18 +593,18 @@ function SubOutlet({
     )
   }, [])
 
-  const PendingComponent = (match.__.pendingComponent ??
+  const PendingComponent = (match.pendingComponent ??
     router.options.defaultPendingComponent ??
     defaultPending) as any
 
   const errorComponent =
-    match.__.errorComponent ?? router.options.defaultErrorComponent
+    match.errorComponent ?? router.options.defaultErrorComponent
 
   return (
     <matchesContext.Provider value={matches}>
       <React.Suspense fallback={<PendingComponent />}>
         <CatchBoundary
-          key={match.routeId}
+          key={match.route.id}
           errorComponent={errorComponent}
           match={match as any}
         >

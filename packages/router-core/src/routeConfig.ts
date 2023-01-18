@@ -435,7 +435,7 @@ type TrimPathRight<T extends string> = T extends '/'
 
 export const createRouteConfig: CreateRouteConfigFn<true> = (
   options = {} as any,
-  children,
+  children = [] as any,
   isRoot = true,
   parentId,
   parentPath,
