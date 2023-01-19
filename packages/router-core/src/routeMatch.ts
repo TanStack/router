@@ -95,7 +95,7 @@ export class RouteMatch<
     }
   }
 
-  #setLoaderData = (loaderData: TRouteInfo['routeLoaderData']) => {
+  setLoaderData = (loaderData: TRouteInfo['routeLoaderData']) => {
     batch(() => {
       this.store.setState((s) => {
         s.routeLoaderData = loaderData
@@ -197,7 +197,7 @@ export class RouteMatch<
           if (this.route.options.loader) {
             const data = await this.router.loadMatchData(this)
             if ((latestPromise = checkLatest())) return latestPromise
-            this.#setLoaderData(data)
+            this.setLoaderData(data)
           }
 
           this.store.setState((s) => {

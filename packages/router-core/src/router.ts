@@ -295,6 +295,7 @@ export class Router<
     'stringifySearch' | 'parseSearch' | 'context'
   >
   history!: RouterHistory
+  #unsubHistory?: () => void
   basepath: string
   // __location: Location<TAllRouteInfo['fullSearchSchema']>
   routeTree!: Route<TAllRouteInfo, RouteInfo>
@@ -341,10 +342,6 @@ export class Router<
         this.load()
       }
 
-      const unsubHistory = this.history.listen(() => {
-        this.load(this.#parseLocation(this.store.state.latestLocation))
-      })
-
       const visibilityChangeEvent = 'visibilitychange'
       const focusEvent = 'focus'
 
@@ -358,7 +355,6 @@ export class Router<
       }
 
       return () => {
-        unsubHistory()
         if (window.removeEventListener) {
           // Be sure to unsubscribe if a new handler is set
 
@@ -384,14 +380,21 @@ export class Router<
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
+      if (this.#unsubHistory) {
+        this.#unsubHistory()
+      }
+
       this.history =
-        this.options?.history ?? isServer
-          ? createMemoryHistory()
-          : createBrowserHistory()!
+        this.options.history ??
+        (isServer ? createMemoryHistory() : createBrowserHistory()!)
 
       this.store.setState((s) => {
         s.latestLocation = this.#parseLocation()
         s.currentLocation = s.latestLocation
+      })
+
+      this.#unsubHistory = this.history.listen(() => {
+        this.load(this.#parseLocation(this.store.state.latestLocation))
       })
     }
 
@@ -1114,7 +1117,10 @@ export class Router<
           dehydratedMatch && dehydratedMatch.id === match.id,
           'Oh no! There was a hydration mismatch when attempting to rethis.store the state of the router! 😬',
         )
-        Object.assign(match, dehydratedMatch)
+        match.store.setState((s) => {
+          Object.assign(s, dehydratedMatch.state)
+        })
+        match.setLoaderData(dehydratedMatch.state.routeLoaderData)
       })
 
       currentMatches.forEach((match) => match.__validate())

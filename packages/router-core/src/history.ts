@@ -146,13 +146,8 @@ export function createMemoryHistory(
 
   return createHistory({
     getLocation,
-    listener: (onUpdate) => {
-      window.addEventListener(popStateEvent, onUpdate)
-      // We might need to handle the hashchange event in the future
-      // window.addEventListener(hashChangeEvent, onUpdate)
-      return () => {
-        window.removeEventListener(popStateEvent, onUpdate)
-      }
+    listener: () => {
+      return () => {}
     },
     pushState: (path, state) => {
       currentState = {
