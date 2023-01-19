@@ -38,4 +38,45 @@ In the above example, the `layout` route will not add or match any path in the U
 
 ## Examples
 
-> TODO! If you'd like to help add examples, use the "Edit on Github" link at the bottom of this page to submit a PR!
+Simple example with different layouts for authenticated and unauthenticated routes
+
+```tsx
+const rootRoute = createRouteConfig();
+
+const layoutRoot = rootRoute.createRoute({
+  id: "layout",
+});
+
+const layoutUnauth = layoutRoot.createRoute({
+  id: "layout-unauth",
+  component: LayoutUnauth, // layout component for unauthenticated routes
+});
+
+const layoutAuth = layoutRoot.createRoute({
+  id: "layout-auth",
+  component: LayoutAuth, // layout component for authenticated routes
+});
+
+const indexRoute = layoutUnauth.createRoute({
+  path: "/",
+  component: LandingPage, // landing page component that will use unauthenticated layout
+});
+
+const dashboardRoute = layoutAuth.createRoute({
+  path: "app",
+  component: DashboardPage, // homepage page component that will use authenticated layout
+  },
+});
+
+export const loginRoute = layoutUnauth.createRoute({
+  path: "login",
+  component: LoginPage, // another component that will unauthenticated layout 
+});
+
+const routeConfig = rootRoute.addChildren([
+  layoutRoot.addChildren([
+    layoutUnauth.addChildren([indexRoute, loginRoute]),
+    layoutAuth.addChildren([dashboardRoute]),
+  ]),
+]);
+```
