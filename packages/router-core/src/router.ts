@@ -820,7 +820,12 @@ export class Router<
     }
   }
 
-  invalidateRoute = async (opts: MatchLocation) => {
+  invalidateRoute = async <
+    TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+    TTo extends string = '.',
+  >(
+    opts: ToOptions<TAllRouteInfo, TFrom, TTo>,
+  ) => {
     const next = this.buildNext(opts)
     const unloadedMatchIds = this.matchRoutes(next.pathname).map((d) => d.id)
 
@@ -1010,7 +1015,7 @@ export class Router<
       ) {
         e.preventDefault()
         if (pathIsEqual && !search && !hash) {
-          this.invalidateRoute(nextOpts)
+          this.invalidateRoute(nextOpts as any)
         }
 
         // All is well? Navigate!

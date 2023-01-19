@@ -1,13 +1,37 @@
 import { lazy } from '@tanstack/react-router';
 import { routeConfig as parentRouteConfig } from "./__root";
+import * as React from 'react';
+import { Link, Outlet, useLoaderData, useMatch } from '@tanstack/react-router';
 const routeConfig = parentRouteConfig.createRoute({
   path: "posts",
-  component: lazy(() => import('./posts-component').then(d => ({
-    default: d.component
-  }))),
+  component: Posts,
   loader: (...args) => import('./posts-loader').then(d => d.loader.apply(d.loader, (args as any))),
-  errorComponent: lazy(() => import('./posts-errorComponent').then(d => ({
-    default: d.errorComponent
-  })))
+  errorComponent: () => 'Oh crap'
 });
-export { routeConfig, routeConfig as postsRoute };
+function Posts() {
+  const {
+    posts
+  } = useLoaderData({
+    from: routeConfig.id
+  });
+  return <div style={{
+    display: 'flex',
+    gap: '1rem'
+  }}>
+      <div>
+        {posts?.map(post => {
+        return <div key={post.id}>
+              <Link to="/posts/$postId" params={{
+            postId: post.id
+          }} activeProps={{
+            className: 'font-bold'
+          }}>
+                <pre>{post.title.substring(0, 20)}</pre>
+              </Link>
+            </div>;
+      })}
+      </div>
+      <Outlet />
+    </div>;
+}
+export { routeConfig };

@@ -2,6 +2,8 @@
 // This implementation attempts to be more lightweight by
 // making assumptions about the way TanStack Router works
 
+import { match } from 'assert'
+
 export interface RouterHistory {
   location: RouterLocation
   listen: (cb: () => void) => () => void
@@ -177,11 +179,19 @@ export function createMemoryHistory(
 function parseLocation(href: string, state: any): RouterLocation {
   let hashIndex = href.indexOf('#')
   let searchIndex = href.indexOf('?')
-  const pathEnd = Math.min(hashIndex, searchIndex)
 
   return {
     href,
-    pathname: pathEnd > -1 ? href.substring(0, pathEnd) : href,
+    pathname: href.substring(
+      0,
+      hashIndex > 0
+        ? searchIndex > 0
+          ? Math.min(hashIndex, searchIndex)
+          : hashIndex
+        : searchIndex > 0
+        ? searchIndex
+        : href.length,
+    ),
     hash: hashIndex > -1 ? href.substring(hashIndex, searchIndex) : '',
     search: searchIndex > -1 ? href.substring(searchIndex) : '',
     state,

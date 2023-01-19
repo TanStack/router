@@ -1,16 +1,16 @@
 import * as React from 'react'
 import { z } from 'zod'
-import { fetchInvoiceById, patchInvoice } from '../../../mockTodos'
+import { fetchInvoiceById } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import {
   Link,
   useAction,
   useLoaderData,
-  useMatch,
   useNavigate,
   useSearch,
 } from '@tanstack/react-router'
 import { routeConfig } from '../../../routes.generated/dashboard/invoices/$invoiceId'
+import { updateInvoiceAction } from '../../../actions'
 
 routeConfig.generate({
   parseParams: (params) => ({
@@ -34,12 +34,11 @@ routeConfig.generate({
       invoice,
     }
   },
-  action: patchInvoice,
 })
 
 function InvoiceView() {
   const { invoice } = useLoaderData({ from: routeConfig.id })
-  const action = useAction({ from: routeConfig.id })
+  const action = useAction(updateInvoiceAction)
   const search = useSearch({ from: routeConfig.id })
   const navigate = useNavigate({ from: routeConfig.id })
 
@@ -54,10 +53,6 @@ function InvoiceView() {
       replace: true,
     })
   }, [notes])
-
-  React.useEffect(() => {
-    console.log('mount')
-  }, [])
 
   return (
     <form
@@ -76,7 +71,7 @@ function InvoiceView() {
     >
       <InvoiceFields
         invoice={invoice}
-        disabled={action.current?.status === 'pending'}
+        disabled={action.latestSubmission?.status === 'pending'}
       />
       <div>
         <Link
@@ -109,18 +104,18 @@ function InvoiceView() {
       <div>
         <button
           className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-          disabled={action.current?.status === 'pending'}
+          disabled={action.latestSubmission?.status === 'pending'}
         >
           Save
         </button>
       </div>
-      {action.current?.submission?.id === invoice.id ? (
-        <div key={action.current?.submittedAt}>
-          {action.current?.status === 'success' ? (
+      {action.latestSubmission?.payload?.id === invoice.id ? (
+        <div key={action.latestSubmission?.submittedAt}>
+          {action.latestSubmission?.status === 'success' ? (
             <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Saved!
             </div>
-          ) : action.current?.status === 'error' ? (
+          ) : action.latestSubmission?.status === 'error' ? (
             <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to save.
             </div>

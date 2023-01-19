@@ -8,10 +8,10 @@ import {
   useRoute,
 } from '@tanstack/react-router'
 import * as React from 'react'
+import { createInvoiceAction, updateInvoiceAction } from '../../actions'
 import { Spinner } from '../../components/Spinner'
 import { routeConfig } from '../../routes.generated/dashboard/invoices'
 import { dashboardInvoicesinvoiceIdRoute } from '../../routes.generated/dashboard/invoices/$invoiceId.client'
-import { dashboardInvoicesIndexRoute } from '../../routes.generated/dashboard/invoices/index.client'
 
 routeConfig.generate({
   component: Invoices,
@@ -20,22 +20,20 @@ routeConfig.generate({
 function Invoices() {
   const { invoices } = useLoaderData({ from: routeConfig.id })
 
-  const invoiceIndexAction = useAction({ from: dashboardInvoicesIndexRoute.id })
-  const invoiceDetailAction = useAction({
-    from: dashboardInvoicesinvoiceIdRoute.id,
-  })
+  const invoiceIndexAction = useAction(createInvoiceAction)
+  const invoiceDetailAction = useAction(updateInvoiceAction)
 
   return (
     <div className="flex-1 flex">
       <div className="divide-y w-48">
         {invoices?.map((invoice) => {
-          const foundPending = invoiceDetailAction.submissions.find(
-            (d) => d.submission?.id === invoice.id,
+          const foundPending = invoiceDetailAction.pendingSubmissions.find(
+            (d) => d.payload?.id === invoice.id,
           )
-          if (foundPending?.submission) {
+          if (foundPending) {
             invoice = {
               ...invoice,
-              ...foundPending.submission,
+              ...foundPending.payload,
             }
           }
           return (
@@ -71,11 +69,11 @@ function Invoices() {
             </div>
           )
         })}
-        {invoiceIndexAction.submissions.map((action) => (
+        {invoiceIndexAction.pendingSubmissions.map((action) => (
           <div key={action.submittedAt}>
             <a href="#" className="block py-2 px-3 text-blue-700">
               <pre className="text-sm">
-                #<Spinner /> - {action.submission.title?.slice(0, 10)}
+                #<Spinner /> - {action.payload.title?.slice(0, 10)}
               </pre>
             </a>
           </div>

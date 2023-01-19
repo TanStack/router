@@ -3,13 +3,13 @@ import {
   Outlet,
   useLoaderData,
   MatchRoute,
-  useRoute,
+  useAction,
 } from '@tanstack/react-router'
 import * as React from 'react'
 import { Spinner } from '../../../components/Spinner'
 import { dashboardRoute } from '..'
-import { invoicesIndexRoute } from './invoices'
 import { invoiceRoute } from './invoice'
+import { createInvoiceAction, updateInvoiceAction } from '../../../actions'
 
 export const invoicesRoute = dashboardRoute.createRoute({
   path: 'invoices',
@@ -20,19 +20,19 @@ function Invoices() {
   const { invoices } = useLoaderData({ from: invoicesRoute.id })
 
   // Get the action for a child route
-  const invoiceIndexRoute = useRoute(invoicesIndexRoute.id)
-  const invoiceDetailRoute = useRoute(invoiceRoute.id)
+  const createInvoice = useAction(createInvoiceAction)
+  const updateInvoice = useAction(updateInvoiceAction)
 
   return (
     <div className="flex-1 flex">
       <div className="divide-y w-48">
         {invoices?.map((invoice) => {
-          const foundPending = invoiceDetailRoute.action.submissions.find(
-            (d) => d.submission?.id === invoice.id,
+          const foundPending = updateInvoice.pendingSubmissions.find(
+            (d) => d.payload?.id === invoice.id,
           )
 
-          if (foundPending?.submission) {
-            invoice = { ...invoice, ...foundPending.submission }
+          if (foundPending) {
+            invoice = { ...invoice, ...foundPending.payload }
           }
 
           return (
@@ -66,11 +66,11 @@ function Invoices() {
             </div>
           )
         })}
-        {invoiceIndexRoute.action.submissions.map((action) => (
+        {createInvoice.pendingSubmissions.map((action) => (
           <div key={action.submittedAt}>
             <a href="#" className="block py-2 px-3 text-blue-700">
               <pre className="text-sm">
-                #<Spinner /> - {action.submission.title?.slice(0, 10)}
+                #<Spinner /> - {action.payload.title?.slice(0, 10)}
               </pre>
             </a>
           </div>

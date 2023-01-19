@@ -12,6 +12,9 @@ routeConfig.generate({
     }
   },
   errorComponent: () => 'Oh crap',
+  meta: {
+    title: 'Posts',
+  },
 })
 
 async function fetchPosts() {

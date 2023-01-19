@@ -20,6 +20,7 @@ import { userRoute } from './routes/dashboard/users/user'
 import { layoutRouteA } from './routes/layout/layout-a'
 import { layoutRouteB } from './routes/layout/layout-b'
 import { Spinner } from './components/Spinner'
+import { createInvoiceAction, updateInvoiceAction } from './actions'
 
 const routeConfig = rootRoute.addChildren([
   indexRoute,
@@ -40,6 +41,10 @@ export const router = new ReactRouter({
       <Spinner />
     </div>
   ),
+  onRouteChange: () => {
+    createInvoiceAction.reset()
+    updateInvoiceAction.reset()
+  },
 })
 
 declare module '@tanstack/react-router' {

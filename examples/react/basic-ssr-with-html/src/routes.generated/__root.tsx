@@ -7,12 +7,19 @@ const routeConfig = createRouteConfig({
 });
 function Root() {
   const router = useRouter();
+
+  // This is weak sauce, but it's just an example.
+  // In the future, we'll make meta an official thing
+  // and make it async as well to support data
+  const titleMatch = [...router.store.state.currentMatches].reverse().find(d => d.route.options.meta?.title);
   return <html lang="en">
       <React.StrictMode>
         <head>
           <meta charSet="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>Vite App</title>
+          <title>
+            {titleMatch ? titleMatch.route.options.meta?.title : 'Vite App'}
+          </title>
           <script src="https://cdn.tailwindcss.com"></script>
           <script suppressHydrationWarning dangerouslySetInnerHTML={{
           __html: `</script>

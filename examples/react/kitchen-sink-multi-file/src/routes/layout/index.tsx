@@ -1,4 +1,4 @@
-import { Outlet, useMatch } from '@tanstack/react-router'
+import { Outlet, useLoaderData, useMatch } from '@tanstack/react-router'
 import * as React from 'react'
 
 import { loaderDelayFn } from '../../utils'
@@ -17,11 +17,12 @@ export const layoutRoute = rootRoute.createRoute({
 })
 
 function LayoutWrapper() {
-  const { loaderData } = useMatch(layoutRoute.id)
+  const { random } = useLoaderData({ from: layoutRoute.id })
+
   return (
     <div>
       <div>Layout</div>
-      <div>Random #: {loaderData.random}</div>
+      <div>Random #: {random}</div>
       <hr />
       <Outlet />
     </div>

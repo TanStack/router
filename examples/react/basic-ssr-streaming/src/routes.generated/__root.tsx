@@ -40,4 +40,4 @@ function Root() {
       </body>
     </html>;
 }
-export { routeConfig, routeConfig as rootRoute };
+export { routeConfig };

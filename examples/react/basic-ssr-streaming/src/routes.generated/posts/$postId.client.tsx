@@ -1,5 +1,6 @@
 import { lazy } from '@tanstack/react-router';
 import { routeConfig as parentRouteConfig } from "../posts.client";
+import { useMatch } from '@tanstack/react-router';
 export type PostType = {
   id: string;
   title: string;

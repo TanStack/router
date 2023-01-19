@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { z } from 'zod'
-import { fetchInvoiceById, patchInvoice } from '../../../mockTodos'
+import { fetchInvoiceById } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import { invoicesRoute } from '.'
 import {
@@ -10,6 +10,7 @@ import {
   useSearch,
   Link,
 } from '@tanstack/react-router'
+import { updateInvoiceAction } from '../../../actions'
 
 export const invoiceRoute = invoicesRoute.createRoute({
   path: '$invoiceId',
@@ -34,13 +35,12 @@ export const invoiceRoute = invoicesRoute.createRoute({
       invoice,
     }
   },
-  action: patchInvoice,
 })
 
 function InvoiceView() {
   const { invoice } = useLoaderData({ from: invoiceRoute.id })
   const search = useSearch({ from: invoiceRoute.id })
-  const action = useAction({ from: invoiceRoute.id })
+  const action = useAction(updateInvoiceAction)
   const navigate = useNavigate({ from: invoiceRoute.id })
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
@@ -69,7 +69,7 @@ function InvoiceView() {
     >
       <InvoiceFields
         invoice={invoice}
-        disabled={action.current?.status === 'pending'}
+        disabled={action.latestSubmission?.status === 'pending'}
       />
       <div>
         <Link
@@ -102,18 +102,18 @@ function InvoiceView() {
       <div>
         <button
           className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-          disabled={action.current?.status === 'pending'}
+          disabled={action.latestSubmission?.status === 'pending'}
         >
           Save
         </button>
       </div>
-      {action.current?.submission?.id === invoice.id ? (
-        <div key={action.current?.submittedAt}>
-          {action.current?.status === 'success' ? (
+      {action.latestSubmission?.payload?.id === invoice.id ? (
+        <div key={action.latestSubmission?.submittedAt}>
+          {action.latestSubmission?.status === 'success' ? (
             <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Saved!
             </div>
-          ) : action.current?.status === 'error' ? (
+          ) : action.latestSubmission?.status === 'error' ? (
             <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to save.
             </div>

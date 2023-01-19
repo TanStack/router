@@ -9,6 +9,9 @@ const routeConfig = parentRouteConfig.createRoute({
   loader: (true as any),
   errorComponent: lazy(() => import('./posts-errorComponent').then(d => ({
     default: d.errorComponent
-  })))
+  }))),
+  meta: {
+    title: 'Posts'
+  }
 });
 export { routeConfig, routeConfig as postsRoute };

@@ -3,14 +3,14 @@ import ReactDOMServer from 'react-dom/server'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import jsesc from 'jsesc'
 import { ServerResponse } from 'http'
-import { Router } from './router'
+import { createRouter } from './router'
 import express from 'express'
 
 // index.js
 import './fetch-polyfill'
 
 async function getRouter(opts: { url: string }) {
-  const router = new Router()
+  const router = createRouter()
 
   const memoryHistory = createMemoryHistory({
     initialEntries: [opts.url],
@@ -34,7 +34,7 @@ export async function load(opts: { url: string }) {
 
   return router.store.state.currentMatches.find(
     (d) => d.id === search.__data.matchId,
-  )?.store.routeLoaderData
+  )?.store.state.routeLoaderData
 }
 
 export async function render(opts: {

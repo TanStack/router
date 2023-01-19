@@ -15,8 +15,6 @@ export const dashboardRoute = rootRoute.createRoute({
 })
 
 function Dashboard() {
-  const route = useMatch(dashboardRoute.id)
-
   return (
     <>
       <div className="flex items-center border-b">
@@ -34,22 +32,22 @@ function Dashboard() {
       <div className="flex flex-wrap divide-x">
         {(
           [
-            ['.', 'Summary'],
+            ['/dashboard', 'Summary', undefined, true],
             ['/dashboard/invoices', 'Invoices'],
             ['/dashboard/users', 'Users', true],
           ] as const
-        ).map(([to, label, search]) => {
+        ).map(([to, label, search, exact]) => {
           return (
-            <route.Link
+            <Link
               key={to}
               to={to}
               search={search}
-              activeOptions={{ exact: to === '.' }}
+              activeOptions={{ exact }}
               activeProps={{ className: `font-bold` }}
               className="p-2"
             >
               {label}
-            </route.Link>
+            </Link>
           )
         })}
       </div>
