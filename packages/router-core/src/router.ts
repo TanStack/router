@@ -725,8 +725,7 @@ export class Router<
     // If this `to` is a valid external URL, return
     // null for LinkUtils
     const toString = String(to)
-    const fromString = String(from)
-
+    const fromString = typeof from === 'undefined' ? from : String(from)
     let isExternal
 
     try {
