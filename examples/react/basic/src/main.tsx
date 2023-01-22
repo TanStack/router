@@ -6,7 +6,10 @@ import {
   ReactRouter,
   createRouteConfig,
   Link,
-  useLoaderData,
+  LoaderCache,
+  useLoader,
+  createLoaderConfig,
+  useParams,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -17,6 +20,33 @@ type PostType = {
   title: string
   body: string
 }
+
+const postsLoaderConfig = createLoaderConfig({
+  key: 'posts',
+  loader: async () => {
+    console.log('Fetching posts...')
+    await new Promise((r) => setTimeout(r, 500))
+    return axios
+      .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
+      .then((r) => r.data.slice(0, 10))
+  },
+})
+
+const postLoaderConfig = postsLoaderConfig.createLoaderConfig({
+  key: 'post',
+  loader: async (postId: string) => {
+    console.log(`Fetching post with id ${postId}...`)
+    await new Promise((r) => setTimeout(r, 500))
+
+    return await axios
+      .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+      .then((r) => r.data)
+  },
+})
+
+const loaderCache = new LoaderCache({
+  loaderConfigs: [postsLoaderConfig, postLoaderConfig],
+})
 
 const rootRoute = createRouteConfig({
   component: () => {
@@ -63,19 +93,11 @@ const indexRoute = rootRoute.createRoute({
 
 const postsRoute = rootRoute.createRoute({
   path: 'posts',
-  loader: async () => {
-    console.log('Fetching posts...')
-    await new Promise((r) => setTimeout(r, 500))
-    const posts = await axios
-      .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
-      .then((r) => r.data.slice(0, 10))
-
-    return {
-      posts,
-    }
-  },
+  loader: () => loaderCache.getLoader({ key: 'posts' }).preload(),
   component: () => {
-    const { posts } = useLoaderData({ from: postsRoute.id })
+    const { data: posts } = useLoader({
+      loader: loaderCache.getLoader({ key: 'posts' }),
+    })
 
     return (
       <div className="p-2 flex gap-2">
@@ -118,20 +140,15 @@ const PostsIndexRoute = postsRoute.createRoute({
 
 const postRoute = postsRoute.createRoute({
   path: 'post/$postId',
-  loader: async ({ params: { postId } }) => {
-    console.log(`Fetching post with id ${postId}...`)
-    await new Promise((r) => setTimeout(r, 500))
+  loader: async ({ params: { postId } }) =>
+    loaderCache.getLoader({ key: 'post' }).preload(postId),
 
-    const post = await axios
-      .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-      .then((r) => r.data)
-
-    return {
-      post,
-    }
-  },
   component: () => {
-    const { post } = useLoaderData({ from: postRoute.id })
+    const { postId } = useParams({ from: postRoute.id })
+    const { data: post } = useLoader({
+      loader: loaderCache.getLoader({ key: 'post' }),
+      variables: postId,
+    })
 
     return (
       <div className="space-y-2">

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, Outlet, useLoaderData, useMatch } from '@tanstack/react-router'
+import { Link, Outlet, useMatch } from '@tanstack/react-router'
 import { routeConfig } from '../routes.generated/posts'
 import { PostType } from './posts/$postId'
 import { postspostIdRoute } from '../routes.generated/posts/$postId.client'

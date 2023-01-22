@@ -2,51 +2,56 @@ import { produce, setAutoFreeze } from 'immer'
 
 setAutoFreeze(false)
 
-export type Store<TState> = {
+// interface StoreOptions {
+//   onSubscribe?: () => (() => void) | void
+// }
+
+export class Store<TState> {
+  listeners = new Set<(next: TState, prev: TState) => void>()
   state: TState
-  subscribe: (listener: (next: TState, prev: TState) => void) => () => void
-  setState: (updater: (cb: TState) => void) => void
-}
+  // options?: StoreOptions
+  batching = false
+  queue: ((...args: any[]) => void)[] = []
 
-let queue: ((...args: any[]) => void)[] = []
-let batching = false
-
-function flush() {
-  if (batching) return
-  queue.forEach((cb) => cb())
-  queue = []
-}
-
-export function createStore<TState>(initialState: TState, debug?: boolean) {
-  const listeners = new Set<(next: TState, prev: TState) => void>()
-
-  const store: Store<TState> = {
-    state: initialState,
-    subscribe: (listener) => {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
-    setState: (updater) => {
-      const previous = store.state
-      store.state = produce((d) => {
-        updater(d)
-      })(previous)
-
-      if (debug) console.log(store.state)
-
-      queue.push(() =>
-        listeners.forEach((listener) => listener(store.state, previous)),
-      )
-      flush()
-    },
+  constructor(
+    initialState: TState,
+    // options?: StoreOptions
+  ) {
+    this.state = initialState
+    // this.options = options
   }
 
-  return store
-}
+  subscribe = (listener: (next: TState, prev: TState) => void) => {
+    this.listeners.add(listener)
+    // const unsub = this.options?.onSubscribe?.()
+    return () => {
+      this.listeners.delete(listener)
+      // unsub?.()
+    }
+  }
 
-export function batch(cb: () => void) {
-  batching = true
-  cb()
-  batching = false
-  flush()
+  setState = (updater: (cb: TState) => void) => {
+    const previous = this.state
+    this.state = produce((d) => {
+      updater(d)
+    })(previous)
+
+    this.queue.push(() =>
+      this.listeners.forEach((listener) => listener(this.state, previous)),
+    )
+    this.#flush()
+  }
+
+  #flush = () => {
+    if (this.batching) return
+    this.queue.forEach((cb) => cb())
+    this.queue = []
+  }
+
+  batch = (cb: () => void) => {
+    this.batching = true
+    cb()
+    this.batching = false
+    this.#flush()
+  }
 }

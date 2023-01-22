@@ -44,7 +44,7 @@ export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
       [Key in keyof TParentParams]?: DefinedPathParamWarning
     }
 
-export type LoaderFn<
+export type RouteLoaderFn<
   TRouteLoaderData extends AnyLoaderData = {},
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams extends AnyPathParams = {},
@@ -107,13 +107,8 @@ export type RouteOptions<
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
   pendingComponent?: GetFrameworkGeneric<'Component'> //, NoInfer<TParentLoaderData>>
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-  loader?: LoaderFn<TRouteLoaderData, TFullSearchSchema, TAllParams>
-  // The max age to consider loader data fresh (not-stale) for this route in milliseconds from the time of fetch
-  // Defaults to 0. Only stale loader data is refetched.
-  loaderMaxAge?: number
-  // The max age to cache the loader data for this route in milliseconds from the time of route inactivity
-  // before it is garbage collected.
-  loaderGcMaxAge?: number
+  loader?: RouteLoaderFn<TRouteLoaderData, TFullSearchSchema, TAllParams>
+
   // This async function is called before a route is loaded.
   // If an error is thrown here, the route's loader will not be called.
   // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onLoadError` function.

@@ -8,6 +8,7 @@ import {
   ToOptions,
   ValidFromPath,
   ResolveRelativePath,
+  ToPathOption,
 } from './link'
 import {
   cleanPath,
@@ -35,7 +36,7 @@ import {
 } from './routeInfo'
 import { RouteMatch, RouteMatchStore } from './routeMatch'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
-import { createStore, batch, Store } from './store'
+import { Store } from './store'
 import {
   functionalUpdate,
   last,
@@ -45,8 +46,8 @@ import {
   PickRequired,
   Timeout,
   Updater,
+  replaceEqualDeep,
 } from './utils'
-import { replaceEqualDeep } from './interop'
 import {
   createBrowserHistory,
   createMemoryHistory,
@@ -136,34 +137,6 @@ type FetchServerDataFn = (ctx: {
   routeMatch: RouteMatch
 }) => Promise<any>
 
-export interface Loader<
-  TFullSearchSchema extends AnySearchSchema = {},
-  TAllParams extends AnyPathParams = {},
-  TRouteLoaderData = AnyLoaderData,
-> {
-  fetch: keyof PickRequired<TFullSearchSchema> extends never
-    ? keyof TAllParams extends never
-      ? (loaderContext: { signal?: AbortSignal }) => Promise<TRouteLoaderData>
-      : (loaderContext: {
-          params: TAllParams
-          search?: TFullSearchSchema
-          signal?: AbortSignal
-        }) => Promise<TRouteLoaderData>
-    : keyof TAllParams extends never
-    ? (loaderContext: {
-        search: TFullSearchSchema
-        params: TAllParams
-        signal?: AbortSignal
-      }) => Promise<TRouteLoaderData>
-    : (loaderContext: {
-        search: TFullSearchSchema
-        signal?: AbortSignal
-      }) => Promise<TRouteLoaderData>
-  current?: LoaderState<TFullSearchSchema, TAllParams>
-  latest?: LoaderState<TFullSearchSchema, TAllParams>
-  pending: LoaderState<TFullSearchSchema, TAllParams>[]
-}
-
 export interface LoaderState<
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams extends AnyPathParams = {},
@@ -176,17 +149,13 @@ export interface RouterStore<
   TSearchObj extends AnySearchSchema = {},
   TState extends LocationState = LocationState,
 > {
-  status: 'idle' | 'loading'
+  status: 'idle' | 'pending'
   latestLocation: ParsedLocation<TSearchObj, TState>
   currentMatches: RouteMatch[]
   currentLocation: ParsedLocation<TSearchObj, TState>
   pendingMatches?: RouteMatch[]
   pendingLocation?: ParsedLocation<TSearchObj, TState>
   lastUpdated: number
-  loaders: Record<string, Loader>
-  isFetching: boolean
-  isPreloading: boolean
-  matchCache: Record<string, MatchCacheEntry>
 }
 
 export type ListenerFn = () => void
@@ -245,10 +214,7 @@ export type MatchCache = Record<string, MatchCacheEntry>
 
 interface DehydratedRouteMatch {
   id: string
-  state: Pick<
-    RouteMatchStore<any, any>,
-    'status' | 'routeLoaderData' | 'invalid' | 'invalidAt'
-  >
+  state: Pick<RouteMatchStore<any, any>, 'status'>
 }
 
 export interface RouterContext {}
@@ -321,7 +287,7 @@ export class Router<
       fetchServerDataFn: options?.fetchServerDataFn ?? defaultFetchServerDataFn,
     }
 
-    this.store = createStore(getInitialRouterState())
+    this.store = new Store(getInitialRouterState())
     this.basepath = ''
 
     this.update(options)
@@ -451,7 +417,7 @@ export class Router<
 
     let matches!: RouteMatch<any, any>[]
 
-    batch(() => {
+    this.store.batch(() => {
       if (next) {
         // Ingest the new location
         this.store.setState((s) => {
@@ -465,7 +431,7 @@ export class Router<
       })
 
       this.store.setState((s) => {
-        s.status = 'loading'
+        s.status = 'pending'
         s.pendingMatches = matches
         s.pendingLocation = this.store.state.latestLocation
       })
@@ -513,26 +479,10 @@ export class Router<
       })
 
       // Clear non-loading error states when match leaves
-      if (d.store.state.status === 'error' && !d.store.state.isFetching) {
+      if (d.store.state.status === 'error') {
         d.store.setState((s) => {
           s.status = 'idle'
           s.error = undefined
-        })
-      }
-
-      const gc = Math.max(
-        d.route.options.loaderGcMaxAge ??
-          this.options.defaultLoaderGcMaxAge ??
-          0,
-        d.route.options.loaderMaxAge ?? this.options.defaultLoaderMaxAge ?? 0,
-      )
-
-      if (gc > 0) {
-        this.store.setState((s) => {
-          s.matchCache[d.id] = {
-            gc: gc == Infinity ? Number.MAX_SAFE_INTEGER : now + gc,
-            match: d,
-          }
         })
       }
     })
@@ -549,7 +499,7 @@ export class Router<
         params: d.params,
         search: d.store.state.search,
       })
-      delete this.store.state.matchCache[d.id]
+      // delete this.store.state.matchCache[d.id] // TODO:
     })
 
     this.store.setState((s) => {
@@ -565,29 +515,6 @@ export class Router<
     this.options.onRouteChange?.()
 
     this.resolveNavigation()
-  }
-
-  cleanMatchCache = () => {
-    const now = Date.now()
-
-    this.store.setState((s) => {
-      Object.keys(s.matchCache).forEach((matchId) => {
-        const entry = s.matchCache[matchId]!
-
-        // Don't remove loading matches
-        if (entry.match.store.state.status === 'loading') {
-          return
-        }
-
-        // Do not remove successful matches that are still valid
-        if (entry.gc > 0 && entry.gc > now) {
-          return
-        }
-
-        // Everything else gets removed
-        delete s.matchCache[matchId]
-      })
-    })
   }
 
   getRoute = <TId extends keyof TAllRouteInfo['routeInfoById']>(
@@ -613,7 +540,6 @@ export class Router<
 
   preloadRoute = async (
     navigateOpts: BuildNextOptions = this.store.state.latestLocation,
-    loaderOpts: { maxAge?: number; gcMaxAge?: number },
   ) => {
     const next = this.buildNext(navigateOpts)
     const matches = this.matchRoutes(next.pathname, {
@@ -622,16 +548,6 @@ export class Router<
 
     await this.loadMatches(matches, {
       preload: true,
-      maxAge:
-        loaderOpts.maxAge ??
-        this.options.defaultPreloadMaxAge ??
-        this.options.defaultLoaderMaxAge ??
-        0,
-      gcMaxAge:
-        loaderOpts.gcMaxAge ??
-        this.options.defaultPreloadGcMaxAge ??
-        this.options.defaultLoaderGcMaxAge ??
-        0,
     })
     return matches
   }
@@ -711,7 +627,7 @@ export class Router<
 
         const match =
           existingMatches.find((d) => d.id === matchId) ||
-          this.store.state.matchCache[matchId]?.match ||
+          // this.store.state.matchCache[matchId]?.match || // TODO:
           new RouteMatch(this, foundRoute, {
             id: matchId,
             params,
@@ -737,11 +653,9 @@ export class Router<
 
   loadMatches = async (
     resolvedMatches: RouteMatch[],
-    loaderOpts?:
-      | { preload: true; maxAge: number; gcMaxAge: number }
-      | { preload?: false; maxAge?: never; gcMaxAge?: never },
+    loaderOpts?: { preload?: boolean },
   ) => {
-    this.cleanMatchCache()
+    // this.cleanMatchCache()
     resolvedMatches.forEach(async (match) => {
       // Validate the match (loads search params etc)
       match.__validate()
@@ -773,7 +687,7 @@ export class Router<
         return
       }
 
-      match.load(loaderOpts)
+      match.load()
 
       if (match.store.state.status !== 'success' && match.__loadPromise) {
         // Wait for the first sign of activity from the match
@@ -801,16 +715,6 @@ export class Router<
         })) || {}
       )
     } else {
-      // Refresh:
-      // '/dashboard'
-      // '/dashboard/invoices/'
-      // '/dashboard/invoices/123'
-
-      // New:
-      // '/dashboard/invoices/456'
-
-      // TODO: batch requests when possible
-
       const res = await this.options.fetchServerDataFn!({
         router: this,
         routeMatch,
@@ -823,18 +727,19 @@ export class Router<
   invalidateRoute = async <
     TFrom extends ValidFromPath<TAllRouteInfo> = '/',
     TTo extends string = '.',
-  >(
-    opts: ToOptions<TAllRouteInfo, TFrom, TTo>,
-  ) => {
+  >(opts: {
+    to: ToPathOption<TAllRouteInfo, TFrom, TTo>
+    from?: TFrom | undefined
+  }) => {
     const next = this.buildNext(opts)
-    const unloadedMatchIds = this.matchRoutes(next.pathname).map((d) => d.id)
+    const unloadedMatches = this.matchRoutes(next.pathname)
 
     await Promise.allSettled(
       [
         ...this.store.state.currentMatches,
         ...(this.store.state.pendingMatches ?? []),
       ].map(async (match) => {
-        if (unloadedMatchIds.includes(match.id)) {
+        if (unloadedMatches.find((d) => d.id === match.id)) {
           return match.invalidate()
         }
       }),
@@ -1014,9 +919,6 @@ export class Router<
         e.button === 0
       ) {
         e.preventDefault()
-        if (pathIsEqual && !search && !hash) {
-          this.invalidateRoute(nextOpts as any)
-        }
 
         // All is well? Navigate!
         this.#commitLocation(nextOpts as any)
@@ -1026,10 +928,7 @@ export class Router<
     // The click handler
     const handleFocus = (e: MouseEvent) => {
       if (preload) {
-        this.preloadRoute(nextOpts, {
-          maxAge: userPreloadMaxAge,
-          gcMaxAge: userPreloadGcMaxAge,
-        }).catch((err) => {
+        this.preloadRoute(nextOpts).catch((err) => {
           console.warn(err)
           console.warn('Error preloading route! ☝️')
         })
@@ -1046,10 +945,7 @@ export class Router<
 
         target.preloadTimeout = setTimeout(() => {
           target.preloadTimeout = null
-          this.preloadRoute(nextOpts, {
-            maxAge: userPreloadMaxAge,
-            gcMaxAge: userPreloadGcMaxAge,
-          }).catch((err) => {
+          this.preloadRoute(nextOpts).catch((err) => {
             console.warn(err)
             console.warn('Error preloading route! ☝️')
           })
@@ -1090,12 +986,7 @@ export class Router<
         currentMatches: this.store.state.currentMatches.map((match) => ({
           id: match.id,
           state: {
-            ...pick(match.store.state, [
-              'status',
-              'routeLoaderData',
-              'invalidAt',
-              'invalid',
-            ]),
+            ...pick(match.store.state, ['status']),
           },
         })),
       },
@@ -1105,7 +996,6 @@ export class Router<
 
   hydrate = (dehydratedRouter: DehydratedRouter<TRouterContext>) => {
     this.store.setState((s) => {
-      // Update the context TODO: make this part of state?
       this.options.context = dehydratedRouter.context
 
       // Match the routes
@@ -1120,78 +1010,17 @@ export class Router<
         const dehydratedMatch = dehydratedRouter.state.currentMatches[index]
         invariant(
           dehydratedMatch && dehydratedMatch.id === match.id,
-          'Oh no! There was a hydration mismatch when attempting to rethis.store the state of the router! 😬',
+          'Oh no! There was a hydration mismatch when attempting to hydrate the state of the router! 😬',
         )
         match.store.setState((s) => {
           Object.assign(s, dehydratedMatch.state)
         })
-        match.setLoaderData(dehydratedMatch.state.routeLoaderData)
       })
 
       currentMatches.forEach((match) => match.__validate())
 
       Object.assign(s, { ...dehydratedRouter.state, currentMatches })
     })
-  }
-
-  getLoader = <TFrom extends keyof TAllRouteInfo['routeInfoById'] = '/'>(opts: {
-    from: TFrom
-  }): unknown extends TAllRouteInfo['routeInfoById'][TFrom]['routeLoaderData']
-    ?
-        | Loader<
-            LoaderContext<
-              TAllRouteInfo['routeInfoById'][TFrom]['fullSearchSchema'],
-              TAllRouteInfo['routeInfoById'][TFrom]['allParams']
-            >,
-            TAllRouteInfo['routeInfoById'][TFrom]['routeLoaderData']
-          >
-        | undefined
-    : Loader<
-        TAllRouteInfo['routeInfoById'][TFrom]['fullSearchSchema'],
-        TAllRouteInfo['routeInfoById'][TFrom]['allParams'],
-        TAllRouteInfo['routeInfoById'][TFrom]['routeLoaderData']
-      > => {
-    const id = opts.from || ('/' as any)
-
-    const route = this.getRoute(id)
-
-    if (!route) return undefined as any
-
-    let loader =
-      this.store.state.loaders[id] ||
-      (() => {
-        this.store.setState((s) => {
-          s.loaders[id] = {
-            pending: [],
-            fetch: (async (loaderContext: LoaderContext<any, any>) => {
-              if (!route) {
-                return
-              }
-              const loaderState: LoaderState<any, any> = {
-                loadedAt: Date.now(),
-                loaderContext,
-              }
-              this.store.setState((s) => {
-                s.loaders[id]!.current = loaderState
-                s.loaders[id]!.latest = loaderState
-                s.loaders[id]!.pending.push(loaderState)
-              })
-              try {
-                return await route.options.loader?.(loaderContext)
-              } finally {
-                this.store.setState((s) => {
-                  s.loaders[id]!.pending = s.loaders[id]!.pending.filter(
-                    (d) => d !== loaderState,
-                  )
-                })
-              }
-            }) as any,
-          }
-        })
-        return this.store.state.loaders[id]!
-      })()
-
-    return loader as any
   }
 
   #buildRouteTree = (rootRouteConfig: RouteConfig) => {
@@ -1385,22 +1214,21 @@ function getInitialRouterState(): RouterStore {
     latestLocation: null!,
     currentLocation: null!,
     currentMatches: [],
-    loaders: {},
     lastUpdated: Date.now(),
-    matchCache: {},
-    get isFetching() {
-      return (
-        this.status === 'loading' ||
-        this.currentMatches.some((d) => d.store.state.isFetching)
-      )
-    },
-    get isPreloading() {
-      return Object.values(this.matchCache).some(
-        (d) =>
-          d.match.store.state.isFetching &&
-          !this.currentMatches.find((dd) => dd.id === d.match.id),
-      )
-    },
+    // matchCache: {}, // TODO:
+    // get isFetching() {
+    //   return (
+    //     this.status === 'loading' ||
+    //     this.currentMatches.some((d) => d.store.state.isFetching)
+    //   )
+    // },
+    // get isPreloading() {
+    //   return Object.values(this.matchCache).some(
+    //     (d) =>
+    //       d.match.store.state.isFetching &&
+    //       !this.currentMatches.find((dd) => dd.id === d.match.id),
+    //   )
+    // },
   }
 }
 

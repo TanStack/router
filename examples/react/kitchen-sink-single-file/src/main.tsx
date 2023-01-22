@@ -10,7 +10,7 @@ import {
   MatchRoute,
   useNavigate,
   useSearch,
-  createAction,
+  Action,
   useAction,
   ReactRouter,
   createRouteConfig,
@@ -40,14 +40,14 @@ declare module '@tanstack/react-router' {
   }
 }
 
-const createInvoiceAction = createAction({
+const createInvoiceAction = new Action({
   action: postInvoice,
   onEachSuccess: async () => {
     await router.invalidateRoute({ to: invoiceRoute.id })
   },
 })
 
-const updateInvoiceAction = createAction({
+const updateInvoiceAction = new Action({
   action: patchInvoice,
   onEachSuccess: async () => {
     await router.invalidateRoute({ to: invoicesRoute.id })
@@ -157,11 +157,7 @@ const indexRoute = rootRoute.createRoute({
 
 const dashboardRoute = rootRoute.createRoute({
   path: 'dashboard',
-  loader: async () => {
-    return {
-      invoices: await fetchInvoices(),
-    }
-  },
+  loader: invoicesLoader.ensureData,
   component: () => {
     return (
       <>
@@ -343,6 +339,10 @@ const invoicesIndexRoute = invoicesRoute.createRoute({
   },
 })
 
+const invoiceLoader = {
+  load: async ({ invoiceId }) => {},
+}
+
 const invoiceRoute = invoicesRoute.createRoute({
   path: '$invoiceId',
   parseParams: (params) => ({
@@ -356,22 +356,12 @@ const invoiceRoute = invoicesRoute.createRoute({
         notes: z.string().optional(),
       })
       .parse(search),
-  loader: async ({ params: { invoiceId }, search: {} }) => {
-    const invoice = await fetchInvoiceById(invoiceId)
-
-    if (!invoice) {
-      throw new Error('Invoice not found!')
-    }
-
-    return {
-      invoice,
-    }
-  },
+  loader: async ({ params: { invoiceId } }) => invoiceLoader.load(invoiceId),
   component: () => {
-    const { invoice } = useLoaderData({ from: invoiceRoute.id })
     const search = useSearch({ from: invoiceRoute.id })
-    const { latestSubmission } = useAction(updateInvoiceAction)
     const navigate = useNavigate({ from: invoiceRoute.id })
+    const { invoice } = useLoaderData(invoiceLoader)
+    const { latestSubmission } = useAction(updateInvoiceAction)
 
     const [notes, setNotes] = React.useState(search.notes ?? '')
 

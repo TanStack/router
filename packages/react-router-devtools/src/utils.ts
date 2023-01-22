@@ -26,7 +26,7 @@ type StyledComponent<T> = T extends 'button'
   : never
 
 export function getStatusColor(match: RouteMatch, theme: Theme) {
-  return match.store.state.isFetching
+  return match.store.state.status === 'pending'
     ? theme.active
     : match.store.state.status === 'error'
     ? theme.danger
@@ -34,16 +34,6 @@ export function getStatusColor(match: RouteMatch, theme: Theme) {
     ? theme.success
     : theme.gray
 }
-
-// export function getQueryStatusLabel(query: Query) {
-//   return query.state.isFetching
-//     ? 'fetching'
-//     : !query.getObserversCount()
-//     ? 'inactive'
-//     : query.isStale()
-//     ? 'stale'
-//     : 'fresh'
-// }
 
 type Styles =
   | React.CSSProperties

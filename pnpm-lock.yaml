@@ -606,11 +606,13 @@ importers:
       '@solidjs/reactivity': ^0.0.7
       babel-plugin-transform-async-to-promises: ^0.8.18
       immer: ^9.0.15
+      mitt: ^3.0.0
       tiny-invariant: ^1.3.1
     dependencies:
       '@babel/runtime': 7.20.6
       '@solidjs/reactivity': 0.0.7
       immer: 9.0.16
+      mitt: 3.0.0
       tiny-invariant: 1.3.1
     devDependencies:
       babel-plugin-transform-async-to-promises: 0.8.18
@@ -7919,6 +7921,10 @@ packages:
       minipass: 3.3.6
       yallist: 4.0.0
     dev: true
+
+  /mitt/3.0.0:
+    resolution: {integrity: sha512-7dX2/10ITVyqh4aOSVI9gdape+t9l2/8QxHrFmUXu4EEUpdlxl6RudZUPZoc+zuY2hk1j7XxVroIVIan/pD/SQ==}
+    dev: false
 
   /mkdirp-infer-owner/2.0.0:
     resolution: {integrity: sha512-sdqtiFt3lkOaYvTXSRIUjkIdPTcxgv5+fgqYE/5qgwdw12cOrAuzzgzvVExIkH/ul1oeHN3bCLOWSG3XOqbKKw==}

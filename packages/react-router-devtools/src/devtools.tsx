@@ -440,24 +440,30 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     setActiveMatchId('')
   }, [activeRouteId])
 
-  const activeMatch =
-    Object.values(router.store.state.matchCache)?.find(
-      (d) => d.match.id === activeMatchId,
-    )?.match ??
-    router.store.state.currentMatches?.find((d) => d.route.id === activeRouteId)
-
-  const matchCacheValues = multiSortBy(
-    Object.keys(router.store.state.matchCache)
-      .filter((key) => {
-        const cacheEntry = router.store.state.matchCache[key]!
-        return cacheEntry.gc > Date.now()
-      })
-      .map((key) => router.store.state.matchCache[key]!),
-    [
-      (d) => (d.match.store.state.isFetching ? -1 : 1),
-      (d) => -d.match.store.state.updatedAt!,
+  const allMatches = React.useMemo(
+    () => [
+      ...Object.values(router.store.state.currentMatches),
+      ...Object.values(router.store.state.pendingMatches ?? []),
     ],
+    [router.store.state.currentMatches, router.store.state.pendingMatches],
   )
+
+  const activeMatch =
+    allMatches?.find((d) => d.id === activeMatchId) ||
+    allMatches?.find((d) => d.route.id === activeRouteId)
+
+  // const matchCacheValues = multiSortBy(
+  //   Object.keys(router.store.state.matchCache)
+  //     .filter((key) => {
+  //       const cacheEntry = router.store.state.matchCache[key]!
+  //       return cacheEntry.gc > Date.now()
+  //     })
+  //     .map((key) => router.store.state.matchCache[key]!),
+  //   [
+  //     (d) => (d.match.store.state.isFetching ? -1 : 1),
+  //     (d) => -d.match.store.state.updatedAt!,
+  //   ],
+  // )
 
   return (
     <ThemeProvider theme={theme}>
@@ -703,7 +709,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               })}
             </>
           ) : null}
-          {matchCacheValues.length ? (
+          {/* {matchCacheValues.length ? (
             <>
               <div
                 style={{
@@ -798,7 +804,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 )
               })}
             </>
-          ) : null}
+          ) : null} */}
         </div>
 
         {activeMatch ? (
@@ -834,10 +840,10 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                     <td style={{ opacity: '.5' }}>Status</td>
                     <td>{activeMatch.store.state.status}</td>
                   </tr>
-                  <tr>
+                  {/* <tr>
                     <td style={{ opacity: '.5' }}>Invalid</td>
                     <td>{activeMatch.getIsInvalid().toString()}</td>
-                  </tr>
+                  </tr> */}
                   <tr>
                     <td style={{ opacity: '.5' }}>Last Updated</td>
                     <td>
@@ -926,7 +932,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             flexDirection: 'column',
           }}
         >
-          <div
+          {/* <div
             style={{
               padding: '.5em',
               background: theme.backgroundAlt,
@@ -963,7 +969,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             ) : (
               <em style={{ opacity: 0.5 }}>{'{ }'}</em>
             )}
-          </div>
+          </div> */}
           <div
             style={{
               padding: '.5em',

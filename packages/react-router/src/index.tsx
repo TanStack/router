@@ -28,6 +28,10 @@ import {
   Action,
   ActionStore,
   ActionSubmission,
+  Loader,
+  LoaderStore,
+  VariablesOptions,
+  LoaderApi,
 } from '@tanstack/router-core'
 import { useStore } from './useStore'
 
@@ -432,31 +436,31 @@ export function useRoute<
   return resolvedRoute as any
 }
 
-export function useLoaderData<
-  TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
-  TStrict extends boolean = true,
-  TLoaderData = RegisteredAllRouteInfo['routeInfoById'][TFrom]['loaderData'],
->(opts?: {
-  from: TFrom
-  strict?: TStrict
-  track?: (loaderData: TLoaderData) => any
-}): TStrict extends true ? TLoaderData : TLoaderData | undefined {
-  const match = useMatch(opts)
+// export function useLoaderData<
+//   TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
+//   TStrict extends boolean = true,
+//   TLoaderData = RegisteredAllRouteInfo['routeInfoById'][TFrom]['loaderData'],
+// >(opts?: {
+//   from: TFrom
+//   strict?: TStrict
+//   track?: (loaderData: TLoaderData) => any
+// }): TStrict extends true ? TLoaderData : TLoaderData | undefined {
+//   const match = useMatch(opts)
 
-  invariant(
-    match,
-    `Could not find ${
-      opts?.from ? `an active match from "${opts.from}"` : 'a nearest match!'
-    }`,
-  )
+//   invariant(
+//     match,
+//     `Could not find ${
+//       opts?.from ? `an active match from "${opts.from}"` : 'a nearest match!'
+//     }`,
+//   )
 
-  useStore(
-    (match as any).store,
-    (d: any) => opts?.track?.(d.loaderData) ?? d.loaderData,
-  )
+//   useStore(
+//     (match as any).store,
+//     (d: any) => opts?.track?.(d.loaderData) ?? d.loaderData,
+//   )
 
-  return (match as unknown as RouteMatch).store.state.loaderData as any
-}
+//   return (match as unknown as RouteMatch).store.state.loaderData as any
+// }
 
 export function useSearch<
   TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'],
@@ -583,7 +587,7 @@ function SubOutlet({
       )
     }
 
-    if (props.match.store.state.status === 'loading') {
+    if (props.match.store.state.status === 'pending') {
       throw props.match.__loadPromise
     }
 
@@ -673,33 +677,26 @@ function CatchBoundaryInner(props: {
   )
   const router = useRouter()
   const errorComponent = props.errorComponent ?? DefaultErrorBoundary
+  const prevKeyRef = React.useRef('' as any)
 
-  // React.useEffect(() => {
-  //   if (activeErrorState) {
-  //     let prevKey = router.store.state.currentLocation.key
-  //     return createRoot((dispose) => {
-  //       createEffect(() => {
-  //         if (router.store.state.currentLocation.key !== prevKey) {
-  //           prevKey = router.store.state.currentLocation.key
-  //           setActiveErrorState({} as any)
-  //         }
-  //       })
+  React.useEffect(() => {
+    if (activeErrorState) {
+      if (router.store.state.currentLocation.key !== prevKeyRef.current) {
+        setActiveErrorState({} as any)
+      }
+    }
 
-  //       return dispose
-  //     })
-  //   }
-
-  //   return
-  // }, [activeErrorState])
+    prevKeyRef.current = router.store.state.currentLocation.key
+  }, [activeErrorState, router.store.state.currentLocation.key])
 
   React.useEffect(() => {
     if (props.errorState.error) {
       setActiveErrorState(props.errorState)
     }
-    props.reset()
+    // props.reset()
   }, [props.errorState.error])
 
-  if (props.errorState.error) {
+  if (props.errorState.error && activeErrorState.error) {
     return React.createElement(errorComponent, activeErrorState)
   }
 
@@ -742,10 +739,11 @@ export function useAction<
   opts?: {
     track?: (actionStore: ActionStore<TPayload, TResponse, TError>) => any
   },
-): Action & {
-  latestSubmission: ActionSubmission<TPayload, TResponse, TError>
-  pendingSubmissions: ActionSubmission<TPayload, TResponse, TError>[]
-} {
+): Action<TKey, TPayload, TResponse, TError> &
+  Action<TKey, TPayload, TResponse, TError>['store']['state'] & {
+    latestSubmission: ActionSubmission<TPayload, TResponse, TError>
+    pendingSubmissions: ActionSubmission<TPayload, TResponse, TError>[]
+  } {
   useStore(action.store, (d) => opts?.track?.(d) ?? d, true)
 
   const [ref] = React.useState({})
@@ -759,6 +757,63 @@ export function useAction<
         action.store.state.submissions.filter((d) => d.status === 'pending'),
       [action.store.state.submissions],
     ),
+  })
+
+  return ref as any
+}
+
+// export function useLoader<
+//   TKey extends string = string,
+//   TVariables = unknown,
+//   TData = unknown,
+//   TError = Error,
+// >(
+//   loader: Loader<TKey, TVariables, TData, TError>,
+//   opts?: {
+//     track?: (loaderStore: LoaderStore<TData, TError>) => any
+//   },
+// ): Loader<TKey, TVariables, TData, TError> &
+//   Loader<TKey, TVariables, TData, TError>['store']['state'] {
+//   useStore(loader.store, (d) => opts?.track?.(d) ?? d, true)
+
+//   const [ref] = React.useState({})
+
+//   Object.assign(ref, {
+//     ...loader,
+//     ...loader.store.state,
+//   })
+
+//   return ref as any
+// }
+
+export function useLoader<
+  TKey extends string = string,
+  TVariables = unknown,
+  TData = unknown,
+  TError = Error,
+>(
+  opts: {
+    loader: LoaderApi<TKey, TVariables, TData, TError>
+    track?: (loaderStore: LoaderStore<TData, TError>) => any
+  } & VariablesOptions<TVariables>,
+): Loader<TKey, TVariables, TData, TError> &
+  Loader<TKey, TVariables, TData, TError>['store']['state'] {
+  const loaderApi = opts.loader
+  const loader = loaderApi.getLoader({
+    variables: opts.variables,
+  } as any)
+
+  // React.useEffect(() => {
+  //   loader.load()
+  // }, [loader])
+
+  useStore(loader.store, (d) => opts?.track?.(d) ?? d, true)
+
+  const [ref] = React.useState({})
+
+  Object.assign(ref, {
+    ...loader,
+    ...loader.store.state,
   })
 
   return ref as any
