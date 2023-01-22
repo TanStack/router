@@ -1,87 +1,77 @@
-import { Store } from './store'
+import { Store } from '@tanstack/store'
 import { isPlainObject, replaceEqualDeep } from './utils'
 
-interface LoaderCacheOptions<
-  TLoaderConfigs extends LoaderConfig<any, any, any, any>[],
-> {
-  loaderConfigs: TLoaderConfigs
+export interface RegisterLoaderClient {
+  // loaderClient: LoaderClient
 }
 
-type LoaderCacheStore = Store<{
-  isFetching?: Loader<any, any, any, any>[]
+export type RegisteredLoaderClient = RegisterLoaderClient extends {
+  loaderClient: LoaderClient<infer TLoaders>
+}
+  ? LoaderClient<TLoaders>
+  : LoaderClient
+
+export type RegisteredLoaders = RegisterLoaderClient extends {
+  loaderClient: LoaderClient<infer TLoaders>
+}
+  ? TLoaders
+  : Loader<any, any, any, any>[]
+
+interface LoaderClientOptions<TLoaders extends Loader<any, any, any, any>[]> {
+  loaders: TLoaders
+}
+
+type LoaderClientStore = Store<{
+  isFetching?: LoaderInstance<any, any, any, any>[]
 }>
 // A loader cache that tracks instances of loaders by unique key like react query
-export class LoaderCache<
-  TLoaderConfigs extends LoaderConfig<any, any, any, any>[] = LoaderConfig[],
+export class LoaderClient<
+  TLoaders extends Loader<any, any, any, any>[] = Loader[],
 > {
-  options: LoaderCacheOptions<TLoaderConfigs>
-  #loaderApis: Record<string, LoaderApi>
-  store: LoaderCacheStore
+  options: LoaderClientOptions<TLoaders>
+  loaders: Record<string, Loader>
+  store: LoaderClientStore
 
-  constructor(options: LoaderCacheOptions<TLoaderConfigs>) {
+  constructor(options: LoaderClientOptions<TLoaders>) {
     this.options = options
-    this.store = new Store({}) as LoaderCacheStore
-    this.#loaderApis = {}
+    this.store = new Store({}) as LoaderClientStore
+    this.loaders = {}
 
-    this.options.loaderConfigs.forEach((loaderConfig) => {
-      // @ts-ignore
-      const loaderApi = new LoaderApi({
-        cache: this as any,
-        config: loaderConfig,
-      })
+    this.options.loaders.forEach((loader) => {
+      loader.cache = this
 
-      this.#loaderApis[loaderApi.key] = loaderApi
+      this.loaders[loader.key] = loader
     })
   }
 
-  getLoader<TKey extends TLoaderConfigs[number]['options']['key']>(opts: {
+  getLoader<TKey extends TLoaders[number]['__types']['key']>(opts: {
     key: TKey
-  }): LoaderApiByKey<TLoaderConfigs, TKey> {
-    return this.#loaderApis[opts.key as any] as any
+  }): LoaderByKey<TLoaders, TKey> {
+    return this.loaders[opts.key as any] as any
   }
 }
 
-export type LoaderApiByKey<
-  TLoaderConfigs extends LoaderConfig<any, any, any, any>[],
-  TKey extends string,
+export type LoaderByKey<
+  TLoaders extends Loader<any, any, any, any>[],
+  TKey extends TLoaders[number]['__types']['key'],
 > = {
-  [TLoaderConfig in TLoaderConfigs[number] as number]: TLoaderConfig extends {
-    options: LoaderConfigOptions<
-      TKey,
-      infer TVariables,
-      infer TData,
-      infer TError
-    >
+  [TLoader in TLoaders[number] as number]: TLoader extends {
+    options: LoaderApiOptions<TKey, infer TVariables, infer TData, infer TError>
   }
-    ? LoaderApi<TKey, TVariables, TData, TError>
+    ? Loader<TKey, TVariables, TData, TError>
     : never
 }[number]
 
-export interface LoaderConfigOptions<
-  TKey extends string = string,
-  TVariables = unknown,
-  TData = unknown,
-  TError = Error,
-> {
-  key: TKey
-  // The max age to consider loader data fresh (not-stale) for this route in milliseconds from the time of fetch
-  // Defaults to 0. Only stale loader data is refetched.
-  loaderMaxAge?: number
-  // The max age to cache the loader data for this route in milliseconds from the time of route inactivity
-  // before it is garbage collected.
-  loaderGcMaxAge?: number
-  loader: (
-    variables: TVariables,
-    Loader: Loader<TKey, TVariables, TData, TError>,
-  ) => TData | Promise<TData>
-  onLatestSuccess?: LoaderCallback<TData, TError>
-  onEachSuccess?: LoaderCallback<TData, TError>
-  onLatestError?: LoaderCallback<TData, TError>
-  onEachError?: LoaderCallback<TData, TError>
-  onLatestSettled?: LoaderCallback<TData, TError>
-  onEachSettled?: LoaderCallback<TData, TError>
-  debug?: boolean
-}
+export type LoaderInstanceByKey<
+  TLoaders extends Loader<any, any, any, any>[],
+  TKey extends TLoaders[number]['__types']['key'],
+> = {
+  [TLoader in TLoaders[number] as number]: TLoader extends {
+    options: LoaderApiOptions<TKey, infer TVariables, infer TData, infer TError>
+  }
+    ? LoaderInstance<TKey, TVariables, TData, TError>
+    : never
+}[number]
 
 export type VariablesOptions<TVariables> = unknown extends TVariables
   ? {
@@ -91,8 +81,8 @@ export type VariablesOptions<TVariables> = unknown extends TVariables
       variables: TVariables
     }
 
-type LoaderCallback<TData, TError> = (
-  loaderState: LoaderStore<TData, TError>,
+type LoaderCallback<TKey extends string, TVariables, TData, TError> = (
+  loader: LoaderInstance<TKey, TVariables, TData, TError>,
 ) => void | Promise<void>
 
 export interface LoaderStore<TData = unknown, TError = Error> {
@@ -109,55 +99,31 @@ export type LoaderFn<TLoaderPayload = unknown, TLoaderResponse = unknown> = (
   submission: TLoaderPayload,
 ) => TLoaderResponse | Promise<TLoaderResponse>
 
-export interface LoaderConfig<
-  TKey extends string = string,
-  TVariables = unknown,
-  TData = unknown,
-  TError = Error,
-> {
-  options: LoaderConfigOptions<TKey, TVariables, TData, TError>
-  parentLoaderConfig?: LoaderConfig
-  createLoaderConfig: CreateLoaderConfigFn
-}
-
-export type CreateLoaderConfigFn = <
-  TKey extends string = string,
-  TVariables = unknown,
-  TData = unknown,
-  TError = Error,
->(
-  options: LoaderConfigOptions<TKey, TVariables, TData, TError>,
-  parentLoaderConfig?: LoaderConfig,
-) => LoaderConfig<TKey, TVariables, TData, TError>
-
-export function createLoaderConfig<
-  TKey extends string = string,
-  TVariables = unknown,
-  TData = unknown,
-  TError = Error,
->(
-  options: LoaderConfigOptions<TKey, TVariables, TData, TError>,
-  parentLoaderConfig?: LoaderConfig,
-): LoaderConfig<TKey, TVariables, TData, TError> {
-  const loaderConfig: LoaderConfig<TKey, TVariables, TData, TError> = {
-    options,
-    parentLoaderConfig,
-    createLoaderConfig: (options) => {
-      return createLoaderConfig(options, loaderConfig as any)
-    },
-  }
-
-  return loaderConfig
-}
-
 interface LoaderApiOptions<
   TKey extends string = string,
   TVariables = unknown,
   TData = unknown,
   TError = Error,
 > {
-  cache: LoaderCache
-  config: LoaderConfig<TKey, TVariables, TData, TError>
+  key: TKey
+  // The max age to consider loader data fresh (not-stale) for this route in milliseconds from the time of fetch
+  // Defaults to 0. Only stale loader data is refetched.
+  loaderMaxAge?: number
+  // The max age to cache the loader data for this route in milliseconds from the time of route inactivity
+  // before it is garbage collected.
+  loaderGcMaxAge?: number
+  loader: (
+    variables: TVariables,
+    Loader: LoaderInstance<TKey, TVariables, TData, TError>,
+  ) => TData | Promise<TData>
+  onLatestSuccess?: LoaderCallback<TKey, TVariables, TData, TError>
+  onEachSuccess?: LoaderCallback<TKey, TVariables, TData, TError>
+  onLatestError?: LoaderCallback<TKey, TVariables, TData, TError>
+  onEachError?: LoaderCallback<TKey, TVariables, TData, TError>
+  onLatestSettled?: LoaderCallback<TKey, TVariables, TData, TError>
+  onEachSettled?: LoaderCallback<TKey, TVariables, TData, TError>
+  onEachOutdated?: LoaderCallback<TKey, TVariables, TData, TError>
+  debug?: boolean
 }
 
 export function getInitialLoaderState() {
@@ -171,40 +137,44 @@ export function getInitialLoaderState() {
   } as const
 }
 
-export class LoaderApi<
+export class Loader<
   TKey extends string = string,
   TVariables = unknown,
   TData = unknown,
   TError = Error,
 > {
-  options: LoaderConfigOptions<TKey, TVariables, TData, TError>
-  parentLoaderConfig?: LoaderConfig<string, unknown, unknown, Error>
+  __types!: {
+    key: TKey
+    variables: TVariables
+    data: TData
+    error: TError
+  }
+  options: LoaderApiOptions<TKey, TVariables, TData, TError>
+  parentLoader?: Loader<any, any, any, any>
   key: TKey
-  cache: LoaderCache
-  loaders: Record<string, Loader<TKey, TVariables, TData, TError>>
+  cache?: LoaderClient<any>
+  loaders: Record<string, LoaderInstance<TKey, TVariables, TData, TError>>
 
   __loadPromise?: Promise<TData>
 
   constructor(options: LoaderApiOptions<TKey, TVariables, TData, TError>) {
-    this.options = options.config.options
-    this.parentLoaderConfig = options.config.parentLoaderConfig
+    this.options = options
     this.key = this.options.key
-    this.cache = options.cache
     this.loaders = {}
   }
 
   getLoader = (
     opts: VariablesOptions<TVariables>,
-  ): Loader<TKey, TVariables, TData, TError> => {
+  ): LoaderInstance<TKey, TVariables, TData, TError> => {
     const hashedKey = hashKey([this.key, opts.variables])
     if (this.loaders[hashedKey]) {
       return this.loaders[hashedKey] as any
     }
 
-    const loader = new Loader<TKey, TVariables, TData, TError>({
+    const loader = new LoaderInstance<TKey, TVariables, TData, TError>({
       hashedKey,
       cache: this.cache,
-      loaderApi: this,
+      loader: this,
       variables: opts.variables as any,
     })
 
@@ -236,38 +206,56 @@ export class LoaderApi<
 
     return loader.load(opts as any)
   }
+
+  invalidate = () => {
+    Object.values(this.loaders).forEach((loader) => loader.invalidate())
+  }
+
+  createLoader = <TKey extends string, TVariables, TData, TError>(
+    options: LoaderApiOptions<TKey, TVariables, TData, TError>,
+  ): Loader<TKey, TVariables, TData, TError> => {
+    const loader = new Loader(options)
+    loader.parentLoader = this
+    return loader
+  }
 }
 
-export interface LoaderOptions<
+export interface LoaderInstanceOptions<
   TKey extends string = string,
   TVariables = unknown,
   TData = unknown,
   TError = Error,
 > {
   hashedKey: string
-  cache: LoaderCache
-  loaderApi: LoaderApi<TKey, TVariables, TData, TError>
+  cache?: LoaderClient
+  loader: Loader<TKey, TVariables, TData, TError>
   variables: TVariables
 }
 
-export class Loader<
+export class LoaderInstance<
   TKey extends string = string,
   TVariables = unknown,
   TData = unknown,
   TError = Error,
 > {
+  __types!: {
+    key: TKey
+    variables: TVariables
+    data: TData
+    error: TError
+  }
   hashedKey: string
-  options: LoaderOptions<TKey, TVariables, TData, TError>
-  cache: LoaderCache
-  loaderApi: LoaderApi<TKey, TVariables, TData, TError>
+  options: LoaderInstanceOptions<TKey, TVariables, TData, TError>
+  cache?: LoaderClient
+  loader: Loader<TKey, TVariables, TData, TError>
   store: Store<LoaderStore<TData, TError>>
   variables: TVariables
   __loadPromise?: Promise<TData>
 
-  constructor(options: LoaderOptions<TKey, TVariables, TData, TError>) {
+  constructor(options: LoaderInstanceOptions<TKey, TVariables, TData, TError>) {
     this.options = options
     this.cache = options.cache
-    this.loaderApi = options.loaderApi
+    this.loader = options.loader
     this.hashedKey = options.hashedKey
     this.variables = options.variables
     this.store = new Store<LoaderStore<TData, TError>>(getInitialLoaderState())
@@ -275,7 +263,7 @@ export class Loader<
 
     this.store.subscribe((next, prev) => {
       if (next.isFetching !== prev.isFetching) {
-        this.cache.store.setState((s) => {
+        this.cache?.store.setState((s) => {
           if (next.isFetching) {
             s.isFetching = s.isFetching
               ? s.isFetching.concat(this as any)
@@ -297,7 +285,7 @@ export class Loader<
     this.#gcTimeout = setTimeout(() => {
       this.#gcTimeout = undefined
       this.#gc()
-    }, this.loaderApi.options.loaderGcMaxAge ?? 5 * 60 * 1000)
+    }, this.loader.options.loaderGcMaxAge ?? 5 * 60 * 1000)
   }
 
   #stopGc = () => {
@@ -312,7 +300,7 @@ export class Loader<
   }
 
   #destroy = () => {
-    delete this.loaderApi.loaders[this.hashedKey]
+    delete this.loader.loaders[this.hashedKey]
   }
 
   #subscriptionCount = 0
@@ -366,14 +354,15 @@ export class Loader<
     )
   }
 
-  invalidate = () => {
+  invalidate = async () => {
     this.store.setState((s) => {
       s.invalid = true
     })
-    const parentLoaderConfig = this.loaderApi.parentLoaderConfig
-    if (parentLoaderConfig) {
-      this.cache.getLoader({ key: parentLoaderConfig.options.key })
-    }
+
+    const promise = this.store.listeners.size ? this.load() : undefined
+    const parentPromise = this.loader.parentLoader?.invalidate()
+
+    return Promise.all([promise, parentPromise])
   }
 
   #latestId = ''
@@ -397,49 +386,79 @@ export class Loader<
     const loadId = '' + Date.now() + Math.random()
     this.#latestId = loadId
 
-    const checkLatest = () => {
+    const hasNewer = () => {
       return loadId !== this.#latestId ? this.__loadPromise : undefined
     }
 
-    let latestPromise
+    let newer: ReturnType<typeof hasNewer>
 
     this.__loadPromise = Promise.resolve().then(async () => {
+      const after = async () => {
+        delete this.__loadPromise
+
+        if ((newer = hasNewer())) {
+          await this.loader.options.onLatestSettled?.(this)
+          return newer
+        } else {
+          await this.loader.options.onEachSettled?.(this)
+        }
+
+        return
+      }
+
       try {
-        const data = await this.loaderApi.options.loader(
+        const data = await this.loader.options.loader(
           this.variables as any,
           this,
         )
-        if ((latestPromise = checkLatest())) return latestPromise
-        this.store.setState((s) => {
-          s.data = replaceEqualDeep(s.data, data)
-        })
+
+        if ((newer = hasNewer())) return newer
 
         this.store.setState((s) => {
           s.error = undefined
-          s.status = 'success'
           s.updatedAt = Date.now()
+          s.data = replaceEqualDeep(s.data, data)
           s.invalidAt =
             s.updatedAt +
-            (opts?.maxAge ?? this.loaderApi.options.loaderMaxAge ?? 1000)
+            (opts?.maxAge ?? this.loader.options.loaderMaxAge ?? 1000)
         })
+
+        if ((newer = hasNewer())) {
+          await this.loader.options.onLatestSuccess?.(this)
+          return newer
+        } else {
+          await this.loader.options.onEachSuccess?.(this)
+        }
+
+        this.store.setState((s) => {
+          s.status = 'success'
+        })
+
+        await after()
 
         return this.store.state.data
       } catch (err) {
-        if ((latestPromise = checkLatest())) return latestPromise
-
         if (process.env.NODE_ENV !== 'production') {
           console.error(err)
         }
 
         this.store.setState((s) => {
           s.error = err as TError
-          s.status = 'error'
           s.updatedAt = Date.now()
         })
 
+        if ((newer = hasNewer())) {
+          await this.loader.options.onLatestError?.(this)
+          return newer
+        } else {
+          await this.loader.options.onEachError?.(this)
+        }
+
+        this.store.setState((s) => {
+          s.status = 'error'
+        })
+
         throw err
-      } finally {
-        delete this.__loadPromise
       }
     })
 

@@ -67,10 +67,6 @@ export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
   infer TCustomId,
   infer TPath,
   infer TFullPath,
-  infer TParentRouteLoaderData,
-  infer TRouteLoaderData,
-  infer TParentLoaderData,
-  infer TLoaderData,
   infer TParentSearchSchema,
   infer TSearchSchema,
   infer TFullSearchSchema,
@@ -86,10 +82,6 @@ export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
         TCustomId,
         TPath,
         TFullPath,
-        TParentRouteLoaderData,
-        TRouteLoaderData,
-        TParentLoaderData,
-        TLoaderData,
         TParentSearchSchema,
         TSearchSchema,
         TFullSearchSchema,
@@ -104,10 +96,6 @@ export interface RoutesInfoInner<
   TRouteInfo extends RouteInfo<
     string,
     string,
-    any,
-    any,
-    any,
-    any,
     any,
     any,
     any,
@@ -139,32 +127,13 @@ export interface RoutesInfoInner<
 }
 
 export interface AnyRouteInfo
-  extends RouteInfo<
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any
-  > {}
+  extends RouteInfo<any, any, any, any, any, any, any, any, any, any> {}
 
 export interface RouteInfo<
   TId extends string = string,
   TCustomId extends string = string,
   TPath extends string = string,
   TFullPath extends string = '/',
-  TParentRouteLoaderData extends AnyLoaderData = {},
-  TRouteLoaderData extends AnyLoaderData = {},
-  TParentLoaderData extends AnyLoaderData = {},
-  TLoaderData extends AnyLoaderData = {},
   TParentSearchSchema extends {} = {},
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = {},
@@ -176,10 +145,6 @@ export interface RouteInfo<
   customId: TCustomId
   path: TPath
   fullPath: TFullPath
-  parentRouteLoaderData: TParentRouteLoaderData
-  routeLoaderData: TRouteLoaderData
-  parentLoaderData: TParentLoaderData
-  loaderData: TLoaderData
   searchSchema: TSearchSchema
   fullSearchSchema: TFullSearchSchema
   parentParams: TParentParams
@@ -188,10 +153,6 @@ export interface RouteInfo<
   options: RouteOptions<
     TCustomId,
     TPath,
-    TParentRouteLoaderData,
-    TRouteLoaderData,
-    TParentLoaderData,
-    TLoaderData,
     TParentSearchSchema,
     TSearchSchema,
     TFullSearchSchema,

@@ -6,7 +6,7 @@ import { postspostIdRoute } from '../routes.generated/posts/$postId.client'
 
 routeConfig.generate({
   component: Posts,
-  loader: async () => {
+  onLoad: async () => {
     return {
       posts: await fetchPosts(),
     }
@@ -23,7 +23,7 @@ async function fetchPosts() {
 }
 
 function Posts() {
-  const { posts } = useLoaderData({ from: routeConfig.id })
+  const { posts } = useLoader({ from: routeConfig.id })
 
   return (
     <div className="p-2 flex gap-2">

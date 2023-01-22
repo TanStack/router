@@ -2,7 +2,7 @@ import {
   Link,
   MatchRoute,
   Outlet,
-  useLoaderData,
+  useLoader,
   useMatch,
   useNavigate,
   useSearch,
@@ -19,7 +19,7 @@ export type UsersViewSortBy = z.infer<typeof usersViewSortBy>
 export const usersRoute = dashboardRoute.createRoute({
   path: 'users',
   component: Users,
-  loader: async ({ search }) => {
+  onLoad: async ({ search }) => {
     search
     return {
       users: await fetchUsers(),
@@ -47,7 +47,7 @@ export const usersRoute = dashboardRoute.createRoute({
 
 function Users() {
   const navigate = useNavigate({ from: usersRoute.id })
-  const { users } = useLoaderData({ from: usersRoute.id })
+  const { users } = useLoader({ from: usersRoute.id })
   const { usersView } = useSearch({ from: usersRoute.id })
 
   const sortBy = usersView?.sortBy ?? 'name'

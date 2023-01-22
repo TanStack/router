@@ -5,7 +5,7 @@ import { InvoiceFields } from '../../../components/InvoiceFields'
 import { invoicesRoute } from '.'
 import {
   useAction,
-  useLoaderData,
+  useLoader,
   useNavigate,
   useSearch,
   Link,
@@ -23,7 +23,7 @@ export const invoiceRoute = invoicesRoute.createRoute({
     notes: z.string().optional(),
   }),
   component: InvoiceView,
-  loader: async ({ params: { invoiceId } }) => {
+  onLoad: async ({ params: { invoiceId } }) => {
     console.log('Fetching invoice...')
     const invoice = await fetchInvoiceById(invoiceId)
 
@@ -38,7 +38,7 @@ export const invoiceRoute = invoicesRoute.createRoute({
 })
 
 function InvoiceView() {
-  const { invoice } = useLoaderData({ from: invoiceRoute.id })
+  const { invoice } = useLoader({ from: invoiceRoute.id })
   const search = useSearch({ from: invoiceRoute.id })
   const action = useAction(updateInvoiceAction)
   const navigate = useNavigate({ from: invoiceRoute.id })

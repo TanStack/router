@@ -199,8 +199,8 @@
           "to": "api/react/useLinkProps"
         },
         {
-          "label": "useLoaderData",
-          "to": "api/react/useLoaderData"
+          "label": "useLoader",
+          "to": "api/react/useLoader"
         },
         {
           "label": "useMatch",

@@ -2,7 +2,7 @@ import {
   Link,
   MatchRoute,
   Outlet,
-  useLoaderData,
+  useLoader,
   useNavigate,
   useSearch,
 } from '@tanstack/react-router'
@@ -17,7 +17,7 @@ type UsersViewSortBy = z.infer<typeof usersViewSortBy>
 
 routeConfig.generate({
   component: Users,
-  loader: async ({ search }) => {
+  onLoad: async ({ search }) => {
     search
     return {
       users: await fetchUsers(),
@@ -44,7 +44,7 @@ routeConfig.generate({
 })
 
 function Users() {
-  const { users } = useLoaderData({ from: routeConfig.id })
+  const { users } = useLoader({ from: routeConfig.id })
   const { usersView } = useSearch({ from: routeConfig.id })
   const navigate = useNavigate({ from: routeConfig.id })
 

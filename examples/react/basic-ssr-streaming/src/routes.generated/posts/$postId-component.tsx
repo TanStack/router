@@ -1,21 +1,21 @@
-import * as React from 'react';
-import { useLoaderData, useMatch } from '@tanstack/react-router';
-import { routeConfig } from '../../routes.generated/posts/$postId';
+import * as React from 'react'
+import { useLoader, useMatch } from '@tanstack/react-router'
+import { routeConfig } from '../../routes.generated/posts/$postId'
 export type PostType = {
-  id: string;
-  title: string;
-  body: string;
-};
-export const tanner = 'foo';
+  id: string
+  title: string
+  body: string
+}
+export const tanner = 'foo'
 function Post() {
-  const {
-    post
-  } = useLoaderData({
-    from: routeConfig.id
-  });
-  return <div>
+  const { post } = useLoader({
+    from: routeConfig.id,
+  })
+  return (
+    <div>
       <h4>{post.title}</h4>
       <p>{post.body}</p>
-    </div>;
+    </div>
+  )
 }
-export const component = Post;
+export const component = Post

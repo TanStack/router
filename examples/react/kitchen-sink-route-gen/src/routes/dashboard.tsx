@@ -6,7 +6,7 @@ import { routeConfig } from '../routes.generated/dashboard'
 
 routeConfig.generate({
   component: Dashboard,
-  loader: async () => {
+  onLoad: async () => {
     console.log('Fetching all invoices...')
     return {
       invoices: await fetchInvoices(),

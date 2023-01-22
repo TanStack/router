@@ -1,4 +1,8 @@
+import { Store } from '@tanstack/store'
 import invariant from 'tiny-invariant'
+
+//
+
 import { GetFrameworkGeneric } from './frameworks'
 
 import {
@@ -8,7 +12,6 @@ import {
   ToOptions,
   ValidFromPath,
   ResolveRelativePath,
-  ToPathOption,
 } from './link'
 import {
   cleanPath,
@@ -20,7 +23,6 @@ import {
 } from './path'
 import { AnyRoute, Route } from './route'
 import {
-  AnyLoaderData,
   AnyPathParams,
   AnyRouteConfig,
   AnySearchSchema,
@@ -36,7 +38,6 @@ import {
 } from './routeInfo'
 import { RouteMatch, RouteMatchStore } from './routeMatch'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
-import { Store } from './store'
 import {
   functionalUpdate,
   last,
@@ -53,7 +54,6 @@ import {
   createMemoryHistory,
   RouterHistory,
 } from './history'
-import { createMemo } from '@solidjs/reactivity'
 
 export interface RegisterRouter {
   // router: Router
@@ -110,8 +110,6 @@ export interface RouterOptions<
   parseSearch?: SearchParser
   filterRoutes?: FilterRoutesFn
   defaultPreload?: false | 'intent'
-  defaultPreloadMaxAge?: number
-  defaultPreloadGcMaxAge?: number
   defaultPreloadDelay?: number
   defaultComponent?: GetFrameworkGeneric<'Component'>
   defaultErrorComponent?: GetFrameworkGeneric<'ErrorComponent'>
@@ -121,7 +119,6 @@ export interface RouterOptions<
   caseSensitive?: boolean
   routeConfig?: TRouteConfig
   basepath?: string
-  useServerData?: boolean
   Router?: (router: AnyRouter) => void
   createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
   context?: TRouterContext
@@ -276,9 +273,6 @@ export class Router<
 
   constructor(options?: RouterOptions<TRouteConfig, TRouterContext>) {
     this.options = {
-      defaultLoaderGcMaxAge: 5 * 60 * 1000,
-      defaultLoaderMaxAge: 0,
-      defaultPreloadMaxAge: 2000,
       defaultPreloadDelay: 50,
       context: undefined!,
       ...options,
@@ -700,50 +694,6 @@ export class Router<
     })
 
     await Promise.all(matchPromises)
-  }
-
-  loadMatchData = async (
-    routeMatch: RouteMatch<any, any>,
-  ): Promise<Record<string, unknown>> => {
-    if (isServer || !this.options.useServerData) {
-      return (
-        (await routeMatch.route.options.loader?.({
-          // parentLoaderPromise: routeMatch.parentMatch.dataPromise,
-          params: routeMatch.params,
-          search: routeMatch.store.state.routeSearch,
-          signal: routeMatch.abortController.signal,
-        })) || {}
-      )
-    } else {
-      const res = await this.options.fetchServerDataFn!({
-        router: this,
-        routeMatch,
-      })
-
-      return res
-    }
-  }
-
-  invalidateRoute = async <
-    TFrom extends ValidFromPath<TAllRouteInfo> = '/',
-    TTo extends string = '.',
-  >(opts: {
-    to: ToPathOption<TAllRouteInfo, TFrom, TTo>
-    from?: TFrom | undefined
-  }) => {
-    const next = this.buildNext(opts)
-    const unloadedMatches = this.matchRoutes(next.pathname)
-
-    await Promise.allSettled(
-      [
-        ...this.store.state.currentMatches,
-        ...(this.store.state.pendingMatches ?? []),
-      ].map(async (match) => {
-        if (unloadedMatches.find((d) => d.id === match.id)) {
-          return match.invalidate()
-        }
-      }),
-    )
   }
 
   reload = () => {

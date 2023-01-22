@@ -8,7 +8,7 @@ import {
   Link,
   useMatch,
   useRouterStore,
-  useLoaderData,
+  useLoader,
   MatchRoute,
   useSearch,
   useNavigate,
@@ -128,7 +128,7 @@ const indexRoute = rootRoute.createRoute({
 
 const dashboardRoute = rootRoute.createRoute({
   path: 'dashboard',
-  loader: async () => {
+  onLoad: async () => {
     return {
       posts: await trpc.posts.query(),
     }
@@ -178,7 +178,7 @@ const dashboardRoute = rootRoute.createRoute({
 const postsRoute = dashboardRoute.createRoute({
   path: 'posts',
   component: () => {
-    const { posts } = useLoaderData({ from: postsRoute.id })
+    const { posts } = useLoader({ from: postsRoute.id })
 
     return (
       <div className="flex-1 flex">
@@ -241,7 +241,7 @@ const postRoute = postsRoute.createRoute({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
   }),
-  loader: async ({ params: { postId }, search: {} }) => {
+  onLoad: async ({ params: { postId }, search: {} }) => {
     const post = await trpc.post.query(postId)
 
     if (!post) {
@@ -253,7 +253,7 @@ const postRoute = postsRoute.createRoute({
     }
   },
   component: () => {
-    const { post } = useLoaderData({ from: postRoute.id })
+    const { post } = useLoader({ from: postRoute.id })
     const search = useSearch({ from: postRoute.id })
     const navigate = useNavigate({ from: postRoute.id })
 
@@ -322,7 +322,7 @@ const postRoute = postsRoute.createRoute({
 const dashboardIndexRoute = dashboardRoute.createRoute({
   path: '/',
   component: () => {
-    const { posts } = useLoaderData({ from: dashboardIndexRoute.id })
+    const { posts } = useLoader({ from: dashboardIndexRoute.id })
 
     return (
       <div className="p-2">

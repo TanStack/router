@@ -4,7 +4,7 @@ import { fetchUsers } from '../mockTodos'
 import { routeConfig } from '../routes.generated/index'
 
 routeConfig.generate({
-  loader: async () => {
+  onLoad: async () => {
     return fetchUsers()
   },
   component: Home,

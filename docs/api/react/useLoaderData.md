@@ -1,23 +1,25 @@
 ---
-id: useLoaderData
-title: useLoaderData
+id: useLoader
+title: useLoader
 ---
 
 ```tsx
-const data = useLoaderData({
+const data = useLoader({
   from,
   strict,
-  select
+  select,
 })
 ```
 
 **Options**
+
 - `from: TFrom`
   - **Required**
 - `strict?: TStrict`
   - **Optional**
-- `select?: (loaderData: TLoaderData) => TSelected`
+- `select?: (loaderData: TAllLoaderData) => TSelected`
   - **Optional**
 
 **Returns**
+
 - `data: TStrict extends true ? TSelected : TSelected | undefined`

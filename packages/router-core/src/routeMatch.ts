@@ -1,3 +1,5 @@
+import { Store } from '@tanstack/store'
+//
 import { GetFrameworkGeneric } from './frameworks'
 import { Route } from './route'
 import {
@@ -7,7 +9,6 @@ import {
   RouteInfo,
 } from './routeInfo'
 import { AnyRouter, Router } from './router'
-import { Store } from './store'
 import { Expand } from './utils'
 
 export interface RouteMatchStore<
@@ -20,7 +21,6 @@ export interface RouteMatchStore<
   >
   status: 'idle' | 'pending' | 'success' | 'error'
   error?: unknown
-  loaderData: TRouteInfo['loaderData']
   updatedAt: number
 }
 
@@ -76,11 +76,10 @@ export class RouteMatch<
         routeSearch: {},
         search: {} as any,
         status: 'idle',
-        loaderData: {} as TRouteInfo['loaderData'],
       }),
     })
 
-    if (!this.__hasLoaders()) {
+    if (!this.#hasLoaders()) {
       this.store.setState((s) => (s.status = 'success'))
     }
   }
@@ -98,7 +97,7 @@ export class RouteMatch<
 
   #latestId = ''
 
-  fetch = async (): Promise<TRouteInfo['routeLoaderData']> => {
+  fetch = async (): Promise<void> => {
     this.__loadPromise = Promise.resolve().then(async () => {
       const loadId = '' + Date.now() + Math.random()
       this.#latestId = loadId
@@ -134,8 +133,8 @@ export class RouteMatch<
       })()
 
       const dataPromise = Promise.resolve().then(() => {
-        if (this.route.options.loader) {
-          return this.route.options.loader({
+        if (this.route.options.onLoad) {
+          return this.route.options.onLoad({
             params: this.params,
             search: this.store.state.search,
             signal: this.abortController.signal,
@@ -166,14 +165,10 @@ export class RouteMatch<
 
     return this.__loadPromise
   }
-  invalidate = async () => {
-    if (this.router.store.state.currentMatches.find((d) => d.id === this.id)) {
-      await this.load()
-    }
-  }
-  __hasLoaders = () => {
+
+  #hasLoaders = () => {
     return !!(
-      this.route.options.loader ||
+      this.route.options.onLoad ||
       componentTypes.some((d) => this.route.options[d]?.preload)
     )
   }

@@ -44,13 +44,12 @@ export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
       [Key in keyof TParentParams]?: DefinedPathParamWarning
     }
 
-export type RouteLoaderFn<
-  TRouteLoaderData extends AnyLoaderData = {},
+export type OnLoadFn<
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams extends AnyPathParams = {},
 > = (
   loaderContext: LoaderContext<TFullSearchSchema, TAllParams>,
-) => TRouteLoaderData | Promise<TRouteLoaderData>
+) => Promise<any> | void
 
 export interface LoaderContext<
   TFullSearchSchema extends AnySearchSchema = {},
@@ -69,10 +68,6 @@ export type UnloaderFn<TPath extends string> = (
 export type RouteOptions<
   TRouteId extends string = string,
   TPath extends string = string,
-  TParentRouteLoaderData extends AnyLoaderData = {},
-  TRouteLoaderData extends AnyLoaderData = {},
-  TParentLoaderData extends AnyLoaderData = {},
-  TLoaderData extends AnyLoaderData = {},
   TParentSearchSchema extends {} = {},
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = TSearchSchema,
@@ -101,13 +96,11 @@ export type RouteOptions<
   // calls that match this route.
   postSearchFilters?: SearchFilter<TFullSearchSchema>[]
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
-  component?: GetFrameworkGeneric<'Component'> // , NoInfer<TParentLoaderData>>
+  component?: GetFrameworkGeneric<'Component'> // , NoInfer<TParentAllLoaderData>>
   // The content to be rendered when the route encounters an error
-  errorComponent?: GetFrameworkGeneric<'ErrorComponent'> // , NoInfer<TParentLoaderData>>
+  errorComponent?: GetFrameworkGeneric<'ErrorComponent'> // , NoInfer<TParentAllLoaderData>>
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
-  pendingComponent?: GetFrameworkGeneric<'Component'> //, NoInfer<TParentLoaderData>>
-  // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-  loader?: RouteLoaderFn<TRouteLoaderData, TFullSearchSchema, TAllParams>
+  pendingComponent?: GetFrameworkGeneric<'Component'> //, NoInfer<TParentAllLoaderData>>
 
   // This async function is called before a route is loaded.
   // If an error is thrown here, the route's loader will not be called.
@@ -117,6 +110,10 @@ export type RouteOptions<
     router: AnyRouter
     match: RouteMatch
   }) => Promise<void> | void
+
+  // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
+  onLoad?: OnLoadFn<TFullSearchSchema, TAllParams>
+
   // This function will be called if the route's loader throws an error **during an attempted navigation**.
   // If you want to redirect due to an error, call `router.navigate()` from within this function.
   onLoadError?: (err: any) => void
@@ -163,10 +160,6 @@ export interface RouteConfig<
   TRouteId extends string = string,
   TPath extends string = string,
   TFullPath extends string = string,
-  TParentRouteLoaderData extends AnyLoaderData = AnyLoaderData,
-  TRouteLoaderData extends AnyLoaderData = AnyLoaderData,
-  TParentLoaderData extends AnyLoaderData = {},
-  TLoaderData extends AnyLoaderData = AnyLoaderData,
   TParentSearchSchema extends {} = {},
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = {},
@@ -182,10 +175,6 @@ export interface RouteConfig<
   options: RouteOptions<
     TRouteId,
     TPath,
-    TParentRouteLoaderData,
-    TRouteLoaderData,
-    TParentLoaderData,
-    TLoaderData,
     TParentSearchSchema,
     TSearchSchema,
     TFullSearchSchema,
@@ -206,10 +195,6 @@ export interface RouteConfig<
       TRouteId,
       TPath,
       TFullPath,
-      TParentRouteLoaderData,
-      TRouteLoaderData,
-      TParentLoaderData,
-      TLoaderData,
       TParentSearchSchema,
       TSearchSchema,
       TFullSearchSchema,
@@ -223,30 +208,18 @@ export interface RouteConfig<
     false,
     TId,
     TFullPath,
-    TRouteLoaderData,
-    TLoaderData,
     TFullSearchSchema,
     TAllParams
   >
-  generate: GenerateFn<
-    TRouteId,
-    TPath,
-    TParentRouteLoaderData,
-    TParentLoaderData,
-    TParentSearchSchema,
-    TParentParams
-  >
+  generate: GenerateFn<TRouteId, TPath, TParentSearchSchema, TParentParams>
 }
 
 type GenerateFn<
   TRouteId extends string = string,
   TPath extends string = string,
-  TParentRouteLoaderData extends AnyLoaderData = AnyLoaderData,
-  TParentLoaderData extends AnyLoaderData = {},
   TParentSearchSchema extends {} = {},
   TParentParams extends AnyPathParams = {},
 > = <
-  TRouteLoaderData extends AnyLoaderData = AnyLoaderData,
   TSearchSchema extends AnySearchSchema = {},
   TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
     ParsePathParams<TPath>,
@@ -262,10 +235,6 @@ type GenerateFn<
     RouteOptions<
       TRouteId,
       TPath,
-      TParentRouteLoaderData,
-      TRouteLoaderData,
-      TParentLoaderData,
-      Expand<TParentLoaderData & NoInfer<TRouteLoaderData>>,
       TParentSearchSchema,
       TSearchSchema,
       Expand<TParentSearchSchema & TSearchSchema>,
@@ -282,13 +251,13 @@ type CreateRouteConfigFn<
   TParentId extends string = string,
   TParentPath extends string = string,
   TParentRouteLoaderData extends AnyLoaderData = {},
-  TParentLoaderData extends AnyLoaderData = {},
+  TParentAllLoaderData extends AnyLoaderData = {},
   TParentSearchSchema extends AnySearchSchema = {},
   TParentParams extends AnyPathParams = {},
 > = <
   TRouteId extends string,
   TPath extends string,
-  TRouteLoaderData extends AnyLoaderData,
+  TLoaderData extends AnyLoaderData,
   TSearchSchema extends AnySearchSchema = AnySearchSchema,
   TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
     ParsePathParams<TPath>,
@@ -311,10 +280,6 @@ type CreateRouteConfigFn<
         RouteOptions<
           TRouteId,
           TPath,
-          TParentRouteLoaderData,
-          TRouteLoaderData,
-          TParentLoaderData,
-          Expand<TParentLoaderData & NoInfer<TRouteLoaderData>>,
           TParentSearchSchema,
           TSearchSchema,
           Expand<TParentSearchSchema & TSearchSchema>,
@@ -327,10 +292,6 @@ type CreateRouteConfigFn<
     : RouteOptions<
         TRouteId,
         TPath,
-        TParentRouteLoaderData,
-        TRouteLoaderData,
-        TParentLoaderData,
-        Expand<TParentLoaderData & NoInfer<TRouteLoaderData>>,
         TParentSearchSchema,
         TSearchSchema,
         Expand<TParentSearchSchema & TSearchSchema>,
@@ -347,10 +308,6 @@ type CreateRouteConfigFn<
   TResolvedId,
   TPath,
   string extends TPath ? '' : RoutePath<RoutePrefix<TParentPath, TPath>>,
-  TParentRouteLoaderData,
-  TRouteLoaderData,
-  TParentLoaderData,
-  Expand<TParentLoaderData & NoInfer<TRouteLoaderData>>,
   TParentSearchSchema,
   TSearchSchema,
   Expand<TParentSearchSchema & TSearchSchema>,
@@ -376,30 +333,10 @@ type RoutePrefix<
   : never
 
 export interface AnyRouteConfig
-  extends RouteConfig<
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any
-  > {}
+  extends RouteConfig<any, any, any, any, any, any, any, any, any, any, any> {}
 
 export interface AnyRouteConfigWithChildren<TChildren>
   extends RouteConfig<
-    any,
-    any,
-    any,
-    any,
     any,
     any,
     any,

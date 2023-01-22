@@ -1,7 +1,7 @@
 // RouterAction is a constrained identify function that takes options: key, action, onSuccess, onError, onSettled, etc
 
 import invariant from 'tiny-invariant'
-import { Store } from './store'
+import { Store } from '@tanstack/store'
 
 export interface ActionOptions<
   TKey extends string = string,

@@ -6,10 +6,11 @@ import {
   ReactRouter,
   createRouteConfig,
   Link,
-  LoaderCache,
+  LoaderClient,
   useLoader,
-  createLoaderConfig,
   useParams,
+  LoaderClientProvider,
+  Loader,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -21,7 +22,7 @@ type PostType = {
   body: string
 }
 
-const postsLoaderConfig = createLoaderConfig({
+const postsLoader = new Loader({
   key: 'posts',
   loader: async () => {
     console.log('Fetching posts...')
@@ -32,7 +33,7 @@ const postsLoaderConfig = createLoaderConfig({
   },
 })
 
-const postLoaderConfig = postsLoaderConfig.createLoaderConfig({
+const postLoader = postsLoader.createLoader({
   key: 'post',
   loader: async (postId: string) => {
     console.log(`Fetching post with id ${postId}...`)
@@ -44,8 +45,8 @@ const postLoaderConfig = postsLoaderConfig.createLoaderConfig({
   },
 })
 
-const loaderCache = new LoaderCache({
-  loaderConfigs: [postsLoaderConfig, postLoaderConfig],
+const loaderClient = new LoaderClient({
+  loaders: [postsLoader, postLoader],
 })
 
 const rootRoute = createRouteConfig({
@@ -93,10 +94,10 @@ const indexRoute = rootRoute.createRoute({
 
 const postsRoute = rootRoute.createRoute({
   path: 'posts',
-  loader: () => loaderCache.getLoader({ key: 'posts' }).preload(),
+  onLoad: () => loaderClient.getLoader({ key: 'posts' }).preload(),
   component: () => {
-    const { data: posts } = useLoader({
-      loader: loaderCache.getLoader({ key: 'posts' }),
+    const [{ data: posts }] = useLoader({
+      key: postsLoader.key,
     })
 
     return (
@@ -140,13 +141,11 @@ const PostsIndexRoute = postsRoute.createRoute({
 
 const postRoute = postsRoute.createRoute({
   path: 'post/$postId',
-  loader: async ({ params: { postId } }) =>
-    loaderCache.getLoader({ key: 'post' }).preload(postId),
-
+  onLoad: async ({ params: { postId } }) => postLoader.preload(postId),
   component: () => {
     const { postId } = useParams({ from: postRoute.id })
-    const { data: post } = useLoader({
-      loader: loaderCache.getLoader({ key: 'post' }),
+    const [{ data: post }] = useLoader({
+      key: postLoader.key,
       variables: postId,
     })
 
@@ -170,10 +169,14 @@ const router = new ReactRouter({
   defaultPreload: 'intent',
 })
 
-// Register your router for typesafety
+// Register things for typesafety
 declare module '@tanstack/react-router' {
   interface RegisterRouter {
     router: typeof router
+  }
+
+  interface RegisterLoaderClient {
+    loaderClient: typeof loaderClient
   }
 }
 
@@ -184,7 +187,9 @@ if (!rootElement.innerHTML) {
 
   root.render(
     <React.StrictMode>
-      <RouterProvider router={router} />
+      <LoaderClientProvider loaderClient={loaderClient}>
+        <RouterProvider router={router} />
+      </LoaderClientProvider>
     </React.StrictMode>,
   )
 }

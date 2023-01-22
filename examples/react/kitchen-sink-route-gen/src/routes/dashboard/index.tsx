@@ -1,4 +1,4 @@
-import { useLoaderData, useMatch } from '@tanstack/react-router'
+import { useLoader, useMatch } from '@tanstack/react-router'
 import * as React from 'react'
 import { routeConfig } from '../../routes.generated/dashboard/index'
 
@@ -7,7 +7,7 @@ routeConfig.generate({
 })
 
 function DashboardHome() {
-  const { invoices } = useLoaderData({ from: routeConfig.id })
+  const { invoices } = useLoader({ from: routeConfig.id })
 
   return (
     <div className="p-2">

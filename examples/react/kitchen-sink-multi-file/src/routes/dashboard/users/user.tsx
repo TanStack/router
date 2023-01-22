@@ -1,14 +1,14 @@
 import * as React from 'react'
 import { fetchUserById } from '../../../mockTodos'
 import { usersRoute } from '.'
-import { useLoaderData, useMatch } from '@tanstack/react-router'
+import { useLoader, useMatch } from '@tanstack/react-router'
 
 export const userRoute = usersRoute.createRoute({
   path: '$userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
   component: User,
-  loader: async ({ params: { userId } }) => {
+  onLoad: async ({ params: { userId } }) => {
     return {
       user: await fetchUserById(userId),
     }
@@ -16,7 +16,7 @@ export const userRoute = usersRoute.createRoute({
 })
 
 function User() {
-  const { user } = useLoaderData({ from: userRoute.id })
+  const { user } = useLoader({ from: userRoute.id })
 
   return (
     <>

@@ -5,7 +5,7 @@ import { InvoiceFields } from '../../../components/InvoiceFields'
 import {
   Link,
   useAction,
-  useLoaderData,
+  useLoader,
   useNavigate,
   useSearch,
 } from '@tanstack/react-router'
@@ -24,7 +24,7 @@ routeConfig.generate({
     notes: z.string().optional(),
   }),
   component: InvoiceView,
-  loader: async ({ params: { invoiceId } }) => {
+  onLoad: async ({ params: { invoiceId } }) => {
     console.log('Fetching invoice...')
     const invoice = await fetchInvoiceById(invoiceId)
     if (!invoice) {
@@ -37,7 +37,7 @@ routeConfig.generate({
 })
 
 function InvoiceView() {
-  const { invoice } = useLoaderData({ from: routeConfig.id })
+  const { invoice } = useLoader({ from: routeConfig.id })
   const action = useAction(updateInvoiceAction)
   const search = useSearch({ from: routeConfig.id })
   const navigate = useNavigate({ from: routeConfig.id })

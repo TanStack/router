@@ -1,4 +1,4 @@
-import { useLoaderData } from '@tanstack/react-router'
+import { useLoader } from '@tanstack/react-router'
 import { routeConfig } from '../../routes.generated/posts/$postId'
 
 export type PostType = {
@@ -11,7 +11,7 @@ export const tanner = 'foo'
 
 routeConfig.generate({
   component: Post,
-  loader: async ({ params: { postId } }) => {
+  onLoad: async ({ params: { postId } }) => {
     return {
       post: await fetchPostById(postId),
     }
@@ -28,7 +28,7 @@ async function fetchPostById(postId: string) {
 }
 
 function Post() {
-  const { post } = useLoaderData({ from: routeConfig.id })
+  const { post } = useLoader({ from: routeConfig.id })
 
   return (
     <div className="space-y-2">

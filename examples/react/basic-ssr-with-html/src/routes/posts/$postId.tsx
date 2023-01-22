@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useLoaderData, useMatch } from '@tanstack/react-router'
+import { useLoader, useMatch } from '@tanstack/react-router'
 import { routeConfig } from '../../routes.generated/posts/$postId'
 
 export type PostType = {
@@ -10,7 +10,7 @@ export type PostType = {
 
 routeConfig.generate({
   component: Post,
-  loader: async ({ params: { postId } }) => {
+  onLoad: async ({ params: { postId } }) => {
     console.log(`Fetching post with id ${postId}...`)
 
     await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
@@ -26,7 +26,7 @@ routeConfig.generate({
 })
 
 function Post() {
-  const { post } = useLoaderData({ from: routeConfig.id })
+  const { post } = useLoader({ from: routeConfig.id })
 
   return (
     <div className="space-y-2">

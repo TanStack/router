@@ -70,7 +70,7 @@ const indexRoute = rootRoute.createRoute({
 
 const postsRoute = rootRoute.createRoute({
   path: 'posts',
-  loader: async () => {
+  onLoad: async () => {
     queryClient.getQueryData(['posts']) ??
       (await queryClient.prefetchQuery(['posts'], fetchPosts))
     return {}
@@ -119,7 +119,7 @@ const postsIndexRoute = postsRoute.createRoute({
 
 const postRoute = postsRoute.createRoute({
   path: '$postId',
-  loader: async ({ params: { postId } }) => {
+  onLoad: async ({ params: { postId } }) => {
     queryClient.getQueryData(['posts', postId]) ??
       (await queryClient.prefetchQuery(['posts', postId], () =>
         fetchPostById(postId),

@@ -70,7 +70,6 @@
   },
   "dependencies": {
     "@rollup/plugin-commonjs": "^23.0.4",
-    "@solidjs/reactivity": "^0.0.7",
     "@types/babel__core": "^7.1.20",
     "@types/fs-extra": "^9.0.13",
     "fs-extra": "^10.1.0",

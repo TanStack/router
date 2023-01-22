@@ -6,7 +6,7 @@ import {
   lazy,
   Link,
   useRouterStore,
-  useLoaderData,
+  useLoader,
   MatchRoute,
   useNavigate,
   useSearch,
@@ -157,7 +157,7 @@ const indexRoute = rootRoute.createRoute({
 
 const dashboardRoute = rootRoute.createRoute({
   path: 'dashboard',
-  loader: invoicesLoader.ensureData,
+  onLoad: invoicesLoader.ensureData,
   component: () => {
     return (
       <>
@@ -205,7 +205,7 @@ const dashboardRoute = rootRoute.createRoute({
 const dashboardIndexRoute = dashboardRoute.createRoute({
   path: '/',
   component: () => {
-    const { invoices } = useLoaderData({ from: dashboardIndexRoute.id })
+    const { invoices } = useLoader({ from: dashboardIndexRoute.id })
 
     return (
       <div className="p-2">
@@ -221,7 +221,7 @@ const dashboardIndexRoute = dashboardRoute.createRoute({
 const invoicesRoute = dashboardRoute.createRoute({
   path: 'invoices',
   component: () => {
-    const { invoices } = useLoaderData({ from: invoicesRoute.id })
+    const { invoices } = useLoader({ from: invoicesRoute.id })
 
     const { pendingSubmissions: updateSubmissions } =
       useAction(updateInvoiceAction)
@@ -356,11 +356,11 @@ const invoiceRoute = invoicesRoute.createRoute({
         notes: z.string().optional(),
       })
       .parse(search),
-  loader: async ({ params: { invoiceId } }) => invoiceLoader.load(invoiceId),
+  onLoad: async ({ params: { invoiceId } }) => invoiceLoader.load(invoiceId),
   component: () => {
     const search = useSearch({ from: invoiceRoute.id })
     const navigate = useNavigate({ from: invoiceRoute.id })
-    const { invoice } = useLoaderData(invoiceLoader)
+    const { invoice } = useLoader(invoiceLoader)
     const { latestSubmission } = useAction(updateInvoiceAction)
 
     const [notes, setNotes] = React.useState(search.notes ?? '')
@@ -453,7 +453,7 @@ const invoiceRoute = invoicesRoute.createRoute({
 
 const usersRoute = dashboardRoute.createRoute({
   path: 'users',
-  loader: async ({ search }) => {
+  onLoad: async ({ search }) => {
     search
     return {
       users: await fetchUsers(),
@@ -478,7 +478,7 @@ const usersRoute = dashboardRoute.createRoute({
     }),
   ],
   component: () => {
-    const { users } = useLoaderData({ from: usersRoute.id })
+    const { users } = useLoader({ from: usersRoute.id })
     const { usersView } = useSearch({ from: usersRoute.id })
     const navigate = useNavigate({ from: usersRoute.id })
 
@@ -626,13 +626,13 @@ const userRoute = usersRoute.createRoute({
   path: '$userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
-  loader: async ({ params: { userId } }) => {
+  onLoad: async ({ params: { userId } }) => {
     return {
       user: await fetchUserById(userId),
     }
   },
   component: () => {
-    const { user } = useLoaderData({ from: userRoute.id })
+    const { user } = useLoader({ from: userRoute.id })
 
     return (
       <>
@@ -673,7 +673,7 @@ const authenticatedRoute = rootRoute.createRoute({
       throw AuthError
     }
   },
-  loader: () => {
+  onLoad: () => {
     return {}
   },
   component: () => {
@@ -748,7 +748,7 @@ const loginRoute = rootRoute.createRoute({
 
 const layoutRoute = rootRoute.createRoute({
   id: 'layout',
-  loader: async () => {
+  onLoad: async () => {
     return loaderDelayFn(() => {
       const rand = Math.random()
       return {
@@ -757,7 +757,7 @@ const layoutRoute = rootRoute.createRoute({
     })
   },
   component: () => {
-    const { random } = useLoaderData({ from: layoutRoute.id })
+    const { random } = useLoader({ from: layoutRoute.id })
 
     return (
       <div>

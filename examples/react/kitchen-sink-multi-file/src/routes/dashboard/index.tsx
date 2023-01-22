@@ -6,7 +6,7 @@ import { rootRoute } from '../__root'
 export const dashboardRoute = rootRoute.createRoute({
   path: 'dashboard',
   component: Dashboard,
-  loader: async () => {
+  onLoad: async () => {
     console.log('Fetching all invoices...')
     return {
       invoices: await fetchInvoices(),

@@ -1,4 +1,4 @@
-import { useLoaderData, useMatch } from '@tanstack/react-router'
+import { useLoader, useMatch } from '@tanstack/react-router'
 import * as React from 'react'
 import { dashboardRoute } from '.'
 
@@ -8,7 +8,7 @@ export const dashboardIndexRoute = dashboardRoute.createRoute({
 })
 
 function DashboardHome() {
-  const { invoices } = useLoaderData({ from: dashboardIndexRoute.id })
+  const { invoices } = useLoader({ from: dashboardIndexRoute.id })
 
   return (
     <div className="p-2">

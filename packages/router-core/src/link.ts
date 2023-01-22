@@ -28,10 +28,6 @@ export type LinkInfo =
       disabled?: boolean
     }
 
-type StartsWith<A, B> = A extends `${B extends string ? B : never}${infer _}`
-  ? true
-  : false
-
 type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
   ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
   : T extends `${infer L}//`

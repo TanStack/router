@@ -28,10 +28,12 @@ import {
   Action,
   ActionStore,
   ActionSubmission,
-  Loader,
   LoaderStore,
   VariablesOptions,
-  LoaderApi,
+  LoaderByKey,
+  LoaderClient,
+  RegisteredLoaders,
+  LoaderInstanceByKey,
 } from '@tanstack/router-core'
 import { useStore } from './useStore'
 
@@ -436,32 +438,6 @@ export function useRoute<
   return resolvedRoute as any
 }
 
-// export function useLoaderData<
-//   TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
-//   TStrict extends boolean = true,
-//   TLoaderData = RegisteredAllRouteInfo['routeInfoById'][TFrom]['loaderData'],
-// >(opts?: {
-//   from: TFrom
-//   strict?: TStrict
-//   track?: (loaderData: TLoaderData) => any
-// }): TStrict extends true ? TLoaderData : TLoaderData | undefined {
-//   const match = useMatch(opts)
-
-//   invariant(
-//     match,
-//     `Could not find ${
-//       opts?.from ? `an active match from "${opts.from}"` : 'a nearest match!'
-//     }`,
-//   )
-
-//   useStore(
-//     (match as any).store,
-//     (d: any) => opts?.track?.(d.loaderData) ?? d.loaderData,
-//   )
-
-//   return (match as unknown as RouteMatch).store.state.loaderData as any
-// }
-
 export function useSearch<
   TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'],
   TStrict extends boolean = true,
@@ -762,52 +738,48 @@ export function useAction<
   return ref as any
 }
 
-// export function useLoader<
-//   TKey extends string = string,
-//   TVariables = unknown,
-//   TData = unknown,
-//   TError = Error,
-// >(
-//   loader: Loader<TKey, TVariables, TData, TError>,
-//   opts?: {
-//     track?: (loaderStore: LoaderStore<TData, TError>) => any
-//   },
-// ): Loader<TKey, TVariables, TData, TError> &
-//   Loader<TKey, TVariables, TData, TError>['store']['state'] {
-//   useStore(loader.store, (d) => opts?.track?.(d) ?? d, true)
+const loaderClientContext = React.createContext<LoaderClient<any>>(null as any)
 
-//   const [ref] = React.useState({})
-
-//   Object.assign(ref, {
-//     ...loader,
-//     ...loader.store.state,
-//   })
-
-//   return ref as any
-// }
+export function LoaderClientProvider(props: {
+  loaderClient: LoaderClient<any>
+  children: any
+}) {
+  return (
+    <loaderClientContext.Provider value={props.loaderClient}>
+      {props.children}
+    </loaderClientContext.Provider>
+  )
+}
 
 export function useLoader<
-  TKey extends string = string,
-  TVariables = unknown,
-  TData = unknown,
-  TError = Error,
+  TKey extends RegisteredLoaders[number]['__types']['key'],
+  TLoaderInstance extends LoaderInstanceByKey<RegisteredLoaders, TKey>,
+  TVariables extends TLoaderInstance['__types']['variables'],
+  TData extends TLoaderInstance['__types']['data'],
+  TError extends TLoaderInstance['__types']['error'],
 >(
   opts: {
-    loader: LoaderApi<TKey, TVariables, TData, TError>
+    key: TKey
     track?: (loaderStore: LoaderStore<TData, TError>) => any
   } & VariablesOptions<TVariables>,
-): Loader<TKey, TVariables, TData, TError> &
-  Loader<TKey, TVariables, TData, TError>['store']['state'] {
-  const loaderApi = opts.loader
+): [TLoaderInstance['store']['state'], TLoaderInstance] {
+  const loaderClient = React.useContext(loaderClientContext)
+
+  warning(
+    !loaderClient,
+    'useLoader must be used inside a <LoaderClientProvider> component!',
+  )
+
+  const loaderApi = loaderClient.getLoader({ key: opts.key })
   const loader = loaderApi.getLoader({
-    variables: opts.variables,
+    variables: opts?.variables,
   } as any)
 
-  // React.useEffect(() => {
-  //   loader.load()
-  // }, [loader])
+  React.useEffect(() => {
+    loader.load()
+  }, [loader])
 
-  useStore(loader.store, (d) => opts?.track?.(d) ?? d, true)
+  useStore(loader.store, (d) => opts?.track?.(d as any) ?? d, true)
 
   const [ref] = React.useState({})
 

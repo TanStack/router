@@ -1,12 +1,12 @@
 import * as React from 'react'
-import { Link, Outlet, useLoaderData, useMatch } from '@tanstack/react-router'
+import { Link, Outlet, useLoader, useMatch } from '@tanstack/react-router'
 import { routeConfig } from '../routes.generated/posts'
 import { PostType } from './posts/$postId'
 import { postspostIdRoute } from '../routes.generated/posts/$postId.client'
 
 routeConfig.generate({
   component: Posts,
-  loader: async () => {
+  onLoad: async () => {
     return {
       posts: await fetchPosts(),
     }
@@ -26,7 +26,7 @@ async function fetchPosts() {
 }
 
 function Posts() {
-  const { posts } = useLoaderData({ from: routeConfig.id })
+  const { posts } = useLoader({ from: routeConfig.id })
 
   return (
     <div className="p-2 flex gap-2">
