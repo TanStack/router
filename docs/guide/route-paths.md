@@ -43,6 +43,7 @@ const routeConfig = rootRoute.addChildren([
   blogRoute.addChildren([blogIndexRoute]),
 ])
 ```
+If you put a component in the normal (non-index) route, it will render both when its route is terminal *and* when children are also active; children will render in its `<Outlet />`. If there is no outlet then the children will not render.
 
 ## Layout Routes
 
