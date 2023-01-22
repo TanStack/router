@@ -42,9 +42,10 @@ export class Action<
   }
 
   reset = () => {
-    this.store.setState((s) => {
-      s.submissions = []
-    })
+    this.store.setState((s) => ({
+      ...s,
+      submissions: [],
+    }))
   }
 
   submit = async (payload?: TPayload): Promise<TResponse> => {
@@ -53,9 +54,10 @@ export class Action<
       status: 'pending',
       payload: payload as TPayload,
       invalidate: () => {
-        setSubmission((s) => {
-          s.isInvalid = true
-        })
+        setSubmission((s) => ({
+          ...s,
+          isInvalid: true,
+        }))
       },
       getIsLatest: () =>
         this.store.state.submissions[this.store.state.submissions.length - 1]
@@ -65,7 +67,7 @@ export class Action<
     const setSubmission = (
       updater: (
         submission: ActionSubmission<TPayload, TResponse, TError>,
-      ) => void,
+      ) => ActionSubmission<TPayload, TResponse, TError>,
     ) => {
       this.store.setState((s) => {
         const a = s.submissions.find(
@@ -74,15 +76,25 @@ export class Action<
 
         invariant(a, 'Could not find submission in this.store')
 
-        updater(a)
+        return {
+          ...s,
+          submissions: s.submissions.map((d) =>
+            d.submittedAt === submission.submittedAt ? updater(d) : d,
+          ),
+        }
       })
     }
 
     this.store.setState((s) => {
-      s.submissions.push(submission)
-      s.submissions.reverse()
-      s.submissions = s.submissions.slice(0, this.options.maxSubmissions ?? 10)
-      s.submissions.reverse()
+      let submissions = [...s.submissions, submission]
+      submissions.reverse()
+      submissions = submissions.slice(0, this.options.maxSubmissions ?? 10)
+      submissions.reverse()
+
+      return {
+        ...s,
+        submissions,
+      }
     })
 
     const after = async () => {
@@ -93,29 +105,33 @@ export class Action<
 
     try {
       const res = await this.options.action?.(submission.payload)
-      setSubmission((s) => {
-        s.response = res
-      })
+      setSubmission((s) => ({
+        ...s,
+        response: res,
+      }))
       await this.options.onEachSuccess?.(submission)
       if (submission.getIsLatest())
         await this.options.onLatestSuccess?.(submission)
       await after()
-      setSubmission((s) => {
-        s.status = 'success'
-      })
+      setSubmission((s) => ({
+        ...s,
+        status: 'success',
+      }))
       return res
     } catch (err: any) {
       console.error(err)
-      setSubmission((s) => {
-        s.error = err
-      })
+      setSubmission((s) => ({
+        ...s,
+        error: err,
+      }))
       await this.options.onEachError?.(submission)
       if (submission.getIsLatest())
         await this.options.onLatestError?.(submission)
       await after()
-      setSubmission((s) => {
-        s.status = 'error'
-      })
+      setSubmission((s) => ({
+        ...s,
+        status: 'error',
+      }))
       throw err
     }
   }

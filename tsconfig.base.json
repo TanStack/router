@@ -16,7 +16,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@tanstack/router-core": ["packages/router-core"],
+      "@tanstack/router": ["packages/router"],
       "@tanstack/react-router": ["packages/react-router"],
       "@tanstack/react-router-devtools": ["packages/react-router-devtools"],
       "@tanstack/router-cli": ["packages/router-cli"]

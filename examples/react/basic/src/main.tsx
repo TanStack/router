@@ -6,12 +6,14 @@ import {
   ReactRouter,
   createRouteConfig,
   Link,
-  LoaderClient,
-  useLoader,
   useParams,
-  LoaderClientProvider,
-  Loader,
 } from '@tanstack/react-router'
+import {
+  Loader,
+  LoaderClient,
+  LoaderClientProvider,
+  useLoader,
+} from '@tanstack/react-loaders'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 import axios from 'axios'
@@ -174,7 +176,10 @@ declare module '@tanstack/react-router' {
   interface RegisterRouter {
     router: typeof router
   }
+}
 
+// Register things for typesafety
+declare module '@tanstack/react-loaders' {
   interface RegisterLoaderClient {
     loaderClient: typeof loaderClient
   }

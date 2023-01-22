@@ -1,21 +1,17 @@
 {
-  "name": "@tanstack/loaders-core",
+  "name": "@tanstack/react-loaders",
   "author": "Tanner Linsley",
-  "version": "0.0.1-beta.52",
+  "version": "0.0.1-beta.53",
   "license": "MIT",
   "repository": "tanstack/router",
-  "homepage": "https://tanstack.com/router",
+  "homepage": "https://tanstack.com/router/",
   "description": "",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
   "keywords": [
+    "loaders",
     "react",
-    "location",
-    "router",
-    "routing",
-    "async",
-    "async router",
     "typescript"
   ],
   "funding": {
@@ -34,7 +30,12 @@
     "src"
   ],
   "sideEffects": false,
+  "peerDependencies": {
+    "react": ">=16",
+    "react-dom": ">=16"
+  },
   "dependencies": {
-    "@tanstack/store": "workspace:*"
+    "@tanstack/loaders": "workspace:*",
+    "@tanstack/react-store": "workspace:*"
   }
 }

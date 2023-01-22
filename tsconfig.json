@@ -1,10 +1,15 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/router-core" },
+    { "path": "packages/router" },
+    { "path": "packages/store" },
+    { "path": "packages/actions" },
+    { "path": "packages/loaders" },
     { "path": "packages/react-router" },
     { "path": "packages/react-router-devtools" },
-    { "path": "packages/router-cli" }
+    { "path": "packages/react-store" },
+    { "path": "packages/react-actions" },
+    { "path": "packages/react-loaders" }
     // { "path": "packages/react-router-devtools" },
     // { "path": "examples/react/kitchen-sink/tsconfig.dev.json" }
   ]

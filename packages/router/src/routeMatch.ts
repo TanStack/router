@@ -80,7 +80,10 @@ export class RouteMatch<
     })
 
     if (!this.#hasLoaders()) {
-      this.store.setState((s) => (s.status = 'success'))
+      this.store.setState((s) => ({
+        ...s,
+        status: 'success',
+      }))
     }
   }
 
@@ -113,7 +116,10 @@ export class RouteMatch<
         // to a loading state again. Otherwise, keep it
         // as loading or resolved
         if (this.store.state.status === 'idle') {
-          this.store.setState((s) => (s.status = 'pending'))
+          this.store.setState((s) => ({
+            ...s,
+            status: 'pending',
+          }))
         }
       })
 
@@ -147,17 +153,19 @@ export class RouteMatch<
         await componentsPromise
         await dataPromise
         if ((latestPromise = checkLatest())) return await latestPromise
-        this.store.setState((s) => {
-          s.error = undefined
-          s.status = 'success'
-          s.updatedAt = Date.now()
-        })
+        this.store.setState((s) => ({
+          ...s,
+          error: undefined,
+          status: 'success',
+          updatedAt: Date.now(),
+        }))
       } catch (err) {
-        this.store.setState((s) => {
-          s.error = err
-          s.status = 'error'
-          s.updatedAt = Date.now()
-        })
+        this.store.setState((s) => ({
+          ...s,
+          error: err,
+          status: 'error',
+          updatedAt: Date.now(),
+        }))
       } finally {
         delete this.__loadPromise
       }
@@ -193,13 +201,14 @@ export class RouteMatch<
 
       let nextSearch = validator?.(parentSearch) ?? {}
 
-      this.store.setState((s) => {
-        s.routeSearch = nextSearch
-        s.search = {
+      this.store.setState((s) => ({
+        ...s,
+        routeSearch: nextSearch,
+        search: {
           ...parentSearch,
           ...nextSearch,
-        } as any
-      })
+        } as any,
+      }))
 
       componentTypes.map(async (type) => {
         const component = this.route.options[type]
@@ -215,10 +224,11 @@ export class RouteMatch<
       })
       error.code = 'INVALID_SEARCH_PARAMS'
 
-      this.store.setState((s) => {
-        s.status = 'error'
-        s.error = error
-      })
+      this.store.setState((s) => ({
+        ...s,
+        status: 'error',
+        error: error,
+      }))
 
       // Do not proceed with loading the route
       return

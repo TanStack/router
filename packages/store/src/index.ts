@@ -1,40 +1,39 @@
-import { produce, setAutoFreeze } from 'immer'
+export type AnyUpdater = (...args: any[]) => any
 
-setAutoFreeze(false)
+interface StoreOptions<
+  TState,
+  TUpdater extends AnyUpdater = (cb: TState) => TState,
+> {
+  updateFn: (previous: TState) => (updater: TUpdater) => TState
+}
 
-// interface StoreOptions {
-//   onSubscribe?: () => (() => void) | void
-// }
-
-export class Store<TState> {
+export class Store<
+  TState,
+  TUpdater extends AnyUpdater = (cb: TState) => TState,
+> {
   listeners = new Set<(next: TState, prev: TState) => void>()
   state: TState
-  // options?: StoreOptions
+  options?: StoreOptions<TState, TUpdater>
   batching = false
   queue: ((...args: any[]) => void)[] = []
 
-  constructor(
-    initialState: TState,
-    // options?: StoreOptions
-  ) {
+  constructor(initialState: TState, options?: StoreOptions<TState, TUpdater>) {
     this.state = initialState
-    // this.options = options
+    this.options = options
   }
 
   subscribe = (listener: (next: TState, prev: TState) => void) => {
     this.listeners.add(listener)
-    // const unsub = this.options?.onSubscribe?.()
     return () => {
       this.listeners.delete(listener)
-      // unsub?.()
     }
   }
 
-  setState = (updater: (cb: TState) => void) => {
+  setState = (updater: TUpdater) => {
     const previous = this.state
-    this.state = produce((d) => {
-      updater(d)
-    })(previous)
+    this.state = this.options?.updateFn
+      ? this.options.updateFn(previous)(updater)
+      : (updater as any)(previous)
 
     this.queue.push(() =>
       this.listeners.forEach((listener) => listener(this.state, previous)),

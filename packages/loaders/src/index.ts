@@ -265,14 +265,20 @@ export class LoaderInstance<
       if (next.isFetching !== prev.isFetching) {
         this.cache?.store.setState((s) => {
           if (next.isFetching) {
-            s.isFetching = s.isFetching
-              ? s.isFetching.concat(this as any)
-              : [this as any]
+            return {
+              ...s,
+              isFetching: s.isFetching
+                ? s.isFetching.concat(this as any)
+                : [this as any],
+            }
           } else {
-            s.isFetching =
-              s.isFetching?.length === 1 && s.isFetching?.[0] === this
-                ? []
-                : s.isFetching?.filter((l) => l !== (this as any))
+            return {
+              ...s,
+              isFetching:
+                s.isFetching?.length === 1 && s.isFetching?.[0] === this
+                  ? []
+                  : s.isFetching?.filter((l) => l !== (this as any)),
+            }
           }
         })
       }
@@ -355,9 +361,10 @@ export class LoaderInstance<
   }
 
   invalidate = async () => {
-    this.store.setState((s) => {
-      s.invalid = true
-    })
+    this.store.setState((s) => ({
+      ...s,
+      invalid: true,
+    }))
 
     const promise = this.store.listeners.size ? this.load() : undefined
     const parentPromise = this.loader.parentLoader?.invalidate()
@@ -373,14 +380,18 @@ export class LoaderInstance<
     // to a loading state again. Otherwise, keep it
     // as loading or resolved
     if (this.store.state.status === 'idle') {
-      this.store.setState((s) => (s.status = 'pending'))
+      this.store.setState((s) => ({
+        ...s,
+        status: 'pending',
+      }))
     }
 
     // We started loading the route, so it's no longer invalid
-    this.store.setState((s) => {
-      s.invalid = false
-      s.isFetching = true
-    })
+    this.store.setState((s) => ({
+      ...s,
+      invalid: true,
+      isFetching: true,
+    }))
     // })
 
     const loadId = '' + Date.now() + Math.random()
@@ -414,14 +425,17 @@ export class LoaderInstance<
 
         if ((newer = hasNewer())) return newer
 
-        this.store.setState((s) => {
-          s.error = undefined
-          s.updatedAt = Date.now()
-          s.data = replaceEqualDeep(s.data, data)
-          s.invalidAt =
-            s.updatedAt +
-            (opts?.maxAge ?? this.loader.options.loaderMaxAge ?? 1000)
-        })
+        const updatedAt = Date.now()
+
+        this.store.setState((s) => ({
+          ...s,
+          error: undefined,
+          updatedAt,
+          data: replaceEqualDeep(s.data, data),
+          invalidAt:
+            updatedAt +
+            (opts?.maxAge ?? this.loader.options.loaderMaxAge ?? 1000),
+        }))
 
         if ((newer = hasNewer())) {
           await this.loader.options.onLatestSuccess?.(this)
@@ -430,9 +444,10 @@ export class LoaderInstance<
           await this.loader.options.onEachSuccess?.(this)
         }
 
-        this.store.setState((s) => {
-          s.status = 'success'
-        })
+        this.store.setState((s) => ({
+          ...s,
+          status: 'success',
+        }))
 
         await after()
 
@@ -442,10 +457,11 @@ export class LoaderInstance<
           console.error(err)
         }
 
-        this.store.setState((s) => {
-          s.error = err as TError
-          s.updatedAt = Date.now()
-        })
+        this.store.setState((s) => ({
+          ...s,
+          error: err as TError,
+          updatedAt: Date.now(),
+        }))
 
         if ((newer = hasNewer())) {
           await this.loader.options.onLatestError?.(this)
@@ -454,9 +470,10 @@ export class LoaderInstance<
           await this.loader.options.onEachError?.(this)
         }
 
-        this.store.setState((s) => {
-          s.status = 'error'
-        })
+        this.store.setState((s) => ({
+          ...s,
+          status: 'error',
+        }))
 
         throw err
       }
@@ -477,20 +494,4 @@ export function hashKey(queryKey: any): string {
           }, {} as any)
       : val,
   )
-}
-
-export function partialDeepEqual(a: any, b: any): boolean {
-  if (a === b) {
-    return true
-  }
-
-  if (typeof a !== typeof b) {
-    return false
-  }
-
-  if (a && b && typeof a === 'object' && typeof b === 'object') {
-    return !Object.keys(b).some((key) => !partialDeepEqual(a[key], b[key]))
-  }
-
-  return false
 }

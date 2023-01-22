@@ -348,10 +348,11 @@ export class Router<
         this.options.history ??
         (isServer ? createMemoryHistory() : createBrowserHistory()!)
 
-      this.store.setState((s) => {
-        s.latestLocation = this.#parseLocation()
-        s.currentLocation = s.latestLocation
-      })
+      this.store.setState((s) => ({
+        ...s,
+        latestLocation: this.#parseLocation(),
+        currentLocation: s.latestLocation,
+      }))
 
       this.#unsubHistory = this.history.listen(() => {
         this.load(this.#parseLocation(this.store.state.latestLocation))
@@ -414,9 +415,10 @@ export class Router<
     this.store.batch(() => {
       if (next) {
         // Ingest the new location
-        this.store.setState((s) => {
-          s.latestLocation = next
-        })
+        this.store.setState((s) => ({
+          ...s,
+          latestLocation: next,
+        }))
       }
 
       // Match the routes
@@ -424,11 +426,12 @@ export class Router<
         strictParseParams: true,
       })
 
-      this.store.setState((s) => {
-        s.status = 'pending'
-        s.pendingMatches = matches
-        s.pendingLocation = this.store.state.latestLocation
-      })
+      this.store.setState((s) => ({
+        ...s,
+        status: 'pending',
+        pendingMatches: matches,
+        pendingLocation: this.store.state.latestLocation,
+      }))
     })
 
     // Load the matches
@@ -474,10 +477,11 @@ export class Router<
 
       // Clear non-loading error states when match leaves
       if (d.store.state.status === 'error') {
-        d.store.setState((s) => {
-          s.status = 'idle'
-          s.error = undefined
-        })
+        this.store.setState((s) => ({
+          ...s,
+          status: 'idle',
+          error: undefined,
+        }))
       }
     })
 
@@ -496,15 +500,14 @@ export class Router<
       // delete this.store.state.matchCache[d.id] // TODO:
     })
 
-    this.store.setState((s) => {
-      Object.assign(s, {
-        status: 'idle',
-        currentLocation: this.store.state.latestLocation,
-        currentMatches: matches,
-        pendingLocation: undefined,
-        pendingMatches: undefined,
-      })
-    })
+    this.store.setState((s) => ({
+      ...s,
+      status: 'idle',
+      currentLocation: this.store.state.latestLocation,
+      currentMatches: matches,
+      pendingLocation: undefined,
+      pendingMatches: undefined,
+    }))
 
     this.options.onRouteChange?.()
 
@@ -961,14 +964,19 @@ export class Router<
           dehydratedMatch && dehydratedMatch.id === match.id,
           'Oh no! There was a hydration mismatch when attempting to hydrate the state of the router! 😬',
         )
-        match.store.setState((s) => {
-          Object.assign(s, dehydratedMatch.state)
-        })
+        match.store.setState((s) => ({
+          ...s,
+          ...dehydratedMatch.state,
+        }))
       })
 
       currentMatches.forEach((match) => match.__validate())
 
-      Object.assign(s, { ...dehydratedRouter.state, currentMatches })
+      return {
+        ...s,
+        ...dehydratedRouter.state,
+        currentMatches,
+      }
     })
   }
 

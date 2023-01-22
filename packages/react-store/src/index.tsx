@@ -1,8 +1,13 @@
-import { Store } from '@tanstack/router-core'
+import { Store, AnyUpdater } from '@tanstack/store'
+
 import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
 
-export function useStore<TState, TSelected = TState>(
-  store: Store<TState>,
+export function useStore<
+  TState,
+  TSelected = TState,
+  TUpdater extends AnyUpdater = AnyUpdater,
+>(
+  store: Store<TState, TUpdater>,
   selector: (state: TState) => TSelected = (d) => d as any,
   compareShallow?: boolean,
 ) {

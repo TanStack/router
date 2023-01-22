@@ -1,5 +1,5 @@
 {
-  "name": "@tanstack/react-router",
+  "name": "@tanstack/react-actions",
   "author": "Tanner Linsley",
   "version": "0.0.1-beta.53",
   "license": "MIT",
@@ -10,13 +10,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "keywords": [
+    "actions",
     "react",
-    "location",
-    "@tanstack/react-router",
-    "router",
-    "routing",
-    "async",
-    "async router",
     "typescript"
   ],
   "funding": {
@@ -40,12 +35,7 @@
     "react-dom": ">=16"
   },
   "dependencies": {
-    "@babel/runtime": "^7.16.7",
-    "@tanstack/router": "workspace:*",
+    "@tanstack/actions": "workspace:*",
     "@tanstack/react-store": "workspace:*"
-  },
-  "devDependencies": {
-    "@types/use-sync-external-store": "^0.0.3",
-    "babel-plugin-transform-async-to-promises": "^0.8.18"
   }
 }

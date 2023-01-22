@@ -25,21 +25,12 @@ import {
   invariant,
   Router,
   Expand,
-  Action,
-  ActionStore,
-  ActionSubmission,
-  LoaderStore,
-  VariablesOptions,
-  LoaderByKey,
-  LoaderClient,
-  RegisteredLoaders,
-  LoaderInstanceByKey,
-} from '@tanstack/router-core'
-import { useStore } from './useStore'
+} from '@tanstack/router'
+import { useStore } from '@tanstack/react-store'
 
 //
 
-export * from '@tanstack/router-core'
+export * from '@tanstack/router'
 
 export { useStore }
 
@@ -120,7 +111,7 @@ export type MakeLinkOptions<
     children?: ReactNode | ((state: { isActive: boolean }) => ReactNode)
   }
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/router' {
   interface FrameworkGenerics {
     Component: RouteComponent
     ErrorComponent: RouteComponent<{
@@ -703,92 +694,6 @@ export function DefaultErrorBoundary({ error }: { error: any }) {
       </div>
     </div>
   )
-}
-
-export function useAction<
-  TKey extends string = string,
-  TPayload = unknown,
-  TResponse = unknown,
-  TError = Error,
->(
-  action: Action<TKey, TPayload, TResponse, TError>,
-  opts?: {
-    track?: (actionStore: ActionStore<TPayload, TResponse, TError>) => any
-  },
-): Action<TKey, TPayload, TResponse, TError> &
-  Action<TKey, TPayload, TResponse, TError>['store']['state'] & {
-    latestSubmission: ActionSubmission<TPayload, TResponse, TError>
-    pendingSubmissions: ActionSubmission<TPayload, TResponse, TError>[]
-  } {
-  useStore(action.store, (d) => opts?.track?.(d) ?? d, true)
-
-  const [ref] = React.useState({})
-
-  Object.assign(ref, {
-    ...action,
-    latestSubmission:
-      action.store.state.submissions[action.store.state.submissions.length - 1],
-    pendingSubmissions: React.useMemo(
-      () =>
-        action.store.state.submissions.filter((d) => d.status === 'pending'),
-      [action.store.state.submissions],
-    ),
-  })
-
-  return ref as any
-}
-
-const loaderClientContext = React.createContext<LoaderClient<any>>(null as any)
-
-export function LoaderClientProvider(props: {
-  loaderClient: LoaderClient<any>
-  children: any
-}) {
-  return (
-    <loaderClientContext.Provider value={props.loaderClient}>
-      {props.children}
-    </loaderClientContext.Provider>
-  )
-}
-
-export function useLoader<
-  TKey extends RegisteredLoaders[number]['__types']['key'],
-  TLoaderInstance extends LoaderInstanceByKey<RegisteredLoaders, TKey>,
-  TVariables extends TLoaderInstance['__types']['variables'],
-  TData extends TLoaderInstance['__types']['data'],
-  TError extends TLoaderInstance['__types']['error'],
->(
-  opts: {
-    key: TKey
-    track?: (loaderStore: LoaderStore<TData, TError>) => any
-  } & VariablesOptions<TVariables>,
-): [TLoaderInstance['store']['state'], TLoaderInstance] {
-  const loaderClient = React.useContext(loaderClientContext)
-
-  warning(
-    !loaderClient,
-    'useLoader must be used inside a <LoaderClientProvider> component!',
-  )
-
-  const loaderApi = loaderClient.getLoader({ key: opts.key })
-  const loader = loaderApi.getLoader({
-    variables: opts?.variables,
-  } as any)
-
-  React.useEffect(() => {
-    loader.load()
-  }, [loader])
-
-  useStore(loader.store, (d) => opts?.track?.(d as any) ?? d, true)
-
-  const [ref] = React.useState({})
-
-  Object.assign(ref, {
-    ...loader,
-    ...loader.store.state,
-  })
-
-  return ref as any
 }
 
 // TODO: While we migrate away from the history package, these need to be disabled

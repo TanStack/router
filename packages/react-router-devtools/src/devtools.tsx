@@ -876,18 +876,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             >
               <Button
                 type="button"
-                onClick={() => {
-                  activeMatch.invalidate()
-                }}
-                style={{
-                  background: theme.warning,
-                  color: theme.inputTextColor,
-                }}
-              >
-                Invalidate
-              </Button>{' '}
-              <Button
-                type="button"
                 onClick={() => activeMatch.load()}
                 style={{
                   background: theme.gray,
