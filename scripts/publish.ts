@@ -177,16 +177,21 @@ async function run() {
 
   // If a package has a dependency that has been updated, we need to update the
   // package that depends on it as well.
-  packages.forEach((pkg) => {
-    if (
-      pkg.dependencies?.find((dep) =>
-        changedPackages.find((d) => d.name === dep),
-      ) &&
-      !changedPackages.find((d) => d.name === pkg.name)
-    ) {
-      changedPackages.push(pkg)
-    }
-  })
+  await Promise.all(
+    packages.map(async (pkg) => {
+      const pkgJson = await readPackageJson(
+        path.resolve(rootDir, 'packages', pkg.packageDir, 'package.json'),
+      )
+      if (
+        Object.keys(pkgJson.dependencies)?.find((dep) =>
+          changedPackages.find((d) => d.name === dep),
+        ) &&
+        !changedPackages.find((d) => d.name === pkg.name)
+      ) {
+        changedPackages.push(pkg)
+      }
+    }),
+  )
 
   if (!process.env.TAG) {
     if (recommendedReleaseLevel === 2) {

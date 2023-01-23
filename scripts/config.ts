@@ -38,7 +38,6 @@ export const packages: Package[] = [
   {
     name: '@tanstack/react-router',
     packageDir: 'react-router',
-    dependencies: ['@tanstack/router'],
     srcDir: 'src',
     jsName: 'ReactRouter',
     entryFile: 'src/index.tsx',
@@ -49,7 +48,6 @@ export const packages: Package[] = [
   {
     name: '@tanstack/react-actions',
     packageDir: 'react-actions',
-    dependencies: ['@tanstack/actions'],
     srcDir: 'src',
     jsName: 'ReactActions',
     entryFile: 'src/index.tsx',
@@ -60,7 +58,6 @@ export const packages: Package[] = [
   {
     name: '@tanstack/react-loaders',
     packageDir: 'react-loaders',
-    dependencies: ['@tanstack/loaders'],
     srcDir: 'src',
     jsName: 'ReactLoaders',
     entryFile: 'src/index.tsx',
@@ -71,7 +68,6 @@ export const packages: Package[] = [
   {
     name: '@tanstack/react-store',
     packageDir: 'react-store',
-    dependencies: ['@tanstack/store'],
     srcDir: 'src',
     jsName: 'ReactLoaders',
     entryFile: 'src/index.tsx',
@@ -82,7 +78,6 @@ export const packages: Package[] = [
   {
     name: '@tanstack/react-router-devtools',
     packageDir: 'react-router-devtools',
-    peerDependencies: ['@tanstack/react-router'],
     srcDir: 'src',
     jsName: 'ReactRouterDevtools',
     entryFile: 'src/index.tsx',
