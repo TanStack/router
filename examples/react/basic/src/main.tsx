@@ -49,6 +49,7 @@ const postLoader = postsLoader.createLoader({
 
 const loaderClient = new LoaderClient({
   loaders: [postsLoader, postLoader],
+  defaultGcMaxAge: 2000,
 })
 
 const rootRoute = createRouteConfig({

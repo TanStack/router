@@ -1,4 +1,5 @@
 import * as React from 'react'
+import invariant from 'tiny-invariant'
 import {
   LoaderClient,
   RegisteredLoaders,
@@ -38,10 +39,10 @@ export function useLoader<
 ): [TLoaderInstance['store']['state'], TLoaderInstance] {
   const loaderClient = React.useContext(loaderClientContext)
 
-  warning(
-    !loaderClient,
-    'useLoader must be used inside a <LoaderClientProvider> component!',
-  )
+  if (!loaderClient)
+    invariant(
+      'useLoader must be used inside a <LoaderClientProvider> component!',
+    )
 
   const loaderApi = loaderClient.getLoader({ key: opts.key })
   const loaderInstance = loaderApi.getLoader({
@@ -55,16 +56,4 @@ export function useLoader<
   useStore(loaderInstance.store, (d) => opts?.track?.(d as any) ?? d, true)
 
   return [loaderInstance.store.state, loaderInstance as any]
-}
-
-function warning(cond: any, message: string): cond is true {
-  if (cond) {
-    if (typeof console !== 'undefined') console.warn(message)
-
-    try {
-      throw new Error(message)
-    } catch {}
-  }
-
-  return true
 }

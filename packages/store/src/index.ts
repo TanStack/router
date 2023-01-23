@@ -1,17 +1,24 @@
 export type AnyUpdater = (...args: any[]) => any
 
+export type Listener<TState> = (next: TState, prev: TState) => void
+
 interface StoreOptions<
   TState,
   TUpdater extends AnyUpdater = (cb: TState) => TState,
 > {
-  updateFn: (previous: TState) => (updater: TUpdater) => TState
+  updateFn?: (previous: TState) => (updater: TUpdater) => TState
+  onSubscribe?: (
+    listener: Listener<TState>,
+    store: Store<TState, TUpdater>,
+  ) => () => void
+  onUpdate?: (next: TState, prev: TState) => void
 }
 
 export class Store<
   TState,
   TUpdater extends AnyUpdater = (cb: TState) => TState,
 > {
-  listeners = new Set<(next: TState, prev: TState) => void>()
+  listeners = new Set<Listener<TState>>()
   state: TState
   options?: StoreOptions<TState, TUpdater>
   batching = false
@@ -22,10 +29,12 @@ export class Store<
     this.options = options
   }
 
-  subscribe = (listener: (next: TState, prev: TState) => void) => {
+  subscribe = (listener: Listener<TState>) => {
     this.listeners.add(listener)
+    const unsub = this.options?.onSubscribe?.(listener, this)
     return () => {
       this.listeners.delete(listener)
+      unsub?.()
     }
   }
 
@@ -35,9 +44,10 @@ export class Store<
       ? this.options.updateFn(previous)(updater)
       : (updater as any)(previous)
 
-    this.queue.push(() =>
-      this.listeners.forEach((listener) => listener(this.state, previous)),
-    )
+    this.queue.push(() => {
+      this.listeners.forEach((listener) => listener(this.state, previous))
+      this.options?.onUpdate?.(this.state, previous)
+    })
     this.#flush()
   }
 

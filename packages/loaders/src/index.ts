@@ -19,6 +19,8 @@ export type RegisteredLoaders = RegisterLoaderClient extends {
 
 interface LoaderClientOptions<TLoaders extends Loader<any, any, any, any>[]> {
   loaders: TLoaders
+  defaultMaxAge?: number
+  defaultGcMaxAge?: number
 }
 
 type LoaderClientStore = Store<{
@@ -56,7 +58,7 @@ export type LoaderByKey<
   TKey extends TLoaders[number]['__types']['key'],
 > = {
   [TLoader in TLoaders[number] as number]: TLoader extends {
-    options: LoaderApiOptions<TKey, infer TVariables, infer TData, infer TError>
+    options: LoaderOptions<TKey, infer TVariables, infer TData, infer TError>
   }
     ? Loader<TKey, TVariables, TData, TError>
     : never
@@ -67,7 +69,7 @@ export type LoaderInstanceByKey<
   TKey extends TLoaders[number]['__types']['key'],
 > = {
   [TLoader in TLoaders[number] as number]: TLoader extends {
-    options: LoaderApiOptions<TKey, infer TVariables, infer TData, infer TError>
+    options: LoaderOptions<TKey, infer TVariables, infer TData, infer TError>
   }
     ? LoaderInstance<TKey, TVariables, TData, TError>
     : never
@@ -99,19 +101,19 @@ export type LoaderFn<TLoaderPayload = unknown, TLoaderResponse = unknown> = (
   submission: TLoaderPayload,
 ) => TLoaderResponse | Promise<TLoaderResponse>
 
-interface LoaderApiOptions<
+interface LoaderOptions<
   TKey extends string = string,
   TVariables = unknown,
   TData = unknown,
   TError = Error,
 > {
   key: TKey
-  // The max age to consider loader data fresh (not-stale) for this route in milliseconds from the time of fetch
-  // Defaults to 0. Only stale loader data is refetched.
-  loaderMaxAge?: number
-  // The max age to cache the loader data for this route in milliseconds from the time of route inactivity
+  // The max age to consider loader data fresh (not-stale) in milliseconds from the time of fetch
+  // Defaults to 1000. Only stale loader data is refetched.
+  maxAge?: number
+  // The max age to cache the loader data in milliseconds from the time of route inactivity
   // before it is garbage collected.
-  loaderGcMaxAge?: number
+  gcMaxAge?: number
   loader: (
     variables: TVariables,
     Loader: LoaderInstance<TKey, TVariables, TData, TError>,
@@ -149,7 +151,7 @@ export class Loader<
     data: TData
     error: TError
   }
-  options: LoaderApiOptions<TKey, TVariables, TData, TError>
+  options: LoaderOptions<TKey, TVariables, TData, TError>
   parentLoader?: Loader<any, any, any, any>
   key: TKey
   cache?: LoaderClient<any>
@@ -157,7 +159,7 @@ export class Loader<
 
   __loadPromise?: Promise<TData>
 
-  constructor(options: LoaderApiOptions<TKey, TVariables, TData, TError>) {
+  constructor(options: LoaderOptions<TKey, TVariables, TData, TError>) {
     this.options = options
     this.key = this.options.key
     this.loaders = {}
@@ -212,7 +214,7 @@ export class Loader<
   }
 
   createLoader = <TKey extends string, TVariables, TData, TError>(
-    options: LoaderApiOptions<TKey, TVariables, TData, TError>,
+    options: LoaderOptions<TKey, TVariables, TData, TError>,
   ): Loader<TKey, TVariables, TData, TError> => {
     const loader = new Loader(options)
     loader.parentLoader = this
@@ -251,6 +253,7 @@ export class LoaderInstance<
   store: Store<LoaderStore<TData, TError>>
   variables: TVariables
   __loadPromise?: Promise<TData>
+  #subscriptionCount = 0
 
   constructor(options: LoaderInstanceOptions<TKey, TVariables, TData, TError>) {
     this.options = options
@@ -258,31 +261,51 @@ export class LoaderInstance<
     this.loader = options.loader
     this.hashedKey = options.hashedKey
     this.variables = options.variables
-    this.store = new Store<LoaderStore<TData, TError>>(getInitialLoaderState())
-    this.#startGc()
-
-    this.store.subscribe((next, prev) => {
-      if (next.isFetching !== prev.isFetching) {
-        this.cache?.store.setState((s) => {
-          if (next.isFetching) {
-            return {
-              ...s,
-              isFetching: s.isFetching
-                ? s.isFetching.concat(this as any)
-                : [this as any],
-            }
-          } else {
-            return {
-              ...s,
-              isFetching:
-                s.isFetching?.length === 1 && s.isFetching?.[0] === this
-                  ? []
-                  : s.isFetching?.filter((l) => l !== (this as any)),
+    this.store = new Store<LoaderStore<TData, TError>>(
+      getInitialLoaderState(),
+      {
+        onSubscribe: () => {
+          if (!this.#subscriptionCount) {
+            this.#stopGc()
+          }
+          this.#subscriptionCount++
+          return () => {
+            this.#subscriptionCount--
+            if (!this.#subscriptionCount) {
+              this.#startGc()
             }
           }
-        })
-      }
-    })
+        },
+        onUpdate: (next, prev) => {
+          if (next.isFetching !== prev.isFetching) {
+            this.cache?.store.setState((s) => {
+              if (next.isFetching) {
+                return {
+                  ...s,
+                  isFetching: s.isFetching
+                    ? s.isFetching.concat(this as any)
+                    : [this as any],
+                }
+              } else {
+                return {
+                  ...s,
+                  isFetching:
+                    s.isFetching?.length === 1 && s.isFetching?.[0] === this
+                      ? []
+                      : s.isFetching?.filter((l) => l !== (this as any)),
+                }
+              }
+            })
+          }
+        },
+      },
+    )
+
+    if (this.store.listeners.size) {
+      this.#stopGc()
+    } else {
+      this.#startGc()
+    }
   }
 
   #gcTimeout?: ReturnType<typeof setTimeout>
@@ -291,7 +314,7 @@ export class LoaderInstance<
     this.#gcTimeout = setTimeout(() => {
       this.#gcTimeout = undefined
       this.#gc()
-    }, this.loader.options.loaderGcMaxAge ?? 5 * 60 * 1000)
+    }, this.loader.options.gcMaxAge ?? this.cache?.options.defaultGcMaxAge ?? 5 * 60 * 1000)
   }
 
   #stopGc = () => {
@@ -307,23 +330,6 @@ export class LoaderInstance<
 
   #destroy = () => {
     delete this.loader.loaders[this.hashedKey]
-  }
-
-  #subscriptionCount = 0
-
-  subscribe = (fn: (state: LoaderStore<TData, TError>) => void) => {
-    const unsub = this.store.subscribe(fn)
-    this.#subscriptionCount++
-    if (this.#subscriptionCount > 0) {
-      this.#stopGc()
-    }
-    return () => {
-      unsub()
-      this.#subscriptionCount--
-      if (!this.#subscriptionCount) {
-        this.#startGc()
-      }
-    }
   }
 
   preload = async (opts?: { maxAge?: number }): Promise<TData> => {
@@ -434,7 +440,10 @@ export class LoaderInstance<
           data: replaceEqualDeep(s.data, data),
           invalidAt:
             updatedAt +
-            (opts?.maxAge ?? this.loader.options.loaderMaxAge ?? 1000),
+            (opts?.maxAge ??
+              this.loader.options.maxAge ??
+              this.cache?.options.defaultMaxAge ??
+              1000),
         }))
 
         if ((newer = hasNewer())) {
