@@ -183,7 +183,7 @@ async function run() {
         path.resolve(rootDir, 'packages', pkg.packageDir, 'package.json'),
       )
       if (
-        Object.keys(pkgJson.dependencies)?.find((dep) =>
+        Object.keys(pkgJson.dependencies ?? {})?.find((dep) =>
           changedPackages.find((d) => d.name === dep),
         ) &&
         !changedPackages.find((d) => d.name === pkg.name)
