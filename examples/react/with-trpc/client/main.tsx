@@ -8,7 +8,7 @@ import {
   Link,
   useMatch,
   useRouterStore,
-  useLoader,
+  useLoaderInstance,
   MatchRoute,
   useSearch,
   useNavigate,
@@ -178,7 +178,7 @@ const dashboardRoute = rootRoute.createRoute({
 const postsRoute = dashboardRoute.createRoute({
   path: 'posts',
   component: () => {
-    const { posts } = useLoader({ from: postsRoute.id })
+    const { posts } = useLoaderInstance({ from: postsRoute.id })
 
     return (
       <div className="flex-1 flex">
@@ -253,7 +253,7 @@ const postRoute = postsRoute.createRoute({
     }
   },
   component: () => {
-    const { post } = useLoader({ from: postRoute.id })
+    const { post } = useLoaderInstance({ from: postRoute.id })
     const search = useSearch({ from: postRoute.id })
     const navigate = useNavigate({ from: postRoute.id })
 
@@ -322,7 +322,7 @@ const postRoute = postsRoute.createRoute({
 const dashboardIndexRoute = dashboardRoute.createRoute({
   path: '/',
   component: () => {
-    const { posts } = useLoader({ from: dashboardIndexRoute.id })
+    const { posts } = useLoaderInstance({ from: dashboardIndexRoute.id })
 
     return (
       <div className="p-2">

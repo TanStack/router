@@ -2,7 +2,7 @@ import {
   Link,
   MatchRoute,
   Outlet,
-  useLoader,
+  useLoaderInstance,
   useNavigate,
   useSearch,
 } from '@tanstack/react-router'
@@ -44,7 +44,7 @@ routeConfig.generate({
 })
 
 function Users() {
-  const { users } = useLoader({ from: routeConfig.id })
+  const { users } = useLoaderInstance({ from: routeConfig.id })
   const { usersView } = useSearch({ from: routeConfig.id })
   const navigate = useNavigate({ from: routeConfig.id })
 

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useLoader, useMatch } from '@tanstack/react-router'
+import { useLoaderInstance, useMatch } from '@tanstack/react-router'
 import { routeConfig } from '../../routes.generated/posts/$postId'
 export type PostType = {
   id: string
@@ -8,7 +8,7 @@ export type PostType = {
 }
 export const tanner = 'foo'
 function Post() {
-  const { post } = useLoader({
+  const { post } = useLoaderInstance({
     from: routeConfig.id,
   })
   return (

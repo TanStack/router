@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { fetchUserById } from '../../../mockTodos'
 import { usersRoute } from '.'
-import { useLoader, useMatch } from '@tanstack/react-router'
+import { useLoaderInstance, useMatch } from '@tanstack/react-router'
 
 export const userRoute = usersRoute.createRoute({
   path: '$userId',
@@ -16,7 +16,7 @@ export const userRoute = usersRoute.createRoute({
 })
 
 function User() {
-  const { user } = useLoader({ from: userRoute.id })
+  const { user } = useLoaderInstance({ from: userRoute.id })
 
   return (
     <>

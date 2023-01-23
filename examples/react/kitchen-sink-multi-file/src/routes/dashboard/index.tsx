@@ -2,16 +2,20 @@ import * as React from 'react'
 import { Link, Outlet, useMatch } from '@tanstack/react-router'
 import { fetchInvoices } from '../../mockTodos'
 import { rootRoute } from '../__root'
+import { Loader } from '@tanstack/react-loaders'
+
+export const invoicesLoader = new Loader({
+  key: 'invoices',
+  loader: async () => {
+    console.log('Fetching invoices...')
+    return fetchInvoices()
+  },
+})
 
 export const dashboardRoute = rootRoute.createRoute({
   path: 'dashboard',
   component: Dashboard,
-  onLoad: async () => {
-    console.log('Fetching all invoices...')
-    return {
-      invoices: await fetchInvoices(),
-    }
-  },
+  onLoad: () => invoicesLoader.load(),
 })
 
 function Dashboard() {

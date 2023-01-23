@@ -1,6 +1,6 @@
-import { useLoader, useMatch } from '@tanstack/react-router'
+import { useLoaderInstance } from '@tanstack/react-loaders'
 import * as React from 'react'
-import { dashboardRoute } from '.'
+import { dashboardRoute, invoicesLoader } from '.'
 
 export const dashboardIndexRoute = dashboardRoute.createRoute({
   path: '/',
@@ -8,7 +8,7 @@ export const dashboardIndexRoute = dashboardRoute.createRoute({
 })
 
 function DashboardHome() {
-  const { invoices } = useLoader({ from: dashboardIndexRoute.id })
+  const [{ data: invoices }] = useLoaderInstance({ key: invoicesLoader.key })
 
   return (
     <div className="p-2">

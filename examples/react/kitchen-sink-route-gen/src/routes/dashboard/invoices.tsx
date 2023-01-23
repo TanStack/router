@@ -3,7 +3,7 @@ import {
   MatchRoute,
   Outlet,
   useAction,
-  useLoader,
+  useLoaderInstance,
   useMatch,
   useRoute,
 } from '@tanstack/react-router'
@@ -18,7 +18,7 @@ routeConfig.generate({
 })
 
 function Invoices() {
-  const { invoices } = useLoader({ from: routeConfig.id })
+  const { invoices } = useLoaderInstance({ from: routeConfig.id })
 
   const invoiceIndexAction = useAction(createInvoiceAction)
   const invoiceDetailAction = useAction(updateInvoiceAction)

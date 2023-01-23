@@ -1,7 +1,7 @@
 import {
   Link,
   Outlet,
-  useLoader,
+  useLoaderInstance,
   MatchRoute,
   useAction,
 } from '@tanstack/react-router'
@@ -17,7 +17,7 @@ export const invoicesRoute = dashboardRoute.createRoute({
 })
 
 function Invoices() {
-  const { invoices } = useLoader({ from: invoicesRoute.id })
+  const { invoices } = useLoaderInstance({ from: invoicesRoute.id })
 
   // Get the action for a child route
   const createInvoice = useAction(createInvoiceAction)

@@ -1,4 +1,4 @@
-import { Link, Outlet, useLoader } from '@tanstack/react-router'
+import { Link, Outlet, useLoaderInstance } from '@tanstack/react-router'
 import { routeConfig } from '../routes.generated/posts'
 import { postspostIdRoute } from '../routes.generated/posts/$postId.client'
 //
@@ -23,7 +23,7 @@ async function fetchPosts() {
 }
 
 function Posts() {
-  const { posts } = useLoader({ from: routeConfig.id })
+  const { posts } = useLoaderInstance({ from: routeConfig.id })
 
   return (
     <div className="p-2 flex gap-2">

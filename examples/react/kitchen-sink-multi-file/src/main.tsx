@@ -1,8 +1,12 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
+import { LoaderClientProvider } from '@tanstack/react-loaders'
+import { ActionClientProvider } from '@tanstack/react-actions'
 
 import { router } from './router'
+import { loaderClient } from './loaderClient'
+import { actionClient } from './actionClient'
 import { useSessionStorage } from './utils'
 
 function App() {
@@ -59,31 +63,22 @@ function App() {
             className={`w-full`}
           />
         </div>
-        <div>
-          Preload Max Age:{' '}
-          {defaultPreloadMaxAge ? `${defaultPreloadMaxAge}ms` : 'Off'}
-        </div>
-        <div>
-          <input
-            type="range"
-            min="0"
-            max="10000"
-            step="250"
-            value={defaultPreloadMaxAge}
-            onChange={(e) => setDefaultPreloadMaxAge(e.target.valueAsNumber)}
-            className={`w-full`}
-          />
-        </div>
       </div>
       <AuthProvider>
-        <RouterProvider
-          router={router}
-          defaultLoaderMaxAge={defaultLoaderMaxAge}
-          defaultPreloadMaxAge={defaultPreloadMaxAge}
-          // Normally, the options above aren't changing, but for this particular
-          // example, we need to key the router when they change
-          key={[defaultPreloadMaxAge].join('.')}
-        />
+        <LoaderClientProvider
+          loaderClient={loaderClient}
+          defaultMaxAge={defaultLoaderMaxAge}
+        >
+          <ActionClientProvider actionClient={actionClient}>
+            <RouterProvider
+              router={router}
+              defaultLoaderMaxAge={defaultLoaderMaxAge}
+              // Normally, the options above aren't changing, but for this particular
+              // example, we need to key the router when they change
+              key={[defaultPreloadMaxAge].join('.')}
+            />
+          </ActionClientProvider>
+        </LoaderClientProvider>
       </AuthProvider>
     </>
   )

@@ -36,13 +36,24 @@ export class LoaderClient<
   options: LoaderClientOptions<TLoaders>
   loaders: Record<string, Loader>
   store: LoaderClientStore
+  state: LoaderClientStore['state']
 
   constructor(options: LoaderClientOptions<TLoaders>) {
     this.options = options
-    this.store = new Store({
-      isFetching: false,
-      isPrefetching: false,
-    }) as LoaderClientStore
+    this.store = new Store(
+      {
+        isFetching: false,
+        isPrefetching: false,
+      },
+      {
+        onUpdate: (next) => {
+          this.state = next
+        },
+      },
+    ) as LoaderClientStore
+
+    this.state = this.store.state
+
     this.loaders = {}
 
     this.options.loaders.forEach((loader) => {
@@ -284,6 +295,7 @@ export class LoaderInstance<
   client?: LoaderClient
   loader: Loader<TKey, TVariables, TData, TError>
   store: Store<LoaderStore<TData, TError>>
+  state: LoaderStore<TData, TError>
   variables: TVariables
   __loadPromise?: Promise<TData>
   #subscriptionCount = 0
@@ -310,6 +322,7 @@ export class LoaderInstance<
           }
         },
         onUpdate: (next, prev) => {
+          this.state = next
           const client = this.client
 
           if (!client) return
@@ -350,6 +363,8 @@ export class LoaderInstance<
         },
       },
     )
+
+    this.state = this.store.state
 
     if (this.store.listeners.size) {
       this.#stopGc()

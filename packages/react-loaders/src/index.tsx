@@ -8,6 +8,7 @@ import {
   LoaderClientStore,
   LoaderClientOptions,
   VariablesOptions,
+  Loader,
 } from '@tanstack/loaders'
 
 import { useStore } from '@tanstack/react-store'
@@ -36,7 +37,7 @@ export function LoaderClientProvider({
   )
 }
 
-export function useLoader<
+export function useLoaderInstance<
   TKey extends RegisteredLoaders[number]['__types']['key'],
   TLoaderInstance extends LoaderInstanceByKey<RegisteredLoaders, TKey>,
   TVariables extends TLoaderInstance['__types']['variables'],
@@ -47,12 +48,12 @@ export function useLoader<
     key: TKey
     track?: (loaderStore: LoaderStore<TData, TError>) => any
   } & VariablesOptions<TVariables>,
-): [TLoaderInstance['store']['state'], TLoaderInstance] {
+): TLoaderInstance {
   const loaderClient = React.useContext(loaderClientContext)
 
   if (!loaderClient)
     invariant(
-      'useLoader must be used inside a <LoaderClientProvider> component!',
+      'useLoaderInstance must be used inside a <LoaderClientProvider> component!',
     )
 
   const loaderApi = loaderClient.getLoader({ key: opts.key })
@@ -66,12 +67,12 @@ export function useLoader<
 
   useStore(loaderInstance.store, (d) => opts?.track?.(d as any) ?? d, true)
 
-  return [loaderInstance.store.state, loaderInstance as any]
+  return loaderInstance as any
 }
 
 export function useLoaderClient(opts?: {
   track?: (loaderClientStore: LoaderClientStore) => any
-}): [LoaderClientStore['state'], LoaderClient<RegisteredLoaders>] {
+}): LoaderClient<RegisteredLoaders> {
   const loaderClient = React.useContext(loaderClientContext)
 
   if (!loaderClient)
@@ -81,5 +82,5 @@ export function useLoaderClient(opts?: {
 
   useStore(loaderClient.store, (d) => opts?.track?.(d as any) ?? d, true)
 
-  return [loaderClient.store.state as any, loaderClient as any]
+  return loaderClient
 }

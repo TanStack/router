@@ -1,7 +1,12 @@
 import { lazy } from '@tanstack/react-router'
 import { routeConfig as parentRouteConfig } from './__root'
 import * as React from 'react'
-import { Link, Outlet, useLoader, useMatch } from '@tanstack/react-router'
+import {
+  Link,
+  Outlet,
+  useLoaderInstance,
+  useMatch,
+} from '@tanstack/react-router'
 const routeConfig = parentRouteConfig.createRoute({
   path: 'posts',
   component: Posts,
@@ -10,7 +15,7 @@ const routeConfig = parentRouteConfig.createRoute({
   errorComponent: () => 'Oh crap',
 })
 function Posts() {
-  const { posts } = useLoader({
+  const { posts } = useLoaderInstance({
     from: routeConfig.id,
   })
   return (

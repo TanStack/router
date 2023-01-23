@@ -12,7 +12,7 @@ import {
   Loader,
   LoaderClient,
   LoaderClientProvider,
-  useLoader,
+  useLoaderInstance,
 } from '@tanstack/react-loaders'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -98,7 +98,7 @@ const postsRoute = rootRoute.createRoute({
   path: 'posts',
   onLoad: () => loaderClient.getLoader({ key: 'posts' }).load(),
   component: () => {
-    const [{ data: posts }] = useLoader({
+    const {} = useLoaderState({
       key: postsLoader.key,
     })
 
@@ -147,7 +147,7 @@ const postRoute = postsRoute.createRoute({
     postLoader.load({ variables: postId }),
   component: () => {
     const { postId } = useParams({ from: postRoute.id })
-    const [{ data: post }] = useLoader({
+    const [{ data: post }] = useLoaderInstance({
       key: postLoader.key,
       variables: postId,
     })

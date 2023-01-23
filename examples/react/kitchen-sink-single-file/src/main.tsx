@@ -20,7 +20,7 @@ import {
 } from '@tanstack/react-actions'
 import {
   Loader,
-  useLoader,
+  useLoaderInstance,
   LoaderClient,
   useLoaderClient,
   LoaderClientProvider,
@@ -35,6 +35,7 @@ import {
   Invoice,
   postInvoice,
   patchInvoice,
+  fetchRandomNumber,
 } from './mockTodos'
 
 import { loaderDelayFn } from './utils'
@@ -50,7 +51,7 @@ const invoicesLoader = new Loader({
   key: 'invoices',
   loader: async () => {
     console.log('Fetching invoices...')
-    return loaderDelayFn(() => fetchInvoices())
+    return fetchInvoices()
   },
 })
 
@@ -58,7 +59,7 @@ const invoiceLoader = invoicesLoader.createLoader({
   key: 'invoice',
   loader: async (invoiceId: number) => {
     console.log(`Fetching invoice with id ${invoiceId}...`)
-    return loaderDelayFn(() => fetchInvoiceById(invoiceId))
+    return fetchInvoiceById(invoiceId)
   },
 })
 
@@ -66,7 +67,7 @@ const usersLoader = new Loader({
   key: 'users',
   loader: async () => {
     console.log('Fetching users...')
-    return loaderDelayFn(() => fetchUsers())
+    return fetchUsers()
   },
 })
 
@@ -74,16 +75,14 @@ const userLoader = usersLoader.createLoader({
   key: 'user',
   loader: async (userId: number) => {
     console.log(`Fetching user with id ${userId}...`)
-    return loaderDelayFn(() => fetchUserById(userId))
+    return fetchUserById(userId)
   },
 })
 
 const randomIdLoader = new Loader({
   key: 'random',
   loader: () => {
-    return loaderDelayFn(() => {
-      return Math.random()
-    })
+    return fetchRandomNumber()
   },
 })
 
@@ -140,7 +139,7 @@ declare module '@tanstack/react-actions' {
 // Build our routes. We could do this in our component, too.
 const rootRoute = createRouteConfig({
   component: () => {
-    const [loaderClientState] = useLoaderClient()
+    const loaderClient = useLoaderClient()
 
     return (
       <>
@@ -150,7 +149,7 @@ const rootRoute = createRouteConfig({
             {/* Show a global spinner when the router is transitioning */}
             <div
               className={`text-3xl duration-300 delay-0 opacity-0 ${
-                loaderClientState.isFetching ? ` duration-1000 opacity-40` : ''
+                loaderClient.state.isFetching ? ` duration-1000 opacity-40` : ''
               }`}
             >
               <Spinner />
@@ -288,9 +287,11 @@ const dashboardRoute = rootRoute.createRoute({
 const dashboardIndexRoute = dashboardRoute.createRoute({
   path: '/',
   component: () => {
-    const [{ data: invoices }] = useLoader({
+    const invoicesLoaderInstance = useLoaderInstance({
       key: invoicesLoader.key,
     })
+
+    const invoices = invoicesLoaderInstance.state.data
 
     return (
       <div className="p-2">
@@ -306,7 +307,11 @@ const dashboardIndexRoute = dashboardRoute.createRoute({
 const invoicesRoute = dashboardRoute.createRoute({
   path: 'invoices',
   component: () => {
-    const [{ data: invoices }] = useLoader({ key: invoicesLoader.key })
+    const invoicesLoaderInstance = useLoaderInstance({
+      key: invoicesLoader.key,
+    })
+
+    const invoices = invoicesLoaderInstance.state.data
 
     const [{ pendingSubmissions: updateSubmissions }] = useAction({
       key: updateInvoiceAction.key,
@@ -448,10 +453,14 @@ const invoiceRoute = invoicesRoute.createRoute({
     const search = useSearch({ from: invoiceRoute.id })
     const params = useParams({ from: invoiceRoute.id })
     const navigate = useNavigate({ from: invoiceRoute.id })
-    const [{ data: invoice }] = useLoader({
+
+    const invoiceLoaderInstance = useLoaderInstance({
       key: invoiceLoader.key,
       variables: params.invoiceId,
     })
+
+    const invoice = invoiceLoaderInstance.state.data
+
     const [{ latestSubmission }] = useAction({ key: updateInvoiceAction.key })
 
     const [notes, setNotes] = React.useState(search.notes ?? '')
@@ -564,7 +573,9 @@ const usersRoute = dashboardRoute.createRoute({
     }),
   ],
   component: () => {
-    const [{ data: users }] = useLoader({ key: usersLoader.key })
+    const usersLoaderInstance = useLoaderInstance({ key: usersLoader.key })
+    const users = usersLoaderInstance.state.data
+
     const { usersView } = useSearch({ from: usersRoute.id })
     const navigate = useNavigate({ from: usersRoute.id })
 
@@ -720,10 +731,12 @@ const userRoute = usersRoute.createRoute({
   component: () => {
     const { userId } = useParams({ from: userRoute.id })
 
-    const [{ data: user }] = useLoader({
+    const userLoaderInstance = useLoaderInstance({
       key: userLoader.key,
       variables: userId,
     })
+
+    const user = userLoaderInstance.state.data
 
     return (
       <>
@@ -838,12 +851,14 @@ const layoutRoute = rootRoute.createRoute({
   id: 'layout',
   onLoad: async () => randomIdLoader.load(),
   component: () => {
-    const [{ data: random }] = useLoader({ key: randomIdLoader.key })
+    const randomIdLoaderInstance = useLoaderInstance({
+      key: randomIdLoader.key,
+    })
 
     return (
       <div>
         <div>Layout</div>
-        <div>Random #: {random}</div>
+        <div>Random #: {randomIdLoaderInstance.state.data}</div>
         <hr />
         <Outlet />
       </div>

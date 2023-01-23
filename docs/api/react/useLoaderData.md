@@ -1,10 +1,10 @@
 ---
-id: useLoader
-title: useLoader
+id: useLoaderInstance
+title: useLoaderInstance
 ---
 
 ```tsx
-const data = useLoader({
+const data = useLoaderInstance({
   from,
   strict,
   select,

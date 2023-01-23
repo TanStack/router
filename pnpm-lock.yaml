@@ -103,10 +103,10 @@ importers:
 
   examples/react/basic:
     specifiers:
-      '@tanstack/react-actions': 0.0.1-beta.55
-      '@tanstack/react-loaders': 0.0.1-beta.55
-      '@tanstack/react-router': 0.0.1-beta.55
-      '@tanstack/react-router-devtools': 0.0.1-beta.55
+      '@tanstack/react-actions': 0.0.1-beta.56
+      '@tanstack/react-loaders': 0.0.1-beta.56
+      '@tanstack/react-router': 0.0.1-beta.56
+      '@tanstack/react-router-devtools': 0.0.1-beta.56
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
       '@vitejs/plugin-react': ^1.1.3
@@ -137,9 +137,9 @@ importers:
       '@babel/core': ^7.20.2
       '@babel/generator': ^7.20.4
       '@rollup/plugin-babel': ^6.0.2
-      '@tanstack/react-router': 0.0.1-beta.55
-      '@tanstack/react-router-devtools': 0.0.1-beta.55
-      '@tanstack/router-cli': 0.0.1-beta.47
+      '@tanstack/react-router': 0.0.1-beta.56
+      '@tanstack/react-router-devtools': 0.0.1-beta.56
+      '@tanstack/router-cli': 0.0.1-beta.56
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -186,9 +186,9 @@ importers:
       '@babel/core': ^7.20.2
       '@babel/generator': ^7.20.4
       '@rollup/plugin-babel': ^6.0.2
-      '@tanstack/react-router': 0.0.1-beta.55
-      '@tanstack/react-router-devtools': 0.0.1-beta.55
-      '@tanstack/router-cli': 0.0.1-beta.47
+      '@tanstack/react-router': 0.0.1-beta.56
+      '@tanstack/react-router-devtools': 0.0.1-beta.56
+      '@tanstack/router-cli': 0.0.1-beta.56
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -235,9 +235,9 @@ importers:
       '@babel/core': ^7.20.2
       '@babel/generator': ^7.20.4
       '@rollup/plugin-babel': ^6.0.2
-      '@tanstack/react-router': 0.0.1-beta.55
-      '@tanstack/react-router-devtools': 0.0.1-beta.55
-      '@tanstack/router-cli': 0.0.1-beta.47
+      '@tanstack/react-router': 0.0.1-beta.56
+      '@tanstack/react-router-devtools': 0.0.1-beta.56
+      '@tanstack/router-cli': 0.0.1-beta.56
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -281,8 +281,10 @@ importers:
 
   examples/react/kitchen-sink-multi-file:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.55
-      '@tanstack/react-router-devtools': 0.0.1-beta.55
+      '@tanstack/react-actions': 0.0.1-beta.56
+      '@tanstack/react-loaders': 0.0.1-beta.56
+      '@tanstack/react-router': 0.0.1-beta.56
+      '@tanstack/react-router-devtools': 0.0.1-beta.56
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
       '@vitejs/plugin-react': ^1.1.3
@@ -293,6 +295,8 @@ importers:
       vite: ^2.8.6
       zod: ^3.19.1
     dependencies:
+      '@tanstack/react-actions': link:../../../packages/react-actions
+      '@tanstack/react-loaders': link:../../../packages/react-loaders
       '@tanstack/react-router': link:../../../packages/react-router
       '@tanstack/react-router-devtools': link:../../../packages/react-router-devtools
       '@vitejs/plugin-react': 1.3.2
@@ -308,9 +312,9 @@ importers:
 
   examples/react/kitchen-sink-route-gen:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.55
-      '@tanstack/react-router-devtools': 0.0.1-beta.55
-      '@tanstack/router-cli': 0.0.1-beta.47
+      '@tanstack/react-router': 0.0.1-beta.56
+      '@tanstack/react-router-devtools': 0.0.1-beta.56
+      '@tanstack/router-cli': 0.0.1-beta.56
       '@types/node': ^18.11.9
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
@@ -347,10 +351,10 @@ importers:
 
   examples/react/kitchen-sink-single-file:
     specifiers:
-      '@tanstack/react-actions': workspace:0.0.1-beta.55
-      '@tanstack/react-loaders': workspace:0.0.1-beta.55
-      '@tanstack/react-router': 0.0.1-beta.55
-      '@tanstack/react-router-devtools': 0.0.1-beta.55
+      '@tanstack/react-actions': workspace:0.0.1-beta.56
+      '@tanstack/react-loaders': workspace:0.0.1-beta.56
+      '@tanstack/react-router': 0.0.1-beta.56
+      '@tanstack/react-router-devtools': 0.0.1-beta.56
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
       '@vitejs/plugin-react': ^1.1.3
@@ -378,8 +382,8 @@ importers:
 
   examples/react/quickstart:
     specifiers:
-      '@tanstack/react-router': 0.0.1-beta.55
-      '@tanstack/react-router-devtools': 0.0.1-beta.55
+      '@tanstack/react-router': 0.0.1-beta.56
+      '@tanstack/react-router-devtools': 0.0.1-beta.56
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
       '@vitejs/plugin-react': ^1.1.3
@@ -401,8 +405,8 @@ importers:
     specifiers:
       '@astrojs/netlify': ^1.2.1
       '@astrojs/react': ^1.2.2
-      '@tanstack/react-router': 0.0.1-beta.55
-      '@tanstack/router-cli': 0.0.1-beta.47
+      '@tanstack/react-router': 0.0.1-beta.56
+      '@tanstack/router-cli': 0.0.1-beta.56
       astro: ^1.6.12
       concurrently: ^7.6.0
       react: ^18.2.0
@@ -421,8 +425,8 @@ importers:
     specifiers:
       '@tanstack/react-query': ^4.14.1
       '@tanstack/react-query-devtools': ^4.14.1
-      '@tanstack/react-router': 0.0.1-beta.55
-      '@tanstack/react-router-devtools': 0.0.1-beta.55
+      '@tanstack/react-router': 0.0.1-beta.56
+      '@tanstack/react-router-devtools': 0.0.1-beta.56
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
       '@vitejs/plugin-react': ^1.1.3
@@ -452,8 +456,8 @@ importers:
     specifiers:
       '@tanstack/react-query': ^4.14.1
       '@tanstack/react-query-devtools': ^4.14.1
-      '@tanstack/react-router': 0.0.1-beta.55
-      '@tanstack/react-router-devtools': 0.0.1-beta.55
+      '@tanstack/react-router': 0.0.1-beta.56
+      '@tanstack/react-router-devtools': 0.0.1-beta.56
       '@trpc/client': ^10.0.0-rc.6
       '@trpc/react-query': ^10.0.0-rc.6
       '@trpc/server': ^10.0.0-rc.6
@@ -497,8 +501,8 @@ importers:
     specifiers:
       '@tanstack/react-query': ^4.14.1
       '@tanstack/react-query-devtools': ^4.14.1
-      '@tanstack/react-router': 0.0.1-beta.55
-      '@tanstack/react-router-devtools': 0.0.1-beta.55
+      '@tanstack/react-router': 0.0.1-beta.56
+      '@tanstack/react-router-devtools': 0.0.1-beta.56
       '@trpc/client': ^10.0.0-rc.6
       '@trpc/react-query': ^10.0.0-rc.6
       '@trpc/server': ^10.0.0-rc.6

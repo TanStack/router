@@ -1,9 +1,14 @@
 import * as React from 'react'
-import { Link, Outlet, useLoader, useMatch } from '@tanstack/react-router'
+import {
+  Link,
+  Outlet,
+  useLoaderInstance,
+  useMatch,
+} from '@tanstack/react-router'
 import { routeConfig } from '../routes.generated/posts'
 import { postspostIdRoute } from '../routes.generated/posts/$postId.client'
 function Posts() {
-  const { posts } = useLoader({
+  const { posts } = useLoaderInstance({
     from: routeConfig.id,
   })
   return (

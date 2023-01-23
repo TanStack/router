@@ -5,7 +5,7 @@ import { InvoiceFields } from '../../../components/InvoiceFields'
 import { invoicesRoute } from '.'
 import {
   useAction,
-  useLoader,
+  useLoaderInstance,
   useNavigate,
   useSearch,
   Link,
@@ -38,7 +38,7 @@ export const invoiceRoute = invoicesRoute.createRoute({
 })
 
 function InvoiceView() {
-  const { invoice } = useLoader({ from: invoiceRoute.id })
+  const { invoice } = useLoaderInstance({ from: invoiceRoute.id })
   const search = useSearch({ from: invoiceRoute.id })
   const action = useAction(updateInvoiceAction)
   const navigate = useNavigate({ from: invoiceRoute.id })

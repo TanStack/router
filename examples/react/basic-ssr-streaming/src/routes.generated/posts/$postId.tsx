@@ -1,7 +1,7 @@
 import { lazy } from '@tanstack/react-router'
 import { routeConfig as parentRouteConfig } from '../posts'
 import * as React from 'react'
-import { useLoader, useMatch } from '@tanstack/react-router'
+import { useLoaderInstance, useMatch } from '@tanstack/react-router'
 export type PostType = {
   id: string
   title: string
@@ -17,7 +17,7 @@ const routeConfig = parentRouteConfig.createRoute({
     ),
 })
 function Post() {
-  const { post } = useLoader({
+  const { post } = useLoaderInstance({
     from: routeConfig.id,
   })
   return (

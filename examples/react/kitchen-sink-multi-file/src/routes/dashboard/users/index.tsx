@@ -2,7 +2,7 @@ import {
   Link,
   MatchRoute,
   Outlet,
-  useLoader,
+  useLoaderInstance,
   useMatch,
   useNavigate,
   useSearch,
@@ -47,7 +47,7 @@ export const usersRoute = dashboardRoute.createRoute({
 
 function Users() {
   const navigate = useNavigate({ from: usersRoute.id })
-  const { users } = useLoader({ from: usersRoute.id })
+  const { users } = useLoaderInstance({ from: usersRoute.id })
   const { usersView } = useSearch({ from: usersRoute.id })
 
   const sortBy = usersView?.sortBy ?? 'name'

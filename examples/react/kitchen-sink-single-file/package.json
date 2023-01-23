@@ -9,10 +9,10 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-loaders": "workspace:0.0.1-beta.55",
-    "@tanstack/react-actions": "workspace:0.0.1-beta.55",
-    "@tanstack/react-router": "0.0.1-beta.55",
-    "@tanstack/react-router-devtools": "0.0.1-beta.55",
+    "@tanstack/react-loaders": "workspace:0.0.1-beta.56",
+    "@tanstack/react-actions": "workspace:0.0.1-beta.56",
+    "@tanstack/react-router": "0.0.1-beta.56",
+    "@tanstack/react-router-devtools": "0.0.1-beta.56",
     "@vitejs/plugin-react": "^1.1.3",
     "axios": "^1.1.3",
     "immer": "^9.0.15",
