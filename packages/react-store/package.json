@@ -35,7 +35,7 @@
     "react-dom": ">=16"
   },
   "dependencies": {
-    "@tanstack/loaders": "workspace:*",
+    "@tanstack/store": "workspace:*",
     "use-sync-external-store": "^1.2.0"
   }
 }
