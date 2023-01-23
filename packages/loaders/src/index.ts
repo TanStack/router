@@ -17,16 +17,18 @@ export type RegisteredLoaders = RegisterLoaderClient extends {
   ? TLoaders
   : Loader<any, any, any, any>[]
 
-interface LoaderClientOptions<TLoaders extends Loader<any, any, any, any>[]> {
+export interface LoaderClientOptions<
+  TLoaders extends Loader<any, any, any, any>[],
+> {
   loaders: TLoaders
   defaultMaxAge?: number
   defaultGcMaxAge?: number
 }
 
-type LoaderClientStore = Store<{
-  isFetching?: LoaderInstance<any, any, any, any>[]
+export type LoaderClientStore = Store<{
+  isFetching?: { key: string; variables: unknown; hashedKey: string }[]
 }>
-// A loader cache that tracks instances of loaders by unique key like react query
+// A loader client that tracks instances of loaders by unique key like react query
 export class LoaderClient<
   TLoaders extends Loader<any, any, any, any>[] = Loader[],
 > {
@@ -40,7 +42,7 @@ export class LoaderClient<
     this.loaders = {}
 
     this.options.loaders.forEach((loader) => {
-      loader.cache = this
+      loader.client = this
 
       this.loaders[loader.key] = loader
     })
@@ -83,7 +85,7 @@ export type VariablesOptions<TVariables> = unknown extends TVariables
       variables: TVariables
     }
 
-type LoaderCallback<TKey extends string, TVariables, TData, TError> = (
+export type LoaderCallback<TKey extends string, TVariables, TData, TError> = (
   loader: LoaderInstance<TKey, TVariables, TData, TError>,
 ) => void | Promise<void>
 
@@ -95,6 +97,7 @@ export interface LoaderStore<TData = unknown, TError = Error> {
   updatedAt?: number
   data: TData
   error?: TError
+  silent: boolean
 }
 
 export type LoaderFn<TLoaderPayload = unknown, TLoaderResponse = unknown> = (
@@ -111,7 +114,7 @@ interface LoaderOptions<
   // The max age to consider loader data fresh (not-stale) in milliseconds from the time of fetch
   // Defaults to 1000. Only stale loader data is refetched.
   maxAge?: number
-  // The max age to cache the loader data in milliseconds from the time of route inactivity
+  // The max age to client the loader data in milliseconds from the time of route inactivity
   // before it is garbage collected.
   gcMaxAge?: number
   loader: (
@@ -136,8 +139,17 @@ export function getInitialLoaderState() {
     isFetching: false,
     updatedAt: 0,
     data: undefined!,
+    silent: false,
   } as const
 }
+
+type LoadFn<TVariables, TData, TOptions> = undefined extends TVariables
+  ? {
+      (opts?: VariablesOptions<TVariables> & TOptions): Promise<TData>
+    }
+  : {
+      (opts: VariablesOptions<TVariables> & TOptions): Promise<TData>
+    }
 
 export class Loader<
   TKey extends string = string,
@@ -154,7 +166,7 @@ export class Loader<
   options: LoaderOptions<TKey, TVariables, TData, TError>
   parentLoader?: Loader<any, any, any, any>
   key: TKey
-  cache?: LoaderClient<any>
+  client?: LoaderClient<any>
   loaders: Record<string, LoaderInstance<TKey, TVariables, TData, TError>>
 
   __loadPromise?: Promise<TData>
@@ -165,7 +177,7 @@ export class Loader<
     this.loaders = {}
   }
 
-  getLoader = (
+  getInstance = (
     opts: VariablesOptions<TVariables>,
   ): LoaderInstance<TKey, TVariables, TData, TError> => {
     const hashedKey = hashKey([this.key, opts.variables])
@@ -175,7 +187,7 @@ export class Loader<
 
     const loader = new LoaderInstance<TKey, TVariables, TData, TError>({
       hashedKey,
-      cache: this.cache,
+      client: this.client,
       loader: this,
       variables: opts.variables as any,
     })
@@ -183,34 +195,42 @@ export class Loader<
     return (this.loaders[hashedKey] = loader)
   }
 
-  preload = async (
-    ...params: unknown extends TVariables
-      ? [TVariables?, { maxAge?: number }?]
-      : [TVariables, { maxAge?: number }?]
-  ): Promise<TData> => {
-    const [variables, opts] = params
-    const loader = this.getLoader({
-      variables: variables as any,
-    })
-
-    return await loader.preload(opts as any)
+  load: LoadFn<
+    TVariables,
+    TData,
+    {
+      maxAge?: number
+      silent?: boolean
+    }
+  > = async (opts: any) => {
+    return this.getInstance(opts).load(opts as any)
   }
 
-  load = async (
-    ...params: unknown extends TVariables
-      ? [TVariables?, { maxAge?: number }?]
-      : [TVariables, { maxAge?: number }?]
-  ): Promise<TData> => {
-    const [variables, opts] = params
-    const loader = this.getLoader({
-      variables: variables as any,
-    })
-
-    return loader.load(opts as any)
+  fetch: LoadFn<
+    TVariables,
+    TData,
+    {
+      maxAge?: number
+      silent?: boolean
+    }
+  > = async (opts: any) => {
+    return this.getInstance(opts).fetch(opts as any)
   }
 
-  invalidate = () => {
-    Object.values(this.loaders).forEach((loader) => loader.invalidate())
+  invalidate: LoadFn<
+    TVariables,
+    TData,
+    {
+      maxAge?: number
+    }
+  > = async (opts: any) => {
+    return this.getInstance(opts).fetch(opts as any)
+  }
+
+  invalidateAll = async () => {
+    await Promise.all(
+      Object.values(this.loaders).map((loader) => loader.invalidate()),
+    )
   }
 
   createLoader = <TKey extends string, TVariables, TData, TError>(
@@ -229,7 +249,7 @@ export interface LoaderInstanceOptions<
   TError = Error,
 > {
   hashedKey: string
-  cache?: LoaderClient
+  client?: LoaderClient
   loader: Loader<TKey, TVariables, TData, TError>
   variables: TVariables
 }
@@ -248,19 +268,29 @@ export class LoaderInstance<
   }
   hashedKey: string
   options: LoaderInstanceOptions<TKey, TVariables, TData, TError>
-  cache?: LoaderClient
+  client?: LoaderClient
   loader: Loader<TKey, TVariables, TData, TError>
   store: Store<LoaderStore<TData, TError>>
   variables: TVariables
   __loadPromise?: Promise<TData>
   #subscriptionCount = 0
+  #fingerPrint: {
+    key: TKey
+    hashedKey: string
+    variables: TVariables
+  }
 
   constructor(options: LoaderInstanceOptions<TKey, TVariables, TData, TError>) {
     this.options = options
-    this.cache = options.cache
+    this.client = options.client
     this.loader = options.loader
     this.hashedKey = options.hashedKey
     this.variables = options.variables
+    this.#fingerPrint = {
+      key: this.loader.key,
+      hashedKey: this.hashedKey,
+      variables: this.variables,
+    }
     this.store = new Store<LoaderStore<TData, TError>>(
       getInitialLoaderState(),
       {
@@ -277,22 +307,23 @@ export class LoaderInstance<
           }
         },
         onUpdate: (next, prev) => {
-          if (next.isFetching !== prev.isFetching) {
-            this.cache?.store.setState((s) => {
+          if (!next.silent && next.isFetching !== prev.isFetching) {
+            this.client?.store.setState((s) => {
               if (next.isFetching) {
                 return {
                   ...s,
                   isFetching: s.isFetching
-                    ? s.isFetching.concat(this as any)
-                    : [this as any],
+                    ? s.isFetching.concat(this.#fingerPrint)
+                    : [this.#fingerPrint],
                 }
               } else {
+                const isFetching = s.isFetching?.filter(
+                  (l) => l !== this.#fingerPrint,
+                )
+
                 return {
                   ...s,
-                  isFetching:
-                    s.isFetching?.length === 1 && s.isFetching?.[0] === this
-                      ? []
-                      : s.isFetching?.filter((l) => l !== (this as any)),
+                  isFetching: isFetching?.length ? isFetching : undefined,
                 }
               }
             })
@@ -314,7 +345,7 @@ export class LoaderInstance<
     this.#gcTimeout = setTimeout(() => {
       this.#gcTimeout = undefined
       this.#gc()
-    }, this.loader.options.gcMaxAge ?? this.cache?.options.defaultGcMaxAge ?? 5 * 60 * 1000)
+    }, this.loader.options.gcMaxAge ?? this.client?.options.defaultGcMaxAge ?? 5 * 60 * 1000)
   }
 
   #stopGc = () => {
@@ -332,30 +363,26 @@ export class LoaderInstance<
     delete this.loader.loaders[this.hashedKey]
   }
 
-  preload = async (opts?: { maxAge?: number }): Promise<TData> => {
-    const promise = this.load(opts)
-
-    if (this.store.state.status === 'success') {
-      return this.store.state.data
-    }
-
-    return promise
-  }
-
-  load = async (opts?: { maxAge?: number }): Promise<TData> => {
-    if (this.__loadPromise) {
-      return this.__loadPromise
-    }
-
+  load = async (opts?: {
+    maxAge?: number
+    silent?: boolean
+  }): Promise<TData> => {
+    // Fetch if we need to
     if (
       this.store.state.status === 'error' ||
       this.store.state.status === 'idle' ||
       this.getIsInvalid()
     ) {
-      return this.#fetch(opts)
+      this.fetch(opts)
     }
 
-    return this.store.state.data
+    // If we already have data, return it
+    if (this.store.state.status === 'success') {
+      return this.store.state.data
+    }
+
+    // Otherwise wait for the data to be fetched
+    return this.__loadPromise!
   }
 
   getIsInvalid = () => {
@@ -373,14 +400,17 @@ export class LoaderInstance<
     }))
 
     const promise = this.store.listeners.size ? this.load() : undefined
-    const parentPromise = this.loader.parentLoader?.invalidate()
+    const parentPromise = this.loader.parentLoader?.invalidateAll()
 
     return Promise.all([promise, parentPromise])
   }
 
   #latestId = ''
 
-  #fetch = async (opts?: { maxAge?: number }): Promise<TData> => {
+  fetch = async (opts?: {
+    maxAge?: number
+    silent?: boolean
+  }): Promise<TData> => {
     // this.store.batch(() => {
     // If the match was in an error state, set it
     // to a loading state again. Otherwise, keep it
@@ -395,6 +425,7 @@ export class LoaderInstance<
     // We started loading the route, so it's no longer invalid
     this.store.setState((s) => ({
       ...s,
+      silent: !!opts?.silent,
       invalid: true,
       isFetching: true,
     }))
@@ -411,6 +442,11 @@ export class LoaderInstance<
 
     this.__loadPromise = Promise.resolve().then(async () => {
       const after = async () => {
+        this.store.setState((s) => ({
+          ...s,
+          isFetching: false,
+        }))
+
         delete this.__loadPromise
 
         if ((newer = hasNewer())) {
@@ -442,7 +478,7 @@ export class LoaderInstance<
             updatedAt +
             (opts?.maxAge ??
               this.loader.options.maxAge ??
-              this.cache?.options.defaultMaxAge ??
+              this.client?.options.defaultMaxAge ??
               1000),
         }))
 

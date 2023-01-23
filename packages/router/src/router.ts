@@ -686,7 +686,7 @@ export class Router<
         return
       }
 
-      match.load()
+      match.load({ preload: loaderOpts?.preload })
 
       if (match.store.state.status !== 'success' && match.__loadPromise) {
         // Wait for the first sign of activity from the match

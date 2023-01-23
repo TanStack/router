@@ -5,16 +5,26 @@ import {
   RouterProvider,
   lazy,
   Link,
-  useRouterStore,
-  useLoader,
   MatchRoute,
   useNavigate,
   useSearch,
-  Action,
-  useAction,
   ReactRouter,
   createRouteConfig,
+  useParams,
 } from '@tanstack/react-router'
+import {
+  Action,
+  ActionClient,
+  ActionClientProvider,
+  useAction,
+} from '@tanstack/react-actions'
+import {
+  Loader,
+  useLoader,
+  LoaderClient,
+  useLoaderClient,
+  LoaderClientProvider,
+} from '@tanstack/react-loaders'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 import {
@@ -34,30 +44,97 @@ import { z } from 'zod'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
-declare module '@tanstack/react-router' {
-  interface RouterContext {
-    // auth: AuthContext
+const invoicesLoader = new Loader({
+  key: 'invoices',
+  loader: async () => {
+    console.log('Fetching invoices...')
+    return loaderDelayFn(() => fetchInvoices())
+  },
+})
+
+const invoiceLoader = invoicesLoader.createLoader({
+  key: 'invoice',
+  loader: async (invoiceId: number) => {
+    console.log(`Fetching invoice with id ${invoiceId}...`)
+    return loaderDelayFn(() => fetchInvoiceById(invoiceId))
+  },
+})
+
+const usersLoader = new Loader({
+  key: 'users',
+  loader: async () => {
+    console.log('Fetching users...')
+    return loaderDelayFn(() => fetchUsers())
+  },
+})
+
+const userLoader = usersLoader.createLoader({
+  key: 'user',
+  loader: async (userId: number) => {
+    console.log(`Fetching user with id ${userId}...`)
+    return loaderDelayFn(() => fetchUserById(userId))
+  },
+})
+
+const randomIdLoader = new Loader({
+  key: 'random',
+  loader: () => {
+    return loaderDelayFn(() => {
+      return Math.random()
+    })
+  },
+})
+
+const loaderClient = new LoaderClient({
+  loaders: [
+    invoicesLoader,
+    invoiceLoader,
+    usersLoader,
+    userLoader,
+    randomIdLoader,
+  ],
+})
+
+// Register things for typesafety
+declare module '@tanstack/react-loaders' {
+  interface RegisterLoaderClient {
+    loaderClient: typeof loaderClient
   }
 }
 
 const createInvoiceAction = new Action({
+  key: 'createInvoice',
   action: postInvoice,
   onEachSuccess: async () => {
-    await router.invalidateRoute({ to: invoiceRoute.id })
+    await invoicesLoader.invalidateAll()
   },
 })
 
 const updateInvoiceAction = new Action({
+  key: 'updateInvoice',
   action: patchInvoice,
-  onEachSuccess: async () => {
-    await router.invalidateRoute({ to: invoicesRoute.id })
+  onEachSuccess: async ({ payload }) => {
+    await invoiceLoader.invalidate({
+      variables: payload.id,
+    })
   },
 })
+
+const actionClient = new ActionClient({
+  actions: [createInvoiceAction, updateInvoiceAction],
+})
+
+// Register things for typesafety
+declare module '@tanstack/react-actions' {
+  interface RegisterActionClient {
+    actionClient: typeof actionClient
+  }
+}
 
 // Build our routes. We could do this in our component, too.
 const rootRoute = createRouteConfig({
   component: () => {
-    const routerStore = useRouterStore()
+    const [loaderClientState] = useLoaderClient()
 
     return (
       <>
@@ -67,7 +144,7 @@ const rootRoute = createRouteConfig({
             {/* Show a global spinner when the router is transitioning */}
             <div
               className={`text-3xl duration-300 delay-0 opacity-0 ${
-                routerStore.isFetching ? ` duration-1000 opacity-40` : ''
+                loaderClientState.isFetching ? ` duration-1000 opacity-40` : ''
               }`}
             >
               <Spinner />
@@ -157,7 +234,7 @@ const indexRoute = rootRoute.createRoute({
 
 const dashboardRoute = rootRoute.createRoute({
   path: 'dashboard',
-  onLoad: invoicesLoader.ensureData,
+  onLoad: ({ preload }) => invoicesLoader.load({ silent: preload }),
   component: () => {
     return (
       <>
@@ -205,7 +282,9 @@ const dashboardRoute = rootRoute.createRoute({
 const dashboardIndexRoute = dashboardRoute.createRoute({
   path: '/',
   component: () => {
-    const { invoices } = useLoader({ from: dashboardIndexRoute.id })
+    const [{ data: invoices }] = useLoader({
+      key: invoicesLoader.key,
+    })
 
     return (
       <div className="p-2">
@@ -221,13 +300,15 @@ const dashboardIndexRoute = dashboardRoute.createRoute({
 const invoicesRoute = dashboardRoute.createRoute({
   path: 'invoices',
   component: () => {
-    const { invoices } = useLoader({ from: invoicesRoute.id })
+    const [{ data: invoices }] = useLoader({ key: invoicesLoader.key })
 
-    const { pendingSubmissions: updateSubmissions } =
-      useAction(updateInvoiceAction)
+    const [{ pendingSubmissions: updateSubmissions }] = useAction({
+      key: updateInvoiceAction.key,
+    })
 
-    const { pendingSubmissions: createSubmissions } =
-      useAction(createInvoiceAction)
+    const [{ pendingSubmissions: createSubmissions }] = useAction({
+      key: createInvoiceAction.key,
+    })
 
     return (
       <div className="flex-1 flex">
@@ -296,7 +377,7 @@ const invoicesRoute = dashboardRoute.createRoute({
 const invoicesIndexRoute = invoicesRoute.createRoute({
   path: '/',
   component: () => {
-    const { latestSubmission } = useAction(createInvoiceAction)
+    const [{ latestSubmission }] = useAction({ key: createInvoiceAction.key })
 
     return (
       <>
@@ -339,10 +420,6 @@ const invoicesIndexRoute = invoicesRoute.createRoute({
   },
 })
 
-const invoiceLoader = {
-  load: async ({ invoiceId }) => {},
-}
-
 const invoiceRoute = invoicesRoute.createRoute({
   path: '$invoiceId',
   parseParams: (params) => ({
@@ -356,12 +433,20 @@ const invoiceRoute = invoicesRoute.createRoute({
         notes: z.string().optional(),
       })
       .parse(search),
-  onLoad: async ({ params: { invoiceId } }) => invoiceLoader.load(invoiceId),
+  onLoad: async ({ params: { invoiceId }, preload }) =>
+    invoiceLoader.load({
+      variables: invoiceId,
+      silent: preload,
+    }),
   component: () => {
     const search = useSearch({ from: invoiceRoute.id })
+    const params = useParams({ from: invoiceRoute.id })
     const navigate = useNavigate({ from: invoiceRoute.id })
-    const { invoice } = useLoader(invoiceLoader)
-    const { latestSubmission } = useAction(updateInvoiceAction)
+    const [{ data: invoice }] = useLoader({
+      key: invoiceLoader.key,
+      variables: params.invoiceId,
+    })
+    const [{ latestSubmission }] = useAction({ key: updateInvoiceAction.key })
 
     const [notes, setNotes] = React.useState(search.notes ?? '')
 
@@ -453,12 +538,7 @@ const invoiceRoute = invoicesRoute.createRoute({
 
 const usersRoute = dashboardRoute.createRoute({
   path: 'users',
-  onLoad: async ({ search }) => {
-    search
-    return {
-      users: await fetchUsers(),
-    }
-  },
+  onLoad: () => usersLoader.load(),
   validateSearch: z.object({
     usersView: z
       .object({
@@ -478,7 +558,7 @@ const usersRoute = dashboardRoute.createRoute({
     }),
   ],
   component: () => {
-    const { users } = useLoader({ from: usersRoute.id })
+    const [{ data: users }] = useLoader({ key: usersLoader.key })
     const { usersView } = useSearch({ from: usersRoute.id })
     const navigate = useNavigate({ from: usersRoute.id })
 
@@ -632,7 +712,12 @@ const userRoute = usersRoute.createRoute({
     }
   },
   component: () => {
-    const { user } = useLoader({ from: userRoute.id })
+    const { userId } = useParams({ from: userRoute.id })
+
+    const [{ data: user }] = useLoader({
+      key: userLoader.key,
+      variables: userId,
+    })
 
     return (
       <>
@@ -672,9 +757,6 @@ const authenticatedRoute = rootRoute.createRoute({
     if (router.options.context.auth.status === 'loggedOut') {
       throw AuthError
     }
-  },
-  onLoad: () => {
-    return {}
   },
   component: () => {
     const auth = useAuth()
@@ -748,16 +830,9 @@ const loginRoute = rootRoute.createRoute({
 
 const layoutRoute = rootRoute.createRoute({
   id: 'layout',
-  onLoad: async () => {
-    return loaderDelayFn(() => {
-      const rand = Math.random()
-      return {
-        random: rand,
-      }
-    })
-  },
+  onLoad: async () => randomIdLoader.load(),
   component: () => {
-    const { random } = useLoader({ from: layoutRoute.id })
+    const [{ data: random }] = useLoader({ key: randomIdLoader.key })
 
     return (
       <div>
@@ -849,10 +924,6 @@ function SubApp() {
     'defaultLoaderMaxAge',
     5000,
   )
-  const [defaultPreloadMaxAge, setDefaultPreloadMaxAge] = useSessionStorage(
-    'defaultPreloadMaxAge',
-    2000,
-  )
 
   return (
     <>
@@ -898,41 +969,21 @@ function SubApp() {
             className={`w-full`}
           />
         </div>
-        <div>
-          Preload Max Age:{' '}
-          {defaultPreloadMaxAge ? `${defaultPreloadMaxAge}ms` : 'Off'}
-        </div>
-        <div>
-          <input
-            type="range"
-            min="0"
-            max="10000"
-            step="250"
-            value={defaultPreloadMaxAge}
-            onChange={(e) => setDefaultPreloadMaxAge(e.target.valueAsNumber)}
-            className={`w-full`}
-          />
-        </div>
       </div>
-      {/* Normally <Router /> matches and renders our
-      routes, but when we pass our own children, we can use
-      <Outlet /> to start rendering our matches when we're
-      // ready. This also let's us use router API's
-      in <Root /> before rendering any routes */}
-      <RouterProvider
-        router={router}
-        defaultPreload="intent"
-        defaultLoaderMaxAge={defaultLoaderMaxAge}
-        defaultPreloadMaxAge={defaultPreloadMaxAge}
-        // defaultLoaderMaxAge={5 * 1000}
-        // defaultLoaderGcMaxAge={10 * 1000}
-        // Normally, the options above aren't changing, but for this particular
-        // example, we need to key the router when they change
-        context={{
-          auth: useAuth(),
-        }}
-        key={[defaultPreloadMaxAge].join('.')}
-      />
+      <LoaderClientProvider
+        loaderClient={loaderClient}
+        defaultMaxAge={defaultLoaderMaxAge}
+      >
+        <ActionClientProvider actionClient={actionClient}>
+          <RouterProvider
+            router={router}
+            defaultPreload="intent"
+            context={{
+              auth: useAuth(),
+            }}
+          />
+        </ActionClientProvider>
+      </LoaderClientProvider>
     </>
   )
 }

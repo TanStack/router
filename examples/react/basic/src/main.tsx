@@ -49,7 +49,6 @@ const postLoader = postsLoader.createLoader({
 
 const loaderClient = new LoaderClient({
   loaders: [postsLoader, postLoader],
-  defaultGcMaxAge: 2000,
 })
 
 const rootRoute = createRouteConfig({
@@ -97,7 +96,7 @@ const indexRoute = rootRoute.createRoute({
 
 const postsRoute = rootRoute.createRoute({
   path: 'posts',
-  onLoad: () => loaderClient.getLoader({ key: 'posts' }).preload(),
+  onLoad: () => loaderClient.getLoader({ key: 'posts' }).load(),
   component: () => {
     const [{ data: posts }] = useLoader({
       key: postsLoader.key,
@@ -144,7 +143,8 @@ const PostsIndexRoute = postsRoute.createRoute({
 
 const postRoute = postsRoute.createRoute({
   path: 'post/$postId',
-  onLoad: async ({ params: { postId } }) => postLoader.preload(postId),
+  onLoad: async ({ params: { postId } }) =>
+    postLoader.load({ variables: postId }),
   component: () => {
     const { postId } = useParams({ from: postRoute.id })
     const [{ data: post }] = useLoader({

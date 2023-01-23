@@ -3,13 +3,78 @@
 import invariant from 'tiny-invariant'
 import { Store } from '@tanstack/store'
 
+export interface RegisterActionClient {
+  // actionClient: ActionClient
+}
+
+export type RegisteredActionClient = RegisterActionClient extends {
+  actionClient: ActionClient<infer TActions>
+}
+  ? ActionClient<TActions>
+  : ActionClient
+
+export type RegisteredActions = RegisterActionClient extends {
+  actionClient: ActionClient<infer TActions>
+}
+  ? TActions
+  : Action<any, any, any, any>[]
+
+export interface ActionClientOptions<
+  TActions extends Action<any, any, any, any>[],
+> {
+  actions: TActions
+  defaultMaxAge?: number
+  defaultGcMaxAge?: number
+}
+
+export type ActionClientStore = Store<{
+  isSubmitting?: ActionSubmission<any, any, any>[]
+}>
+// A action client that tracks instances of actions by unique key like react query
+export class ActionClient<
+  TActions extends Action<any, any, any, any>[] = Action[],
+> {
+  options: ActionClientOptions<TActions>
+  actions: Record<string, Action>
+  store: ActionClientStore
+
+  constructor(options: ActionClientOptions<TActions>) {
+    this.options = options
+    this.store = new Store({}) as ActionClientStore
+    this.actions = {}
+
+    this.options.actions.forEach((action) => {
+      action.client = this
+
+      this.actions[action.key] = action
+    })
+  }
+
+  getAction<TKey extends TActions[number]['__types']['key']>(opts: {
+    key: TKey
+  }): ActionByKey<TActions, TKey> {
+    return this.actions[opts.key as any] as any
+  }
+}
+
+export type ActionByKey<
+  TActions extends Action<any, any, any, any>[],
+  TKey extends TActions[number]['__types']['key'],
+> = {
+  [TAction in TActions[number] as number]: TAction extends {
+    options: ActionOptions<TKey, infer TVariables, infer TData, infer TError>
+  }
+    ? Action<TKey, TVariables, TData, TError>
+    : never
+}[number]
+
 export interface ActionOptions<
   TKey extends string = string,
   TPayload = unknown,
   TResponse = unknown,
   TError = Error,
 > {
-  key?: TKey
+  key: TKey
   action: (payload: TPayload) => TResponse | Promise<TResponse>
   onLatestSuccess?: ActionCallback<TPayload, TResponse, TError>
   onEachSuccess?: ActionCallback<TPayload, TResponse, TError>
@@ -21,7 +86,7 @@ export interface ActionOptions<
   debug?: boolean
 }
 
-type ActionCallback<TPayload, TResponse, TError> = (
+export type ActionCallback<TPayload, TResponse, TError> = (
   submission: ActionSubmission<TPayload, TResponse, TError>,
 ) => void | Promise<void>
 
@@ -31,6 +96,14 @@ export class Action<
   TResponse = unknown,
   TError = Error,
 > {
+  __types!: {
+    key: TKey
+    payload: TPayload
+    response: TResponse
+    error: TError
+  }
+  key: TKey
+  client?: ActionClient<any>
   options: ActionOptions<TKey, TPayload, TResponse, TError>
   store: Store<ActionStore<TPayload, TResponse, TError>>
 
@@ -39,6 +112,7 @@ export class Action<
       submissions: [],
     })
     this.options = options
+    this.key = options.key
   }
 
   reset = () => {

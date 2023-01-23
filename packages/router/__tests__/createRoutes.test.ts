@@ -151,8 +151,6 @@ describe('everything', () => {
       }),
     })
 
-    const loaderData = router.getRoute('/dashboard/users/$userId')
-    //    ^?
     const route = router.getRoute('/dashboard/users/$userId')
     //    ^?
 

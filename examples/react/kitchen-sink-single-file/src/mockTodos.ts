@@ -77,7 +77,11 @@ export async function fetchInvoices() {
 export async function fetchInvoiceById(id: number) {
   return loaderDelayFn(() =>
     ensureInvoices().then(() => {
-      return invoices.find((d) => d.id === id)
+      const invoice = invoices.find((d) => d.id === id)
+      if (!invoice) {
+        throw new Error('Invoice not found')
+      }
+      return invoice
     }),
   )
 }

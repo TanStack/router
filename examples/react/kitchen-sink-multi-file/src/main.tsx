@@ -14,10 +14,6 @@ function App() {
     'defaultLoaderMaxAge',
     5000,
   )
-  const [defaultPreloadMaxAge, setDefaultPreloadMaxAge] = useSessionStorage(
-    'defaultPreloadMaxAge',
-    2000,
-  )
 
   return (
     <>

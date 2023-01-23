@@ -6,6 +6,8 @@ import {
   LoaderInstanceByKey,
   LoaderStore,
   VariablesOptions,
+  LoaderClientStore,
+  LoaderClientOptions,
 } from '@tanstack/loaders'
 
 import { useStore } from '@tanstack/react-store'
@@ -14,13 +16,22 @@ export * from '@tanstack/loaders'
 
 const loaderClientContext = React.createContext<LoaderClient<any>>(null as any)
 
-export function LoaderClientProvider(props: {
+export function LoaderClientProvider({
+  loaderClient,
+  children,
+  ...rest
+}: {
   loaderClient: LoaderClient<any>
   children: any
-}) {
+} & Pick<LoaderClientOptions<any>, 'defaultGcMaxAge' | 'defaultMaxAge'>) {
+  loaderClient.options = {
+    ...loaderClient.options,
+    ...rest,
+  }
+
   return (
-    <loaderClientContext.Provider value={props.loaderClient}>
-      {props.children}
+    <loaderClientContext.Provider value={loaderClient}>
+      {children}
     </loaderClientContext.Provider>
   )
 }
@@ -45,7 +56,7 @@ export function useLoader<
     )
 
   const loaderApi = loaderClient.getLoader({ key: opts.key })
-  const loaderInstance = loaderApi.getLoader({
+  const loaderInstance = loaderApi.getInstance({
     variables: opts?.variables,
   } as any)
 
@@ -56,4 +67,19 @@ export function useLoader<
   useStore(loaderInstance.store, (d) => opts?.track?.(d as any) ?? d, true)
 
   return [loaderInstance.store.state, loaderInstance as any]
+}
+
+export function useLoaderClient(opts?: {
+  track?: (loaderClientStore: LoaderClientStore) => any
+}): [LoaderClientStore['state'], LoaderClient<RegisteredLoaders>] {
+  const loaderClient = React.useContext(loaderClientContext)
+
+  if (!loaderClient)
+    invariant(
+      'useLoaderClient must be used inside a <LoaderClientProvider> component!',
+    )
+
+  useStore(loaderClient.store, (d) => opts?.track?.(d as any) ?? d, true)
+
+  return [loaderClient.store.state as any, loaderClient as any]
 }

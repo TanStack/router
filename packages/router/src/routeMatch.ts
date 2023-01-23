@@ -91,16 +91,16 @@ export class RouteMatch<
     this.abortController?.abort()
   }
 
-  load = async (): Promise<void> => {
+  load = async (opts?: { preload?: boolean }): Promise<void> => {
     // If the match is invalid, errored or idle, trigger it to load
     if (this.store.state.status !== 'pending') {
-      await this.fetch()
+      await this.fetch(opts)
     }
   }
 
   #latestId = ''
 
-  fetch = async (): Promise<void> => {
+  fetch = async (opts?: { preload?: boolean }): Promise<void> => {
     this.__loadPromise = Promise.resolve().then(async () => {
       const loadId = '' + Date.now() + Math.random()
       this.#latestId = loadId
@@ -144,6 +144,7 @@ export class RouteMatch<
             params: this.params,
             search: this.store.state.search,
             signal: this.abortController.signal,
+            preload: !!opts?.preload,
           })
         }
         return

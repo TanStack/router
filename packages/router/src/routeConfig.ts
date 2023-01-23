@@ -58,6 +58,7 @@ export interface LoaderContext<
   params: TAllParams
   search: TFullSearchSchema
   signal?: AbortSignal
+  preload: boolean
   // parentLoaderPromise?: Promise<TParentRouteLoaderData>
 }
 
