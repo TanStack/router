@@ -8,10 +8,10 @@ Use the `RouterProvider` component to connect and provide a `ReactRouter` to you
 ```tsx
 import { RouterProvider, ReactRouter } from '@tanstack/react-router'
 
-const router = new new ReactRouter)
+const router = new ReactRouter()
 
 function App() {
-  return <RouterProvider router={router}>...</RouterProvider>
+  return <RouterProvider router={router} />
 }
 ```
 
