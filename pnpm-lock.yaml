@@ -571,14 +571,12 @@ importers:
       '@babel/runtime': ^7.16.7
       '@tanstack/react-store': workspace:*
       '@tanstack/router': workspace:*
-      '@types/use-sync-external-store': ^0.0.3
       babel-plugin-transform-async-to-promises: ^0.8.18
     dependencies:
       '@babel/runtime': 7.20.6
       '@tanstack/react-store': link:../react-store
       '@tanstack/router': link:../router
     devDependencies:
-      '@types/use-sync-external-store': 0.0.3
       babel-plugin-transform-async-to-promises: 0.8.18
 
   packages/react-router-devtools:
@@ -593,11 +591,14 @@ importers:
 
   packages/react-store:
     specifiers:
-      '@tanstack/loaders': workspace:*
+      '@tanstack/store': workspace:*
+      '@types/use-sync-external-store': ^0.0.3
       use-sync-external-store: ^1.2.0
     dependencies:
-      '@tanstack/loaders': link:../loaders
+      '@tanstack/store': link:../store
       use-sync-external-store: 1.2.0
+    devDependencies:
+      '@types/use-sync-external-store': 0.0.3
 
   packages/router:
     specifiers:

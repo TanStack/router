@@ -348,10 +348,12 @@ export class Router<
         this.options.history ??
         (isServer ? createMemoryHistory() : createBrowserHistory()!)
 
+      const parsedLocation = this.#parseLocation()
+
       this.store.setState((s) => ({
         ...s,
-        latestLocation: this.#parseLocation(),
-        currentLocation: s.latestLocation,
+        latestLocation: parsedLocation,
+        currentLocation: parsedLocation,
       }))
 
       this.#unsubHistory = this.history.listen(() => {

@@ -3,6 +3,7 @@ import { describe, test, expect } from 'vitest'
 import {
   // Location,
   matchPathname,
+  ParsedLocation,
   // Route,
   // createMemoryHistory,
   resolvePath,
@@ -19,7 +20,7 @@ import { createTimer, sleep } from './utils'
 //   })
 // }
 
-function createLocation(location: Partial<Location>): Location {
+function createLocation(location: Partial<Location>): ParsedLocation {
   return {
     pathname: '',
     href: '',

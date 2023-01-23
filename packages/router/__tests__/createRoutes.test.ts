@@ -142,13 +142,13 @@ describe('everything', () => {
     type RoutePaths = MyRoutesInfo['routeInfoByFullPath']
     //   ^?
     type InvoiceRouteInfo = RoutesById['/dashboard/invoices/$invoiceId']
-    //   ^?
-    type InvoiceLoaderData = InvoiceRouteInfo['loaderData']
     //   ^?//
 
     const router = new Router({
       routeConfig,
-      history: createMemoryHistory(),
+      history: createMemoryHistory({
+        initialEntries: ['/?version=1'],
+      }),
     })
 
     const loaderData = router.getRoute('/dashboard/users/$userId')
