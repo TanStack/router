@@ -5,9 +5,9 @@ import {
   RegisteredLoaders,
   LoaderInstanceByKey,
   LoaderStore,
-  VariablesOptions,
   LoaderClientStore,
   LoaderClientOptions,
+  VariablesOptions,
 } from '@tanstack/loaders'
 
 import { useStore } from '@tanstack/react-store'

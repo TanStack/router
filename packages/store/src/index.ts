@@ -44,6 +44,8 @@ export class Store<
       ? this.options.updateFn(previous)(updater)
       : (updater as any)(previous)
 
+    if (this.state === previous) return
+
     this.queue.push(() => {
       this.listeners.forEach((listener) => listener(this.state, previous))
       this.options?.onUpdate?.(this.state, previous)

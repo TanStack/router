@@ -115,14 +115,26 @@ export class Action<
     this.key = options.key
   }
 
-  reset = () => {
+  reset = async () => {
+    // await Promise.all(this.#promises)
     this.store.setState((s) => ({
       ...s,
       submissions: [],
     }))
   }
 
+  #promises: Promise<any>[] = []
+
   submit = async (payload?: TPayload): Promise<TResponse> => {
+    const promise = this.#submit(payload)
+    this.#promises.push(promise)
+
+    const res = await promise
+    this.#promises = this.#promises.filter((d) => d !== promise)
+    return res
+  }
+
+  #submit = async (payload?: TPayload): Promise<TResponse> => {
     const submission: ActionSubmission<TPayload, TResponse, TError> = {
       submittedAt: Date.now(),
       status: 'pending',

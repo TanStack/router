@@ -44,6 +44,8 @@ import { z } from 'zod'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
+// Loaders
+
 const invoicesLoader = new Loader({
   key: 'invoices',
   loader: async () => {
@@ -102,6 +104,8 @@ declare module '@tanstack/react-loaders' {
   }
 }
 
+// Actions
+
 const createInvoiceAction = new Action({
   key: 'createInvoice',
   action: postInvoice,
@@ -130,6 +134,8 @@ declare module '@tanstack/react-actions' {
     actionClient: typeof actionClient
   }
 }
+
+// Routes
 
 // Build our routes. We could do this in our component, too.
 const rootRoute = createRouteConfig({
@@ -733,7 +739,7 @@ const userRoute = usersRoute.createRoute({
 const expensiveRoute = rootRoute.createRoute({
   // Your elements can be asynchronous, which means you can code-split!
   path: 'expensive',
-  component: lazy(() => loaderDelayFn(() => import('./Expensive'))),
+  component: lazy(() => import('./Expensive')),
 })
 
 const AuthError = new Error('Not logged in')

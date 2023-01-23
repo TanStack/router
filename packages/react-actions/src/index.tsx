@@ -47,20 +47,25 @@ export function useAction<
 
   useStore(action.store, (d) => opts?.track?.(d as any) ?? d, true)
 
-  const [ref] = React.useState({})
+  const actionState = action.store.state
 
-  Object.assign(ref, {
-    ...action,
-    latestSubmission:
-      action.store.state.submissions[action.store.state.submissions.length - 1],
-    pendingSubmissions: React.useMemo(
-      () =>
-        action.store.state.submissions.filter((d) => d.status === 'pending'),
-      [action.store.state.submissions],
-    ),
-  })
+  const pendingSubmissions = React.useMemo(
+    () => actionState.submissions.filter((d) => d.status === 'pending'),
+    [actionState.submissions],
+  )
 
-  return ref as any
+  return [
+    React.useMemo(
+      () => ({
+        ...actionState,
+        latestSubmission:
+          actionState.submissions[actionState.submissions.length - 1],
+        pendingSubmissions,
+      }),
+      [actionState, pendingSubmissions],
+    ) as any,
+    action as any,
+  ]
 }
 
 export function useActionClient(opts?: {

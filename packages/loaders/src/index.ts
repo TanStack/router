@@ -26,7 +26,8 @@ export interface LoaderClientOptions<
 }
 
 export type LoaderClientStore = Store<{
-  isFetching?: { key: string; variables: unknown; hashedKey: string }[]
+  isFetching: boolean
+  isPrefetching: boolean
 }>
 // A loader client that tracks instances of loaders by unique key like react query
 export class LoaderClient<
@@ -38,7 +39,10 @@ export class LoaderClient<
 
   constructor(options: LoaderClientOptions<TLoaders>) {
     this.options = options
-    this.store = new Store({}) as LoaderClientStore
+    this.store = new Store({
+      isFetching: false,
+      isPrefetching: false,
+    }) as LoaderClientStore
     this.loaders = {}
 
     this.options.loaders.forEach((loader) => {
@@ -76,14 +80,6 @@ export type LoaderInstanceByKey<
     ? LoaderInstance<TKey, TVariables, TData, TError>
     : never
 }[number]
-
-export type VariablesOptions<TVariables> = unknown extends TVariables
-  ? {
-      variables?: TVariables
-    }
-  : {
-      variables: TVariables
-    }
 
 export type LoaderCallback<TKey extends string, TVariables, TData, TError> = (
   loader: LoaderInstance<TKey, TVariables, TData, TError>,
@@ -143,12 +139,28 @@ export function getInitialLoaderState() {
   } as const
 }
 
-type LoadFn<TVariables, TData, TOptions> = undefined extends TVariables
+export type VariablesOptions<TVariables> = undefined extends TVariables
   ? {
-      (opts?: VariablesOptions<TVariables> & TOptions): Promise<TData>
+      variables?: TVariables
     }
   : {
-      (opts: VariablesOptions<TVariables> & TOptions): Promise<TData>
+      variables: TVariables
+    }
+
+export type VariablesFn<
+  TVariables,
+  TReturn,
+  TOptions = {},
+> = undefined extends TVariables
+  ? keyof PickRequired<TOptions> extends never
+    ? {
+        (opts?: VariablesOptions<TVariables> & TOptions): TReturn
+      }
+    : {
+        (opts: VariablesOptions<TVariables> & TOptions): TReturn
+      }
+  : {
+      (opts: VariablesOptions<TVariables> & TOptions): TReturn
     }
 
 export class Loader<
@@ -167,22 +179,23 @@ export class Loader<
   parentLoader?: Loader<any, any, any, any>
   key: TKey
   client?: LoaderClient<any>
-  loaders: Record<string, LoaderInstance<TKey, TVariables, TData, TError>>
+  instances: Record<string, LoaderInstance<TKey, TVariables, TData, TError>>
 
   __loadPromise?: Promise<TData>
 
   constructor(options: LoaderOptions<TKey, TVariables, TData, TError>) {
     this.options = options
     this.key = this.options.key
-    this.loaders = {}
+    this.instances = {}
   }
 
-  getInstance = (
-    opts: VariablesOptions<TVariables>,
-  ): LoaderInstance<TKey, TVariables, TData, TError> => {
+  getInstance: VariablesFn<
+    TVariables,
+    LoaderInstance<TKey, TVariables, TData, TError>
+  > = (opts: any = {}) => {
     const hashedKey = hashKey([this.key, opts.variables])
-    if (this.loaders[hashedKey]) {
-      return this.loaders[hashedKey] as any
+    if (this.instances[hashedKey]) {
+      return this.instances[hashedKey] as any
     }
 
     const loader = new LoaderInstance<TKey, TVariables, TData, TError>({
@@ -192,44 +205,44 @@ export class Loader<
       variables: opts.variables as any,
     })
 
-    return (this.loaders[hashedKey] = loader)
+    return (this.instances[hashedKey] = loader)
   }
 
-  load: LoadFn<
+  load: VariablesFn<
     TVariables,
-    TData,
+    Promise<TData>,
     {
       maxAge?: number
       silent?: boolean
     }
-  > = async (opts: any) => {
+  > = async (opts: any = {}) => {
     return this.getInstance(opts).load(opts as any)
   }
 
-  fetch: LoadFn<
+  fetch: VariablesFn<
     TVariables,
-    TData,
+    Promise<TData>,
     {
       maxAge?: number
       silent?: boolean
     }
-  > = async (opts: any) => {
+  > = async (opts: any = {}) => {
     return this.getInstance(opts).fetch(opts as any)
   }
 
-  invalidate: LoadFn<
+  invalidate: VariablesFn<
     TVariables,
-    TData,
+    Promise<void>,
     {
       maxAge?: number
     }
-  > = async (opts: any) => {
-    return this.getInstance(opts).fetch(opts as any)
+  > = async (opts: any = {}) => {
+    return this.getInstance(opts).invalidate()
   }
 
   invalidateAll = async () => {
     await Promise.all(
-      Object.values(this.loaders).map((loader) => loader.invalidate()),
+      Object.values(this.instances).map((loader) => loader.invalidate()),
     )
   }
 
@@ -274,11 +287,6 @@ export class LoaderInstance<
   variables: TVariables
   __loadPromise?: Promise<TData>
   #subscriptionCount = 0
-  #fingerPrint: {
-    key: TKey
-    hashedKey: string
-    variables: TVariables
-  }
 
   constructor(options: LoaderInstanceOptions<TKey, TVariables, TData, TError>) {
     this.options = options
@@ -286,11 +294,6 @@ export class LoaderInstance<
     this.loader = options.loader
     this.hashedKey = options.hashedKey
     this.variables = options.variables
-    this.#fingerPrint = {
-      key: this.loader.key,
-      hashedKey: this.hashedKey,
-      variables: this.variables,
-    }
     this.store = new Store<LoaderStore<TData, TError>>(
       getInitialLoaderState(),
       {
@@ -307,24 +310,40 @@ export class LoaderInstance<
           }
         },
         onUpdate: (next, prev) => {
-          if (!next.silent && next.isFetching !== prev.isFetching) {
-            this.client?.store.setState((s) => {
-              if (next.isFetching) {
-                return {
-                  ...s,
-                  isFetching: s.isFetching
-                    ? s.isFetching.concat(this.#fingerPrint)
-                    : [this.#fingerPrint],
-                }
-              } else {
-                const isFetching = s.isFetching?.filter(
-                  (l) => l !== this.#fingerPrint,
-                )
+          const client = this.client
 
-                return {
-                  ...s,
-                  isFetching: isFetching?.length ? isFetching : undefined,
-                }
+          if (!client) return
+
+          if (next.isFetching !== prev.isFetching) {
+            const isFetching = Object.values(client.loaders).some((loader) => {
+              return Object.values(loader.instances).some(
+                (instance) =>
+                  instance.store.state.isFetching &&
+                  !instance.store.state.silent,
+              )
+            })
+
+            const isPrefetching = Object.values(client.loaders).some(
+              (loader) => {
+                return Object.values(loader.instances).some(
+                  (instance) =>
+                    instance.store.state.isFetching &&
+                    instance.store.state.silent,
+                )
+              },
+            )
+
+            client.store.setState((s) => {
+              if (
+                s.isFetching === isFetching &&
+                s.isPrefetching === isPrefetching
+              ) {
+                return s
+              }
+
+              return {
+                isFetching,
+                isPrefetching,
               }
             })
           }
@@ -360,7 +379,7 @@ export class LoaderInstance<
   }
 
   #destroy = () => {
-    delete this.loader.loaders[this.hashedKey]
+    delete this.loader.instances[this.hashedKey]
   }
 
   load = async (opts?: {
@@ -399,10 +418,12 @@ export class LoaderInstance<
       invalid: true,
     }))
 
-    const promise = this.store.listeners.size ? this.load() : undefined
+    const promise = this.store.listeners.size
+      ? (this.load(), this.__loadPromise)
+      : undefined
     const parentPromise = this.loader.parentLoader?.invalidateAll()
 
-    return Promise.all([promise, parentPromise])
+    await Promise.all([promise, parentPromise])
   }
 
   #latestId = ''
@@ -539,4 +560,8 @@ export function hashKey(queryKey: any): string {
           }, {} as any)
       : val,
   )
+}
+
+type PickRequired<T> = {
+  [K in keyof T as undefined extends T[K] ? never : K]: T[K]
 }
