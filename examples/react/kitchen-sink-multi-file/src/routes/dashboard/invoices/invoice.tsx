@@ -1,16 +1,39 @@
 import * as React from 'react'
 import { z } from 'zod'
-import { fetchInvoiceById } from '../../../mockTodos'
+import { fetchInvoiceById, patchInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import { invoicesRoute } from '.'
-import {
-  useAction,
-  useLoaderInstance,
-  useNavigate,
-  useSearch,
-  Link,
-} from '@tanstack/react-router'
-import { updateInvoiceAction } from '../../../actions'
+import { useNavigate, useSearch, Link, useParams } from '@tanstack/react-router'
+import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
+import { Action, useAction } from '@tanstack/react-actions'
+import { invoicesLoader } from '..'
+
+export const invoiceLoader = new Loader({
+  key: 'invoice',
+  loader: async (invoiceId: number) => {
+    console.log('Fetching invoice...')
+    const invoice = await fetchInvoiceById(invoiceId)
+
+    if (!invoice) {
+      throw new Error('Invoice not found!')
+    }
+
+    return invoice
+  },
+  onAllInvalidate: async () => {
+    await invoicesLoader.invalidateAll()
+  },
+})
+
+export const updateInvoiceAction = new Action({
+  key: 'updateInvoice',
+  action: patchInvoice,
+  onEachSuccess: async ({ payload }) => {
+    await invoiceLoader.invalidate({
+      variables: payload.id,
+    })
+  },
+})
 
 export const invoiceRoute = invoicesRoute.createRoute({
   path: '$invoiceId',
@@ -23,24 +46,22 @@ export const invoiceRoute = invoicesRoute.createRoute({
     notes: z.string().optional(),
   }),
   component: InvoiceView,
-  onLoad: async ({ params: { invoiceId } }) => {
-    console.log('Fetching invoice...')
-    const invoice = await fetchInvoiceById(invoiceId)
-
-    if (!invoice) {
-      throw new Error('Invoice not found!')
-    }
-
-    return {
-      invoice,
-    }
-  },
+  onLoad: async ({ params: { invoiceId }, preload }) =>
+    invoiceLoader.load({
+      variables: invoiceId,
+      silent: preload,
+    }),
 })
 
 function InvoiceView() {
-  const { invoice } = useLoaderInstance({ from: invoiceRoute.id })
+  const { invoiceId } = useParams({ from: invoiceRoute.id })
+  const invoiceLoaderInstance = useLoaderInstance({
+    key: invoiceLoader.key,
+    variables: invoiceId,
+  })
+  const invoice = invoiceLoaderInstance.state.data
   const search = useSearch({ from: invoiceRoute.id })
-  const action = useAction(updateInvoiceAction)
+  const action = useAction({ key: updateInvoiceAction.key })
   const navigate = useNavigate({ from: invoiceRoute.id })
 
   const [notes, setNotes] = React.useState(search.notes ?? ``)
@@ -69,7 +90,7 @@ function InvoiceView() {
     >
       <InvoiceFields
         invoice={invoice}
-        disabled={action.latestSubmission?.status === 'pending'}
+        disabled={action.state.latestSubmission?.status === 'pending'}
       />
       <div>
         <Link
@@ -102,18 +123,18 @@ function InvoiceView() {
       <div>
         <button
           className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-          disabled={action.latestSubmission?.status === 'pending'}
+          disabled={action.state.latestSubmission?.status === 'pending'}
         >
           Save
         </button>
       </div>
-      {action.latestSubmission?.payload?.id === invoice.id ? (
-        <div key={action.latestSubmission?.submittedAt}>
-          {action.latestSubmission?.status === 'success' ? (
+      {action.state.latestSubmission?.payload?.id === invoice.id ? (
+        <div key={action.state.latestSubmission?.submittedAt}>
+          {action.state.latestSubmission?.status === 'success' ? (
             <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Saved!
             </div>
-          ) : action.latestSubmission?.status === 'error' ? (
+          ) : action.state.latestSubmission?.status === 'error' ? (
             <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to save.
             </div>

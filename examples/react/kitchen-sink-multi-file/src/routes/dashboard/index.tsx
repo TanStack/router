@@ -15,7 +15,7 @@ export const invoicesLoader = new Loader({
 export const dashboardRoute = rootRoute.createRoute({
   path: 'dashboard',
   component: Dashboard,
-  onLoad: () => invoicesLoader.load(),
+  onLoad: ({ preload }) => invoicesLoader.load({ silent: preload }),
 })
 
 function Dashboard() {

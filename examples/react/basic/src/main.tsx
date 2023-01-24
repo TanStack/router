@@ -35,7 +35,7 @@ const postsLoader = new Loader({
   },
 })
 
-const postLoader = postsLoader.createLoader({
+const postLoader = new Loader({
   key: 'post',
   loader: async (postId: string) => {
     console.log(`Fetching post with id ${postId}...`)
@@ -44,6 +44,9 @@ const postLoader = postsLoader.createLoader({
     return await axios
       .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
       .then((r) => r.data)
+  },
+  onAllInvalidate: async () => {
+    await postsLoader.invalidateAll()
   },
 })
 
@@ -98,9 +101,11 @@ const postsRoute = rootRoute.createRoute({
   path: 'posts',
   onLoad: () => loaderClient.getLoader({ key: 'posts' }).load(),
   component: () => {
-    const {} = useLoaderState({
+    const postsLoaderInstance = useLoaderInstance({
       key: postsLoader.key,
     })
+
+    const posts = postsLoaderInstance.state.data
 
     return (
       <div className="p-2 flex gap-2">
@@ -147,10 +152,12 @@ const postRoute = postsRoute.createRoute({
     postLoader.load({ variables: postId }),
   component: () => {
     const { postId } = useParams({ from: postRoute.id })
-    const [{ data: post }] = useLoaderInstance({
+    const postLoaderInstance = useLoaderInstance({
       key: postLoader.key,
       variables: postId,
     })
+
+    const post = postLoaderInstance.state.data
 
     return (
       <div className="space-y-2">

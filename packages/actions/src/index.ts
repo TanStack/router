@@ -17,7 +17,7 @@ export type RegisteredActions = RegisterActionClient extends {
   actionClient: ActionClient<infer TActions>
 }
   ? TActions
-  : Action<any, any, any, any>[]
+  : Action[]
 
 export interface ActionClientOptions<
   TActions extends Action<any, any, any, any>[],
@@ -28,7 +28,7 @@ export interface ActionClientOptions<
 }
 
 export type ActionClientStore = Store<{
-  isSubmitting?: ActionSubmission<any, any, any>[]
+  isSubmitting?: ActionSubmission[]
 }>
 // A action client that tracks instances of actions by unique key like react query
 export class ActionClient<
@@ -37,10 +37,19 @@ export class ActionClient<
   options: ActionClientOptions<TActions>
   actions: Record<string, Action>
   store: ActionClientStore
+  state: ActionClientStore['state']
 
   constructor(options: ActionClientOptions<TActions>) {
     this.options = options
-    this.store = new Store({}) as ActionClientStore
+    this.store = new Store(
+      {},
+      {
+        onUpdate: (next) => {
+          this.state = next
+        },
+      },
+    ) as ActionClientStore
+    this.state = this.store.state
     this.actions = {}
 
     this.options.actions.forEach((action) => {
@@ -90,6 +99,15 @@ export type ActionCallback<TPayload, TResponse, TError> = (
   submission: ActionSubmission<TPayload, TResponse, TError>,
 ) => void | Promise<void>
 
+export type ResolvedActionState<TPayload, TResponse, TError> = ActionStore<
+  TPayload,
+  TResponse,
+  TError
+> & {
+  latestSubmission?: ActionSubmission<TPayload, TResponse, TError>
+  pendingSubmissions: ActionSubmission<TPayload, TResponse, TError>[]
+}
+
 export class Action<
   TKey extends string = string,
   TPayload = unknown,
@@ -106,13 +124,37 @@ export class Action<
   client?: ActionClient<any>
   options: ActionOptions<TKey, TPayload, TResponse, TError>
   store: Store<ActionStore<TPayload, TResponse, TError>>
+  state: ResolvedActionState<TPayload, TResponse, TError>
 
   constructor(options: ActionOptions<TKey, TPayload, TResponse, TError>) {
-    this.store = new Store<ActionStore<TPayload, TResponse, TError>>({
-      submissions: [],
-    })
+    this.store = new Store<ActionStore<TPayload, TResponse, TError>>(
+      {
+        submissions: [],
+      },
+      {
+        onUpdate: (next) => {
+          this.state = this.#resolveState(next)
+        },
+      },
+    )
+    this.state = this.#resolveState(this.store.state)
     this.options = options
     this.key = options.key
+  }
+
+  #resolveState = (
+    state: ActionStore<TPayload, TResponse, TError>,
+  ): ResolvedActionState<TPayload, TResponse, TError> => {
+    const latestSubmission = state.submissions[state.submissions.length - 1]
+    const pendingSubmissions = state.submissions.filter(
+      (d) => d.status === 'pending',
+    )
+
+    return {
+      ...state,
+      latestSubmission,
+      pendingSubmissions,
+    }
   }
 
   reset = async () => {

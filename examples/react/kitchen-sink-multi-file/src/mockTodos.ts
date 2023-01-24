@@ -134,3 +134,9 @@ export async function fetchUserById(id: number) {
     ensureUsers().then(() => users.find((d) => d.id === id)),
   )
 }
+
+export async function fetchRandomNumber() {
+  return loaderDelayFn(() => {
+    return Math.random()
+  })
+}

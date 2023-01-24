@@ -55,11 +55,14 @@ const invoicesLoader = new Loader({
   },
 })
 
-const invoiceLoader = invoicesLoader.createLoader({
+const invoiceLoader = new Loader({
   key: 'invoice',
   loader: async (invoiceId: number) => {
     console.log(`Fetching invoice with id ${invoiceId}...`)
     return fetchInvoiceById(invoiceId)
+  },
+  onAllInvalidate: async () => {
+    await invoicesLoader.invalidateAll()
   },
 })
 
@@ -71,11 +74,14 @@ const usersLoader = new Loader({
   },
 })
 
-const userLoader = usersLoader.createLoader({
+const userLoader = new Loader({
   key: 'user',
   loader: async (userId: number) => {
     console.log(`Fetching user with id ${userId}...`)
     return fetchUserById(userId)
+  },
+  onAllInvalidate: async () => {
+    await usersLoader.invalidateAll()
   },
 })
 
@@ -313,11 +319,15 @@ const invoicesRoute = dashboardRoute.createRoute({
 
     const invoices = invoicesLoaderInstance.state.data
 
-    const [{ pendingSubmissions: updateSubmissions }] = useAction({
+    const {
+      state: { pendingSubmissions: updateSubmissions },
+    } = useAction({
       key: updateInvoiceAction.key,
     })
 
-    const [{ pendingSubmissions: createSubmissions }] = useAction({
+    const {
+      state: { pendingSubmissions: createSubmissions },
+    } = useAction({
       key: createInvoiceAction.key,
     })
 
@@ -388,7 +398,9 @@ const invoicesRoute = dashboardRoute.createRoute({
 const invoicesIndexRoute = invoicesRoute.createRoute({
   path: '/',
   component: () => {
-    const [{ latestSubmission }] = useAction({ key: createInvoiceAction.key })
+    const {
+      state: { latestSubmission },
+    } = useAction({ key: createInvoiceAction.key })
 
     return (
       <>
@@ -461,7 +473,9 @@ const invoiceRoute = invoicesRoute.createRoute({
 
     const invoice = invoiceLoaderInstance.state.data
 
-    const [{ latestSubmission }] = useAction({ key: updateInvoiceAction.key })
+    const {
+      state: { latestSubmission },
+    } = useAction({ key: updateInvoiceAction.key })
 
     const [notes, setNotes] = React.useState(search.notes ?? '')
 

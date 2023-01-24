@@ -1,7 +1,24 @@
 import * as React from 'react'
 import { fetchUserById } from '../../../mockTodos'
 import { usersRoute } from '.'
-import { useLoaderInstance, useMatch } from '@tanstack/react-router'
+import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
+import { useParams } from '@tanstack/react-router'
+import { loaderClient } from '../../../loaderClient'
+
+export const userLoader = new Loader({
+  key: 'user',
+  loader: async (userId: number) => {
+    console.log(`Fetching user with id ${userId}...`)
+    return fetchUserById(userId)
+  },
+  onAllInvalidate: async () => {
+    await loaderClient
+      .getLoader({
+        key: 'users',
+      })
+      .invalidateAll()
+  },
+})
 
 export const userRoute = usersRoute.createRoute({
   path: '$userId',
@@ -16,7 +33,12 @@ export const userRoute = usersRoute.createRoute({
 })
 
 function User() {
-  const { user } = useLoaderInstance({ from: userRoute.id })
+  const { userId } = useParams({ from: userRoute.id })
+  const userLoaderInstance = useLoaderInstance({
+    key: userLoader.key,
+    variables: userId,
+  })
+  const user = userLoaderInstance.state.data
 
   return (
     <>

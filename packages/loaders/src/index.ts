@@ -15,7 +15,7 @@ export type RegisteredLoaders = RegisterLoaderClient extends {
   loaderClient: LoaderClient<infer TLoaders>
 }
   ? TLoaders
-  : Loader<any, any, any, any>[]
+  : Loader[]
 
 export interface LoaderClientOptions<
   TLoaders extends Loader<any, any, any, any>[],
@@ -73,26 +73,39 @@ export class LoaderClient<
 export type LoaderByKey<
   TLoaders extends Loader<any, any, any, any>[],
   TKey extends TLoaders[number]['__types']['key'],
-> = {
-  [TLoader in TLoaders[number] as number]: TLoader extends {
-    options: LoaderOptions<TKey, infer TVariables, infer TData, infer TError>
-  }
-    ? Loader<TKey, TVariables, TData, TError>
-    : never
-}[number]
+  TResolvedLoader = {
+    [TLoader in TLoaders[number] as number]: TLoader extends {
+      options: LoaderOptions<TKey, infer TVariables, infer TData, infer TError>
+    }
+      ? Loader<TKey, TVariables, TData, TError>
+      : never
+  }[number],
+> = TResolvedLoader extends never ? Loader : TResolvedLoader
 
 export type LoaderInstanceByKey<
   TLoaders extends Loader<any, any, any, any>[],
   TKey extends TLoaders[number]['__types']['key'],
-> = {
-  [TLoader in TLoaders[number] as number]: TLoader extends {
-    options: LoaderOptions<TKey, infer TVariables, infer TData, infer TError>
-  }
-    ? LoaderInstance<TKey, TVariables, TData, TError>
-    : never
-}[number]
+  TResolvedLoaderInstance = {
+    [TLoader in TLoaders[number] as number]: TLoader extends {
+      options: LoaderOptions<TKey, infer TVariables, infer TData, infer TError>
+    }
+      ? LoaderInstance<TKey, TVariables, TData, TError>
+      : never
+  }[number],
+> = TResolvedLoaderInstance extends never
+  ? LoaderInstance
+  : TResolvedLoaderInstance
 
 export type LoaderCallback<TKey extends string, TVariables, TData, TError> = (
+  loader: Loader<TKey, TVariables, TData, TError>,
+) => void | Promise<void>
+
+export type LoaderInstanceCallback<
+  TKey extends string,
+  TVariables,
+  TData,
+  TError,
+> = (
   loader: LoaderInstance<TKey, TVariables, TData, TError>,
 ) => void | Promise<void>
 
@@ -128,13 +141,15 @@ interface LoaderOptions<
     variables: TVariables,
     Loader: LoaderInstance<TKey, TVariables, TData, TError>,
   ) => TData | Promise<TData>
-  onLatestSuccess?: LoaderCallback<TKey, TVariables, TData, TError>
-  onEachSuccess?: LoaderCallback<TKey, TVariables, TData, TError>
-  onLatestError?: LoaderCallback<TKey, TVariables, TData, TError>
-  onEachError?: LoaderCallback<TKey, TVariables, TData, TError>
-  onLatestSettled?: LoaderCallback<TKey, TVariables, TData, TError>
-  onEachSettled?: LoaderCallback<TKey, TVariables, TData, TError>
-  onEachOutdated?: LoaderCallback<TKey, TVariables, TData, TError>
+  onAllInvalidate?: LoaderCallback<TKey, TVariables, TData, TError>
+  onEachInvalidate?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
+  onLatestSuccess?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
+  onEachSuccess?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
+  onLatestError?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
+  onEachError?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
+  onLatestSettled?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
+  onEachSettled?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
+  onEachOutdated?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
   debug?: boolean
 }
 
@@ -187,7 +202,6 @@ export class Loader<
     error: TError
   }
   options: LoaderOptions<TKey, TVariables, TData, TError>
-  parentLoader?: Loader<any, any, any, any>
   key: TKey
   client?: LoaderClient<any>
   instances: Record<string, LoaderInstance<TKey, TVariables, TData, TError>>
@@ -248,21 +262,14 @@ export class Loader<
       maxAge?: number
     }
   > = async (opts: any = {}) => {
-    return this.getInstance(opts).invalidate()
+    await this.getInstance(opts).invalidate()
+    await this.options.onAllInvalidate?.(this)
   }
 
   invalidateAll = async () => {
     await Promise.all(
       Object.values(this.instances).map((loader) => loader.invalidate()),
     )
-  }
-
-  createLoader = <TKey extends string, TVariables, TData, TError>(
-    options: LoaderOptions<TKey, TVariables, TData, TError>,
-  ): Loader<TKey, TVariables, TData, TError> => {
-    const loader = new Loader(options)
-    loader.parentLoader = this
-    return loader
   }
 }
 
@@ -433,12 +440,12 @@ export class LoaderInstance<
       invalid: true,
     }))
 
-    const promise = this.store.listeners.size
-      ? (this.load(), this.__loadPromise)
-      : undefined
-    const parentPromise = this.loader.parentLoader?.invalidateAll()
+    if (this.store.listeners.size) {
+      this.load()
+      await this.__loadPromise
+    }
 
-    await Promise.all([promise, parentPromise])
+    await this.loader.options.onEachInvalidate?.(this)
   }
 
   #latestId = ''

@@ -2,7 +2,6 @@ import {
   Link,
   MatchRoute,
   Outlet,
-  useLoaderInstance,
   useMatch,
   useNavigate,
   useSearch,
@@ -12,19 +11,22 @@ import { z } from 'zod'
 import { Spinner } from '../../../components/Spinner'
 import { fetchUsers } from '../../../mockTodos'
 import { dashboardRoute } from '..'
+import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 
 const usersViewSortBy = z.enum(['name', 'id', 'email'])
 export type UsersViewSortBy = z.infer<typeof usersViewSortBy>
 
+export const usersLoader = new Loader({
+  key: 'users',
+  loader: async () => {
+    console.log('Fetching users...')
+    return fetchUsers()
+  },
+})
+
 export const usersRoute = dashboardRoute.createRoute({
   path: 'users',
   component: Users,
-  onLoad: async ({ search }) => {
-    search
-    return {
-      users: await fetchUsers(),
-    }
-  },
   validateSearch: z.object({
     usersView: z
       .object({
@@ -43,11 +45,13 @@ export const usersRoute = dashboardRoute.createRoute({
       },
     }),
   ],
+  onLoad: async ({ preload }) => usersLoader.load({ silent: preload }),
 })
 
 function Users() {
   const navigate = useNavigate({ from: usersRoute.id })
-  const { users } = useLoaderInstance({ from: usersRoute.id })
+  const usersLoaderInstance = useLoaderInstance({ key: usersLoader.key })
+  const users = usersLoaderInstance.state.data
   const { usersView } = useSearch({ from: usersRoute.id })
 
   const sortBy = usersView?.sortBy ?? 'name'

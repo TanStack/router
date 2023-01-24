@@ -8,7 +8,8 @@ export const dashboardIndexRoute = dashboardRoute.createRoute({
 })
 
 function DashboardHome() {
-  const [{ data: invoices }] = useLoaderInstance({ key: invoicesLoader.key })
+  const invoicesLoaderInstance = useLoaderInstance({ key: invoicesLoader.key })
+  const invoices = invoicesLoaderInstance.state.data
 
   return (
     <div className="p-2">

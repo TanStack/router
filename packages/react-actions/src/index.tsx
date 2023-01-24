@@ -35,37 +35,13 @@ export function useAction<
 >(opts: {
   key: TKey
   track?: (actionStore: ActionStore<TPayload, TResponse, TError>) => any
-}): [
-  Action<TKey, TPayload, TResponse, TError>['store']['state'] & {
-    latestSubmission: ActionSubmission<TPayload, TResponse, TError>
-    pendingSubmissions: ActionSubmission<TPayload, TResponse, TError>[]
-  },
-  Action<TKey, TPayload, TResponse, TError>,
-] {
+}): Action<TKey, TPayload, TResponse, TError> {
   const actionClient = React.useContext(actionClientContext)
   const action = actionClient.getAction({ key: opts.key })
 
   useStore(action.store, (d) => opts?.track?.(d as any) ?? d, true)
 
-  const actionState = action.store.state
-
-  const pendingSubmissions = React.useMemo(
-    () => actionState.submissions.filter((d) => d.status === 'pending'),
-    [actionState.submissions],
-  )
-
-  return [
-    React.useMemo(
-      () => ({
-        ...actionState,
-        latestSubmission:
-          actionState.submissions[actionState.submissions.length - 1],
-        pendingSubmissions,
-      }),
-      [actionState, pendingSubmissions],
-    ) as any,
-    action as any,
-  ]
+  return action as any
 }
 
 export function useActionClient(opts?: {

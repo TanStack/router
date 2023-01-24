@@ -1,15 +1,11 @@
-import {
-  Link,
-  Outlet,
-  useLoaderInstance,
-  MatchRoute,
-  useAction,
-} from '@tanstack/react-router'
+import { Link, Outlet, MatchRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { Spinner } from '../../../components/Spinner'
-import { dashboardRoute } from '..'
-import { invoiceRoute } from './invoice'
-import { createInvoiceAction, updateInvoiceAction } from '../../../actions'
+import { dashboardRoute, invoicesLoader } from '..'
+import { invoiceRoute, updateInvoiceAction } from './invoice'
+import { useLoaderInstance } from '@tanstack/react-loaders'
+import { useAction } from '@tanstack/react-actions'
+import { createInvoiceAction } from './invoices'
 
 export const invoicesRoute = dashboardRoute.createRoute({
   path: 'invoices',
@@ -17,17 +13,20 @@ export const invoicesRoute = dashboardRoute.createRoute({
 })
 
 function Invoices() {
-  const { invoices } = useLoaderInstance({ from: invoicesRoute.id })
+  const invoicesLoaderInstance = useLoaderInstance({
+    key: invoicesLoader.key,
+  })
+  const invoices = invoicesLoaderInstance.state.data
 
   // Get the action for a child route
-  const createInvoice = useAction(createInvoiceAction)
-  const updateInvoice = useAction(updateInvoiceAction)
+  const createInvoice = useAction({ key: createInvoiceAction.key })
+  const updateInvoice = useAction({ key: updateInvoiceAction.key })
 
   return (
     <div className="flex-1 flex">
       <div className="divide-y w-48">
         {invoices?.map((invoice) => {
-          const foundPending = updateInvoice.pendingSubmissions.find(
+          const foundPending = updateInvoice.state.pendingSubmissions.find(
             (d) => d.payload?.id === invoice.id,
           )
 
@@ -66,7 +65,7 @@ function Invoices() {
             </div>
           )
         })}
-        {createInvoice.pendingSubmissions.map((action) => (
+        {createInvoice.state.pendingSubmissions.map((action) => (
           <div key={action.submittedAt}>
             <a href="#" className="block py-2 px-3 text-blue-700">
               <pre className="text-sm">

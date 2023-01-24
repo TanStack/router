@@ -1,9 +1,17 @@
 import * as React from 'react'
-import { Invoice } from '../../../mockTodos'
+import { Invoice, postInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import { invoicesRoute } from '.'
-import { useAction } from '@tanstack/react-router'
-import { createInvoiceAction } from '../../../actions'
+import { Action, useAction } from '@tanstack/react-actions'
+import { invoicesLoader } from '..'
+
+export const createInvoiceAction = new Action({
+  key: 'createInvoice',
+  action: postInvoice,
+  onEachSuccess: async () => {
+    await invoicesLoader.invalidateAll()
+  },
+})
 
 export const invoicesIndexRoute = invoicesRoute.createRoute({
   path: '/',
@@ -11,7 +19,7 @@ export const invoicesIndexRoute = invoicesRoute.createRoute({
 })
 
 function InvoicesHome() {
-  const action = useAction(createInvoiceAction)
+  const action = useAction({ key: createInvoiceAction.key })
 
   return (
     <>
@@ -38,11 +46,11 @@ function InvoicesHome() {
               Create
             </button>
           </div>
-          {action.latestSubmission?.status === 'success' ? (
+          {action.state.latestSubmission?.status === 'success' ? (
             <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Created!
             </div>
-          ) : action.latestSubmission?.status === 'error' ? (
+          ) : action.state.latestSubmission?.status === 'error' ? (
             <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to create.
             </div>
