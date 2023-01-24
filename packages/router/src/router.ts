@@ -28,6 +28,7 @@ import {
   AnySearchSchema,
   LoaderContext,
   SearchFilter,
+  AnyRootRoute,
 } from './route'
 import { RoutesInfo, AnyRoutesInfo, RoutesById } from './routeInfo'
 import { RouteMatch, RouteMatchStore } from './routeMatch'
@@ -95,7 +96,10 @@ export type FilterRoutesFn = <TRoute extends AnyRoute>(
   routes: TRoute[],
 ) => TRoute[]
 
-export interface RouterOptions<TRouteTree extends AnyRoute, TRouterContext> {
+export interface RouterOptions<
+  TRouteTree extends AnyRootRoute,
+  TRouterContext,
+> {
   history?: RouterHistory
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
@@ -319,7 +323,7 @@ export class Router<
   }
 
   update = <
-    TRoute extends Route = Route,
+    TRoute extends AnyRootRoute = AnyRootRoute,
     TRoutesInfo extends AnyRoutesInfo = RoutesInfo<TRoute>,
     TRouterContext = unknown,
   >(

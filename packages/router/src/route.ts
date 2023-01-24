@@ -383,6 +383,8 @@ export class Route<
   // },
 }
 
+export type AnyRootRoute = RootRoute<any>
+
 export class RootRoute<
   TSearchSchema extends AnySearchSchema = {},
 > extends Route<
