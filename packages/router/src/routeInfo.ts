@@ -1,192 +1,111 @@
-import { Route } from './route'
-import {
-  AnyLoaderData,
-  AnyPathParams,
-  AnyRouteConfig,
-  AnyRouteConfigWithChildren,
-  AnySearchSchema,
-  RootRouteId,
-  RouteConfig,
-  RouteOptions,
-} from './routeConfig'
+import { AnyRoute, Route } from './route'
+import { AnyPathParams, AnySearchSchema, RootRouteId } from './route'
 import { IsAny, UnionToIntersection, Values } from './utils'
 
-export interface AnyAllRouteInfo {
-  routeConfig: AnyRouteConfig
-  routeInfo: AnyRouteInfo
-  routeInfoById: Record<string, AnyRouteInfo>
-  routeInfoByFullPath: Record<string, AnyRouteInfo>
+export interface AnyRoutesInfo {
+  routeTree: AnyRoute
+  routesById: Record<string, AnyRoute>
+  routesByFullPath: Record<string, AnyRoute>
   routeIds: any
   routePaths: any
   fullSearchSchema: Record<string, any>
   allParams: Record<string, any>
 }
 
-export interface DefaultAllRouteInfo {
-  routeConfig: RouteConfig
-  routeInfo: RouteInfo
-  routeInfoById: Record<string, RouteInfo>
-  routeInfoByFullPath: Record<string, RouteInfo>
+export interface DefaultRoutesInfo {
+  routeTree: Route
+  routesById: Record<string, Route>
+  routesByFullPath: Record<string, Route>
   routeIds: string
   routePaths: string
   fullSearchSchema: AnySearchSchema
   allParams: AnyPathParams
 }
 
-export interface AllRouteInfo<TRouteConfig extends AnyRouteConfig = RouteConfig>
-  extends RoutesInfoInner<TRouteConfig, ParseRouteConfig<TRouteConfig>> {}
-
-export type ParseRouteConfig<TRouteConfig = AnyRouteConfig> =
-  TRouteConfig extends AnyRouteConfig
-    ? RouteConfigRoute<TRouteConfig> | ParseRouteChildren<TRouteConfig>
-    : never
-
-type ParseRouteChildren<TRouteConfig> =
-  TRouteConfig extends AnyRouteConfigWithChildren<infer TChildren>
-    ? unknown extends TChildren
-      ? never
-      : TChildren extends AnyRouteConfig[]
-      ? Values<{
-          [TId in TChildren[number]['id']]: ParseRouteChild<
-            TChildren[number],
-            TId
-          >
-        }>
-      : never // Children are not routes
-    : never // No children
-
-type ParseRouteChild<TRouteConfig, TId> = TRouteConfig & {
-  id: TId
-} extends AnyRouteConfig
-  ? ParseRouteConfig<TRouteConfig>
-  : never
-
-// Generics!
-export type RouteConfigRoute<TRouteConfig> = TRouteConfig extends RouteConfig<
-  infer TId,
-  infer TCustomId,
-  infer TPath,
-  infer TFullPath,
-  infer TParentSearchSchema,
-  infer TSearchSchema,
-  infer TFullSearchSchema,
-  infer TParentParams,
-  infer TParams,
-  infer TAllParams,
-  any
->
-  ? string extends TCustomId
-    ? never
-    : RouteInfo<
-        TId,
-        TCustomId,
-        TPath,
-        TFullPath,
-        TParentSearchSchema,
-        TSearchSchema,
-        TFullSearchSchema,
-        TParentParams,
-        TParams,
-        TAllParams
-      >
-  : never
+export interface RoutesInfo<TRouteTree extends AnyRoute = Route>
+  extends RoutesInfoInner<TRouteTree, ParseRoute<TRouteTree>> {}
 
 export interface RoutesInfoInner<
-  TRouteConfig extends AnyRouteConfig,
-  TRouteInfo extends RouteInfo<
-    string,
-    string,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any
-  > = RouteInfo,
-  TRouteInfoById = { '/': TRouteInfo } & {
-    [TInfo in TRouteInfo as TInfo['id']]: TInfo
+  TRouteTree extends AnyRoute,
+  TRoutes extends AnyRoute = Route,
+  TRoutesById = { '/': TRoutes } & {
+    [TRoute in TRoutes as TRoute['id']]: TRoute
   },
-  TRouteInfoByFullPath = { '/': TRouteInfo } & {
-    [TInfo in TRouteInfo as TInfo['fullPath'] extends RootRouteId
+  TRoutesByFullPath = { '/': TRoutes } & {
+    [TRoute in TRoutes as TRoute['fullPath'] extends RootRouteId
       ? never
-      : string extends TInfo['fullPath']
+      : string extends TRoute['fullPath']
       ? never
-      : TInfo['fullPath']]: TInfo
+      : TRoute['fullPath']]: TRoute
   },
 > {
-  routeConfig: TRouteConfig
-  routeInfo: TRouteInfo
-  routeInfoById: TRouteInfoById
-  routeInfoByFullPath: TRouteInfoByFullPath
-  routeIds: keyof TRouteInfoById
-  routePaths: keyof TRouteInfoByFullPath
-  fullSearchSchema: Partial<UnionToIntersection<TRouteInfo['fullSearchSchema']>>
-  allParams: Partial<UnionToIntersection<TRouteInfo['allParams']>>
-}
-
-export interface AnyRouteInfo
-  extends RouteInfo<any, any, any, any, any, any, any, any, any, any> {}
-
-export interface RouteInfo<
-  TId extends string = string,
-  TCustomId extends string = string,
-  TPath extends string = string,
-  TFullPath extends string = '/',
-  TParentSearchSchema extends {} = {},
-  TSearchSchema extends AnySearchSchema = {},
-  TFullSearchSchema extends AnySearchSchema = {},
-  TParentParams extends AnyPathParams = {},
-  TParams extends AnyPathParams = {},
-  TAllParams extends AnyPathParams = {},
-> {
-  id: TId
-  customId: TCustomId
-  path: TPath
-  fullPath: TFullPath
-  searchSchema: TSearchSchema
-  fullSearchSchema: TFullSearchSchema
-  parentParams: TParentParams
-  params: TParams
-  allParams: TAllParams
-  options: RouteOptions<
-    TCustomId,
-    TPath,
-    TParentSearchSchema,
-    TSearchSchema,
-    TFullSearchSchema,
-    TParentParams,
-    TParams,
-    TAllParams
+  routeTree: TRouteTree
+  routes: TRoutes
+  routesById: TRoutesById
+  routesByFullPath: TRoutesByFullPath
+  routeIds: keyof TRoutesById
+  routePaths: keyof TRoutesByFullPath
+  fullSearchSchema: Partial<
+    UnionToIntersection<TRoutes['__types']['fullSearchSchema']>
   >
+  allParams: Partial<UnionToIntersection<TRoutes['__types']['allParams']>>
 }
 
-export type RoutesById<TAllRouteInfo extends AnyAllRouteInfo> = {
-  [K in keyof TAllRouteInfo['routeInfoById']]: Route<
-    TAllRouteInfo,
-    TAllRouteInfo['routeInfoById'][K]
-  >
+export type ParseRoute<TRouteTree> = TRouteTree extends AnyRoute
+  ? TRouteTree | ParseRouteChildren<TRouteTree>
+  : never
+
+export type ParseRouteChildren<TRouteTree> = TRouteTree extends Route<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  infer TChildren,
+  any
+>
+  ? unknown extends TChildren
+    ? never
+    : TChildren extends AnyRoute[]
+    ? Values<{
+        [TId in TChildren[number]['id']]: ParseRouteChild<
+          TChildren[number],
+          TId
+        >
+      }>
+    : never
+  : never
+
+export type ParseRouteChild<TRoute, TId> = TRoute extends AnyRoute
+  ? ParseRoute<TRoute>
+  : never
+
+export type RoutesById<TRoutesInfo extends AnyRoutesInfo> = {
+  [K in keyof TRoutesInfo['routesById']]: TRoutesInfo['routesById'][K]
 }
 
-export type RouteInfoById<
-  TAllRouteInfo extends AnyAllRouteInfo,
+export type RouteById<
+  TRoutesInfo extends AnyRoutesInfo,
   TId,
-> = TId extends keyof TAllRouteInfo['routeInfoById']
+> = TId extends keyof TRoutesInfo['routesById']
   ? IsAny<
-      TAllRouteInfo['routeInfoById'][TId]['id'],
-      RouteInfo,
-      TAllRouteInfo['routeInfoById'][TId]
+      TRoutesInfo['routesById'][TId]['id'],
+      Route,
+      TRoutesInfo['routesById'][TId]
     >
   : never
 
-export type RouteInfoByPath<
-  TAllRouteInfo extends AnyAllRouteInfo,
+export type RouteByPath<
+  TRoutesInfo extends AnyRoutesInfo,
   TPath,
-> = TPath extends keyof TAllRouteInfo['routeInfoByFullPath']
+> = TPath extends keyof TRoutesInfo['routesByFullPath']
   ? IsAny<
-      TAllRouteInfo['routeInfoByFullPath'][TPath]['id'],
-      RouteInfo,
-      TAllRouteInfo['routeInfoByFullPath'][TPath]
+      TRoutesInfo['routesByFullPath'][TPath]['id'],
+      Route,
+      TRoutesInfo['routesByFullPath'][TPath]
     >
   : never

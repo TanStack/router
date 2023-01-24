@@ -8,8 +8,10 @@ const route = useRoute(routeId)
 ```
 
 **Options**
+
 - `routeId: TId`
   - **Required**
 
 **Returns**
-- `route: Route<RegisteredAllRouteInfo, RegisteredAllRouteInfo['routeInfoById'][TId]>`
+
+- `route: Route<RegisteredRoutesInfo, RegisteredRoutesInfo['routesById'][TId]>`

@@ -4,9 +4,10 @@ import {
   Outlet,
   RouterProvider,
   ReactRouter,
-  createRouteConfig,
   Link,
   useParams,
+  RootRoute,
+  Route,
 } from '@tanstack/react-router'
 import {
   Loader,
@@ -54,7 +55,7 @@ const loaderClient = new LoaderClient({
   loaders: [postsLoader, postLoader],
 })
 
-const rootRoute = createRouteConfig({
+const rootRoute = new RootRoute({
   component: () => {
     return (
       <>
@@ -86,7 +87,8 @@ const rootRoute = createRouteConfig({
   },
 })
 
-const indexRoute = rootRoute.createRoute({
+const indexRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: '/',
   component: () => {
     return (
@@ -97,7 +99,8 @@ const indexRoute = rootRoute.createRoute({
   },
 })
 
-const postsRoute = rootRoute.createRoute({
+const postsRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: 'posts',
   onLoad: () => loaderClient.getLoader({ key: 'posts' }).load(),
   component: () => {
@@ -135,7 +138,8 @@ const postsRoute = rootRoute.createRoute({
   errorComponent: () => 'Oh crap',
 })
 
-const PostsIndexRoute = postsRoute.createRoute({
+const PostsIndexRoute = new Route({
+  getParentRoute: () => postsRoute,
   path: '/',
   component: () => {
     return (
@@ -146,7 +150,8 @@ const PostsIndexRoute = postsRoute.createRoute({
   },
 })
 
-const postRoute = postsRoute.createRoute({
+const postRoute = new Route({
+  getParentRoute: () => postsRoute,
   path: 'post/$postId',
   onLoad: async ({ params: { postId } }) =>
     postLoader.load({ variables: postId }),
@@ -168,14 +173,14 @@ const postRoute = postsRoute.createRoute({
   },
 })
 
-const routeConfig = rootRoute.addChildren([
+const routeTree = rootRoute.addChildren([
   indexRoute,
   postsRoute.addChildren([PostsIndexRoute, postRoute]),
 ])
 
 // Set up a ReactRouter instance
 const router = new ReactRouter({
-  routeConfig,
+  routeTree,
   defaultPreload: 'intent',
 })
 

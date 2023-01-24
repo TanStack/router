@@ -1,5 +1,5 @@
 import invariant from 'tiny-invariant'
-import { AnyPathParams } from './routeConfig'
+import { AnyPathParams } from './route'
 import { MatchLocation } from './router'
 import { last } from './utils'
 

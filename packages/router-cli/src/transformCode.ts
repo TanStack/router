@@ -81,7 +81,7 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
                   ImportSpecifier(importPath) {
                     if (
                       t.isIdentifier(importPath.node.imported) &&
-                      importPath.node.imported.name === 'routeConfig'
+                      importPath.node.imported.name === rootRoute
                     ) {
                       foundImport = true
                       if (t.isImportDeclaration(importPath.parentPath.node)) {
@@ -99,7 +99,10 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
                 if (!foundImport) {
                   programPath.node.body.unshift(
                     babel.template.statement(
-                      `import { routeConfig } from '${relativeImportPath.replace(/\\/gi, '/')}'`,
+                      `import { routeConfig } from '${relativeImportPath.replace(
+                        /\\/gi,
+                        '/',
+                      )}'`,
                     )(),
                   )
                 }
@@ -322,7 +325,7 @@ export async function generateRouteConfig(
               ImportSpecifier(path) {
                 if (t.isIdentifier(path.node.imported)) {
                   if (!node.isRoot) {
-                    if (path.node.imported.name === 'routeConfig') {
+                    if (path.node.imported.name === rootRoute) {
                       path.parentPath.remove()
 
                       const program = path.findParent((d) => d.isProgram())
@@ -354,7 +357,7 @@ export async function generateRouteConfig(
                         iPath.parentPath.parentPath?.replaceWith(
                           t.variableDeclaration('const', [
                             t.variableDeclarator(
-                              t.identifier('routeConfig'),
+                              t.identifier(rootRoute),
                               iPath.parentPath.node,
                             ),
                           ]) as any,
@@ -520,7 +523,7 @@ export async function generateRouteConfig(
             )
 
             cleanUnusedCode(programPath, state, [
-              'routeConfig',
+              rootRoute,
               `${node.variable}Route`,
             ])
           },

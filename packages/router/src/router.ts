@@ -21,21 +21,15 @@ import {
   resolvePath,
   trimPath,
 } from './path'
-import { AnyRoute, Route } from './route'
 import {
+  Route,
   AnyPathParams,
-  AnyRouteConfig,
+  AnyRoute,
   AnySearchSchema,
   LoaderContext,
-  RouteConfig,
   SearchFilter,
-} from './routeConfig'
-import {
-  AllRouteInfo,
-  AnyAllRouteInfo,
-  RouteInfo,
-  RoutesById,
-} from './routeInfo'
+} from './route'
+import { RoutesInfo, AnyRoutesInfo, RoutesById } from './routeInfo'
 import { RouteMatch, RouteMatchStore } from './routeMatch'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -62,16 +56,16 @@ export interface RegisterRouter {
 export type AnyRouter = Router<any, any, any>
 
 export type RegisteredRouter = RegisterRouter extends {
-  router: Router<infer TRouteConfig, infer TAllRouteInfo, infer TRouterContext>
+  router: Router<infer TRoute, infer TRoutesInfo, infer TRouterContext>
 }
-  ? Router<TRouteConfig, TAllRouteInfo, TRouterContext>
+  ? Router<TRoute, TRoutesInfo, TRouterContext>
   : Router
 
-export type RegisteredAllRouteInfo = RegisterRouter extends {
-  router: Router<infer TRouteConfig, infer TAllRouteInfo, infer TRouterContext>
+export type RegisteredRoutesInfo = RegisterRouter extends {
+  router: Router<infer TRoute, infer TRoutesInfo, infer TRouterContext>
 }
-  ? TAllRouteInfo
-  : AnyAllRouteInfo
+  ? TRoutesInfo
+  : AnyRoutesInfo
 
 export interface LocationState {}
 
@@ -97,14 +91,11 @@ export interface FromLocation {
 
 export type SearchSerializer = (searchObj: Record<string, any>) => string
 export type SearchParser = (searchStr: string) => Record<string, any>
-export type FilterRoutesFn = <TRoute extends Route<any, RouteInfo>>(
-  routeConfigs: TRoute[],
+export type FilterRoutesFn = <TRoute extends AnyRoute>(
+  routes: TRoute[],
 ) => TRoute[]
 
-export interface RouterOptions<
-  TRouteConfig extends AnyRouteConfig,
-  TRouterContext,
-> {
+export interface RouterOptions<TRouteTree extends AnyRoute, TRouterContext> {
   history?: RouterHistory
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
@@ -117,7 +108,7 @@ export interface RouterOptions<
   defaultLoaderMaxAge?: number
   defaultLoaderGcMaxAge?: number
   caseSensitive?: boolean
-  routeConfig?: TRouteConfig
+  routeTree?: TRouteTree
   basepath?: string
   Router?: (router: AnyRouter) => void
   createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
@@ -243,35 +234,35 @@ export const defaultFetchServerDataFn: FetchServerDataFn = async ({
 }
 
 export class Router<
-  TRouteConfig extends AnyRouteConfig = RouteConfig,
-  TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
+  TRouteTree extends AnyRoute = Route,
+  TRoutesInfo extends AnyRoutesInfo = RoutesInfo<TRouteTree>,
   TRouterContext = unknown,
 > {
   types!: {
     // Super secret internal stuff
-    RouteConfig: TRouteConfig
-    AllRouteInfo: TAllRouteInfo
+    RootRoute: TRouteTree
+    RoutesInfo: TRoutesInfo
   }
 
   options: PickAsRequired<
-    RouterOptions<TRouteConfig, TRouterContext>,
+    RouterOptions<TRouteTree, TRouterContext>,
     'stringifySearch' | 'parseSearch' | 'context'
   >
   history!: RouterHistory
   #unsubHistory?: () => void
   basepath: string
-  // __location: Location<TAllRouteInfo['fullSearchSchema']>
-  routeTree!: Route<TAllRouteInfo, RouteInfo>
-  routesById!: RoutesById<TAllRouteInfo>
+  // __location: Location<TRoutesInfo['fullSearchSchema']>
+  routeTree!: Route
+  routesById!: RoutesById<TRoutesInfo>
   navigateTimeout: undefined | Timeout
   nextAction: undefined | 'push' | 'replace'
   navigationPromise: undefined | Promise<void>
 
-  store: Store<RouterStore<TAllRouteInfo['fullSearchSchema']>>
+  store: Store<RouterStore<TRoutesInfo['fullSearchSchema']>>
   startedLoadingAt = Date.now()
   resolveNavigation = () => {}
 
-  constructor(options?: RouterOptions<TRouteConfig, TRouterContext>) {
+  constructor(options?: RouterOptions<TRouteTree, TRouterContext>) {
     this.options = {
       defaultPreloadDelay: 50,
       context: undefined!,
@@ -328,12 +319,12 @@ export class Router<
   }
 
   update = <
-    TRouteConfig extends RouteConfig = RouteConfig,
-    TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
+    TRoute extends Route = Route,
+    TRoutesInfo extends AnyRoutesInfo = RoutesInfo<TRoute>,
     TRouterContext = unknown,
   >(
-    opts?: RouterOptions<TRouteConfig, TRouterContext>,
-  ): Router<TRouteConfig, TAllRouteInfo, TRouterContext> => {
+    opts?: RouterOptions<TRoute, TRouterContext>,
+  ): this => {
     Object.assign(this.options, opts)
 
     if (
@@ -361,13 +352,13 @@ export class Router<
       })
     }
 
-    const { basepath, routeConfig } = this.options
+    const { basepath, routeTree } = this.options
 
     this.basepath = `/${trimPath(basepath ?? '') ?? ''}`
 
-    if (routeConfig) {
+    if (routeTree) {
       this.routesById = {} as any
-      this.routeTree = this.#buildRouteTree(routeConfig)
+      this.routeTree = this.#buildRouteTree(routeTree)
     }
 
     return this as any
@@ -516,9 +507,9 @@ export class Router<
     this.resolveNavigation()
   }
 
-  getRoute = <TId extends keyof TAllRouteInfo['routeInfoById']>(
+  getRoute = <TId extends keyof TRoutesInfo['routesById']>(
     id: TId,
-  ): Route<TAllRouteInfo, TAllRouteInfo['routeInfoById'][TId]> => {
+  ): TRoutesInfo['routesById'][TId] => {
     const route = this.routesById[id]
 
     invariant(route, `Route with id "${id as string}" not found`)
@@ -573,11 +564,15 @@ export class Router<
 
       const findMatchInRoutes = (parentRoutes: Route[], routes: Route[]) => {
         routes.some((route) => {
-          if (!route.path && route.childRoutes?.length) {
-            return findMatchInRoutes([...foundRoutes, route], route.childRoutes)
+          const childrenAsAny = route.children as undefined | any
+          if (!route.path && childrenAsAny?.length) {
+            return findMatchInRoutes(
+              [...foundRoutes, route],
+              route.children as any,
+            )
           }
 
-          const fuzzy = !!(route.path !== '/' || route.childRoutes?.length)
+          const fuzzy = !!(route.path !== '/' || childrenAsAny?.length)
 
           const matchParams = matchPathname(this.basepath, pathname, {
             to: route.fullPath,
@@ -638,8 +633,10 @@ export class Router<
 
       const foundRoute = last(foundRoutes)!
 
-      if (foundRoute.childRoutes?.length) {
-        recurse(foundRoute.childRoutes)
+      const foundChildren = foundRoute.children as any
+
+      if (foundChildren?.length) {
+        recurse(foundChildren)
       }
     }
 
@@ -714,7 +711,7 @@ export class Router<
   }
 
   navigate = async <
-    TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+    TFrom extends ValidFromPath<TRoutesInfo> = '/',
     TTo extends string = '.',
   >({
     from,
@@ -723,7 +720,7 @@ export class Router<
     hash,
     replace,
     params,
-  }: NavigateOptions<TAllRouteInfo, TFrom, TTo>) => {
+  }: NavigateOptions<TRoutesInfo, TFrom, TTo>) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
@@ -754,23 +751,19 @@ export class Router<
   }
 
   matchRoute = <
-    TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+    TFrom extends ValidFromPath<TRoutesInfo> = '/',
     TTo extends string = '.',
+    TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
   >(
-    location: ToOptions<TAllRouteInfo, TFrom, TTo>,
+    location: ToOptions<TRoutesInfo, TFrom, TTo>,
     opts?: MatchRouteOptions,
-  ):
-    | false
-    | TAllRouteInfo['routeInfoById'][ResolveRelativePath<
-        TFrom,
-        NoInfer<TTo>
-      >]['allParams'] => {
+  ): false | TRoutesInfo['routesById'][TResolved]['__types']['allParams'] => {
     location = {
       ...location,
       to: location.to
         ? this.resolvePath(location.from ?? '', location.to)
         : undefined,
-    }
+    } as any
 
     const next = this.buildNext(location)
 
@@ -800,7 +793,7 @@ export class Router<
   }
 
   buildLink = <
-    TFrom extends ValidFromPath<TAllRouteInfo> = '/',
+    TFrom extends ValidFromPath<TRoutesInfo> = '/',
     TTo extends string = '.',
   >({
     from,
@@ -816,7 +809,7 @@ export class Router<
     preloadGcMaxAge: userPreloadGcMaxAge,
     preloadDelay: userPreloadDelay,
     disabled,
-  }: LinkOptions<TAllRouteInfo, TFrom, TTo>): LinkInfo => {
+  }: LinkOptions<TRoutesInfo, TFrom, TTo>): LinkInfo => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
@@ -982,14 +975,12 @@ export class Router<
     })
   }
 
-  #buildRouteTree = (rootRouteConfig: RouteConfig) => {
-    const recurseRoutes = (
-      routeConfigs: RouteConfig[],
-      parent?: Route<TAllRouteInfo, any, any>,
-    ): Route<TAllRouteInfo, any, any>[] => {
-      return routeConfigs.map((routeConfig, i) => {
-        const routeOptions = routeConfig.options
-        const route = new Route(routeConfig, routeOptions, i, parent, this)
+  #buildRouteTree = (routeTree: Route) => {
+    const recurseRoutes = (routes: Route[], parent?: AnyRoute) => {
+      routes.forEach((route, i) => {
+        route.originalIndex = i
+        route.router = this as any
+
         const existingRoute = (this.routesById as any)[route.id]
 
         if (existingRoute) {
@@ -1005,19 +996,15 @@ export class Router<
 
         ;(this.routesById as any)[route.id] = route
 
-        const children = routeConfig.children as RouteConfig[]
+        const children = route.children as Route[]
 
-        route.childRoutes = children.length
-          ? recurseRoutes(children, route)
-          : undefined
-
-        return route
+        if (children.length) recurseRoutes(children, route)
       })
     }
 
-    const routes = recurseRoutes([rootRouteConfig])
+    recurseRoutes([routeTree])
 
-    return routes[0]!
+    return routeTree
   }
 
   #parseLocation = (previousLocation?: ParsedLocation): ParsedLocation => {

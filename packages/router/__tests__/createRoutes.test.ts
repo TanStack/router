@@ -1,14 +1,24 @@
 import { describe, it } from 'vitest'
-import { createMemoryHistory, Route } from '../src'
 import { z } from 'zod'
-import { Router, AllRouteInfo, createRouteConfig } from '../src'
+import {
+  createMemoryHistory,
+  RoutesInfo,
+  RootRoute,
+  Route,
+  ParseRoute,
+  ParseRouteChildren,
+  AnyRoute,
+  Values,
+  Router,
+} from '../src'
 
 // Write a test
 describe('everything', () => {
   it('should work', () => {
     // Build our routes. We could do this in our component, too.
-    const rootRoute = createRouteConfig()
-    const indexRoute = rootRoute.createRoute({
+    const rootRoute = new RootRoute()
+    const indexRoute = new Route({
+      getParentRoute: () => rootRoute,
       path: '/',
       validateSearch: (search) =>
         z
@@ -17,7 +27,8 @@ describe('everything', () => {
           })
           .parse(search),
     })
-    const testRoute = rootRoute.createRoute({
+    const testRoute = new Route({
+      getParentRoute: () => rootRoute,
       path: 'test',
       validateSearch: (search) =>
         z
@@ -27,7 +38,8 @@ describe('everything', () => {
           })
           .parse(search),
     })
-    const dashboardRoute = rootRoute.createRoute({
+    const dashboardRoute = new Route({
+      getParentRoute: () => rootRoute,
       path: 'dashboard',
       onLoad: async () => {
         console.log('Fetching all invoices...')
@@ -36,14 +48,20 @@ describe('everything', () => {
         }
       },
     })
-    const dashboardIndexRoute = dashboardRoute.createRoute({ path: '/' })
-    const invoicesRoute = dashboardRoute.createRoute({
-      path: 'invoices',
-    })
-    const invoicesIndexRoute = invoicesRoute.createRoute({
+    const dashboardIndexRoute = new Route({
+      getParentRoute: () => dashboardRoute,
       path: '/',
     })
-    const invoiceRoute = invoicesRoute.createRoute({
+    const invoicesRoute = new Route({
+      getParentRoute: () => dashboardRoute,
+      path: 'invoices',
+    })
+    const invoicesIndexRoute = new Route({
+      getParentRoute: () => invoicesRoute,
+      path: '/',
+    })
+    const invoiceRoute = new Route({
+      getParentRoute: () => invoicesRoute,
       path: '$invoiceId',
       parseParams: ({ invoiceId }) => ({ invoiceId: Number(invoiceId) }),
       stringifyParams: ({ invoiceId }) => ({
@@ -56,7 +74,8 @@ describe('everything', () => {
         }
       },
     })
-    const usersRoute = dashboardRoute.createRoute({
+    const usersRoute = new Route({
+      getParentRoute: () => dashboardRoute,
       path: 'users',
       onLoad: async () => {
         return {
@@ -85,7 +104,8 @@ describe('everything', () => {
         }),
       ],
     })
-    const userRoute = usersRoute.createRoute({
+    const userRoute = new Route({
+      getParentRoute: () => usersRoute,
       path: '$userId',
       onLoad: async ({ params: { userId }, search }) => {
         return {
@@ -93,13 +113,16 @@ describe('everything', () => {
         }
       },
     })
-    const authenticatedRoute = rootRoute.createRoute({
+    const authenticatedRoute = new Route({
+      getParentRoute: () => rootRoute,
       path: 'authenticated/', // Trailing slash doesn't mean anything
     })
-    const authenticatedIndexRoute = authenticatedRoute.createRoute({
+    const authenticatedIndexRoute = new Route({
+      getParentRoute: () => authenticatedRoute,
       path: '/',
     })
-    const layoutRoute = rootRoute.createRoute({
+    const layoutRoute = new Route({
+      getParentRoute: () => rootRoute,
       id: 'layout',
       component: () => 'layout-wrapper',
       validateSearch: (search) =>
@@ -109,16 +132,18 @@ describe('everything', () => {
           })
           .parse(search),
     })
-    const layoutARoute = layoutRoute.createRoute({
+    const layoutARoute = new Route({
+      getParentRoute: () => layoutRoute,
       path: 'layout-a',
       component: () => 'layout-a',
     })
-    const layoutBRoute = layoutRoute.createRoute({
+    const layoutBRoute = new Route({
+      getParentRoute: () => layoutRoute,
       path: 'layout-b',
       component: () => 'layout-b',
     })
 
-    const routeConfig = rootRoute.addChildren([
+    const routeTree = rootRoute.addChildren([
       indexRoute,
       testRoute,
       dashboardRoute.addChildren([
@@ -130,22 +155,21 @@ describe('everything', () => {
       layoutRoute.addChildren([layoutARoute, layoutBRoute]),
     ])
 
-    type MyRoutesInfo = AllRouteInfo<typeof routeConfig>
+    type MyRoutesInfo = RoutesInfo<typeof routeTree>
+
+    type Test = ParseRouteChildren<typeof routeTree>
     //   ^?
-    type RouteInfo = MyRoutesInfo['routeInfo']
-    type RoutesById = MyRoutesInfo['routeInfoById']
-    type RoutesTest = Route<
-      MyRoutesInfo,
-      MyRoutesInfo['routeInfoByFullPath']['/']
-    >
+
+    type MyRootRoute = MyRoutesInfo['routeTree']
+    type RoutesById = MyRoutesInfo['routesById']
     //   ^?
-    type RoutePaths = MyRoutesInfo['routeInfoByFullPath']
+    type RoutePaths = MyRoutesInfo['routesByFullPath']
     //   ^?
-    type InvoiceRouteInfo = RoutesById['/dashboard/invoices/$invoiceId']
-    //   ^?//
+    type InvoiceRoute = RoutesById['/dashboard/invoices/$invoiceId']
+    //   ^?
 
     const router = new Router({
-      routeConfig,
+      routeTree,
       history: createMemoryHistory({
         initialEntries: ['/?version=1'],
       }),

@@ -2,7 +2,7 @@ import * as React from 'react'
 
 import {
   Route,
-  RegisteredAllRouteInfo,
+  RegisteredRoutesInfo,
   RegisteredRouter,
   RouterStore,
   last,
@@ -10,15 +10,14 @@ import {
   RouterOptions,
   RouteMatch,
   MatchRouteOptions,
-  RouteConfig,
-  AnyRouteConfig,
-  AnyAllRouteInfo,
-  DefaultAllRouteInfo,
+  AnyRoute,
+  AnyRoutesInfo,
+  DefaultRoutesInfo,
   functionalUpdate,
-  AllRouteInfo,
+  RoutesInfo,
   ValidFromPath,
   LinkOptions,
-  RouteInfoByPath,
+  RouteByPath,
   ResolveRelativePath,
   NoInfer,
   ToOptions,
@@ -62,9 +61,9 @@ export function lazy(
 }
 
 export type LinkPropsOptions<
-  TFrom extends RegisteredAllRouteInfo['routePaths'] = '/',
+  TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
   TTo extends string = '.',
-> = LinkOptions<RegisteredAllRouteInfo, TFrom, TTo> & {
+> = LinkOptions<RegisteredRoutesInfo, TFrom, TTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   activeProps?:
     | React.AnchorHTMLAttributes<HTMLAnchorElement>
@@ -76,33 +75,33 @@ export type LinkPropsOptions<
 }
 
 export type MakeUseMatchRouteOptions<
-  TFrom extends RegisteredAllRouteInfo['routePaths'] = '/',
+  TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
   TTo extends string = '.',
-> = ToOptions<RegisteredAllRouteInfo, TFrom, TTo> & MatchRouteOptions
+> = ToOptions<RegisteredRoutesInfo, TFrom, TTo> & MatchRouteOptions
 
 export type MakeMatchRouteOptions<
-  TFrom extends RegisteredAllRouteInfo['routePaths'] = '/',
+  TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
   TTo extends string = '.',
-> = ToOptions<RegisteredAllRouteInfo, TFrom, TTo> &
+> = ToOptions<RegisteredRoutesInfo, TFrom, TTo> &
   MatchRouteOptions & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
       | ReactNode
       | ((
-          params: RouteInfoByPath<
-            RegisteredAllRouteInfo,
+          params: RouteByPath<
+            RegisteredRoutesInfo,
             ResolveRelativePath<TFrom, NoInfer<TTo>>
-          >['allParams'],
+          >['__types']['allParams'],
         ) => ReactNode)
   }
 
 export type MakeLinkPropsOptions<
-  TFrom extends ValidFromPath<RegisteredAllRouteInfo> = '/',
+  TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
   TTo extends string = '.',
 > = LinkPropsOptions<TFrom, TTo> & React.AnchorHTMLAttributes<HTMLAnchorElement>
 
 export type MakeLinkOptions<
-  TFrom extends RegisteredAllRouteInfo['routePaths'] = '/',
+  TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
   TTo extends string = '.',
 > = LinkPropsOptions<TFrom, TTo> &
   React.AnchorHTMLAttributes<HTMLAnchorElement> &
@@ -120,7 +119,7 @@ declare module '@tanstack/router' {
     }>
   }
 
-  interface RouterOptions<TRouteConfig, TRouterContext> {
+  interface RouterOptions<TRouteTree, TRouterContext> {
     // ssrFooter?: () => JSX.Element | Node
   }
 }
@@ -134,7 +133,7 @@ export type PromptProps = {
 //
 
 export function useLinkProps<
-  TFrom extends ValidFromPath<RegisteredAllRouteInfo> = '/',
+  TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
   TTo extends string = '.',
 >(
   options: MakeLinkPropsOptions<TFrom, TTo>,
@@ -245,11 +244,11 @@ export function useLinkProps<
 }
 
 export interface LinkFn<
-  TDefaultFrom extends RegisteredAllRouteInfo['routePaths'] = '/',
+  TDefaultFrom extends RegisteredRoutesInfo['routePaths'] = '/',
   TDefaultTo extends string = '.',
 > {
   <
-    TFrom extends RegisteredAllRouteInfo['routePaths'] = TDefaultFrom,
+    TFrom extends RegisteredRoutesInfo['routePaths'] = TDefaultFrom,
     TTo extends string = TDefaultTo,
   >(
     props: MakeLinkOptions<TFrom, TTo> & React.RefAttributes<HTMLAnchorElement>,
@@ -288,10 +287,10 @@ export type MatchesProviderProps = {
 }
 
 export class ReactRouter<
-  TRouteConfig extends AnyRouteConfig = RouteConfig,
-  TAllRouteInfo extends AnyAllRouteInfo = AllRouteInfo<TRouteConfig>,
+  TRouteConfig extends AnyRoute = Route,
+  TRoutesInfo extends AnyRoutesInfo = RoutesInfo<TRouteConfig>,
   TRouterContext = unknown,
-> extends Router<TRouteConfig, TAllRouteInfo, TRouterContext> {
+> extends Router<TRouteConfig, TRoutesInfo, TRouterContext> {
   constructor(opts: RouterOptions<TRouteConfig, TRouterContext>) {
     super({
       ...opts,
@@ -307,21 +306,18 @@ export class ReactRouter<
 }
 
 export type RouterProps<
-  TRouteConfig extends AnyRouteConfig = RouteConfig,
-  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+  TRouteConfig extends AnyRoute = Route,
+  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
   TRouterContext = unknown,
 > = RouterOptions<TRouteConfig, TRouterContext> & {
-  router: Router<TRouteConfig, TAllRouteInfo, TRouterContext>
+  router: Router<TRouteConfig, TRoutesInfo, TRouterContext>
 }
 
 export function RouterProvider<
-  TRouteConfig extends AnyRouteConfig = RouteConfig,
-  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
+  TRouteConfig extends AnyRoute = Route,
+  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
   TRouterContext = unknown,
->({
-  router,
-  ...rest
-}: RouterProps<TRouteConfig, TAllRouteInfo, TRouterContext>) {
+>({ router, ...rest }: RouterProps<TRouteConfig, TRoutesInfo, TRouterContext>) {
   router.update(rest)
 
   const currentMatches = useStore(
@@ -362,11 +358,11 @@ export function useMatches(): RouteMatch[] {
 }
 
 export function useMatch<
-  TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'],
+  TFrom extends keyof RegisteredRoutesInfo['routesById'],
   TStrict extends boolean = true,
   TRouteMatch = RouteMatch<
-    RegisteredAllRouteInfo,
-    RegisteredAllRouteInfo['routeInfoById'][TFrom]
+    RegisteredRoutesInfo,
+    RegisteredRoutesInfo['routesById'][TFrom]
   >,
 >(opts?: {
   from: TFrom
@@ -412,10 +408,8 @@ export function useMatch<
 }
 
 export function useRoute<
-  TId extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
->(
-  routeId: TId,
-): Route<RegisteredAllRouteInfo, RegisteredAllRouteInfo['routeInfoById'][TId]> {
+  TId extends keyof RegisteredRoutesInfo['routesById'] = '/',
+>(routeId: TId): RegisteredRoutesInfo['routesById'][TId] {
   const router = useRouter()
   const resolvedRoute = router.getRoute(routeId as any)
 
@@ -430,9 +424,9 @@ export function useRoute<
 }
 
 export function useSearch<
-  TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'],
+  TFrom extends keyof RegisteredRoutesInfo['routesById'],
   TStrict extends boolean = true,
-  TSearch = RegisteredAllRouteInfo['routeInfoById'][TFrom]['fullSearchSchema'],
+  TSearch = RegisteredRoutesInfo['routesById'][TFrom]['__types']['fullSearchSchema'],
   TSelected = TSearch,
 >(opts?: {
   from: TFrom
@@ -449,10 +443,10 @@ export function useSearch<
 }
 
 export function useParams<
-  TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
+  TFrom extends keyof RegisteredRoutesInfo['routesById'] = '/',
   TDefaultSelected = Expand<
-    RegisteredAllRouteInfo['allParams'] &
-      RegisteredAllRouteInfo['routeInfoById'][TFrom]['allParams']
+    RegisteredRoutesInfo['allParams'] &
+      RegisteredRoutesInfo['routesById'][TFrom]['__types']['allParams']
   >,
   TSelected = TDefaultSelected,
 >(opts?: {
@@ -469,11 +463,11 @@ export function useParams<
 }
 
 export function useNavigate<
-  TDefaultFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = '/',
+  TDefaultFrom extends keyof RegisteredRoutesInfo['routesById'] = '/',
 >(defaultOpts?: { from?: TDefaultFrom }) {
   const router = useRouter()
   return <
-    TFrom extends keyof RegisteredAllRouteInfo['routeInfoById'] = TDefaultFrom,
+    TFrom extends keyof RegisteredRoutesInfo['routesById'] = TDefaultFrom,
     TTo extends string = '.',
   >(
     opts?: MakeLinkOptions<TFrom, TTo>,
@@ -486,7 +480,7 @@ export function useMatchRoute() {
   const router = useRouter()
 
   return <
-    TFrom extends ValidFromPath<RegisteredAllRouteInfo> = '/',
+    TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
     TTo extends string = '.',
   >(
     opts: MakeUseMatchRouteOptions<TFrom, TTo>,
@@ -501,7 +495,7 @@ export function useMatchRoute() {
 }
 
 export function MatchRoute<
-  TFrom extends ValidFromPath<RegisteredAllRouteInfo> = '/',
+  TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
   TTo extends string = '.',
 >(props: MakeMatchRouteOptions<TFrom, TTo>): any {
   const matchRoute = useMatchRoute()
@@ -599,6 +593,10 @@ function SubOutlet({
   )
 }
 
+// This is the messiest thing ever... I'm either seriously tired (likely) or
+// there has to be a better way to reset error boundaries when the
+// router's location key changes.
+
 class CatchBoundary extends React.Component<{
   children: any
   errorComponent: any
@@ -608,17 +606,14 @@ class CatchBoundary extends React.Component<{
     error: false,
     info: undefined,
   }
-
   componentDidCatch(error: any, info: any) {
     console.error(`Error in route match: ${this.props.match.id}`)
     console.error(error)
-
     this.setState({
       error,
       info,
     })
   }
-
   render() {
     return (
       <CatchBoundaryInner
@@ -630,9 +625,6 @@ class CatchBoundary extends React.Component<{
   }
 }
 
-// This is the messiest thing ever... I'm either seriously tired (likely) or
-// there has to be a better way to reset error boundaries when the
-// router's location key changes.
 function CatchBoundaryInner(props: {
   children: any
   errorComponent: any

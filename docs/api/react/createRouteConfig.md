@@ -110,14 +110,14 @@ search: {}}) => void | ((match: {params: {};
 search: {};
 }) => void) | undefined) | undefined `
 
-        This function is called when moving from an inactive state to an active one. Likewise, when moving from an active to an inactive state, the return function (if provided) is called.
+                This function is called when moving from an inactive state to an active one. Likewise, when moving from an active to an inactive state, the return function (if provided) is called.
 
   - `onTransition: ((match: {
 params: {};
 search: {};
 }) => void) | undefined `
 
-        This function is called when the route remains active from one transition to the next.
+                This function is called when the route remains active from one transition to the next.
 
   - `parseParams: ((rawParams: Record<never, string>) => Record<never, string>) | undefined`
 
@@ -149,4 +149,4 @@ search: {};
 
 **Returns**
 
-- `router: Router<TRouteConfig, TAllRouteInfo, TRouterContext>`
+- `router: Router<TRouteConfig, TRoutesInfo, TRouterContext>`

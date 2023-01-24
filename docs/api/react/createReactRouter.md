@@ -23,4 +23,4 @@ const router = new ReactRouter({
 
 **Returns**
 
-- `router: Router<TRouteConfig, TAllRouteInfo, TRouterContext>`
+- `router: Router<TRouteConfig, TRoutesInfo, TRouterContext>`

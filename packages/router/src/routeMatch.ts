@@ -1,23 +1,18 @@
 import { Store } from '@tanstack/store'
 //
 import { GetFrameworkGeneric } from './frameworks'
-import { Route } from './route'
-import {
-  AnyAllRouteInfo,
-  AnyRouteInfo,
-  DefaultAllRouteInfo,
-  RouteInfo,
-} from './routeInfo'
+import { AnyRoute, Route } from './route'
+import { AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
 import { AnyRouter, Router } from './router'
 import { Expand } from './utils'
 
 export interface RouteMatchStore<
-  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-  TRouteInfo extends AnyRouteInfo = RouteInfo,
+  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
+  TRoute extends AnyRoute = Route,
 > {
-  routeSearch: TRouteInfo['searchSchema']
+  routeSearch: TRoute['__types']['searchSchema']
   search: Expand<
-    TAllRouteInfo['fullSearchSchema'] & TRouteInfo['fullSearchSchema']
+    TRoutesInfo['fullSearchSchema'] & TRoute['__types']['fullSearchSchema']
   >
   status: 'idle' | 'pending' | 'success' | 'error'
   error?: unknown
@@ -31,15 +26,15 @@ const componentTypes = [
 ] as const
 
 export class RouteMatch<
-  TAllRouteInfo extends AnyAllRouteInfo = DefaultAllRouteInfo,
-  TRouteInfo extends AnyRouteInfo = RouteInfo,
+  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
+  TRoute extends AnyRoute = AnyRoute,
 > {
-  route!: Route<TAllRouteInfo, TRouteInfo>
-  router!: Router<TAllRouteInfo['routeConfig'], TAllRouteInfo>
-  store!: Store<RouteMatchStore<TAllRouteInfo, TRouteInfo>>
+  route!: TRoute
+  router!: Router<TRoutesInfo['routeTree'], TRoutesInfo>
+  store!: Store<RouteMatchStore<TRoutesInfo, TRoute>>
   id!: string
   pathname!: string
-  params!: TRouteInfo['allParams']
+  params!: TRoute['__types']['allParams']
 
   component: GetFrameworkGeneric<'Component'>
   errorComponent: GetFrameworkGeneric<'ErrorComponent'>
@@ -52,16 +47,16 @@ export class RouteMatch<
   __onExit?:
     | void
     | ((matchContext: {
-        params: TRouteInfo['allParams']
-        search: TRouteInfo['fullSearchSchema']
+        params: TRoute['__types']['allParams']
+        search: TRoute['__types']['fullSearchSchema']
       }) => void)
 
   constructor(
     router: AnyRouter,
-    route: Route<TAllRouteInfo, TRouteInfo>,
+    route: TRoute,
     opts: {
       id: string
-      params: TRouteInfo['allParams']
+      params: TRoute['__types']['allParams']
       pathname: string
     },
   ) {
@@ -71,7 +66,7 @@ export class RouteMatch<
       id: opts.id,
       pathname: opts.pathname,
       params: opts.params,
-      store: new Store<RouteMatchStore<TAllRouteInfo, TRouteInfo>>({
+      store: new Store<RouteMatchStore<TRoutesInfo, TRoute>>({
         updatedAt: 0,
         routeSearch: {},
         search: {} as any,
