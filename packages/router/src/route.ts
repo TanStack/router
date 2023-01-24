@@ -246,7 +246,7 @@ export class Route<
     parentRoute: TParentRoute
     path: TPath
     fullPath: TFullPath
-    customId: TCustomId
+    // customId: TCustomId
     id: TId
     searchSchema: TSearchSchema
     fullSearchSchema: TFullSearchSchema
@@ -271,7 +271,7 @@ export class Route<
   // Set up in this.init()
   parentRoute!: TParentRoute
   id!: TId
-  customId!: TCustomId
+  // customId!: TCustomId
   path!: TPath
   fullPath!: TFullPath
 
@@ -294,7 +294,7 @@ export class Route<
     >,
   ) {
     this.options = options as any
-    this.isRoot = !!options.getParentRoute as any
+    this.isRoot = !options.getParentRoute as any
   }
 
   init = () => {
@@ -334,10 +334,12 @@ export class Route<
     const customId = allOptions.id || path
 
     // Strip the parentId prefix from the first level of children
-    let id = joinPaths([
-      (parent.id as any) === rootRouteId ? '' : parent.id,
-      customId,
-    ])
+    let id = isRoot
+      ? rootRouteId
+      : joinPaths([
+          (parent.id as any) === rootRouteId ? '' : parent.id,
+          customId,
+        ])
 
     if (path === rootRouteId) {
       path = '/'
@@ -353,7 +355,7 @@ export class Route<
         : trimPathRight(joinPaths([parent.fullPath, path]))
 
     this.id = id as TId
-    this.customId = customId as TCustomId
+    // this.customId = customId as TCustomId
     this.fullPath = fullPath as TFullPath
   }
 
@@ -453,48 +455,46 @@ type TrimPathRight<T extends string> = T extends '/'
   ? TrimPathRight<U>
   : T
 
-const rootRoute = new RootRoute({
-  validateSearch: () => null as unknown as { root?: boolean },
-})
+// const rootRoute = new RootRoute({
+//   validateSearch: () => null as unknown as { root?: boolean },
+// })
 
-rootRoute.__types.searchSchema
+// const aRoute = new Route({
+//   getParentRoute: () => rootRoute,
+//   path: 'a',
+//   validateSearch: () => null as unknown as { a?: string },
+// })
 
-const aRoute = new Route({
-  getParentRoute: () => rootRoute,
-  path: 'a',
-  validateSearch: () => null as unknown as { a?: string },
-})
+// const bRoute = new Route({
+//   getParentRoute: () => aRoute,
+//   path: 'b',
+// })
 
-const bRoute = new Route({
-  getParentRoute: () => aRoute,
-  path: 'b',
-})
+// const rootIsRoot = rootRoute.isRoot
+// //    ^?
+// const aIsRoot = aRoute.isRoot
+// //    ^?
 
-const rootIsRoot = rootRoute.isRoot
-//    ^?
-const aIsRoot = aRoute.isRoot
-//    ^?
+// const rId = rootRoute.id
+// //    ^?
+// const aId = aRoute.id
+// //    ^?
+// const bId = bRoute.id
+// //    ^?
 
-const rId = rootRoute.id
-//    ^?
-const aId = aRoute.id
-//    ^?
-const bId = bRoute.id
-//    ^?
+// const rPath = rootRoute.fullPath
+// //    ^?
+// const aPath = aRoute.fullPath
+// //    ^?
+// const bPath = bRoute.fullPath
+// //    ^?
 
-const rPath = rootRoute.fullPath
-//    ^?
-const aPath = aRoute.fullPath
-//    ^?
-const bPath = bRoute.fullPath
-//    ^?
+// const rSearch = rootRoute.__types.fullSearchSchema
+// //    ^?
+// const aSearch = aRoute.__types.fullSearchSchema
+// //    ^?
+// const bSearch = bRoute.__types.fullSearchSchema
+// //    ^?
 
-const rSearch = rootRoute.__types.fullSearchSchema
-//    ^?
-const aSearch = aRoute.__types.fullSearchSchema
-//    ^?
-const bSearch = bRoute.__types.fullSearchSchema
-//    ^?
-
-const config = rootRoute.addChildren([aRoute.addChildren([bRoute])])
-//    ^?
+// const config = rootRoute.addChildren([aRoute.addChildren([bRoute])])
+// //    ^?

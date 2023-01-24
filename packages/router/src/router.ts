@@ -554,25 +554,27 @@ export class Router<
       ...(this.store.state.pendingMatches ?? []),
     ]
 
-    const recurse = async (routes: Route<any, any>[]): Promise<void> => {
+    const findInRouteTree = async (
+      routes: Route<any, any>[],
+    ): Promise<void> => {
       const parentMatch = last(matches)
       let params = parentMatch?.params ?? {}
 
       const filteredRoutes = this.options.filterRoutes?.(routes) ?? routes
 
-      let foundRoutes: Route[] = []
+      let matchingRoutes: Route[] = []
 
       const findMatchInRoutes = (parentRoutes: Route[], routes: Route[]) => {
         routes.some((route) => {
-          const childrenAsAny = route.children as undefined | any
-          if (!route.path && childrenAsAny?.length) {
+          const children = route.children as undefined | Route[]
+          if (!route.path && children?.length) {
             return findMatchInRoutes(
-              [...foundRoutes, route],
-              route.children as any,
+              [...matchingRoutes, route],
+              children as any,
             )
           }
 
-          const fuzzy = !!(route.path !== '/' || childrenAsAny?.length)
+          const fuzzy = route.path === '/' ? false : !!children?.length
 
           const matchParams = matchPathname(this.basepath, pathname, {
             to: route.fullPath,
@@ -600,22 +602,22 @@ export class Router<
           }
 
           if (!!matchParams) {
-            foundRoutes = [...parentRoutes, route]
+            matchingRoutes = [...parentRoutes, route]
           }
 
-          return !!foundRoutes.length
+          return !!matchingRoutes.length
         })
 
-        return !!foundRoutes.length
+        return !!matchingRoutes.length
       }
 
       findMatchInRoutes([], filteredRoutes)
 
-      if (!foundRoutes.length) {
+      if (!matchingRoutes.length) {
         return
       }
 
-      foundRoutes.forEach((foundRoute) => {
+      matchingRoutes.forEach((foundRoute) => {
         const interpolatedPath = interpolatePath(foundRoute.path, params)
         const matchId = interpolatePath(foundRoute.id, params, true)
 
@@ -631,16 +633,16 @@ export class Router<
         matches.push(match)
       })
 
-      const foundRoute = last(foundRoutes)!
+      const foundRoute = last(matchingRoutes)!
 
       const foundChildren = foundRoute.children as any
 
       if (foundChildren?.length) {
-        recurse(foundChildren)
+        findInRouteTree(foundChildren)
       }
     }
 
-    recurse([this.routeTree])
+    findInRouteTree([this.routeTree])
 
     linkMatches(matches)
 
@@ -976,8 +978,10 @@ export class Router<
   }
 
   #buildRouteTree = (routeTree: Route) => {
-    const recurseRoutes = (routes: Route[], parent?: AnyRoute) => {
+    const recurseRoutes = (routes: Route[]) => {
       routes.forEach((route, i) => {
+        route.init()
+
         route.originalIndex = i
         route.router = this as any
 
@@ -998,7 +1002,7 @@ export class Router<
 
         const children = route.children as Route[]
 
-        if (children.length) recurseRoutes(children, route)
+        if (children?.length) recurseRoutes(children)
       })
     }
 

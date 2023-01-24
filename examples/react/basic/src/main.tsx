@@ -204,10 +204,10 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
 
   root.render(
-    <React.StrictMode>
-      <LoaderClientProvider loaderClient={loaderClient}>
-        <RouterProvider router={router} />
-      </LoaderClientProvider>
-    </React.StrictMode>,
+    // <React.StrictMode>
+    <LoaderClientProvider loaderClient={loaderClient}>
+      <RouterProvider router={router} />
+    </LoaderClientProvider>,
+    // </React.StrictMode>,
   )
 }
