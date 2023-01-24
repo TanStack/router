@@ -1,7 +1,9 @@
+import { Route } from '@tanstack/react-router'
 import * as React from 'react'
 import { layoutRoute } from '.'
 
-export const layoutRouteA = layoutRoute.createRoute({
+export const layoutRouteA = new Route({
+  getParentRoute: () => layoutRoute,
   path: 'layout-a',
   component: LayoutA,
 })

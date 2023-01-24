@@ -52,7 +52,7 @@ const postLoader = new Loader({
 })
 
 const loaderClient = new LoaderClient({
-  loaders: [postsLoader, postLoader],
+  getLoaders: () => [postsLoader, postLoader],
 })
 
 const rootRoute = new RootRoute({

@@ -22,7 +22,7 @@ export type RegisteredActions = RegisterActionClient extends {
 export interface ActionClientOptions<
   TActions extends Action<any, any, any, any>[],
 > {
-  actions: TActions
+  getActions: () => TActions
   defaultMaxAge?: number
   defaultGcMaxAge?: number
 }
@@ -39,6 +39,8 @@ export class ActionClient<
   store: ActionClientStore
   state: ActionClientStore['state']
 
+  initialized = false
+
   constructor(options: ActionClientOptions<TActions>) {
     this.options = options
     this.store = new Store(
@@ -51,17 +53,22 @@ export class ActionClient<
     ) as ActionClientStore
     this.state = this.store.state
     this.actions = {}
+  }
 
-    this.options.actions.forEach((action) => {
+  init = () => {
+    this.options.getActions().forEach((action) => {
       action.client = this
 
       this.actions[action.key] = action
     })
+
+    this.initialized = true
   }
 
   getAction<TKey extends TActions[number]['__types']['key']>(opts: {
     key: TKey
   }): ActionByKey<TActions, TKey> {
+    if (!this.initialized) this.init()
     return this.actions[opts.key as any] as any
   }
 }

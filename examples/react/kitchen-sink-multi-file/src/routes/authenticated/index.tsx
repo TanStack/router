@@ -1,14 +1,16 @@
-import { Outlet } from '@tanstack/react-router'
+import { Outlet, Route } from '@tanstack/react-router'
 import * as React from 'react'
 import { useAuth } from '../../main'
 import { rootRoute } from '../__root'
 
-export const authenticatedRoute = rootRoute.createRoute({
+export const authenticatedRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: 'authenticated/',
   component: Auth,
 })
 
-export const authenticatedIndexRoute = authenticatedRoute.createRoute({
+export const authenticatedIndexRoute = new Route({
+  getParentRoute: () => authenticatedRoute,
   path: '/',
   component: Authenticated,
 })

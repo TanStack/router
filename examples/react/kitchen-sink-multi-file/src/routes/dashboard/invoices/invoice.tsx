@@ -3,7 +3,13 @@ import { z } from 'zod'
 import { fetchInvoiceById, patchInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import { invoicesRoute } from '.'
-import { useNavigate, useSearch, Link, useParams } from '@tanstack/react-router'
+import {
+  useNavigate,
+  useSearch,
+  Link,
+  useParams,
+  Route,
+} from '@tanstack/react-router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 import { Action, useAction } from '@tanstack/react-actions'
 import { invoicesLoader } from '..'
@@ -35,7 +41,8 @@ export const updateInvoiceAction = new Action({
   },
 })
 
-export const invoiceRoute = invoicesRoute.createRoute({
+export const invoiceRoute = new Route({
+  getParentRoute: () => invoicesRoute,
   path: '$invoiceId',
   parseParams: (params) => ({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),

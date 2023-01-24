@@ -1,7 +1,9 @@
+import { Route } from '@tanstack/react-router'
 import * as React from 'react'
 import { usersRoute } from '.'
 
-export const usersIndexRoute = usersRoute.createRoute({
+export const usersIndexRoute = new Route({
+  getParentRoute: () => usersRoute,
   path: '/',
   component: UsersIndex,
 })

@@ -1,8 +1,10 @@
 import { useLoaderInstance } from '@tanstack/react-loaders'
+import { Route } from '@tanstack/react-router'
 import * as React from 'react'
 import { dashboardRoute, invoicesLoader } from '.'
 
-export const dashboardIndexRoute = dashboardRoute.createRoute({
+export const dashboardIndexRoute = new Route({
+  getParentRoute: () => dashboardRoute,
   path: '/',
   component: DashboardHome,
 })

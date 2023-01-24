@@ -1,5 +1,5 @@
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
-import { Outlet } from '@tanstack/react-router'
+import { Outlet, Route } from '@tanstack/react-router'
 import * as React from 'react'
 import { fetchRandomNumber } from '../../mockTodos'
 
@@ -13,7 +13,8 @@ export const randomIdLoader = new Loader({
   },
 })
 
-export const layoutRoute = rootRoute.createRoute({
+export const layoutRoute = new Route({
+  getParentRoute: () => rootRoute,
   id: 'layout',
   component: LayoutWrapper,
   onLoad: async () => {

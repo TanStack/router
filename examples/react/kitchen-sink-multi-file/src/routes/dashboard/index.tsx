@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, Outlet, useMatch } from '@tanstack/react-router'
+import { Link, Outlet, Route, useMatch } from '@tanstack/react-router'
 import { fetchInvoices } from '../../mockTodos'
 import { rootRoute } from '../__root'
 import { Loader } from '@tanstack/react-loaders'
@@ -12,7 +12,8 @@ export const invoicesLoader = new Loader({
   },
 })
 
-export const dashboardRoute = rootRoute.createRoute({
+export const dashboardRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: 'dashboard',
   component: Dashboard,
   onLoad: ({ preload }) => invoicesLoader.load({ silent: preload }),

@@ -94,7 +94,7 @@ const randomIdLoader = new Loader({
 })
 
 const loaderClient = new LoaderClient({
-  loaders: [
+  getLoaders: () => [
     invoicesLoader,
     invoiceLoader,
     usersLoader,
@@ -131,7 +131,7 @@ const updateInvoiceAction = new Action({
 })
 
 const actionClient = new ActionClient({
-  actions: [createInvoiceAction, updateInvoiceAction],
+  getActions: () => [createInvoiceAction, updateInvoiceAction],
 })
 
 // Register things for typesafety

@@ -1,15 +1,10 @@
 import * as React from 'react'
-import {
-  createRouteConfig,
-  Link,
-  Outlet,
-  useRouterStore,
-} from '@tanstack/react-router'
+import { Link, Outlet, RootRoute, useRouterStore } from '@tanstack/react-router'
 import { Spinner } from '../components/Spinner'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { useLoaderClient } from '@tanstack/react-loaders'
 
-export const rootRoute = createRouteConfig({
+export const rootRoute = new RootRoute({
   component: () => {
     const routerStore = useRouterStore()
     const loaderClient = useLoaderClient()

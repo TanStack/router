@@ -31,19 +31,20 @@ A route with a path of `/` is considered the root or index route for its parent 
 let rootRoute = createRouteConfig()
 
 // This is the index route for the entire router
-const indexRoute = rootRoute.createRoute({ path: '/' })
+const new Route({ getParentRoute: () => indexRoute = rootRoute, path: '/' })
 
-const blogRoute = rootRoute.createRoute({ path: 'blog' })
+const new Route({ getParentRoute: () => blogRoute = rootRoute, path: 'blog' })
 
 // This is the index route for the `/blog` route
-const blogIndexRoute = blogRoute.createRoute({ path: '/' })
+const new Route({ getParentRoute: () => blogIndexRoute = blogRoute, path: '/' })
 
 const routeConfig = rootRoute.addChildren([
   indexRoute,
   blogRoute.addChildren([blogIndexRoute]),
 ])
 ```
-If you put a component in the normal (non-index) route, it will render both when its route is terminal *and* when children are also active; children will render in its `<Outlet />`. If there is no outlet then the children will not render.
+
+If you put a component in the normal (non-index) route, it will render both when its route is terminal _and_ when children are also active; children will render in its `<Outlet />`. If there is no outlet then the children will not render.
 
 ## Layout Routes
 

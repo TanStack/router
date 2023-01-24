@@ -20,7 +20,7 @@ export type RegisteredLoaders = RegisterLoaderClient extends {
 export interface LoaderClientOptions<
   TLoaders extends Loader<any, any, any, any>[],
 > {
-  loaders: TLoaders
+  getLoaders: () => TLoaders
   defaultMaxAge?: number
   defaultGcMaxAge?: number
 }
@@ -38,6 +38,8 @@ export class LoaderClient<
   store: LoaderClientStore
   state: LoaderClientStore['state']
 
+  initialized = false
+
   constructor(options: LoaderClientOptions<TLoaders>) {
     this.options = options
     this.store = new Store(
@@ -53,19 +55,23 @@ export class LoaderClient<
     ) as LoaderClientStore
 
     this.state = this.store.state
-
     this.loaders = {}
+  }
 
-    this.options.loaders.forEach((loader) => {
+  init = () => {
+    this.options.getLoaders().forEach((loader) => {
       loader.client = this
 
       this.loaders[loader.key] = loader
     })
+    this.initialized = true
   }
 
   getLoader<TKey extends TLoaders[number]['__types']['key']>(opts: {
     key: TKey
   }): LoaderByKey<TLoaders, TKey> {
+    if (!this.initialized) this.init()
+
     return this.loaders[opts.key as any] as any
   }
 }

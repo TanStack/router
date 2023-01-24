@@ -15,15 +15,15 @@ To create a layout route, define a route config with an `id` property instead of
 const rootRoute = createRouteConfig()
 
 // Our layout route
-const layoutRoute = rootRoute.createRoute({
-  id: 'layout',
-})
+const layoutRoute = new Route({ getParentRoute: () => rootRoute, id: 'layout' })
 
-const layoutARoute = layoutRoute.createRoute({
+const layoutARoute = new Route({
+  getParentRoute: () => layoutRoute,
   path: 'layout-a',
 })
 
-const layoutBRoute = layoutRoute.createRoute({
+const layoutBRoute = new Route({
+  getParentRoute: () => layoutRoute,
   path: 'layout-b',
 })
 
@@ -43,34 +43,34 @@ Simple example with different layouts for authenticated and unauthenticated rout
 ```tsx
 const rootRoute = createRouteConfig();
 
-const layoutRoot = rootRoute.createRoute({
+const layoutRoot = new Route({ getParentRoute: () => rootRoute,
   id: "layout",
 });
 
-const layoutUnauth = layoutRoot.createRoute({
+const layoutUnauth = new Route({ getParentRoute: () => layoutRoot,
   id: "layout-unauth",
   component: LayoutUnauth, // layout component for unauthenticated routes
 });
 
-const layoutAuth = layoutRoot.createRoute({
+const layoutAuth = new Route({ getParentRoute: () => layoutRoot,
   id: "layout-auth",
   component: LayoutAuth, // layout component for authenticated routes
 });
 
-const indexRoute = layoutUnauth.createRoute({
+const indexRoute = new Route({ getParentRoute: () => layoutUnauth,
   path: "/",
   component: LandingPage, // landing page component that will use unauthenticated layout
 });
 
-const dashboardRoute = layoutAuth.createRoute({
+const dashboardRoute = new Route({ getParentRoute: () => layoutAuth,
   path: "app",
   component: DashboardPage, // homepage page component that will use authenticated layout
   },
 });
 
-export const loginRoute = layoutUnauth.createRoute({
+export const loginRoute = new Route({ getParentRoute: () => layoutUnauth,
   path: "login",
-  component: LoginPage, // another component that will unauthenticated layout 
+  component: LoginPage, // another component that will unauthenticated layout
 });
 
 const routeConfig = rootRoute.addChildren([

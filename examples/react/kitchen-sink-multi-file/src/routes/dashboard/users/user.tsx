@@ -2,7 +2,7 @@ import * as React from 'react'
 import { fetchUserById } from '../../../mockTodos'
 import { usersRoute } from '.'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
-import { useParams } from '@tanstack/react-router'
+import { Route, useParams } from '@tanstack/react-router'
 import { loaderClient } from '../../../loaderClient'
 
 export const userLoader = new Loader({
@@ -20,7 +20,8 @@ export const userLoader = new Loader({
   },
 })
 
-export const userRoute = usersRoute.createRoute({
+export const userRoute = new Route({
+  getParentRoute: () => usersRoute,
   path: '$userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),

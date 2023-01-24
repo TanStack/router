@@ -91,7 +91,7 @@ const rootRoute = createRouteConfig({
   },
 })
 
-const indexRoute = rootRoute.createRoute({
+const new Route({ getParentRoute: () => indexRoute = rootRoute,
   path: '/',
   component: () => {
     return (
@@ -126,7 +126,7 @@ const indexRoute = rootRoute.createRoute({
   },
 })
 
-const dashboardRoute = rootRoute.createRoute({
+const new Route({ getParentRoute: () => dashboardRoute = rootRoute,
   path: 'dashboard',
   onLoad: async () => {
     return {
@@ -175,7 +175,7 @@ const dashboardRoute = rootRoute.createRoute({
   },
 })
 
-const postsRoute = dashboardRoute.createRoute({
+const new Route({ getParentRoute: () => postsRoute = dashboardRoute,
   path: 'posts',
   component: () => {
     const { posts } = useLoaderInstance({ from: postsRoute.id })
@@ -220,7 +220,7 @@ const postsRoute = dashboardRoute.createRoute({
   },
 })
 
-const postsIndexRoute = postsRoute.createRoute({
+const new Route({ getParentRoute: () => postsIndexRoute = postsRoute,
   path: '/',
   component: () => {
     return (
@@ -231,7 +231,7 @@ const postsIndexRoute = postsRoute.createRoute({
   },
 })
 
-const postRoute = postsRoute.createRoute({
+const new Route({ getParentRoute: () => postRoute = postsRoute,
   path: '$postId',
   parseParams: (params) => ({
     postId: z.number().int().parse(Number(params.postId)),
@@ -319,7 +319,7 @@ const postRoute = postsRoute.createRoute({
   },
 })
 
-const dashboardIndexRoute = dashboardRoute.createRoute({
+const new Route({ getParentRoute: () => dashboardIndexRoute = dashboardRoute,
   path: '/',
   component: () => {
     const { posts } = useLoaderInstance({ from: dashboardIndexRoute.id })

@@ -6,7 +6,7 @@ import { userLoader } from './routes/dashboard/users/user'
 import { randomIdLoader } from './routes/layout'
 
 export const loaderClient = new LoaderClient({
-  loaders: [
+  getLoaders: () => [
     invoicesLoader,
     invoiceLoader,
     usersLoader,

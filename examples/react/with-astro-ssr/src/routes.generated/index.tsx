@@ -1,6 +1,6 @@
 import { lazy } from '@tanstack/react-router';
 import { routeConfig as parentRouteConfig } from "./__root";
-const routeConfig = parentRouteConfig.createRoute({
+const new Route({ getParentRoute: () => routeConfig = parentRouteConfig,
   path: "/",
   component: lazy(() => import('./index-component').then(d => ({
     default: d.component

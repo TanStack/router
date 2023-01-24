@@ -27,7 +27,7 @@ import { layoutRouteA } from './routes/layout/layout-a'
 import { layoutRouteB } from './routes/layout/layout-b'
 import { Spinner } from './components/Spinner'
 
-const routeConfig = rootRoute.addChildren([
+const routeTree = rootRoute.addChildren([
   indexRoute,
   dashboardRoute.addChildren([
     dashboardIndexRoute,
@@ -40,7 +40,7 @@ const routeConfig = rootRoute.addChildren([
 ])
 
 export const router = new ReactRouter({
-  routeConfig,
+  routeTree,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>
       <Spinner />

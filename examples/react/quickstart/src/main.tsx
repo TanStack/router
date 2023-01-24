@@ -20,12 +20,12 @@ const rootRoute = createRouteConfig({
   ),
 })
 
-const indexRoute = rootRoute.createRoute({
+const new Route({ getParentRoute: () => indexRoute = rootRoute,
   path: '/',
   component: Index,
 })
 
-const aboutRoute = rootRoute.createRoute({
+const new Route({ getParentRoute: () => aboutRoute = rootRoute,
   path: '/about',
   component: About,
 })

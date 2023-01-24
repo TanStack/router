@@ -75,7 +75,6 @@ function App() {
               defaultLoaderMaxAge={defaultLoaderMaxAge}
               // Normally, the options above aren't changing, but for this particular
               // example, we need to key the router when they change
-              key={[defaultPreloadMaxAge].join('.')}
             />
           </ActionClientProvider>
         </LoaderClientProvider>

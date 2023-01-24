@@ -4,6 +4,7 @@ import { InvoiceFields } from '../../../components/InvoiceFields'
 import { invoicesRoute } from '.'
 import { Action, useAction } from '@tanstack/react-actions'
 import { invoicesLoader } from '..'
+import { Route } from '@tanstack/react-router'
 
 export const createInvoiceAction = new Action({
   key: 'createInvoice',
@@ -13,7 +14,8 @@ export const createInvoiceAction = new Action({
   },
 })
 
-export const invoicesIndexRoute = invoicesRoute.createRoute({
+export const invoicesIndexRoute = new Route({
+  getParentRoute: () => invoicesRoute,
   path: '/',
   component: InvoicesHome,
 })

@@ -6,7 +6,7 @@ export type PostType = {
   title: string
   body: string
 }
-const routeConfig = parentRouteConfig.createRoute({
+const new Route({ getParentRoute: () => routeConfig = parentRouteConfig,
   path: '$postId',
   component: lazy(() =>
     import('./$postId-component').then((d) => ({

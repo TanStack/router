@@ -1,7 +1,7 @@
 import { lazy } from '@tanstack/react-router';
 import { routeConfig as parentRouteConfig } from "./__root";
 import * as React from 'react';
-const routeConfig = parentRouteConfig.createRoute({
+const new Route({ getParentRoute: () => routeConfig = parentRouteConfig,
   path: "/",
   component: () => <div>
       <h3>Welcome Home!</h3>

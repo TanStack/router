@@ -1,4 +1,4 @@
-import { Link, Outlet, MatchRoute } from '@tanstack/react-router'
+import { Link, Outlet, MatchRoute, Route } from '@tanstack/react-router'
 import * as React from 'react'
 import { Spinner } from '../../../components/Spinner'
 import { dashboardRoute, invoicesLoader } from '..'
@@ -7,7 +7,8 @@ import { useLoaderInstance } from '@tanstack/react-loaders'
 import { useAction } from '@tanstack/react-actions'
 import { createInvoiceAction } from './invoices'
 
-export const invoicesRoute = dashboardRoute.createRoute({
+export const invoicesRoute = new Route({
+  getParentRoute: () => dashboardRoute,
   path: 'invoices',
   component: Invoices,
 })

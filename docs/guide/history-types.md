@@ -27,7 +27,7 @@ import {
 
 const rootRoute = createRouteConfig()
 
-const indexRoute = rootRoute.createRoute({ path: '/' })
+const new Route({ getParentRoute: () => indexRoute = rootRoute, path: '/' })
 
 const memoryHistory = createMemoryHistory({
   initialEntries: ['/'], // Pass your initial url
@@ -53,7 +53,7 @@ import {
 
 const rootRoute = createRouteConfig()
 
-const indexRoute = rootRoute.createRoute({ path: '/' })
+const new Route({ getParentRoute: () => indexRoute = rootRoute, path: '/' })
 
 const hashHistory = createHashHistory()
 
@@ -73,7 +73,7 @@ import {
 
 const rootRoute = createRouteConfig()
 
-const indexRoute = rootRoute.createRoute({ path: '/' })
+const new Route({ getParentRoute: () => indexRoute = rootRoute, path: '/' })
 
 const memoryHistory = createMemoryHistory({
   initialEntries: ['/'], // Pass your initial url

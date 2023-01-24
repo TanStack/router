@@ -2,6 +2,7 @@ import {
   Link,
   MatchRoute,
   Outlet,
+  Route,
   useMatch,
   useNavigate,
   useSearch,
@@ -24,7 +25,8 @@ export const usersLoader = new Loader({
   },
 })
 
-export const usersRoute = dashboardRoute.createRoute({
+export const usersRoute = new Route({
+  getParentRoute: () => dashboardRoute,
   path: 'users',
   component: Users,
   validateSearch: z.object({

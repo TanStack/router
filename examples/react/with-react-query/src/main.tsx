@@ -57,7 +57,7 @@ const rootRoute = createRouteConfig({
   },
 })
 
-const indexRoute = rootRoute.createRoute({
+const new Route({ getParentRoute: () => indexRoute = rootRoute,
   path: '/',
   component: () => {
     return (
@@ -68,7 +68,7 @@ const indexRoute = rootRoute.createRoute({
   },
 })
 
-const postsRoute = rootRoute.createRoute({
+const new Route({ getParentRoute: () => postsRoute = rootRoute,
   path: 'posts',
   onLoad: async () => {
     queryClient.getQueryData(['posts']) ??
@@ -106,7 +106,7 @@ const postsRoute = rootRoute.createRoute({
   errorComponent: () => 'Oh crap!',
 })
 
-const postsIndexRoute = postsRoute.createRoute({
+const new Route({ getParentRoute: () => postsIndexRoute = postsRoute,
   path: '/',
   component: () => {
     return (
@@ -117,7 +117,7 @@ const postsIndexRoute = postsRoute.createRoute({
   },
 })
 
-const postRoute = postsRoute.createRoute({
+const new Route({ getParentRoute: () => postRoute = postsRoute,
   path: '$postId',
   onLoad: async ({ params: { postId } }) => {
     queryClient.getQueryData(['posts', postId]) ??
