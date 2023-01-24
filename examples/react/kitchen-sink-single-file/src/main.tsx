@@ -9,8 +9,9 @@ import {
   useNavigate,
   useSearch,
   ReactRouter,
-  createRouteConfig,
   useParams,
+  RootRoute,
+  Route,
 } from '@tanstack/react-router'
 import {
   Action,
@@ -143,7 +144,7 @@ declare module '@tanstack/react-actions' {
 // Routes
 
 // Build our routes. We could do this in our component, too.
-const rootRoute = createRouteConfig({
+const rootRoute = new RootRoute({
   component: () => {
     const loaderClient = useLoaderClient()
 
@@ -208,7 +209,8 @@ const rootRoute = createRouteConfig({
   },
 })
 
-const indexRoute = rootRoute.createRoute({
+const indexRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: '/',
   component: () => {
     return (
@@ -243,7 +245,8 @@ const indexRoute = rootRoute.createRoute({
   },
 })
 
-const dashboardRoute = rootRoute.createRoute({
+const dashboardRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: 'dashboard',
   onLoad: ({ preload }) => invoicesLoader.load({ silent: preload }),
   component: () => {
@@ -290,7 +293,8 @@ const dashboardRoute = rootRoute.createRoute({
   },
 })
 
-const dashboardIndexRoute = dashboardRoute.createRoute({
+const dashboardIndexRoute = new Route({
+  getParentRoute: () => dashboardRoute,
   path: '/',
   component: () => {
     const invoicesLoaderInstance = useLoaderInstance({
@@ -310,7 +314,8 @@ const dashboardIndexRoute = dashboardRoute.createRoute({
   },
 })
 
-const invoicesRoute = dashboardRoute.createRoute({
+const invoicesRoute = new Route({
+  getParentRoute: () => dashboardRoute,
   path: 'invoices',
   component: () => {
     const invoicesLoaderInstance = useLoaderInstance({
@@ -395,7 +400,8 @@ const invoicesRoute = dashboardRoute.createRoute({
   },
 })
 
-const invoicesIndexRoute = invoicesRoute.createRoute({
+const invoicesIndexRoute = new Route({
+  getParentRoute: () => invoicesRoute,
   path: '/',
   component: () => {
     const {
@@ -443,7 +449,8 @@ const invoicesIndexRoute = invoicesRoute.createRoute({
   },
 })
 
-const invoiceRoute = invoicesRoute.createRoute({
+const invoiceRoute = new Route({
+  getParentRoute: () => invoicesRoute,
   path: '$invoiceId',
   parseParams: (params) => ({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),
@@ -565,7 +572,8 @@ const invoiceRoute = invoicesRoute.createRoute({
   },
 })
 
-const usersRoute = dashboardRoute.createRoute({
+const usersRoute = new Route({
+  getParentRoute: () => dashboardRoute,
   path: 'users',
   onLoad: () => usersLoader.load(),
   validateSearch: z.object({
@@ -705,7 +713,8 @@ const usersRoute = dashboardRoute.createRoute({
   },
 })
 
-const usersIndexRoute = usersRoute.createRoute({
+const usersIndexRoute = new Route({
+  getParentRoute: () => usersRoute,
   path: '/',
   component: () => {
     return (
@@ -733,7 +742,8 @@ const usersIndexRoute = usersRoute.createRoute({
   },
 })
 
-const userRoute = usersRoute.createRoute({
+const userRoute = new Route({
+  getParentRoute: () => usersRoute,
   path: '$userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
@@ -763,7 +773,8 @@ const userRoute = usersRoute.createRoute({
   },
 })
 
-const expensiveRoute = rootRoute.createRoute({
+const expensiveRoute = new Route({
+  getParentRoute: () => rootRoute,
   // Your elements can be asynchronous, which means you can code-split!
   path: 'expensive',
   component: lazy(() => import('./Expensive')),
@@ -771,7 +782,8 @@ const expensiveRoute = rootRoute.createRoute({
 
 const AuthError = new Error('Not logged in')
 
-const authenticatedRoute = rootRoute.createRoute({
+const authenticatedRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: 'authenticated',
   onLoadError: (error) => {
     if (error === AuthError) {
@@ -805,7 +817,8 @@ const authenticatedRoute = rootRoute.createRoute({
   },
 })
 
-const loginRoute = rootRoute.createRoute({
+const loginRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: 'login',
   validateSearch: z.object({
     redirect: z.string().optional(),
@@ -861,7 +874,8 @@ const loginRoute = rootRoute.createRoute({
   },
 })
 
-const layoutRoute = rootRoute.createRoute({
+const layoutRoute = new Route({
+  getParentRoute: () => rootRoute,
   id: 'layout',
   onLoad: async () => randomIdLoader.load(),
   component: () => {
@@ -880,7 +894,8 @@ const layoutRoute = rootRoute.createRoute({
   },
 })
 
-const layoutARoute = layoutRoute.createRoute({
+const layoutARoute = new Route({
+  getParentRoute: () => layoutRoute,
   path: 'layout-a',
   component: () => {
     return (
@@ -891,7 +906,8 @@ const layoutARoute = layoutRoute.createRoute({
   },
 })
 
-const layoutBRoute = layoutRoute.createRoute({
+const layoutBRoute = new Route({
+  getParentRoute: () => layoutRoute,
   path: 'layout-b',
   component: () => {
     return (
@@ -902,7 +918,7 @@ const layoutBRoute = layoutRoute.createRoute({
   },
 })
 
-const routeConfig = rootRoute.addChildren([
+const routeTree = rootRoute.addChildren([
   indexRoute,
   dashboardRoute.addChildren([
     dashboardIndexRoute,
@@ -916,7 +932,7 @@ const routeConfig = rootRoute.addChildren([
 ])
 
 const router = new ReactRouter({
-  routeConfig,
+  routeTree,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>
       <Spinner />
