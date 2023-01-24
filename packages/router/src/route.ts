@@ -293,8 +293,8 @@ export class Route<
       TAllParams
     >,
   ) {
-    this.options = options as any
-    this.isRoot = !options.getParentRoute as any
+    this.options = (options as any) || {}
+    this.isRoot = !options?.getParentRoute as any
   }
 
   init = () => {
@@ -311,9 +311,9 @@ export class Route<
     > &
       RouteOptionsBaseIntersection<TCustomId, TPath>
 
-    const isRoot = !allOptions.path && !allOptions.id
+    const isRoot = !allOptions?.path && !allOptions?.id
 
-    const parent = this.options.getParentRoute?.()
+    const parent = this.options?.getParentRoute?.()
 
     if (isRoot) {
       this.path = rootRouteId as TPath
@@ -331,7 +331,7 @@ export class Route<
       path = trimPath(path)
     }
 
-    const customId = allOptions.id || path
+    const customId = allOptions?.id || path
 
     // Strip the parentId prefix from the first level of children
     let id = isRoot
