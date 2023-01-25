@@ -7,7 +7,7 @@ export const actionClient = new ActionClient({
 })
 
 declare module '@tanstack/react-actions' {
-  interface RegisterActionClient {
+  interface Register {
     actionClient: typeof actionClient
   }
 }

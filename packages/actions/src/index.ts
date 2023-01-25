@@ -3,17 +3,17 @@
 import invariant from 'tiny-invariant'
 import { Store } from '@tanstack/store'
 
-export interface RegisterActionClient {
+export interface Register {
   // actionClient: ActionClient
 }
 
-export type RegisteredActionClient = RegisterActionClient extends {
+export type RegisteredActionClient = Register extends {
   actionClient: ActionClient<infer TActions>
 }
   ? ActionClient<TActions>
   : ActionClient
 
-export type RegisteredActions = RegisterActionClient extends {
+export type RegisteredActions = Register extends {
   actionClient: ActionClient<infer TActions>
 }
   ? TActions

@@ -50,19 +50,19 @@ import {
   RouterHistory,
 } from './history'
 
-export interface RegisterRouter {
+export interface Register {
   // router: Router
 }
 
 export type AnyRouter = Router<any, any, any>
 
-export type RegisteredRouter = RegisterRouter extends {
+export type RegisteredRouter = Register extends {
   router: Router<infer TRoute, infer TRoutesInfo, infer TRouterContext>
 }
   ? Router<TRoute, TRoutesInfo, TRouterContext>
   : Router
 
-export type RegisteredRoutesInfo = RegisterRouter extends {
+export type RegisteredRoutesInfo = Register extends {
   router: Router<infer TRoute, infer TRoutesInfo, infer TRouterContext>
 }
   ? TRoutesInfo

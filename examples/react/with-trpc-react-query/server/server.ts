@@ -1,4 +1,4 @@
-import { inferAsyncReturnType, initTRPC } from '@trpc/server'
+import { initTRPC } from '@trpc/server'
 import { createHTTPServer } from '@trpc/server/adapters/standalone'
 
 const t = initTRPC.create()
@@ -10,11 +10,16 @@ const POSTS = [
 ]
 
 const appRouter = t.router({
-  hello: t.procedure.query(() => 'Hello world!'),
-  posts: t.procedure.query((_) => {
+  hello: t.procedure.query(async () => {
+    await new Promise((r) => setTimeout(r, 500))
+    return 'Hello world!'
+  }),
+  posts: t.procedure.query(async (_) => {
+    await new Promise((r) => setTimeout(r, 500))
     return POSTS
   }),
-  post: t.procedure.input(String).query((req) => {
+  post: t.procedure.input(String).query(async (req) => {
+    await new Promise((r) => setTimeout(r, 500))
     return POSTS.find((p) => p.id === req.input)
   }),
 })

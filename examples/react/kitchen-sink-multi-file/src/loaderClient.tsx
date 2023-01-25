@@ -16,7 +16,7 @@ export const loaderClient = new LoaderClient({
 })
 
 declare module '@tanstack/react-loaders' {
-  interface RegisterLoaderClient {
+  interface Register {
     loaderClient: typeof loaderClient
   }
 }

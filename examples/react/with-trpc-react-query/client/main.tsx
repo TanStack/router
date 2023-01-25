@@ -4,10 +4,11 @@ import {
   Outlet,
   RouterProvider,
   ReactRouter,
-  createRouteConfig,
   Link,
   useMatch,
   useParams,
+  RootRoute,
+  Route,
 } from '@tanstack/react-router'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
@@ -18,7 +19,11 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 const queryClient = new QueryClient()
 
-const rootRoute = createRouteConfig({
+export function Spinner() {
+  return <div className="inline-block animate-spin px-3 text-2xl">⍥</div>
+}
+
+const rootRoute = new RootRoute({
   component: () => {
     return (
       <>
@@ -49,25 +54,36 @@ const rootRoute = createRouteConfig({
   },
 })
 
-const new Route({ getParentRoute: () => indexRoute = rootRoute,
+const indexRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: '/',
   component: () => {
-    const hello = trpc.hello.useQuery()
-    if (!hello.data) return <p>{'Loading...'}</p>
-    return <div className="p-2 text-xl">{hello.data}</div>
+    const helloQuery = trpc.hello.useQuery()
+    if (!helloQuery.data)
+      return (
+        <p>
+          <Spinner />
+        </p>
+      )
+    return <div className="p-2 text-xl">{helloQuery.data}</div>
   },
 })
 
-const new Route({ getParentRoute: () => postsRoute = rootRoute,
+const postsRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: 'posts',
-  loaderMaxAge: 0,
   errorComponent: () => 'Oh crap!',
-  onLoad: async () => {
-    // TODO: Prefetch posts using TRPC
-    return {}
-  },
+  // onLoad: async () => {}
   component: () => {
     const postsQuery = trpc.posts.useQuery()
+
+    if (postsQuery.isLoading) {
+      return (
+        <p>
+          <Spinner />
+        </p>
+      )
+    }
 
     return (
       <div className="p-2 flex gap-2">
@@ -96,7 +112,8 @@ const new Route({ getParentRoute: () => postsRoute = rootRoute,
   },
 })
 
-const new Route({ getParentRoute: () => postsIndexRoute = postsRoute,
+const postsIndexRoute = new Route({
+  getParentRoute: () => postsRoute,
   path: '/',
   component: () => {
     return (
@@ -107,7 +124,8 @@ const new Route({ getParentRoute: () => postsIndexRoute = postsRoute,
   },
 })
 
-const new Route({ getParentRoute: () => postRoute = postsRoute,
+const postRoute = new Route({
+  getParentRoute: () => postsRoute,
   path: '$postId',
   onLoad: async ({ params: { postId } }) => {
     // TODO: Prefetch post using TRPC
@@ -117,6 +135,14 @@ const new Route({ getParentRoute: () => postRoute = postsRoute,
     const { postId } = useParams({ from: postRoute.id })
     const postQuery = trpc.post.useQuery(postId)
 
+    if (postQuery.isLoading) {
+      return (
+        <p>
+          <Spinner />
+        </p>
+      )
+    }
+
     return (
       <div className="space-y-2">
         <h4 className="text-xl font-bold underline">{postQuery.data?.title}</h4>
@@ -125,19 +151,19 @@ const new Route({ getParentRoute: () => postRoute = postsRoute,
   },
 })
 
-const routeConfig = rootRoute.addChildren([
+const routeTree = rootRoute.addChildren([
   indexRoute,
   postsRoute.addChildren([postsIndexRoute, postRoute]),
 ])
 
 // Set up a ReactRouter instance
 const router = new ReactRouter({
-  routeConfig,
+  routeTree,
   defaultPreload: 'intent',
 })
 
 declare module '@tanstack/react-router' {
-  interface RegisterRouter {
+  interface Register {
     router: typeof router
   }
 }

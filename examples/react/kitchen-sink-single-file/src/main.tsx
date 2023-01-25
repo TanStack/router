@@ -105,7 +105,7 @@ const loaderClient = new LoaderClient({
 
 // Register things for typesafety
 declare module '@tanstack/react-loaders' {
-  interface RegisterLoaderClient {
+  interface Register {
     loaderClient: typeof loaderClient
   }
 }
@@ -136,7 +136,7 @@ const actionClient = new ActionClient({
 
 // Register things for typesafety
 declare module '@tanstack/react-actions' {
-  interface RegisterActionClient {
+  interface Register {
     actionClient: typeof actionClient
   }
 }
@@ -950,7 +950,7 @@ const router = new ReactRouter({
 })
 
 declare module '@tanstack/react-router' {
-  interface RegisterRouter {
+  interface Register {
     router: typeof router
   }
 }

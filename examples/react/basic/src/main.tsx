@@ -55,6 +55,12 @@ const loaderClient = new LoaderClient({
   getLoaders: () => [postsLoader, postLoader],
 })
 
+declare module '@tanstack/react-loaders' {
+  interface Register {
+    loaderClient: typeof loaderClient
+  }
+}
+
 const rootRoute = new RootRoute({
   component: () => {
     return (
@@ -186,14 +192,14 @@ const router = new ReactRouter({
 
 // Register things for typesafety
 declare module '@tanstack/react-router' {
-  interface RegisterRouter {
+  interface Register {
     router: typeof router
   }
 }
 
 // Register things for typesafety
 declare module '@tanstack/react-loaders' {
-  interface RegisterLoaderClient {
+  interface Register {
     loaderClient: typeof loaderClient
   }
 }

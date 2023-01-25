@@ -1,17 +1,17 @@
 import { Store } from '@tanstack/store'
 import { isPlainObject, replaceEqualDeep } from './utils'
 
-export interface RegisterLoaderClient {
+export interface Register {
   // loaderClient: LoaderClient
 }
 
-export type RegisteredLoaderClient = RegisterLoaderClient extends {
+export type RegisteredLoaderClient = Register extends {
   loaderClient: LoaderClient<infer TLoaders>
 }
   ? LoaderClient<TLoaders>
   : LoaderClient
 
-export type RegisteredLoaders = RegisterLoaderClient extends {
+export type RegisteredLoaders = Register extends {
   loaderClient: LoaderClient<infer TLoaders>
 }
   ? TLoaders
@@ -79,7 +79,13 @@ export class LoaderClient<
 export type LoaderByKey<
   TLoaders extends Loader<any, any, any, any>[],
   TKey extends TLoaders[number]['__types']['key'],
-  TResolvedLoader = {
+  TResolvedLoader extends {
+    [TLoader in TLoaders[number] as number]: TLoader extends {
+      options: LoaderOptions<TKey, infer TVariables, infer TData, infer TError>
+    }
+      ? Loader<TKey, TVariables, TData, TError>
+      : never
+  }[number] = {
     [TLoader in TLoaders[number] as number]: TLoader extends {
       options: LoaderOptions<TKey, infer TVariables, infer TData, infer TError>
     }
@@ -171,7 +177,11 @@ export function getInitialLoaderState() {
   } as const
 }
 
-export type VariablesOptions<TVariables> = undefined extends TVariables
+export type VariablesOptions<TVariables> = TVariables extends never
+  ? {
+      variables?: never
+    }
+  : undefined extends TVariables
   ? {
       variables?: TVariables
     }

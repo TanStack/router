@@ -4,15 +4,22 @@ import {
   Outlet,
   RouterProvider,
   ReactRouter,
-  createRouteConfig,
   Link,
-  useMatch,
   useRouterStore,
-  useLoaderInstance,
   MatchRoute,
   useSearch,
   useNavigate,
+  RootRoute,
+  Route,
+  useParams,
 } from '@tanstack/react-router'
+import {
+  Loader,
+  LoaderClient,
+  LoaderClientProvider,
+  useLoaderClient,
+  useLoaderInstance,
+} from '@tanstack/react-loaders'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
@@ -27,13 +34,40 @@ export const trpc = createTRPCProxyClient<AppRouter>({
   ],
 })
 
+const postsLoader = new Loader({
+  key: 'posts',
+  loader: () => trpc.posts.query(),
+})
+
+const postLoader = new Loader({
+  key: 'post',
+  loader: (postId: number) => trpc.post.query(postId),
+  onEachInvalidate: () => {
+    // Invalidate the posts loader when a post is invalidated
+    postsLoader.invalidate()
+  },
+})
+
+const loaderClient = new LoaderClient({
+  getLoaders: () => [postsLoader, postLoader],
+})
+
+declare module '@tanstack/react-loaders' {
+  interface Register {
+    loaderClient: typeof loaderClient
+  }
+}
+
 function Spinner() {
   return <div className="inline-block animate-spin px-3">⍥</div>
 }
 
-const rootRoute = createRouteConfig({
+const rootRoute = new RootRoute({
   component: () => {
-    const { isFetching } = useRouterStore()
+    const { status } = useRouterStore()
+    const {
+      state: { isFetching },
+    } = useLoaderClient()
 
     return (
       <>
@@ -43,7 +77,9 @@ const rootRoute = createRouteConfig({
             {/* Show a global spinner when the router is transitioning */}
             <div
               className={`text-3xl duration-300 delay-0 opacity-0 ${
-                isFetching ? ` duration-1000 opacity-40` : ''
+                status === 'pending' || isFetching
+                  ? ` duration-1000 opacity-40`
+                  : ''
               }`}
             >
               <Spinner />
@@ -53,7 +89,7 @@ const rootRoute = createRouteConfig({
             <div className={`divide-y w-56`}>
               {(
                 [
-                  ['.', 'Home'],
+                  ['/', 'Home'],
                   ['/dashboard', 'Dashboard'],
                 ] as const
               ).map(([to, label]) => {
@@ -91,7 +127,8 @@ const rootRoute = createRouteConfig({
   },
 })
 
-const new Route({ getParentRoute: () => indexRoute = rootRoute,
+const indexRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: '/',
   component: () => {
     return (
@@ -126,13 +163,10 @@ const new Route({ getParentRoute: () => indexRoute = rootRoute,
   },
 })
 
-const new Route({ getParentRoute: () => dashboardRoute = rootRoute,
+const dashboardRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: 'dashboard',
-  onLoad: async () => {
-    return {
-      posts: await trpc.posts.query(),
-    }
-  },
+  onLoad: ({ preload }) => postsLoader.load({ silent: preload }),
   component: () => {
     return (
       <>
@@ -175,10 +209,32 @@ const new Route({ getParentRoute: () => dashboardRoute = rootRoute,
   },
 })
 
-const new Route({ getParentRoute: () => postsRoute = dashboardRoute,
+const dashboardIndexRoute = new Route({
+  getParentRoute: () => dashboardRoute,
+  path: '/',
+  component: () => {
+    const {
+      state: { data: posts },
+    } = useLoaderInstance({ key: postsLoader.key })
+
+    return (
+      <div className="p-2">
+        <div className="p-2">
+          Welcome to the dashboard! You have{' '}
+          <strong>{posts.length} total posts</strong>.
+        </div>
+      </div>
+    )
+  },
+})
+
+const postsRoute = new Route({
+  getParentRoute: () => dashboardRoute,
   path: 'posts',
   component: () => {
-    const { posts } = useLoaderInstance({ from: postsRoute.id })
+    const {
+      state: { data: posts },
+    } = useLoaderInstance({ key: postsLoader.key })
 
     return (
       <div className="flex-1 flex">
@@ -220,7 +276,8 @@ const new Route({ getParentRoute: () => postsRoute = dashboardRoute,
   },
 })
 
-const new Route({ getParentRoute: () => postsIndexRoute = postsRoute,
+const postsIndexRoute = new Route({
+  getParentRoute: () => postsRoute,
   path: '/',
   component: () => {
     return (
@@ -231,7 +288,8 @@ const new Route({ getParentRoute: () => postsIndexRoute = postsRoute,
   },
 })
 
-const new Route({ getParentRoute: () => postRoute = postsRoute,
+const postRoute = new Route({
+  getParentRoute: () => postsRoute,
   path: '$postId',
   parseParams: (params) => ({
     postId: z.number().int().parse(Number(params.postId)),
@@ -241,19 +299,13 @@ const new Route({ getParentRoute: () => postRoute = postsRoute,
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
   }),
-  onLoad: async ({ params: { postId }, search: {} }) => {
-    const post = await trpc.post.query(postId)
-
-    if (!post) {
-      throw new Error('Post not found!')
-    }
-
-    return {
-      post,
-    }
-  },
+  onLoad: async ({ params: { postId }, preload }) =>
+    postLoader.load({ variables: postId, silent: preload }),
   component: () => {
-    const { post } = useLoaderInstance({ from: postRoute.id })
+    const { postId } = useParams({ from: postRoute.id })
+    const {
+      state: { data: post },
+    } = useLoaderInstance({ key: postLoader.key, variables: postId })
     const search = useSearch({ from: postRoute.id })
     const navigate = useNavigate({ from: postRoute.id })
 
@@ -319,23 +371,7 @@ const new Route({ getParentRoute: () => postRoute = postsRoute,
   },
 })
 
-const new Route({ getParentRoute: () => dashboardIndexRoute = dashboardRoute,
-  path: '/',
-  component: () => {
-    const { posts } = useLoaderInstance({ from: dashboardIndexRoute.id })
-
-    return (
-      <div className="p-2">
-        <div className="p-2">
-          Welcome to the dashboard! You have{' '}
-          <strong>{posts.length} total posts</strong>.
-        </div>
-      </div>
-    )
-  },
-})
-
-const routeConfig = rootRoute.addChildren([
+const routeTree = rootRoute.addChildren([
   indexRoute,
   dashboardRoute.addChildren([
     dashboardIndexRoute,
@@ -344,7 +380,7 @@ const routeConfig = rootRoute.addChildren([
 ])
 
 const router = new ReactRouter({
-  routeConfig,
+  routeTree,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>
       <Spinner />
@@ -353,7 +389,7 @@ const router = new ReactRouter({
 })
 
 declare module '@tanstack/react-router' {
-  interface RegisterRouter {
+  interface Register {
     router: typeof router
   }
 }
@@ -361,5 +397,9 @@ declare module '@tanstack/react-router' {
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
-  root.render(<RouterProvider router={router} defaultPreload="intent" />)
+  root.render(
+    <LoaderClientProvider loaderClient={loaderClient}>
+      <RouterProvider router={router} defaultPreload="intent" />
+    </LoaderClientProvider>,
+  )
 }

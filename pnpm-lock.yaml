@@ -454,10 +454,11 @@ importers:
 
   examples/react/with-trpc:
     specifiers:
+      '@tanstack/react-loaders': workspace:0.0.1-beta.59
       '@tanstack/react-query': ^4.14.1
       '@tanstack/react-query-devtools': ^4.14.1
-      '@tanstack/react-router': 0.0.1-beta.58
-      '@tanstack/react-router-devtools': 0.0.1-beta.58
+      '@tanstack/react-router': 0.0.1-beta.60
+      '@tanstack/react-router-devtools': 0.0.1-beta.60
       '@trpc/client': ^10.0.0-rc.6
       '@trpc/react-query': ^10.0.0-rc.6
       '@trpc/server': ^10.0.0-rc.6
@@ -475,6 +476,7 @@ importers:
       wait-port: ^1.0.4
       zod: ^3.19.1
     dependencies:
+      '@tanstack/react-loaders': link:../../../packages/react-loaders
       '@tanstack/react-query': 4.18.0_biqbaboplfbrettd7655fr4n2y
       '@tanstack/react-query-devtools': 4.18.0_2ryzfomli4bbns3rdhwnpgjdhm
       '@tanstack/react-router': link:../../../packages/react-router

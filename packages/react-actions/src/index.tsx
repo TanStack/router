@@ -28,18 +28,36 @@ export function ActionClientProvider(props: {
 
 export function useAction<
   TKey extends string,
-  TAction extends ActionByKey<RegisteredActions, TKey>,
-  TPayload = TAction['__types']['payload'],
-  TResponse = TAction['__types']['response'],
-  TError = TAction['__types']['error'],
->(opts: {
-  key: TKey
-  track?: (actionStore: ActionStore<TPayload, TResponse, TError>) => any
-}): Action<TKey, TPayload, TResponse, TError> {
-  const actionClient = React.useContext(actionClientContext)
-  const action = actionClient.getAction({ key: opts.key })
+  TAction,
+  TActionFromKey extends ActionByKey<RegisteredActions, TKey>,
+  TResolvedAction extends unknown extends TAction
+    ? TActionFromKey
+    : TAction extends Action<any, any, any, any>
+    ? TAction
+    : never,
+  TPayload extends TResolvedAction['__types']['payload'],
+  TResponse extends TResolvedAction['__types']['response'],
+  TError extends TResolvedAction['__types']['error'],
+>(
+  opts: (
+    | {
+        key: TKey
+      }
+    | { action: TAction }
+  ) & {
+    track?: (actionStore: ActionStore<TPayload, TResponse, TError>) => any
+  },
+): TResolvedAction {
+  const allOpts = opts as typeof opts & {
+    action?: Action<any, any, any, any>
+    key?: TKey
+  }
 
-  useStore(action.store, (d) => opts?.track?.(d as any) ?? d, true)
+  const actionClient = React.useContext(actionClientContext)
+
+  const action = allOpts.action ?? actionClient.getAction({ key: allOpts.key })
+
+  useStore(action.store, (d) => allOpts?.track?.(d as any) ?? d, true)
 
   return action as any
 }

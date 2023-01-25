@@ -53,7 +53,7 @@ export const router = new ReactRouter({
 })
 
 declare module '@tanstack/react-router' {
-  interface RegisterRouter {
+  interface Register {
     router: typeof router
   }
 }

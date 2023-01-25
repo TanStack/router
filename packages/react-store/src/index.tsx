@@ -2,13 +2,15 @@ import { Store, AnyUpdater } from '@tanstack/store'
 
 import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
 
+export type NoInfer<T> = [T][T extends any ? 0 : never]
+
 export function useStore<
   TState,
-  TSelected = TState,
+  TSelected = NoInfer<TState>,
   TUpdater extends AnyUpdater = AnyUpdater,
 >(
   store: Store<TState, TUpdater>,
-  selector: (state: TState) => TSelected = (d) => d as any,
+  selector: (state: NoInfer<TState>) => TSelected = (d) => d as any,
   compareShallow?: boolean,
 ) {
   const slice = useSyncExternalStoreWithSelector(

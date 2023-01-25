@@ -9,11 +9,14 @@ import {
   LoaderClientOptions,
   VariablesOptions,
   Loader,
+  LoaderInstance,
 } from '@tanstack/loaders'
 
 import { useStore } from '@tanstack/react-store'
 
 export * from '@tanstack/loaders'
+
+//
 
 const loaderClientContext = React.createContext<LoaderClient<any>>(null as any)
 
@@ -39,33 +42,52 @@ export function LoaderClientProvider({
 
 export function useLoaderInstance<
   TKey extends RegisteredLoaders[number]['__types']['key'],
-  TLoaderInstance extends LoaderInstanceByKey<RegisteredLoaders, TKey>,
-  TVariables extends TLoaderInstance['__types']['variables'],
-  TData extends TLoaderInstance['__types']['data'],
-  TError extends TLoaderInstance['__types']['error'],
+  TLoader,
+  TLoaderInstanceFromKey extends LoaderInstanceByKey<RegisteredLoaders, TKey>,
+  TResolvedLoaderInstance extends unknown extends TLoader
+    ? TLoaderInstanceFromKey
+    : TLoader extends Loader<
+        infer _,
+        infer TVariables,
+        infer TData,
+        infer TError
+      >
+    ? LoaderInstance<TKey, TVariables, TData, TError>
+    : never,
+  TVariables extends TResolvedLoaderInstance['__types']['variables'],
+  TData extends TResolvedLoaderInstance['__types']['data'],
+  TError extends TResolvedLoaderInstance['__types']['error'],
 >(
-  opts: {
-    key: TKey
+  opts: (
+    | { key: TKey }
+    | {
+        loader: TLoader
+      }
+  ) & {
     track?: (loaderStore: LoaderStore<TData, TError>) => any
   } & VariablesOptions<TVariables>,
-): TLoaderInstance {
+): TResolvedLoaderInstance {
+  const allOpts = opts as typeof opts & {
+    key?: TKey
+    loader?: Loader<any, any, any, any>
+  }
   const loaderClient = React.useContext(loaderClientContext)
 
-  if (!loaderClient)
-    invariant(
-      'useLoaderInstance must be used inside a <LoaderClientProvider> component!',
-    )
+  invariant(
+    loaderClient || allOpts.loader,
+    'useLoaderInstance must be used inside a <LoaderClientProvider> component!',
+  )
 
-  const loaderApi = loaderClient.getLoader({ key: opts.key })
-  const loaderInstance = loaderApi.getInstance({
-    variables: opts?.variables,
+  const loader = allOpts.loader ?? loaderClient.getLoader({ key: allOpts.key })
+  const loaderInstance = loader.getInstance({
+    variables: allOpts?.variables,
   } as any)
 
   React.useEffect(() => {
     loaderInstance.load()
   }, [loaderInstance])
 
-  useStore(loaderInstance.store, (d) => opts?.track?.(d as any) ?? d, true)
+  useStore(loaderInstance.store, (d) => allOpts?.track?.(d as any) ?? d, true)
 
   return loaderInstance as any
 }
