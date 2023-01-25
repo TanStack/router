@@ -103,8 +103,8 @@ importers:
 
   examples/react/basic:
     specifiers:
-      '@tanstack/react-actions': 0.0.1-beta.58
-      '@tanstack/react-loaders': 0.0.1-beta.58
+      '@tanstack/react-actions': 0.0.1-beta.59
+      '@tanstack/react-loaders': 0.0.1-beta.59
       '@tanstack/react-router': 0.0.1-beta.58
       '@tanstack/react-router-devtools': 0.0.1-beta.58
       '@types/react': ^18.0.25
@@ -281,8 +281,8 @@ importers:
 
   examples/react/kitchen-sink-multi-file:
     specifiers:
-      '@tanstack/react-actions': 0.0.1-beta.58
-      '@tanstack/react-loaders': 0.0.1-beta.58
+      '@tanstack/react-actions': 0.0.1-beta.59
+      '@tanstack/react-loaders': 0.0.1-beta.59
       '@tanstack/react-router': 0.0.1-beta.58
       '@tanstack/react-router-devtools': 0.0.1-beta.58
       '@types/react': ^18.0.25
@@ -351,8 +351,8 @@ importers:
 
   examples/react/kitchen-sink-single-file:
     specifiers:
-      '@tanstack/react-actions': 0.0.1-beta.58
-      '@tanstack/react-loaders': 0.0.1-beta.58
+      '@tanstack/react-actions': 0.0.1-beta.59
+      '@tanstack/react-loaders': 0.0.1-beta.59
       '@tanstack/react-router': 0.0.1-beta.58
       '@tanstack/react-router-devtools': 0.0.1-beta.58
       '@types/react': ^18.0.25
