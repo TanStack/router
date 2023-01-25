@@ -4,10 +4,10 @@ import {
   Outlet,
   RouterProvider,
   ReactRouter,
-  createRouteConfig,
+  Route,
   Link,
-  useMatch,
   useParams,
+  RootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import {
@@ -26,7 +26,7 @@ type PostType = {
   body: string
 }
 
-const rootRoute = createRouteConfig({
+const rootRoute = new RootRoute({
   component: () => {
     return (
       <>
@@ -57,7 +57,8 @@ const rootRoute = createRouteConfig({
   },
 })
 
-const new Route({ getParentRoute: () => indexRoute = rootRoute,
+const indexRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: '/',
   component: () => {
     return (
@@ -68,7 +69,8 @@ const new Route({ getParentRoute: () => indexRoute = rootRoute,
   },
 })
 
-const new Route({ getParentRoute: () => postsRoute = rootRoute,
+const postsRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: 'posts',
   onLoad: async () => {
     queryClient.getQueryData(['posts']) ??
@@ -106,7 +108,8 @@ const new Route({ getParentRoute: () => postsRoute = rootRoute,
   errorComponent: () => 'Oh crap!',
 })
 
-const new Route({ getParentRoute: () => postsIndexRoute = postsRoute,
+const postsIndexRoute = new Route({
+  getParentRoute: () => postsRoute,
   path: '/',
   component: () => {
     return (
@@ -117,7 +120,8 @@ const new Route({ getParentRoute: () => postsIndexRoute = postsRoute,
   },
 })
 
-const new Route({ getParentRoute: () => postRoute = postsRoute,
+const postRoute = new Route({
+  getParentRoute: () => postsRoute,
   path: '$postId',
   onLoad: async ({ params: { postId } }) => {
     queryClient.getQueryData(['posts', postId]) ??
@@ -139,14 +143,14 @@ const new Route({ getParentRoute: () => postRoute = postsRoute,
   },
 })
 
-const routeConfig = rootRoute.addChildren([
+const routeTree = rootRoute.addChildren([
   indexRoute,
   postsRoute.addChildren([postsIndexRoute, postRoute]),
 ])
 
 // Set up a ReactRouter instance
 const router = new ReactRouter({
-  routeConfig,
+  routeTree,
   defaultPreload: 'intent',
 })
 
