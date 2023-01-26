@@ -4,14 +4,16 @@ import { createMemoryHistory } from '@tanstack/react-router'
 import jsesc from 'jsesc'
 import { ServerResponse } from 'http'
 import { createRouter } from './router'
+import { createLoaderClient } from './loaderClient'
 import express from 'express'
 
 // index.js
 import './fetch-polyfill'
 import { App } from '.'
 
-async function getRouter(opts: { url: string }) {
+async function getBase(opts: { url: string }) {
   const router = createRouter()
+  const loaderClient = createLoaderClient()
 
   const memoryHistory = createMemoryHistory({
     initialEntries: [opts.url],
@@ -23,11 +25,11 @@ async function getRouter(opts: { url: string }) {
 
   await router.load()
 
-  return router
+  return { router, loaderClient }
 }
 
 export async function load(opts: { url: string }) {
-  const router = await getRouter(opts)
+  const { router, loaderClient } = await getBase(opts)
 
   const search = router.store.state.currentLocation.search as {
     __data: { matchId: string }
@@ -44,7 +46,7 @@ export async function render(opts: {
   req: express.Request
   res: ServerResponse
 }) {
-  const router = await getRouter(opts)
+  const { router, loaderClient } = await getBase(opts)
 
   const routerState = router.dehydrate()
 
@@ -68,7 +70,9 @@ export async function render(opts: {
     context,
   })
 
-  const appHtml = ReactDOMServer.renderToString(<App router={router} />)
+  const appHtml = ReactDOMServer.renderToString(
+    <App router={router} loaderClient={loaderClient} />,
+  )
 
   opts.res.statusCode = 200
   opts.res.setHeader('Content-Type', 'text/html')

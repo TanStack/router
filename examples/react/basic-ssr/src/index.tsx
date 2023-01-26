@@ -1,9 +1,17 @@
 import * as React from 'react'
 
 import { RouterProvider } from '@tanstack/react-router'
-import { Router } from './router'
+import { LoaderClientProvider } from '@tanstack/react-loaders'
+import { createRouter } from './router'
+import { createLoaderClient } from './loaderClient'
 
-export function App({ router }: { router: ReturnType<typeof Router> }) {
+export function App({
+  route,
+  loaderClient,
+}: {
+  router: ReturnType<typeof createRouter>
+  loaderClient: ReturnType<typeof createLoaderClient>
+}) {
   return (
     <html lang="en">
       <head>
@@ -21,7 +29,9 @@ export function App({ router }: { router: ReturnType<typeof Router> }) {
         />
       </head>
       <body>
-        <RouterProvider router={router} />
+        <LoaderClientProvider loaderClient={loaderClient}>
+          <RouterProvider router={router} />
+        </LoaderClientProvider>
       </body>
     </html>
   )

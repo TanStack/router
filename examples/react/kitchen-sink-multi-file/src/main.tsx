@@ -16,7 +16,7 @@ function App() {
 
   const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useSessionStorage(
     'defaultLoaderMaxAge',
-    5000,
+    0,
   )
 
   return (

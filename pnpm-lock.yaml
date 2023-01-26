@@ -137,6 +137,7 @@ importers:
       '@babel/core': ^7.20.2
       '@babel/generator': ^7.20.4
       '@rollup/plugin-babel': ^6.0.2
+      '@tanstack/react-loaders': workspace:0.0.1-beta.59
       '@tanstack/react-router': 0.0.1-beta.60
       '@tanstack/react-router-devtools': 0.0.1-beta.60
       '@tanstack/router-cli': 0.0.1-beta.58
@@ -157,6 +158,7 @@ importers:
       vite: ^3.2.3
       vite-plugin-babel: ^1.1.2
     dependencies:
+      '@tanstack/react-loaders': link:../../../packages/react-loaders
       '@tanstack/react-router': link:../../../packages/react-router
       '@tanstack/react-router-devtools': link:../../../packages/react-router-devtools
       '@tanstack/router-cli': link:../../../packages/router-cli

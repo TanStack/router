@@ -47,10 +47,6 @@ type UsersViewSortBy = 'name' | 'id' | 'email'
 
 // Loaders
 
-// const Link = 'strong'
-// const MatchRoute = 'strong'
-// const useNavigate = () => () => {}
-
 const invoicesLoader = new Loader({
   key: 'invoices',
   loader: async () => {

@@ -15,6 +15,7 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
+    "@tanstack/react-loaders": "workspace:0.0.1-beta.59",
     "@tanstack/react-router": "0.0.1-beta.60",
     "@tanstack/react-router-devtools": "0.0.1-beta.60",
     "@tanstack/router-cli": "0.0.1-beta.58",
