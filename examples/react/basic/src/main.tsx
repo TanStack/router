@@ -25,12 +25,13 @@ type PostType = {
   body: string
 }
 
+
 const postsLoader = new Loader({
   key: 'posts',
   loader: async () => {
     console.log('Fetching posts...')
     await new Promise((r) => setTimeout(r, 500))
-    return axios
+    return await axios
       .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
       .then((r) => r.data.slice(0, 10))
   },
@@ -41,7 +42,6 @@ const postLoader = new Loader({
   loader: async (postId: string) => {
     console.log(`Fetching post with id ${postId}...`)
     await new Promise((r) => setTimeout(r, 500))
-
     return await axios
       .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
       .then((r) => r.data)
@@ -51,15 +51,11 @@ const postLoader = new Loader({
   },
 })
 
+// Set up a LoaderClient instance
 const loaderClient = new LoaderClient({
   getLoaders: () => [postsLoader, postLoader],
 })
 
-declare module '@tanstack/react-loaders' {
-  interface Register {
-    loaderClient: typeof loaderClient
-  }
-}
 
 const rootRoute = new RootRoute({
   component: () => {
@@ -145,7 +141,7 @@ const postsRoute = new Route({
   errorComponent: () => 'Oh crap',
 })
 
-const PostsIndexRoute = new Route({
+const postsIndexRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '/',
   component: () => {
@@ -159,7 +155,7 @@ const PostsIndexRoute = new Route({
 
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
-  path: 'post/$postId',
+  path: '$postId',
   onLoad: async ({ params: { postId } }) =>
     postLoader.load({ variables: postId }),
   component: () => {
@@ -182,7 +178,7 @@ const postRoute = new Route({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  postsRoute.addChildren([PostsIndexRoute, postRoute]),
+  postsRoute.addChildren([postsIndexRoute, postRoute]),
 ])
 
 // Set up a ReactRouter instance
@@ -190,6 +186,7 @@ const router = new ReactRouter({
   routeTree,
   defaultPreload: 'intent',
 })
+
 
 // Register things for typesafety
 declare module '@tanstack/react-router' {
@@ -204,6 +201,7 @@ declare module '@tanstack/react-loaders' {
     loaderClient: typeof loaderClient
   }
 }
+
 
 const rootElement = document.getElementById('app')!
 
