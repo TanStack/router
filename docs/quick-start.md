@@ -12,10 +12,11 @@ import {
   RouterProvider,
   Link,
   ReactRouter,
-  createRouteConfig,
+  Route,
+  RootRoute,
 } from '@tanstack/react-router'
 
-const rootRoute = createRouteConfig({
+const rootRoute = new RootRoute({
   component: () => (
     <>
       <div>
@@ -27,19 +28,27 @@ const rootRoute = createRouteConfig({
   ),
 })
 
-const new Route({ getParentRoute: () => indexRoute = rootRoute,
+const indexRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: '/',
   component: Index,
 })
 
-const new Route({ getParentRoute: () => aboutRoute = rootRoute,
+const aboutRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: '/about',
   component: About,
 })
 
-const routeConfig = rootRoute.addChildren([indexRoute, aboutRoute])
+const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
 
-const router = new ReactRouter({ routeConfig })
+const router = new ReactRouter({ routeTree })
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router
+  }
+}
 
 function App() {
   return <RouterProvider router={router} />
@@ -65,12 +74,6 @@ if (!rootElement.innerHTML) {
       <App />
     </StrictMode>,
   )
-}
-
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: typeof router
-  }
 }
 ```
 
