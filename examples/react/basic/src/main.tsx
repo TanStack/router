@@ -108,7 +108,8 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  onLoad: () => loaderClient.getLoader({ key: 'posts' }).load(),
+  onLoad: ({ preload }) =>
+    loaderClient.getLoader({ key: 'posts' }).load({ preload }),
   component: () => {
     const postsLoaderInstance = useLoaderInstance({
       key: postsLoader.key,

@@ -72,13 +72,10 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  onLoad: async () => {
-    queryClient.getQueryData(['posts']) ??
-      (await queryClient.prefetchQuery(['posts'], fetchPosts))
-    return {}
-  },
+  onLoad: () =>
+    queryClient.ensureQueryData({ queryKey: ['posts'], queryFn: fetchPosts }),
   component: () => {
-    const postsQuery = usePosts()
+    const postsQuery = useQuery(['posts'], fetchPosts)
 
     return (
       <div className="p-2 flex gap-2">
@@ -123,16 +120,13 @@ const postsIndexRoute = new Route({
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  onLoad: async ({ params: { postId } }) => {
-    queryClient.getQueryData(['posts', postId]) ??
-      (await queryClient.prefetchQuery(['posts', postId], () =>
-        fetchPostById(postId),
-      ))
-    return {}
-  },
+  onLoad: async ({ params: { postId } }) =>
+    queryClient.ensureQueryData(['posts', postId], () => fetchPostById(postId)),
   component: () => {
     const { postId } = useParams({ from: postRoute.id })
-    const postQuery = usePost(postId)
+    const postQuery = useQuery(['posts', postId], () => fetchPostById(postId), {
+      enabled: !!postId,
+    })
 
     return (
       <div className="space-y-2">
@@ -199,16 +193,6 @@ async function fetchPostById(postId: string) {
   return await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .then((r) => r.data)
-}
-
-function usePosts() {
-  return useQuery(['posts'], fetchPosts)
-}
-
-function usePost(postId: string) {
-  return useQuery(['posts', postId], () => fetchPostById(postId), {
-    enabled: !!postId,
-  })
 }
 
 const rootElement = document.getElementById('app')!

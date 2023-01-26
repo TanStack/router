@@ -39,7 +39,6 @@ import {
   fetchRandomNumber,
 } from './mockTodos'
 
-import { loaderDelayFn } from './utils'
 import { z } from 'zod'
 
 //
@@ -47,6 +46,10 @@ import { z } from 'zod'
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
 // Loaders
+
+// const Link = 'strong'
+// const MatchRoute = 'strong'
+// const useNavigate = () => () => {}
 
 const invoicesLoader = new Loader({
   key: 'invoices',
@@ -156,7 +159,7 @@ const rootRoute = new RootRoute({
             {/* Show a global spinner when the router is transitioning */}
             <div
               className={`text-3xl duration-300 delay-0 opacity-0 ${
-                loaderClient.state.isFetching ? ` duration-1000 opacity-40` : ''
+                loaderClient.state.isLoading ? ` duration-1000 opacity-40` : ''
               }`}
             >
               <Spinner />
@@ -248,7 +251,7 @@ const indexRoute = new Route({
 const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  onLoad: ({ preload }) => invoicesLoader.load({ silent: preload }),
+  onLoad: ({ preload }) => invoicesLoader.load({ preload }),
   component: () => {
     return (
       <>
@@ -466,7 +469,7 @@ const invoiceRoute = new Route({
   onLoad: async ({ params: { invoiceId }, preload }) =>
     invoiceLoader.load({
       variables: invoiceId,
-      silent: preload,
+      preload,
     }),
   component: () => {
     const search = useSearch({ from: invoiceRoute.id })
@@ -575,7 +578,7 @@ const invoiceRoute = new Route({
 const usersRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'users',
-  onLoad: () => usersLoader.load(),
+  onLoad: ({ preload }) => usersLoader.load({ preload }),
   validateSearch: z.object({
     usersView: z
       .object({
@@ -747,11 +750,8 @@ const userRoute = new Route({
   path: '$userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
-  onLoad: async ({ params: { userId } }) => {
-    return {
-      user: await fetchUserById(userId),
-    }
-  },
+  onLoad: async ({ params: { userId }, preload }) =>
+    userLoader.load({ variables: userId, preload }),
   component: () => {
     const { userId } = useParams({ from: userRoute.id })
 
@@ -877,7 +877,7 @@ const loginRoute = new Route({
 const layoutRoute = new Route({
   getParentRoute: () => rootRoute,
   id: 'layout',
-  onLoad: async () => randomIdLoader.load(),
+  onLoad: async ({ preload }) => randomIdLoader.load({ preload }),
   component: () => {
     const randomIdLoaderInstance = useLoaderInstance({
       key: randomIdLoader.key,
@@ -973,7 +973,7 @@ function SubApp() {
 
   const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useSessionStorage(
     'defaultLoaderMaxAge',
-    5000,
+    0,
   )
 
   return (

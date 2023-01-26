@@ -56,7 +56,7 @@ export const invoiceRoute = new Route({
   onLoad: async ({ params: { invoiceId }, preload }) =>
     invoiceLoader.load({
       variables: invoiceId,
-      silent: preload,
+      preload,
     }),
 })
 

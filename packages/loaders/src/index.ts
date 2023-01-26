@@ -22,12 +22,13 @@ export interface LoaderClientOptions<
 > {
   getLoaders: () => TLoaders
   defaultMaxAge?: number
+  defaultPreloadMaxAge?: number
   defaultGcMaxAge?: number
 }
 
 export type LoaderClientStore = Store<{
-  isFetching: boolean
-  isPrefetching: boolean
+  isLoading: boolean
+  isPreloading: boolean
 }>
 // A loader client that tracks instances of loaders by unique key like react query
 export class LoaderClient<
@@ -44,8 +45,8 @@ export class LoaderClient<
     this.options = options
     this.store = new Store(
       {
-        isFetching: false,
-        isPrefetching: false,
+        isLoading: false,
+        isPreloading: false,
       },
       {
         onUpdate: (next) => {
@@ -125,11 +126,12 @@ export interface LoaderStore<TData = unknown, TError = Error> {
   status: 'idle' | 'pending' | 'success' | 'error'
   isFetching: boolean
   invalidAt: number
+  preloadInvalidAt: number
   invalid: boolean
   updatedAt?: number
   data: TData
   error?: TError
-  silent: boolean
+  preload: boolean
 }
 
 export type LoaderFn<TLoaderPayload = unknown, TLoaderResponse = unknown> = (
@@ -146,6 +148,7 @@ interface LoaderOptions<
   // The max age to consider loader data fresh (not-stale) in milliseconds from the time of fetch
   // Defaults to 1000. Only stale loader data is refetched.
   maxAge?: number
+  preloadMaxAge?: number
   // The max age to client the loader data in milliseconds from the time of route inactivity
   // before it is garbage collected.
   gcMaxAge?: number
@@ -165,15 +168,16 @@ interface LoaderOptions<
   debug?: boolean
 }
 
-export function getInitialLoaderState() {
+export function getInitialLoaderState(): LoaderStore<any, any> {
   return {
     status: 'idle',
     invalid: false,
     invalidAt: Infinity,
+    preloadInvalidAt: Infinity,
     isFetching: false,
     updatedAt: 0,
     data: undefined!,
-    silent: false,
+    preload: false,
   } as const
 }
 
@@ -241,7 +245,6 @@ export class Loader<
 
     const loader = new LoaderInstance<TKey, TVariables, TData, TError>({
       hashedKey,
-      client: this.client,
       loader: this,
       variables: opts.variables as any,
     })
@@ -254,7 +257,7 @@ export class Loader<
     Promise<TData>,
     {
       maxAge?: number
-      silent?: boolean
+      preload?: boolean
     }
   > = async (opts: any = {}) => {
     return this.getInstance(opts).load(opts as any)
@@ -265,7 +268,7 @@ export class Loader<
     Promise<TData>,
     {
       maxAge?: number
-      silent?: boolean
+      preload?: boolean
     }
   > = async (opts: any = {}) => {
     return this.getInstance(opts).fetch(opts as any)
@@ -296,7 +299,6 @@ export interface LoaderInstanceOptions<
   TError = Error,
 > {
   hashedKey: string
-  client?: LoaderClient
   loader: Loader<TKey, TVariables, TData, TError>
   variables: TVariables
 }
@@ -315,7 +317,6 @@ export class LoaderInstance<
   }
   hashedKey: string
   options: LoaderInstanceOptions<TKey, TVariables, TData, TError>
-  client?: LoaderClient
   loader: Loader<TKey, TVariables, TData, TError>
   store: Store<LoaderStore<TData, TError>>
   state: LoaderStore<TData, TError>
@@ -325,7 +326,6 @@ export class LoaderInstance<
 
   constructor(options: LoaderInstanceOptions<TKey, TVariables, TData, TError>) {
     this.options = options
-    this.client = options.client
     this.loader = options.loader
     this.hashedKey = options.hashedKey
     this.variables = options.variables
@@ -346,43 +346,10 @@ export class LoaderInstance<
         },
         onUpdate: (next, prev) => {
           this.state = next
-          const client = this.client
 
-          if (!client) return
-
-          if (next.isFetching !== prev.isFetching) {
-            const isFetching = Object.values(client.loaders).some((loader) => {
-              return Object.values(loader.instances).some(
-                (instance) =>
-                  instance.store.state.isFetching &&
-                  !instance.store.state.silent,
-              )
-            })
-
-            const isPrefetching = Object.values(client.loaders).some(
-              (loader) => {
-                return Object.values(loader.instances).some(
-                  (instance) =>
-                    instance.store.state.isFetching &&
-                    instance.store.state.silent,
-                )
-              },
-            )
-
-            client.store.setState((s) => {
-              if (
-                s.isFetching === isFetching &&
-                s.isPrefetching === isPrefetching
-              ) {
-                return s
-              }
-
-              return {
-                isFetching,
-                isPrefetching,
-              }
-            })
-          }
+          // if (next.isLoading !== prev.isLoading) {
+          this.#notifyClient()
+          // }
         },
       },
     )
@@ -396,13 +363,47 @@ export class LoaderInstance<
     }
   }
 
+  #notifyClient = () => {
+    const client = this.loader.client
+
+    if (!client) return
+
+    const isLoading = Object.values(client.loaders).some((loader) => {
+      return Object.values(loader.instances).some(
+        (instance) =>
+          instance.store.state.isFetching && !instance.store.state.preload,
+      )
+    })
+
+    const isPreloading = Object.values(client.loaders).some((loader) => {
+      return Object.values(loader.instances).some(
+        (instance) =>
+          instance.store.state.isFetching && instance.store.state.preload,
+      )
+    })
+
+    if (
+      client.store.state.isLoading === isLoading &&
+      client.store.state.isPreloading === isPreloading
+    ) {
+      return
+    }
+
+    client.store.setState((s) => {
+      return {
+        isLoading,
+        isPreloading,
+      }
+    })
+  }
+
   #gcTimeout?: ReturnType<typeof setTimeout>
 
   #startGc = () => {
     this.#gcTimeout = setTimeout(() => {
       this.#gcTimeout = undefined
       this.#gc()
-    }, this.loader.options.gcMaxAge ?? this.client?.options.defaultGcMaxAge ?? 5 * 60 * 1000)
+    }, this.loader.options.gcMaxAge ?? this.loader.client?.options.defaultGcMaxAge ?? 5 * 60 * 1000)
   }
 
   #stopGc = () => {
@@ -422,15 +423,17 @@ export class LoaderInstance<
 
   load = async (opts?: {
     maxAge?: number
-    silent?: boolean
+    preload?: boolean
   }): Promise<TData> => {
     // Fetch if we need to
     if (
       this.store.state.status === 'error' ||
       this.store.state.status === 'idle' ||
-      this.getIsInvalid()
+      this.getIsInvalid(opts)
     ) {
-      this.fetch(opts)
+      if (!this.__loadPromise) {
+        this.fetch(opts)
+      }
     }
 
     // If we already have data, return it
@@ -442,11 +445,15 @@ export class LoaderInstance<
     return this.__loadPromise!
   }
 
-  getIsInvalid = () => {
+  getIsInvalid = (opts?: { preload?: boolean }) => {
     const now = Date.now()
+
     return (
       this.store.state.status === 'success' &&
-      (this.store.state.invalid || this.store.state.invalidAt < now)
+      (this.store.state.invalid ||
+        (opts?.preload
+          ? this.store.state.preloadInvalidAt
+          : this.store.state.invalidAt) < now)
     )
   }
 
@@ -468,7 +475,7 @@ export class LoaderInstance<
 
   fetch = async (opts?: {
     maxAge?: number
-    silent?: boolean
+    preload?: boolean
   }): Promise<TData> => {
     // this.store.batch(() => {
     // If the match was in an error state, set it
@@ -484,8 +491,8 @@ export class LoaderInstance<
     // We started loading the route, so it's no longer invalid
     this.store.setState((s) => ({
       ...s,
-      silent: !!opts?.silent,
-      invalid: true,
+      preload: !!opts?.preload,
+      invalid: false,
       isFetching: true,
     }))
     // })
@@ -528,17 +535,27 @@ export class LoaderInstance<
 
         const updatedAt = Date.now()
 
+        const preloadInvalidAt =
+          updatedAt +
+          (opts?.maxAge ??
+            this.loader.options.preloadMaxAge ??
+            this.loader.client?.options.defaultPreloadMaxAge ??
+            10000)
+
+        const invalidAt =
+          updatedAt +
+          (opts?.maxAge ??
+            this.loader.options.maxAge ??
+            this.loader.client?.options.defaultMaxAge ??
+            1000)
+
         this.store.setState((s) => ({
           ...s,
           error: undefined,
           updatedAt,
           data: replaceEqualDeep(s.data, data),
-          invalidAt:
-            updatedAt +
-            (opts?.maxAge ??
-              this.loader.options.maxAge ??
-              this.client?.options.defaultMaxAge ??
-              1000),
+          preloadInvalidAt: preloadInvalidAt,
+          invalidAt: invalidAt,
         }))
 
         if ((newer = hasNewer())) {

@@ -47,7 +47,7 @@ export const usersRoute = new Route({
       },
     }),
   ],
-  onLoad: async ({ preload }) => usersLoader.load({ silent: preload }),
+  onLoad: async ({ preload }) => usersLoader.load({ preload }),
 })
 
 function Users() {

@@ -16,7 +16,7 @@ export const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
   component: Dashboard,
-  onLoad: ({ preload }) => invoicesLoader.load({ silent: preload }),
+  onLoad: ({ preload }) => invoicesLoader.load({ preload }),
 })
 
 function Dashboard() {

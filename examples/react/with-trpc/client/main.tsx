@@ -66,7 +66,7 @@ const rootRoute = new RootRoute({
   component: () => {
     const { status } = useRouterStore()
     const {
-      state: { isFetching },
+      state: { isLoading },
     } = useLoaderClient()
 
     return (
@@ -77,7 +77,7 @@ const rootRoute = new RootRoute({
             {/* Show a global spinner when the router is transitioning */}
             <div
               className={`text-3xl duration-300 delay-0 opacity-0 ${
-                status === 'pending' || isFetching
+                status === 'pending' || isLoading
                   ? ` duration-1000 opacity-40`
                   : ''
               }`}
@@ -166,7 +166,7 @@ const indexRoute = new Route({
 const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  onLoad: ({ preload }) => postsLoader.load({ silent: preload }),
+  onLoad: ({ preload }) => postsLoader.load({ preload }),
   component: () => {
     return (
       <>
@@ -300,7 +300,7 @@ const postRoute = new Route({
     notes: z.string().optional(),
   }),
   onLoad: async ({ params: { postId }, preload }) =>
-    postLoader.load({ variables: postId, silent: preload }),
+    postLoader.load({ variables: postId, preload }),
   component: () => {
     const { postId } = useParams({ from: postRoute.id })
     const {

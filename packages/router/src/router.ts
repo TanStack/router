@@ -578,7 +578,7 @@ export class Router<
             )
           }
 
-          const fuzzy = route.path === '/' ? false : !!children?.length
+          const fuzzy = !!(route.path !== '/' || children?.length)
 
           const matchParams = matchPathname(this.basepath, pathname, {
             to: route.fullPath,
@@ -648,8 +648,6 @@ export class Router<
 
     findInRouteTree([this.routeTree])
 
-    linkMatches(matches)
-
     return matches
   }
 
@@ -657,6 +655,8 @@ export class Router<
     resolvedMatches: RouteMatch[],
     loaderOpts?: { preload?: boolean },
   ) => {
+    linkMatches(resolvedMatches)
+
     // this.cleanMatchCache()
     resolvedMatches.forEach(async (match) => {
       // Validate the match (loads search params etc)
@@ -1169,20 +1169,6 @@ function getInitialRouterState(): RouterStore {
     currentLocation: null!,
     currentMatches: [],
     lastUpdated: Date.now(),
-    // matchCache: {}, // TODO:
-    // get isFetching() {
-    //   return (
-    //     this.status === 'loading' ||
-    //     this.currentMatches.some((d) => d.store.state.isFetching)
-    //   )
-    // },
-    // get isPreloading() {
-    //   return Object.values(this.matchCache).some(
-    //     (d) =>
-    //       d.match.store.state.isFetching &&
-    //       !this.currentMatches.find((dd) => dd.id === d.match.id),
-    //   )
-    // },
   }
 }
 

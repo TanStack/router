@@ -17,8 +17,7 @@ export const rootRoute = new RootRoute({
             {/* Show a global spinner when the router is transitioning */}
             <div
               className={`text-3xl duration-300 delay-0 opacity-0 ${
-                routerStore.status === 'pending' ||
-                loaderClient.state.isFetching
+                routerStore.status === 'pending' || loaderClient.state.isLoading
                   ? ` duration-1000 opacity-40`
                   : ''
               }`}

@@ -354,6 +354,7 @@ export class Route<
         ? '/'
         : trimPathRight(joinPaths([parent.fullPath, path]))
 
+    this.path = path as TPath
     this.id = id as TId
     // this.customId = customId as TCustomId
     this.fullPath = fullPath as TFullPath
