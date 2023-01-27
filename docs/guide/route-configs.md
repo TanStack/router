@@ -21,9 +21,9 @@ Children routes can be created by calling the `.createRoute()` method on the roo
 ```ts
 let rootRoute = createRouteConfig()
 
-const new Route({ getParentRoute: () => indexRoute = rootRoute, path: '/' })
-const new Route({ getParentRoute: () => blogRoute = rootRoute, path: 'blog' })
-const new Route({ getParentRoute: () => postRoute = blogRoute, path: '$slug' })
+const indexRoute = new Route({ getParentRoute: () => rootRoute, path: '/' })
+const blogRoute = new Route({ getParentRoute: () => rootRoute, path: 'blog' })
+const postRoute = new Route({ getParentRoute: () => blogRoute, path: '$slug' })
 ```
 
 ## Building a Route Config
@@ -33,9 +33,9 @@ Once all of your child routes have been created, a final route config object can
 ```ts
 let rootRoute = createRouteConfig()
 
-const new Route({ getParentRoute: () => indexRoute = rootRoute, path: '/' })
-const new Route({ getParentRoute: () => blogRoute = rootRoute, path: 'blog' })
-const new Route({ getParentRoute: () => postRoute = blogRoute, path: '$slug' })
+const indexRoute = new Route({ getParentRoute: () => rootRoute, path: '/' })
+const blogRoute = new Route({ getParentRoute: () => rootRoute, path: 'blog' })
+const postRoute = new Route({ getParentRoute: () => blogRoute, path: '$slug' })
 
 const routeConfig = rootRoute.addChildren([
   indexRoute,
