@@ -47,8 +47,8 @@ export const router = new ReactRouter({
     </div>
   ),
   onRouteChange: () => {
-    createInvoiceAction.reset()
-    updateInvoiceAction.reset()
+    createInvoiceAction.clear()
+    updateInvoiceAction.clear()
   },
 })
 

@@ -140,6 +140,7 @@ export class RouteMatch<
             search: this.store.state.search,
             signal: this.abortController.signal,
             preload: !!opts?.preload,
+            context: this.route.context,
           })
         }
         return

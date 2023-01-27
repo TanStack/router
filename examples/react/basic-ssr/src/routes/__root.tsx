@@ -1,8 +1,8 @@
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import * as React from 'react'
-import { createRouteConfig, Link, Outlet } from '@tanstack/react-router'
+import { Link, Outlet, RootRoute } from '@tanstack/react-router'
 
-createRouteConfig({
+export const rootRoute = new RootRoute({
   component: Root,
 })
 

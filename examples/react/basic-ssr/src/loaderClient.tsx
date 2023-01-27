@@ -1,61 +1,47 @@
-import { LoaderClient } from '@tanstack/react-loaders'
+import { Loader, LoaderClient } from '@tanstack/react-loaders'
 
-const invoicesLoader = new Loader({
-  key: 'invoices',
+export type PostType = {
+  id: string
+  title: string
+  body: string
+}
+
+export const postsLoader = new Loader({
+  key: 'posts',
   loader: async () => {
-    console.log('Fetching invoices...')
-    return fetchInvoices()
+    console.log('Fetching posts...')
+    await new Promise((r) =>
+      setTimeout(r, 300 + Math.round(Math.random() * 300)),
+    )
+    return fetch('https://jsonplaceholder.typicode.com/posts')
+      .then((d) => d.json() as Promise<PostType[]>)
+      .then((d) => d.slice(0, 10))
   },
 })
 
-const invoiceLoader = new Loader({
-  key: 'invoice',
-  loader: async (invoiceId: number) => {
-    console.log(`Fetching invoice with id ${invoiceId}...`)
-    return fetchInvoiceById(invoiceId)
+export const postLoader = new Loader({
+  key: 'post',
+  loader: async (postId: string) => {
+    console.log(`Fetching post with id ${postId}...`)
+
+    await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
+
+    return fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`).then(
+      (r) => r.json() as Promise<PostType>,
+    )
   },
   onAllInvalidate: async () => {
-    await invoicesLoader.invalidateAll()
-  },
-})
-
-const usersLoader = new Loader({
-  key: 'users',
-  loader: async () => {
-    console.log('Fetching users...')
-    return fetchUsers()
-  },
-})
-
-const userLoader = new Loader({
-  key: 'user',
-  loader: async (userId: number) => {
-    console.log(`Fetching user with id ${userId}...`)
-    return fetchUserById(userId)
-  },
-  onAllInvalidate: async () => {
-    await usersLoader.invalidateAll()
-  },
-})
-
-const randomIdLoader = new Loader({
-  key: 'random',
-  loader: () => {
-    return fetchRandomNumber()
+    await postsLoader.invalidateAll()
   },
 })
 
 export const createLoaderClient = () => {
   return new LoaderClient({
-    getLoaders: () => [
-      invoicesLoader,
-      invoiceLoader,
-      usersLoader,
-      userLoader,
-      randomIdLoader,
-    ],
+    getLoaders: () => [postsLoader, postLoader],
   })
 }
+
+export const loaderClient = createLoaderClient()
 
 // Register things for typesafety
 declare module '@tanstack/react-loaders' {

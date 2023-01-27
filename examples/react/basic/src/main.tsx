@@ -167,6 +167,7 @@ const postRoute = new Route({
     const postLoaderInstance = useLoaderInstance({
       key: postLoader.key,
       variables: postId,
+      // strict: false,
     })
 
     const post = postLoaderInstance.state.data

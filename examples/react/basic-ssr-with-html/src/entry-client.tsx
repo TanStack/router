@@ -6,7 +6,7 @@ import { createRouter } from './router'
 
 const router = createRouter()
 
-const state = (window as any).__TANSTACK_ROUTER_STATE__
+const state = (window as any).__TANSTACK_DEHYDRATED_ROUTER__
 
 router.hydrate(state)
 

@@ -144,6 +144,13 @@ declare module '@tanstack/react-actions' {
 
 // Build our routes. We could do this in our component, too.
 const rootRoute = new RootRoute({
+  context: {
+    loaderClient,
+    actionClient,
+  },
+  onLoad: async ({ context }) => {
+    context.loaderClient
+  },
   component: () => {
     const loaderClient = useLoaderClient()
 
@@ -247,6 +254,9 @@ const indexRoute = new Route({
 const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
+  context: {
+    isDashboard: true,
+  },
   onLoad: ({ preload }) => invoicesLoader.load({ preload }),
   component: () => {
     return (
@@ -462,8 +472,8 @@ const invoiceRoute = new Route({
         notes: z.string().optional(),
       })
       .parse(search),
-  onLoad: async ({ params: { invoiceId }, preload }) =>
-    invoiceLoader.load({
+  onLoad: async ({ params: { invoiceId }, preload, context }) =>
+    context.loaderClient.getLoader({ key: 'invoice' }).load({
       variables: invoiceId,
       preload,
     }),
@@ -940,8 +950,8 @@ const router = new ReactRouter({
     } as AuthContext,
   },
   onRouteChange: () => {
-    createInvoiceAction.reset()
-    updateInvoiceAction.reset()
+    createInvoiceAction.clear()
+    updateInvoiceAction.clear()
   },
 })
 

@@ -1,13 +1,17 @@
 import * as React from 'react'
 import ReactDOM from 'react-dom/client'
 
-import { createRouter } from './router'
+import { router } from './router'
 import { App } from '.'
+import { loaderClient } from './loaderClient'
 
-const router = createRouter()
+const { dehydratedRouter, dehydratedLoaderClient } = (window as any)
+  .__DEHYDRATED__
 
-const state = (window as any).__TANSTACK_ROUTER_STATE__
+router.hydrate(dehydratedRouter)
+loaderClient.hydrate(dehydratedLoaderClient)
 
-router.hydrate(state)
-
-ReactDOM.hydrateRoot(document, <App router={router} />)
+ReactDOM.hydrateRoot(
+  document,
+  <App router={router} loaderClient={loaderClient} />,
+)

@@ -1,10 +1,13 @@
-import { lazy } from '@tanstack/react-router';
-import { routeConfig as parentRouteConfig } from "./__root";
-import * as React from 'react';
-const new Route({ getParentRoute: () => routeConfig = parentRouteConfig,
-  path: "/",
-  component: () => <div className="p-2">
+import { lazy } from '@tanstack/react-router'
+import { routeConfig as parentRouteConfig } from './__root'
+import * as React from 'react'
+const routeConfig = new Route({
+  getParentRoute: () => parentRouteConfig,
+  path: '/',
+  component: () => (
+    <div className="p-2">
       <h3>Welcome Home!</h3>
     </div>
-});
-export { routeConfig };
+  ),
+})
+export { routeConfig }

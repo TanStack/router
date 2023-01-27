@@ -6,7 +6,8 @@ export type PostType = {
   body: string
 }
 export const tanner = 'foo'
-const new Route({ getParentRoute: () => routeConfig = parentRouteConfig,
+const routeConfig = new Route({
+  getParentRoute: () => parentRouteConfig,
   path: '$postId',
   component: lazy(() =>
     import('./$postId-component').then((d) => ({

@@ -31,12 +31,12 @@ A route with a path of `/` is considered the root or index route for its parent 
 let rootRoute = createRouteConfig()
 
 // This is the index route for the entire router
-const new Route({ getParentRoute: () => indexRoute = rootRoute, path: '/' })
+const indexRoute = new Route({ getParentRoute: () => rootRoute, path: '/' })
 
-const new Route({ getParentRoute: () => blogRoute = rootRoute, path: 'blog' })
+const blogRoute = new Route({ getParentRoute: () => rootRoute, path: 'blog' })
 
 // This is the index route for the `/blog` route
-const new Route({ getParentRoute: () => blogIndexRoute = blogRoute, path: '/' })
+const blogIndexRoute = new Route({ getParentRoute: () => blogRoute, path: '/' })
 
 const routeConfig = rootRoute.addChildren([
   indexRoute,

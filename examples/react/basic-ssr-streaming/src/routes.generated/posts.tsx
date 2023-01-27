@@ -7,7 +7,8 @@ import {
   useLoaderInstance,
   useMatch,
 } from '@tanstack/react-router'
-const new Route({ getParentRoute: () => routeConfig = parentRouteConfig,
+const routeConfig = new Route({
+  getParentRoute: () => parentRouteConfig,
   path: 'posts',
   component: Posts,
   onLoad: (...args) =>

@@ -8,7 +8,8 @@ import {
   useMatch,
 } from '@tanstack/react-router'
 import { postspostIdRoute } from '../routes.generated/posts/$postId.client'
-const new Route({ getParentRoute: () => routeConfig = parentRouteConfig,
+const routeConfig = new Route({
+  getParentRoute: () => parentRouteConfig,
   path: 'posts',
   component: Posts,
   onLoad: (...args) =>

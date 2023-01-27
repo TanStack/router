@@ -1,7 +1,10 @@
+import { Route } from '@tanstack/react-router'
 import * as React from 'react'
-import { routeConfig } from '../routes.generated/index'
+import { rootRoute } from './__root'
 
-routeConfig.generate({
+export const indexRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/',
   component: () => (
     <div className="p-2">
       <h3>Welcome Home!</h3>

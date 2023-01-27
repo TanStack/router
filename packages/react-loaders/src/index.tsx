@@ -10,6 +10,7 @@ import {
   VariablesOptions,
   Loader,
   LoaderInstance,
+  StrictLoaderInstance,
 } from '@tanstack/loaders'
 
 import { useStore } from '@tanstack/react-store'
@@ -17,6 +18,8 @@ import { useStore } from '@tanstack/react-store'
 export * from '@tanstack/loaders'
 
 //
+
+export type NoInfer<T> = [T][T extends any ? 0 : never]
 
 const loaderClientContext = React.createContext<LoaderClient<any>>(null as any)
 
@@ -40,37 +43,55 @@ export function LoaderClientProvider({
   )
 }
 
+type StrictLoaderInstance_<TLoaderInstance> =
+  TLoaderInstance extends LoaderInstance<
+    infer TKey,
+    infer TVariables,
+    infer TData,
+    infer TError
+  >
+    ? StrictLoaderInstance<TKey, TVariables, TData, TError>
+    : never
+
 export function useLoaderInstance<
   TKey extends RegisteredLoaders[number]['__types']['key'],
   TLoader,
+  TStrict,
   TLoaderInstanceFromKey extends LoaderInstanceByKey<RegisteredLoaders, TKey>,
   TResolvedLoaderInstance extends unknown extends TLoader
     ? TLoaderInstanceFromKey
     : TLoader extends Loader<
-        infer _,
-        infer TVariables,
-        infer TData,
-        infer TError
+        infer TTKey,
+        infer TTVariables,
+        infer TTData,
+        infer TTError
       >
-    ? LoaderInstance<TKey, TVariables, TData, TError>
+    ? LoaderInstance<TTKey, TTVariables, TTData, TTError>
     : never,
   TVariables extends TResolvedLoaderInstance['__types']['variables'],
   TData extends TResolvedLoaderInstance['__types']['data'],
   TError extends TResolvedLoaderInstance['__types']['error'],
 >(
   opts: (
-    | { key: TKey }
+    | {
+        key: TKey
+      }
     | {
         loader: TLoader
       }
   ) & {
+    strict?: TStrict
     track?: (loaderStore: LoaderStore<TData, TError>) => any
+    throwOnError?: boolean
   } & VariablesOptions<TVariables>,
-): TResolvedLoaderInstance {
-  const allOpts = opts as typeof opts & {
-    key?: TKey
-    loader?: Loader<any, any, any, any>
-  }
+): TStrict extends false
+  ? TResolvedLoaderInstance
+  : StrictLoaderInstance_<TResolvedLoaderInstance> {
+  const allOpts = opts as any
+  // opts as typeof opts & {
+  //   key?: TKey
+  //   loader?: Loader<any, any, any, any>
+  // }
   const loaderClient = React.useContext(loaderClientContext)
 
   invariant(
@@ -82,6 +103,25 @@ export function useLoaderInstance<
   const loaderInstance = loader.getInstance({
     variables: allOpts?.variables,
   } as any)
+
+  if (
+    loaderInstance.state.status === 'error' &&
+    (allOpts.throwOnError ?? true)
+  ) {
+    throw loaderInstance.state.error
+  }
+
+  if (allOpts?.strict ?? true) {
+    invariant(
+      loaderInstance.state.status === 'success',
+      `useLoaderInstance:
+  Loader instance { key: ${loader.key}, variables: ${allOpts.variables} }) is currently in a "${loaderInstance.state.status}" state. By default useLoaderInstance will throw an error if the loader instance is not in a "success" state. To avoid this error:
+  
+  - Load the loader instance before using it (e.g. via your router's onLoad or loader option)
+
+  - Set opts.strict to false and handle the loading state in your component`,
+    )
+  }
 
   React.useEffect(() => {
     loaderInstance.load()

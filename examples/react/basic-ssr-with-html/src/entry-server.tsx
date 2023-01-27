@@ -48,7 +48,7 @@ export async function render(opts: {
   const routerState = router.dehydrate()
 
   const routerStateScript = `<script>
-  window.__TANSTACK_ROUTER_STATE__ = JSON.parse(${jsesc(
+  window.__TANSTACK_DEHYDRATED_ROUTER__ = JSON.parse(${jsesc(
     JSON.stringify(routerState),
     {
       isScriptContext: true,

@@ -65,6 +65,8 @@ export type ParseRouteChildren<TRouteTree> = TRouteTree extends Route<
   any,
   any,
   any,
+  any,
+  any,
   infer TChildren,
   any
 >

@@ -2,8 +2,6 @@
 // This implementation attempts to be more lightweight by
 // making assumptions about the way TanStack Router works
 
-import { match } from 'assert'
-
 export interface RouterHistory {
   location: RouterLocation
   listen: (cb: () => void) => () => void

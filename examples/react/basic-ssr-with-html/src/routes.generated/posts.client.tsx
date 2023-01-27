@@ -1,7 +1,8 @@
 import { lazy } from '@tanstack/react-router'
 import { routeConfig as parentRouteConfig } from './__root.client'
 import { useMatch } from '@tanstack/react-router'
-const new Route({ getParentRoute: () => routeConfig = parentRouteConfig,
+const routeConfig = new Route({
+  getParentRoute: () => parentRouteConfig,
   path: 'posts',
   component: lazy(() =>
     import('./posts-component').then((d) => ({

@@ -10,6 +10,7 @@ import express from 'express'
 // index.js
 import './fetch-polyfill'
 import { App } from '.'
+import { RegisteredLoaders } from '@tanstack/react-loaders'
 
 async function getBase(opts: { url: string }) {
   const router = createRouter()
@@ -23,21 +24,28 @@ async function getBase(opts: { url: string }) {
     history: memoryHistory,
   })
 
-  await router.load()
-
   return { router, loaderClient }
 }
 
 export async function load(opts: { url: string }) {
   const { router, loaderClient } = await getBase(opts)
 
+  // Get the matchIds from the query string
   const search = router.store.state.currentLocation.search as {
-    __data: { matchId: string }
+    __load?: {
+      key: RegisteredLoaders[number]['key']
+      variables?: unknown
+    }
   }
 
-  return router.store.state.currentMatches.find(
-    (d) => d.id === search.__data.matchId,
-  )?.store.state.routeLoaderData
+  const { key, variables } = search.__load ?? {}
+
+  // No matchIds? Throw an error
+  if (!key) {
+    throw new Error('No loader key provided')
+  }
+
+  return loaderClient.getLoader({ key }).load({ variables })
 }
 
 export async function render(opts: {
@@ -48,19 +56,25 @@ export async function render(opts: {
 }) {
   const { router, loaderClient } = await getBase(opts)
 
-  const routerState = router.dehydrate()
+  await router.load()
+  const dehydratedRouter = router.dehydrate()
+  const dehydratedLoaderClient = loaderClient.dehydrate()
 
   const routerStateScript = `<script>
-  window.__TANSTACK_ROUTER_STATE__ = JSON.parse(${jsesc(
-    JSON.stringify(routerState),
-    {
-      isScriptContext: true,
-      wrap: true,
-      json: true,
-    },
-  )}
-    )
-    </script>`
+  window.__DEHYDRATED__ = JSON.parse(
+    ${jsesc(
+      JSON.stringify({
+        dehydratedRouter,
+        dehydratedLoaderClient,
+      }),
+      {
+        isScriptContext: true,
+        wrap: true,
+        json: true,
+      },
+    )}
+  )
+</script>`
 
   const context = {
     head: `${opts.head}${routerStateScript}`,

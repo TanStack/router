@@ -1,24 +1,22 @@
-import { lazy } from '@tanstack/react-router'
-import { routeConfig as parentRouteConfig } from './__root'
 import * as React from 'react'
-import {
-  Link,
-  Outlet,
-  useLoaderInstance,
-  useMatch,
-} from '@tanstack/react-router'
+import { Link, Outlet, useMatch } from '@tanstack/react-router'
+import { routeConfig } from '../routes.generated/posts'
+import { PostType } from './posts/$postId'
 import { postspostIdRoute } from '../routes.generated/posts/$postId.client'
-const new Route({ getParentRoute: () => routeConfig = parentRouteConfig,
-  path: 'posts',
+
+routeConfig.generate({
   component: Posts,
-  onLoad: (...args) =>
-    import('./posts-loader').then((d) => d.loader.apply(d.loader, args as any)),
+  onLoad: async () => {
+    return {
+      posts: await fetchPosts(),
+    }
+  },
   errorComponent: () => 'Oh crap',
 })
+
 function Posts() {
-  const { posts } = useLoaderInstance({
-    from: routeConfig.id,
-  })
+  const { posts } = useLoaderInstance({ from: routeConfig.id })
+
   return (
     <div className="p-2 flex gap-2">
       <ul className="list-disc pl-4">
@@ -31,9 +29,7 @@ function Posts() {
                   postId: post.id,
                 }}
                 className="block py-1 text-blue-800 hover:text-blue-600"
-                activeProps={{
-                  className: 'text-black font-bold',
-                }}
+                activeProps={{ className: 'text-black font-bold' }}
               >
                 <div>{post.title.substring(0, 20)}</div>
               </Link>
@@ -46,4 +42,3 @@ function Posts() {
     </div>
   )
 }
-export { routeConfig }

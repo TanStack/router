@@ -7,7 +7,8 @@ export type PostType = {
   title: string
   body: string
 }
-const new Route({ getParentRoute: () => routeConfig = parentRouteConfig,
+const routeConfig = new Route({
+  getParentRoute: () => parentRouteConfig,
   path: '$postId',
   component: Post,
   onLoad: (...args) =>

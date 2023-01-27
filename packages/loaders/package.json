@@ -35,6 +35,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@tanstack/store": "workspace:*"
+    "@tanstack/store": "workspace:*",
+    "tiny-invariant": "^1.3.1"
   }
 }

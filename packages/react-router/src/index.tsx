@@ -320,11 +320,7 @@ export function RouterProvider<
 >({ router, ...rest }: RouterProps<TRouteConfig, TRoutesInfo, TRouterContext>) {
   router.update(rest)
 
-  const currentMatches = useStore(
-    router.store,
-    (s) => s.currentMatches,
-    undefined,
-  )
+  const currentMatches = useStore(router.store, (s) => s.currentMatches)
 
   React.useEffect(router.mount, [router])
 
@@ -437,6 +433,7 @@ export function useSearch<
   useStore(
     (match as any).store,
     (d: any) => opts?.track?.(d.search) ?? d.search,
+    true,
   )
 
   return (match as unknown as RouteMatch).store.state.search as any
@@ -454,10 +451,14 @@ export function useParams<
   track?: (search: TDefaultSelected) => TSelected
 }): TSelected {
   const router = useRouter()
-  useStore(router.store, (d) => {
-    const params = last(d.currentMatches)?.params as any
-    return opts?.track?.(params) ?? params
-  })
+  useStore(
+    router.store,
+    (d) => {
+      const params = last(d.currentMatches)?.params as any
+      return opts?.track?.(params) ?? params
+    },
+    true,
+  )
 
   return last(router.store.state.currentMatches)?.params as any
 }
@@ -531,7 +532,7 @@ function SubOutlet({
   match: RouteMatch
 }) {
   const router = useRouter()
-  useStore(match!.store)
+  useStore(match!.store, (store) => [store.status, store.error], true)
 
   const defaultPending = React.useCallback(() => null, [])
 

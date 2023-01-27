@@ -164,11 +164,11 @@ export class Action<
     }
   }
 
-  reset = async () => {
+  clear = async () => {
     // await Promise.all(this.#promises)
     this.store.setState((s) => ({
       ...s,
-      submissions: [],
+      submissions: s.submissions.filter((d) => d.status !== 'pending'),
     }))
   }
 
@@ -290,7 +290,7 @@ export interface ActionSubmission<
   TError = Error,
 > {
   submittedAt: number
-  status: 'idle' | 'pending' | 'success' | 'error'
+  status: 'pending' | 'success' | 'error'
   payload: TPayload
   response?: TResponse
   error?: TError

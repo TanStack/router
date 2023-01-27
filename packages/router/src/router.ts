@@ -328,7 +328,7 @@ export class Router<
     TRouterContext = unknown,
   >(
     opts?: RouterOptions<TRoute, TRouterContext>,
-  ): this => {
+  ): void => {
     Object.assign(this.options, opts)
 
     if (
@@ -352,7 +352,9 @@ export class Router<
       }))
 
       this.#unsubHistory = this.history.listen(() => {
-        this.load(this.#parseLocation(this.store.state.latestLocation))
+        this.load({
+          next: this.#parseLocation(this.store.state.latestLocation),
+        })
       })
     }
 
@@ -364,8 +366,6 @@ export class Router<
       this.routesById = {} as any
       this.routeTree = this.#buildRouteTree(routeTree)
     }
-
-    return this as any
   }
 
   buildNext = (opts: BuildNextOptions) => {
@@ -399,7 +399,10 @@ export class Router<
     })
   }
 
-  load = async (next?: ParsedLocation) => {
+  load = async (opts?: {
+    next?: ParsedLocation
+    // filter?: (match: RouteMatch<any, any>) => any
+  }) => {
     let now = Date.now()
     const startedAt = now
     this.startedLoadingAt = startedAt
@@ -410,11 +413,11 @@ export class Router<
     let matches!: RouteMatch<any, any>[]
 
     this.store.batch(() => {
-      if (next) {
+      if (opts?.next) {
         // Ingest the new location
         this.store.setState((s) => ({
           ...s,
-          latestLocation: next,
+          latestLocation: opts.next!,
         }))
       }
 
@@ -433,7 +436,10 @@ export class Router<
 
     // Load the matches
     try {
-      await this.loadMatches(matches)
+      await this.loadMatches(
+        matches,
+        // opts
+      )
     } catch (err: any) {
       console.warn(err)
       invariant(
@@ -653,7 +659,10 @@ export class Router<
 
   loadMatches = async (
     resolvedMatches: RouteMatch[],
-    loaderOpts?: { preload?: boolean },
+    opts?: {
+      preload?: boolean
+      // filter?: (match: RouteMatch<any, any>) => any
+    },
   ) => {
     linkMatches(resolvedMatches)
 
@@ -672,7 +681,7 @@ export class Router<
             match,
           })
         } catch (err) {
-          if (!loaderOpts?.preload) {
+          if (!opts?.preload) {
             match.route.options.onLoadError?.(err)
           }
 
@@ -685,11 +694,11 @@ export class Router<
       const prevMatch = resolvedMatches[(index = 1)]
       const search = match.store.state.search as { __data?: any }
 
-      if (search.__data?.matchId && search.__data.matchId !== match.id) {
-        return
-      }
+      // if (opts?.filter && !opts.filter(match)) {
+      //   return
+      // }
 
-      match.load({ preload: loaderOpts?.preload })
+      match.load({ preload: opts?.preload })
 
       if (match.store.state.status !== 'success' && match.__loadPromise) {
         // Wait for the first sign of activity from the match
@@ -939,7 +948,7 @@ export class Router<
         currentMatches: this.store.state.currentMatches.map((match) => ({
           id: match.id,
           state: {
-            ...pick(match.store.state, ['status']),
+            status: match.store.state.status,
           },
         })),
       },
