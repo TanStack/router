@@ -5,13 +5,13 @@ import {
   RouterProvider,
   ReactRouter,
   Link,
-  useRouterStore,
   MatchRoute,
   useSearch,
   useNavigate,
   RootRoute,
   Route,
   useParams,
+  useRouter,
 } from '@tanstack/react-router'
 import {
   Loader,
@@ -64,7 +64,9 @@ function Spinner() {
 
 const rootRoute = new RootRoute({
   component: () => {
-    const { status } = useRouterStore()
+    const {
+      state: { status },
+    } = useRouter()
     const {
       state: { isLoading },
     } = useLoaderClient()

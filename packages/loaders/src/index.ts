@@ -109,7 +109,7 @@ export class LoaderClient<
               [instance.hashedKey]: {
                 hashedKey: instance.hashedKey,
                 variables: instance.variables,
-                state: instance.store.state,
+                state: instance.state,
               },
             }),
             {},
@@ -120,7 +120,7 @@ export class LoaderClient<
     }
   }
 
-  hydrate = (data: ReturnType<LoaderClient['dehydrate']>) => {
+  hydrate = (data: DehydratedLoaderClient) => {
     Object.entries(data.loaders).forEach(([loaderKey, instances]) => {
       const loader = this.getLoader({ key: loaderKey }) as Loader
 
@@ -128,12 +128,13 @@ export class LoaderClient<
         let instance = loader.instances[dehydratedInstance.hashedKey]
 
         if (!instance) {
-          instance = loader.getInstance({
-            variables: dehydratedInstance.variables,
-          })
+          instance = loader.instances[dehydratedInstance.hashedKey] =
+            loader.getInstance({
+              variables: dehydratedInstance.variables,
+            })
         }
 
-        instance.store.state = dehydratedInstance.state
+        instance.store.setState(() => dehydratedInstance.state)
       })
     })
   }
@@ -458,21 +459,19 @@ export class LoaderInstance<
 
     const isLoading = Object.values(client.loaders).some((loader) => {
       return Object.values(loader.instances).some(
-        (instance) =>
-          instance.store.state.isFetching && !instance.store.state.preload,
+        (instance) => instance.state.isFetching && !instance.state.preload,
       )
     })
 
     const isPreloading = Object.values(client.loaders).some((loader) => {
       return Object.values(loader.instances).some(
-        (instance) =>
-          instance.store.state.isFetching && instance.store.state.preload,
+        (instance) => instance.state.isFetching && instance.state.preload,
       )
     })
 
     if (
-      client.store.state.isLoading === isLoading &&
-      client.store.state.isPreloading === isPreloading
+      client.state.isLoading === isLoading &&
+      client.state.isPreloading === isPreloading
     ) {
       return
     }
@@ -515,8 +514,8 @@ export class LoaderInstance<
   }): Promise<TData> => {
     // Fetch if we need to
     if (
-      this.store.state.status === 'error' ||
-      this.store.state.status === 'idle' ||
+      this.state.status === 'error' ||
+      this.state.status === 'idle' ||
       this.getIsInvalid(opts)
     ) {
       if (!this.__loadPromise) {
@@ -525,8 +524,8 @@ export class LoaderInstance<
     }
 
     // If we already have data, return it
-    if (this.store.state.status === 'success') {
-      return this.store.state.data!
+    if (this.state.status === 'success') {
+      return this.state.data!
     }
 
     // Otherwise wait for the data to be fetched
@@ -537,11 +536,10 @@ export class LoaderInstance<
     const now = Date.now()
 
     return (
-      this.store.state.status === 'success' &&
-      (this.store.state.invalid ||
-        (opts?.preload
-          ? this.store.state.preloadInvalidAt
-          : this.store.state.invalidAt) < now)
+      this.state.status === 'success' &&
+      (this.state.invalid ||
+        (opts?.preload ? this.state.preloadInvalidAt : this.state.invalidAt) <
+          now)
     )
   }
 
@@ -569,7 +567,7 @@ export class LoaderInstance<
     // If the match was in an error state, set it
     // to a loading state again. Otherwise, keep it
     // as loading or resolved
-    if (this.store.state.status === 'idle') {
+    if (this.state.status === 'idle') {
       this.store.setState((s) => ({
         ...s,
         status: 'pending',
@@ -666,7 +664,7 @@ export class LoaderInstance<
 
         await after()
 
-        return this.store.state.data!
+        return this.state.data!
       } catch (err) {
         if (process.env.NODE_ENV !== 'production') {
           console.error(err)

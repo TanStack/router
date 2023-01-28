@@ -83,15 +83,6 @@ export async function createServer(
         }
       })()
 
-      // Since the router can also be used simply to fulfill data,
-      // Request for data, not html
-      if (url.includes('__data=')) {
-        const data = await entry.load({
-          url,
-        })
-        return res.json(data)
-      }
-
       // Control/hydrate all the way up to <html>
       // Modify head
       // Request/Response control at the route level

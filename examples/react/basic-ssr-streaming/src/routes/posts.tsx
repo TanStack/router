@@ -1,58 +1,48 @@
 import * as React from 'react'
-import {
-  Link,
-  Outlet,
-  useLoaderInstance,
-  useMatch,
-} from '@tanstack/react-router'
-import { routeConfig } from '../routes.generated/posts'
-import { PostType } from './posts/$postId'
+import { Link, Outlet, Route } from '@tanstack/react-router'
+import { rootRoute } from './__root'
+// import { loaderClient } from '../entry-client'
+import { useLoaderInstance } from '@tanstack/react-loaders'
+import { postIdRoute } from './posts/$postId'
 
-routeConfig.generate({
+export const postsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: 'posts',
   component: Posts,
-  onLoad: async () => {
-    return {
-      posts: await fetchPosts(),
-    }
-  },
   errorComponent: () => 'Oh crap',
+  getContext: () => ({
+    title: 'Posts',
+  }),
+  onLoad: ({ context, preload }) =>
+    context.loaderClient.getLoader({ key: 'posts' }).load({ preload }),
 })
 
-async function fetchPosts() {
-  console.log('Fetching posts...')
-  await new Promise((r) => setTimeout(r, 300 + Math.round(Math.random() * 300)))
-  return fetch('https://jsonplaceholder.typicode.com/posts')
-    .then((d) => d.json() as Promise<PostType[]>)
-    .then((d) => d.slice(0, 10))
-}
-
 function Posts() {
-  const { posts } = useLoaderInstance({ from: routeConfig.id })
+  const {
+    state: { data: posts },
+  } = useLoaderInstance({ key: 'posts' })
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        gap: '1rem',
-      }}
-    >
-      <div>
+    <div className="p-2 flex gap-2">
+      <ul className="list-disc pl-4">
         {posts?.map((post) => {
           return (
-            <div key={post.id}>
+            <li key={post.id} className="whitespace-nowrap">
               <Link
-                to="/posts/$postId"
+                to={postIdRoute.id}
                 params={{
                   postId: post.id,
                 }}
-                activeProps={{ className: 'font-bold' }}
+                className="block py-1 text-blue-800 hover:text-blue-600"
+                activeProps={{ className: 'text-black font-bold' }}
               >
-                <pre>{post.title.substring(0, 20)}</pre>
+                <div>{post.title.substring(0, 20)}</div>
               </Link>
-            </div>
+            </li>
           )
         })}
-      </div>
+      </ul>
+      <hr />
       <Outlet />
     </div>
   )

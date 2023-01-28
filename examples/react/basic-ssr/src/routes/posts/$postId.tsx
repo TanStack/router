@@ -8,11 +8,11 @@ export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
   component: Post,
-  onLoad: async ({ params: { postId }, preload }) => {},
-  // loaderClient.getLoader({ key: 'post' }).load({
-  //   variables: postId,
-  //   preload,
-  // }),
+  onLoad: async ({ params: { postId }, preload, context }) =>
+    context.loaderClient.getLoader({ key: 'post' }).load({
+      variables: postId,
+      preload,
+    }),
 })
 
 function Post() {

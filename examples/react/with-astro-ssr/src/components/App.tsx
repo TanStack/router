@@ -1,15 +1,21 @@
+import { LoaderClientProvider } from '@tanstack/react-loaders'
 import { RouterProvider } from '@tanstack/react-router'
 import React from 'react'
-import { Router } from '../router'
-
-const router = new Router()
+import { loaderClient } from '../loaderClient'
+import { router } from '../router'
 
 export default function App(props: {
   dehydratedRouter: ReturnType<typeof router.dehydrate>
+  dehydratedLoaderClient: ReturnType<typeof loaderClient.dehydrate>
 }) {
   React.useState(() => {
+    loaderClient.hydrate(props.dehydratedLoaderClient)
     router.hydrate(props.dehydratedRouter)
   })
 
-  return <RouterProvider router={router} />
+  return (
+    <LoaderClientProvider loaderClient={loaderClient}>
+      <RouterProvider router={router} />
+    </LoaderClientProvider>
+  )
 }

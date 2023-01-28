@@ -26,11 +26,8 @@ export const userRoute = new Route({
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
   component: User,
-  onLoad: async ({ params: { userId } }) => {
-    return {
-      user: await fetchUserById(userId),
-    }
-  },
+  onLoad: async ({ params: { userId }, preload }) =>
+    userLoader.load({ variables: userId, preload }),
 })
 
 function User() {

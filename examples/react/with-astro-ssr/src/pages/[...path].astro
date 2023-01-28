@@ -1,8 +1,9 @@
 ---
 
-import { createMemoryHistory } from "@tanstack/router"
+import { Router, createMemoryHistory } from "@tanstack/router"
 import App from "../components/App";
-import { Router } from "../router"
+import { routeTree } from "../routeTree";
+import { createLoaderClient } from "../loaderClient";
 
 
 const req = Astro.request
@@ -11,33 +12,23 @@ const url = fullUrl.href.replace(fullUrl.origin, '')
 
 console.log('Loading...', url)
 
-const router = new Router()
+const loaderClient = createLoaderClient()
 
-const memoryHistory = createMemoryHistory({
+const history = createMemoryHistory({
 	initialEntries: [url],
 })
 
-router.update({
-	history: memoryHistory,
+const router = new Router({
+	routeTree,
+	history,
+	context: {
+		loaderClient
+	}
 })
 
 await router.load()
 
-if (url.includes('__data=')) {
-	const search = router.store.state.currentLocation.search as { __data: { matchId: string } }
-	
-  const data = router.store.state.currentMatches.find((d) => d.id === search.__data.matchId)?.store.routeLoaderData
-
-	const res = JSON.stringify(data)
-	
-	return new Response(res, {
-		status: 200,
-		headers: {
-			"Content-Type": "application/json",
-		},
-	});
-}
-
+const dehydratedLoaderClient = loaderClient.dehydrate()
 const dehydratedRouter = router.dehydrate()
 ---
 
@@ -50,7 +41,7 @@ const dehydratedRouter = router.dehydrate()
 		<script src="https://cdn.tailwindcss.com"></script>
 	</head>
 	<body>
-		<App dehydratedRouter={dehydratedRouter} client:load />
+		<App dehydratedRouter={dehydratedRouter} dehydratedLoaderClient={dehydratedLoaderClient} client:load />
 	</body>
  </html>
 

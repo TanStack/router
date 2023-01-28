@@ -31,7 +31,7 @@ export async function load(opts: { url: string }) {
   const { router, loaderClient } = await getBase(opts)
 
   // Get the matchIds from the query string
-  const search = router.store.state.currentLocation.search
+  const search = router.state.currentLocation.search
 
   const { key, variables } = (search.__load ?? {}) as {
     key: RegisteredLoaders[number]['key']

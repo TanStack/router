@@ -64,7 +64,7 @@ export function useAction<
 
 export function useActionClient(opts?: {
   track?: (actionClientStore: ActionClientStore) => any
-}): [ActionClientStore['state'], ActionClient<RegisteredActions>] {
+}): ActionClient<RegisteredActions> {
   const actionClient = React.useContext(actionClientContext)
 
   if (!actionClient)
@@ -74,5 +74,5 @@ export function useActionClient(opts?: {
 
   useStore(actionClient.store, (d) => opts?.track?.(d as any) ?? d, true)
 
-  return [actionClient.store.state as any, actionClient as any]
+  return actionClient
 }

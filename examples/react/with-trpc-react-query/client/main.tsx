@@ -5,7 +5,6 @@ import {
   RouterProvider,
   ReactRouter,
   Link,
-  useMatch,
   useParams,
   RootRoute,
   Route,
@@ -20,7 +19,11 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 const queryClient = new QueryClient()
 
 export function Spinner() {
-  return <div className="inline-block animate-spin px-3 text-2xl">⍥</div>
+  return (
+    <div className="animate-spin px-3 text-2xl inline-flex items-center justify-center">
+      ⍥
+    </div>
+  )
 }
 
 const rootRoute = new RootRoute({
@@ -59,12 +62,7 @@ const indexRoute = new Route({
   path: '/',
   component: () => {
     const helloQuery = trpc.hello.useQuery()
-    if (!helloQuery.data)
-      return (
-        <p>
-          <Spinner />
-        </p>
-      )
+    if (!helloQuery.data) return <Spinner />
     return <div className="p-2 text-xl">{helloQuery.data}</div>
   },
 })
@@ -78,11 +76,7 @@ const postsRoute = new Route({
     const postsQuery = trpc.posts.useQuery()
 
     if (postsQuery.isLoading) {
-      return (
-        <p>
-          <Spinner />
-        </p>
-      )
+      return <Spinner />
     }
 
     return (
@@ -136,11 +130,7 @@ const postRoute = new Route({
     const postQuery = trpc.post.useQuery(postId)
 
     if (postQuery.isLoading) {
-      return (
-        <p>
-          <Spinner />
-        </p>
-      )
+      return <Spinner />
     }
 
     return (

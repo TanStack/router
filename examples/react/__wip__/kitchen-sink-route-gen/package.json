@@ -3,16 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently 'npm:dev:*'",
-    "dev:build": "vite",
-    "dev:generate": "tsr watch",
-    "generate": "tsr generate",
-    "build": "npm run generate && vite build",
+    "dev": "vite",
+    "build": "&& vite build",
     "serve": "vite preview",
     "start": "vite"
   },
   "dependencies": {
     "@tanstack/react-router": "0.0.1-beta.61",
+    "@tanstack/react-loaders": "0.0.1-beta.61",
     "@tanstack/react-router-devtools": "0.0.1-beta.61",
     "@tanstack/router-cli": "0.0.1-beta.58",
     "@vitejs/plugin-react": "^1.1.3",

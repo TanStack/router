@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "dev": "concurrently 'npm:dev:*'",
     "dev:client": "wait-port 4000 && vite",
     "dev:server": "tsx server/server.ts",
-    "dev": "concurrently 'npm:dev:*'",
     "build": "vite build",
     "serve": "vite preview",
     "start": "vite"

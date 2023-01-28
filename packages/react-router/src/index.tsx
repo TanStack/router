@@ -24,6 +24,11 @@ import {
   invariant,
   Router,
   Expand,
+  AnyContext,
+  AnyRootRoute,
+  RootRoute,
+  AnySearchSchema,
+  AnyPathParams,
 } from '@tanstack/router'
 import { useStore } from '@tanstack/react-store'
 
@@ -119,8 +124,12 @@ declare module '@tanstack/router' {
     }>
   }
 
-  interface RouterOptions<TRouteTree, TRouterContext> {
+  interface RouterOptions<TRouteTree> {
     // ssrFooter?: () => JSX.Element | Node
+  }
+
+  interface FrameworkRouteOptions {
+    wrapInSuspense?: boolean
   }
 }
 
@@ -138,7 +147,7 @@ export function useLinkProps<
 >(
   options: MakeLinkPropsOptions<TFrom, TTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
-  const router = useRouter()
+  const router = useRouterContext()
 
   const {
     // custom props
@@ -287,11 +296,10 @@ export type MatchesProviderProps = {
 }
 
 export class ReactRouter<
-  TRouteConfig extends AnyRoute = Route,
+  TRouteConfig extends AnyRootRoute = RootRoute,
   TRoutesInfo extends AnyRoutesInfo = RoutesInfo<TRouteConfig>,
-  TRouterContext = unknown,
-> extends Router<TRouteConfig, TRoutesInfo, TRouterContext> {
-  constructor(opts: RouterOptions<TRouteConfig, TRouterContext>) {
+> extends Router<TRouteConfig, TRoutesInfo> {
+  constructor(opts: RouterOptions<TRouteConfig>) {
     super({
       ...opts,
       loadComponent: async (component) => {
@@ -306,18 +314,16 @@ export class ReactRouter<
 }
 
 export type RouterProps<
-  TRouteConfig extends AnyRoute = Route,
+  TRouteConfig extends AnyRootRoute = RootRoute,
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
-  TRouterContext = unknown,
-> = RouterOptions<TRouteConfig, TRouterContext> & {
-  router: Router<TRouteConfig, TRoutesInfo, TRouterContext>
+> = RouterOptions<TRouteConfig> & {
+  router: Router<TRouteConfig, TRoutesInfo>
 }
 
 export function RouterProvider<
-  TRouteConfig extends AnyRoute = Route,
+  TRouteConfig extends AnyRootRoute = RootRoute,
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
-  TRouterContext = unknown,
->({ router, ...rest }: RouterProps<TRouteConfig, TRoutesInfo, TRouterContext>) {
+>({ router, ...rest }: RouterProps<TRouteConfig, TRoutesInfo>) {
   router.update(rest)
 
   const currentMatches = useStore(router.store, (s) => s.currentMatches)
@@ -335,18 +341,22 @@ export function RouterProvider<
   )
 }
 
-export function useRouter(): RegisteredRouter {
+export function useRouterContext(): RegisteredRouter {
   const value = React.useContext(routerContext)
   warning(!value, 'useRouter must be used inside a <Router> component!')
+
+  useStore(value.router.store)
+
   return value.router
 }
 
-export function useRouterStore<T = RouterStore>(
-  selector?: (state: Router['store']) => T,
+export function useRouter<T = RouterStore>(
+  track?: (state: Router['store']) => T,
   shallow?: boolean,
-): T {
-  const router = useRouter()
-  return useStore(router.store, selector as any, shallow)
+): RegisteredRouter {
+  const router = useRouterContext()
+  useStore(router.store, track as any, shallow)
+  return router
 }
 
 export function useMatches(): RouteMatch[] {
@@ -366,10 +376,10 @@ export function useMatch<
   track?: (match: TRouteMatch) => any
   shallow?: boolean
 }): TStrict extends true ? TRouteMatch : TRouteMatch | undefined {
-  const router = useRouter()
+  const router = useRouterContext()
   const nearestMatch = useMatches()[0]!
   const match = opts?.from
-    ? router.store.state.currentMatches.find((d) => d.route.id === opts?.from)
+    ? router.state.currentMatches.find((d) => d.route.id === opts?.from)
     : nearestMatch
 
   invariant(
@@ -406,7 +416,7 @@ export function useMatch<
 export function useRoute<
   TId extends keyof RegisteredRoutesInfo['routesById'] = '/',
 >(routeId: TId): RegisteredRoutesInfo['routesById'][TId] {
-  const router = useRouter()
+  const router = useRouterContext()
   const resolvedRoute = router.getRoute(routeId as any)
 
   invariant(
@@ -436,7 +446,7 @@ export function useSearch<
     true,
   )
 
-  return (match as unknown as RouteMatch).store.state.search as any
+  return (match as unknown as RouteMatch).state.search as any
 }
 
 export function useParams<
@@ -450,7 +460,7 @@ export function useParams<
   from: TFrom
   track?: (search: TDefaultSelected) => TSelected
 }): TSelected {
-  const router = useRouter()
+  const router = useRouterContext()
   useStore(
     router.store,
     (d) => {
@@ -460,13 +470,13 @@ export function useParams<
     true,
   )
 
-  return last(router.store.state.currentMatches)?.params as any
+  return last(router.state.currentMatches)?.params as any
 }
 
 export function useNavigate<
   TDefaultFrom extends keyof RegisteredRoutesInfo['routesById'] = '/',
 >(defaultOpts?: { from?: TDefaultFrom }) {
-  const router = useRouter()
+  const router = useRouterContext()
   return <
     TFrom extends keyof RegisteredRoutesInfo['routesById'] = TDefaultFrom,
     TTo extends string = '.',
@@ -478,7 +488,7 @@ export function useNavigate<
 }
 
 export function useMatchRoute() {
-  const router = useRouter()
+  const router = useRouterContext()
 
   return <
     TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
@@ -531,17 +541,17 @@ function SubOutlet({
   matches: RouteMatch[]
   match: RouteMatch
 }) {
-  const router = useRouter()
+  const router = useRouterContext()
   useStore(match!.store, (store) => [store.status, store.error], true)
 
   const defaultPending = React.useCallback(() => null, [])
 
   const Inner = React.useCallback((props: { match: RouteMatch }): any => {
-    if (props.match.store.state.status === 'error') {
-      throw props.match.store.state.error
+    if (props.match.state.status === 'error') {
+      throw props.match.state.error
     }
 
-    if (props.match.store.state.status === 'success') {
+    if (props.match.state.status === 'success') {
       return React.createElement(
         (props.match.component as any) ??
           router.options.defaultComponent ??
@@ -549,7 +559,7 @@ function SubOutlet({
       )
     }
 
-    if (props.match.store.state.status === 'pending') {
+    if (props.match.state.status === 'pending') {
       throw props.match.__loadPromise
     }
 
@@ -568,7 +578,17 @@ function SubOutlet({
 
   return (
     <matchesContext.Provider value={matches}>
-      <React.Suspense fallback={<PendingComponent />}>
+      {match.route.options.wrapInSuspense ?? true ? (
+        <React.Suspense fallback={<PendingComponent />}>
+          <CatchBoundary
+            key={match.route.id}
+            errorComponent={errorComponent}
+            match={match as any}
+          >
+            <Inner match={match} />
+          </CatchBoundary>
+        </React.Suspense>
+      ) : (
         <CatchBoundary
           key={match.route.id}
           errorComponent={errorComponent}
@@ -576,7 +596,7 @@ function SubOutlet({
         >
           <Inner match={match} />
         </CatchBoundary>
-      </React.Suspense>
+      )}
       {/* Provide a suffix suspense boundary to make sure the router is
   ready to be dehydrated on the server */}
       {/* {router.options.ssrFooter && match.id === rootRouteId ? (
@@ -635,19 +655,19 @@ function CatchBoundaryInner(props: {
   const [activeErrorState, setActiveErrorState] = React.useState(
     props.errorState,
   )
-  const router = useRouter()
+  const router = useRouterContext()
   const errorComponent = props.errorComponent ?? DefaultErrorBoundary
   const prevKeyRef = React.useRef('' as any)
 
   React.useEffect(() => {
     if (activeErrorState) {
-      if (router.store.state.currentLocation.key !== prevKeyRef.current) {
+      if (router.state.currentLocation.key !== prevKeyRef.current) {
         setActiveErrorState({} as any)
       }
     }
 
-    prevKeyRef.current = router.store.state.currentLocation.key
-  }, [activeErrorState, router.store.state.currentLocation.key])
+    prevKeyRef.current = router.state.currentLocation.key
+  }, [activeErrorState, router.state.currentLocation.key])
 
   React.useEffect(() => {
     if (props.errorState.error) {

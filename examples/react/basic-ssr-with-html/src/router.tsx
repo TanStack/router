@@ -1,20 +1,21 @@
-import * as React from 'react'
+import { RegisteredLoaderClient } from '@tanstack/react-loaders'
 import { ReactRouter } from '@tanstack/react-router'
-import { routeConfig } from './routes.generated/routeConfig'
-import { routeConfigClient } from './routes.generated/routeConfig.client'
+import { loaderClient } from './loaderClient'
+import { routeTree } from './routeTree'
 
-export const createRouter = () =>
-  new ReactRouter({
-    routeConfig: routeConfig,
-    // typeof document !== 'undefined' ? routeConfigClient : routeConfig,
-    // useServerData: true,
-    context: {
-      head: '',
-    },
-  })
+export interface RouterContext {
+  loaderClient: RegisteredLoaderClient
+}
+
+export const router = new ReactRouter({
+  routeTree,
+  context: {
+    loaderClient,
+  },
+})
 
 declare module '@tanstack/react-router' {
   interface Register {
-    router: ReturnType<typeof createRouter>
+    router: typeof router
   }
 }

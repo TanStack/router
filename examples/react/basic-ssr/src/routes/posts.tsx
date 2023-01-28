@@ -10,8 +10,8 @@ export const postsRoute = new Route({
   path: 'posts',
   component: Posts,
   errorComponent: () => 'Oh crap',
-  onLoad: ({ context, preload }) => {},
-  // loaderClient.getLoader({ key: 'posts' }).load({ preload }),
+  onLoad: ({ context, preload }) =>
+    context.loaderClient.getLoader({ key: 'posts' }).load({ preload }),
 })
 
 function Posts() {

@@ -195,7 +195,7 @@ export class Action<
         }))
       },
       getIsLatest: () =>
-        this.store.state.submissions[this.store.state.submissions.length - 1]
+        this.state.submissions[this.state.submissions.length - 1]
           ?.submittedAt === submission.submittedAt,
     }
 

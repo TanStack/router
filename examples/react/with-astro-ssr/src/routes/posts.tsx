@@ -1,29 +1,22 @@
-import { Link, Outlet, useLoaderInstance } from '@tanstack/react-router'
-import { routeConfig } from '../routes.generated/posts'
-import { postspostIdRoute } from '../routes.generated/posts/$postId.client'
-//
-import type { PostType } from './posts/$postId'
+import { Link, Outlet, Route } from '@tanstack/react-router'
+import { rootRoute } from './__root'
 
-routeConfig.generate({
+import { useLoaderInstance } from '@tanstack/react-loaders'
+import { postIdRoute } from './posts/$postId'
+
+export const postsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: 'posts',
   component: Posts,
-  onLoad: async () => {
-    return {
-      posts: await fetchPosts(),
-    }
-  },
   errorComponent: () => 'Oh crap',
+  onLoad: ({ context, preload }) =>
+    context.loaderClient.getLoader({ key: 'posts' }).load({ preload }),
 })
 
-async function fetchPosts() {
-  console.log('Fetching posts...')
-  await new Promise((r) => setTimeout(r, 300 + Math.round(Math.random() * 300)))
-  return fetch('https://jsonplaceholder.typicode.com/posts')
-    .then((d) => d.json() as Promise<PostType[]>)
-    .then((d) => d.slice(0, 10))
-}
-
 function Posts() {
-  const { posts } = useLoaderInstance({ from: routeConfig.id })
+  const {
+    state: { data: posts },
+  } = useLoaderInstance({ key: 'posts' })
 
   return (
     <div className="p-2 flex gap-2">
@@ -32,7 +25,7 @@ function Posts() {
           return (
             <li key={post.id} className="whitespace-nowrap">
               <Link
-                to={postspostIdRoute.id}
+                to={postIdRoute.id}
                 params={{
                   postId: post.id,
                 }}

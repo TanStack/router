@@ -1,17 +1,29 @@
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
+import {
+  createMemoryHistory,
+  Router,
+  RouterProvider,
+} from '@tanstack/react-router'
 import isbot from 'isbot'
 import jsesc from 'jsesc'
 import { ServerResponse } from 'http'
-import { createRouter } from './router'
 import express from 'express'
 
 // index.js
-import './fetch-polyfill'
+import '../src-old/fetch-polyfill'
+import { createLoaderClient } from './loaderClient'
+import { routeTree } from './routeTree'
 
 async function getRouter(opts: { url: string }) {
-  const router = createRouter()
+  const loaderClient = createLoaderClient()
+
+  const router = new Router({
+    routeTree: routeTree,
+    context: {
+      loaderClient,
+    },
+  })
 
   const memoryHistory = createMemoryHistory({
     initialEntries: [opts.url],
@@ -21,21 +33,7 @@ async function getRouter(opts: { url: string }) {
     history: memoryHistory,
   })
 
-  return router
-}
-
-export async function load(opts: { url: string }) {
-  const router = await getRouter(opts)
-
-  await router.load()
-
-  const search = router.store.state.currentLocation.search as {
-    __data: { matchId: string }
-  }
-
-  return router.store.state.currentMatches.find(
-    (d) => d.id === search.__data.matchId,
-  )?.store.state.routeLoaderData
+  return { router, loaderClient }
 }
 
 export async function render(opts: {
@@ -44,39 +42,34 @@ export async function render(opts: {
   req: express.Request
   res: ServerResponse
 }) {
-  const router = await getRouter(opts)
+  const { router, loaderClient } = await getRouter(opts)
 
-  router.update({
-    context: {
-      head: opts.head,
-    },
-    // ssrFooter: () => {
-    //   // After the router has been fully loaded, serialize its
-    //   // state right into the HTML. This way, the client can
-    //   // hydrate the router with the same state that the server
-    //   // used to render the HTML.
-    //   const routerState = router.dehydrate()
-    //   return (
-    //     <>
-    //       <script
-    //         suppressHydrationWarning
-    //         dangerouslySetInnerHTML={{
-    //           __html: `
-    //             window.__TANSTACK_DEHYDRATED_ROUTER__ = JSON.parse(${jsesc(
-    //               JSON.stringify(routerState),
-    //               {
-    //                 isScriptContext: true,
-    //                 wrap: true,
-    //                 json: true,
-    //               },
-    //             )})
-    //           `,
-    //         }}
-    //       ></script>
-    //     </>
-    //   )
-    // },
-  })
+  // ssrFooter: () => {
+  //   // After the router has been fully loaded, serialize its
+  //   // state right into the HTML. This way, the client can
+  //   // hydrate the router with the same state that the server
+  //   // used to render the HTML.
+  //   const routerState = router.dehydrate()
+  //   return (
+  //     <>
+  //       <script
+  //         suppressHydrationWarning
+  //         dangerouslySetInnerHTML={{
+  //           __html: `
+  //             window.__TANSTACK_DEHYDRATED_ROUTER__ = JSON.parse(${jsesc(
+  //               JSON.stringify(routerState),
+  //               {
+  //                 isScriptContext: true,
+  //                 wrap: true,
+  //                 json: true,
+  //               },
+  //             )})
+  //           `,
+  //         }}
+  //       ></script>
+  //     </>
+  //   )
+  // },
 
   // Kick off the router loading sequence, but don't wait for it to finish
   router.load()
@@ -90,7 +83,11 @@ export async function render(opts: {
     : 'onShellReady'
 
   const stream = ReactDOMServer.renderToPipeableStream(
-    <RouterProvider router={router} />,
+    <RouterProvider
+      router={router}
+      loaderClient={loaderClient}
+      head={opts.head}
+    />,
     {
       [callbackName]: () => {
         opts.res.statusCode = didError ? 500 : 200

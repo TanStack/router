@@ -1,7 +1,8 @@
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { createRouteConfig, Link, Outlet } from '@tanstack/react-router'
+import { Link, Outlet, RootRoute } from '@tanstack/react-router'
+import type { RouterContext } from '../router'
 
-createRouteConfig({
+export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
   component: Root,
 })
 
@@ -30,6 +31,7 @@ function Root() {
       <hr />
       <Outlet /> {/* Start rendering router matches */}
       <TanStackRouterDevtools position="bottom-right" />
+      <script type="module" src="/src/entry-client.tsx"></script>
     </>
   )
 }

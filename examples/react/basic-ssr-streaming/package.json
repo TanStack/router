@@ -4,17 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently 'npm:dev:*'",
-    "dev:build": "node server",
-    "dev:generate": "tsr watch",
-    "generate": "tsr generate",
-    "build": "npm run generate && npm run build:client && npm run build:server",
+    "dev": "node server",
+    "build": "npm run build:client && npm run build:server",
     "build:client": "vite build --outDir dist/client",
     "build:server": "vite build --ssr src/entry-server.tsx --outDir dist/server",
     "serve": "NODE_ENV=production node server",
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
+    "@tanstack/react-loaders": "workspace:0.0.1-beta.61",
     "@tanstack/react-router": "0.0.1-beta.61",
     "@tanstack/react-router-devtools": "0.0.1-beta.61",
     "@tanstack/router-cli": "0.0.1-beta.58",

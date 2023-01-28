@@ -46,9 +46,10 @@ export class Store<
 
     if (this.state === previous) return
 
+    this.options?.onUpdate?.(this.state, previous)
+
     this.queue.push(() => {
       this.listeners.forEach((listener) => listener(this.state, previous))
-      this.options?.onUpdate?.(this.state, previous)
     })
     this.#flush()
   }

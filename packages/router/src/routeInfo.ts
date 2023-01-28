@@ -1,9 +1,9 @@
-import { AnyRoute, Route } from './route'
+import { AnyRootRoute, AnyRoute, RootRoute, Route } from './route'
 import { AnyPathParams, AnySearchSchema, RootRouteId } from './route'
 import { IsAny, UnionToIntersection, Values } from './utils'
 
 export interface AnyRoutesInfo {
-  routeTree: AnyRoute
+  routeTree: AnyRootRoute
   routesById: Record<string, AnyRoute>
   routesByFullPath: Record<string, AnyRoute>
   routeIds: any
@@ -13,7 +13,7 @@ export interface AnyRoutesInfo {
 }
 
 export interface DefaultRoutesInfo {
-  routeTree: Route
+  routeTree: RootRoute
   routesById: Record<string, Route>
   routesByFullPath: Record<string, Route>
   routeIds: string
@@ -56,6 +56,9 @@ export type ParseRoute<TRouteTree> = TRouteTree extends AnyRoute
   : never
 
 export type ParseRouteChildren<TRouteTree> = TRouteTree extends Route<
+  any,
+  any,
+  any,
   any,
   any,
   any,

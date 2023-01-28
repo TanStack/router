@@ -1,16 +1,25 @@
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
+import { createMemoryHistory, Router } from '@tanstack/react-router'
 import jsesc from 'jsesc'
 import { ServerResponse } from 'http'
-import { createRouter } from './router'
+import { createLoaderClient } from './loaderClient'
 import express from 'express'
 
 // index.js
 import './fetch-polyfill'
+import { App } from '.'
+import { routeTree } from './routeTree'
 
 async function getRouter(opts: { url: string }) {
-  const router = createRouter()
+  const loaderClient = createLoaderClient()
+
+  const router = new Router({
+    routeTree: routeTree,
+    context: {
+      loaderClient,
+    },
+  })
 
   const memoryHistory = createMemoryHistory({
     initialEntries: [opts.url],
@@ -20,21 +29,7 @@ async function getRouter(opts: { url: string }) {
     history: memoryHistory,
   })
 
-  await router.load()
-
-  return router
-}
-
-export async function load(opts: { url: string }) {
-  const router = await getRouter(opts)
-
-  const search = router.store.state.currentLocation.search as {
-    __data: { matchId: string }
-  }
-
-  return router.store.state.currentMatches.find(
-    (d) => d.id === search.__data.matchId,
-  )?.store.state.routeLoaderData
+  return { router, loaderClient }
 }
 
 export async function render(opts: {
@@ -43,28 +38,30 @@ export async function render(opts: {
   req: express.Request
   res: ServerResponse
 }) {
-  const router = await getRouter(opts)
+  const { router, loaderClient } = await getRouter(opts)
 
-  const routerState = router.dehydrate()
+  await router.load()
+  const dehydratedRouter = router.dehydrate()
+  const dehydratedLoaderClient = loaderClient.dehydrate()
 
-  const routerStateScript = `<script>
-  window.__TANSTACK_DEHYDRATED_ROUTER__ = JSON.parse(${jsesc(
-    JSON.stringify(routerState),
-    {
-      isScriptContext: true,
-      wrap: true,
-      json: true,
-    },
-  )}
-    )
-    </script>`
-
-  const context = {
-    head: `${opts.head}${routerStateScript}`,
-  }
+  const head = `${opts.head}<script>
+  window.__DEHYDRATED__ = JSON.parse(
+    ${jsesc(
+      JSON.stringify({
+        dehydratedRouter,
+        dehydratedLoaderClient,
+      }),
+      {
+        isScriptContext: true,
+        wrap: true,
+        json: true,
+      },
+    )}
+  )
+</script>`
 
   const appHtml = ReactDOMServer.renderToString(
-    <RouterProvider router={router} context={context} />,
+    <App router={router} loaderClient={loaderClient} head={head} />,
   )
 
   opts.res.statusCode = 200

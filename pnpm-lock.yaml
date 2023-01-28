@@ -199,6 +199,7 @@ importers:
       '@babel/core': ^7.20.2
       '@babel/generator': ^7.20.4
       '@rollup/plugin-babel': ^6.0.2
+      '@tanstack/react-loaders': workspace:*
       '@tanstack/react-router': workspace:*
       '@tanstack/react-router-devtools': workspace:*
       '@tanstack/router-cli': 0.0.1-beta.58
@@ -219,6 +220,7 @@ importers:
       vite: ^3.2.3
       vite-plugin-babel: ^1.1.2
     dependencies:
+      '@tanstack/react-loaders': link:../../../packages/react-loaders
       '@tanstack/react-router': link:../../../packages/react-router
       '@tanstack/react-router-devtools': link:../../../packages/react-router-devtools
       '@tanstack/router-cli': link:../../../packages/router-cli
@@ -248,6 +250,7 @@ importers:
       '@babel/core': ^7.20.2
       '@babel/generator': ^7.20.4
       '@rollup/plugin-babel': ^6.0.2
+      '@tanstack/react-loaders': workspace:*
       '@tanstack/react-router': workspace:*
       '@tanstack/react-router-devtools': workspace:*
       '@tanstack/router-cli': 0.0.1-beta.58
@@ -268,6 +271,7 @@ importers:
       vite: ^3.2.3
       vite-plugin-babel: ^1.1.2
     dependencies:
+      '@tanstack/react-loaders': link:../../../packages/react-loaders
       '@tanstack/react-router': link:../../../packages/react-router
       '@tanstack/react-router-devtools': link:../../../packages/react-router-devtools
       '@tanstack/router-cli': link:../../../packages/router-cli
@@ -379,21 +383,29 @@ importers:
     specifiers:
       '@astrojs/netlify': ^1.2.1
       '@astrojs/react': ^1.2.2
+      '@tanstack/react-loaders': workspace:*
       '@tanstack/react-router': workspace:*
+      '@tanstack/react-router-devtools': workspace:*
+      '@tanstack/router': workspace:*
       '@tanstack/router-cli': 0.0.1-beta.58
       astro: ^1.6.12
       concurrently: ^7.6.0
       react: ^18.2.0
       react-dom: ^18.2.0
+      use-sync-external-store: ^1.2.0
     dependencies:
       '@astrojs/netlify': 1.2.1
       '@astrojs/react': 1.2.2_biqbaboplfbrettd7655fr4n2y
+      '@tanstack/react-loaders': link:../../../packages/react-loaders
       '@tanstack/react-router': link:../../../packages/react-router
+      '@tanstack/react-router-devtools': link:../../../packages/react-router-devtools
+      '@tanstack/router': link:../../../packages/router
       '@tanstack/router-cli': link:../../../packages/router-cli
       astro: 1.6.12
       concurrently: 7.6.0
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
+      use-sync-external-store: 1.2.0_react@18.2.0
 
   examples/react/with-react-query:
     specifiers:

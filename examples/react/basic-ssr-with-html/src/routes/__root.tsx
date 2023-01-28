@@ -1,25 +1,22 @@
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import * as React from 'react'
-import {
-  createRouteConfig,
-  Link,
-  Outlet,
-  useRouter,
-} from '@tanstack/react-router'
+import { Link, Outlet, RootRoute, useRouter } from '@tanstack/react-router'
+import { RouterContext } from '../router'
+import { useHead } from '../head'
 
-createRouteConfig({
+export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
   component: Root,
 })
 
 function Root() {
+  const head = useHead()
   const router = useRouter()
-
   // This is weak sauce, but it's just an example.
   // In the future, we'll make meta an official thing
   // and make it async as well to support data
-  const titleMatch = [...router.store.state.currentMatches]
+  const titleMatch = [...router.state.currentMatches]
     .reverse()
-    .find((d) => d.route.options.meta?.title)
+    .find((d) => d.context.getTitle)
 
   return (
     <html lang="en">
@@ -31,14 +28,14 @@ function Root() {
             content="width=device-width, initial-scale=1.0"
           />
           <title>
-            {titleMatch ? titleMatch.route.options.meta?.title : 'Vite App'}
+            {titleMatch ? titleMatch.context?.getTitle() : 'Vite App'}
           </title>
           <script src="https://cdn.tailwindcss.com"></script>
           <script
             suppressHydrationWarning
             dangerouslySetInnerHTML={{
               __html: `</script>
-              ${router.options.context.head}
+              ${head}
             <script>`,
             }}
           />

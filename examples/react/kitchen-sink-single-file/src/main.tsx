@@ -143,14 +143,7 @@ declare module '@tanstack/react-actions' {
 // Routes
 
 // Build our routes. We could do this in our component, too.
-const rootRoute = new RootRoute({
-  context: {
-    loaderClient,
-    actionClient,
-  },
-  onLoad: async ({ context }) => {
-    context.loaderClient
-  },
+const rootRoute = RootRoute.withRouterContext<{ auth: AuthContext }>()({
   component: () => {
     const loaderClient = useLoaderClient()
 
@@ -254,9 +247,6 @@ const indexRoute = new Route({
 const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  context: {
-    isDashboard: true,
-  },
   onLoad: ({ preload }) => invoicesLoader.load({ preload }),
   component: () => {
     return (
@@ -473,7 +463,7 @@ const invoiceRoute = new Route({
       })
       .parse(search),
   onLoad: async ({ params: { invoiceId }, preload, context }) =>
-    context.loaderClient.getLoader({ key: 'invoice' }).load({
+    invoiceLoader.load({
       variables: invoiceId,
       preload,
     }),
@@ -799,7 +789,7 @@ const authenticatedRoute = new Route({
           // Use latestLocation (not currentLocation) to get the live url
           // (as opposed to the committed url, which is technically async
           // and resolved after the pending state)
-          redirect: router.store.state.latestLocation.href,
+          redirect: router.state.latestLocation.href,
         },
       })
     }
@@ -944,11 +934,6 @@ const router = new ReactRouter({
       <Spinner />
     </div>
   ),
-  context: {
-    auth: {
-      status: 'loggedOut',
-    } as AuthContext,
-  },
   onRouteChange: () => {
     createInvoiceAction.clear()
     updateInvoiceAction.clear()

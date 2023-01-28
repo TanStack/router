@@ -1,9 +1,8 @@
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import { createMemoryHistory } from '@tanstack/react-router'
+import { createMemoryHistory, Router } from '@tanstack/react-router'
 import jsesc from 'jsesc'
 import { ServerResponse } from 'http'
-import { createRouter } from './router'
 import { createLoaderClient } from './loaderClient'
 import express from 'express'
 
@@ -11,10 +10,17 @@ import express from 'express'
 import './fetch-polyfill'
 import { App } from '.'
 import { RegisteredLoaders } from '@tanstack/react-loaders'
+import { routeTree } from './routeTree'
 
-async function getBase(opts: { url: string }) {
-  const router = createRouter()
+async function getRouter(opts: { url: string }) {
   const loaderClient = createLoaderClient()
+
+  const router = new Router({
+    routeTree: routeTree,
+    context: {
+      loaderClient,
+    },
+  })
 
   const memoryHistory = createMemoryHistory({
     initialEntries: [opts.url],
@@ -27,26 +33,26 @@ async function getBase(opts: { url: string }) {
   return { router, loaderClient }
 }
 
-export async function load(opts: { url: string }) {
-  const { router, loaderClient } = await getBase(opts)
+// export async function load(opts: { url: string }) {
+//   const { router, loaderClient } = await getBase(opts)
 
-  // Get the matchIds from the query string
-  const search = router.store.state.currentLocation.search as {
-    __load?: {
-      key: RegisteredLoaders[number]['key']
-      variables?: unknown
-    }
-  }
+//   // Get the matchIds from the query string
+//   const search = router.state.currentLocation.search as {
+//     __load?: {
+//       key: RegisteredLoaders[number]['key']
+//       variables?: unknown
+//     }
+//   }
 
-  const { key, variables } = search.__load ?? {}
+//   const { key, variables } = search.__load ?? {}
 
-  // No matchIds? Throw an error
-  if (!key) {
-    throw new Error('No loader key provided')
-  }
+//   // No matchIds? Throw an error
+//   if (!key) {
+//     throw new Error('No loader key provided')
+//   }
 
-  return loaderClient.getLoader({ key }).load({ variables })
-}
+//   return loaderClient.getLoader({ key }).load({ variables })
+// }
 
 export async function render(opts: {
   url: string
@@ -54,13 +60,13 @@ export async function render(opts: {
   req: express.Request
   res: ServerResponse
 }) {
-  const { router, loaderClient } = await getBase(opts)
+  const { router, loaderClient } = await getRouter(opts)
 
   await router.load()
   const dehydratedRouter = router.dehydrate()
   const dehydratedLoaderClient = loaderClient.dehydrate()
 
-  const routerStateScript = `<script>
+  const head = `${opts.head}<script>
   window.__DEHYDRATED__ = JSON.parse(
     ${jsesc(
       JSON.stringify({
@@ -76,16 +82,8 @@ export async function render(opts: {
   )
 </script>`
 
-  const context = {
-    head: `${opts.head}${routerStateScript}`,
-  }
-
-  router.update({
-    context,
-  })
-
   const appHtml = ReactDOMServer.renderToString(
-    <App router={router} loaderClient={loaderClient} />,
+    <App router={router} loaderClient={loaderClient} head={head} />,
   )
 
   opts.res.statusCode = 200

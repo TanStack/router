@@ -4,7 +4,7 @@ import { GetFrameworkGeneric } from './frameworks'
 import { AnyRoute, Route } from './route'
 import { AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
 import { AnyRouter, Router } from './router'
-import { Expand } from './utils'
+import { Expand, pick } from './utils'
 
 export interface RouteMatchStore<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
@@ -32,9 +32,12 @@ export class RouteMatch<
   route!: TRoute
   router!: Router<TRoutesInfo['routeTree'], TRoutesInfo>
   store!: Store<RouteMatchStore<TRoutesInfo, TRoute>>
+  state!: RouteMatchStore<TRoutesInfo, TRoute>
   id!: string
   pathname!: string
   params!: TRoute['__types']['allParams']
+  routeContext!: TRoute['__types']['routeContext']
+  context!: TRoute['__types']['context']
 
   component: GetFrameworkGeneric<'Component'>
   errorComponent: GetFrameworkGeneric<'ErrorComponent'>
@@ -66,13 +69,22 @@ export class RouteMatch<
       id: opts.id,
       pathname: opts.pathname,
       params: opts.params,
-      store: new Store<RouteMatchStore<TRoutesInfo, TRoute>>({
-        updatedAt: 0,
-        routeSearch: {},
-        search: {} as any,
-        status: 'idle',
-      }),
+      store: new Store<RouteMatchStore<TRoutesInfo, TRoute>>(
+        {
+          updatedAt: 0,
+          routeSearch: {},
+          search: {} as any,
+          status: 'idle',
+        },
+        {
+          onUpdate: (next) => {
+            this.state = next
+          },
+        },
+      ),
     })
+
+    this.state = this.store.state
 
     if (!this.#hasLoaders()) {
       this.store.setState((s) => ({
@@ -82,13 +94,85 @@ export class RouteMatch<
     }
   }
 
+  #hasLoaders = () => {
+    return !!(
+      this.route.options.onLoad ||
+      componentTypes.some((d) => this.route.options[d]?.preload)
+    )
+  }
+
+  __init = (opts: { parentMatch?: RouteMatch }) => {
+    // Validate the search params and stabilize them
+    this.parentMatch = opts.parentMatch
+
+    const parentSearch =
+      this.parentMatch?.state.search ?? this.router.state.latestLocation.search
+
+    try {
+      const validator =
+        typeof this.route.options.validateSearch === 'object'
+          ? this.route.options.validateSearch.parse
+          : this.route.options.validateSearch
+
+      let nextSearch = validator?.(parentSearch) ?? {}
+
+      this.store.setState((s) => ({
+        ...s,
+        routeSearch: nextSearch,
+        search: {
+          ...parentSearch,
+          ...nextSearch,
+        } as any,
+      }))
+
+      componentTypes.map(async (type) => {
+        const component = this.route.options[type]
+
+        if (typeof this[type] !== 'function') {
+          this[type] = component
+        }
+      })
+
+      const parent = this.parentMatch
+
+      this.routeContext =
+        this.route.options.getContext?.({
+          parentContext: parent?.routeContext,
+          context: parent?.context,
+          params: this.params,
+          search: this.state.search,
+        }) || ({} as any)
+
+      this.context = (
+        parent
+          ? { ...parent.context, ...this.routeContext }
+          : { ...this.router?.options.context, ...this.routeContext }
+      ) as any
+    } catch (err: any) {
+      console.error(err)
+      const error = new (Error as any)('Invalid search params found', {
+        cause: err,
+      })
+      error.code = 'INVALID_SEARCH_PARAMS'
+
+      this.store.setState((s) => ({
+        ...s,
+        status: 'error',
+        error: error,
+      }))
+
+      // Do not proceed with loading the route
+      return
+    }
+  }
+
   cancel = () => {
     this.abortController?.abort()
   }
 
   load = async (opts?: { preload?: boolean }): Promise<void> => {
     // If the match is invalid, errored or idle, trigger it to load
-    if (this.store.state.status !== 'pending') {
+    if (this.state.status !== 'pending') {
       await this.fetch(opts)
     }
   }
@@ -110,7 +194,7 @@ export class RouteMatch<
         // If the match was in an error state, set it
         // to a loading state again. Otherwise, keep it
         // as loading or resolved
-        if (this.store.state.status === 'idle') {
+        if (this.state.status === 'idle') {
           this.store.setState((s) => ({
             ...s,
             status: 'pending',
@@ -137,10 +221,11 @@ export class RouteMatch<
         if (this.route.options.onLoad) {
           return this.route.options.onLoad({
             params: this.params,
-            search: this.store.state.search,
+            search: this.state.search,
             signal: this.abortController.signal,
             preload: !!opts?.preload,
-            context: this.route.context,
+            routeContext: this.routeContext,
+            context: this.context,
           })
         }
         return
@@ -169,66 +254,5 @@ export class RouteMatch<
     })
 
     return this.__loadPromise
-  }
-
-  #hasLoaders = () => {
-    return !!(
-      this.route.options.onLoad ||
-      componentTypes.some((d) => this.route.options[d]?.preload)
-    )
-  }
-
-  __setParentMatch = (parentMatch?: RouteMatch) => {
-    if (!this.parentMatch && parentMatch) {
-      this.parentMatch = parentMatch
-    }
-  }
-
-  __validate = () => {
-    // Validate the search params and stabilize them
-    const parentSearch =
-      this.parentMatch?.store.state.search ??
-      this.router.store.state.latestLocation.search
-
-    try {
-      const validator =
-        typeof this.route.options.validateSearch === 'object'
-          ? this.route.options.validateSearch.parse
-          : this.route.options.validateSearch
-
-      let nextSearch = validator?.(parentSearch) ?? {}
-
-      this.store.setState((s) => ({
-        ...s,
-        routeSearch: nextSearch,
-        search: {
-          ...parentSearch,
-          ...nextSearch,
-        } as any,
-      }))
-
-      componentTypes.map(async (type) => {
-        const component = this.route.options[type]
-
-        if (typeof this[type] !== 'function') {
-          this[type] = component
-        }
-      })
-    } catch (err: any) {
-      console.error(err)
-      const error = new (Error as any)('Invalid search params found', {
-        cause: err,
-      })
-      error.code = 'INVALID_SEARCH_PARAMS'
-
-      this.store.setState((s) => ({
-        ...s,
-        status: 'error',
-        error: error,
-      }))
-
-      // Do not proceed with loading the route
-      return
-    }
   }
 }
