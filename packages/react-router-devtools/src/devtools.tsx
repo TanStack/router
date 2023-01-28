@@ -5,6 +5,7 @@ import {
   routerContext,
   invariant,
   useRouter,
+  AnyRouter,
 } from '@tanstack/react-router'
 import { formatDistanceStrict } from 'date-fns'
 
@@ -62,7 +63,7 @@ interface DevtoolsOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router?: Router<any, any, any>
+  router?: AnyRouter
 }
 
 interface DevtoolsPanelOptions {
@@ -89,7 +90,7 @@ interface DevtoolsPanelOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router?: Router<any, any, any>
+  router?: AnyRouter
 }
 
 const isServer = typeof window === 'undefined'

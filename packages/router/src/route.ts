@@ -201,11 +201,9 @@ type ResolveId<
   TParentRoute,
   TCustomId extends string,
   TPath extends string,
-> = TParentRoute extends Route<any>
-  ? RootRouteId
-  : TParentRoute extends { id: infer TParentId extends string }
+> = TParentRoute extends { id: infer TParentId extends string }
   ? RoutePrefix<TParentId, string extends TCustomId ? TPath : TCustomId>
-  : never
+  : RootRouteId
 
 export type InferFullSearchSchema<TRoute> = TRoute extends {
   isRoot: true
@@ -245,44 +243,6 @@ export interface AnyRoute
     any,
     any
   > {}
-
-export type RouteWithRoutesInfo<TRoute> = TRoute extends Route<
-  infer TParentRoute,
-  infer TPath,
-  infer TFullPath,
-  infer TCustomId,
-  infer TId,
-  infer TSearchSchema,
-  infer TFullSearchSchema,
-  infer TParams,
-  infer TAllParams,
-  infer TParentContext,
-  infer TAllParentContext,
-  infer TContext,
-  infer TAllContext,
-  infer TRouterContext,
-  infer TChildren,
-  infer TRouteInfo
->
-  ? Route<
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      TChildren,
-      any
-    >
-  : never
 
 export class Route<
   TParentRoute extends AnyRoute = AnyRoute,
