@@ -16,7 +16,7 @@ function Root() {
   // and make it async as well to support data
   const titleMatch = [...router.state.currentMatches]
     .reverse()
-    .find((d) => d.route.context?.title)
+    .find((d) => d.context?.title)
 
   return (
     <html lang="en">
@@ -27,9 +27,7 @@ function Root() {
             name="viewport"
             content="width=device-width, initial-scale=1.0"
           />
-          <title>
-            {titleMatch ? titleMatch.route.context?.title : 'Vite App'}
-          </title>
+          <title>{titleMatch ? titleMatch.context?.title : 'Vite App'}</title>
           <script src="https://cdn.tailwindcss.com"></script>
           <script
             suppressHydrationWarning

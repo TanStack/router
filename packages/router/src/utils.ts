@@ -7,13 +7,14 @@ export type PickAsRequired<T, K extends keyof T> = Omit<T, K> &
 export type PickAsPartial<T, K extends keyof T> = Omit<T, K> &
   Partial<Pick<T, K>>
 export type PickUnsafe<T, K> = K extends keyof T ? Pick<T, K> : never
-export type PickExtra<T, K> = Expand<{
+export type PickExtra<T, K> = {
   [TKey in keyof K as string extends TKey
     ? never
     : TKey extends keyof T
     ? never
     : TKey]: K[TKey]
-}>
+}
+
 export type PickRequired<T> = {
   [K in keyof T as undefined extends T[K] ? never : K]: T[K]
 }

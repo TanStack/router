@@ -1,20 +1,20 @@
 import * as React from 'react'
 import ReactDOM from 'react-dom/client'
 
-import { createRouter } from './router'
 import { App } from '.'
-import { createLoaderClient } from './loaderClient'
-
-const router = createRouter()
-const loaderClient = createLoaderClient()
+import { router } from './router'
+import { loaderClient } from './loaderClient'
 
 const { dehydratedRouter, dehydratedLoaderClient } = (window as any)
   .__DEHYDRATED__
 
-router.hydrate(dehydratedRouter)
+// Hydrate the loader client first
 loaderClient.hydrate(dehydratedLoaderClient)
+
+// Hydrate the router next
+router.hydrate(dehydratedRouter)
 
 ReactDOM.hydrateRoot(
   document,
-  <App router={router} loaderClient={loaderClient} />,
+  <App router={router} loaderClient={loaderClient} head={''} />,
 )

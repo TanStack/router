@@ -146,13 +146,11 @@ export type SearchParamOptions<
   TRoutesInfo extends AnyRoutesInfo,
   TFrom,
   TTo,
-  TFromSchema = Expand<
-    UnionToIntersection<
-      TRoutesInfo['fullSearchSchema'] &
-        RouteByPath<TRoutesInfo, TFrom> extends never
-        ? {}
-        : RouteByPath<TRoutesInfo, TFrom>['__types']['fullSearchSchema']
-    >
+  TFromSchema = UnionToIntersection<
+    TRoutesInfo['fullSearchSchema'] &
+      RouteByPath<TRoutesInfo, TFrom> extends never
+      ? {}
+      : RouteByPath<TRoutesInfo, TFrom>['__types']['fullSearchSchema']
   >,
   // Find the schema for the new path, and make optional any keys
   // that are already defined in the current schema
@@ -165,11 +163,11 @@ export type SearchParamOptions<
         RouteByPath<TRoutesInfo, TFrom>['__types']['fullSearchSchema']
       >
     >,
-  TFromFullSchema = Expand<
-    UnionToIntersection<TRoutesInfo['fullSearchSchema'] & TFromSchema>
+  TFromFullSchema = UnionToIntersection<
+    TRoutesInfo['fullSearchSchema'] & TFromSchema
   >,
-  TToFullSchema = Expand<
-    UnionToIntersection<TRoutesInfo['fullSearchSchema'] & TToSchema>
+  TToFullSchema = UnionToIntersection<
+    TRoutesInfo['fullSearchSchema'] & TToSchema
   >,
 > = keyof PickRequired<TToSchema> extends never
   ? {
@@ -187,12 +185,10 @@ export type PathParamOptions<
   TRoutesInfo extends AnyRoutesInfo,
   TFrom,
   TTo,
-  TFromSchema = Expand<
-    UnionToIntersection<
-      RouteByPath<TRoutesInfo, TFrom> extends never
-        ? {}
-        : RouteByPath<TRoutesInfo, TFrom>['__types']['allParams']
-    >
+  TFromSchema = UnionToIntersection<
+    RouteByPath<TRoutesInfo, TFrom> extends never
+      ? {}
+      : RouteByPath<TRoutesInfo, TFrom>['__types']['allParams']
   >,
   // Find the schema for the new path, and make optional any keys
   // that are already defined in the current schema
@@ -203,12 +199,8 @@ export type PathParamOptions<
         RouteByPath<TRoutesInfo, TFrom>['__types']['allParams']
       >
     >,
-  TFromFullParams = Expand<
-    UnionToIntersection<TRoutesInfo['allParams'] & TFromSchema>
-  >,
-  TToFullParams = Expand<
-    UnionToIntersection<TRoutesInfo['allParams'] & TToSchema>
-  >,
+  TFromFullParams = UnionToIntersection<TRoutesInfo['allParams'] & TFromSchema>,
+  TToFullParams = UnionToIntersection<TRoutesInfo['allParams'] & TToSchema>,
 > = keyof PickRequired<TToSchema> extends never
   ? {
       params?: ParamsReducer<TFromFullParams, TToFullParams>
@@ -295,15 +287,12 @@ export type CheckPath<
   ? TPass
   : CheckPathError<TRoutesInfo, Exclude<TPath, TRoutesInfo['routePaths']>>
 
-export type CheckPathError<
-  TRoutesInfo extends AnyRoutesInfo,
-  TInvalids,
-> = Expand<{
+export type CheckPathError<TRoutesInfo extends AnyRoutesInfo, TInvalids> = {
   Error: `${TInvalids extends string
     ? TInvalids
     : never} is not a valid route path.`
   'Valid Route Paths': TRoutesInfo['routePaths']
-}>
+}
 
 export type CheckId<TRoutesInfo extends AnyRoutesInfo, TPath, TPass> = Exclude<
   TPath,
@@ -312,15 +301,12 @@ export type CheckId<TRoutesInfo extends AnyRoutesInfo, TPath, TPass> = Exclude<
   ? TPass
   : CheckIdError<TRoutesInfo, Exclude<TPath, TRoutesInfo['routeIds']>>
 
-export type CheckIdError<
-  TRoutesInfo extends AnyRoutesInfo,
-  TInvalids,
-> = Expand<{
+export type CheckIdError<TRoutesInfo extends AnyRoutesInfo, TInvalids> = {
   Error: `${TInvalids extends string
     ? TInvalids
     : never} is not a valid route ID.`
   'Valid Route IDs': TRoutesInfo['routeIds']
-}>
+}
 
 export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
   ? TTo extends string

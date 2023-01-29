@@ -1,5 +1,4 @@
 import { Route } from '@tanstack/react-router'
-import * as React from 'react'
 import { rootRoute } from './__root'
 
 export const indexRoute = new Route({

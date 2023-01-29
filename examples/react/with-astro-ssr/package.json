@@ -17,7 +17,6 @@
     "@tanstack/react-router": "0.0.1-beta.61",
     "@tanstack/react-loaders": "0.0.1-beta.61",
     "@tanstack/react-router-devtools": "0.0.1-beta.61",
-    "@tanstack/router-cli": "0.0.1-beta.58",
     "astro": "^1.6.12",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

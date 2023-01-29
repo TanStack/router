@@ -1,6 +1,9 @@
+import { Route } from '@tanstack/react-router'
 import * as React from 'react'
-import { routeConfig } from '../../routes.generated/posts/index'
+import { postsRoute } from '../posts'
 
-routeConfig.generate({
+export const postsIndexRoute = new Route({
+  getParentRoute: () => postsRoute,
+  path: '/',
   component: () => <div>Select a post.</div>,
 })

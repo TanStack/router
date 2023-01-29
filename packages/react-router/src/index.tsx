@@ -29,6 +29,7 @@ import {
   RootRoute,
   AnySearchSchema,
   AnyPathParams,
+  AnyRouteMatch,
 } from '@tanstack/router'
 import { useStore } from '@tanstack/react-store'
 
@@ -283,7 +284,7 @@ export const Link: LinkFn = React.forwardRef((props: any, ref) => {
   )
 }) as any
 
-type MatchesContextValue = RouteMatch[]
+type MatchesContextValue = AnyRouteMatch[]
 
 export const matchesContext = React.createContext<MatchesContextValue>(null!)
 export const routerContext = React.createContext<{ router: RegisteredRouter }>(
@@ -405,7 +406,7 @@ export function useMatch<
   }
 
   useStore(
-    match!.store,
+    match!.store as any,
     (d) => opts?.track?.(match as any) ?? match,
     opts?.shallow,
   )
@@ -451,10 +452,8 @@ export function useSearch<
 
 export function useParams<
   TFrom extends keyof RegisteredRoutesInfo['routesById'] = '/',
-  TDefaultSelected = Expand<
-    RegisteredRoutesInfo['allParams'] &
-      RegisteredRoutesInfo['routesById'][TFrom]['__types']['allParams']
-  >,
+  TDefaultSelected = RegisteredRoutesInfo['allParams'] &
+    RegisteredRoutesInfo['routesById'][TFrom]['__types']['allParams'],
   TSelected = TDefaultSelected,
 >(opts?: {
   from: TFrom

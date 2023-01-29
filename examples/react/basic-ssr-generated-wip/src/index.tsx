@@ -1,16 +1,19 @@
 import * as React from 'react'
 
-import { RouterProvider } from '@tanstack/react-router'
-import { LoaderClientProvider } from '@tanstack/react-loaders'
-import { createRouter } from './router'
-import { createLoaderClient } from './loaderClient'
+import { RegisteredRouter, RouterProvider } from '@tanstack/react-router'
+import {
+  LoaderClientProvider,
+  RegisteredLoaderClient,
+} from '@tanstack/react-loaders'
 
 export function App({
   router,
   loaderClient,
+  head,
 }: {
-  router: ReturnType<typeof createRouter>
-  loaderClient: ReturnType<typeof createLoaderClient>
+  router: RegisteredRouter
+  loaderClient: RegisteredLoaderClient
+  head: string
 }) {
   return (
     <html lang="en">
@@ -23,7 +26,7 @@ export function App({
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `</script>
-          ${router.options.context.head}
+          ${head}
         <script>`,
           }}
         />

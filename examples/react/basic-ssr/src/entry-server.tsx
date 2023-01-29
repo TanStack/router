@@ -33,27 +33,6 @@ async function getRouter(opts: { url: string }) {
   return { router, loaderClient }
 }
 
-// export async function load(opts: { url: string }) {
-//   const { router, loaderClient } = await getBase(opts)
-
-//   // Get the matchIds from the query string
-//   const search = router.state.currentLocation.search as {
-//     __load?: {
-//       key: RegisteredLoaders[number]['key']
-//       variables?: unknown
-//     }
-//   }
-
-//   const { key, variables } = search.__load ?? {}
-
-//   // No matchIds? Throw an error
-//   if (!key) {
-//     throw new Error('No loader key provided')
-//   }
-
-//   return loaderClient.getLoader({ key }).load({ variables })
-// }
-
 export async function render(opts: {
   url: string
   head: string

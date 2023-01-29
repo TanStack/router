@@ -50,8 +50,8 @@ export type RouteOptions<
   TAllParams extends AnyPathParams = {},
   TParentContext extends AnyContext = AnyContext,
   TAllParentContext extends AnyContext = AnyContext,
-  TContext extends AnyContext = AnyContext,
-  TAllContext extends AnyContext = TContext,
+  TRouteContext extends AnyContext = AnyContext,
+  TContext extends AnyContext = TRouteContext,
 > = RouteOptionsBase<TCustomId, TPath> &
   FrameworkRouteOptions & {
     getParentRoute: () => TParentRoute
@@ -80,7 +80,7 @@ export type RouteOptions<
     }) => Promise<void> | void
 
     // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-    onLoad?: OnLoadFn<TFullSearchSchema, TAllParams, TContext, TAllContext>
+    onLoad?: OnLoadFn<TFullSearchSchema, TAllParams, TRouteContext, TContext>
 
     // This function will be called if the route's loader throws an error **during an attempted navigation**.
     // If you want to redirect due to an error, call `router.navigate()` from within this function.
@@ -114,7 +114,7 @@ export type RouteOptions<
             context: TAllParentContext
             parentContext: TParentContext
           }),
-    ) => TContext
+    ) => TRouteContext
   } & (
     | {
         parseParams?: never
@@ -220,9 +220,8 @@ export type InferFullSearchSchema<TRoute> = TRoute extends {
   ? TFullSearchSchema
   : {}
 
-export type ResolveFullSearchSchema<TParentRoute, TSearchSchema> = Expand<
+export type ResolveFullSearchSchema<TParentRoute, TSearchSchema> =
   InferFullSearchSchema<TParentRoute> & TSearchSchema
->
 
 export interface AnyRoute
   extends Route<
@@ -243,6 +242,8 @@ export interface AnyRoute
     any,
     any
   > {}
+
+type MergeFromParent<T, U> = IsAny<T, U, T & U>
 
 export class Route<
   TParentRoute extends AnyRoute = AnyRoute,
@@ -266,15 +267,17 @@ export class Route<
     ParsePathParams<TPath>,
     string
   >,
-  TAllParams extends Expand<
-    TParentRoute['__types']['allParams'] & TParams
-  > = Expand<TParentRoute['__types']['allParams'] & TParams>,
+  TAllParams extends MergeFromParent<
+    TParentRoute['__types']['allParams'],
+    TParams
+  > = MergeFromParent<TParentRoute['__types']['allParams'], TParams>,
   TParentContext extends TParentRoute['__types']['routeContext'] = TParentRoute['__types']['routeContext'],
   TAllParentContext extends TParentRoute['__types']['context'] = TParentRoute['__types']['context'],
-  TContext extends AnyContext = AnyContext,
-  TAllContext extends Expand<
-    TParentRoute['__types']['context'] & TContext
-  > = Expand<TParentRoute['__types']['context'] & TContext>,
+  TRouteContext extends AnyContext = AnyContext,
+  TContext extends MergeFromParent<
+    TParentRoute['__types']['context'],
+    TRouteContext
+  > = MergeFromParent<TParentRoute['__types']['context'], TRouteContext>,
   TRouterContext extends AnyContext = AnyContext,
   TChildren extends unknown = unknown,
   TRoutesInfo extends DefaultRoutesInfo = DefaultRoutesInfo,
@@ -283,6 +286,7 @@ export class Route<
     parentRoute: TParentRoute
     path: TPath
     fullPath: TFullPath
+    customId: TCustomId
     id: TId
     searchSchema: TSearchSchema
     fullSearchSchema: TFullSearchSchema
@@ -290,8 +294,8 @@ export class Route<
     allParams: TAllParams
     parentContext: TParentContext
     allParentContext: TAllParentContext
-    routeContext: TContext
-    context: TAllContext
+    routeContext: TRouteContext
+    context: TContext
     children: TChildren
     routesInfo: TRoutesInfo
     routerContext: TRouterContext
@@ -303,14 +307,14 @@ export class Route<
     TPath,
     InferFullSearchSchema<TParentRoute>,
     TSearchSchema,
-    Expand<InferFullSearchSchema<TParentRoute> & TSearchSchema>,
+    InferFullSearchSchema<TParentRoute> & TSearchSchema,
     TParentRoute['__types']['allParams'],
     TParams,
+    TAllParams,
     TParentContext,
     TAllParentContext,
-    TAllParams,
-    TContext,
-    TAllContext
+    TRouteContext,
+    TContext
   >
 
   // Set up in this.init()
@@ -338,8 +342,8 @@ export class Route<
       TAllParams,
       TParentContext,
       TAllParentContext,
-      TContext,
-      TAllContext
+      TRouteContext,
+      TContext
     >,
   ) {
     this.options = (options as any) || {}
@@ -362,8 +366,8 @@ export class Route<
       TAllParams,
       TParentContext,
       TAllParentContext,
-      TContext,
-      TAllContext
+      TRouteContext,
+      TContext
     > &
       RouteOptionsBaseIntersection<TCustomId, TPath>
 
@@ -430,8 +434,8 @@ export class Route<
     TAllParams,
     TParentContext,
     TAllParentContext,
+    TRouteContext,
     TContext,
-    TAllContext,
     TRouterContext,
     TNewChildren,
     TRoutesInfo
@@ -467,7 +471,7 @@ export class RootRoute<
   TRouterContext,
   TRouterContext,
   TContext,
-  Expand<TContext & TRouterContext>,
+  MergeFromParent<TRouterContext, TContext>,
   TRouterContext
 > {
   constructor(
@@ -508,7 +512,7 @@ export class RootRoute<
           TRouterContext,
           TRouterContext,
           TContext,
-          Expand<TRouterContext & TContext>
+          TRouterContext & TContext
         >,
         'path' | 'id' | 'getParentRoute' | 'caseSensitive'
       >,

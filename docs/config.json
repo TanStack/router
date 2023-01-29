@@ -261,6 +261,10 @@
           "to": "examples/react/basic-ssr?file=src%2Froutes%2F__root.tsx"
         },
         {
+          "label": "Basic SSR w/ <html>",
+          "to": "examples/react/basic-ssr-with-html?file=src%2Froutes%2F__root.tsx"
+        },
+        {
           "label": "Basic SSR Streaming (WIP)",
           "to": "examples/react/basic-ssr-streaming?file=src%2Froutes%2F__root.tsx"
         },

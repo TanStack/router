@@ -11,9 +11,8 @@ export interface RouteMatchStore<
   TRoute extends AnyRoute = Route,
 > {
   routeSearch: TRoute['__types']['searchSchema']
-  search: Expand<
-    TRoutesInfo['fullSearchSchema'] & TRoute['__types']['fullSearchSchema']
-  >
+  search: TRoutesInfo['fullSearchSchema'] &
+    TRoute['__types']['fullSearchSchema']
   status: 'idle' | 'pending' | 'success' | 'error'
   error?: unknown
   updatedAt: number
@@ -24,6 +23,8 @@ const componentTypes = [
   'errorComponent',
   'pendingComponent',
 ] as const
+
+export interface AnyRouteMatch extends RouteMatch<any, any> {}
 
 export class RouteMatch<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,

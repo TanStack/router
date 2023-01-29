@@ -32,7 +32,7 @@ import {
   AnyContext,
 } from './route'
 import { RoutesInfo, AnyRoutesInfo, RoutesById } from './routeInfo'
-import { RouteMatch, RouteMatchStore } from './routeMatch'
+import { AnyRouteMatch, RouteMatch, RouteMatchStore } from './routeMatch'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
   functionalUpdate,
@@ -145,15 +145,15 @@ export interface LoaderState<
 }
 
 export interface RouterStore<
-  TSearchObj extends AnySearchSchema = {},
+  TRoutesInfo extends AnyRoutesInfo = AnyRoutesInfo,
   TState extends LocationState = LocationState,
 > {
   status: 'idle' | 'pending'
-  latestLocation: ParsedLocation<TSearchObj, TState>
-  currentMatches: RouteMatch[]
-  currentLocation: ParsedLocation<TSearchObj, TState>
-  pendingMatches?: RouteMatch[]
-  pendingLocation?: ParsedLocation<TSearchObj, TState>
+  latestLocation: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
+  currentMatches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
+  currentLocation: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
+  pendingMatches?: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
+  pendingLocation?: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
   lastUpdated: number
 }
 
@@ -267,8 +267,8 @@ export class Router<
   nextAction: undefined | 'push' | 'replace'
   navigationPromise: undefined | Promise<void>
 
-  store: Store<RouterStore<TRoutesInfo['fullSearchSchema']>>
-  state: RouterStore<TRoutesInfo['fullSearchSchema']>
+  store: Store<RouterStore<TRoutesInfo>>
+  state: RouterStore<TRoutesInfo>
   startedLoadingAt = Date.now()
   resolveNavigation = () => {}
 
@@ -282,7 +282,7 @@ export class Router<
       fetchServerDataFn: options?.fetchServerDataFn ?? defaultFetchServerDataFn,
     }
 
-    this.store = new Store(getInitialRouterState(), {
+    this.store = new Store<RouterStore<TRoutesInfo>>(getInitialRouterState(), {
       onUpdate: (state) => {
         this.state = state
       },
@@ -462,8 +462,8 @@ export class Router<
 
     const previousMatches = this.state.currentMatches
 
-    const exiting: RouteMatch[] = [],
-      staying: RouteMatch[] = []
+    const exiting: AnyRouteMatch[] = [],
+      staying: AnyRouteMatch[] = []
 
     previousMatches.forEach((d) => {
       if (matches.find((dd) => dd.id === d.id)) {
@@ -559,7 +559,7 @@ export class Router<
   }
 
   matchRoutes = (pathname: string, opts?: { strictParseParams?: boolean }) => {
-    const matches: RouteMatch[] = []
+    const matches: AnyRouteMatch[] = []
 
     if (!this.routeTree) {
       return matches
@@ -1155,7 +1155,7 @@ export class Router<
 // Detect if we're in the DOM
 const isServer = typeof window === 'undefined' || !window.document.createElement
 
-function getInitialRouterState(): RouterStore {
+function getInitialRouterState(): RouterStore<any, any> {
   return {
     status: 'idle',
     latestLocation: null!,

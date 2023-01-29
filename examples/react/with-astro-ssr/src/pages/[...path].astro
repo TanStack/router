@@ -5,7 +5,6 @@ import App from "../components/App";
 import { routeTree } from "../routeTree";
 import { createLoaderClient } from "../loaderClient";
 
-
 const req = Astro.request
 const fullUrl = new URL(req.url)
 const url = fullUrl.href.replace(fullUrl.origin, '')
@@ -32,18 +31,7 @@ const dehydratedLoaderClient = loaderClient.dehydrate()
 const dehydratedRouter = router.dehydrate()
 ---
 
-<!DOCTYPE html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Astro + TanStack Router</title>
-		<script src="https://cdn.tailwindcss.com"></script>
-	</head>
-	<body>
-		<App dehydratedRouter={dehydratedRouter} dehydratedLoaderClient={dehydratedLoaderClient} client:load />
-	</body>
- </html>
+<App dehydratedRouter={dehydratedRouter} dehydratedLoaderClient={dehydratedLoaderClient} client:load />
 
 <style is:global>
 	:root {

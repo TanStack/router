@@ -1,20 +1,46 @@
-import { useLoaderInstance } from '@tanstack/react-loaders'
-import { useParams } from '@tanstack/react-router'
+import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
+import { Route, useParams } from '@tanstack/react-router'
 import * as React from 'react'
-import { routeConfig } from '../../routes.generated/posts/$postId'
+import { postsLoader, postsRoute } from '../posts'
 
-routeConfig.generate({
+export type PostType = {
+  id: string
+  title: string
+  body: string
+}
+
+export const postLoader = new Loader({
+  key: 'post',
+  loader: async (postId: string) => {
+    console.log(`Fetching post with id ${postId}...`)
+
+    await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
+
+    return fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`).then(
+      (r) => r.json() as Promise<PostType>,
+    )
+  },
+  onAllInvalidate: async () => {
+    await postsLoader.invalidateAll()
+  },
+})
+
+export const postIdRoute = new Route({
+  getParentRoute: () => postsRoute,
+  path: '$postId',
   component: Post,
   onLoad: async ({ params: { postId }, preload, context }) =>
-    context.loaderClient.getLoader('post').load({
+    context.loaderClient.getLoader({ key: 'post' }).load({
       variables: postId,
       preload,
     }),
 })
 
 function Post() {
-  const { postId } = useParams({ from: routeConfig.id })
-  const { post } = useLoaderInstance({ key: 'post', variables: postId })
+  const { postId } = useParams({ from: postIdRoute.id })
+  const {
+    state: { data: post },
+  } = useLoaderInstance({ key: 'post', variables: postId })
 
   return (
     <div className="space-y-2">

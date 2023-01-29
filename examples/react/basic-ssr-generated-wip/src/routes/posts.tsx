@@ -1,21 +1,42 @@
 import * as React from 'react'
-import { Link, Outlet, useMatch } from '@tanstack/react-router'
-import { routeConfig } from '../routes.generated/posts'
-import { PostType } from './posts/$postId'
-import { postspostIdRoute } from '../routes.generated/posts/$postId.client'
+import { isolate, isolateFn } from '../mri'
+import { Link, Outlet, Route } from '@tanstack/react-router'
+import { rootRoute } from './__root'
+// import { loaderClient } from '../entry-client'
+import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
+import { postIdRoute, PostType } from './posts/$postId'
 
-routeConfig.generate({
-  component: Posts,
-  onLoad: async () => {
-    return {
-      posts: await fetchPosts(),
-    }
-  },
+export const postsLoader = new Loader({
+  key: 'posts',
+  loader: isolateFn(
+    {
+      type: 'serverOnly',
+    },
+    async () => {
+      console.log('Fetching posts...')
+      await new Promise((r) =>
+        setTimeout(r, 300 + Math.round(Math.random() * 300)),
+      )
+      return fetch('https://jsonplaceholder.typicode.com/posts')
+        .then((d) => d.json() as Promise<PostType[]>)
+        .then((d) => d.slice(0, 10))
+    },
+  ),
+})
+
+export const postsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: 'posts',
+  component: isolateFn({ type: 'react-lazy' }, Posts),
   errorComponent: () => 'Oh crap',
+  onLoad: ({ context, preload }) =>
+    context.loaderClient.getLoader({ key: 'posts' }).load({ preload }),
 })
 
 function Posts() {
-  const { posts } = useLoaderInstance({ from: routeConfig.id })
+  const {
+    state: { data: posts },
+  } = useLoaderInstance({ key: 'posts' })
 
   return (
     <div className="p-2 flex gap-2">
@@ -24,7 +45,7 @@ function Posts() {
           return (
             <li key={post.id} className="whitespace-nowrap">
               <Link
-                to={postspostIdRoute.id}
+                to={postIdRoute.id}
                 params={{
                   postId: post.id,
                 }}

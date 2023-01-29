@@ -1,5 +1,5 @@
 import React from 'react'
-import { RouteMatch } from '@tanstack/react-router'
+import { AnyRouteMatch, RouteMatch } from '@tanstack/react-router'
 
 import { Theme, useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
@@ -25,7 +25,7 @@ type StyledComponent<T> = T extends 'button'
   ? React.HTMLAttributes<HTMLElementTagNameMap[T]>
   : never
 
-export function getStatusColor(match: RouteMatch, theme: Theme) {
+export function getStatusColor(match: AnyRouteMatch, theme: Theme) {
   return match.state.status === 'pending'
     ? theme.active
     : match.state.status === 'error'
