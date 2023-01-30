@@ -1,4 +1,4 @@
-type IsolationMode = 'serverOnly' | 'react-lazy'
+type IsolationMode = 'normal' | 'serverOnly' | 'react-lazy'
 
 export function isolateFn<T extends (...args: any[]) => any>(
   opts: {

@@ -444,12 +444,31 @@ export class Route<
     return this as any
   }
 
-  // generate: () => {
-  //   invariant(
-  //     false,
-  //     `routeConfig.generate() is used by TanStack Router's file-based routing code generation and should not actually be called during runtime. `,
-  //   )
-  // },
+  generate = (
+    options: Omit<
+      RouteOptions<
+        TParentRoute,
+        TCustomId,
+        TPath,
+        InferFullSearchSchema<TParentRoute>,
+        TSearchSchema,
+        TFullSearchSchema,
+        TParentRoute['__types']['allParams'],
+        TParams,
+        TAllParams,
+        TParentContext,
+        TAllParentContext,
+        TRouteContext,
+        TContext
+      >,
+      'path'
+    >,
+  ) => {
+    invariant(
+      false,
+      `route.generate() is used by TanStack Router's file-based routing code generation and should not actually be called during runtime. `,
+    )
+  }
 }
 
 export type AnyRootRoute = RootRoute<any, any, any>

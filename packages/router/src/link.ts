@@ -238,6 +238,7 @@ export type ToIdOption<
 export interface ActiveOptions {
   exact?: boolean
   includeHash?: boolean
+  includeSearch?: boolean
 }
 
 export type LinkOptions<

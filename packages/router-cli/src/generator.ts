@@ -279,7 +279,7 @@ export async function generator(config: Config) {
       }
 
       routeConfigImports.push(
-        `import { routeConfig as ${node.variable}Route } from './${removeExt(
+        `import { route as ${node.variable}Route } from './${removeExt(
           path
             .relative(config.routeGenDirectory, node.genPath)
             .replace(/\\/gi, '/'),
@@ -287,7 +287,7 @@ export async function generator(config: Config) {
       )
 
       routeConfigClientImports.push(
-        `import { routeConfig as ${node.variable}Route } from './${removeExt(
+        `import { route as ${node.variable}Route } from './${removeExt(
           path
             .relative(
               config.routeGenDirectory,
@@ -334,8 +334,8 @@ export async function generator(config: Config) {
     (d) => d,
   ])
 
-  const routeConfig = `export const routeConfig = rootRoute.addChildren([\n  ${routeConfigChildrenText}\n])\nexport type __GeneratedRouteConfig = typeof routeConfig`
-  const routeConfigClient = `export const routeConfigClient = rootRoute.addChildren([\n  ${routeConfigChildrenText}\n]) as __GeneratedRouteConfig`
+  const routeConfig = `export const routeTree = rootRoute.addChildren([\n  ${routeConfigChildrenText}\n])\nexport type __GeneratedRouteConfig = typeof routeTree`
+  const routeConfigClient = `export const routeTreeClient = rootRoute.addChildren([\n  ${routeConfigChildrenText}\n]) as __GeneratedRouteConfig`
 
   const routeConfigFileContent = [
     routeConfigImports.join('\n'),
@@ -343,18 +343,18 @@ export async function generator(config: Config) {
   ].join('\n\n')
 
   const routeConfigClientFileContent = [
-    `import type { __GeneratedRouteConfig } from './routeConfig'`,
+    `import type { __GeneratedRouteConfig } from './routeTree'`,
     routeConfigClientImports.join('\n'),
     routeConfigClient,
   ].join('\n\n')
 
   if (nodesChanged) {
     queueWriteFile(
-      path.resolve(config.routeGenDirectory, 'routeConfig.ts'),
+      path.resolve(config.routeGenDirectory, 'routeTree.ts'),
       routeConfigFileContent,
     )
     queueWriteFile(
-      path.resolve(config.routeGenDirectory, 'routeConfig.client.ts'),
+      path.resolve(config.routeGenDirectory, 'routeTree.client.ts'),
       routeConfigClientFileContent,
     )
   }
@@ -399,8 +399,8 @@ export async function generator(config: Config) {
 
   const unusedFiles = allFiles.filter((d) => {
     if (
-      d === path.resolve(config.routeGenDirectory, 'routeConfig.ts') ||
-      d === path.resolve(config.routeGenDirectory, 'routeConfig.client.ts')
+      d === path.resolve(config.routeGenDirectory, 'routeTree.ts') ||
+      d === path.resolve(config.routeGenDirectory, 'routeTree.client.ts')
     ) {
       return false
     }

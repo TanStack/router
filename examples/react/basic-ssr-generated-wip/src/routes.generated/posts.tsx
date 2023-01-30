@@ -1,4 +1,5 @@
-import { route } from '../routes.generated/posts';
+import { lazy } from '@tanstack/react-router';
+import { route as parentRoute } from "./__root";
 import * as React from 'react';
 import { Link, Outlet, Route } from '@tanstack/react-router';
 import { rootRoute } from './__root';
@@ -13,9 +14,7 @@ export const postsLoader = new Loader({
     return fetch('https://jsonplaceholder.typicode.com/posts').then(d => (d.json() as Promise<PostType[]>)).then(d => d.slice(0, 10));
   }
 });
-export const postsRoute = 
-
-new Route({
+export const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
   component: Posts,
@@ -55,3 +54,4 @@ function Posts() {
       <Outlet />
     </div>;
 }
+export { route };

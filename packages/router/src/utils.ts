@@ -166,3 +166,26 @@ export function isPlainObject(o: any) {
 function hasObjectPrototype(o: any) {
   return Object.prototype.toString.call(o) === '[object Object]'
 }
+
+export function partialDeepEqual(a: any, b: any): boolean {
+  if (a === b) {
+    return true
+  }
+
+  if (typeof a !== typeof b) {
+    return false
+  }
+
+  if (isPlainObject(a) && isPlainObject(b)) {
+    return !Object.keys(b).some((key) => !partialDeepEqual(a[key], b[key]))
+  }
+
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return (
+      a.length === b.length &&
+      a.every((item, index) => partialDeepEqual(item, b[index]))
+    )
+  }
+
+  return false
+}

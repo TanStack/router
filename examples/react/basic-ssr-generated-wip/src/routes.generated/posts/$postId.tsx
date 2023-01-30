@@ -1,4 +1,5 @@
-import { route } from '../../routes.generated/posts/$postId';
+import { lazy } from '@tanstack/react-router';
+import { route as parentRoute } from "../posts";
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders';
 import { Route, useParams } from '@tanstack/react-router';
 import * as React from 'react';
@@ -19,9 +20,7 @@ export const postLoader = new Loader({
     await postsLoader.invalidateAll();
   }
 });
-export const postIdRoute = 
-
-new Route({
+export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
   component: Post,
@@ -57,3 +56,4 @@ function Post() {
       <div className="text-sm">{post.body}</div>
     </div>;
 }
+export { route };

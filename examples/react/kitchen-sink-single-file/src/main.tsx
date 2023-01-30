@@ -680,10 +680,11 @@ const usersRoute = new Route({
             return (
               <div key={user.id}>
                 <Link
-                  to="/dashboard/users/$userId"
-                  params={{
+                  to="/dashboard/users/user"
+                  search={(d) => ({
+                    ...d,
                     userId: user.id,
-                  }}
+                  })}
                   className="block py-2 px-3 text-blue-700"
                   activeProps={{ className: `font-bold` }}
                 >
@@ -691,9 +692,10 @@ const usersRoute = new Route({
                     {user.name}{' '}
                     <MatchRoute
                       to={userRoute.id}
-                      params={{
+                      search={(d) => ({
+                        ...d,
                         userId: user.id,
-                      }}
+                      })}
                       pending
                     >
                       <Spinner />
@@ -743,13 +745,16 @@ const usersIndexRoute = new Route({
 
 const userRoute = new Route({
   getParentRoute: () => usersRoute,
-  path: '$userId',
-  parseParams: ({ userId }) => ({ userId: Number(userId) }),
-  stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
-  onLoad: async ({ params: { userId }, preload }) =>
+  path: 'user',
+  // parseParams: ({ userId }) => ({ userId: Number(userId) }),
+  // stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
+  validateSearch: z.object({
+    userId: z.number(),
+  }),
+  onLoad: async ({ search: { userId }, preload }) =>
     userLoader.load({ variables: userId, preload }),
   component: () => {
-    const { userId } = useParams({ from: userRoute.id })
+    const { userId } = useSearch({ from: userRoute.id })
 
     const userLoaderInstance = useLoaderInstance({
       key: userLoader.key,

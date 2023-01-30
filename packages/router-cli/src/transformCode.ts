@@ -12,8 +12,6 @@ import {
 import path from 'path'
 
 export const isolatedProperties = [
-  'loader',
-  'action',
   'component',
   'errorComponent',
   'pendingComponent',
@@ -53,7 +51,6 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
           Program: {
             enter(programPath) {
               // Remove all properties except for our isolated one
-
               if (node.isRoot) {
                 let foundImport = false
 
@@ -61,7 +58,7 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
                   ImportSpecifier(importPath) {
                     if (
                       t.isIdentifier(importPath.node.imported) &&
-                      importPath.node.imported.name === 'createRouteConfig'
+                      importPath.node.imported.name === 'Route'
                     ) {
                       foundImport = true
                     }
@@ -71,7 +68,7 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
                 if (!foundImport) {
                   programPath.node.body.unshift(
                     babel.template.statement(
-                      `import { createRouteConfig } from '@tanstack/react-router'`,
+                      `import { Route } from '@tanstack/react-router'`,
                     )(),
                   )
                 }
@@ -81,7 +78,7 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
                   ImportSpecifier(importPath) {
                     if (
                       t.isIdentifier(importPath.node.imported) &&
-                      importPath.node.imported.name === rootRoute
+                      importPath.node.imported.name === 'route'
                     ) {
                       foundImport = true
                       if (t.isImportDeclaration(importPath.parentPath.node)) {
@@ -99,7 +96,7 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
                 if (!foundImport) {
                   programPath.node.body.unshift(
                     babel.template.statement(
-                      `import { routeConfig } from '${relativeImportPath.replace(
+                      `import { route } from '${relativeImportPath.replace(
                         /\\/gi,
                         '/',
                       )}'`,
@@ -114,7 +111,7 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
     ],
   })
 
-  const separator = node.isRoot ? 'createRouteConfig(' : 'routeConfig.generate('
+  const separator = 'new Route('
 
   if (!originalFile?.code) {
     return `${file?.code}\n\n${separator}{\n\n})`
@@ -160,7 +157,7 @@ export async function isolateOptionToExport(
               programPath.traverse({
                 Identifier(path) {
                   if (
-                    path.node.name === 'createRouteConfig' &&
+                    path.node.name === 'Route' &&
                     t.isCallExpression(path.parentPath.node)
                   ) {
                     const options = getCreateRouteConfigOptions(path)
@@ -180,9 +177,9 @@ export async function isolateOptionToExport(
                         if (program?.isProgram()) {
                           program.node.body.push(
                             babel.template.statement(
-                              `export const ${opts.isolate} = $LOADER`,
+                              `export const ${opts.isolate} = $VAR`,
                             )({
-                              $LOADER: property.value,
+                              $VAR: property.value,
                             }),
                           )
                         }
@@ -224,9 +221,9 @@ export async function isolateOptionToExport(
                           if (program?.isProgram()) {
                             program.node.body.push(
                               babel.template.statement(
-                                `export const ${opts.isolate} = $LOADER`,
+                                `export const ${opts.isolate} = $VAR`,
                               )({
-                                $LOADER: property.value,
+                                $VAR: property.value,
                               }),
                             )
                           }
@@ -325,7 +322,7 @@ export async function generateRouteConfig(
               ImportSpecifier(path) {
                 if (t.isIdentifier(path.node.imported)) {
                   if (!node.isRoot) {
-                    if (path.node.imported.name === rootRoute) {
+                    if (path.node.imported.name === 'route') {
                       path.parentPath.remove()
 
                       const program = path.findParent((d) => d.isProgram())
@@ -333,7 +330,7 @@ export async function generateRouteConfig(
                       if (program?.isProgram()) {
                         program.node.body.unshift(
                           babel.template.statement(
-                            `import { routeConfig as parentRouteConfig } from '$IMPORT'`,
+                            `import { route as parentRoute } from '$IMPORT'`,
                           )({
                             $IMPORT: relativeParentRoutePath,
                           }),
@@ -347,7 +344,7 @@ export async function generateRouteConfig(
                 let options
 
                 if (node.isRoot) {
-                  if (iPath.node.name === 'createRouteConfig') {
+                  if (iPath.node.name === 'Route') {
                     if (t.isCallExpression(iPath.parentPath.node)) {
                       if (
                         t.isExpressionStatement(
@@ -357,7 +354,7 @@ export async function generateRouteConfig(
                         iPath.parentPath.parentPath?.replaceWith(
                           t.variableDeclaration('const', [
                             t.variableDeclarator(
-                              t.identifier(rootRoute),
+                              t.identifier('route'),
                               iPath.parentPath.node,
                             ),
                           ]) as any,
@@ -369,8 +366,8 @@ export async function generateRouteConfig(
                   if (iPath.node.name === 'generate') {
                     if (t.isMemberExpression(iPath.parentPath.node)) {
                       if (t.isIdentifier(iPath.parentPath.node.object)) {
-                        iPath.node.name = 'createRoute'
-                        iPath.parentPath.node.object.name = 'parentRouteConfig'
+                        iPath.node.name = 'Route'
+                        iPath.parentPath.node.object.name = 'parentRoute'
 
                         options = getRouteConfigGenerateOptions(iPath)
                       }
@@ -487,7 +484,7 @@ export async function generateRouteConfig(
 
                     if (node.isRoot) {
                       program.node.body[index] = babel.template.statement(
-                        `const routeConfig = createRouteConfig(
+                        `const route = new Route(
                           $OPTIONS
                           )`,
                       )({
@@ -495,7 +492,7 @@ export async function generateRouteConfig(
                       })
                     } else {
                       program.node.body[index] = babel.template.statement(
-                        `const routeConfig = parentRouteConfig.createRoute(
+                        `const route = new Route(
                           $OPTIONS
                           )`,
                       )({
@@ -513,17 +510,17 @@ export async function generateRouteConfig(
               )(),
             )
 
-            // Add the routeConfig exports
+            // Add the route exports
             programPath.node.body.push(
               babel.template.statement(
                 clientOnly
-                  ? `export { routeConfig, routeConfig as ${node.variable}Route }`
-                  : `export { routeConfig }`,
+                  ? `export { route, route as ${node.variable}Route }`
+                  : `export { route }`,
               )(),
             )
 
             cleanUnusedCode(programPath, state, [
-              rootRoute,
+              'route',
               `${node.variable}Route`,
             ])
           },

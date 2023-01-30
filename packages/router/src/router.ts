@@ -44,6 +44,7 @@ import {
   Timeout,
   Updater,
   replaceEqualDeep,
+  partialDeepEqual,
 } from './utils'
 import {
   createBrowserHistory,
@@ -188,6 +189,7 @@ export interface MatchLocation {
 export interface MatchRouteOptions {
   pending?: boolean
   caseSensitive?: boolean
+  includeSearch?: boolean
   fuzzy?: boolean
 }
 
@@ -729,7 +731,7 @@ export class Router<
     TTo extends string = '.',
   >({
     from,
-    to = '.' as any,
+    to = '' as any,
     search,
     hash,
     replace,
@@ -780,26 +782,33 @@ export class Router<
     } as any
 
     const next = this.buildNext(location)
+    const baseLocation = opts?.pending
+      ? this.state.pendingLocation
+      : this.state.currentLocation
 
-    if (opts?.pending) {
-      if (!this.state.pendingLocation) {
-        return false
-      }
-
-      return matchPathname(
-        this.basepath,
-        this.state.pendingLocation!.pathname,
-        {
-          ...opts,
-          to: next.pathname,
-        },
-      ) as any
+    if (!baseLocation) {
+      return false
     }
 
-    return matchPathname(this.basepath, this.state.currentLocation.pathname, {
+    const match = matchPathname(this.basepath, baseLocation.pathname, {
       ...opts,
       to: next.pathname,
     }) as any
+
+    if (!match) {
+      return false
+    }
+
+    if (opts?.includeSearch ?? true) {
+      console.log(
+        baseLocation.search,
+        next.search,
+        partialDeepEqual(baseLocation.search, next.search),
+      )
+      return partialDeepEqual(baseLocation.search, next.search) ? match : false
+    }
+
+    return match
   }
 
   buildLink = <
@@ -850,19 +859,25 @@ export class Router<
       userPreloadDelay ?? this.options.defaultPreloadDelay ?? 0
 
     // Compare path/hash for matches
-    const pathIsEqual = this.state.currentLocation.pathname === next.pathname
     const currentPathSplit = this.state.currentLocation.pathname.split('/')
     const nextPathSplit = next.pathname.split('/')
     const pathIsFuzzyEqual = nextPathSplit.every(
       (d, i) => d === currentPathSplit[i],
     )
-    const hashIsEqual = this.state.currentLocation.hash === next.hash
     // Combine the matches based on user options
-    const pathTest = activeOptions?.exact ? pathIsEqual : pathIsFuzzyEqual
-    const hashTest = activeOptions?.includeHash ? hashIsEqual : true
+    const pathTest = activeOptions?.exact
+      ? this.state.currentLocation.pathname === next.pathname
+      : pathIsFuzzyEqual
+    const hashTest = activeOptions?.includeHash
+      ? this.state.currentLocation.hash === next.hash
+      : true
+    const searchTest =
+      activeOptions?.includeSearch ?? true
+        ? partialDeepEqual(this.state.currentLocation.search, next.search)
+        : true
 
     // The final "active" test
-    const isActive = pathTest && hashTest
+    const isActive = pathTest && hashTest && searchTest
 
     // The click handler
     const handleClick = (e: MouseEvent) => {
@@ -1032,6 +1047,8 @@ export class Router<
   }
 
   #buildLocation = (dest: BuildNextOptions = {}): ParsedLocation => {
+    dest.fromCurrent = dest.fromCurrent ?? dest.to === ''
+
     const fromPathname = dest.fromCurrent
       ? this.state.latestLocation.pathname
       : dest.from ?? this.state.latestLocation.pathname
@@ -1039,7 +1056,7 @@ export class Router<
     let pathname = resolvePath(
       this.basepath ?? '/',
       fromPathname,
-      `${dest.to ?? '.'}`,
+      `${dest.to ?? ''}`,
     )
 
     const fromMatches = this.matchRoutes(this.state.latestLocation.pathname, {

@@ -83,15 +83,15 @@ export const packages: Package[] = [
     entryFile: 'src/index.tsx',
     globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
   },
-  // {
-  //   name: '@tanstack/router-cli',
-  //   packageDir: 'router-cli',
-  //   srcDir: 'src',
-  //   jsName: 'RouterCli',
-  //   entryFile: 'src/index.ts',
-  //   // esm: false,
-  //   umd: false,
-  // },
+  {
+    name: '@tanstack/router-cli',
+    packageDir: 'router-cli',
+    srcDir: 'src',
+    jsName: 'RouterCli',
+    entryFile: 'src/index.ts',
+    // esm: false,
+    umd: false,
+  },
 ]
 
 export const latestBranch = 'main'
