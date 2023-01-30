@@ -52,7 +52,6 @@ export type RouteOptions<
   TAllParentContext extends AnyContext = AnyContext,
   TRouteContext extends AnyContext = AnyContext,
   TContext extends AnyContext = TRouteContext,
-  TStringifiedParams = unknown,
 > = RouteOptionsBase<TCustomId, TPath> &
   FrameworkRouteOptions & {
     getParentRoute: () => TParentRoute
@@ -130,7 +129,9 @@ export type RouteOptions<
         ) => TParams extends Record<string, any>
           ? TParams
           : 'parseParams must return a Record<string, any>'
-        stringifyParams?: (params: NoInfer<TParams>) => TStringifiedParams
+        stringifyParams?: (
+          params: NoInfer<TParams>,
+        ) => Record<ParsePathParams<TPath>, string>
       }
     | {
         stringifyParams?: never
