@@ -166,7 +166,6 @@ export function useLinkProps<
     to = '.',
     preload,
     preloadDelay,
-    preloadMaxAge,
     replace,
     // element props
     style,
