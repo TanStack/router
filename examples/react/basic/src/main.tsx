@@ -199,13 +199,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Register things for typesafety
-declare module '@tanstack/react-loaders' {
-  interface Register {
-    loaderClient: typeof loaderClient
-  }
-}
-
 const rootElement = document.getElementById('app')!
 
 if (!rootElement.innerHTML) {
