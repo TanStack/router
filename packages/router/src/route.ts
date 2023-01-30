@@ -45,7 +45,7 @@ export type RouteOptions<
   TParentParams extends AnyPathParams = {},
   TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
     ParsePathParams<TPath>,
-    string
+    unknown
   >,
   TAllParams extends AnyPathParams = {},
   TParentContext extends AnyContext = AnyContext,
@@ -132,7 +132,7 @@ export type RouteOptions<
           rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
         ) => TParams
         stringifyParams: (
-          params: TParams,
+          params: NoInfer<TParams>,
         ) => Record<ParsePathParams<TPath>, string>
       }
   ) &
