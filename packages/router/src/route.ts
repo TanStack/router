@@ -80,7 +80,13 @@ export type RouteOptions<
     }) => Promise<void> | void
 
     // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-    onLoad?: OnLoadFn<TFullSearchSchema, TAllParams, TRouteContext, TContext>
+    onLoad?: OnLoadFn<
+      TSearchSchema,
+      TFullSearchSchema,
+      TAllParams,
+      TRouteContext,
+      TContext
+    >
 
     // This function will be called if the route's loader throws an error **during an attempted navigation**.
     // If you want to redirect due to an error, call `router.navigate()` from within this function.
@@ -164,12 +170,14 @@ export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
     }
 
 export type OnLoadFn<
+  TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams extends AnyPathParams = {},
   TContext extends AnyContext = AnyContext,
   TAllContext extends AnyContext = AnyContext,
 > = (
   loaderContext: LoaderContext<
+    TSearchSchema,
     TFullSearchSchema,
     TAllParams,
     TContext,
@@ -178,12 +186,14 @@ export type OnLoadFn<
 ) => Promise<any> | void
 
 export interface LoaderContext<
+  TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams extends AnyPathParams = {},
   TContext extends AnyContext = AnyContext,
   TAllContext extends AnyContext = AnyContext,
 > {
   params: TAllParams
+  routeSearch: TSearchSchema
   search: TFullSearchSchema
   signal?: AbortSignal
   preload: boolean

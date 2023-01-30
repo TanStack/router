@@ -71,6 +71,12 @@ export class ActionClient<
     if (!this.initialized) this.init()
     return this.actions[opts.key as any] as any
   }
+
+  clearAll = () => {
+    Object.keys(this.actions).forEach((key) => {
+      this.actions[key]!.clear()
+    })
+  }
 }
 
 export type ActionByKey<
@@ -168,7 +174,7 @@ export class Action<
     // await Promise.all(this.#promises)
     this.store.setState((s) => ({
       ...s,
-      submissions: s.submissions.filter((d) => d.status !== 'pending'),
+      submissions: s.submissions.filter((d) => d.status === 'pending'),
     }))
   }
 

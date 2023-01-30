@@ -524,7 +524,7 @@ export class LoaderInstance<
     }
 
     // If we already have data, return it
-    if (this.state.status === 'success') {
+    if (typeof this.state.data !== 'undefined') {
       return this.state.data!
     }
 
@@ -598,8 +598,6 @@ export class LoaderInstance<
           ...s,
           isFetching: false,
         }))
-
-        delete this.__loadPromise
 
         if ((newer = hasNewer())) {
           await this.loader.options.onLatestSettled?.(this)
@@ -688,8 +686,14 @@ export class LoaderInstance<
           status: 'error',
         }))
 
+        await after()
+
         throw err
       }
+    })
+
+    this.__loadPromise.then(() => {
+      delete this.__loadPromise
     })
 
     return this.__loadPromise

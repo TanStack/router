@@ -940,8 +940,7 @@ const router = new ReactRouter({
     </div>
   ),
   onRouteChange: () => {
-    createInvoiceAction.clear()
-    updateInvoiceAction.clear()
+    actionClient.clearAll()
   },
 })
 

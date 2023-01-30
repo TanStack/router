@@ -1,10 +1,10 @@
 import { Store } from '@tanstack/store'
 //
 import { GetFrameworkGeneric } from './frameworks'
-import { AnyRoute, Route } from './route'
+import { AnyRoute, AnySearchSchema, Route } from './route'
 import { AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
-import { AnyRouter, Router } from './router'
-import { Expand, pick } from './utils'
+import { AnyRouter, ParsedLocation, Router } from './router'
+import { Expand, pick, replaceEqualDeep } from './utils'
 
 export interface RouteMatchStore<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
@@ -23,6 +23,12 @@ const componentTypes = [
   'errorComponent',
   'pendingComponent',
 ] as const
+
+export interface PendingRouteMatchInfo {
+  state: RouteMatchStore<any, any>
+  routeContext: {}
+  context: {}
+}
 
 export interface AnyRouteMatch extends RouteMatch<any, any> {}
 
@@ -46,6 +52,7 @@ export class RouteMatch<
   abortController = new AbortController()
   onLoaderDataListeners = new Set<() => void>()
   parentMatch?: RouteMatch
+  pendingInfo?: PendingRouteMatchInfo
 
   __loadPromise?: Promise<void>
   __onExit?:
@@ -102,12 +109,30 @@ export class RouteMatch<
     )
   }
 
-  __init = (opts: { parentMatch?: RouteMatch }) => {
-    // Validate the search params and stabilize them
-    this.parentMatch = opts.parentMatch
+  __commit = () => {
+    const { routeSearch, search, context, routeContext } = this.#resolveInfo({
+      location: this.router.state.currentLocation,
+    })
+    this.context = context
+    this.routeContext = routeContext
+    this.store.setState((s) => ({
+      ...s,
+      routeSearch: replaceEqualDeep(s.routeSearch, routeSearch),
+      search: replaceEqualDeep(s.search, search),
+    }))
+  }
 
-    const parentSearch =
-      this.parentMatch?.state.search ?? this.router.state.latestLocation.search
+  cancel = () => {
+    this.abortController?.abort()
+  }
+
+  #resolveSearchInfo = (opts: {
+    location: ParsedLocation
+  }): { routeSearch: {}; search: {} } => {
+    // Validate the search params and stabilize them
+    const parentSearchInfo = this.parentMatch
+      ? this.parentMatch.#resolveSearchInfo(opts)
+      : { search: opts.location.search, routeSearch: opts.location.search }
 
     try {
       const validator =
@@ -115,40 +140,17 @@ export class RouteMatch<
           ? this.route.options.validateSearch.parse
           : this.route.options.validateSearch
 
-      let nextSearch = validator?.(parentSearch) ?? {}
+      const routeSearch = validator?.(parentSearchInfo.search) ?? {}
 
-      this.store.setState((s) => ({
-        ...s,
-        routeSearch: nextSearch,
-        search: {
-          ...parentSearch,
-          ...nextSearch,
-        } as any,
-      }))
+      const search = {
+        ...parentSearchInfo.search,
+        ...routeSearch,
+      }
 
-      componentTypes.map(async (type) => {
-        const component = this.route.options[type]
-
-        if (typeof this[type] !== 'function') {
-          this[type] = component
-        }
-      })
-
-      const parent = this.parentMatch
-
-      this.routeContext =
-        this.route.options.getContext?.({
-          parentContext: parent?.routeContext,
-          context: parent?.context,
-          params: this.params,
-          search: this.state.search,
-        }) || ({} as any)
-
-      this.context = (
-        parent
-          ? { ...parent.context, ...this.routeContext }
-          : { ...this.router?.options.context, ...this.routeContext }
-      ) as any
+      return {
+        routeSearch,
+        search,
+      }
     } catch (err: any) {
       console.error(err)
       const error = new (Error as any)('Invalid search params found', {
@@ -156,31 +158,73 @@ export class RouteMatch<
       })
       error.code = 'INVALID_SEARCH_PARAMS'
 
+      throw error
+    }
+  }
+
+  #resolveInfo = (opts: { location: ParsedLocation }) => {
+    const { search, routeSearch } = this.#resolveSearchInfo(opts)
+
+    const routeContext =
+      this.route.options.getContext?.({
+        parentContext: this.parentMatch?.routeContext ?? {},
+        context:
+          this.parentMatch?.context ?? this.router?.options.context ?? {},
+        params: this.params,
+        search,
+      }) || ({} as any)
+
+    const context = {
+      ...(this.parentMatch?.context ?? this.router?.options.context),
+      ...routeContext,
+    } as any
+
+    return {
+      routeSearch,
+      search,
+      context,
+      routeContext,
+    }
+  }
+
+  __load = async (opts: {
+    parentMatch: RouteMatch | undefined
+    preload?: boolean
+    location: ParsedLocation
+  }): Promise<void> => {
+    this.parentMatch = opts.parentMatch
+
+    let info
+
+    try {
+      info = this.#resolveInfo(opts)
+    } catch (err) {
       this.store.setState((s) => ({
         ...s,
         status: 'error',
-        error: error,
+        error: err,
       }))
 
       // Do not proceed with loading the route
       return
     }
-  }
 
-  cancel = () => {
-    this.abortController?.abort()
-  }
+    const { routeSearch, search, context, routeContext } = info
 
-  load = async (opts?: { preload?: boolean }): Promise<void> => {
+    componentTypes.map(async (type) => {
+      const component = this.route.options[type]
+
+      if (typeof this[type] !== 'function') {
+        this[type] = component
+      }
+    })
+
     // If the match is invalid, errored or idle, trigger it to load
-    if (this.state.status !== 'pending') {
-      await this.fetch(opts)
+    if (this.state.status === 'pending') {
+      return
     }
-  }
 
-  #latestId = ''
-
-  fetch = async (opts?: { preload?: boolean }): Promise<void> => {
+    // TODO: Should load promises be tracked based on location?
     this.__loadPromise = Promise.resolve().then(async () => {
       const loadId = '' + Date.now() + Math.random()
       this.#latestId = loadId
@@ -191,17 +235,15 @@ export class RouteMatch<
 
       let latestPromise
 
-      this.store.batch(() => {
-        // If the match was in an error state, set it
-        // to a loading state again. Otherwise, keep it
-        // as loading or resolved
-        if (this.state.status === 'idle') {
-          this.store.setState((s) => ({
-            ...s,
-            status: 'pending',
-          }))
-        }
-      })
+      // If the match was in an error state, set it
+      // to a loading state again. Otherwise, keep it
+      // as loading or resolved
+      if (this.state.status === 'idle') {
+        this.store.setState((s) => ({
+          ...s,
+          status: 'pending',
+        }))
+      }
 
       const componentsPromise = (async () => {
         // then run all component and data loaders in parallel
@@ -222,11 +264,12 @@ export class RouteMatch<
         if (this.route.options.onLoad) {
           return this.route.options.onLoad({
             params: this.params,
-            search: this.state.search,
+            routeSearch,
+            search,
             signal: this.abortController.signal,
             preload: !!opts?.preload,
-            routeContext: this.routeContext,
-            context: this.context,
+            routeContext: routeContext,
+            context: context,
           })
         }
         return
@@ -256,4 +299,6 @@ export class RouteMatch<
 
     return this.__loadPromise
   }
+
+  #latestId = ''
 }

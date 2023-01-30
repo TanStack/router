@@ -447,6 +447,7 @@ export class Router<
     try {
       await this.loadMatches(
         matches,
+        this.state.pendingLocation!,
         // opts
       )
     } catch (err: any) {
@@ -511,6 +512,8 @@ export class Router<
       })
     })
 
+    const prevLocation = this.state.currentLocation
+
     this.store.setState((s) => ({
       ...s,
       status: 'idle',
@@ -520,7 +523,13 @@ export class Router<
       pendingMatches: undefined,
     }))
 
-    this.options.onRouteChange?.()
+    matches.forEach((match) => {
+      match.__commit()
+    })
+
+    if (prevLocation!.href !== this.state.currentLocation.href) {
+      this.options.onRouteChange?.()
+    }
 
     this.resolveNavigation()
   }
@@ -542,7 +551,7 @@ export class Router<
     const matches = this.matchRoutes(next.pathname, {
       strictParseParams: true,
     })
-    await this.loadMatches(matches)
+    await this.loadMatches(matches, next)
     return matches
   }
 
@@ -554,7 +563,7 @@ export class Router<
       strictParseParams: true,
     })
 
-    await this.loadMatches(matches, {
+    await this.loadMatches(matches, next, {
       preload: true,
     })
     return matches
@@ -666,13 +675,12 @@ export class Router<
 
   loadMatches = async (
     resolvedMatches: RouteMatch[],
+    location: ParsedLocation,
     opts?: {
       preload?: boolean
       // filter?: (match: RouteMatch<any, any>) => any
     },
   ) => {
-    initMatches(resolvedMatches)
-
     // Check each match middleware to see if the route can be accessed
     await Promise.all(
       resolvedMatches.map(async (match) => {
@@ -692,22 +700,14 @@ export class Router<
     )
 
     const matchPromises = resolvedMatches.map(async (match, index) => {
-      const prevMatch = resolvedMatches[(index = 1)]
-      const search = match.state.search as { __data?: any }
+      const parentMatch = resolvedMatches[index - 1]
 
-      // if (opts?.filter && !opts.filter(match)) {
-      //   return
-      // }
+      match.__load({ preload: opts?.preload, location, parentMatch })
 
-      match.load({ preload: opts?.preload })
+      await match.__loadPromise
 
-      if (match.state.status !== 'success' && match.__loadPromise) {
-        // Wait for the first sign of activity from the match
-        await match.__loadPromise
-      }
-
-      if (prevMatch) {
-        await prevMatch.__loadPromise
+      if (parentMatch) {
+        await parentMatch.__loadPromise
       }
     })
 
@@ -800,11 +800,6 @@ export class Router<
     }
 
     if (opts?.includeSearch ?? true) {
-      console.log(
-        baseLocation.search,
-        next.search,
-        partialDeepEqual(baseLocation.search, next.search),
-      )
       return partialDeepEqual(baseLocation.search, next.search) ? match : false
     }
 
@@ -824,8 +819,6 @@ export class Router<
     replace,
     activeOptions,
     preload,
-    preloadMaxAge: userPreloadMaxAge,
-    preloadGcMaxAge: userPreloadGcMaxAge,
     preloadDelay: userPreloadDelay,
     disabled,
   }: LinkOptions<TRoutesInfo, TFrom, TTo>): LinkInfo => {
@@ -984,8 +977,6 @@ export class Router<
           ...dehydratedMatch.state,
         }))
       })
-
-      initMatches(currentMatches)
 
       return {
         ...s,
@@ -1184,11 +1175,4 @@ function getInitialRouterState(): RouterStore<any, any> {
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
-}
-
-function initMatches(matches: RouteMatch<any, any>[]) {
-  matches.forEach((match, index) => {
-    const parentMatch = matches[index - 1]
-    match.__init({ parentMatch })
-  })
 }

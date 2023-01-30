@@ -113,7 +113,7 @@ export function useLoaderInstance<
 
   if (allOpts?.strict ?? true) {
     invariant(
-      loaderInstance.state.status === 'success',
+      typeof loaderInstance.state.data !== undefined,
       `useLoaderInstance:
   Loader instance { key: ${loader.key}, variables: ${allOpts.variables} }) is currently in a "${loaderInstance.state.status}" state. By default useLoaderInstance will throw an error if the loader instance is not in a "success" state. To avoid this error:
   

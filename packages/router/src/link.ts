@@ -252,10 +252,6 @@ export type LinkOptions<
   activeOptions?: ActiveOptions
   // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
   preload?: false | 'intent'
-  // When preloaded, the preloaded result will be considered "fresh" for this duration in milliseconds
-  preloadMaxAge?: number
-  // When preloaded and subsequently inactive, the preloaded result will remain in memory for this duration in milliseconds
-  preloadGcMaxAge?: number
   // Delay intent preloading by this many milliseconds. If the intent exits before this delay, the preload will be cancelled.
   preloadDelay?: number
   // If true, will render the link without the href attribute
