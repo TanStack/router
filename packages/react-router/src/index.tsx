@@ -475,32 +475,38 @@ export function useNavigate<
   TDefaultFrom extends keyof RegisteredRoutesInfo['routesById'] = '/',
 >(defaultOpts?: { from?: TDefaultFrom }) {
   const router = useRouterContext()
-  return <
-    TFrom extends keyof RegisteredRoutesInfo['routesById'] = TDefaultFrom,
-    TTo extends string = '.',
-  >(
-    opts?: MakeLinkOptions<TFrom, TTo>,
-  ) => {
-    return router.navigate({ ...defaultOpts, ...(opts as any) })
-  }
+  return React.useCallback(
+    <
+      TFrom extends keyof RegisteredRoutesInfo['routesById'] = TDefaultFrom,
+      TTo extends string = '.',
+    >(
+      opts?: MakeLinkOptions<TFrom, TTo>,
+    ) => {
+      return router.navigate({ ...defaultOpts, ...(opts as any) })
+    },
+    [],
+  )
 }
 
 export function useMatchRoute() {
   const router = useRouterContext()
 
-  return <
-    TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
-    TTo extends string = '.',
-  >(
-    opts: MakeUseMatchRouteOptions<TFrom, TTo>,
-  ) => {
-    const { pending, caseSensitive, ...rest } = opts
+  return React.useCallback(
+    <
+      TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
+      TTo extends string = '.',
+    >(
+      opts: MakeUseMatchRouteOptions<TFrom, TTo>,
+    ) => {
+      const { pending, caseSensitive, ...rest } = opts
 
-    return router.matchRoute(rest as any, {
-      pending,
-      caseSensitive,
-    })
-  }
+      return router.matchRoute(rest as any, {
+        pending,
+        caseSensitive,
+      })
+    },
+    [],
+  )
 }
 
 export function MatchRoute<
