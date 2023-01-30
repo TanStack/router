@@ -668,7 +668,7 @@ export class Router<
       }
     }
 
-    findInRouteTree([this.routeTree])
+    findInRouteTree([this.routeTree as any])
 
     return matches
   }

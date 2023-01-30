@@ -43,15 +43,16 @@ export type RouteOptions<
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = TSearchSchema,
   TParentParams extends AnyPathParams = {},
-  TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
+  TParams extends Record<ParsePathParams<TPath>, any> = Record<
     ParsePathParams<TPath>,
-    unknown
+    string
   >,
-  TAllParams extends AnyPathParams = {},
+  TAllParams = TParams,
   TParentContext extends AnyContext = AnyContext,
   TAllParentContext extends AnyContext = AnyContext,
   TRouteContext extends AnyContext = AnyContext,
   TContext extends AnyContext = TRouteContext,
+  TStringifiedParams = unknown,
 > = RouteOptionsBase<TCustomId, TPath> &
   FrameworkRouteOptions & {
     getParentRoute: () => TParentRoute
@@ -123,17 +124,17 @@ export type RouteOptions<
     ) => TRouteContext
   } & (
     | {
-        parseParams?: never
-        stringifyParams?: never
+        // Parse params optionally receives path params as strings and returns them in a parsed format (like a number or boolean)
+        parseParams?: (
+          rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
+        ) => TParams extends Record<string, any>
+          ? TParams
+          : 'parseParams must return a Record<string, any>'
+        stringifyParams?: (params: NoInfer<TParams>) => TStringifiedParams
       }
     | {
-        // Parse params optionally receives path params as strings and returns them in a parsed format (like a number or boolean)
-        parseParams: (
-          rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
-        ) => TParams
-        stringifyParams: (
-          params: NoInfer<TParams>,
-        ) => Record<ParsePathParams<TPath>, string>
+        stringifyParams?: never
+        parseParams?: never
       }
   ) &
   (PickUnsafe<TParentParams, ParsePathParams<TPath>> extends never // Detect if an existing path param is being redefined
@@ -172,7 +173,7 @@ export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
 export type OnLoadFn<
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = {},
-  TAllParams extends AnyPathParams = {},
+  TAllParams = {},
   TContext extends AnyContext = AnyContext,
   TAllContext extends AnyContext = AnyContext,
 > = (
@@ -188,7 +189,7 @@ export type OnLoadFn<
 export interface LoaderContext<
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = {},
-  TAllParams extends AnyPathParams = {},
+  TAllParams = {},
   TContext extends AnyContext = AnyContext,
   TAllContext extends AnyContext = AnyContext,
 > {
@@ -273,7 +274,7 @@ export class Route<
     TParentRoute,
     TSearchSchema
   >,
-  TParams extends Record<ParsePathParams<TPath>, unknown> = Record<
+  TParams extends Record<ParsePathParams<TPath>, any> = Record<
     ParsePathParams<TPath>,
     string
   >,
@@ -518,7 +519,12 @@ export class RootRoute<
         TContext,
         NoInfer<TContext>
       >,
-      'path' | 'id' | 'getParentRoute' | 'caseSensitive'
+      | 'path'
+      | 'id'
+      | 'getParentRoute'
+      | 'caseSensitive'
+      | 'parseParams'
+      | 'stringifyParams'
     >,
   ) {
     super(options as any)
