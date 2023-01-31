@@ -70,7 +70,7 @@ TanStack Router provides amazing support for TypeScript, even for things you wou
 ```tsx
 declare module '@tanstack/react-router' {
   interface Register {
-    // This infers the type of our router and registers it internally with TanStack Router itself!
+    // This infers the type of our router and registers it across your entire project
     router: typeof router
   }
 }

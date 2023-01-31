@@ -119,14 +119,14 @@ export type NavigateOptions<
   TFrom extends TRoutesInfo['routePaths'] = '/',
   TTo extends string = '.',
 > = ToOptions<TRoutesInfo, TFrom, TTo> & {
-  // Whether to replace the current history stack instead of pushing a new one
+  // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
 }
 
 export type ToOptions<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
   TResolvedTo = ResolveRelativePath<TFrom, NoInfer<TTo>>,
 > = {
   to?: ToPathOption<TRoutesInfo, TFrom, TTo>
