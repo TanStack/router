@@ -2,11 +2,9 @@
 title: Installation
 ---
 
-You can install TanStack Router with [NPM](https://npmjs.com),
-[Yarn](https://yarnpkg.com), or a good ol' `<script>` via
-[unpkg.com](https://unpkg.com).
+You can install TanStack Router with any [NPM](https://npmjs.com) package manager.
 
-Depending on your framework of choice, you can install the following packages:
+Depending on your framework of choice, install one of the the following packages:
 
 - [React](./adapters/react-router)
 - Solid (coming soon!)

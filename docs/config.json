@@ -63,8 +63,8 @@
       "label": "Guide",
       "children": [
         {
-          "label": "Route Configs",
-          "to": "guide/route-configs"
+          "label": "Routes",
+          "to": "guide/routes"
         },
         {
           "label": "Route Paths",
@@ -157,8 +157,8 @@
           "to": "api/react/ReactRouter"
         },
         {
-          "label": "createRouteConfig",
-          "to": "api/react/createRouteConfig"
+          "label": "route",
+          "to": "api/react/route"
         }
       ]
     },

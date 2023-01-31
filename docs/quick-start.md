@@ -16,8 +16,13 @@ import {
   RootRoute,
 } from '@tanstack/react-router'
 
+// Create a root route
 const rootRoute = new RootRoute({
-  component: () => (
+  component: Root,
+})
+
+function Root() {
+  return (
     <>
       <div>
         <Link to="/">Home</Link> <Link to="/about">About</Link>
@@ -25,34 +30,15 @@ const rootRoute = new RootRoute({
       <hr />
       <Outlet />
     </>
-  ),
-})
+  )
+}
 
+// Create an index route
 const indexRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/',
   component: Index,
 })
-
-const aboutRoute = new Route({
-  getParentRoute: () => rootRoute,
-  path: '/about',
-  component: About,
-})
-
-const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
-
-const router = new ReactRouter({ routeTree })
-
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: typeof router
-  }
-}
-
-function App() {
-  return <RouterProvider router={router} />
-}
 
 function Index() {
   return (
@@ -62,19 +48,39 @@ function Index() {
   )
 }
 
+const aboutRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/about',
+  component: About,
+})
+
 function About() {
   return <div>Hello from About!</div>
 }
 
+// Create the route tree using your routes
+const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
+
+// Create the router using your route tree
+const router = new ReactRouter({ routeTree })
+
+// Register your router for maximum type safety
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router
+  }
+}
+
+// Render our app!
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
     <StrictMode>
-      <App />
+      <RouterProvider router={router} />
     </StrictMode>,
   )
 }
 ```
 
-If you skipped that example, we don't blame you, because there's so much more to learn to really take advantage of TanStack Router! Let's move on.
+If you skipped this example or didn't understand something, we don't blame you, because there's so much more to learn to really take advantage of TanStack Router! Let's move on.

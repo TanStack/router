@@ -9,13 +9,16 @@ Layout routes are routes that do not have a path, but allows wrapping it's child
 - Sharing search params between all of the child routes
 - Sharing an error component with all child routes
 
-To create a layout route, define a route config with an `id` property instead of a `path`:
+To create a layout route, define a route with an `id` property instead of a `path`:
 
 ```tsx
-const rootRoute = createRouteConfig()
+const rootRoute = new Route()
 
 // Our layout route
-const layoutRoute = new Route({ getParentRoute: () => rootRoute, id: 'layout' })
+const layoutRoute = new Route({
+  getParentRoute: () => rootRoute,
+  id: 'layout',
+})
 
 const layoutARoute = new Route({
   getParentRoute: () => layoutRoute,
@@ -41,42 +44,47 @@ In the above example, the `layout` route will not add or match any path in the U
 Simple example with different layouts for authenticated and unauthenticated routes
 
 ```tsx
-const rootRoute = createRouteConfig();
+const rootRoute = new Route()
 
-const layoutRoot = new Route({ getParentRoute: () => rootRoute,
-  id: "layout",
-});
+const layoutRoot = new Route({
+  getParentRoute: () => rootRoute,
+  id: 'layout',
+})
 
-const layoutUnauth = new Route({ getParentRoute: () => layoutRoot,
-  id: "layout-unauth",
+const layoutUnauth = new Route({
+  getParentRoute: () => layoutRoot,
+  id: 'layout-unauth',
   component: LayoutUnauth, // layout component for unauthenticated routes
-});
+})
 
-const layoutAuth = new Route({ getParentRoute: () => layoutRoot,
-  id: "layout-auth",
+const layoutAuth = new Route({
+  getParentRoute: () => layoutRoot,
+  id: 'layout-auth',
   component: LayoutAuth, // layout component for authenticated routes
-});
+})
 
-const indexRoute = new Route({ getParentRoute: () => layoutUnauth,
-  path: "/",
+const indexRoute = new Route({
+  getParentRoute: () => layoutUnauth,
+  path: '/',
   component: LandingPage, // landing page component that will use unauthenticated layout
-});
+})
 
-const dashboardRoute = new Route({ getParentRoute: () => layoutAuth,
-  path: "app",
+const dashboardRoute = new Route({
+  getParentRoute: () => layoutAuth,
+  path: 'app',
   component: DashboardPage, // homepage page component that will use authenticated layout
-  },
-});
+})
 
-export const loginRoute = new Route({ getParentRoute: () => layoutUnauth,
-  path: "login",
+export const loginRoute = new Route({
+  getParentRoute: () => layoutUnauth,
+  path: 'login',
   component: LoginPage, // another component that will unauthenticated layout
-});
+})
 
 const routeConfig = rootRoute.addChildren([
   layoutRoot.addChildren([
     layoutUnauth.addChildren([indexRoute, loginRoute]),
     layoutAuth.addChildren([dashboardRoute]),
   ]),
-]);
+])
 ```

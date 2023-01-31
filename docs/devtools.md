@@ -16,12 +16,6 @@ When you begin your TanStack Router journey, you'll want these devtools by your 
 npm install @tanstack/react-router-devtools@beta --save
 ```
 
-or
-
-```sh
-yarn add @tanstack/react-router-devtools@beta
-```
-
 ## Import the Devtools
 
 ```js
@@ -38,25 +32,46 @@ const TanStackRouterDevtools =
     ? () => null // Render nothing in production
     : React.lazy(() =>
         // Lazy load in development
-        import('@tanstack/react-router-devtools').then(
-          (res) => ({
-            default: res.TanStackRouterDevtools
-            // For Embedded Mode
-            // default: res.TanStackRouterDevtoolsPanel
-          })
-        ),
+        import('@tanstack/react-router-devtools').then((res) => ({
+          default: res.TanStackRouterDevtools,
+          // For Embedded Mode
+          // default: res.TanStackRouterDevtoolsPanel
+        })),
       )
 ```
 
-## Passing the Router Instance
+## Using inside of the `RouterProvider`
 
-The only required prop for the devtools is the `router` instance. This is the same instance you pass to the `Router` component. This also makes it possible to place the devtools anywhere on the page, not just inside of the provider:
+The easiest way for the devtools to work is to render them inside of your `RootRoute` (or any other route). This will automatically connect the devtools to the router instance.
+
+```tsx
+const rootRoute = new RootRoute({
+  component: () => (
+    <>
+      <Outlet />
+      <TanStackRouterDevtools />
+    </>
+  ),
+})
+
+const router = new ReactRouter({
+  routes: [rootRoute],
+})
+
+function App() {
+  return <RouterProvider router={router} />
+}
+```
+
+## Manually passing the Router Instance
+
+If rendering the devtools inside of the `RouterProvider` isn't your cup of tea, a `router` prop for the devtools accepts the same `router` instance you pass to the `Router` component. This makes it possible to place the devtools anywhere on the page, not just inside of the provider:
 
 ```tsx
 function App() {
   return (
     <>
-      <Router router={router} />
+      <RouterProvider router={router} />
       <TanStackRouterDevtools router={router} />
     </>
   )
@@ -108,7 +123,7 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 function App() {
   return (
     <>
-      <Router />
+      <Router router={router} />
       <TanStackRouterDevtoolsPanel
         router={router}
         style={styles}

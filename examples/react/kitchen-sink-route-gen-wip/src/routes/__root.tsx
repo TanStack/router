@@ -1,14 +1,9 @@
 import * as React from 'react'
-import {
-  createRouteConfig,
-  Link,
-  Outlet,
-  useRouter,
-} from '@tanstack/react-router'
+import { route, Link, Outlet, useRouter } from '@tanstack/react-router'
 import { Spinner } from '../components/Spinner'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
-createRouteConfig({
+route({
   component: () => {
     const router = useRouter()
 

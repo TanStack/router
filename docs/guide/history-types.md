@@ -19,13 +19,9 @@ Each of these APIs behaves slightly differently and documentation for them can b
 Once you have a history instance, you can pass it to the `ReactRouter` constructor:
 
 ```ts
-import {
-  createMemoryHistory,
-  ReactRouter,
-  createRouteConfig,
-} from '@tanstack/react-router'
+import { createMemoryHistory, ReactRouter, route } from '@tanstack/react-router'
 
-const rootRoute = createRouteConfig()
+const rootRoute = new Route()
 
 const indexRoute = new Route({ getParentRoute: () => rootRoute, path: '/' })
 
@@ -45,13 +41,9 @@ The `createBrowserHistory` is the default history type. It uses the browser's hi
 Hash routing can be helpful if your server doesn't support rewrites to index.html for HTTP requests (among other environments that don't have a server).
 
 ```ts
-import {
-  createHashHistory,
-  ReactRouter,
-  createRouteConfig,
-} from '@tanstack/react-router'
+import { createHashHistory, ReactRouter, route } from '@tanstack/react-router'
 
-const rootRoute = createRouteConfig()
+const rootRoute = new Route()
 
 const indexRoute = new Route({ getParentRoute: () => rootRoute, path: '/' })
 
@@ -65,13 +57,9 @@ const router = new ReactRouter({ routeConfig, history: hashHistory })
 Memory routing is useful in environments that are not a browser or when you do not want components to interact with the URL.
 
 ```ts
-import {
-  createMemoryHistory,
-  ReactRouter,
-  createRouteConfig,
-} from '@tanstack/router'
+import { createMemoryHistory, ReactRouter, route } from '@tanstack/router'
 
-const rootRoute = createRouteConfig()
+const rootRoute = new Route()
 
 const indexRoute = new Route({ getParentRoute: () => rootRoute, path: '/' })
 

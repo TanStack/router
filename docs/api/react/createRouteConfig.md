@@ -1,17 +1,17 @@
 ---
-id: createRouteConfig
-title: createRouteConfig
+id: route
+title: route
 ---
 
-Use the 'createRouteConfig' to create route config to pass to your Route Provider.
+Use the 'route' to create route to pass to your Route Provider.
 
 ```tsx
-import { createRouteConfig } from '@tanstack/react-router'
+import { Route } from '@tanstack/react-router'
 
-const router = createRouteConfig()
+const router = new Route()
 ```
 
-'createRouteConfig' takes the following options:
+'route' takes the following options:
 
 **Options**
 
@@ -39,7 +39,7 @@ const router = createRouteConfig()
     This takes in a JSX component which you want to render for the particular route path:
 
     ```tsx
-    const rootRouter = createRouteConfig({
+    const rootRouter = route({
       component: () => {
         return <div>// your data here</div>
       },
@@ -54,7 +54,7 @@ const router = createRouteConfig()
     This renders when the route has resulted in an error:
 
     ```tsx
-    const rootRouter = createRouteConfig({
+    const rootRouter = route({
       errorComponent: (error, info) => {
         return (
           <div>
@@ -72,7 +72,7 @@ const router = createRouteConfig()
     This is used when you want you load data in your route which can later be read using 'useLoaderInstance' or 'useMatch'
 
     ```tsx
-    const rootRouter = createRouteConfig({
+    const rootRouter = route({
       onLoad: async () => {
         const posts = await axios
           .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
@@ -98,7 +98,7 @@ const router = createRouteConfig()
     This function will be called if the route's loader throws an error **during an attempted navigation**.
     If you want to redirect due to an error, call `router.navigate()` from within this function.
     ```tsx
-    const rootRouter = createRouteConfig({
+    const rootRouter = route({
       onLoadError: (err) => {
         //redirect using router.navigate()
         router.navigate('/')
@@ -110,14 +110,14 @@ search: {}}) => void | ((match: {params: {};
 search: {};
 }) => void) | undefined) | undefined `
 
-                This function is called when moving from an inactive state to an active one. Likewise, when moving from an active to an inactive state, the return function (if provided) is called.
+                                This function is called when moving from an inactive state to an active one. Likewise, when moving from an active to an inactive state, the return function (if provided) is called.
 
   - `onTransition: ((match: {
 params: {};
 search: {};
 }) => void) | undefined `
 
-                This function is called when the route remains active from one transition to the next.
+                                This function is called when the route remains active from one transition to the next.
 
   - `parseParams: ((rawParams: Record<never, string>) => Record<never, string>) | undefined`
 

@@ -423,7 +423,7 @@ export function useRoute<
     resolvedRoute,
     `Could not find a route for route "${
       routeId as string
-    }"! Did you forget to add it to your route config?`,
+    }"! Did you forget to add it to your route?`,
   )
 
   return resolvedRoute as any

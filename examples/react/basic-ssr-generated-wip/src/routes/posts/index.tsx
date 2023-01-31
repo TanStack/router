@@ -1,11 +1,9 @@
-import { route } from '../../routes.generated/posts/index';
-import { Route } from '@tanstack/react-router';
-import * as React from 'react';
-import { postsRoute } from '../posts';
-export const postsIndexRoute = 
-
-new Route({
+import { Route } from '../../routes.generated/posts/index'
+import { Route } from '@tanstack/react-router'
+import * as React from 'react'
+import { postsRoute } from '../posts'
+export const postsIndexRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '/',
-  component: () => <div>Select a post.</div>
-});
+  component: () => <div>Select a post.</div>,
+})

@@ -96,7 +96,7 @@ export async function ensureBoilerplate(node: RouteNode, code: string) {
                 if (!foundImport) {
                   programPath.node.body.unshift(
                     babel.template.statement(
-                      `import { route } from '${relativeImportPath.replace(
+                      `import { Route } from '${relativeImportPath.replace(
                         /\\/gi,
                         '/',
                       )}'`,
@@ -160,7 +160,7 @@ export async function isolateOptionToExport(
                     path.node.name === 'Route' &&
                     t.isCallExpression(path.parentPath.node)
                   ) {
-                    const options = getCreateRouteConfigOptions(path)
+                    const options = getRouteOptions(path)
 
                     if (options) {
                       const property = options.properties.find((property) => {
@@ -614,7 +614,7 @@ function getRouteConfigGenerateOptions(path: any): t.ObjectExpression | void {
   }
 }
 
-function getCreateRouteConfigOptions(path: any): t.ObjectExpression | void {
+function getRouteOptions(path: any): t.ObjectExpression | void {
   const tryOptions = (node: any): t.ObjectExpression | void => {
     if (t.isIdentifier(node)) {
       const initNode = path.scope.getBinding(node.name)?.path.node

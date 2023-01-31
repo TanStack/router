@@ -7,7 +7,6 @@ import {
   useRouter,
   AnyRouter,
 } from '@tanstack/react-router'
-import { formatDistanceStrict } from 'date-fns'
 
 import useLocalStorage from './useLocalStorage'
 import {
