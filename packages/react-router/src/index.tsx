@@ -30,6 +30,7 @@ import {
   AnySearchSchema,
   AnyPathParams,
   AnyRouteMatch,
+  NavigateOptions,
 } from '@tanstack/router'
 import { useStore } from '@tanstack/react-store'
 
@@ -282,6 +283,19 @@ export const Link: LinkFn = React.forwardRef((props: any, ref) => {
     />
   )
 }) as any
+
+export function Navigate<
+  TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
+  TTo extends string = '.',
+>(props: NavigateOptions<RegisteredRoutesInfo, TFrom, TTo>): null {
+  const router = useRouterContext()
+
+  React.useLayoutEffect(() => {
+    router.navigate(props as any)
+  }, [])
+
+  return null
+}
 
 type MatchesContextValue = AnyRouteMatch[]
 

@@ -91,7 +91,7 @@ export function parsePathname(pathname?: string): Segment[] {
 
   segments.push(
     ...split.map((part): Segment => {
-      if (part.startsWith('*')) {
+      if (part === '$') {
         return {
           type: 'wildcard',
           value: part,
@@ -132,7 +132,7 @@ export function interpolatePath(
 
   return joinPaths(
     interpolatedPathSegments.map((segment) => {
-      if (segment.value === '*' && !leaveWildcard) {
+      if (segment.value === '$' && !leaveWildcard) {
         return ''
       }
 
@@ -170,7 +170,7 @@ export function matchByPath(
   }
   from = basepath != '/' ? from.substring(basepath.length) : from
   const baseSegments = parsePathname(from)
-  const to = `${matchLocation.to ?? '*'}`
+  const to = `${matchLocation.to ?? '$'}`
   const routeSegments = parsePathname(to)
 
   const params: Record<string, string> = {}
@@ -190,7 +190,7 @@ export function matchByPath(
       if (routeSegment) {
         if (routeSegment.type === 'wildcard') {
           if (baseSegment?.value) {
-            params['*'] = joinPaths(baseSegments.slice(i).map((d) => d.value))
+            params['$'] = joinPaths(baseSegments.slice(i).map((d) => d.value))
             return true
           }
           return false
