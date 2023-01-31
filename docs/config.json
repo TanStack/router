@@ -71,20 +71,8 @@
           "to": "guide/route-paths"
         },
         {
-          "label": "Layout Routes",
-          "to": "guide/layout-routes"
-        },
-        {
-          "label": "Router",
-          "to": "guide/router"
-        },
-        {
           "label": "Links",
           "to": "guide/links"
-        },
-        {
-          "label": "Routes",
-          "to": "guide/routes"
         },
         {
           "label": "Route Matches",
@@ -101,6 +89,10 @@
         {
           "label": "Actions",
           "to": "guide/actions"
+        },
+        {
+          "label": "Router",
+          "to": "guide/router"
         },
         {
           "label": "Caching",
