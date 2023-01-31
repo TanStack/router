@@ -65,7 +65,7 @@ const router = new ReactRouter({ routeConfig })
 
 ## Registering Router Types
 
-TanStack Router provides amazing support for TypeScript, even for things you wouldn't expect like relative navigation and even context-aware hooks! To make this possible, you must register your router type using TypeScripts' [Declaration Merging][https://www.typescriptlang.org/docs/handbook/declaration-merging.html] feature. This is done by extending the `Register` interface on your framework's router module. For example, if you are using React, you would extend the `Register` interface on `@tanstack/react-router` with a `router` property that has the type of your `router` instance:
+TanStack Router provides amazing support for TypeScript, even for things you wouldn't expect like relative navigation and even context-aware hooks! To make this possible, you must register your router type using TypeScripts' [Declaration Merging](https://www.typescriptlang.org/docs/handbook/declaration-merging.html) feature. This is done by extending the `Register` interface on your framework's router module. For example, if you are using React, you would extend the `Register` interface on `@tanstack/react-router` with a `router` property that has the type of your `router` instance:
 
 ```tsx
 declare module '@tanstack/react-router' {
