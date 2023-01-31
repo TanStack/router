@@ -11,8 +11,8 @@
   "dependencies": {
     "@tanstack/react-query": "^4.14.1",
     "@tanstack/react-query-devtools": "^4.14.1",
-    "@tanstack/react-router": "0.0.1-beta.67",
-    "@tanstack/react-router-devtools": "0.0.1-beta.67",
+    "@tanstack/react-router": "0.0.1-beta.68",
+    "@tanstack/react-router-devtools": "0.0.1-beta.68",
     "@vitejs/plugin-react": "^1.1.3",
     "axios": "^1.1.3",
     "immer": "^9.0.15",
