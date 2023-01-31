@@ -1,17 +1,18 @@
 import { GetFrameworkGeneric } from './frameworks'
 import { ParsePathParams } from './link'
 import { RouteMatch } from './routeMatch'
-import { AnyRouter, RegisteredRouter, Router } from './router'
+import { AnyRouter, Router } from './router'
 import {
   Expand,
   IsAny,
   NoInfer,
+  PickRequired,
   PickUnsafe,
   UnionToIntersection,
 } from './utils'
 import invariant from 'tiny-invariant'
 import { joinPaths, trimPath, trimPathRight } from './path'
-import { AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
+import { DefaultRoutesInfo } from './routeInfo'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -34,6 +35,14 @@ export type RouteOptionsBaseIntersection<TCustomId, TPath> =
   UnionToIntersection<RouteOptionsBase<TCustomId, TPath>>
 
 export interface FrameworkRouteOptions {}
+
+export type MetaOptions = keyof PickRequired<RouteMeta> extends never
+  ? {
+      meta?: RouteMeta
+    }
+  : {
+      meta: RouteMeta
+    }
 
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
@@ -106,7 +115,7 @@ export type RouteOptions<
       params: TAllParams
       search: TFullSearchSchema
     }) => void
-    // An object of whatever you want! This object is accessible anywhere matches are.
+    // An object of whatever you want! This object is accessible anywhere the route is
     getContext?: (
       opts: {
         params: TAllParams
@@ -121,7 +130,8 @@ export type RouteOptions<
             parentContext: TParentContext
           }),
     ) => TRouteContext
-  } & (
+  } & MetaOptions &
+  (
     | {
         // Parse params optionally receives path params as strings and returns them in a parsed format (like a number or boolean)
         parseParams?: (

@@ -117,7 +117,7 @@ export type RelativeToPathAutoComplete<
 export type NavigateOptions<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > = ToOptions<TRoutesInfo, TFrom, TTo> & {
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
@@ -214,7 +214,7 @@ type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 export type ToPathOption<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > =
   | TTo
   | RelativeToPathAutoComplete<
@@ -226,7 +226,7 @@ export type ToPathOption<
 export type ToIdOption<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > =
   | TTo
   | RelativeToPathAutoComplete<
@@ -244,7 +244,7 @@ export interface ActiveOptions {
 export type LinkOptions<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > = NavigateOptions<TRoutesInfo, TFrom, TTo> & {
   // The standard anchor tag target attribute
   target?: HTMLAnchorElement['target']

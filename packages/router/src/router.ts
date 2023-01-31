@@ -728,7 +728,7 @@ export class Router<
 
   navigate = async <
     TFrom extends ValidFromPath<TRoutesInfo> = '/',
-    TTo extends string = '.',
+    TTo extends string = '',
   >({
     from,
     to = '' as any,
@@ -768,7 +768,7 @@ export class Router<
 
   matchRoute = <
     TFrom extends ValidFromPath<TRoutesInfo> = '/',
-    TTo extends string = '.',
+    TTo extends string = '',
     TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
   >(
     location: ToOptions<TRoutesInfo, TFrom, TTo>,
@@ -808,7 +808,7 @@ export class Router<
 
   buildLink = <
     TFrom extends ValidFromPath<TRoutesInfo> = '/',
-    TTo extends string = '.',
+    TTo extends string = '',
   >({
     from,
     to = '.' as any,

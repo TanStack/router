@@ -69,7 +69,7 @@ export function lazy(
 
 export type LinkPropsOptions<
   TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > = LinkOptions<RegisteredRoutesInfo, TFrom, TTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   activeProps?:
@@ -83,12 +83,12 @@ export type LinkPropsOptions<
 
 export type MakeUseMatchRouteOptions<
   TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > = ToOptions<RegisteredRoutesInfo, TFrom, TTo> & MatchRouteOptions
 
 export type MakeMatchRouteOptions<
   TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > = ToOptions<RegisteredRoutesInfo, TFrom, TTo> &
   MatchRouteOptions & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
@@ -104,12 +104,12 @@ export type MakeMatchRouteOptions<
 
 export type MakeLinkPropsOptions<
   TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > = LinkPropsOptions<TFrom, TTo> & React.AnchorHTMLAttributes<HTMLAnchorElement>
 
 export type MakeLinkOptions<
   TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > = LinkPropsOptions<TFrom, TTo> &
   React.AnchorHTMLAttributes<HTMLAnchorElement> &
   Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
@@ -145,7 +145,7 @@ export type PromptProps = {
 
 export function useLinkProps<
   TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 >(
   options: MakeLinkPropsOptions<TFrom, TTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
@@ -255,7 +255,7 @@ export function useLinkProps<
 
 export interface LinkFn<
   TDefaultFrom extends RegisteredRoutesInfo['routePaths'] = '/',
-  TDefaultTo extends string = '.',
+  TDefaultTo extends string = '',
 > {
   <
     TFrom extends RegisteredRoutesInfo['routePaths'] = TDefaultFrom,
@@ -286,7 +286,7 @@ export const Link: LinkFn = React.forwardRef((props: any, ref) => {
 
 export function Navigate<
   TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 >(props: NavigateOptions<RegisteredRoutesInfo, TFrom, TTo>): null {
   const router = useRouterContext()
 
@@ -492,7 +492,7 @@ export function useNavigate<
   return React.useCallback(
     <
       TFrom extends keyof RegisteredRoutesInfo['routesById'] = TDefaultFrom,
-      TTo extends string = '.',
+      TTo extends string = '',
     >(
       opts?: MakeLinkOptions<TFrom, TTo>,
     ) => {
@@ -508,7 +508,7 @@ export function useMatchRoute() {
   return React.useCallback(
     <
       TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
-      TTo extends string = '.',
+      TTo extends string = '',
     >(
       opts: MakeUseMatchRouteOptions<TFrom, TTo>,
     ) => {
@@ -525,7 +525,7 @@ export function useMatchRoute() {
 
 export function MatchRoute<
   TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 >(props: MakeMatchRouteOptions<TFrom, TTo>): any {
   const matchRoute = useMatchRoute()
   const params = matchRoute(props)
