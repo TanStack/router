@@ -798,6 +798,8 @@ const authenticatedRoute = new Route({
         },
       })
     }
+
+    throw error
   },
   beforeLoad: () => {
     if (router.options.context.auth.status === 'loggedOut') {
