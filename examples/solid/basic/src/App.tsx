@@ -1,5 +1,5 @@
-import type { Component } from 'solid-js'
 import { Link } from '@tanstack/solid-router'
+import { Component } from 'solid-js'
 
 const App: Component = () => {
   return (
@@ -23,6 +23,7 @@ const App: Component = () => {
           Posts
         </Link>
       </div>
+
       <hr />
       {/* <Outlet /> */}
       {/* Start rendering router matches */}
