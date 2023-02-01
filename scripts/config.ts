@@ -84,6 +84,14 @@ export const packages: Package[] = [
     globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
   },
   {
+    name: '@tanstack/solid-router',
+    packageDir: 'solid-router',
+    srcDir: 'src',
+    jsName: 'SolidRouter',
+    entryFile: 'src/index.tsx',
+    globals: {},
+  },
+  {
     name: '@tanstack/router-cli',
     packageDir: 'router-cli',
     srcDir: 'src',
