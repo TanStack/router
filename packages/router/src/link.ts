@@ -20,6 +20,7 @@ export type LinkInfo =
       handleClick: (e: any) => void
       handleEnter: (e: any) => void
       handleLeave: (e: any) => void
+      handleTouchStart: (e: any) => void
       isActive: boolean
       disabled?: boolean
     }

@@ -176,7 +176,6 @@ export function useLinkProps<
     onMouseEnter,
     onMouseLeave,
     onTouchStart,
-    onTouchEnd,
     ...rest
   } = options
 
@@ -187,8 +186,15 @@ export function useLinkProps<
     return { href }
   }
 
-  const { handleClick, handleFocus, handleEnter, handleLeave, isActive, next } =
-    linkInfo
+  const {
+    handleClick,
+    handleFocus,
+    handleEnter,
+    handleLeave,
+    handleTouchStart,
+    isActive,
+    next,
+  } = linkInfo
 
   const reactHandleClick = (e: Event) => {
     if (React.startTransition) {
@@ -229,6 +235,7 @@ export function useLinkProps<
     onFocus: composeHandlers([onFocus, handleFocus]),
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
+    onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     target,
     style: {
       ...style,

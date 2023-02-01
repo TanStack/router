@@ -898,6 +898,13 @@ export class Router<
       }
     }
 
+    const handleTouchStart = (e: TouchEvent) => {
+      this.preloadRoute(nextOpts).catch((err) => {
+        console.warn(err)
+        console.warn('Error preloading route! ☝️')
+      })
+    }
+
     const handleEnter = (e: MouseEvent) => {
       const target = (e.target || {}) as LinkCurrentTargetElement
 
@@ -932,6 +939,7 @@ export class Router<
       handleClick,
       handleEnter,
       handleLeave,
+      handleTouchStart,
       isActive,
       disabled,
     }
