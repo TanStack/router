@@ -4,34 +4,38 @@ title: Search Params
 
 Similar to how TanStack Query made handling server-state in your React applications a breeze, TanStack Router aims to unlock the power of URL search params in your applications.
 
-## Search Params, the "OG" State Manager
+## Why not just use `URLSearchParams`?
 
-Most applications, even large ones will get away with requiring only a few string-based search query params in the URL, probably something like `?page=3` or `?filter-name=tanner`. The main reason you'll find this **state** inside of the URL is that while **it may not fit the hierarchical patterns of the pathname** section of the URL, it's still very important to the output of a page.
+We get it, you've been hearing a lot of "use the platform" lately and for the most part, we agree. However, we also believe it's important to recognize where the platform falls short for more advanced use-cases and `URLSearchParams` is one of these circumstances.
 
-Both the ability to consume search params and manipulate them without restriction is paramount to your app's developer and user experience. After all, we're talking about the original and very unique flavor of **global state management**, here. Your users should be able to bookmark/copy-paste/share a link from your app and have consistency with the original state of the page.
-
-## Why not just use `window.location.search` and URLSearchParams?
-
-We get it, you've been hearing a lot of "use the platform" lately and for the most part, we agree. However, we also believe it's important to recognize where the platform falls short and `URLSearchParams` is one of these circumstances.
-
-Most other search param APIs like to assume a few things:
+Traditional Search Param APIs usually assume a few things:
 
 - Search params are always strings
 - They are _mostly_ flat
-- There will probably only be a few of them at once
 - Serializing and deserializing using `URLSearchParams` is good enough (Spoiler alert: it's not, it sucks)
 
 Reality is very different from these assumptions though.
 
-- Search params are "state", whether you like it or not, and the most common way to store state is as JSON. This is especially true when you're dealing with complex data structures like arrays and objects.
-- State is often nested and hierarchical and your search params should be able to handle this.
-- State tends to grow with your application and you will inevitably have more than a few search params at once.
+- Search params represent application state, so inevitably, we will expect them to have the same DX associated with other state managers. This means having the capable of distinguishing between primitive value types and efficiently storing and manipulating complex data structures like nested arrays and objects.
 - There are many ways to serialize and deserialize state with different tradeoffs. You should be able to choose the best one for your application or at the very least get a better default than `URLSearchParams`.
-- Immutability & Structural Sharing. Every time you stringify and parse, referential integrity and object identity is lost because each new parse creates a brand new structure, totally unique from the last. If not properly managed, this can result in unnecessary re-renders and massive performance issues, especially in frameworks like React that choose to track reactivity via immutability.
+- Immutability & Structural Sharing. Every time you stringify and parse urls search params, referential integrity and object identity is lost because each new parse creates a brand new data structure with a unique memory reference. If not properly managed over its lifetime, this constant serialization and parsing can result in unexpected and undesirable performance issues, especially in frameworks like React that choose to track reactivity via immutability or in Solid that normally relies on reconciliation to detect changes from deserialized data sources.
+
+## Search Params, the "OG" State Manager
+
+You've probaby seen seach params like `?page=3` or `?filter-name=tanner` in the URL. There is no question that this is truly **a form of global state** living inside of the URL. It's valuable to store specific pieces of state in the URL because:
+
+- Users should be able to:
+  - Cmd/Ctrl + Click to open a link in a new tab and reliably see the state they expected
+  - Bookmark and share links from your application with others with assurances that they will see exactly the state as when the link was copied.
+  - Refresh your app or navigate back and forth between pages without losing their state
+- Developers should be able to easily:
+  - Add, remove or modify state in the URL with the same great DX as other state managers
+  - Easily validate search params coming from the URL a format and type that is safe for their application to consume
+  - Read and write to search params without having to worry about the underlying serialization format
 
 ## JSON-first Search Params
 
-Built in to TanStack Router is a powerful search param parser that automatically converts the search string of your URL to structured JSON. This means that you can store any JSON-serializable data structure in your search params and it will be parsed and serialized as JSON. This is a huge improvement over `URLSearchParams` which has limited support for array-like structures and nested data.
+To achieve the above, the first step built in to TanStack Router is a powerful search param parser that automatically converts the search string of your URL to structured JSON. This means that you can store any JSON-serializable data structure in your search params and it will be parsed and serialized as JSON. This is a huge improvement over `URLSearchParams` which has limited support for array-like structures and nested data.
 
 For example, navigating to the following route:
 
@@ -74,15 +78,13 @@ If you noticed, there are a few things going on here:
 
 > 🧠 It's common for other tools to assume that search params are always flat and string-based which is why we've chosen to keep things URLSearchParam compliant at the first level. This ultimately means that even though TanStack Router is managing your nested search params as JSON, other tools will still be able to write to the URL and read first-level params normally.
 
-##
+## Validating and Typing Search Params
 
-## Validating and Typing Search Param JSON
-
-Despite TanStack Router being able to parse search params into reliable JSON, they ultimately still came from **a user-facing string input**. Similar to other free-entry serialization bounderies, this means that before you consume search params, they should be validated into a format that your application can trust and rely on.
+Despite TanStack Router being able to parse search params into reliable JSON, they ultimately still came from **a user-facing raw-text input**. Similar to other serialization boundaries, this means that before you consume search params, they should be validated into a format that your application can trust and rely on.
 
 ### Enter Validation + TypeScript!
 
-To solve this issue, TanStack Router provides convenient APIs for validating and typing search params. This all starts with the `Route`'s `validateSearch` option:
+TanStack Router provides convenient APIs for validating and typing search params. This all starts with the `Route`'s `validateSearch` option:
 
 ```tsx
 interface ProductSearch {
@@ -105,13 +107,21 @@ const allProductsRoute = new Route({
 })
 ```
 
-In the above example, we're validating the search params of the `allProductsRoute` and returning a typed `ProductSearch` object. This typed object is then made available to this route's other options and any child routes, too!
+In the above example, we're validating the search params of the `allProductsRoute` and returning a typed `ProductSearch` object. This typed object is then made available to this route's other options **and any child routes, too!**
 
 ### Validating Search Params
 
-The `validateSearch` option is a function that takes in the raw search params as a `Record<string, unknown>` and returns a typed object. If this function throws an error, the route's `onLoadError` callback will be triggered and the `errorComponent` will be rendered instead of the route's `component` where you can handle the search param error however you'd like. Here's an example:
+The `validateSearch` option is a function that is provided the JSON parsed (but non-validated) search params as a `Record<string, unknown>` and returns a typed object of your choice. It's usually best to provide sensible fallbacks for malformed or unexpected search params so your users experience stays non-interrupted.
+
+Here's an example:
 
 ```tsx
+interface ProductSearch {
+  page: number
+  filter: string
+  sort: 'newest' | 'oldest' | 'price'
+}
+
 const allProductsRoute = new Route({
   getParentRoute: () => shopRoute,
   path: 'products',
@@ -123,25 +133,185 @@ const allProductsRoute = new Route({
       sort: search.sort || 'newest',
     }
   },
-  onLoadError: (error: Error) => {
-    // handle the error however you'd like
-    console.error(error)
-
-    // rethrow the error to trigger the error component
-    throw error
-  },
-  errorComponent: () => <div>Invalid search params!</div>,
 })
 ```
 
-## A Unified Search Param API
+Here's an example using the [Zod](https://zod.dev/) library (but feel free to use any validation library you want) to both validate and type the search params in a single step:
 
-To solve all of the above problems, TanStack Router provides a unified search param API that is:
+```tsx
+import { z } from 'zod'
 
--
+const productSearchSchema = z.object({
+  page: z.number().catch(1),
+  filter: z.string().catch(''),
+  sort: z.enum(['newest', 'oldest', 'price']).catch('newest'),
+})
 
-- Low-level declarative APIs to manipulate query state (think `<Link>`, `<Navigate>` and `useNavigate`). This is one where most routers can't or won't go. To do this correctly, you have to buy into your search-param APIs wholesale at the core of the architecture and provide them as a consistent experience through the entire library.
+type ProductSearch = z.infer<typeof productSearchSchema>
 
-Let's just say TanStack Router doesn't skimp on search params. It handles all of this out of the box and goes the extra mile!
+const allProductsRoute = new Route({
+  getParentRoute: () => shopRoute,
+  path: 'products',
+  validateSearch: (search) => productSearchSchema.parse(search),
+})
+```
 
-TODO
+Because `validateSearch` also accepts an object with the `parse` property, this can be shortened to:
+
+```tsx
+validateSearch: productSearchSchema
+```
+
+In the above example, we used Zod's `.catch()` modifier instead of `.default()` to avoid showing an error to the user because we firmly believee that if a search parameter is malformed, you probably don't want to halt the user's experience through the app to show a big fat error message. That said, there may be times that you **do want to show an error message**. In that case, you can use `.default()` instead of `.catch()`.
+
+The underlying mechanics why this works relies on the `validateSearch` function throwing an error. If an error is thrown, the route's `onValidateSearchError` and `onError` options will both be triggered and the `errorComponent` will be rendered instead of the route's `component` where you can handle the search param error however you'd like.
+
+## Reading Search Params
+
+Once your search params have been validated and typed, you're finally ready to start reading and writing to them. There are a few ways to do this in TanStack Router, so let's check them out.
+
+### Search Params in Route Options
+
+Thanks to TypeScript, you can access your route's validated search params in all sibling route options except `beforeLoad`:
+
+```tsx
+const productSearchSchema = z.object({
+  page: z.number().catch(1),
+  filter: z.string().catch(''),
+  sort: z.enum(['newest', 'oldest', 'price']).catch('newest'),
+})
+
+type ProductSearch = z.infer<typeof productSearchSchema>
+
+const allProductsRoute = new Route({
+  getParentRoute: () => shopRoute,
+  path: 'products',
+  validateSearch: productSearchSchema,
+  onLoad: ({ search }) => {
+    search
+    // ^? ProductSearch ✅
+  },
+})
+```
+
+The search parameters and types of parents are merged as you go down the route tree, so child routes also have access to their parent's search params:
+
+```tsx
+const productSearchSchema = z.object({
+  page: z.number().catch(1),
+  filter: z.string().catch(''),
+  sort: z.enum(['newest', 'oldest', 'price']).catch('newest'),
+})
+
+type ProductSearch = z.infer<typeof productSearchSchema>
+
+const allProductsRoute = new Route({
+  getParentRoute: () => shopRoute,
+  path: 'products',
+  validateSearch: productSearchSchema,
+})
+
+const productRoute = new Route({
+  getParentRoute: () => allProductsRoute,
+  path: ':productId',
+  onLoad: ({ search }) => {
+    search
+    // ^? ProductSearch ✅
+  },
+})
+```
+
+### Search Params in Components
+
+You can access your route's validated search params in your route's `component` via the `useSearch` hook (or your framework's equivalent). By passing the `from` id/path of your origin route, you'll get even better type safety:
+
+```tsx
+const allProductsRoute = new Route({
+  getParentRoute: () => shopRoute,
+  path: 'products',
+  validateSearch: productSearchSchema,
+})
+
+const ProductList = () => {
+  const { page, filter, sort } = useSearch({ from: allProductsRoute.id })
+
+  return <div>...</div>
+}
+```
+
+### Search Params outside of Components
+
+You can access your route's validated search params anywhere in your app using:
+
+- `router.state.currentLocation.state`
+- `router.state.pendingLocation.state`
+- `router.state.latestLocation.state`
+
+Each one represent different states of the router. `currentLocation` is the current location of the router, `pendingLocation` is the location that the router is transitioning to, and `latestLocation` is most up-to-date representation of the location that the router has synced from the URL.
+
+## Writing Search Params
+
+Now that you've learned how to read your route's search params, you'll be happy to know that you've already seen the primary APIs to modify and update them. Let's remind ourselves a bit
+
+### `<Link search />`
+
+The best way to update search params is to use the `search` prop on the `<Link />` component. Remember, if a `to` prop is omitted, will update the search for the current page. Here's an example:
+
+```tsx
+const allProductsRoute = new Route({
+  getParentRoute: () => shopRoute,
+  path: 'products',
+  validateSearch: productSearchSchema,
+})
+
+const ProductList = () => {
+  return (
+    <div>
+      <Link
+        from={allProductsRoute.id}
+        search={(prev) => ({ page: prev.page + 1 })}
+      >
+        Next Page
+      </Link>
+    </div>
+  )
+}
+```
+
+### `useNavigate(), navigate({ search })`
+
+The `navigate` function also accepts a `search` option that works the same way as the `search` prop on `<Link />`:
+
+```tsx
+const allProductsRoute = new Route({
+  getParentRoute: () => shopRoute,
+  path: 'products',
+  validateSearch: productSearchSchema,
+})
+
+const ProductList = () => {
+  const navigate = useNavigate({ from: allProductsRoute.id })
+
+  return (
+    <div>
+      <button
+        onClick={() => {
+          navigate({
+            search: (prev) => ({ page: prev.page + 1 }),
+          })
+        }}
+      >
+        Next Page
+      </button>
+    </div>
+  )
+}
+```
+
+### `router.navigate({ search })`
+
+The `router.navigate` function works exactly the same was as the `useNavigate`/`navigate` hook/function above.
+
+### `<Navigate search />`
+
+The `<Navigate search />` component works exactly the same was as the `useNavigate`/`navigate` hook/function above, but accepts its options as props instead of a function argument.
