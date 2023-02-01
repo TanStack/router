@@ -728,7 +728,7 @@ export class Router<
     return resolvePath(this.basepath!, from, cleanPath(path))
   }
 
-  navigate = async <
+  navigate = <
     TFrom extends ValidFromPath<TRoutesInfo> = '/',
     TTo extends string = '',
   >({
