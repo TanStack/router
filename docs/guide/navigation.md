@@ -96,10 +96,10 @@ With relative navigation and all of the interfaces in mind now, let's talk about
 
 - The `<Link>` component
   - Generates an actual `<a>` tag with a valid `href` which can be click or even cmd/ctrl + clicked to open in a new tab
-- The `<Navigate>` component
-  - Renders nothing and performs an immediate client-side navigation.
 - The `useNavigate()` hook
   - When possible, `Link` component should be used for navigation, but sometimes you need to navigate imperatively as a result of a side-effect. `useNavigate` returns a function that can be called to perform an immediate client-side navigation.
+- The `<Navigate>` component
+  - Renders nothing and performs an immediate client-side navigation.
 - The `Router.navigate()` method
   - This is the most powerful navigation API in TanStack Router. Similar to `useNavigate`, it imperatively navigates, but is available everywhere you have access to your router.
 
@@ -347,24 +347,53 @@ const link = (
 )
 ```
 
-##
+## `useNavigate`
 
-##
+> ⚠️ Because of the `Link` component's built-in affordances around `href`, cmd/ctrl + click-ability, and active/inactive capabilities, it's recommended to use the `Link` component instead of `useNavigate` for anything the user can interact with (e.g. links, buttons). However, there are some cases where `useNavigate` is necessary to handle side-effect navigations (e.g. a successful async action that results in a navigation).
 
-##
+The `useNavigate` hook returns a `navigate` function that can be called to imperatively navigate. It's a great way to navigate to a route from a side-effect (e.g. a successful async action). Here's an example:
 
-##
+```tsx
+function Component() {
+  const navigate = useNavigate({ from: '/posts/$postId' })
 
-##
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
 
-##
+    const response = await fetch('/posts', {
+      method: 'POST',
+      body: JSON.stringify({ title: 'My First Post' }),
+    })
 
-##
+    const { id: postId } = await response.json()
 
+    if (response.ok) {
+      navigate({ to: '/posts/$postId', params: { postId } })
+    }
+  }
+}
 ```
 
+> 🧠 As shown above, you can pass the `from` option to specify the route to navigate from in the hook call. While this is also possible to pass in the resulting `navigate` function each time you call it, it's recommended to pass it here to reduce on potential error and also not type as much!
+
+### `navigate` Options
+
+The `navigate` function returned by `useNavigate` accepts the [`NavigateOptions` interface](#navigateoptions-interface)
+
+## `Navigate` Component
+
+Occcasionally, you may find yourself needing to navigate immediately when a component mounts. Your first instinct might be to reach for `useNavigate` and an immediate side-effect (e.g. React.useEffect), but this is unnecessary. Instead, you can render the `Navigate` component to achieve the same result:
+
+```tsx
+function Component() {
+  return <Navigate to="/posts/$postId" params={{ postId: 'my-first-post' }} />
+}
 ```
 
-```
+Think of the `Navigate` component as a way to navigate to a route immediately when a component mounts. It's a great way to handle client-only redirects. It is _definitely not_ a substitute for handling server-aware redirects responsibly on the server.
 
-```
+## `router.navigate`
+
+The `router.navigate` method is the same as the `navigate` function returned by `useNavigate` and accepts the same [`NavigateOptions` interface](#navigateoptions-interface). Unlike the `useNavigate` hook, it is available anywhere your `router` instance is available and is thus a great way to navigate imperatively from anywhere in your application, including outside of your framework.
+
+Phew! That's a lot of navigating! That said, hopefully you're feeling pretty good about getting around your application now. Let's move on!
