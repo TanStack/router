@@ -71,8 +71,8 @@
           "to": "guide/route-paths"
         },
         {
-          "label": "Links",
-          "to": "guide/links"
+          "label": "Navigation",
+          "to": "guide/navigation"
         },
         {
           "label": "Route Matches",
@@ -83,20 +83,12 @@
           "to": "guide/search-params"
         },
         {
-          "label": "Loaders",
+          "label": "Loaders & Actions",
           "to": "guide/loaders"
-        },
-        {
-          "label": "Actions",
-          "to": "guide/actions"
         },
         {
           "label": "Router",
           "to": "guide/router"
-        },
-        {
-          "label": "Caching",
-          "to": "guide/caching"
         },
         {
           "label": "Preloading",

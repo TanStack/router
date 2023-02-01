@@ -25,7 +25,7 @@ This is the core `ToOptions` interface that is used in every navigation and rout
 type ToOptions<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > = {
   // `from` is an optional route ID or path. If it is not supplied, only absolute paths will be auto-completed and type-safe. It's common to supply the route.id of the origin route you are rendering from for convenience. If you don't know the origin route, leave this empty and work with absolute paths or unsafe relative paths.
   from: string
@@ -56,7 +56,7 @@ This is the core `NavigateOptions` interface that extends `ToOptions`. Any API t
 export type NavigateOptions<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > = ToOptions<TRoutesInfo, TFrom, TTo> & {
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
@@ -71,12 +71,16 @@ Anywhere an actual `<a>` tag the `LinkOptions` interface which extends `Navigate
 export type LinkOptions<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > = NavigateOptions<TRoutesInfo, TFrom, TTo> & {
   // The standard anchor tag target attribute
   target?: HTMLAnchorElement['target']
   // Defaults to `{ exact: false, includeHash: false }`
-  activeOptions?: ActiveOptions
+  activeOptions?: {
+    exact?: boolean
+    includeHash?: boolean
+    includeSearch?: boolean
+  }
   // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
   preload?: false | 'intent'
   // Delay intent preloading by this many milliseconds. If the intent exits before this delay, the preload will be cancelled.
@@ -110,7 +114,7 @@ In addition to the [`LinkOptions`](#linkoptions-interface) interface, the `Link`
 ```tsx
 export type LinkPropsOptions<
   TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
-  TTo extends string = '.',
+  TTo extends string = '',
 > = LinkOptions<RegisteredRoutesInfo, TFrom, TTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   activeProps?:
@@ -121,6 +125,226 @@ export type LinkPropsOptions<
     | React.AnchorHTMLAttributes<HTMLAnchorElement>
     | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
 }
+```
+
+### Absolute Links
+
+Let's make a simple static !
+
+```tsx
+import { Link } from '@tanstack/router'
+
+const link = <Link to="/about">About</Link>
+```
+
+### Dynamic Links
+
+Dynamic links are links that have dynamic segments in them. For example, a link to a blog post might look like this:
+
+```tsx
+const link = (
+  <Link
+    to="/blog/post/$postId"
+    params={{
+      postId: 'my-first-blog-post',
+    }}
+  >
+    Blog Post
+  </Link>
+)
+```
+
+Keep in mind that normally dynamic segment params are `string` values, but they can also be any other type that you parse them to in your route options. Either way, the type will be checked at compile time to ensure that you are passing the correct type.
+
+### Relative Links
+
+By default, all links are absolute unless a `from` route path is provided. This means that the above link will always navigate to the `/about` route regardless of what route you are currently on.
+
+If you want to make a link that is relative to the current route, you can provide a `from` route path:
+
+```tsx
+const postIdRoute = new Route({
+  path: '/blog/post/$postId',
+})
+
+const link = (
+  <Link from={postIdRoute.id} to="../categories">
+    Categories
+  </Link>
+)
+```
+
+As seen above, it's common to provide the `route.id` as the `from` route path. This is because the `route.id` is a reference that will update if you refactor your application. However, sometimes it's not possible to import the route directly, in which case it's fine to provide the route path directly as a string. It will still get type-checked as per usual!
+
+### Search Param Links
+
+Search params are a great way to provide additional context to a route. For example, you might want to provide a search query to a search page:
+
+```tsx
+const link = (
+  <Link
+    to="/search"
+    searchParams={{
+      query: 'tanstack',
+    }}
+  >
+    Search
+  </Link>
+)
+```
+
+It's also common to want to update a single search param without supplying any other information about the existing route. For example, you might want to update the page number of a search result:
+
+```tsx
+const link = (
+  <Link
+    searchParams={(prev) => ({
+      ...prev,
+      page: prev.page + 1,
+    })}
+  >
+    Next Page
+  </Link>
+)
+```
+
+> 🧠 Did you notice that how we didn't even need to supply a `to` prop? By default, all navigations are relative to the current route, so if you don't supply a `to` prop, it will just update the current route's search params.
+
+### Search Param Type Safety
+
+Search params are a highly dynamic state management mechanism, so it's important to ensure that you are passing the correct types to your search params. We'll see in a later section in detail how to validate and ensure search params typesafety, among other great features!
+
+### Hash Links
+
+Hash links are a great way to link to a specific section of a page. For example, you might want to link to a specific section of a blog post:
+
+```tsx
+const link = (
+  <Link
+    to="/blog/post/$postId"
+    params={{
+      postId: 'my-first-blog-post',
+    }}
+    hash="section-1"
+  >
+    Section 1
+  </Link>
+)
+```
+
+### Active & Inactive Props
+
+The `Link` component supports two additional props: `activeProps` and `inactiveProps`. These props are functions that return additional props for the `active` and `inactive` states of the link. All props other than styles and classes passed here will override the original props passed to `Link`. Any styles or classes passed are merged together.
+
+Here's an example:
+
+```tsx
+const link = (
+  <Link
+    to="/blog/post/$postId"
+    params={{
+      postId: 'my-first-blog-post',
+    }}
+    activeProps={{
+      style: {
+        fontWeight: 'bold',
+      },
+    }}
+  >
+    Section 1
+  </Link>
+)
+```
+
+### The `data-status` attribute
+
+In addition to the `activeProps` and `inactiveProps` props, the `Link` component also adds a `data-status` attribute to the rendered element when it is in an active state. This attribute will be `active` or `undefined` depending on the current state of the link. This can come in handy if you prefer to use data-attributes to style your links instead of props.
+
+### Active Options
+
+The `Link` component comes with an `activeOptions` property that offers a few options of determining if a link is active or not. The following interface describes those options:
+
+```tsx
+export interface ActiveOptions {
+  // If true, the link will be active if the current route matches the `to` route path exactly (no children routes)
+  // Defaults to `false`
+  exact?: boolean
+  // If true, the link will only be active if the current URL hash matches the `hash` prop
+  // Defaults to `false`
+  includeHash?: boolean // Defaults to false
+  // If true, the link will only be active if the current URL search params inclusively match the `searchParams` prop
+  // Defaults to `true`
+  includeSearch?: boolean
+}
+```
+
+By default, it will check if the resulting **pathname** is a prefix of the current route. If any search params are provided, it will check that they _inclusively_ match those in the current location. Hashes are not checked by default.
+
+For example, if you are on the `/blog/post/my-first-blog-post` route, the following links will be active:
+
+```tsx
+const link1 = (
+  <Link to="/blog/post/$postId" params={{ postId: 'my-first-blog-post' }}>
+    Blog Post
+  </Link>
+)
+const link2 = <Link to="/blog/post">Blog Post</Link>
+const link3 = <Link to="/blog">Blog Post</Link>
+```
+
+However, the following links will not be active:
+
+```tsx
+const link4 = (
+  <Link to="/blog/post/$postId" params={{ postId: 'my-second-blog-post' }}>
+    Blog Post
+  </Link>
+)
+```
+
+It's common for some links to only be active if they are an exact match. A good example of this would be a link to the home page. In scenarios like these, you can pass the `exact: true` option:
+
+```tsx
+const link = (
+  <Link to="/" activeOptions={{ exact: true }}>
+    Home
+  </Link>
+)
+```
+
+This will ensure that the link is not active when you are a child route.
+
+A few more options to be aware of:
+
+- If you want to include the hash in your matching, you can pass the `includeHash: true` option
+- If you do **not** want to include the search params in your matching, you can pass the `includeSearch: false` option
+
+### Link Preloading
+
+The `Link` component supports automatically preloading routes on intent (hovering or touchstart for now). This can be configured as a default in the router options (which we'll talk more about soon) or by passing a `preload='intent'` prop to the `Link` component. Here's an example:
+
+```tsx
+const link = (
+  <Link to="/blog/post/$postId" preload="intent">
+    Blog Post
+  </Link>
+)
+```
+
+With preloading enabled and relatively quick asynchronous route dependencies (if any), this simple trick can increase the perceived performance of your application with very little effort.
+
+What's even better is that by using a cache-first library like `@tanstack/loaders` or `@tanstack/query`, preloaded routes will stick around and be ready for a stale-while-revalidate experience if if the user decides to navigate to the route later on.
+
+### Link Preloading Timeout
+
+Along with preloading is a configurable timeout which determines how long a user must hover over a link to trigger the intent-based preloading. The default timeout is 50 milliseconds, but you can change this by passing a `preloadTimeout` prop to the `Link` component with the number of milliseconds you'd like to wait:
+
+```tsx
+const link = (
+  <Link to="/blog/post/$postId" preload="intent" preloadTimeout={100}>
+    Blog Post
+  </Link>
+)
 ```
 
 ##
@@ -136,3 +360,11 @@ export type LinkPropsOptions<
 ##
 
 ##
+
+```
+
+```
+
+```
+
+```
