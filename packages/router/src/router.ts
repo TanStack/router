@@ -691,8 +691,10 @@ export class Router<
           })
         } catch (err) {
           if (!opts?.preload) {
-            match.route.options.onLoadError?.(err)
+            match.route.options.onBeforeLoadError?.(err)
           }
+
+          match.route.options.onError?.(err)
 
           throw err
         }

@@ -152,7 +152,7 @@ export class RouteMatch<
         search,
       }
     } catch (err: any) {
-      console.error(err)
+      this.route.options.onValidateSearchError?.(err)
       const error = new (Error as any)('Invalid search params found', {
         cause: err,
       })
@@ -199,6 +199,8 @@ export class RouteMatch<
     try {
       info = this.#resolveInfo(opts)
     } catch (err) {
+      this.route.options.onError?.(err)
+
       this.store.setState((s) => ({
         ...s,
         status: 'error',
@@ -286,6 +288,8 @@ export class RouteMatch<
           updatedAt: Date.now(),
         }))
       } catch (err) {
+        this.route.options.onLoadError?.(err)
+        this.route.options.onError?.(err)
         this.store.setState((s) => ({
           ...s,
           error: err,

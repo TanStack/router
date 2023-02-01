@@ -66,7 +66,6 @@ export type RouteOptions<
     getParentRoute: () => TParentRoute
     // If true, this route will be matched as case-sensitive
     caseSensitive?: boolean
-    validateSearch?: SearchSchemaValidator<TSearchSchema, TParentSearchSchema>
     // Filter functions that can manipulate search params *before* they are passed to links and navigate
     // calls that match this route.
     preSearchFilters?: SearchFilter<TFullSearchSchema>[]
@@ -87,7 +86,14 @@ export type RouteOptions<
       router: AnyRouter
       match: RouteMatch
     }) => Promise<void> | void
-
+    // This function will be called if the route's loader throws an error **during an attempted navigation**.
+    // If you want to redirect due to an error, call `router.navigate()` from within this function.
+    onBeforeLoadError?: (err: any) => void
+    validateSearch?: SearchSchemaValidator<TSearchSchema, TParentSearchSchema>
+    // This function will be called if the route's validateSearch option throws an error **during an attempted validation**.
+    // If you want to redirect due to an error, call `router.navigate()` from within this function.
+    // If you want to display the errorComponent, rethrow the error
+    onValidateSearchError?: (err: any) => void
     // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
     onLoad?: OnLoadFn<
       TSearchSchema,
@@ -96,10 +102,8 @@ export type RouteOptions<
       TRouteContext,
       TContext
     >
-
-    // This function will be called if the route's loader throws an error **during an attempted navigation**.
-    // If you want to redirect due to an error, call `router.navigate()` from within this function.
     onLoadError?: (err: any) => void
+    onError?: (err: any) => void
     // This function is called
     // when moving from an inactive state to an active one. Likewise, when moving from
     // an active to an inactive state, the return function (if provided) is called.
