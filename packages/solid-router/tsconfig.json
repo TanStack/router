@@ -1,10 +1,14 @@
 {
-  "composite": true,
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./build/types",
-    "jsx": "preserve"
+    "composite": true,
+    "rootDir": "./src",
+    "outDir": "./build/solid",
+    "declarationDir": "./build/lib",
+    "tsBuildInfoFile": "./build/.tsbuildinfo",
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "emitDeclarationOnly": false
   },
-  "files": ["src/index.tsx"],
-  "include": ["src", "__tests__/**/*.test.*"]
+  "include": ["src"]
 }

@@ -9,7 +9,8 @@
     { "path": "packages/react-router-devtools" },
     { "path": "packages/react-store" },
     { "path": "packages/react-actions" },
-    { "path": "packages/react-loaders" }
+    { "path": "packages/react-loaders" },
+    { "path": "packages/solid-router" }
     // { "path": "packages/react-router-devtools" },
     // { "path": "examples/react/kitchen-sink/tsconfig.dev.json" }
   ]

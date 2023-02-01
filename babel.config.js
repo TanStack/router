@@ -30,4 +30,18 @@ module.exports = {
     //   },
     // ],
   ].filter(Boolean),
+  overrides: [
+    {
+      exclude: [
+        './packages/solid-router/**',
+        './packages/svelte-router/**',
+        './packages/vue-router/**',
+      ],
+      presets: ['@babel/react'],
+    },
+    {
+      include: './packages/solid-router/**',
+      presets: ['babel-preset-solid'],
+    },
+  ],
 }
