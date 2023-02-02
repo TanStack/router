@@ -728,7 +728,7 @@ export class Router<
     return resolvePath(this.basepath!, from, cleanPath(path))
   }
 
-  navigate = <
+  navigate = async <
     TFrom extends ValidFromPath<TRoutesInfo> = '/',
     TTo extends string = '',
   >({
@@ -1130,7 +1130,9 @@ export class Router<
     }
   }
 
-  #commitLocation = (location: BuildNextOptions & { replace?: boolean }) => {
+  #commitLocation = async (
+    location: BuildNextOptions & { replace?: boolean },
+  ) => {
     const next = this.buildNext(location)
     const id = '' + Date.now() + Math.random()
 

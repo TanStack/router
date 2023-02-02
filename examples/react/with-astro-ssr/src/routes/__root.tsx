@@ -4,6 +4,7 @@ import type { RouterContext } from '../router'
 
 export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
   component: Root,
+  // wrapInSuspense: false,
 })
 
 function Root() {

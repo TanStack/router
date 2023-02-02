@@ -29,9 +29,15 @@ await router.load()
 
 const dehydratedLoaderClient = loaderClient.dehydrate()
 const dehydratedRouter = router.dehydrate()
+
+console.log(JSON.stringify({
+	dehydratedLoaderClient,
+	dehydratedRouter
+}, null, 2))
 ---
 
 <App dehydratedRouter={dehydratedRouter} dehydratedLoaderClient={dehydratedLoaderClient} client:load />
+
 
 <style is:global>
 	:root {
