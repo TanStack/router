@@ -14,8 +14,10 @@ export default function App(props: {
   })
 
   return (
-    <LoaderClientProvider loaderClient={loaderClient}>
-      <RouterProvider router={router} />
-    </LoaderClientProvider>
+    <>
+      <LoaderClientProvider loaderClient={loaderClient}>
+        <RouterProvider router={router} />
+      </LoaderClientProvider>
+    </>
   )
 }

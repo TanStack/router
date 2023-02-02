@@ -94,7 +94,15 @@ export class RouteMatch<
 
     this.state = this.store.state
 
-    if (!this.#hasLoaders()) {
+    componentTypes.map(async (type) => {
+      const component = this.route.options[type]
+
+      if (typeof this[type] !== 'function') {
+        this[type] = component
+      }
+    })
+
+    if (this.state.status === 'idle' && !this.#hasLoaders()) {
       this.store.setState((s) => ({
         ...s,
         status: 'success',
@@ -213,14 +221,6 @@ export class RouteMatch<
 
     const { routeSearch, search, context, routeContext } = info
 
-    componentTypes.map(async (type) => {
-      const component = this.route.options[type]
-
-      if (typeof this[type] !== 'function') {
-        this[type] = component
-      }
-    })
-
     // If the match is invalid, errored or idle, trigger it to load
     if (this.state.status === 'pending') {
       return
@@ -278,8 +278,7 @@ export class RouteMatch<
       })
 
       try {
-        await componentsPromise
-        await dataPromise
+        await Promise.all([componentsPromise, dataPromise])
         if ((latestPromise = checkLatest())) return await latestPromise
         this.store.setState((s) => ({
           ...s,

@@ -32,7 +32,6 @@ function Root() {
       <hr />
       <Outlet /> {/* Start rendering router matches */}
       <TanStackRouterDevtools position="bottom-right" />
-      <script type="module" src="/src/entry-client.tsx"></script>
     </>
   )
 }

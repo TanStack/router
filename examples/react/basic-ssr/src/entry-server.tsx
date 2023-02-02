@@ -9,7 +9,6 @@ import express from 'express'
 // index.js
 import './fetch-polyfill'
 import { App } from '.'
-import { RegisteredLoaders } from '@tanstack/react-loaders'
 import { routeTree } from './routeTree'
 
 async function getRouter(opts: { url: string }) {
@@ -42,24 +41,26 @@ export async function render(opts: {
   const { router, loaderClient } = await getRouter(opts)
 
   await router.load()
+
   const dehydratedRouter = router.dehydrate()
   const dehydratedLoaderClient = loaderClient.dehydrate()
 
-  const head = `${opts.head}<script>
-  window.__DEHYDRATED__ = JSON.parse(
-    ${jsesc(
-      JSON.stringify({
-        dehydratedRouter,
-        dehydratedLoaderClient,
-      }),
-      {
-        isScriptContext: true,
-        wrap: true,
-        json: true,
-      },
-    )}
-  )
-</script>`
+  let head = `<script class="__DEHYDRATED__">
+    window.__DEHYDRATED__ = JSON.parse(
+      ${jsesc(
+        JSON.stringify({
+          dehydratedRouter,
+          dehydratedLoaderClient,
+        }),
+        {
+          isScriptContext: true,
+          wrap: true,
+          json: true,
+        },
+      )}
+    )
+  </script>
+`
 
   const appHtml = ReactDOMServer.renderToString(
     <App router={router} loaderClient={loaderClient} head={head} />,
