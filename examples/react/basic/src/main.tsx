@@ -8,6 +8,8 @@ import {
   useParams,
   RootRoute,
   Route,
+  redirect,
+  ErrorComponent,
 } from '@tanstack/react-router'
 import {
   Loader,
@@ -42,9 +44,15 @@ const postLoader = new Loader({
     console.log(`Fetching post with id ${postId}...`)
     await new Promise((r) => setTimeout(r, 500))
 
-    return await axios
-      .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-      .then((r) => r.data)
+    try {
+      const post = await axios
+        .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+        .then((r) => r.data)
+
+      return post
+    } catch (err) {
+      throw new Error('Post not found!')
+    }
   },
   onAllInvalidate: async () => {
     await postsLoader.invalidateAll()
@@ -142,7 +150,6 @@ const postsRoute = new Route({
       </div>
     )
   },
-  errorComponent: () => 'Oh crap',
 })
 
 const PostsIndexRoute = new Route({
@@ -162,6 +169,17 @@ const postRoute = new Route({
   path: 'post/$postId',
   onLoad: async ({ params: { postId } }) =>
     postLoader.load({ variables: postId }),
+  // errorComponent: ({ error }) => {
+  //   if (error.message === 'Post not found!') {
+  //     return <div>Post not found!</div>
+  //   }
+
+  //   throw redirect({
+  //     to: '/'
+  //   })
+
+  //   return <ErrorComponent error={error} />
+  // },
   component: () => {
     const { postId } = useParams({ from: postRoute.id })
     const postLoaderInstance = useLoaderInstance({

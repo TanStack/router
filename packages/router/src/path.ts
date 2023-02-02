@@ -173,6 +173,10 @@ export function matchByPath(
   const to = `${matchLocation.to ?? '$'}`
   const routeSegments = parsePathname(to)
 
+  if (last(baseSegments)?.value === '/') {
+    baseSegments.pop()
+  }
+
   const params: Record<string, string> = {}
 
   let isMatch = (() => {

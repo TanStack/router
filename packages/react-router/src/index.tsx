@@ -10,7 +10,6 @@ import {
   RouterOptions,
   RouteMatch,
   MatchRouteOptions,
-  AnyRoute,
   AnyRoutesInfo,
   DefaultRoutesInfo,
   functionalUpdate,
@@ -23,12 +22,8 @@ import {
   ToOptions,
   invariant,
   Router,
-  Expand,
-  AnyContext,
   AnyRootRoute,
   RootRoute,
-  AnySearchSchema,
-  AnyPathParams,
   AnyRouteMatch,
   NavigateOptions,
   RouterConstructorOptions,
@@ -122,7 +117,7 @@ declare module '@tanstack/router' {
   interface FrameworkGenerics {
     Component: RouteComponent
     ErrorComponent: RouteComponent<{
-      error: unknown
+      error: Error
       info: { componentStack: string }
     }>
   }
@@ -353,13 +348,21 @@ export function RouterProvider<
   React.useEffect(router.mount, [router])
 
   return (
-    <>
-      <routerContext.Provider value={{ router: router as any }}>
-        <matchesContext.Provider value={[undefined!, ...currentMatches]}>
+    <routerContext.Provider value={{ router: router as any }}>
+      <matchesContext.Provider value={[undefined!, ...currentMatches]}>
+        <CatchBoundary
+          errorComponent={ErrorComponent}
+          onCatch={() => {
+            warning(
+              false,
+              `Error in router! Consider setting an 'errorComponent' in your RootRoute! 👍`,
+            )
+          }}
+        >
           <Outlet />
-        </matchesContext.Provider>
-      </routerContext.Provider>
-    </>
+        </CatchBoundary>
+      </matchesContext.Provider>
+    </routerContext.Provider>
   )
 }
 
@@ -602,42 +605,29 @@ function SubOutlet({
   const errorComponent =
     match.errorComponent ?? router.options.defaultErrorComponent
 
+  const ResolvedSuspenseBoundary =
+    match.route.options.wrapInSuspense ?? true ? React.Suspense : SafeFragment
+  const ResolvedCatchBoundary = errorComponent ? CatchBoundary : SafeFragment
+
   return (
     <matchesContext.Provider value={matches}>
-      {match.route.options.wrapInSuspense ?? true ? (
-        <React.Suspense fallback={<PendingComponent />}>
-          <CatchBoundary
-            key={match.route.id}
-            errorComponent={errorComponent}
-            match={match as any}
-          >
-            <Inner match={match} />
-          </CatchBoundary>
-        </React.Suspense>
-      ) : (
-        <CatchBoundary
+      <ResolvedSuspenseBoundary fallback={<PendingComponent />}>
+        <ResolvedCatchBoundary
           key={match.route.id}
           errorComponent={errorComponent}
-          match={match as any}
+          onCatch={() => {
+            warning(false, `Error in route match: ${match.id}`)
+          }}
         >
           <Inner match={match} />
-        </CatchBoundary>
-      )}
-      {/* Provide a suffix suspense boundary to make sure the router is
-  ready to be dehydrated on the server */}
-      {/* {router.options.ssrFooter && match.id === rootRouteId ? (
-        <React.Suspense fallback={null}>
-          {(() => {
-            if (router.store.pending) {
-              throw router.navigationPromise
-            }
-
-            return router.options.ssrFooter()
-          })()}
-        </React.Suspense>
-      ) : null} */}
+        </ResolvedCatchBoundary>
+      </ResolvedSuspenseBoundary>
     </matchesContext.Provider>
   )
+}
+
+function SafeFragment(props: any) {
+  return <>{props.children}</>
 }
 
 // This is the messiest thing ever... I'm either seriously tired (likely) or
@@ -647,14 +637,14 @@ function SubOutlet({
 class CatchBoundary extends React.Component<{
   children: any
   errorComponent: any
-  match: RouteMatch
+  onCatch: (error: any, info: any) => void
 }> {
   state = {
     error: false,
     info: undefined,
   }
   componentDidCatch(error: any, info: any) {
-    console.error(`Error in route match: ${this.props.match.id}`)
+    this.props.onCatch(error, info)
     console.error(error)
     this.setState({
       error,
@@ -682,7 +672,7 @@ function CatchBoundaryInner(props: {
     props.errorState,
   )
   const router = useRouterContext()
-  const errorComponent = props.errorComponent ?? DefaultErrorBoundary
+  const errorComponent = props.errorComponent ?? ErrorComponent
   const prevKeyRef = React.useRef('' as any)
 
   React.useEffect(() => {
@@ -709,7 +699,7 @@ function CatchBoundaryInner(props: {
   return props.children
 }
 
-export function DefaultErrorBoundary({ error }: { error: any }) {
+export function ErrorComponent({ error }: { error: any }) {
   return (
     <div style={{ padding: '.5rem', maxWidth: '100%' }}>
       <strong style={{ fontSize: '1.2rem' }}>Something went wrong!</strong>

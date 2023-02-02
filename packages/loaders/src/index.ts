@@ -519,7 +519,9 @@ export class LoaderInstance<
       this.getIsInvalid(opts)
     ) {
       if (!this.__loadPromise) {
-        this.fetch(opts)
+        this.fetch(opts).catch(() => {
+          // Ignore
+        })
       }
     }
 
@@ -551,7 +553,11 @@ export class LoaderInstance<
 
     if (this.store.listeners.size) {
       this.load()
-      await this.__loadPromise
+      try {
+        await this.__loadPromise
+      } catch (err) {
+        // Ignore
+      }
     }
 
     await this.loader.options.onEachInvalidate?.(this)
@@ -692,9 +698,11 @@ export class LoaderInstance<
       }
     })
 
-    this.__loadPromise.then(() => {
-      delete this.__loadPromise
-    })
+    this.__loadPromise
+      .then(() => {
+        delete this.__loadPromise
+      })
+      .catch(() => {})
 
     return this.__loadPromise
   }

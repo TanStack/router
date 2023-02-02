@@ -31,7 +31,12 @@ import {
   RootRoute,
   AnyContext,
 } from './route'
-import { RoutesInfo, AnyRoutesInfo, RoutesById } from './routeInfo'
+import {
+  RoutesInfo,
+  AnyRoutesInfo,
+  RoutesById,
+  DefaultRoutesInfo,
+} from './routeInfo'
 import { AnyRouteMatch, RouteMatch, RouteMatchStore } from './routeMatch'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -310,9 +315,9 @@ export class Router<
   mount = () => {
     // Mount only does anything on the client
     if (!isServer) {
-      // If the router matches are empty, load the matches
+      // If the router matches are empty, start loading the matches
       if (!this.state.currentMatches.length) {
-        this.load()
+        this.safeLoad()
       }
 
       const visibilityChangeEvent = 'visibilitychange'
@@ -364,7 +369,7 @@ export class Router<
       }))
 
       this.#unsubHistory = this.history.listen(() => {
-        this.load({
+        this.safeLoad({
           next: this.#parseLocation(this.state.latestLocation),
         })
       })
@@ -413,10 +418,14 @@ export class Router<
     })
   }
 
-  load = async (opts?: {
-    next?: ParsedLocation
-    // filter?: (match: RouteMatch<any, any>) => any
-  }) => {
+  safeLoad = (opts?: { next?: ParsedLocation }) => {
+    this.load(opts).catch((err) => {
+      console.warn(err)
+      invariant(false, 'Encountered an error during router.load()! ☝️.')
+    })
+  }
+
+  load = async (opts?: { next?: ParsedLocation }): Promise<void> => {
     let now = Date.now()
     const startedAt = now
     this.startedLoadingAt = startedAt
@@ -449,19 +458,11 @@ export class Router<
     })
 
     // Load the matches
-    try {
-      await this.loadMatches(
-        matches,
-        this.state.pendingLocation!,
-        // opts
-      )
-    } catch (err: any) {
-      console.warn(err)
-      invariant(
-        false,
-        'Matches failed to load due to error above ☝️. Navigation cancelled!',
-      )
-    }
+    await this.loadMatches(
+      matches,
+      this.state.pendingLocation!,
+      // opts
+    )
 
     if (this.startedLoadingAt !== startedAt) {
       // Ignore side-effects of outdated side-effects
@@ -1049,7 +1050,7 @@ export class Router<
   }
 
   #onFocus = () => {
-    this.load()
+    this.safeLoad()
   }
 
   #buildLocation = (dest: BuildNextOptions = {}): ParsedLocation => {
@@ -1164,8 +1165,6 @@ export class Router<
       ...next.state,
     })
 
-    // this.load(this.#parseLocation(this.state.latestLocation))
-
     return (this.navigationPromise = new Promise((resolve) => {
       const previousNavigationResolve = this.resolveNavigation
 
@@ -1192,4 +1191,27 @@ function getInitialRouterState(): RouterStore<any, any> {
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+}
+
+export type AnyRedirect = Redirect<any, any, any>
+
+export type Redirect<
+  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
+  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TTo extends string = '',
+> = NavigateOptions<TRoutesInfo, TFrom, TTo> & {
+  code?: number
+}
+
+export function redirect<
+  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
+  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TTo extends string = '',
+>(opts: Redirect<TRoutesInfo, TFrom, TTo>): Redirect<TRoutesInfo, TFrom, TTo> {
+  ;(opts as any).isRedirect = true
+  return opts
+}
+
+export function isRedirect(obj: any): obj is AnyRedirect {
+  return !!obj?.isRedirect
 }
