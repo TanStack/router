@@ -244,6 +244,12 @@ export const defaultFetchServerDataFn: FetchServerDataFn = async ({
   throw new Error('Failed to fetch match data')
 }
 
+export type RouterConstructorOptions<TRouteTree extends AnyRoute> = Omit<
+  RouterOptions<TRouteTree>,
+  'context'
+> &
+  RouterContextOptions<TRouteTree>
+
 export class Router<
   TRouteTree extends AnyRoute = RootRoute,
   TRoutesInfo extends AnyRoutesInfo = RoutesInfo<TRouteTree>,
@@ -255,10 +261,9 @@ export class Router<
   }
 
   options: PickAsRequired<
-    Omit<RouterOptions<TRouteTree>, 'context'>,
-    'stringifySearch' | 'parseSearch'
-  > &
-    RouterContextOptions<TRouteTree>
+    RouterOptions<TRouteTree>,
+    'stringifySearch' | 'parseSearch' | 'context'
+  >
   history!: RouterHistory
   #unsubHistory?: () => void
   basepath: string
@@ -274,7 +279,7 @@ export class Router<
   startedLoadingAt = Date.now()
   resolveNavigation = () => {}
 
-  constructor(options?: RouterOptions<TRouteTree>) {
+  constructor(options?: RouterConstructorOptions<TRouteTree>) {
     this.options = {
       defaultPreloadDelay: 50,
       context: undefined!,

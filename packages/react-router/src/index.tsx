@@ -31,6 +31,7 @@ import {
   AnyPathParams,
   AnyRouteMatch,
   NavigateOptions,
+  RouterConstructorOptions,
 } from '@tanstack/router'
 import { useStore } from '@tanstack/react-store'
 
@@ -320,7 +321,7 @@ export class ReactRouter<
   TRouteConfig extends AnyRootRoute = RootRoute,
   TRoutesInfo extends AnyRoutesInfo = RoutesInfo<TRouteConfig>,
 > extends Router<TRouteConfig, TRoutesInfo> {
-  constructor(opts: RouterOptions<TRouteConfig>) {
+  constructor(opts: RouterConstructorOptions<TRouteConfig>) {
     super({
       ...opts,
       loadComponent: async (component) => {

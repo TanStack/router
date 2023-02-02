@@ -7,10 +7,16 @@ import { postIdRoute } from './posts/$postId'
 export const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  component: Posts,
-  errorComponent: () => 'Oh crap',
   onLoad: ({ context, preload }) =>
     context.loaderClient.getLoader({ key: 'posts' }).load({ preload }),
+  component: Posts,
+  getContext: ({ context }) => ({
+    getTitle: () =>
+      `${
+        context.loaderClient.getLoader({ key: 'posts' }).getInstance().state
+          .data?.length
+      } Posts`,
+  }),
 })
 
 function Posts() {
@@ -21,7 +27,7 @@ function Posts() {
   return (
     <div className="p-2 flex gap-2">
       <ul className="list-disc pl-4">
-        {posts?.map((post) => {
+        {posts.map((post) => {
           return (
             <li key={post.id} className="whitespace-nowrap">
               <Link

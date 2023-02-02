@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "astro dev",
     "start": "npm run dev",
-    "build": "tsr build && astro build",
+    "build": "astro build",
     "preview": "astro preview",
     "astro": "astro"
   },

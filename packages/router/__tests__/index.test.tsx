@@ -365,7 +365,7 @@ describe('matchRoute', () => {
         [
           '/a',
           {
-            to: '/*',
+            to: '/$',
             fuzzy: true,
           },
           { $: 'a' },
@@ -373,7 +373,7 @@ describe('matchRoute', () => {
         [
           '/a/b',
           {
-            to: '/*',
+            to: '/$',
             fuzzy: true,
           },
           { $: 'a/b' },
@@ -381,7 +381,7 @@ describe('matchRoute', () => {
         [
           '/a/b/c',
           {
-            to: '/*',
+            to: '/$',
             fuzzy: true,
           },
           { $: 'a/b/c' },
@@ -521,7 +521,7 @@ describe('matchRoute', () => {
         [
           '/a/b/c',
           {
-            to: '/$a/*',
+            to: '/$a/$',
           },
           { a: 'a', $: 'b/c' },
         ],

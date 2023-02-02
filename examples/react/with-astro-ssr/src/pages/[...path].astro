@@ -17,23 +17,20 @@ const history = createMemoryHistory({
 	initialEntries: [url],
 })
 
+// Create a new router
 const router = new Router({
-	routeTree,
 	history,
+	routeTree,
 	context: {
 		loaderClient
 	}
 })
 
+// Load the router
 await router.load()
 
-const dehydratedLoaderClient = loaderClient.dehydrate()
 const dehydratedRouter = router.dehydrate()
-
-console.log(JSON.stringify({
-	dehydratedLoaderClient,
-	dehydratedRouter
-}, null, 2))
+const dehydratedLoaderClient = loaderClient.dehydrate()
 ---
 
 <App dehydratedRouter={dehydratedRouter} dehydratedLoaderClient={dehydratedLoaderClient} client:load />
