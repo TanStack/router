@@ -1,39 +1,37 @@
 import * as React from 'react'
 
+import { useStore } from '@tanstack/react-store'
 import {
-  Route,
-  RegisteredRoutesInfo,
-  RegisteredRouter,
-  RouterStore,
-  last,
-  warning,
-  RouterOptions,
-  RouteMatch,
-  MatchRouteOptions,
+  AnyRootRoute,
+  AnyRouteMatch,
   AnyRoutesInfo,
   DefaultRoutesInfo,
   functionalUpdate,
-  RoutesInfo,
-  ValidFromPath,
-  LinkOptions,
-  RouteByPath,
-  ResolveRelativePath,
-  NoInfer,
-  ToOptions,
   invariant,
-  Router,
-  AnyRootRoute,
-  RootRoute,
-  AnyRouteMatch,
+  last,
+  LinkOptions,
+  MatchRouteOptions,
   NavigateOptions,
+  NoInfer,
+  RegisteredRouter,
+  RegisteredRoutesInfo,
+  ResolveRelativePath,
+  RootRoute,
+  RouteByPath,
+  RouteMatch,
+  Router,
   RouterConstructorOptions,
+  RouterOptions,
+  RouterStore,
+  RoutesInfo,
+  ToOptions,
+  ValidFromPath,
+  warning,
 } from '@tanstack/router'
-import { useStore } from '@tanstack/react-store'
 
 //
 
 export * from '@tanstack/router'
-
 export { useStore }
 
 //
@@ -368,7 +366,10 @@ export function RouterProvider<
 
 export function useRouterContext(): RegisteredRouter {
   const value = React.useContext(routerContext)
-  warning(!value, 'useRouter must be used inside a <Router> component!')
+
+  if (!value) {
+    warning(!value, 'useRouter must be used inside a <Router> component!')
+  }
 
   useStore(value.router.store)
 
