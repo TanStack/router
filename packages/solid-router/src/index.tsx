@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 
-import type {
+import {
   LinkOptions,
   MatchRouteOptions,
   NoInfer,
@@ -17,11 +17,12 @@ import type {
   DefaultRoutesInfo,
   RouterOptions,
   Router,
+  RoutesInfo,
 } from '@tanstack/router'
 import { functionalUpdate, warning } from '@tanstack/router'
 
 export * from '@tanstack/router'
-import { useStore } from '@tanstack/react-store'
+// import { useStore } from '@tanstack/react-store'
 
 // -------------------------- Types -------------------
 
@@ -178,10 +179,28 @@ interface SyntheticEvent<T = Element> {
   type: string
 }
 
+export class SolidRouter<
+  TRouteConfig extends AnyRootRoute = RootRoute,
+  TRoutesInfo extends AnyRoutesInfo = RoutesInfo<TRouteConfig>,
+> extends Router<TRouteConfig, TRoutesInfo> {
+  constructor(opts: RouterOptions<TRouteConfig>) {
+    super({
+      ...opts,
+      loadComponent: async (component) => {
+        if (component.preload) {
+          await component.preload()
+        }
+
+        return component
+      },
+    })
+  }
+}
+
 // -------------------------- Context -------------------
 
 type MatchesContextValue = AnyRouteMatch[]
-export const matchesContext = Solid.createContext<MatchesContextValue>(null!)
+// export const matchesContext = Solid.createContext<MatchesContextValue>(null!)
 export const routerContext = Solid.createContext<{ router: RegisteredRouter }>(
   null!,
 )
@@ -200,21 +219,26 @@ export type RouterProps<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
 > = RouterOptions<TRouteConfig> & {
   router: Router<TRouteConfig, TRoutesInfo>
+  children: Solid.JSXElement
 }
 
 export function RouterProvider<
   TRouteConfig extends AnyRootRoute = RootRoute,
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
 >(props: RouterProps<TRouteConfig, TRoutesInfo>) {
-  const currentMatches = () =>
-    useStore(props.router.store, (s) => s.currentMatches)
+  const currentMatches = () => []
+  // useStore(props.router.store, (s) => s.currentMatches)
   return (
     <routerContext.Provider value={undefined}>
-      <matchesContext.Provider value={[undefined!, ...currentMatches()]}>
-        {/* <Outlet /> */}
-      </matchesContext.Provider>
+      {/* <matchesContext.Provider value={[undefined!, ...currentMatches()]} > */}
+      <Outlet />
+      {/* </matchesContext.Provider> */}
     </routerContext.Provider>
   )
+}
+
+export function Outlet() {
+  return 'Outlet'
 }
 
 // -------------------------- Utils -------------------
@@ -336,7 +360,7 @@ export interface LinkFn<
     TFrom extends RegisteredRoutesInfo['routePaths'] = TDefaultFrom,
     TTo extends string = TDefaultTo,
   >(
-    props: MakeLinkOptions<TFrom, TTo> & React.RefAttributes<HTMLAnchorElement>,
+    props: MakeLinkOptions<TFrom, TTo>,
   ): Solid.JSXElement
 }
 
