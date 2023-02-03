@@ -40,7 +40,7 @@ module.exports = {
       presets: ['@babel/react'],
     },
     {
-      include: './packages/solid-router/**',
+      include: ['./packages/solid-router/**', './packages/solid-store/**'],
       presets: ['babel-preset-solid'],
     },
   ],

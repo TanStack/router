@@ -1,23 +1,20 @@
-import { Link, Outlet, RouterProvider, SolidRouter } from '@tanstack/solid-router'
-import { Component, createSignal } from 'solid-js'
+import {
+  Link,
+  Outlet,
+  RootRoute,
+  Route,
+  RouterProvider,
+  SolidRouter,
+} from '@tanstack/solid-router'
+import { Component } from 'solid-js'
 
-const router = new SolidRouter({})
-
-const App: Component = () => {
-  const color = (idx: number) =>
-    ['bg-red-200', 'bg-blue-200', 'bg-green-200'].at(idx)
-  const [colorIdx, setColorIdx] = createSignal(0)
-
-  return (
-    <>
-      <RouterProvider router={router}>
-        <button onClick={() => setColorIdx((colorIdx() + 1) % 3)}>
-          change color
-        </button>
+const rootRoute = new RootRoute({
+  component: () => {
+    return (
+      <>
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
-            class={color(colorIdx())}
             activeProps={{
               class: 'font-bold',
             }}
@@ -34,14 +31,50 @@ const App: Component = () => {
             Posts
           </Link>
         </div>
-
         <hr />
         <Outlet />
-        {/* Start rendering router matches */}
-        {/* <TanStackRouterDevtools position="bottom-right" /> */}
-      </RouterProvider>
-    </>
+      </>
+    )
+  },
+})
+
+const indexRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: () => {
+    return (
+      <div class="p-2">
+        <h3>Welcome Home!</h3>
+      </div>
+    )
+  },
+})
+
+const postRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/posts',
+  component: () => {
+    return (
+      <div class="p-2">
+        <h3>Welcome to Post!</h3>
+      </div>
+    )
+  },
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, postRoute])
+
+const router = new SolidRouter({
+  routeTree,
+  defaultPreload: 'intent',
+})
+
+const Root: Component = () => {
+  return (
+    <RouterProvider router={router}>
+      <></>
+    </RouterProvider>
   )
 }
 
-export default App
+export default Root

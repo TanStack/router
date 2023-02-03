@@ -1,22 +1,17 @@
 {
-  "name": "@tanstack/solid-router",
+  "name": "@tanstack/solid-store",
   "author": "Tanner Linsley",
-  "version": "0.0.1-beta.68",
+  "version": "0.0.1-beta.62",
   "license": "MIT",
-  "repository": "tanstack/router",
-  "homepage": "https://tanstack.com/router/",
+  "repository": "tanstack/solid-store",
+  "homepage": "https://tanstack.com/",
   "description": "",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
   "keywords": [
+    "loaders",
     "solid",
-    "location",
-    "@tanstack/solid-router",
-    "router",
-    "routing",
-    "async",
-    "async router",
     "typescript"
   ],
   "funding": {
@@ -40,10 +35,9 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.16.7",
-    "@tanstack/solid-store": "workspace:*",
-    "@tanstack/router": "workspace:*"
+    "@tanstack/store": "workspace:*"
   },
   "devDependencies": {
-    "babel-plugin-transform-async-to-promises": "^0.8.18"
+    "@types/use-sync-external-store": "^0.0.3"
   }
 }

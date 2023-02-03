@@ -1,28 +1,33 @@
 import * as Solid from 'solid-js'
+import * as SolidStore from 'solid-js/store'
 
 import {
+  AnyRootRoute,
+  AnyRouteMatch,
+  AnyRoutesInfo,
+  DefaultRoutesInfo,
+  functionalUpdate,
+  invariant,
   LinkOptions,
   MatchRouteOptions,
   NoInfer,
   RegisteredRouter,
   RegisteredRoutesInfo,
   ResolveRelativePath,
-  RouteByPath,
-  ToOptions,
-  AnyRouteMatch,
-  ValidFromPath,
-  AnyRootRoute,
-  AnyRoutesInfo,
   RootRoute,
-  DefaultRoutesInfo,
-  RouterOptions,
+  RouteByPath,
+  RouteMatch,
   Router,
+  RouterOptions,
   RoutesInfo,
+  ToOptions,
+  ValidFromPath,
+  warning,
 } from '@tanstack/router'
-import { functionalUpdate, warning } from '@tanstack/router'
+import { useStore } from '@tanstack/solid-store'
 
 export * from '@tanstack/router'
-// import { useStore } from '@tanstack/react-store'
+export { useStore }
 
 // -------------------------- Types -------------------
 
@@ -200,7 +205,7 @@ export class SolidRouter<
 // -------------------------- Context -------------------
 
 type MatchesContextValue = AnyRouteMatch[]
-// export const matchesContext = Solid.createContext<MatchesContextValue>(null!)
+export const matchesContext = Solid.createContext<MatchesContextValue>(null!)
 export const routerContext = Solid.createContext<{ router: RegisteredRouter }>(
   null!,
 )
@@ -226,19 +231,114 @@ export function RouterProvider<
   TRouteConfig extends AnyRootRoute = RootRoute,
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
 >(props: RouterProps<TRouteConfig, TRoutesInfo>) {
-  const currentMatches = () => []
-  // useStore(props.router.store, (s) => s.currentMatches)
+  const [routerProps, rest] = Solid.splitProps(props, ['router'])
+
+  routerProps.router.update(rest)
+
+  const [matches, setMatches] = SolidStore.createStore<MatchesContextValue>([])
+
+  useStore(routerProps.router.store, (s) => {
+    const matches = s.currentMatches
+    setMatches(([undefined!] as MatchesContextValue).concat(matches))
+  })
+
+  Solid.createEffect(
+    Solid.on(
+      () => matches,
+      // This doesn't appear to be working correctly. Trying to figure it out still.
+      () => routerProps.router.mount(),
+    ),
+  )
+
   return (
-    <routerContext.Provider value={undefined}>
-      {/* <matchesContext.Provider value={[undefined!, ...currentMatches()]} > */}
-      <Outlet />
-      {/* </matchesContext.Provider> */}
+    <routerContext.Provider value={{ router: routerProps.router as any }}>
+      <matchesContext.Provider value={matches}>
+        <Outlet />
+      </matchesContext.Provider>
     </routerContext.Provider>
   )
 }
 
 export function Outlet() {
-  return 'Outlet'
+  const matchesContext = useMatches()
+
+  const matches = () => matchesContext.slice(1) || []
+  const match = () => matches()[0]
+
+  return (
+    <Solid.Show when={match()} keyed>
+      {(match) => <SubOutlet matches={matches()} match={match} />}
+    </Solid.Show>
+  )
+}
+
+function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
+  const router = useRouterContext()
+  useStore(props.match!.store, (state) => [state.status, state.error])
+
+  const Inner = (props: { match: RouteMatch }): any => {
+    if (props.match.state.status === 'error') {
+      throw props.match.state.error
+    }
+
+    if (props.match.state.status === 'success') {
+      return props.match.component ? (
+        <props.match.component />
+      ) : router.options.defaultComponent ? (
+        <router.options.defaultComponent />
+      ) : (
+        <Outlet />
+      )
+    }
+
+    if (props.match.state.status === 'pending') {
+      throw props.match.__loadPromise
+    }
+
+    invariant(
+      false,
+      'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
+    )
+  }
+
+  return (
+    <matchesContext.Provider value={props.matches}>
+      <Inner match={props.match} />
+      {/* {match.route.options.wrapInSuspense ?? true ? (
+        <Solid.Suspense fallback={<PendingComponent />}>
+          <ErrorBoundary
+            fallback={errorComponent}
+            match={match as any}
+          >
+          </ErrorBoundary>
+        </Solid.Suspense>
+      ) : (
+        <ErrorBoundary
+          errorComponent={errorComponent}
+          match={match as any}
+        >
+          <Inner match={match} />
+        </ErrorBoundary>
+      )} */}
+      {/* Provide a suffix suspense boundary to make sure the router is
+  ready to be dehydrated on the server */}
+      {/* {router.options.ssrFooter && match.id === rootRouteId ? (
+        <React.Suspense fallback={null}>
+          {(() => {
+            if (router.store.pending) {
+              throw router.navigationPromise
+            }
+
+            return router.options.ssrFooter()
+          })()}
+        </React.Suspense>
+      ) : null} */}
+    </matchesContext.Provider>
+  )
+}
+
+export function useMatches(): RouteMatch[] {
+  return Solid.useContext(matchesContext)!
 }
 
 // -------------------------- Utils -------------------
