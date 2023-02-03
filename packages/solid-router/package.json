@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.16.7",
+    "@tanstack/react-store": "workspace:0.0.1-beta.62",
     "@tanstack/router": "workspace:*"
   },
   "devDependencies": {

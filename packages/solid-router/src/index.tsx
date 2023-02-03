@@ -9,11 +9,19 @@ import type {
   ResolveRelativePath,
   RouteByPath,
   ToOptions,
+  AnyRouteMatch,
   ValidFromPath,
+  AnyRootRoute,
+  AnyRoutesInfo,
+  RootRoute,
+  DefaultRoutesInfo,
+  RouterOptions,
+  Router,
 } from '@tanstack/router'
 import { functionalUpdate, warning } from '@tanstack/router'
 
 export * from '@tanstack/router'
+import { useStore } from '@tanstack/react-store'
 
 // -------------------------- Types -------------------
 
@@ -171,6 +179,9 @@ interface SyntheticEvent<T = Element> {
 }
 
 // -------------------------- Context -------------------
+
+type MatchesContextValue = AnyRouteMatch[]
+export const matchesContext = Solid.createContext<MatchesContextValue>(null!)
 export const routerContext = Solid.createContext<{ router: RegisteredRouter }>(
   null!,
 )
@@ -182,6 +193,28 @@ export function useRouterContext(): RegisteredRouter {
   // useStore(value.router.store)
 
   return value.router
+}
+
+export type RouterProps<
+  TRouteConfig extends AnyRootRoute = RootRoute,
+  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
+> = RouterOptions<TRouteConfig> & {
+  router: Router<TRouteConfig, TRoutesInfo>
+}
+
+export function RouterProvider<
+  TRouteConfig extends AnyRootRoute = RootRoute,
+  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
+>(props: RouterProps<TRouteConfig, TRoutesInfo>) {
+  const currentMatches = () =>
+    useStore(props.router.store, (s) => s.currentMatches)
+  return (
+    <routerContext.Provider value={undefined}>
+      <matchesContext.Provider value={[undefined!, ...currentMatches()]}>
+        {/* <Outlet /> */}
+      </matchesContext.Provider>
+    </routerContext.Provider>
+  )
 }
 
 // -------------------------- Utils -------------------
@@ -295,11 +328,34 @@ export function useLinkProps<
 
 // -------------------------- Components -------------------
 
-export function Link(props: any) {
+export interface LinkFn<
+  TDefaultFrom extends RegisteredRoutesInfo['routePaths'] = '/',
+  TDefaultTo extends string = '',
+> {
+  <
+    TFrom extends RegisteredRoutesInfo['routePaths'] = TDefaultFrom,
+    TTo extends string = TDefaultTo,
+  >(
+    props: MakeLinkOptions<TFrom, TTo> & React.RefAttributes<HTMLAnchorElement>,
+  ): Solid.JSXElement
+}
+
+export const Link: LinkFn = (props: any) => {
+  const linkProps = useLinkProps(props)
+
   return (
-    <a href={props.to} {...props}>
-      {props.children}
-    </a>
+    <a
+      {...{
+        ref: props.ref as any,
+        ...linkProps,
+        children:
+          typeof props.children === 'function'
+            ? props.children({
+                isActive: (linkProps as any)['data-status'] === 'active',
+              })
+            : props.children,
+      }}
+    />
   )
 }
 
