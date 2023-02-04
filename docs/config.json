@@ -71,6 +71,10 @@
           "to": "guide/route-paths"
         },
         {
+          "label": "Route Matching",
+          "to": "guide/route-matching"
+        },
+        {
           "label": "Navigation",
           "to": "guide/navigation"
         },

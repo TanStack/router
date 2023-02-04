@@ -8,7 +8,6 @@ import {
   useParams,
   RootRoute,
   Route,
-  redirect,
   ErrorComponent,
 } from '@tanstack/react-router'
 import {
@@ -43,16 +42,11 @@ const postLoader = new Loader({
   loader: async (postId: string) => {
     console.log(`Fetching post with id ${postId}...`)
     await new Promise((r) => setTimeout(r, 500))
+    const post = await axios
+      .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+      .then((r) => r.data)
 
-    try {
-      const post = await axios
-        .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-        .then((r) => r.data)
-
-      return post
-    } catch (err) {
-      throw new Error('Post not found!')
-    }
+    return post
   },
   onAllInvalidate: async () => {
     await postsLoader.invalidateAll()
@@ -128,7 +122,10 @@ const postsRoute = new Route({
     return (
       <div className="p-2 flex gap-2">
         <ul className="list-disc pl-4">
-          {posts?.map((post) => {
+          {[
+            ...posts,
+            { id: 'i-do-not-exist', title: 'Non-existent Post' },
+          ]?.map((post) => {
             return (
               <li key={post.id} className="whitespace-nowrap">
                 <Link
@@ -164,22 +161,31 @@ const PostsIndexRoute = new Route({
   },
 })
 
+class NotFoundError extends Error {
+  data: string
+  constructor(public postId: string) {
+    super(`Post with id "${postId}" not found!`)
+    this.data = postId
+  }
+}
+
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: 'post/$postId',
-  onLoad: async ({ params: { postId } }) =>
-    postLoader.load({ variables: postId }),
-  // errorComponent: ({ error }) => {
-  //   if (error.message === 'Post not found!') {
-  //     return <div>Post not found!</div>
-  //   }
+  onLoad: async ({ params: { postId } }) => {
+    try {
+      await postLoader.load({ variables: postId })
+    } catch (err) {
+      throw new NotFoundError(postId)
+    }
+  },
+  errorComponent: ({ error }) => {
+    if (error instanceof NotFoundError) {
+      return <div>Post with id "{error.data}" found!</div>
+    }
 
-  //   throw redirect({
-  //     to: '/'
-  //   })
-
-  //   return <ErrorComponent error={error} />
-  // },
+    return <ErrorComponent error={error} />
+  },
   component: () => {
     const { postId } = useParams({ from: postRoute.id })
     const postLoaderInstance = useLoaderInstance({
@@ -200,8 +206,8 @@ const postRoute = new Route({
 })
 
 const routeTree = rootRoute.addChildren([
+  postsRoute.addChildren([postRoute, PostsIndexRoute]),
   indexRoute,
-  postsRoute.addChildren([PostsIndexRoute, postRoute]),
 ])
 
 // Set up a ReactRouter instance

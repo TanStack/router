@@ -18,8 +18,10 @@ import {
   interpolatePath,
   joinPaths,
   matchPathname,
+  parsePathname,
   resolvePath,
   trimPath,
+  trimPathLeft,
 } from './path'
 import {
   Route,
@@ -50,6 +52,7 @@ import {
   Updater,
   replaceEqualDeep,
   partialDeepEqual,
+  multiSortBy,
 } from './utils'
 import {
   createBrowserHistory,
@@ -1024,7 +1027,52 @@ export class Router<
 
         const children = route.children as Route[]
 
-        if (children?.length) recurseRoutes(children)
+        if (children?.length) {
+          recurseRoutes(children)
+          route.children = multiSortBy(children, [
+            (d) => (d.path === '/' ? -1 : 1),
+            (d) => ['*', '$'].includes(d.path),
+            (d) => parsePathname(d.path).length,
+          ])
+
+          const parse = (d: string) => {
+            const parsed = parsePathname(trimPathLeft(cleanPath(d)))
+            while (parsed.length > 1 && parsed[0]?.value === '/') {
+              parsed.shift()
+            }
+            return parsed
+          }
+
+          route.children = children
+            .map((d, i) => {
+              const parsed = parse(d.path ?? '/')
+              let score = 0
+
+              parsed.forEach((d, i) => {
+                let modifier = 1
+                while (i--) {
+                  modifier *= 0.001
+                }
+                if (d.type === 'pathname' && d.value !== '/') {
+                  score += 1 * modifier
+                } else if (d.type === 'param') {
+                  score += 2 * modifier
+                } else if (d.type === 'wildcard') {
+                  score += 3 * modifier
+                }
+              })
+
+              return { child: d, parsed, index: i, score }
+            })
+            .sort((a, b) => {
+              if (a.score !== b.score) {
+                return a.score - b.score
+              }
+
+              return a.index - b.index
+            })
+            .map((d) => d.child)
+        }
       })
     }
 

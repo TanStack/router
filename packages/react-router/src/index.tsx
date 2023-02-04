@@ -368,7 +368,7 @@ export function RouterProvider<
 
 export function useRouterContext(): RegisteredRouter {
   const value = React.useContext(routerContext)
-  warning(!value, 'useRouter must be used inside a <Router> component!')
+  warning(value, 'useRouter must be used inside a <Router> component!')
 
   useStore(value.router.store)
 
