@@ -1,5 +1,5 @@
 import { AnyUpdater, shallow, Store } from '@tanstack/store'
-import { createSignal, onMount } from 'solid-js'
+import { Accessor, createSignal, onMount } from 'solid-js'
 
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 
@@ -11,7 +11,7 @@ export function useStore<
   routerStore: Store<TState, TUpdater>,
   selector: (state: NoInfer<TState>) => TSelected = (d) => d as any,
   compareShallow?: boolean,
-) {
+): Accessor<TSelected> {
   const [state, setState] = createSignal<TSelected>(
     selector(routerStore.state),
     {

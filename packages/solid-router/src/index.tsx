@@ -233,19 +233,20 @@ export function RouterProvider<
 >(props: RouterProps<TRouteConfig, TRoutesInfo>) {
   const [routerProps, rest] = Solid.splitProps(props, ['router'])
 
+  const [matches, setMatches] = SolidStore.createStore<MatchesContextValue>([
+    undefined!,
+  ])
   routerProps.router.update(rest)
-
-  const [matches, setMatches] = SolidStore.createStore<MatchesContextValue>([])
 
   useStore(routerProps.router.store, (s) => {
     const matches = s.currentMatches
     setMatches(([undefined!] as MatchesContextValue).concat(matches))
   })
 
+  // This doesn't appear to be working correctly with route changes. Trying to figure it out still.
   Solid.createEffect(
     Solid.on(
       () => matches,
-      // This doesn't appear to be working correctly. Trying to figure it out still.
       () => routerProps.router.mount(),
     ),
   )
@@ -262,48 +263,53 @@ export function RouterProvider<
 export function Outlet() {
   const matchesContext = useMatches()
 
-  const matches = () => matchesContext.slice(1) || []
+  const matches = () => matchesContext.slice(1)
   const match = () => matches()[0]
 
+  // I made this keyed and watching both of match and matches so it does a deep inspection and will rerender on the changes correctly
   return (
-    <Solid.Show when={match()} keyed>
-      {(match) => <SubOutlet matches={matches()} match={match} />}
+    <Solid.Show when={match() && matches()} keyed>
+      <SubOutlet matches={matches().slice()} match={match() as any} />
     </Solid.Show>
   )
 }
 
 function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
   const router = useRouterContext()
+  // Not sure what this is supposed to do, taken from react.
   useStore(props.match!.store, (state) => [state.status, state.error])
 
-  const Inner = (props: { match: RouteMatch }): any => {
-    if (props.match.state.status === 'error') {
-      throw props.match.state.error
-    }
-
-    if (props.match.state.status === 'success') {
-      return props.match.component ? (
-        <props.match.component />
-      ) : router.options.defaultComponent ? (
-        <router.options.defaultComponent />
-      ) : (
-        <Outlet />
-      )
-    }
-
-    if (props.match.state.status === 'pending') {
-      throw props.match.__loadPromise
-    }
-
-    invariant(
-      false,
-      'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
-    )
-  }
-
   return (
-    <matchesContext.Provider value={props.matches}>
-      <Inner match={props.match} />
+    <matchesContext.Provider value={props.matches.slice()}>
+      <Solid.Switch
+        fallback={() => {
+          invariant(
+            false,
+            'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
+          )
+        }}
+      >
+        <Solid.Match when={props.match.state.status === 'error'}>
+          {() => {
+            throw props.match.state.error
+          }}
+        </Solid.Match>
+        <Solid.Match when={props.match.state.status === 'success'}>
+          <Solid.Switch fallback={Outlet}>
+            <Solid.Match when={props.match.component} keyed>
+              {(Component) => <Component />}
+            </Solid.Match>
+            <Solid.Match when={router.options.defaultComponent} keyed>
+              {(DefaultComponent) => <DefaultComponent />}
+            </Solid.Match>
+          </Solid.Switch>
+        </Solid.Match>
+        <Solid.Match when={props.match.state.status === 'pending'}>
+          {() => {
+            throw props.match.__loadPromise
+          }}
+        </Solid.Match>
+      </Solid.Switch>
       {/* {match.route.options.wrapInSuspense ?? true ? (
         <Solid.Suspense fallback={<PendingComponent />}>
           <ErrorBoundary
