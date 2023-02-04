@@ -8,6 +8,7 @@ import {
   DefaultRoutesInfo,
   functionalUpdate,
   invariant,
+  last,
   LinkOptions,
   MatchRouteOptions,
   NoInfer,
@@ -202,7 +203,31 @@ export class SolidRouter<
   }
 }
 
-// -------------------------- Context -------------------
+export function useParams<
+  TFrom extends keyof RegisteredRoutesInfo['routesById'] = '/',
+  TDefaultSelected = RegisteredRoutesInfo['allParams'] &
+    RegisteredRoutesInfo['routesById'][TFrom]['__types']['allParams'],
+  TSelected = TDefaultSelected,
+>(opts?: {
+  from: TFrom
+  track?: (search: TDefaultSelected) => TSelected
+}): Solid.Accessor<TSelected> {
+  const router = useRouterContext()
+  useStore(
+    router.store,
+    (d) => {
+      const params = last(d.currentMatches)?.params as any
+      return opts?.track?.(params) ?? params
+    },
+    true,
+  )
+
+  const params = Solid.createMemo(
+    () => last(router.state.currentMatches)?.params as any,
+  )
+
+  return params
+}
 
 type MatchesContextValue = AnyRouteMatch[]
 export const matchesContext = Solid.createContext<MatchesContextValue>(null!)
@@ -224,7 +249,6 @@ export type RouterProps<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
 > = RouterOptions<TRouteConfig> & {
   router: Router<TRouteConfig, TRoutesInfo>
-  children: Solid.JSXElement
 }
 
 export function RouterProvider<

@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:*",
+    "@tanstack/solid-loaders": "workspace:*",
     "solid-js": "^1.6.10"
   }
 }
