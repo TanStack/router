@@ -44,8 +44,8 @@ Using that route tree, let's follow the matching process for a few different URL
 - `/blog`
   ```
   Root 👍
-    - blog 👍
-      - / ✅
+    ✅ blog 👍
+      ✅ /
       - new
       - $postId
     - about
@@ -55,10 +55,10 @@ Using that route tree, let's follow the matching process for a few different URL
 - `/blog/my-post`
   ```
   Root 👍
-    - blog 👍
-      - / ❌
-      - new ❌
-      - $postId ✅
+    ✅ blog 👍
+      ❌ /
+      ❌ new
+      ✅ $postId
     - about
     - /
     - *
@@ -66,22 +66,22 @@ Using that route tree, let's follow the matching process for a few different URL
 - `/`
   ```
   Root 👍
-    - blog
-      - new
-      - $postId
-      - /
-    - about ❌
-    - / ✅
+    ❌ blog
+      ❌ /
+      ❌ new
+      ❌ $postId
+    ❌ about
+    ✅ /
     - *
   ```
 - `/not-a-route`
   ```
   Root 👍
     - blog
+      - /
       - new
       - $postId
-      - /
-    - about ❌
-    - / ❌
-    - * ✅
+    ❌ about
+    ❌ /
+    ✅ *
   ```
