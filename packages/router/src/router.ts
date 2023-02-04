@@ -52,7 +52,6 @@ import {
   Updater,
   replaceEqualDeep,
   partialDeepEqual,
-  multiSortBy,
 } from './utils'
 import {
   createBrowserHistory,
@@ -1029,23 +1028,17 @@ export class Router<
 
         if (children?.length) {
           recurseRoutes(children)
-          route.children = multiSortBy(children, [
-            (d) => (d.path === '/' ? -1 : 1),
-            (d) => ['*', '$'].includes(d.path),
-            (d) => parsePathname(d.path).length,
-          ])
-
-          const parse = (d: string) => {
-            const parsed = parsePathname(trimPathLeft(cleanPath(d)))
-            while (parsed.length > 1 && parsed[0]?.value === '/') {
-              parsed.shift()
-            }
-            return parsed
-          }
 
           route.children = children
             .map((d, i) => {
-              const parsed = parse(d.path ?? '/')
+              const parsed = parsePathname(
+                trimPathLeft(cleanPath(d.path ?? '/')),
+              )
+
+              while (parsed.length > 1 && parsed[0]?.value === '/') {
+                parsed.shift()
+              }
+
               let score = 0
 
               parsed.forEach((d, i) => {

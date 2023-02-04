@@ -4,7 +4,6 @@ import {
   cleanPath,
   // Location,
   matchPathname,
-  multiSortBy,
   ParsedLocation,
   parsePathname,
   // Route,
