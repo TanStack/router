@@ -104,10 +104,13 @@ const indexRoute = new Route({
   },
 })
 
+const Spinner = () => <div class="inline-block animate-spin px-3">⍥</div>
+
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/posts',
   wrapInSuspense: true,
+  pendingComponent: Spinner,
   onLoad: ({ preload }) =>
     loaderClient.getLoader({ key: 'posts' }).load({ preload }),
   component: () => {
@@ -158,6 +161,8 @@ const PostsIndexRoute = new Route({
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: 'post/$postId',
+  wrapInSuspense: true,
+  pendingComponent: Spinner,
   onLoad: async ({ params: { postId } }) =>
     postLoader.load({ variables: postId }),
   component: () => {

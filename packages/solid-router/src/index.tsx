@@ -337,6 +337,7 @@ function Inner(props: { match: RouteMatch }) {
 }
 
 function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
+  const router = useRouterContext()
   // Not sure what this is supposed to do, taken from react.
   useStore(props.match!.store, (state) => [state.status, state.error])
 
@@ -346,7 +347,18 @@ function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
         when={props.match.route.options.wrapInSuspense}
         fallback={<Inner match={props.match} />}
       >
-        <Solid.Suspense>
+        <Solid.Suspense
+          fallback={() => (
+            <Solid.Switch>
+              <Solid.Match when={props.match.pendingComponent} keyed>
+                {(PendingComponent) => <PendingComponent />}
+              </Solid.Match>
+              <Solid.Match when={router.options.defaultPendingComponent} keyed>
+                {(DefaultPendingComponent) => <DefaultPendingComponent />}
+              </Solid.Match>
+            </Solid.Switch>
+          )}
+        >
           <Solid.ErrorBoundary
             fallback={(err) => <DefaultErrorBoundary error={err} />}
           >
