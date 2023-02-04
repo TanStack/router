@@ -153,7 +153,7 @@ importers:
       '@tanstack/react-loaders': workspace:*
       '@tanstack/react-router': workspace:*
       '@tanstack/react-router-devtools': workspace:*
-      '@tanstack/router-cli': 0.0.1-beta.63
+      '@tanstack/router-cli': 0.0.1-beta.69
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -204,7 +204,7 @@ importers:
       '@tanstack/react-loaders': workspace:*
       '@tanstack/react-router': workspace:*
       '@tanstack/react-router-devtools': workspace:*
-      '@tanstack/router-cli': 0.0.1-beta.63
+      '@tanstack/router-cli': 0.0.1-beta.69
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -255,7 +255,7 @@ importers:
       '@tanstack/react-loaders': workspace:*
       '@tanstack/react-router': workspace:*
       '@tanstack/react-router-devtools': workspace:*
-      '@tanstack/router-cli': 0.0.1-beta.63
+      '@tanstack/router-cli': 0.0.1-beta.69
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -306,7 +306,7 @@ importers:
       '@tanstack/react-loaders': workspace:*
       '@tanstack/react-router': workspace:*
       '@tanstack/react-router-devtools': workspace:*
-      '@tanstack/router-cli': 0.0.1-beta.63
+      '@tanstack/router-cli': 0.0.1-beta.69
       '@types/express': ^4.17.14
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^2.2.0
@@ -385,7 +385,7 @@ importers:
       '@tanstack/react-loaders': workspace:*
       '@tanstack/react-router': workspace:*
       '@tanstack/react-router-devtools': workspace:*
-      '@tanstack/router-cli': 0.0.1-beta.63
+      '@tanstack/router-cli': 0.0.1-beta.69
       '@types/node': ^18.11.9
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.8
