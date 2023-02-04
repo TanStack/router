@@ -284,7 +284,7 @@ export class Router<
   store: Store<RouterStore<TRoutesInfo>>
   state: RouterStore<TRoutesInfo>
   startedLoadingAt = Date.now()
-  resolveNavigation = () => {}
+  resolveNavigation: () => void = () => {}
 
   constructor(options?: RouterConstructorOptions<TRouteTree>) {
     this.options = {
