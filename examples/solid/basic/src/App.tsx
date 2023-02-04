@@ -36,7 +36,12 @@ const postLoader = new Loader({
   key: 'post',
   loader: async (postId: string) => {
     console.log(`Fetching post with id ${postId}...`)
+
     await new Promise((r) => setTimeout(r, 500))
+
+    if (postId === '5') {
+      throw new Error('Postid === 5, Showing error boundary')
+    }
 
     return await fetch(
       `https://jsonplaceholder.typicode.com/posts/${postId}`,
@@ -102,6 +107,7 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/posts',
+  wrapInSuspense: true,
   onLoad: ({ preload }) =>
     loaderClient.getLoader({ key: 'posts' }).load({ preload }),
   component: () => {

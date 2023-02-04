@@ -11,6 +11,7 @@ import {
   last,
   LinkOptions,
   MatchRouteOptions,
+  NavigateOptions,
   NoInfer,
   RegisteredRouter,
   RegisteredRoutesInfo,
@@ -26,6 +27,7 @@ import {
   warning,
 } from '@tanstack/router'
 import { useStore } from '@tanstack/solid-store'
+import { Show } from 'solid-js'
 
 export * from '@tanstack/router'
 export { useStore }
@@ -267,7 +269,7 @@ export function RouterProvider<
     setMatches(([undefined!] as MatchesContextValue).concat(matches))
   })
 
-  // This doesn't appear to be working correctly with route changes. Trying to figure it out still.
+  // Not sure if this is how it's supposed to work but it's working. Might want to clean this up.
   Solid.createEffect(
     Solid.on(
       () => matches,
@@ -298,71 +300,60 @@ export function Outlet() {
   )
 }
 
-function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
+function Inner(props: { match: RouteMatch }) {
   const router = useRouterContext()
+
+  return (
+    <Solid.Switch
+      fallback={() => {
+        invariant(
+          false,
+          'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
+        )
+      }}
+    >
+      <Solid.Match when={props.match.state.status === 'error'}>
+        {() => {
+          throw props.match.state.error
+        }}
+      </Solid.Match>
+      <Solid.Match when={props.match.state.status === 'success'}>
+        <Solid.Switch fallback={Outlet}>
+          <Solid.Match when={props.match.component} keyed>
+            {(Component) => <Component />}
+          </Solid.Match>
+          <Solid.Match when={router.options.defaultComponent} keyed>
+            {(DefaultComponent) => <DefaultComponent />}
+          </Solid.Match>
+        </Solid.Switch>
+      </Solid.Match>
+      <Solid.Match when={props.match.state.status === 'pending'}>
+        {() => {
+          throw props.match.__loadPromise
+        }}
+      </Solid.Match>
+    </Solid.Switch>
+  )
+}
+
+function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
   // Not sure what this is supposed to do, taken from react.
   useStore(props.match!.store, (state) => [state.status, state.error])
 
   return (
     <matchesContext.Provider value={props.matches.slice()}>
-      <Solid.Switch
-        fallback={() => {
-          invariant(
-            false,
-            'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
-          )
-        }}
+      <Show
+        when={props.match.route.options.wrapInSuspense}
+        fallback={<Inner match={props.match} />}
       >
-        <Solid.Match when={props.match.state.status === 'error'}>
-          {() => {
-            throw props.match.state.error
-          }}
-        </Solid.Match>
-        <Solid.Match when={props.match.state.status === 'success'}>
-          <Solid.Switch fallback={Outlet}>
-            <Solid.Match when={props.match.component} keyed>
-              {(Component) => <Component />}
-            </Solid.Match>
-            <Solid.Match when={router.options.defaultComponent} keyed>
-              {(DefaultComponent) => <DefaultComponent />}
-            </Solid.Match>
-          </Solid.Switch>
-        </Solid.Match>
-        <Solid.Match when={props.match.state.status === 'pending'}>
-          {() => {
-            throw props.match.__loadPromise
-          }}
-        </Solid.Match>
-      </Solid.Switch>
-      {/* {match.route.options.wrapInSuspense ?? true ? (
-        <Solid.Suspense fallback={<PendingComponent />}>
-          <ErrorBoundary
-            fallback={errorComponent}
-            match={match as any}
+        <Solid.Suspense>
+          <Solid.ErrorBoundary
+            fallback={(err) => <DefaultErrorBoundary error={err} />}
           >
-          </ErrorBoundary>
+            <Inner match={props.match} />
+          </Solid.ErrorBoundary>
         </Solid.Suspense>
-      ) : (
-        <ErrorBoundary
-          errorComponent={errorComponent}
-          match={match as any}
-        >
-          <Inner match={match} />
-        </ErrorBoundary>
-      )} */}
-      {/* Provide a suffix suspense boundary to make sure the router is
-  ready to be dehydrated on the server */}
-      {/* {router.options.ssrFooter && match.id === rootRouteId ? (
-        <React.Suspense fallback={null}>
-          {(() => {
-            if (router.store.pending) {
-              throw router.navigationPromise
-            }
-
-            return router.options.ssrFooter()
-          })()}
-        </React.Suspense>
-      ) : null} */}
+      </Show>
     </matchesContext.Provider>
   )
 }
@@ -513,4 +504,197 @@ export const Link: LinkFn = (props: any) => {
   )
 }
 
-export default Link
+export function Navigate<
+  TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
+  TTo extends string = '',
+>(props: NavigateOptions<RegisteredRoutesInfo, TFrom, TTo>): null {
+  const router = useRouterContext()
+
+  Solid.createRenderEffect(() => {
+    router.navigate(props as any)
+  }, [])
+
+  return null
+}
+
+export function useMatch<
+  TFrom extends keyof RegisteredRoutesInfo['routesById'],
+  TStrict extends boolean = true,
+  TRouteMatch = RouteMatch<
+    RegisteredRoutesInfo,
+    RegisteredRoutesInfo['routesById'][TFrom]
+  >,
+>(opts?: {
+  from: TFrom
+  strict?: TStrict
+  track?: (match: TRouteMatch) => any
+  shallow?: boolean
+}): TStrict extends true ? TRouteMatch : TRouteMatch | undefined {
+  const router = useRouterContext()
+  const nearestMatch = () => useMatches()[0]!
+  const match = () =>
+    opts?.from
+      ? router.state.currentMatches.find((d) => d.route.id === opts?.from)
+      : nearestMatch()
+
+  invariant(
+    match(),
+    `Could not find ${
+      opts?.from ? `an active match from "${opts.from}"` : 'a nearest match!'
+    }`,
+  )
+
+  if (opts?.strict ?? true) {
+    invariant(
+      nearestMatch().route.id == match()?.route.id,
+      `useMatch("${
+        match()?.route.id as string
+      }") is being called in a component that is meant to render the '${
+        nearestMatch().route.id
+      }' route. Did you mean to 'useMatch("${
+        match()?.route.id as string
+      }", { strict: false })' or 'useRoute("${
+        match()?.route.id as string
+      }")' instead?`,
+    )
+  }
+
+  useStore(
+    match()!.store as any,
+    () => opts?.track?.(match as any) ?? match,
+    opts?.shallow,
+  )
+
+  return match as any
+}
+
+export function useRoute<
+  TId extends keyof RegisteredRoutesInfo['routesById'] = '/',
+>(routeId: TId): RegisteredRoutesInfo['routesById'][TId] {
+  const router = useRouterContext()
+  const resolvedRoute = () => router.getRoute(routeId as any)
+
+  invariant(
+    resolvedRoute(),
+    `Could not find a route for route "${
+      routeId as string
+    }"! Did you forget to add it to your route?`,
+  )
+
+  return resolvedRoute as any
+}
+
+export function useSearch<
+  TFrom extends keyof RegisteredRoutesInfo['routesById'],
+  TStrict extends boolean = true,
+  TSearch = RegisteredRoutesInfo['routesById'][TFrom]['__types']['fullSearchSchema'],
+  TSelected = TSearch,
+>(opts?: {
+  from: TFrom
+  strict?: TStrict
+  track?: (search: TSearch) => TSelected
+}): TStrict extends true ? TSelected : TSelected | undefined {
+  const match = useMatch(opts)
+  useStore(
+    (match as any).store,
+    (d: any) => opts?.track?.(d.search) ?? d.search,
+    true,
+  )
+
+  return (match as unknown as RouteMatch).state.search as any
+}
+
+export function useNavigate<
+  TDefaultFrom extends keyof RegisteredRoutesInfo['routesById'] = '/',
+>(defaultOpts?: { from?: TDefaultFrom }) {
+  const router = useRouterContext()
+  return function <
+    TFrom extends keyof RegisteredRoutesInfo['routesById'] = TDefaultFrom,
+    TTo extends string = '',
+  >(opts?: MakeLinkOptions<TFrom, TTo>) {
+    return router.navigate({ ...defaultOpts, ...(opts as any) })
+  }
+}
+
+export function useMatchRoute() {
+  const router = useRouterContext()
+
+  return function <
+    TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
+    TTo extends string = '',
+  >(opts: MakeUseMatchRouteOptions<TFrom, TTo>) {
+    const { pending, caseSensitive, ...rest } = opts
+
+    return router.matchRoute(rest as any, {
+      pending,
+      caseSensitive,
+    })
+  }
+}
+
+function CatchBoundaryInner(props: {
+  children: any
+  errorComponent: any
+  errorState: { error: unknown; info: any }
+  reset: () => void
+}) {
+  const [activeErrorState, setActiveErrorState] = Solid.createSignal(
+    props.errorState,
+  )
+  let previousRef: string | undefined
+
+  const router = useRouterContext()
+  const errorComponent = props.errorComponent ?? DefaultErrorBoundary
+
+  Solid.createEffect(() => {
+    if (activeErrorState()) {
+      if (router.state.currentLocation.key !== previousRef) {
+        setActiveErrorState({} as any)
+      }
+    }
+
+    previousRef = router.state.currentLocation.key
+  })
+
+  Solid.createEffect(() => {
+    if (props.errorState.error) {
+      setActiveErrorState(props.errorState)
+    }
+    // props.reset()
+  })
+
+  return (
+    <Solid.Show
+      when={props.errorState.error && activeErrorState().error}
+      fallback={props.children}
+    >
+      {errorComponent}
+    </Solid.Show>
+  )
+}
+
+export function DefaultErrorBoundary({ error }: { error: any }) {
+  return (
+    <div style={{ padding: '.5rem', 'max-width': '100%' }}>
+      <strong style={{ 'font-size': '1.2rem' }}>Something went wrong!</strong>
+      <div style={{ height: '.5rem' }} />
+      <div>
+        <pre>
+          {error.message ? (
+            <code
+              style={{
+                'font-size': '.7em',
+                border: '1px solid red',
+                'border-radius': '.25rem',
+                padding: '.5rem',
+                color: 'red',
+              }}
+            >
+              {error.message}
+            </code>
+          ) : null}
+        </pre>
+      </div>
+    </div>
+  )
+}
