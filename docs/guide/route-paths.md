@@ -106,9 +106,9 @@ Dynamic segments can be accessed via the `params` object using the label you pro
 }
 ```
 
-## Splat Matching
+## Splat / Catch-All Matching
 
-A route with a path of only `*` or `$` is called a "splat" route because it captures _any_ remaining section of the URL from the `*`/`$` down. For example:
+A route with a path of only `*` or `$` is called a "splat" route because it _always_ captures _any_ remaining section of the URL from the `*`/`$` down. For example:
 
 ```tsx
 let rootRoute = new RootRoute()
@@ -132,6 +132,10 @@ Splat routes capture their matched path in the `params` object under the `*` pro
 ```
 
 > 🧠 Why use both `*` and `$`? Thanks to tools like Remix, we know that while `*`s are the most common character to represent a wildcard/splat, they do not play nice with filenames or CLI tools. In those cases `$` can be a better choice.
+
+## 404 / Non-matching Routes
+
+A 404 / non-matching route is really just a fancy name for a [Splat / Catch-All](splat-catch-all-matching) path. If no other routes match, the splat/catch-all route will always match
 
 ## Pathless Layout Routes
 
