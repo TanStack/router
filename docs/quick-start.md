@@ -8,7 +8,6 @@ If you're feeling impatient and prefer to skip all of our wonderful documentatio
 import React, { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
-  Link,
   Outlet,
   RouterProvider,
   Link,
