@@ -79,16 +79,16 @@
           "to": "guide/navigation"
         },
         {
-          "label": "Route Matches",
-          "to": "guide/route-matches"
-        },
-        {
           "label": "Search Params",
           "to": "guide/search-params"
         },
         {
-          "label": "Loaders & Actions",
-          "to": "guide/loaders"
+          "label": "Data Loading",
+          "to": "guide/data-loading"
+        },
+        {
+          "label": "Data Mutations",
+          "to": "guide/data-mutations"
         },
         {
           "label": "Router",

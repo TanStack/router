@@ -117,13 +117,11 @@ const postsRoute = new Route({
       key: postsLoader.key,
     })
 
-    const posts = postsLoaderInstance.state.data
-
     return (
       <div className="p-2 flex gap-2">
         <ul className="list-disc pl-4">
           {[
-            ...posts,
+            ...postsLoaderInstance.state.data,
             { id: 'i-do-not-exist', title: 'Non-existent Post' },
           ]?.map((post) => {
             return (

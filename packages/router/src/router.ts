@@ -321,27 +321,6 @@ export class Router<
       if (!this.state.currentMatches.length) {
         this.safeLoad()
       }
-
-      const visibilityChangeEvent = 'visibilitychange'
-      const focusEvent = 'focus'
-
-      // addEventListener does not exist in React Native, but window does
-      // In the future, we might need to invert control here for more adapters
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (window.addEventListener) {
-        // Listen to visibilitychange and focus
-        window.addEventListener(visibilityChangeEvent, this.#onFocus, false)
-        window.addEventListener(focusEvent, this.#onFocus, false)
-      }
-
-      return () => {
-        if (window.removeEventListener) {
-          // Be sure to unsubscribe if a new handler is set
-
-          window.removeEventListener(visibilityChangeEvent, this.#onFocus)
-          window.removeEventListener(focusEvent, this.#onFocus)
-        }
-      }
     }
 
     return () => {}
@@ -1088,10 +1067,6 @@ export class Router<
       state: state as LocationState,
       key: state?.key || '__init__',
     }
-  }
-
-  #onFocus = () => {
-    this.safeLoad()
   }
 
   #buildLocation = (dest: BuildNextOptions = {}): ParsedLocation => {

@@ -197,9 +197,9 @@ export type LoaderInstanceCallback<
   loader: LoaderInstance<TKey, TVariables, TData, TError>,
 ) => void | Promise<void>
 
-export interface StrictLoaderStore<TData = unknown, TError = Error>
+export interface NullableLoaderStore<TData = unknown, TError = Error>
   extends Omit<LoaderStore<TData, TError>, 'data'> {
-  data: TData
+  data?: TData
 }
 
 export interface LoaderStore<TData = unknown, TError = Error> {
@@ -209,7 +209,7 @@ export interface LoaderStore<TData = unknown, TError = Error> {
   preloadInvalidAt: number
   invalid: boolean
   updatedAt?: number
-  data?: TData
+  data: TData
   error?: TError
   preload: boolean
 }
@@ -245,6 +245,7 @@ interface LoaderOptions<
   onLatestSettled?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
   onEachSettled?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
   onEachOutdated?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
+  refetchOnWindowFocus?: boolean
   debug?: boolean
 }
 
@@ -285,6 +286,9 @@ export type VariablesFn<
       (opts: VariablesOptions<TVariables> & TOptions): TReturn
     }
 
+const visibilityChangeEvent = 'visibilitychange'
+const focusEvent = 'focus'
+
 export class Loader<
   TKey extends string = string,
   TVariables = unknown,
@@ -308,6 +312,32 @@ export class Loader<
     this.options = options
     this.key = this.options.key
     this.instances = {}
+
+    // addEventListener does not exist in React Native, but window does
+    // In the future, we might need to invert control here for more adapters
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (window.addEventListener) {
+      // Listen to visibilitychange and focus
+      window.addEventListener(visibilityChangeEvent, this.#reloadAll, false)
+      window.addEventListener(focusEvent, this.#reloadAll, false)
+    }
+  }
+
+  dispose = () => {
+    if (window.removeEventListener) {
+      // Be sure to unsubscribe if a new handler is set
+
+      window.removeEventListener(visibilityChangeEvent, this.#reloadAll)
+      window.removeEventListener(focusEvent, this.#reloadAll)
+    }
+  }
+
+  #reloadAll = () => {
+    Object.values(this.instances).forEach((instance) => {
+      instance.load({
+        isFocusReload: true,
+      })
+    })
   }
 
   getInstance: VariablesFn<
@@ -379,7 +409,7 @@ export interface LoaderInstanceOptions<
   variables: TVariables
 }
 
-export interface StrictLoaderInstance<
+export interface NullableLoaderInstance<
   TKey extends string = string,
   TVariables = unknown,
   TData = unknown,
@@ -388,8 +418,8 @@ export interface StrictLoaderInstance<
     LoaderInstance<TKey, TVariables, TData, TError>,
     'store' | 'state'
   > {
-  store: Store<StrictLoaderStore<TData, TError>>
-  state: StrictLoaderStore<TData, TError>
+  store: Store<NullableLoaderStore<TData, TError>>
+  state: NullableLoaderStore<TData, TError>
 }
 
 export class LoaderInstance<
@@ -511,13 +541,21 @@ export class LoaderInstance<
   load = async (opts?: {
     maxAge?: number
     preload?: boolean
+    isFocusReload?: boolean
   }): Promise<TData> => {
-    // Fetch if we need to
+    if (
+      opts?.isFocusReload &&
+      !(this.loader.options.refetchOnWindowFocus ?? true)
+    ) {
+      return this.state.data!
+    }
+
     if (
       this.state.status === 'error' ||
       this.state.status === 'idle' ||
       this.getIsInvalid(opts)
     ) {
+      // Fetch if we need to
       if (!this.__loadPromise) {
         this.fetch(opts).catch(() => {
           // Ignore

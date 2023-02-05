@@ -705,20 +705,17 @@ export function ErrorComponent({ error }: { error: any }) {
       <strong style={{ fontSize: '1.2rem' }}>Something went wrong!</strong>
       <div style={{ height: '.5rem' }} />
       <div>
-        <pre>
-          {error.message ? (
-            <code
-              style={{
-                fontSize: '.7em',
-                border: '1px solid red',
-                borderRadius: '.25rem',
-                padding: '.5rem',
-                color: 'red',
-              }}
-            >
-              {error.message}
-            </code>
-          ) : null}
+        <pre
+          style={{
+            fontSize: '.7em',
+            border: '1px solid red',
+            borderRadius: '.25rem',
+            padding: '.5rem',
+            color: 'red',
+            overflow: 'auto',
+          }}
+        >
+          {error.message ? <code>{error.message}</code> : null}
         </pre>
       </div>
     </div>
