@@ -25,6 +25,7 @@ export interface LoaderClientOptions<
   defaultMaxAge?: number
   defaultPreloadMaxAge?: number
   defaultGcMaxAge?: number
+  defaultRefetchOnWindowFocus?: boolean
   wrapLoaderFn?: <TKey extends string, TVariables, TData, TError>(
     loaderInstance: LoaderInstance<TKey, TVariables, TData, TError>,
   ) => (
@@ -545,7 +546,11 @@ export class LoaderInstance<
   }): Promise<TData> => {
     if (
       opts?.isFocusReload &&
-      !(this.loader.options.refetchOnWindowFocus ?? true)
+      !(
+        this.loader.options.refetchOnWindowFocus ??
+        this.loader.client?.options.defaultRefetchOnWindowFocus ??
+        true
+      )
     ) {
       return this.state.data!
     }
