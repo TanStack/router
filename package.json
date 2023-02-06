@@ -40,7 +40,8 @@
       "@tanstack/react-router-devtools": "workspace:*",
       "@tanstack/solid-router": "workspace:*",
       "@tanstack/solid-store": "workspace:*",
-      "@tanstack/solid-loaders": "workspace:*"
+      "@tanstack/solid-loaders": "workspace:*",
+      "@tanstack/solid-actions": "workspace:*"
     }
   },
   "devDependencies": {

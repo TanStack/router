@@ -10,8 +10,15 @@ import {
   RegisteredLoaders,
   VariablesOptions,
 } from '@tanstack/loaders'
-import * as Solid from 'solid-js'
-import * as SolidStore from 'solid-js/store'
+import {
+  createContext,
+  createEffect,
+  createRenderEffect,
+  on,
+  splitProps,
+  useContext,
+} from 'solid-js'
+import { createStore } from 'solid-js/store'
 import invariant from 'tiny-invariant'
 
 import { useStore } from '@tanstack/solid-store'
@@ -22,7 +29,7 @@ export * from '@tanstack/loaders'
 
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 
-const loaderClientContext = Solid.createContext<LoaderClient<any>>(null as any)
+const loaderClientContext = createContext<LoaderClient<any>>(null as any)
 
 export function LoaderClientProvider(
   props: {
@@ -30,17 +37,15 @@ export function LoaderClientProvider(
     children: any
   } & Pick<LoaderClientOptions<any>, 'defaultGcMaxAge' | 'defaultMaxAge'>,
 ) {
-  const [coreProps, optionProps] = Solid.splitProps(props, [
+  const [coreProps, optionProps] = splitProps(props, [
     'loaderClient',
     'children',
   ])
 
-  const [loaderClient, setLoaderClient] = SolidStore.createStore(
-    coreProps.loaderClient,
-  )
+  const [loaderClient, setLoaderClient] = createStore(coreProps.loaderClient)
 
-  Solid.createEffect(
-    Solid.on(
+  createEffect(
+    on(
       () => [coreProps.loaderClient.options, optionProps],
       ([loaderOptions, optionProps]) => {
         setLoaderClient('options', (o) => ({
@@ -110,7 +115,7 @@ export function useLoaderInstance<
   //   loader?: Loader<any, any, any, any>
   // }
 
-  const loaderClient = Solid.useContext(loaderClientContext)!
+  const loaderClient = useContext(loaderClientContext)!
 
   invariant(
     loaderClient || allOpts.loader,
@@ -145,7 +150,7 @@ export function useLoaderInstance<
 
   const loaderInstanceCopy = { ...loaderInstance }
 
-  Solid.createRenderEffect(() => {
+  createRenderEffect(() => {
     Object.assign(loaderInstanceCopy, loaderInstance, { state })
   })
 
@@ -155,7 +160,7 @@ export function useLoaderInstance<
 export function useLoaderClient(opts?: {
   track?: (loaderClientStore: LoaderClientStore) => any
 }): LoaderClient<RegisteredLoaders> {
-  const loaderClient = Solid.useContext(loaderClientContext)!
+  const loaderClient = useContext(loaderClientContext)!
 
   if (!loaderClient)
     invariant(
@@ -166,7 +171,7 @@ export function useLoaderClient(opts?: {
 
   const loaderClientCopy = { ...loaderClient }
 
-  Solid.createRenderEffect(() => {
+  createRenderEffect(() => {
     Object.assign(loaderClientCopy, loaderClient, { state })
   })
 

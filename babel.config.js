@@ -44,6 +44,7 @@ module.exports = {
         './packages/solid-router/**',
         './packages/solid-store/**',
         './packages/solid-loaders/**',
+        './packages/solid-actions/**',
       ],
       presets: ['babel-preset-solid'],
     },

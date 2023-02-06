@@ -116,6 +116,16 @@ export const packages: Package[] = [
     },
   },
   {
+    name: '@tanstack/solid-actions',
+    packageDir: 'solid-actions',
+    srcDir: 'src',
+    jsName: 'SolidActions',
+    entryFile: 'src/index.tsx',
+    globals: {
+      'solid-js': 'Solid',
+    },
+  },
+  {
     name: '@tanstack/router-cli',
     packageDir: 'router-cli',
     srcDir: 'src',
