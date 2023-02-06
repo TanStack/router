@@ -176,8 +176,7 @@ export interface BuildNextOptions {
   key?: string
   from?: string
   fromCurrent?: boolean
-  __preSearchFilters?: SearchFilter<any>[]
-  __postSearchFilters?: SearchFilter<any>[]
+  __matches?: RouteMatch[]
 }
 
 export type MatchCacheEntry = {
@@ -382,22 +381,11 @@ export class Router<
   buildNext = (opts: BuildNextOptions) => {
     const next = this.#buildLocation(opts)
 
-    const matches = this.matchRoutes(next.pathname)
-
-    const __preSearchFilters = matches
-      .map((match) => match.route.options.preSearchFilters ?? [])
-      .flat()
-      .filter(Boolean)
-
-    const __postSearchFilters = matches
-      .map((match) => match.route.options.postSearchFilters ?? [])
-      .flat()
-      .filter(Boolean)
+    const __matches = this.matchRoutes(next.pathname)
 
     return this.#buildLocation({
       ...opts,
-      __preSearchFilters,
-      __postSearchFilters,
+      __matches,
     })
   }
 
@@ -1097,8 +1085,6 @@ export class Router<
       strictParseParams: true,
     })
 
-    const toMatches = this.matchRoutes(pathname)
-
     const prevParams = { ...last(fromMatches)?.params }
 
     let nextParams =
@@ -1107,19 +1093,31 @@ export class Router<
         : functionalUpdate(dest.params!, prevParams)
 
     if (nextParams) {
-      toMatches
-        .map((d) => d.route.options.stringifyParams)
+      dest.__matches
+        ?.map((d) => d.route.options.stringifyParams)
         .filter(Boolean)
         .forEach((fn) => {
-          Object.assign({}, nextParams!, fn!(nextParams!))
+          nextParams = { ...nextParams!, ...fn!(nextParams!) }
         })
     }
 
     pathname = interpolatePath(pathname, nextParams ?? {})
 
+    const preSearchFilters =
+      dest.__matches
+        ?.map((match) => match.route.options.preSearchFilters ?? [])
+        .flat()
+        .filter(Boolean) ?? []
+
+    const postSearchFilters =
+      dest.__matches
+        ?.map((match) => match.route.options.postSearchFilters ?? [])
+        .flat()
+        .filter(Boolean) ?? []
+
     // Pre filters first
-    const preFilteredSearch = dest.__preSearchFilters?.length
-      ? dest.__preSearchFilters?.reduce(
+    const preFilteredSearch = preSearchFilters?.length
+      ? preSearchFilters?.reduce(
           (prev, next) => next(prev),
           this.state.latestLocation.search,
         )
@@ -1131,13 +1129,13 @@ export class Router<
         ? preFilteredSearch // Preserve resolvedFrom true
         : dest.search
         ? functionalUpdate(dest.search, preFilteredSearch) ?? {} // Updater
-        : dest.__preSearchFilters?.length
+        : preSearchFilters?.length
         ? preFilteredSearch // Preserve resolvedFrom filters
         : {}
 
     // Then post filters
-    const postFilteredSearch = dest.__postSearchFilters?.length
-      ? dest.__postSearchFilters.reduce((prev, next) => next(prev), destSearch)
+    const postFilteredSearch = postSearchFilters?.length
+      ? postSearchFilters.reduce((prev, next) => next(prev), destSearch)
       : destSearch
 
     const search = replaceEqualDeep(
