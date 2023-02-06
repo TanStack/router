@@ -135,7 +135,7 @@ Splat routes capture their matched path in the `params` object under the `*` pro
 
 ## 404 / Non-matching Routes
 
-A 404 / non-matching route is really just a fancy name for a [Splat / Catch-All](splat-catch-all-matching) path. If no other routes match, the splat/catch-all route will always match
+A 404 / non-matching route is really just a fancy name for a [Splat / Catch-All](#splat-catch-all-matching) path. If no other routes match, the splat/catch-all route will always match
 
 ## Pathless Layout Routes
 
