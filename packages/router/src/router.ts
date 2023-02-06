@@ -308,6 +308,17 @@ export class Router<
 
     // Allow frameworks to hook into the router creation
     this.options.Router?.(this)
+
+    const next = this.buildNext({
+      hash: true,
+      fromCurrent: true,
+      search: true,
+      state: true,
+    })
+
+    if (this.state.latestLocation.href !== next.href) {
+      this.#commitLocation({ ...next, replace: true })
+    }
   }
 
   reset = () => {
@@ -1141,11 +1152,16 @@ export class Router<
         : functionalUpdate(dest.hash!, this.state.latestLocation.hash)
     hash = hash ? `#${hash}` : ''
 
+    const nextState =
+      dest.state === true
+        ? this.state.latestLocation.state
+        : functionalUpdate(dest.state, this.state.latestLocation.state)!
+
     return {
       pathname,
       search,
       searchStr,
-      state: this.state.latestLocation.state,
+      state: nextState,
       hash,
       href: `${pathname}${searchStr}${hash}`,
       key: dest.key,
