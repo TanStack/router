@@ -3,7 +3,7 @@ import { Store } from '@tanstack/store'
 import { GetFrameworkGeneric } from './frameworks'
 import { AnyRoute, AnySearchSchema, Route } from './route'
 import { AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
-import { AnyRouter, ParsedLocation, Router } from './router'
+import { AnyRouter, isRedirect, ParsedLocation, Router } from './router'
 import { Expand, pick, replaceEqualDeep } from './utils'
 
 export interface RouteMatchStore<
@@ -46,9 +46,9 @@ export class RouteMatch<
   routeContext!: TRoute['__types']['routeContext']
   context!: TRoute['__types']['context']
 
-  component: GetFrameworkGeneric<'Component'>
-  errorComponent: GetFrameworkGeneric<'ErrorComponent'>
-  pendingComponent: GetFrameworkGeneric<'Component'>
+  component?: GetFrameworkGeneric<'Component'>
+  errorComponent?: GetFrameworkGeneric<'ErrorComponent'>
+  pendingComponent?: GetFrameworkGeneric<'Component'>
   abortController = new AbortController()
   onLoaderDataListeners = new Set<() => void>()
   parentMatch?: RouteMatch
@@ -160,6 +160,10 @@ export class RouteMatch<
         search,
       }
     } catch (err: any) {
+      if (isRedirect(err)) {
+        throw err
+      }
+
       this.route.options.onValidateSearchError?.(err)
       const error = new (Error as any)('Invalid search params found', {
         cause: err,
@@ -207,6 +211,11 @@ export class RouteMatch<
     try {
       info = this.#resolveInfo(opts)
     } catch (err) {
+      if (isRedirect(err)) {
+        this.router.navigate(err as any)
+        return
+      }
+
       this.route.options.onError?.(err)
 
       this.store.setState((s) => ({
@@ -287,6 +296,10 @@ export class RouteMatch<
           updatedAt: Date.now(),
         }))
       } catch (err) {
+        if (isRedirect(err)) {
+          this.router.navigate(err as any)
+          return
+        }
         this.route.options.onLoadError?.(err)
         this.route.options.onError?.(err)
         this.store.setState((s) => ({

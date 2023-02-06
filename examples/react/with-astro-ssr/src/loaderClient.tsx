@@ -23,6 +23,7 @@ export const createLoaderClient = () => {
 
   const postLoader = new Loader({
     key: 'post',
+    maxAge: 5000,
     loader: async (postId: string) => {
       console.log(`Fetching post with id ${postId}...`)
 
@@ -48,6 +49,6 @@ export const loaderClient = createLoaderClient()
 // Register things for typesafety
 declare module '@tanstack/react-loaders' {
   interface Register {
-    loaderClient: ReturnType<typeof createLoaderClient>
+    loaderClient: typeof loaderClient
   }
 }

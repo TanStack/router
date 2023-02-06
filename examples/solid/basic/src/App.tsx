@@ -40,7 +40,7 @@ const postLoader = new Loader({
     await new Promise((r) => setTimeout(r, 500))
 
     if (postId === '5') {
-      throw new Error('Postid === 5, Showing error boundary')
+      throw new Error('Postid === 5. Example Error Boundary catching request')
     }
 
     return await fetch(
@@ -109,7 +109,6 @@ const Spinner = () => <div class="inline-block animate-spin px-3">⍥</div>
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/posts',
-  wrapInSuspense: true,
   pendingComponent: Spinner,
   onLoad: ({ preload }) =>
     loaderClient.getLoader({ key: 'posts' }).load({ preload }),
@@ -143,7 +142,6 @@ const postsRoute = new Route({
       </div>
     )
   },
-  errorComponent: () => 'Oh crap',
 })
 
 const PostsIndexRoute = new Route({
@@ -170,16 +168,16 @@ const postRoute = new Route({
 
     const postLoaderInstance = useLoaderInstance({
       key: postLoader.key,
-      variables: params().postId,
+      variables: params.postId,
       // strict: false,
     })
 
-    const post = () => postLoaderInstance.state.data
-
     return (
       <div class="space-y-2">
-        <h4 class="text-xl font-bold underline">{post().title}</h4>
-        <div class="text-sm">{post().body}</div>
+        <h4 class="text-xl font-bold underline">
+          {postLoaderInstance.state.data.title}
+        </h4>
+        <div class="text-sm">{postLoaderInstance.state.data.body}</div>
       </div>
     )
   },

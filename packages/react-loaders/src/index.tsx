@@ -10,7 +10,7 @@ import {
   VariablesOptions,
   Loader,
   LoaderInstance,
-  StrictLoaderInstance,
+  NullableLoaderInstance,
 } from '@tanstack/loaders'
 
 import { useStore } from '@tanstack/react-store'
@@ -43,14 +43,14 @@ export function LoaderClientProvider({
   )
 }
 
-type StrictLoaderInstance_<TLoaderInstance> =
+type NullableLoaderInstance_<TLoaderInstance> =
   TLoaderInstance extends LoaderInstance<
     infer TKey,
     infer TVariables,
     infer TData,
     infer TError
   >
-    ? StrictLoaderInstance<TKey, TVariables, TData, TError>
+    ? NullableLoaderInstance<TKey, TVariables, TData, TError>
     : never
 
 export function useLoaderInstance<
@@ -85,13 +85,15 @@ export function useLoaderInstance<
     throwOnError?: boolean
   } & VariablesOptions<TVariables>,
 ): TStrict extends false
-  ? TResolvedLoaderInstance
-  : StrictLoaderInstance_<TResolvedLoaderInstance> {
+  ? NullableLoaderInstance_<TResolvedLoaderInstance>
+  : TResolvedLoaderInstance {
   const allOpts = opts as any
+
   // opts as typeof opts & {
   //   key?: TKey
   //   loader?: Loader<any, any, any, any>
   // }
+
   const loaderClient = React.useContext(loaderClientContext)
 
   invariant(
@@ -113,7 +115,7 @@ export function useLoaderInstance<
 
   if (allOpts?.strict ?? true) {
     invariant(
-      typeof loaderInstance.state.data !== undefined,
+      typeof loaderInstance.state.data !== 'undefined',
       `useLoaderInstance:
   Loader instance { key: ${loader.key}, variables: ${allOpts.variables} }) is currently in a "${loaderInstance.state.status}" state. By default useLoaderInstance will throw an error if the loader instance is not in a "success" state. To avoid this error:
   

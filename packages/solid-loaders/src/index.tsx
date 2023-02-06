@@ -6,8 +6,8 @@ import {
   LoaderInstance,
   LoaderInstanceByKey,
   LoaderStore,
+  NullableLoaderInstance,
   RegisteredLoaders,
-  StrictLoaderInstance,
   VariablesOptions,
 } from '@tanstack/loaders'
 import * as Solid from 'solid-js'
@@ -59,14 +59,14 @@ export function LoaderClientProvider(
   )
 }
 
-type StrictLoaderInstance_<TLoaderInstance> =
+type NullableLoaderInstance_<TLoaderInstance> =
   TLoaderInstance extends LoaderInstance<
     infer TKey,
     infer TVariables,
     infer TData,
     infer TError
   >
-    ? StrictLoaderInstance<TKey, TVariables, TData, TError>
+    ? NullableLoaderInstance<TKey, TVariables, TData, TError>
     : never
 
 export function useLoaderInstance<
@@ -101,13 +101,15 @@ export function useLoaderInstance<
     throwOnError?: boolean
   } & VariablesOptions<TVariables>,
 ): TStrict extends false
-  ? TResolvedLoaderInstance
-  : StrictLoaderInstance_<TResolvedLoaderInstance> {
+  ? NullableLoaderInstance_<TResolvedLoaderInstance>
+  : TResolvedLoaderInstance {
   const allOpts = opts as any
+
   // opts as typeof opts & {
   //   key?: TKey
   //   loader?: Loader<any, any, any, any>
   // }
+
   const loaderClient = Solid.useContext(loaderClientContext)!
 
   invariant(
@@ -139,13 +141,15 @@ export function useLoaderInstance<
     )
   }
 
-  Solid.createEffect(() => {
-    loaderInstance.load()
+  const state = useStore(loaderInstance.store)
+
+  const loaderInstanceCopy = { ...loaderInstance }
+
+  Solid.createRenderEffect(() => {
+    Object.assign(loaderInstanceCopy, loaderInstance, { state })
   })
 
-  useStore(loaderInstance.store, (d) => allOpts?.track?.(d as any) ?? d, true)
-
-  return loaderInstance
+  return loaderInstanceCopy as any
 }
 
 export function useLoaderClient(opts?: {
@@ -158,7 +162,13 @@ export function useLoaderClient(opts?: {
       'useLoaderClient must be used inside a <LoaderClientProvider> component!',
     )
 
-  useStore(loaderClient.store, (d) => opts?.track?.(d as any) ?? d, true)
+  const state = useStore(loaderClient.store)
 
-  return loaderClient
+  const loaderClientCopy = { ...loaderClient }
+
+  Solid.createRenderEffect(() => {
+    Object.assign(loaderClientCopy, loaderClient, { state })
+  })
+
+  return loaderClientCopy as any
 }

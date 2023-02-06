@@ -1,19 +1,24 @@
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { Link, Outlet, RootRoute } from '@tanstack/react-router'
+import { Link, Outlet, RootRoute, useMatches } from '@tanstack/react-router'
 import type { RouterContext } from '../router'
 
 export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
   component: Root,
-  // wrapInSuspense: false,
 })
 
 function Root() {
+  const matches = useMatches()
+
+  const titleMatch = matches.reverse().find((d) => d.context?.getTitle)
+
+  const title = titleMatch?.context?.getTitle?.() ?? 'Astro + TanStack Router'
+
   return (
     <html lang="en">
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Astro + TanStack Router</title>
+        <title>{title}</title>
         <script src="https://cdn.tailwindcss.com"></script>
       </head>
       <body>

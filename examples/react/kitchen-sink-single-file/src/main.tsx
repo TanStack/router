@@ -944,6 +944,9 @@ const router = new ReactRouter({
   onRouteChange: () => {
     actionClient.clearAll()
   },
+  context: {
+    auth: undefined!,
+  },
 })
 
 declare module '@tanstack/react-router' {

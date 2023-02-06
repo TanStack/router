@@ -5,16 +5,23 @@ import { postsRoute } from '../posts'
 export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  component: Post,
   onLoad: async ({ params: { postId }, preload, context }) =>
     context.loaderClient.getLoader({ key: 'post' }).load({
       variables: postId,
       preload,
     }),
+  component: Post,
+  getContext: ({ context, params: { postId } }) => ({
+    getTitle: () =>
+      context.loaderClient.getLoader({ key: 'post' }).getInstance({
+        variables: postId,
+      }).state.data?.title,
+  }),
 })
 
 function Post() {
   const { postId } = useParams({ from: postIdRoute.id })
+
   const {
     state: { data: post },
   } = useLoaderInstance({ key: 'post', variables: postId })

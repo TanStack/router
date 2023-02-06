@@ -6,17 +6,17 @@
   "scripts": {
     "dev": "astro dev",
     "start": "npm run dev",
-    "build": "tsr build && astro build",
+    "build": "astro build",
     "preview": "astro preview",
     "astro": "astro"
   },
   "dependencies": {
     "@astrojs/netlify": "^1.2.1",
     "@astrojs/react": "^1.2.2",
-    "@tanstack/router": "0.0.1-beta.67",
-    "@tanstack/react-router": "0.0.1-beta.68",
-    "@tanstack/react-loaders": "0.0.1-beta.64",
-    "@tanstack/react-router-devtools": "0.0.1-beta.68",
+    "@tanstack/router": "0.0.1-beta.74",
+    "@tanstack/react-router": "0.0.1-beta.74",
+    "@tanstack/react-loaders": "0.0.1-beta.73",
+    "@tanstack/react-router-devtools": "0.0.1-beta.74",
     "astro": "^1.6.12",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

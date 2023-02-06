@@ -8,7 +8,7 @@ import { GetFrameworkGeneric } from './frameworks'
 import {
   createBrowserHistory,
   createMemoryHistory,
-  RouterHistory,
+  RouterHistory
 } from './history'
 import {
   LinkInfo,
@@ -16,15 +16,17 @@ import {
   NavigateOptions,
   ResolveRelativePath,
   ToOptions,
-  ValidFromPath,
+  ValidFromPath
 } from './link'
 import {
   cleanPath,
   interpolatePath,
   joinPaths,
   matchPathname,
+  parsePathname,
   resolvePath,
   trimPath,
+  trimPathLeft
 } from './path'
 import {
   AnyContext,
@@ -33,8 +35,7 @@ import {
   AnySearchSchema,
   LoaderContext,
   RootRoute,
-  Route,
-  SearchFilter,
+  Route
 } from './route'
 import { AnyRoutesInfo, RoutesById, RoutesInfo } from './routeInfo'
 import { AnyRouteMatch, RouteMatch, RouteMatchStore } from './routeMatch'
@@ -48,7 +49,7 @@ import {
   PickAsRequired,
   replaceEqualDeep,
   Timeout,
-  Updater,
+  Updater
 } from './utils'
 
 export interface Register {
@@ -168,8 +169,7 @@ export interface BuildNextOptions {
   key?: string
   from?: string
   fromCurrent?: boolean
-  __preSearchFilters?: SearchFilter<any>[]
-  __postSearchFilters?: SearchFilter<any>[]
+  __matches?: RouteMatch[]
 }
 
 export type MatchCacheEntry = {
@@ -243,6 +243,12 @@ export const defaultFetchServerDataFn: FetchServerDataFn = async ({
   throw new Error('Failed to fetch match data')
 }
 
+export type RouterConstructorOptions<TRouteTree extends AnyRoute> = Omit<
+  RouterOptions<TRouteTree>,
+  'context'
+> &
+  RouterContextOptions<TRouteTree>
+
 export class Router<
   TRouteTree extends AnyRoute = RootRoute,
   TRoutesInfo extends AnyRoutesInfo = RoutesInfo<TRouteTree>,
@@ -254,10 +260,9 @@ export class Router<
   }
 
   options: PickAsRequired<
-    Omit<RouterOptions<TRouteTree>, 'context'>,
-    'stringifySearch' | 'parseSearch'
-  > &
-    RouterContextOptions<TRouteTree>
+    RouterOptions<TRouteTree>,
+    'stringifySearch' | 'parseSearch' | 'context'
+  >
   history!: RouterHistory
   #unsubHistory?: () => void
   basepath: string
@@ -271,9 +276,9 @@ export class Router<
   store: Store<RouterStore<TRoutesInfo>>
   state: RouterStore<TRoutesInfo>
   startedLoadingAt = Date.now()
-  resolveNavigation = () => {}
+  resolveNavigation: () => void = () => {}
 
-  constructor(options?: RouterOptions<TRouteTree>) {
+  constructor(options?: RouterConstructorOptions<TRouteTree>) {
     this.options = {
       defaultPreloadDelay: 50,
       context: undefined!,
@@ -295,6 +300,17 @@ export class Router<
 
     // Allow frameworks to hook into the router creation
     this.options.Router?.(this)
+
+    const next = this.buildNext({
+      hash: true,
+      fromCurrent: true,
+      search: true,
+      state: true,
+    })
+
+    if (this.state.latestLocation.href !== next.href) {
+      this.#commitLocation({ ...next, replace: true })
+    }
   }
 
   reset = () => {
@@ -304,30 +320,9 @@ export class Router<
   mount = () => {
     // Mount only does anything on the client
     if (!isServer) {
-      // If the router matches are empty, load the matches
+      // If the router matches are empty, start loading the matches
       if (!this.state.currentMatches.length) {
-        this.load()
-      }
-
-      const visibilityChangeEvent = 'visibilitychange'
-      const focusEvent = 'focus'
-
-      // addEventListener does not exist in React Native, but window does
-      // In the future, we might need to invert control here for more adapters
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (window.addEventListener) {
-        // Listen to visibilitychange and focus
-        window.addEventListener(visibilityChangeEvent, this.#onFocus, false)
-        window.addEventListener(focusEvent, this.#onFocus, false)
-      }
-
-      return () => {
-        if (window.removeEventListener) {
-          // Be sure to unsubscribe if a new handler is set
-
-          window.removeEventListener(visibilityChangeEvent, this.#onFocus)
-          window.removeEventListener(focusEvent, this.#onFocus)
-        }
+        this.safeLoad()
       }
     }
 
@@ -358,7 +353,7 @@ export class Router<
       }))
 
       this.#unsubHistory = this.history.listen(() => {
-        this.load({
+        this.safeLoad({
           next: this.#parseLocation(this.state.latestLocation),
         })
       })
@@ -379,22 +374,11 @@ export class Router<
   buildNext = (opts: BuildNextOptions) => {
     const next = this.#buildLocation(opts)
 
-    const matches = this.matchRoutes(next.pathname)
-
-    const __preSearchFilters = matches
-      .map((match) => match.route.options.preSearchFilters ?? [])
-      .flat()
-      .filter(Boolean)
-
-    const __postSearchFilters = matches
-      .map((match) => match.route.options.postSearchFilters ?? [])
-      .flat()
-      .filter(Boolean)
+    const __matches = this.matchRoutes(next.pathname)
 
     return this.#buildLocation({
       ...opts,
-      __preSearchFilters,
-      __postSearchFilters,
+      __matches,
     })
   }
 
@@ -407,10 +391,14 @@ export class Router<
     })
   }
 
-  load = async (opts?: {
-    next?: ParsedLocation
-    // filter?: (match: RouteMatch<any, any>) => any
-  }) => {
+  safeLoad = (opts?: { next?: ParsedLocation }) => {
+    this.load(opts).catch((err) => {
+      console.warn(err)
+      invariant(false, 'Encountered an error during router.load()! ☝️.')
+    })
+  }
+
+  load = async (opts?: { next?: ParsedLocation }): Promise<void> => {
     let now = Date.now()
     const startedAt = now
     this.startedLoadingAt = startedAt
@@ -443,19 +431,11 @@ export class Router<
     })
 
     // Load the matches
-    try {
-      await this.loadMatches(
-        matches,
-        this.state.pendingLocation!,
-        // opts
-      )
-    } catch (err: any) {
-      console.warn(err)
-      invariant(
-        false,
-        'Matches failed to load due to error above ☝️. Navigation cancelled!',
-      )
-    }
+    await this.loadMatches(
+      matches,
+      this.state.pendingLocation!,
+      // opts
+    )
 
     if (this.startedLoadingAt !== startedAt) {
       // Ignore side-effects of outdated side-effects
@@ -1017,7 +997,46 @@ export class Router<
 
         const children = route.children as Route[]
 
-        if (children?.length) recurseRoutes(children)
+        if (children?.length) {
+          recurseRoutes(children)
+
+          route.children = children
+            .map((d, i) => {
+              const parsed = parsePathname(
+                trimPathLeft(cleanPath(d.path ?? '/')),
+              )
+
+              while (parsed.length > 1 && parsed[0]?.value === '/') {
+                parsed.shift()
+              }
+
+              let score = 0
+
+              parsed.forEach((d, i) => {
+                let modifier = 1
+                while (i--) {
+                  modifier *= 0.001
+                }
+                if (d.type === 'pathname' && d.value !== '/') {
+                  score += 1 * modifier
+                } else if (d.type === 'param') {
+                  score += 2 * modifier
+                } else if (d.type === 'wildcard') {
+                  score += 3 * modifier
+                }
+              })
+
+              return { child: d, parsed, index: i, score }
+            })
+            .sort((a, b) => {
+              if (a.score !== b.score) {
+                return a.score - b.score
+              }
+
+              return a.index - b.index
+            })
+            .map((d) => d.child)
+        }
       })
     }
 
@@ -1042,10 +1061,6 @@ export class Router<
     }
   }
 
-  #onFocus = () => {
-    this.load()
-  }
-
   #buildLocation = (dest: BuildNextOptions = {}): ParsedLocation => {
     dest.fromCurrent = dest.fromCurrent ?? dest.to === ''
 
@@ -1063,8 +1078,6 @@ export class Router<
       strictParseParams: true,
     })
 
-    const toMatches = this.matchRoutes(pathname)
-
     const prevParams = { ...last(fromMatches)?.params }
 
     let nextParams =
@@ -1073,19 +1086,31 @@ export class Router<
         : functionalUpdate(dest.params!, prevParams)
 
     if (nextParams) {
-      toMatches
-        .map((d) => d.route.options.stringifyParams)
+      dest.__matches
+        ?.map((d) => d.route.options.stringifyParams)
         .filter(Boolean)
         .forEach((fn) => {
-          Object.assign({}, nextParams!, fn!(nextParams!))
+          nextParams = { ...nextParams!, ...fn!(nextParams!) }
         })
     }
 
     pathname = interpolatePath(pathname, nextParams ?? {})
 
+    const preSearchFilters =
+      dest.__matches
+        ?.map((match) => match.route.options.preSearchFilters ?? [])
+        .flat()
+        .filter(Boolean) ?? []
+
+    const postSearchFilters =
+      dest.__matches
+        ?.map((match) => match.route.options.postSearchFilters ?? [])
+        .flat()
+        .filter(Boolean) ?? []
+
     // Pre filters first
-    const preFilteredSearch = dest.__preSearchFilters?.length
-      ? dest.__preSearchFilters?.reduce(
+    const preFilteredSearch = preSearchFilters?.length
+      ? preSearchFilters?.reduce(
           (prev, next) => next(prev),
           this.state.latestLocation.search,
         )
@@ -1097,13 +1122,13 @@ export class Router<
         ? preFilteredSearch // Preserve resolvedFrom true
         : dest.search
         ? functionalUpdate(dest.search, preFilteredSearch) ?? {} // Updater
-        : dest.__preSearchFilters?.length
+        : preSearchFilters?.length
         ? preFilteredSearch // Preserve resolvedFrom filters
         : {}
 
     // Then post filters
-    const postFilteredSearch = dest.__postSearchFilters?.length
-      ? dest.__postSearchFilters.reduce((prev, next) => next(prev), destSearch)
+    const postFilteredSearch = postSearchFilters?.length
+      ? postSearchFilters.reduce((prev, next) => next(prev), destSearch)
       : destSearch
 
     const search = replaceEqualDeep(
@@ -1118,13 +1143,18 @@ export class Router<
         : functionalUpdate(dest.hash!, this.state.latestLocation.hash)
     hash = hash ? `#${hash}` : ''
 
+    const nextState =
+      dest.state === true
+        ? this.state.latestLocation.state
+        : functionalUpdate(dest.state, this.state.latestLocation.state)!
+
     return {
       pathname,
       search,
       searchStr,
-      state: this.state.latestLocation.state,
+      state: nextState,
       hash,
-      href: `${pathname}${searchStr}${hash}`,
+      href: this.history.createHref(`${pathname}${searchStr}${hash}`),
       key: dest.key,
     }
   }
@@ -1158,8 +1188,6 @@ export class Router<
       ...next.state,
     })
 
-    // this.load(this.#parseLocation(this.state.latestLocation))
-
     return (this.navigationPromise = new Promise((resolve) => {
       const previousNavigationResolve = this.resolveNavigation
 
@@ -1186,4 +1214,27 @@ function getInitialRouterState(): RouterStore<any, any> {
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+}
+
+export type AnyRedirect = Redirect<any, any, any>
+
+export type Redirect<
+  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
+  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TTo extends string = '',
+> = NavigateOptions<TRoutesInfo, TFrom, TTo> & {
+  code?: number
+}
+
+export function redirect<
+  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
+  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TTo extends string = '',
+>(opts: Redirect<TRoutesInfo, TFrom, TTo>): Redirect<TRoutesInfo, TFrom, TTo> {
+  ;(opts as any).isRedirect = true
+  return opts
+}
+
+export function isRedirect(obj: any): obj is AnyRedirect {
+  return !!obj?.isRedirect
 }

@@ -1,6 +1,3 @@
-import * as Solid from 'solid-js'
-import * as SolidStore from 'solid-js/store'
-
 import {
   AnyRootRoute,
   AnyRouteMatch,
@@ -20,6 +17,7 @@ import {
   RouteByPath,
   RouteMatch,
   Router,
+  RouterConstructorOptions,
   RouterOptions,
   RoutesInfo,
   ToOptions,
@@ -27,16 +25,33 @@ import {
   warning,
 } from '@tanstack/router'
 import { useStore } from '@tanstack/solid-store'
-import { Show } from 'solid-js'
+import {
+  createContext,
+  createEffect,
+  createRenderEffect,
+  createSignal,
+  ErrorBoundary,
+  JSX,
+  JSXElement,
+  lazy as solidLazy,
+  Match,
+  on,
+  Show,
+  splitProps,
+  Suspense,
+  Switch,
+  useContext,
+  useTransition,
+} from 'solid-js'
+import { createStore } from 'solid-js/store'
+import { Dynamic, untrack } from 'solid-js/web'
 
 export * from '@tanstack/router'
 export { useStore }
 
 // -------------------------- Types -------------------
 
-export type SyncRouteComponent<TProps = {}> = (
-  props: TProps,
-) => Solid.JSXElement
+export type SyncRouteComponent<TProps = {}> = (props: TProps) => JSXElement
 
 export type RouteComponent<TProps = {}> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>
@@ -45,7 +60,7 @@ export type RouteComponent<TProps = {}> = SyncRouteComponent<TProps> & {
 export function lazy(
   importer: () => Promise<{ default: SyncRouteComponent }>,
 ): RouteComponent {
-  const lazyComp = Solid.lazy(importer)
+  const lazyComp = solidLazy(importer)
   let preloaded: Promise<SyncRouteComponent>
 
   const finalComp = lazyComp as unknown as RouteComponent
@@ -61,10 +76,10 @@ export function lazy(
 
 // !Todo need to remove bound events being supported
 export type AnchorAttributes = Omit<
-  Solid.JSX.AnchorHTMLAttributes<HTMLAnchorElement>,
+  JSX.AnchorHTMLAttributes<HTMLAnchorElement>,
   'style'
 > & {
-  style?: Solid.JSX.CSSProperties
+  style?: JSX.CSSProperties
 }
 
 export type LinkPropsOptions<
@@ -89,13 +104,13 @@ export type MakeMatchRouteOptions<
   MatchRouteOptions & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
-      | Solid.JSXElement
+      | JSXElement
       | ((
           params: RouteByPath<
             RegisteredRoutesInfo,
             ResolveRelativePath<TFrom, NoInfer<TTo>>
           >['__types']['allParams'],
-        ) => Solid.JSXElement)
+        ) => JSXElement)
   }
 
 export type MakeLinkPropsOptions<
@@ -110,22 +125,16 @@ export type MakeLinkOptions<
   AnchorAttributes &
   Omit<AnchorAttributes, 'children'> & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-    children?:
-      | Solid.JSXElement
-      | ((state: { isActive: boolean }) => Solid.JSXElement)
+    children?: JSXElement | ((state: { isActive: boolean }) => JSXElement)
   }
 
 declare module '@tanstack/router' {
   interface FrameworkGenerics {
     Component: RouteComponent
     ErrorComponent: RouteComponent<{
-      error: unknown
+      error: Error
       info: { componentStack: string }
     }>
-  }
-
-  interface RouterOptions<TRouteTree> {
-    // ssrFooter?: () => JSX.Element | Node
   }
 
   interface FrameworkRouteOptions {
@@ -136,21 +145,12 @@ declare module '@tanstack/router' {
 export type PromptProps = {
   message: string
   when?: boolean | any
-  children?: Solid.JSXElement
+  children?: JSXElement
 }
 
-type ClickEventHandler = Solid.JSX.EventHandlerUnion<
-  HTMLAnchorElement,
-  MouseEvent
->
-type FocusEventHandler = Solid.JSX.EventHandlerUnion<
-  HTMLAnchorElement,
-  FocusEvent
->
-type TouchEventHandler = Solid.JSX.EventHandlerUnion<
-  HTMLAnchorElement,
-  TouchEvent
->
+type ClickEventHandler = JSX.EventHandlerUnion<HTMLAnchorElement, MouseEvent>
+type FocusEventHandler = JSX.EventHandlerUnion<HTMLAnchorElement, FocusEvent>
+type TouchEventHandler = JSX.EventHandlerUnion<HTMLAnchorElement, TouchEvent>
 
 type HandlerEvent =
   | ClickEventHandler
@@ -191,7 +191,7 @@ export class SolidRouter<
   TRouteConfig extends AnyRootRoute = RootRoute,
   TRoutesInfo extends AnyRoutesInfo = RoutesInfo<TRouteConfig>,
 > extends Router<TRouteConfig, TRoutesInfo> {
-  constructor(opts: RouterOptions<TRouteConfig>) {
+  constructor(opts: RouterConstructorOptions<TRouteConfig>) {
     super({
       ...opts,
       loadComponent: async (component) => {
@@ -213,34 +213,20 @@ export function useParams<
 >(opts?: {
   from: TFrom
   track?: (search: TDefaultSelected) => TSelected
-}): Solid.Accessor<TSelected> {
+}): TSelected {
   const router = useRouterContext()
-  useStore(
-    router.store,
-    (d) => {
-      const params = last(d.currentMatches)?.params as any
-      return opts?.track?.(params) ?? params
-    },
-    true,
-  )
+  const store = useStore(router.store)
 
-  const params = Solid.createMemo(
-    () => last(router.state.currentMatches)?.params as any,
-  )
-
-  return params
+  return last(store.currentMatches)?.params as any
 }
 
 type MatchesContextValue = AnyRouteMatch[]
-export const matchesContext = Solid.createContext<MatchesContextValue>(null!)
-export const routerContext = Solid.createContext<{ router: RegisteredRouter }>(
-  null!,
-)
+export const matchesContext = createContext<MatchesContextValue>(null!)
+export const routerContext = createContext<{ router: RegisteredRouter }>(null!)
 
 export function useRouterContext(): RegisteredRouter {
-  const value = Solid.useContext(routerContext)!
-  warning(!value, 'useRouter must be used inside a <Router> component!')
-
+  const value = useContext(routerContext)!
+  warning(value, 'useRouter must be used inside a <Router> component!')
   // useStore(value.router.store)
 
   return value.router
@@ -257,30 +243,45 @@ export function RouterProvider<
   TRouteConfig extends AnyRootRoute = RootRoute,
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
 >(props: RouterProps<TRouteConfig, TRoutesInfo>) {
-  const [routerProps, rest] = Solid.splitProps(props, ['router'])
+  const [routerProps, rest] = splitProps(props, ['router'])
 
-  const [matches, setMatches] = SolidStore.createStore<MatchesContextValue>([
-    undefined!,
-  ])
+  const [matches, setMatches] = createStore<MatchesContextValue>([undefined!])
   routerProps.router.update(rest)
 
-  useStore(routerProps.router.store, (s) => {
-    const matches = s.currentMatches
-    setMatches(([undefined!] as MatchesContextValue).concat(matches))
-  })
+  const store = useStore(routerProps.router.store)
 
-  // Not sure if this is how it's supposed to work but it's working. Might want to clean this up.
-  Solid.createEffect(
-    Solid.on(
-      () => matches,
-      () => routerProps.router.mount(),
+  createRenderEffect(
+    on(
+      () => store,
+      () => {
+        routerProps.router.mount()
+      },
+    ),
+  )
+
+  createRenderEffect(
+    on(
+      () => store.currentMatches,
+      (matches) => {
+        setMatches(([undefined!] as MatchesContextValue).concat(matches))
+      },
     ),
   )
 
   return (
     <routerContext.Provider value={{ router: routerProps.router as any }}>
       <matchesContext.Provider value={matches}>
-        <Outlet />
+        <CatchBoundary
+          errorComponent={ErrorComponent}
+          onCatch={() => {
+            warning(
+              false,
+              `Error in router! Consider setting an 'errorComponent' in your RootRoute! 👍`,
+            )
+          }}
+        >
+          {() => <Outlet />}
+        </CatchBoundary>
       </matchesContext.Provider>
     </routerContext.Provider>
   )
@@ -294,9 +295,9 @@ export function Outlet() {
 
   // I made this keyed and watching both of match and matches so it does a deep inspection and will rerender on the changes correctly
   return (
-    <Solid.Show when={match() && matches()} keyed>
+    <Show when={match() && matches()} keyed>
       <SubOutlet matches={matches().slice()} match={match() as any} />
-    </Solid.Show>
+    </Show>
   )
 }
 
@@ -304,7 +305,7 @@ function Inner(props: { match: RouteMatch }) {
   const router = useRouterContext()
 
   return (
-    <Solid.Switch
+    <Switch
       fallback={() => {
         invariant(
           false,
@@ -312,66 +313,73 @@ function Inner(props: { match: RouteMatch }) {
         )
       }}
     >
-      <Solid.Match when={props.match.state.status === 'error'}>
+      <Match when={props.match.state.status === 'error'}>
         {() => {
           throw props.match.state.error
         }}
-      </Solid.Match>
-      <Solid.Match when={props.match.state.status === 'success'}>
-        <Solid.Switch fallback={Outlet}>
-          <Solid.Match when={props.match.component} keyed>
+      </Match>
+      <Match when={props.match.state.status === 'success'}>
+        <Switch fallback={Outlet}>
+          <Match when={props.match.component} keyed>
             {(Component) => <Component />}
-          </Solid.Match>
-          <Solid.Match when={router.options.defaultComponent} keyed>
+          </Match>
+          <Match when={router.options.defaultComponent} keyed>
             {(DefaultComponent) => <DefaultComponent />}
-          </Solid.Match>
-        </Solid.Switch>
-      </Solid.Match>
-      <Solid.Match when={props.match.state.status === 'pending'}>
+          </Match>
+        </Switch>
+      </Match>
+      <Match when={props.match.state.status === 'pending'}>
         {() => {
           throw props.match.__loadPromise
         }}
-      </Solid.Match>
-    </Solid.Switch>
+      </Match>
+    </Switch>
   )
+}
+
+function SafeFragment(props: any) {
+  return <>{props.children}</>
 }
 
 function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
   const router = useRouterContext()
-  // Not sure what this is supposed to do, taken from react.
-  useStore(props.match!.store, (state) => [state.status, state.error])
+
+  useStore(props.match!.store)
+
+  const PendingComponent = () =>
+    props.match.pendingComponent ??
+    router.options.defaultPendingComponent ??
+    SafeFragment
+  const OutletErrorComponent = () =>
+    props.match.errorComponent ?? router.options.defaultErrorComponent
+
+  const ResolvedSuspenseBoundary = () =>
+    props.match.route.options.wrapInSuspense ?? true ? Suspense : SafeFragment
+  const ResolvedCatchBoundary = () =>
+    OutletErrorComponent() ? CatchBoundary : SafeFragment
 
   return (
     <matchesContext.Provider value={props.matches.slice()}>
-      <Show
-        when={props.match.route.options.wrapInSuspense}
-        fallback={<Inner match={props.match} />}
+      <Dynamic
+        component={ResolvedSuspenseBoundary()}
+        fallback={PendingComponent() as any}
       >
-        <Solid.Suspense
-          fallback={() => (
-            <Solid.Switch>
-              <Solid.Match when={props.match.pendingComponent} keyed>
-                {(PendingComponent) => <PendingComponent />}
-              </Solid.Match>
-              <Solid.Match when={router.options.defaultPendingComponent} keyed>
-                {(DefaultPendingComponent) => <DefaultPendingComponent />}
-              </Solid.Match>
-            </Solid.Switch>
-          )}
+        <Dynamic
+          component={ResolvedCatchBoundary()}
+          errorComponent={OutletErrorComponent()}
+          onCatch={() => {
+            warning(false, `Error in route match: ${props.match.id}`)
+          }}
         >
-          <Solid.ErrorBoundary
-            fallback={(err) => <DefaultErrorBoundary error={err} />}
-          >
-            <Inner match={props.match} />
-          </Solid.ErrorBoundary>
-        </Solid.Suspense>
-      </Show>
+          {() => <Inner match={props.match} />}
+        </Dynamic>
+      </Dynamic>
     </matchesContext.Provider>
   )
 }
 
 export function useMatches(): RouteMatch[] {
-  return Solid.useContext(matchesContext)!
+  return useContext(matchesContext)!
 }
 
 // -------------------------- Utils -------------------
@@ -426,7 +434,7 @@ export function useLinkProps<
     next,
   } = linkInfo
 
-  const [, start] = Solid.useTransition()
+  const [, start] = useTransition()
 
   const internalHandleClick = (e: Event) => {
     start(() => handleClick(e))
@@ -494,7 +502,7 @@ export interface LinkFn<
     TTo extends string = TDefaultTo,
   >(
     props: MakeLinkOptions<TFrom, TTo>,
-  ): Solid.JSXElement
+  ): JSXElement
 }
 
 export const Link: LinkFn = (props: any) => {
@@ -522,7 +530,7 @@ export function Navigate<
 >(props: NavigateOptions<RegisteredRoutesInfo, TFrom, TTo>): null {
   const router = useRouterContext()
 
-  Solid.createRenderEffect(() => {
+  createRenderEffect(() => {
     router.navigate(props as any)
   }, [])
 
@@ -571,13 +579,9 @@ export function useMatch<
     )
   }
 
-  useStore(
-    match()!.store as any,
-    () => opts?.track?.(match as any) ?? match,
-    opts?.shallow,
-  )
+  const store: any = useStore(match()!.store as any)
 
-  return match as any
+  return opts?.track?.(store) ?? match()
 }
 
 export function useRoute<
@@ -607,13 +611,9 @@ export function useSearch<
   track?: (search: TSearch) => TSelected
 }): TStrict extends true ? TSelected : TSelected | undefined {
   const match = useMatch(opts)
-  useStore(
-    (match as any).store,
-    (d: any) => opts?.track?.(d.search) ?? d.search,
-    true,
-  )
+  const store: any = useStore((match as any).store)
 
-  return (match as unknown as RouteMatch).state.search as any
+  return opts?.track?.(store.search) ?? store.search
 }
 
 export function useNavigate<
@@ -644,21 +644,44 @@ export function useMatchRoute() {
   }
 }
 
+function CatchBoundary(props: {
+  children: (props: { error?: string }) => JSXElement
+  errorComponent: any
+  onCatch: (error: any) => void
+}) {
+  return (
+    <ErrorBoundary
+      fallback={(error, reset) => {
+        props.onCatch(error)
+        return (
+          <CatchBoundaryInner
+            reset={reset}
+            errorState={{ error }}
+            errorComponent={props.errorComponent}
+          >
+            {(err: any) => props.children(err)}
+          </CatchBoundaryInner>
+        )
+      }}
+    >
+      {props.children({})}
+    </ErrorBoundary>
+  )
+}
+
 function CatchBoundaryInner(props: {
   children: any
   errorComponent: any
-  errorState: { error: unknown; info: any }
+  errorState: { error: any }
   reset: () => void
 }) {
-  const [activeErrorState, setActiveErrorState] = Solid.createSignal(
-    props.errorState,
-  )
+  const [activeErrorState, setActiveErrorState] = createSignal(props.errorState)
   let previousRef: string | undefined
 
   const router = useRouterContext()
-  const errorComponent = props.errorComponent ?? DefaultErrorBoundary
+  const errorComponent = props.errorComponent ?? ErrorComponent
 
-  Solid.createEffect(() => {
+  createEffect(() => {
     if (activeErrorState()) {
       if (router.state.currentLocation.key !== previousRef) {
         setActiveErrorState({} as any)
@@ -668,7 +691,7 @@ function CatchBoundaryInner(props: {
     previousRef = router.state.currentLocation.key
   })
 
-  Solid.createEffect(() => {
+  createEffect(() => {
     if (props.errorState.error) {
       setActiveErrorState(props.errorState)
     }
@@ -676,35 +699,54 @@ function CatchBoundaryInner(props: {
   })
 
   return (
-    <Solid.Show
+    <Show
       when={props.errorState.error && activeErrorState().error}
       fallback={props.children}
     >
-      {errorComponent}
-    </Solid.Show>
+      <div class="flex flex-col gap-2">
+        {typeof errorComponent === 'function' && errorComponent.length
+          ? untrack(() => errorComponent(props.errorState))
+          : errorComponent}
+        <button
+          class="border border-red-500 w-16 text-red-500"
+          onClick={props.reset}
+        >
+          Reset
+        </button>
+      </div>
+    </Show>
   )
 }
 
-export function DefaultErrorBoundary({ error }: { error: any }) {
+export function ErrorComponent(props: { error: any }) {
   return (
+    // @ts-ignore
     <div style={{ padding: '.5rem', 'max-width': '100%' }}>
+      {/* @ts-ignore */}
       <strong style={{ 'font-size': '1.2rem' }}>Something went wrong!</strong>
+      {/* @ts-ignore */}
       <div style={{ height: '.5rem' }} />
       <div>
-        <pre>
-          {error.message ? (
-            <code
-              style={{
-                'font-size': '.7em',
-                border: '1px solid red',
-                'border-radius': '.25rem',
-                padding: '.5rem',
-                color: 'red',
-              }}
-            >
-              {error.message}
-            </code>
-          ) : null}
+        <pre
+          // @ts-ignore
+          style={{
+            // @ts-ignore
+            'font-size': '.7em',
+            // @ts-ignore
+            border: '1px solid red',
+            // @ts-ignore
+            'border-radius': '.25rem',
+            // @ts-ignore
+            padding: '.5rem',
+            // @ts-ignore
+            color: 'red',
+            // @ts-ignore
+            overflow: 'auto',
+          }}
+        >
+          <Show when={props?.error?.message}>
+            <code>{props.error.message}</code>
+          </Show>
         </pre>
       </div>
     </div>

@@ -1,12 +1,17 @@
 import { describe, test, expect } from 'vitest'
 
 import {
+  cleanPath,
   // Location,
   matchPathname,
   ParsedLocation,
+  parsePathname,
   // Route,
   // createMemoryHistory,
   resolvePath,
+  Segment,
+  trimPath,
+  trimPathLeft,
 } from '../src'
 
 import { createTimer, sleep } from './utils'
@@ -365,26 +370,26 @@ describe('matchRoute', () => {
         [
           '/a',
           {
-            to: '/*',
+            to: '/$',
             fuzzy: true,
           },
-          { $: 'a' },
+          { '*': 'a' },
         ],
         [
           '/a/b',
           {
-            to: '/*',
+            to: '/$',
             fuzzy: true,
           },
-          { $: 'a/b' },
+          { '*': 'a/b' },
         ],
         [
           '/a/b/c',
           {
-            to: '/*',
+            to: '/$',
             fuzzy: true,
           },
-          { $: 'a/b/c' },
+          { '*': 'a/b/c' },
         ],
         [
           '/a/b/c',
@@ -521,9 +526,9 @@ describe('matchRoute', () => {
         [
           '/a/b/c',
           {
-            to: '/$a/*',
+            to: '/$a/$',
           },
-          { a: 'a', $: 'b/c' },
+          { a: 'a', '*': 'b/c' },
         ],
         [
           '/a/b/c',

@@ -71,20 +71,24 @@
           "to": "guide/route-paths"
         },
         {
-          "label": "Navigation",
-          "to": "guide/navigation"
+          "label": "Route Matching",
+          "to": "guide/route-matching"
         },
         {
-          "label": "Route Matches",
-          "to": "guide/route-matches"
+          "label": "Navigation",
+          "to": "guide/navigation"
         },
         {
           "label": "Search Params",
           "to": "guide/search-params"
         },
         {
-          "label": "Loaders & Actions",
-          "to": "guide/loaders"
+          "label": "Data Loading",
+          "to": "guide/data-loading"
+        },
+        {
+          "label": "Data Mutations",
+          "to": "guide/data-mutations"
         },
         {
           "label": "Router",

@@ -1,6 +1,6 @@
 export { default as invariant } from 'tiny-invariant'
+export { default as warning } from 'tiny-warning'
 export * from './history'
-
 export * from './frameworks'
 export * from './link'
 export * from './path'
@@ -11,3 +11,4 @@ export * from './routeMatch'
 export * from './router'
 export * from './searchParams'
 export * from './utils'
+// export * from './routeError'
