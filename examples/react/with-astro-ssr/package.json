@@ -13,10 +13,10 @@
   "dependencies": {
     "@astrojs/netlify": "^1.2.1",
     "@astrojs/react": "^1.2.2",
-    "@tanstack/router": "0.0.1-beta.71",
-    "@tanstack/react-router": "0.0.1-beta.71",
+    "@tanstack/router": "0.0.1-beta.72",
+    "@tanstack/react-router": "0.0.1-beta.72",
     "@tanstack/react-loaders": "0.0.1-beta.71",
-    "@tanstack/react-router-devtools": "0.0.1-beta.71",
+    "@tanstack/react-router-devtools": "0.0.1-beta.72",
     "astro": "^1.6.12",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
