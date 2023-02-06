@@ -13,5 +13,6 @@
     // { "path": "packages/react-router-devtools" },
     // { "path": "examples/react/kitchen-sink/tsconfig.dev.json" }
   ]
+  // "include": ["examples/*"]
   // "exclude": ["node_modules"]
 }

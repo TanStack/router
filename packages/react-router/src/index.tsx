@@ -464,7 +464,8 @@ export function useSearch<
   strict?: TStrict
   track?: (search: TSearch) => TSelected
 }): TStrict extends true ? TSelected : TSelected | undefined {
-  const match = useMatch(opts)
+  const { track, ...matchOpts } = opts as any
+  const match = useMatch(matchOpts)
   useStore(match.__store, (d: any) => opts?.track?.(d.search) ?? d.search, true)
 
   return (match as unknown as RouteMatch).state.search as any

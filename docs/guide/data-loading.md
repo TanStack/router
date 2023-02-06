@@ -63,7 +63,6 @@ Here is a simple example of using `onLoad` to fetch data for a route:
 import { Route } from '@tanstack/react-router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 
-// Create a loader
 const postsLoader = new Loader({
   key: 'posts',
   loader: async (params) => {
@@ -73,7 +72,6 @@ const postsLoader = new Loader({
   },
 })
 
-// Create a route
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
@@ -112,7 +110,6 @@ The `params` property of the `onLoad` function is an object containing the route
 import { Route } from '@tanstack/react-router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 
-// Create a loader
 const postLoader = new Loader({
   key: 'post',
   // Accept a postId string variable
@@ -123,7 +120,6 @@ const postLoader = new Loader({
   },
 })
 
-// Create a route
 const postRoute = new Route({
   getParentPath: () => postsRoute,
   path: '$postId',
@@ -147,7 +143,6 @@ The `search` and `routeSearch` properties of the `onLoad` function are objects c
 import { Route } from '@tanstack/react-router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 
-// Create a loader
 const postsLoader = new Loader({
   key: 'posts',
   // Accept a page number variable
@@ -158,7 +153,6 @@ const postsLoader = new Loader({
   },
 })
 
-// Create a route
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
@@ -190,7 +184,6 @@ The `context` and `routeContext` properties of the `onLoad` function are objects
 import { Route } from '@tanstack/react-router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 
-// Create a loader
 const postsLoader = new Loader({
   key: 'posts',
   loader: async () => {
@@ -241,32 +234,67 @@ const router = new ReactRouter({
 
 ## Using the Abort Signal
 
-The `signal` property of the `onLoad` function is an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) which is cancelled when the route is unloaded or when the `onLoad` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change.
+The `signal` property of the `onLoad` function is an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) which is cancelled when the route is unloaded or when the `onLoad` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change. Here is an example using TanStack Loader's signal passthrough:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 
-// Create a loader
 const postsLoader = new Loader({
   key: 'posts',
   // Accept a page number variable
-  loader: async (pageIndex: number, signal: AbortSignal) => {
+  loader: async (pageIndex: number, { signal }) => {
     const res = await fetch(`/api/posts?page=${pageIndex}`, { signal })
     if (!res.ok) throw new Error('Failed to fetch posts')
     return res.json()
   },
 })
 
-##
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  async onLoad({ signal }) {
+    // Pass the route's signal to the loader
+    await postsLoader.load({ signal })
+  },
+  component: () => {
+    const posts = useLoaderInstance({ loader: postsLoader })
 
-##
-
-##
-
-##
-
-##
-
-##
+    return <div>...</div>
+  },
+})
 ```
+
+## Using the `prefetch` flag
+
+The `prefetch` property of the `onLoad` function is a boolean which is `true` when the route is being loaded via a prefetch action. Some data loading libraries may handle prefetching differently than a standard fetch, so you may want to pass `prefetch` to your data loading library, or use it to execute the appropriate data loading logic. Here is an example using TanStack Loader and it's built-in `prefetch` flag:
+
+```tsx
+import { Route } from '@tanstack/react-router'
+import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
+
+const postsLoader = new Loader({
+  key: 'posts',
+  loader: async () => {
+    const res = await fetch(`/api/posts?page=${pageIndex}`)
+    if (!res.ok) throw new Error('Failed to fetch posts')
+    return res.json()
+  },
+})
+
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  async onLoad({ prefetch }) {
+    // Pass the route's prefetch to the loader
+    await postsLoader.load({ prefetch })
+  },
+  component: () => {
+    const posts = useLoaderInstance({ loader: postsLoader })
+
+    return <div>...</div>
+  },
+})
+```
+
+> 🧠 TanStack Loaders uses the `prefetch` flag to determine cache freshness vs non-prefetch calls and also to determine if the global `isLoading` or `isPrefetching` flags should be incremented or not.

@@ -30,7 +30,10 @@ export interface LoaderClientOptions<
     loaderInstance: LoaderInstance<TKey, TVariables, TData, TError>,
   ) => (
     variables: TVariables,
-    loaderInstance: LoaderInstance<TKey, TVariables, TData, TError>,
+    loaderOpts: {
+      loaderInstance: LoaderInstance<TKey, TVariables, TData, TError>
+      signal?: AbortSignal
+    },
   ) => Promise<TData>
 }
 
@@ -235,7 +238,10 @@ interface LoaderOptions<
   gcMaxAge?: number
   loader: (
     variables: TVariables,
-    Loader: LoaderInstance<TKey, TVariables, TData, TError>,
+    loaderOpts: {
+      loaderInstance: LoaderInstance<TKey, TVariables, TData, TError>
+      signal?: AbortSignal
+    },
   ) => TData | Promise<TData>
   onAllInvalidate?: LoaderCallback<TKey, TVariables, TData, TError>
   onEachInvalidate?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
@@ -365,6 +371,7 @@ export class Loader<
     {
       maxAge?: number
       preload?: boolean
+      signal?: AbortSignal
     }
   > = async (opts: any = {}) => {
     return this.getInstance(opts).load(opts as any)
@@ -543,6 +550,7 @@ export class LoaderInstance<
     maxAge?: number
     preload?: boolean
     isFocusReload?: boolean
+    signal?: AbortSignal
   }): Promise<TData> => {
     if (
       opts?.isFocusReload &&
@@ -611,6 +619,7 @@ export class LoaderInstance<
   fetch = async (opts?: {
     maxAge?: number
     preload?: boolean
+    signal?: AbortSignal
   }): Promise<TData> => {
     // this.store.batch(() => {
     // If the match was in an error state, set it
@@ -663,7 +672,10 @@ export class LoaderInstance<
           this.loader.client?.options.wrapLoaderFn?.(this) ??
           this.loader.options.loader
 
-        const data = await loaderImpl(this.variables as any, this)
+        const data = await loaderImpl(this.variables as any, {
+          loaderInstance: this,
+          signal: opts?.signal,
+        })
 
         invariant(
           typeof data !== 'undefined',
