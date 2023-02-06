@@ -36,14 +36,14 @@ export class ActionClient<
 > {
   options: ActionClientOptions<TActions>
   actions: Record<string, Action>
-  store: ActionClientStore
+  __store: ActionClientStore
   state: ActionClientStore['state']
 
   initialized = false
 
   constructor(options: ActionClientOptions<TActions>) {
     this.options = options
-    this.store = new Store(
+    this.__store = new Store(
       {},
       {
         onUpdate: (next) => {
@@ -51,7 +51,7 @@ export class ActionClient<
         },
       },
     ) as ActionClientStore
-    this.state = this.store.state
+    this.state = this.__store.state
     this.actions = {}
   }
 
@@ -136,11 +136,11 @@ export class Action<
   key: TKey
   client?: ActionClient<any>
   options: ActionOptions<TKey, TPayload, TResponse, TError>
-  store: Store<ActionStore<TPayload, TResponse, TError>>
+  __store: Store<ActionStore<TPayload, TResponse, TError>>
   state: ResolvedActionState<TPayload, TResponse, TError>
 
   constructor(options: ActionOptions<TKey, TPayload, TResponse, TError>) {
-    this.store = new Store<ActionStore<TPayload, TResponse, TError>>(
+    this.__store = new Store<ActionStore<TPayload, TResponse, TError>>(
       {
         submissions: [],
       },
@@ -150,7 +150,7 @@ export class Action<
         },
       },
     )
-    this.state = this.#resolveState(this.store.state)
+    this.state = this.#resolveState(this.__store.state)
     this.options = options
     this.key = options.key
   }
@@ -172,7 +172,7 @@ export class Action<
 
   clear = async () => {
     // await Promise.all(this.#promises)
-    this.store.setState((s) => ({
+    this.__store.setState((s) => ({
       ...s,
       submissions: s.submissions.filter((d) => d.status === 'pending'),
     }))
@@ -210,12 +210,12 @@ export class Action<
         submission: ActionSubmission<TPayload, TResponse, TError>,
       ) => ActionSubmission<TPayload, TResponse, TError>,
     ) => {
-      this.store.setState((s) => {
+      this.__store.setState((s) => {
         const a = s.submissions.find(
           (d) => d.submittedAt === submission.submittedAt,
         )
 
-        invariant(a, 'Could not find submission in this.store')
+        invariant(a, 'Could not find submission in submission store')
 
         return {
           ...s,
@@ -226,7 +226,7 @@ export class Action<
       })
     }
 
-    this.store.setState((s) => {
+    this.__store.setState((s) => {
       let submissions = [...s.submissions, submission]
       submissions.reverse()
       submissions = submissions.slice(0, this.options.maxSubmissions ?? 10)

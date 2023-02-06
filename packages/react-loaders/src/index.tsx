@@ -87,8 +87,6 @@ export function useLoaderInstance<
 ): TStrict extends false
   ? NullableLoaderInstance_<TResolvedLoaderInstance>
   : TResolvedLoaderInstance {
-  const allOpts = opts as any
-
   // opts as typeof opts & {
   //   key?: TKey
   //   loader?: Loader<any, any, any, any>
@@ -96,28 +94,28 @@ export function useLoaderInstance<
 
   const loaderClient = React.useContext(loaderClientContext)
 
+  const optsKey = (opts as { key: string }).key
+  const optsLoader = (opts as { loader: any }).loader
+
   invariant(
-    loaderClient || allOpts.loader,
+    loaderClient || optsLoader,
     'useLoaderInstance must be used inside a <LoaderClientProvider> component!',
   )
 
-  const loader = allOpts.loader ?? loaderClient.getLoader({ key: allOpts.key })
+  const loader = optsLoader ?? loaderClient.getLoader({ key: opts.key })
   const loaderInstance = loader.getInstance({
-    variables: allOpts?.variables,
-  } as any)
+    variables: opts?.variables,
+  })
 
-  if (
-    loaderInstance.state.status === 'error' &&
-    (allOpts.throwOnError ?? true)
-  ) {
+  if (loaderInstance.state.status === 'error' && (opts.throwOnError ?? true)) {
     throw loaderInstance.state.error
   }
 
-  if (allOpts?.strict ?? true) {
+  if (opts?.strict ?? true) {
     invariant(
       typeof loaderInstance.state.data !== 'undefined',
       `useLoaderInstance:
-  Loader instance { key: ${loader.key}, variables: ${allOpts.variables} }) is currently in a "${loaderInstance.state.status}" state. By default useLoaderInstance will throw an error if the loader instance is not in a "success" state. To avoid this error:
+  Loader instance { key: ${loader.key}, variables: ${opts.variables} }) is currently in a "${loaderInstance.state.status}" state. By default useLoaderInstance will throw an error if the loader instance is not in a "success" state. To avoid this error:
   
   - Load the loader instance before using it (e.g. via your router's onLoad or loader option)
 
@@ -129,7 +127,7 @@ export function useLoaderInstance<
     loaderInstance.load()
   }, [loaderInstance])
 
-  useStore(loaderInstance.store, (d) => allOpts?.track?.(d as any) ?? d, true)
+  useStore(loaderInstance.__store, (d) => opts?.track?.(d as any) ?? d, true)
 
   return loaderInstance as any
 }
@@ -144,7 +142,7 @@ export function useLoaderClient(opts?: {
       'useLoaderClient must be used inside a <LoaderClientProvider> component!',
     )
 
-  useStore(loaderClient.store, (d) => opts?.track?.(d as any) ?? d, true)
+  useStore(loaderClient.__store, (d) => opts?.track?.(d as any) ?? d, true)
 
   return loaderClient
 }

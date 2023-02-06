@@ -9,7 +9,6 @@ export const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
   component: Posts,
-  errorComponent: () => 'Oh crap',
   onLoad: ({ context, preload }) =>
     context.loaderClient.getLoader({ key: 'posts' }).load({ preload }),
 })

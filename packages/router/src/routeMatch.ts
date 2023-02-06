@@ -38,7 +38,7 @@ export class RouteMatch<
 > {
   route!: TRoute
   router!: Router<TRoutesInfo['routeTree'], TRoutesInfo>
-  store!: Store<RouteMatchStore<TRoutesInfo, TRoute>>
+  __store!: Store<RouteMatchStore<TRoutesInfo, TRoute>>
   state!: RouteMatchStore<TRoutesInfo, TRoute>
   id!: string
   pathname!: string
@@ -77,7 +77,7 @@ export class RouteMatch<
       id: opts.id,
       pathname: opts.pathname,
       params: opts.params,
-      store: new Store<RouteMatchStore<TRoutesInfo, TRoute>>(
+      __store: new Store<RouteMatchStore<TRoutesInfo, TRoute>>(
         {
           updatedAt: 0,
           routeSearch: {},
@@ -92,7 +92,7 @@ export class RouteMatch<
       ),
     })
 
-    this.state = this.store.state
+    this.state = this.__store.state
 
     componentTypes.map(async (type) => {
       const component = this.route.options[type]
@@ -103,7 +103,7 @@ export class RouteMatch<
     })
 
     if (this.state.status === 'idle' && !this.#hasLoaders()) {
-      this.store.setState((s) => ({
+      this.__store.setState((s) => ({
         ...s,
         status: 'success',
       }))
@@ -123,7 +123,7 @@ export class RouteMatch<
     })
     this.context = context
     this.routeContext = routeContext
-    this.store.setState((s) => ({
+    this.__store.setState((s) => ({
       ...s,
       routeSearch: replaceEqualDeep(s.routeSearch, routeSearch),
       search: replaceEqualDeep(s.search, search),
@@ -218,7 +218,7 @@ export class RouteMatch<
 
       this.route.options.onError?.(err)
 
-      this.store.setState((s) => ({
+      this.__store.setState((s) => ({
         ...s,
         status: 'error',
         error: err,
@@ -250,7 +250,7 @@ export class RouteMatch<
       // to a loading state again. Otherwise, keep it
       // as loading or resolved
       if (this.state.status === 'idle') {
-        this.store.setState((s) => ({
+        this.__store.setState((s) => ({
           ...s,
           status: 'pending',
         }))
@@ -289,7 +289,7 @@ export class RouteMatch<
       try {
         await Promise.all([componentsPromise, dataPromise])
         if ((latestPromise = checkLatest())) return await latestPromise
-        this.store.setState((s) => ({
+        this.__store.setState((s) => ({
           ...s,
           error: undefined,
           status: 'success',
@@ -302,7 +302,7 @@ export class RouteMatch<
         }
         this.route.options.onLoadError?.(err)
         this.route.options.onError?.(err)
-        this.store.setState((s) => ({
+        this.__store.setState((s) => ({
           ...s,
           error: err,
           status: 'error',

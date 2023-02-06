@@ -22,6 +22,7 @@ export type AnyPathParams = {}
 export type AnySearchSchema = {}
 export type AnyContext = {}
 export interface RouteMeta {}
+export interface RouteContext {}
 
 export type RouteOptionsBase<TCustomId, TPath> =
   | {
@@ -59,7 +60,7 @@ export type RouteOptions<
   TAllParams = TParams,
   TParentContext extends AnyContext = AnyContext,
   TAllParentContext extends AnyContext = AnyContext,
-  TRouteContext extends AnyContext = AnyContext,
+  TRouteContext extends RouteContext = AnyContext,
   TContext extends AnyContext = TRouteContext,
 > = RouteOptionsBase<TCustomId, TPath> &
   FrameworkRouteOptions & {

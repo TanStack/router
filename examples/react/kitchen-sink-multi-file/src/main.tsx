@@ -70,12 +70,7 @@ function App() {
           defaultMaxAge={defaultLoaderMaxAge}
         >
           <ActionClientProvider actionClient={actionClient}>
-            <RouterProvider
-              router={router}
-              defaultLoaderMaxAge={defaultLoaderMaxAge}
-              // Normally, the options above aren't changing, but for this particular
-              // example, we need to key the router when they change
-            />
+            <RouterProvider router={router} />
           </ActionClientProvider>
         </LoaderClientProvider>
       </AuthProvider>

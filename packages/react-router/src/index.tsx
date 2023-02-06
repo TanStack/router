@@ -343,7 +343,7 @@ export function RouterProvider<
 >({ router, ...rest }: RouterProps<TRouteConfig, TRoutesInfo>) {
   router.update(rest)
 
-  const currentMatches = useStore(router.store, (s) => s.currentMatches)
+  const currentMatches = useStore(router.__store, (s) => s.currentMatches)
 
   React.useEffect(router.mount, [router])
 
@@ -370,17 +370,17 @@ export function useRouterContext(): RegisteredRouter {
   const value = React.useContext(routerContext)
   warning(value, 'useRouter must be used inside a <Router> component!')
 
-  useStore(value.router.store)
+  useStore(value.router.__store)
 
   return value.router
 }
 
 export function useRouter<T = RouterStore>(
-  track?: (state: Router['store']) => T,
+  track?: (state: Router['__store']) => T,
   shallow?: boolean,
 ): RegisteredRouter {
   const router = useRouterContext()
-  useStore(router.store, track as any, shallow)
+  useStore(router.__store, track as any, shallow)
   return router
 }
 
@@ -430,7 +430,7 @@ export function useMatch<
   }
 
   useStore(
-    match!.store as any,
+    match!.__store as any,
     (d) => opts?.track?.(match as any) ?? match,
     opts?.shallow,
   )
@@ -465,11 +465,7 @@ export function useSearch<
   track?: (search: TSearch) => TSelected
 }): TStrict extends true ? TSelected : TSelected | undefined {
   const match = useMatch(opts)
-  useStore(
-    (match as any).store,
-    (d: any) => opts?.track?.(d.search) ?? d.search,
-    true,
-  )
+  useStore(match.__store, (d: any) => opts?.track?.(d.search) ?? d.search, true)
 
   return (match as unknown as RouteMatch).state.search as any
 }
@@ -485,7 +481,7 @@ export function useParams<
 }): TSelected {
   const router = useRouterContext()
   useStore(
-    router.store,
+    router.__store,
     (d) => {
       const params = last(d.currentMatches)?.params as any
       return opts?.track?.(params) ?? params
@@ -571,7 +567,7 @@ function SubOutlet({
   match: RouteMatch
 }) {
   const router = useRouterContext()
-  useStore(match!.store, (store) => [store.status, store.error], true)
+  useStore(match!.__store, (store) => [store.status, store.error], true)
 
   const defaultPending = React.useCallback(() => null, [])
 

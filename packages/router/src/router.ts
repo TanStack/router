@@ -280,7 +280,7 @@ export class Router<
   nextAction: undefined | 'push' | 'replace'
   navigationPromise: undefined | Promise<void>
 
-  store: Store<RouterStore<TRoutesInfo>>
+  __store: Store<RouterStore<TRoutesInfo>>
   state: RouterStore<TRoutesInfo>
   startedLoadingAt = Date.now()
   resolveNavigation: () => void = () => {}
@@ -295,12 +295,15 @@ export class Router<
       fetchServerDataFn: options?.fetchServerDataFn ?? defaultFetchServerDataFn,
     }
 
-    this.store = new Store<RouterStore<TRoutesInfo>>(getInitialRouterState(), {
-      onUpdate: (state) => {
-        this.state = state
+    this.__store = new Store<RouterStore<TRoutesInfo>>(
+      getInitialRouterState(),
+      {
+        onUpdate: (state) => {
+          this.state = state
+        },
       },
-    })
-    this.state = this.store.state
+    )
+    this.state = this.__store.state
     this.basepath = ''
 
     this.update(options)
@@ -321,7 +324,7 @@ export class Router<
   }
 
   reset = () => {
-    this.store.setState((s) => Object.assign(s, getInitialRouterState()))
+    this.__store.setState((s) => Object.assign(s, getInitialRouterState()))
   }
 
   mount = () => {
@@ -353,7 +356,7 @@ export class Router<
 
       const parsedLocation = this.#parseLocation()
 
-      this.store.setState((s) => ({
+      this.__store.setState((s) => ({
         ...s,
         latestLocation: parsedLocation,
         currentLocation: parsedLocation,
@@ -415,10 +418,10 @@ export class Router<
 
     let matches!: RouteMatch<any, any>[]
 
-    this.store.batch(() => {
+    this.__store.batch(() => {
       if (opts?.next) {
         // Ingest the new location
-        this.store.setState((s) => ({
+        this.__store.setState((s) => ({
           ...s,
           latestLocation: opts.next!,
         }))
@@ -429,7 +432,7 @@ export class Router<
         strictParseParams: true,
       })
 
-      this.store.setState((s) => ({
+      this.__store.setState((s) => ({
         ...s,
         status: 'pending',
         pendingMatches: matches,
@@ -476,7 +479,7 @@ export class Router<
 
       // Clear non-loading error states when match leaves
       if (d.state.status === 'error') {
-        this.store.setState((s) => ({
+        this.__store.setState((s) => ({
           ...s,
           status: 'idle',
           error: undefined,
@@ -500,7 +503,7 @@ export class Router<
 
     const prevLocation = this.state.currentLocation
 
-    this.store.setState((s) => ({
+    this.__store.setState((s) => ({
       ...s,
       status: 'idle',
       currentLocation: this.state.latestLocation,
@@ -953,7 +956,7 @@ export class Router<
   }
 
   hydrate = (dehydratedRouter: DehydratedRouter) => {
-    this.store.setState((s) => {
+    this.__store.setState((s) => {
       // Match the routes
       const currentMatches = this.matchRoutes(
         dehydratedRouter.state.latestLocation.pathname,
@@ -968,7 +971,7 @@ export class Router<
           dehydratedMatch && dehydratedMatch.id === match.id,
           'Oh no! There was a hydration mismatch when attempting to hydrate the state of the router! 😬',
         )
-        match.store.setState((s) => ({
+        match.__store.setState((s) => ({
           ...s,
           ...dehydratedMatch.state,
         }))

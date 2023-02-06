@@ -59,14 +59,14 @@ export class LoaderClient<
 > {
   options: LoaderClientOptions<TLoaders>
   loaders: Record<string, Loader>
-  store: LoaderClientStore
+  __store: LoaderClientStore
   state: LoaderClientStore['state']
 
   initialized = false
 
   constructor(options: LoaderClientOptions<TLoaders>) {
     this.options = options
-    this.store = new Store(
+    this.__store = new Store(
       {
         isLoading: false,
         isPreloading: false,
@@ -78,7 +78,7 @@ export class LoaderClient<
       },
     ) as LoaderClientStore
 
-    this.state = this.store.state
+    this.state = this.__store.state
     this.loaders = {}
   }
 
@@ -135,7 +135,7 @@ export class LoaderClient<
             })
         }
 
-        instance.store.setState(() => dehydratedInstance.state)
+        instance.__store.setState(() => dehydratedInstance.state)
       })
     })
   }
@@ -417,9 +417,9 @@ export interface NullableLoaderInstance<
   TError = Error,
 > extends Omit<
     LoaderInstance<TKey, TVariables, TData, TError>,
-    'store' | 'state'
+    '__store' | 'state'
   > {
-  store: Store<NullableLoaderStore<TData, TError>>
+  __store: Store<NullableLoaderStore<TData, TError>>
   state: NullableLoaderStore<TData, TError>
 }
 
@@ -438,7 +438,7 @@ export class LoaderInstance<
   hashedKey: string
   options: LoaderInstanceOptions<TKey, TVariables, TData, TError>
   loader: Loader<TKey, TVariables, TData, TError>
-  store: Store<LoaderStore<TData, TError>>
+  __store: Store<LoaderStore<TData, TError>>
   state: LoaderStore<TData, TError>
   variables: TVariables
   __loadPromise?: Promise<TData>
@@ -449,7 +449,7 @@ export class LoaderInstance<
     this.loader = options.loader
     this.hashedKey = options.hashedKey
     this.variables = options.variables
-    this.store = new Store<LoaderStore<TData, TError>>(
+    this.__store = new Store<LoaderStore<TData, TError>>(
       getInitialLoaderState(),
       {
         onSubscribe: () => {
@@ -474,9 +474,9 @@ export class LoaderInstance<
       },
     )
 
-    this.state = this.store.state
+    this.state = this.__store.state
 
-    if (this.store.listeners.size) {
+    if (this.__store.listeners.size) {
       this.#stopGc()
     } else {
       this.#startGc()
@@ -507,7 +507,7 @@ export class LoaderInstance<
       return
     }
 
-    client.store.setState((s) => {
+    client.__store.setState((s) => {
       return {
         isLoading,
         isPreloading,
@@ -589,12 +589,12 @@ export class LoaderInstance<
   }
 
   invalidate = async () => {
-    this.store.setState((s) => ({
+    this.__store.setState((s) => ({
       ...s,
       invalid: true,
     }))
 
-    if (this.store.listeners.size) {
+    if (this.__store.listeners.size) {
       this.load()
       try {
         await this.__loadPromise
@@ -617,14 +617,14 @@ export class LoaderInstance<
     // to a loading state again. Otherwise, keep it
     // as loading or resolved
     if (this.state.status === 'idle') {
-      this.store.setState((s) => ({
+      this.__store.setState((s) => ({
         ...s,
         status: 'pending',
       }))
     }
 
     // We started loading the route, so it's no longer invalid
-    this.store.setState((s) => ({
+    this.__store.setState((s) => ({
       ...s,
       preload: !!opts?.preload,
       invalid: false,
@@ -643,7 +643,7 @@ export class LoaderInstance<
 
     this.__loadPromise = Promise.resolve().then(async () => {
       const after = async () => {
-        this.store.setState((s) => ({
+        this.__store.setState((s) => ({
           ...s,
           isFetching: false,
         }))
@@ -688,7 +688,7 @@ export class LoaderInstance<
             this.loader.client?.options.defaultMaxAge ??
             1000)
 
-        this.store.setState((s) => ({
+        this.__store.setState((s) => ({
           ...s,
           error: undefined,
           updatedAt,
@@ -704,7 +704,7 @@ export class LoaderInstance<
           await this.loader.options.onEachSuccess?.(this)
         }
 
-        this.store.setState((s) => ({
+        this.__store.setState((s) => ({
           ...s,
           status: 'success',
         }))
@@ -717,7 +717,7 @@ export class LoaderInstance<
           console.error(err)
         }
 
-        this.store.setState((s) => ({
+        this.__store.setState((s) => ({
           ...s,
           error: err as TError,
           updatedAt: Date.now(),
@@ -730,7 +730,7 @@ export class LoaderInstance<
           await this.loader.options.onEachError?.(this)
         }
 
-        this.store.setState((s) => ({
+        this.__store.setState((s) => ({
           ...s,
           status: 'error',
         }))
