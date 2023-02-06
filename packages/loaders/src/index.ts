@@ -317,7 +317,7 @@ export class Loader<
     // addEventListener does not exist in React Native, but window does
     // In the future, we might need to invert control here for more adapters
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (window.addEventListener) {
+    if (typeof window !== 'undefined' && window.addEventListener) {
       // Listen to visibilitychange and focus
       window.addEventListener(visibilityChangeEvent, this.#reloadAll, false)
       window.addEventListener(focusEvent, this.#reloadAll, false)
@@ -325,7 +325,7 @@ export class Loader<
   }
 
   dispose = () => {
-    if (window.removeEventListener) {
+    if (typeof window !== 'undefined' && window.removeEventListener) {
       // Be sure to unsubscribe if a new handler is set
 
       window.removeEventListener(visibilityChangeEvent, this.#reloadAll)
