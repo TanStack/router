@@ -10,6 +10,7 @@ export interface RouterHistory {
   go: (index: number) => void
   back: () => void
   forward: () => void
+  createHref: (href: string) => string
 }
 
 export interface ParsedPath {
@@ -33,6 +34,7 @@ function createHistory(opts: {
   go: (n: number) => void
   back: () => void
   forward: () => void
+  createHref: (path: string) => string
 }): RouterHistory {
   let currentLocation = opts.getLocation()
   let unsub = () => {}
@@ -81,6 +83,7 @@ function createHistory(opts: {
       opts.forward()
       onUpdate()
     },
+    createHref: (str) => opts.createHref(str),
   }
 }
 
@@ -120,6 +123,7 @@ export function createBrowserHistory(opts?: {
     back: () => window.history.back(),
     forward: () => window.history.forward(),
     go: (n) => window.history.go(n),
+    createHref: (path) => createHref(path),
   })
 }
 
@@ -171,6 +175,7 @@ export function createMemoryHistory(
       index = Math.min(index + 1, entries.length - 1)
     },
     go: (n) => window.history.go(n),
+    createHref: (path) => path,
   })
 }
 

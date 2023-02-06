@@ -1163,7 +1163,7 @@ export class Router<
       searchStr,
       state: nextState,
       hash,
-      href: `${pathname}${searchStr}${hash}`,
+      href: this.history.createHref(`${pathname}${searchStr}${hash}`),
       key: dest.key,
     }
   }

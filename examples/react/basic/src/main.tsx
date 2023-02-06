@@ -9,6 +9,7 @@ import {
   RootRoute,
   Route,
   ErrorComponent,
+  createHashHistory,
 } from '@tanstack/react-router'
 import {
   Loader,
@@ -208,8 +209,11 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
 ])
 
+const hashHistory = createHashHistory()
+
 // Set up a ReactRouter instance
 const router = new ReactRouter({
+  history: hashHistory,
   routeTree,
   defaultPreload: 'intent',
 })
