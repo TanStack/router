@@ -182,9 +182,81 @@ const postsRoute = new Route({
 
 ## Using Context
 
-The `context` property of the `onLoad` function is an object containing the route's context. In this example, we'll create and inject the loader into context
+The `context` and `routeContext` properties of the `onLoad` function are objects containing the route's context. `context` is the context object for the route including context from parent routes. `routeContext` is the context object for the route excluding context from parent routes. In this example, we'll create a `loaderClient` and inject it into our router's context. We'll then use that client in our `onLoad` function and our component.
+
+> 🧠 Context is a powerful tool for dependency injection. You can use it to inject services, loaders, and other objects into your router and routes. You can also additively pass data down the route tree at every route using a route's `getContext` option.
 
 ```tsx
+import { Route } from '@tanstack/react-router'
+import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
+
+// Create a loader
+const postsLoader = new Loader({
+  key: 'posts',
+  loader: async () => {
+    const res = await fetch(`/api/posts`)
+    if (!res.ok) throw new Error('Failed to fetch posts')
+    return res.json()
+  },
+})
+
+const loaderClient = new LoaderClient({
+  getLoaders: () => [postsLoader],
+})
+
+// Use RootRoute's special `withRouterContext` method to require a specific type
+// of router context to be both available in every route and to be passed to
+// the router for implementation.
+
+const rootRoute = RootRoute.withRouterContext<{
+  loaderClient: typeof loaderClient
+}>()()
+
+// Notice how our postsRoute reference context to get the loader client
+// This can be a powerful tool for dependency injection across your router
+// and routes.
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  async onLoad({ context }) {
+    await context.loaderClient.getLoader({ key: 'posts' }).load()
+  },
+  component: () => {
+    const posts = useLoaderInstance({ key: 'posts' })
+
+    return <div>...</div>
+  },
+})
+
+const routeTree = rootRoute.addChildren([postsRoute])
+
+const router = new ReactRouter({
+  routeTree,
+  context: {
+    // Supply our loaderClient to the whole router
+    loaderClient,
+  },
+})
+```
+
+## Using the Abort Signal
+
+The `signal` property of the `onLoad` function is an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) which is cancelled when the route is unloaded or when the `onLoad` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change.
+
+```tsx
+import { Route } from '@tanstack/react-router'
+import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
+
+// Create a loader
+const postsLoader = new Loader({
+  key: 'posts',
+  // Accept a page number variable
+  loader: async (pageIndex: number, signal: AbortSignal) => {
+    const res = await fetch(`/api/posts?page=${pageIndex}`, { signal })
+    if (!res.ok) throw new Error('Failed to fetch posts')
+    return res.json()
+  },
+})
 
 ##
 
