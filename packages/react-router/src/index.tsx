@@ -133,7 +133,7 @@ declare module '@tanstack/router' {
 
 export type PromptProps = {
   message: string
-  when?: boolean | any
+  condition?: boolean | any
   children?: ReactNode
 }
 
@@ -719,11 +719,14 @@ export function ErrorComponent({ error }: { error: any }) {
   )
 }
 
-export function useBlocker(message: string, when: boolean | any = true): void {
+export function useBlocker(
+  message: string,
+  condition: boolean | any = true,
+): void {
   const router = useRouter()
 
   React.useEffect(() => {
-    if (!when) return
+    if (!condition) return
 
     let unblock = router.history.block((retry, cancel) => {
       if (window.confirm(message)) {
@@ -738,7 +741,7 @@ export function useBlocker(message: string, when: boolean | any = true): void {
   })
 }
 
-export function Block({ message, when, children }: PromptProps) {
-  useBlocker(message, when)
+export function Block({ message, condition, children }: PromptProps) {
+  useBlocker(message, condition)
   return (children ?? null) as ReactNode
 }
