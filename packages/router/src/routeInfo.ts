@@ -1,6 +1,6 @@
 import { AnyRootRoute, AnyRoute, RootRoute, Route } from './route'
 import { AnyPathParams, AnySearchSchema, RootRouteId } from './route'
-import { IsAny, UnionToIntersection, Values } from './utils'
+import { IsAny, MergeUnion, Values } from './utils'
 
 export interface AnyRoutesInfo {
   routeTree: AnyRootRoute
@@ -55,22 +55,22 @@ export interface RoutesInfoInner<
     TRouteUnion['__types']['fullPath'], // TFullPath,
     TRouteUnion['__types']['customId'], // TCustomId,
     TRouteUnion['__types']['id'], // TId,
-    UnionToIntersection<TRouteUnion['__types']['searchSchema']> & {}, // TSearchSchema,
-    UnionToIntersection<TRouteUnion['__types']['fullSearchSchema']> & {}, // TFullSearchSchema,
-    UnionToIntersection<TRouteUnion['__types']['params']>, // TParams,
-    UnionToIntersection<TRouteUnion['__types']['allParams']>, // TAllParams,
-    UnionToIntersection<TRouteUnion['__types']['parentContext']>, // TParentContext,
-    UnionToIntersection<TRouteUnion['__types']['allParentContext']>, // TAllParentContext,
-    UnionToIntersection<TRouteUnion['__types']['routerContext']> & {}, // TContext,
-    UnionToIntersection<TRouteUnion['__types']['context']> & {}, // TAllContext,
-    UnionToIntersection<TRouteUnion['__types']['routerContext']> & {}, // TRouterContext,
+    MergeUnion<TRouteUnion['__types']['searchSchema']> & {}, // TSearchSchema,
+    MergeUnion<TRouteUnion['__types']['fullSearchSchema']> & {}, // TFullSearchSchema,
+    MergeUnion<TRouteUnion['__types']['params']>, // TParams,
+    MergeUnion<TRouteUnion['__types']['allParams']>, // TAllParams,
+    MergeUnion<TRouteUnion['__types']['parentContext']>, // TParentContext,
+    MergeUnion<TRouteUnion['__types']['allParentContext']>, // TAllParentContext,
+    MergeUnion<TRouteUnion['__types']['routeContext']> & {}, // TRouteContext,
+    MergeUnion<TRouteUnion['__types']['context']> & {}, // TContext,
+    MergeUnion<TRouteUnion['__types']['routerContext']> & {}, // TRouterContext,
     TRouteUnion['__types']['children'], // TChildren,
     TRouteUnion['__types']['routesInfo'] // TRoutesInfo,
   >
   fullSearchSchema: Partial<
-    UnionToIntersection<TRouteUnion['__types']['fullSearchSchema']>
+    MergeUnion<TRouteUnion['__types']['fullSearchSchema']>
   >
-  allParams: Partial<UnionToIntersection<TRouteUnion['__types']['allParams']>>
+  allParams: Partial<MergeUnion<TRouteUnion['__types']['allParams']>>
 }
 
 export type ParseRoute<TRouteTree> = TRouteTree extends AnyRoute

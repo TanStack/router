@@ -43,14 +43,14 @@ export class RouteMatch<
   id!: string
   pathname!: string
   params!: TRoute['__types']['allParams']
-  routeContext!: TRoute['__types']['routeContext']
-  context!: TRoute['__types']['context']
+
+  routeContext?: TRoute['__types']['routeContext']
+  context?: TRoute['__types']['context']
 
   component?: GetFrameworkGeneric<'Component'>
   errorComponent?: GetFrameworkGeneric<'ErrorComponent'>
   pendingComponent?: GetFrameworkGeneric<'Component'>
   abortController = new AbortController()
-  onLoaderDataListeners = new Set<() => void>()
   parentMatch?: RouteMatch
   pendingInfo?: PendingRouteMatchInfo
 

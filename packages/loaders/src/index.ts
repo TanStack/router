@@ -341,7 +341,7 @@ export class Loader<
 
   #reloadAll = () => {
     Object.values(this.instances).forEach((instance) => {
-      instance.load({
+      instance.loadIfActive({
         isFocusReload: true,
       })
     })
@@ -546,21 +546,55 @@ export class LoaderInstance<
     delete this.loader.instances[this.hashedKey]
   }
 
+  getIsInvalid = (opts?: { preload?: boolean }) => {
+    const now = Date.now()
+
+    return (
+      this.state.status === 'success' &&
+      (this.state.invalid ||
+        (opts?.preload ? this.state.preloadInvalidAt : this.state.invalidAt) <
+          now)
+    )
+  }
+
+  invalidate = async () => {
+    this.__store.setState((s) => ({
+      ...s,
+      invalid: true,
+    }))
+
+    await this.loadIfActive()
+
+    await this.loader.options.onEachInvalidate?.(this)
+  }
+
+  loadIfActive = async (opts?: { isFocusReload?: boolean }) => {
+    if (this.__store.listeners.size) {
+      this.load(opts)
+      try {
+        await this.__loadPromise
+      } catch (err) {
+        // Ignore
+      }
+    }
+  }
+
   load = async (opts?: {
     maxAge?: number
     preload?: boolean
     isFocusReload?: boolean
     signal?: AbortSignal
   }): Promise<TData> => {
-    if (
-      opts?.isFocusReload &&
-      !(
-        this.loader.options.refetchOnWindowFocus ??
-        this.loader.client?.options.defaultRefetchOnWindowFocus ??
-        true
-      )
-    ) {
-      return this.state.data!
+    if (opts?.isFocusReload) {
+      if (
+        !(
+          this.loader.options.refetchOnWindowFocus ??
+          this.loader.client?.options.defaultRefetchOnWindowFocus ??
+          true
+        )
+      ) {
+        return this.state.data!
+      }
     }
 
     if (
@@ -583,35 +617,6 @@ export class LoaderInstance<
 
     // Otherwise wait for the data to be fetched
     return this.__loadPromise!
-  }
-
-  getIsInvalid = (opts?: { preload?: boolean }) => {
-    const now = Date.now()
-
-    return (
-      this.state.status === 'success' &&
-      (this.state.invalid ||
-        (opts?.preload ? this.state.preloadInvalidAt : this.state.invalidAt) <
-          now)
-    )
-  }
-
-  invalidate = async () => {
-    this.__store.setState((s) => ({
-      ...s,
-      invalid: true,
-    }))
-
-    if (this.__store.listeners.size) {
-      this.load()
-      try {
-        await this.__loadPromise
-      } catch (err) {
-        // Ignore
-      }
-    }
-
-    await this.loader.options.onEachInvalidate?.(this)
   }
 
   #latestId = ''

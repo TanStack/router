@@ -1,7 +1,7 @@
 import { GetFrameworkGeneric } from './frameworks'
 import { ParsePathParams } from './link'
 import { RouteMatch } from './routeMatch'
-import { AnyRouter, Router } from './router'
+import { AnyRouter, Router, RouterContext } from './router'
 import {
   Expand,
   IsAny,
@@ -45,6 +45,57 @@ export type MetaOptions = keyof PickRequired<RouteMeta> extends never
       meta: RouteMeta
     }
 
+type GetContextFn<
+  TParentRoute,
+  TAllParams,
+  TFullSearchSchema,
+  TParentContext,
+  TAllParentContext,
+  TRouteContext,
+> = (
+  opts: {
+    params: TAllParams
+    search: TFullSearchSchema
+  } & (TParentRoute extends undefined
+    ? {
+        context?: TAllParentContext
+        parentContext?: TParentContext
+      }
+    : {
+        context: TAllParentContext
+        parentContext: TParentContext
+      }),
+) => TRouteContext
+
+export type ContextOptions<
+  TParentRoute,
+  TAllParams,
+  TFullSearchSchema,
+  TParentContext,
+  TAllParentContext,
+  TRouteContext,
+> = keyof PickRequired<RouteContext> extends never
+  ? {
+      getContext?: GetContextFn<
+        TParentRoute,
+        TAllParams,
+        TFullSearchSchema,
+        TParentContext,
+        TAllParentContext,
+        TRouteContext
+      >
+    }
+  : {
+      getContext: GetContextFn<
+        TParentRoute,
+        TAllParams,
+        TFullSearchSchema,
+        TParentContext,
+        TAllParentContext,
+        TRouteContext
+      >
+    }
+
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
@@ -60,7 +111,7 @@ export type RouteOptions<
   TAllParams = TParams,
   TParentContext extends AnyContext = AnyContext,
   TAllParentContext extends AnyContext = AnyContext,
-  TRouteContext extends RouteContext = AnyContext,
+  TRouteContext extends RouteContext = RouteContext,
   TContext extends AnyContext = TRouteContext,
 > = RouteOptionsBase<TCustomId, TPath> &
   FrameworkRouteOptions & {
@@ -100,7 +151,7 @@ export type RouteOptions<
       TSearchSchema,
       TFullSearchSchema,
       TAllParams,
-      TRouteContext,
+      NoInfer<TRouteContext>,
       TContext
     >
     onLoadError?: (err: any) => void
@@ -120,22 +171,15 @@ export type RouteOptions<
       params: TAllParams
       search: TFullSearchSchema
     }) => void
-    // An object of whatever you want! This object is accessible anywhere the route is
-    getContext?: (
-      opts: {
-        params: TAllParams
-        search: TFullSearchSchema
-      } & (TParentRoute extends undefined
-        ? {
-            context?: TAllParentContext
-            parentContext?: TParentContext
-          }
-        : {
-            context: TAllParentContext
-            parentContext: TParentContext
-          }),
-    ) => TRouteContext
   } & MetaOptions &
+  ContextOptions<
+    TParentRoute,
+    TAllParams,
+    TFullSearchSchema,
+    TParentContext,
+    TAllParentContext,
+    TRouteContext
+  > &
   (
     | {
         // Parse params optionally receives path params as strings and returns them in a parsed format (like a number or boolean)
@@ -300,7 +344,7 @@ export class Route<
   > = MergeFromParent<TParentRoute['__types']['allParams'], TParams>,
   TParentContext extends TParentRoute['__types']['routeContext'] = TParentRoute['__types']['routeContext'],
   TAllParentContext extends TParentRoute['__types']['context'] = TParentRoute['__types']['context'],
-  TRouteContext extends AnyContext = AnyContext,
+  TRouteContext extends RouteContext = RouteContext,
   TContext extends MergeFromParent<
     TParentRoute['__types']['context'],
     TRouteContext
@@ -502,8 +546,8 @@ export type AnyRootRoute = RootRoute<any, any, any>
 
 export class RootRoute<
   TSearchSchema extends AnySearchSchema = {},
-  TContext extends AnyContext = AnyContext,
-  TRouterContext extends AnyContext = AnyContext,
+  TContext extends RouteContext = RouteContext,
+  TRouterContext extends RouterContext = RouterContext,
 > extends Route<
   any,
   '/',
@@ -546,10 +590,10 @@ export class RootRoute<
     super(options as any)
   }
 
-  static withRouterContext = <TRouterContext extends AnyContext>() => {
+  static withRouterContext = <TRouterContext extends RouterContext>() => {
     return <
       TSearchSchema extends AnySearchSchema = {},
-      TContext extends AnyContext = AnyContext,
+      TContext extends RouterContext = RouterContext,
     >(
       options?: Omit<
         RouteOptions<
