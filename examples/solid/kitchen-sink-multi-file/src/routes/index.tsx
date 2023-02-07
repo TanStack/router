@@ -8,7 +8,6 @@ export const indexRoute = new Route({
 })
 
 function Home() {
-  console.log('hit')
   return (
     <div class={`p-2`}>
       <div class={`text-lg`}>Welcome Home!</div>
