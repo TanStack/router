@@ -12,6 +12,7 @@ export const router = new ReactRouter({
   context: {
     loaderClient,
   },
+  defaultPreload: 'intent',
   onRouteChange: () => {
     if (typeof window === 'undefined') return
 
