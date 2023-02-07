@@ -444,13 +444,13 @@ export class Route<
 
     const isRoot = !allOptions?.path && !allOptions?.id
 
-    const parent = this.options?.getParentRoute?.()
+    this.parentRoute = this.options?.getParentRoute?.()
 
     if (isRoot) {
       this.path = rootRouteId as TPath
     } else {
       invariant(
-        parent,
+        this.parentRoute,
         `Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a Route instance.`,
       )
     }
@@ -468,7 +468,9 @@ export class Route<
     let id = isRoot
       ? rootRouteId
       : joinPaths([
-          (parent.id as any) === rootRouteId ? '' : parent.id,
+          (this.parentRoute.id as any) === rootRouteId
+            ? ''
+            : this.parentRoute.id,
           customId,
         ])
 
@@ -483,7 +485,7 @@ export class Route<
     const fullPath =
       id === rootRouteId
         ? '/'
-        : trimPathRight(joinPaths([parent.fullPath, path]))
+        : trimPathRight(joinPaths([this.parentRoute.fullPath, path]))
 
     this.path = path as TPath
     this.id = id as TId
@@ -515,31 +517,31 @@ export class Route<
     return this as any
   }
 
-  generate = (
-    options: Omit<
-      RouteOptions<
-        TParentRoute,
-        TCustomId,
-        TPath,
-        InferFullSearchSchema<TParentRoute>,
-        TSearchSchema,
-        TFullSearchSchema,
-        TParentRoute['__types']['allParams'],
-        TParams,
-        TAllParams,
-        TParentContext,
-        TAllParentContext,
-        TRouteContext,
-        TContext
-      >,
-      'path'
-    >,
-  ) => {
-    invariant(
-      false,
-      `route.generate() is used by TanStack Router's file-based routing code generation and should not actually be called during runtime. `,
-    )
-  }
+  // generate = (
+  //   options: Omit<
+  //     RouteOptions<
+  //       TParentRoute,
+  //       TCustomId,
+  //       TPath,
+  //       InferFullSearchSchema<TParentRoute>,
+  //       TSearchSchema,
+  //       TFullSearchSchema,
+  //       TParentRoute['__types']['allParams'],
+  //       TParams,
+  //       TAllParams,
+  //       TParentContext,
+  //       TAllParentContext,
+  //       TRouteContext,
+  //       TContext
+  //     >,
+  //     'path'
+  //   >,
+  // ) => {
+  //   invariant(
+  //     false,
+  //     `route.generate() is used by TanStack Router's file-based routing code generation and should not actually be called during runtime. `,
+  //   )
+  // }
 }
 
 export type AnyRootRoute = RootRoute<any, any, any>

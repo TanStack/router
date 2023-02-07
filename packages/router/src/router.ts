@@ -58,6 +58,7 @@ import {
   createMemoryHistory,
   RouterHistory,
 } from './history'
+import warning from 'tiny-warning'
 
 export interface Register {
   // router: Router
@@ -986,29 +987,22 @@ export class Router<
   }
 
   #buildRouteTree = (routeTree: AnyRoute) => {
-    const recurseRoutes = (routes: Route[]) => {
+    const recurseRoutes = (routes: Route[], parentRoute: Route | undefined) => {
       routes.forEach((route, i) => {
         route.init({ originalIndex: i, router: this })
 
         const existingRoute = (this.routesById as any)[route.id]
 
-        if (existingRoute) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn(
-              `Duplicate routes found with id: ${String(route.id)}`,
-              this.routesById,
-              route,
-            )
-          }
-          throw new Error()
-        }
-
+        invariant(
+          !existingRoute,
+          `Duplicate routes found with id: ${String(route.id)}`,
+        )
         ;(this.routesById as any)[route.id] = route
 
         const children = route.children as Route[]
 
         if (children?.length) {
-          recurseRoutes(children)
+          recurseRoutes(children, route)
 
           route.children = children
             .map((d, i) => {
@@ -1050,7 +1044,32 @@ export class Router<
       })
     }
 
-    recurseRoutes([routeTree] as Route[])
+    recurseRoutes([routeTree] as Route[], undefined)
+
+    const recurceCheckRoutes = (
+      routes: Route[],
+      parentRoute: Route | undefined,
+    ) => {
+      routes.forEach((route) => {
+        if (route.isRoot) {
+          invariant(
+            !parentRoute,
+            'Root routes can only be used as the root of a route tree.',
+          )
+        } else {
+          invariant(
+            parentRoute ? route.parentRoute === parentRoute : true,
+            `Expected a route with path "${route.path}" to be passed to its parent route "${route.parentRoute?.id}" in an addChildren() call, but was instead passed as a child of the "${parentRoute?.id}" route.`,
+          )
+        }
+
+        if (route.children) {
+          recurceCheckRoutes(route.children as Route[], route)
+        }
+      })
+    }
+
+    recurceCheckRoutes([routeTree] as Route[], undefined)
 
     return routeTree
   }
