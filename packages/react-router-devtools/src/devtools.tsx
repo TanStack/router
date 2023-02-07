@@ -452,19 +452,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     allMatches?.find((d) => d.id === activeMatchId) ||
     allMatches?.find((d) => d.route.id === activeRouteId)
 
-  // const matchCacheValues = multiSortBy(
-  //   Object.keys(router.state.matchCache)
-  //     .filter((key) => {
-  //       const cacheEntry = router.state.matchCache[key]!
-  //       return cacheEntry.gc > Date.now()
-  //     })
-  //     .map((key) => router.state.matchCache[key]!),
-  //   [
-  //     (d) => (d.match.state.isFetching ? -1 : 1),
-  //     (d) => -d.match.state.updatedAt!,
-  //   ],
-  // )
-
   return (
     <ThemeProvider theme={theme}>
       <Panel ref={ref} className="TanStackRouterDevtoolsPanel" {...panelProps}>

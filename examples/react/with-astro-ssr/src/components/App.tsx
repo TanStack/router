@@ -9,7 +9,7 @@ export default function App(props: {
   dehydratedLoaderClient: ReturnType<typeof loaderClient.dehydrate>
 }) {
   React.useState(() => {
-    // This is only going to run once per lifecycle of App
+    // This will only run once
     loaderClient.hydrate(props.dehydratedLoaderClient)
     router.hydrate(props.dehydratedRouter)
   })
