@@ -1,11 +1,11 @@
 import React from 'react'
 import {
-  Router,
   last,
   routerContext,
   invariant,
   useRouter,
   AnyRouter,
+  useStore,
 } from '@tanstack/react-router'
 
 import useLocalStorage from './useLocalStorage'
@@ -424,7 +424,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     'No router was found for the TanStack Router Devtools. Please place the devtools in the <RouterProvider> component tree or pass the router instance to the devtools manually.',
   )
 
-  useRouter()
+  useStore(router.__store)
 
   const [activeRouteId, setActiveRouteId] = useLocalStorage(
     'tanstackRouterDevtoolsActiveRouteId',
