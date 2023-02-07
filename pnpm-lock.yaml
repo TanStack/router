@@ -13,6 +13,7 @@ overrides:
   '@tanstack/solid-router': workspace:*
   '@tanstack/solid-store': workspace:*
   '@tanstack/solid-loaders': workspace:*
+  '@tanstack/solid-actions': workspace:*
 
 importers:
 
@@ -643,6 +644,41 @@ importers:
       typescript: 4.9.5
       vite: 4.1.1
       vite-plugin-solid: 2.5.0_solid-js@1.6.10+vite@4.1.1
+
+  examples/solid/with-trpc-solid-query:
+    specifiers:
+      '@tanstack/solid-loaders': workspace:*
+      '@tanstack/solid-query': 4.24.4
+      '@tanstack/solid-router': workspace:*
+      '@trpc/client': ^10.0.0-rc.6
+      '@trpc/server': ^10.0.0-rc.6
+      concurrently: ^7.6.0
+      express: ^4.18.2
+      immer: ^9.0.15
+      solid-js: ^1.6.10
+      solid-trpc: 0.0.11-rc.2
+      tsx: ^3.11.0
+      vite: ^2.8.6
+      vite-plugin-solid: ^2.5.0
+      wait-port: ^1.0.4
+      zod: ^3.19.1
+    dependencies:
+      '@tanstack/solid-loaders': link:../../../packages/solid-loaders
+      '@tanstack/solid-query': 4.24.4_solid-js@1.6.10
+      '@tanstack/solid-router': link:../../../packages/solid-router
+      '@trpc/client': 10.10.0_@trpc+server@10.10.0
+      '@trpc/server': 10.10.0
+      express: 4.18.2
+      immer: 9.0.19
+      solid-trpc: 0.0.11-rc.2_j53f4oy2zk227o4w2ydjpwzhmy
+      vite: 2.9.15
+      zod: 3.20.2
+    devDependencies:
+      concurrently: 7.6.0
+      solid-js: 1.6.10
+      tsx: 3.12.3
+      vite-plugin-solid: 2.5.0_vp7o2dnng5gpgzrurwft77jxlm
+      wait-port: 1.0.4
 
   packages/actions:
     specifiers:
@@ -2297,7 +2333,6 @@ packages:
     cpu: [loong64]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
   /@esbuild/linux-loong64/0.15.18:
@@ -3559,6 +3594,15 @@ packages:
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
       use-sync-external-store: 1.2.0_react@18.2.0
+    dev: false
+
+  /@tanstack/solid-query/4.24.4_solid-js@1.6.10:
+    resolution: {integrity: sha512-aAFNJ3liO0JiBwhAiE/1uwvViz0fokCMwUILUlueHuCZ95LDq+I9Pw9pYjoXLyPoFfp36N398AyV8pALZqbDRg==}
+    peerDependencies:
+      solid-js: ^1.5.7
+    dependencies:
+      '@tanstack/query-core': 4.24.4
+      solid-js: 1.6.10
     dev: false
 
   /@testing-library/dom/8.20.0:
@@ -5591,7 +5635,6 @@ packages:
     cpu: [x64]
     os: [android]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-android-64/0.15.18:
@@ -5608,7 +5651,6 @@ packages:
     cpu: [arm64]
     os: [android]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-android-arm64/0.15.18:
@@ -5625,7 +5667,6 @@ packages:
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-darwin-64/0.15.18:
@@ -5642,7 +5683,6 @@ packages:
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-darwin-arm64/0.15.18:
@@ -5659,7 +5699,6 @@ packages:
     cpu: [x64]
     os: [freebsd]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-freebsd-64/0.15.18:
@@ -5676,7 +5715,6 @@ packages:
     cpu: [arm64]
     os: [freebsd]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-freebsd-arm64/0.15.18:
@@ -5693,7 +5731,6 @@ packages:
     cpu: [ia32]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-linux-32/0.15.18:
@@ -5710,7 +5747,6 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-linux-64/0.15.18:
@@ -5727,7 +5763,6 @@ packages:
     cpu: [arm]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-linux-arm/0.15.18:
@@ -5744,7 +5779,6 @@ packages:
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-linux-arm64/0.15.18:
@@ -5761,7 +5795,6 @@ packages:
     cpu: [mips64el]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-linux-mips64le/0.15.18:
@@ -5778,7 +5811,6 @@ packages:
     cpu: [ppc64]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-linux-ppc64le/0.15.18:
@@ -5795,7 +5827,6 @@ packages:
     cpu: [riscv64]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-linux-riscv64/0.15.18:
@@ -5812,7 +5843,6 @@ packages:
     cpu: [s390x]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-linux-s390x/0.15.18:
@@ -5829,7 +5859,6 @@ packages:
     cpu: [x64]
     os: [netbsd]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-netbsd-64/0.15.18:
@@ -5846,7 +5875,6 @@ packages:
     cpu: [x64]
     os: [openbsd]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-openbsd-64/0.15.18:
@@ -5863,7 +5891,6 @@ packages:
     cpu: [x64]
     os: [sunos]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-sunos-64/0.15.18:
@@ -5880,7 +5907,6 @@ packages:
     cpu: [ia32]
     os: [win32]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-windows-32/0.15.18:
@@ -5897,7 +5923,6 @@ packages:
     cpu: [x64]
     os: [win32]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-windows-64/0.15.18:
@@ -5914,7 +5939,6 @@ packages:
     cpu: [arm64]
     os: [win32]
     requiresBuild: true
-    dev: false
     optional: true
 
   /esbuild-windows-arm64/0.15.18:
@@ -5952,7 +5976,6 @@ packages:
       esbuild-windows-32: 0.14.54
       esbuild-windows-64: 0.14.54
       esbuild-windows-arm64: 0.14.54
-    dev: false
 
   /esbuild/0.15.18:
     resolution: {integrity: sha512-x/R72SmW3sSFRm5zrrIjAhCeQSAWoni3CmHEqfQrZIQTM3lVCdehdwuIqaOtfC2slvpdlLa62GYoN8SxT23m6Q==}
@@ -9945,7 +9968,6 @@ packages:
     hasBin: true
     optionalDependencies:
       fsevents: 2.3.2
-    dev: false
 
   /rollup/2.79.1:
     resolution: {integrity: sha512-uKxbd0IhMZOhjAiD5oAFp7BqvkA4Dv47qpOCtaNvng4HBwdbWtdOh8f5nZNuk2rp51PMGk3bzfWu5oayNEuYnw==}
@@ -10265,6 +10287,20 @@ packages:
       '@babel/types': 7.20.7
       solid-js: 1.6.10
     dev: true
+
+  /solid-trpc/0.0.11-rc.2_j53f4oy2zk227o4w2ydjpwzhmy:
+    resolution: {integrity: sha512-hmxf1svB6qf40t81WFMT9329Je7T+hF0/kfLZH/XSkT3jtzjjI8PeZMjc3CRFpMY/BubQQ0gWCFpUhxvlnNl+w==}
+    peerDependencies:
+      '@tanstack/solid-query': ^4.6.1
+      '@trpc/client': ^10.0.0-rc.2
+      '@trpc/server': ^10.0.0-rc.2
+      solid-js: ^1.5.3
+    dependencies:
+      '@tanstack/solid-query': 4.24.4_solid-js@1.6.10
+      '@trpc/client': 10.10.0_@trpc+server@10.10.0
+      '@trpc/server': 10.10.0
+      solid-js: 1.6.10
+    dev: false
 
   /sort-keys/2.0.0:
     resolution: {integrity: sha512-/dPCrG1s3ePpWm6yBbxZq5Be1dXGLyLn9Z791chDC3NFrpkVbWGzkBwPN1knaciexFXgRJ7hzdnwZ4stHSDmjg==}
@@ -11297,6 +11333,24 @@ packages:
       - supports-color
     dev: true
 
+  /vite-plugin-solid/2.5.0_vp7o2dnng5gpgzrurwft77jxlm:
+    resolution: {integrity: sha512-VneGd3RyFJvwaiffsqgymeMaofn0IzQLPwDzafTV2f1agoWeeJlk5VrI5WqT9BTtLe69vNNbCJWqLhHr9fOdDw==}
+    peerDependencies:
+      solid-js: ^1.3.17 || ^1.4.0 || ^1.5.0 || ^1.6.0
+      vite: ^3.0.0 || ^4.0.0
+    dependencies:
+      '@babel/core': 7.20.12
+      '@babel/preset-typescript': 7.18.6_@babel+core@7.20.12
+      babel-preset-solid: 1.6.10_@babel+core@7.20.12
+      merge-anything: 5.1.4
+      solid-js: 1.6.10
+      solid-refresh: 0.4.3_solid-js@1.6.10
+      vite: 2.9.15
+      vitefu: 0.2.4_vite@2.9.15
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
   /vite/2.9.15:
     resolution: {integrity: sha512-fzMt2jK4vQ3yK56te3Kqpkaeq9DkcZfBbzHwYpobasvgYmP2SoAr6Aic05CsB4CzCZbsDv4sujX3pkEGhLabVQ==}
     engines: {node: '>=12.2.0'}
@@ -11319,7 +11373,6 @@ packages:
       rollup: 2.77.3
     optionalDependencies:
       fsevents: 2.3.2
-    dev: false
 
   /vite/3.2.5:
     resolution: {integrity: sha512-4mVEpXpSOgrssFZAOmGIr85wPHKvaDAcXqxVxVRZhljkJOMZi1ibLibzjLHzJvcok8BMguLc7g1W6W/GqZbLdQ==}
@@ -11419,6 +11472,17 @@ packages:
     optionalDependencies:
       fsevents: 2.3.2
     dev: false
+
+  /vitefu/0.2.4_vite@2.9.15:
+    resolution: {integrity: sha512-fanAXjSaf9xXtOOeno8wZXIhgia+CZury481LsDaV++lSvcU2R9Ch2bPh3PYFyoHW+w9LqAeYRISVQjUIew14g==}
+    peerDependencies:
+      vite: ^3.0.0 || ^4.0.0
+    peerDependenciesMeta:
+      vite:
+        optional: true
+    dependencies:
+      vite: 2.9.15
+    dev: true
 
   /vitefu/0.2.4_vite@3.2.5:
     resolution: {integrity: sha512-fanAXjSaf9xXtOOeno8wZXIhgia+CZury481LsDaV++lSvcU2R9Ch2bPh3PYFyoHW+w9LqAeYRISVQjUIew14g==}

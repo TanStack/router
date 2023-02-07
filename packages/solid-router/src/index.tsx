@@ -338,31 +338,43 @@ function Inner(props: { match: RouteMatch }) {
 }
 
 function SafeFragment(props: any) {
-  return <>{props.children}</>
+  return <>{props?.children}</>
+}
+
+function SuspenseWrapper(props: {
+  wrapInSuspense: boolean
+  children: JSXElement
+  pendingComponent: JSXElement
+}) {
+  return (
+    <Show when={props.wrapInSuspense} fallback={props.children}>
+      <Suspense fallback={props.pendingComponent}>
+        {/* Suspense is never resolving if there isn't a wrapping html element around it*/}
+        <div id="suspense">{props.children}</div>
+      </Suspense>
+    </Show>
+  )
 }
 
 function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
   const router = useRouterContext()
 
-  useStore(props.match!.store)
-
   const PendingComponent = () =>
     props.match.pendingComponent ??
     router.options.defaultPendingComponent ??
     SafeFragment
+
   const OutletErrorComponent = () =>
     props.match.errorComponent ?? router.options.defaultErrorComponent
 
-  const ResolvedSuspenseBoundary = () =>
-    props.match.route.options.wrapInSuspense ?? true ? Suspense : SafeFragment
   const ResolvedCatchBoundary = () =>
     OutletErrorComponent() ? CatchBoundary : SafeFragment
 
   return (
     <matchesContext.Provider value={props.matches.slice()}>
-      <Dynamic
-        component={ResolvedSuspenseBoundary()}
-        fallback={PendingComponent() as any}
+      <SuspenseWrapper
+        wrapInSuspense={props.match.route.options.wrapInSuspense ?? true}
+        pendingComponent={PendingComponent() as any}
       >
         <Dynamic
           component={ResolvedCatchBoundary()}
@@ -373,7 +385,7 @@ function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
         >
           {() => <Inner match={props.match} />}
         </Dynamic>
-      </Dynamic>
+      </SuspenseWrapper>
     </matchesContext.Provider>
   )
 }
