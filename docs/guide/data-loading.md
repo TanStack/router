@@ -298,3 +298,10 @@ const postsRoute = new Route({
 ```
 
 > 🧠 TanStack Loaders uses the `prefetch` flag to determine cache freshness vs non-prefetch calls and also to determine if the global `isLoading` or `isPrefetching` flags should be incremented or not.
+
+## Learn more about TanStack Loaders/Actions!
+
+There's plenty more to learn about TanStack Loaders (and Actions!). If you plan on using them with TanStack Router, it's highly recommended that you read through their documentation:
+
+- [TanStack Loaders](https://tanstack.com/loaders)
+- [TanStack Actions](https://tanstack.com/actions)
