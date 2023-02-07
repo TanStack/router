@@ -62,9 +62,7 @@ export function useAction<
 
   const action = allOpts.action ?? actionClient!.getAction({ key: allOpts.key })
 
-  const store = useStore(action.store)
-
-  return allOpts?.track?.(action as any) ?? store
+  return useStore(action.store, (s) => allOpts?.track?.(s) ?? s)
 }
 
 export function useActionClient(opts?: {
@@ -77,7 +75,5 @@ export function useActionClient(opts?: {
       'useActionClient must be used inside a <ActionClientProvider> component!',
     )
 
-  const store = useStore(actionClient!.store)
-
-  return opts?.track?.(actionClient as any) ?? store
+  return useStore(actionClient!.store, (s) => opts?.track?.(s as any) ?? s)
 }

@@ -1,0 +1,23 @@
+{
+  "name": "tanstack-router-solid-example-kitchen-sink-multi-file",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --port=3000",
+    "build": "vite build",
+    "serve": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@tanstack/solid-router": "workspace:*",
+    "@tanstack/solid-loaders": "workspace:*",
+    "@tanstack/solid-actions": "workspace:*",
+    "vite": "^2.8.6",
+    "zod": "^3.19.1",
+    "immer": "^9.0.15"
+  },
+  "devDependencies": {
+    "solid-js": "^1.6.10",
+    "vite-plugin-solid": "^2.5.0"
+  }
+}

@@ -645,6 +645,27 @@ importers:
       vite: 4.1.1
       vite-plugin-solid: 2.5.0_solid-js@1.6.10+vite@4.1.1
 
+  examples/solid/kitchen-sink-multi-file:
+    specifiers:
+      '@tanstack/solid-actions': workspace:*
+      '@tanstack/solid-loaders': workspace:*
+      '@tanstack/solid-router': workspace:*
+      immer: ^9.0.15
+      solid-js: ^1.6.10
+      vite: ^2.8.6
+      vite-plugin-solid: ^2.5.0
+      zod: ^3.19.1
+    dependencies:
+      '@tanstack/solid-actions': link:../../../packages/solid-actions
+      '@tanstack/solid-loaders': link:../../../packages/solid-loaders
+      '@tanstack/solid-router': link:../../../packages/solid-router
+      immer: 9.0.19
+      vite: 2.9.15
+      zod: 3.20.2
+    devDependencies:
+      solid-js: 1.6.10
+      vite-plugin-solid: 2.5.0_vp7o2dnng5gpgzrurwft77jxlm
+
   examples/solid/with-trpc-solid-query:
     specifiers:
       '@tanstack/solid-loaders': workspace:*

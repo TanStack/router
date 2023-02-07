@@ -19,6 +19,7 @@ import {
   Router,
   RouterConstructorOptions,
   RouterOptions,
+  RouterStore,
   RoutesInfo,
   ToOptions,
   ValidFromPath,
@@ -215,9 +216,11 @@ export function useParams<
   track?: (search: TDefaultSelected) => TSelected
 }): TSelected {
   const router = useRouterContext()
-  const store = useStore(router.store)
 
-  return last(store.currentMatches)?.params as any
+  return useStore(router.store, (d) => {
+    const params = last(d.currentMatches)?.params as any
+    return opts?.track?.(params) ?? params
+  })
 }
 
 type MatchesContextValue = AnyRouteMatch[]
@@ -248,7 +251,7 @@ export function RouterProvider<
   const [matches, setMatches] = createStore<MatchesContextValue>([undefined!])
   routerProps.router.update(rest)
 
-  const store = useStore(routerProps.router.store)
+  const store = useStore(routerProps.router.store, (s) => s)
 
   createRenderEffect(
     on(
@@ -560,7 +563,6 @@ export function useMatch<
   from: TFrom
   strict?: TStrict
   track?: (match: TRouteMatch) => any
-  shallow?: boolean
 }): TStrict extends true ? TRouteMatch : TRouteMatch | undefined {
   const router = useRouterContext()
   const nearestMatch = () => useMatches()[0]!
@@ -591,9 +593,10 @@ export function useMatch<
     )
   }
 
-  const store: any = useStore(match()!.store as any)
-
-  return opts?.track?.(store) ?? match()
+  return useStore(
+    match()!.store as any,
+    (d) => opts?.track?.(match() as any) ?? match(),
+  )
 }
 
 export function useRoute<
@@ -612,6 +615,7 @@ export function useRoute<
   return resolvedRoute as any
 }
 
+// Return a wrapped memo around for reactivity. Might want to change this so it's simular to the other APIs.
 export function useSearch<
   TFrom extends keyof RegisteredRoutesInfo['routesById'],
   TStrict extends boolean = true,
@@ -623,9 +627,19 @@ export function useSearch<
   track?: (search: TSearch) => TSelected
 }): TStrict extends true ? TSelected : TSelected | undefined {
   const match = useMatch(opts)
-  const store: any = useStore((match as any).store)
 
-  return opts?.track?.(store.search) ?? store.search
+  return useStore(
+    (match as any).store,
+    (s: any) => opts?.track?.(s.search) ?? s?.search,
+  )
+}
+
+export function useRouter<T = RouterStore>(
+  track?: (state: Router['store']) => T,
+): RouterStore {
+  const router = useRouterContext()
+
+  return useStore(router.store, (d) => track?.(d as any) ?? d) as any
 }
 
 export function useNavigate<
@@ -654,6 +668,25 @@ export function useMatchRoute() {
       caseSensitive,
     })
   }
+}
+
+export function MatchRoute<
+  TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
+  TTo extends string = '',
+>(props: MakeMatchRouteOptions<TFrom, TTo>): any {
+  const matchRoute = useMatchRoute()
+  const params = matchRoute(props)
+
+  return (
+    <Show when={params}>
+      <Show
+        when={typeof props.children === 'function'}
+        fallback={props.children as JSXElement}
+      >
+        {(props.children as any)(params)}
+      </Show>
+    </Show>
+  )
 }
 
 function CatchBoundary(props: {
