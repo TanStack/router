@@ -11,6 +11,7 @@ export interface RouterHistory {
   back: () => void
   forward: () => void
   createHref: (href: string) => string
+  block: (blockerFn: BlockerFn) => () => void
 }
 
 export interface ParsedPath {
@@ -24,7 +25,22 @@ export interface RouterLocation extends ParsedPath {
   state: any
 }
 
+type BlockerFn = (retry: () => void, cancel: () => void) => void
+
 const popStateEvent = 'popstate'
+const beforeUnloadEvent = 'beforeunload'
+
+const beforeUnloadListener = (event: Event) => {
+  event.preventDefault()
+  // @ts-ignore
+  return (event.returnValue = '')
+}
+
+const stopBlocking = () => {
+  removeEventListener(beforeUnloadEvent, beforeUnloadListener, {
+    capture: true,
+  })
+}
 
 function createHistory(opts: {
   getLocation: () => RouterLocation
@@ -39,10 +55,32 @@ function createHistory(opts: {
   let currentLocation = opts.getLocation()
   let unsub = () => {}
   let listeners = new Set<() => void>()
+  let blockers: BlockerFn[] = []
+  let queue: (() => void)[] = []
+
+  const tryFlush = () => {
+    if (blockers.length) {
+      blockers[0]?.(tryFlush, () => {
+        blockers = []
+        stopBlocking()
+      })
+      return
+    }
+
+    while (queue.length) {
+      queue.shift()?.()
+    }
+
+    onUpdate()
+  }
+
+  const queueTask = (task: () => void) => {
+    queue.push(task)
+    tryFlush()
+  }
 
   const onUpdate = () => {
     currentLocation = opts.getLocation()
-
     listeners.forEach((listener) => listener())
   }
 
@@ -64,26 +102,48 @@ function createHistory(opts: {
       }
     },
     push: (path: string, state: any) => {
-      opts.pushState(path, state)
-      onUpdate()
+      queueTask(() => {
+        opts.pushState(path, state)
+      })
     },
     replace: (path: string, state: any) => {
-      opts.replaceState(path, state)
-      onUpdate()
+      queueTask(() => {
+        opts.replaceState(path, state)
+      })
     },
     go: (index) => {
-      opts.go(index)
-      onUpdate()
+      queueTask(() => {
+        opts.go(index)
+      })
     },
     back: () => {
-      opts.back()
-      onUpdate()
+      queueTask(() => {
+        opts.back()
+      })
     },
     forward: () => {
-      opts.forward()
-      onUpdate()
+      queueTask(() => {
+        opts.forward()
+      })
     },
     createHref: (str) => opts.createHref(str),
+    block: (cb) => {
+      blockers.push(cb)
+
+      if (blockers.length === 1) {
+        addEventListener(beforeUnloadEvent, beforeUnloadListener, {
+          capture: true,
+        })
+      }
+
+      return () => {
+        blockers = blockers.filter((b) => b !== cb)
+
+        if (!blockers.length) {
+          stopBlocking()
+        }
+      }
+    },
   }
 }
 

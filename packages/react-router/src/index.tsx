@@ -719,29 +719,26 @@ export function ErrorComponent({ error }: { error: any }) {
   )
 }
 
-// TODO: While we migrate away from the history package, these need to be disabled
-// export function usePrompt(message: string, when: boolean | any): void {
-//   const router = useRouter()
+export function useBlocker(message: string, when: boolean | any = true): void {
+  const router = useRouter()
 
-//   React.useEffect(() => {
-//     if (!when) return
+  React.useEffect(() => {
+    if (!when) return
 
-//     let unblock = router.getHistory().block((transition) => {
-//       if (window.confirm(message)) {
-//         unblock()
-//         transition.retry()
-//       } else {
-//         router.setStore((s) => {
-//           s.currentLocation.pathname = window.location.pathname
-//         })
-//       }
-//     })
+    let unblock = router.history.block((retry, cancel) => {
+      if (window.confirm(message)) {
+        unblock()
+        retry()
+      } else {
+        cancel()
+      }
+    })
 
-//     return unblock
-//   }, [when, message])
-// }
+    return unblock
+  })
+}
 
-// export function Prompt({ message, when, children }: PromptProps) {
-//   usePrompt(message, when ?? true)
-//   return (children ?? null) as ReactNode
-// }
+export function Block({ message, when, children }: PromptProps) {
+  useBlocker(message, when)
+  return (children ?? null) as ReactNode
+}
