@@ -62,7 +62,7 @@ The `from` property is optional, which means if you don't pass it, you'll get th
 
 Router context is so extremely useful as it's the ultimate hierarchical dependency injection. You can supply context to the router and to each and every route it renders. As you build up this context, TanStack Router will merge it down with the hierarchy of routes, so that each route has access to the context of all of its parents.
 
-If you want to use context, it's highly recommended that you use the `RootRout.withRouterContext<ContextType>()(rootRouteOptions)` utility.
+If you want to use context, it's highly recommended that you use the `RootRoute.withRouterContext<ContextType>()(rootRouteOptions)` utility.
 
 This utility will create a requirement for you to pass a context type to your router, and will also ensure that your context is properly typed throughout the entire route tree.
 
