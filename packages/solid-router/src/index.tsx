@@ -218,7 +218,7 @@ export function useParams<
 }): TSelected {
   const router = useRouterContext()
 
-  return useStore(router.store, (d) => {
+  return useStore(router.__store, (d) => {
     const params = last(d.currentMatches)?.params as any
     return opts?.track?.(params) ?? params
   })
@@ -231,7 +231,7 @@ export const routerContext = createContext<{ router: RegisteredRouter }>(null!)
 export function useRouterContext(): RegisteredRouter {
   const value = useContext(routerContext)!
   warning(value, 'useRouter must be used inside a <Router> component!')
-  // useStore(value.router.store)
+  // useStore(value.router.__store)
 
   return value.router
 }
@@ -252,7 +252,7 @@ export function RouterProvider<
   const [matches, setMatches] = createStore<MatchesContextValue>([undefined!])
   routerProps.router.update(rest)
 
-  const store = useStore(routerProps.router.store, (s) => s)
+  const store = useStore(routerProps.router.__store, (s) => s)
 
   onMount(routerProps.router.mount)
 
@@ -295,6 +295,40 @@ export function Outlet() {
     <Show when={match() && matches()} keyed>
       <SubOutlet matches={matches().slice()} match={match() as any} />
     </Show>
+  )
+}
+
+function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
+  const router = useRouterContext()
+
+  const PendingComponent = () =>
+    props.match.pendingComponent ??
+    router.options.defaultPendingComponent ??
+    SafeFragment
+
+  const OutletErrorComponent = () =>
+    props.match.errorComponent ?? router.options.defaultErrorComponent
+
+  const ResolvedCatchBoundary = () =>
+    OutletErrorComponent() ? CatchBoundary : SafeFragment
+
+  return (
+    <matchesContext.Provider value={props.matches.slice()}>
+      <SuspenseWrapper
+        wrapInSuspense={props.match.route.options.wrapInSuspense ?? true}
+        pendingComponent={PendingComponent() as any}
+      >
+        <Dynamic
+          component={ResolvedCatchBoundary()}
+          errorComponent={OutletErrorComponent()}
+          onCatch={() => {
+            warning(false, `Error in route match: ${props.match.id}`)
+          }}
+        >
+          {() => <Inner match={props.match} />}
+        </Dynamic>
+      </SuspenseWrapper>
+    </matchesContext.Provider>
   )
 }
 
@@ -350,40 +384,6 @@ function SuspenseWrapper(props: {
         <div id="suspense">{props.children}</div>
       </Suspense>
     </Show>
-  )
-}
-
-function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
-  const router = useRouterContext()
-
-  const PendingComponent = () =>
-    props.match.pendingComponent ??
-    router.options.defaultPendingComponent ??
-    SafeFragment
-
-  const OutletErrorComponent = () =>
-    props.match.errorComponent ?? router.options.defaultErrorComponent
-
-  const ResolvedCatchBoundary = () =>
-    OutletErrorComponent() ? CatchBoundary : SafeFragment
-
-  return (
-    <matchesContext.Provider value={props.matches.slice()}>
-      <SuspenseWrapper
-        wrapInSuspense={props.match.route.options.wrapInSuspense ?? true}
-        pendingComponent={PendingComponent() as any}
-      >
-        <Dynamic
-          component={ResolvedCatchBoundary()}
-          errorComponent={OutletErrorComponent()}
-          onCatch={() => {
-            warning(false, `Error in route match: ${props.match.id}`)
-          }}
-        >
-          {() => <Inner match={props.match} />}
-        </Dynamic>
-      </SuspenseWrapper>
-    </matchesContext.Provider>
   )
 }
 
@@ -588,7 +588,7 @@ export function useMatch<
   }
 
   return useStore(
-    match()!.store as any,
+    match()!.__store as any,
     (d) => opts?.track?.(match() as any) ?? match(),
   )
 }
@@ -623,17 +623,17 @@ export function useSearch<
   const match = useMatch(opts)
 
   return useStore(
-    (match as any).store,
+    (match as any).__store,
     (s: any) => opts?.track?.(s?.search) ?? s?.search,
   )
 }
 
 export function useRouter<T = RouterStore>(
-  track?: (state: Router['store']) => T,
+  track?: (state: Router['state']) => T,
 ): RouterStore {
   const router = useRouterContext()
 
-  return useStore(router.store, (d) => track?.(d as any) ?? d) as any
+  return useStore(router.__store, (d) => track?.(d as any) ?? d) as any
 }
 
 export function useNavigate<
@@ -691,6 +691,7 @@ function CatchBoundary(props: {
   return (
     <ErrorBoundary
       fallback={(error, reset) => {
+        console.error(error)
         props.onCatch(error)
         return (
           <CatchBoundaryInner

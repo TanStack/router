@@ -148,7 +148,7 @@ export function useLoaderInstance<
   const loaderInstanceCopy = { ...loaderInstance }
 
   const state = useStore(
-    loaderInstance.store,
+    loaderInstance.__store,
     (s) => allOpts?.track?.(s as any) ?? s,
   )
 
@@ -172,7 +172,7 @@ export function useLoaderClient(opts?: {
   const loaderClientCopy = { ...loaderClient }
 
   const state = useStore(
-    loaderClient.store,
+    loaderClient.__store,
     (s) => opts?.track?.(s as any) ?? s,
   )
 

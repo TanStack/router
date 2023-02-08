@@ -64,7 +64,7 @@ export function useAction<
 
   const actionCopy = { ...action }
 
-  const state = useStore(action.store, (s) => allOpts?.track?.(s) ?? s)
+  const state = useStore(action.__store, (s) => allOpts?.track?.(s) ?? s)
 
   createRenderEffect(() => {
     Object.assign(actionCopy, action, { state })
@@ -86,7 +86,7 @@ export function useActionClient(opts?: {
   const actionClientCopy = { ...actionClient }
 
   const state = useStore(
-    actionClient!.store,
+    actionClient!.__store,
     (s) => opts?.track?.(s as any) ?? s,
   )
 

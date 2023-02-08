@@ -572,29 +572,6 @@ function SubOutlet({
 
   const defaultPending = React.useCallback(() => null, [])
 
-  const Inner = React.useCallback((props: { match: RouteMatch }): any => {
-    if (props.match.state.status === 'error') {
-      throw props.match.state.error
-    }
-
-    if (props.match.state.status === 'success') {
-      return React.createElement(
-        (props.match.component as any) ??
-          router.options.defaultComponent ??
-          Outlet,
-      )
-    }
-
-    if (props.match.state.status === 'pending') {
-      throw props.match.__loadPromise
-    }
-
-    invariant(
-      false,
-      'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
-    )
-  }, [])
-
   const PendingComponent = (match.pendingComponent ??
     router.options.defaultPendingComponent ??
     defaultPending) as any
@@ -620,6 +597,31 @@ function SubOutlet({
         </ResolvedCatchBoundary>
       </ResolvedSuspenseBoundary>
     </matchesContext.Provider>
+  )
+}
+
+function Inner(props: { match: RouteMatch }): any {
+  const router = useRouterContext()
+
+  if (props.match.state.status === 'error') {
+    throw props.match.state.error
+  }
+
+  if (props.match.state.status === 'success') {
+    return React.createElement(
+      (props.match.component as any) ??
+        router.options.defaultComponent ??
+        Outlet,
+    )
+  }
+
+  if (props.match.state.status === 'pending') {
+    throw props.match.__loadPromise
+  }
+
+  invariant(
+    false,
+    'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
   )
 }
 

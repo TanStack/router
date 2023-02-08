@@ -28,17 +28,11 @@ import {
   AnyPathParams,
   AnySearchSchema,
   LoaderContext,
-  SearchFilter,
   AnyRoute,
   RootRoute,
   AnyContext,
 } from './route'
-import {
-  RoutesInfo,
-  AnyRoutesInfo,
-  RoutesById,
-  DefaultRoutesInfo,
-} from './routeInfo'
+import { RoutesInfo, AnyRoutesInfo, RoutesById } from './routeInfo'
 import { AnyRouteMatch, RouteMatch, RouteMatchStore } from './routeMatch'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -47,7 +41,6 @@ import {
   NoInfer,
   pick,
   PickAsRequired,
-  PickRequired,
   Timeout,
   Updater,
   replaceEqualDeep,
@@ -58,7 +51,6 @@ import {
   createMemoryHistory,
   RouterHistory,
 } from './history'
-import warning from 'tiny-warning'
 
 export interface Register {
   // router: Router

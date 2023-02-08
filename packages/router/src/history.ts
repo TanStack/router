@@ -144,7 +144,6 @@ function createHistory(opts: {
         }
       }
     },
-    createHref: (str) => opts.createHref(str),
   }
 }
 
