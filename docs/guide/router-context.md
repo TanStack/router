@@ -2,7 +2,7 @@
 title: Router Context
 ---
 
-TanStack Router's router context is a very powerful tool that can be used for dependency injection among many other things. Aptly named, the router context is a context that is passed through the router, all the down the route tree. At each route in the hierarchy, the context can be modified or added to. Here's a few ways you might use the router context practically:
+TanStack Router's router context is a very powerful tool that can be used for dependency injection among many other things. Aptly named, the router context is passed through the router and down through each matching route. At each route in the hierarchy, the context can be modified or added to. Here's a few ways you might use the router context practically:
 
 - Dependency injection
   - You can supply dependencies (e.g. a data loader client or mutation service) which all child routes can access and use without importing them directly.
