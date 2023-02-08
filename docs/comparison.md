@@ -19,6 +19,8 @@ Feature/Capability Key:
 | ---------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------------------- |
 | Github Repo / Stars                            | [![][stars-tanstack-router]][gh-tanstack-router] | [![][stars-react-router]][gh-react-router]            | [![][stars-nextjs]][gh-nextjs]                        |
 | Bundle Size                                    | [![][bp-tanstack-router]][bpl-tanstack-router]   | [![][bp-react-router]][bpl-react-router]              | ❓                                                    |
+|                                                | [![][bp-tanstack-loaders]][bpl-tanstack-loaders] |                                                       |                                                       |
+|                                                | [![][bp-tanstack-actions]][bpl-tanstack-actions] |                                                       |                                                       |
 | History, Memory & Hash Routers                 | ✅                                               | ✅                                                    | 🛑                                                    |
 | Nested / Layout Routes                         | ✅                                               | ✅                                                    | ✅                                                    |
 | Suspense-like Route Transitions                | ✅                                               | ✅                                                    | ✅                                                    |
@@ -35,7 +37,7 @@ Feature/Capability Key:
 | Typesafe Path Params                           | ✅                                               | 🛑                                                    | 🛑                                                    |
 | Path Param Validation                          | ✅                                               | 🛑                                                    | 🛑                                                    |
 | Custom Path Param Parsing/Serialization        | ✅                                               | 🛑                                                    | 🛑                                                    |
-| Ranked Routes                                  | 🟢                                               | ✅                                                    | ✅                                                    |
+| Ranked Routes                                  | ✅                                               | ✅                                                    | ✅                                                    |
 | Active Link Customization                      | ✅                                               | ✅                                                    | ✅                                                    |
 | Optimistic UI                                  | ✅                                               | ✅                                                    | 🔶                                                    |
 | Typesafe Absolute + Relative Navigation        | ✅                                               | 🛑                                                    | 🛑                                                    |
@@ -60,20 +62,23 @@ Feature/Capability Key:
 | Deferred Loader Streaming                      | 🛑                                               | ✅                                                    | 🔶                                                    |
 | `<Form>` API                                   | 🛑                                               | ✅                                                    | 🛑                                                    |
 
-[bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router@alpha?label=💾
-[bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/react-router@alpha
+[bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router@beta?label=Router
+[bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/react-router@beta
+[bp-tanstack-loaders]: https://badgen.net/bundlephobia/minzip/@tanstack/react-loaders@beta?label=Loaders
+[bpl-tanstack-loaders]: https://bundlephobia.com/result?p=@tanstack/react-loaders@beta
+[bp-tanstack-actions]: https://badgen.net/bundlephobia/minzip/@tanstack/react-actions@beta?label=Actions
+[bpl-tanstack-actions]: https://bundlephobia.com/result?p=@tanstack/react-actions@beta
 [gh-tanstack-router]: https://github.com/tanstack/router
 [stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?label=%F0%9F%8C%9F
 [_]: _
 [react-router]: https://github.com/remix-run/react-router
-[bp-react-router]: https://badgen.net/bundlephobia/minzip/react-router-dom?label=💾
-[bp-history]: https://badgen.net/bundlephobia/minzip/history?label=💾
+[bp-react-router]: https://badgen.net/bundlephobia/minzip/react-router-dom?label=All
 [gh-react-router]: https://github.com/remix-run/react-router
 [stars-react-router]: https://img.shields.io/github/stars/remix-run/react-router?label=%F0%9F%8C%9F
 [bpl-react-router]: https://bundlephobia.com/result?p=react-router-dom
 [bpl-history]: https://bundlephobia.com/result?p=history
 [_]: _
-[bp-nextjs]: https://badgen.net/bundlephobia/minzip/next.js?label=💾
+[bp-nextjs]: https://badgen.net/bundlephobia/minzip/next.js?label=All
 [gh-nextjs]: https://github.com/vercel/next.js
 [stars-nextjs]: https://img.shields.io/github/stars/vercel/next.js?label=%F0%9F%8C%9F
 [bpl-nextjs]: https://bundlephobia.com/result?p=next
