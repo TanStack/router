@@ -19,6 +19,7 @@
       "@tanstack/router": ["packages/router"],
       "@tanstack/react-router": ["packages/react-router"],
       "@tanstack/react-router-devtools": ["packages/react-router-devtools"],
+      "@tanstack/solid-router": ["packages/solid-router"],
       "@tanstack/router-cli": ["packages/router-cli"]
     }
   }

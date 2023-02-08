@@ -1,0 +1,43 @@
+{
+  "name": "@tanstack/solid-store",
+  "author": "Tanner Linsley",
+  "version": "0.0.1-beta.62",
+  "license": "MIT",
+  "repository": "tanstack/solid-store",
+  "homepage": "https://tanstack.com/",
+  "description": "",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "loaders",
+    "solid",
+    "typescript"
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "module": "build/esm/index.js",
+  "main": "build/cjs/index.js",
+  "browser": "build/umd/index.production.js",
+  "types": "build/types/index.d.ts",
+  "engines": {
+    "node": ">=12"
+  },
+  "files": [
+    "build/**",
+    "src"
+  ],
+  "sideEffects": false,
+  "peerDependencies": {
+    "solid-js": ">=1.6"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.16.7",
+    "@tanstack/store": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/use-sync-external-store": "^0.0.3"
+  }
+}

@@ -1,6 +1,6 @@
 import { Store } from '@tanstack/store'
-import { isPlainObject, replaceEqualDeep } from './utils'
 import invariant from 'tiny-invariant'
+import { isPlainObject, replaceEqualDeep } from './utils'
 
 export interface Register {
   // loaderClient: LoaderClient
@@ -222,7 +222,7 @@ export type LoaderFn<TLoaderPayload = unknown, TLoaderResponse = unknown> = (
   submission: TLoaderPayload,
 ) => TLoaderResponse | Promise<TLoaderResponse>
 
-interface LoaderOptions<
+export interface LoaderOptions<
   TKey extends string = string,
   TVariables = unknown,
   TData = unknown,

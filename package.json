@@ -21,7 +21,8 @@
   },
   "workspaces": [
     "./packages/*",
-    "./examples/react/*"
+    "./examples/react/*",
+    "./examples/solid/*"
   ],
   "bin": {
     "tsr": "./packages/router-cli/bin/tsr"
@@ -36,7 +37,11 @@
       "@tanstack/react-router": "workspace:*",
       "@tanstack/react-actions": "workspace:*",
       "@tanstack/react-loaders": "workspace:*",
-      "@tanstack/react-router-devtools": "workspace:*"
+      "@tanstack/react-router-devtools": "workspace:*",
+      "@tanstack/solid-router": "workspace:*",
+      "@tanstack/solid-store": "workspace:*",
+      "@tanstack/solid-loaders": "workspace:*",
+      "@tanstack/solid-actions": "workspace:*"
     }
   },
   "devDependencies": {
@@ -59,6 +64,7 @@
     "@types/semver": "^7.3.13",
     "axios": "^0.26.1",
     "babel-plugin-transform-async-to-promises": "^0.8.18",
+    "babel-preset-solid": "^1.5.4",
     "concurrently": "^7.1.0",
     "current-git-branch": "^1.1.0",
     "git-log-parser": "^1.2.0",

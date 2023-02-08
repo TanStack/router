@@ -1,0 +1,32 @@
+{
+  "name": "tanstack-router-solid-example-with-trpc-solid-query",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently 'pnpm:dev:*'",
+    "dev:client": "wait-port 4000 && vite",
+    "dev:server": "tsx server/server.ts",
+    "build": "vite build",
+    "serve": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@tanstack/solid-router": "workspace:*",
+    "@tanstack/solid-loaders": "workspace:*",
+    "@trpc/client": "^10.0.0-rc.6",
+    "solid-trpc": "0.0.11-rc.2",
+    "@trpc/server": "^10.0.0-rc.6",
+    "@tanstack/solid-query": "4.24.4",
+    "express": "^4.18.2",
+    "immer": "^9.0.15",
+    "vite": "^2.8.6",
+    "zod": "^3.19.1"
+  },
+  "devDependencies": {
+    "solid-js": "^1.6.10",
+    "vite-plugin-solid": "^2.5.0",
+    "concurrently": "^7.6.0",
+    "tsx": "^3.11.0",
+    "wait-port": "^1.0.4"
+  }
+}

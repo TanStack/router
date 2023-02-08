@@ -1,0 +1,50 @@
+{
+  "name": "@tanstack/solid-actions",
+  "author": "Tanner Linsley",
+  "version": "0.0.1-beta.68",
+  "license": "MIT",
+  "repository": "tanstack/router",
+  "homepage": "https://tanstack.com/router/",
+  "description": "",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "solid",
+    "location",
+    "@tanstack/solid-actions",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "module": "build/esm/index.js",
+  "main": "build/cjs/index.js",
+  "browser": "build/umd/index.production.js",
+  "types": "build/types/index.d.ts",
+  "engines": {
+    "node": ">=12"
+  },
+  "files": [
+    "build/**",
+    "src"
+  ],
+  "sideEffects": false,
+  "peerDependencies": {
+    "solid-js": ">=1.6"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.16.7",
+    "@tanstack/actions": "workspace:*",
+    "@tanstack/solid-store": "workspace:*",
+    "tiny-invariant": "^1.0.5"
+  },
+  "devDependencies": {
+    "babel-plugin-transform-async-to-promises": "^0.8.18"
+  }
+}
