@@ -25,9 +25,7 @@ import {
 } from './path'
 import {
   Route,
-  AnyPathParams,
   AnySearchSchema,
-  LoaderContext,
   AnyRoute,
   RootRoute,
   AnyContext,
@@ -136,14 +134,6 @@ type FetchServerDataFn = (ctx: {
   router: AnyRouter
   routeMatch: RouteMatch
 }) => Promise<any>
-
-export interface LoaderState<
-  TFullSearchSchema extends AnySearchSchema = {},
-  TAllParams extends AnyPathParams = {},
-> {
-  loadedAt: number
-  loaderContext: LoaderContext<TFullSearchSchema, TAllParams>
-}
 
 export interface RouterStore<
   TRoutesInfo extends AnyRoutesInfo = AnyRoutesInfo,

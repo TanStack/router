@@ -99,10 +99,6 @@
           "to": "guide/preloading"
         },
         {
-          "label": "Route Elements",
-          "to": "guide/route-elements"
-        },
-        {
           "label": "Code-Splitting",
           "to": "guide/code-splitting"
         },
