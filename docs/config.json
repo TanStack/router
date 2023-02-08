@@ -103,8 +103,8 @@
           "to": "guide/code-splitting"
         },
         {
-          "label": "Prompts",
-          "to": "guide/prompts"
+          "label": "Navigation Blocking",
+          "to": "guide/navigation-blocking"
         },
         {
           "label": "Custom Search Param Serialization",
