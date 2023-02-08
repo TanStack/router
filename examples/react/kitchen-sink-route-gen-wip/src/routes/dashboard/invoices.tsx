@@ -55,7 +55,7 @@ function Invoices() {
                     <Spinner />
                   ) : (
                     <MatchRoute
-                      to={dashboardInvoicesinvoiceIdRoute.id}
+                      to={dashboardInvoicesinvoiceIdRoute.fullPath}
                       params={{
                         invoiceId: invoice.id,
                       }}

@@ -124,7 +124,7 @@ function Users() {
           return (
             <div key={user.id}>
               <Link
-                to={dashboardUsersuserIdRoute.id}
+                to={dashboardUsersuserIdRoute.fullPath}
                 params={{
                   userId: user.id,
                 }}
@@ -136,7 +136,7 @@ function Users() {
                 <pre className="text-sm">
                   {user.name}{' '}
                   <MatchRoute
-                    to={dashboardUsersuserIdRoute.id}
+                    to={dashboardUsersuserIdRoute.fullPath}
                     params={{
                       userId: user.id,
                     }}

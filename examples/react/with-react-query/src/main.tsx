@@ -84,7 +84,7 @@ const postsRoute = new Route({
             return (
               <li key={post.id} className="whitespace-nowrap">
                 <Link
-                  to={postRoute.id}
+                  to={postRoute.fullPath}
                   params={{
                     postId: post.id,
                   }}

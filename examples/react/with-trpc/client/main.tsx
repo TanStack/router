@@ -138,7 +138,7 @@ const indexRoute = new Route({
         <div className={`text-lg`}>Welcome Home!</div>
         <hr className={`my-2`} />
         <Link
-          to={postRoute.id}
+          to={postRoute.fullPath}
           params={{
             postId: 3,
           }}
@@ -245,7 +245,7 @@ const postsRoute = new Route({
             return (
               <div key={post.id}>
                 <Link
-                  to={postRoute.id}
+                  to={postRoute.fullPath}
                   params={{
                     postId: post.id,
                   }}
@@ -256,7 +256,7 @@ const postsRoute = new Route({
                   <pre className="text-sm">
                     #{post.id} - {post.title.slice(0, 10)}{' '}
                     <MatchRoute
-                      to={postRoute.id}
+                      to={postRoute.fullPath}
                       params={{
                         postId: post.id,
                       }}

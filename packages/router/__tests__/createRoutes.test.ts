@@ -336,7 +336,7 @@ describe('everything', () => {
 
     router.buildLink({
       from: '/dashboard/invoices/$invoiceId',
-      to: testRoute.id,
+      to: testRoute.fullPath,
       search: {
         version: 2,
         isGood: true,

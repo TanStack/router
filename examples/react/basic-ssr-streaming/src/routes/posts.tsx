@@ -28,7 +28,7 @@ function Posts() {
           return (
             <li key={post.id} className="whitespace-nowrap">
               <Link
-                to={postIdRoute.id}
+                to={postIdRoute.fullPath}
                 params={{
                   postId: post.id,
                 }}
