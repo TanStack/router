@@ -630,7 +630,7 @@ export function useSearch<
 
   return useStore(
     (match as any).store,
-    (s: any) => opts?.track?.(s.search) ?? s?.search,
+    (s: any) => opts?.track?.(s?.search) ?? s?.search,
   )
 }
 

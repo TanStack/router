@@ -80,9 +80,6 @@ function InvoiceView() {
     })
   })
 
-  createEffect(() => console.log(invoiceLoaderInstance.state.data))
-  createEffect(() => console.log(action))
-
   return (
     <form
       onSubmit={(event) => {
@@ -99,18 +96,18 @@ function InvoiceView() {
     >
       <InvoiceFields
         invoice={invoiceLoaderInstance.state.data}
-        disabled={action.state?.latestSubmission?.status === 'pending'}
+        disabled={action.state.submissions.at(-1)?.status === 'pending'}
       />
       <div>
         <Link
           search={(old) => ({
             ...old,
-            showNotes: old?.showNotes ? undefined : true,
+            showNotes: old?.showNotes ? false : true,
           })}
           class="text-blue-700"
         >
-          <Show when={search.showNotes} fallback="Show Notes">
-            'Close Notes'
+          <Show when={!!search.showNotes} keyed fallback="Show Notes">
+            Close Notes
           </Show>
         </Link>
         <Show when={search.showNotes}>

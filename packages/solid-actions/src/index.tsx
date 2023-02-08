@@ -7,7 +7,7 @@ import {
   RegisteredActions,
 } from '@tanstack/actions'
 import { useStore } from '@tanstack/solid-store'
-import { createContext, useContext } from 'solid-js'
+import { createContext, createRenderEffect, useContext } from 'solid-js'
 import invariant from 'tiny-invariant'
 
 export * from '@tanstack/actions'
@@ -62,7 +62,15 @@ export function useAction<
 
   const action = allOpts.action ?? actionClient!.getAction({ key: allOpts.key })
 
-  return useStore(action.store, (s) => allOpts?.track?.(s) ?? s)
+  const actionCopy = { ...action }
+
+  const state = useStore(action.store, (s) => allOpts?.track?.(s) ?? s)
+
+  createRenderEffect(() => {
+    Object.assign(actionCopy, action, { state })
+  })
+
+  return actionCopy as any
 }
 
 export function useActionClient(opts?: {
@@ -75,5 +83,16 @@ export function useActionClient(opts?: {
       'useActionClient must be used inside a <ActionClientProvider> component!',
     )
 
-  return useStore(actionClient!.store, (s) => opts?.track?.(s as any) ?? s)
+  const actionClientCopy = { ...actionClient }
+
+  const state = useStore(
+    actionClient!.store,
+    (s) => opts?.track?.(s as any) ?? s,
+  )
+
+  createRenderEffect(() => {
+    Object.assign(actionClientCopy, actionClient, { state })
+  })
+
+  return actionClientCopy as any
 }

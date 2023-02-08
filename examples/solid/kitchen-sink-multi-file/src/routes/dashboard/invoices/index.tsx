@@ -1,7 +1,7 @@
 import { useAction } from '@tanstack/solid-actions'
 import { useLoaderInstance } from '@tanstack/solid-loaders'
-import { Link, MatchRoute, Outlet, Route } from '@tanstack/solid-router'
-import { createMemo, For, Show } from 'solid-js'
+import { Link, Outlet, Route } from '@tanstack/solid-router'
+import { For, Show } from 'solid-js'
 import { dashboardRoute, invoicesLoader } from '..'
 import { Spinner } from '../../../components/Spinner'
 import { updateInvoiceAction } from './invoice'
@@ -25,45 +25,28 @@ function Invoices() {
   return (
     <div class="flex-1 flex">
       <div class="divide-y w-48">
-        <For each={invoicesLoaderInstance.state.data}>
+        <For each={invoicesLoaderInstance.state.data || []}>
           {(invoice) => {
             const pendingInvoice = () =>
-              updateInvoice.state?.pendingSubmissions.find(
-                (d) => d.payload?.id === invoice.id,
+              updateInvoice.state.submissions.find(
+                (d) => d.payload.id === invoice.id,
               )
-
-            const updatedInvoice = createMemo(() => {
-              if (pendingInvoice()) {
-                return { ...invoice, ...pendingInvoice()!.payload }
-              } else {
-                return invoice
-              }
-            })
 
             return (
               <div>
                 <Link
                   to="/dashboard/invoices/$invoiceId"
                   params={{
-                    invoiceId: updatedInvoice().id,
+                    invoiceId: invoice?.id,
                   }}
                   preload="intent"
                   class="block py-2 px-3 text-blue-700"
                   activeProps={{ class: `font-bold` }}
                 >
                   <pre class="text-sm">
-                    #{updatedInvoice().id} -{' '}
-                    {updatedInvoice().title.slice(0, 10)}
-                    <Show when={!pendingInvoice()} fallback={<Spinner />}>
-                      <MatchRoute
-                        to={updatedInvoice().id.toString()}
-                        params={{
-                          invoiceId: updatedInvoice().id,
-                        }}
-                        pending
-                      >
-                        <Spinner />
-                      </MatchRoute>
+                    #{invoice.id} - {invoice.title.slice(0, 10)}
+                    <Show when={pendingInvoice()?.status === 'pending'}>
+                      <Spinner />
                     </Show>
                   </pre>
                 </Link>
@@ -71,14 +54,16 @@ function Invoices() {
             )
           }}
         </For>
-        <For each={createInvoice.state?.pendingSubmissions}>
+        <For each={createInvoice.state?.submissions}>
           {(action) => (
             <div>
-              <a href="#" class="block py-2 px-3 text-blue-700">
-                <pre class="text-sm">
-                  #<Spinner /> - {action.payload.title?.slice(0, 10)}
-                </pre>
-              </a>
+              <Show when={action.status === 'pending'}>
+                <a href="#" class="block py-2 px-3 text-blue-700">
+                  <pre class="text-sm">
+                    #<Spinner /> - {action.payload.title?.slice(0, 10)}
+                  </pre>
+                </a>
+              </Show>
             </div>
           )}
         </For>

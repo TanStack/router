@@ -12,13 +12,11 @@ export function useStore<
   routerStore: Store<TState, TUpdater>,
   selector: (state: NoInfer<TState>) => TSelected = (d) => d as any,
 ): TSelected {
-  const [state, setState] = createStore<TSelected>({
-    ...selector(routerStore.state),
-  })
+  const [state, setState] = createStore<TSelected>(selector(routerStore.state))
 
   onMount(() => {
     const unsubscribe = routerStore.subscribe((tState) =>
-      setState({ ...selector(tState) }),
+      setState(selector(tState)),
     )
     onCleanup(unsubscribe)
   })

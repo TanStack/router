@@ -12,7 +12,6 @@ import {
 } from '@tanstack/loaders'
 import {
   createContext,
-  createEffect,
   createRenderEffect,
   on,
   splitProps,
@@ -44,7 +43,7 @@ export function LoaderClientProvider(
 
   const [loaderClient, setLoaderClient] = createStore(coreProps.loaderClient)
 
-  createEffect(
+  createRenderEffect(
     on(
       () => [coreProps.loaderClient.options, optionProps],
       ([loaderOptions, optionProps]) => {
@@ -146,9 +145,12 @@ export function useLoaderInstance<
     )
   }
 
-  const state = useStore(loaderInstance.store)
-
   const loaderInstanceCopy = { ...loaderInstance }
+
+  const state = useStore(
+    loaderInstance.store,
+    (s) => allOpts?.track?.(s as any) ?? s,
+  )
 
   createRenderEffect(() => {
     Object.assign(loaderInstanceCopy, loaderInstance, { state })
@@ -167,9 +169,12 @@ export function useLoaderClient(opts?: {
       'useLoaderClient must be used inside a <LoaderClientProvider> component!',
     )
 
-  const state = useStore(loaderClient.store)
-
   const loaderClientCopy = { ...loaderClient }
+
+  const state = useStore(
+    loaderClient.store,
+    (s) => opts?.track?.(s as any) ?? s,
+  )
 
   createRenderEffect(() => {
     Object.assign(loaderClientCopy, loaderClient, { state })

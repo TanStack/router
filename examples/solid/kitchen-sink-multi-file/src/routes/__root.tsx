@@ -15,11 +15,11 @@ export const rootRoute = new RootRoute({
             <h1 class={`text-3xl p-2`}>Kitchen Sink</h1>
             {/* Show a global spinner when the router is transitioning */}
             <div
-              class={`text-3xl duration-300 delay-0 opacity-0 ${
-                router.status === 'pending' || loaderClient.state.isLoading
-                  ? ` duration-1000 opacity-40`
-                  : ''
-              }`}
+              classList={{
+                'text-3xl duration-300 delay-0 opacity-0': true,
+                'duration-1000 opacity-40':
+                  router.status === 'pending' || loaderClient.state.isLoading,
+              }}
             >
               <Spinner />
             </div>
