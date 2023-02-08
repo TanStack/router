@@ -8,7 +8,7 @@ import { GetFrameworkGeneric } from './frameworks'
 import {
   createBrowserHistory,
   createMemoryHistory,
-  RouterHistory
+  RouterHistory,
 } from './history'
 import {
   LinkInfo,
@@ -16,7 +16,7 @@ import {
   NavigateOptions,
   ResolveRelativePath,
   ToOptions,
-  ValidFromPath
+  ValidFromPath,
 } from './link'
 import {
   cleanPath,
@@ -26,7 +26,7 @@ import {
   parsePathname,
   resolvePath,
   trimPath,
-  trimPathLeft
+  trimPathLeft,
 } from './path'
 import {
   AnyContext,
@@ -35,7 +35,7 @@ import {
   AnySearchSchema,
   LoaderContext,
   RootRoute,
-  Route
+  Route,
 } from './route'
 import { AnyRoutesInfo, RoutesById, RoutesInfo } from './routeInfo'
 import { AnyRouteMatch, RouteMatch, RouteMatchStore } from './routeMatch'
@@ -49,7 +49,7 @@ import {
   PickAsRequired,
   replaceEqualDeep,
   Timeout,
-  Updater
+  Updater,
 } from './utils'
 
 export interface Register {

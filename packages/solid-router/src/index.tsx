@@ -37,6 +37,7 @@ import {
   lazy as solidLazy,
   Match,
   on,
+  onMount,
   Show,
   splitProps,
   Suspense,
@@ -253,19 +254,12 @@ export function RouterProvider<
 
   const store = useStore(routerProps.router.store, (s) => s)
 
-  createRenderEffect(
-    on(
-      () => store,
-      () => {
-        routerProps.router.mount()
-      },
-    ),
-  )
+  onMount(routerProps.router.mount)
 
-  createRenderEffect(
+  createEffect(
     on(
-      () => store.currentMatches,
-      (matches) => {
+      () => [store.currentMatches, store.status] as const,
+      ([matches]) => {
         setMatches(([undefined!] as MatchesContextValue).concat(matches))
       },
     ),
