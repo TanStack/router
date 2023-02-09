@@ -102,7 +102,7 @@ function InvoiceView() {
         <Link
           search={(old) => ({
             ...old,
-            showNotes: old?.showNotes ? false : true,
+            showNotes: old?.showNotes ? undefined : true,
           })}
           class="text-blue-700"
         >

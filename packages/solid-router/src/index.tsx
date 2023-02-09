@@ -625,6 +625,7 @@ export function useSearch<
   return useStore(
     (match as any).__store,
     (s: any) => opts?.track?.(s?.search) ?? s?.search,
+    { removeMissingKeys: true },
   )
 }
 

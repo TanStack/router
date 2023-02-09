@@ -6,7 +6,7 @@ export function InvoiceFields(props: { invoice: Invoice; disabled?: boolean }) {
       <h2 class="font-bold text-lg">
         <input
           name="title"
-          value={props.invoice?.title}
+          value={props.invoice?.title || ''}
           placeholder="Invoice Title"
           class="border border-opacity-50 rounded p-2 w-full"
           disabled={props.disabled}
@@ -15,7 +15,7 @@ export function InvoiceFields(props: { invoice: Invoice; disabled?: boolean }) {
       <div>
         <textarea
           name="body"
-          value={props.invoice?.body}
+          value={props.invoice?.body || ''}
           rows={6}
           placeholder="Invoice Body..."
           class="border border-opacity-50 p-2 rounded w-full"
