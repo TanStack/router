@@ -382,7 +382,7 @@ The `navigate` function returned by `useNavigate` accepts the [`NavigateOptions`
 
 ## `Navigate` Component
 
-Occcasionally, you may find yourself needing to navigate immediately when a component mounts. Your first instinct might be to reach for `useNavigate` and an immediate side-effect (e.g. React.useEffect), but this is unnecessary. Instead, you can render the `Navigate` component to achieve the same result:
+Occasionally, you may find yourself needing to navigate immediately when a component mounts. Your first instinct might be to reach for `useNavigate` and an immediate side-effect (e.g. React.useEffect), but this is unnecessary. Instead, you can render the `Navigate` component to achieve the same result:
 
 ```tsx
 function Component() {

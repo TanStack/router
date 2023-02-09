@@ -22,7 +22,7 @@ Reality is very different from these assumptions though.
 
 ## Search Params, the "OG" State Manager
 
-You've probaby seen seach params like `?page=3` or `?filter-name=tanner` in the URL. There is no question that this is truly **a form of global state** living inside of the URL. It's valuable to store specific pieces of state in the URL because:
+You've probably seen search params like `?page=3` or `?filter-name=tanner` in the URL. There is no question that this is truly **a form of global state** living inside of the URL. It's valuable to store specific pieces of state in the URL because:
 
 - Users should be able to:
   - Cmd/Ctrl + Click to open a link in a new tab and reliably see the state they expected
@@ -162,7 +162,7 @@ Because `validateSearch` also accepts an object with the `parse` property, this 
 validateSearch: productSearchSchema
 ```
 
-In the above example, we used Zod's `.catch()` modifier instead of `.default()` to avoid showing an error to the user because we firmly believee that if a search parameter is malformed, you probably don't want to halt the user's experience through the app to show a big fat error message. That said, there may be times that you **do want to show an error message**. In that case, you can use `.default()` instead of `.catch()`.
+In the above example, we used Zod's `.catch()` modifier instead of `.default()` to avoid showing an error to the user because we firmly believe that if a search parameter is malformed, you probably don't want to halt the user's experience through the app to show a big fat error message. That said, there may be times that you **do want to show an error message**. In that case, you can use `.default()` instead of `.catch()`.
 
 The underlying mechanics why this works relies on the `validateSearch` function throwing an error. If an error is thrown, the route's `onValidateSearchError` and `onError` options will both be triggered and the `errorComponent` will be rendered instead of the route's `component` where you can handle the search param error however you'd like.
 

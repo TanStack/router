@@ -35,7 +35,7 @@ const rootRoute = new RootRoute({
 
 ## Routes
 
-Regular routes (which are all technically "child" routes of the root route) can be created by calling `new Route()`. In order to receive both type and runtime information from their parents, child routes must reference their parent route via the `getParentRoute` option. This may seem a little strage at first, but it free's up the route creation API significantly from the perils of circular imports and uninstantiated variables... long story short, it allows you to create your routes wherever you want, and whenever you want while still maintaining type-safety.
+Regular routes (which are all technically "child" routes of the root route) can be created by calling `new Route()`. In order to receive both type and runtime information from their parents, child routes must reference their parent route via the `getParentRoute` option. This may seem a little strange at first, but it free's up the route creation API significantly from the perils of circular imports and uninstantiated variables... long story short, it allows you to create your routes wherever you want, and whenever you want while still maintaining type-safety.
 
 ```ts
 let rootRoute = new RootRoute()
