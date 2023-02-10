@@ -84,18 +84,6 @@ export const packages: Package[] = [
     globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
   },
   {
-    name: '@tanstack/solid-router',
-    packageDir: 'solid-router',
-    srcDir: 'src',
-    jsName: 'SolidRouter',
-    entryFile: 'src/index.tsx',
-    globals: {
-      'solid-js/store': 'SolidStore',
-      'solid-js': 'Solid',
-      '@tanstack/router': 'RouterCore',
-    },
-  },
-  {
     name: '@tanstack/solid-store',
     packageDir: 'solid-store',
     srcDir: 'src',
@@ -123,6 +111,18 @@ export const packages: Package[] = [
     entryFile: 'src/index.tsx',
     globals: {
       'solid-js': 'Solid',
+    },
+  },
+  {
+    name: '@tanstack/solid-router',
+    packageDir: 'solid-router',
+    srcDir: 'src',
+    jsName: 'SolidRouter',
+    entryFile: 'src/index.tsx',
+    globals: {
+      'solid-js/store': 'SolidStore',
+      'solid-js': 'Solid',
+      '@tanstack/router': 'RouterCore',
     },
   },
   {
