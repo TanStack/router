@@ -669,7 +669,7 @@ export class Router<
               throw err
             }
 
-            firstBadMatchIndex = index
+            firstBadMatchIndex = firstBadMatchIndex ?? index
 
             const errorHandler = match.route.options.onBeforeLoadError ?? match.route.options.onError
             try {
