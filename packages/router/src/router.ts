@@ -654,24 +654,34 @@ export class Router<
     },
   ) => {
     // Check each match middleware to see if the route can be accessed
-    await Promise.all(
-      resolvedMatches.map(async (match) => {
-        try {
-          await match.route.options.beforeLoad?.({
-            router: this as any,
-            match,
-          })
-        } catch (err) {
-          if (!opts?.preload) {
-            match.route.options.onBeforeLoadError?.(err)
+    try {
+      await Promise.all(
+        resolvedMatches.map(async (match) => {
+          try {
+            await match.route.options.beforeLoad?.({
+              router: this as any,
+              match,
+            })
+          } catch (err) {
+            if (isRedirect(err)) {
+              throw err
+            }
+            const errorHandler = match.route.options.onBeforeLoadError ?? match.route.options.onError
+            errorHandler?.(err)
+            throw err
           }
-
-          match.route.options.onError?.(err)
-
-          throw err
+        }),
+      )
+    } catch (err) {
+      if (isRedirect(err)) {
+        if (!opts?.preload) {
+          this.navigate(err as any)
         }
-      }),
-    )
+        return
+      }
+
+      throw err
+    }
 
     const matchPromises = resolvedMatches.map(async (match, index) => {
       const parentMatch = resolvedMatches[index - 1]
