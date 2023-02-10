@@ -653,10 +653,12 @@ export class Router<
       // filter?: (match: RouteMatch<any, any>) => any
     },
   ) => {
+    let firstBadMatchIndex: number | undefined
+
     // Check each match middleware to see if the route can be accessed
     try {
       await Promise.all(
-        resolvedMatches.map(async (match) => {
+        resolvedMatches.map(async (match, index) => {
           try {
             await match.route.options.beforeLoad?.({
               router: this as any,
@@ -666,9 +668,32 @@ export class Router<
             if (isRedirect(err)) {
               throw err
             }
+
+            firstBadMatchIndex = index
+
             const errorHandler = match.route.options.onBeforeLoadError ?? match.route.options.onError
-            errorHandler?.(err)
-            throw err
+            try {
+              errorHandler?.(err)
+            } catch (errorHandlerErr) {
+              if (isRedirect(errorHandlerErr)) {
+                throw errorHandlerErr
+              }
+
+              match.__store.setState((s) => ({
+                ...s,
+                error: errorHandlerErr,
+                status: 'error',
+                updatedAt: Date.now(),
+              }))
+              return
+            }
+
+            match.__store.setState((s) => ({
+              ...s,
+              error: err,
+              status: 'error',
+              updatedAt: Date.now(),
+            }))
           }
         }),
       )
@@ -680,11 +705,12 @@ export class Router<
         return
       }
 
-      throw err
+      throw err // we should never end up here
     }
 
-    const matchPromises = resolvedMatches.map(async (match, index) => {
-      const parentMatch = resolvedMatches[index - 1]
+    const validResolvedMatches = resolvedMatches.slice(0, firstBadMatchIndex)
+    const matchPromises = validResolvedMatches.map(async (match, index) => {
+      const parentMatch = validResolvedMatches[index - 1]
 
       match.__load({ preload: opts?.preload, location, parentMatch })
 
