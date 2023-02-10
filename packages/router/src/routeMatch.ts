@@ -164,7 +164,8 @@ export class RouteMatch<
         throw err
       }
 
-      this.route.options.onValidateSearchError?.(err)
+      const errorHandler = this.route.options.onValidateSearchError ?? this.route.options.onError
+      errorHandler?.(err)
       const error = new (Error as any)('Invalid search params found', {
         cause: err,
       })
@@ -177,25 +178,30 @@ export class RouteMatch<
   #resolveInfo = (opts: { location: ParsedLocation }) => {
     const { search, routeSearch } = this.#resolveSearchInfo(opts)
 
-    const routeContext =
-      this.route.options.getContext?.({
-        parentContext: this.parentMatch?.routeContext ?? {},
-        context:
-          this.parentMatch?.context ?? this.router?.options.context ?? {},
-        params: this.params,
-        search,
-      }) || ({} as any)
+    try {
+      const routeContext =
+        this.route.options.getContext?.({
+          parentContext: this.parentMatch?.routeContext ?? {},
+          context:
+            this.parentMatch?.context ?? this.router?.options.context ?? {},
+          params: this.params,
+          search,
+        }) || ({} as any)
 
-    const context = {
-      ...(this.parentMatch?.context ?? this.router?.options.context),
-      ...routeContext,
-    } as any
-
-    return {
-      routeSearch,
-      search,
-      context,
-      routeContext,
+        const context = {
+          ...(this.parentMatch?.context ?? this.router?.options.context),
+          ...routeContext,
+        } as any
+    
+        return {
+          routeSearch,
+          search,
+          context,
+          routeContext,
+        }
+    } catch (err) {
+      this.route.options.onError?.(err)
+      throw err
     }
   }
 
@@ -212,11 +218,11 @@ export class RouteMatch<
       info = this.#resolveInfo(opts)
     } catch (err) {
       if (isRedirect(err)) {
-        this.router.navigate(err as any)
+        if (!opts?.preload) {
+          this.router.navigate(err as any)
+        }
         return
       }
-
-      this.route.options.onError?.(err)
 
       this.__store.setState((s) => ({
         ...s,
@@ -297,11 +303,32 @@ export class RouteMatch<
         }))
       } catch (err) {
         if (isRedirect(err)) {
-          this.router.navigate(err as any)
+          if (!opts?.preload) {
+            this.router.navigate(err as any)
+          }
           return
         }
-        this.route.options.onLoadError?.(err)
-        this.route.options.onError?.(err)
+
+        const errorHandler = this.route.options.onLoadError ?? this.route.options.onError
+        try {
+          errorHandler?.(err)
+        } catch (errorHandlerErr) {
+          if (isRedirect(errorHandlerErr)) {
+            if (!opts?.preload) {
+              this.router.navigate(errorHandlerErr as any)
+            }
+            return
+          }
+
+          this.__store.setState((s) => ({
+            ...s,
+            error: errorHandlerErr,
+            status: 'error',
+            updatedAt: Date.now(),
+          }))
+          return
+        }
+
         this.__store.setState((s) => ({
           ...s,
           error: err,
