@@ -81,18 +81,6 @@ export function last<T>(arr: T[]) {
   return arr[arr.length - 1]
 }
 
-export function warning(cond: any, message: string): cond is true {
-  if (cond) {
-    if (typeof console !== 'undefined') console.warn(message)
-
-    try {
-      throw new Error(message)
-    } catch {}
-  }
-
-  return true
-}
-
 function isFunction(d: any): d is Function {
   return typeof d === 'function'
 }
