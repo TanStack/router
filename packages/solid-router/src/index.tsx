@@ -46,7 +46,7 @@ import {
   useTransition,
 } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { Dynamic, untrack } from 'solid-js/web'
+import { untrack } from 'solid-js/web'
 
 export * from '@tanstack/router'
 export { useStore }
@@ -302,15 +302,10 @@ function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
   const router = useRouterContext()
 
   const PendingComponent = () =>
-    props.match.pendingComponent ??
-    router.options.defaultPendingComponent ??
-    SafeFragment
+    props.match.pendingComponent ?? router.options.defaultPendingComponent
 
-  const OutletErrorComponent = () =>
+  const OutletComponent = () =>
     props.match.errorComponent ?? router.options.defaultErrorComponent
-
-  const ResolvedCatchBoundary = () =>
-    OutletErrorComponent() ? CatchBoundary : SafeFragment
 
   return (
     <matchesContext.Provider value={props.matches.slice()}>
@@ -318,15 +313,16 @@ function SubOutlet(props: { matches: RouteMatch[]; match: RouteMatch }) {
         wrapInSuspense={props.match.route.options.wrapInSuspense ?? true}
         pendingComponent={PendingComponent() as any}
       >
-        <Dynamic
-          component={ResolvedCatchBoundary()}
-          errorComponent={OutletErrorComponent()}
-          onCatch={() => {
+        <ErrorBoundaryWrapper
+          boundaryComponent={
+            OutletComponent() ? (OutletComponent() as any) : undefined
+          }
+          onCatch={() =>
             warning(false, `Error in route match: ${props.match.id}`)
-          }}
+          }
         >
           {() => <Inner match={props.match} />}
-        </Dynamic>
+        </ErrorBoundaryWrapper>
       </SuspenseWrapper>
     </matchesContext.Provider>
   )
@@ -368,21 +364,38 @@ function Inner(props: { match: RouteMatch }) {
   )
 }
 
-function SafeFragment(props: any) {
-  return <>{props?.children}</>
-}
-
 function SuspenseWrapper(props: {
   wrapInSuspense: boolean
   children: JSXElement
-  pendingComponent: JSXElement
+  pendingComponent?: JSXElement
 }) {
   return (
     <Show when={props.wrapInSuspense} fallback={props.children}>
-      <Suspense fallback={props.pendingComponent}>
+      <Suspense
+        fallback={() => (
+          <Show when={props.pendingComponent}>{props.pendingComponent}</Show>
+        )}
+      >
         {/* Suspense is never resolving if there isn't a wrapping html element around it*/}
         <div id="suspense">{props.children}</div>
       </Suspense>
+    </Show>
+  )
+}
+
+function ErrorBoundaryWrapper(props: {
+  children: JSXElement
+  boundaryComponent?: (props: any) => JSXElement
+  onCatch: () => void
+}) {
+  return (
+    <Show when={props.boundaryComponent} fallback={props.children}>
+      <CatchBoundary
+        errorComponent={props.boundaryComponent}
+        onCatch={props.onCatch}
+      >
+        {() => props.children}
+      </CatchBoundary>
     </Show>
   )
 }
@@ -695,17 +708,19 @@ function CatchBoundary(props: {
         console.error(error)
         props.onCatch(error)
         return (
-          <CatchBoundaryInner
-            reset={reset}
-            errorState={{ error }}
-            errorComponent={props.errorComponent}
-          >
-            {(err: any) => props.children(err)}
-          </CatchBoundaryInner>
+          <div class="errorBoundary">
+            <CatchBoundaryInner
+              reset={reset}
+              errorState={{ error }}
+              errorComponent={props.errorComponent}
+            >
+              {(err: any) => props.children(err)}
+            </CatchBoundaryInner>
+          </div>
         )
       }}
     >
-      {props.children({})}
+      <div class="catchBoundary">{props.children({})}</div>
     </ErrorBoundary>
   )
 }
