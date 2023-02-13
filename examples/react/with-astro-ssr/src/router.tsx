@@ -13,17 +13,6 @@ export const router = new ReactRouter({
     loaderClient,
   },
   defaultPreload: 'intent',
-  onRouteChange: () => {
-    if (typeof window === 'undefined') return
-
-    const titleMatch = [...router.state.currentMatches]
-      .reverse()
-      .find((d) => d.routeContext?.getTitle)
-
-    const title = titleMatch?.context?.getTitle?.() ?? 'Astro + TanStack Router'
-
-    document.title = title
-  },
 })
 
 declare module '@tanstack/react-router' {

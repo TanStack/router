@@ -13,15 +13,19 @@
   "dependencies": {
     "@astrojs/netlify": "^1.2.1",
     "@astrojs/react": "^1.2.2",
-    "@tanstack/router": "0.0.1-beta.82",
-    "@tanstack/react-router": "0.0.1-beta.82",
     "@tanstack/react-loaders": "0.0.1-beta.81",
+    "@tanstack/react-router": "0.0.1-beta.82",
     "@tanstack/react-router-devtools": "0.0.1-beta.82",
+    "@tanstack/router": "0.0.1-beta.82",
     "astro": "^1.6.12",
+    "concurrently": "^7.6.0",
+    "jsesc": "^3.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "concurrently": "^7.6.0",
     "use-sync-external-store": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/jsesc": "^3.0.1"
   },
   "resolutions": {
     "use-sync-external-store": "1.2.0"
