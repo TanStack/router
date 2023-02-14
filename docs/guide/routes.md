@@ -49,7 +49,7 @@ const postRoute = new Route({ getParentRoute: () => blogRoute, path: '$slug' })
 Once all of your child routes have been created, a final route tree can be assembled using the `routeConfig.addChildren([...])` utility. This utility accepts an array of route definitions, and returns a final type-safe route tree.
 
 ```ts
-const routeConfig = rootRoute.addChildren([
+const routeTree = rootRoute.addChildren([
   indexRoute,
   blogRoute.addChildren([postRoute]),
 ])
@@ -60,7 +60,7 @@ const routeConfig = rootRoute.addChildren([
 Once you have a route tree, you can create a router using the framework `Router` class of your choice. For example, if you are using React, you would use call `new ReactRouter()`. Router classes take a route tree as one of their many options, and return a router instance.
 
 ```tsx
-const router = new ReactRouter({ routeConfig })
+const router = new ReactRouter({ routeTree })
 ```
 
 ## Registering Router Types
@@ -88,12 +88,12 @@ const indexRoute = new Route({ getParentRoute: () => rootRoute, path: '/' })
 const blogRoute = new Route({ getParentRoute: () => rootRoute, path: 'blog' })
 const postRoute = new Route({ getParentRoute: () => blogRoute, path: '$slug' })
 
-const routeConfig = rootRoute.addChildren([
+const routeTree = rootRoute.addChildren([
   indexRoute,
   blogRoute.addChildren([postRoute]),
 ])
 
-const router = new ReactRouter({ routeConfig })
+const router = new ReactRouter({ routeTree })
 
 declare module '@tanstack/react-router' {
   interface Register {
