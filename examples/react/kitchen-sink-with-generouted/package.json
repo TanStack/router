@@ -1,0 +1,30 @@
+{
+  "name": "tanstack-router-react-example-kitchen-sink-with-generouted",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --port=3000",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "pnpm dev"
+  },
+  "dependencies": {
+    "@generouted/tanstack-react-router": "^1.7.13",
+    "@tanstack/react-actions": "0.0.1-beta.81",
+    "@tanstack/react-loaders": "0.0.1-beta.81",
+    "@tanstack/react-router": "0.0.1-beta.82",
+    "axios": "^1.3.3",
+    "immer": "^9.0.19",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zod": "^3.20.6"
+  },
+  "devDependencies": {
+    "@tanstack/react-router-devtools": "0.0.1-beta.82",
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.10",
+    "@vitejs/plugin-react": "^3.1.0",
+    "prettier": "^2.8.4",
+    "vite": "^4.1.1"
+  }
+}
