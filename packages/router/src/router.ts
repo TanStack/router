@@ -1227,7 +1227,7 @@ export class Router<
     }
 
     const href = `${next.pathname}${next.searchStr}${
-      next.hash ? `#${next.hash}` : ''
+      next.hash ? `${next.hash}` : ''
     }`
 
     this.history[nextAction === 'push' ? 'push' : 'replace'](href, {
