@@ -4,12 +4,12 @@ import type { APIRoute, APIContext } from 'astro'
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
 import { PassThrough } from 'stream'
-import { ServerContext } from './components/Hydrate'
+import { ServerContext } from './Hydrate'
 
 // import { createRequestHandler } from '@tanstack/astro-react-router'
 export function createRequestHandler() {
   return async ({ request }: APIContext) => {
-    const App = await import('./components/App').then((m) => m.App)
+    const App = await import('./App').then((m) => m.App)
     const routeTree = await import('./routeTree').then((m) => m.routeTree)
     const createLoaderClient = await import('./loaderClient').then(
       (m) => m.createLoaderClient,
@@ -50,25 +50,11 @@ export function createRequestHandler() {
       </ServerContext>,
     )
 
-    console.log(html)
-
-    return new Response(
-      ReactDOMServer.renderToString(
-        <ServerContext
-          {...{
-            dehydratedRouter,
-            dehydratedLoaderClient,
-          }}
-        >
-          <App />
-        </ServerContext>,
-      ),
-      {
-        headers: {
-          'Content-Type': 'text/html',
-        },
+    return new Response(html, {
+      headers: {
+        'Content-Type': 'text/html',
       },
-    )
+    })
 
     // // Clever way to get the right callback. Thanks Remix!
     // // const callbackName = isbot(request.headers.get('user-agent'))

@@ -3,7 +3,6 @@ import { ParsePathParams } from './link'
 import { RouteMatch } from './routeMatch'
 import { AnyRouter, Router, RouterContext } from './router'
 import {
-  Expand,
   IsAny,
   NoInfer,
   PickRequired,
@@ -17,7 +16,6 @@ import { DefaultRoutesInfo } from './routeInfo'
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
 
-export type AnyLoaderData = {}
 export type AnyPathParams = {}
 export type AnySearchSchema = {}
 export type AnyContext = {}
@@ -104,10 +102,7 @@ export type RouteOptions<
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = TSearchSchema,
   TParentParams extends AnyPathParams = {},
-  TParams extends Record<ParsePathParams<TPath>, any> = Record<
-    ParsePathParams<TPath>,
-    string
-  >,
+  TParams = Record<ParsePathParams<TPath>, string>,
   TAllParams = TParams,
   TParentContext extends AnyContext = AnyContext,
   TAllParentContext extends AnyContext = AnyContext,
@@ -185,9 +180,9 @@ export type RouteOptions<
         // Parse params optionally receives path params as strings and returns them in a parsed format (like a number or boolean)
         parseParams?: (
           rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
-        ) => TParams extends Record<string, any>
+        ) => TParams extends Record<ParsePathParams<TPath>, any>
           ? TParams
-          : 'parseParams must return a Record<string, any>'
+          : 'parseParams must return an ojbect'
         stringifyParams?: (
           params: NoInfer<TParams>,
         ) => Record<ParsePathParams<TPath>, string>
@@ -198,7 +193,7 @@ export type RouteOptions<
       }
   ) &
   (PickUnsafe<TParentParams, ParsePathParams<TPath>> extends never // Detect if an existing path param is being redefined
-    ? {}
+    ? { test?: PickUnsafe<TParentParams, ParsePathParams<TPath>> }
     : 'Cannot redefined path params in child routes!')
 
 // The parse type here allows a zod schema to be passed directly to the validator

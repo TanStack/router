@@ -1,8 +1,8 @@
 import * as React from 'react'
 import { LoaderClientProvider } from '@tanstack/react-loaders'
 import { RouterProvider } from '@tanstack/react-router'
-import { loaderClient } from '../loaderClient'
-import { router } from '../router'
+import { loaderClient } from './loaderClient'
+import { router } from './router'
 import { Hydrate } from './Hydrate'
 
 export function App() {

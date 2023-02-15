@@ -1,4 +1,4 @@
 import type { APIRoute } from 'astro'
-import { createRequestHandler } from '../createRequestHandler'
+import { createRequestHandler } from '../app/createRequestHandler'
 
 export const all: APIRoute = createRequestHandler()

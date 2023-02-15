@@ -63,7 +63,7 @@ export function RouterScripts() {
         `,
         }}
       />
-      <script type="module" src="src/entry-client.tsx" />
+      <script type="module" src="/src/app/entry-client.tsx" />
     </>
   )
 }
@@ -73,25 +73,20 @@ export function Hydrate(props: {
   router: Router<any>
   children: any
 }) {
+  // Server hydrates from context
+  let ctx = React.useContext(hydrationContext)
+
   React.useState(() => {
     // Client hydrates from window
     if (typeof document !== 'undefined') {
-      const { dehydratedRouter, dehydratedLoaderClient } =
-        window.__DEHYDRATED__ || {}
+      ctx = window.__DEHYDRATED__ || {}
+    }
 
-      if (dehydratedRouter && dehydratedLoaderClient) {
-        props.loaderClient.hydrate(dehydratedLoaderClient)
-        props.router.hydrate(dehydratedRouter)
-      }
-    } else {
-      // Server hydrates from context
-      const { dehydratedRouter, dehydratedLoaderClient } =
-        React.useContext(hydrationContext)
+    const { dehydratedRouter, dehydratedLoaderClient } = ctx
 
-      if (dehydratedRouter && dehydratedLoaderClient) {
-        props.loaderClient.hydrate(dehydratedLoaderClient)
-        props.router.hydrate(dehydratedRouter)
-      }
+    if (dehydratedRouter && dehydratedLoaderClient) {
+      props.loaderClient.hydrate(dehydratedLoaderClient)
+      props.router.hydrate(dehydratedRouter)
     }
   })
 

@@ -41,7 +41,7 @@
       "@tanstack/solid-router": "workspace:*",
       "@tanstack/solid-store": "workspace:*",
       "@tanstack/solid-loaders": "workspace:*",
-      "@tanstack/solid-actions": "workspace:*",
+      "@tanstack/solid-actions": "workspace:*"
     }
   },
   "devDependencies": {

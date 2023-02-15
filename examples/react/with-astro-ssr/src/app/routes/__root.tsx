@@ -8,11 +8,11 @@ import {
 } from '@tanstack/react-router'
 
 import type { RouterContext } from '../router'
-import { RouterScripts } from '../components/Hydrate'
+import { RouterScripts } from '../Hydrate'
 
 export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
   component: Root,
-  wrapInSuspense: false,
+  // wrapInSuspense: false,
   errorComponent: ({ error }) => <ErrorComponent error={error} />,
 })
 
@@ -55,7 +55,7 @@ function Root() {
         </div>
         <hr />
         <Outlet /> {/* Start rendering router matches */}
-        {/* <TanStackRouterDevtools position="bottom-right" /> */}
+        <TanStackRouterDevtools position="bottom-right" />
         <RouterScripts />
       </body>
     </html>
