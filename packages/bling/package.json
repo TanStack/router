@@ -17,10 +17,12 @@
     ".": "./src/index.ts",
     "./server": {
       "browser": "./server/browser.ts",
+      "import": "./server/server.ts",
       "node": "./server/server.ts",
       "default": "./server/server.ts",
       "types": "./server/server.ts"
     },
+    "./server/*": "./server/*",
     "./babel": {
       "import": "./src/babel.js"
     },

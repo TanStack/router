@@ -1,7 +1,7 @@
 import { createMemoryHistory, Router } from '@tanstack/router'
 import type { APIContext } from 'astro'
 import ReactDOMServer from 'react-dom/server'
-import { handleEvent, server$ } from '@tanstack/bling/server'
+import { handleEvent, server$ } from '@tanstack/bling/server/server'
 import { ServerContext } from './Hydrate'
 
 server$.addDeserializer({

@@ -7,6 +7,9 @@ import bling from '@tanstack/bling/vite'
 export default defineConfig({
   output: 'server',
   adapter: netlify(),
+  vite: {
+    plugins: [bling(), inspect()],
+  },
   integrations: [react(), tsr()],
 })
 
@@ -25,8 +28,6 @@ function tsr() {
                   return addRollupInput(opts, ['src/app/entry-client.tsx'])
                 },
               },
-              bling(),
-              inspect(),
             ],
           },
         })
