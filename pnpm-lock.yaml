@@ -523,13 +523,10 @@ importers:
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^3.1.0
       astro: ^1.6.12
-      bling: ^0.12.3
       concurrently: ^7.6.0
-      jsesc: ^3.0.2
       react: ^18.2.0
       react-dom: ^18.2.0
       use-sync-external-store: ^1.2.0
-      vite-plugin-inspect: ^0.7.15
       vite-plugin-react: ^4.0.1
     dependencies:
       '@astrojs/netlify': 1.2.1
@@ -542,13 +539,10 @@ importers:
       '@tanstack/start': link:../../../packages/start
       '@vitejs/plugin-react': 3.1.0
       astro: 1.6.12
-      bling: 0.12.3
       concurrently: 7.6.0
-      jsesc: 3.0.2
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
       use-sync-external-store: 1.2.0_react@18.2.0
-      vite-plugin-inspect: 0.7.15
       vite-plugin-react: 4.0.1
     devDependencies:
       '@types/jsesc': 3.0.1
@@ -968,10 +962,6 @@ packages:
     dependencies:
       '@jridgewell/gen-mapping': 0.1.1
       '@jridgewell/trace-mapping': 0.3.17
-
-  /@antfu/utils/0.7.2:
-    resolution: {integrity: sha512-vy9fM3pIxZmX07dL+VX1aZe7ynZ+YyB0jY+jE6r3hOK6GNY2t6W8rzpFC4tgpbXUYABkFQwgJq2XYXlxbXAI0g==}
-    dev: false
 
   /@astrojs/compiler/0.29.18:
     resolution: {integrity: sha512-45WhB74a/Eb/3iMJPjDXHs8r0S6NuPi3maVNLWnuW3CDmkUcJGMFPXP+qH1Xn0YDNkzk7Lt9Kw529heFPMMbZA==}
@@ -3752,6 +3742,7 @@ packages:
       '@types/estree': 1.0.0
       estree-walker: 2.0.2
       picomatch: 2.3.1
+    dev: true
 
   /@rollup/pluginutils/5.0.2_rollup@2.79.1:
     resolution: {integrity: sha512-pTd9rIsP92h+B6wWwFbW8RkZv4hiR/xKsqre4SIuAOaOEQRxi0lqLke9k2/7WegC85GgUs9pjmOjCUi3In4vwA==}
@@ -4794,10 +4785,6 @@ packages:
       buffer: 6.0.3
       inherits: 2.0.4
       readable-stream: 3.6.0
-
-  /bling/0.12.3:
-    resolution: {integrity: sha512-fMDPqg8vDwZ7v+jsecxJPQELv9RkUAEUtlPa5jfmfLafQt6Ob75KKmvcu56LjAaB6n6dGDAUgqlFcy4xIvWqNg==}
-    dev: false
 
   /body-parser/1.20.1:
     resolution: {integrity: sha512-jWi7abTbYwajOytWCQc37VulmWiRae5RyTpaCyDcS5/lMdtwSz5lOpDE67srw/HYe35f1z3fDQw+3txg7gNtWw==}
@@ -6522,15 +6509,6 @@ packages:
       universalify: 2.0.0
     dev: false
 
-  /fs-extra/11.1.0:
-    resolution: {integrity: sha512-0rcTq621PD5jM/e0a3EJoGC/1TC5ZBCERW82LQuwfGnCa1V8w7dpYH1yNu+SLb6E5dkeCBzKEyLGlFrnr+dUyw==}
-    engines: {node: '>=14.14'}
-    dependencies:
-      graceful-fs: 4.2.10
-      jsonfile: 6.1.0
-      universalify: 2.0.0
-    dev: false
-
   /fs-extra/8.1.0:
     resolution: {integrity: sha512-yhlQgA6mnOJUKOsRUFsgJdQCvkKhcz8tlZG5HBQfReYZy46OwLcY+Zia0mtdHsOo9y/hP+CxMN0TU9QxoOtG4g==}
     engines: {node: '>=6 <7 || >=8'}
@@ -7642,10 +7620,6 @@ packages:
   /kleur/4.1.5:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
-
-  /kolorist/1.7.0:
-    resolution: {integrity: sha512-ymToLHqL02udwVdbkowNpzjFd6UzozMtshPQKVi5k1EjKRqKqBrOnE9QbLEb0/pV76SAiIT13hdL8R6suc+f3g==}
-    dev: false
 
   /lerna/4.0.0:
     resolution: {integrity: sha512-DD/i1znurfOmNJb0OBw66NmNqiM8kF6uIrzrJ0wGE3VNdzeOhz9ziWLYiRaZDGGwgbcjOo6eIfcx9O5Qynz+kg==}
@@ -11320,24 +11294,6 @@ packages:
       '@babel/core': 7.20.5
       vite: 3.2.4
     dev: true
-
-  /vite-plugin-inspect/0.7.15:
-    resolution: {integrity: sha512-oxeZCljacA/slhGFbDNlBqdhDU9fgdHL84i7Nz7DnaAIE7DhTiW2djanw3d/BKuZtduKUY82vRUQ4iaG917t2A==}
-    engines: {node: '>=14'}
-    peerDependencies:
-      vite: ^3.1.0 || ^4.0.0
-    dependencies:
-      '@antfu/utils': 0.7.2
-      '@rollup/pluginutils': 5.0.2
-      debug: 4.3.4
-      fs-extra: 11.1.0
-      kolorist: 1.7.0
-      sirv: 2.0.2
-      ufo: 1.0.1
-    transitivePeerDependencies:
-      - rollup
-      - supports-color
-    dev: false
 
   /vite-plugin-react/4.0.1:
     resolution: {integrity: sha512-liDo/wxTcy2E5cptwsAUZIC0F4flxWkmcPOJdhKCzJIC9XguWCCJimzziTQRmHuqIPawmQNE8PJb8+RlGzNxOA==}

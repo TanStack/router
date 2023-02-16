@@ -285,7 +285,6 @@ server$.getHandler = function (route) {
 }
 
 server$.hasHandler = function (route) {
-  console.log(handlers)
   return handlers.has(route)
 }
 

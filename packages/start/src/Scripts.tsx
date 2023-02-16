@@ -1,5 +1,5 @@
 import * as React from 'react'
-import jsesc from 'jsesc'
+// import jsesc from 'jsesc'
 import { hydrationContext } from './Hydrate'
 
 export function Scripts() {
@@ -12,19 +12,18 @@ export function Scripts() {
         suppressHydrationWarning
         dangerouslySetInnerHTML={{
           __html: `
-          window.__DEHYDRATED__ = JSON.parse(
-            ${jsesc(
-              JSON.stringify({
-                dehydratedRouter,
-                dehydratedLoaderClient,
-              }),
-              {
-                isScriptContext: true,
-                quotes: 'single',
-                json: true,
-              },
-            )}
-          )
+          window.__DEHYDRATED__ = 
+           ${
+             JSON.stringify({
+               dehydratedRouter,
+               dehydratedLoaderClient,
+             })
+             // {
+             //   isScriptContext: true,
+             //   quotes: 'single',
+             //   json: true,
+             // },
+           }
         `,
         }}
       />
