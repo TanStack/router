@@ -66,6 +66,16 @@ export const packages: Package[] = [
     },
   },
   {
+    name: '@tanstack/react-router',
+    packageDir: 'react-router',
+    srcDir: 'src',
+    jsName: 'ReactRouter',
+    entryFile: 'src/index.tsx',
+    globals: {
+      react: 'React',
+    },
+  },
+  {
     name: '@tanstack/react-router-devtools',
     packageDir: 'react-router-devtools',
     srcDir: 'src',
