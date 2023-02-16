@@ -1,6 +1,6 @@
 import type { RegisteredLoaderClient } from '@tanstack/react-loaders'
 import { ReactRouter } from '@tanstack/react-router'
-import { loaderClient } from './loaderClient'
+import { loaderClient } from '../../../examples/react/with-astro-ssr/src/.start/loaders'
 import { routeTree } from './routeTree'
 
 export interface RouterContext {

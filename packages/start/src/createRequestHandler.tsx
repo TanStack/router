@@ -3,21 +3,11 @@ import type { APIContext } from 'astro'
 import ReactDOMServer from 'react-dom/server'
 import { handleEvent, server$ } from '@tanstack/bling/server/server'
 import { ServerContext } from './Hydrate'
+import * as React from 'react'
+import { StartServer } from './StartServer'
 
-server$.addDeserializer({
-  apply: (e) => e.$type === 'loaderClient',
-  deserialize: (e, event) => event.locals.$loaderClient,
-})
-
-// import { createRequestHandler } from '@tanstack/astro-react-router'
-export function createRequestHandler() {
+export function createRequestHandler({ routeTree, createLoaderClient }) {
   return async ({ request }: APIContext) => {
-    const App = await import('./App').then((m) => m.App)
-    const routeTree = await import('./routeTree').then((m) => m.routeTree)
-    const createLoaderClient = await import('./loaderClient').then(
-      (m) => m.createLoaderClient,
-    )
-
     const fullUrl = new URL(request.url)
     const url = request.url.replace(fullUrl.origin, '')
 
@@ -60,7 +50,7 @@ export function createRequestHandler() {
           dehydratedLoaderClient,
         }}
       >
-        <App />
+        <StartServer loaderClient={loaderClient} routeTree={routeTree} />
       </ServerContext>,
     )
 

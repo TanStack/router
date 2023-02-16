@@ -44,7 +44,7 @@ export function bling(options = {}) {
 
       let ssr = process.env.TEST_ENV === 'client' ? false : isSsr
 
-      if (code.includes('server$')) {
+      if (code.includes('server$(')) {
         return babelSolidCompiler(
           code,
           id.replace(/\.ts$/, '.tsx').replace(/\.js$/, '.jsx'),

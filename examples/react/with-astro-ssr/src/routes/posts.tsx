@@ -1,5 +1,5 @@
 import { Link, Outlet, Route } from '@tanstack/react-router'
-import { rootRoute } from './__root'
+import { rootRoute } from '../root'
 
 import { useLoaderInstance } from '@tanstack/react-loaders'
 import { postIdRoute } from './posts/$postId'

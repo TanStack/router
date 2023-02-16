@@ -4,7 +4,6 @@ import type {
   LoaderClient,
 } from '@tanstack/react-loaders'
 import type { DehydratedRouter, Router } from '@tanstack/router'
-import jsesc from 'jsesc'
 
 declare global {
   interface Window {
@@ -15,7 +14,7 @@ declare global {
   }
 }
 
-const hydrationContext = React.createContext<{
+export const hydrationContext = React.createContext<{
   dehydratedRouter?: DehydratedRouter
   dehydratedLoaderClient?: DehydratedLoaderClient
 }>({})
@@ -34,37 +33,6 @@ export function ServerContext(props: {
     >
       {props.children}
     </hydrationContext.Provider>
-  )
-}
-
-export function RouterScripts() {
-  const { dehydratedRouter, dehydratedLoaderClient } =
-    React.useContext(hydrationContext)
-
-  return (
-    <>
-      <script
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{
-          __html: `
-          window.__DEHYDRATED__ = JSON.parse(
-            ${jsesc(
-              JSON.stringify({
-                dehydratedRouter,
-                dehydratedLoaderClient,
-              }),
-              {
-                isScriptContext: true,
-                quotes: 'single',
-                json: true,
-              },
-            )}
-          )
-        `,
-        }}
-      />
-      <script type="module" src="/src/app/entry-client.tsx" />
-    </>
   )
 }
 
