@@ -1,10 +1,13 @@
-import type { DehydratedLoaderClient } from '@tanstack/react-loaders'
-import { createMemoryHistory, DehydratedRouter, Router } from '@tanstack/router'
-import type { APIRoute, APIContext } from 'astro'
-import * as React from 'react'
+import { createMemoryHistory, Router } from '@tanstack/router'
+import type { APIContext } from 'astro'
 import ReactDOMServer from 'react-dom/server'
-import { PassThrough } from 'stream'
+import { handleEvent, server$ } from '@tanstack/bling/server'
 import { ServerContext } from './Hydrate'
+
+server$.addDeserializer({
+  apply: (e) => e.$type === 'loaderClient',
+  deserialize: (e, event) => event.locals.$loaderClient,
+})
 
 // import { createRequestHandler } from '@tanstack/astro-react-router'
 export function createRequestHandler() {
@@ -18,13 +21,24 @@ export function createRequestHandler() {
     const fullUrl = new URL(request.url)
     const url = request.url.replace(fullUrl.origin, '')
 
+    const loaderClient = createLoaderClient()
+
+    if (server$.hasHandler(fullUrl.pathname)) {
+      return await handleEvent({
+        request,
+        env: {},
+        locals: {
+          $loaderClient: loaderClient,
+          $abortSignal: new AbortController().signal,
+        },
+      })
+    }
+
     console.log('Rendering: ', url, '...')
 
     const history = createMemoryHistory({
       initialEntries: [url],
     })
-
-    const loaderClient = createLoaderClient()
 
     const router = new Router({
       history,

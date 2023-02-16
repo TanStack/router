@@ -1,4 +1,5 @@
 import { Loader, LoaderClient } from '@tanstack/react-loaders'
+import { server$ } from '@tanstack/bling/server'
 
 export type PostType = {
   id: string
@@ -10,7 +11,7 @@ export type PostType = {
 export const createLoaderClient = () => {
   const postsLoader = new Loader({
     key: 'posts',
-    loader: async () => {
+    loader: server$(async () => {
       console.log('Fetching posts...')
       await new Promise((r) =>
         setTimeout(r, 300 + Math.round(Math.random() * 300)),
@@ -18,13 +19,13 @@ export const createLoaderClient = () => {
       return fetch('https://jsonplaceholder.typicode.com/posts')
         .then((d) => d.json() as Promise<PostType[]>)
         .then((d) => d.slice(0, 10))
-    },
+    }),
   })
 
   const postLoader = new Loader({
     key: 'post',
     maxAge: 5000,
-    loader: async (postId: string) => {
+    loader: server$(async (postId: string) => {
       console.log(`Fetching post with id ${postId}...`)
 
       await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
@@ -32,7 +33,7 @@ export const createLoaderClient = () => {
       return fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`).then(
         (r) => r.json() as Promise<PostType>,
       )
-    },
+    }),
     onAllInvalidate: async () => {
       await postsLoader.invalidateAll()
     },

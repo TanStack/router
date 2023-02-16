@@ -13,16 +13,21 @@
   "dependencies": {
     "@astrojs/netlify": "^1.2.1",
     "@astrojs/react": "^1.2.2",
+    "@tanstack/bling": "workspace:^0.2.19",
     "@tanstack/react-loaders": "0.0.1-beta.81",
     "@tanstack/react-router": "0.0.1-beta.82",
     "@tanstack/react-router-devtools": "0.0.1-beta.82",
     "@tanstack/router": "0.0.1-beta.82",
+    "@vitejs/plugin-react": "^3.1.0",
     "astro": "^1.6.12",
+    "bling": "^0.12.3",
     "concurrently": "^7.6.0",
     "jsesc": "^3.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "use-sync-external-store": "^1.2.0"
+    "use-sync-external-store": "^1.2.0",
+    "vite-plugin-inspect": "^0.7.15",
+    "vite-plugin-react": "^4.0.1"
   },
   "devDependencies": {
     "@types/jsesc": "^3.0.1"
