@@ -5,5 +5,5 @@
     "outDir": "./build/types"
   },
   "files": ["src/index.ts"],
-  "include": ["src", "server/browser.ts"]
+  "include": ["src"]
 }

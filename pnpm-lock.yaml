@@ -513,13 +513,14 @@ importers:
   examples/react/with-astro-ssr:
     specifiers:
       '@astrojs/netlify': ^1.2.1
+      '@astrojs/node': ^5.0.3
       '@astrojs/react': ^1.2.2
       '@tanstack/bling': workspace:^0.2.19
       '@tanstack/react-loaders': workspace:*
       '@tanstack/react-router': workspace:*
       '@tanstack/react-router-devtools': workspace:*
+      '@tanstack/react-start': workspace:*
       '@tanstack/router': workspace:*
-      '@tanstack/start': workspace:*
       '@types/jsesc': ^3.0.1
       '@vitejs/plugin-react': ^3.1.0
       astro: ^1.6.12
@@ -530,13 +531,14 @@ importers:
       vite-plugin-react: ^4.0.1
     dependencies:
       '@astrojs/netlify': 1.2.1
+      '@astrojs/node': 5.0.3_astro@1.6.12
       '@astrojs/react': 1.2.2_biqbaboplfbrettd7655fr4n2y
       '@tanstack/bling': link:../../../packages/bling
       '@tanstack/react-loaders': link:../../../packages/react-loaders
       '@tanstack/react-router': link:../../../packages/react-router
       '@tanstack/react-router-devtools': link:../../../packages/react-router-devtools
+      '@tanstack/react-start': link:../../../packages/react-start
       '@tanstack/router': link:../../../packages/router
-      '@tanstack/start': link:../../../packages/start
       '@vitejs/plugin-react': 3.1.0
       astro: 1.6.12
       concurrently: 7.6.0
@@ -811,6 +813,31 @@ importers:
       '@tanstack/react-router': link:../react-router
       date-fns: 2.29.3
 
+  packages/react-start:
+    specifiers:
+      '@babel/runtime': ^7.16.7
+      '@tanstack/bling': workspace:^0.2.19
+      '@tanstack/react-loaders': workspace:*
+      '@tanstack/react-router': workspace:*
+      '@tanstack/router': workspace:*
+      '@tanstack/store': workspace:*
+      astro: ^1.6.12
+      jsesc: ^3.0.2
+      tiny-invariant: ^1.3.1
+      tiny-warning: ^1.0.3
+    dependencies:
+      '@babel/runtime': 7.20.6
+      '@tanstack/bling': link:../bling
+      '@tanstack/react-loaders': link:../react-loaders
+      '@tanstack/react-router': link:../react-router
+      '@tanstack/router': link:../router
+      '@tanstack/store': link:../store
+      jsesc: 3.0.2
+      tiny-invariant: 1.3.1
+      tiny-warning: 1.0.3
+    devDependencies:
+      astro: 1.6.12
+
   packages/react-store:
     specifiers:
       '@tanstack/store': workspace:*
@@ -926,31 +953,6 @@ importers:
     devDependencies:
       '@types/use-sync-external-store': 0.0.3
 
-  packages/start:
-    specifiers:
-      '@babel/runtime': ^7.16.7
-      '@tanstack/bling': workspace:^0.2.19
-      '@tanstack/react-loaders': workspace:*
-      '@tanstack/react-router': workspace:*
-      '@tanstack/router': workspace:*
-      '@tanstack/store': workspace:*
-      astro: ^1.6.12
-      jsesc: ^3.0.2
-      tiny-invariant: ^1.3.1
-      tiny-warning: ^1.0.3
-    dependencies:
-      '@babel/runtime': 7.20.6
-      '@tanstack/bling': link:../bling
-      '@tanstack/react-loaders': link:../react-loaders
-      '@tanstack/react-router': link:../react-router
-      '@tanstack/router': link:../router
-      '@tanstack/store': link:../store
-      jsesc: 3.0.2
-      tiny-invariant: 1.3.1
-      tiny-warning: 1.0.3
-    devDependencies:
-      astro: 1.6.12
-
   packages/store:
     specifiers: {}
 
@@ -1033,6 +1035,19 @@ packages:
       esbuild: 0.14.54
     dev: false
 
+  /@astrojs/node/5.0.3_astro@1.6.12:
+    resolution: {integrity: sha512-zjyTE7ZWkwmJGbg1r7lOQJqRREqDV+yu2Qb4VTiJ8zek9ts4JD3syKRXXJxf9W2lhtIOMbukDmupIa+0Hkxq/w==}
+    peerDependencies:
+      astro: ^2.0.6
+    dependencies:
+      '@astrojs/webapi': 2.0.0
+      astro: 1.6.12
+      send: 0.18.0
+      server-destroy: 1.0.1
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
   /@astrojs/prism/1.0.2:
     resolution: {integrity: sha512-o3cUVoAuALDqdN5puNlsN2eO4Yi1kDh68YO8V7o6U4Ts+J/mMayzlJ7JsgYAmob0xrf/XnADVgu8khfMv/w3uA==}
     engines: {node: ^14.18.0 || >=16.12.0}
@@ -1076,6 +1091,12 @@ packages:
     dependencies:
       global-agent: 3.0.0
       node-fetch: 3.3.0
+
+  /@astrojs/webapi/2.0.0:
+    resolution: {integrity: sha512-gziwy+XvY+/B9mq/eurgJMZ4iFnkcqg1wb0tA8BsVfiUPwl7yQKAFrBxrs2rWfKMXyWlVaTFc8rAYcB5VXQEuw==}
+    dependencies:
+      undici: 5.19.1
+    dev: false
 
   /@babel/code-frame/7.18.6:
     resolution: {integrity: sha512-TDCmlK5eOvH+eH7cdAFlNXeVJqWIQ7gW9tY1GJIpUtFb6CmjVyq2VM3u71bOyR8CRihcCgMUYoDNyLXao3+70Q==}
@@ -4873,6 +4894,13 @@ packages:
   /builtins/1.0.3:
     resolution: {integrity: sha512-uYBjakWipfaO/bXI7E8rq6kpwHRZK5cNYrUv2OzZSI/FvmdMyXJ2tG9dKcjEC5YHmHpUAwsargWIZNWdxb/bnQ==}
     dev: true
+
+  /busboy/1.6.0:
+    resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
+    engines: {node: '>=10.16.0'}
+    dependencies:
+      streamsearch: 1.1.0
+    dev: false
 
   /byline/5.0.0:
     resolution: {integrity: sha512-s6webAy+R4SR8XVuJWt2V2rGvhnrhxN+9S15GNuTK3wKPOXFF6RNc+8ug2XhH+2s4f+uudG4kUVYmYOQWL2g0Q==}
@@ -10129,6 +10157,10 @@ packages:
     transitivePeerDependencies:
       - supports-color
 
+  /server-destroy/1.0.1:
+    resolution: {integrity: sha512-rb+9B5YBIEzYcD6x2VKidaa+cqYBJQKnU4oe4E3ANwRRN56yk/ua1YCJT1n21NTS8w6CcOclAKNP3PhdCXKYtQ==}
+    dev: false
+
   /set-blocking/2.0.0:
     resolution: {integrity: sha512-KiKBS8AnWGEyLzofFfmvKwpdPzqiy16LvQfK3yv/fVH7Bj13/wl3JSR1J+rfgRE9q7xUJK4qvgS8raSOeLUehw==}
     dev: true
@@ -10448,6 +10480,11 @@ packages:
     dependencies:
       any-promise: 1.3.0
     dev: true
+
+  /streamsearch/1.1.0:
+    resolution: {integrity: sha512-Mcc5wHehp9aXz1ax6bZUyY5afg9u2rv5cqQI3mRrYkGC8rW2hM02jWuwjtL++LS5qinSyhj2QfLyNsuc+VsExg==}
+    engines: {node: '>=10.0.0'}
+    dev: false
 
   /strict-uri-encode/2.0.0:
     resolution: {integrity: sha512-QwiXZgpRcKkhTj2Scnn++4PKtWsH0kpzZ62L2R6c/LUVYv7hVnZqcg2+sMuT6R7Jusu1vviK/MFsu6kNJfWlEQ==}
@@ -11011,6 +11048,13 @@ packages:
 
   /undefsafe/2.0.5:
     resolution: {integrity: sha512-WxONCrssBM8TSPRqN5EmsjVrsv4A8X12J4ArBiiayv3DyyG3ZlIg6yysuuSYdZsVz3TKcTg2fd//Ujd4CHV1iA==}
+    dev: false
+
+  /undici/5.19.1:
+    resolution: {integrity: sha512-YiZ61LPIgY73E7syxCDxxa3LV2yl3sN8spnIuTct60boiiRaE1J8mNWHO8Im2Zi/sFrPusjLlmRPrsyraSqX6A==}
+    engines: {node: '>=12.18'}
+    dependencies:
+      busboy: 1.6.0
     dev: false
 
   /unherit/3.0.1:

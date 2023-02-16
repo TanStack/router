@@ -6,7 +6,8 @@
   },
   "files": ["src/index.tsx"],
   "include": [
-    "src"
-    //  "__tests__/**/*.test.*"
-  ]
+    "src",
+    "client.ts", //  "__tests__/**/*.test.*"
+    "server.ts"
+, "astro-start.js"  ]
 }

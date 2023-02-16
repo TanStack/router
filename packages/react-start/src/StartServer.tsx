@@ -1,5 +1,9 @@
-import { LoaderClientProvider, LoaderInstance } from '@tanstack/react-loaders'
-import { ReactRouter, RouterProvider } from '@tanstack/react-router'
+import {
+  LoaderClient,
+  LoaderClientProvider,
+  LoaderInstance,
+} from '@tanstack/react-loaders'
+import { AnyRoute, ReactRouter, RouterProvider } from '@tanstack/react-router'
 import { Hydrate } from './Hydrate'
 import { server$ } from '@tanstack/bling/server'
 import * as React from 'react'
@@ -9,7 +13,16 @@ server$.addDeserializer({
   deserialize: (e, event) => event.locals.$loaderClient,
 })
 
-export function StartServer({ loaderClient, routeTree }) {
+export function StartServer<
+  TLoaderClient extends LoaderClient<any>,
+  TRouteTree extends AnyRoute,
+>({
+  loaderClient,
+  routeTree,
+}: {
+  loaderClient: TLoaderClient
+  routeTree: TRouteTree
+}) {
   const router = React.useMemo(
     () =>
       new ReactRouter({
@@ -23,7 +36,7 @@ export function StartServer({ loaderClient, routeTree }) {
   )
 
   return (
-    <Hydrate loaderClient={loaderClient} router={router}>
+    <Hydrate loaderClient={loaderClient} router={router as any}>
       <LoaderClientProvider loaderClient={loaderClient}>
         <RouterProvider router={router} />
       </LoaderClientProvider>

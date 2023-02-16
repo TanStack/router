@@ -1,12 +1,22 @@
-import { createMemoryHistory, Router } from '@tanstack/router'
+import { AnyRoute, createMemoryHistory, Router } from '@tanstack/router'
 import type { APIContext } from 'astro'
 import ReactDOMServer from 'react-dom/server'
 import { handleEvent, server$ } from '@tanstack/bling/server/server'
 import { ServerContext } from './Hydrate'
 import * as React from 'react'
 import { StartServer } from './StartServer'
+import { LoaderClient } from 'packages/loaders/build/types'
 
-export function createRequestHandler({ routeTree, createLoaderClient }) {
+export function createRequestHandler<
+  TRouteTree extends AnyRoute,
+  TLoaderClient extends LoaderClient,
+>({
+  routeTree,
+  createLoaderClient,
+}: {
+  routeTree: TRouteTree
+  createLoaderClient: () => TLoaderClient
+}) {
   return async ({ request }: APIContext) => {
     const fullUrl = new URL(request.url)
     const url = request.url.replace(fullUrl.origin, '')

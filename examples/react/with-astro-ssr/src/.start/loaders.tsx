@@ -1,10 +1,10 @@
 import { LoaderClient } from '@tanstack/react-loaders'
-import { postsLoader, postLoader } from '../loaders/posts'
+import * as loaders from '../loaders/posts'
 
 // This function is used on the server and client
 export const createLoaderClient = () => {
   return new LoaderClient({
-    getLoaders: () => [postsLoader, postLoader],
+    getLoaders: () => [...Object.values(loaders)],
   })
 }
 

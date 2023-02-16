@@ -1,8 +1,3 @@
-import { createRequestHandler } from '@tanstack/start/server'
-import { createLoaderClient } from './.start/loaders'
-import { routeTree } from './.start/routes'
+import { createAstroHandler } from './.start/server'
 
-export const all = createRequestHandler({
-  routeTree,
-  createLoaderClient,
-})
+export const all = createAstroHandler()

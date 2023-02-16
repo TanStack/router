@@ -7,8 +7,8 @@ import {
   useRouter,
 } from '@tanstack/react-router'
 
-import type { RouterContext } from '@tanstack/start'
-import { Scripts } from '@tanstack/start'
+import type { RouterContext } from '@tanstack/react-start'
+import { Scripts } from '@tanstack/react-start'
 
 export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
   component: Root,

@@ -1,67 +1,10 @@
 import * as adapter from '@astrojs/netlify/netlify-functions.js';
+import * as React from 'react';
 import React__default, { createElement } from 'react';
 import ReactDOM from 'react-dom/server';
-import { r as renderElement, m as markHTMLString, A as AstroJSX, d as renderJSX, e as createVNode, g as createComponent, h as renderTemplate, _ as __astro_tag_component__, j as createMemoryHistory, R as Router, k as ServerContext } from './chunks/Hydrate.f13f5eaa.mjs';
+import { A as AstroJSX, d as renderJSX, e as createVNode, s as server$, R as ReactRouter, H as Hydrate, a as LoaderClientProvider, b as RouterProvider, _ as __astro_tag_component__, h as handleEvent, f as createMemoryHistory, g as Router, S as ServerContext, r as routeTree, c as createLoaderClient } from './chunks/routes.40fb30ff.mjs';
 import { jsx } from 'react/jsx-runtime';
-import 'jsesc';
-
-const ASTRO_VERSION = "1.6.12";
-
-function createDeprecatedFetchContentFn() {
-  return () => {
-    throw new Error("Deprecated: Astro.fetchContent() has been replaced with Astro.glob().");
-  };
-}
-function createAstroGlobFn() {
-  const globHandler = (importMetaGlobResult, globValue) => {
-    let allEntries = [...Object.values(importMetaGlobResult)];
-    if (allEntries.length === 0) {
-      throw new Error(`Astro.glob(${JSON.stringify(globValue())}) - no matches found.`);
-    }
-    return Promise.all(allEntries.map((fn) => fn()));
-  };
-  return globHandler;
-}
-function createAstro(filePathname, _site, projectRootStr) {
-  const site = _site ? new URL(_site) : void 0;
-  const referenceURL = new URL(filePathname, `http://localhost`);
-  const projectRoot = new URL(projectRootStr);
-  return {
-    site,
-    generator: `Astro v${ASTRO_VERSION}`,
-    fetchContent: createDeprecatedFetchContentFn(),
-    glob: createAstroGlobFn(),
-    resolve(...segments) {
-      let resolved = segments.reduce((u, segment) => new URL(segment, u), referenceURL).pathname;
-      if (resolved.startsWith(projectRoot.pathname)) {
-        resolved = "/" + resolved.slice(projectRoot.pathname.length);
-      }
-      return resolved;
-    }
-  };
-}
-
-const uniqueElements = (item, index, all) => {
-  const props = JSON.stringify(item.props);
-  const children = item.children;
-  return index === all.findIndex((i) => JSON.stringify(i.props) === props && i.children == children);
-};
-function renderHead(result) {
-  result._metadata.hasRenderedHead = true;
-  const styles = Array.from(result.styles).filter(uniqueElements).map((style) => renderElement("style", style));
-  result.styles.clear();
-  const scripts = Array.from(result.scripts).filter(uniqueElements).map((script, i) => {
-    return renderElement("script", script, false);
-  });
-  const links = Array.from(result.links).filter(uniqueElements).map((link) => renderElement("link", link, false));
-  return markHTMLString(links.join("\n") + styles.join("\n") + scripts.join("\n"));
-}
-async function* maybeRenderHead(result) {
-  if (result._metadata.hasRenderedHead) {
-    return;
-  }
-  yield renderHead(result);
-}
+import 'use-sync-external-store/shim/with-selector.js';
 
 /**
  * Astro passes `children` as a string of HTML, so we need
@@ -289,37 +232,58 @@ var server_default = {
   renderToStaticMarkup
 };
 
-const $$Astro = createAstro("/Users/tannerlinsley/GitHub/router/examples/react/with-astro-ssr/src/pages/astro.astro", "", "file:///Users/tannerlinsley/GitHub/router/examples/react/with-astro-ssr/");
-const $$Component = createComponent(async ($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
-  Astro2.self = $$Component;
-  return renderTemplate`${maybeRenderHead($$result)}<div>I am an astro page!</div>`;
+server$.addDeserializer({
+  apply: (e) => e.$type === "loaderClient",
+  deserialize: (e, event) => event.locals.$loaderClient
 });
+function StartServer({
+  loaderClient,
+  routeTree
+}) {
+  const router = React.useMemo(() => new ReactRouter({
+    routeTree,
+    context: {
+      loaderClient
+    },
+    defaultPreload: "intent"
+  }), [routeTree, loaderClient]);
+  return /* @__PURE__ */ jsx(Hydrate, {
+    loaderClient,
+    router,
+    children: /* @__PURE__ */ jsx(LoaderClientProvider, {
+      loaderClient,
+      children: /* @__PURE__ */ jsx(RouterProvider, {
+        router
+      })
+    })
+  });
+}
+__astro_tag_component__(StartServer, "@astrojs/react");
 
-const $$file = "/Users/tannerlinsley/GitHub/router/examples/react/with-astro-ssr/src/pages/astro.astro";
-const $$url = "/astro";
-
-const _page0 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: $$Component,
-  file: $$file,
-  url: $$url
-}, Symbol.toStringTag, { value: 'Module' }));
-
-function createRequestHandler() {
+function createRequestHandler({
+  routeTree,
+  createLoaderClient
+}) {
   return async ({
     request
   }) => {
-    const App = await import('./chunks/App.8def3af9.mjs').then((m) => m.App);
-    const routeTree = await import('./chunks/routeTree.c870053d.mjs').then(n => n.b).then((m) => m.routeTree);
-    const createLoaderClient = await import('./chunks/loaderClient.a6c93954.mjs').then((m) => m.createLoaderClient);
     const fullUrl = new URL(request.url);
     const url = request.url.replace(fullUrl.origin, "");
+    const loaderClient = createLoaderClient();
+    if (server$.hasHandler(fullUrl.pathname)) {
+      return await handleEvent({
+        request,
+        env: {},
+        locals: {
+          $loaderClient: loaderClient,
+          $abortSignal: new AbortController().signal
+        }
+      });
+    }
     console.log("Rendering: ", url, "...");
     const history = createMemoryHistory({
       initialEntries: [url]
     });
-    const loaderClient = createLoaderClient();
     const router = new Router({
       history,
       routeTree,
@@ -333,7 +297,10 @@ function createRequestHandler() {
     const html = ReactDOM.renderToString(/* @__PURE__ */ jsx(ServerContext, {
       dehydratedRouter,
       dehydratedLoaderClient,
-      children: /* @__PURE__ */ jsx(App, {})
+      children: /* @__PURE__ */ jsx(StartServer, {
+        loaderClient,
+        routeTree
+      })
     }));
     return new Response(html, {
       headers: {
@@ -344,14 +311,17 @@ function createRequestHandler() {
 }
 __astro_tag_component__(createRequestHandler, "@astrojs/react");
 
-const all = createRequestHandler();
+const all = createRequestHandler({
+  routeTree,
+  createLoaderClient
+});
 
-const _page1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  all
+const _page0 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+	__proto__: null,
+	all
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const pageMap = new Map([['src/pages/astro.astro', _page0],['src/pages/[...app].ts', _page1],]);
+const pageMap = new Map([['src/entry-server.tsx', _page0],]);
 const renderers = [Object.assign({"name":"astro:jsx","serverEntrypoint":"astro/jsx/server.js","jsxImportSource":"astro"}, { ssr: server_default }),Object.assign({"name":"@astrojs/react","clientEntrypoint":"@astrojs/react/client.js","serverEntrypoint":"@astrojs/react/server.js","jsxImportSource":"react"}, { ssr: _renderer1 }),];
 
 /**
@@ -1599,7 +1569,7 @@ function deserializeManifest(serializedManifest) {
   };
 }
 
-const _manifest = Object.assign(deserializeManifest({"adapterName":"@astrojs/netlify/functions","routes":[{"file":"","links":[],"scripts":[],"routeData":{"route":"/astro","type":"page","pattern":"^\\/astro\\/?$","segments":[[{"content":"astro","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/astro.astro","pathname":"/astro","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":[],"scripts":[],"routeData":{"route":"/[...app]","type":"endpoint","pattern":"^(?:\\/(.*?))?$","segments":[[{"content":"...app","dynamic":true,"spread":true}]],"params":["...app"],"component":"src/pages/[...app].ts","_meta":{"trailingSlash":"ignore"}}}],"base":"/","markdown":{"drafts":false,"syntaxHighlight":"shiki","shikiConfig":{"langs":[],"theme":"github-dark","wrap":false},"remarkPlugins":[],"rehypePlugins":[],"remarkRehype":{},"extendDefaultPlugins":false,"isAstroFlavoredMd":false},"pageMap":null,"renderers":[],"entryModules":{"/Users/tannerlinsley/GitHub/router/examples/react/with-astro-ssr/src/app/entry-client.tsx":"entry-client.a61826cb.js","\u0000@astrojs-ssr-virtual-entry":"entry2.mjs","/Users/tannerlinsley/GitHub/router/examples/react/with-astro-ssr/src/app/App.tsx":"chunks/App.8def3af9.mjs","/Users/tannerlinsley/GitHub/router/examples/react/with-astro-ssr/src/app/loaderClient.tsx":"chunks/loaderClient.a6c93954.mjs","@astrojs/react/client.js":"client.23d2921a.js","astro:scripts/before-hydration.js":""},"assets":["/client.23d2921a.js","/entry-client.a61826cb.js","/favicon.svg","/chunks/client.8ae4816c.js"]}), {
+const _manifest = Object.assign(deserializeManifest({"adapterName":"@astrojs/netlify/functions","routes":[{"file":"","links":[],"scripts":[],"routeData":{"type":"endpoint","route":"/[...all]","pattern":"^(?:\\/(.*?))?$","segments":[[{"content":"...all","dynamic":true,"spread":true}]],"params":["...all"],"component":"src/entry-server.tsx","_meta":{"trailingSlash":"ignore"}}}],"base":"/","markdown":{"drafts":false,"syntaxHighlight":"shiki","shikiConfig":{"langs":[],"theme":"github-dark","wrap":false},"remarkPlugins":[],"rehypePlugins":[],"remarkRehype":{},"extendDefaultPlugins":false,"isAstroFlavoredMd":false},"pageMap":null,"renderers":[],"entryModules":{"/Users/nikhilsaraf/garage/tanstack/router/examples/react/with-astro-ssr/src/entry-client.tsx":"entry-client.a0a94b4f.js","\u0000@astrojs-ssr-virtual-entry":"entry2.mjs","@astrojs/react/client.js":"client.204e032f.js","astro:scripts/before-hydration.js":""},"assets":["/client.204e032f.js","/entry-client.a0a94b4f.js","/favicon.svg","/chunks/client.6070f496.js"]}), {
 	pageMap: pageMap,
 	renderers: renderers
 });
