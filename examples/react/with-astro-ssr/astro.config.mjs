@@ -1,11 +1,15 @@
 import { defineConfig } from 'astro/config'
 import react from '@astrojs/react'
 import netlify from '@astrojs/netlify/functions'
-
+import inspect from 'vite-plugin-inspect'
+import bling from '@tanstack/bling/vite'
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
   adapter: netlify(),
+  vite: {
+    plugins: [bling(), inspect()],
+  },
   integrations: [react(), tsr()],
 })
 

@@ -1,0 +1,40 @@
+{
+  "name": "@tanstack/bling",
+  "version": "0.2.19",
+  "description": "Create Solid apps with low configuration",
+  "author": "Ryan Carniato",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "type": "module",
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit --checkJs false --skipLibCheck"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": {
+      "browser": "./server/browser.ts",
+      "import": "./server/server.ts",
+      "node": "./server/server.ts",
+      "default": "./server/server.ts",
+      "types": "./server/server.ts"
+    },
+    "./server/*": "./server/*",
+    "./babel": {
+      "import": "./src/babel.js"
+    },
+    "./vite": {
+      "import": "./src/vite.js",
+      "types": "./src/vite.d.ts"
+    }
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^3.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.9.4"
+  }
+}
