@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { ReactRouter } from '@tanstack/react-router'
+import { Router } from '@tanstack/router'
 
 import { rootRoute } from './routes/__root'
 import { indexRoute } from './routes'
@@ -39,7 +39,7 @@ const routeTree = rootRoute.addChildren([
   layoutRoute.addChildren([layoutRouteA, layoutRouteB]),
 ])
 
-export const router = new ReactRouter({
+export const router = new Router({
   routeTree,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>
@@ -52,7 +52,7 @@ export const router = new ReactRouter({
   },
 })
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router' {
   interface Register {
     router: typeof router
   }

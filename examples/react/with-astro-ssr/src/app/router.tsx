@@ -1,5 +1,5 @@
 import type { RegisteredLoaderClient } from '@tanstack/react-loaders'
-import { ReactRouter } from '@tanstack/react-router'
+import { Router } from '@tanstack/router'
 import { loaderClient } from './loaderClient'
 import { routeTree } from './routeTree'
 
@@ -7,7 +7,7 @@ export interface RouterContext {
   loaderClient: RegisteredLoaderClient
 }
 
-export const router = new ReactRouter({
+export const router = new Router({
   routeTree,
   context: {
     loaderClient,
@@ -15,7 +15,7 @@ export const router = new ReactRouter({
   defaultPreload: 'intent',
 })
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router' {
   interface Register {
     router: typeof router
   }

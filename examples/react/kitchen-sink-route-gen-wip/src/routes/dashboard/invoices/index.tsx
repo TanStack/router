@@ -2,7 +2,7 @@ import { routeConfig } from '../../../routes.generated/dashboard/invoices/index'
 import * as React from 'react'
 import { Invoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
-import { useAction } from '@tanstack/react-router'
+import { useAction } from '@tanstack/router'
 import { createInvoiceAction } from '../../../actions'
 
 routeConfig.generate({

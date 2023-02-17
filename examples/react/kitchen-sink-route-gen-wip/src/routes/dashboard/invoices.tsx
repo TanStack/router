@@ -6,7 +6,7 @@ import {
   useLoaderInstance,
   useMatch,
   useRoute,
-} from '@tanstack/react-router'
+} from '@tanstack/router'
 import * as React from 'react'
 import { createInvoiceAction, updateInvoiceAction } from '../../actions'
 import { Spinner } from '../../components/Spinner'

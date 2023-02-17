@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import { RegisteredRouter, RouterProvider } from '@tanstack/react-router'
+import { RegisteredRouter, RouterProvider } from '@tanstack/router'
 import {
   LoaderClientProvider,
   RegisteredLoaderClient,

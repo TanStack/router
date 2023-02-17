@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { route, Link, Outlet, useRouter } from '@tanstack/react-router'
+import { route, Link, Outlet, useRouter } from '@tanstack/router'
 import { Spinner } from '../components/Spinner'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 route({
   component: () => {

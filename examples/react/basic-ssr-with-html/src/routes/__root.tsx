@@ -1,6 +1,6 @@
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import * as React from 'react'
-import { Link, Outlet, RootRoute, useRouter } from '@tanstack/react-router'
+import { Link, Outlet, RootRoute, useRouter } from '@tanstack/router'
 import { RouterContext } from '../router'
 import { useHead } from '../head'
 

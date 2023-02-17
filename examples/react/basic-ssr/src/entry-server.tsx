@@ -1,6 +1,6 @@
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import { createMemoryHistory, Router } from '@tanstack/react-router'
+import { createMemoryHistory, Router } from '@tanstack/router'
 import jsesc from 'jsesc'
 import { ServerResponse } from 'http'
 import { createLoaderClient } from './loaderClient'

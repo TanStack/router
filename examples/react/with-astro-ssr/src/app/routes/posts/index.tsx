@@ -1,4 +1,4 @@
-import { Route } from '@tanstack/react-router'
+import { Route } from '@tanstack/router'
 import { postsRoute } from '../posts'
 
 export const postsIndexRoute = new Route({

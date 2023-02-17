@@ -1,5 +1,5 @@
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
-import { Outlet, Route } from '@tanstack/react-router'
+import { Outlet, Route } from '@tanstack/router'
 import * as React from 'react'
 import { fetchRandomNumber } from '../../mockTodos'
 

@@ -1,6 +1,6 @@
-import { lazy } from '@tanstack/react-router'
+import { lazy } from '@tanstack/router'
 import { route as parentRoute } from '../posts'
-import { Route } from '@tanstack/react-router'
+import { Route } from '@tanstack/router'
 import * as React from 'react'
 import { postsRoute } from '../posts'
 export const postsIndexRoute = new Route({

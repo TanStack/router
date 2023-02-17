@@ -3,12 +3,12 @@ id: RouterProvider
 title: RouterProvider
 ---
 
-Use the `RouterProvider` component to connect and provide a `ReactRouter` to your application:
+Use the `RouterProvider` component to connect and provide a `Router` to your application:
 
 ```tsx
-import { RouterProvider, ReactRouter } from '@tanstack/react-router'
+import { RouterProvider, Router } from '@tanstack/router'
 
-const router = new ReactRouter()
+const router = new Router()
 
 function App() {
   return <RouterProvider router={router} />
@@ -19,7 +19,7 @@ function App() {
 
 - `router: Router`
   - **Required**
-  - the `ReactRouter` instance to provide
+  - the `Router` instance to provide
 - `history?: BrowserHistory | MemoryHistory | HashHistory`
   - **Optional**
 - `stringifySearch?: SearchSerializer`
@@ -38,7 +38,10 @@ function App() {
   - **Optional**
 - `defaultComponent?: GetFrameworkGeneric<'Component'>`
   - **Optional**
-- `defaultErrorComponent?: GetFrameworkGeneric<'ErrorComponent'>`
+- `defaultErrorComponent?: RouteComponent<{
+  error: Error
+  info: { componentStack: string }
+}>`
   - **Optional**
 - `defaultPendingComponent?: GetFrameworkGeneric<'Component'>`
   - **Optional**
@@ -59,6 +62,4 @@ function App() {
 - `createRoute?: (opts: { route: AnyRoute, router: Router<any, any, any> }) => void`
   - **Optional**
 - `context?: TRouterContext`
-  - **Optional**
-- `loadComponent?: (component: GetFrameworkGeneric<'Component'>) => Promise<GetFrameworkGeneric<'Component'>`
   - **Optional**

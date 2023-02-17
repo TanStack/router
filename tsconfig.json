@@ -1,18 +1,14 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/router" },
     { "path": "packages/store" },
-    { "path": "packages/actions" },
-    { "path": "packages/loaders" },
-    { "path": "packages/react-router" },
-    { "path": "packages/react-router-devtools" },
     { "path": "packages/react-store" },
+    { "path": "packages/router" },
+    { "path": "packages/actions" },
     { "path": "packages/react-actions" },
+    { "path": "packages/loaders" },
     { "path": "packages/react-loaders" },
-    { "path": "packages/solid-router" }
-    // { "path": "packages/react-router-devtools" },
-    // { "path": "examples/react/kitchen-sink/tsconfig.dev.json" }
+    { "path": "packages/router-devtools" }
   ]
   // "include": ["examples/*"]
   // "exclude": ["node_modules"]

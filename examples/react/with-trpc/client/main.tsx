@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  ReactRouter,
+  Router,
   Link,
   MatchRoute,
   useSearch,
@@ -12,7 +12,7 @@ import {
   Route,
   useParams,
   useRouter,
-} from '@tanstack/react-router'
+} from '@tanstack/router'
 import {
   Loader,
   LoaderClient,
@@ -21,7 +21,7 @@ import {
   useLoaderInstance,
 } from '@tanstack/react-loaders'
 import { AppRouter } from '../server/server'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
 
 import { z } from 'zod'
@@ -381,7 +381,7 @@ const routeTree = rootRoute.addChildren([
   ]),
 ])
 
-const router = new ReactRouter({
+const router = new Router({
   routeTree,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>
@@ -390,7 +390,7 @@ const router = new ReactRouter({
   ),
 })
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router' {
   interface Register {
     router: typeof router
   }

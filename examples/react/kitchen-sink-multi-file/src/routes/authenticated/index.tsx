@@ -1,4 +1,4 @@
-import { Outlet, Route } from '@tanstack/react-router'
+import { Outlet, Route } from '@tanstack/router'
 import * as React from 'react'
 import { useAuth } from '../../main'
 import { rootRoute } from '../__root'

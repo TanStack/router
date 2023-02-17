@@ -1,4 +1,4 @@
-import { Action } from '@tanstack/react-router'
+import { Action } from '@tanstack/router'
 import { patchInvoice, postInvoice } from './mockTodos'
 import { router } from './router'
 

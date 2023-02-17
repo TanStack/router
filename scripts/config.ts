@@ -12,6 +12,16 @@ export const packages: Package[] = [
     globals: {},
   },
   {
+    name: '@tanstack/react-store',
+    packageDir: 'react-store',
+    srcDir: 'src',
+    jsName: 'ReactLoaders',
+    entryFile: 'src/index.tsx',
+    globals: {
+      react: 'React',
+    },
+  },
+  {
     name: '@tanstack/router',
     packageDir: 'router',
     srcDir: 'src',
@@ -28,22 +38,22 @@ export const packages: Package[] = [
     globals: {},
   },
   {
-    name: '@tanstack/actions',
-    packageDir: 'actions',
-    srcDir: 'src',
-    jsName: 'ActionsCore',
-    entryFile: 'src/index.ts',
-    globals: {},
-  },
-  {
-    name: '@tanstack/react-store',
-    packageDir: 'react-store',
+    name: '@tanstack/react-loaders',
+    packageDir: 'react-loaders',
     srcDir: 'src',
     jsName: 'ReactLoaders',
     entryFile: 'src/index.tsx',
     globals: {
       react: 'React',
     },
+  },
+  {
+    name: '@tanstack/actions',
+    packageDir: 'actions',
+    srcDir: 'src',
+    jsName: 'ActionsCore',
+    entryFile: 'src/index.ts',
+    globals: {},
   },
   {
     name: '@tanstack/react-actions',
@@ -56,74 +66,13 @@ export const packages: Package[] = [
     },
   },
   {
-    name: '@tanstack/react-loaders',
-    packageDir: 'react-loaders',
+    name: '@tanstack/router-devtools',
+    packageDir: 'router-devtools',
     srcDir: 'src',
-    jsName: 'ReactLoaders',
+    jsName: 'TanStackRouterDevtools',
     entryFile: 'src/index.tsx',
-    globals: {
-      react: 'React',
-    },
+    globals: { react: 'React', '@tanstack/router': 'Router' },
   },
-  {
-    name: '@tanstack/react-router-devtools',
-    packageDir: 'react-router-devtools',
-    srcDir: 'src',
-    jsName: 'ReactRouterDevtools',
-    entryFile: 'src/index.tsx',
-    globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
-  },
-  // {
-  //   name: '@tanstack/solid-store',
-  //   packageDir: 'solid-store',
-  //   srcDir: 'src',
-  //   jsName: 'SolidStore',
-  //   entryFile: 'src/index.tsx',
-  //   globals: {
-  //     'solid-js': 'Solid',
-  //   },
-  // },
-  // {
-  //   name: '@tanstack/solid-loaders',
-  //   packageDir: 'solid-loaders',
-  //   srcDir: 'src',
-  //   jsName: 'SolidLoaders',
-  //   entryFile: 'src/index.tsx',
-  //   globals: {
-  //     'solid-js': 'Solid',
-  //   },
-  // },
-  // {
-  //   name: '@tanstack/solid-actions',
-  //   packageDir: 'solid-actions',
-  //   srcDir: 'src',
-  //   jsName: 'SolidActions',
-  //   entryFile: 'src/index.tsx',
-  //   globals: {
-  //     'solid-js': 'Solid',
-  //   },
-  // },
-  // {
-  //   name: '@tanstack/solid-router',
-  //   packageDir: 'solid-router',
-  //   srcDir: 'src',
-  //   jsName: 'SolidRouter',
-  //   entryFile: 'src/index.tsx',
-  //   globals: {
-  //     'solid-js/store': 'SolidStore',
-  //     'solid-js': 'Solid',
-  //     '@tanstack/router': 'RouterCore',
-  //   },
-  // },
-  // {
-  //   name: '@tanstack/router-cli',
-  //   packageDir: 'router-cli',
-  //   srcDir: 'src',
-  //   jsName: 'RouterCli',
-  //   entryFile: 'src/index.ts',
-  //   // esm: false,
-  //   umd: false,
-  // },
 ]
 
 export const latestBranch = 'main'

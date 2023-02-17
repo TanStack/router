@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { Link, Outlet, RootRoute, useRouter } from '@tanstack/react-router'
+import { Link, Outlet, RootRoute, useRouter } from '@tanstack/router'
 import { Spinner } from '../components/Spinner'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { useLoaderClient } from '@tanstack/react-loaders'
 
 export const rootRoute = new RootRoute({

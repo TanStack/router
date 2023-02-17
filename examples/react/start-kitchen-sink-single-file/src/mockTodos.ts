@@ -1,4 +1,4 @@
-import { PickAsPartial, PickAsRequired } from '@tanstack/react-router'
+import { PickAsPartial, PickAsRequired } from '@tanstack/router'
 import { match } from 'assert'
 import axios from 'axios'
 import { produce } from 'immer'

@@ -9,7 +9,7 @@ Preloading in TanStack Router is a way to load a route before the user actually 
 The simplest way to preload routes for your application is to set the `preload` option to `intent` for your entire router:
 
 ```tsx
-import { Router } from '@tanstack/react-router'
+import { Router } from '@tanstack/router'
 
 const router = new Router({
   // ...
@@ -24,7 +24,7 @@ This will turn on preloading by default for all `<Link>` components in your appl
 By default, preloading will start after **50ms** of the user hovering or touching a `<Link>` component. You can change this delay by setting the `preloadDelay` option on your router:
 
 ```tsx
-import { Router } from '@tanstack/react-router'
+import { Router } from '@tanstack/router'
 
 const router = new Router({
   // ...
@@ -41,7 +41,7 @@ Preloading is most useful when combined with your favorite data loading library.
 Here's an example using TanStack Loaders:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
+import { Route } from '@tanstack/router'
 
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,

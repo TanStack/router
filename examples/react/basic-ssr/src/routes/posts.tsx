@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, Outlet, Route } from '@tanstack/react-router'
+import { Link, Outlet, Route } from '@tanstack/router'
 import { rootRoute } from './__root'
 // import { loaderClient } from '../entry-client'
 import { useLoaderInstance } from '@tanstack/react-loaders'

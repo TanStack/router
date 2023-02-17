@@ -4,10 +4,10 @@ import {
   Outlet,
   RouterProvider,
   Link,
-  ReactRouter,
+  Router,
   Route,
   RootRoute,
-} from '@tanstack/react-router'
+} from '@tanstack/router'
 
 const rootRoute = new RootRoute({
   component: () => (
@@ -35,9 +35,9 @@ const aboutRoute = new Route({
 
 const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
 
-const router = new ReactRouter({ routeTree })
+const router = new Router({ routeTree })
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router' {
   interface Register {
     router: typeof router
   }

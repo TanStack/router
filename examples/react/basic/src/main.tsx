@@ -3,24 +3,23 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  ReactRouter,
+  Router,
   Link,
   useParams,
   RootRoute,
   Route,
   ErrorComponent,
   createHashHistory,
-  lazy,
-} from '@tanstack/react-router'
+  useMatch,
+} from '@tanstack/router'
+import { TanStackRouterDevtools } from '../../../../packages/router-devtools/build/types'
+import axios from 'axios'
 import {
-  Loader,
   LoaderClient,
+  Loader,
   LoaderClientProvider,
   useLoaderInstance,
 } from '@tanstack/react-loaders'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-
-import axios from 'axios'
 
 type PostType = {
   id: string
@@ -28,37 +27,44 @@ type PostType = {
   body: string
 }
 
-const fetchPosts = server$(async () => {
+const fetchPosts = async () => {
   console.log('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
-})
+}
+
+const fetchPost = async (postId: string) => {
+  console.log(`Fetching post with id ${postId}...`)
+  await new Promise((r) => setTimeout(r, 500))
+  const post = await axios
+    .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+    .then((r) => r.data)
+
+  if (!post) {
+    throw new NotFoundError(postId)
+  }
+
+  return post
+}
 
 const postsLoader = new Loader({
-  key: 'posts',
-  loader: fetchPosts,
+  fn: fetchPosts,
 })
 
 const postLoader = new Loader({
-  key: 'post',
-  loader: server$(async (postId: string) => {
-    console.log(`Fetching post with id ${postId}...`)
-    await new Promise((r) => setTimeout(r, 500))
-    const post = await axios
-      .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-      .then((r) => r.data)
-
-    return post
-  }),
-  onAllInvalidate: async () => {
-    await postsLoader.invalidateAll()
+  fn: fetchPost,
+  onInvalidate: () => {
+    postsLoader.invalidate()
   },
 })
 
 const loaderClient = new LoaderClient({
-  getLoaders: () => [postsLoader, postLoader],
+  getLoaders: () => ({
+    posts: postsLoader,
+    post: postLoader,
+  }),
 })
 
 declare module '@tanstack/react-loaders' {
@@ -67,7 +73,11 @@ declare module '@tanstack/react-loaders' {
   }
 }
 
-const rootRoute = new RootRoute({
+type RouterContext = {
+  loaderClient: typeof loaderClient
+}
+
+const rootRoute = RootRoute.withRouterContext<RouterContext>()({
   component: () => {
     return (
       <>
@@ -114,55 +124,47 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  onLoad: ({ preload }) =>
-    loaderClient.getLoader({ key: 'posts' }).load({ preload }),
-  component: lazy(
-    split$(() => {
-      const postsLoaderInstance = useLoaderInstance({
-        key: postsLoader.key,
-      })
-
-      return (
-        <div className="p-2 flex gap-2">
-          <ul className="list-disc pl-4">
-            {[
-              ...postsLoaderInstance.state.data,
-              { id: 'i-do-not-exist', title: 'Non-existent Post' },
-            ]?.map((post) => {
-              return (
-                <li key={post.id} className="whitespace-nowrap">
-                  <Link
-                    to={postRoute.fullPath}
-                    params={{
-                      postId: post.id,
-                    }}
-                    className="block py-1 text-blue-800 hover:text-blue-600"
-                    activeProps={{ className: 'text-black font-bold' }}
-                  >
-                    <div>{post.title.substring(0, 20)}</div>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-          <hr />
-          <Outlet />
-        </div>
-      )
-    }),
-  ),
-})
-
-const PostsIndexRoute = new Route({
-  getParentRoute: () => postsRoute,
-  path: '/',
+  onLoad: async ({ context }) => context.loaderClient.loaders.posts.load(),
   component: () => {
+    const match = useMatch({ from: postsRoute.id })
+    const postsLoader = useLoaderInstance({
+      loader: match.context.loaderClient.loaders.posts,
+    })
+
     return (
-      <>
-        <div>Select a post.</div>
-      </>
+      <div className="p-2 flex gap-2">
+        <ul className="list-disc pl-4">
+          {[
+            ...postsLoader.state.data,
+            { id: 'i-do-not-exist', title: 'Non-existent Post' },
+          ]?.map((post) => {
+            return (
+              <li key={post.id} className="whitespace-nowrap">
+                <Link
+                  to={postRoute.fullPath}
+                  params={{
+                    postId: post.id,
+                  }}
+                  className="block py-1 text-blue-800 hover:text-blue-600"
+                  activeProps={{ className: 'text-black font-bold' }}
+                >
+                  <div>{post.title.substring(0, 20)}</div>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+        <hr />
+        <Outlet />
+      </div>
     )
   },
+})
+
+const postsIndexRoute = new Route({
+  getParentRoute: () => postsRoute,
+  path: '/',
+  component: () => <div>Select a post.</div>,
 })
 
 class NotFoundError extends Error {
@@ -176,12 +178,17 @@ class NotFoundError extends Error {
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  onLoad: async ({ params: { postId } }) => {
-    try {
-      await postLoader.load({ variables: postId })
-    } catch (err) {
-      throw new NotFoundError(postId)
-    }
+  onLoad: async ({ context: { loaderClient }, params: { postId } }) => {
+    await loaderClient.loaders.post.load({
+      variables: postId,
+    })
+
+    // Return a hook!
+    return () =>
+      useLoaderInstance({
+        loader: loaderClient.loaders.post,
+        variables: postId,
+      })
   },
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {
@@ -191,14 +198,9 @@ const postRoute = new Route({
     return <ErrorComponent error={error} />
   },
   component: () => {
-    const { postId } = useParams({ from: postRoute.id })
-    const postLoaderInstance = useLoaderInstance({
-      key: postLoader.key,
-      variables: postId,
-      // strict: false,
-    })
-
-    const post = postLoaderInstance.state.data
+    const {
+      state: { data },
+    } = postRoute.useLoader()()
 
     return (
       <div className="space-y-2">
@@ -210,21 +212,21 @@ const postRoute = new Route({
 })
 
 const routeTree = rootRoute.addChildren([
-  postsRoute.addChildren([postRoute, PostsIndexRoute]),
+  postsRoute.addChildren([postRoute, postsIndexRoute]),
   indexRoute,
 ])
 
-const hashHistory = createHashHistory()
-
-// Set up a ReactRouter instance
-const router = new ReactRouter({
-  history: hashHistory,
+// Set up a Router instance
+const router = new Router({
   routeTree,
   defaultPreload: 'intent',
+  context: {
+    loaderClient,
+  },
 })
 
 // Register things for typesafety
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router' {
   interface Register {
     router: typeof router
   }

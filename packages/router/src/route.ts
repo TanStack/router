@@ -1,4 +1,3 @@
-import { GetFrameworkGeneric } from './frameworks'
 import { ParsePathParams } from './link'
 import { RouteMatch } from './routeMatch'
 import { AnyRouter, Router, RouterContext } from './router'
@@ -12,10 +11,10 @@ import {
 import invariant from 'tiny-invariant'
 import { joinPaths, trimPath, trimPathRight } from './path'
 import { DefaultRoutesInfo } from './routeInfo'
+import { RouteComponent, useMatch } from './react'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
-
 export type AnyPathParams = {}
 export type AnySearchSchema = {}
 export type AnyContext = {}
@@ -32,8 +31,6 @@ export type RouteOptionsBase<TCustomId, TPath> =
 
 export type RouteOptionsBaseIntersection<TCustomId, TPath> =
   UnionToIntersection<RouteOptionsBase<TCustomId, TPath>>
-
-export interface FrameworkRouteOptions {}
 
 export type MetaOptions = keyof PickRequired<RouteMeta> extends never
   ? {
@@ -98,6 +95,7 @@ export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
   TPath extends string = string,
+  TLoader = unknown,
   TParentSearchSchema extends {} = {},
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = TSearchSchema,
@@ -108,65 +106,70 @@ export type RouteOptions<
   TAllParentContext extends AnyContext = AnyContext,
   TRouteContext extends RouteContext = RouteContext,
   TContext extends AnyContext = TRouteContext,
-> = RouteOptionsBase<TCustomId, TPath> &
-  FrameworkRouteOptions & {
-    getParentRoute: () => TParentRoute
-    // If true, this route will be matched as case-sensitive
-    caseSensitive?: boolean
-    // Filter functions that can manipulate search params *before* they are passed to links and navigate
-    // calls that match this route.
-    preSearchFilters?: SearchFilter<TFullSearchSchema>[]
-    // Filter functions that can manipulate search params *after* they are passed to links and navigate
-    // calls that match this route.
-    postSearchFilters?: SearchFilter<TFullSearchSchema>[]
-    // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
-    component?: GetFrameworkGeneric<'Component'> // , NoInfer<TParentAllLoaderData>>
-    // The content to be rendered when the route encounters an error
-    errorComponent?: GetFrameworkGeneric<'ErrorComponent'> // , NoInfer<TParentAllLoaderData>>
-    // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
-    pendingComponent?: GetFrameworkGeneric<'Component'> //, NoInfer<TParentAllLoaderData>>
-    // This async function is called before a route is loaded.
-    // If an error is thrown here, the route's loader will not be called.
-    // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onLoadError` function.
-    // If thrown during a preload event, the error will be logged to the console.
-    beforeLoad?: (opts: {
-      router: AnyRouter
-      match: RouteMatch
-    }) => Promise<void> | void
-    // This function will be called if the route's loader throws an error **during an attempted navigation**.
-    // If you want to redirect due to an error, call `router.navigate()` from within this function.
-    onBeforeLoadError?: (err: any) => void
-    validateSearch?: SearchSchemaValidator<TSearchSchema, TParentSearchSchema>
-    // This function will be called if the route's validateSearch option throws an error **during an attempted validation**.
-    // If you want to redirect due to an error, call `router.navigate()` from within this function.
-    // If you want to display the errorComponent, rethrow the error
-    onValidateSearchError?: (err: any) => void
-    // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-    onLoad?: OnLoadFn<
-      TSearchSchema,
-      TFullSearchSchema,
-      TAllParams,
-      NoInfer<TRouteContext>,
-      TContext
-    >
-    onLoadError?: (err: any) => void
-    onError?: (err: any) => void
-    // This function is called
-    // when moving from an inactive state to an active one. Likewise, when moving from
-    // an active to an inactive state, the return function (if provided) is called.
-    onLoaded?: (matchContext: {
-      params: TAllParams
-      search: TFullSearchSchema
-    }) =>
-      | void
-      | undefined
-      | ((match: { params: TAllParams; search: TFullSearchSchema }) => void)
-    // This function is called when the route remains active from one transition to the next.
-    onTransition?: (match: {
-      params: TAllParams
-      search: TFullSearchSchema
-    }) => void
-  } & MetaOptions &
+> = RouteOptionsBase<TCustomId, TPath> & {
+  getParentRoute: () => TParentRoute
+  // If true, this route will be matched as case-sensitive
+  caseSensitive?: boolean
+  // Filter functions that can manipulate search params *before* they are passed to links and navigate
+  // calls that match this route.
+  preSearchFilters?: SearchFilter<TFullSearchSchema>[]
+  // Filter functions that can manipulate search params *after* they are passed to links and navigate
+  // calls that match this route.
+  postSearchFilters?: SearchFilter<TFullSearchSchema>[]
+  // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
+  component?: RouteComponent //
+  // The content to be rendered when the route encounters an error
+  errorComponent?: RouteComponent<{
+    error: Error
+    info: { componentStack: string }
+  }> //
+  // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
+  pendingComponent?: RouteComponent //
+  wrapInSuspense?: boolean
+
+  // This async function is called before a route is loaded.
+  // If an error is thrown here, the route's loader will not be called.
+  // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onLoadError` function.
+  // If thrown during a preload event, the error will be logged to the console.
+  beforeLoad?: (opts: {
+    router: AnyRouter
+    match: RouteMatch
+  }) => Promise<void> | void
+  // This function will be called if the route's loader throws an error **during an attempted navigation**.
+  // If you want to redirect due to an error, call `router.navigate()` from within this function.
+  onBeforeLoadError?: (err: any) => void
+  validateSearch?: SearchSchemaValidator<TSearchSchema, TParentSearchSchema>
+  // This function will be called if the route's validateSearch option throws an error **during an attempted validation**.
+  // If you want to redirect due to an error, call `router.navigate()` from within this function.
+  // If you want to display the errorComponent, rethrow the error
+  onValidateSearchError?: (err: any) => void
+  // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
+  onLoad?: OnLoadFn<
+    TLoader,
+    TSearchSchema,
+    TFullSearchSchema,
+    TAllParams,
+    NoInfer<TRouteContext>,
+    TContext
+  >
+  onLoadError?: (err: any) => void
+  onError?: (err: any) => void
+  // This function is called
+  // when moving from an inactive state to an active one. Likewise, when moving from
+  // an active to an inactive state, the return function (if provided) is called.
+  onLoaded?: (matchContext: {
+    params: TAllParams
+    search: TFullSearchSchema
+  }) =>
+    | void
+    | undefined
+    | ((match: { params: TAllParams; search: TFullSearchSchema }) => void)
+  // This function is called when the route remains active from one transition to the next.
+  onTransition?: (match: {
+    params: TAllParams
+    search: TFullSearchSchema
+  }) => void
+} & MetaOptions &
   ContextOptions<
     TParentRoute,
     TAllParams,
@@ -226,6 +229,7 @@ export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
     }
 
 export type OnLoadFn<
+  TLoader = unknown,
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = {},
   TAllParams = {},
@@ -239,7 +243,7 @@ export type OnLoadFn<
     TContext,
     TAllContext
   >,
-) => Promise<any> | void
+) => Promise<TLoader> | TLoader
 
 export interface LoaderContext<
   TSearchSchema extends AnySearchSchema = {},
@@ -306,6 +310,7 @@ export interface AnyRoute
     any,
     any,
     any,
+    any,
     any
   > {}
 
@@ -324,6 +329,7 @@ export class Route<
     TCustomId,
     TPath
   >,
+  TLoaders = unknown,
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = ResolveFullSearchSchema<
     TParentRoute,
@@ -354,6 +360,7 @@ export class Route<
     fullPath: TFullPath
     customId: TCustomId
     id: TId
+    loader: TLoaders
     searchSchema: TSearchSchema
     fullSearchSchema: TFullSearchSchema
     params: TParams
@@ -371,6 +378,7 @@ export class Route<
     TParentRoute,
     TCustomId,
     TPath,
+    TLoaders,
     InferFullSearchSchema<TParentRoute>,
     TSearchSchema,
     InferFullSearchSchema<TParentRoute> & TSearchSchema,
@@ -400,6 +408,7 @@ export class Route<
       TParentRoute,
       TCustomId,
       TPath,
+      TLoaders,
       InferFullSearchSchema<TParentRoute>,
       TSearchSchema,
       TFullSearchSchema,
@@ -424,6 +433,7 @@ export class Route<
       TParentRoute,
       TCustomId,
       TPath,
+      TLoaders,
       InferFullSearchSchema<TParentRoute>,
       TSearchSchema,
       TFullSearchSchema,
@@ -496,6 +506,7 @@ export class Route<
     TFullPath,
     TCustomId,
     TId,
+    TLoaders,
     TSearchSchema,
     TFullSearchSchema,
     TParams,
@@ -512,36 +523,19 @@ export class Route<
     return this as any
   }
 
-  // generate = (
-  //   options: Omit<
-  //     RouteOptions<
-  //       TParentRoute,
-  //       TCustomId,
-  //       TPath,
-  //       InferFullSearchSchema<TParentRoute>,
-  //       TSearchSchema,
-  //       TFullSearchSchema,
-  //       TParentRoute['__types']['allParams'],
-  //       TParams,
-  //       TAllParams,
-  //       TParentContext,
-  //       TAllParentContext,
-  //       TRouteContext,
-  //       TContext
-  //     >,
-  //     'path'
-  //   >,
-  // ) => {
-  //   invariant(
-  //     false,
-  //     `route.generate() is used by TanStack Router's file-based routing code generation and should not actually be called during runtime. `,
-  //   )
-  // }
+  useMatch = () => {
+    // return useMatch(this)
+  }
+
+  useLoader = () => {
+    return useLoader({ from: this.id })
+  }
 }
 
-export type AnyRootRoute = RootRoute<any, any, any>
+export type AnyRootRoute = RootRoute<any, any, any, any>
 
 export class RootRoute<
+  TLoaders = unknown,
   TSearchSchema extends AnySearchSchema = {},
   TContext extends RouteContext = RouteContext,
   TRouterContext extends RouterContext = RouterContext,
@@ -551,6 +545,7 @@ export class RootRoute<
   '/',
   string,
   RootRouteId,
+  TLoaders,
   TSearchSchema,
   TSearchSchema,
   {},
@@ -567,6 +562,7 @@ export class RootRoute<
         AnyRoute,
         RootRouteId,
         '',
+        TLoaders,
         {},
         TSearchSchema,
         NoInfer<TSearchSchema>,
@@ -589,6 +585,7 @@ export class RootRoute<
 
   static withRouterContext = <TRouterContext extends RouterContext>() => {
     return <
+      TLoaders = unknown,
       TSearchSchema extends AnySearchSchema = {},
       TContext extends RouterContext = RouterContext,
     >(
@@ -597,6 +594,7 @@ export class RootRoute<
           AnyRoute,
           RootRouteId,
           '',
+          TLoaders,
           {},
           TSearchSchema,
           NoInfer<TSearchSchema>,
@@ -608,7 +606,10 @@ export class RootRoute<
         >,
         'path' | 'id' | 'getParentRoute' | 'caseSensitive'
       >,
-    ) => new RootRoute<TSearchSchema, TContext, TRouterContext>(options as any)
+    ) =>
+      new RootRoute<TLoaders, TSearchSchema, TContext, TRouterContext>(
+        options as any,
+      )
   }
 }
 

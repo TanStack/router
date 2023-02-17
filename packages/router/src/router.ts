@@ -1,9 +1,7 @@
-import { Store } from '@tanstack/store'
+import { Store } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 
 //
-
-import { GetFrameworkGeneric } from './frameworks'
 
 import {
   LinkInfo,
@@ -29,9 +27,10 @@ import {
   AnyRoute,
   RootRoute,
   AnyContext,
+  AnyRootRoute,
 } from './route'
 import { RoutesInfo, AnyRoutesInfo, RoutesById } from './routeInfo'
-import { AnyRouteMatch, RouteMatch, RouteMatchStore } from './routeMatch'
+import { AnyRouteMatch, RouteMatch, RouteMatchState } from './routeMatch'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
   functionalUpdate,
@@ -49,6 +48,7 @@ import {
   createMemoryHistory,
   RouterHistory,
 } from './history'
+import { RouteComponent } from './react'
 
 export interface Register {
   // router: Router
@@ -105,16 +105,19 @@ type RouterContextOptions<TRouteTree extends AnyRoute> =
         context: TRouteTree['__types']['routerContext']
       }
 
-export interface RouterOptions<TRouteTree extends AnyRoute> {
+export interface RouterOptions<TRouteTree extends AnyRootRoute> {
   history?: RouterHistory
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
   filterRoutes?: FilterRoutesFn
   defaultPreload?: false | 'intent'
   defaultPreloadDelay?: number
-  defaultComponent?: GetFrameworkGeneric<'Component'>
-  defaultErrorComponent?: GetFrameworkGeneric<'ErrorComponent'>
-  defaultPendingComponent?: GetFrameworkGeneric<'Component'>
+  defaultComponent?: RouteComponent
+  defaultErrorComponent?: RouteComponent<{
+    error: Error
+    info: { componentStack: string }
+  }>
+  defaultPendingComponent?: RouteComponent
   defaultLoaderMaxAge?: number
   defaultLoaderGcMaxAge?: number
   caseSensitive?: boolean
@@ -122,9 +125,6 @@ export interface RouterOptions<TRouteTree extends AnyRoute> {
   basepath?: string
   Router?: (router: AnyRouter) => void
   createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
-  loadComponent?: (
-    component: GetFrameworkGeneric<'Component'>,
-  ) => Promise<GetFrameworkGeneric<'Component'>>
   onRouteChange?: () => void
   fetchServerDataFn?: FetchServerDataFn
   context?: TRouteTree['__types']['routerContext']
@@ -135,7 +135,7 @@ type FetchServerDataFn = (ctx: {
   routeMatch: RouteMatch
 }) => Promise<any>
 
-export interface RouterStore<
+export interface RouterState<
   TRoutesInfo extends AnyRoutesInfo = AnyRoutesInfo,
   TState extends LocationState = LocationState,
 > {
@@ -188,7 +188,7 @@ type LinkCurrentTargetElement = {
 
 export interface DehydratedRouterState
   extends Pick<
-    RouterStore,
+    RouterState,
     'status' | 'latestLocation' | 'currentLocation' | 'lastUpdated'
   > {
   currentMatches: DehydratedRouteMatch[]
@@ -202,7 +202,7 @@ export type MatchCache = Record<string, MatchCacheEntry>
 
 interface DehydratedRouteMatch {
   id: string
-  state: Pick<RouteMatchStore<any, any>, 'status'>
+  state: Pick<RouteMatchState<any, any>, 'status'>
 }
 
 export interface RouterContext {}
@@ -263,8 +263,8 @@ export class Router<
   nextAction: undefined | 'push' | 'replace'
   navigationPromise: undefined | Promise<void>
 
-  __store: Store<RouterStore<TRoutesInfo>>
-  state: RouterStore<TRoutesInfo>
+  __store: Store<RouterState<TRoutesInfo>>
+  state: RouterState<TRoutesInfo>
   startedLoadingAt = Date.now()
   resolveNavigation: () => void = () => {}
 
@@ -278,7 +278,7 @@ export class Router<
       fetchServerDataFn: options?.fetchServerDataFn ?? defaultFetchServerDataFn,
     }
 
-    this.__store = new Store<RouterStore<TRoutesInfo>>(
+    this.__store = new Store<RouterState<TRoutesInfo>>(
       getInitialRouterState(),
       {
         onUpdate: (state) => {
@@ -671,7 +671,9 @@ export class Router<
 
             firstBadMatchIndex = firstBadMatchIndex ?? index
 
-            const errorHandler = match.route.options.onBeforeLoadError ?? match.route.options.onError
+            const errorHandler =
+              match.route.options.onBeforeLoadError ??
+              match.route.options.onError
             try {
               errorHandler?.(err)
             } catch (errorHandlerErr) {
@@ -1249,7 +1251,7 @@ export class Router<
 // Detect if we're in the DOM
 const isServer = typeof window === 'undefined' || !window.document.createElement
 
-function getInitialRouterState(): RouterStore<any, any> {
+function getInitialRouterState(): RouterState<any, any> {
   return {
     status: 'idle',
     latestLocation: null!,

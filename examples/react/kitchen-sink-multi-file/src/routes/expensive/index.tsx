@@ -1,4 +1,4 @@
-import { lazy, Route } from '@tanstack/react-router'
+import { lazy, Route } from '@tanstack/router'
 import { loaderDelayFn } from '../../utils'
 import { rootRoute } from '../__root'
 

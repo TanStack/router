@@ -2,7 +2,7 @@ import * as React from 'react'
 import { fetchUserById } from '../../../mockTodos'
 import { usersRoute } from '.'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
-import { Route, useParams } from '@tanstack/react-router'
+import { Route, useParams } from '@tanstack/router'
 import { loaderClient } from '../../../loaderClient'
 
 export const userLoader = new Loader({

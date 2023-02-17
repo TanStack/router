@@ -5,7 +5,7 @@ import {
   useParams,
   useRouter,
   useRouterContext,
-} from '@tanstack/react-router'
+} from '@tanstack/router'
 import * as React from 'react'
 // import { loaderClient } from '../../entry-client'
 import { postsRoute } from '../posts'

@@ -3,13 +3,13 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  ReactRouter,
+  Router,
   Route,
   Link,
   useParams,
   RootRoute,
-} from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+} from '@tanstack/router'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import {
   useQuery,
   useQueryClient,
@@ -142,13 +142,13 @@ const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postsIndexRoute, postRoute]),
 ])
 
-// Set up a ReactRouter instance
-const router = new ReactRouter({
+// Set up a Router instance
+const router = new Router({
   routeTree,
   defaultPreload: 'intent',
 })
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router' {
   interface Register {
     router: typeof router
   }

@@ -1,4 +1,4 @@
-import { PickAsRequired } from '@tanstack/react-router'
+import { PickAsRequired } from '@tanstack/router'
 import { actionDelayFn, loaderDelayFn, shuffle } from './utils'
 export type Invoice = {
   id: number

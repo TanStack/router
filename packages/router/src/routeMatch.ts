@@ -1,12 +1,12 @@
-import { Store } from '@tanstack/store'
+import { Store } from '@tanstack/react-store'
 //
-import { GetFrameworkGeneric } from './frameworks'
-import { AnyRoute, AnySearchSchema, Route } from './route'
+import { RouteComponent } from './react'
+import { AnyRoute, Route } from './route'
 import { AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
 import { AnyRouter, isRedirect, ParsedLocation, Router } from './router'
-import { Expand, pick, replaceEqualDeep } from './utils'
+import { replaceEqualDeep } from './utils'
 
-export interface RouteMatchStore<
+export interface RouteMatchState<
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
   TRoute extends AnyRoute = Route,
 > {
@@ -16,6 +16,7 @@ export interface RouteMatchStore<
   status: 'idle' | 'pending' | 'success' | 'error'
   error?: unknown
   updatedAt: number
+  loader: TRoute['__types']['loader']
 }
 
 const componentTypes = [
@@ -25,7 +26,7 @@ const componentTypes = [
 ] as const
 
 export interface PendingRouteMatchInfo {
-  state: RouteMatchStore<any, any>
+  state: RouteMatchState<any, any>
   routeContext: {}
   context: {}
 }
@@ -38,18 +39,21 @@ export class RouteMatch<
 > {
   route!: TRoute
   router!: Router<TRoutesInfo['routeTree'], TRoutesInfo>
-  __store!: Store<RouteMatchStore<TRoutesInfo, TRoute>>
-  state!: RouteMatchStore<TRoutesInfo, TRoute>
+  __store!: Store<RouteMatchState<TRoutesInfo, TRoute>>
+  state!: RouteMatchState<TRoutesInfo, TRoute>
   id!: string
   pathname!: string
   params!: TRoute['__types']['allParams']
 
   routeContext?: TRoute['__types']['routeContext']
-  context?: TRoute['__types']['context']
+  context!: TRoute['__types']['context']
 
-  component?: GetFrameworkGeneric<'Component'>
-  errorComponent?: GetFrameworkGeneric<'ErrorComponent'>
-  pendingComponent?: GetFrameworkGeneric<'Component'>
+  component?: RouteComponent
+  errorComponent?: RouteComponent<{
+    error: Error
+    info: { componentStack: string }
+  }>
+  pendingComponent?: RouteComponent
   abortController = new AbortController()
   parentMatch?: RouteMatch
   pendingInfo?: PendingRouteMatchInfo
@@ -77,12 +81,13 @@ export class RouteMatch<
       id: opts.id,
       pathname: opts.pathname,
       params: opts.params,
-      __store: new Store<RouteMatchStore<TRoutesInfo, TRoute>>(
+      __store: new Store<RouteMatchState<TRoutesInfo, TRoute>>(
         {
           updatedAt: 0,
           routeSearch: {},
           search: {} as any,
           status: 'idle',
+          loader: undefined,
         },
         {
           onUpdate: (next) => {
@@ -97,9 +102,7 @@ export class RouteMatch<
     componentTypes.map(async (type) => {
       const component = this.route.options[type]
 
-      if (typeof this[type] !== 'function') {
-        this[type] = component
-      }
+      this[type] = component as any
     })
 
     if (this.state.status === 'idle' && !this.#hasLoaders()) {
@@ -164,7 +167,8 @@ export class RouteMatch<
         throw err
       }
 
-      const errorHandler = this.route.options.onValidateSearchError ?? this.route.options.onError
+      const errorHandler =
+        this.route.options.onValidateSearchError ?? this.route.options.onError
       errorHandler?.(err)
       const error = new (Error as any)('Invalid search params found', {
         cause: err,
@@ -188,17 +192,17 @@ export class RouteMatch<
           search,
         }) || ({} as any)
 
-        const context = {
-          ...(this.parentMatch?.context ?? this.router?.options.context),
-          ...routeContext,
-        } as any
-    
-        return {
-          routeSearch,
-          search,
-          context,
-          routeContext,
-        }
+      const context = {
+        ...(this.parentMatch?.context ?? this.router?.options.context),
+        ...routeContext,
+      } as any
+
+      return {
+        routeSearch,
+        search,
+        context,
+        routeContext,
+      }
     } catch (err) {
       this.route.options.onError?.(err)
       throw err
@@ -241,7 +245,6 @@ export class RouteMatch<
       return
     }
 
-    // TODO: Should load promises be tracked based on location?
     this.__loadPromise = Promise.resolve().then(async () => {
       const loadId = '' + Date.now() + Math.random()
       this.#latestId = loadId
@@ -270,14 +273,14 @@ export class RouteMatch<
           componentTypes.map(async (type) => {
             const component = this.route.options[type]
 
-            if (this[type]?.preload) {
-              this[type] = await this.router.options.loadComponent!(component)
+            if (component?.preload) {
+              await component.preload()
             }
           }),
         )
       })()
 
-      const dataPromise = Promise.resolve().then(() => {
+      const loaderPromise = Promise.resolve().then(() => {
         if (this.route.options.onLoad) {
           return this.route.options.onLoad({
             params: this.params,
@@ -293,13 +296,17 @@ export class RouteMatch<
       })
 
       try {
-        await Promise.all([componentsPromise, dataPromise])
+        const [_, loader] = await Promise.all([
+          componentsPromise,
+          loaderPromise,
+        ])
         if ((latestPromise = checkLatest())) return await latestPromise
         this.__store.setState((s) => ({
           ...s,
           error: undefined,
           status: 'success',
           updatedAt: Date.now(),
+          loader,
         }))
       } catch (err) {
         if (isRedirect(err)) {
@@ -309,7 +316,8 @@ export class RouteMatch<
           return
         }
 
-        const errorHandler = this.route.options.onLoadError ?? this.route.options.onError
+        const errorHandler =
+          this.route.options.onLoadError ?? this.route.options.onError
         try {
           errorHandler?.(err)
         } catch (errorHandlerErr) {

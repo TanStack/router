@@ -16,10 +16,10 @@ export type RegisteredLoaders = Register extends {
   loaderClient: LoaderClient<infer TLoaders>
 }
   ? TLoaders
-  : Loader[]
+  : Record<string, Loader>
 
 export interface LoaderClientOptions<
-  TLoaders extends Loader<any, any, any, any>[],
+  TLoaders extends Record<string, AnyLoader>,
 > {
   getLoaders: () => TLoaders
   defaultMaxAge?: number
@@ -56,18 +56,31 @@ export interface DehydratedLoaderClient {
   >
 }
 
+type ResolveLoaders<TLoaders extends Record<string, AnyLoader>> = {
+  [TKey in keyof TLoaders]: TLoaders[TKey] extends Loader<
+    infer _,
+    infer TVariables,
+    infer TData,
+    infer TError
+  >
+    ? Loader<_, TVariables, TData, TError>
+    : Loader
+}
+
 // A loader client that tracks instances of loaders by unique key like react query
 export class LoaderClient<
-  TLoaders extends Loader<any, any, any, any>[] = Loader[],
+  _TLoaders extends Record<string, AnyLoader> = Record<string, Loader>,
+  TLoaders extends ResolveLoaders<_TLoaders> = ResolveLoaders<_TLoaders>,
 > {
-  options: LoaderClientOptions<TLoaders>
-  loaders: Record<string, Loader>
+  options: LoaderClientOptions<_TLoaders>
+  loaders: TLoaders
+  loaderInstances: Record<string, LoaderInstance> = {}
   __store: LoaderClientStore
   state: LoaderClientStore['state']
 
   initialized = false
 
-  constructor(options: LoaderClientOptions<TLoaders>) {
+  constructor(options: LoaderClientOptions<_TLoaders>) {
     this.options = options
     this.__store = new Store(
       {
@@ -82,111 +95,76 @@ export class LoaderClient<
     ) as LoaderClientStore
 
     this.state = this.__store.state
-    this.loaders = {}
+    this.loaders = {} as any
   }
 
   init = () => {
-    this.options.getLoaders().forEach((loader) => {
-      loader.client = this
-
-      this.loaders[loader.key] = loader
-    })
+    Object.entries(this.options.getLoaders()).forEach(
+      ([key, loader]: [string, Loader]) => {
+        ;(this.loaders as any)[key] = loader.init(key)
+      },
+    )
     this.initialized = true
   }
 
-  getLoader<TKey extends TLoaders[number]['key']>(opts: {
-    key: TKey
-  }): LoaderByKey<TLoaders, TKey> {
-    if (!this.initialized) this.init()
+  // dehydrate = (): DehydratedLoaderClient => {
+  //   return {
+  //     loaders: Object.values(this.loaders).reduce(
+  //       (acc, loader) => ({
+  //         ...acc,
+  //         [loader.key]: Object.values(loader.instances).reduce(
+  //           (acc, instance) => ({
+  //             ...acc,
+  //             [instance.hashedKey]: {
+  //               hashedKey: instance.hashedKey,
+  //               variables: instance.variables,
+  //               state: instance.state,
+  //             },
+  //           }),
+  //           {},
+  //         ),
+  //       }),
+  //       {},
+  //     ),
+  //   }
+  // }
 
-    return this.loaders[opts.key as any] as any
-  }
+  // hydrate = (data: DehydratedLoaderClient) => {
+  //   Object.entries(data.loaders).forEach(([loaderKey, instances]) => {
+  //     const loader = this.getLoader({ key: loaderKey }) as Loader
 
-  dehydrate = (): DehydratedLoaderClient => {
-    return {
-      loaders: Object.values(this.loaders).reduce(
-        (acc, loader) => ({
-          ...acc,
-          [loader.key]: Object.values(loader.instances).reduce(
-            (acc, instance) => ({
-              ...acc,
-              [instance.hashedKey]: {
-                hashedKey: instance.hashedKey,
-                variables: instance.variables,
-                state: instance.state,
-              },
-            }),
-            {},
-          ),
-        }),
-        {},
-      ),
-    }
-  }
+  //     Object.values(instances).forEach((dehydratedInstance) => {
+  //       let instance = loader.instances[dehydratedInstance.hashedKey]
 
-  hydrate = (data: DehydratedLoaderClient) => {
-    Object.entries(data.loaders).forEach(([loaderKey, instances]) => {
-      const loader = this.getLoader({ key: loaderKey }) as Loader
+  //       if (!instance) {
+  //         instance = loader.instances[dehydratedInstance.hashedKey] =
+  //           loader.getInstance({
+  //             variables: dehydratedInstance.variables,
+  //           })
+  //       }
 
-      Object.values(instances).forEach((dehydratedInstance) => {
-        let instance = loader.instances[dehydratedInstance.hashedKey]
-
-        if (!instance) {
-          instance = loader.instances[dehydratedInstance.hashedKey] =
-            loader.getInstance({
-              variables: dehydratedInstance.variables,
-            })
-        }
-
-        instance.__store.setState(() => dehydratedInstance.state)
-      })
-    })
-  }
+  //       instance.__store.setState(() => dehydratedInstance.state)
+  //     })
+  //   })
+  // }
 }
 
 export type LoaderByKey<
-  TLoaders extends Loader<any, any, any, any>[],
-  TKey extends TLoaders[number]['key'],
-  TResolvedLoader extends {
-    [TLoader in TLoaders[number] as number]: TLoader extends Loader<
-      TKey,
-      infer TVariables,
-      infer TData,
-      infer TError
-    >
-      ? Loader<TKey, TVariables, TData, TError>
-      : never
-  } = {
-    [TLoader in TLoaders[number] as number]: TLoader extends Loader<
-      TKey,
-      infer TVariables,
-      infer TData,
-      infer TError
-    >
-      ? Loader<TKey, TVariables, TData, TError>
-      : never
-  },
-> = TResolvedLoader[number] extends never ? Loader : TResolvedLoader[number]
+  TLoaders extends Record<string, AnyLoader>,
+  TKey extends keyof TLoaders,
+> = TLoaders[TKey]
 
 export type LoaderInstanceByKey<
-  TLoaders extends Loader<any, any, any, any>[],
-  TKey extends TLoaders[number]['key'],
-  TResolvedLoaderInstance extends {
-    [TLoader in TLoaders[number] as number]: TLoader extends {
-      options: LoaderOptions<TKey, infer TVariables, infer TData, infer TError>
-    }
-      ? LoaderInstance<TKey, TVariables, TData, TError>
-      : never
-  } = {
-    [TLoader in TLoaders[number] as number]: TLoader extends {
-      options: LoaderOptions<TKey, infer TVariables, infer TData, infer TError>
-    }
-      ? LoaderInstance<TKey, TVariables, TData, TError>
-      : never
-  },
-> = TResolvedLoaderInstance[number] extends never
-  ? LoaderInstance
-  : TResolvedLoaderInstance[number]
+  TLoaders extends Record<string, AnyLoader>,
+  TKey extends keyof TLoaders,
+> = TLoaders[TKey] extends Loader<
+  infer _,
+  infer TVariables,
+  infer TData,
+  infer TError
+>
+  ? LoaderInstance<_, TVariables, TData, TError>
+  : never
 
 export type LoaderCallback<TKey extends string, TVariables, TData, TError> = (
   loader: Loader<TKey, TVariables, TData, TError>,
@@ -228,7 +206,13 @@ export interface LoaderOptions<
   TData = unknown,
   TError = Error,
 > {
-  key: TKey
+  fn: (
+    variables: TVariables,
+    loaderOpts: {
+      loaderInstance: LoaderInstance<TKey, TVariables, TData, TError>
+      signal?: AbortSignal
+    },
+  ) => TData | Promise<TData>
   // The max age to consider loader data fresh (not-stale) in milliseconds from the time of fetch
   // Defaults to 1000. Only stale loader data is refetched.
   maxAge?: number
@@ -236,14 +220,7 @@ export interface LoaderOptions<
   // The max age to client the loader data in milliseconds from the time of route inactivity
   // before it is garbage collected.
   gcMaxAge?: number
-  loader: (
-    variables: TVariables,
-    loaderOpts: {
-      loaderInstance: LoaderInstance<TKey, TVariables, TData, TError>
-      signal?: AbortSignal
-    },
-  ) => TData | Promise<TData>
-  onAllInvalidate?: LoaderCallback<TKey, TVariables, TData, TError>
+  onInvalidate?: LoaderCallback<TKey, TVariables, TData, TError>
   onEachInvalidate?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
   onLatestSuccess?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
   onEachSuccess?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
@@ -296,6 +273,8 @@ export type VariablesFn<
 const visibilityChangeEvent = 'visibilitychange'
 const focusEvent = 'focus'
 
+export type AnyLoader = Loader<any, any, any, any>
+
 export class Loader<
   TKey extends string = string,
   TVariables = unknown,
@@ -309,7 +288,7 @@ export class Loader<
     error: TError
   }
   options: LoaderOptions<TKey, TVariables, TData, TError>
-  key: TKey
+  key!: TKey
   client?: LoaderClient<any>
   instances: Record<string, LoaderInstance<TKey, TVariables, TData, TError>>
 
@@ -317,7 +296,6 @@ export class Loader<
 
   constructor(options: LoaderOptions<TKey, TVariables, TData, TError>) {
     this.options = options
-    this.key = this.options.key
     this.instances = {}
 
     // addEventListener does not exist in React Native, but window does
@@ -328,6 +306,11 @@ export class Loader<
       window.addEventListener(visibilityChangeEvent, this.#reloadAll, false)
       window.addEventListener(focusEvent, this.#reloadAll, false)
     }
+  }
+
+  init = (key: TKey) => {
+    this.key = key
+    return this as Loader<TKey, TVariables, TData, TError>
   }
 
   dispose = () => {
@@ -388,7 +371,7 @@ export class Loader<
     return this.getInstance(opts).fetch(opts as any)
   }
 
-  invalidate: VariablesFn<
+  invalidateInstance: VariablesFn<
     TVariables,
     Promise<void>,
     {
@@ -396,10 +379,10 @@ export class Loader<
     }
   > = async (opts: any = {}) => {
     await this.getInstance(opts).invalidate()
-    await this.options.onAllInvalidate?.(this)
+    await this.options.onInvalidate?.(this)
   }
 
-  invalidateAll = async () => {
+  invalidate = async () => {
     await Promise.all(
       Object.values(this.instances).map((loader) => loader.invalidate()),
     )
@@ -675,7 +658,7 @@ export class LoaderInstance<
       try {
         const loaderImpl =
           this.loader.client?.options.wrapLoaderFn?.(this) ??
-          this.loader.options.loader
+          this.loader.options.fn
 
         const data = await loaderImpl(this.variables as any, {
           loaderInstance: this,

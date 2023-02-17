@@ -1,6 +1,6 @@
 import { Route } from '../../routes.generated/posts/$postId'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
-import { Route, useParams } from '@tanstack/react-router'
+import { Route, useParams } from '@tanstack/router'
 import * as React from 'react'
 import { postsLoader, postsRoute } from '../posts'
 export type PostType = {

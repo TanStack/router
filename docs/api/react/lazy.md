@@ -4,9 +4,10 @@ title: lazy
 ---
 
 ```tsx
-import { lazy } from '@tanstack/react-router'
+import { lazy } from '@tanstack/router'
 
-export const expensiveRoute = new Route({ getParentRoute: () => rootRoute,
+export const expensiveRoute = new Route({
+  getParentRoute: () => rootRoute,
   path: 'expensive',
   component: lazy(() => import('./Expensive')),
 })

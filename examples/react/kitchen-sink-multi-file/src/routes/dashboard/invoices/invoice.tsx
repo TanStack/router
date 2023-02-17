@@ -9,7 +9,7 @@ import {
   Link,
   useParams,
   Route,
-} from '@tanstack/react-router'
+} from '@tanstack/router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 import { Action, useAction } from '@tanstack/react-actions'
 import { invoicesLoader } from '..'

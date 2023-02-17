@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { RouterProvider } from '@tanstack/react-router'
+import { RouterProvider } from '@tanstack/router'
 import { LoaderClientProvider } from '@tanstack/react-loaders'
 import { ActionClientProvider } from '@tanstack/react-actions'
 

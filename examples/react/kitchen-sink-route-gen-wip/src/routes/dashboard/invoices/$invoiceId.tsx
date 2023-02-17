@@ -8,7 +8,7 @@ import {
   useLoaderInstance,
   useNavigate,
   useSearch,
-} from '@tanstack/react-router'
+} from '@tanstack/router'
 import { routeConfig } from '../../../routes.generated/dashboard/invoices/$invoiceId'
 import { updateInvoiceAction } from '../../../actions'
 

@@ -3,14 +3,14 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  ReactRouter,
+  Router,
   Link,
   useParams,
   RootRoute,
   Route,
-} from '@tanstack/react-router'
+} from '@tanstack/router'
 import { AppRouter } from '../server/server'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { httpBatchLink } from '@trpc/client'
 import { createTRPCReact } from '@trpc/react-query'
@@ -146,13 +146,13 @@ const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postsIndexRoute, postRoute]),
 ])
 
-// Set up a ReactRouter instance
-const router = new ReactRouter({
+// Set up a Router instance
+const router = new Router({
   routeTree,
   defaultPreload: 'intent',
 })
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router' {
   interface Register {
     router: typeof router
   }

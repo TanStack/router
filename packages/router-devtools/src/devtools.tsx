@@ -3,10 +3,9 @@ import {
   last,
   routerContext,
   invariant,
-  useRouter,
   AnyRouter,
   useStore,
-} from '@tanstack/react-router'
+} from '@tanstack/router'
 
 import useLocalStorage from './useLocalStorage'
 import {

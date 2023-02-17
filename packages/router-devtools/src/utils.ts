@@ -1,5 +1,5 @@
 import React from 'react'
-import { AnyRouteMatch, RouteMatch } from '@tanstack/react-router'
+import { AnyRouteMatch, RouteMatch } from '@tanstack/router'
 
 import { Theme, useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'

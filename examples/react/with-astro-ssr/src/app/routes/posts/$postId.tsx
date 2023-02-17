@@ -1,5 +1,5 @@
 import { useLoaderInstance } from '@tanstack/react-loaders'
-import { Route, useParams } from '@tanstack/react-router'
+import { Route, useParams } from '@tanstack/router'
 import { postsRoute } from '../posts'
 
 export const postIdRoute = new Route({

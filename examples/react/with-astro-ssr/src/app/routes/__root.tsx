@@ -1,11 +1,11 @@
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import {
   ErrorComponent,
   Link,
   Outlet,
   RootRoute,
   useRouter,
-} from '@tanstack/react-router'
+} from '@tanstack/router'
 
 import type { RouterContext } from '../router'
 import { RouterScripts } from '../Hydrate'

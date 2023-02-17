@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link } from '@tanstack/router'
 import * as React from 'react'
 import { fetchUsers } from '../mockTodos'
 import { routeConfig } from '../routes.generated/index'

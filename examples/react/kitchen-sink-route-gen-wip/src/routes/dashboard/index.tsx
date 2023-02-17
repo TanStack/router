@@ -1,4 +1,4 @@
-import { useLoaderInstance, useMatch } from '@tanstack/react-router'
+import { useLoaderInstance, useMatch } from '@tanstack/router'
 import * as React from 'react'
 import { routeConfig } from '../../routes.generated/dashboard/index'
 

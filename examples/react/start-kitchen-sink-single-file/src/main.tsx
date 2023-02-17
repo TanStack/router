@@ -8,11 +8,11 @@ import {
   MatchRoute,
   useNavigate,
   useSearch,
-  ReactRouter,
+  Router,
   useParams,
   RootRoute,
   Route,
-} from '@tanstack/react-router'
+} from '@tanstack/router'
 import {
   Action,
   ActionClient,
@@ -26,7 +26,7 @@ import {
   useLoaderClient,
   LoaderClientProvider,
 } from '@tanstack/react-loaders'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 import {
   fetchInvoices,
@@ -934,7 +934,7 @@ const routeTree = rootRoute.addChildren([
   layoutRoute.addChildren([layoutARoute, layoutBRoute]),
 ])
 
-const router = new ReactRouter({
+const router = new Router({
   routeTree,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>
@@ -949,7 +949,7 @@ const router = new ReactRouter({
   },
 })
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router' {
   interface Register {
     router: typeof router
   }

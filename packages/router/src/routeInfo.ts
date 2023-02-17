@@ -55,6 +55,7 @@ export interface RoutesInfoInner<
     TRouteUnion['__types']['fullPath'], // TFullPath,
     TRouteUnion['__types']['customId'], // TCustomId,
     TRouteUnion['__types']['id'], // TId,
+    TRouteUnion['__types']['loader'], // TId,
     MergeUnion<TRouteUnion['__types']['searchSchema']> & {}, // TSearchSchema,
     MergeUnion<TRouteUnion['__types']['fullSearchSchema']> & {}, // TFullSearchSchema,
     MergeUnion<TRouteUnion['__types']['params']>, // TParams,
@@ -78,6 +79,7 @@ export type ParseRoute<TRouteTree> = TRouteTree extends AnyRoute
   : never
 
 export type ParseRouteChildren<TRouteTree> = TRouteTree extends Route<
+  any,
   any,
   any,
   any,

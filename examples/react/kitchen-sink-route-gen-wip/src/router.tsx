@@ -1,10 +1,10 @@
 import * as React from 'react'
-import { ReactRouter } from '@tanstack/react-router'
+import { Router } from '@tanstack/router'
 
 import { routeConfig } from './routes.generated/routeConfig'
 import { Spinner } from './components/Spinner'
 
-export const router = new ReactRouter({
+export const router = new Router({
   routeConfig: routeConfig,
   defaultPreload: 'intent',
   // useServerData: true,
@@ -15,7 +15,7 @@ export const router = new ReactRouter({
   ),
 })
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router' {
   interface Register {
     router: typeof router
   }

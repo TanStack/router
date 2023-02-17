@@ -1,10 +1,6 @@
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import {
-  createMemoryHistory,
-  Router,
-  RouterProvider,
-} from '@tanstack/react-router'
+import { createMemoryHistory, Router, RouterProvider } from '@tanstack/router'
 import isbot from 'isbot'
 import jsesc from 'jsesc'
 import { ServerResponse } from 'http'

@@ -16,10 +16,10 @@ If you need a special history instance type, You can use the history package to 
 
 Each of these APIs behaves slightly differently and documentation for them can be found in the [history](https://github.com/remix-run/history) package.
 
-Once you have a history instance, you can pass it to the `ReactRouter` constructor:
+Once you have a history instance, you can pass it to the `Router` constructor:
 
 ```ts
-import { createMemoryHistory, ReactRouter, route } from '@tanstack/react-router'
+import { createMemoryHistory, Router, route } from '@tanstack/router'
 
 const rootRoute = new Route()
 
@@ -29,7 +29,7 @@ const memoryHistory = createMemoryHistory({
   initialEntries: ['/'], // Pass your initial url
 })
 
-const router = new ReactRouter({ routeConfig, history: memoryHistory })
+const router = new Router({ routeConfig, history: memoryHistory })
 ```
 
 ## Browser Routing
@@ -41,7 +41,7 @@ The `createBrowserHistory` is the default history type. It uses the browser's hi
 Hash routing can be helpful if your server doesn't support rewrites to index.html for HTTP requests (among other environments that don't have a server).
 
 ```ts
-import { createHashHistory, ReactRouter, route } from '@tanstack/react-router'
+import { createHashHistory, Router, route } from '@tanstack/router'
 
 const rootRoute = new Route()
 
@@ -49,7 +49,7 @@ const indexRoute = new Route({ getParentRoute: () => rootRoute, path: '/' })
 
 const hashHistory = createHashHistory()
 
-const router = new ReactRouter({ routeConfig, history: hashHistory })
+const router = new Router({ routeConfig, history: hashHistory })
 ```
 
 ## Memory Routing
@@ -57,7 +57,7 @@ const router = new ReactRouter({ routeConfig, history: hashHistory })
 Memory routing is useful in environments that are not a browser or when you do not want components to interact with the URL.
 
 ```ts
-import { createMemoryHistory, ReactRouter, route } from '@tanstack/router'
+import { createMemoryHistory, Router, route } from '@tanstack/router'
 
 const rootRoute = new Route()
 
@@ -67,5 +67,5 @@ const memoryHistory = createMemoryHistory({
   initialEntries: ['/'], // Pass your initial url
 })
 
-const router = new ReactRouter({ routeConfig, history: memoryHistory })
+const router = new Router({ routeConfig, history: memoryHistory })
 ```

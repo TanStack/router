@@ -137,8 +137,8 @@
           "to": "api/react/RouterProvider"
         },
         {
-          "label": "ReactRouter",
-          "to": "api/react/ReactRouter"
+          "label": "Router",
+          "to": "api/react/Router"
         },
         {
           "label": "route",

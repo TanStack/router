@@ -27,7 +27,7 @@ const router = new Router({
   // ...
 })
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router' {
   interface Register {
     router: typeof router
   }

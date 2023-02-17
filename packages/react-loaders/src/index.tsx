@@ -102,7 +102,7 @@ export function useLoaderInstance<
     'useLoaderInstance must be used inside a <LoaderClientProvider> component!',
   )
 
-  const loader = optsLoader ?? loaderClient.getLoader({ key: optsKey })
+  const loader = optsLoader ?? loaderClient.loaders[optsKey]
   const loaderInstance = loader.getInstance({
     variables: opts?.variables,
   })

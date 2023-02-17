@@ -1,4 +1,4 @@
-import { Link, Outlet, MatchRoute, Route } from '@tanstack/react-router'
+import { Link, Outlet, MatchRoute, Route } from '@tanstack/router'
 import * as React from 'react'
 import { Spinner } from '../../../components/Spinner'
 import { dashboardRoute, invoicesLoader } from '..'

@@ -60,7 +60,7 @@ The biggest reason for calling `onLoad` every time is to notify your data loadin
 Here is a simple example of using `onLoad` to fetch data for a route:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
+import { Route } from '@tanstack/router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
@@ -107,7 +107,7 @@ Using these parameters, we can do a lot of cool things. Let's take a look at a f
 The `params` property of the `onLoad` function is an object containing the route's path params.
 
 ```tsx
-import { Route } from '@tanstack/react-router'
+import { Route } from '@tanstack/router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 
 const postLoader = new Loader({
@@ -140,7 +140,7 @@ const postRoute = new Route({
 The `search` and `routeSearch` properties of the `onLoad` function are objects containing the route's search params. `search` contains _all_ of the search params including parent search params. `routeSearch` only includes specific search params from this route. In this example, we'll use zod to validate and parse the search params for `/posts/$postId` route and use them in an `onload` function and our component.
 
 ```tsx
-import { Route } from '@tanstack/react-router'
+import { Route } from '@tanstack/router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
@@ -181,7 +181,7 @@ The `context` and `routeContext` properties of the `onLoad` function are objects
 > 🧠 Context is a powerful tool for dependency injection. You can use it to inject services, loaders, and other objects into your router and routes. You can also additively pass data down the route tree at every route using a route's `getContext` option.
 
 ```tsx
-import { Route } from '@tanstack/react-router'
+import { Route } from '@tanstack/router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
@@ -223,7 +223,7 @@ const postsRoute = new Route({
 
 const routeTree = rootRoute.addChildren([postsRoute])
 
-const router = new ReactRouter({
+const router = new Router({
   routeTree,
   context: {
     // Supply our loaderClient to the whole router
@@ -237,7 +237,7 @@ const router = new ReactRouter({
 The `signal` property of the `onLoad` function is an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) which is cancelled when the route is unloaded or when the `onLoad` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change. Here is an example using TanStack Loader's signal passthrough:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
+import { Route } from '@tanstack/router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
@@ -270,7 +270,7 @@ const postsRoute = new Route({
 The `prefetch` property of the `onLoad` function is a boolean which is `true` when the route is being loaded via a prefetch action. Some data loading libraries may handle prefetching differently than a standard fetch, so you may want to pass `prefetch` to your data loading library, or use it to execute the appropriate data loading logic. Here is an example using TanStack Loader and it's built-in `prefetch` flag:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
+import { Route } from '@tanstack/router'
 import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({

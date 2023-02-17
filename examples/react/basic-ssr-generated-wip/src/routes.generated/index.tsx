@@ -1,6 +1,6 @@
-import { lazy } from '@tanstack/react-router'
+import { lazy } from '@tanstack/router'
 import { route as parentRoute } from './__root'
-import { Route } from '@tanstack/react-router'
+import { Route } from '@tanstack/router'
 import * as React from 'react'
 import { rootRoute } from './__root'
 export const indexRoute = new Route({

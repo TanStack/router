@@ -1,5 +1,5 @@
 import { useLoaderInstance } from '@tanstack/react-loaders'
-import { Route } from '@tanstack/react-router'
+import { Route } from '@tanstack/router'
 import * as React from 'react'
 import { dashboardRoute, invoicesLoader } from '.'
 

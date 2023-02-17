@@ -57,18 +57,18 @@ const routeTree = rootRoute.addChildren([
 
 ## Creating a Router
 
-Once you have a route tree, you can create a router using the framework `Router` class of your choice. For example, if you are using React, you would use call `new ReactRouter()`. Router classes take a route tree as one of their many options, and return a router instance.
+Once you have a route tree, you can create a router using the framework `Router` class of your choice. For example, if you are using React, you would use call `new Router()`. Router classes take a route tree as one of their many options, and return a router instance.
 
 ```tsx
-const router = new ReactRouter({ routeTree })
+const router = new Router({ routeTree })
 ```
 
 ## Registering Router Types
 
-TanStack Router provides amazing support for TypeScript, even for things you wouldn't expect like relative navigation and even context-aware hooks! To make this possible, you must register your router type using TypeScripts' [Declaration Merging](https://www.typescriptlang.org/docs/handbook/declaration-merging.html) feature. This is done by extending the `Register` interface on your framework's router module. For example, if you are using React, you would extend the `Register` interface on `@tanstack/react-router` with a `router` property that has the type of your `router` instance:
+TanStack Router provides amazing support for TypeScript, even for things you wouldn't expect like relative navigation and even context-aware hooks! To make this possible, you must register your router type using TypeScripts' [Declaration Merging](https://www.typescriptlang.org/docs/handbook/declaration-merging.html) feature. This is done by extending the `Register` interface on your framework's router module. For example, if you are using React, you would extend the `Register` interface on `@tanstack/router` with a `router` property that has the type of your `router` instance:
 
 ```tsx
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router' {
   interface Register {
     // This infers the type of our router and registers it across your entire project
     router: typeof router
@@ -81,7 +81,7 @@ With your router type registered, you'll now get type-safety across your entire 
 ## All together now!
 
 ```ts
-import { RootRoute, Route, ReactRouter } from '@tanstack/react-router'
+import { RootRoute, Route, Router } from '@tanstack/router'
 let rootRoute = new RootRoute()
 
 const indexRoute = new Route({ getParentRoute: () => rootRoute, path: '/' })
@@ -93,9 +93,9 @@ const routeTree = rootRoute.addChildren([
   blogRoute.addChildren([postRoute]),
 ])
 
-const router = new ReactRouter({ routeTree })
+const router = new Router({ routeTree })
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router' {
   interface Register {
     router: typeof router
   }

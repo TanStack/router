@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { fetchUserById } from '../../../mockTodos'
 import { routeConfig } from '../../../routes.generated/dashboard/users/$userId'
-import { useLoaderInstance, useMatch } from '@tanstack/react-router'
+import { useLoaderInstance, useMatch } from '@tanstack/router'
 
 routeConfig.generate({
   parseParams: ({ userId }) => ({
