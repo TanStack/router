@@ -102,9 +102,9 @@ export function encodeToBinary(str: string): string {
 
 > [⚠️ Why does this snippet not use atob/btoa?](#safe-binary-encodingdecoding)
 
-## Using JSURL
+## Using JSURL2
 
-[JSURL](https://github.com/Sage/jsurl) is a non-standard library that can both compress URLs while still maintaining readability. This can be done with the following code:
+[JSURL2](https://github.com/wmertens/jsurl2) is a non-standard library that can both compress URLs while still maintaining readability. This can be done with the following code:
 
 ```tsx
 import {
@@ -112,7 +112,7 @@ import {
   parseSearchWith,
   stringifySearchWith,
 } from '@tanstack/react-router'
-import jsurl from 'jsurl'
+import jsurl from 'jsurl2'
 
 const router = new ReactRouter({
   parseSearch: parseSearchWith(jsurl.parse),
