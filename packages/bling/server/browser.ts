@@ -55,10 +55,6 @@ server$.addSerializer = ({ apply, serialize }: Serializer) => {
   serializers.push({ apply, serialize })
 }
 
-// export const server$ = ((_fn: any) => {
-//   throw new Error('Should be compiled away')
-// }) as unknown as CreateServerFunction
-
 server$.createRequestInit = function (
   route,
   that,

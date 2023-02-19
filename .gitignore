@@ -44,3 +44,5 @@ ts-perf
 
 /examples/*/*/yarn.lock
 /examples/*/*/package-lock.json
+
+.netlify

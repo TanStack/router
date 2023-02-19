@@ -1,0 +1,13 @@
+{
+  "composite": true,
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./build/types"
+  },
+  "files": ["src/index.tsx"],
+  "include": [
+    "src",
+    "client.ts", //  "__tests__/**/*.test.*"
+    "server.ts"
+, "astro-start.js"  ]
+}

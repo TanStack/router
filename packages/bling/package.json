@@ -1,8 +1,8 @@
 {
   "name": "@tanstack/bling",
   "version": "0.2.19",
-  "description": "Create Solid apps with low configuration",
-  "author": "Ryan Carniato",
+  "description": "",
+  "author": "Nikhil Saraf",
   "license": "MIT",
   "main": "./src/index.ts",
   "types": "./src/index.ts",

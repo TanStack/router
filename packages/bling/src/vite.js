@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'url'
 import babel from './babel.js'
 export function bling(options = {}) {
   return {
-    name: 'solid-start-file-system-router',
+    name: 'vite-plugin-bling',
     enforce: 'pre',
 
     transform(code, id, transformOptions) {
@@ -32,7 +32,8 @@ export function bling(options = {}) {
             plugins: [...b.plugins, ...d.plugins],
           }
         }
-      let babelSolidCompiler = (code, id, fn) => {
+
+      let compiler = (code, id, fn) => {
         let plugin = viteReact({
           ...(options ?? {}),
           babel: babelOptions(fn),
@@ -44,8 +45,8 @@ export function bling(options = {}) {
 
       let ssr = process.env.TEST_ENV === 'client' ? false : isSsr
 
-      if (code.includes('server$')) {
-        return babelSolidCompiler(
+      if (code.includes('server$(')) {
+        return compiler(
           code,
           id.replace(/\.ts$/, '.tsx').replace(/\.js$/, '.jsx'),
           (/** @type {any} */ source, /** @type {any} */ id) => ({

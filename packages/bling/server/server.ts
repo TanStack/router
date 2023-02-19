@@ -2,7 +2,6 @@ import {
   ContentTypeHeader,
   JSONResponseType,
   LocationHeader,
-  ResponseError,
   XBlingContentTypeHeader,
   XBlingLocationHeader,
   XBlingOrigin,
@@ -44,20 +43,6 @@ server$.parseRequest = async function (event: ServerFunctionEvent) {
           if (deserializer) {
             return deserializer.deserialize(value, event)
           }
-          // if (value.$type === 'headers') {
-          //   let headers = new Headers()
-          //   request.headers.forEach((value, key) => headers.set(key, value))
-          //   value.values.forEach(([key, value]: [string, any]) =>
-          //     headers.set(key, value),
-          //   )
-          //   return headers
-          // }
-          // if (value.$type === 'request') {
-          //   return new Request(value.url, {
-          //     method: value.method,
-          //     headers: value.headers,
-          //   })
-          // }
           return value
         })
       } catch (e) {
@@ -76,10 +61,6 @@ server$.respondWith = function (
   data: Response | Error | string | object,
   responseType: 'throw' | 'return',
 ) {
-  if (data instanceof ResponseError) {
-    data = data.clone()
-  }
-
   if (data instanceof Response) {
     if (
       isRedirectResponse(data) &&
@@ -110,45 +91,6 @@ server$.respondWith = function (
         headers,
       })
     }
-    // } else if (data instanceof FormError) {
-    //   return new Response(
-    //     JSON.stringify({
-    //       error: {
-    //         message: data.message,
-    //         stack: import.meta.env.DEV
-    //           ? `The stack for FormErrors are only logged during development. In production you should handle these errors with an ErrorBoundary that can display the error message appropriately to the user.\n\n${data.stack}`
-    //           : '',
-    //         formError: data.formError,
-    //         fields: data.fields,
-    //         fieldErrors: data.fieldErrors,
-    //       },
-    //     }),
-    //     {
-    //       status: 400,
-    //       headers: {
-    //         [XSolidStartResponseTypeHeader]: responseType,
-    //         [XSolidStartContentTypeHeader]: 'form-error',
-    //       },
-    //     },
-    //   )
-    // } else if (data instanceof ServerError) {
-    // return new Response(
-    //   JSON.stringify({
-    //     error: {
-    //       message: data.message,
-    //       stack: import.meta.env.DEV
-    //         ? `The stack for ServerErrors is only logged during development. In production you should handle these errors with an ErrorBoundary that can display the error message appropriately to the user.\n\n${data.stack}`
-    //         : '',
-    //     },
-    //   }),
-    //   {
-    //     status: data.status,
-    //     headers: {
-    //       [XSolidStartResponseTypeHeader]: responseType,
-    //       [XSolidStartContentTypeHeader]: 'server-error',
-    //     },
-    //   },
-    // )
   } else if (data instanceof Error) {
     console.error(data)
     return new Response(

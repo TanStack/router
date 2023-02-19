@@ -1,0 +1,68 @@
+{
+  "name": "@tanstack/react-start",
+  "author": "Tanner Linsley",
+  "version": "0.0.1-beta.82",
+  "license": "MIT",
+  "repository": "tanstack/router",
+  "homepage": "https://tanstack.com/router",
+  "description": "",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "module": "src/index.tsx",
+  "main": "src/index.tsx",
+  "browser": "src/index.tsx",
+  "types": "src/index.tsx",
+  "engines": {
+    "node": ">=12"
+  },
+  "files": [
+    "build/**",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "import": "./src/index.tsx",
+      "require": "./src/index.tsx"
+    },
+    "./astro": {
+      "import": "./astro-start.js",
+      "module": "./astro-start.js"
+    },
+    "./client": "./client.ts",
+    "./server": "./server.ts",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "@babel/runtime": "^7.16.7",
+    "@tanstack/bling": "workspace:^0.2.19",
+    "@tanstack/react-loaders": "workspace:0.0.1-beta.81",
+    "@tanstack/react-router": "workspace:0.0.1-beta.82",
+    "@tanstack/router": "workspace:0.0.1-beta.82",
+    "@tanstack/store": "workspace:*",
+    "jsesc": "^3.0.2",
+    "tiny-invariant": "^1.3.1",
+    "tiny-warning": "^1.0.3"
+  },
+  "peerDependencies": {
+    "react": ">=16",
+    "react-dom": ">=16"
+  },
+  "devDependencies": {
+    "astro": "^1.6.12"
+  }
+}
