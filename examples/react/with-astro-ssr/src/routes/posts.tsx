@@ -2,7 +2,7 @@ import { Link, Outlet, Route } from '@tanstack/react-router'
 import { rootRoute } from '../root'
 
 import { useLoaderInstance } from '@tanstack/react-loaders'
-import { postIdRoute } from './posts/$postId'
+import { postIdRoute } from './posts/[postId]'
 
 export const postsRoute = new Route({
   getParentRoute: () => rootRoute,

@@ -54,14 +54,12 @@ export function createRequestHandler<
     const dehydratedLoaderClient = loaderClient.dehydrate()
 
     const html = ReactDOMServer.renderToString(
-      <ServerContext
-        {...{
-          dehydratedRouter,
-          dehydratedLoaderClient,
-        }}
-      >
-        <StartServer loaderClient={loaderClient} routeTree={routeTree} />
-      </ServerContext>,
+      <StartServer
+        loaderClient={loaderClient}
+        routeTree={routeTree}
+        dehydratedRouter={dehydratedRouter}
+        dehydratedLoaderClient={dehydratedLoaderClient}
+      />,
     )
 
     return new Response(html, {

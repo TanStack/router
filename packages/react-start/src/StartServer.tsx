@@ -1,10 +1,16 @@
 import {
+  DehydratedLoaderClient,
   LoaderClient,
   LoaderClientProvider,
   LoaderInstance,
 } from '@tanstack/react-loaders'
-import { AnyRoute, ReactRouter, RouterProvider } from '@tanstack/react-router'
-import { Hydrate } from './Hydrate'
+import {
+  AnyRoute,
+  DehydratedRouter,
+  ReactRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
+import { Hydrate, ServerContext } from './Hydrate'
 import { server$ } from '@tanstack/bling/server'
 import * as React from 'react'
 
@@ -19,9 +25,13 @@ export function StartServer<
 >({
   loaderClient,
   routeTree,
+  dehydratedLoaderClient,
+  dehydratedRouter,
 }: {
   loaderClient: TLoaderClient
   routeTree: TRouteTree
+  dehydratedRouter: DehydratedRouter
+  dehydratedLoaderClient: DehydratedLoaderClient
 }) {
   const router = React.useMemo(
     () =>
@@ -36,10 +46,15 @@ export function StartServer<
   )
 
   return (
-    <Hydrate loaderClient={loaderClient} router={router as any}>
-      <LoaderClientProvider loaderClient={loaderClient}>
-        <RouterProvider router={router} />
-      </LoaderClientProvider>
-    </Hydrate>
+    <ServerContext
+      dehydratedLoaderClient={dehydratedLoaderClient}
+      dehydratedRouter={dehydratedRouter}
+    >
+      <Hydrate loaderClient={loaderClient} router={router as any}>
+        <LoaderClientProvider loaderClient={loaderClient}>
+          <RouterProvider router={router} />
+        </LoaderClientProvider>
+      </Hydrate>
+    </ServerContext>
   )
 }

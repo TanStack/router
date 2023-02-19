@@ -8,8 +8,7 @@ export function start() {
         updateConfig({
           vite: {
             optimizeDeps: {
-              include: ['@tanstack/start > jsesc'],
-              exclude: ['@tanstack/start'],
+              exclude: ['@tanstack/react-start'],
             },
             plugins: [
               {
@@ -28,7 +27,8 @@ export function start() {
           pattern: '/[...all]',
         })
       },
-      'astro:build:ssr': async ({ manifest }) => {
+
+      'astro:build:ssr': async ({ manifest, ...args }) => {
         console.log(manifest)
       },
     },
