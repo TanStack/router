@@ -36,7 +36,7 @@ You can also set the `preloadDelay` prop on individual `<Link>` components to ov
 
 ## Preloading with Data Loaders
 
-Preloading is most useful when combined with your favorite data loading library. To make this easier, the `onLoad` route option function receives a `preload` boolean denoting whether the route is being preloaded or not. This allows you to load data differently depending on whether the user is navigating to the route or preloading it.
+Preloading is most useful when combined with your favorite data loading library. To make this easier, the `loader` route option function receives a `preload` boolean denoting whether the route is being preloaded or not. This allows you to load data differently depending on whether the user is navigating to the route or preloading it.
 
 Here's an example using TanStack Loaders:
 
@@ -47,7 +47,7 @@ const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
   component: PostsComponent,
-  onLoad: async ({ preload }) => {
+  loader: async ({ preload }) => {
     postsLoader.load({ preload })
   },
 })

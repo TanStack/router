@@ -20,7 +20,7 @@ const route = new Route({
 
 ### Using the TanStack Router framework adapters `lazy` wrapper
 
-Regardless of framework, if a route component has a static `preload` method attached to it, the Router will preload it when the route is matched with the `onLoad` option.
+Regardless of framework, if a route component has a static `preload` method attached to it, the Router will preload it when the route is matched with the `loader` option.
 
 If we were to **set this up manually** (so... don't do this) in React, it would look something like this:
 
@@ -50,13 +50,13 @@ The `lazy` wrapper not only implements `React.lazy()`, but automatically sets up
 
 ## Data Loader Splitting
 
-Regardless of which data loading library you decide to go with, you may end up with a lot of data loaders that could potentially contribute to a large bundle size. If this is the case, you can code split your data loading logic using the Route's `onLoad` option:
+Regardless of which data loading library you decide to go with, you may end up with a lot of data loaders that could potentially contribute to a large bundle size. If this is the case, you can code split your data loading logic using the Route's `loader` option:
 
 ```tsx
 const route = new Route({
   path: '/my-route',
   component: MyComponent,
-  onLoad: async () => {
+  loader: async () => {
     const data = await import('./data')
     return { data }
   },

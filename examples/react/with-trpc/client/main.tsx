@@ -18,7 +18,7 @@ import {
   LoaderClient,
   LoaderClientProvider,
   useLoaderClient,
-  useLoaderInstance,
+  useLoader,
 } from '@tanstack/react-loaders'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -168,7 +168,7 @@ const indexRoute = new Route({
 const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  onLoad: ({ preload }) => postsLoader.load({ preload }),
+  loader: ({ preload }) => postsLoader.load({ preload }),
   component: () => {
     return (
       <>
@@ -217,7 +217,7 @@ const dashboardIndexRoute = new Route({
   component: () => {
     const {
       state: { data: posts },
-    } = useLoaderInstance({ key: postsLoader.key })
+    } = useLoader({ key: postsLoader.key })
 
     return (
       <div className="p-2">
@@ -236,7 +236,7 @@ const postsRoute = new Route({
   component: () => {
     const {
       state: { data: posts },
-    } = useLoaderInstance({ key: postsLoader.key })
+    } = useLoader({ key: postsLoader.key })
 
     return (
       <div className="flex-1 flex">
@@ -301,13 +301,13 @@ const postRoute = new Route({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
   }),
-  onLoad: async ({ params: { postId }, preload }) =>
+  loader: async ({ params: { postId }, preload }) =>
     postLoader.load({ variables: postId, preload }),
   component: () => {
     const { postId } = useParams({ from: postRoute.id })
     const {
       state: { data: post },
-    } = useLoaderInstance({ key: postLoader.key, variables: postId })
+    } = useLoader({ key: postLoader.key, variables: postId })
     const search = useSearch({ from: postRoute.id })
     const navigate = useNavigate({ from: postRoute.id })
 

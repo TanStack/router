@@ -62,7 +62,7 @@ const userRoute = Route({
   getRootRoute: () => rootRoute,
   path: 'todos',
   component: Todos,
-  onLoad: ({ context }) => {
+  loader: ({ context }) => {
     await todosLoader.load({ variables: { user: context.user.id } })
   },
 })
@@ -100,7 +100,7 @@ const userRoute = Route({
   getRootRoute: () => rootRoute,
   path: 'todos',
   component: Todos,
-  onLoad: ({ context }) => {
+  loader: ({ context }) => {
     await context.queryClient.ensureQueryData({
       queryKey: ['todos', { userId: user.id }],
       queryFn: fetchTodos,
@@ -140,7 +140,7 @@ const userRoute = Route({
       bar: true,
     }
   }
-  onLoad: ({ context }) => {
+  loader: ({ context }) => {
     context.foo // true
     context.bar // true
   },
@@ -166,7 +166,7 @@ export const postIdRoute = new Route({
       getTitle: () => `${loaderInstance.state.data?.title} | Post`,
     }
   },
-  onLoad: async ({ params: { postId }, preload, context, routeContext }) =>
+  loader: async ({ params: { postId }, preload, context, routeContext }) =>
     routeContext.loaderInstance.load({
       variables: postId,
       preload,

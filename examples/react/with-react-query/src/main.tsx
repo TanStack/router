@@ -72,7 +72,7 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  onLoad: () =>
+  loader: () =>
     queryClient.ensureQueryData({ queryKey: ['posts'], queryFn: fetchPosts }),
   component: () => {
     const postsQuery = useQuery(['posts'], fetchPosts)
@@ -120,7 +120,7 @@ const postsIndexRoute = new Route({
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  onLoad: async ({ params: { postId } }) =>
+  loader: async ({ params: { postId } }) =>
     queryClient.ensureQueryData(['posts', postId], () => fetchPostById(postId)),
   component: () => {
     const { postId } = useParams({ from: postRoute.id })

@@ -142,7 +142,7 @@ A 404 / non-matching route is really just a fancy name for a [Splat / Catch-All]
 Pathless layout routes are routes that do not have a `path` and instead an `id` to uniquely identify them. Pathless layout routes do not use path segments from the URL pathname, nor do they add path segments to it during linking. They can be used to:
 
 - Wrap child routes with a layout component
-- Enforce an `onLoad` requirement before displaying any child routes
+- Enforce an `loader` requirement before displaying any child routes
 - Validate and provide search params to child routes
 - Provide fallbacks for error components or pending elements to child routes
 - Provide shared context to all child routes

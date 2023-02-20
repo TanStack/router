@@ -424,6 +424,23 @@ export type RouteFromIdOrRoute<T> = T extends RegisteredRoutesInfo['routeUnion']
 //   return null as any
 // }
 
+export function useLoader<
+  TFrom extends keyof RegisteredRoutesInfo['routesById'],
+  TStrict extends boolean = true,
+  TLoader = RegisteredRoutesInfo['routesById'][TFrom]['__types']['loader'],
+  TSelected = TLoader,
+>(opts?: {
+  from: TFrom
+  strict?: TStrict
+  track?: (search: TLoader) => TSelected
+}): TStrict extends true ? TSelected : TSelected | undefined {
+  const { track, ...matchOpts } = opts as any
+  const match = useMatch(matchOpts)
+  useStore(match.__store, (d: any) => opts?.track?.(d.loader) ?? d.loader)
+
+  return (match as unknown as RouteMatch).state.loader as any
+}
+
 export function useSearch<
   TFrom extends keyof RegisteredRoutesInfo['routesById'],
   TStrict extends boolean = true,

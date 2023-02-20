@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { fetchUserById } from '../../../mockTodos'
 import { usersRoute } from '.'
-import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
+import { Loader, useLoader } from '@tanstack/react-loaders'
 import { Route, useParams } from '@tanstack/router'
 import { loaderClient } from '../../../loaderClient'
 
@@ -26,13 +26,13 @@ export const userRoute = new Route({
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
   component: User,
-  onLoad: async ({ params: { userId }, preload }) =>
+  loader: async ({ params: { userId }, preload }) =>
     userLoader.load({ variables: userId, preload }),
 })
 
 function User() {
   const { userId } = useParams({ from: userRoute.id })
-  const userLoaderInstance = useLoaderInstance({
+  const userLoaderInstance = useLoader({
     key: userLoader.key,
     variables: userId,
   })

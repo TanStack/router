@@ -183,8 +183,8 @@
           "to": "api/react/useLinkProps"
         },
         {
-          "label": "useLoaderInstance",
-          "to": "api/react/useLoaderInstance"
+          "label": "useLoader",
+          "to": "api/react/useLoader"
         },
         {
           "label": "useMatch",
@@ -241,28 +241,8 @@
           "to": "examples/react/basic?file=src%2Fmain.tsx"
         },
         {
-          "label": "Basic SSR",
-          "to": "examples/react/basic-ssr?file=src%2Froutes%2F__root.tsx"
-        },
-        {
-          "label": "Basic SSR w/ <html>",
-          "to": "examples/react/basic-ssr-with-html?file=src%2Froutes%2F__root.tsx"
-        },
-        {
-          "label": "Basic SSR Streaming (WIP)",
-          "to": "examples/react/basic-ssr-streaming?file=src%2Froutes%2F__root.tsx"
-        },
-        {
-          "label": "Kitchen Sink Single File",
-          "to": "examples/react/kitchen-sink-single-file?file=src%2Fmain.tsx"
-        },
-        {
-          "label": "Kitchen Sink Multi-File",
+          "label": "Kitchen Sink",
           "to": "examples/react/kitchen-sink-multi-file?file=src%2Fmain.tsx"
-        },
-        {
-          "label": "Kitchen Sink SSR",
-          "to": "examples/react/kitchen-sink-ssr?file=src%2Froutes%2F__root.tsx"
         },
         {
           "label": "Astro SSR",

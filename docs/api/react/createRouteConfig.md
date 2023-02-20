@@ -67,13 +67,13 @@ const router = new Route()
     })
     ```
 
-  - `onLoad: LoaderFn<AnyLoaderData, {}, {}>`
+  - `loader: LoaderFn<AnyLoaderData, {}, {}>`
 
-    This is used when you want you load data in your route which can later be read using 'useLoaderInstance' or 'useMatch'
+    This is used when you want you load data in your route which can later be read using 'useLoader' or 'useMatch'
 
     ```tsx
     const rootRouter = route({
-      onLoad: async () => {
+      loader: async () => {
         const posts = await axios
           .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
           .then((r) => r.data.slice(0, 10))
@@ -110,14 +110,14 @@ search: {}}) => void | ((match: {params: {};
 search: {};
 }) => void) | undefined) | undefined `
 
-                                    This function is called when moving from an inactive state to an active one. Likewise, when moving from an active to an inactive state, the return function (if provided) is called.
+                                            This function is called when moving from an inactive state to an active one. Likewise, when moving from an active to an inactive state, the return function (if provided) is called.
 
   - `onTransition: ((match: {
 params: {};
 search: {};
 }) => void) | undefined `
 
-                                    This function is called when the route remains active from one transition to the next.
+                                            This function is called when the route remains active from one transition to the next.
 
   - `parseParams: ((rawParams: Record<never, string>) => Record<never, string>) | undefined`
 

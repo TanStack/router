@@ -80,7 +80,7 @@ function LoaderClientProvider({ loaderClient, children, ...rest }) {
     children,
   )
 }
-function useLoaderInstance(opts) {
+function useLoader(opts) {
   // opts as typeof opts & {
   //   key?: TKey
   //   loader?: Loader<any, any, any, any>
@@ -91,7 +91,7 @@ function useLoaderInstance(opts) {
   const optsLoader = opts.loader
   invariant(
     loaderClient || optsLoader,
-    'useLoaderInstance must be used inside a <LoaderClientProvider> component!',
+    'useLoader must be used inside a <LoaderClientProvider> component!',
   )
   const loader =
     optsLoader ??
@@ -107,10 +107,10 @@ function useLoaderInstance(opts) {
   if (opts?.strict ?? true) {
     invariant(
       typeof loaderInstance.state.data !== 'undefined',
-      `useLoaderInstance:
-  Loader instance { key: ${loader.key}, variables: ${opts.variables} }) is currently in a "${loaderInstance.state.status}" state. By default useLoaderInstance will throw an error if the loader instance is not in a "success" state. To avoid this error:
+      `useLoader:
+  Loader instance { key: ${loader.key}, variables: ${opts.variables} }) is currently in a "${loaderInstance.state.status}" state. By default useLoader will throw an error if the loader instance is not in a "success" state. To avoid this error:
   
-  - Load the loader instance before using it (e.g. via your router's onLoad or loader option)
+  - Load the loader instance before using it (e.g. via your router's loader or loader option)
 
   - Set opts.strict to false and handle the loading state in your component`,
     )
@@ -616,7 +616,7 @@ const postIdRoute = new Route({
           variables: postId,
         }).state.data?.title,
   }),
-  onLoad: async ({ params: { postId }, preload, context }) =>
+  loader: async ({ params: { postId }, preload, context }) =>
     context.loaderClient
       .getLoader({
         key: 'post',
@@ -633,7 +633,7 @@ function Post() {
   })
   const {
     state: { data: post },
-  } = useLoaderInstance({
+  } = useLoader({
     key: 'post',
     variables: postId,
   })
@@ -655,7 +655,7 @@ function Post() {
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  onLoad: ({ context, preload }) =>
+  loader: ({ context, preload }) =>
     context.loaderClient
       .getLoader({
         key: 'posts',
@@ -678,7 +678,7 @@ const postsRoute = new Route({
 function Posts() {
   const {
     state: { data: posts },
-  } = useLoaderInstance({
+  } = useLoader({
     key: 'posts',
   })
   return /* @__PURE__ */ jsxs('div', {

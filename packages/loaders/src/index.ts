@@ -1,3 +1,4 @@
+
 import { Store } from '@tanstack/store'
 import invariant from 'tiny-invariant'
 import { isPlainObject, replaceEqualDeep } from './utils'
@@ -7,21 +8,21 @@ export interface Register {
 }
 
 export type RegisteredLoaderClient = Register extends {
-  loaderClient: LoaderClient<infer TLoaders>
+  loaderClient: LoaderClient<infer TLoader>
 }
-  ? LoaderClient<TLoaders>
+  ? LoaderClient<TLoader>
   : LoaderClient
 
 export type RegisteredLoaders = Register extends {
-  loaderClient: LoaderClient<infer TLoaders>
+  loaderClient: LoaderClient<infer TLoader>
 }
-  ? TLoaders
+  ? TLoader
   : Record<string, Loader>
 
 export interface LoaderClientOptions<
-  TLoaders extends Record<string, AnyLoader>,
+  TLoader extends Record<string, AnyLoader>,
 > {
-  getLoaders: () => TLoaders
+  getLoaders: () => TLoader
   defaultMaxAge?: number
   defaultPreloadMaxAge?: number
   defaultGcMaxAge?: number
@@ -56,8 +57,8 @@ export interface DehydratedLoaderClient {
   >
 }
 
-type ResolveLoaders<TLoaders extends Record<string, AnyLoader>> = {
-  [TKey in keyof TLoaders]: TLoaders[TKey] extends Loader<
+type ResolveLoaders<TLoader extends Record<string, AnyLoader>> = {
+  [TKey in keyof TLoader]: TLoader[TKey] extends Loader<
     infer _,
     infer TVariables,
     infer TData,
@@ -70,10 +71,10 @@ type ResolveLoaders<TLoaders extends Record<string, AnyLoader>> = {
 // A loader client that tracks instances of loaders by unique key like react query
 export class LoaderClient<
   _TLoaders extends Record<string, AnyLoader> = Record<string, Loader>,
-  TLoaders extends ResolveLoaders<_TLoaders> = ResolveLoaders<_TLoaders>,
+  TLoader extends ResolveLoaders<_TLoaders> = ResolveLoaders<_TLoaders>,
 > {
   options: LoaderClientOptions<_TLoaders>
-  loaders: TLoaders
+  loaders: TLoader
   loaderInstances: Record<string, LoaderInstance> = {}
   __store: LoaderClientStore
   state: LoaderClientStore['state']
@@ -150,14 +151,14 @@ export class LoaderClient<
 }
 
 export type LoaderByKey<
-  TLoaders extends Record<string, AnyLoader>,
-  TKey extends keyof TLoaders,
-> = TLoaders[TKey]
+  TLoader extends Record<string, AnyLoader>,
+  TKey extends keyof TLoader,
+> = TLoader[TKey]
 
 export type LoaderInstanceByKey<
-  TLoaders extends Record<string, AnyLoader>,
-  TKey extends keyof TLoaders,
-> = TLoaders[TKey] extends Loader<
+  TLoader extends Record<string, AnyLoader>,
+  TKey extends keyof TLoader,
+> = TLoader[TKey] extends Loader<
   infer _,
   infer TVariables,
   infer TData,

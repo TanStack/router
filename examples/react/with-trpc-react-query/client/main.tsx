@@ -71,7 +71,7 @@ const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
   errorComponent: () => 'Oh crap!',
-  // onLoad: async () => {}
+  // loader: async () => {}
   component: () => {
     const postsQuery = trpc.posts.useQuery()
 
@@ -121,7 +121,7 @@ const postsIndexRoute = new Route({
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  onLoad: async ({ params: { postId } }) => {
+  loader: async ({ params: { postId } }) => {
     // TODO: Prefetch post using TRPC
     return {}
   },

@@ -68,7 +68,7 @@ import { useAction } from '@tanstack/react-actions'
 
 function PostEditor() {
   const params = useParams({ from: postEditRoute.id })
-  const postLoader = useLoaderInstance({
+  const postLoader = useLoader({
     key: 'post',
     variables: params.postId,
   })
@@ -158,7 +158,7 @@ import { useAction } from '@tanstack/react-actions'
 
 function PostEditor() {
   const params = useParams({ from: postEditRoute.id })
-  const postLoader = useLoaderInstance({
+  const postLoader = useLoader({
     key: 'post',
     variables: params.postId,
   })

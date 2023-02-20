@@ -1,6 +1,11 @@
 import { ParsePathParams } from './link'
 import { RouteMatch } from './routeMatch'
-import { AnyRouter, Router, RouterContext } from './router'
+import {
+  AnyRouter,
+  RegisteredRoutesInfo,
+  Router,
+  RouterContext,
+} from './router'
 import {
   IsAny,
   NoInfer,
@@ -10,8 +15,8 @@ import {
 } from './utils'
 import invariant from 'tiny-invariant'
 import { joinPaths, trimPath, trimPathRight } from './path'
-import { DefaultRoutesInfo } from './routeInfo'
-import { RouteComponent, useMatch } from './react'
+import { AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
+import { MakeLinkOptions, RouteComponent, useLoader, useMatch } from './react'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -91,6 +96,70 @@ export type ContextOptions<
       >
     }
 
+export type RouteProps<
+  TParentRoute extends AnyRoute,
+  TPath extends string,
+  TFullPath extends ResolveFullPath<
+    TParentRoute,
+    TPath,
+    RoutePrefix<TParentRoute['fullPath'], TPath>
+  >,
+  TCustomId extends string,
+  TId extends ResolveId<TParentRoute, TCustomId, TPath>,
+  TLoader,
+  TSearchSchema extends AnySearchSchema,
+  TFullSearchSchema extends AnySearchSchema,
+  TAllParams,
+  TParentContext,
+  TAllParentContext extends IsAny<
+    TParentRoute['__types']['allParams'],
+    TParentContext,
+    TParentRoute['__types']['allParams'] & TParentContext
+  >,
+  TRouteContext,
+  TContext,
+  TRouterContext extends AnyContext,
+> = {
+  useMatch: () => RouteMatch<
+    AnyRoutesInfo,
+    Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TLoader,
+      TSearchSchema,
+      TFullSearchSchema,
+      TParentContext,
+      TAllParentContext,
+      TRouteContext,
+      TContext,
+      TRouterContext,
+      any,
+      any
+    >
+  >
+  useLoader: () => TLoader
+  useSearch: <
+    TStrict extends boolean = true,
+    TSearch = TFullSearchSchema,
+    TSelected = TSearch,
+  >(opts?: {
+    strict?: TStrict
+    track?: (search: TSearch) => TSelected
+  }) => TStrict extends true ? TSelected : TSelected | undefined
+  useParams: <
+    TDefaultSelected = TAllParams,
+    TSelected = TDefaultSelected,
+  >(opts?: {
+    track?: (search: TDefaultSelected) => TSelected
+  }) => TSelected
+  // navigate: <T extends TFullPath, TTo extends string = ''>(
+  //   opts?: MakeLinkOptions<T, TTo>,
+  // ) => Promise<void>
+}
+
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
@@ -103,7 +172,15 @@ export type RouteOptions<
   TParams = Record<ParsePathParams<TPath>, string>,
   TAllParams = TParams,
   TParentContext extends AnyContext = AnyContext,
-  TAllParentContext extends AnyContext = AnyContext,
+  TAllParentContext extends IsAny<
+    TParentRoute['__types']['allParams'],
+    TParentContext,
+    TParentRoute['__types']['allParams'] & TParentContext
+  > = IsAny<
+    TParentRoute['__types']['allParams'],
+    TParentContext,
+    TParentRoute['__types']['allParams'] & TParentContext
+  >,
   TRouteContext extends RouteContext = RouteContext,
   TContext extends AnyContext = TRouteContext,
 > = RouteOptionsBase<TCustomId, TPath> & {
@@ -117,14 +194,48 @@ export type RouteOptions<
   // calls that match this route.
   postSearchFilters?: SearchFilter<TFullSearchSchema>[]
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
-  component?: RouteComponent //
+  component?: RouteComponent<
+    RouteProps<
+      TParentRoute,
+      TPath,
+      ResolveFullPath<TParentRoute, TPath>,
+      TCustomId,
+      ResolveId<TParentRoute, TCustomId, TPath>,
+      TLoader,
+      TSearchSchema,
+      TFullSearchSchema,
+      TAllParams,
+      TParentContext,
+      TAllParentContext,
+      TRouteContext,
+      TContext,
+      NoInfer<TRouteContext>
+    >
+  > //
   // The content to be rendered when the route encounters an error
   errorComponent?: RouteComponent<{
     error: Error
     info: { componentStack: string }
   }> //
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
-  pendingComponent?: RouteComponent //
+  pendingComponent?: RouteComponent<
+    RouteProps<
+      TParentRoute,
+      TPath,
+      ResolveFullPath<TParentRoute, TPath>,
+      TCustomId,
+      ResolveId<TParentRoute, TCustomId, TPath>,
+      TLoader,
+      TSearchSchema,
+      TFullSearchSchema,
+      TAllParams,
+      TParentContext,
+      TAllParentContext,
+      TRouteContext,
+      TContext,
+      NoInfer<TRouteContext>
+    >
+  > //
   wrapInSuspense?: boolean
 
   // This async function is called before a route is loaded.
@@ -144,7 +255,7 @@ export type RouteOptions<
   // If you want to display the errorComponent, rethrow the error
   onValidateSearchError?: (err: any) => void
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
-  onLoad?: OnLoadFn<
+  loader?: OnLoadFn<
     TLoader,
     TSearchSchema,
     TFullSearchSchema,
@@ -185,7 +296,7 @@ export type RouteOptions<
           rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
         ) => TParams extends Record<ParsePathParams<TPath>, any>
           ? TParams
-          : 'parseParams must return an ojbect'
+          : 'parseParams must return an object'
         stringifyParams?: (
           params: NoInfer<TParams>,
         ) => Record<ParsePathParams<TPath>, string>
@@ -329,7 +440,7 @@ export class Route<
     TCustomId,
     TPath
   >,
-  TLoaders = unknown,
+  TLoader = unknown,
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = ResolveFullSearchSchema<
     TParentRoute,
@@ -360,7 +471,7 @@ export class Route<
     fullPath: TFullPath
     customId: TCustomId
     id: TId
-    loader: TLoaders
+    loader: TLoader
     searchSchema: TSearchSchema
     fullSearchSchema: TFullSearchSchema
     params: TParams
@@ -378,7 +489,7 @@ export class Route<
     TParentRoute,
     TCustomId,
     TPath,
-    TLoaders,
+    TLoader,
     InferFullSearchSchema<TParentRoute>,
     TSearchSchema,
     InferFullSearchSchema<TParentRoute> & TSearchSchema,
@@ -408,7 +519,7 @@ export class Route<
       TParentRoute,
       TCustomId,
       TPath,
-      TLoaders,
+      TLoader,
       InferFullSearchSchema<TParentRoute>,
       TSearchSchema,
       TFullSearchSchema,
@@ -433,7 +544,7 @@ export class Route<
       TParentRoute,
       TCustomId,
       TPath,
-      TLoaders,
+      TLoader,
       InferFullSearchSchema<TParentRoute>,
       TSearchSchema,
       TFullSearchSchema,
@@ -506,7 +617,7 @@ export class Route<
     TFullPath,
     TCustomId,
     TId,
-    TLoaders,
+    TLoader,
     TSearchSchema,
     TFullSearchSchema,
     TParams,
@@ -527,15 +638,18 @@ export class Route<
     // return useMatch(this)
   }
 
-  useLoader = () => {
-    return useLoader({ from: this.id })
+  useLoader = <TStrict extends boolean = true, TSelected = TLoader>(opts?: {
+    strict?: TStrict
+    track?: (search: TLoader) => TSelected
+  }): TStrict extends true ? TSelected : TSelected | undefined => {
+    return useLoader({ ...opts, from: this.id }) as any
   }
 }
 
 export type AnyRootRoute = RootRoute<any, any, any, any>
 
 export class RootRoute<
-  TLoaders = unknown,
+  TLoader = unknown,
   TSearchSchema extends AnySearchSchema = {},
   TContext extends RouteContext = RouteContext,
   TRouterContext extends RouterContext = RouterContext,
@@ -545,7 +659,7 @@ export class RootRoute<
   '/',
   string,
   RootRouteId,
-  TLoaders,
+  TLoader,
   TSearchSchema,
   TSearchSchema,
   {},
@@ -562,7 +676,7 @@ export class RootRoute<
         AnyRoute,
         RootRouteId,
         '',
-        TLoaders,
+        TLoader,
         {},
         TSearchSchema,
         NoInfer<TSearchSchema>,
@@ -585,7 +699,7 @@ export class RootRoute<
 
   static withRouterContext = <TRouterContext extends RouterContext>() => {
     return <
-      TLoaders = unknown,
+      TLoader = unknown,
       TSearchSchema extends AnySearchSchema = {},
       TContext extends RouterContext = RouterContext,
     >(
@@ -594,7 +708,7 @@ export class RootRoute<
           AnyRoute,
           RootRouteId,
           '',
-          TLoaders,
+          TLoader,
           {},
           TSearchSchema,
           NoInfer<TSearchSchema>,
@@ -607,7 +721,7 @@ export class RootRoute<
         'path' | 'id' | 'getParentRoute' | 'caseSensitive'
       >,
     ) =>
-      new RootRoute<TLoaders, TSearchSchema, TContext, TRouterContext>(
+      new RootRoute<TLoader, TSearchSchema, TContext, TRouterContext>(
         options as any,
       )
   }

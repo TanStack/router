@@ -115,7 +115,7 @@ export class RouteMatch<
 
   #hasLoaders = () => {
     return !!(
-      this.route.options.onLoad ||
+      this.route.options.loader ||
       componentTypes.some((d) => this.route.options[d]?.preload)
     )
   }
@@ -281,8 +281,8 @@ export class RouteMatch<
       })()
 
       const loaderPromise = Promise.resolve().then(() => {
-        if (this.route.options.onLoad) {
-          return this.route.options.onLoad({
+        if (this.route.options.loader) {
+          return this.route.options.loader({
             params: this.params,
             routeSearch,
             search,

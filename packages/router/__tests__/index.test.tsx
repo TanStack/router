@@ -185,11 +185,11 @@ function createLocation(location: Partial<Location>): ParsedLocation {
 //       },
 //       {
 //         path: 'a',
-//         onLoad: () => sleep(10).then((d) => ({ a: true })),
+//         loader: () => sleep(10).then((d) => ({ a: true })),
 //         children: [
 //           {
 //             path: 'b',
-//             onLoad: () => sleep(10).then((d) => ({ b: true })),
+//             loader: () => sleep(10).then((d) => ({ b: true })),
 //           },
 //         ],
 //       },
@@ -223,7 +223,7 @@ function createLocation(location: Partial<Location>): ParsedLocation {
 //         import: async () => {
 //           await sleep(10)
 //           return {
-//             onLoad: () => sleep(10).then((d) => ({ a: true })),
+//             loader: () => sleep(10).then((d) => ({ a: true })),
 //           }
 //         },
 //         children: [
@@ -232,7 +232,7 @@ function createLocation(location: Partial<Location>): ParsedLocation {
 //             import: async () => {
 //               await sleep(10)
 //               return {
-//                 onLoad: () =>
+//                 loader: () =>
 //                   sleep(10).then((d) => ({
 //                     b: true,
 //                   })),
@@ -275,7 +275,7 @@ function createLocation(location: Partial<Location>): ParsedLocation {
 //               await sleep(20)
 //               return 'element'
 //             },
-//             onLoad: () => sleep(30).then((d) => ({ a: true })),
+//             loader: () => sleep(30).then((d) => ({ a: true })),
 //           }
 //         },
 //         children: [
@@ -288,7 +288,7 @@ function createLocation(location: Partial<Location>): ParsedLocation {
 //                   await sleep(20)
 //                   return 'element'
 //                 },
-//                 onLoad: () =>
+//                 loader: () =>
 //                   sleep(30).then((d) => ({
 //                     b: true,
 //                   })),
@@ -324,12 +324,12 @@ function createLocation(location: Partial<Location>): ParsedLocation {
 //       {
 //         path: 'a',
 //         pendingMs: 10,
-//         onLoad: () => sleep(20),
+//         loader: () => sleep(20),
 //         children: [
 //           {
 //             path: 'b',
 //             pendingMs: 30,
-//             onLoad: () => sleep(40),
+//             loader: () => sleep(40),
 //           },
 //         ],
 //       },

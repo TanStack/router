@@ -1,4 +1,4 @@
-import { useLoaderInstance } from '@tanstack/react-loaders'
+import { useLoader } from '@tanstack/react-loaders'
 import { Route, useParams } from '@tanstack/router'
 import { postsRoute } from '../posts'
 
@@ -11,7 +11,7 @@ export const postIdRoute = new Route({
         variables: postId,
       }).state.data?.title,
   }),
-  onLoad: async ({ params: { postId }, preload, context }) =>
+  loader: async ({ params: { postId }, preload, context }) =>
     context.loaderClient.getLoader({ key: 'post' }).load({
       variables: postId,
       preload,
@@ -24,7 +24,7 @@ function Post() {
 
   const {
     state: { data: post },
-  } = useLoaderInstance({ key: 'post', variables: postId })
+  } = useLoader({ key: 'post', variables: postId })
 
   return (
     <div className="space-y-2">

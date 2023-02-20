@@ -10,7 +10,7 @@ import {
   useParams,
   Route,
 } from '@tanstack/router'
-import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
+import { Loader, useLoader } from '@tanstack/react-loaders'
 import { Action, useAction } from '@tanstack/react-actions'
 import { invoicesLoader } from '..'
 
@@ -53,7 +53,7 @@ export const invoiceRoute = new Route({
     notes: z.string().optional(),
   }),
   component: InvoiceView,
-  onLoad: async ({ params: { invoiceId }, preload }) =>
+  loader: async ({ params: { invoiceId }, preload }) =>
     invoiceLoader.load({
       variables: invoiceId,
       preload,
@@ -62,7 +62,7 @@ export const invoiceRoute = new Route({
 
 function InvoiceView() {
   const { invoiceId } = useParams({ from: invoiceRoute.id })
-  const invoiceLoaderInstance = useLoaderInstance({
+  const invoiceLoaderInstance = useLoader({
     key: invoiceLoader.key,
     variables: invoiceId,
   })

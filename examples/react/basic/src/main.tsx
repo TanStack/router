@@ -5,21 +5,19 @@ import {
   RouterProvider,
   Router,
   Link,
-  useParams,
   RootRoute,
   Route,
   ErrorComponent,
-  createHashHistory,
-  useMatch,
 } from '@tanstack/router'
-import { TanStackRouterDevtools } from '../../../../packages/router-devtools/build/types'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
 import {
   LoaderClient,
   Loader,
   LoaderClientProvider,
-  useLoaderInstance,
+  useLoader,
 } from '@tanstack/react-loaders'
+import { e } from 'vitest/dist/index-40ebba2b'
 
 type PostType = {
   id: string
@@ -27,15 +25,19 @@ type PostType = {
   body: string
 }
 
-const fetchPosts = async () => {
+declare function server$<TFunc extends (...args: any[]) => any>(
+  fn: TFunc,
+): () => ReturnType<TFunc>
+
+const fetchPosts = server$(async () => {
   console.log('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
-}
+})
 
-const fetchPost = async (postId: string) => {
+const fetchPost = server$(async (postId: string) => {
   console.log(`Fetching post with id ${postId}...`)
   await new Promise((r) => setTimeout(r, 500))
   const post = await axios
@@ -43,11 +45,11 @@ const fetchPost = async (postId: string) => {
     .then((r) => r.data)
 
   if (!post) {
-    throw new NotFoundError(postId)
+    throw new NotFoundError(`Post with id "${postId}" not found!`)
   }
 
   return post
-}
+})
 
 const postsLoader = new Loader({
   fn: fetchPosts,
@@ -124,12 +126,18 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  onLoad: async ({ context }) => context.loaderClient.loaders.posts.load(),
-  component: () => {
-    const match = useMatch({ from: postsRoute.id })
-    const postsLoader = useLoaderInstance({
-      loader: match.context.loaderClient.loaders.posts,
-    })
+  loader: async ({ context }) => {
+    const postsLoader = context.loaderClient.loaders.posts
+
+    await postsLoader.load()
+
+    return () =>
+      useLoader({
+        loader: postsLoader,
+      })
+  },
+  component: ({ useLoader }) => {
+    const postsLoader = useLoader()()
 
     return (
       <div className="p-2 flex gap-2">
@@ -167,39 +175,34 @@ const postsIndexRoute = new Route({
   component: () => <div>Select a post.</div>,
 })
 
-class NotFoundError extends Error {
-  data: string
-  constructor(public postId: string) {
-    super(`Post with id "${postId}" not found!`)
-    this.data = postId
-  }
-}
+class NotFoundError extends Error {}
 
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  onLoad: async ({ context: { loaderClient }, params: { postId } }) => {
-    await loaderClient.loaders.post.load({
+  loader: async ({ context: { loaderClient }, params: { postId } }) => {
+    const postLoader = loaderClient.loaders.post
+    await postLoader.load({
       variables: postId,
     })
 
-    // Return a hook!
+    // Return a curried hook!
     return () =>
-      useLoaderInstance({
-        loader: loaderClient.loaders.post,
+      useLoader({
+        loader: postLoader,
         variables: postId,
       })
   },
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {
-      return <div>Post with id "{error.data}" found!</div>
+      return <div>{error.message}</div>
     }
 
     return <ErrorComponent error={error} />
   },
   component: () => {
     const {
-      state: { data },
+      state: { data: post },
     } = postRoute.useLoader()()
 
     return (

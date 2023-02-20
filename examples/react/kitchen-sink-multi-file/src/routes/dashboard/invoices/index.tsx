@@ -3,7 +3,7 @@ import * as React from 'react'
 import { Spinner } from '../../../components/Spinner'
 import { dashboardRoute, invoicesLoader } from '..'
 import { invoiceRoute, updateInvoiceAction } from './invoice'
-import { useLoaderInstance } from '@tanstack/react-loaders'
+import { useLoader } from '@tanstack/react-loaders'
 import { useAction } from '@tanstack/react-actions'
 import { createInvoiceAction } from './invoices'
 
@@ -14,7 +14,7 @@ export const invoicesRoute = new Route({
 })
 
 function Invoices() {
-  const invoicesLoaderInstance = useLoaderInstance({
+  const invoicesLoaderInstance = useLoader({
     key: invoicesLoader.key,
   })
   const invoices = invoicesLoaderInstance.state.data
