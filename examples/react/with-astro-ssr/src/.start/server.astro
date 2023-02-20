@@ -1,0 +1,45 @@
+---
+import { server$, handleEvent } from '@tanstack/bling/server'
+import { createMemoryHistory, Router } from '@tanstack/react-router'
+import { StartServer } from '@tanstack/react-start/server'
+import { createLoaderClient } from './loaders'
+import { routeTree } from './routes'
+
+const loaderClient = createLoaderClient()
+
+if (server$.hasHandler(Astro.url.pathname)) {
+  return await handleEvent({
+    request: Astro.request,
+    env: {},
+    locals: {
+      $loaderClient: loaderClient,
+    },
+  })
+}
+
+const fullUrl = new URL(Astro.request.url)
+const url = Astro.request.url.replace(fullUrl.origin, '')
+const history = createMemoryHistory({
+  initialEntries: [url],
+})
+
+const router = new Router({
+  history,
+  routeTree,
+  context: {
+    loaderClient,
+  },
+})
+
+await router.load()
+
+const dehydratedRouter = router.dehydrate()
+const dehydratedLoaderClient = loaderClient.dehydrate()
+---
+
+<StartServer
+  dehydratedRouter={dehydratedRouter}
+  dehydratedLoaderClient={dehydratedLoaderClient}
+  loaderClient={loaderClient}
+  routeTree={routeTree}
+/>
