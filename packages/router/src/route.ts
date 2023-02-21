@@ -1,11 +1,6 @@
 import { ParsePathParams } from './link'
 import { RouteMatch } from './routeMatch'
-import {
-  AnyRouter,
-  RegisteredRoutesInfo,
-  Router,
-  RouterContext,
-} from './router'
+import { AnyRouter, RegisteredRoutesInfo, Router } from './router'
 import {
   IsAny,
   NoInfer,
@@ -16,7 +11,13 @@ import {
 import invariant from 'tiny-invariant'
 import { joinPaths, trimPath, trimPathRight } from './path'
 import { AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
-import { MakeLinkOptions, RouteComponent, useLoader, useMatch } from './react'
+import {
+  MakeLinkOptions,
+  RouteComponent,
+  useLoader,
+  useMatch,
+  useSearch,
+} from './react'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -155,6 +156,7 @@ export type RouteProps<
   >(opts?: {
     track?: (search: TDefaultSelected) => TSelected
   }) => TSelected
+  useContext: () => TContext
   // navigate: <T extends TFullPath, TTo extends string = ''>(
   //   opts?: MakeLinkOptions<T, TTo>,
   // ) => Promise<void>
@@ -182,7 +184,10 @@ export type RouteOptions<
     TParentRoute['__types']['allParams'] & TParentContext
   >,
   TRouteContext extends RouteContext = RouteContext,
-  TContext extends AnyContext = TRouteContext,
+  TContext extends MergeFromParent<
+    TAllParentContext,
+    TRouteContext
+  > = MergeFromParent<TAllParentContext, TRouteContext>,
 > = RouteOptionsBase<TCustomId, TPath> & {
   getParentRoute: () => TParentRoute
   // If true, this route will be matched as case-sensitive
@@ -634,8 +639,11 @@ export class Route<
     return this as any
   }
 
-  useMatch = () => {
-    // return useMatch(this)
+  useMatch = <TStrict extends boolean = true, TSelected = TContext>(opts?: {
+    strict?: TStrict
+    track?: (search: TContext) => TSelected
+  }): TStrict extends true ? TSelected : TSelected | undefined => {
+    return useMatch({ ...opts, from: this.id }) as any
   }
 
   useLoader = <TStrict extends boolean = true, TSelected = TLoader>(opts?: {
@@ -643,6 +651,23 @@ export class Route<
     track?: (search: TLoader) => TSelected
   }): TStrict extends true ? TSelected : TSelected | undefined => {
     return useLoader({ ...opts, from: this.id }) as any
+  }
+
+  useContext = <TStrict extends boolean = true, TSelected = TContext>(opts?: {
+    strict?: TStrict
+    track?: (search: TContext) => TSelected
+  }): TStrict extends true ? TSelected : TSelected | undefined => {
+    return useMatch({ ...opts, from: this.id }).context
+  }
+
+  useSearch = <
+    TStrict extends boolean = true,
+    TSelected = TFullSearchSchema,
+  >(opts?: {
+    strict?: TStrict
+    track?: (search: TFullSearchSchema) => TSelected
+  }): TStrict extends true ? TSelected : TSelected | undefined => {
+    return useSearch({ ...opts, from: this.id })
   }
 }
 
@@ -652,7 +677,7 @@ export class RootRoute<
   TLoader = unknown,
   TSearchSchema extends AnySearchSchema = {},
   TContext extends RouteContext = RouteContext,
-  TRouterContext extends RouterContext = RouterContext,
+  TRouterContext extends {} = {},
 > extends Route<
   any,
   '/',
@@ -666,9 +691,11 @@ export class RootRoute<
   {},
   TRouterContext,
   TRouterContext,
-  TContext,
   MergeFromParent<TRouterContext, TContext>,
-  TRouterContext
+  MergeFromParent<TRouterContext, TContext>,
+  TRouterContext,
+  any,
+  any
 > {
   constructor(
     options?: Omit<
@@ -697,11 +724,11 @@ export class RootRoute<
     super(options as any)
   }
 
-  static withRouterContext = <TRouterContext extends RouterContext>() => {
+  static withRouterContext = <TRouterContext extends {}>() => {
     return <
       TLoader = unknown,
       TSearchSchema extends AnySearchSchema = {},
-      TContext extends RouterContext = RouterContext,
+      TContext extends {} = {},
     >(
       options?: Omit<
         RouteOptions<

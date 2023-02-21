@@ -15,10 +15,10 @@ Feature/Capability Key:
 - 🔶 Possible, but requires custom code/implementation/casting
 - 🛑 Not officially supported
 
-|                                                | TanStack Router                                  | React Router DOM [_(Website)_][react-router]          | Next.JS [_(Website)_][nextjs]                         |
+|                                                | TanStack Router                                  | React Router DOM [_(Website)_][router]                | Next.JS [_(Website)_][nextjs]                         |
 | ---------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------------------- |
-| Github Repo / Stars                            | [![][stars-tanstack-router]][gh-tanstack-router] | [![][stars-react-router]][gh-react-router]            | [![][stars-nextjs]][gh-nextjs]                        |
-| Bundle Size                                    | [![][bp-tanstack-router]][bpl-tanstack-router]   | [![][bp-react-router]][bpl-react-router]              | ❓                                                    |
+| Github Repo / Stars                            | [![][stars-tanstack-router]][gh-tanstack-router] | [![][stars-router]][gh-router]                        | [![][stars-nextjs]][gh-nextjs]                        |
+| Bundle Size                                    | [![][bp-tanstack-router]][bpl-tanstack-router]   | [![][bp-router]][bpl-router]                          | ❓                                                    |
 |                                                | [![][bp-tanstack-loaders]][bpl-tanstack-loaders] |                                                       |                                                       |
 |                                                | [![][bp-tanstack-actions]][bpl-tanstack-actions] |                                                       |                                                       |
 | History, Memory & Hash Routers                 | ✅                                               | ✅                                                    | 🛑                                                    |
@@ -71,11 +71,11 @@ Feature/Capability Key:
 [gh-tanstack-router]: https://github.com/tanstack/router
 [stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?label=%F0%9F%8C%9F
 [_]: _
-[react-router]: https://github.com/remix-run/react-router
-[bp-react-router]: https://badgen.net/bundlephobia/minzip/react-router-dom?label=All
-[gh-react-router]: https://github.com/remix-run/react-router
-[stars-react-router]: https://img.shields.io/github/stars/remix-run/react-router?label=%F0%9F%8C%9F
-[bpl-react-router]: https://bundlephobia.com/result?p=react-router-dom
+[router]: https://github.com/remix-run/router
+[bp-router]: https://badgen.net/bundlephobia/minzip/router-dom?label=All
+[gh-router]: https://github.com/remix-run/router
+[stars-router]: https://img.shields.io/github/stars/remix-run/router?label=%F0%9F%8C%9F
+[bpl-router]: https://bundlephobia.com/result?p=router-dom
 [bpl-history]: https://bundlephobia.com/result?p=history
 [_]: _
 [bp-nextjs]: https://badgen.net/bundlephobia/minzip/next.js?label=All

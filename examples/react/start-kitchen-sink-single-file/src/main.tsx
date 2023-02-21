@@ -21,7 +21,7 @@ import {
 } from '@tanstack/react-actions'
 import {
   Loader,
-  useLoaderInstance,
+  useLoader,
   LoaderClient,
   useLoaderClient,
   LoaderClientProvider,
@@ -247,7 +247,7 @@ const indexRoute = new Route({
 const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  onLoad: ({ preload }) => invoicesLoader.load({ preload }),
+  loader: ({ preload }) => invoicesLoader.load({ preload }),
   component: () => {
     return (
       <>
@@ -296,7 +296,7 @@ const dashboardIndexRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: '/',
   component: () => {
-    const invoicesLoaderInstance = useLoaderInstance({
+    const invoicesLoaderInstance = useLoader({
       key: invoicesLoader.key,
     })
 
@@ -317,7 +317,7 @@ const invoicesRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'invoices',
   component: () => {
-    const invoicesLoaderInstance = useLoaderInstance({
+    const invoicesLoaderInstance = useLoader({
       key: invoicesLoader.key,
     })
 
@@ -462,7 +462,7 @@ const invoiceRoute = new Route({
         notes: z.string().optional(),
       })
       .parse(search),
-  onLoad: async ({ params: { invoiceId }, preload, context }) =>
+  loader: async ({ params: { invoiceId }, preload, context }) =>
     invoiceLoader.load({
       variables: invoiceId,
       preload,
@@ -472,7 +472,7 @@ const invoiceRoute = new Route({
     const params = useParams({ from: invoiceRoute.id })
     const navigate = useNavigate({ from: invoiceRoute.id })
 
-    const invoiceLoaderInstance = useLoaderInstance({
+    const invoiceLoaderInstance = useLoader({
       key: invoiceLoader.key,
       variables: params.invoiceId,
     })
@@ -574,7 +574,7 @@ const invoiceRoute = new Route({
 const usersRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'users',
-  onLoad: ({ preload }) => usersLoader.load({ preload }),
+  loader: ({ preload }) => usersLoader.load({ preload }),
   validateSearch: z.object({
     usersView: z
       .object({
@@ -594,7 +594,7 @@ const usersRoute = new Route({
     }),
   ],
   component: () => {
-    const usersLoaderInstance = useLoaderInstance({ key: usersLoader.key })
+    const usersLoaderInstance = useLoader({ key: usersLoader.key })
     const users = usersLoaderInstance.state.data
 
     const { usersView } = useSearch({ from: usersRoute.id })
@@ -751,12 +751,12 @@ const userRoute = new Route({
   validateSearch: z.object({
     userId: z.number(),
   }),
-  onLoad: async ({ search: { userId }, preload }) =>
+  loader: async ({ search: { userId }, preload }) =>
     userLoader.load({ variables: userId, preload }),
   component: () => {
     const { userId } = useSearch({ from: userRoute.id })
 
-    const userLoaderInstance = useLoaderInstance({
+    const userLoaderInstance = useLoader({
       key: userLoader.key,
       variables: userId,
     })
@@ -880,9 +880,9 @@ const loginRoute = new Route({
 const layoutRoute = new Route({
   getParentRoute: () => rootRoute,
   id: 'layout',
-  onLoad: async ({ preload }) => randomIdLoader.load({ preload }),
+  loader: async ({ preload }) => randomIdLoader.load({ preload }),
   component: () => {
-    const randomIdLoaderInstance = useLoaderInstance({
+    const randomIdLoaderInstance = useLoader({
       key: randomIdLoader.key,
     })
 

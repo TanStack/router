@@ -48,7 +48,12 @@ export class RouteMatch<
   routeContext?: TRoute['__types']['routeContext']
   context!: TRoute['__types']['context']
 
-  component?: RouteComponent
+  component?: RouteComponent<{
+    useLoader: TRoute['useLoader']
+    useMatch: TRoute['useMatch']
+    useContext: TRoute['useContext']
+    useSearch: TRoute['useSearch']
+  }>
   errorComponent?: RouteComponent<{
     error: Error
     info: { componentStack: string }

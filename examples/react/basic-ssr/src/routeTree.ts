@@ -1,4 +1,4 @@
-import { rootRoute } from './routes/__root'
+import { rootRoute } from './routes/root'
 import { indexRoute } from './routes/index'
 import { postsRoute } from './routes/posts'
 import { postsIndexRoute } from './routes/posts/index'

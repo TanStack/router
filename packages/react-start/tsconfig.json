@@ -8,6 +8,7 @@
   "include": [
     "src",
     "client.ts", //  "__tests__/**/*.test.*"
-    "server.ts"
-, "astro-start.js"  ]
+    "server.ts",
+    "astro.js"
+  ]
 }

@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Link, Outlet, Route } from '@tanstack/router'
 import { rootRoute } from './__root'
-import { useLoaderInstance } from '@tanstack/react-loaders'
+import { useLoader } from '@tanstack/react-loaders'
 import { postIdRoute } from './posts/$postId'
 
 export const postsRoute = new Route({
@@ -12,14 +12,14 @@ export const postsRoute = new Route({
   getContext: () => ({
     title: 'Posts',
   }),
-  onLoad: ({ context, preload }) =>
+  loader: ({ context, preload }) =>
     context.loaderClient.getLoader({ key: 'posts' }).load({ preload }),
 })
 
 function Posts() {
   const {
     state: { data: posts },
-  } = useLoaderInstance({ key: 'posts' })
+  } = useLoader({ key: 'posts' })
 
   return (
     <div className="p-2 flex gap-2">

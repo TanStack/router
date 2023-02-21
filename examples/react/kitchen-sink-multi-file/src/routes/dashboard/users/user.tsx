@@ -1,22 +1,16 @@
 import * as React from 'react'
 import { fetchUserById } from '../../../mockTodos'
-import { usersRoute } from '.'
-import { Loader, useLoader } from '@tanstack/react-loaders'
-import { Route, useParams } from '@tanstack/router'
-import { loaderClient } from '../../../loaderClient'
+import { usersLoader, usersRoute } from '.'
+import { Loader } from '@tanstack/react-loaders'
+import { Route } from '@tanstack/router'
 
 export const userLoader = new Loader({
-  key: 'user',
-  loader: async (userId: number) => {
+  fn: async (userId: number) => {
     console.log(`Fetching user with id ${userId}...`)
     return fetchUserById(userId)
   },
-  onAllInvalidate: async () => {
-    await loaderClient
-      .getLoader({
-        key: 'users',
-      })
-      .invalidateAll()
+  onInvalidate: async () => {
+    await usersLoader.invalidate()
   },
 })
 
@@ -25,25 +19,31 @@ export const userRoute = new Route({
   path: '$userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
-  component: User,
-  loader: async ({ params: { userId }, preload }) =>
-    userLoader.load({ variables: userId, preload }),
+  loader: async ({ context, params: { userId }, preload }) => {
+    const { userLoader } = context.loaderClient.loaders
+
+    const userLoaderInstance = userLoader.getInstance({
+      variables: userId,
+    })
+
+    await userLoaderInstance.load({
+      preload,
+    })
+
+    return () => userLoaderInstance.useInstance()
+  },
+  component: function User({ useLoader }) {
+    const {
+      state: { data: user },
+    } = useLoader()()
+
+    return (
+      <>
+        <h4 className="p-2 font-bold">{user?.name}</h4>
+        <pre className="text-sm whitespace-pre-wrap">
+          {JSON.stringify(user, null, 2)}
+        </pre>
+      </>
+    )
+  },
 })
-
-function User() {
-  const { userId } = useParams({ from: userRoute.id })
-  const userLoaderInstance = useLoader({
-    key: userLoader.key,
-    variables: userId,
-  })
-  const user = userLoaderInstance.state.data
-
-  return (
-    <>
-      <h4 className="p-2 font-bold">{user?.name}</h4>
-      <pre className="text-sm whitespace-pre-wrap">
-        {JSON.stringify(user, null, 2)}
-      </pre>
-    </>
-  )
-}

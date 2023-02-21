@@ -36,6 +36,7 @@ export function bling(options = {}) {
       let compiler = (code, id, fn) => {
         let plugin = viteReact({
           ...(options ?? {}),
+          fastRefresh: false,
           babel: babelOptions(fn),
         })
 

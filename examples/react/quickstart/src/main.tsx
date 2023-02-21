@@ -24,13 +24,21 @@ const rootRoute = new RootRoute({
 const indexRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: Index,
+  component: function Index() {
+    return (
+      <div>
+        <h3>Welcome Home!</h3>
+      </div>
+    )
+  },
 })
 
 const aboutRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/about',
-  component: About,
+  component: function About() {
+    return <div>Hello from About!</div>
+  },
 })
 
 const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
@@ -43,28 +51,12 @@ declare module '@tanstack/router' {
   }
 }
 
-function App() {
-  return <RouterProvider router={router} />
-}
-
-function Index() {
-  return (
-    <div>
-      <h3>Welcome Home!</h3>
-    </div>
-  )
-}
-
-function About() {
-  return <div>Hello from About!</div>
-}
-
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
     <StrictMode>
-      <App />
+      <RouterProvider router={router} />
     </StrictMode>,
   )
 }

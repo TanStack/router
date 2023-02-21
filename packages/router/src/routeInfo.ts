@@ -1,9 +1,9 @@
-import { AnyRootRoute, AnyRoute, RootRoute, Route } from './route'
+import { AnyRoute, Route } from './route'
 import { AnyPathParams, AnySearchSchema, RootRouteId } from './route'
 import { IsAny, MergeUnion, Values } from './utils'
 
 export interface AnyRoutesInfo {
-  routeTree: AnyRootRoute
+  routeTree: AnyRoute
   routeUnion: AnyRoute
   routesById: Record<string, AnyRoute>
   routesByFullPath: Record<string, AnyRoute>
@@ -15,7 +15,7 @@ export interface AnyRoutesInfo {
 }
 
 export interface DefaultRoutesInfo {
-  routeTree: RootRoute
+  routeTree: AnyRoute
   routeUnion: AnyRoute
   routesById: Record<string, Route>
   routesByFullPath: Record<string, Route>

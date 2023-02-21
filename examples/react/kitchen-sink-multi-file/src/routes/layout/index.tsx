@@ -1,41 +1,34 @@
-import { Loader, useLoader } from '@tanstack/react-loaders'
+import { Loader } from '@tanstack/react-loaders'
 import { Outlet, Route } from '@tanstack/router'
 import * as React from 'react'
 import { fetchRandomNumber } from '../../mockTodos'
 
-import { loaderDelayFn } from '../../utils'
-import { rootRoute } from '../__root'
+import { rootRoute } from '../root'
 
 export const randomIdLoader = new Loader({
-  key: 'random',
-  loader: () => {
-    return fetchRandomNumber()
-  },
+  fn: fetchRandomNumber,
 })
 
 export const layoutRoute = new Route({
   getParentRoute: () => rootRoute,
   id: 'layout',
-  component: LayoutWrapper,
-  loader: async () => {
-    return loaderDelayFn(() => {
-      return {
-        random: Math.random(),
-      }
-    })
+  loader: async ({ context }) => {
+    const { randomIdLoader } = context.loaderClient.loaders
+    await randomIdLoader.load()
+    return () => randomIdLoader.useLoader()
+  },
+  component: function LayoutWrapper({ useLoader }) {
+    const {
+      state: { data: randomId },
+    } = useLoader()()
+
+    return (
+      <div>
+        <div>Layout</div>
+        <div>Random #: {randomId}</div>
+        <hr />
+        <Outlet />
+      </div>
+    )
   },
 })
-
-function LayoutWrapper() {
-  const loaderInstance = useLoader({ key: randomIdLoader.key })
-  const random = loaderInstance.state.data
-
-  return (
-    <div>
-      <div>Layout</div>
-      <div>Random #: {random}</div>
-      <hr />
-      <Outlet />
-    </div>
-  )
-}

@@ -1,4 +1,3 @@
-
 import { Store } from '@tanstack/store'
 import invariant from 'tiny-invariant'
 import { isPlainObject, replaceEqualDeep } from './utils'
@@ -27,15 +26,6 @@ export interface LoaderClientOptions<
   defaultPreloadMaxAge?: number
   defaultGcMaxAge?: number
   defaultRefetchOnWindowFocus?: boolean
-  wrapLoaderFn?: <TKey extends string, TVariables, TData, TError>(
-    loaderInstance: LoaderInstance<TKey, TVariables, TData, TError>,
-  ) => (
-    variables: TVariables,
-    loaderOpts: {
-      loaderInstance: LoaderInstance<TKey, TVariables, TData, TError>
-      signal?: AbortSignal
-    },
-  ) => Promise<TData>
 }
 
 export type LoaderClientStore = Store<{
@@ -97,9 +87,11 @@ export class LoaderClient<
 
     this.state = this.__store.state
     this.loaders = {} as any
+    this.init()
   }
 
   init = () => {
+    if (this.initialized) return
     Object.entries(this.options.getLoaders()).forEach(
       ([key, loader]: [string, Loader]) => {
         ;(this.loaders as any)[key] = loader.init(key)
@@ -108,46 +100,46 @@ export class LoaderClient<
     this.initialized = true
   }
 
-  // dehydrate = (): DehydratedLoaderClient => {
-  //   return {
-  //     loaders: Object.values(this.loaders).reduce(
-  //       (acc, loader) => ({
-  //         ...acc,
-  //         [loader.key]: Object.values(loader.instances).reduce(
-  //           (acc, instance) => ({
-  //             ...acc,
-  //             [instance.hashedKey]: {
-  //               hashedKey: instance.hashedKey,
-  //               variables: instance.variables,
-  //               state: instance.state,
-  //             },
-  //           }),
-  //           {},
-  //         ),
-  //       }),
-  //       {},
-  //     ),
-  //   }
-  // }
+  dehydrate = (): DehydratedLoaderClient => {
+    return {
+      loaders: Object.values(this.loaders).reduce(
+        (acc, loader: AnyLoader) => ({
+          ...acc,
+          [loader.key]: Object.values(loader.instances).reduce(
+            (acc, instance) => ({
+              ...acc,
+              [instance.hashedKey]: {
+                hashedKey: instance.hashedKey,
+                variables: instance.variables,
+                state: instance.state,
+              },
+            }),
+            {},
+          ),
+        }),
+        {},
+      ),
+    }
+  }
 
-  // hydrate = (data: DehydratedLoaderClient) => {
-  //   Object.entries(data.loaders).forEach(([loaderKey, instances]) => {
-  //     const loader = this.getLoader({ key: loaderKey }) as Loader
+  hydrate = (data: DehydratedLoaderClient) => {
+    Object.entries(data.loaders).forEach(([loaderKey, instances]) => {
+      const loader = this.loaders[loaderKey] as Loader
 
-  //     Object.values(instances).forEach((dehydratedInstance) => {
-  //       let instance = loader.instances[dehydratedInstance.hashedKey]
+      Object.values(instances).forEach((dehydratedInstance) => {
+        let instance = loader.instances[dehydratedInstance.hashedKey]
 
-  //       if (!instance) {
-  //         instance = loader.instances[dehydratedInstance.hashedKey] =
-  //           loader.getInstance({
-  //             variables: dehydratedInstance.variables,
-  //           })
-  //       }
+        if (!instance) {
+          instance = loader.instances[dehydratedInstance.hashedKey] =
+            loader.getInstance({
+              variables: dehydratedInstance.variables,
+            })
+        }
 
-  //       instance.__store.setState(() => dehydratedInstance.state)
-  //     })
-  //   })
-  // }
+        instance.__store.setState(() => dehydratedInstance.state)
+      })
+    })
+  }
 }
 
 export type LoaderByKey<
@@ -197,23 +189,28 @@ export interface LoaderStore<TData = unknown, TError = Error> {
   preload: boolean
 }
 
-export type LoaderFn<TLoaderPayload = unknown, TLoaderResponse = unknown> = (
-  submission: TLoaderPayload,
-) => TLoaderResponse | Promise<TLoaderResponse>
+export type LoaderFn<TVariables, TData> = (
+  variables: TVariables,
+) => TData | Promise<TData>
 
-export interface LoaderOptions<
+export type LoaderOptions<
   TKey extends string = string,
   TVariables = unknown,
   TData = unknown,
   TError = Error,
-> {
-  fn: (
-    variables: TVariables,
-    loaderOpts: {
-      loaderInstance: LoaderInstance<TKey, TVariables, TData, TError>
-      signal?: AbortSignal
-    },
-  ) => TData | Promise<TData>
+> = (
+  | {
+      fn: LoaderFn<TVariables, TData>
+      getFn?: never
+    }
+  | {
+      fn?: never
+      getFn: (ctx: {
+        loaderInstance: LoaderInstance<TKey, TVariables, TData, TError>
+        signal: AbortSignal | null
+      }) => LoaderFn<TVariables, TData>
+    }
+) & {
   // The max age to consider loader data fresh (not-stale) in milliseconds from the time of fetch
   // Defaults to 1000. Only stale loader data is refetched.
   maxAge?: number
@@ -303,23 +300,23 @@ export class Loader<
     // In the future, we might need to invert control here for more adapters
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (typeof window !== 'undefined' && window.addEventListener) {
-      // Listen to visibilitychange and focus
       window.addEventListener(visibilityChangeEvent, this.#reloadAll, false)
-      window.addEventListener(focusEvent, this.#reloadAll, false)
     }
+
+    Loader.onCreateFns.forEach((cb) => cb(this))
   }
+
+  static onCreateFns: ((loader: AnyLoader) => void)[] = []
 
   init = (key: TKey) => {
     this.key = key
+    this.instances = {}
     return this as Loader<TKey, TVariables, TData, TError>
   }
 
   dispose = () => {
     if (typeof window !== 'undefined' && window.removeEventListener) {
-      // Be sure to unsubscribe if a new handler is set
-
       window.removeEventListener(visibilityChangeEvent, this.#reloadAll)
-      window.removeEventListener(focusEvent, this.#reloadAll)
     }
   }
 
@@ -414,6 +411,8 @@ export interface NullableLoaderInstance<
   state: NullableLoaderStore<TData, TError>
 }
 
+export type AnyLoaderInstance = LoaderInstance<any, any, any, any>
+
 export class LoaderInstance<
   TKey extends string = string,
   TVariables = unknown,
@@ -472,7 +471,11 @@ export class LoaderInstance<
     } else {
       this.#startGc()
     }
+
+    LoaderInstance.onCreateFns.forEach((cb) => cb(this))
   }
+
+  static onCreateFns: ((loader: AnyLoaderInstance) => void)[] = []
 
   #notifyClient = () => {
     const client = this.loader.client
@@ -657,14 +660,13 @@ export class LoaderInstance<
       }
 
       try {
-        const loaderImpl =
-          this.loader.client?.options.wrapLoaderFn?.(this) ??
-          this.loader.options.fn
+        const loaderFn =
+          this.loader.options.getFn?.({
+            loaderInstance: this,
+            signal: opts?.signal ?? null,
+          }) ?? this.loader.options.fn!
 
-        const data = await loaderImpl(this.variables as any, {
-          loaderInstance: this,
-          signal: opts?.signal,
-        })
+        const data = await loaderFn(this.variables as any)
 
         invariant(
           typeof data !== 'undefined',

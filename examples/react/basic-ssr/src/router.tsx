@@ -4,7 +4,7 @@ import { loaderClient } from './loaderClient'
 import { routeTree } from './routeTree'
 
 export interface RouterContext {
-  loaderClient: RegisteredLoaderClient
+  loaderClient: typeof loaderClient
 }
 
 export const router = new Router({

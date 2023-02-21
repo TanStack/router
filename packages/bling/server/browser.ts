@@ -55,12 +55,7 @@ server$.addSerializer = ({ apply, serialize }: Serializer) => {
   serializers.push({ apply, serialize })
 }
 
-server$.createRequestInit = function (
-  route,
-  that,
-  args: any[],
-  meta,
-): RequestInit {
+server$.createRequestInit = function (route, args: any[], meta): RequestInit {
   let body,
     headers: Record<string, string> = {
       [XBlingOrigin]: 'client',
@@ -90,16 +85,49 @@ server$.createRequestInit = function (
 
 type ServerCall = (route: string, init: RequestInit) => Promise<Response>
 
+function mergeHeaders(...objs: (Headers | HeadersInit | undefined)[]) {
+  const allHeaders = {}
+
+  for (const header of objs) {
+    if (!header) continue
+    const headers: Headers = new Headers(header)
+
+    for (const [key, value] of headers.entries()) {
+      if (value === undefined || value === 'undefined') {
+        delete allHeaders[key]
+      } else {
+        allHeaders[key] = value
+      }
+    }
+  }
+
+  return new Headers(allHeaders)
+}
+
 server$.createFetcher = (route, meta) => {
-  let fetcher: any = function (this: any, ...args: any[]) {
-    const requestInit = server$.createRequestInit(route, this, args, meta)
+  let fetcher: any = (...args: any[]) => {
+    const requestInit = server$.createRequestInit(route, args, meta)
     // request body: json, formData, or string
     return (server$.call as ServerCall)(route, requestInit)
   }
 
   fetcher.url = route
+
   fetcher.fetch = (init: RequestInit) =>
     (server$.call as ServerCall)(route, init)
+
+  fetcher.withRequest =
+    (partialInit: Partial<RequestInit>) =>
+    (...args: any) => {
+      let requestInit = server$.createRequestInit(route, args, meta)
+      // request body: json, formData, or string
+      return (server$.call as ServerCall)(route, {
+        ...requestInit,
+        ...partialInit,
+        headers: mergeHeaders(requestInit.headers, partialInit.headers),
+      })
+    }
+
   return fetcher as ServerFunction<any, any>
 }
 

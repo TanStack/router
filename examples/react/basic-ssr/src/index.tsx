@@ -44,7 +44,7 @@ export function App({
         ) : null}
         {/* {import.meta.env.DEV ? ( */}
         {/* <> */}
-        <script
+        {/* <script
           type="module"
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
@@ -56,7 +56,7 @@ export function App({
               window.__vite_plugin_react_preamble_installed__ = true
             `,
           }}
-        />
+        /> */}
         {/* <script type="module" src="/@vite/client" /> */}
         {/* </>
         ) : null} */}

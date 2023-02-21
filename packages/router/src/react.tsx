@@ -9,7 +9,7 @@ import {
   ValidFromPath,
   NavigateOptions,
 } from './link'
-import { AnyRootRoute, RootRoute, Route } from './route'
+import { AnyRootRoute, AnyRoute, RootRoute, Route } from './route'
 import {
   RouteByPath,
   AnyRoutesInfo,
@@ -291,16 +291,18 @@ export type MatchesProviderProps = {
 }
 
 export type RouterProps<
-  TRouteConfig extends AnyRootRoute = RootRoute,
+  TRouteConfig extends AnyRoute = AnyRoute,
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
-> = RouterOptions<TRouteConfig> & {
+  TDehydrated extends Record<string, any> = Record<string, any>,
+> = RouterOptions<TRouteConfig, TDehydrated> & {
   router: Router<TRouteConfig, TRoutesInfo>
 }
 
 export function RouterProvider<
-  TRouteConfig extends AnyRootRoute = RootRoute,
+  TRouteConfig extends AnyRoute = AnyRoute,
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
->({ router, ...rest }: RouterProps<TRouteConfig, TRoutesInfo>) {
+  TDehydrated extends Record<string, any> = Record<string, any>,
+>({ router, ...rest }: RouterProps<TRouteConfig, TRoutesInfo, TDehydrated>) {
   router.update(rest)
 
   const currentMatches = useStore(router.__store, (s) => s.currentMatches)
@@ -437,7 +439,6 @@ export function useLoader<
   const { track, ...matchOpts } = opts as any
   const match = useMatch(matchOpts)
   useStore(match.__store, (d: any) => opts?.track?.(d.loader) ?? d.loader)
-
   return (match as unknown as RouteMatch).state.loader as any
 }
 
@@ -590,16 +591,20 @@ function Inner(props: { match: RouteMatch }): any {
     throw props.match.state.error
   }
 
-  if (props.match.state.status === 'success') {
-    return React.createElement(
-      (props.match.component as any) ??
-        router.options.defaultComponent ??
-        Outlet,
-    )
-  }
-
   if (props.match.state.status === 'pending') {
     throw props.match.__loadPromise
+  }
+
+  if (props.match.state.status === 'success') {
+    return React.createElement(
+      props.match.component ?? router.options.defaultComponent ?? Outlet,
+      {
+        useLoader: props.match.route.useLoader,
+        useMatch: props.match.route.useMatch,
+        useContext: props.match.route.useContext,
+        useSearch: props.match.route.useSearch,
+      },
+    )
   }
 
   invariant(

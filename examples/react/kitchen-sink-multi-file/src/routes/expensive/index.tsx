@@ -1,6 +1,5 @@
 import { lazy, Route } from '@tanstack/router'
-import { loaderDelayFn } from '../../utils'
-import { rootRoute } from '../__root'
+import { rootRoute } from '../root'
 
 export const expensiveRoute = new Route({
   getParentRoute: () => rootRoute,

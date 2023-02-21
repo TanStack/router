@@ -1,10 +1,6 @@
-import {
-  LoaderClient,
-  LoaderClientProvider,
-  LoaderInstance,
-} from '@tanstack/react-loaders'
-import { AnyRoute, ReactRouter, RouterProvider } from '@tanstack/react-router'
-import { Hydrate } from './Hydrate'
+import { LoaderInstance } from '@tanstack/react-loaders'
+import { AnyRouter, RouterProvider } from '@tanstack/router'
+import { Hydrate, HydrationCtx } from './Hydrate'
 import { server$ } from '@tanstack/bling/server'
 import * as React from 'react'
 
@@ -13,32 +9,14 @@ server$.addSerializer({
   serialize: (e) => ({ $type: 'loaderClient' }),
 })
 
-export function StartClient<
-  TRouteTree extends AnyRoute,
-  TLoaderClient extends LoaderClient<any>,
->({
-  loaderClient,
-  routeTree,
-}: {
-  loaderClient: TLoaderClient
-  routeTree: TRouteTree
-}) {
-  const router = React.useMemo(
-    () =>
-      new ReactRouter({
-        routeTree,
-        context: {
-          loaderClient,
-        },
-        defaultPreload: 'intent',
-      }),
-    [routeTree, loaderClient],
-  )
+export function StartClient(props: { router: AnyRouter }) {
+  const CustomRouterProvider = props.router.options.Provider || React.Fragment
+
   return (
-    <Hydrate loaderClient={loaderClient} router={router as any}>
-      <LoaderClientProvider loaderClient={loaderClient}>
-        <RouterProvider router={router} />
-      </LoaderClientProvider>
+    <Hydrate onHydrate={props.router.options.hydrate}>
+      <CustomRouterProvider>
+        <RouterProvider router={props.router} />
+      </CustomRouterProvider>
     </Hydrate>
   )
 }

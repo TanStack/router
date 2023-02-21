@@ -1,36 +1,32 @@
-import { AnyRoute, createMemoryHistory, Router } from '@tanstack/router'
+import { AnyRouter, createMemoryHistory } from '@tanstack/router'
 import type { APIContext } from 'astro'
 import ReactDOMServer from 'react-dom/server'
 import { handleEvent, server$ } from '@tanstack/bling/server/server'
-import { ServerContext } from './Hydrate'
 import * as React from 'react'
+import isbot from 'isbot'
 import { StartServer } from './StartServer'
-import { LoaderClient } from 'packages/loaders/build/types'
+import { PassThrough } from 'stream'
 
-export function createRequestHandler<
-  TRouteTree extends AnyRoute,
-  TLoaderClient extends LoaderClient,
->({
-  routeTree,
-  createLoaderClient,
-}: {
-  routeTree: TRouteTree
-  createLoaderClient: () => TLoaderClient
+export function createRequestHandler<TRouter extends AnyRouter>(opts: {
+  createRouter: () => TRouter
 }) {
   return async ({ request }: APIContext) => {
     const fullUrl = new URL(request.url)
     const url = request.url.replace(fullUrl.origin, '')
-
-    const loaderClient = createLoaderClient()
 
     if (server$.hasHandler(fullUrl.pathname)) {
       return await handleEvent({
         request,
         env: {},
         locals: {
-          $loaderClient: loaderClient,
-          $abortSignal: new AbortController().signal,
+          $abortSignal: new AbortController().signal, // TODO: Use the real abort signal
         },
+      })
+    }
+
+    if (fullUrl.pathname.includes('.')) {
+      return new Response(null, {
+        status: 404,
       })
     }
 
@@ -40,62 +36,55 @@ export function createRequestHandler<
       initialEntries: [url],
     })
 
-    const router = new Router({
+    const router = opts.createRouter()
+
+    router.update({
       history,
-      routeTree,
-      context: {
-        loaderClient,
-      },
     })
 
     await router.load()
 
-    const dehydratedRouter = router.dehydrate()
-    const dehydratedLoaderClient = loaderClient.dehydrate()
+    return new Promise((resolve, reject) => {
+      let didError = false
 
-    const html = ReactDOMServer.renderToString(
-      <StartServer
-        loaderClient={loaderClient}
-        routeTree={routeTree}
-        dehydratedRouter={dehydratedRouter}
-        dehydratedLoaderClient={dehydratedLoaderClient}
-      />,
-    )
-
-    return new Response(html, {
-      headers: {
+      const responseStatusCode = 200
+      const responseHeaders = new Headers({
         'Content-Type': 'text/html',
-      },
+      })
+
+      // Clever way to get the right callback. Thanks Remix!
+      const callbackName = isbot(request.headers.get('user-agent'))
+        ? 'onAllReady'
+        : 'onShellReady'
+
+      const stream = ReactDOMServer.renderToPipeableStream(
+        <StartServer router={router} />,
+        {
+          [callbackName]: () => {
+            const body = new PassThrough()
+
+            responseHeaders.set('Content-Type', 'text/html')
+
+            resolve(
+              new Response(body as any, {
+                headers: responseHeaders,
+                status: didError ? 500 : responseStatusCode,
+              }),
+            )
+
+            stream.pipe(body)
+          },
+          onShellError: (err) => {
+            reject(err)
+          },
+          onError: (err) => {
+            didError = true
+            console.log(err)
+          },
+        },
+      )
+
+      setTimeout(() => stream.abort(), 10000)
     })
-
-    // // Clever way to get the right callback. Thanks Remix!
-    // // const callbackName = isbot(request.headers.get('user-agent'))
-    // //   ? 'onAllReady'
-    // //   : 'onShellReady'
-    // const callbackName = 'onShellReady'
-
-    // const body = new PassThrough()
-
-    // const stream = ReactDOMServer.renderToPipeableStream(
-    //   React.createElement(App, {
-    //     dehydratedRouter,
-    //     dehydratedLoaderClient,
-    //   }),
-    //   {
-    //     [callbackName]: () => {
-    //       // opts.res.statusCode = didError ? 500 : 200
-    //       // opts.res.setHeader('Content-type', 'text/html')
-    //       stream.pipe(body)
-    //     },
-    //     onError: (err) => {
-    //       // didError = true
-    //       console.log(err)
-    //     },
-    //   },
-    // )
-
-    // setTimeout(() => stream.abort(), 10000)
-
-    // return new Response(body as any)
   }
 }

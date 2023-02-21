@@ -3,8 +3,7 @@ import * as React from 'react'
 import { hydrationContext } from './Hydrate'
 
 export function Scripts() {
-  const { dehydratedRouter, dehydratedLoaderClient } =
-    React.useContext(hydrationContext)
+  const dehydrated = React.useContext(hydrationContext)
 
   return (
     <>
@@ -14,10 +13,7 @@ export function Scripts() {
           __html: `
           window.__DEHYDRATED__ = 
            ${
-             JSON.stringify({
-               dehydratedRouter,
-               dehydratedLoaderClient,
-             })
+             JSON.stringify(dehydrated)
              // {
              //   isScriptContext: true,
              //   quotes: 'single',
@@ -27,7 +23,7 @@ export function Scripts() {
         `,
         }}
       />
-      <script type="module" src="/src/entry-client.tsx" />
+      <script type="module" src="/src/app/entry-client.tsx" />
     </>
   )
 }

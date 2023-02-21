@@ -7,7 +7,7 @@ import {
 } from './config'
 import { BranchConfig, Commit, Package } from './types'
 
-// Originally ported to TS from https://github.com/remix-run/react-router/tree/main/scripts/{version,publish}.js
+// Originally ported to TS from https://github.com/remix-run/router/tree/main/scripts/{version,publish}.js
 import path from 'path'
 import { exec, execSync } from 'child_process'
 import fsp from 'fs/promises'

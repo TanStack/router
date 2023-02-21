@@ -1,5 +1,5 @@
 {
-  "name": "@tanstack/react-router",
+  "name": "@tanstack/router",
   "author": "Tanner Linsley",
   "version": "0.0.1-beta.83",
   "license": "MIT",
@@ -12,7 +12,7 @@
   "keywords": [
     "react",
     "location",
-    "@tanstack/react-router",
+    "@tanstack/router",
     "router",
     "routing",
     "async",

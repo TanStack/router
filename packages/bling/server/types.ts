@@ -25,7 +25,13 @@ export interface ServerFunctionEvent extends FetchEvent {
 export type ServerFunction<
   E extends any[],
   T extends (...args: [...E]) => any,
-> = ((...p: Parameters<T>) => Promise<Awaited<ReturnType<T>>>) & { url: string }
+> = ((...p: Parameters<T>) => Promise<Awaited<ReturnType<T>>>) & {
+  url: string
+  fetch: (init: RequestInit) => Promise<Awaited<ReturnType<T>>>
+  withRequest: (
+    init: Partial<RequestInit>,
+  ) => (...p: Parameters<T>) => Promise<Awaited<ReturnType<T>>>
+}
 
 export type CreateServerFunction = (<
   E extends any[],
@@ -59,11 +65,6 @@ export type CreateServerFunction = (<
   ): ServerFunction<any, any>
   fetch(route: string, init?: RequestInit): Promise<Response>
   parseResponse: (request: Request, response: Response) => Promise<any>
-  createRequestInit: (
-    path: string,
-    that: ServerFunctionEvent | any,
-    args: any[],
-    meta: any,
-  ) => RequestInit
+  createRequestInit: (path: string, args: any[], meta: any) => RequestInit
   addDeserializer(deserializer: Deserializer): void
 } & FetchEvent

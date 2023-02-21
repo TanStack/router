@@ -1,44 +1,18 @@
 import * as React from 'react'
-import type {
-  DehydratedLoaderClient,
-  LoaderClient,
-} from '@tanstack/react-loaders'
-import type { DehydratedRouter, Router } from '@tanstack/router'
+import { DehydratedRouter, invariant } from '@tanstack/router'
+
+export type HydrationCtx = Record<string, any>
 
 declare global {
   interface Window {
-    __DEHYDRATED__?: {
-      dehydratedRouter: DehydratedRouter
-      dehydratedLoaderClient: DehydratedLoaderClient
-    }
+    __DEHYDRATED__?: HydrationCtx
   }
 }
 
-export const hydrationContext = React.createContext<{
-  dehydratedRouter?: DehydratedRouter
-  dehydratedLoaderClient?: DehydratedLoaderClient
-}>({})
-
-export function ServerContext(props: {
-  dehydratedRouter: DehydratedRouter
-  dehydratedLoaderClient: DehydratedLoaderClient
-  children: any
-}) {
-  return (
-    <hydrationContext.Provider
-      value={{
-        dehydratedRouter: props.dehydratedRouter,
-        dehydratedLoaderClient: props.dehydratedLoaderClient,
-      }}
-    >
-      {props.children}
-    </hydrationContext.Provider>
-  )
-}
+export const hydrationContext = React.createContext<HydrationCtx>({} as any)
 
 export function Hydrate(props: {
-  loaderClient: LoaderClient<any>
-  router: Router<any>
+  onHydrate?: (ctx: HydrationCtx) => void
   children: any
 }) {
   // Server hydrates from context
@@ -47,15 +21,15 @@ export function Hydrate(props: {
   React.useState(() => {
     // Client hydrates from window
     if (typeof document !== 'undefined') {
-      ctx = window.__DEHYDRATED__ || {}
+      ctx = window.__DEHYDRATED__ as HydrationCtx
+
+      invariant(
+        ctx,
+        'Expected to find a __DEHYDRATED__ property on window... but we did not. THIS IS VERY BAD',
+      )
     }
 
-    const { dehydratedRouter, dehydratedLoaderClient } = ctx
-
-    if (dehydratedRouter && dehydratedLoaderClient) {
-      props.loaderClient.hydrate(dehydratedLoaderClient)
-      props.router.hydrate(dehydratedRouter)
-    }
+    props.onHydrate?.(ctx)
   })
 
   return props.children

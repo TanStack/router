@@ -54,7 +54,7 @@ export interface Register {
   // router: Router
 }
 
-export type AnyRouter = Router<any, any>
+export type AnyRouter = Router<any, any, any>
 
 export type RegisteredRouter = Register extends {
   router: Router<infer TRoute, infer TRoutesInfo>
@@ -105,7 +105,10 @@ type RouterContextOptions<TRouteTree extends AnyRoute> =
         context: TRouteTree['__types']['routerContext']
       }
 
-export interface RouterOptions<TRouteTree extends AnyRootRoute> {
+export interface RouterOptions<
+  TRouteTree extends AnyRoute,
+  TDehydrated extends Record<string, any>,
+> {
   history?: RouterHistory
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
@@ -123,11 +126,13 @@ export interface RouterOptions<TRouteTree extends AnyRootRoute> {
   caseSensitive?: boolean
   routeTree?: TRouteTree
   basepath?: string
-  Router?: (router: AnyRouter) => void
   createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
   onRouteChange?: () => void
   fetchServerDataFn?: FetchServerDataFn
   context?: TRouteTree['__types']['routerContext']
+  Provider?: React.ComponentType<{ children: any }>
+  dehydrate?: () => TDehydrated
+  hydrate?: (dehydrated: TDehydrated) => void
 }
 
 type FetchServerDataFn = (ctx: {
@@ -191,7 +196,7 @@ export interface DehydratedRouterState
     RouterState,
     'status' | 'latestLocation' | 'currentLocation' | 'lastUpdated'
   > {
-  currentMatches: DehydratedRouteMatch[]
+  // currentMatches: DehydratedRouteMatch[]
 }
 
 export interface DehydratedRouter {
@@ -204,8 +209,6 @@ interface DehydratedRouteMatch {
   id: string
   state: Pick<RouteMatchState<any, any>, 'status'>
 }
-
-export interface RouterContext {}
 
 export const defaultFetchServerDataFn: FetchServerDataFn = async ({
   router,
@@ -233,15 +236,16 @@ export const defaultFetchServerDataFn: FetchServerDataFn = async ({
   throw new Error('Failed to fetch match data')
 }
 
-export type RouterConstructorOptions<TRouteTree extends AnyRoute> = Omit<
-  RouterOptions<TRouteTree>,
-  'context'
-> &
+export type RouterConstructorOptions<
+  TRouteTree extends AnyRoute,
+  TDehydrated extends Record<string, any>,
+> = Omit<RouterOptions<TRouteTree, TDehydrated>, 'context'> &
   RouterContextOptions<TRouteTree>
 
 export class Router<
-  TRouteTree extends AnyRoute = RootRoute,
+  TRouteTree extends AnyRoute = AnyRoute,
   TRoutesInfo extends AnyRoutesInfo = RoutesInfo<TRouteTree>,
+  TDehydrated extends Record<string, any> = Record<string, any>,
 > {
   types!: {
     // Super secret internal stuff
@@ -250,12 +254,13 @@ export class Router<
   }
 
   options: PickAsRequired<
-    RouterOptions<TRouteTree>,
+    RouterOptions<TRouteTree, TDehydrated>,
     'stringifySearch' | 'parseSearch' | 'context'
   >
+  context!: NonNullable<TRouteTree['__types']['routerContext']>
   history!: RouterHistory
   #unsubHistory?: () => void
-  basepath: string
+  basepath!: string
   // __location: Location<TRoutesInfo['fullSearchSchema']>
   routeTree!: RootRoute
   routesById!: RoutesById<TRoutesInfo>
@@ -268,7 +273,7 @@ export class Router<
   startedLoadingAt = Date.now()
   resolveNavigation: () => void = () => {}
 
-  constructor(options?: RouterConstructorOptions<TRouteTree>) {
+  constructor(options?: RouterConstructorOptions<TRouteTree, TDehydrated>) {
     this.options = {
       defaultPreloadDelay: 50,
       context: undefined!,
@@ -287,12 +292,8 @@ export class Router<
       },
     )
     this.state = this.__store.state
-    this.basepath = ''
 
     this.update(options)
-
-    // Allow frameworks to hook into the router creation
-    this.options.Router?.(this)
 
     const next = this.buildNext({
       hash: true,
@@ -322,8 +323,10 @@ export class Router<
     return () => {}
   }
 
-  update = (opts?: RouterOptions<TRouteTree>): this => {
+  update = (opts?: RouterOptions<any, any>): this => {
     Object.assign(this.options, opts)
+
+    this.context = this.options.context
 
     if (
       !this.history ||
@@ -358,13 +361,13 @@ export class Router<
 
     if (routeTree) {
       this.routesById = {} as any
-      this.routeTree = this.#buildRouteTree(routeTree)
+      this.routeTree = this.#buildRouteTree(routeTree) as RootRoute
     }
 
     return this
   }
 
-  buildNext = (opts: BuildNextOptions) => {
+  buildNext = (opts: BuildNextOptions): ParsedLocation => {
     const next = this.#buildLocation(opts)
 
     const __matches = this.matchRoutes(next.pathname)
@@ -957,54 +960,55 @@ export class Router<
     }
   }
 
-  dehydrate = (): DehydratedRouter => {
-    return {
-      state: {
-        ...pick(this.state, [
-          'latestLocation',
-          'currentLocation',
-          'status',
-          'lastUpdated',
-        ]),
-        currentMatches: this.state.currentMatches.map((match) => ({
-          id: match.id,
-          state: {
-            status: match.state.status,
-          },
-        })),
-      },
-    }
-  }
+  // dehydrate = (): DehydratedRouter => {
+  //   return {
+  //     state: {
+  //       ...pick(this.state, [
+  //         'latestLocation',
+  //         'currentLocation',
+  //         'status',
+  //         'lastUpdated',
+  //       ]),
+  //       // currentMatches: this.state.currentMatches.map((match) => ({
+  //       //   id: match.id,
+  //       //   state: {
+  //       //     status: match.state.status,
+  //       //     // status: 'idle',
+  //       //   },
+  //       // })),
+  //     },
+  //   }
+  // }
 
-  hydrate = (dehydratedRouter: DehydratedRouter) => {
-    this.__store.setState((s) => {
-      // Match the routes
-      const currentMatches = this.matchRoutes(
-        dehydratedRouter.state.latestLocation.pathname,
-        {
-          strictParseParams: true,
-        },
-      )
+  // hydrate = (dehydratedRouter: DehydratedRouter) => {
+  //   this.__store.setState((s) => {
+  //     // Match the routes
+  //     // const currentMatches = this.matchRoutes(
+  //     //   dehydratedRouter.state.latestLocation.pathname,
+  //     //   {
+  //     //     strictParseParams: true,
+  //     //   },
+  //     // )
 
-      currentMatches.forEach((match, index) => {
-        const dehydratedMatch = dehydratedRouter.state.currentMatches[index]
-        invariant(
-          dehydratedMatch && dehydratedMatch.id === match.id,
-          'Oh no! There was a hydration mismatch when attempting to hydrate the state of the router! 😬',
-        )
-        match.__store.setState((s) => ({
-          ...s,
-          ...dehydratedMatch.state,
-        }))
-      })
+  //     // currentMatches.forEach((match, index) => {
+  //     // const dehydratedMatch = dehydratedRouter.state.currentMatches[index]
+  //     // invariant(
+  //     //   dehydratedMatch && dehydratedMatch.id === match.id,
+  //     //   'Oh no! There was a hydration mismatch when attempting to hydrate the state of the router! 😬',
+  //     // )
+  //     // match.__store.setState((s) => ({
+  //     //   ...s,
+  //     //   ...dehydratedMatch.state,
+  //     // }))
+  //     // })
 
-      return {
-        ...s,
-        ...dehydratedRouter.state,
-        currentMatches,
-      }
-    })
-  }
+  //     return {
+  //       ...s,
+  //       ...dehydratedRouter.state,
+  //       // currentMatches,
+  //     }
+  //   })
+  // }
 
   #buildRouteTree = (routeTree: AnyRoute) => {
     const recurseRoutes = (routes: Route[], parentRoute: Route | undefined) => {

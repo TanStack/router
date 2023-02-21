@@ -35,7 +35,7 @@
       "children": [
         {
           "label": "React",
-          "to": "adapters/react-router"
+          "to": "adapters/router"
         },
         {
           "label": "Preact",
@@ -246,7 +246,7 @@
         },
         {
           "label": "Astro SSR",
-          "to": "examples/react/with-astro-ssr?file=src%2Froutes%2F__root.tsx"
+          "to": "examples/react/start-basic?file=src%2Froutes%2F__root.tsx"
         },
         {
           "label": "With React Query",

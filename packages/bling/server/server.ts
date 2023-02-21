@@ -190,6 +190,7 @@ server$.createHandler = (impl, route, meta) => {
 
     const execute = async () => {
       console.log('Executing', route)
+      if (normalizedArgs) console.log(`  Payload: ${normalizedArgs}`)
       try {
         return impl.call(normalizedThis, ...normalizedArgs)
       } catch (e) {

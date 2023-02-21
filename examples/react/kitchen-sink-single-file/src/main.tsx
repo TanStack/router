@@ -21,7 +21,7 @@ import {
 } from '@tanstack/react-actions'
 import {
   Loader,
-  useLoaderInstance,
+  useLoader,
   LoaderClient,
   useLoaderClient,
   LoaderClientProvider,
@@ -48,58 +48,53 @@ type UsersViewSortBy = 'name' | 'id' | 'email'
 // Loaders
 
 const invoicesLoader = new Loader({
-  key: 'invoices',
-  loader: async () => {
+  fn: async () => {
     console.log('Fetching invoices...')
     return fetchInvoices()
   },
 })
 
 const invoiceLoader = new Loader({
-  key: 'invoice',
-  loader: async (invoiceId: number) => {
+  fn: async (invoiceId: number) => {
     console.log(`Fetching invoice with id ${invoiceId}...`)
     return fetchInvoiceById(invoiceId)
   },
-  onAllInvalidate: async () => {
-    await invoicesLoader.invalidateAll()
+  onInvalidate: async () => {
+    await invoicesLoader.invalidate()
   },
 })
 
 const usersLoader = new Loader({
-  key: 'users',
-  loader: async () => {
+  fn: async () => {
     console.log('Fetching users...')
     return fetchUsers()
   },
 })
 
 const userLoader = new Loader({
-  key: 'user',
-  loader: async (userId: number) => {
+  fn: async (userId: number) => {
     console.log(`Fetching user with id ${userId}...`)
     return fetchUserById(userId)
   },
-  onAllInvalidate: async () => {
-    await usersLoader.invalidateAll()
+  onInvalidate: async () => {
+    await usersLoader.invalidate()
   },
 })
 
 const randomIdLoader = new Loader({
-  key: 'random',
-  loader: () => {
+  fn: () => {
     return fetchRandomNumber()
   },
 })
 
 const loaderClient = new LoaderClient({
-  getLoaders: () => [
+  getLoaders: () => ({
     invoicesLoader,
     invoiceLoader,
     usersLoader,
     userLoader,
     randomIdLoader,
-  ],
+  }),
 })
 
 // Register things for typesafety
@@ -115,7 +110,7 @@ const createInvoiceAction = new Action({
   key: 'createInvoice',
   action: postInvoice,
   onEachSuccess: async () => {
-    await invoicesLoader.invalidateAll()
+    await invoicesLoader.invalidate()
   },
 })
 
@@ -123,7 +118,7 @@ const updateInvoiceAction = new Action({
   key: 'updateInvoice',
   action: patchInvoice,
   onEachSuccess: async ({ payload }) => {
-    await invoiceLoader.invalidate({
+    await invoiceLoader.invalidateInstance({
       variables: payload.id,
     })
   },
@@ -247,7 +242,7 @@ const indexRoute = new Route({
 const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  onLoad: ({ preload }) => invoicesLoader.load({ preload }),
+  loader: ({ preload }) => invoicesLoader.load({ preload }),
   component: () => {
     return (
       <>
@@ -296,11 +291,9 @@ const dashboardIndexRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: '/',
   component: () => {
-    const invoicesLoaderInstance = useLoaderInstance({
-      key: invoicesLoader.key,
-    })
-
-    const invoices = invoicesLoaderInstance.state.data
+    const {
+      state: { data: invoices },
+    } = invoicesLoader.useLoader()
 
     return (
       <div className="p-2">
@@ -317,11 +310,9 @@ const invoicesRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'invoices',
   component: () => {
-    const invoicesLoaderInstance = useLoaderInstance({
-      key: invoicesLoader.key,
-    })
-
-    const invoices = invoicesLoaderInstance.state.data
+    const {
+      state: { data: invoices },
+    } = invoicesLoader.useLoader()
 
     const {
       state: { pendingSubmissions: updateSubmissions },
@@ -462,22 +453,24 @@ const invoiceRoute = new Route({
         notes: z.string().optional(),
       })
       .parse(search),
-  onLoad: async ({ params: { invoiceId }, preload, context }) =>
-    invoiceLoader.load({
+  loader: async ({ params: { invoiceId }, preload }) => {
+    const invoicesLoaderInstance = invoiceLoader.getInstance({
       variables: invoiceId,
-      preload,
-    }),
-  component: () => {
-    const search = useSearch({ from: invoiceRoute.id })
-    const params = useParams({ from: invoiceRoute.id })
-    const navigate = useNavigate({ from: invoiceRoute.id })
-
-    const invoiceLoaderInstance = useLoaderInstance({
-      key: invoiceLoader.key,
-      variables: params.invoiceId,
     })
 
-    const invoice = invoiceLoaderInstance.state.data
+    await invoicesLoaderInstance.load({
+      preload,
+    })
+
+    return () => invoicesLoaderInstance.useInstance()
+  },
+  component: ({ useLoader, useSearch }) => {
+    const search = useSearch()
+    const navigate = useNavigate()
+
+    const {
+      state: { data: invoice },
+    } = useLoader()()
 
     const {
       state: { latestSubmission },
@@ -574,7 +567,6 @@ const invoiceRoute = new Route({
 const usersRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'users',
-  onLoad: ({ preload }) => usersLoader.load({ preload }),
   validateSearch: z.object({
     usersView: z
       .object({
@@ -593,12 +585,14 @@ const usersRoute = new Route({
       },
     }),
   ],
-  component: () => {
-    const usersLoaderInstance = useLoaderInstance({ key: usersLoader.key })
-    const users = usersLoaderInstance.state.data
+  loader: ({ preload }) => usersLoader.load({ preload }),
+  component: ({ useSearch }) => {
+    const navigate = useNavigate()
+    const { usersView } = useSearch()
 
-    const { usersView } = useSearch({ from: usersRoute.id })
-    const navigate = useNavigate({ from: usersRoute.id })
+    const {
+      state: { data: users },
+    } = usersLoader.useLoader()
 
     const sortBy = usersView?.sortBy ?? 'name'
     const filterBy = usersView?.filterBy
@@ -751,17 +745,17 @@ const userRoute = new Route({
   validateSearch: z.object({
     userId: z.number(),
   }),
-  onLoad: async ({ search: { userId }, preload }) =>
-    userLoader.load({ variables: userId, preload }),
-  component: () => {
-    const { userId } = useSearch({ from: userRoute.id })
+  loader: async ({ search: { userId }, preload }) => {
+    const userLoaderInstance = userLoader.getInstance({ variables: userId })
 
-    const userLoaderInstance = useLoaderInstance({
-      key: userLoader.key,
-      variables: userId,
-    })
+    await userLoaderInstance.load({ preload })
 
-    const user = userLoaderInstance.state.data
+    return () => userLoaderInstance.useInstance()
+  },
+  component: ({ useLoader }) => {
+    const {
+      state: { data: user },
+    } = useLoader()()
 
     return (
       <>
@@ -880,11 +874,9 @@ const loginRoute = new Route({
 const layoutRoute = new Route({
   getParentRoute: () => rootRoute,
   id: 'layout',
-  onLoad: async ({ preload }) => randomIdLoader.load({ preload }),
+  loader: async ({ preload }) => randomIdLoader.load({ preload }),
   component: () => {
-    const randomIdLoaderInstance = useLoaderInstance({
-      key: randomIdLoader.key,
-    })
+    const randomIdLoaderInstance = randomIdLoader.useLoader()
 
     return (
       <div>

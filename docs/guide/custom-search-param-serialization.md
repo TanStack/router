@@ -99,7 +99,7 @@ import {
   ReactRouter,
   parseSearchWith,
   stringifySearchWith,
-} from '@tanstack/react-router'
+} from '@tanstack/router'
 import jsurl from 'jsurl2'
 
 const router = new Router({
