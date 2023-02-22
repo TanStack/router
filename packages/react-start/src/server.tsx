@@ -9,8 +9,10 @@ import ReactDOMServer from 'react-dom/server'
 import * as React from 'react'
 import isbot from 'isbot'
 import { PassThrough } from 'stream'
+// @ts-ignore
+import cprc from '@gisatcz/cross-package-react-context'
 //
-import { Hydrate, hydrationContext } from './components/Hydrate'
+import { Hydrate } from './components/Hydrate'
 
 export function createRequestHandler<TRouter extends AnyRouter>(opts: {
   createRouter: () => TRouter
@@ -103,6 +105,8 @@ export function StartServer<TRouter extends AnyRouter>(props: {
   router: TRouter
 }) {
   const CustomRouterProvider = props.router.options.Provider || React.Fragment
+
+  const hydrationContext = cprc.getContext('TanStackStartHydrationContext', {})
 
   return (
     <hydrationContext.Provider value={props.router.options.dehydrate?.()}>

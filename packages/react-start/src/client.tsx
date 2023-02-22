@@ -1,6 +1,8 @@
 import * as React from 'react'
 import { AnyRouter, RouterProvider } from '@tanstack/router'
-import { Hydrate, hydrationContext } from './components/Hydrate'
+import { Hydrate } from './components/Hydrate'
+// @ts-ignore
+import cprc from '@gisatcz/cross-package-react-context'
 
 // server$.addSerializer({
 //   apply: (e) => e instanceof LoaderInstance,
@@ -20,7 +22,9 @@ export function StartClient(props: { router: AnyRouter }) {
 }
 
 export function Scripts() {
-  const dehydrated = React.useContext(hydrationContext)
+  const dehydrated = React.useContext(
+    cprc.getContext('TanStackStartHydrationContext', {}),
+  )
 
   return (
     <>

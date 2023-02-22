@@ -35,7 +35,7 @@
     "build": "pnpm build:types && pnpm build:astro && pnpm build:server && pnpm build:client",
     "build:astro": "esbuild src/astro.ts --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=dist/astro.js",
     "build:server": "esbuild src/server.tsx --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=dist/server.js",
-    "build:client": "esbuild src/client.tsx --bundle --sourcemap --format=esm --minify --packages=external \"--external:./components/Hydrate\" --outfile=dist/client.js",
+    "build:client": "esbuild src/client.tsx --bundle --sourcemap --format=esm --minify --packages=external --outfile=dist/client.js",
     "build:types": "tsc --emitDeclarationOnly --declaration --skipLibCheck"
   },
   "exports": {
@@ -60,6 +60,7 @@
   "sideEffects": false,
   "dependencies": {
     "@babel/runtime": "^7.21.0",
+    "@gisatcz/cross-package-react-context": "^0.2.0",
     "@tanstack/bling": "^0.0.3",
     "@tanstack/react-loaders": "workspace:*",
     "@tanstack/router": "workspace:*",

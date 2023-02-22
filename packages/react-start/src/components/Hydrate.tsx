@@ -1,5 +1,7 @@
 import * as React from 'react'
 import { invariant } from '@tanstack/router'
+// @ts-ignore
+import cprc from '@gisatcz/cross-package-react-context'
 
 export type HydrationCtx = Record<string, any>
 
@@ -9,14 +11,14 @@ declare global {
   }
 }
 
-export const hydrationContext = React.createContext<HydrationCtx>({} as any)
-
 export function Hydrate(props: {
   onHydrate?: (ctx: HydrationCtx) => void
   children: any
 }) {
   // Server hydrates from context
-  let ctx = React.useContext(hydrationContext)
+  let ctx = React.useContext(
+    cprc.getContext('TanStackStartHydrationContext', {}),
+  ) as HydrationCtx
 
   React.useState(() => {
     // Client hydrates from window
