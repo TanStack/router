@@ -7,7 +7,7 @@ import {
   useRouter,
 } from '@tanstack/router'
 
-import { Scripts } from '@tanstack/react-start'
+import { Scripts } from '@tanstack/react-start/client'
 import type { RegisteredLoaderClient } from '@tanstack/react-loaders'
 
 export interface RouterContext {

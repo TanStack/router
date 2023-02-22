@@ -1,11 +1,16 @@
-import { AnyRouter, createMemoryHistory } from '@tanstack/router'
 import type { APIContext } from 'astro'
+import {
+  AnyRouter,
+  createMemoryHistory,
+  RouterProvider,
+} from '@tanstack/router'
+import { handleEvent, server$ } from '@tanstack/bling/server'
 import ReactDOMServer from 'react-dom/server'
-import { handleEvent, server$ } from '@tanstack/bling/server/server'
 import * as React from 'react'
 import isbot from 'isbot'
-import { StartServer } from './StartServer'
 import { PassThrough } from 'stream'
+//
+import { Hydrate, hydrationContext } from './components/Hydrate'
 
 export function createRequestHandler<TRouter extends AnyRouter>(opts: {
   createRouter: () => TRouter
@@ -87,4 +92,25 @@ export function createRequestHandler<TRouter extends AnyRouter>(opts: {
       setTimeout(() => stream.abort(), 10000)
     })
   }
+}
+
+// server$.addDeserializer({
+//   apply: (e) => e.$type === 'loaderClient',
+//   deserialize: (e, event) => event.locals.$loaderClient,
+// })
+
+export function StartServer<TRouter extends AnyRouter>(props: {
+  router: TRouter
+}) {
+  const CustomRouterProvider = props.router.options.Provider || React.Fragment
+
+  return (
+    <hydrationContext.Provider value={props.router.options.dehydrate?.()}>
+      <Hydrate onHydrate={props.router.options.hydrate}>
+        <CustomRouterProvider>
+          <RouterProvider router={props.router} />
+        </CustomRouterProvider>
+      </Hydrate>
+    </hydrationContext.Provider>
+  )
 }

@@ -1,9 +1,9 @@
 import { Link, Outlet, Route } from '@tanstack/router'
-import { rootRoute } from './root'
-
 import { Loader } from '@tanstack/react-loaders'
+import { server$ } from '@tanstack/bling/client'
+
+import { rootRoute } from './root'
 import { postIdRoute } from './posts/$postId'
-import { server$ } from '@tanstack/bling/server'
 
 export type PostType = {
   id: string

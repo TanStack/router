@@ -24,9 +24,6 @@
     "./examples/react/*",
     "./examples/solid/*"
   ],
-  "bin": {
-    "tsr": "./packages/router-cli/bin/tsr"
-  },
   "pnpm": {
     "overrides": {
       "@tanstack/store": "workspace:*",
@@ -40,7 +37,8 @@
       "@tanstack/solid-router": "workspace:*",
       "@tanstack/solid-store": "workspace:*",
       "@tanstack/solid-loaders": "workspace:*",
-      "@tanstack/solid-actions": "workspace:*"
+      "@tanstack/solid-actions": "workspace:*",
+      "@tanstack/react-start": "workspace:*"
     }
   },
   "devDependencies": {

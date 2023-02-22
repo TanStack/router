@@ -1,10 +1,10 @@
-import bling from '@tanstack/bling/vite'
+import { bling } from '@tanstack/bling/vite'
 
 export function start() {
   return {
     name: '@tanstack/astro-plugin-ssr',
     hooks: {
-      'astro:config:setup': async ({ updateConfig, injectRoute }) => {
+      'astro:config:setup': async ({ updateConfig, injectRoute }: any) => {
         updateConfig({
           vite: {
             optimizeDeps: {
@@ -35,15 +35,15 @@ export function start() {
   }
 }
 
-function fromEntries(entries) {
-  const obj = {}
+function fromEntries(entries: any) {
+  const obj: any = {}
   for (const [k, v] of entries) {
     obj[k] = v
   }
   return obj
 }
 
-export function addRollupInput(inputOptions, newInputs) {
+export function addRollupInput(inputOptions: any, newInputs: any) {
   // Add input module ids to existing input option, whether it's a string, array or object
   // this way you can use multiple html plugins all adding their own inputs
   if (!inputOptions.input) {
@@ -70,7 +70,10 @@ export function addRollupInput(inputOptions, newInputs) {
       input: {
         ...inputOptions.input,
         ...fromEntries(
-          newInputs.map((i) => [i.split('/').slice(-1)[0].split('.')[0], i]),
+          newInputs.map((i: any) => [
+            i.split('/').slice(-1)[0].split('.')[0],
+            i,
+          ]),
         ),
       },
     }

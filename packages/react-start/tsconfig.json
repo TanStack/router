@@ -2,13 +2,7 @@
   "composite": true,
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./build/types"
+    "outDir": "./dist/"
   },
-  "files": ["src/index.tsx"],
-  "include": [
-    "src",
-    "client.ts", //  "__tests__/**/*.test.*"
-    "server.ts",
-    "astro.js"
-  ]
+  "include": ["src"]
 }

@@ -1,6 +1,7 @@
-import { server$ } from '@tanstack/bling/server'
+import { server$ } from '@tanstack/bling/client'
 import { Loader } from '@tanstack/react-loaders'
 import { Route } from '@tanstack/router'
+
 import { postsLoader, postsRoute, PostType } from '../posts'
 
 export const postLoader = new Loader({
@@ -34,16 +35,18 @@ export const postIdRoute = new Route({
     await postLoaderInstance.load({ preload })
     return () => postLoaderInstance.useInstance()
   },
-  component: function Post({ useLoader }) {
-    const {
-      state: { data: post },
-    } = useLoader()()
+  component: lazy(
+    split$(function Post({ useLoader }) {
+      const {
+        state: { data: post },
+      } = useLoader()()
 
-    return (
-      <div className="space-y-2">
-        <h4 className="text-xl font-bold underline">{post.title}</h4>
-        <div className="text-sm">{post.body}</div>
-      </div>
-    )
-  },
+      return (
+        <div className="space-y-2">
+          <h4 className="text-xl font-bold underline">{post.title}</h4>
+          <div className="text-sm">{post.body}</div>
+        </div>
+      )
+    }),
+  ),
 })

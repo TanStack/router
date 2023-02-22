@@ -17,7 +17,6 @@
     "baseUrl": ".",
     "paths": {
       "@tanstack/router": ["packages/router"],
-      "@tanstack/router": ["packages/router"],
       "@tanstack/router-devtools": ["packages/router-devtools"],
       "@tanstack/solid-router": ["packages/solid-router"],
       "@tanstack/router-cli": ["packages/router-cli"]

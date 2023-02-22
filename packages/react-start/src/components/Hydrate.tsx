@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { DehydratedRouter, invariant } from '@tanstack/router'
+import { invariant } from '@tanstack/router'
 
 export type HydrationCtx = Record<string, any>
 

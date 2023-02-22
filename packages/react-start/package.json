@@ -22,10 +22,7 @@
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
   },
-  "module": "src/index.tsx",
-  "main": "src/index.tsx",
-  "browser": "src/index.tsx",
-  "types": "src/index.tsx",
+  "type": "module",
   "engines": {
     "node": ">=12"
   },
@@ -33,27 +30,41 @@
     "build/**",
     "src"
   ],
+  "scripts": {
+    "dev": "concurrently --kill-others \"pnpm build:types --watch\" \"pnpm build:astro --watch\" \"pnpm build:server --watch\" \"pnpm build:client --watch\"",
+    "build": "pnpm build:types && pnpm build:astro && pnpm build:server && pnpm build:client",
+    "build:astro": "esbuild src/astro.ts --bundle --platform=node --packages=external --sourcemap --outfile=dist/astro.cjs",
+    "build:server": "esbuild src/server.tsx --bundle --platform=node --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build:client": "esbuild src/client.tsx --bundle --sourcemap  --minify --outfile=dist/client.js",
+    "build:types": "tsc --emitDeclarationOnly --declaration --skipLibCheck"
+  },
   "exports": {
-    ".": {
-      "import": "./src/index.tsx",
-      "require": "./src/index.tsx"
-    },
-    "./astro": {
-      "import": "./astro.js",
-      "module": "./astro.js"
-    },
-    "./client": "./client.ts",
-    "./server": "./server.ts",
+    "./client": "./dist/client.js",
+    "./astro": "./dist/astro.cjs",
+    "./server": "./dist/server.cjs",
     "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "client": [
+        "./dist/client.d.ts"
+      ],
+      "astro": [
+        "./dist/astro.d.ts"
+      ],
+      "server": [
+        "./dist/server.d.ts"
+      ]
+    }
   },
   "sideEffects": false,
   "dependencies": {
-    "@babel/runtime": "^7.16.7",
-    "@tanstack/bling": "workspace:^0.2.19",
-    "@tanstack/react-loaders": "workspace:0.0.1-beta.81",
-    "@tanstack/router": "workspace:0.0.1-beta.82",
+    "@babel/runtime": "^7.21.0",
+    "@tanstack/bling": "^0.0.3",
+    "@tanstack/react-loaders": "workspace:*",
+    "@tanstack/router": "workspace:*",
     "@tanstack/store": "workspace:*",
-    "isbot": "^3.6.5",
+    "isbot": "^3.6.6",
     "jsesc": "^3.0.2",
     "tiny-invariant": "^1.3.1",
     "tiny-warning": "^1.0.3"
@@ -63,6 +74,7 @@
     "react-dom": ">=16"
   },
   "devDependencies": {
-    "astro": "^1.6.12"
+    "astro": "^1.9.2",
+    "esbuild": "^0.17.10"
   }
 }
