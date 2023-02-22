@@ -1,14 +1,11 @@
 import * as React from 'react'
-import { LoaderInstance } from '@tanstack/react-loaders'
 import { AnyRouter, RouterProvider } from '@tanstack/router'
-import { server$ } from '@tanstack/bling/client'
-import { hydrationContext } from './components/Hydrate'
-import { Hydrate } from './components/Hydrate'
+import { Hydrate, hydrationContext } from './components/Hydrate'
 
-server$.addSerializer({
-  apply: (e) => e instanceof LoaderInstance,
-  serialize: (e) => ({ $type: 'loaderClient' }),
-})
+// server$.addSerializer({
+//   apply: (e) => e instanceof LoaderInstance,
+//   serialize: (e) => ({ $type: 'loaderClient' }),
+// })
 
 export function StartClient(props: { router: AnyRouter }) {
   const CustomRouterProvider = props.router.options.Provider || React.Fragment

@@ -33,15 +33,15 @@
   "scripts": {
     "dev": "concurrently --kill-others \"pnpm build:types --watch\" \"pnpm build:astro --watch\" \"pnpm build:server --watch\" \"pnpm build:client --watch\"",
     "build": "pnpm build:types && pnpm build:astro && pnpm build:server && pnpm build:client",
-    "build:astro": "esbuild src/astro.ts --bundle --platform=node --packages=external --sourcemap --outfile=dist/astro.cjs",
-    "build:server": "esbuild src/server.tsx --bundle --platform=node --packages=external --sourcemap --outfile=dist/server.cjs",
-    "build:client": "esbuild src/client.tsx --bundle --sourcemap  --minify --outfile=dist/client.js",
+    "build:astro": "esbuild src/astro.ts --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=dist/astro.js",
+    "build:server": "esbuild src/server.tsx --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=dist/server.js",
+    "build:client": "esbuild src/client.tsx --bundle --sourcemap --format=esm --minify --packages=external \"--external:./components/Hydrate\" --outfile=dist/client.js",
     "build:types": "tsc --emitDeclarationOnly --declaration --skipLibCheck"
   },
   "exports": {
     "./client": "./dist/client.js",
-    "./astro": "./dist/astro.cjs",
-    "./server": "./dist/server.cjs",
+    "./astro": "./dist/astro.js",
+    "./server": "./dist/server.js",
     "./package.json": "./package.json"
   },
   "typesVersions": {
