@@ -1,4 +1,5 @@
 import { bling } from '@tanstack/bling/vite'
+import react from '@vitejs/plugin-react'
 
 export function start() {
   return {
@@ -11,6 +12,7 @@ export function start() {
               exclude: ['@tanstack/react-start'],
             },
             plugins: [
+              react({ include: 'src/app/**/*.{js,jsx,ts,tsx}', }),
               // {
               //   name: '@tanstack/astro-plugin-ssr',
               //   enforce: 'post',
