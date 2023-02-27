@@ -36,7 +36,7 @@ export const postsRoute = new Route({
   },
   loader: async ({ context: { postsLoader }, preload }) => {
     await postsLoader.load({ preload })
-    return () => postsLoader.useLoader()
+    return () => postsLoader.useLoader({})
   },
   component: function Posts({ useLoader }) {
     const {

@@ -4,7 +4,7 @@ import {
   createMemoryHistory,
   RouterProvider,
 } from '@tanstack/router'
-import { handleEvent, server$ } from '@tanstack/bling/server'
+import { handleEvent, hasHandler } from '@tanstack/bling/server'
 import ReactDOMServer from 'react-dom/server'
 import * as React from 'react'
 import isbot from 'isbot'
@@ -21,13 +21,9 @@ export function createRequestHandler<TRouter extends AnyRouter>(opts: {
     const fullUrl = new URL(request.url)
     const url = request.url.replace(fullUrl.origin, '')
 
-    if (server$.hasHandler(fullUrl.pathname)) {
+    if (hasHandler(fullUrl.pathname)) {
       return await handleEvent({
         request,
-        env: {},
-        locals: {
-          $abortSignal: new AbortController().signal, // TODO: Use the real abort signal
-        },
       })
     }
 
@@ -110,7 +106,7 @@ export function StartServer<TRouter extends AnyRouter>(props: {
 
   return (
     <hydrationContext.Provider value={props.router.options.dehydrate?.()}>
-      <Hydrate onHydrate={props.router.options.hydrate}>
+      <Hydrate router={props.router}>
         <CustomRouterProvider>
           <RouterProvider router={props.router} />
         </CustomRouterProvider>

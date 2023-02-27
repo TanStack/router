@@ -1,20 +1,30 @@
-import { server$ } from '@tanstack/bling'
+import { server$, json } from '@tanstack/bling'
 import { Loader } from '@tanstack/react-loaders'
 import { Route } from '@tanstack/router'
 
 import { postsLoader, postsRoute, PostType } from '../posts'
 
 export const postLoader = new Loader({
-  maxAge: 5000,
-  fn: server$(async (postId: string) => {
-    console.log(`Fetching post with id ${postId}...`)
+  fn: server$(
+    async (postId: string) => {
+      console.log(`Fetching post with id ${postId}...`)
 
-    await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
+      await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
 
-    return fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`).then(
-      (r) => r.json() as Promise<PostType>,
-    )
-  }),
+      const res = await fetch(
+        `https://jsonplaceholder.typicode.com/posts/${postId}`,
+      ).then((r) => r.json() as Promise<PostType>)
+
+      return json(res, {
+        headers: {
+          'Cache-Control': 'public, max-age=10',
+        },
+      })
+    },
+    {
+      method: 'GET',
+    },
+  ),
   onInvalidate: async () => {
     await postsLoader.invalidate()
   },
@@ -39,6 +49,8 @@ export const postIdRoute = new Route({
     const {
       state: { data: post },
     } = useLoader()()
+
+    console.log('post', post)
 
     return (
       <div className="space-y-2">

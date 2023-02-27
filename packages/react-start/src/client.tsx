@@ -13,7 +13,7 @@ export function StartClient(props: { router: AnyRouter }) {
   const CustomRouterProvider = props.router.options.Provider || React.Fragment
 
   return (
-    <Hydrate onHydrate={props.router.options.hydrate}>
+    <Hydrate router={props.router}>
       <CustomRouterProvider>
         <RouterProvider router={props.router} />
       </CustomRouterProvider>

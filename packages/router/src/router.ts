@@ -50,6 +50,14 @@ import {
 } from './history'
 import { RouteComponent } from './react'
 
+//
+
+declare global {
+  interface Window {
+    __DEHYDRATED__?: Record<string, any>
+  }
+}
+
 export interface Register {
   // router: Router
 }
@@ -321,6 +329,23 @@ export class Router<
     }
 
     return () => {}
+  }
+
+  hydrate = async (__do_not_use_server_ctx?: any) => {
+    let ctx = __do_not_use_server_ctx
+    // Client hydrates from window
+    if (typeof document !== 'undefined') {
+      ctx = window.__DEHYDRATED__
+
+      invariant(
+        ctx,
+        'Expected to find a __DEHYDRATED__ property on window... but we did not. THIS IS VERY BAD',
+      )
+    }
+
+    this.options.hydrate?.(ctx)
+
+    return await this.load()
   }
 
   update = (opts?: RouterOptions<any, any>): this => {

@@ -82,10 +82,10 @@ Loader.onCreateFns.push((loader) => {
 })
 
 LoaderInstance.onCreateFns.push((loaderInstance) => {
-  loaderInstance.useInstance = (opts: any) => {
+  loaderInstance.useInstance = (opts?: any) => {
     if (
       loaderInstance.state.status === 'error' &&
-      (opts.throwOnError ?? true)
+      (opts?.throwOnError ?? true)
     ) {
       throw loaderInstance.state.error
     }
