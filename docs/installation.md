@@ -6,7 +6,7 @@ You can install TanStack Router with any [NPM](https://npmjs.com) package manage
 
 Depending on your framework of choice, install one of the the following packages:
 
-- [React](./adapters/router)
+- [React](./adapters/react-router)
 - Solid (coming soon!)
 - Vue (coming soon!)
 - Svelte (coming soon!)
