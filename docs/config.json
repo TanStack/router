@@ -35,7 +35,7 @@
       "children": [
         {
           "label": "React",
-          "to": "adapters/router"
+          "to": "adapters/react-router"
         },
         {
           "label": "Preact",
