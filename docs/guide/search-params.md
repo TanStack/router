@@ -100,8 +100,8 @@ const allProductsRoute = new Route({
     // validate and parse the search params into a typed state
     return {
       page: Number(search?.page ?? 1),
-      filter: search.filter || '',
-      sort: search.sort || 'newest',
+      filter: search.filter as string || '',
+      sort: search.sort as string || 'newest',
     }
   },
 })
@@ -129,8 +129,8 @@ const allProductsRoute = new Route({
     // validate and parse the search params into a typed state
     return {
       page: Number(search?.page ?? 1),
-      filter: search.filter || '',
-      sort: search.sort || 'newest',
+      filter: search.filter as string || '',
+      sort: search.sort as string || 'newest',
     }
   },
 })
