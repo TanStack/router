@@ -4,11 +4,6 @@ import { Hydrate } from './components/Hydrate'
 // @ts-ignore
 import cprc from '@gisatcz/cross-package-react-context'
 
-// server$.addSerializer({
-//   apply: (e) => e instanceof LoaderInstance,
-//   serialize: (e) => ({ $type: 'loaderClient' }),
-// })
-
 export function StartClient(props: { router: AnyRouter }) {
   const CustomRouterProvider = props.router.options.Provider || React.Fragment
 

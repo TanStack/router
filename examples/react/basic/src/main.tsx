@@ -17,7 +17,6 @@ import {
   LoaderClientProvider,
   useLoader,
 } from '@tanstack/react-loaders'
-import { e } from 'vitest/dist/index-40ebba2b'
 
 type PostType = {
   id: string
@@ -25,19 +24,15 @@ type PostType = {
   body: string
 }
 
-declare function server$<TFunc extends (...args: any[]) => any>(
-  fn: TFunc,
-): () => ReturnType<TFunc>
-
-const fetchPosts = server$(async () => {
+const fetchPosts = async () => {
   console.log('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
-})
+}
 
-const fetchPost = server$(async (postId: string) => {
+const fetchPost = async (postId: string) => {
   console.log(`Fetching post with id ${postId}...`)
   await new Promise((r) => setTimeout(r, 500))
   const post = await axios
@@ -49,7 +44,7 @@ const fetchPost = server$(async (postId: string) => {
   }
 
   return post
-})
+}
 
 const postsLoader = new Loader({
   fn: fetchPosts,

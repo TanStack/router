@@ -1,11 +1,11 @@
-import { server$, json } from '@tanstack/bling'
+import { fetch$, json } from '@tanstack/bling'
 import { Loader } from '@tanstack/react-loaders'
 import { Route } from '@tanstack/router'
 
 import { postsLoader, postsRoute, PostType } from '../posts'
 
 export const postLoader = new Loader({
-  fn: server$(
+  fn: fetch$(
     async (postId: string) => {
       console.log(`Fetching post with id ${postId}...`)
 

@@ -1,6 +1,6 @@
 import { Link, Outlet, Route } from '@tanstack/router'
 import { Loader } from '@tanstack/react-loaders'
-import { server$ } from '@tanstack/bling'
+import { fetch$ } from '@tanstack/bling'
 
 import { rootRoute } from './root'
 import { postIdRoute } from './posts/$postId'
@@ -12,11 +12,13 @@ export type PostType = {
 }
 
 export const postsLoader = new Loader({
-  fn: server$(async () => {
+  fn: fetch$(async () => {
     console.log('Fetching posts...')
+
     await new Promise((r) =>
       setTimeout(r, 300 + Math.round(Math.random() * 300)),
     )
+
     return fetch('https://jsonplaceholder.typicode.com/posts')
       .then((d) => d.json() as Promise<PostType[]>)
       .then((d) => d.slice(0, 10))
