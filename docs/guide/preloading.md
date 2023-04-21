@@ -13,7 +13,7 @@ import { Router } from '@tanstack/router'
 
 const router = new Router({
   // ...
-  preload: 'intent',
+  defaultPreload: 'intent',
 })
 ```
 
@@ -28,7 +28,7 @@ import { Router } from '@tanstack/router'
 
 const router = new Router({
   // ...
-  preloadDelay: 100,
+  defaultPreloadDelay: 100,
 })
 ```
 
