@@ -18,6 +18,9 @@
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
   },
+  "scripts": {
+    "build": "rollup --config rollup.config.js"
+  },
   "module": "build/esm/index.js",
   "main": "build/cjs/index.js",
   "browser": "build/umd/index.production.js",

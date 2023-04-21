@@ -37,9 +37,15 @@ const babelPlugin = babel({
   extensions: ['.ts', '.tsx'],
 })
 
-export default function rollup(options: RollupOptions): RollupOptions[] {
-  return packages.flatMap((pkg) => {
-    return buildConfigs({
+export function createRollupConfig(packageName: string): () => RollupOptions[] {
+  const pkg = packages.find((p) => p.name === packageName)
+  if (!pkg) {
+    throw new Error(
+      `Package ${packageName} not found - check the pacakge name given in your package's rollup.config.js file.`,
+    )
+  }
+  return () =>
+    buildConfigs({
       name: pkg.packageDir,
       packageDir: `packages/${pkg.packageDir}`,
       jsName: pkg.jsName,
@@ -50,7 +56,6 @@ export default function rollup(options: RollupOptions): RollupOptions[] {
       cjs: pkg.cjs ?? true,
       umd: pkg.umd ?? true,
     })
-  })
 }
 
 function buildConfigs(opts: {

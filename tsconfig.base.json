@@ -21,5 +21,11 @@
       "@tanstack/solid-router": ["packages/solid-router"],
       "@tanstack/router-cli": ["packages/router-cli"]
     }
+  },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs",
+      "esModuleInterop": true
+    }
   }
 }

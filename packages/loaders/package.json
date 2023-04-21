@@ -9,6 +9,9 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
+  "scripts": {
+    "build": "rollup --config rollup.config.js"
+  },
   "keywords": [
     "react",
     "location",
