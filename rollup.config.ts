@@ -41,7 +41,7 @@ export function createRollupConfig(packageName: string): () => RollupOptions[] {
   const pkg = packages.find((p) => p.name === packageName)
   if (!pkg) {
     throw new Error(
-      `Package ${packageName} not found - check the pacakge name given in your package's rollup.config.js file.`,
+      `Package ${packageName} not found - check the package name given in your package's rollup.config.js file.`,
     )
   }
   return () =>
