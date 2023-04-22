@@ -17,28 +17,6 @@
     "typecheck": "tsc -b",
     "typecheck-perf": "tsc -b --generateTrace ts-perf"
   },
-  "workspaces": [
-    "./packages/*",
-    "./examples/react/*",
-    "./examples/solid/*"
-  ],
-  "pnpm": {
-    "overrides": {
-      "@tanstack/store": "workspace:*",
-      "@tanstack/router": "workspace:*",
-      "@tanstack/loaders": "workspace:*",
-      "@tanstack/actions": "workspace:*",
-      "@tanstack/react-store": "workspace:*",
-      "@tanstack/react-actions": "workspace:*",
-      "@tanstack/react-loaders": "workspace:*",
-      "@tanstack/router-devtools": "workspace:*",
-      "@tanstack/solid-router": "workspace:*",
-      "@tanstack/solid-store": "workspace:*",
-      "@tanstack/solid-loaders": "workspace:*",
-      "@tanstack/solid-actions": "workspace:*",
-      "@tanstack/react-start": "workspace:*"
-    }
-  },
   "devDependencies": {
     "@babel/core": "^7.17.9",
     "@babel/preset-env": "^7.16.11",
@@ -64,6 +42,7 @@
     "concurrently": "^7.1.0",
     "current-git-branch": "^1.1.0",
     "git-log-parser": "^1.2.0",
+    "jsdom": "^21.1.1",
     "luxon": "^2.3.2",
     "nx": "15.9.2",
     "nx-cloud": "^16.0.1",
