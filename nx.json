@@ -3,14 +3,26 @@
     "default": {
       "runner": "@nrwl/nx-cloud",
       "options": {
-        "cacheableOperations": ["build"],
+        "cacheableOperations": ["build", "test"],
         "accessToken": "OWY1MDk2MzgtZjBhOS00ZGJmLTliYTctODIwNjdjMzFmODJkfHJlYWQtd3JpdGU="
       }
     }
   },
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*"],
+    "public": [
+      "default",
+      "!{projectRoot}/__tests__/**/*",
+      "!{projectRoot}/vitest.config.js"
+    ]
+  },
   "targetDefaults": {
     "build": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": ["public", "^public"]
+    },
+    "test": {
+      "inputs": ["default", "^public"]
     }
   },
   "defaultBase": "master",

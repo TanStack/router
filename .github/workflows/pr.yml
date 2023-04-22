@@ -30,7 +30,4 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Build & Test
-        run: |
-          pnpm install --no-frozen-lockfile
-          pnpm build
-          pnpm test
+        run: nx run-many --targets=test,build --projects=@tanstack/* --exclude=@tanstack/react-start

@@ -8,7 +8,7 @@
   "description": "",
   "scripts": {
     "build": "rollup --config rollup.config.js",
-    "test:lib": "vitest"
+    "test": "vitest"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
