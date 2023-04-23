@@ -6,7 +6,6 @@ export default defineConfig({
     name: 'router',
     watch: false,
     globals: true,
-    environment: 'jsdom',
   },
   resolve: {
     alias: {
