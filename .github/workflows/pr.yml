@@ -18,6 +18,5 @@ jobs:
         with:
           node-version: 16.19.0
           cache: 'pnpm'
-            ${{ runner.os }}-pnpm-store-
       - name: Build & Test
         run: nx run-many --targets=test,build --projects=@tanstack/* --exclude=@tanstack/react-start
