@@ -18,5 +18,7 @@ jobs:
         with:
           node-version: 16.19.0
           cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm --filter "./packages/**" --filter query --prefer-offline install
       - name: Build & Test
         run: nx run-many --targets=test,build --projects=@tanstack/* --exclude=@tanstack/react-start
