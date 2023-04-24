@@ -10,6 +10,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@tanstack/react-store': resolve(__dirname, '..', 'react-store', 'src'),
+      '@tanstack/store': resolve(__dirname, '..', 'store', 'src'),
     },
   },
 })

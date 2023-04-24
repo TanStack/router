@@ -22,7 +22,6 @@
       "inputs": ["public", "^public"]
     },
     "test": {
-      "dependsOn": ["^build"],
       "inputs": ["default", "^public"]
     }
   },
