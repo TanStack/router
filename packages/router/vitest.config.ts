@@ -5,7 +5,6 @@ export default defineConfig({
   test: {
     name: 'router',
     watch: false,
-    globals: true,
   },
   resolve: {
     alias: {
