@@ -6,6 +6,10 @@
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
   "description": "",
+  "scripts": {
+    "build": "rollup --config rollup.config.js",
+    "test": "vitest"
+  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },

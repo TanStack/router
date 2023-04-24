@@ -1,36 +1,27 @@
 name: pr
 on: [pull_request]
+env:
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 jobs:
   test:
     name: 'Test'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Repo
+        uses: actions/checkout@v3
         with:
           fetch-depth: '0'
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
-        id: pnpm-install
+      - name: Setup Pnpm
+        uses: pnpm/action-setup@v2.2.4
         with:
           version: 7
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - uses: actions/cache@v3
-        name: Setup pnpm cache
+      - name: Setup Node
+        uses: actions/setup-node@v3
         with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
+          node-version: 16.19.0
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm --filter "./packages/**" --prefer-offline install --no-frozen-lockfile
       - name: Build & Test
-        run: |
-          pnpm install --no-frozen-lockfile
-          pnpm build
-          pnpm test
+        run: npx nx run-many --targets=test,build --projects=@tanstack/* --exclude=@tanstack/react-start

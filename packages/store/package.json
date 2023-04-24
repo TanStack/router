@@ -6,6 +6,9 @@
   "repository": "tanstack/store",
   "homepage": "https://tanstack.com/store",
   "description": "",
+  "scripts": {
+    "build": "rollup --config rollup.config.js"
+  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
