@@ -1,11 +1,14 @@
 {
   "name": "@tanstack/actions",
   "author": "Tanner Linsley",
-  "version": "0.0.1-beta.81",
+  "version": "0.0.1-beta.84",
   "license": "MIT",
   "repository": "tanstack/actions",
   "homepage": "https://tanstack.com/actions",
   "description": "",
+  "scripts": {
+    "build": "rollup --config rollup.config.js"
+  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },

@@ -1,11 +1,15 @@
 {
   "name": "@tanstack/router",
   "author": "Tanner Linsley",
-  "version": "0.0.1-beta.83",
+  "version": "0.0.1-beta.84",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
   "description": "",
+  "scripts": {
+    "build": "rollup --config rollup.config.js",
+    "test": "vitest"
+  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },

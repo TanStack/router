@@ -46,3 +46,5 @@ ts-perf
 /examples/*/*/package-lock.json
 
 .netlify
+
+nx-cloud.env

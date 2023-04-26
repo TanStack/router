@@ -4,7 +4,7 @@ import {
   createMemoryHistory,
   RouterProvider,
 } from '@tanstack/router'
-import { handleEvent, hasHandler } from '@tanstack/bling/server'
+import { handleEvent, hasHandler, handlers } from '@tanstack/bling/server'
 import ReactDOMServer from 'react-dom/server'
 import * as React from 'react'
 import isbot from 'isbot'
@@ -21,6 +21,7 @@ export function createRequestHandler<TRouter extends AnyRouter>(opts: {
     const fullUrl = new URL(request.url)
     const url = request.url.replace(fullUrl.origin, '')
 
+    console.log(handlers)
     if (hasHandler(fullUrl.pathname)) {
       return await handleEvent({
         request,
@@ -91,11 +92,6 @@ export function createRequestHandler<TRouter extends AnyRouter>(opts: {
     })
   }
 }
-
-// server$.addDeserializer({
-//   apply: (e) => e.$type === 'loaderClient',
-//   deserialize: (e, event) => event.locals.$loaderClient,
-// })
 
 export function StartServer<TRouter extends AnyRouter>(props: {
   router: TRouter

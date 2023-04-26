@@ -35,51 +35,51 @@ export function start() {
   }
 }
 
-function fromEntries(entries: any) {
-  const obj: any = {}
-  for (const [k, v] of entries) {
-    obj[k] = v
-  }
-  return obj
-}
+// function fromEntries(entries: any) {
+//   const obj: any = {}
+//   for (const [k, v] of entries) {
+//     obj[k] = v
+//   }
+//   return obj
+// }
 
-export function addRollupInput(inputOptions: any, newInputs: any) {
-  // Add input module ids to existing input option, whether it's a string, array or object
-  // this way you can use multiple html plugins all adding their own inputs
-  if (!inputOptions.input) {
-    return { ...inputOptions, input: newInputs }
-  }
+// function addRollupInput(inputOptions: any, newInputs: any) {
+//   // Add input module ids to existing input option, whether it's a string, array or object
+//   // this way you can use multiple html plugins all adding their own inputs
+//   if (!inputOptions.input) {
+//     return { ...inputOptions, input: newInputs }
+//   }
 
-  if (typeof inputOptions.input === 'string') {
-    return {
-      ...inputOptions,
-      input: [inputOptions.input, ...newInputs],
-    }
-  }
+//   if (typeof inputOptions.input === 'string') {
+//     return {
+//       ...inputOptions,
+//       input: [inputOptions.input, ...newInputs],
+//     }
+//   }
 
-  if (Array.isArray(inputOptions.input)) {
-    return {
-      ...inputOptions,
-      input: [...inputOptions.input, ...newInputs],
-    }
-  }
+//   if (Array.isArray(inputOptions.input)) {
+//     return {
+//       ...inputOptions,
+//       input: [...inputOptions.input, ...newInputs],
+//     }
+//   }
 
-  if (typeof inputOptions.input === 'object') {
-    return {
-      ...inputOptions,
-      input: {
-        ...inputOptions.input,
-        ...fromEntries(
-          newInputs.map((i: any) => [
-            i.split('/').slice(-1)[0].split('.')[0],
-            i,
-          ]),
-        ),
-      },
-    }
-  }
+//   if (typeof inputOptions.input === 'object') {
+//     return {
+//       ...inputOptions,
+//       input: {
+//         ...inputOptions.input,
+//         ...fromEntries(
+//           newInputs.map((i: any) => [
+//             i.split('/').slice(-1)[0].split('.')[0],
+//             i,
+//           ]),
+//         ),
+//       },
+//     }
+//   }
 
-  throw new Error(
-    `Unknown rollup input type. Supported inputs are string, array and object.`,
-  )
-}
+//   throw new Error(
+//     `Unknown rollup input type. Supported inputs are string, array and object.`,
+//   )
+// }

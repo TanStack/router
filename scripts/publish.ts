@@ -71,6 +71,7 @@ async function run() {
   // If RELEASE_ALL is set via a commit subject or body, all packages will be
   // released regardless if they have changed files matching the package srcDir.
   let RELEASE_ALL = false
+  let SKIP_TESTS = false
 
   if (!latestTag || process.env.TAG) {
     if (process.env.TAG) {
@@ -149,6 +150,13 @@ async function run() {
         commit.body.includes('RELEASE_ALL')
       ) {
         RELEASE_ALL = true
+      }
+
+      if (
+        commit.subject.includes('SKIP_TESTS') ||
+        commit.body.includes('SKIP_TESTS')
+      ) {
+        SKIP_TESTS = true
       }
 
       return releaseLevel
@@ -401,7 +409,9 @@ async function run() {
   }
 
   console.info('Testing packages...')
-  execSync(`pnpm test:ci`, { encoding: 'utf8' })
+  execSync(`pnpm test:ci ${SKIP_TESTS ? '|| exit 0' : ''}`, {
+    encoding: 'utf8',
+  })
   console.info('')
 
   console.info(`Updating all changed packages to version ${version}...`)

@@ -9,6 +9,7 @@ import {
 
 import { Scripts } from '@tanstack/react-start/client'
 import type { RegisteredLoaderClient } from '@tanstack/react-loaders'
+import { secret } from '../secrets.server$'
 
 export interface RouterContext {
   loaderClient: RegisteredLoaderClient
@@ -25,6 +26,8 @@ export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
       .find((d) => d.routeContext?.getTitle)
 
     const title = titleMatch?.context?.getTitle?.() ?? 'Astro + TanStack Router'
+
+    console.log(secret)
 
     return (
       <html lang="en">
