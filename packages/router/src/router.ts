@@ -596,7 +596,11 @@ export class Router<
           const children = route.children as undefined | Route[]
           if (!route.path && children?.length) {
             return findMatchInRoutes(
-              [...matchingRoutes, route],
+              [
+                ...matchingRoutes,
+                ...parentRoutes.filter(r => !matchingRoutes.some(m => m.id === r.id)),
+                route
+              ],
               children as any,
             )
           }
