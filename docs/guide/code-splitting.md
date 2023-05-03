@@ -48,6 +48,18 @@ const route = new Route({
 
 The `lazy` wrapper not only implements `React.lazy()`, but automatically sets up the component with a preload method and promise management for you.
 
+## Handling Named exports with `lazy`
+
+The `lazy` wrapper also allows you to easily load components that are named exports from a module. To use this functionality, you just need to provide the name of the exported component as a second argument to the lazy function:
+
+```tsx
+const route = new Route({
+  component: lazy(() => import('./MyComponent'), 'NamedExport'),
+})
+```
+
+Type safety ensures that you are only able to provide valid named exports from the module, which helps to prevent runtime errors.
+
 ## Data Loader Splitting
 
 Regardless of which data loading library you decide to go with, you may end up with a lot of data loaders that could potentially contribute to a large bundle size. If this is the case, you can code split your data loading logic using the Route's `loader` option:
