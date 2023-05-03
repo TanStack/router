@@ -44,11 +44,11 @@ export type RouteComponent<TProps = {}> = SyncRouteComponent<TProps> & {
 
 function lazy<T extends Record<string, SyncRouteComponent>>(
   importer: () => Promise<T>,
-  componentResolver: keyof T = "default"
+  exportName: keyof T = "default"
 ): RouteComponent {
   const lazyComp = React.lazy(async () => {
     const moduleExports = await importer();
-    const component = moduleExports[componentResolver];
+    const component = moduleExports[exportName];
     return { default: component };
   });
 
