@@ -11,12 +11,19 @@ export const expensiveRoute = new Route({
   path: 'expensive',
   component: lazy(() => import('./Expensive')),
 })
+
+export const expensiveNamedRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: 'expensive',
+  component: lazy(() => import('./Expensive'), "Expensive"),
+})
 ```
 
 **Options**
 
-- `importer: () => Promise<{ default: SyncRouteComponent }>`
+- `importer: () => Promise<T>`
   - **Required**
+- `namedImport: key of T = "default"`
 
 **Returns**
 
