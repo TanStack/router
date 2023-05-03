@@ -42,21 +42,27 @@ export type RouteComponent<TProps = {}> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>
 }
 
-export function lazy(
-  importer: () => Promise<{ default: SyncRouteComponent }>,
+function lazy<T extends Record<string, SyncRouteComponent>>(
+  importer: () => Promise<T>,
+  componentResolver: keyof T = "default"
 ): RouteComponent {
-  const lazyComp = React.lazy(importer as any)
-  let preloaded: Promise<SyncRouteComponent>
+  const lazyComp = React.lazy(async () => {
+    const moduleExports = await importer();
+    const component = moduleExports[componentResolver];
+    return { default: component };
+  });
 
-  const finalComp = lazyComp as unknown as RouteComponent
+  let preloaded: Promise<SyncRouteComponent>;
+
+  const finalComp = lazyComp as unknown as RouteComponent;
 
   finalComp.preload = async () => {
     if (!preloaded) {
-      await importer()
+      await importer();
     }
-  }
+  };
 
-  return finalComp
+  return finalComp;
 }
 
 export type LinkPropsOptions<
