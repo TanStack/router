@@ -48,7 +48,7 @@ const route = new Route({
 
 The `lazy` wrapper not only implements `React.lazy()`, but automatically sets up the component with a preload method and promise management for you.
 
-## Handling Named exports with `lazy`
+### Handling Named exports with `lazy`
 
 The `lazy` wrapper also allows you to easily load components that are named exports from a module. To use this functionality, you just need to provide the name of the exported component as a second argument to the lazy function:
 
