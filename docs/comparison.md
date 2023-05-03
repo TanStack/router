@@ -72,12 +72,13 @@ Feature/Capability Key:
 [stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?label=%F0%9F%8C%9F
 [_]: _
 [router]: https://github.com/remix-run/react-router
-[bp-router]: https://badgen.net/bundlephobia/minzip/router-dom?label=All
+[bp-router]: https://badgen.net/bundlephobia/minzip/react-router-dom?label=All
 [gh-router]: https://github.com/remix-run/react-router
 [stars-router]: https://img.shields.io/github/stars/remix-run/react-router?label=%F0%9F%8C%9F
-[bpl-router]: https://bundlephobia.com/result?p=router-dom
+[bpl-router]: https://bundlephobia.com/result?p=react-router-dom
 [bpl-history]: https://bundlephobia.com/result?p=history
 [_]: _
+[nextjs]: https://nextjs.org/docs/routing/introduction
 [bp-nextjs]: https://badgen.net/bundlephobia/minzip/next.js?label=All
 [gh-nextjs]: https://github.com/vercel/next.js
 [stars-nextjs]: https://img.shields.io/github/stars/vercel/next.js?label=%F0%9F%8C%9F
