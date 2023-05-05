@@ -1,0 +1,30 @@
+{
+  "tasksRunnerOptions": {
+    "default": {
+      "runner": "@nrwl/nx-cloud",
+      "options": {
+        "cacheableOperations": ["build", "test"],
+        "accessToken": "ZWJiNDliYTgtNzFiMi00NDg2LWFkZGMtYjIxOWY0MDU1ZGYxfHJlYWQtb25seQ=="
+      }
+    }
+  },
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*"],
+    "public": [
+      "default",
+      "!{projectRoot}/__tests__/**/*",
+      "!{projectRoot}/vitest.config.js"
+    ]
+  },
+  "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["public", "^public"]
+    },
+    "test": {
+      "inputs": ["default", "^public"]
+    }
+  },
+  "defaultBase": "master",
+  "defaultProject": "root"
+}

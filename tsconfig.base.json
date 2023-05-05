@@ -19,7 +19,14 @@
       "@tanstack/router": ["packages/router"],
       "@tanstack/router-devtools": ["packages/router-devtools"],
       "@tanstack/solid-router": ["packages/solid-router"],
-      "@tanstack/router-cli": ["packages/router-cli"]
+      "@tanstack/router-cli": ["packages/router-cli"],
+      "@tanstack/store": ["packages/store"]
+    }
+  },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs",
+      "esModuleInterop": true
     }
   }
 }
