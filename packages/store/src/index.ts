@@ -61,6 +61,7 @@ export class Store<
   }
 
   batch = (cb: () => void) => {
+    if (this.batching) return cb()
     this.batching = true
     cb()
     this.batching = false
