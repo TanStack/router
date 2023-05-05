@@ -21,8 +21,8 @@ export class Store<
   listeners = new Set<Listener<TState>>()
   state: TState
   options?: StoreOptions<TState, TUpdater>
-  batching = false
-  queue: ((...args: any[]) => void)[] = []
+  #batching = false
+  #flushing = 0
 
   constructor(initialState: TState, options?: StoreOptions<TState, TUpdater>) {
     this.state = initialState
@@ -48,23 +48,24 @@ export class Store<
 
     this.options?.onUpdate?.(this.state, previous)
 
-    this.queue.push(() => {
-      this.listeners.forEach((listener) => listener(this.state, previous))
-    })
-    this.#flush()
+    this.#flush(previous)
   }
 
-  #flush = () => {
-    if (this.batching) return
-    this.queue.forEach((cb) => cb())
-    this.queue = []
+  #flush = (previous: TState) => {
+    if (this.#batching) return
+    const flushId = ++this.#flushing
+    this.listeners.forEach((listener) => {
+      if (this.#flushing !== flushId) return
+      listener(this.state, previous)
+    })
   }
 
   batch = (cb: () => void) => {
-    if (this.batching) return cb()
-    this.batching = true
+    if (this.#batching) return cb()
+    const previous = this.state
+    this.#batching = true
     cb()
-    this.batching = false
-    this.#flush()
+    this.#batching = false
+    this.#flush(previous)
   }
 }
