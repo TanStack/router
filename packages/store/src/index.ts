@@ -11,7 +11,7 @@ interface StoreOptions<
     listener: Listener<TState>,
     store: Store<TState, TUpdater>,
   ) => () => void
-  onUpdate?: (next: TState, prev: TState) => void
+  onUpdate?: (next: TState, prev: TState) => TState
 }
 
 export class Store<
@@ -27,6 +27,9 @@ export class Store<
   constructor(initialState: TState, options?: StoreOptions<TState, TUpdater>) {
     this.state = initialState
     this.options = options
+    if (this.options?.onUpdate) {
+      this.subscribe(this.options?.onUpdate)
+    }
   }
 
   subscribe = (listener: Listener<TState>) => {
@@ -44,10 +47,6 @@ export class Store<
       ? this.options.updateFn(previous)(updater)
       : (updater as any)(previous)
 
-    if (this.state === previous) return
-
-    this.options?.onUpdate?.(this.state, previous)
-
     this.#flush(previous)
   }
 
@@ -55,7 +54,7 @@ export class Store<
     if (this.#batching) return
     const flushId = ++this.#flushing
     this.listeners.forEach((listener) => {
-      if (this.#flushing !== flushId) return
+      if (this.#flushing !== flushId || this.state === previous) return
       listener(this.state, previous)
     })
   }
