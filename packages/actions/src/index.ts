@@ -48,6 +48,7 @@ export class ActionClient<
       {
         onUpdate: (next) => {
           this.state = next
+          return next
         },
       },
     ) as ActionClientStore
@@ -147,6 +148,7 @@ export class Action<
       {
         onUpdate: (next) => {
           this.state = this.#resolveState(next)
+          return this.state
         },
       },
     )
