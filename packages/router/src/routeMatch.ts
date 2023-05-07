@@ -97,6 +97,7 @@ export class RouteMatch<
         {
           onUpdate: (next) => {
             this.state = next
+            return next
           },
         },
       ),

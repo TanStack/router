@@ -81,6 +81,7 @@ export class LoaderClient<
       {
         onUpdate: (next) => {
           this.state = next
+          return next
         },
       },
     ) as LoaderClientStore
@@ -454,12 +455,11 @@ export class LoaderInstance<
             }
           }
         },
-        onUpdate: (next, prev) => {
+        onUpdate: (next) => {
           this.state = next
 
-          // if (next.isLoading !== prev.isLoading) {
           this.#notifyClient()
-          // }
+          return next
         },
       },
     )

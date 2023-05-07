@@ -296,6 +296,7 @@ export class Router<
       {
         onUpdate: (state) => {
           this.state = state
+          return state
         },
       },
     )
