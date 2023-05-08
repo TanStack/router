@@ -12,9 +12,9 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/react-loaders": "0.0.1-beta.86",
-    "@tanstack/router": "0.0.1-beta.86",
-    "@tanstack/router-devtools": "0.0.1-beta.86",
+    "@tanstack/react-loaders": "0.0.1-beta.87",
+    "@tanstack/router": "0.0.1-beta.87",
+    "@tanstack/router-devtools": "0.0.1-beta.87",
     "@tanstack/router-cli": "0.0.1-beta.69",
     "axios": "^1.1.3",
     "react": "^18.2.0",
