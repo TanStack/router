@@ -1,6 +1,6 @@
 export type AnyUpdater = (...args: any[]) => any
 
-export type Listener<TState> = (next: TState, prev: TState) => void
+export type Listener<TState> = (next: TState) => void
 
 interface StoreOptions<
   TState,
@@ -11,7 +11,7 @@ interface StoreOptions<
     listener: Listener<TState>,
     store: Store<TState, TUpdater>,
   ) => () => void
-  onUpdate?: (next: TState, prev: TState) => TState
+  onUpdate?: (next: TState) => TState
 }
 
 export class Store<
@@ -47,24 +47,23 @@ export class Store<
       ? this.options.updateFn(previous)(updater)
       : (updater as any)(previous)
 
-    this.#flush(previous)
+    this.#flush()
   }
 
-  #flush = (previous: TState) => {
+  #flush = () => {
     if (this.#batching) return
     const flushId = ++this.#flushing
     this.listeners.forEach((listener) => {
-      if (this.#flushing !== flushId || this.state === previous) return
-      listener(this.state, previous)
+      if (this.#flushing !== flushId) return
+      listener(this.state)
     })
   }
 
   batch = (cb: () => void) => {
     if (this.#batching) return cb()
-    const previous = this.state
     this.#batching = true
     cb()
     this.#batching = false
-    this.#flush(previous)
+    this.#flush()
   }
 }
