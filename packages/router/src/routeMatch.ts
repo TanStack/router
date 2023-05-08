@@ -95,9 +95,8 @@ export class RouteMatch<
           loader: undefined,
         },
         {
-          onUpdate: (next) => {
-            this.state = next
-            return next
+          onUpdate: () => {
+            this.state = this.__store.state
           },
         },
       ),

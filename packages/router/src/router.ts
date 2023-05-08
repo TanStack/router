@@ -294,9 +294,8 @@ export class Router<
     this.__store = new Store<RouterState<TRoutesInfo>>(
       getInitialRouterState(),
       {
-        onUpdate: (state) => {
-          this.state = state
-          return state
+        onUpdate: () => {
+          this.state = this.__store.state
         },
       },
     )

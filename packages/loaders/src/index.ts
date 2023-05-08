@@ -79,9 +79,8 @@ export class LoaderClient<
         isPreloading: false,
       },
       {
-        onUpdate: (next) => {
-          this.state = next
-          return next
+        onUpdate: () => {
+          this.state = this.__store.state
         },
       },
     ) as LoaderClientStore
@@ -455,11 +454,9 @@ export class LoaderInstance<
             }
           }
         },
-        onUpdate: (next) => {
-          this.state = next
-
+        onUpdate: () => {
+          this.state = this.__store.state
           this.#notifyClient()
-          return next
         },
       },
     )

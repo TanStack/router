@@ -46,9 +46,8 @@ export class ActionClient<
     this.__store = new Store(
       {},
       {
-        onUpdate: (next) => {
-          this.state = next
-          return next
+        onUpdate: () => {
+          this.state = this.__store.state
         },
       },
     ) as ActionClientStore
@@ -113,15 +112,6 @@ export type ActionCallback<TPayload, TResponse, TError> = (
   submission: ActionSubmission<TPayload, TResponse, TError>,
 ) => void | Promise<void>
 
-export type ResolvedActionState<TPayload, TResponse, TError> = ActionStore<
-  TPayload,
-  TResponse,
-  TError
-> & {
-  latestSubmission?: ActionSubmission<TPayload, TResponse, TError>
-  pendingSubmissions: ActionSubmission<TPayload, TResponse, TError>[]
-}
-
 export class Action<
   TKey extends string = string,
   TPayload = unknown,
@@ -138,17 +128,19 @@ export class Action<
   client?: ActionClient<any>
   options: ActionOptions<TKey, TPayload, TResponse, TError>
   __store: Store<ActionStore<TPayload, TResponse, TError>>
-  state: ResolvedActionState<TPayload, TResponse, TError>
+  state: ActionStore<TPayload, TResponse, TError>
 
   constructor(options: ActionOptions<TKey, TPayload, TResponse, TError>) {
     this.__store = new Store<ActionStore<TPayload, TResponse, TError>>(
       {
         submissions: [],
+        pendingSubmissions: [],
+        latestSubmission: undefined,
       },
       {
-        onUpdate: (next) => {
-          this.state = this.#resolveState(next)
-          return this.state
+        onUpdate: () => {
+          this.__store.state = this.#resolveState(this.__store.state)
+          this.state = this.__store.state
         },
       },
     )
@@ -159,7 +151,7 @@ export class Action<
 
   #resolveState = (
     state: ActionStore<TPayload, TResponse, TError>,
-  ): ResolvedActionState<TPayload, TResponse, TError> => {
+  ): ActionStore<TPayload, TResponse, TError> => {
     const latestSubmission = state.submissions[state.submissions.length - 1]
     const pendingSubmissions = state.submissions.filter(
       (d) => d.status === 'pending',
@@ -286,6 +278,8 @@ export interface ActionStore<
   TError = Error,
 > {
   submissions: ActionSubmission<TPayload, TResponse, TError>[]
+  latestSubmission?: ActionSubmission<TPayload, TResponse, TError>
+  pendingSubmissions: ActionSubmission<TPayload, TResponse, TError>[]
 }
 
 export type ActionFn<TActionPayload = unknown, TActionResponse = unknown> = (

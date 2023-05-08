@@ -1,6 +1,6 @@
 export type AnyUpdater = (...args: any[]) => any
 
-export type Listener<TState> = (next: TState) => void
+export type Listener = () => void
 
 interface StoreOptions<
   TState,
@@ -8,17 +8,17 @@ interface StoreOptions<
 > {
   updateFn?: (previous: TState) => (updater: TUpdater) => TState
   onSubscribe?: (
-    listener: Listener<TState>,
+    listener: Listener,
     store: Store<TState, TUpdater>,
   ) => () => void
-  onUpdate?: (next: TState) => TState
+  onUpdate?: () => void
 }
 
 export class Store<
   TState,
   TUpdater extends AnyUpdater = (cb: TState) => TState,
 > {
-  listeners = new Set<Listener<TState>>()
+  listeners = new Set<Listener>()
   state: TState
   options?: StoreOptions<TState, TUpdater>
   #batching = false
@@ -32,7 +32,7 @@ export class Store<
     }
   }
 
-  subscribe = (listener: Listener<TState>) => {
+  subscribe = (listener: Listener) => {
     this.listeners.add(listener)
     const unsub = this.options?.onSubscribe?.(listener, this)
     return () => {
@@ -55,7 +55,7 @@ export class Store<
     const flushId = ++this.#flushing
     this.listeners.forEach((listener) => {
       if (this.#flushing !== flushId) return
-      listener(this.state)
+      listener()
     })
   }
 
