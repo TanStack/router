@@ -21,8 +21,8 @@ export class Store<
   listeners = new Set<Listener>()
   state: TState
   options?: StoreOptions<TState, TUpdater>
-  #batching = false
-  #flushing = 0
+  _batching = false
+  _flushing = 0
 
   constructor(initialState: TState, options?: StoreOptions<TState, TUpdater>) {
     this.state = initialState
@@ -47,23 +47,23 @@ export class Store<
       ? this.options.updateFn(previous)(updater)
       : (updater as any)(previous)
 
-    this.#flush()
+    this._flush()
   }
 
-  #flush = () => {
-    if (this.#batching) return
-    const flushId = ++this.#flushing
+  _flush = () => {
+    if (this._batching) return
+    const flushId = ++this._flushing
     this.listeners.forEach((listener) => {
-      if (this.#flushing !== flushId) return
+      if (this._flushing !== flushId) return
       listener()
     })
   }
 
   batch = (cb: () => void) => {
-    if (this.#batching) return cb()
-    this.#batching = true
+    if (this._batching) return cb()
+    this._batching = true
     cb()
-    this.#batching = false
-    this.#flush()
+    this._batching = false
+    this._flush()
   }
 }
