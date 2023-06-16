@@ -31,35 +31,6 @@
       ]
     },
     {
-      "label": "Adapters",
-      "children": [
-        {
-          "label": "React",
-          "to": "adapters/router"
-        },
-        {
-          "label": "Preact",
-          "to": "adapters/preact-router"
-        },
-        {
-          "label": "Solid",
-          "to": "adapters/solid-router"
-        },
-        {
-          "label": "Svelte",
-          "to": "adapters/svelte-router"
-        },
-        {
-          "label": "Vue",
-          "to": "adapters/vue-router"
-        },
-        {
-          "label": "Angular",
-          "to": "adapters/angular-router"
-        }
-      ]
-    },
-    {
       "label": "Guide",
       "children": [
         {
@@ -234,7 +205,7 @@
       ]
     },
     {
-      "label": "React Examples",
+      "label": "Examples",
       "children": [
         {
           "label": "Basic",
@@ -262,32 +233,5 @@
         }
       ]
     },
-    {
-      "label": "Solid Examples",
-      "children": [
-        {
-          "to": "#solid-coming-soon",
-          "label": "Coming Soon!"
-        }
-      ]
-    },
-    {
-      "label": "Svelte Examples",
-      "children": [
-        {
-          "to": "#svelte-coming-soon",
-          "label": "Coming Soon!"
-        }
-      ]
-    },
-    {
-      "label": "Vue Examples",
-      "children": [
-        {
-          "to": "vue-coming-soon#",
-          "label": "Coming Soon!"
-        }
-      ]
-    }
   ]
 }
