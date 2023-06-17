@@ -232,6 +232,6 @@
           "to": "examples/react/with-trpc-react-query?file=client%2Fmain.tsx"
         }
       ]
-    },
+    }
   ]
 }
