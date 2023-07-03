@@ -24,5 +24,13 @@
   "devDependencies": {
     "@types/react": "^18.0.25",
     "@types/react-dom": "^18.0.8"
+  },
+  "pnpm": {
+    "overrides": {
+      "@tanstack/router": "workspace:*",
+      "@tanstack/react-actions": "workspace:*",
+      "@tanstack/react-loaders": "workspace:*",
+      "@tanstack/router-devtools": "workspace:*"
+    }
   }
 }

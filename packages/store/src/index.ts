@@ -27,9 +27,6 @@ export class Store<
   constructor(initialState: TState, options?: StoreOptions<TState, TUpdater>) {
     this.state = initialState
     this.options = options
-    if (this.options?.onUpdate) {
-      this.subscribe(this.options?.onUpdate)
-    }
   }
 
   subscribe = (listener: Listener) => {
@@ -47,6 +44,10 @@ export class Store<
       ? this.options.updateFn(previous)(updater)
       : (updater as any)(previous)
 
+    // Always run onUpdate, regardless of batching
+    this.options?.onUpdate?.()
+
+    // Attempt to flush
     this._flush()
   }
 
