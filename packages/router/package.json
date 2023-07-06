@@ -9,7 +9,7 @@
   "scripts": {
     "build": "rollup --config rollup.config.js",
     "test": "vitest",
-    "testDev": "vitest --watch"
+    "test:dev": "vitest --watch"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"

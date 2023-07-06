@@ -4,9 +4,9 @@
   "scripts": {
     "clean-dist": "pnpm -rc --parallel exec 'rm -rf build dist'",
     "clean-all": "pnpm -rc --parallel exec 'rm -rf build dist node_modules'",
-    "test": "(is-ci && pnpm test:ci) || pnpm test:dev",
-    "test:ci": "vitest run",
-    "test:dev": "vitest watch",
+    "test": "is-ci-cli test:ci test:dev",
+    "test:ci": "pnpm --parallel test",
+    "test:dev": "vitest",
     "buildNx": "nx run-many --target=build --projects=@tanstack/* --exclude=@tanstack/react-start",
     "build": "rollup --config rollup.config.js && pnpm typecheck",
     "watch": "concurrently --no-color --prefix \"watch\" --kill-others --raw \"rollup --config rollup.config.js -w\" \"tsc -b --watch --preserveWatchOutput\"",
@@ -91,8 +91,8 @@
     "@types/fs-extra": "^9.0.13",
     "fs-extra": "^10.1.0",
     "is-ci-cli": "^2.2.0",
-    "vite": "^4.1.1",
-    "vitest": "^0.26.2",
+    "vite": "^4.4.1",
+    "vitest": "^0.33.0",
     "zod": "^3.20.2"
   }
 }
