@@ -1,6 +1,6 @@
 export type AnyUpdater = (...args: any[]) => any
 
-export type Listener<TState> = (next: TState, prev: TState) => void
+export type Listener = () => void
 
 interface StoreOptions<
   TState,
@@ -8,28 +8,28 @@ interface StoreOptions<
 > {
   updateFn?: (previous: TState) => (updater: TUpdater) => TState
   onSubscribe?: (
-    listener: Listener<TState>,
+    listener: Listener,
     store: Store<TState, TUpdater>,
   ) => () => void
-  onUpdate?: (next: TState, prev: TState) => void
+  onUpdate?: () => void
 }
 
 export class Store<
   TState,
   TUpdater extends AnyUpdater = (cb: TState) => TState,
 > {
-  listeners = new Set<Listener<TState>>()
+  listeners = new Set<Listener>()
   state: TState
   options?: StoreOptions<TState, TUpdater>
-  batching = false
-  queue: ((...args: any[]) => void)[] = []
+  _batching = false
+  _flushing = 0
 
   constructor(initialState: TState, options?: StoreOptions<TState, TUpdater>) {
     this.state = initialState
     this.options = options
   }
 
-  subscribe = (listener: Listener<TState>) => {
+  subscribe = (listener: Listener) => {
     this.listeners.add(listener)
     const unsub = this.options?.onSubscribe?.(listener, this)
     return () => {
@@ -44,26 +44,27 @@ export class Store<
       ? this.options.updateFn(previous)(updater)
       : (updater as any)(previous)
 
-    if (this.state === previous) return
+    // Always run onUpdate, regardless of batching
+    this.options?.onUpdate?.()
 
-    this.options?.onUpdate?.(this.state, previous)
-
-    this.queue.push(() => {
-      this.listeners.forEach((listener) => listener(this.state, previous))
-    })
-    this.#flush()
+    // Attempt to flush
+    this._flush()
   }
 
-  #flush = () => {
-    if (this.batching) return
-    this.queue.forEach((cb) => cb())
-    this.queue = []
+  _flush = () => {
+    if (this._batching) return
+    const flushId = ++this._flushing
+    this.listeners.forEach((listener) => {
+      if (this._flushing !== flushId) return
+      listener()
+    })
   }
 
   batch = (cb: () => void) => {
-    this.batching = true
+    if (this._batching) return cb()
+    this._batching = true
     cb()
-    this.batching = false
-    this.#flush()
+    this._batching = false
+    this._flush()
   }
 }

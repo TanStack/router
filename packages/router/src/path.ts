@@ -164,16 +164,26 @@ export function matchByPath(
   from: string,
   matchLocation: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
 ): Record<string, string> | undefined {
-  if (!from.startsWith(basepath)) {
-    return undefined
-  }
+  // Remove the base path from the pathname
   from = basepath != '/' ? from.substring(basepath.length) : from
-  const baseSegments = parsePathname(from)
+  // Default to to $ (wildcard)
   const to = `${matchLocation.to ?? '$'}`
+  // Parse the from and to
+  const baseSegments = parsePathname(from)
   const routeSegments = parsePathname(to)
 
-  if (last(baseSegments)?.value === '/') {
-    baseSegments.pop()
+  if (!from.startsWith('/')) {
+    baseSegments.unshift({
+      type: 'pathname',
+      value: '/',
+    })
+  }
+
+  if (!to.startsWith('/')) {
+    routeSegments.unshift({
+      type: 'pathname',
+      value: '/',
+    })
   }
 
   const params: Record<string, string> = {}
@@ -187,8 +197,8 @@ export function matchByPath(
       const baseSegment = baseSegments[i]
       const routeSegment = routeSegments[i]
 
-      const isLastRouteSegment = i === routeSegments.length - 1
-      const isLastBaseSegment = i === baseSegments.length - 1
+      const isLastBaseSegment = i >= baseSegments.length - 1
+      const isLastRouteSegment = i >= routeSegments.length - 1
 
       if (routeSegment) {
         if (routeSegment.type === 'wildcard') {
@@ -232,10 +242,11 @@ export function matchByPath(
         }
       }
 
-      if (isLastRouteSegment && !isLastBaseSegment) {
+      if (!isLastBaseSegment && isLastRouteSegment) {
         return !!matchLocation.fuzzy
       }
     }
+
     return true
   })()
 

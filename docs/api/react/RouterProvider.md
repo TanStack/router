@@ -26,8 +26,6 @@ function App() {
   - **Optional**
 - `parseSearch?: SearchParser`
   - **Optional**
-- `filterRoutes?: FilterRoutesFn`
-  - **Optional**
 - `defaultPreload?: false | 'intent'`
   - **Optional**
 - `defaultPreloadMaxAge?: number`

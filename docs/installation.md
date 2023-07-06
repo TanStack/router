@@ -4,10 +4,8 @@ title: Installation
 
 You can install TanStack Router with any [NPM](https://npmjs.com) package manager.
 
-Depending on your framework of choice, install one of the the following packages:
+```sh
+npm install @tanstack/router@beta
+```
 
-- [React](./adapters/react-router)
-- Solid (coming soon!)
-- Vue (coming soon!)
-- Svelte (coming soon!)
-- Angular (coming soon!)
+TanStack Router is compatible with React v16.8+ and is currently only compatible with ReactDOM only. If you would like to contribute to the React Native adapter, please reach out to us on [Discord](https://tlinz.com/discord).

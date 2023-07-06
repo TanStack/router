@@ -12,6 +12,7 @@ import {
   useParams,
   RootRoute,
   Route,
+  redirect,
 } from '@tanstack/router'
 import {
   Action,
@@ -780,9 +781,19 @@ const AuthError = new Error('Not logged in')
 const authenticatedRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'authenticated',
-  onLoadError: (error) => {
+  // Before loading, authenticate the user via our auth context
+  // This will also happen during prefetching (e.g. hovering over links, etc)
+  beforeLoad: () => {
+    if (router.options.context.auth.status === 'loggedOut') {
+      throw AuthError
+    }
+  },
+  // If navigation is attempted while not authenticated, redirect to login
+  // If the error is from a prefetch, redirects will be ignored
+  onBeforeLoadError: (error) => {
+    console.log('tanner', error)
     if (error === AuthError) {
-      router.navigate({
+      throw redirect({
         to: loginRoute.fullPath,
         search: {
           // Use latestLocation (not currentLocation) to get the live url
@@ -794,11 +805,6 @@ const authenticatedRoute = new Route({
     }
 
     throw error
-  },
-  beforeLoad: () => {
-    if (router.options.context.auth.status === 'loggedOut') {
-      throw AuthError
-    }
   },
   component: () => {
     const auth = useAuth()
@@ -830,9 +836,10 @@ const loginRoute = new Route({
       auth.login(username)
     }
 
+    // Ah, the subtle nuances of client side auth. 🙄
     React.useEffect(() => {
       if (auth.status === 'loggedIn' && search.redirect) {
-        window.history.pushState({}, '', search.redirect)
+        router.history.push(search.redirect)
       }
     }, [auth.status, search.redirect])
 

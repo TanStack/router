@@ -28,6 +28,7 @@ import {
   RootRoute,
   AnyContext,
   AnyRootRoute,
+  AnyPathParams,
 } from './route'
 import { RoutesInfo, AnyRoutesInfo, RoutesById } from './routeInfo'
 import { AnyRouteMatch, RouteMatch, RouteMatchState } from './routeMatch'
@@ -100,9 +101,6 @@ export interface FromLocation {
 
 export type SearchSerializer = (searchObj: Record<string, any>) => string
 export type SearchParser = (searchStr: string) => Record<string, any>
-export type FilterRoutesFn = <TRoute extends AnyRoute>(
-  routes: TRoute[],
-) => TRoute[]
 
 type RouterContextOptions<TRouteTree extends AnyRoute> =
   AnyContext extends TRouteTree['__types']['routerContext']
@@ -120,7 +118,6 @@ export interface RouterOptions<
   history?: RouterHistory
   stringifySearch?: SearchSerializer
   parseSearch?: SearchParser
-  filterRoutes?: FilterRoutesFn
   defaultPreload?: false | 'intent'
   defaultPreloadDelay?: number
   defaultComponent?: RouteComponent
@@ -294,8 +291,8 @@ export class Router<
     this.__store = new Store<RouterState<TRoutesInfo>>(
       getInitialRouterState(),
       {
-        onUpdate: (state) => {
-          this.state = state
+        onUpdate: () => {
+          this.state = this.__store.state
         },
       },
     )
@@ -569,106 +566,149 @@ export class Router<
     return matches
   }
 
-  matchRoutes = (pathname: string, opts?: { strictParseParams?: boolean }) => {
-    const matches: AnyRouteMatch[] = []
-
+  matchRoutes = (
+    pathname: string,
+    opts?: { strictParseParams?: boolean },
+  ): RouteMatch[] => {
+    // If there's no route tree, we can't match anything
     if (!this.routeTree) {
-      return matches
+      return []
     }
 
+    // Existing matches are matches that are already loaded along with
+    // pending matches that are still loading
     const existingMatches = [
       ...this.state.currentMatches,
       ...(this.state.pendingMatches ?? []),
     ]
 
-    const findInRouteTree = async (
-      routes: Route<any, any>[],
-    ): Promise<void> => {
-      const parentMatch = last(matches)
-      let params = parentMatch?.params ?? {}
+    // We need to "flatten" layout routes, but only process as many
+    // routes as we need to in order to find the best match
+    // This mean no looping over all of the routes (even though the
+    // user could technically do this in their own routes filter code,
+    // but that's their choice).
+    // Time to bust out the recursion... As we iterate over the routes,
+    // we'll keep track of the best match thus far by pushing or popping
+    // it onto the `matchingRoutes` array. In the case of a layout route,
+    // we'll assume that it matches and just recurse into its children.
+    // If we come up with nothing, we'll pop it off and try the next route.
+    // This way the user can have as many routes, including layout routes,
+    // as they want without worrying about performance.
+    // It does make one assumption though: that route branches are ordered from
+    // most specific to least specific. This is a good assumption to make IMO.
+    // Tools like Remix and React Router auto-rank routes, which is a neat trick
+    // that unfortunately requires looping over all of the routes.
+    // I'd rather err on the side of performance here
+    // and rely on the fact that to use TanStack Router, you already have to
+    // be thinking about your routes more intimately. We're smart enough
+    // to write switch statements, so we're smart enough to (keep) ordering
+    // our routes like we have been doing for years.
 
-      const filteredRoutes = this.options.filterRoutes?.(routes) ?? routes
+    let matchingRoutesAndParams: { route: Route; params?: AnyPathParams }[] = []
 
-      let matchingRoutes: Route[] = []
-
-      const findMatchInRoutes = (parentRoutes: Route[], routes: Route[]) => {
-        routes.some((route) => {
-          const children = route.children as undefined | Route[]
-          if (!route.path && children?.length) {
-            return findMatchInRoutes(
-              [...matchingRoutes, route],
-              children as any,
-            )
-          }
-
-          const fuzzy = !!(route.path !== '/' || children?.length)
-
-          const matchParams = matchPathname(this.basepath, pathname, {
-            to: route.fullPath,
-            fuzzy,
-            caseSensitive:
-              route.options.caseSensitive ?? this.options.caseSensitive,
-          })
-
-          if (matchParams) {
-            let parsedParams
-
-            try {
-              parsedParams =
-                route.options.parseParams?.(matchParams!) ?? matchParams
-            } catch (err) {
-              if (opts?.strictParseParams) {
-                throw err
-              }
+    // For any given array of branching routes, find the best route match
+    // and push it onto the `matchingRoutes` array
+    const findRoutes = (routes: Route<any, any>[]): undefined | Route => {
+      let found: undefined | Route
+      // Given a list of routes, find the first route that matches
+      routes.some((route) => {
+        const children = route.children as undefined | Route[]
+        // If there is no path, but there are children,
+        // this is a layout route, so recurse again
+        if (!route.path) {
+          if (children?.length) {
+            // Preemptively push the route onto the matchingRoutes array
+            matchingRoutesAndParams.push({ route })
+            const childMatch = findRoutes(children)
+            // If we found a child match, mark it as found
+            // and return true to stop the loop
+            if (childMatch) {
+              found = childMatch
+              return true
             }
-
-            params = {
-              ...params,
-              ...parsedParams,
-            }
+            // If there was no child match, pop our optimistic route off the array
+            // and return false to keep trying
+            matchingRoutesAndParams.pop()
+            return false
           }
+          // It's a layout route, but for some reason it has no children
+          // so we'll just ignore it and keep matching
+          return false
+        }
 
-          if (!!matchParams) {
-            matchingRoutes = [...parentRoutes, route]
-          }
+        // If the route isn't an index route or it has children,
+        // fuzzy match the path
+        const fuzzy = route.path !== '/' || !!children?.length
 
-          return !!matchingRoutes.length
+        const matchedParams = matchPathname(this.basepath, pathname, {
+          to: route.fullPath,
+          fuzzy,
+          caseSensitive:
+            route.options.caseSensitive ?? this.options.caseSensitive,
         })
 
-        return !!matchingRoutes.length
-      }
+        // This was a match!
+        if (matchedParams) {
+          // Let's parse the params using the route's `parseParams` function
+          let parsedParams
+          try {
+            parsedParams =
+              route.options.parseParams?.(matchedParams!) ?? matchedParams
+          } catch (err) {
+            if (opts?.strictParseParams) {
+              throw err
+            }
+          }
 
-      findMatchInRoutes([], filteredRoutes)
+          matchingRoutesAndParams.push({ route, params: parsedParams })
 
-      if (!matchingRoutes.length) {
-        return
-      }
+          found = route
+          return true
+        }
 
-      matchingRoutes.forEach((foundRoute) => {
-        const interpolatedPath = interpolatePath(foundRoute.path, params)
-        const matchId = interpolatePath(foundRoute.id, params, true)
-
-        const match =
-          existingMatches.find((d) => d.id === matchId) ||
-          new RouteMatch(this, foundRoute, {
-            id: matchId,
-            params,
-            pathname: joinPaths([this.basepath, interpolatedPath]),
-          })
-
-        matches.push(match)
+        return false
       })
 
-      const foundRoute = last(matchingRoutes)!
-
-      const foundChildren = foundRoute.children as any
-
-      if (foundChildren?.length) {
-        findInRouteTree(foundChildren)
+      // If we didn't find a match in this route branch
+      // return early.
+      if (!found) {
+        return undefined
       }
+
+      // If the found route has children, recurse again
+      const foundChildren = found.children as any
+      if (foundChildren?.length) {
+        return findRoutes(foundChildren)
+      }
+
+      return found
     }
 
-    findInRouteTree([this.routeTree as any])
+    findRoutes([this.routeTree as any])
+
+    // Alright, by now we should have all of our
+    // matching routes and their param pairs, let's
+    // Turn them into actual `Match` objects and
+    // accumulate the params into a single params bag
+    let allParams = {}
+
+    const matches = matchingRoutesAndParams.map(({ route, params }) => {
+      // Add the parsed params to the accumulated params bag
+      Object.assign(allParams, params)
+
+      const interpolatedPath = interpolatePath(route.path, params)
+      const matchId = interpolatePath(route.id, params, true)
+
+      // Waste not, want not. If we already have a match for this route,
+      // reuse it. This is important for layout routes, which might stick
+      // around between navigation actions that only change leaf routes.
+      return (existingMatches.find((d) => d.id === matchId) ||
+        new RouteMatch(this, route, {
+          id: matchId,
+          params: allParams,
+          pathname: joinPaths([this.basepath, interpolatedPath]),
+        })) as RouteMatch
+    })
 
     return matches
   }
