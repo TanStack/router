@@ -103,11 +103,10 @@ export type MakeLinkOptions<
   TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
   TTo extends string = '',
 > = LinkPropsOptions<TFrom, TTo> &
+  React.AnchorHTMLAttributes<HTMLAnchorElement> &
   Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-    children?:
-      | React.ReactNode
-      | ((state: { isActive: boolean }) => React.ReactNode)
+    children?: ReactNode | ((state: { isActive: boolean }) => ReactNode)
   }
 
 export type PromptProps = {
