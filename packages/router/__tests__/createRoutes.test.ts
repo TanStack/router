@@ -10,6 +10,7 @@ import {
   AnyRoute,
   Values,
   Router,
+  lazy
 } from '../src'
 
 // Write a test
@@ -143,6 +144,12 @@ describe('everything', () => {
       component: () => 'layout-b',
     })
 
+    const testRoute = new Route({
+      getParentRout: () => rootRoute,
+      path: 'testPath',
+      component: lazy(() => import('./TestComponent'), 'NamedComponent'),
+    })
+
     const routeTree = rootRoute.addChildren([
       indexRoute,
       testRoute,
@@ -153,6 +160,7 @@ describe('everything', () => {
       ]),
       authenticatedRoute.addChildren([authenticatedIndexRoute]),
       layoutRoute.addChildren([layoutARoute, layoutBRoute]),
+      testRoute,
     ])
 
     type MyRoutesInfo = RoutesInfo<typeof routeTree>
