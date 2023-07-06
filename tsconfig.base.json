@@ -15,6 +15,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "baseUrl": ".",
+    "allowUnreachableCode": true,
     "paths": {
       "@tanstack/router": ["packages/router"],
       "@tanstack/router-devtools": ["packages/router-devtools"],
