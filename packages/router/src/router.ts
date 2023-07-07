@@ -584,9 +584,7 @@ export class Router<
 
     // We need to "flatten" layout routes, but only process as many
     // routes as we need to in order to find the best match
-    // This mean no looping over all of the routes (even though the
-    // user could technically do this in their own routes filter code,
-    // but that's their choice).
+    // This mean no looping over all of the routes for the best perf.
     // Time to bust out the recursion... As we iterate over the routes,
     // we'll keep track of the best match thus far by pushing or popping
     // it onto the `matchingRoutes` array. In the case of a layout route,
@@ -596,13 +594,11 @@ export class Router<
     // as they want without worrying about performance.
     // It does make one assumption though: that route branches are ordered from
     // most specific to least specific. This is a good assumption to make IMO.
-    // Tools like Remix and React Router auto-rank routes, which is a neat trick
-    // that unfortunately requires looping over all of the routes.
-    // I'd rather err on the side of performance here
-    // and rely on the fact that to use TanStack Router, you already have to
-    // be thinking about your routes more intimately. We're smart enough
-    // to write switch statements, so we're smart enough to (keep) ordering
-    // our routes like we have been doing for years.
+    // For now, we also auto-rank routes like Remix and React Router which is a neat trick
+    // that unfortunately requires looping over all of the routes when we build the route
+    // tree, but we only do that once. For the matching that will be happening more often,
+    // I'd rather err on the side of performance here and be able to walk the tree and
+    // exit early as soon as possible with as little looping/mapping as possible.
 
     let matchingRoutesAndParams: { route: Route; params?: AnyPathParams }[] = []
 
@@ -1093,42 +1089,61 @@ export class Router<
         if (children?.length) {
           recurseRoutes(children, route)
 
+          const range = 1 / children!.length
+
           route.children = children
             .map((d, i) => {
-              const parsed = parsePathname(
-                trimPathLeft(cleanPath(d.path ?? '/')),
-              )
+              const cleaned = trimPathLeft(cleanPath(d.path ?? '/'))
+              const parsed = parsePathname(cleaned)
 
               while (parsed.length > 1 && parsed[0]?.value === '/') {
                 parsed.shift()
               }
 
-              let score = 0
-
-              parsed.forEach((d, i) => {
-                let modifier = 1
-                while (i--) {
-                  modifier *= 0.001
+              const score = parsed.map((d) => {
+                if (d.type === 'param') {
+                  return 0.5
                 }
-                if (d.type === 'pathname' && d.value !== '/') {
-                  score += 1 * modifier
-                } else if (d.type === 'param') {
-                  score += 2 * modifier
-                } else if (d.type === 'wildcard') {
-                  score += 3 * modifier
+                if (d.type === 'wildcard') {
+                  return 0.25
                 }
+                return 1
               })
 
-              return { child: d, parsed, index: i, score }
+              return { child: d, cleaned, parsed, index: i, score }
             })
             .sort((a, b) => {
-              if (a.score !== b.score) {
-                return a.score - b.score
+              const length = Math.min(a.score.length, b.score.length)
+              // Sort by min available score
+              for (let i = 0; i < length; i++) {
+                if (a.score[i] !== b.score[i]) {
+                  return b.score[i]! - a.score[i]!
+                }
               }
 
+              // Sort by min available parsed value
+              for (let i = 0; i < length; i++) {
+                if (a.parsed[i]!.value !== b.parsed[i]!.value) {
+                  return a.parsed[i]!.value! > b.parsed[i]!.value! ? 1 : -1
+                }
+              }
+
+              // Sort by length of score
+              if (a.score.length !== b.score.length) {
+                return b.score.length - a.score.length
+              }
+
+              // Sort by length of cleaned full path
+              if (a.cleaned !== b.cleaned) {
+                return a.cleaned > b.cleaned ? 1 : -1
+              }
+
+              // Sort by original index
               return a.index - b.index
             })
-            .map((d) => d.child)
+            .map((d) => {
+              return d.child
+            })
         }
       })
     }

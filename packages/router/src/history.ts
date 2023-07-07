@@ -5,8 +5,8 @@
 export interface RouterHistory {
   location: RouterLocation
   listen: (cb: () => void) => () => void
-  push: (path: string, state: any) => void
-  replace: (path: string, state: any) => void
+  push: (path: string, state?: any) => void
+  replace: (path: string, state?: any) => void
   go: (index: number) => void
   back: () => void
   forward: () => void
@@ -256,7 +256,10 @@ function parseLocation(href: string, state: any): RouterLocation {
         : href.length,
     ),
     hash: hashIndex > -1 ? href.substring(hashIndex) : '',
-    search: searchIndex > -1 ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex) : '',
+    search:
+      searchIndex > -1
+        ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
+        : '',
     state,
   }
 }

@@ -6,8 +6,8 @@ Route matching follows a consistent and predictable pattern. This guide will exp
 
 When TanStack Router creates your router, all of your routes are automatically resorted to match the most specific routes first. This means that regardless of the order your route tree is defined, routes will always be sorted to this order:
 
-- Index Routes
-- Static Routes (longest to shortest)
+- Index Route
+- Static Routes (most specific to least specific)
 - Dynamic Routes (longest to shortest)
 - Splat/Wildcard Routes
 
@@ -22,6 +22,7 @@ Root
   - /
   - *
   - about
+  - about/us
 ```
 
 After sorting, this route tree will become:
@@ -29,11 +30,12 @@ After sorting, this route tree will become:
 ```
 Root
   - /
+  - about/us
+  - about
   - blog
     - /
     - new
     - $postId
-  - about
   - *
 ```
 
@@ -43,45 +45,45 @@ Using that route tree, let's follow the matching process for a few different URL
 
 - `/blog`
   ```
-  Root 👍
-    ✅ blog 👍
+  Root
+    ❌ about
+    ⏩ blog
       ✅ /
       - new
       - $postId
-    - about
     - /
     - *
   ```
 - `/blog/my-post`
   ```
-  Root 👍
-    ✅ blog 👍
+  Root
+    ❌ about
+    ⏩ blog
       ❌ /
       ❌ new
       ✅ $postId
-    - about
     - /
     - *
   ```
 - `/`
   ```
-  Root 👍
+  Root
+    ❌ about
     ❌ blog
       ❌ /
       ❌ new
       ❌ $postId
-    ❌ about
     ✅ /
     - *
   ```
 - `/not-a-route`
   ```
-  Root 👍
-    - blog
+  Root
+    ❌ about
+    ❌ blog
       - /
       - new
       - $postId
-    ❌ about
     ❌ /
     ✅ *
   ```
