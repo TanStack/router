@@ -1255,11 +1255,13 @@ export class Router<
     )
 
     const searchStr = this.options.stringifySearch(search)
-    let hash =
+
+    const hash =
       dest.hash === true
         ? this.state.latestLocation.hash
         : functionalUpdate(dest.hash!, this.state.latestLocation.hash)
-    hash = hash ? `#${hash}` : ''
+
+    const hashStr = hash ? `#${hash}` : ''
 
     const nextState =
       dest.state === true
@@ -1272,7 +1274,7 @@ export class Router<
       searchStr,
       state: nextState,
       hash,
-      href: this.history.createHref(`${pathname}${searchStr}${hash}`),
+      href: this.history.createHref(`${pathname}${searchStr}${hashStr}`),
       key: dest.key,
     }
   }
@@ -1298,7 +1300,7 @@ export class Router<
     }
 
     const href = `${next.pathname}${next.searchStr}${
-      next.hash ? `${next.hash}` : ''
+      next.hash ? `#${next.hash}` : ''
     }`
 
     this.history[nextAction === 'push' ? 'push' : 'replace'](href, {

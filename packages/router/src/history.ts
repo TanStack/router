@@ -255,8 +255,8 @@ function parseLocation(href: string, state: any): RouterLocation {
         ? searchIndex
         : href.length,
     ),
-    hash: hashIndex > -1 ? href.substring(hashIndex, searchIndex) : '',
-    search: searchIndex > -1 ? href.substring(searchIndex) : '',
+    hash: hashIndex > -1 ? href.substring(hashIndex) : '',
+    search: searchIndex > -1 ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex) : '',
     state,
   }
 }
