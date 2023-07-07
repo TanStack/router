@@ -30,6 +30,7 @@ describe('everything', () => {
     })
     const testRoute = new Route({
       getParentRoute: () => rootRoute,
+      component: lazy(() => import('./TestComponent'), 'NamedComponent'),
       path: 'test',
       validateSearch: (search) =>
         z
@@ -144,12 +145,6 @@ describe('everything', () => {
       component: () => 'layout-b',
     })
 
-    const testRoute = new Route({
-      getParentRout: () => rootRoute,
-      path: 'testPath',
-      component: lazy(() => import('./TestComponent'), 'NamedComponent'),
-    })
-
     const routeTree = rootRoute.addChildren([
       indexRoute,
       testRoute,
@@ -159,8 +154,7 @@ describe('everything', () => {
         usersRoute.addChildren([userRoute]),
       ]),
       authenticatedRoute.addChildren([authenticatedIndexRoute]),
-      layoutRoute.addChildren([layoutARoute, layoutBRoute]),
-      testRoute,
+      layoutRoute.addChildren([layoutARoute, layoutBRoute])
     ])
 
     type MyRoutesInfo = RoutesInfo<typeof routeTree>
