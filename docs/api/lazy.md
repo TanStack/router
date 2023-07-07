@@ -15,7 +15,7 @@ export const expensiveRoute = new Route({
 export const expensiveNamedRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'expensive',
-  component: lazy(() => import('./Expensive'), "Expensive"),
+  component: lazy(() => import('./Expensive'), 'Expensive'),
 })
 ```
 
