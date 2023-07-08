@@ -692,7 +692,7 @@ export class Router<
       Object.assign(allParams, params)
 
       const interpolatedPath = interpolatePath(route.path, params)
-      const matchId = interpolatePath(route.id, params, true)
+      const matchId = interpolatePath(route.id, params)
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
