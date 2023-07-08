@@ -94,7 +94,7 @@ export class LoaderClient<
     if (this.initialized) return
     Object.entries(this.options.getLoaders()).forEach(
       ([key, loader]: [string, Loader]) => {
-        ;(this.loaders as any)[key] = loader.init(key, client)
+        ;(this.loaders as any)[key] = loader.init(key, this)
       },
     )
     this.initialized = true
