@@ -9,7 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-loaders": "0.0.1-beta.90",
+    "@tanstack/react-loaders": "0.0.1-beta.96",
     "@tanstack/react-actions": "0.0.1-beta.90",
     "@tanstack/router": "0.0.1-beta.95",
     "@tanstack/router-devtools": "0.0.1-beta.95",
