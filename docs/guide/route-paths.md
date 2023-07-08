@@ -95,7 +95,9 @@ const userRoute = new Route({
   path: '$userId',
 })
 
-const routeConfig = rootRoute.addChildren([userBaseRoute])
+const routeConfig = rootRoute.addChildren([
+  usersRoute.addChildren([userRoute])
+])
 ```
 
 Dynamic segments can be accessed via the `params` object using the label you provided as the property key. For example, a path of `/users/$userId` would produce a `userId` param of `123` for the path `/users/123/details`:
