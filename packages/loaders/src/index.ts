@@ -94,7 +94,7 @@ export class LoaderClient<
     if (this.initialized) return
     Object.entries(this.options.getLoaders()).forEach(
       ([key, loader]: [string, Loader]) => {
-        ;(this.loaders as any)[key] = loader.init(key)
+        ;(this.loaders as any)[key] = loader.init(key, client)
       },
     )
     this.initialized = true
@@ -308,7 +308,8 @@ export class Loader<
 
   static onCreateFns: ((loader: AnyLoader) => void)[] = []
 
-  init = (key: TKey) => {
+  init = (key: TKey, client: LoaderClient) => {
+    this.client = client
     this.key = key
     this.instances = {}
     return this as Loader<TKey, TVariables, TData, TError>
