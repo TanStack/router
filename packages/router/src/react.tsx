@@ -725,8 +725,6 @@ export function useBlocker(
       if (window.confirm(message)) {
         unblock()
         retry()
-      } else {
-        cancel()
       }
     })
 
