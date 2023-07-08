@@ -53,6 +53,7 @@ export class RouteMatch<
     useMatch: TRoute['useMatch']
     useContext: TRoute['useContext']
     useSearch: TRoute['useSearch']
+    useParams: TRoute['useParams']
   }>
   errorComponent?: RouteComponent<{
     error: Error

@@ -35,11 +35,19 @@ export interface RoutesInfoInner<
   TRoutesById = { '/': TRouteUnion } & {
     [TRoute in TRouteUnion as TRoute['id']]: TRoute
   },
+  // RoutePaths should always use index routes if possible, but not
+  // force trailing slashes. To do this, we check if each route
+  // has an index route registered and if it does, we omit the layout
+  // route. Then for any index routes, we remove the trailing slash
   TRoutesByFullPath = { '/': TRouteUnion } & {
     [TRoute in TRouteUnion as TRoute['fullPath'] extends RootRouteId
       ? never
       : string extends TRoute['fullPath']
       ? never
+      : `${TRoute['fullPath']}/` extends keyof TRoutesById
+      ? never
+      : TRoute['fullPath'] extends `${infer Trimmed}/`
+      ? Trimmed
       : TRoute['fullPath']]: TRoute
   },
 > {

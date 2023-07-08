@@ -8,7 +8,6 @@ import {
   LinkOptions,
   NavigateOptions,
   ToOptions,
-  ValidFromPath,
   ResolveRelativePath,
 } from './link'
 import {
@@ -802,10 +801,7 @@ export class Router<
     return resolvePath(this.basepath!, from, cleanPath(path))
   }
 
-  navigate = async <
-    TFrom extends ValidFromPath<TRoutesInfo> = '/',
-    TTo extends string = '',
-  >({
+  navigate = async <TFrom extends string = '/', TTo extends string = ''>({
     from,
     to = '' as any,
     search,
@@ -843,7 +839,7 @@ export class Router<
   }
 
   matchRoute = <
-    TFrom extends ValidFromPath<TRoutesInfo> = '/',
+    TFrom extends string = '/',
     TTo extends string = '',
     TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
   >(
@@ -882,10 +878,7 @@ export class Router<
     return match
   }
 
-  buildLink = <
-    TFrom extends ValidFromPath<TRoutesInfo> = '/',
-    TTo extends string = '',
-  >({
+  buildLink = <TFrom extends string = '/', TTo extends string = ''>({
     from,
     to = '.' as any,
     search,

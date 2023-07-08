@@ -6,7 +6,6 @@ import {
   LinkOptions,
   ToOptions,
   ResolveRelativePath,
-  ValidFromPath,
   NavigateOptions,
 } from './link'
 import { AnyRootRoute, AnyRoute, RootRoute, Route } from './route'
@@ -101,7 +100,7 @@ export type MakeMatchRouteOptions<
   }
 
 export type MakeLinkPropsOptions<
-  TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
+  TFrom extends string = '/',
   TTo extends string = '',
 > = LinkPropsOptions<TFrom, TTo> & React.AnchorHTMLAttributes<HTMLAnchorElement>
 
@@ -125,7 +124,7 @@ export type PromptProps = {
 //
 
 export function useLinkProps<
-  TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
+  TFrom extends string = '/',
   TTo extends string = '',
 >(
   options: MakeLinkPropsOptions<TFrom, TTo>,
@@ -505,10 +504,7 @@ export function useMatchRoute() {
   const router = useRouterContext()
 
   return React.useCallback(
-    <
-      TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
-      TTo extends string = '',
-    >(
+    <TFrom extends string = '/', TTo extends string = ''>(
       opts: MakeUseMatchRouteOptions<TFrom, TTo>,
     ) => {
       const { pending, caseSensitive, ...rest } = opts
@@ -522,10 +518,9 @@ export function useMatchRoute() {
   )
 }
 
-export function MatchRoute<
-  TFrom extends ValidFromPath<RegisteredRoutesInfo> = '/',
-  TTo extends string = '',
->(props: MakeMatchRouteOptions<TFrom, TTo>): any {
+export function MatchRoute<TFrom extends string = '/', TTo extends string = ''>(
+  props: MakeMatchRouteOptions<TFrom, TTo>,
+): any {
   const matchRoute = useMatchRoute()
   const params = matchRoute(props)
 
@@ -610,6 +605,7 @@ function Inner(props: { match: RouteMatch }): any {
         useMatch: props.match.route.useMatch,
         useContext: props.match.route.useContext,
         useSearch: props.match.route.useSearch,
+        useParams: props.match.route.useParams,
       },
     )
   }

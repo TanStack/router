@@ -16,6 +16,7 @@ import {
   RouteComponent,
   useLoader,
   useMatch,
+  useParams,
   useSearch,
 } from './react'
 
@@ -604,9 +605,7 @@ export class Route<
     }
 
     const fullPath =
-      id === rootRouteId
-        ? '/'
-        : trimPathRight(joinPaths([this.parentRoute.fullPath, path]))
+      id === rootRouteId ? '/' : joinPaths([this.parentRoute.fullPath, path])
 
     this.path = path as TPath
     this.id = id as TId
@@ -668,6 +667,13 @@ export class Route<
     track?: (search: TFullSearchSchema) => TSelected
   }): TStrict extends true ? TSelected : TSelected | undefined => {
     return useSearch({ ...opts, from: this.id })
+  }
+
+  useParams = <TStrict extends boolean = true, TSelected = TAllParams>(opts?: {
+    strict?: TStrict
+    track?: (search: TAllParams) => TSelected
+  }): TStrict extends true ? TSelected : TSelected | undefined => {
+    return useParams({ ...opts, from: this.id })
   }
 }
 
@@ -761,7 +767,7 @@ type ResolveFullPath<
     TParentRoute['fullPath'],
     TPath
   >,
-> = TPrefixed extends RootRouteId ? '/' : TrimPathRight<`${TPrefixed}`>
+> = TPrefixed extends RootRouteId ? '/' : `${TPrefixed}`
 
 type RoutePrefix<
   TPrefix extends string,
@@ -778,16 +784,17 @@ type RoutePrefix<
     : `/${TrimPathLeft<`${TrimPathRight<TPrefix>}/${TrimPath<TId>}`>}`
   : never
 
-type TrimPath<T extends string> = '' extends T
+export type TrimPath<T extends string> = '' extends T
   ? ''
   : TrimPathRight<TrimPathLeft<T>>
 
-type TrimPathLeft<T extends string> = T extends `${RootRouteId}/${infer U}`
-  ? TrimPathLeft<U>
-  : T extends `/${infer U}`
-  ? TrimPathLeft<U>
-  : T
-type TrimPathRight<T extends string> = T extends '/'
+export type TrimPathLeft<T extends string> =
+  T extends `${RootRouteId}/${infer U}`
+    ? TrimPathLeft<U>
+    : T extends `/${infer U}`
+    ? TrimPathLeft<U>
+    : T
+export type TrimPathRight<T extends string> = T extends '/'
   ? '/'
   : T extends `${infer U}/`
   ? TrimPathRight<U>

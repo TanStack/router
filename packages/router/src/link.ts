@@ -329,11 +329,3 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
       : CleanPath<Join<['/', ...Split<TFrom>, ...Split<TTo>]>>
     : never
   : never
-
-export type ValidFromPath<
-  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
-> =
-  | undefined
-  | (string extends TRoutesInfo['routePaths']
-      ? string
-      : TRoutesInfo['routePaths'])
