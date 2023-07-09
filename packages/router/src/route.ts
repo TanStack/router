@@ -435,7 +435,7 @@ type MergeFromParent<T, U> = IsAny<T, U, T & U>
 
 export class Route<
   TParentRoute extends AnyRoute = AnyRoute,
-  TPath extends string = string,
+  TPath extends string = '/',
   TFullPath extends ResolveFullPath<TParentRoute, TPath> = ResolveFullPath<
     TParentRoute,
     TPath
@@ -767,7 +767,7 @@ type ResolveFullPath<
     TParentRoute['fullPath'],
     TPath
   >,
-> = TPrefixed extends RootRouteId ? '/' : `${TPrefixed}`
+> = TPrefixed extends RootRouteId ? '/' : TPrefixed
 
 type RoutePrefix<
   TPrefix extends string,

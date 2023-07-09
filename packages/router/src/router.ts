@@ -599,35 +599,29 @@ export class Router<
     // I'd rather err on the side of performance here and be able to walk the tree and
     // exit early as soon as possible with as little looping/mapping as possible.
 
-    let matchingRoutesAndParams: { route: Route; params?: AnyPathParams }[] = []
+    let matchingRoutesAndParams: { route: AnyRoute; params?: AnyPathParams }[] =
+      []
 
     // For any given array of branching routes, find the best route match
     // and push it onto the `matchingRoutes` array
-    const findRoutes = (routes: Route<any, any>[]): undefined | Route => {
+    const findRoutes = (
+      routes: AnyRoute[],
+      layoutRoutes: AnyRoute[] = [],
+    ): undefined | Route => {
       let found: undefined | Route
       // Given a list of routes, find the first route that matches
       routes.some((route) => {
         const children = route.children as undefined | Route[]
         // If there is no path, but there are children,
         // this is a layout route, so recurse again
-        if (!route.path) {
-          if (children?.length) {
-            // Preemptively push the route onto the matchingRoutes array
-            matchingRoutesAndParams.push({ route })
-            const childMatch = findRoutes(children)
-            // If we found a child match, mark it as found
-            // and return true to stop the loop
-            if (childMatch) {
-              found = childMatch
-              return true
-            }
-            // If there was no child match, pop our optimistic route off the array
-            // and return false to keep trying
-            matchingRoutesAndParams.pop()
-            return false
+        if (!route.path && children?.length) {
+          const childMatch = findRoutes(children, [...layoutRoutes, route])
+          // If we found a child match, mark it as found
+          // and return true to stop the loop
+          if (childMatch) {
+            found = childMatch
+            return true
           }
-          // It's a layout route, but for some reason it has no children
-          // so we'll just ignore it and keep matching
           return false
         }
 
@@ -655,7 +649,10 @@ export class Router<
             }
           }
 
-          matchingRoutesAndParams.push({ route, params: parsedParams })
+          matchingRoutesAndParams.push(
+            ...layoutRoutes.map((d) => ({ route: d })),
+            { route, params: parsedParams },
+          )
 
           found = route
           return true
@@ -691,8 +688,8 @@ export class Router<
       // Add the parsed params to the accumulated params bag
       Object.assign(allParams, params)
 
-      const interpolatedPath = interpolatePath(route.path, params)
-      const matchId = interpolatePath(route.id, params)
+      const interpolatedPath = interpolatePath(route.path, allParams)
+      const matchId = interpolatePath(route.id, allParams)
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
