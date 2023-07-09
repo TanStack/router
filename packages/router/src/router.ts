@@ -608,7 +608,8 @@ export class Router<
       routes: AnyRoute[],
       layoutRoutes: AnyRoute[] = [],
     ): undefined | Route => {
-      let found: undefined | Route
+      let foundRoute: undefined | Route
+      let foundParams: undefined | AnyPathParams
       // Given a list of routes, find the first route that matches
       routes.some((route) => {
         const children = route.children as undefined | Route[]
@@ -619,7 +620,8 @@ export class Router<
           // If we found a child match, mark it as found
           // and return true to stop the loop
           if (childMatch) {
-            found = childMatch
+            foundRoute = childMatch
+            foundParams = undefined
             return true
           }
           return false
@@ -649,12 +651,8 @@ export class Router<
             }
           }
 
-          matchingRoutesAndParams.push(
-            ...layoutRoutes.map((d) => ({ route: d })),
-            { route, params: parsedParams },
-          )
-
-          found = route
+          foundRoute = route
+          foundParams = parsedParams
           return true
         }
 
@@ -663,20 +661,27 @@ export class Router<
 
       // If we didn't find a match in this route branch
       // return early.
-      if (!found) {
+      if (!foundRoute) {
         return undefined
       }
 
+      matchingRoutesAndParams.push(...layoutRoutes.map((d) => ({ route: d })), {
+        route: foundRoute,
+        params: foundParams,
+      })
+
       // If the found route has children, recurse again
-      const foundChildren = found.children as any
+      const foundChildren = foundRoute.children as any
       if (foundChildren?.length) {
         return findRoutes(foundChildren)
       }
 
-      return found
+      return foundRoute
     }
 
     findRoutes([this.routeTree as any])
+
+    console.log(matchingRoutesAndParams.map((d) => d.route.id))
 
     // Alright, by now we should have all of our
     // matching routes and their param pairs, let's
