@@ -427,13 +427,14 @@ function RouteComp({
       <div
         role="button"
         aria-label={`Open match details for ${route.id}`}
-        onClick={() =>
-          setActiveRouteId(activeRouteId === route.id ? '' : route.id)
-        }
+        onClick={() => {
+          if (isActive)
+            setActiveRouteId(activeRouteId === route.id ? '' : route.id)
+        }}
         style={{
           display: 'flex',
           borderBottom: `solid 1px ${theme.grayAlt}`,
-          cursor: 'pointer',
+          cursor: isActive ? 'pointer' : 'default',
           alignItems: 'center',
           background:
             route.id === activeRouteId ? 'rgba(255,255,255,.1)' : undefined,
