@@ -31,7 +31,7 @@ Similar to data fetching, mutation state isn't a one-size-fits-all solution, so 
 
 ## TanStack Actions
 
-Just like a fresh Zelda game, we would never send you into the wild without a sword. We've created an extremely lightweight, framework agnostic action/mutation library called TanStack Actions that works really well with Router. It's a great place to start if you're not already using one of the more complex (but more powerful) tools above.
+Just like a fresh Zelda game, we would never send you into the wild without a sword (fine... BotW and TotK bend this rule slightly, but since they're the greatest games ever created, we'll let the lore slide a bit). We've created an extremely lightweight, framework agnostic action/mutation library called TanStack Actions that works really well with Router. It's a great place to start if you're not already using one of the more complex (but more powerful) tools above.
 
 ## What are data mutations?
 
@@ -45,8 +45,7 @@ Let's write a data mutation that will update a post on a server. We'll use TanSt
 import { Action } from '@tanstack/actions'
 
 const updatePostAction = new Action({
-  name: 'updatePost',
-  async action(post: Post) {
+  fn: async (post: Post) => {
     const response = await fetch(`/api/posts/${post.id}`, {
       method: 'PATCH',
       body: JSON.stringify(post),
@@ -66,16 +65,9 @@ Now that we have our action, we can use it in our component. We'll use the `useA
 ```tsx
 import { useAction } from '@tanstack/react-actions'
 
-function PostEditor() {
-  const params = useParams({ from: postEditRoute.id })
-  const postLoader = useLoader({
-    key: 'post',
-    variables: params.postId,
-  })
-
-  const [postDraft, setPostDraft] = useState<Post>(() => postLoader.state.data)
+function PostEditor({ post }: { post: Post }) {
+  const [postDraft, setPostDraft] = useState<Post>(() => post)
   const updatePost = useAction({ action: updatePostAction })
-
   const latestPostSubmission = updatePost.state.latestSubmission
 
   return (
@@ -98,8 +90,7 @@ So how does my data loader get the updated data? **Invalidation**. When you muta
 import { Action } from '@tanstack/actions'
 
 const updatePostAction = new Action({
-  name: 'updatePost',
-  async action(post: Post) {
+  fn: async (post: Post) => {
     //...
   },
   onEachSuccess: () => {
@@ -113,38 +104,36 @@ const updatePostAction = new Action({
 
 ## Invalidating specific data
 
-Again, we'll assume we're using TanStack Actions here, but it's also possible to use the action submission state to invalidate specific data. Let's update our action to invalidate a specific post.
+Again, we'll assume we're using TanStack Actions here, but it's also possible to use the action submission state to invalidate specific data. Let's update our action to invalidate a specific post loader instance using the loader's `invalidateInstance` method.
 
 ```tsx
 import { Action } from '@tanstack/actions'
 
 const updatePostAction = new Action({
-  name: 'updatePost',
-  async action(post: Post) {
+  fn: async (post: Post) => {
     //...
   },
   onEachSuccess: (submission) => {
     // Use the submission payload to invalidate the specific post
     const post = submission.payload
-    postsLoader.invalidate({ variables: post.id })
+    postsLoader.invalidateInstance({ variables: post.id })
   },
 })
 ```
 
 ## Invalidating entire data sets
 
-It's very common to invalidate an entire subset of data based on a query key when some subset of that data changes e.g. Refetching all posts when a single post is edited. One of the best reasons to do this is that you can never really be sure of the side-effects a mutation will have on server-side data. It could remove/add elements, reorder them, or change their inclusion in specific filtered lists. TanStack Loaders comes with the `invalidateAll` method to invalidate all data for a given query key.
+It's very common to invalidate an entire subset of data based on hierarchy when some subset of that data changes e.g. Refetching all posts when a single post is edited. One of the best reasons to do this is that you can never really be sure of the side-effects a mutation will have on server-side data. It could remove/add elements, reorder them, or change their inclusion in specific filtered lists. TanStack Loaders comes with the `invalidate` method to invalidate all data for a given loader.
 
 ```tsx
 import { Action } from '@tanstack/actions'
 
 const updatePostAction = new Action({
-  name: 'updatePost',
-  async action(post: Post) {
+  fn: async (post: Post) => {
     //...
   },
   onEachSuccess: (submission) => {
-    postsLoader.invalidateAll()
+    postsLoader.invalidate()
   },
 })
 ```
@@ -156,14 +145,8 @@ When mutations are in flight, successful, or failed, it's important to display t
 ```tsx
 import { useAction } from '@tanstack/react-actions'
 
-function PostEditor() {
-  const params = useParams({ from: postEditRoute.id })
-  const postLoader = useLoader({
-    key: 'post',
-    variables: params.postId,
-  })
-
-  const [postDraft, setPostDraft] = useState<Post>(() => postLoader.state.data)
+function PostEditor({ post }: { post: Post }) {
+  const [postDraft, setPostDraft] = useState<Post>(() => post)
   const updatePost = useAction({ action: updatePostAction })
 
   // Get the latest submission
@@ -218,12 +201,11 @@ This is a great place to reset your old mutation/actions states. We'll use TanSt
 
 ```tsx
 const updatePostAction = new Action({
-  name: 'updatePost',
-  async action(post: Post) {
+  fn: async (post: Post) => {
     //...
   },
   onEachSuccess: (submission) => {
-    postsLoader.invalidateAll()
+    postsLoader.invalidate()
   },
 })
 

@@ -6,8 +6,7 @@ import { Action, useAction } from '@tanstack/react-actions'
 import { Route } from '@tanstack/router'
 
 export const createInvoiceAction = new Action({
-  key: 'createInvoice',
-  action: postInvoice,
+  fn: postInvoice,
   onEachSuccess: async () => {
     await invoicesLoader.invalidate()
   },
@@ -17,7 +16,7 @@ export const invoicesIndexRoute = new Route({
   getParentRoute: () => invoicesRoute,
   path: '/',
   component: function InvoicesHome() {
-    const action = useAction({ key: createInvoiceAction.key })
+    const action = useAction({ action: createInvoiceAction })
 
     return (
       <>

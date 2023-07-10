@@ -17,10 +17,12 @@ export type RegisteredActions = Register extends {
   actionClient: ActionClient<infer TActions>
 }
   ? TActions
-  : Action[]
+  : Record<string, Action>
+
+export type AnyAction = Action<any, any, any, any>
 
 export interface ActionClientOptions<
-  TActions extends Action<any, any, any, any>[],
+  TActions extends Record<string, AnyAction>,
 > {
   getActions: () => TActions
   defaultMaxAge?: number
@@ -30,18 +32,31 @@ export interface ActionClientOptions<
 export type ActionClientStore = Store<{
   isSubmitting?: ActionSubmission[]
 }>
+
+type ResolveActions<TAction extends Record<string, AnyAction>> = {
+  [TKey in keyof TAction]: TAction[TKey] extends Action<
+    infer _,
+    infer TVariables,
+    infer TData,
+    infer TError
+  >
+    ? Action<_, TVariables, TData, TError>
+    : Action
+}
+
 // A action client that tracks instances of actions by unique key like react query
 export class ActionClient<
-  TActions extends Action<any, any, any, any>[] = Action[],
+  _TActions extends Record<string, AnyAction> = Record<string, Action>,
+  TActions extends ResolveActions<_TActions> = ResolveActions<_TActions>,
 > {
-  options: ActionClientOptions<TActions>
-  actions: Record<string, Action>
+  options: ActionClientOptions<_TActions>
+  actions: TActions
   __store: ActionClientStore
   state: ActionClientStore['state']
 
   initialized = false
 
-  constructor(options: ActionClientOptions<TActions>) {
+  constructor(options: ActionClientOptions<_TActions>) {
     this.options = options
     this.__store = new Store(
       {},
@@ -52,24 +67,18 @@ export class ActionClient<
       },
     ) as ActionClientStore
     this.state = this.__store.state
-    this.actions = {}
+    this.actions = {} as any
+    this.init()
   }
 
   init = () => {
-    this.options.getActions().forEach((action) => {
-      action.client = this
-
-      this.actions[action.key] = action
-    })
-
+    if (this.initialized) return
+    Object.entries(this.options.getActions()).forEach(
+      ([key, action]: [string, Action]) => {
+        ;(this.actions as any)[key] = action.init(key, this)
+      },
+    )
     this.initialized = true
-  }
-
-  getAction<TKey extends TActions[number]['__types']['key']>(opts: {
-    key: TKey
-  }): ActionByKey<TActions, TKey> {
-    if (!this.initialized) this.init()
-    return this.actions[opts.key as any] as any
   }
 
   clearAll = () => {
@@ -80,15 +89,9 @@ export class ActionClient<
 }
 
 export type ActionByKey<
-  TActions extends Action<any, any, any, any>[],
-  TKey extends TActions[number]['__types']['key'],
-> = {
-  [TAction in TActions[number] as number]: TAction extends {
-    options: ActionOptions<TKey, infer TVariables, infer TData, infer TError>
-  }
-    ? Action<TKey, TVariables, TData, TError>
-    : never
-}[number]
+  TActions extends Record<string, AnyAction>,
+  TKey extends keyof TActions,
+> = TActions[TKey]
 
 export interface ActionOptions<
   TKey extends string = string,
@@ -96,8 +99,7 @@ export interface ActionOptions<
   TResponse = unknown,
   TError = Error,
 > {
-  key: TKey
-  action: (payload: TPayload) => TResponse | Promise<TResponse>
+  fn: (payload: TPayload) => TResponse | Promise<TResponse>
   onLatestSuccess?: ActionCallback<TPayload, TResponse, TError>
   onEachSuccess?: ActionCallback<TPayload, TResponse, TError>
   onLatestError?: ActionCallback<TPayload, TResponse, TError>
@@ -124,7 +126,7 @@ export class Action<
     response: TResponse
     error: TError
   }
-  key: TKey
+  key!: TKey
   client?: ActionClient<any>
   options: ActionOptions<TKey, TPayload, TResponse, TError>
   __store: Store<ActionStore<TPayload, TResponse, TError>>
@@ -146,7 +148,11 @@ export class Action<
     )
     this.state = this.#resolveState(this.__store.state)
     this.options = options
-    this.key = options.key
+  }
+
+  init = (key: TKey, client: ActionClient<any, any>) => {
+    this.client = client
+    this.key = key as TKey
   }
 
   #resolveState = (
@@ -239,7 +245,7 @@ export class Action<
     }
 
     try {
-      const res = await this.options.action?.(submission.payload)
+      const res = await this.options.fn?.(submission.payload)
       setSubmission((s) => ({
         ...s,
         response: res,

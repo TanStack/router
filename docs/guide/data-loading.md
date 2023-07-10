@@ -64,8 +64,7 @@ import { Route } from '@tanstack/router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
-  key: 'posts',
-  loader: async (params) => {
+  fn: async (params) => {
     const res = await fetch(`/api/posts`)
     if (!res.ok) throw new Error('Failed to fetch posts')
     return res.json()
@@ -75,13 +74,16 @@ const postsLoader = new Loader({
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  async loader() {
-    // Wait for the loader to finish
+  fn: async () => {
+    // Ensure our loader is loaded
     await postsLoader.load()
+
+    // Return a hook fn we can use in our component
+    return () => useLoader({ loader: postsLoader })
   },
-  component: () => {
-    // Access the loader's data, in this case with the useLoader hook
-    const posts = useLoader({ loader: postsLoader })
+  component: ({ useLoader }) => {
+    // Access the hook we made in the loader function (and call it)
+    const posts = useLoader()()
 
     return <div>...</div>
   },
@@ -111,9 +113,8 @@ import { Route } from '@tanstack/router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 const postLoader = new Loader({
-  key: 'post',
   // Accept a postId string variable
-  loader: async (postId: string) => {
+  fn: async (postId: string) => {
     const res = await fetch(`/api/posts/${postId}`)
     if (!res.ok) throw new Error('Failed to fetch posts')
     return res.json()
@@ -124,11 +125,13 @@ const postRoute = new Route({
   getParentPath: () => postsRoute,
   path: '$postId',
   async loader({ params }) {
+    // Load our loader
     await postLoader.load({ variables: params.postId })
+    // Return a hook fn we can use in our component
+    return () => useLoader({ loader: postLoader, variables: params.postId })
   },
-  component: () => {
-    const { postId } = useParams({ from: postRoute.id })
-    const posts = useLoader({ loader: postLoader, variables: postId })
+  component: ({ useLoader }) => {
+    const posts = useLoader()()
 
     return <div>...</div>
   },
@@ -144,9 +147,8 @@ import { Route } from '@tanstack/router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
-  key: 'posts',
   // Accept a page number variable
-  loader: async (pageIndex: number) => {
+  fn: async (pageIndex: number) => {
     const res = await fetch(`/api/posts?page=${pageIndex}`)
     if (!res.ok) throw new Error('Failed to fetch posts')
     return res.json()
@@ -160,14 +162,13 @@ const postsRoute = new Route({
     pageIndex: z.number().int().nonnegative().catch(0),
   }),
   async loader({ search }) {
+    // Load our loader
     await postsLoader.load({ variables: search.pageIndex })
+    // Return a hook fn we can use in our component
+    return () => useLoader({ loader: postsLoader, variables: search.pageIndex })
   },
-  component: () => {
-    const search = useSearchParams({ from: postsRoute.id })
-    const posts = useLoader({
-      loader: postsLoader,
-      variables: search.pageIndex,
-    })
+  component: ({ useLoader }) => {
+    const posts = useLoader()()
 
     return <div>...</div>
   },
@@ -176,7 +177,7 @@ const postsRoute = new Route({
 
 ## Using Context
 
-The `context` and `routeContext` properties of the `loader` function are objects containing the route's context. `context` is the context object for the route including context from parent routes. `routeContext` is the context object for the route excluding context from parent routes. In this example, we'll create a `loaderClient` and inject it into our router's context. We'll then use that client in our `loader` function and our component.
+The `context` and `routeContext` properties of the `loader` function are objects containing the route's context. `context` is the context object for the route including context from parent routes. `routeContext` is the context object for the route excluding context from parent routes. In this example, we'll create a TanStack Loader `loaderClient` instance and inject it into our router's context. We'll then use that client in our `loader` function and our component.
 
 > 🧠 Context is a powerful tool for dependency injection. You can use it to inject services, loaders, and other objects into your router and routes. You can also additively pass data down the route tree at every route using a route's `getContext` option.
 
@@ -185,8 +186,7 @@ import { Route } from '@tanstack/router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
-  key: 'posts',
-  loader: async () => {
+  fn: async () => {
     const res = await fetch(`/api/posts`)
     if (!res.ok) throw new Error('Failed to fetch posts')
     return res.json()
@@ -194,7 +194,7 @@ const postsLoader = new Loader({
 })
 
 const loaderClient = new LoaderClient({
-  getLoaders: () => [postsLoader],
+  getLoaders: () => ({ postsLoader }),
 })
 
 // Use RootRoute's special `withRouterContext` method to require a specific type
@@ -205,17 +205,19 @@ const rootRoute = RootRoute.withRouterContext<{
   loaderClient: typeof loaderClient
 }>()()
 
-// Notice how our postsRoute reference context to get the loader client
+// Notice how our postsRoute references context to get the loader client
 // This can be a powerful tool for dependency injection across your router
 // and routes.
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
   async loader({ context }) {
-    await context.loaderClient.getLoader({ key: 'posts' }).load()
+    const { postsLoader } = context.loaderClient
+    await postsLoader.load()
+    return () => useLoader({ loader: postsLoader })
   },
-  component: () => {
-    const posts = useLoader({ key: 'posts' })
+  component: ({ useLoader }) => {
+    const posts = useLoader()()
 
     return <div>...</div>
   },
@@ -241,9 +243,8 @@ import { Route } from '@tanstack/router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
-  key: 'posts',
   // Accept a page number variable
-  loader: async (pageIndex: number, { signal }) => {
+  fn: async (pageIndex: number, { signal }) => {
     const res = await fetch(`/api/posts?page=${pageIndex}`, { signal })
     if (!res.ok) throw new Error('Failed to fetch posts')
     return res.json()
@@ -256,26 +257,26 @@ const postsRoute = new Route({
   async loader({ signal }) {
     // Pass the route's signal to the loader
     await postsLoader.load({ signal })
+    return () => useLoader({ loader: postsLoader })
   },
-  component: () => {
-    const posts = useLoader({ loader: postsLoader })
+  component: ({ useLoader }) => {
+    const posts = useLoader()()
 
     return <div>...</div>
   },
 })
 ```
 
-## Using the `prefetch` flag
+## Using the `preload` flag
 
-The `prefetch` property of the `loader` function is a boolean which is `true` when the route is being loaded via a prefetch action. Some data loading libraries may handle prefetching differently than a standard fetch, so you may want to pass `prefetch` to your data loading library, or use it to execute the appropriate data loading logic. Here is an example using TanStack Loader and it's built-in `prefetch` flag:
+The `preload` property of the `loader` function is a boolean which is `true` when the route is being loaded via a preload action. Some data loading libraries may handle preloading differently than a standard fetch, so you may want to pass `preload` to your data loading library, or use it to execute the appropriate data loading logic. Here is an example using TanStack Loader and it's built-in `preload` flag:
 
 ```tsx
 import { Route } from '@tanstack/router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
-  key: 'posts',
-  loader: async () => {
+  fn: async () => {
     const res = await fetch(`/api/posts?page=${pageIndex}`)
     if (!res.ok) throw new Error('Failed to fetch posts')
     return res.json()
@@ -285,19 +286,20 @@ const postsLoader = new Loader({
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  async loader({ prefetch }) {
-    // Pass the route's prefetch to the loader
-    await postsLoader.load({ prefetch })
+  async loader({ preload }) {
+    // Pass the route's preload to the loader
+    await postsLoader.load({ preload })
+    return () => useLoader({ loader: postsLoader })
   },
-  component: () => {
-    const posts = useLoader({ loader: postsLoader })
+  component: ({ useLoader }) => {
+    const posts = useLoader()()
 
     return <div>...</div>
   },
 })
 ```
 
-> 🧠 TanStack Loaders uses the `prefetch` flag to determine cache freshness vs non-prefetch calls and also to determine if the global `isLoading` or `isPrefetching` flags should be incremented or not.
+> 🧠 TanStack Loaders uses the `preload` flag to determine cache freshness vs non-preload calls and also to determine if the global `isLoading` or `isPrefetching` flags should be incremented or not.
 
 ## Learn more about TanStack Loaders/Actions!
 

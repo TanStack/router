@@ -61,10 +61,10 @@ type ResolveLoaders<TLoader extends Record<string, AnyLoader>> = {
 // A loader client that tracks instances of loaders by unique key like react query
 export class LoaderClient<
   _TLoaders extends Record<string, AnyLoader> = Record<string, Loader>,
-  TLoader extends ResolveLoaders<_TLoaders> = ResolveLoaders<_TLoaders>,
+  TLoaders extends ResolveLoaders<_TLoaders> = ResolveLoaders<_TLoaders>,
 > {
   options: LoaderClientOptions<_TLoaders>
-  loaders: TLoader
+  loaders: TLoaders
   loaderInstances: Record<string, LoaderInstance> = {}
   __store: LoaderClientStore
   state: LoaderClientStore['state']
@@ -143,14 +143,14 @@ export class LoaderClient<
 }
 
 export type LoaderByKey<
-  TLoader extends Record<string, AnyLoader>,
-  TKey extends keyof TLoader,
-> = TLoader[TKey]
+  TLoaders extends Record<string, AnyLoader>,
+  TKey extends keyof TLoaders,
+> = TLoaders[TKey]
 
 export type LoaderInstanceByKey<
-  TLoader extends Record<string, AnyLoader>,
-  TKey extends keyof TLoader,
-> = TLoader[TKey] extends Loader<
+  TLoaders extends Record<string, AnyLoader>,
+  TKey extends keyof TLoaders,
+> = TLoaders[TKey] extends Loader<
   infer _,
   infer TVariables,
   infer TData,
@@ -269,7 +269,6 @@ export type VariablesFn<
     }
 
 const visibilityChangeEvent = 'visibilitychange'
-const focusEvent = 'focus'
 
 export type AnyLoader = Loader<any, any, any, any>
 

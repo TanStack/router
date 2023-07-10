@@ -32,8 +32,7 @@ export const invoiceLoader = new Loader({
 })
 
 export const updateInvoiceAction = new Action({
-  key: 'updateInvoice',
-  action: patchInvoice,
+  fn: patchInvoice,
   onEachSuccess: async ({ payload }) => {
     await invoiceLoader.invalidateInstance({
       variables: payload.id,
@@ -70,7 +69,7 @@ export const invoiceRoute = new Route({
       state: { data: invoice },
     } = useLoader()()
     const search = useSearch()
-    const action = useAction({ key: updateInvoiceAction.key })
+    const action = useAction({ action: updateInvoiceAction })
     const navigate = useNavigate()
 
     const [notes, setNotes] = React.useState(search.notes ?? ``)

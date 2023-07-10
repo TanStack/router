@@ -27,7 +27,7 @@ export function ActionClientProvider(props: {
 }
 
 export function useAction<
-  TKey extends string,
+  TKey extends keyof RegisteredActions,
   TAction,
   TActionFromKey extends ActionByKey<RegisteredActions, TKey>,
   TResolvedAction extends unknown extends TAction
@@ -48,17 +48,12 @@ export function useAction<
     track?: (actionStore: ActionStore<TPayload, TResponse, TError>) => any
   },
 ): TResolvedAction {
-  const allOpts = opts as typeof opts & {
-    action?: Action<any, any, any, any>
-    key?: TKey
-  }
-
   const actionClient = React.useContext(actionClientContext)
 
-  const action = allOpts.action ?? actionClient.getAction({ key: allOpts.key })
-
-  useStore(action.__store, (d) => allOpts?.track?.(d as any) ?? d)
-
+  const optsKey = (opts as { key: string }).key
+  const optsAction = (opts as { action: any }).action
+  const action = optsAction ?? actionClient.actions[optsKey]
+  useStore(action.__store, (d) => opts?.track?.(d as any) ?? d)
   return action as any
 }
 

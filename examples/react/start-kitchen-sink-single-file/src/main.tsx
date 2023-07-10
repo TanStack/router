@@ -48,58 +48,53 @@ type UsersViewSortBy = 'name' | 'id' | 'email'
 // Loaders
 
 const invoicesLoader = new Loader({
-  key: 'invoices',
-  loader: async () => {
+  fn: async () => {
     console.log('Fetching invoices...')
     return fetchInvoices()
   },
 })
 
 const invoiceLoader = new Loader({
-  key: 'invoice',
-  loader: async (invoiceId: number) => {
+  fn: async (invoiceId: number) => {
     console.log(`Fetching invoice with id ${invoiceId}...`)
     return fetchInvoiceById(invoiceId)
   },
-  onAllInvalidate: async () => {
-    await invoicesLoader.invalidateAll()
+  onInvalidate: async () => {
+    await invoicesLoader.invalidate()
   },
 })
 
 const usersLoader = new Loader({
-  key: 'users',
-  loader: async () => {
+  fn: async () => {
     console.log('Fetching users...')
     return fetchUsers()
   },
 })
 
 const userLoader = new Loader({
-  key: 'user',
-  loader: async (userId: number) => {
+  fn: async (userId: number) => {
     console.log(`Fetching user with id ${userId}...`)
     return fetchUserById(userId)
   },
-  onAllInvalidate: async () => {
-    await usersLoader.invalidateAll()
+  onInvalidate: async () => {
+    await usersLoader.invalidate()
   },
 })
 
 const randomIdLoader = new Loader({
-  key: 'random',
-  loader: () => {
+  fn: () => {
     return fetchRandomNumber()
   },
 })
 
 const loaderClient = new LoaderClient({
-  getLoaders: () => [
+  getLoaders: () => ({
     invoicesLoader,
     invoiceLoader,
     usersLoader,
     userLoader,
     randomIdLoader,
-  ],
+  }),
 })
 
 // Register things for typesafety
@@ -112,25 +107,23 @@ declare module '@tanstack/react-loaders' {
 // Actions
 
 const createInvoiceAction = new Action({
-  key: 'createInvoice',
-  action: postInvoice,
+  fn: postInvoice,
   onEachSuccess: async () => {
-    await invoicesLoader.invalidateAll()
+    await invoicesLoader.invalidate()
   },
 })
 
 const updateInvoiceAction = new Action({
-  key: 'updateInvoice',
-  action: patchInvoice,
+  fn: patchInvoice,
   onEachSuccess: async ({ payload }) => {
-    await invoiceLoader.invalidate({
+    await invoiceLoader.invalidateInstance({
       variables: payload.id,
     })
   },
 })
 
 const actionClient = new ActionClient({
-  getActions: () => [createInvoiceAction, updateInvoiceAction],
+  getActions: () => ({ createInvoiceAction, updateInvoiceAction }),
 })
 
 // Register things for typesafety
@@ -297,7 +290,7 @@ const dashboardIndexRoute = new Route({
   path: '/',
   component: () => {
     const invoicesLoaderInstance = useLoader({
-      key: invoicesLoader.key,
+      loader: invoicesLoader,
     })
 
     const invoices = invoicesLoaderInstance.state.data
@@ -318,7 +311,7 @@ const invoicesRoute = new Route({
   path: 'invoices',
   component: () => {
     const invoicesLoaderInstance = useLoader({
-      key: invoicesLoader.key,
+      loader: invoicesLoader,
     })
 
     const invoices = invoicesLoaderInstance.state.data
@@ -326,13 +319,13 @@ const invoicesRoute = new Route({
     const {
       state: { pendingSubmissions: updateSubmissions },
     } = useAction({
-      key: updateInvoiceAction.key,
+      action: updateInvoiceAction,
     })
 
     const {
       state: { pendingSubmissions: createSubmissions },
     } = useAction({
-      key: createInvoiceAction.key,
+      action: createInvoiceAction,
     })
 
     return (
@@ -405,7 +398,7 @@ const invoicesIndexRoute = new Route({
   component: () => {
     const {
       state: { latestSubmission },
-    } = useAction({ key: createInvoiceAction.key })
+    } = useAction({ action: createInvoiceAction })
 
     return (
       <>
@@ -473,7 +466,7 @@ const invoiceRoute = new Route({
     const navigate = useNavigate({ from: invoiceRoute.id })
 
     const invoiceLoaderInstance = useLoader({
-      key: invoiceLoader.key,
+      loader: invoiceLoader,
       variables: params.invoiceId,
     })
 
@@ -481,7 +474,7 @@ const invoiceRoute = new Route({
 
     const {
       state: { latestSubmission },
-    } = useAction({ key: updateInvoiceAction.key })
+    } = useAction({ action: updateInvoiceAction })
 
     const [notes, setNotes] = React.useState(search.notes ?? '')
 
@@ -594,7 +587,7 @@ const usersRoute = new Route({
     }),
   ],
   component: () => {
-    const usersLoaderInstance = useLoader({ key: usersLoader.key })
+    const usersLoaderInstance = useLoader({ loader: usersLoader })
     const users = usersLoaderInstance.state.data
 
     const { usersView } = useSearch({ from: usersRoute.id })
@@ -757,7 +750,7 @@ const userRoute = new Route({
     const { userId } = useSearch({ from: userRoute.id })
 
     const userLoaderInstance = useLoader({
-      key: userLoader.key,
+      loader: userLoader,
       variables: userId,
     })
 
@@ -883,7 +876,7 @@ const layoutRoute = new Route({
   loader: async ({ preload }) => randomIdLoader.load({ preload }),
   component: () => {
     const randomIdLoaderInstance = useLoader({
-      key: randomIdLoader.key,
+      loader: randomIdLoader,
     })
 
     return (

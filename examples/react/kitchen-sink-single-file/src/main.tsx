@@ -108,16 +108,14 @@ declare module '@tanstack/react-loaders' {
 // Actions
 
 const createInvoiceAction = new Action({
-  key: 'createInvoice',
-  action: postInvoice,
+  fn: postInvoice,
   onEachSuccess: async () => {
     await invoicesLoader.invalidate()
   },
 })
 
 const updateInvoiceAction = new Action({
-  key: 'updateInvoice',
-  action: patchInvoice,
+  fn: patchInvoice,
   onEachSuccess: async ({ payload }) => {
     await invoiceLoader.invalidateInstance({
       variables: payload.id,
@@ -126,7 +124,7 @@ const updateInvoiceAction = new Action({
 })
 
 const actionClient = new ActionClient({
-  getActions: () => [createInvoiceAction, updateInvoiceAction],
+  getActions: () => ({ createInvoiceAction, updateInvoiceAction }),
 })
 
 // Register things for typesafety
@@ -318,13 +316,13 @@ const invoicesRoute = new Route({
     const {
       state: { pendingSubmissions: updateSubmissions },
     } = useAction({
-      key: updateInvoiceAction.key,
+      action: updateInvoiceAction,
     })
 
     const {
       state: { pendingSubmissions: createSubmissions },
     } = useAction({
-      key: createInvoiceAction.key,
+      action: createInvoiceAction,
     })
 
     return (
@@ -397,7 +395,7 @@ const invoicesIndexRoute = new Route({
   component: () => {
     const {
       state: { latestSubmission },
-    } = useAction({ key: createInvoiceAction.key })
+    } = useAction({ action: createInvoiceAction })
 
     return (
       <>
@@ -475,7 +473,7 @@ const invoiceRoute = new Route({
 
     const {
       state: { latestSubmission },
-    } = useAction({ key: updateInvoiceAction.key })
+    } = useAction({ action: updateInvoiceAction })
 
     const [notes, setNotes] = React.useState(search.notes ?? '')
 
