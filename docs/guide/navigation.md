@@ -48,6 +48,14 @@ type ToOptions<
 }
 ```
 
+> 🧠 Every route object has a `to` property, which can be used as the `to` for any navigation or route matching API. Where possible, this will allow you to avoid plain strings and use type-safe route references instead:
+
+```tsx
+function Comp() {
+  return <Link to={aboutRoute.to}>About</Link>
+}
+```
+
 ### `NavigateOptions` Interface
 
 This is the core `NavigateOptions` interface that extends `ToOptions`. Any API that is actually performing a navigation will use this interface:

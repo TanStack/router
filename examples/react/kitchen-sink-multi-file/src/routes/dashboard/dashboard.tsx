@@ -11,7 +11,7 @@ export const dashboardIndexRoute = new Route({
 })
 
 function DashboardHome() {
-  const invoicesLoaderInstance = useLoader({ key: invoicesLoader.key })
+  const invoicesLoaderInstance = useLoader({ loader: invoicesLoader })
   const invoices = invoicesLoaderInstance.state.data
 
   return (

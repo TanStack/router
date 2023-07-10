@@ -688,23 +688,31 @@ export class Router<
     // accumulate the params into a single params bag
     let allParams = {}
 
-    const matches = matchingRoutesAndParams.map(({ route, params }) => {
-      // Add the parsed params to the accumulated params bag
-      Object.assign(allParams, params)
+    const matches = matchingRoutesAndParams
+      .map(({ route, params }) => {
+        // Add the parsed params to the accumulated params bag
+        Object.assign(allParams, params)
 
-      const interpolatedPath = interpolatePath(route.path, allParams)
-      const matchId = interpolatePath(route.id, allParams, true)
+        const interpolatedPath = interpolatePath(route.path, allParams)
+        const matchId = interpolatePath(route.id, allParams, true)
 
-      // Waste not, want not. If we already have a match for this route,
-      // reuse it. This is important for layout routes, which might stick
-      // around between navigation actions that only change leaf routes.
-      return (existingMatches.find((d) => d.id === matchId) ||
-        new RouteMatch(this, route, {
-          id: matchId,
-          params: allParams,
-          pathname: joinPaths([this.basepath, interpolatedPath]),
-        })) as RouteMatch
-    })
+        // Waste not, want not. If we already have a match for this route,
+        // reuse it. This is important for layout routes, which might stick
+        // around between navigation actions that only change leaf routes.
+        return (existingMatches.find((d) => d.id === matchId) ||
+          new RouteMatch(this, route, {
+            id: matchId,
+            params: allParams,
+            pathname: joinPaths([this.basepath, interpolatedPath]),
+          })) as RouteMatch
+      })
+      .filter((d, i, all) => {
+        // Filter out any duplicate matches
+        // I honesty don't know why this is necessary, but it is and it's safe for now
+        // Someday someone will figure out why my logic is wrong and fix it to just
+        // not create duplicate matches in the first place
+        return all.findIndex((dd) => dd.id === d.id) === i
+      })
 
     return matches
   }

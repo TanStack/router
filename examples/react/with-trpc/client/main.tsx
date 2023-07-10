@@ -35,21 +35,19 @@ export const trpc = createTRPCProxyClient<AppRouter>({
 })
 
 const postsLoader = new Loader({
-  key: 'posts',
-  loader: () => trpc.posts.query(),
+  fn: () => trpc.posts.query(),
 })
 
 const postLoader = new Loader({
-  key: 'post',
-  loader: (postId: number) => trpc.post.query(postId),
-  onEachInvalidate: () => {
+  fn: (postId: number) => trpc.post.query(postId),
+  onInvalidate: () => {
     // Invalidate the posts loader when a post is invalidated
     postsLoader.invalidate()
   },
 })
 
 const loaderClient = new LoaderClient({
-  getLoaders: () => [postsLoader, postLoader],
+  getLoaders: () => ({ postsLoader, postLoader }),
 })
 
 declare module '@tanstack/react-loaders' {
@@ -217,7 +215,7 @@ const dashboardIndexRoute = new Route({
   component: () => {
     const {
       state: { data: posts },
-    } = useLoader({ key: postsLoader.key })
+    } = useLoader({ loader: postsLoader })
 
     return (
       <div className="p-2">
@@ -236,7 +234,7 @@ const postsRoute = new Route({
   component: () => {
     const {
       state: { data: posts },
-    } = useLoader({ key: postsLoader.key })
+    } = useLoader({ loader: postsLoader })
 
     return (
       <div className="flex-1 flex">
@@ -301,13 +299,14 @@ const postRoute = new Route({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
   }),
-  loader: async ({ params: { postId }, preload }) =>
-    postLoader.load({ variables: postId, preload }),
-  component: () => {
-    const { postId } = useParams({ from: postRoute.id })
+  loader: async ({ params: { postId }, preload }) => {
+    await postLoader.load({ variables: postId, preload })
+    return () => useLoader({ loader: postLoader, variables: postId })
+  },
+  component: ({ useLoader }) => {
     const {
       state: { data: post },
-    } = useLoader({ key: postLoader.key, variables: postId })
+    } = useLoader()()
     const search = useSearch({ from: postRoute.id })
     const navigate = useNavigate({ from: postRoute.id })
 

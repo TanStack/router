@@ -31,7 +31,7 @@ export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
             <div className={`divide-y w-56`}>
               {(
                 [
-                  ['.', 'Home'],
+                  ['/', 'Home'],
                   ['/dashboard', 'Dashboard'],
                   ['/expensive', 'Expensive'],
                   ['/authenticated', 'Authenticated'],
@@ -43,13 +43,11 @@ export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
                   <div key={to}>
                     <Link
                       to={to}
-                      activeOptions={
-                        {
-                          // If the route points to the root of it's parent,
-                          // make sure it's only active if it's exact
-                          // exact: to === '.',
-                        }
-                      }
+                      activeOptions={{
+                        // If the route points to the root of it's parent,
+                        // make sure it's only active if it's exact
+                        exact: to === '/',
+                      }}
                       className={`block py-2 px-3 text-blue-700`}
                       // Make "active" links bold
                       activeProps={{ className: `font-bold` }}

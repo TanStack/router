@@ -7,8 +7,7 @@ export type PostType = {
 }
 
 export const postsLoader = new Loader({
-  key: 'posts',
-  loader: async () => {
+  fn: async () => {
     console.log('Fetching posts...')
     await new Promise((r) =>
       setTimeout(r, 300 + Math.round(Math.random() * 300)),
@@ -20,8 +19,7 @@ export const postsLoader = new Loader({
 })
 
 export const postLoader = new Loader({
-  key: 'post',
-  loader: async (postId: string) => {
+  fn: async (postId: string) => {
     console.log(`Fetching post with id ${postId}...`)
 
     await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
@@ -30,14 +28,17 @@ export const postLoader = new Loader({
       (r) => r.json() as Promise<PostType>,
     )
   },
-  onAllInvalidate: async () => {
-    await postsLoader.invalidateAll()
+  onInvalidate: async () => {
+    await postsLoader.invalidate()
   },
 })
 
 export const createLoaderClient = () => {
   return new LoaderClient({
-    getLoaders: () => [postsLoader, postLoader],
+    getLoaders: () => ({
+      postsLoader,
+      postLoader,
+    }),
   })
 }
 
