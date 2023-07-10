@@ -412,27 +412,31 @@ function RouteComp({
   route,
   isRoot,
   matches,
+  activeRouteId,
+  setActiveRouteId,
 }: {
   route: AnyRootRoute | AnyRoute
   isRoot?: boolean
   matches: RouteMatch[]
+  activeRouteId: string | undefined
+  setActiveRouteId: (id: string) => void
 }) {
   const isActive = matches.find((d) => d.route === route)
   return (
     <div>
       <div
-        // role="button"
-        // aria-label={`Open match details for ${route.id}`}
-        // onClick={() =>
-        //   setActiveRouteId(activeRouteId === route.id ? '' : route.id)
-        // }
+        role="button"
+        aria-label={`Open match details for ${route.id}`}
+        onClick={() =>
+          setActiveRouteId(activeRouteId === route.id ? '' : route.id)
+        }
         style={{
           display: 'flex',
           borderBottom: `solid 1px ${theme.grayAlt}`,
           cursor: 'pointer',
           alignItems: 'center',
-          // background:
-          //   route === activeMatch ? 'rgba(255,255,255,.1)' : undefined,
+          background:
+            route.id === activeRouteId ? 'rgba(255,255,255,.1)' : undefined,
         }}
       >
         {isRoot ? null : (
@@ -468,7 +472,13 @@ function RouteComp({
           }}
         >
           {(route.children as Route[]).map((r) => (
-            <RouteComp key={r.id} route={r} matches={matches} />
+            <RouteComp
+              key={r.id}
+              route={r}
+              matches={matches}
+              activeRouteId={activeRouteId}
+              setActiveRouteId={setActiveRouteId}
+            />
           ))}
         </div>
       ) : null}
@@ -508,15 +518,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     '',
   )
 
-  const [activeMatchId, setActiveMatchId] = useLocalStorage(
-    'tanstackRouterDevtoolsActiveMatchId',
-    '',
-  )
-
-  React.useEffect(() => {
-    setActiveMatchId('')
-  }, [activeRouteId])
-
   const allMatches: RouteMatch[] = React.useMemo(
     () => [
       ...Object.values(router.state.currentMatches),
@@ -525,9 +526,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     [router.state.currentMatches, router.state.pendingMatches],
   )
 
-  const activeMatch =
-    allMatches?.find((d) => d.id === activeMatchId) ||
-    allMatches?.find((d) => d.route.id === activeRouteId)
+  const activeMatch = allMatches?.find((d) => d.route.id === activeRouteId)
 
   const hasSearch = Object.keys(
     last(router.state.currentMatches)?.state.search || {},
@@ -698,7 +697,13 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             </button>
           </div>
           {!showMatches ? (
-            <RouteComp route={router.routeTree} isRoot matches={allMatches} />
+            <RouteComp
+              route={router.routeTree}
+              isRoot
+              matches={allMatches}
+              activeRouteId={activeRouteId}
+              setActiveRouteId={setActiveRouteId}
+            />
           ) : (
             <div>
               {router.state.currentMatches.map((match, i) => {
