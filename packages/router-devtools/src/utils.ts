@@ -1,5 +1,10 @@
 import React from 'react'
-import { AnyRouteMatch, RouteMatch } from '@tanstack/router'
+import {
+  AnyRootRoute,
+  AnyRoute,
+  AnyRouteMatch,
+  RouteMatch,
+} from '@tanstack/router'
 
 import { Theme, useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
@@ -32,6 +37,24 @@ export function getStatusColor(match: AnyRouteMatch, theme: Theme) {
     ? theme.danger
     : match.state.status === 'success'
     ? theme.success
+    : theme.gray
+}
+
+export function getRouteStatusColor(
+  matches: AnyRouteMatch[],
+  route: AnyRoute | AnyRootRoute,
+  theme: Theme,
+) {
+  const found = matches.find((d) => d.route === route)
+
+  return found
+    ? found.route.status === 'pending'
+      ? theme.active
+      : found.state.status === 'error'
+      ? theme.danger
+      : found.state.status === 'success'
+      ? theme.success
+      : theme.gray
     : theme.gray
 }
 

@@ -5,10 +5,15 @@ import {
   invariant,
   AnyRouter,
   useStore,
+  Route,
+  AnyRoute,
+  AnyRootRoute,
+  RouteMatch,
 } from '@tanstack/router'
 
 import useLocalStorage from './useLocalStorage'
 import {
+  getRouteStatusColor,
   getStatusColor,
   multiSortBy,
   useIsMounted,
@@ -403,6 +408,74 @@ export function TanStackRouterDevtools({
   )
 }
 
+function RouteComp({
+  route,
+  isRoot,
+  matches,
+}: {
+  route: AnyRootRoute | AnyRoute
+  isRoot?: boolean
+  matches: RouteMatch[]
+}) {
+  const isActive = matches.find((d) => d.route === route)
+  return (
+    <div>
+      <div
+        // role="button"
+        // aria-label={`Open match details for ${route.id}`}
+        // onClick={() =>
+        //   setActiveRouteId(activeRouteId === route.id ? '' : route.id)
+        // }
+        style={{
+          display: 'flex',
+          borderBottom: `solid 1px ${theme.grayAlt}`,
+          cursor: 'pointer',
+          alignItems: 'center',
+          // background:
+          //   route === activeMatch ? 'rgba(255,255,255,.1)' : undefined,
+        }}
+      >
+        {isRoot ? null : (
+          <div
+            style={{
+              flex: '0 0 auto',
+              width: '.7rem',
+              height: '.7rem',
+              margin: '.5rem .75rem',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              borderRadius: '100%',
+              transition: 'all .2s ease-out',
+              background: getRouteStatusColor(matches, route, theme),
+              opacity: isActive ? 1 : 0.3,
+            }}
+          />
+        )}
+        <Code
+          style={{
+            padding: '.25rem 0',
+            paddingLeft: isRoot ? '.5rem' : 0,
+            opacity: isActive ? 1 : 0.7,
+          }}
+        >{`${route.id}`}</Code>
+      </div>
+      {(route.children as Route[])?.length ? (
+        <div
+          style={{
+            marginLeft: isRoot ? 0 : '1rem',
+            borderLeft: isRoot ? '' : `solid 1px ${theme.grayAlt}`,
+          }}
+        >
+          {(route.children as Route[]).map((r) => (
+            <RouteComp key={r.id} route={r} matches={matches} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export const TanStackRouterDevtoolsPanel = React.forwardRef<
   HTMLDivElement,
   DevtoolsPanelOptions
@@ -425,6 +498,11 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
   useStore(router.__store)
 
+  const [showMatches, setShowMatches] = useLocalStorage(
+    'tanstackRouterDevtoolsShowMatches',
+    true,
+  )
+
   const [activeRouteId, setActiveRouteId] = useLocalStorage(
     'tanstackRouterDevtoolsActiveRouteId',
     '',
@@ -439,7 +517,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     setActiveMatchId('')
   }, [activeRouteId])
 
-  const allMatches = React.useMemo(
+  const allMatches: RouteMatch[] = React.useMemo(
     () => [
       ...Object.values(router.state.currentMatches),
       ...Object.values(router.state.pendingMatches ?? []),
@@ -450,6 +528,10 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   const activeMatch =
     allMatches?.find((d) => d.id === activeMatchId) ||
     allMatches?.find((d) => d.route.id === activeRouteId)
+
+  const hasSearch = Object.keys(
+    last(router.state.currentMatches)?.state.search || {},
+  ).length
 
   return (
     <ThemeProvider theme={theme}>
@@ -584,70 +666,42 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               position: 'sticky',
               top: 0,
               zIndex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '.5rem',
             }}
           >
-            Active Matches
+            <button
+              type="button"
+              onClick={() => {
+                setShowMatches(false)
+              }}
+              disabled={!showMatches}
+              style={{
+                opacity: showMatches ? 0.5 : 1,
+              }}
+            >
+              Routes
+            </button>
+            /
+            <button
+              type="button"
+              onClick={() => {
+                setShowMatches(true)
+              }}
+              disabled={showMatches}
+              style={{
+                opacity: !showMatches ? 0.5 : 1,
+              }}
+            >
+              Matches
+            </button>
           </div>
-          {router.state.currentMatches.map((match, i) => {
-            return (
-              <div
-                key={match.route.id || i}
-                role="button"
-                aria-label={`Open match details for ${match.route.id}`}
-                onClick={() =>
-                  setActiveRouteId(
-                    activeRouteId === match.route.id ? '' : match.route.id,
-                  )
-                }
-                style={{
-                  display: 'flex',
-                  borderBottom: `solid 1px ${theme.grayAlt}`,
-                  cursor: 'pointer',
-                  alignItems: 'center',
-                  background:
-                    match === activeMatch ? 'rgba(255,255,255,.1)' : undefined,
-                }}
-              >
-                <div
-                  style={{
-                    flex: '0 0 auto',
-                    width: '1.3rem',
-                    height: '1.3rem',
-                    marginLeft: '.25rem',
-                    background: getStatusColor(match, theme),
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 'bold',
-                    borderRadius: '.25rem',
-                    transition: 'all .2s ease-out',
-                  }}
-                />
-
-                <Code
-                  style={{
-                    padding: '.5em',
-                  }}
-                >
-                  {`${match.id}`}
-                </Code>
-              </div>
-            )
-          })}
-          {router.state.pendingMatches?.length ? (
-            <>
-              <div
-                style={{
-                  marginTop: '2rem',
-                  padding: '.5em',
-                  background: theme.backgroundAlt,
-                  position: 'sticky',
-                  top: 0,
-                  zIndex: 1,
-                }}
-              >
-                Pending Matches
-              </div>
-              {router.state.pendingMatches?.map((match, i) => {
+          {!showMatches ? (
+            <RouteComp route={router.routeTree} isRoot matches={allMatches} />
+          ) : (
+            <div>
+              {router.state.currentMatches.map((match, i) => {
                 return (
                   <div
                     key={match.route.id || i}
@@ -662,6 +716,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                       display: 'flex',
                       borderBottom: `solid 1px ${theme.grayAlt}`,
                       cursor: 'pointer',
+                      alignItems: 'center',
                       background:
                         match === activeMatch
                           ? 'rgba(255,255,255,.1)'
@@ -693,69 +748,41 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   </div>
                 )
               })}
-            </>
-          ) : null}
-          {/* {matchCacheValues.length ? (
-            <>
-              <div
-                style={{
-                  marginTop: '2rem',
-                  padding: '.5em',
-                  background: theme.backgroundAlt,
-                  position: 'sticky',
-                  top: 0,
-                  bottom: 0,
-                  zIndex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>Match Cache</div>
-                <Button
-                  onClick={() => {
-                    router.store.setState((s) => (s.matchCache = {}))
-                  }}
-                >
-                  Clear
-                </Button>
-              </div>
-              {matchCacheValues.map((d, i) => {
-                const { match, gc } = d
-
-                return (
+              {router.state.pendingMatches?.length ? (
+                <>
                   <div
-                    key={match.id || i}
-                    role="button"
-                    aria-label={`Open match details for ${match.id}`}
-                    onClick={() =>
-                      setActiveMatchId(
-                        activeMatchId === match.id ? '' : match.id,
-                      )
-                    }
                     style={{
-                      display: 'flex',
-                      borderBottom: `solid 1px ${theme.grayAlt}`,
-                      cursor: 'pointer',
-                      background:
-                        match === activeMatch
-                          ? 'rgba(255,255,255,.1)'
-                          : undefined,
+                      marginTop: '2rem',
+                      padding: '.5em',
+                      background: theme.backgroundAlt,
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1,
                     }}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        padding: '.5rem',
-                        gap: '.3rem',
-                      }}
-                    >
+                    Pending Matches
+                  </div>
+                  {router.state.pendingMatches?.map((match, i) => {
+                    return (
                       <div
+                        key={match.route.id || i}
+                        role="button"
+                        aria-label={`Open match details for ${match.route.id}`}
+                        onClick={() =>
+                          setActiveRouteId(
+                            activeRouteId === match.route.id
+                              ? ''
+                              : match.route.id,
+                          )
+                        }
                         style={{
                           display: 'flex',
-                          alignItems: 'center',
-                          gap: '.5rem',
+                          borderBottom: `solid 1px ${theme.grayAlt}`,
+                          cursor: 'pointer',
+                          background:
+                            match === activeMatch
+                              ? 'rgba(255,255,255,.1)'
+                              : undefined,
                         }}
                       >
                         <div
@@ -763,6 +790,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                             flex: '0 0 auto',
                             width: '1.3rem',
                             height: '1.3rem',
+                            marginLeft: '.25rem',
                             background: getStatusColor(match, theme),
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -771,28 +799,22 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                             transition: 'all .2s ease-out',
                           }}
                         />
-                        <Code>{`${match.id}`}</Code>
-                      </div>
-                      <span
-                        style={{
-                          fontSize: '.7rem',
-                          opacity: '.5',
-                          lineHeight: 1,
-                        }}
-                      >
-                        Expires{' '}
-                        {formatDistanceStrict(new Date(gc), new Date(), {
-                          addSuffix: true,
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            </>
-          ) : null} */}
-        </div>
 
+                        <Code
+                          style={{
+                            padding: '.5em',
+                          }}
+                        >
+                          {`${match.id}`}
+                        </Code>
+                      </div>
+                    )
+                  })}
+                </>
+              ) : null}
+            </div>
+          )}
+        </div>
         {activeMatch ? (
           <ActivePanel>
             <div
@@ -843,7 +865,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 </tbody>
               </table>
             </div>
-            <div
+            {/* <div
               style={{
                 background: theme.backgroundAlt,
                 padding: '.5em',
@@ -862,14 +884,14 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             >
               <Button
                 type="button"
-                onClick={() => activeMatch.load()}
+                onClick={() => activeMatch.__store.setState(d => ({...d, status: 'pending'}))}
                 style={{
                   background: theme.gray,
                 }}
               >
                 Reload
               </Button>
-            </div>
+            </div> */}
             <div
               style={{
                 background: theme.backgroundAlt,
@@ -895,74 +917,35 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             </div>
           </ActivePanel>
         ) : null}
-        <div
-          style={{
-            flex: '1 1 500px',
-            minHeight: '40%',
-            maxHeight: '100%',
-            overflow: 'auto',
-            borderRight: `1px solid ${theme.grayAlt}`,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {/* <div
-            style={{
-              padding: '.5em',
-              background: theme.backgroundAlt,
-              position: 'sticky',
-              top: 0,
-              bottom: 0,
-              zIndex: 1,
-            }}
-          >
-            All Loader Data
-          </div>
+        {hasSearch ? (
           <div
             style={{
-              padding: '.5em',
+              flex: '1 1 500px',
+              minHeight: '40%',
+              maxHeight: '100%',
+              overflow: 'auto',
+              borderRight: `1px solid ${theme.grayAlt}`,
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
-            {Object.keys(
-              last(router.state.currentMatches)?.state.loaderData ||
-                {},
-            ).length ? (
-              <Explorer
-                value={
-                  last(router.state.currentMatches)?.state
-                    .loaderData || {}
-                }
-                defaultExpanded={Object.keys(
-                  (last(router.state.currentMatches)?.state
-                    .loaderData as {}) || {},
-                ).reduce((obj: any, next) => {
-                  obj[next] = {}
-                  return obj
-                }, {})}
-              />
-            ) : (
-              <em style={{ opacity: 0.5 }}>{'{ }'}</em>
-            )}
-          </div> */}
-          <div
-            style={{
-              padding: '.5em',
-              background: theme.backgroundAlt,
-              position: 'sticky',
-              top: 0,
-              bottom: 0,
-              zIndex: 1,
-            }}
-          >
-            Search Params
-          </div>
-          <div
-            style={{
-              padding: '.5em',
-            }}
-          >
-            {Object.keys(last(router.state.currentMatches)?.state.search || {})
-              .length ? (
+            <div
+              style={{
+                padding: '.5em',
+                background: theme.backgroundAlt,
+                position: 'sticky',
+                top: 0,
+                bottom: 0,
+                zIndex: 1,
+              }}
+            >
+              Search Params
+            </div>
+            <div
+              style={{
+                padding: '.5em',
+              }}
+            >
               <Explorer
                 value={last(router.state.currentMatches)?.state.search || {}}
                 defaultExpanded={Object.keys(
@@ -972,11 +955,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   return obj
                 }, {})}
               />
-            ) : (
-              <em style={{ opacity: 0.5 }}>{'{ }'}</em>
-            )}
+            </div>
           </div>
-        </div>
+        ) : null}
       </Panel>
     </ThemeProvider>
   )

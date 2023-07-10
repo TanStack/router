@@ -437,6 +437,7 @@ export class Router<
       // Match the routes
       matches = this.matchRoutes(this.state.latestLocation.pathname, {
         strictParseParams: true,
+        debug: true,
       })
 
       this.__store.setState((s) => ({
@@ -567,7 +568,7 @@ export class Router<
 
   matchRoutes = (
     pathname: string,
-    opts?: { strictParseParams?: boolean },
+    opts?: { strictParseParams?: boolean; debug?: boolean },
   ): RouteMatch[] => {
     // If there's no route tree, we can't match anything
     if (!this.routeTree) {
@@ -681,8 +682,6 @@ export class Router<
 
     findRoutes([this.routeTree as any])
 
-    console.log(matchingRoutesAndParams.map((d) => d.route.id))
-
     // Alright, by now we should have all of our
     // matching routes and their param pairs, let's
     // Turn them into actual `Match` objects and
@@ -694,7 +693,7 @@ export class Router<
       Object.assign(allParams, params)
 
       const interpolatedPath = interpolatePath(route.path, allParams)
-      const matchId = interpolatePath(route.id, allParams)
+      const matchId = interpolatePath(route.id, allParams, true)
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
