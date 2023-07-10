@@ -474,6 +474,7 @@ export class Route<
   __types!: {
     parentRoute: TParentRoute
     path: TPath
+    to: TrimPathRight<TFullPath>
     fullPath: TFullPath
     customId: TCustomId
     id: TId
@@ -514,6 +515,7 @@ export class Route<
   // customId!: TCustomId
   path!: TPath
   fullPath!: TFullPath
+  to!: TrimPathRight<TFullPath>
 
   // Optional
   children?: TChildren
@@ -611,6 +613,7 @@ export class Route<
     this.id = id as TId
     // this.customId = customId as TCustomId
     this.fullPath = fullPath as TFullPath
+    this.to = fullPath as TrimPathRight<TFullPath>
   }
 
   addChildren = <TNewChildren extends AnyRoute[]>(
@@ -771,17 +774,17 @@ type ResolveFullPath<
 
 type RoutePrefix<
   TPrefix extends string,
-  TId extends string,
-> = string extends TId
+  TPath extends string,
+> = string extends TPath
   ? RootRouteId
-  : TId extends string
+  : TPath extends string
   ? TPrefix extends RootRouteId
-    ? TId extends '/'
+    ? TPath extends '/'
       ? '/'
-      : `/${TrimPath<TId>}`
-    : `${TPrefix}/${TId}` extends '/'
+      : `/${TrimPath<TPath>}`
+    : `${TPrefix}/${TPath}` extends '/'
     ? '/'
-    : `/${TrimPathLeft<`${TrimPathRight<TPrefix>}/${TrimPath<TId>}`>}`
+    : `/${TrimPathLeft<`${TrimPathRight<TPrefix>}/${TrimPath<TPath>}`>}`
   : never
 
 export type TrimPath<T extends string> = '' extends T

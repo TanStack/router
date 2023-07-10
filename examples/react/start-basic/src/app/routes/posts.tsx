@@ -52,7 +52,7 @@ export const postsRoute = new Route({
             return (
               <li key={post.id} className="whitespace-nowrap">
                 <Link
-                  to={postIdRoute.fullPath}
+                  to={postIdRoute.to}
                   params={{
                     postId: post.id,
                   }}

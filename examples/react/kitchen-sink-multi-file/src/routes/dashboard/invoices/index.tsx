@@ -60,7 +60,7 @@ export const invoicesRoute = new Route({
                       <Spinner />
                     ) : (
                       <MatchRoute
-                        to={invoiceRoute.fullPath}
+                        to={invoiceRoute.to}
                         params={{
                           invoiceId: invoice.id,
                         }}

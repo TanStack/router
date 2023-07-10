@@ -217,7 +217,7 @@ const indexRoute = new Route({
         <div className={`text-lg`}>Welcome Home!</div>
         <hr className={`my-2`} />
         <Link
-          to={invoiceRoute.fullPath}
+          to={invoiceRoute.to}
           params={{
             invoiceId: 3,
           }}
@@ -367,7 +367,7 @@ const invoicesRoute = new Route({
                       <Spinner />
                     ) : (
                       <MatchRoute
-                        to={invoiceRoute.fullPath}
+                        to={invoiceRoute.to}
                         params={{
                           invoiceId: invoice.id,
                         }}
@@ -691,7 +691,7 @@ const usersRoute = new Route({
                   <pre className="text-sm">
                     {user.name}{' '}
                     <MatchRoute
-                      to={userRoute.fullPath}
+                      to={userRoute.to}
                       search={(d) => ({
                         ...d,
                         userId: user.id,
@@ -789,7 +789,7 @@ const authenticatedRoute = new Route({
   onLoadError: (error) => {
     if (error === AuthError) {
       router.navigate({
-        to: loginRoute.fullPath,
+        to: loginRoute.to,
         search: {
           // Use latestLocation (not currentLocation) to get the live url
           // (as opposed to the committed url, which is technically async

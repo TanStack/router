@@ -3,9 +3,15 @@ import { z } from 'zod'
 import { fetchInvoiceById, patchInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import { invoicesLoader, invoicesRoute } from '.'
-import { useNavigate, Link, Route } from '@tanstack/router'
+import {
+  useNavigate,
+  Link,
+  Route,
+  RegisteredRoutesInfo,
+} from '@tanstack/router'
 import { Loader } from '@tanstack/react-loaders'
 import { Action, useAction } from '@tanstack/react-actions'
+import { invoicesIndexRoute } from './invoices'
 
 class InvoiceNotFoundError extends Error {}
 

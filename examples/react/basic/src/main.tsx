@@ -89,7 +89,7 @@ const rootRoute = RootRoute.withRouterContext<RouterContext>()({
             Home
           </Link>{' '}
           <Link
-            to="/posts"
+            to={'/posts'}
             activeProps={{
               className: 'font-bold',
             }}
@@ -144,7 +144,7 @@ const postsRoute = new Route({
             return (
               <li key={post.id} className="whitespace-nowrap">
                 <Link
-                  to={postRoute.fullPath}
+                  to={postRoute.to}
                   params={{
                     postId: post.id,
                   }}

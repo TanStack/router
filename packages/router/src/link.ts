@@ -61,12 +61,12 @@ export type ParsePathParams<T extends string> = Split<T>[number] extends infer U
     : never
   : never
 
-type Join<T> = T extends []
+type Join<T, Delimiter extends string = '/'> = T extends []
   ? ''
   : T extends [infer L extends string]
   ? L
   : T extends [infer L extends string, ...infer Tail extends [...string[]]]
-  ? CleanPath<`${L}/${Join<Tail>}`>
+  ? CleanPath<`${L}${Delimiter}${Join<Tail>}`>
   : never
 
 export type RelativeToPathAutoComplete<
@@ -286,10 +286,7 @@ export type CheckPath<
   : CheckPathError<TRoutesInfo, Exclude<TPath, TRoutesInfo['routePaths']>>
 
 export type CheckPathError<TRoutesInfo extends AnyRoutesInfo, TInvalids> = {
-  Error: `${TInvalids extends string
-    ? TInvalids
-    : never} is not a valid route path.`
-  'Valid Route Paths': TRoutesInfo['routePaths']
+  to: TRoutesInfo['routePaths']
 }
 
 export type CheckId<TRoutesInfo extends AnyRoutesInfo, TPath, TPass> = Exclude<
