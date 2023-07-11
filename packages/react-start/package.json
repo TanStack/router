@@ -39,21 +39,29 @@
     "build:types": "tsc --emitDeclarationOnly --declaration --skipLibCheck"
   },
   "exports": {
-    "./client": "./dist/client.js",
-    "./astro": "./dist/astro.js",
-    "./server": "./dist/server.js",
+    "./client": {
+      "require": "./build/cjs/client.js",
+      "types": "./build/types/client.d.ts",
+      "default": "./build/esm/client.js"
+    },
+    "./server": {
+      "require": "./build/cjs/server.js",
+      "types": "./build/types/server.d.ts",
+      "default": "./build/esm/server.js"
+    },
+    "./astro": "./build/astro.js",
     "./package.json": "./package.json"
   },
   "typesVersions": {
     "*": {
       "client": [
-        "./dist/client.d.ts"
-      ],
-      "astro": [
-        "./dist/astro.d.ts"
+        "./build/types/client.d.ts"
       ],
       "server": [
-        "./dist/server.d.ts"
+        "./build/types/server.d.ts"
+      ],
+      "astro": [
+        "./build/types/astro.d.ts"
       ]
     }
   },
@@ -71,8 +79,8 @@
     "tiny-warning": "^1.0.3"
   },
   "peerDependencies": {
-    "react": ">=16",
-    "react-dom": ">=16"
+    "react": ">=18",
+    "react-dom": ">=18"
   },
   "devDependencies": {
     "astro": "^1.9.2",

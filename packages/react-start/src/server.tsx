@@ -4,15 +4,13 @@ import {
   createMemoryHistory,
   RouterProvider,
 } from '@tanstack/router'
-import { handleEvent, hasHandler, handlers } from '@tanstack/bling/server'
-import ReactDOMServer from 'react-dom/server'
+// import { handleEvent, hasHandler, handlers } from '@tanstack/bling/server'
+import * as ReactDOMServer from 'react-dom/server'
 import * as React from 'react'
 import isbot from 'isbot'
 import { PassThrough } from 'stream'
 // @ts-ignore
 import cprc from '@gisatcz/cross-package-react-context'
-//
-import { Hydrate } from './components/Hydrate'
 
 export function createRequestHandler<TRouter extends AnyRouter>(opts: {
   createRouter: () => TRouter
@@ -21,12 +19,12 @@ export function createRequestHandler<TRouter extends AnyRouter>(opts: {
     const fullUrl = new URL(request.url)
     const url = request.url.replace(fullUrl.origin, '')
 
-    console.log(handlers)
-    if (hasHandler(fullUrl.pathname)) {
-      return await handleEvent({
-        request,
-      })
-    }
+    // console.log(handlers)
+    // if (hasHandler(fullUrl.pathname)) {
+    //   return await handleEvent({
+    //     request,
+    //   })
+    // }
 
     if (fullUrl.pathname.includes('.')) {
       return new Response(null, {
@@ -96,17 +94,30 @@ export function createRequestHandler<TRouter extends AnyRouter>(opts: {
 export function StartServer<TRouter extends AnyRouter>(props: {
   router: TRouter
 }) {
-  const CustomRouterProvider = props.router.options.Provider || React.Fragment
+  const Wrap = props.router.options.Wrap || React.Fragment
 
-  const hydrationContext = cprc.getContext('TanStackStartHydrationContext', {})
+  const hydrationContext = cprc.getContext('TanStackRouterHydrationContext', {})
+
+  const hydrationCtxValue = React.useMemo(
+    () => ({
+      router: props.router.dehydrate(),
+      payload: props.router.options.dehydrate?.(),
+    }),
+    [],
+  )
+
+  React.useState(() => {
+    if (hydrationCtxValue) {
+      props.router.hydrate(hydrationCtxValue)
+    }
+  })
 
   return (
-    <hydrationContext.Provider value={props.router.options.dehydrate?.()}>
-      <Hydrate router={props.router}>
-        <CustomRouterProvider>
-          <RouterProvider router={props.router} />
-        </CustomRouterProvider>
-      </Hydrate>
+    // Provide the hydration context still, since `<RouterScripts />` needs it.
+    <hydrationContext.Provider value={hydrationCtxValue}>
+      <Wrap>
+        <RouterProvider router={props.router} />
+      </Wrap>
     </hydrationContext.Provider>
   )
 }

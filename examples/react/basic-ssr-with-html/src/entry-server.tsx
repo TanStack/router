@@ -45,7 +45,7 @@ export async function render(opts: {
   const dehydratedLoaderClient = loaderClient.dehydrate()
 
   const head = `${opts.head}<script>
-  window.__DEHYDRATED__ = JSON.parse(
+  window.__TSR_DEHYDRATED__ = JSON.parse(
     ${jsesc(
       JSON.stringify({
         dehydratedRouter,

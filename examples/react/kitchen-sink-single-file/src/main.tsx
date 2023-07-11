@@ -9,10 +9,10 @@ import {
   useNavigate,
   useSearch,
   Router,
-  useParams,
   RootRoute,
   Route,
   redirect,
+  useLoader,
 } from '@tanstack/router'
 import {
   Action,
@@ -22,7 +22,6 @@ import {
 } from '@tanstack/react-actions'
 import {
   Loader,
-  useLoader,
   LoaderClient,
   useLoaderClient,
   LoaderClientProvider,
@@ -308,6 +307,12 @@ const dashboardIndexRoute = new Route({
 const invoicesRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'invoices',
+  validateSearch: (search) =>
+    z
+      .object({
+        test: z.string().optional(),
+      })
+      .parse(search),
   component: () => {
     const {
       state: { data: invoices },
@@ -452,6 +457,9 @@ const invoiceRoute = new Route({
         notes: z.string().optional(),
       })
       .parse(search),
+  // getLoaderKey: ({ params, search }) => {
+  //   return [params.invoiceId]
+  // },
   loader: async ({ params: { invoiceId }, preload }) => {
     const invoicesLoaderInstance = invoiceLoader.getInstance({
       variables: invoiceId,

@@ -54,7 +54,7 @@ import { RouteComponent } from './react'
 
 declare global {
   interface Window {
-    __DEHYDRATED__?: Record<string, any>
+    __TSR_DEHYDRATED__?: HydrationCtx
   }
 }
 
@@ -101,6 +101,11 @@ export interface FromLocation {
 export type SearchSerializer = (searchObj: Record<string, any>) => string
 export type SearchParser = (searchStr: string) => Record<string, any>
 
+export type HydrationCtx = {
+  router: DehydratedRouter
+  payload: Record<string, any>
+}
+
 type RouterContextOptions<TRouteTree extends AnyRoute> =
   AnyContext extends TRouteTree['__types']['routerContext']
     ? {
@@ -134,7 +139,7 @@ export interface RouterOptions<
   onRouteChange?: () => void
   fetchServerDataFn?: FetchServerDataFn
   context?: TRouteTree['__types']['routerContext']
-  Provider?: React.ComponentType<{ children: any }>
+  Wrap?: React.ComponentType<{ children: React.ReactNode }>
   dehydrate?: () => TDehydrated
   hydrate?: (dehydrated: TDehydrated) => void
 }
@@ -325,23 +330,6 @@ export class Router<
     }
 
     return () => {}
-  }
-
-  hydrate = async (__do_not_use_server_ctx?: any) => {
-    let ctx = __do_not_use_server_ctx
-    // Client hydrates from window
-    if (typeof document !== 'undefined') {
-      ctx = window.__DEHYDRATED__
-
-      invariant(
-        ctx,
-        'Expected to find a __DEHYDRATED__ property on window... but we did not. THIS IS VERY BAD',
-      )
-    }
-
-    this.options.hydrate?.(ctx)
-
-    return await this.load()
   }
 
   update = (opts?: RouterOptions<any, any>): this => {
@@ -1023,55 +1011,44 @@ export class Router<
     }
   }
 
-  // dehydrate = (): DehydratedRouter => {
-  //   return {
-  //     state: {
-  //       ...pick(this.state, [
-  //         'latestLocation',
-  //         'currentLocation',
-  //         'status',
-  //         'lastUpdated',
-  //       ]),
-  //       // currentMatches: this.state.currentMatches.map((match) => ({
-  //       //   id: match.id,
-  //       //   state: {
-  //       //     status: match.state.status,
-  //       //     // status: 'idle',
-  //       //   },
-  //       // })),
-  //     },
-  //   }
-  // }
+  dehydrate = (): DehydratedRouter => {
+    return {
+      state: {
+        ...pick(this.state, [
+          'latestLocation',
+          'currentLocation',
+          'status',
+          'lastUpdated',
+        ]),
+      },
+    }
+  }
 
-  // hydrate = (dehydratedRouter: DehydratedRouter) => {
-  //   this.__store.setState((s) => {
-  //     // Match the routes
-  //     // const currentMatches = this.matchRoutes(
-  //     //   dehydratedRouter.state.latestLocation.pathname,
-  //     //   {
-  //     //     strictParseParams: true,
-  //     //   },
-  //     // )
+  hydrate = async (__do_not_use_server_ctx?: HydrationCtx) => {
+    let _ctx = __do_not_use_server_ctx
+    // Client hydrates from window
+    if (typeof document !== 'undefined') {
+      _ctx = window.__TSR_DEHYDRATED__
+    }
 
-  //     // currentMatches.forEach((match, index) => {
-  //     // const dehydratedMatch = dehydratedRouter.state.currentMatches[index]
-  //     // invariant(
-  //     //   dehydratedMatch && dehydratedMatch.id === match.id,
-  //     //   'Oh no! There was a hydration mismatch when attempting to hydrate the state of the router! 😬',
-  //     // )
-  //     // match.__store.setState((s) => ({
-  //     //   ...s,
-  //     //   ...dehydratedMatch.state,
-  //     // }))
-  //     // })
+    invariant(
+      _ctx,
+      'Expected to find a __TSR_DEHYDRATED__ property on window... but we did not. Did you forget to render <RouterScripts /> in your app?',
+    )
 
-  //     return {
-  //       ...s,
-  //       ...dehydratedRouter.state,
-  //       // currentMatches,
-  //     }
-  //   })
-  // }
+    const ctx = _ctx
+
+    this.options.hydrate?.(ctx.payload as any)
+
+    this.__store.setState((s) => {
+      return {
+        ...s,
+        ...ctx.router.state,
+      }
+    })
+
+    return await this.load()
+  }
 
   #buildRouteTree = (routeTree: AnyRoute) => {
     const recurseRoutes = (routes: Route[], parentRoute: Route | undefined) => {

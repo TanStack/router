@@ -3,7 +3,7 @@ import * as React from 'react'
 import { Spinner } from '../../../components/Spinner'
 import { dashboardRoute } from '..'
 import { invoiceRoute, updateInvoiceAction } from './invoice'
-import { Loader, useLoader } from '@tanstack/react-loaders'
+import { Loader } from '@tanstack/react-loaders'
 import { useAction } from '@tanstack/react-actions'
 import { createInvoiceAction } from './invoices'
 import { fetchInvoices } from '../../../mockTodos'
@@ -28,8 +28,8 @@ export const invoicesRoute = new Route({
     } = useLoader()()
 
     // Get the action for a child route
-    const createInvoice = useAction({ key: createInvoiceAction.key })
-    const updateInvoice = useAction({ key: updateInvoiceAction.key })
+    const createInvoice = useAction({ action: createInvoiceAction })
+    const updateInvoice = useAction({ action: updateInvoiceAction })
 
     return (
       <div className="flex-1 flex">

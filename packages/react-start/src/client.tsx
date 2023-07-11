@@ -1,45 +1,31 @@
 import * as React from 'react'
 import { AnyRouter, RouterProvider } from '@tanstack/router'
-import { Hydrate } from './components/Hydrate'
 // @ts-ignore
 import cprc from '@gisatcz/cross-package-react-context'
 
 export function StartClient(props: { router: AnyRouter }) {
-  const CustomRouterProvider = props.router.options.Provider || React.Fragment
+  const CustomRouterProvider = props.router.options.Wrap || React.Fragment
 
   return (
-    <Hydrate router={props.router}>
-      <CustomRouterProvider>
-        <RouterProvider router={props.router} />
-      </CustomRouterProvider>
-    </Hydrate>
+    <CustomRouterProvider>
+      <RouterProvider router={props.router} />
+    </CustomRouterProvider>
   )
 }
 
-export function Scripts() {
+export function RouterScripts() {
   const dehydrated = React.useContext(
-    cprc.getContext('TanStackStartHydrationContext', {}),
+    cprc.getContext('TanStackRouterHydrationContext', {}),
   )
 
   return (
-    <>
-      <script
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{
-          __html: `
-          window.__DEHYDRATED__ = 
-           ${
-             JSON.stringify(dehydrated)
-             // {
-             //   isScriptContext: true,
-             //   quotes: 'single',
-             //   json: true,
-             // },
-           }
+    <script
+      suppressHydrationWarning
+      dangerouslySetInnerHTML={{
+        __html: `
+          window.__TSR_DEHYDRATED__ = ${JSON.stringify(dehydrated)}
         `,
-        }}
-      />
-      <script type="module" src="/src/app/entry-client.tsx" />
-    </>
+      }}
+    />
   )
 }

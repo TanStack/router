@@ -566,7 +566,9 @@ function SubOutlet({
     match.errorComponent ?? router.options.defaultErrorComponent
 
   const ResolvedSuspenseBoundary =
-    match.route.options.wrapInSuspense ?? true ? React.Suspense : SafeFragment
+    match.route.options.wrapInSuspense ?? !match.route.isRoot
+      ? React.Suspense
+      : SafeFragment
   const ResolvedCatchBoundary = errorComponent ? CatchBoundary : SafeFragment
 
   return (
@@ -668,7 +670,7 @@ function CatchBoundaryInner(props: {
   React.useEffect(() => {
     if (activeErrorState) {
       if (router.state.currentLocation.key !== prevKeyRef.current) {
-        setActiveErrorState({} as any)
+        // setActiveErrorState({} as any)
       }
     }
 
@@ -677,7 +679,7 @@ function CatchBoundaryInner(props: {
 
   React.useEffect(() => {
     if (props.errorState.error) {
-      setActiveErrorState(props.errorState)
+      // setActiveErrorState(props.errorState)
     }
     // props.reset()
   }, [props.errorState.error])

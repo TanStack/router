@@ -1,36 +1,13 @@
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import { createMemoryHistory, Router } from '@tanstack/router'
-import jsesc from 'jsesc'
+import { createMemoryHistory } from '@tanstack/router'
 import { ServerResponse } from 'http'
-import { createLoaderClient } from './loaderClient'
 import express from 'express'
+import { StartServer } from '@tanstack/react-start/server'
+import { createRouter } from './router'
 
 // index.js
 import './fetch-polyfill'
-import { App } from '.'
-import { routeTree } from './routeTree'
-
-async function getRouter(opts: { url: string }) {
-  const loaderClient = createLoaderClient()
-
-  const router = new Router({
-    routeTree: routeTree,
-    context: {
-      loaderClient,
-    },
-  })
-
-  const memoryHistory = createMemoryHistory({
-    initialEntries: [opts.url],
-  })
-
-  router.update({
-    history: memoryHistory,
-  })
-
-  return { router, loaderClient }
-}
 
 export async function render(opts: {
   url: string
@@ -38,33 +15,23 @@ export async function render(opts: {
   req: express.Request
   res: ServerResponse
 }) {
-  const { router, loaderClient } = await getRouter(opts)
+  const router = createRouter()
+
+  const memoryHistory = createMemoryHistory({
+    initialEntries: [opts.url],
+  })
+
+  router.update({
+    history: memoryHistory,
+    context: {
+      ...router.context,
+      head: opts.head,
+    },
+  })
 
   await router.load()
 
-  const dehydratedRouter = router.dehydrate()
-  const dehydratedLoaderClient = loaderClient.dehydrate()
-
-  let head = `<script class="__DEHYDRATED__">
-    window.__DEHYDRATED__ = JSON.parse(
-      ${jsesc(
-        JSON.stringify({
-          dehydratedRouter,
-          dehydratedLoaderClient,
-        }),
-        {
-          isScriptContext: true,
-          wrap: true,
-          json: true,
-        },
-      )}
-    )
-  </script>
-`
-
-  const appHtml = ReactDOMServer.renderToString(
-    <App router={router} loaderClient={loaderClient} head={head} />,
-  )
+  const appHtml = ReactDOMServer.renderToString(<StartServer router={router} />)
 
   opts.res.statusCode = 200
   opts.res.setHeader('Content-Type', 'text/html')

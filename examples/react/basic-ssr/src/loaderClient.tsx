@@ -1,4 +1,4 @@
-import { Loader, LoaderClient } from '@tanstack/react-loaders'
+import { LoaderClient } from '@tanstack/react-loaders'
 import { postsLoader } from './routes/posts'
 import { postLoader } from './routes/posts/$postId'
 
@@ -8,11 +8,9 @@ export const createLoaderClient = () => {
   })
 }
 
-export const loaderClient = createLoaderClient()
-
 // Register things for typesafety
 declare module '@tanstack/react-loaders' {
   interface Register {
-    loaderClient: typeof loaderClient
+    loaderClient: ReturnType<typeof createLoaderClient>
   }
 }

@@ -1,4 +1,4 @@
-import { RollupOptions } from 'rollup'
+import { ExternalOption, RollupOptions } from 'rollup'
 import babel from '@rollup/plugin-babel'
 import { terser } from 'rollup-plugin-terser'
 // @ts-ignore
@@ -13,6 +13,7 @@ import dts from 'rollup-plugin-dts'
 //
 import { packages } from './scripts/config'
 import { readJsonSync } from 'fs-extra'
+import { Package } from './scripts/types'
 
 type Options = {
   input: string
@@ -38,18 +39,21 @@ const babelPlugin = babel({
 })
 
 export default function rollup(options: RollupOptions): RollupOptions[] {
-  return packages.flatMap((pkg) => {
-    return buildConfigs({
-      name: pkg.packageDir,
-      packageDir: `packages/${pkg.packageDir}`,
-      jsName: pkg.jsName,
-      outputFile: pkg.packageDir,
-      entryFile: pkg.entryFile,
-      globals: pkg.globals ?? {},
-      esm: pkg.esm ?? true,
-      cjs: pkg.cjs ?? true,
-      umd: pkg.umd ?? true,
-    })
+  return packages.flatMap((pkg: Package) => {
+    return pkg.builds.flatMap((build) =>
+      buildConfigs({
+        name: [pkg.name, build.entryFile].join('/'),
+        packageDir: `packages/${pkg.packageDir}`,
+        jsName: build.jsName,
+        outputFile: pkg.packageDir,
+        entryFile: build.entryFile,
+        globals: build.globals ?? {},
+        esm: build.esm ?? true,
+        cjs: build.cjs ?? true,
+        umd: build.umd ?? true,
+        externals: build.externals || [],
+      }),
+    )
   })
 }
 
@@ -63,6 +67,7 @@ function buildConfigs(opts: {
   outputFile: string
   entryFile: string
   globals: Record<string, string>
+  externals: string[]
 }): RollupOptions[] {
   const input = path.resolve(opts.packageDir, opts.entryFile)
 
@@ -80,6 +85,7 @@ function buildConfigs(opts: {
     external: [
       ...Object.keys(packageJson.dependencies ?? {}),
       ...Object.keys(packageJson.peerDependencies ?? {}),
+      ...opts.externals,
     ],
     umdExternal: Object.keys(packageJson.peerDependencies ?? {}),
     banner,
@@ -106,6 +112,7 @@ function esm({ input, packageDir, external, banner }: Options): RollupOptions {
       dir: `${packageDir}/build/esm`,
       banner,
     },
+
     plugins: [
       // svelte({
       //   compilerOptions: {
@@ -212,6 +219,7 @@ function umdProd({
 }
 
 function types({
+  jsName,
   input,
   packageDir,
   external,
@@ -223,7 +231,9 @@ function types({
     input,
     output: {
       format: 'es',
-      file: `${packageDir}/build/types/index.d.ts`,
+      file: `${packageDir}/build/types/${
+        path.basename(input).split('.')[0]
+      }.d.ts`,
       banner,
     },
     plugins: [dts()],

@@ -7,71 +7,121 @@ export const packages: Package[] = [
     name: '@tanstack/store',
     packageDir: 'store',
     srcDir: 'src',
-    jsName: 'Store',
-    entryFile: 'src/index.ts',
-    globals: {},
+    builds: [
+      {
+        jsName: 'Store',
+        entryFile: 'src/index.ts',
+        globals: {},
+      },
+    ],
   },
   {
     name: '@tanstack/react-store',
     packageDir: 'react-store',
     srcDir: 'src',
-    jsName: 'ReactLoaders',
-    entryFile: 'src/index.tsx',
-    globals: {
-      react: 'React',
-    },
+    builds: [
+      {
+        jsName: 'ReactLoaders',
+        entryFile: 'src/index.tsx',
+        globals: {
+          react: 'React',
+        },
+      },
+    ],
   },
   {
     name: '@tanstack/router',
     packageDir: 'router',
     srcDir: 'src',
-    jsName: 'RouterCore',
-    entryFile: 'src/index.ts',
-    globals: {},
+    builds: [
+      {
+        jsName: 'RouterCore',
+        entryFile: 'src/index.ts',
+        globals: {},
+      },
+    ],
   },
   {
     name: '@tanstack/loaders',
     packageDir: 'loaders',
     srcDir: 'src',
-    jsName: 'LoadersCore',
-    entryFile: 'src/index.ts',
-    globals: {},
+    builds: [
+      {
+        jsName: 'LoadersCore',
+        entryFile: 'src/index.ts',
+        globals: {},
+      },
+    ],
   },
   {
     name: '@tanstack/react-loaders',
     packageDir: 'react-loaders',
     srcDir: 'src',
-    jsName: 'ReactLoaders',
-    entryFile: 'src/index.tsx',
-    globals: {
-      react: 'React',
-    },
+    builds: [
+      {
+        jsName: 'ReactLoaders',
+        entryFile: 'src/index.tsx',
+        globals: {
+          react: 'React',
+        },
+      },
+    ],
   },
   {
     name: '@tanstack/actions',
     packageDir: 'actions',
     srcDir: 'src',
-    jsName: 'ActionsCore',
-    entryFile: 'src/index.ts',
-    globals: {},
+    builds: [
+      {
+        jsName: 'ActionsCore',
+        entryFile: 'src/index.ts',
+        globals: {},
+      },
+    ],
   },
   {
     name: '@tanstack/react-actions',
     packageDir: 'react-actions',
     srcDir: 'src',
-    jsName: 'ReactActions',
-    entryFile: 'src/index.tsx',
-    globals: {
-      react: 'React',
-    },
+    builds: [
+      {
+        jsName: 'ReactActions',
+        entryFile: 'src/index.tsx',
+        globals: {
+          react: 'React',
+        },
+      },
+    ],
   },
   {
     name: '@tanstack/router-devtools',
     packageDir: 'router-devtools',
     srcDir: 'src',
-    jsName: 'TanStackRouterDevtools',
-    entryFile: 'src/index.tsx',
-    globals: { react: 'React', '@tanstack/router': 'Router' },
+    builds: [
+      {
+        jsName: 'TanStackRouterDevtools',
+        entryFile: 'src/index.tsx',
+        globals: { react: 'React', '@tanstack/router': 'Router' },
+      },
+    ],
+  },
+  {
+    name: '@tanstack/react-start',
+    packageDir: 'react-start',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'TanStackStartReactClient',
+        entryFile: 'src/client.tsx',
+        globals: { react: 'React', '@tanstack/router': 'Router' },
+      },
+      {
+        jsName: 'TanStackStartReactServer',
+        entryFile: 'src/server.tsx',
+        globals: { react: 'React', '@tanstack/router': 'Router' },
+        externals: ['stream', 'util', 'react-dom', 'react', 'react-dom/server'],
+      },
+    ],
   },
 ]
 

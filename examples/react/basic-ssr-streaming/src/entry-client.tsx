@@ -6,7 +6,7 @@ import { router } from './router'
 import { loaderClient } from './loaderClient'
 
 const { dehydratedRouter, dehydratedLoaderClient } = (window as any)
-  .__DEHYDRATED__
+  .__TSR_DEHYDRATED__
 
 // Hydrate the loader client first
 loaderClient.hydrate(dehydratedLoaderClient)

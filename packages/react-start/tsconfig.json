@@ -2,7 +2,7 @@
   "composite": true,
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist/"
+    "outDir": "./build/types"
   },
   "include": ["src"]
 }
