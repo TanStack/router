@@ -153,6 +153,7 @@ export class Action<
   init = (key: TKey, client: ActionClient<any, any>) => {
     this.client = client
     this.key = key as TKey
+    return this as Action<TKey, TPayload, TResponse, TError>
   }
 
   #resolveState = (
