@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/router": "0.0.1-beta.104",
-    "@tanstack/react-actions": "0.0.1-beta.105",
+    "@tanstack/react-actions": "0.0.1-beta.106",
     "@tanstack/react-loaders": "0.0.1-beta.105",
     "@tanstack/router-devtools": "0.0.1-beta.104",
     "@vitejs/plugin-react": "^1.1.3",
