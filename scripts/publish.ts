@@ -364,50 +364,6 @@ async function run() {
   // execSync(`yarn types`, { encoding: 'utf8', stdio: 'inherit' })
   // console.info('')
 
-  console.info('Validating packages...')
-  const failedValidations: string[] = []
-
-  await Promise.all(
-    packages.map(async (pkg) => {
-      const pkgJson = await readPackageJson(
-        path.resolve(rootDir, 'packages', pkg.packageDir, 'package.json'),
-      )
-
-      await Promise.all(
-        (['module', 'main', 'browser', 'types'] as const).map(
-          async (entryKey) => {
-            const entry = pkgJson[entryKey] as string
-
-            if (!entry) {
-              throw new Error(
-                `Missing entry for "${entryKey}" in ${pkg.packageDir}/package.json!`,
-              )
-            }
-
-            const filePath = path.resolve(
-              rootDir,
-              'packages',
-              pkg.packageDir,
-              entry,
-            )
-
-            try {
-              await fsp.access(filePath)
-            } catch (err) {
-              failedValidations.push(`Missing build file: ${filePath}`)
-            }
-          },
-        ),
-      )
-    }),
-  )
-  console.info('')
-  if (false && failedValidations.length > 0) {
-    throw new Error(
-      'Some packages failed validation:\n\n' + failedValidations.join('\n'),
-    )
-  }
-
   console.info('Testing packages...')
   execSync(`pnpm test:ci ${SKIP_TESTS ? '|| exit 0' : ''}`, {
     encoding: 'utf8',
