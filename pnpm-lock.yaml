@@ -298,6 +298,9 @@ importers:
       '@tanstack/react-loaders':
         specifier: workspace:*
         version: link:../../../packages/react-loaders
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router':
         specifier: workspace:*
         version: link:../../../packages/router

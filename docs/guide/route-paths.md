@@ -95,9 +95,7 @@ const userRoute = new Route({
   path: '$userId',
 })
 
-const routeConfig = rootRoute.addChildren([
-  usersRoute.addChildren([userRoute])
-])
+const routeConfig = rootRoute.addChildren([usersRoute.addChildren([userRoute])])
 ```
 
 Dynamic segments can be accessed via the `params` object using the label you provided as the property key. For example, a path of `/users/$userId` would produce a `userId` param of `123` for the path `/users/123/details`:
@@ -178,5 +176,19 @@ const routeConfig = rootRoute.addChildren([
 In the above example, the `layout` route will not add or match any path in the URL, but will wrap the `layout-a` and `layout-b` routes with any elements or logic defined in it.
 
 > 🧠 An ID is required because every route must be uniquely identifiable, especially when using TypeScript so as to avoid type errors and accomplish autocomplete effectively.
+
+## Identifying Routes via Search Params
+
+Search Params by default are not used to identify matching paths mostly because they are extremely flexible, flat and can contain a lot of unrelated data to your actual route definition. However, in some cases you may choose to use them to uniquely identify a route match. For example, you may want to use a search param to identify a specific user in your application, you might model your url like this: `/user?userId=123`. This means that in your `user` route would need some extra help to identify a specific user. You can do this by adding a `getKey` function to your route:
+
+```tsx
+const userRoute = new Route({
+  getParentRoute: () => usersRoute,
+  path: 'user',
+  getKey: ({ search }) => search.userId,
+})
+```
+
+---
 
 Route paths are just the beginning of what you can do with route configuration. We'll explore more of those features later on.

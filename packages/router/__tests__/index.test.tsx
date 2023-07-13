@@ -55,7 +55,7 @@ function createLocation(location: Partial<Location>): ParsedLocation {
 //     expect(router.store.pendingMatches[0].id).toBe('/')
 
 //     await promise
-//     expect(router.state.currentMatches[0].id).toBe('/')
+//     expect(router.state.matches[0].id).toBe('/')
 //   })
 
 //   test('mounts to /a', async () => {
@@ -77,7 +77,7 @@ function createLocation(location: Partial<Location>): ParsedLocation {
 
 //     expect(router.store.pendingMatches[0].id).toBe('/a')
 //     await promise
-//     expect(router.state.currentMatches[0].id).toBe('/a')
+//     expect(router.state.matches[0].id).toBe('/a')
 //   })
 
 //   test('mounts to /a/b', async () => {
@@ -107,7 +107,7 @@ function createLocation(location: Partial<Location>): ParsedLocation {
 
 //     expect(router.store.pendingMatches[1].id).toBe('/a/b')
 //     await promise
-//     expect(router.state.currentMatches[1].id).toBe('/a/b')
+//     expect(router.state.matches[1].id).toBe('/a/b')
 //   })
 
 //   test('navigates to /a', async () => {
@@ -130,14 +130,14 @@ function createLocation(location: Partial<Location>): ParsedLocation {
 //     expect(router.store.pendingMatches[0].id).toBe('/')
 
 //     await promise
-//     expect(router.state.currentMatches[0].id).toBe('/')
+//     expect(router.state.matches[0].id).toBe('/')
 
 //     promise = router.navigate({ to: 'a' })
-//     expect(router.state.currentMatches[0].id).toBe('/')
+//     expect(router.state.matches[0].id).toBe('/')
 //     expect(router.store.pendingMatches[0].id).toBe('a')
 
 //     await promise
-//     expect(router.state.currentMatches[0].id).toBe('a')
+//     expect(router.state.matches[0].id).toBe('a')
 //     expect(router.store.pending).toBe(undefined)
 //   })
 
@@ -162,17 +162,17 @@ function createLocation(location: Partial<Location>): ParsedLocation {
 //     })
 
 //     await router.mount()
-//     expect(router.state.currentLocation.href).toBe('/')
+//     expect(router.state.location.href).toBe('/')
 
 //     let promise = router.navigate({ to: 'a' })
 //     expect(router.store.pendingLocation.href).toBe('/a')
 //     await promise
-//     expect(router.state.currentLocation.href).toBe('/a')
+//     expect(router.state.location.href).toBe('/a')
 
 //     promise = router.navigate({ to: './b' })
 //     expect(router.store.pendingLocation.href).toBe('/a/b')
 //     await promise
-//     expect(router.state.currentLocation.href).toBe('/a/b')
+//     expect(router.state.location.href).toBe('/a/b')
 
 //     expect(router.store.pending).toBe(undefined)
 //   })

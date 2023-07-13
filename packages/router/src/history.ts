@@ -52,7 +52,7 @@ function createHistory(opts: {
   forward: () => void
   createHref: (path: string) => string
 }): RouterHistory {
-  let currentLocation = opts.getLocation()
+  let location = opts.getLocation()
   let unsub = () => {}
   let listeners = new Set<() => void>()
   let blockers: BlockerFn[] = []
@@ -80,13 +80,13 @@ function createHistory(opts: {
   }
 
   const onUpdate = () => {
-    currentLocation = opts.getLocation()
+    location = opts.getLocation()
     listeners.forEach((listener) => listener())
   }
 
   return {
     get location() {
-      return currentLocation
+      return location
     },
     listen: (cb: () => void) => {
       if (listeners.size === 0) {

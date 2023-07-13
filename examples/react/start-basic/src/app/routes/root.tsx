@@ -21,7 +21,7 @@ export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
   component: function Root() {
     const router = useRouter()
 
-    const titleMatch = [...router.state.currentMatches]
+    const titleMatch = [...router.state.matches]
       .reverse()
       .find((d) => d.routeContext?.getTitle)
 

@@ -91,15 +91,9 @@ LoaderInstance.onCreateFns.push((loaderInstance) => {
     }
 
     if (opts?.strict ?? true) {
-      invariant(
-        typeof loaderInstance.state.data !== 'undefined',
-        `useLoader:
-  Loader instance { key: ${loaderInstance.loader.key}, variables: ${loaderInstance.variables} }) is currently in a "${loaderInstance.state.status}" state. By default useLoader will throw an error if the loader instance is not in a "success" state. To avoid this error:
-  
-  - Load the loader instance before using it (e.g. via your router's loader or loader option)
-
-  - Set opts.strict to false and handle the loading state in your component`,
-      )
+      if (loaderInstance.state.status === 'pending') {
+        throw loaderInstance.__loadPromise || loaderInstance.load()
+      }
     }
 
     React.useEffect(() => {

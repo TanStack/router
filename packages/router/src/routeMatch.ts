@@ -13,7 +13,7 @@ export interface RouteMatchState<
   routeSearch: TRoute['__types']['searchSchema']
   search: TRoutesInfo['fullSearchSchema'] &
     TRoute['__types']['fullSearchSchema']
-  status: 'idle' | 'pending' | 'success' | 'error'
+  status: 'pending' | 'success' | 'error'
   error?: unknown
   updatedAt: number
   loader: TRoute['__types']['loader']
@@ -64,7 +64,9 @@ export class RouteMatch<
   parentMatch?: RouteMatch
   pendingInfo?: PendingRouteMatchInfo
 
+  __loadKey: any = { __init: true }
   __loadPromise?: Promise<void>
+  __loadPromiseResolve?: () => void
   __onExit?:
     | void
     | ((matchContext: {
@@ -92,7 +94,7 @@ export class RouteMatch<
           updatedAt: 0,
           routeSearch: {},
           search: {} as any,
-          status: 'idle',
+          status: 'pending',
           loader: undefined,
         },
         {
@@ -111,11 +113,16 @@ export class RouteMatch<
       this[type] = component as any
     })
 
-    if (this.state.status === 'idle' && !this.#hasLoaders()) {
+    this.__loadPromise = new Promise((r) => {
+      this.__loadPromiseResolve = r
+    })
+
+    if (this.state.status === 'pending' && !this.#hasLoaders()) {
       this.__store.setState((s) => ({
         ...s,
         status: 'success',
       }))
+      this.__loadPromiseResolve?.()
     }
   }
 
@@ -128,7 +135,7 @@ export class RouteMatch<
 
   __commit = () => {
     const { routeSearch, search, context, routeContext } = this.#resolveInfo({
-      location: this.router.state.currentLocation,
+      location: this.router.state.location,
     })
     this.context = context
     this.routeContext = routeContext
@@ -246,10 +253,27 @@ export class RouteMatch<
 
     const { routeSearch, search, context, routeContext } = info
 
-    // If the match is invalid, errored or idle, trigger it to load
-    if (this.state.status === 'pending') {
-      return
+    const loaderOpts = {
+      params: this.params,
+      routeSearch,
+      search,
+      signal: this.abortController.signal,
+      preload: !!opts?.preload,
+      routeContext,
+      context,
     }
+
+    // If getKey is set, we can skip the loader if the key is the same
+    // if (this.route.options.getKey) {
+    // const prevKey = this.__loadKey
+    // this.__loadKey = this.route.options.getKey?.(loaderOpts)
+
+    // if (
+    //   !opts.preload &&
+    //   JSON.stringify(prevKey) === JSON.stringify(this.__loadKey)
+    // ) {
+    //   return
+    // }
 
     this.__loadPromise = Promise.resolve().then(async () => {
       const loadId = '' + Date.now() + Math.random()
@@ -260,16 +284,6 @@ export class RouteMatch<
       }
 
       let latestPromise
-
-      // If the match was in an error state, set it
-      // to a loading state again. Otherwise, keep it
-      // as loading or resolved
-      if (this.state.status === 'idle') {
-        this.__store.setState((s) => ({
-          ...s,
-          status: 'pending',
-        }))
-      }
 
       const componentsPromise = (async () => {
         // then run all component and data loaders in parallel
@@ -288,15 +302,7 @@ export class RouteMatch<
 
       const loaderPromise = Promise.resolve().then(() => {
         if (this.route.options.loader) {
-          return this.route.options.loader({
-            params: this.params,
-            routeSearch,
-            search,
-            signal: this.abortController.signal,
-            preload: !!opts?.preload,
-            routeContext: routeContext,
-            context: context,
-          })
+          return this.route.options.loader(loaderOpts)
         }
         return
       })
@@ -350,6 +356,7 @@ export class RouteMatch<
           updatedAt: Date.now(),
         }))
       } finally {
+        this.__loadPromiseResolve?.()
         delete this.__loadPromise
       }
     })

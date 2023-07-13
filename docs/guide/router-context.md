@@ -183,7 +183,7 @@ const rootRoute = RootRoute({
   component: () => {
     const router = useRouter()
 
-    const breadcrumbs = router.state.currentMatches.map((match) => {
+    const breadcrumbs = router.state.matches.map((match) => {
       const { routeContext } = match
       return {
         title: routeContext.getTitle(),
@@ -203,7 +203,7 @@ const rootRoute = RootRoute({
   component: () => {
     const router = useRouter()
 
-    const matchWithTitle = [...router.state.currentMatches]
+    const matchWithTitle = [...router.state.matches]
       .reverse()
       .find((d) => d.routeContext.getTitle)
 

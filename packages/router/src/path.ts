@@ -152,7 +152,7 @@ export function matchPathname(
   matchLocation: Pick<MatchLocation, 'to' | 'fuzzy' | 'caseSensitive'>,
 ): AnyPathParams | undefined {
   const pathParams = matchByPath(basepath, currentPathname, matchLocation)
-  // const searchMatched = matchBySearch(currentLocation.search, matchLocation)
+  // const searchMatched = matchBySearch(location.search, matchLocation)
 
   if (matchLocation.to && !pathParams) {
     return

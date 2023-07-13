@@ -2,8 +2,6 @@ import express from 'express'
 
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.VITE_TEST_BUILD
 
-process.env.MY_CUSTOM_SECRET = 'API_KEY_qwertyuiop'
-
 export async function createServer(
   root = process.cwd(),
   isProd = process.env.NODE_ENV === 'production',
@@ -72,19 +70,6 @@ export async function createServer(
           return import('./dist/server/entry-server.tsx')
         }
       })()
-
-      // // Since the router can also be used simply to fulfill data,
-      // // Request for data, not html
-      // if (url.includes('__data=')) {
-      //   const data = await entry.load({
-      //     url,
-      //   })
-      //   return res.json(data)
-      // }
-
-      // Control/hydrate all the way up to <html>
-      // Modify head
-      // Request/Response control at the route level
 
       console.log('Rendering: ', url, '...')
       entry.render({ req, res, url, head: viteHead })

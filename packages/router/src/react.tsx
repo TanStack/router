@@ -304,6 +304,8 @@ export type RouterProps<
   router: Router<TRouteConfig, TRoutesInfo>
 }
 
+const useDeferredValue = React.useDeferredValue || ((d) => d)
+
 export function RouterProvider<
   TRouteConfig extends AnyRoute = AnyRoute,
   TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
@@ -311,13 +313,17 @@ export function RouterProvider<
 >({ router, ...rest }: RouterProps<TRouteConfig, TRoutesInfo, TDehydrated>) {
   router.update(rest)
 
-  const currentMatches = useStore(router.__store, (s) => s.currentMatches)
+  const matches = useDeferredValue(
+    useStore(router.__store, (s) => {
+      return s.matches
+    }),
+  )
 
   React.useEffect(router.mount, [router])
 
   return (
     <routerContext.Provider value={{ router: router as any }}>
-      <matchesContext.Provider value={[undefined!, ...currentMatches]}>
+      <matchesContext.Provider value={[undefined!, ...matches]}>
         <CatchBoundary
           errorComponent={ErrorComponent}
           onCatch={() => {
@@ -369,8 +375,9 @@ export function useMatch<
 }): TStrict extends true ? TRouteMatch : TRouteMatch | undefined {
   const router = useRouterContext()
   const nearestMatch = useMatches()[0]!
+  const matches = useDeferredValue(router.state.matches)
   const match = opts?.from
-    ? router.state.currentMatches.find((d) => d.route.id === opts?.from)
+    ? matches.find((d) => d.route.id === opts?.from)
     : nearestMatch
 
   invariant(
@@ -400,22 +407,6 @@ export function useMatch<
   return match as any
 }
 
-// export function useRoute<
-//   TId extends keyof RegisteredRoutesInfo['routesById'] = '/',
-// >(routeId: TId): RegisteredRoutesInfo['routesById'][TId] {
-//   const router = useRouterContext()
-//   const resolvedRoute = router.getRoute(routeId as any)
-
-//   invariant(
-//     resolvedRoute,
-//     `Could not find a route for route "${
-//       routeId as string
-//     }"! Did you forget to add it to your route?`,
-//   )
-
-//   return resolvedRoute as any
-// }
-
 export type RouteFromIdOrRoute<T> = T extends RegisteredRoutesInfo['routeUnion']
   ? T
   : T extends keyof RegisteredRoutesInfo['routesById']
@@ -423,14 +414,6 @@ export type RouteFromIdOrRoute<T> = T extends RegisteredRoutesInfo['routeUnion']
   : T extends string
   ? keyof RegisteredRoutesInfo['routesById']
   : never
-
-// export function useRoute<TRouteOrId>(
-//   route: TRouteOrId extends string
-//     ? keyof RegisteredRoutesInfo['routeIds']
-//     : RegisteredRoutesInfo['routeUnion'],
-// ): RouteFromIdOrRoute<TRouteOrId> {
-//   return null as any
-// }
 
 export function useLoader<
   TFrom extends keyof RegisteredRoutesInfo['routesById'],
@@ -476,11 +459,11 @@ export function useParams<
 }): TSelected {
   const router = useRouterContext()
   useStore(router.__store, (d) => {
-    const params = last(d.currentMatches)?.params as any
+    const params = last(d.matches)?.params as any
     return opts?.track?.(params) ?? params
   })
 
-  return last(router.state.currentMatches)?.params as any
+  return last(router.state.matches)?.params as any
 }
 
 export function useNavigate<
@@ -569,7 +552,27 @@ function SubOutlet({
     match.route.options.wrapInSuspense ?? !match.route.isRoot
       ? React.Suspense
       : SafeFragment
+
   const ResolvedCatchBoundary = errorComponent ? CatchBoundary : SafeFragment
+
+  const dehydrated: Record<string, any> = {}
+
+  if (typeof document === 'undefined') {
+    if (match.state.loader) {
+      Object.keys(match.state.loader).forEach((key) => {
+        let value = match.state.loader[key]
+
+        if (value instanceof Promise || value.then) {
+          value = {
+            __isPromise: true,
+            key: key,
+          }
+        }
+
+        dehydrated[key] = value
+      })
+    }
+  }
 
   return (
     <matchesContext.Provider value={matches}>
@@ -581,6 +584,20 @@ function SubOutlet({
             warning(false, `Error in route match: ${match.id}`)
           }}
         >
+          {/* {!match.route.isRoot ? (
+            <script
+              suppressHydrationWarning
+              dangerouslySetInnerHTML={{
+                __html: dehydrated
+                  ? `
+              window.__TSR_DEHYDRATED_MATCHES__['${
+                match.id
+              }'] = ${JSON.stringify(dehydrated)}
+          `
+                  : '',
+              }}
+            />
+          ) : null} */}
           <Inner match={match} />
         </ResolvedCatchBoundary>
       </ResolvedSuspenseBoundary>
@@ -590,6 +607,12 @@ function SubOutlet({
 
 function Inner(props: { match: RouteMatch }): any {
   const router = useRouterContext()
+
+  // if (!props.match.route.isRoot && typeof document !== 'undefined') {
+  //   router.options.hydrate?.(
+  //     (window as any).__TSR_DEHYDRATED_MATCHES__[props.match.id],
+  //   )
+  // }
 
   if (props.match.state.status === 'error') {
     throw props.match.state.error
@@ -669,13 +692,13 @@ function CatchBoundaryInner(props: {
 
   React.useEffect(() => {
     if (activeErrorState) {
-      if (router.state.currentLocation.key !== prevKeyRef.current) {
+      if (router.state.location.key !== prevKeyRef.current) {
         // setActiveErrorState({} as any)
       }
     }
 
-    prevKeyRef.current = router.state.currentLocation.key
-  }, [activeErrorState, router.state.currentLocation.key])
+    prevKeyRef.current = router.state.location.key
+  }, [activeErrorState, router.state.location.key])
 
   React.useEffect(() => {
     if (props.errorState.error) {

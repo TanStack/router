@@ -21,6 +21,7 @@ export async function render(opts: {
     initialEntries: [opts.url],
   })
 
+  // Update the history and context
   router.update({
     history: memoryHistory,
     context: {
@@ -29,8 +30,10 @@ export async function render(opts: {
     },
   })
 
+  // Since we're using renderToString, Wait for the router to finish loading
   await router.load()
 
+  // Render the app
   const appHtml = ReactDOMServer.renderToString(<StartServer router={router} />)
 
   opts.res.statusCode = 200

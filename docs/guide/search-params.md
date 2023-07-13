@@ -243,11 +243,8 @@ const ProductList = () => {
 
 You can access your route's validated search params anywhere in your app using:
 
-- `router.state.currentLocation.state`
-- `router.state.pendingLocation.state`
-- `router.state.latestLocation.state`
-
-Each one represent different states of the router. `currentLocation` is the current location of the router, `pendingLocation` is the location that the router is transitioning to, and `latestLocation` is most up-to-date representation of the location that the router has synced from the URL.
+- `router.state.location.state` - The most up-to-date location of the router, regardless of loading state.
+- `router.state.currentLocation.state` - The latest **loaded/resolved** location. This location is only set after a navigation has completed.
 
 ## Writing Search Params
 

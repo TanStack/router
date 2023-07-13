@@ -106,11 +106,11 @@ export function StartServer<TRouter extends AnyRouter>(props: {
     [],
   )
 
-  React.useState(() => {
-    if (hydrationCtxValue) {
-      props.router.hydrate(hydrationCtxValue)
-    }
-  })
+  // React.useState(() => {
+  //   if (hydrationCtxValue) {
+  //     props.router.hydrate(hydrationCtxValue)
+  //   }
+  // })
 
   return (
     // Provide the hydration context still, since `<RouterScripts />` needs it.

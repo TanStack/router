@@ -154,11 +154,9 @@ export interface RouterState<
   TState extends LocationState = LocationState,
 > {
   status: 'idle' | 'pending'
-  latestLocation: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
-  currentMatches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
+  matches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
+  location: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
   currentLocation: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
-  pendingMatches?: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
-  pendingLocation?: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
   lastUpdated: number
 }
 
@@ -201,12 +199,7 @@ type LinkCurrentTargetElement = {
 }
 
 export interface DehydratedRouterState
-  extends Pick<
-    RouterState,
-    'status' | 'latestLocation' | 'currentLocation' | 'lastUpdated'
-  > {
-  // currentMatches: DehydratedRouteMatch[]
-}
+  extends Pick<RouterState, 'status' | 'location' | 'lastUpdated'> {}
 
 export interface DehydratedRouter {
   state: DehydratedRouterState
@@ -311,7 +304,7 @@ export class Router<
       state: true,
     })
 
-    if (this.state.latestLocation.href !== next.href) {
+    if (this.state.location.href !== next.href) {
       this.#commitLocation({ ...next, replace: true })
     }
   }
@@ -324,7 +317,7 @@ export class Router<
     // Mount only does anything on the client
     if (!isServer) {
       // If the router matches are empty, start loading the matches
-      if (!this.state.currentMatches.length) {
+      if (!this.state.matches.length) {
         this.safeLoad()
       }
     }
@@ -353,13 +346,13 @@ export class Router<
 
       this.__store.setState((s) => ({
         ...s,
-        latestLocation: parsedLocation,
         currentLocation: parsedLocation,
+        location: parsedLocation,
       }))
 
       this.#unsubHistory = this.history.listen(() => {
         this.safeLoad({
-          next: this.#parseLocation(this.state.latestLocation),
+          next: this.#parseLocation(this.state.location),
         })
       })
     }
@@ -379,7 +372,7 @@ export class Router<
   buildNext = (opts: BuildNextOptions): ParsedLocation => {
     const next = this.#buildLocation(opts)
 
-    const __matches = this.matchRoutes(next.pathname)
+    const __matches = this.matchRoutes(next.pathname, next.search)
 
     return this.#buildLocation({
       ...opts,
@@ -388,10 +381,7 @@ export class Router<
   }
 
   cancelMatches = () => {
-    ;[
-      ...this.state.currentMatches,
-      ...(this.state.pendingMatches || []),
-    ].forEach((match) => {
+    ;[...this.state.matches].forEach((match) => {
       match.cancel()
     })
   }
@@ -404,6 +394,8 @@ export class Router<
   }
 
   load = async (opts?: { next?: ParsedLocation }): Promise<void> => {
+    this.#createNavigationPromise()
+
     let now = Date.now()
     const startedAt = now
     this.startedLoadingAt = startedAt
@@ -418,37 +410,36 @@ export class Router<
         // Ingest the new location
         this.__store.setState((s) => ({
           ...s,
-          latestLocation: opts.next!,
+          location: opts.next!,
         }))
       }
 
       // Match the routes
-      matches = this.matchRoutes(this.state.latestLocation.pathname, {
-        strictParseParams: true,
-        debug: true,
-      })
+      matches = this.matchRoutes(
+        this.state.location.pathname,
+        this.state.location.search,
+        {
+          strictParseParams: true,
+          debug: true,
+        },
+      )
 
       this.__store.setState((s) => ({
         ...s,
         status: 'pending',
-        pendingMatches: matches,
-        pendingLocation: this.state.latestLocation,
+        matches: matches,
       }))
     })
 
     // Load the matches
-    await this.loadMatches(
-      matches,
-      this.state.pendingLocation!,
-      // opts
-    )
+    await this.loadMatches(matches, this.state.location)
 
     if (this.startedLoadingAt !== startedAt) {
       // Ignore side-effects of outdated side-effects
       return this.navigationPromise
     }
 
-    const previousMatches = this.state.currentMatches
+    const previousMatches = this.state.matches
 
     const exiting: AnyRouteMatch[] = [],
       staying: AnyRouteMatch[] = []
@@ -497,22 +488,20 @@ export class Router<
       })
     })
 
-    const prevLocation = this.state.currentLocation
+    const prevLocation = this.state.location
 
     this.__store.setState((s) => ({
       ...s,
       status: 'idle',
-      currentLocation: this.state.latestLocation,
-      currentMatches: matches,
-      pendingLocation: undefined,
-      pendingMatches: undefined,
+      currentLocation: s.location,
+      matches: matches,
     }))
 
     matches.forEach((match) => {
       match.__commit()
     })
 
-    if (prevLocation!.href !== this.state.currentLocation.href) {
+    if (prevLocation!.href !== this.state.location.href) {
       this.options.onRouteChange?.()
     }
 
@@ -530,10 +519,10 @@ export class Router<
   }
 
   loadRoute = async (
-    navigateOpts: BuildNextOptions = this.state.latestLocation,
+    navigateOpts: BuildNextOptions = this.state.location,
   ): Promise<RouteMatch[]> => {
     const next = this.buildNext(navigateOpts)
-    const matches = this.matchRoutes(next.pathname, {
+    const matches = this.matchRoutes(next.pathname, next.search, {
       strictParseParams: true,
     })
     await this.loadMatches(matches, next)
@@ -541,10 +530,10 @@ export class Router<
   }
 
   preloadRoute = async (
-    navigateOpts: BuildNextOptions = this.state.latestLocation,
+    navigateOpts: BuildNextOptions = this.state.location,
   ) => {
     const next = this.buildNext(navigateOpts)
-    const matches = this.matchRoutes(next.pathname, {
+    const matches = this.matchRoutes(next.pathname, next.search, {
       strictParseParams: true,
     })
 
@@ -556,6 +545,7 @@ export class Router<
 
   matchRoutes = (
     pathname: string,
+    search: AnySearchSchema,
     opts?: { strictParseParams?: boolean; debug?: boolean },
   ): RouteMatch[] => {
     // If there's no route tree, we can't match anything
@@ -565,10 +555,7 @@ export class Router<
 
     // Existing matches are matches that are already loaded along with
     // pending matches that are still loading
-    const existingMatches = [
-      ...this.state.currentMatches,
-      ...(this.state.pendingMatches ?? []),
-    ]
+    const existingMatches = [...this.state.matches]
 
     // We need to "flatten" layout routes, but only process as many
     // routes as we need to in order to find the best match
@@ -682,7 +669,12 @@ export class Router<
         Object.assign(allParams, params)
 
         const interpolatedPath = interpolatePath(route.path, allParams)
-        const matchId = interpolatePath(route.id, allParams, true)
+        const matchId =
+          interpolatePath(route.id, allParams, true) +
+          route.options.getKey?.({
+            params: allParams,
+            search,
+          })
 
         // Waste not, want not. If we already have a match for this route,
         // reuse it. This is important for layout routes, which might stick
@@ -851,8 +843,12 @@ export class Router<
     } as any
 
     const next = this.buildNext(location)
+    if (opts?.pending && this.state.status !== 'pending') {
+      return false
+    }
+
     const baseLocation = opts?.pending
-      ? this.state.pendingLocation
+      ? this.state.location
       : this.state.currentLocation
 
     if (!baseLocation) {
@@ -918,21 +914,21 @@ export class Router<
       userPreloadDelay ?? this.options.defaultPreloadDelay ?? 0
 
     // Compare path/hash for matches
-    const currentPathSplit = this.state.currentLocation.pathname.split('/')
+    const currentPathSplit = this.state.location.pathname.split('/')
     const nextPathSplit = next.pathname.split('/')
     const pathIsFuzzyEqual = nextPathSplit.every(
       (d, i) => d === currentPathSplit[i],
     )
     // Combine the matches based on user options
     const pathTest = activeOptions?.exact
-      ? this.state.currentLocation.pathname === next.pathname
+      ? this.state.location.pathname === next.pathname
       : pathIsFuzzyEqual
     const hashTest = activeOptions?.includeHash
-      ? this.state.currentLocation.hash === next.hash
+      ? this.state.location.hash === next.hash
       : true
     const searchTest =
       activeOptions?.includeSearch ?? true
-        ? partialDeepEqual(this.state.currentLocation.search, next.search)
+        ? partialDeepEqual(this.state.location.search, next.search)
         : true
 
     // The final "active" test
@@ -1014,12 +1010,7 @@ export class Router<
   dehydrate = (): DehydratedRouter => {
     return {
       state: {
-        ...pick(this.state, [
-          'latestLocation',
-          'currentLocation',
-          'status',
-          'lastUpdated',
-        ]),
+        ...pick(this.state, ['location', 'status', 'lastUpdated']),
       },
     }
   }
@@ -1044,6 +1035,7 @@ export class Router<
       return {
         ...s,
         ...ctx.router.state,
+        currentLocation: ctx.router.state.location,
       }
     })
 
@@ -1177,8 +1169,8 @@ export class Router<
     dest.fromCurrent = dest.fromCurrent ?? dest.to === ''
 
     const fromPathname = dest.fromCurrent
-      ? this.state.latestLocation.pathname
-      : dest.from ?? this.state.latestLocation.pathname
+      ? this.state.location.pathname
+      : dest.from ?? this.state.location.pathname
 
     let pathname = resolvePath(
       this.basepath ?? '/',
@@ -1186,9 +1178,13 @@ export class Router<
       `${dest.to ?? ''}`,
     )
 
-    const fromMatches = this.matchRoutes(this.state.latestLocation.pathname, {
-      strictParseParams: true,
-    })
+    const fromMatches = this.matchRoutes(
+      this.state.location.pathname,
+      this.state.location.search,
+      {
+        strictParseParams: true,
+      },
+    )
 
     const prevParams = { ...last(fromMatches)?.params }
 
@@ -1224,9 +1220,9 @@ export class Router<
     const preFilteredSearch = preSearchFilters?.length
       ? preSearchFilters?.reduce(
           (prev, next) => next(prev),
-          this.state.latestLocation.search,
+          this.state.location.search,
         )
-      : this.state.latestLocation.search
+      : this.state.location.search
 
     // Then the link/navigate function
     const destSearch =
@@ -1244,7 +1240,7 @@ export class Router<
       : destSearch
 
     const search = replaceEqualDeep(
-      this.state.latestLocation.search,
+      this.state.location.search,
       postFilteredSearch,
     )
 
@@ -1252,15 +1248,15 @@ export class Router<
 
     const hash =
       dest.hash === true
-        ? this.state.latestLocation.hash
-        : functionalUpdate(dest.hash!, this.state.latestLocation.hash)
+        ? this.state.location.hash
+        : functionalUpdate(dest.hash!, this.state.location.hash)
 
     const hashStr = hash ? `#${hash}` : ''
 
     const nextState =
       dest.state === true
-        ? this.state.latestLocation.state
-        : functionalUpdate(dest.state, this.state.latestLocation.state)!
+        ? this.state.location.state
+        : functionalUpdate(dest.state, this.state.location.state)!
 
     return {
       pathname,
@@ -1287,7 +1283,7 @@ export class Router<
       nextAction = 'push'
     }
 
-    const isSameUrl = this.state.latestLocation.href === next.href
+    const isSameUrl = this.state.location.href === next.href
 
     if (isSameUrl && !next.key) {
       nextAction = 'replace'
@@ -1302,14 +1298,20 @@ export class Router<
       ...next.state,
     })
 
-    return (this.navigationPromise = new Promise((resolve) => {
-      const previousNavigationResolve = this.resolveNavigation
+    return this.#createNavigationPromise()
+  }
 
+  #createNavigationPromise = () => {
+    const previousNavigationResolve = this.resolveNavigation
+
+    this.navigationPromise = new Promise((resolve) => {
       this.resolveNavigation = () => {
-        previousNavigationResolve()
         resolve()
+        previousNavigationResolve()
       }
-    }))
+    })
+
+    return this.navigationPromise
   }
 }
 
@@ -1319,9 +1321,9 @@ const isServer = typeof window === 'undefined' || !window.document.createElement
 function getInitialRouterState(): RouterState<any, any> {
   return {
     status: 'idle',
-    latestLocation: null!,
     currentLocation: null!,
-    currentMatches: [],
+    location: null!,
+    matches: [],
     lastUpdated: Date.now(),
   }
 }

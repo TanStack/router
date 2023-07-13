@@ -520,17 +520,14 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   )
 
   const allMatches: RouteMatch[] = React.useMemo(
-    () => [
-      ...Object.values(router.state.currentMatches),
-      ...Object.values(router.state.pendingMatches ?? []),
-    ],
-    [router.state.currentMatches, router.state.pendingMatches],
+    () => [...Object.values(router.state.matches)],
+    [router.state.matches],
   )
 
   const activeMatch = allMatches?.find((d) => d.route.id === activeRouteId)
 
   const hasSearch = Object.keys(
-    last(router.state.currentMatches)?.state.search || {},
+    last(router.state.matches)?.state.search || {},
   ).length
 
   return (
@@ -707,7 +704,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             />
           ) : (
             <div>
-              {router.state.currentMatches.map((match, i) => {
+              {router.state.matches.map((match, i) => {
                 return (
                   <div
                     key={match.route.id || i}
@@ -754,70 +751,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   </div>
                 )
               })}
-              {router.state.pendingMatches?.length ? (
-                <>
-                  <div
-                    style={{
-                      marginTop: '2rem',
-                      padding: '.5em',
-                      background: theme.backgroundAlt,
-                      position: 'sticky',
-                      top: 0,
-                      zIndex: 1,
-                    }}
-                  >
-                    Pending Matches
-                  </div>
-                  {router.state.pendingMatches?.map((match, i) => {
-                    return (
-                      <div
-                        key={match.route.id || i}
-                        role="button"
-                        aria-label={`Open match details for ${match.route.id}`}
-                        onClick={() =>
-                          setActiveRouteId(
-                            activeRouteId === match.route.id
-                              ? ''
-                              : match.route.id,
-                          )
-                        }
-                        style={{
-                          display: 'flex',
-                          borderBottom: `solid 1px ${theme.grayAlt}`,
-                          cursor: 'pointer',
-                          background:
-                            match === activeMatch
-                              ? 'rgba(255,255,255,.1)'
-                              : undefined,
-                        }}
-                      >
-                        <div
-                          style={{
-                            flex: '0 0 auto',
-                            width: '1.3rem',
-                            height: '1.3rem',
-                            marginLeft: '.25rem',
-                            background: getStatusColor(match, theme),
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 'bold',
-                            borderRadius: '.25rem',
-                            transition: 'all .2s ease-out',
-                          }}
-                        />
-
-                        <Code
-                          style={{
-                            padding: '.5em',
-                          }}
-                        >
-                          {`${match.id}`}
-                        </Code>
-                      </div>
-                    )
-                  })}
-                </>
-              ) : null}
             </div>
           )}
         </div>
@@ -953,9 +886,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               }}
             >
               <Explorer
-                value={last(router.state.currentMatches)?.state.search || {}}
+                value={last(router.state.matches)?.state.search || {}}
                 defaultExpanded={Object.keys(
-                  (last(router.state.currentMatches)?.state.search as {}) || {},
+                  (last(router.state.matches)?.state.search as {}) || {},
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj

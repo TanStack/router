@@ -6,13 +6,13 @@ Data loading is a common concern for web applications and is extremely related t
 
 You may be familiar with `getServerSideProps` from Next.js or or `loaders` from Remix/React-Router. Both of these APIs assumes that **the router will store and manage your data**. This approach is great for use cases covered by both of those libraries, but TanStack Router is designed to function a bit differently than you're used to. Let's dig in!
 
-## TanStack Router **does not store your data**.
+## TanStack Router **should not store your data**.
 
-Most routers that support data fetching will store the data for you in memory on the client. This is fine, but puts a large responsibility and stress on the router to handle [many cross-cutting and complex challenges that come with managing server-data, client-side caches and mutations](https://tanstack.com/query/latest/docs/react/overview#motivation).
+Most routers that support data fetching will store and manage the data for you as you navigate. This is fine, but puts a large responsibility and stress on the router to handle [many cross-cutting and complex challenges that come with managing server-data, client-side caches and mutations](https://tanstack.com/query/latest/docs/react/overview#motivation).
 
 ## TanStack Router **orchestrates your data fetching**.
 
-Instead of storing your data, TanStack Router is designed to **coordinate** your data fetching. This means that you can use any data fetching library you want, and the router will coordinate the fetching of your data in a way that aligns with your users' navigation.
+Instead of storing and managing your data, TanStack Router is designed to **coordinate** your data fetching. This means that you can use any data fetching library you want, and the router will coordinate the fetching of your data in a way that aligns with your users' navigation.
 
 ## What data fetching libraries are supported?
 

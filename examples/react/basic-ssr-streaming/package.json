@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@tanstack/react-loaders": "0.0.1-beta.105",
+    "@tanstack/react-start": "0.0.1-beta.96",
     "@tanstack/router": "0.0.1-beta.104",
     "@tanstack/router-devtools": "0.0.1-beta.104",
     "@tanstack/router-cli": "0.0.1-beta.69",

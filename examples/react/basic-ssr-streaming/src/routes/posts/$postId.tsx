@@ -1,32 +1,43 @@
-import { useLoader } from '@tanstack/react-loaders'
-import { Route, RouteComponent, useParams } from '@tanstack/router'
+import { Loader } from '@tanstack/react-loaders'
+import { Route } from '@tanstack/router'
 import * as React from 'react'
 // import { loaderClient } from '../../entry-client'
-import { postsRoute } from '../posts'
+import { postsLoader, postsRoute, PostType } from '../posts'
+
+export const postLoader = new Loader({
+  fn: async (postId: string) => {
+    console.log(`Fetching post with id ${postId}...`)
+
+    await new Promise((r) =>
+      setTimeout(r, 1000 + Math.round(Math.random() * 300)),
+    )
+
+    return fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`).then(
+      (r) => r.json() as Promise<PostType>,
+    )
+  },
+  onInvalidate: async () => {
+    await postsLoader.invalidate()
+  },
+})
 
 export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  loader: async ({
-    context: { loaderClient },
-    params: { postId },
-    preload,
-  }) => {
-    const { postLoader } = loaderClient.loaders
+  loader: async ({ context, params: { postId }, preload }) => {
+    const { postLoader } = context.loaderClient.loaders
 
-    await postLoader.load({
+    const instance = postLoader.getInstance({
       variables: postId,
+    })
+
+    await instance.load({
       preload,
     })
 
-    // Return a curried hook!
-    return () =>
-      useLoader({
-        loader: postLoader,
-        variables: postId,
-      })
+    return () => instance.useInstance()
   },
-  component: ({ useLoader }) => {
+  component: function Post({ useLoader }) {
     const {
       state: { data: post },
     } = useLoader()()

@@ -191,6 +191,16 @@ export type RouteOptions<
   > = MergeFromParent<TAllParentContext, TRouteContext>,
 > = RouteOptionsBase<TCustomId, TPath> & {
   getParentRoute: () => TParentRoute
+  // Optionally call this function to get a unique key for this route.
+  // This is useful for routes that need to be uniquely identified
+  // by more than their by search params
+  getKey?: OnLoadFnKey<
+    TSearchSchema,
+    TFullSearchSchema,
+    TAllParams,
+    NoInfer<TRouteContext>,
+    TContext
+  >
   // If true, this route will be matched as case-sensitive
   caseSensitive?: boolean
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
@@ -362,6 +372,26 @@ export type OnLoadFn<
   >,
 ) => Promise<TLoader> | TLoader
 
+export type OnLoadFnKey<
+  TSearchSchema extends AnySearchSchema = {},
+  TFullSearchSchema extends AnySearchSchema = {},
+  TAllParams = {},
+  TContext extends AnyContext = AnyContext,
+  TAllContext extends AnyContext = AnyContext,
+> = (
+  loaderContext: {
+    params: TAllParams
+    search: TFullSearchSchema
+  },
+  // loaderContext: LoaderContext<
+  //   TSearchSchema,
+  //   TFullSearchSchema,
+  //   TAllParams,
+  //   TContext,
+  //   TAllContext
+  // >,
+) => any
+
 export interface LoaderContext<
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = {},
@@ -376,6 +406,14 @@ export interface LoaderContext<
   preload: boolean
   routeContext: TContext
   context: TAllContext
+  // serverOnly: <
+  //   TServer extends object | (() => object),
+  //   TClient extends object | (() => object),
+  // >(
+  //   server: TServer,
+  //   client: TClient,
+  // ) => (TServer extends () => infer TReturn ? TReturn : TServer) &
+  //   (TClient extends () => infer TReturn ? TReturn : TClient)
 }
 
 export type UnloaderFn<TPath extends string> = (

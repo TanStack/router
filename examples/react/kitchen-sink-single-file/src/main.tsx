@@ -12,7 +12,6 @@ import {
   RootRoute,
   Route,
   redirect,
-  useLoader,
 } from '@tanstack/router'
 import {
   Action,
@@ -147,8 +146,10 @@ const rootRoute = RootRoute.withRouterContext<{ auth: AuthContext }>()({
             <h1 className={`text-3xl p-2`}>Kitchen Sink</h1>
             {/* Show a global spinner when the router is transitioning */}
             <div
-              className={`text-3xl duration-300 delay-0 opacity-0 ${
-                loaderClient.state.isLoading ? ` duration-1000 opacity-40` : ''
+              className={`text-3xl duration-300 opacity-0 ${
+                loaderClient.state.isLoading
+                  ? ` duration-1000 opacity-40 delay-500`
+                  : 'delay-0'
               }`}
             >
               <Spinner />
@@ -307,12 +308,6 @@ const dashboardIndexRoute = new Route({
 const invoicesRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'invoices',
-  validateSearch: (search) =>
-    z
-      .object({
-        test: z.string().optional(),
-      })
-      .parse(search),
   component: () => {
     const {
       state: { data: invoices },
@@ -457,9 +452,6 @@ const invoiceRoute = new Route({
         notes: z.string().optional(),
       })
       .parse(search),
-  // getLoaderKey: ({ params, search }) => {
-  //   return [params.invoiceId]
-  // },
   loader: async ({ params: { invoiceId }, preload }) => {
     const invoicesLoaderInstance = invoiceLoader.getInstance({
       variables: invoiceId,
@@ -747,11 +739,12 @@ const usersIndexRoute = new Route({
 const userRoute = new Route({
   getParentRoute: () => usersRoute,
   path: 'user',
-  // parseParams: ({ userId }) => ({ userId: Number(userId) }),
-  // stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
   validateSearch: z.object({
     userId: z.number(),
   }),
+  // Since our userId isn't part of our pathname, make sure we
+  // augment the userId as the key for this route
+  getKey: ({ search: { userId } }) => userId,
   loader: async ({ search: { userId }, preload }) => {
     const userLoaderInstance = userLoader.getInstance({ variables: userId })
 
@@ -797,15 +790,14 @@ const authenticatedRoute = new Route({
   // If navigation is attempted while not authenticated, redirect to login
   // If the error is from a prefetch, redirects will be ignored
   onBeforeLoadError: (error) => {
-    console.log('tanner', error)
     if (error === AuthError) {
       throw redirect({
         to: loginRoute.to,
         search: {
-          // Use latestLocation (not currentLocation) to get the live url
+          // Use location (not location) to get the live url
           // (as opposed to the committed url, which is technically async
           // and resolved after the pending state)
-          redirect: router.state.latestLocation.href,
+          redirect: router.state.location.href,
         },
       })
     }

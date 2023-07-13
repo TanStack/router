@@ -784,10 +784,7 @@ const authenticatedRoute = new Route({
       router.navigate({
         to: loginRoute.to,
         search: {
-          // Use latestLocation (not currentLocation) to get the live url
-          // (as opposed to the committed url, which is technically async
-          // and resolved after the pending state)
-          redirect: router.state.latestLocation.href,
+          redirect: router.state.location.href,
         },
       })
     }

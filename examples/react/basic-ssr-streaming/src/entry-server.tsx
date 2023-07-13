@@ -1,36 +1,14 @@
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import { createMemoryHistory, Router, RouterProvider } from '@tanstack/router'
+import { createMemoryHistory } from '@tanstack/router'
+import { StartServer } from '@tanstack/react-start/server'
 import isbot from 'isbot'
-import jsesc from 'jsesc'
 import { ServerResponse } from 'http'
 import express from 'express'
 
 // index.js
-import '../src-old/fetch-polyfill'
-import { createLoaderClient } from './loaderClient'
-import { routeTree } from './routeTree'
-
-async function getRouter(opts: { url: string }) {
-  const loaderClient = createLoaderClient()
-
-  const router = new Router({
-    routeTree: routeTree,
-    context: {
-      loaderClient,
-    },
-  })
-
-  const memoryHistory = createMemoryHistory({
-    initialEntries: [opts.url],
-  })
-
-  router.update({
-    history: memoryHistory,
-  })
-
-  return { router, loaderClient }
-}
+import './fetch-polyfill'
+import { createRouter } from './router'
 
 export async function render(opts: {
   url: string
@@ -38,37 +16,24 @@ export async function render(opts: {
   req: express.Request
   res: ServerResponse
 }) {
-  const { router, loaderClient } = await getRouter(opts)
+  const router = createRouter()
 
-  // ssrFooter: () => {
-  //   // After the router has been fully loaded, serialize its
-  //   // state right into the HTML. This way, the client can
-  //   // hydrate the router with the same state that the server
-  //   // used to render the HTML.
-  //   const routerState = router.dehydrate()
-  //   return (
-  //     <>
-  //       <script
-  //         suppressHydrationWarning
-  //         dangerouslySetInnerHTML={{
-  //           __html: `
-  //             window.__TANSTACK_DEHYDRATED_ROUTER__ = JSON.parse(${jsesc(
-  //               JSON.stringify(routerState),
-  //               {
-  //                 isScriptContext: true,
-  //                 wrap: true,
-  //                 json: true,
-  //               },
-  //             )})
-  //           `,
-  //         }}
-  //       ></script>
-  //     </>
-  //   )
-  // },
+  const memoryHistory = createMemoryHistory({
+    initialEntries: [opts.url],
+  })
 
-  // Kick off the router loading sequence, but don't wait for it to finish
-  router.load()
+  // Update the history and context
+  router.update({
+    history: memoryHistory,
+    context: {
+      ...router.context,
+      head: opts.head,
+    },
+  })
+
+  // Wait for the router to load critical data
+  // (streamed data will continue to load in the background)
+  await router.load()
 
   // Track errors
   let didError = false
@@ -79,11 +44,7 @@ export async function render(opts: {
     : 'onShellReady'
 
   const stream = ReactDOMServer.renderToPipeableStream(
-    <RouterProvider
-      router={router}
-      loaderClient={loaderClient}
-      head={opts.head}
-    />,
+    <StartServer router={router} />,
     {
       [callbackName]: () => {
         opts.res.statusCode = didError ? 500 : 200
