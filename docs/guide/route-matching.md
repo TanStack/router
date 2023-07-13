@@ -46,45 +46,49 @@ Using that route tree, let's follow the matching process for a few different URL
 - `/blog`
   ```
   Root
+    ❌ /
+    ❌ about/us
     ❌ about
     ⏩ blog
       ✅ /
       - new
       - $postId
-    - /
     - *
   ```
 - `/blog/my-post`
   ```
   Root
+    ❌ /
+    ❌ about/us
     ❌ about
     ⏩ blog
       ❌ /
       ❌ new
       ✅ $postId
-    - /
     - *
   ```
 - `/`
   ```
   Root
-    ❌ about
-    ❌ blog
-      ❌ /
-      ❌ new
-      ❌ $postId
     ✅ /
+    - about/us
+    - about
+    - blog
+      - /
+      - new
+      - $postId
     - *
   ```
 - `/not-a-route`
   ```
   Root
+    ❌ /
+    ❌ about/us
     ❌ about
     ❌ blog
       - /
       - new
       - $postId
-    ❌ /
     ✅ *
   ```
 

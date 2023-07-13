@@ -93,6 +93,13 @@ export type ActionByKey<
   TKey extends keyof TActions,
 > = TActions[TKey]
 
+export type SubmitFn<
+  TPayload = unknown,
+  TResponse = unknown,
+> = undefined extends TPayload
+  ? () => Promise<TResponse>
+  : (payload: TPayload) => Promise<TResponse>
+
 export interface ActionOptions<
   TKey extends string = string,
   TPayload = unknown,
@@ -181,8 +188,8 @@ export class Action<
 
   #promises: Promise<any>[] = []
 
-  submit = async (payload?: TPayload): Promise<TResponse> => {
-    const promise = this.#submit(payload)
+  submit: SubmitFn<TPayload, TResponse> = async (payload?: TPayload) => {
+    const promise = this.#submit(payload as TPayload)
     this.#promises.push(promise)
 
     const res = await promise
@@ -190,11 +197,15 @@ export class Action<
     return res
   }
 
-  #submit = async (payload?: TPayload): Promise<TResponse> => {
+  #submit: SubmitFn<TPayload, TResponse> = async (payload?: TPayload) => {
     const submission: ActionSubmission<TPayload, TResponse, TError> = {
       submittedAt: Date.now(),
       status: 'pending',
-      payload: payload as TPayload,
+      payload: payload as ActionSubmission<
+        TPayload,
+        TResponse,
+        TError
+      >['payload'],
       invalidate: () => {
         setSubmission((s) => ({
           ...s,
@@ -300,7 +311,7 @@ export interface ActionSubmission<
 > {
   submittedAt: number
   status: 'pending' | 'success' | 'error'
-  payload: TPayload
+  payload: undefined extends TPayload ? undefined : TPayload
   response?: TResponse
   error?: TError
   isInvalid?: boolean
