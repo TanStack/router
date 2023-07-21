@@ -199,7 +199,9 @@ type LinkCurrentTargetElement = {
 }
 
 export interface DehydratedRouterState
-  extends Pick<RouterState, 'status' | 'location' | 'lastUpdated'> {}
+  extends Pick<RouterState, 'status' | 'location' | 'lastUpdated'> {
+  matches: DehydratedRouteMatch[]
+}
 
 export interface DehydratedRouter {
   state: DehydratedRouterState
@@ -209,7 +211,8 @@ export type MatchCache = Record<string, MatchCacheEntry>
 
 interface DehydratedRouteMatch {
   id: string
-  state: Pick<RouteMatchState<any, any>, 'status'>
+  promiseKeys: string[]
+  // state: Pick<RouteMatchState<any, any>, 'status'>
 }
 
 export const defaultFetchServerDataFn: FetchServerDataFn = async ({
@@ -671,10 +674,10 @@ export class Router<
         const interpolatedPath = interpolatePath(route.path, allParams)
         const matchId =
           interpolatePath(route.id, allParams, true) +
-          route.options.getKey?.({
+          (route.options.getKey?.({
             params: allParams,
             search,
-          })
+          }) ?? '')
 
         // Waste not, want not. If we already have a match for this route,
         // reuse it. This is important for layout routes, which might stick
@@ -1011,6 +1014,10 @@ export class Router<
     return {
       state: {
         ...pick(this.state, ['location', 'status', 'lastUpdated']),
+        matches: this.state.matches.map((m) => ({
+          id: m.id,
+          promiseKeys: Object.keys(m.__promisesByKey),
+        })),
       },
     }
   }
@@ -1035,11 +1042,58 @@ export class Router<
       return {
         ...s,
         ...ctx.router.state,
+        matches: s.matches,
         currentLocation: ctx.router.state.location,
       }
     })
 
-    return await this.load()
+    await this.load()
+
+    this.state.matches.forEach((m) => {
+      m.__promiseKeys =
+        ctx.router.state.matches.find((d) => d.id === m.id)?.promiseKeys ?? []
+    })
+
+    return
+  }
+
+  injectedHtml: (() => Promise<string> | string)[] = []
+
+  injectHtml = async (getHtml: () => Promise<string> | string) => {
+    this.injectedHtml.push(getHtml)
+  }
+
+  dehydrateData = <T>(key: any, getData: () => Promise<T> | T) => {
+    if (typeof document === 'undefined') {
+      const strKey = typeof key === 'string' ? key : JSON.stringify(key)
+
+      this.injectHtml(async () => {
+        const data = await getData()
+        return `<script>window["__TSR__DEHYRATED__${escapeJSON(
+          strKey,
+        )}"] = ${JSON.stringify(data)}</script>`
+      })
+
+      return () => this.hydrateData<T>(key)
+    }
+
+    return () => undefined
+  }
+
+  hydrateData = <T = unknown>(key: any) => {
+    if (typeof document !== 'undefined') {
+      const strKey = typeof key === 'string' ? key : JSON.stringify(key)
+
+      return window[`__TSR__DEHYRATED__${strKey}` as any] as T
+    }
+
+    return undefined
+  }
+
+  resolveMatchPromise = (matchId: string, key: string, value: any) => {
+    this.state.matches
+      .find((d) => d.id === matchId)
+      ?.__promisesByKey[key]?.resolve(value)
   }
 
   #buildRouteTree = (routeTree: AnyRoute) => {
@@ -1353,4 +1407,11 @@ export function redirect<
 
 export function isRedirect(obj: any): obj is AnyRedirect {
   return !!obj?.isRedirect
+}
+
+function escapeJSON(jsonString: string) {
+  return jsonString
+    .replace(/\\/g, '\\\\') // Escape backslashes
+    .replace(/'/g, "\\'") // Escape single quotes
+    .replace(/"/g, '\\"') // Escape double quotes
 }

@@ -11,6 +11,8 @@ import {
   Loader,
   LoaderInstance,
   NullableLoaderInstance,
+  LoaderInstanceOptions,
+  HydrateUpdater,
 } from '@tanstack/loaders'
 
 import { useStore } from '@tanstack/react-store'
@@ -41,6 +43,11 @@ declare module '@tanstack/loaders' {
       strict?: TStrict
       track?: (loaderStore: LoaderStore<TData, TError>) => any
       throwOnError?: boolean
+      hydrate?:
+        | LoaderStore<TData, TError>
+        | ((
+            ctx: LoaderInstance<TKey, TVariables, TData, TError>,
+          ) => LoaderStore<TData, TError>)
     }) => UseLoaderReturn<TKey, TVariables, TData, TError, TStrict>
   }
 }
@@ -59,6 +66,11 @@ type UseLoaderOpts<TVariables, TData, TError, TStrict> = {
   strict?: TStrict
   track?: (loaderStore: LoaderStore<TData, TError>) => any
   throwOnError?: boolean
+  hydrate?:
+    | LoaderStore<TData, TError>
+    | ((
+        ctx: LoaderInstance<string, TVariables, TData, TError>,
+      ) => LoaderStore<TData, TError>)
 } & VariablesOptions<TVariables>
 
 type UseLoaderReturn<
@@ -73,16 +85,16 @@ type UseLoaderReturn<
 
 Loader.onCreateFns.push((loader) => {
   loader.useLoader = (opts: any) => {
-    const loaderInstance = loader.getInstance({
-      variables: opts?.variables,
-    })
-
+    const loaderInstance = loader.getInstance(opts)
     return loaderInstance.useInstance(opts)
   }
 })
 
 LoaderInstance.onCreateFns.push((loaderInstance) => {
   loaderInstance.useInstance = (opts?: any) => {
+    // Before anything runs, attempt hydration
+    loaderInstance.__hydrate(opts)
+
     if (
       loaderInstance.state.status === 'error' &&
       (opts?.throwOnError ?? true)
@@ -92,8 +104,13 @@ LoaderInstance.onCreateFns.push((loaderInstance) => {
 
     if (opts?.strict ?? true) {
       if (loaderInstance.state.status === 'pending') {
-        throw loaderInstance.__loadPromise || loaderInstance.load()
+        throw loaderInstance.promise
       }
+    }
+
+    // If we're still in an idle state, we need to suspend via load
+    if (loaderInstance.state.status === 'idle') {
+      throw loaderInstance.load()
     }
 
     React.useEffect(() => {
@@ -101,6 +118,9 @@ LoaderInstance.onCreateFns.push((loaderInstance) => {
     }, [loaderInstance])
 
     useStore(loaderInstance.__store, (d) => opts?.track?.(d as any) ?? d)
+
+    // If we didn't suspend, dehydrate the loader instance
+    loaderInstance.__dehydrate(opts)
 
     return loaderInstance as any
   }
@@ -168,6 +188,7 @@ export function useLoader<
     strict?: TStrict
     track?: (loaderStore: LoaderStore<TData, TError>) => any
     throwOnError?: boolean
+    hydrate?: HydrateUpdater<TVariables, TData, TError>
   } & VariablesOptions<TVariables>,
 ): TStrict extends false
   ? NullableLoaderInstance_<TResolvedLoaderInstance>

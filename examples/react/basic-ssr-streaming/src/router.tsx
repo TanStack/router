@@ -23,7 +23,7 @@ export const routeTree = rootRoute.addChildren([
 export function createRouter() {
   const loaderClient = createLoaderClient()
 
-  return new Router({
+  const router = new Router({
     routeTree,
     context: {
       loaderClient,
@@ -48,6 +48,17 @@ export function createRouter() {
       )
     },
   })
+
+  // Provide hydration and dehyration functions to loader instances
+  loaderClient.options = {
+    ...loaderClient.options,
+    hydrateLoaderInstanceFn: (instance) =>
+      router.hydrateData(instance.hashedKey) as any,
+    dehydrateLoaderInstanceFn: (instance) =>
+      router.dehydrateData(instance.hashedKey, () => instance.state),
+  }
+
+  return router
 }
 
 declare module '@tanstack/router' {

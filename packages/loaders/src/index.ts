@@ -26,6 +26,8 @@ export interface LoaderClientOptions<
   defaultPreloadMaxAge?: number
   defaultGcMaxAge?: number
   defaultRefetchOnWindowFocus?: boolean
+  hydrateLoaderInstanceFn?: (loader: LoaderInstance) => void
+  dehydrateLoaderInstanceFn?: (loader: LoaderInstance) => void
 }
 
 export type LoaderClientStore = Store<{
@@ -231,6 +233,12 @@ export type LoaderOptions<
   debug?: boolean
 }
 
+export type HydrateUpdater<TVariables, TData, TError> =
+  | LoaderStore<TData, TError>
+  | ((
+      ctx: LoaderInstance<string, TVariables, TData, TError>,
+    ) => LoaderStore<TData, TError>)
+
 export function getInitialLoaderState(): LoaderStore<any, any> {
   return {
     status: 'idle',
@@ -272,6 +280,8 @@ const visibilityChangeEvent = 'visibilitychange'
 
 export type AnyLoader = Loader<any, any, any, any>
 
+let uid = 0
+
 export class Loader<
   TKey extends string = string,
   TVariables = unknown,
@@ -289,11 +299,10 @@ export class Loader<
   client?: LoaderClient<any>
   instances: Record<string, LoaderInstance<TKey, TVariables, TData, TError>>
 
-  __loadPromise?: Promise<TData>
-
   constructor(options: LoaderOptions<TKey, TVariables, TData, TError>) {
     this.options = options
     this.instances = {}
+    this.key = `loader-${uid++}` as TKey
 
     // addEventListener does not exist in React Native, but window does
     // In the future, we might need to invert control here for more adapters
@@ -431,6 +440,7 @@ export class LoaderInstance<
   __store: Store<LoaderStore<TData, TError>>
   state: LoaderStore<TData, TError>
   variables: TVariables
+  promise?: Promise<TData>
   __loadPromise?: Promise<TData>
   #subscriptionCount = 0
 
@@ -556,7 +566,7 @@ export class LoaderInstance<
     if (this.__store.listeners.size) {
       this.load(opts)
       try {
-        await this.__loadPromise
+        await this.promise
       } catch (err) {
         // Ignore
       }
@@ -600,7 +610,7 @@ export class LoaderInstance<
     }
 
     // Otherwise wait for the data to be fetched
-    return this.__loadPromise!
+    return this.promise!
   }
 
   #latestId = ''
@@ -634,12 +644,16 @@ export class LoaderInstance<
     this.#latestId = loadId
 
     const hasNewer = () => {
-      return loadId !== this.#latestId ? this.__loadPromise : undefined
+      if (loadId !== this.#latestId) {
+        this.promise = this.__loadPromise
+        return this.promise
+      }
+      return undefined
     }
 
     let newer: ReturnType<typeof hasNewer>
 
-    this.__loadPromise = Promise.resolve().then(async () => {
+    this.promise = this.__loadPromise = Promise.resolve().then(async () => {
       const after = async () => {
         this.__store.setState((s) => ({
           ...s,
@@ -665,37 +679,9 @@ export class LoaderInstance<
 
         const data = await loaderFn(this.variables as any)
 
-        invariant(
-          typeof data !== 'undefined',
-          'The data returned from a loader cannot be undefined.',
-        )
-
         if ((newer = hasNewer())) return newer
 
-        const updatedAt = Date.now()
-
-        const preloadInvalidAt =
-          updatedAt +
-          (opts?.maxAge ??
-            this.loader.options.preloadMaxAge ??
-            this.loader.client?.options.defaultPreloadMaxAge ??
-            10000)
-
-        const invalidAt =
-          updatedAt +
-          (opts?.maxAge ??
-            this.loader.options.maxAge ??
-            this.loader.client?.options.defaultMaxAge ??
-            1000)
-
-        this.__store.setState((s) => ({
-          ...s,
-          error: undefined,
-          updatedAt,
-          data: replaceEqualDeep(s.data, data),
-          preloadInvalidAt: preloadInvalidAt,
-          invalidAt: invalidAt,
-        }))
+        this.setData(data, opts)
 
         if ((newer = hasNewer())) {
           await this.loader.options.onLatestSuccess?.(this)
@@ -748,6 +734,74 @@ export class LoaderInstance<
       .catch(() => {})
 
     return this.__loadPromise
+  }
+
+  setData = (
+    updater: TData | ((prev: TData | undefined) => TData),
+    opts?: { maxAge?: number; updatedAt?: number },
+  ) => {
+    const data =
+      typeof updater === 'function'
+        ? (updater as any)(this.state.data)
+        : updater
+
+    invariant(
+      typeof data !== 'undefined',
+      'The data returned from a loader cannot be undefined.',
+    )
+
+    const updatedAt = opts?.updatedAt ?? Date.now()
+
+    const preloadInvalidAt =
+      updatedAt +
+      (opts?.maxAge ??
+        this.loader.options.preloadMaxAge ??
+        this.loader.client?.options.defaultPreloadMaxAge ??
+        10000)
+
+    const invalidAt =
+      updatedAt +
+      (opts?.maxAge ??
+        this.loader.options.maxAge ??
+        this.loader.client?.options.defaultMaxAge ??
+        1000)
+
+    this.__store.setState((s) => ({
+      ...s,
+      error: undefined,
+      updatedAt,
+      data: replaceEqualDeep(s.data, data),
+      preloadInvalidAt: preloadInvalidAt,
+      invalidAt: invalidAt,
+    }))
+  }
+
+  __hydrate = (opts?: {
+    hydrate: HydrateUpdater<TVariables, TData, TError>
+  }) => {
+    const hydrateFn =
+      opts?.hydrate ?? this.loader.client?.options.hydrateLoaderInstanceFn
+
+    if (hydrateFn && this.state.status === 'idle') {
+      // If we have a hydrate option, we need to do that first
+      const hydratedData =
+        typeof hydrateFn === 'function' ? hydrateFn(this as any) : hydrateFn
+
+      if (hydratedData) {
+        this.__store.setState(() => hydratedData)
+      }
+    }
+  }
+
+  __dehydrate = (opts?: {
+    dehydrate: (
+      instance: LoaderInstance<TKey, TVariables, TData, TError>,
+    ) => void
+  }) => {
+    const dehydrateFn =
+      opts?.dehydrate ?? this.loader.client?.options.dehydrateLoaderInstanceFn
+
+    dehydrateFn?.(this as any)
   }
 }
 

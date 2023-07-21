@@ -25,9 +25,7 @@ export function App({
         <script
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
-            __html: `</script>
-          ${head}
-        <script>`,
+            __html: `</script>${head}<script>`,
           }}
         />
       </head>

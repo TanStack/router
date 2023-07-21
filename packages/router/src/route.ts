@@ -142,7 +142,7 @@ export type RouteProps<
       any
     >
   >
-  useLoader: () => TLoader
+  useLoader: () => UseLoaderResult<TLoader>
   useSearch: <
     TStrict extends boolean = true,
     TSearch = TFullSearchSchema,
@@ -471,6 +471,17 @@ export interface AnyRoute
 
 type MergeFromParent<T, U> = IsAny<T, U, T & U>
 
+export type UseLoaderResult<T> = {
+  [K in keyof T]: T[K] extends Promise<infer U> ? StreamedPromise<U> : T[K]
+}
+
+export type StreamedPromise<T> = {
+  promise: Promise<T>
+  status: 'resolved' | 'pending'
+  data: T
+  resolve: (value: T) => void
+}
+
 export class Route<
   TParentRoute extends AnyRoute = AnyRoute,
   TPath extends string = '/',
@@ -689,7 +700,9 @@ export class Route<
   useLoader = <TStrict extends boolean = true, TSelected = TLoader>(opts?: {
     strict?: TStrict
     track?: (search: TLoader) => TSelected
-  }): TStrict extends true ? TSelected : TSelected | undefined => {
+  }): TStrict extends true
+    ? UseLoaderResult<TSelected>
+    : UseLoaderResult<TSelected> | undefined => {
     return useLoader({ ...opts, from: this.id }) as any
   }
 

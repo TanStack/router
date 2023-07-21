@@ -1,10 +1,10 @@
 import { LoaderClient } from '@tanstack/react-loaders'
-import { postsLoader } from './routes/posts'
+import { postsLoader, testLoader } from './routes/posts'
 import { postLoader } from './routes/posts/$postId'
 
 export const createLoaderClient = () => {
   return new LoaderClient({
-    getLoaders: () => ({ postsLoader, postLoader }),
+    getLoaders: () => ({ postsLoader, postLoader, testLoader }),
   })
 }
 

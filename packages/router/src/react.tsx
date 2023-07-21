@@ -555,24 +555,23 @@ function SubOutlet({
 
   const ResolvedCatchBoundary = errorComponent ? CatchBoundary : SafeFragment
 
-  const dehydrated: Record<string, any> = {}
+  // if (typeof document === 'undefined') {
+  //   if (match.state.loader) {
+  //     Object.keys(match.state.loader).forEach((key) => {
+  //       let value = match.state.loader[key]
 
-  if (typeof document === 'undefined') {
-    if (match.state.loader) {
-      Object.keys(match.state.loader).forEach((key) => {
-        let value = match.state.loader[key]
+  //       if (value instanceof Promise || value.then) {
+  //         value = {
+  //           __isPromise: true,
+  //           key: key,
+  //         }
+  //       }
 
-        if (value instanceof Promise || value.then) {
-          value = {
-            __isPromise: true,
-            key: key,
-          }
-        }
-
-        dehydrated[key] = value
-      })
-    }
-  }
+  //       dehydrated[key] = value
+  //     })
+  //   }
+  // } else {
+  // }
 
   return (
     <matchesContext.Provider value={matches}>
@@ -584,35 +583,56 @@ function SubOutlet({
             warning(false, `Error in route match: ${match.id}`)
           }}
         >
-          {/* {!match.route.isRoot ? (
-            <script
-              suppressHydrationWarning
-              dangerouslySetInnerHTML={{
-                __html: dehydrated
-                  ? `
-              window.__TSR_DEHYDRATED_MATCHES__['${
-                match.id
-              }'] = ${JSON.stringify(dehydrated)}
-          `
-                  : '',
-              }}
-            />
-          ) : null} */}
           <Inner match={match} />
+          {/* {!match.route.isRoot
+            ? Object.keys(match.__promisesByKey).map((key) => {
+                return (
+                  <React.Suspense key={key}>
+                    <StreamScript
+                      match={match}
+                      promiseKey={key}
+                      promise={match.__promisesByKey[key]!}
+                    />
+                  </React.Suspense>
+                )
+              })
+            : null} */}
         </ResolvedCatchBoundary>
       </ResolvedSuspenseBoundary>
     </matchesContext.Provider>
   )
 }
 
-function Inner(props: { match: RouteMatch }): any {
+export function useInjectHtml() {
   const router = useRouterContext()
 
-  // if (!props.match.route.isRoot && typeof document !== 'undefined') {
-  //   router.options.hydrate?.(
-  //     (window as any).__TSR_DEHYDRATED_MATCHES__[props.match.id],
-  //   )
-  // }
+  return React.useCallback((getHtml: () => Promise<string> | string) => {
+    router.injectHtml(getHtml)
+  }, [])
+}
+
+export function useDehydrate() {
+  const router = useRouterContext()
+
+  return React.useCallback(function dehydrate<T>(
+    key: any,
+    getData: () => Promise<T> | T,
+  ) {
+    return router.dehydrateData(key, getData)
+  },
+  [])
+}
+
+export function useHydrate() {
+  const router = useRouterContext()
+
+  return function hydrate<T = unknown>(key: any) {
+    return router.hydrateData(key) as T
+  }
+}
+
+function Inner(props: { match: RouteMatch }): any {
+  const router = useRouterContext()
 
   if (props.match.state.status === 'error') {
     throw props.match.state.error

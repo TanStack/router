@@ -1,7 +1,10 @@
 import * as React from 'react'
-import ReactDOMServer from 'react-dom/server'
+import ReactDOMServer, { PipeableStream } from 'react-dom/server'
 import { createMemoryHistory } from '@tanstack/router'
-import { StartServer } from '@tanstack/react-start/server'
+import {
+  StartServer,
+  transformStreamWithRouter,
+} from '@tanstack/react-start/server'
 import isbot from 'isbot'
 import { ServerResponse } from 'http'
 import express from 'express'
@@ -9,6 +12,11 @@ import express from 'express'
 // index.js
 import './fetch-polyfill'
 import { createRouter } from './router'
+import { Transform } from 'stream'
+
+type ReactReadableStream = ReadableStream<Uint8Array> & {
+  allReady?: Promise<void> | undefined
+}
 
 export async function render(opts: {
   url: string
@@ -43,20 +51,33 @@ export async function render(opts: {
     ? 'onAllReady'
     : 'onShellReady'
 
-  const stream = ReactDOMServer.renderToPipeableStream(
-    <StartServer router={router} />,
-    {
-      [callbackName]: () => {
-        opts.res.statusCode = didError ? 500 : 200
-        opts.res.setHeader('Content-type', 'text/html')
-        stream.pipe(opts.res)
+  // Render the app to a readable stream
+  let stream!: PipeableStream
+
+  await new Promise<void>((resolve) => {
+    stream = ReactDOMServer.renderToPipeableStream(
+      <StartServer router={router} />,
+      {
+        [callbackName]: () => {
+          opts.res.statusCode = didError ? 500 : 200
+          opts.res.setHeader('Content-Type', 'text/html')
+          resolve()
+        },
+        onError: (err) => {
+          didError = true
+          console.log(err)
+        },
       },
-      onError: (err) => {
-        didError = true
-        console.log(err)
-      },
-    },
+    )
+  })
+
+  // Add our Router transform to the stream
+  const transforms = [transformStreamWithRouter(router)]
+
+  const transformedStream = transforms.reduce(
+    (stream, transform) => stream.pipe(transform as any),
+    stream,
   )
 
-  setTimeout(() => stream.abort(), 10000)
+  transformedStream.pipe(opts.res)
 }

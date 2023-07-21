@@ -24,7 +24,6 @@ export function RouterScripts() {
       dangerouslySetInnerHTML={{
         __html: `
           window.__TSR_DEHYDRATED__ = ${JSON.stringify(dehydrated)}
-          window.__TSR_DEHYDRATED_MATCHES__ = {}
         `,
       }}
     />

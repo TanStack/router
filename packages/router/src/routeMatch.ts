@@ -1,7 +1,7 @@
 import { Store } from '@tanstack/react-store'
 //
 import { RouteComponent } from './react'
-import { AnyRoute, Route } from './route'
+import { AnyRoute, Route, StreamedPromise } from './route'
 import { AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
 import { AnyRouter, isRedirect, ParsedLocation, Router } from './router'
 import { replaceEqualDeep } from './utils'
@@ -64,7 +64,8 @@ export class RouteMatch<
   parentMatch?: RouteMatch
   pendingInfo?: PendingRouteMatchInfo
 
-  __loadKey: any = { __init: true }
+  __promiseKeys: string[] = []
+  __promisesByKey: Record<string, StreamedPromise<any>> = {}
   __loadPromise?: Promise<void>
   __loadPromiseResolve?: () => void
   __onExit?:
@@ -263,18 +264,6 @@ export class RouteMatch<
       context,
     }
 
-    // If getKey is set, we can skip the loader if the key is the same
-    // if (this.route.options.getKey) {
-    // const prevKey = this.__loadKey
-    // this.__loadKey = this.route.options.getKey?.(loaderOpts)
-
-    // if (
-    //   !opts.preload &&
-    //   JSON.stringify(prevKey) === JSON.stringify(this.__loadKey)
-    // ) {
-    //   return
-    // }
-
     this.__loadPromise = Promise.resolve().then(async () => {
       const loadId = '' + Date.now() + Math.random()
       this.#latestId = loadId
@@ -313,6 +302,49 @@ export class RouteMatch<
           loaderPromise,
         ])
         if ((latestPromise = checkLatest())) return await latestPromise
+
+        Object.keys(loader ?? {}).forEach((key) => {
+          const value = loader[key]
+          if (value instanceof Promise || value?.then) {
+            // if (this.__promisesByKey[key]) {
+            //   return
+            // }
+
+            if (typeof document === 'undefined') {
+              this.__promisesByKey[key] = {
+                status: 'pending',
+                promise: value,
+                data: undefined,
+                resolve: () => {},
+              }
+
+              value.then((d: any) => {
+                this.__promisesByKey[key]!.status = 'resolved'
+                this.__promisesByKey[key]!.data = d
+              })
+            } else {
+              const promise = createPromise()
+              this.__promisesByKey[key] = {
+                status: 'pending',
+                promise,
+                data: undefined,
+                resolve: (d: any) => {
+                  // @ts-ignore
+                  promise.resolve()
+                  this.__promisesByKey[key]!.status = 'resolved'
+                  this.__promisesByKey[key]!.data = d
+                },
+              }
+
+              if (!this.__promiseKeys.includes(key)) {
+                value.then(this.__promisesByKey[key]!.resolve)
+              }
+            }
+
+            loader[key] = this.__promisesByKey[key]
+          }
+        })
+
         this.__store.setState((s) => ({
           ...s,
           error: undefined,
@@ -365,4 +397,20 @@ export class RouteMatch<
   }
 
   #latestId = ''
+}
+
+type ResolvablePromise<T> = Promise<T> & { resolve: (data: T) => void }
+
+function createPromise<T>() {
+  let resolve: any
+
+  const promise = new Promise((r) => {
+    resolve = r
+  }) as ResolvablePromise<T>
+
+  promise.resolve = (d: any) => {
+    resolve(d)
+  }
+
+  return promise
 }
