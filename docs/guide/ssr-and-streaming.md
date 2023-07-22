@@ -113,18 +113,12 @@ await router.load()
 
 ### Rendering the Application on the Server
 
-Now that you have a router instance that has loaded all of the critical data for the current URL, you can render your application.
+Now that you have a router instance that has loaded all of the critical data for the current URL, you can render your application on the server:
 
 ```tsx
 // src/entry-server.tsx
 
-const app = (
-  <StartServer router={router}>
-    <App />
-  </StartServer>
-)
-
-const html = ReactDOMServer.renderToString(app)
+const html = ReactDOMServer.renderToString(<StartServer router={router} />)
 ```
 
 ### All Together Now!
@@ -132,6 +126,7 @@ const html = ReactDOMServer.renderToString(app)
 Here is a complete example of a server entry file that uses all of the concepts discussed above.
 
 ```tsx
+// src/entry-server.tsx
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
 import { createMemoryHistory } from '@tanstack/router'
@@ -157,6 +152,25 @@ export async function render(req, res) {
   res.setHeader('Content-Type', 'text/html')
   res.end(`<!DOCTYPE html>${appHtml}`)
 }
+```
+
+### Rendering the Application on the Client
+
+On the client, you'll want to kick off the router hydration and render your application using the `<StartClient />` component.
+
+```tsx
+// src/entry-client.tsx
+
+import * as React from 'react'
+import ReactDOM from 'react-dom/client'
+
+import { StartClient } from '@tanstack/react-start/client'
+import { createRouter } from './router'
+
+const router = createRouter()
+router.hydrate()
+
+ReactDOM.hydrateRoot(document, <StartClient router={router} />)
 ```
 
 ### Application Dehydration/Hydration
