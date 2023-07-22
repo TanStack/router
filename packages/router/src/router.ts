@@ -434,8 +434,12 @@ export class Router<
       this.__store.setState((s) => ({
         ...s,
         status: 'pending',
-        matches: matches,
+        matches,
       }))
+    })
+
+    matches.forEach((match) => {
+      match.__commit()
     })
 
     // Load the matches
@@ -501,12 +505,8 @@ export class Router<
       ...s,
       status: 'idle',
       currentLocation: s.location,
-      matches: matches,
+      matches,
     }))
-
-    matches.forEach((match) => {
-      match.__commit()
-    })
 
     if (prevLocation!.href !== this.state.location.href) {
       this.options.onRouteChange?.()

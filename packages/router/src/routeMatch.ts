@@ -345,13 +345,15 @@ export class RouteMatch<
         //   }
         // })
 
-        this.__store.setState((s) => ({
-          ...s,
-          error: undefined,
-          status: 'success',
-          updatedAt: Date.now(),
-          loader,
-        }))
+        if (!opts.preload) {
+          this.__store.setState((s) => ({
+            ...s,
+            error: undefined,
+            status: 'success',
+            updatedAt: Date.now(),
+            loader,
+          }))
+        }
       } catch (err) {
         if (isRedirect(err)) {
           if (!opts?.preload) {
