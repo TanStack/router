@@ -154,7 +154,7 @@ export function createBrowserHistory(opts?: {
   const getHref =
     opts?.getHref ??
     (() =>
-      `${window.location.pathname}${window.location.hash}${window.location.search}`)
+      `${window.location.pathname}${window.location.search}${window.location.hash}`)
   const createHref = opts?.createHref ?? ((path) => path)
   const getLocation = () => parseLocation(getHref(), history.state)
 
