@@ -8,7 +8,6 @@ import { postIdRoute } from './routes/posts/$postId'
 import {
   QueryClient,
   QueryClientProvider,
-  dehydrate,
   hydrate,
 } from '@tanstack/react-query'
 
@@ -51,15 +50,11 @@ export function createRouter() {
       trpc,
       head: '',
     },
-    // On the server, dehydrate the loader client
-    dehydrate: () => {
-      return {
-        state: dehydrate(queryClient),
-      }
-    },
-    // On the client, rehydrate the loader client
+    // On the server, dehydrate the query client
+    dehydrate: () => ssg.dehydrate(),
+    // On the client, rehydrate the query client
     hydrate: (dehydrated) => {
-      hydrate(queryClient, dehydrated.state)
+      hydrate(queryClient, dehydrated)
     },
     // Wrap our router in the loader client provider
     Wrap: (props) => {
