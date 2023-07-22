@@ -49,7 +49,7 @@ export function createRouter() {
     },
   })
 
-  // Provide hydration and dehyration functions to loader instances
+  // Provide hydration and dehydration functions to loader instances
   loaderClient.options = {
     ...loaderClient.options,
     hydrateLoaderInstanceFn: (instance) =>
