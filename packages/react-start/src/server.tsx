@@ -106,14 +106,8 @@ export function StartServer<TRouter extends AnyRouter>(props: {
     [],
   )
 
-  // React.useState(() => {
-  //   if (hydrationCtxValue) {
-  //     props.router.hydrate(hydrationCtxValue)
-  //   }
-  // })
-
   return (
-    // Provide the hydration context still, since `<RouterScripts />` needs it.
+    // Provide the hydration context still, since `<DehydrateRouter />` needs it.
     <hydrationContext.Provider value={hydrationCtxValue}>
       <Wrap>
         <RouterProvider router={props.router} />
@@ -124,7 +118,9 @@ export function StartServer<TRouter extends AnyRouter>(props: {
 
 export function transformStreamWithRouter(router: AnyRouter) {
   return transformStreamHtmlCallback(async () => {
-    const injectorPromises = router.injectedHtml.map((d) => d())
+    const injectorPromises = router.injectedHtml.map((d) =>
+      typeof d === 'function' ? d() : d,
+    )
     const injectors = await Promise.all(injectorPromises)
     router.injectedHtml = []
     return injectors.join('')

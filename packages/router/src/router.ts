@@ -200,7 +200,7 @@ type LinkCurrentTargetElement = {
 
 export interface DehydratedRouterState
   extends Pick<RouterState, 'status' | 'location' | 'lastUpdated'> {
-  matches: DehydratedRouteMatch[]
+  // matches: DehydratedRouteMatch[]
 }
 
 export interface DehydratedRouter {
@@ -309,6 +309,10 @@ export class Router<
 
     if (this.state.location.href !== next.href) {
       this.#commitLocation({ ...next, replace: true })
+    }
+
+    if (typeof document !== 'undefined') {
+      this.hydrate()
     }
   }
 
@@ -1014,10 +1018,10 @@ export class Router<
     return {
       state: {
         ...pick(this.state, ['location', 'status', 'lastUpdated']),
-        matches: this.state.matches.map((m) => ({
-          id: m.id,
-          promiseKeys: Object.keys(m.__promisesByKey),
-        })),
+        // matches: this.state.matches.map((m) => ({
+        //   id: m.id,
+        //   promiseKeys: Object.keys(m.__promisesByKey),
+        // })),
       },
     }
   }
@@ -1031,7 +1035,7 @@ export class Router<
 
     invariant(
       _ctx,
-      'Expected to find a __TSR_DEHYDRATED__ property on window... but we did not. Did you forget to render <RouterScripts /> in your app?',
+      'Expected to find a __TSR_DEHYDRATED__ property on window... but we did not. Did you forget to render <DehydrateRouter /> in your app?',
     )
 
     const ctx = _ctx
@@ -1049,26 +1053,27 @@ export class Router<
 
     await this.load()
 
-    this.state.matches.forEach((m) => {
-      m.__promiseKeys =
-        ctx.router.state.matches.find((d) => d.id === m.id)?.promiseKeys ?? []
-    })
+    // this.state.matches.forEach((m) => {
+    //   m.__promiseKeys =
+    //     ctx.router.state.matches.find((d) => d.id === m.id)?.promiseKeys ?? []
+    // })
 
     return
   }
 
-  injectedHtml: (() => Promise<string> | string)[] = []
+  injectedHtml: (string | (() => Promise<string> | string))[] = []
 
-  injectHtml = async (getHtml: () => Promise<string> | string) => {
-    this.injectedHtml.push(getHtml)
+  injectHtml = async (html: string | (() => Promise<string> | string)) => {
+    this.injectedHtml.push(html)
   }
 
-  dehydrateData = <T>(key: any, getData: () => Promise<T> | T) => {
+  dehydrateData = <T>(key: any, getData: T | (() => Promise<T> | T)) => {
     if (typeof document === 'undefined') {
       const strKey = typeof key === 'string' ? key : JSON.stringify(key)
 
       this.injectHtml(async () => {
-        const data = await getData()
+        const data =
+          typeof getData === 'function' ? await (getData as any)() : getData
         return `<script>window["__TSR__DEHYRATED__${escapeJSON(
           strKey,
         )}"] = ${JSON.stringify(data)}</script>`
@@ -1090,11 +1095,11 @@ export class Router<
     return undefined
   }
 
-  resolveMatchPromise = (matchId: string, key: string, value: any) => {
-    this.state.matches
-      .find((d) => d.id === matchId)
-      ?.__promisesByKey[key]?.resolve(value)
-  }
+  // resolveMatchPromise = (matchId: string, key: string, value: any) => {
+  //   this.state.matches
+  //     .find((d) => d.id === matchId)
+  //     ?.__promisesByKey[key]?.resolve(value)
+  // }
 
   #buildRouteTree = (routeTree: AnyRoute) => {
     const recurseRoutes = (routes: Route[], parentRoute: Route | undefined) => {

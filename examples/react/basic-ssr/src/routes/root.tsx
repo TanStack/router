@@ -2,7 +2,7 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import * as React from 'react'
 import { Link, Outlet, RootRoute } from '@tanstack/router'
 import { RouterContext } from '../router'
-import { RouterScripts } from '@tanstack/react-start/client'
+import { DehydrateRouter } from '@tanstack/react-start/client'
 
 export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
   component: Root,
@@ -55,7 +55,6 @@ function Root() {
         <hr />
         <Outlet /> {/* Start rendering router matches */}
         <TanStackRouterDevtools position="bottom-right" />
-        <RouterScripts />
       </body>
     </html>
   )

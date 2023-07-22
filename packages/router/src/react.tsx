@@ -606,9 +606,12 @@ function SubOutlet({
 export function useInjectHtml() {
   const router = useRouterContext()
 
-  return React.useCallback((getHtml: () => Promise<string> | string) => {
-    router.injectHtml(getHtml)
-  }, [])
+  return React.useCallback(
+    (html: string | (() => Promise<string> | string)) => {
+      router.injectHtml(html)
+    },
+    [],
+  )
 }
 
 export function useDehydrate() {
@@ -616,9 +619,9 @@ export function useDehydrate() {
 
   return React.useCallback(function dehydrate<T>(
     key: any,
-    getData: () => Promise<T> | T,
+    data: T | (() => Promise<T> | T),
   ) {
-    return router.dehydrateData(key, getData)
+    return router.dehydrateData(key, data)
   },
   [])
 }

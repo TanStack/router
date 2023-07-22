@@ -64,8 +64,8 @@ export class RouteMatch<
   parentMatch?: RouteMatch
   pendingInfo?: PendingRouteMatchInfo
 
-  __promiseKeys: string[] = []
-  __promisesByKey: Record<string, StreamedPromise<any>> = {}
+  // __promiseKeys: string[] = []
+  // __promisesByKey: Record<string, StreamedPromise<any>> = {}
   __loadPromise?: Promise<void>
   __loadPromiseResolve?: () => void
   __onExit?:
@@ -303,47 +303,47 @@ export class RouteMatch<
         ])
         if ((latestPromise = checkLatest())) return await latestPromise
 
-        Object.keys(loader ?? {}).forEach((key) => {
-          const value = loader[key]
-          if (value instanceof Promise || value?.then) {
-            // if (this.__promisesByKey[key]) {
-            //   return
-            // }
+        // Object.keys(loader ?? {}).forEach((key) => {
+        //   const value = loader[key]
+        //   if (value instanceof Promise || value?.then) {
+        //     // if (this.__promisesByKey[key]) {
+        //     //   return
+        //     // }
 
-            if (typeof document === 'undefined') {
-              this.__promisesByKey[key] = {
-                status: 'pending',
-                promise: value,
-                data: undefined,
-                resolve: () => {},
-              }
+        //     if (typeof document === 'undefined') {
+        //       this.__promisesByKey[key] = {
+        //         status: 'pending',
+        //         promise: value,
+        //         data: undefined,
+        //         resolve: () => {},
+        //       }
 
-              value.then((d: any) => {
-                this.__promisesByKey[key]!.status = 'resolved'
-                this.__promisesByKey[key]!.data = d
-              })
-            } else {
-              const promise = createPromise()
-              this.__promisesByKey[key] = {
-                status: 'pending',
-                promise,
-                data: undefined,
-                resolve: (d: any) => {
-                  // @ts-ignore
-                  promise.resolve()
-                  this.__promisesByKey[key]!.status = 'resolved'
-                  this.__promisesByKey[key]!.data = d
-                },
-              }
+        //       value.then((d: any) => {
+        //         this.__promisesByKey[key]!.status = 'resolved'
+        //         this.__promisesByKey[key]!.data = d
+        //       })
+        //     } else {
+        //       const promise = createPromise()
+        //       this.__promisesByKey[key] = {
+        //         status: 'pending',
+        //         promise,
+        //         data: undefined,
+        //         resolve: (d: any) => {
+        //           // @ts-ignore
+        //           promise.resolve()
+        //           this.__promisesByKey[key]!.status = 'resolved'
+        //           this.__promisesByKey[key]!.data = d
+        //         },
+        //       }
 
-              if (!this.__promiseKeys.includes(key)) {
-                value.then(this.__promisesByKey[key]!.resolve)
-              }
-            }
+        //       if (!this.__promiseKeys.includes(key)) {
+        //         value.then(this.__promisesByKey[key]!.resolve)
+        //       }
+        //     }
 
-            loader[key] = this.__promisesByKey[key]
-          }
-        })
+        //     loader[key] = this.__promisesByKey[key]
+        //   }
+        // })
 
         this.__store.setState((s) => ({
           ...s,

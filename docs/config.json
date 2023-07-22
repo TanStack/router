@@ -92,6 +92,10 @@
         {
           "label": "Router Context",
           "to": "guide/router-context"
+        },
+        {
+          "label": "SSR & Streaming",
+          "to": "guide/ssr-and-streaming"
         }
       ]
     },

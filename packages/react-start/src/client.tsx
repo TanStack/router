@@ -13,7 +13,7 @@ export function StartClient(props: { router: AnyRouter }) {
   )
 }
 
-export function RouterScripts() {
+export function DehydrateRouter() {
   const dehydrated = React.useContext(
     cprc.getContext('TanStackRouterHydrationContext', {}),
   )

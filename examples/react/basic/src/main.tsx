@@ -126,13 +126,16 @@ const postsRoute = new Route({
 
     await postsLoader.load()
 
-    return () =>
-      useLoader({
-        loader: postsLoader,
-      })
+    return {
+      promise: new Promise((r) => setTimeout(r, 500)),
+      useLoader: () =>
+        useLoader({
+          loader: postsLoader,
+        }),
+    }
   },
   component: ({ useLoader }) => {
-    const postsLoader = useLoader()()
+    const postsLoader = useLoader().useLoader()
 
     return (
       <div className="p-2 flex gap-2">
