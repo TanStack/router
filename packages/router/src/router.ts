@@ -310,10 +310,6 @@ export class Router<
     if (this.state.location.href !== next.href) {
       this.#commitLocation({ ...next, replace: true })
     }
-
-    if (typeof document !== 'undefined') {
-      this.hydrate()
-    }
   }
 
   reset = () => {
