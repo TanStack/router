@@ -647,8 +647,6 @@ export class Router<
         return all.findIndex((dd) => dd.id === d.id) === i
       })
 
-    console.log(matches)
-
     return matches
   }
 
