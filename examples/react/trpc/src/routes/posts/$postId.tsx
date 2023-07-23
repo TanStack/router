@@ -2,6 +2,7 @@ import { Route } from '@tanstack/router'
 
 import { postsRoute } from '../posts'
 import { z } from 'zod'
+import { trpc } from '../../utils/trpc'
 
 export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
@@ -13,8 +14,7 @@ export const postIdRoute = new Route({
 
     return { postId }
   },
-  component: function Post({ useLoader, useContext }) {
-    const { trpc } = useContext()
+  component: function Post({ useLoader }) {
     const { postId } = useLoader()
     const { data: post } = trpc.postById.useQuery(postId)
 

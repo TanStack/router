@@ -1,6 +1,7 @@
 import { Link, Outlet, Route } from '@tanstack/router'
 import { rootRoute } from './root'
 import { postIdRoute } from './posts/$postId'
+import { trpc } from '../utils/trpc'
 
 declare module 'react' {
   function use<T>(promise: Promise<T>): T
@@ -18,8 +19,7 @@ export const postsRoute = new Route({
   loader: async ({ context: { ssg } }) => {
     await ssg.postList.prefetch()
   },
-  component: function Posts({ useContext }) {
-    const { trpc } = useContext()
+  component: function Posts() {
     const { data: posts } = trpc.postList.useQuery()
 
     console.log('posts', posts)

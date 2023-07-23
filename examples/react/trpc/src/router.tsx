@@ -14,11 +14,11 @@ import {
 
 import { createServerSideHelpers } from '@trpc/react-query/server'
 import { AppRouter } from './server/trpc'
-import { createTRPCReact, httpBatchLink } from '@trpc/react-query'
+import { httpBatchLink } from '@trpc/react-query'
+import { trpc } from './utils/trpc'
 
 export type RouterContext = {
   ssg: ReturnType<typeof createServerSideHelpers<AppRouter>>
-  trpc: ReturnType<typeof createTRPCReact<AppRouter>>
   head: string
 }
 
@@ -29,7 +29,6 @@ export const routeTree = rootRoute.addChildren([
 
 export function createRouter() {
   const queryClient = new QueryClient()
-  const trpc = createTRPCReact<AppRouter>()
 
   const trpcClient = trpc.createClient({
     links: [httpBatchLink({ url: 'http://localhost:4000' })],
@@ -43,7 +42,6 @@ export function createRouter() {
     routeTree,
     context: {
       ssg: ssg,
-      trpc,
       head: '',
     },
     // On the server, dehydrate the query client
