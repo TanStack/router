@@ -51,9 +51,14 @@ export function createRouter() {
       head: '',
     },
     // On the server, dehydrate the query client
-    dehydrate: () => ssg.dehydrate(),
+    dehydrate: () => {
+      const state = ssg.dehydrate()
+      console.log('dehydrate', state)
+      return state
+    },
     // On the client, rehydrate the query client
     hydrate: (dehydrated) => {
+      console.log('hydrate', dehydrated)
       hydrate(queryClient, dehydrated)
     },
     // Wrap our router in the loader client provider

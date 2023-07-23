@@ -20,7 +20,9 @@ export const postsRoute = new Route({
   },
   component: function Posts({ useContext }) {
     const { trpc } = useContext()
-    const { data: posts } = trpc.postList.useQuery()
+    const [posts] = trpc.postList.useSuspenseQuery()
+
+    console.log('posts', posts)
 
     return (
       <div className="p-2 flex gap-2">
