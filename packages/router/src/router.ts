@@ -1049,7 +1049,7 @@ export class Router<
   //     ?.__promisesByKey[key]?.resolve(value)
   // }
 
-  #buildRouteTree = (routeTree: AnyRootRoute) => {
+  #buildRouteTree = (routeTree: TRouteTree) => {
     this.routeTree = routeTree
     this.routesById = {} as any
     this.routesByPath = {} as any

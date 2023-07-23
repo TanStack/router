@@ -1,5 +1,5 @@
 import { AnyRoutesInfo, DefaultRoutesInfo, RouteByPath } from './routeInfo'
-import { ParsedLocation, LocationState } from './router'
+import { ParsedLocation, LocationState, RegisteredRoutesInfo } from './router'
 import {
   Expand,
   NoInfer,
@@ -116,7 +116,7 @@ export type RelativeToPathAutoComplete<
       | AllPaths
 
 export type NavigateOptions<
-  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
+  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
   TTo extends string = '',
 > = ToOptions<TRoutesInfo, TFrom, TTo> & {
@@ -125,7 +125,7 @@ export type NavigateOptions<
 }
 
 export type ToOptions<
-  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
+  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
   TTo extends string = '',
   TResolvedTo = ResolveRelativePath<TFrom, NoInfer<TTo>>,
@@ -213,7 +213,7 @@ export type PathParamOptions<
 type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
 export type ToPathOption<
-  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
+  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
   TTo extends string = '',
 > =
@@ -225,7 +225,7 @@ export type ToPathOption<
     >
 
 export type ToIdOption<
-  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
+  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
   TTo extends string = '',
 > =
@@ -243,7 +243,7 @@ export interface ActiveOptions {
 }
 
 export type LinkOptions<
-  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
+  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
   TFrom extends TRoutesInfo['routePaths'] = '/',
   TTo extends string = '',
 > = NavigateOptions<TRoutesInfo, TFrom, TTo> & {

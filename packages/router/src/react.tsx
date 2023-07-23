@@ -467,12 +467,12 @@ export function useParams<
 }
 
 export function useNavigate<
-  TDefaultFrom extends keyof RegisteredRoutesInfo['routesById'] = '/',
+  TDefaultFrom extends RegisteredRoutesInfo['routePaths'] = '/',
 >(defaultOpts?: { from?: TDefaultFrom }) {
   const router = useRouterContext()
   return React.useCallback(
     <
-      TFrom extends keyof RegisteredRoutesInfo['routesById'] = TDefaultFrom,
+      TFrom extends RegisteredRoutesInfo['routePaths'] = TDefaultFrom,
       TTo extends string = '',
     >(
       opts?: NavigateOptions<RegisteredRoutesInfo, TFrom, TTo>,
