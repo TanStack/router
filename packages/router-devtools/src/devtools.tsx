@@ -9,6 +9,7 @@ import {
   AnyRoute,
   AnyRootRoute,
   RouteMatch,
+  trimPath,
 } from '@tanstack/router'
 
 import useLocalStorage from './useLocalStorage'
@@ -463,7 +464,7 @@ function RouteComp({
             paddingLeft: isRoot ? '.5rem' : 0,
             opacity: isActive ? 1 : 0.7,
           }}
-        >{`${route.id}`}</Code>
+        >{`${route.path || trimPath(route.id)}`}</Code>
       </div>
       {(route.children as Route[])?.length ? (
         <div
@@ -472,15 +473,19 @@ function RouteComp({
             borderLeft: isRoot ? '' : `solid 1px ${theme.grayAlt}`,
           }}
         >
-          {(route.children as Route[]).map((r) => (
-            <RouteComp
-              key={r.id}
-              route={r}
-              matches={matches}
-              activeRouteId={activeRouteId}
-              setActiveRouteId={setActiveRouteId}
-            />
-          ))}
+          {[...(route.children as Route[])]
+            .sort((a, b) => {
+              return a.rank - b.rank
+            })
+            .map((r) => (
+              <RouteComp
+                key={r.id}
+                route={r}
+                matches={matches}
+                activeRouteId={activeRouteId}
+                setActiveRouteId={setActiveRouteId}
+              />
+            ))}
         </div>
       ) : null}
     </div>

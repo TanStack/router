@@ -576,6 +576,7 @@ export class Route<
   children?: TChildren
   originalIndex?: number
   router?: Router<TRoutesInfo['routeTree'], TRoutesInfo>
+  rank!: number
 
   constructor(
     options: RouteOptions<
