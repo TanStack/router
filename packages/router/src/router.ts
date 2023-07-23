@@ -145,7 +145,10 @@ export interface RouterOptions<
   onRouteChange?: () => void
   fetchServerDataFn?: FetchServerDataFn
   context?: TRouteTree['__types']['routerContext']
-  Wrap?: React.ComponentType<{ children: React.ReactNode }>
+  Wrap?: React.ComponentType<{
+    children: React.ReactNode
+    dehydratedState?: TDehydrated
+  }>
   dehydrate?: () => TDehydrated
   hydrate?: (dehydrated: TDehydrated) => void
 }

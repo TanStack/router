@@ -20,7 +20,7 @@ export const postsRoute = new Route({
   },
   component: function Posts({ useContext }) {
     const { trpc } = useContext()
-    const [posts] = trpc.postList.useSuspenseQuery()
+    const { data: posts } = trpc.postList.useQuery()
 
     console.log('posts', posts)
 

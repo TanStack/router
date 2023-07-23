@@ -6,6 +6,7 @@ import { postsRoute } from './routes/posts'
 import { postsIndexRoute } from './routes/posts/index'
 import { postIdRoute } from './routes/posts/$postId'
 import {
+  Hydrate,
   QueryClient,
   QueryClientProvider,
   hydrate,
@@ -13,12 +14,7 @@ import {
 
 import { createServerSideHelpers } from '@trpc/react-query/server'
 import { AppRouter } from './server/trpc'
-import {
-  CreateTRPCClientOptions,
-  createTRPCProxyClient,
-  createTRPCReact,
-  httpBatchLink,
-} from '@trpc/react-query'
+import { createTRPCReact, httpBatchLink } from '@trpc/react-query'
 
 export type RouterContext = {
   ssg: ReturnType<typeof createServerSideHelpers<AppRouter>>
@@ -35,12 +31,12 @@ export function createRouter() {
   const queryClient = new QueryClient()
   const trpc = createTRPCReact<AppRouter>()
 
-  const clientOptions: CreateTRPCClientOptions<AppRouter> = {
+  const trpcClient = trpc.createClient({
     links: [httpBatchLink({ url: 'http://localhost:4000' })],
-  }
+  })
 
   const ssg = createServerSideHelpers<AppRouter>({
-    client: createTRPCProxyClient(clientOptions),
+    client: trpcClient,
   })
 
   const router = new Router({
@@ -63,16 +59,20 @@ export function createRouter() {
     },
     // Wrap our router in the loader client provider
     Wrap: (props) => {
+      const dehydratedState = trpc.useDehydratedState(
+        trpcClient,
+        props.dehydratedState,
+      )
+
       return (
-        <trpc.Provider
-          client={trpc.createClient(clientOptions)}
-          queryClient={queryClient}
-        >
-          <QueryClientProvider client={queryClient}>
-            {/** @ts-ignore - not sure what it complains about... */}
-            {props.children}
-          </QueryClientProvider>
-        </trpc.Provider>
+        <QueryClientProvider client={queryClient}>
+          <trpc.Provider client={trpcClient} queryClient={queryClient}>
+            <Hydrate state={dehydratedState}>
+              {/** @ts-ignore - not sure what it complains about... */}
+              {props.children}
+            </Hydrate>
+          </trpc.Provider>
+        </QueryClientProvider>
       )
     },
   })
