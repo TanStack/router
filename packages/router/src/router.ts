@@ -1049,13 +1049,13 @@ export class Router<
   //     ?.__promisesByKey[key]?.resolve(value)
   // }
 
-  #buildRouteTree = (routeTree: AnyRoute) => {
+  #buildRouteTree = (routeTree: AnyRootRoute) => {
     this.routeTree = routeTree
     this.routesById = {} as any
     this.routesByPath = {} as any
     this.flatRoutes = [] as any
 
-    const recurseRoutes = (routes: Route[]) => {
+    const recurseRoutes = (routes: AnyRoute[]) => {
       routes.forEach((route, i) => {
         route.init({ originalIndex: i, router: this })
 
@@ -1085,7 +1085,7 @@ export class Router<
       })
     }
 
-    recurseRoutes([routeTree] as Route[])
+    recurseRoutes([routeTree])
 
     this.flatRoutes = (Object.values(this.routesByPath) as AnyRoute[])
       .map((d, i) => {

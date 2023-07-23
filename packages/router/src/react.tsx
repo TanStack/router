@@ -475,7 +475,7 @@ export function useNavigate<
       TFrom extends keyof RegisteredRoutesInfo['routesById'] = TDefaultFrom,
       TTo extends string = '',
     >(
-      opts?: MakeLinkOptions<TFrom, TTo>,
+      opts?: NavigateOptions<RegisteredRoutesInfo, TFrom, TTo>,
     ) => {
       return router.navigate({ ...defaultOpts, ...(opts as any) })
     },
