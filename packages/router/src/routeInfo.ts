@@ -136,6 +136,10 @@ export type RouteById<
     >
   : never
 
+export type RoutesByPath<TRoutesInfo extends AnyRoutesInfo> = {
+  [K in keyof TRoutesInfo['routesByFullPath']]: TRoutesInfo['routesByFullPath'][K]
+}
+
 export type RouteByPath<
   TRoutesInfo extends AnyRoutesInfo,
   TPath,

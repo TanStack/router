@@ -55,6 +55,7 @@ function Root() {
         <hr />
         <Outlet /> {/* Start rendering router matches */}
         <TanStackRouterDevtools position="bottom-right" />
+        <DehydrateRouter />
       </body>
     </html>
   )

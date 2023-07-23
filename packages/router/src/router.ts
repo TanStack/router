@@ -19,6 +19,7 @@ import {
   resolvePath,
   trimPath,
   trimPathLeft,
+  trimPathRight,
 } from './path'
 import {
   Route,
@@ -29,7 +30,12 @@ import {
   AnyRootRoute,
   AnyPathParams,
 } from './route'
-import { RoutesInfo, AnyRoutesInfo, RoutesById } from './routeInfo'
+import {
+  RoutesInfo,
+  AnyRoutesInfo,
+  RoutesById,
+  RoutesByPath,
+} from './routeInfo'
 import { AnyRouteMatch, RouteMatch, RouteMatchState } from './routeMatch'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -269,6 +275,8 @@ export class Router<
   // __location: Location<TRoutesInfo['fullSearchSchema']>
   routeTree!: RootRoute
   routesById!: RoutesById<TRoutesInfo>
+  routesByPath!: RoutesByPath<TRoutesInfo>
+  flatRoutes!: TRoutesInfo['routesByFullPath'][keyof TRoutesInfo['routesByFullPath']][]
   navigateTimeout: undefined | Timeout
   nextAction: undefined | 'push' | 'replace'
   navigationPromise: undefined | Promise<void>
@@ -309,10 +317,6 @@ export class Router<
 
     if (this.state.location.href !== next.href) {
       this.#commitLocation({ ...next, replace: true })
-    }
-
-    if (typeof document !== 'undefined') {
-      this.hydrate()
     }
   }
 
@@ -368,9 +372,8 @@ export class Router<
 
     this.basepath = `/${trimPath(basepath ?? '') ?? ''}`
 
-    if (routeTree) {
-      this.routesById = {} as any
-      this.routeTree = this.#buildRouteTree(routeTree) as RootRoute
+    if (routeTree && routeTree !== this.routeTree) {
+      this.#buildRouteTree(routeTree)
     }
 
     return this
@@ -434,8 +437,12 @@ export class Router<
       this.__store.setState((s) => ({
         ...s,
         status: 'pending',
-        matches: matches,
+        matches,
       }))
+    })
+
+    matches.forEach((match) => {
+      match.__commit()
     })
 
     // Load the matches
@@ -501,12 +508,8 @@ export class Router<
       ...s,
       status: 'idle',
       currentLocation: s.location,
-      matches: matches,
+      matches,
     }))
-
-    matches.forEach((match) => {
-      match.__commit()
-    })
 
     if (prevLocation!.href !== this.state.location.href) {
       this.options.onRouteChange?.()
@@ -556,113 +559,37 @@ export class Router<
     opts?: { strictParseParams?: boolean; debug?: boolean },
   ): RouteMatch[] => {
     // If there's no route tree, we can't match anything
-    if (!this.routeTree) {
+    if (!this.flatRoutes.length) {
       return []
     }
 
-    // Existing matches are matches that are already loaded along with
-    // pending matches that are still loading
-    const existingMatches = [...this.state.matches]
+    let routeParams: AnyPathParams = {}
 
-    // We need to "flatten" layout routes, but only process as many
-    // routes as we need to in order to find the best match
-    // This mean no looping over all of the routes for the best perf.
-    // Time to bust out the recursion... As we iterate over the routes,
-    // we'll keep track of the best match thus far by pushing or popping
-    // it onto the `matchingRoutes` array. In the case of a layout route,
-    // we'll assume that it matches and just recurse into its children.
-    // If we come up with nothing, we'll pop it off and try the next route.
-    // This way the user can have as many routes, including layout routes,
-    // as they want without worrying about performance.
-    // It does make one assumption though: that route branches are ordered from
-    // most specific to least specific. This is a good assumption to make IMO.
-    // For now, we also auto-rank routes like Remix and React Router which is a neat trick
-    // that unfortunately requires looping over all of the routes when we build the route
-    // tree, but we only do that once. For the matching that will be happening more often,
-    // I'd rather err on the side of performance here and be able to walk the tree and
-    // exit early as soon as possible with as little looping/mapping as possible.
-
-    let matchingRoutesAndParams: { route: AnyRoute; params?: AnyPathParams }[] =
-      []
-
-    // For any given array of branching routes, find the best route match
-    // and push it onto the `matchingRoutes` array
-    const findRoutes = (
-      routes: AnyRoute[],
-      layoutRoutes: AnyRoute[] = [],
-    ): undefined | Route => {
-      let foundRoute: undefined | Route
-      let foundParams: undefined | AnyPathParams
-      // Given a list of routes, find the first route that matches
-      routes.some((route) => {
-        const children = route.children as undefined | Route[]
-        // If there is no path, but there are children,
-        // this is a layout route, so recurse again
-        if (!route.path && children?.length) {
-          const childMatch = findRoutes(children, [...layoutRoutes, route])
-          // If we found a child match, mark it as found
-          // and return true to stop the loop
-          if (childMatch) {
-            foundRoute = childMatch
-            foundParams = undefined
-            return true
-          }
-          return false
-        }
-
-        // If the route isn't an index route or it has children,
-        // fuzzy match the path
-        const fuzzy = route.path !== '/' || !!children?.length
-
-        const matchedParams = matchPathname(this.basepath, pathname, {
-          to: route.fullPath,
-          fuzzy,
-          caseSensitive:
-            route.options.caseSensitive ?? this.options.caseSensitive,
-        })
-
-        // This was a match!
-        if (matchedParams) {
-          // Let's parse the params using the route's `parseParams` function
-          let parsedParams
-          try {
-            parsedParams =
-              route.options.parseParams?.(matchedParams!) ?? matchedParams
-          } catch (err) {
-            if (opts?.strictParseParams) {
-              throw err
-            }
-          }
-
-          foundRoute = route
-          foundParams = parsedParams
-          return true
-        }
-
-        return false
+    let foundRoute = this.flatRoutes.find((route) => {
+      const matchedParams = matchPathname(this.basepath, pathname, {
+        to: route.fullPath,
+        caseSensitive:
+          route.options.caseSensitive ?? this.options.caseSensitive,
       })
 
-      // If we didn't find a match in this route branch
-      // return early.
-      if (!foundRoute) {
-        return undefined
+      if (matchedParams) {
+        routeParams = matchedParams
+        return true
       }
 
-      matchingRoutesAndParams.push(...layoutRoutes.map((d) => ({ route: d })), {
-        route: foundRoute,
-        params: foundParams,
-      })
+      return false
+    })
 
-      // If the found route has children, recurse again
-      const foundChildren = foundRoute.children as any
-      if (foundChildren?.length) {
-        return findRoutes(foundChildren)
-      }
-
-      return foundRoute
+    if (!foundRoute) {
+      return []
     }
 
-    findRoutes([this.routeTree as any])
+    let matchedRoutes: AnyRoute[] = [foundRoute]
+
+    while (foundRoute?.parentRoute) {
+      foundRoute = foundRoute.parentRoute
+      if (foundRoute) matchedRoutes.unshift(foundRoute)
+    }
 
     // Alright, by now we should have all of our
     // matching routes and their param pairs, let's
@@ -670,10 +597,24 @@ export class Router<
     // accumulate the params into a single params bag
     let allParams = {}
 
-    const matches = matchingRoutesAndParams
-      .map(({ route, params }) => {
+    // Existing matches are matches that are already loaded along with
+    // pending matches that are still loading
+    const existingMatches = [...this.state.matches] as AnyRouteMatch[]
+
+    const matches = matchedRoutes
+      .map((route) => {
+        let parsedParams
+        try {
+          parsedParams =
+            route.options.parseParams?.(routeParams!) ?? routeParams
+        } catch (err) {
+          if (opts?.strictParseParams) {
+            throw err
+          }
+        }
+
         // Add the parsed params to the accumulated params bag
-        Object.assign(allParams, params)
+        Object.assign(allParams, parsedParams)
 
         const interpolatedPath = interpolatePath(route.path, allParams)
         const matchId =
@@ -686,12 +627,17 @@ export class Router<
         // Waste not, want not. If we already have a match for this route,
         // reuse it. This is important for layout routes, which might stick
         // around between navigation actions that only change leaf routes.
-        return (existingMatches.find((d) => d.id === matchId) ||
-          new RouteMatch(this, route, {
-            id: matchId,
-            params: allParams,
-            pathname: joinPaths([this.basepath, interpolatedPath]),
-          })) as RouteMatch
+        const existingMatch = existingMatches.find((d) => d.id === matchId)
+
+        if (existingMatch) {
+          return existingMatch
+        }
+
+        return new RouteMatch(this, route, {
+          id: matchId,
+          params: allParams,
+          pathname: joinPaths([this.basepath, interpolatedPath]),
+        }) as AnyRouteMatch
       })
       .filter((d, i, all) => {
         // Filter out any duplicate matches
@@ -1101,8 +1047,13 @@ export class Router<
   //     ?.__promisesByKey[key]?.resolve(value)
   // }
 
-  #buildRouteTree = (routeTree: AnyRoute) => {
-    const recurseRoutes = (routes: Route[], parentRoute: Route | undefined) => {
+  #buildRouteTree = (routeTree: TRouteTree) => {
+    this.routeTree = routeTree
+    this.routesById = {} as any
+    this.routesByPath = {} as any
+    this.flatRoutes = [] as any
+
+    const recurseRoutes = (routes: AnyRoute[]) => {
       routes.forEach((route, i) => {
         route.init({ originalIndex: i, router: this })
 
@@ -1114,98 +1065,87 @@ export class Router<
         )
         ;(this.routesById as any)[route.id] = route
 
+        if (!route.isRoot && route.path) {
+          const trimmedFullPath = trimPathRight(route.fullPath)
+          if (
+            !this.routesByPath[trimmedFullPath] ||
+            route.fullPath.endsWith('/')
+          ) {
+            ;(this.routesByPath as any)[trimmedFullPath] = route
+          }
+        }
+
         const children = route.children as Route[]
 
         if (children?.length) {
-          recurseRoutes(children, route)
-
-          const range = 1 / children!.length
-
-          route.children = children
-            .map((d, i) => {
-              const cleaned = trimPathLeft(cleanPath(d.path ?? '/'))
-              const parsed = parsePathname(cleaned)
-
-              while (parsed.length > 1 && parsed[0]?.value === '/') {
-                parsed.shift()
-              }
-
-              const score = parsed.map((d) => {
-                if (d.type === 'param') {
-                  return 0.5
-                }
-                if (d.type === 'wildcard') {
-                  return 0.25
-                }
-                return 1
-              })
-
-              return { child: d, cleaned, parsed, index: i, score }
-            })
-            .sort((a, b) => {
-              const length = Math.min(a.score.length, b.score.length)
-              // Sort by min available score
-              for (let i = 0; i < length; i++) {
-                if (a.score[i] !== b.score[i]) {
-                  return b.score[i]! - a.score[i]!
-                }
-              }
-
-              // Sort by min available parsed value
-              for (let i = 0; i < length; i++) {
-                if (a.parsed[i]!.value !== b.parsed[i]!.value) {
-                  return a.parsed[i]!.value! > b.parsed[i]!.value! ? 1 : -1
-                }
-              }
-
-              // Sort by length of score
-              if (a.score.length !== b.score.length) {
-                return b.score.length - a.score.length
-              }
-
-              // Sort by length of cleaned full path
-              if (a.cleaned !== b.cleaned) {
-                return a.cleaned > b.cleaned ? 1 : -1
-              }
-
-              // Sort by original index
-              return a.index - b.index
-            })
-            .map((d) => {
-              return d.child
-            })
+          recurseRoutes(children)
         }
       })
     }
 
-    recurseRoutes([routeTree] as Route[], undefined)
+    recurseRoutes([routeTree])
 
-    const recurceCheckRoutes = (
-      routes: Route[],
-      parentRoute: Route | undefined,
-    ) => {
-      routes.forEach((route) => {
-        if (route.isRoot) {
-          invariant(
-            !parentRoute,
-            'Root routes can only be used as the root of a route tree.',
-          )
-        } else {
-          invariant(
-            parentRoute ? route.parentRoute === parentRoute : true,
-            `Expected a route with path "${route.path}" to be passed to its parent route "${route.parentRoute?.id}" in an addChildren() call, but was instead passed as a child of the "${parentRoute?.id}" route.`,
-          )
+    this.flatRoutes = (Object.values(this.routesByPath) as AnyRoute[])
+      .map((d, i) => {
+        const trimmed = trimPath(d.fullPath)
+        const parsed = parsePathname(trimmed)
+
+        while (parsed.length > 1 && parsed[0]?.value === '/') {
+          parsed.shift()
         }
 
-        if (route.children) {
-          recurceCheckRoutes(route.children as Route[], route)
-        }
+        const score = parsed.map((d) => {
+          if (d.type === 'param') {
+            return 0.5
+          }
+
+          if (d.type === 'wildcard') {
+            return 0.25
+          }
+
+          return 1
+        })
+
+        return { child: d, trimmed, parsed, index: i, score }
       })
-    }
+      .sort((a, b) => {
+        let isIndex = a.trimmed === '/' ? 1 : b.trimmed === '/' ? -1 : 0
 
-    recurceCheckRoutes([routeTree] as Route[], undefined)
+        if (isIndex !== 0) return isIndex
 
-    return routeTree
+        const length = Math.min(a.score.length, b.score.length)
+
+        // Sort by length of score
+        if (a.score.length !== b.score.length) {
+          return b.score.length - a.score.length
+        }
+
+        // Sort by min available score
+        for (let i = 0; i < length; i++) {
+          if (a.score[i] !== b.score[i]) {
+            return b.score[i]! - a.score[i]!
+          }
+        }
+
+        // Sort by min available parsed value
+        for (let i = 0; i < length; i++) {
+          if (a.parsed[i]!.value !== b.parsed[i]!.value) {
+            return a.parsed[i]!.value! > b.parsed[i]!.value! ? 1 : -1
+          }
+        }
+
+        // Sort by length of trimmed full path
+        if (a.trimmed !== b.trimmed) {
+          return a.trimmed > b.trimmed ? 1 : -1
+        }
+
+        // Sort by original index
+        return a.index - b.index
+      })
+      .map((d, i) => {
+        d.child.rank = i
+        return d.child
+      }) as any
   }
 
   #parseLocation = (previousLocation?: ParsedLocation): ParsedLocation => {
