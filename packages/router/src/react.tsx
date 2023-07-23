@@ -350,7 +350,7 @@ export function useRouterContext(): RegisteredRouter {
 }
 
 export function useRouter<T = RouterState>(
-  track?: (state: Router['__store']) => T,
+  track?: (state: Router['__store']['state']) => T,
 ): RegisteredRouter {
   const router = useRouterContext()
   useStore(router.__store, track as any)
