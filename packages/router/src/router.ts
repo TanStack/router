@@ -1048,7 +1048,7 @@ export class Router<
   // }
 
   #buildRouteTree = (routeTree: TRouteTree) => {
-    this.routeTree = routeTree
+    this.routeTree = routeTree as any
     this.routesById = {} as any
     this.routesByPath = {} as any
     this.flatRoutes = [] as any
