@@ -162,7 +162,7 @@ export interface RouterState<
   status: 'idle' | 'pending'
   matches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
   location: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
-  currentLocation: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
+  resolvedLocation: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
   lastUpdated: number
 }
 
@@ -357,7 +357,7 @@ export class Router<
 
       this.__store.setState((s) => ({
         ...s,
-        currentLocation: parsedLocation,
+        resolvedLocation: parsedLocation,
         location: parsedLocation,
       }))
 
@@ -507,7 +507,7 @@ export class Router<
     this.__store.setState((s) => ({
       ...s,
       status: 'idle',
-      currentLocation: s.location,
+      resolvedLocation: s.location,
       matches,
     }))
 
@@ -802,7 +802,7 @@ export class Router<
 
     const baseLocation = opts?.pending
       ? this.state.location
-      : this.state.currentLocation
+      : this.state.resolvedLocation
 
     if (!baseLocation) {
       return false
@@ -993,7 +993,7 @@ export class Router<
         ...s,
         ...ctx.router.state,
         matches: s.matches,
-        currentLocation: ctx.router.state.location,
+        resolvedLocation: ctx.router.state.location,
       }
     })
 
@@ -1320,7 +1320,7 @@ const isServer = typeof window === 'undefined' || !window.document.createElement
 function getInitialRouterState(): RouterState<any, any> {
   return {
     status: 'idle',
-    currentLocation: null!,
+    resolvedLocation: null!,
     location: null!,
     matches: [],
     lastUpdated: Date.now(),

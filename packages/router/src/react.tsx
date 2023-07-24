@@ -8,19 +8,13 @@ import {
   ResolveRelativePath,
   NavigateOptions,
 } from './link'
-import { AnyRootRoute, AnyRoute, RootRoute, Route } from './route'
-import {
-  RouteByPath,
-  AnyRoutesInfo,
-  RoutesInfo,
-  DefaultRoutesInfo,
-} from './routeInfo'
+import { AnyRoute } from './route'
+import { RouteByPath, AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
 import { AnyRouteMatch, RouteMatch } from './routeMatch'
 import {
   RegisteredRoutesInfo,
   MatchRouteOptions,
   RegisteredRouter,
-  RouterConstructorOptions,
   RouterOptions,
   RouterState,
   Router,
@@ -304,7 +298,8 @@ export type RouterProps<
   router: Router<TRouteConfig, TRoutesInfo>
 }
 
-const useDeferredValue = React.useDeferredValue || ((d) => d)
+// const useDeferredValue = React.useDeferredValue || ((d) => d)
+const useDeferredValue = <T,>(d: T) => d
 
 export function RouterProvider<
   TRouteConfig extends AnyRoute = AnyRoute,
@@ -458,12 +453,12 @@ export function useParams<
   track?: (search: TDefaultSelected) => TSelected
 }): TSelected {
   const router = useRouterContext()
-  useStore(router.__store, (d) => {
+  return useStore(router.__store, (d) => {
     const params = last(d.matches)?.params as any
     return opts?.track?.(params) ?? params
   })
 
-  return last(router.state.matches)?.params as any
+  // return last(router.state.matches)?.params as any
 }
 
 export function useNavigate<

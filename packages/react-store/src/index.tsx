@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { AnyUpdater, Store } from '@tanstack/store'
 import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
 
@@ -13,6 +14,11 @@ export function useStore<
   store: Store<TState, TUpdater>,
   selector: (state: NoInfer<TState>) => TSelected = (d) => d as any,
 ) {
+  // const isMountedRef = React.useRef(false)
+  // const [state, setState] = React.useState<{ ref: TSelected }>({
+  //   ref: undefined!,
+  // })
+
   const slice = useSyncExternalStoreWithSelector(
     store.subscribe,
     () => store.state,
@@ -20,6 +26,23 @@ export function useStore<
     selector,
     shallow,
   )
+
+  // if (!isMountedRef.current) {
+  //   state.ref = slice
+  // }
+
+  // if (slice !== state.ref) {
+  //   setState({ ref: slice })
+  // }
+
+  // React.useEffect(() => {
+  //   isMountedRef.current = true
+  //   return () => {
+  //     isMountedRef.current = false
+  //   }
+  // }, [])
+
+  // return state.ref
 
   return slice
 }
