@@ -641,16 +641,19 @@ function Inner(props: { match: RouteMatch }): any {
   }
 
   if (props.match.state.status === 'success') {
-    return React.createElement(
-      props.match.component ?? router.options.defaultComponent ?? Outlet,
-      {
+    let comp = props.match.component ?? router.options.defaultComponent
+
+    if (comp) {
+      return React.createElement(comp, {
         useLoader: props.match.route.useLoader,
         useMatch: props.match.route.useMatch,
         useContext: props.match.route.useContext,
         useSearch: props.match.route.useSearch,
         useParams: props.match.route.useParams,
-      },
-    )
+      })
+    }
+
+    return <Outlet />
   }
 
   invariant(
