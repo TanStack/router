@@ -65,16 +65,14 @@ export interface DehydratedLoaderClient {
   >
 }
 
-export type LoadersToRecord<TLoaders extends AnyLoader> = {
-  [TKey in TLoaders['__types']['key']]: Extract<
-    TLoaders,
-    { options: { key: TKey } }
-  >
+export type LoadersToRecord<U extends AnyLoader> = {
+  [E in U as E['options']['key']]: E
 }
+
 // A loader client that tracks instances of loaders by unique key like react query
 export class LoaderClient<
   _TLoader extends AnyLoader = Loader,
-  TLoaders extends LoadersToRecord<_TLoader> = LoadersToRecord<_TLoader>,
+  TLoaders extends Record<string, AnyLoader> = LoadersToRecord<_TLoader>,
 > {
   options: LoaderClientOptions<_TLoader>
   loaders: TLoaders
@@ -100,18 +98,17 @@ export class LoaderClient<
       },
       {
         onUpdate: () => {
-          const isLoading = (
-            Object.values(this.__store.state.loaders) as LoaderState[]
-          ).some((loader) => {
-            return Object.values(loader.instances || {}).some(
+          const loaderStates = Object.values(
+            this.__store.state.loaders,
+          ) as LoaderState[]
+          const isLoading = loaderStates.some((loaderState) => {
+            return Object.values(loaderState.instances || {}).some(
               (instance) => instance.isFetching && !instance.preload,
             )
           })
 
-          const isPreloading = (
-            Object.values(this.loaders) as LoaderState[]
-          ).some((loader) => {
-            return Object.values(loader.instances || {}).some(
+          const isPreloading = loaderStates.some((loaderState) => {
+            return Object.values(loaderState.instances || {}).some(
               (instance) => instance.isFetching && instance.preload,
             )
           })
@@ -283,13 +280,19 @@ export class LoaderClient<
     return instance
   }
 
+  #getLoader = <TKey extends keyof TLoaders>(key: TKey): TLoaders[TKey] => {
+    const loader = this.#getLoader(key)
+    invariant(loader, `No loader found for key "${key as string}"`)
+    return loader
+  }
+
   #startInstanceGc = <
     TKey extends keyof TLoaders,
     TResolvedLoader = TLoaders[TKey],
   >(
     opts: GetInstanceOptions<TKey, TResolvedLoader>,
   ) => {
-    const loader = this.loaders[opts.key]
+    const loader = this.#getLoader(opts.key)
 
     const gcTimeout = setTimeout(() => {
       this.setInstance(opts, (s) => {
@@ -384,7 +387,7 @@ export class LoaderClient<
     key: TKey
     variables?: TResolvedLoader['__types']['variables']
   }) => {
-    const loader = this.loaders[opts.key]
+    const loader = this.#getLoader(opts.key)
 
     await Promise.all(
       Object.values(this.state.loaders[opts.key].instances).map((instance) =>
@@ -403,7 +406,7 @@ export class LoaderClient<
   >(
     opts: GetInstanceOptions<TKey, TResolvedLoader>,
   ) => {
-    const loader = this.loaders[opts.key]
+    const loader = this.#getLoader(opts.key)
 
     this.setInstance(opts, (s) => {
       return {
@@ -452,7 +455,7 @@ export class LoaderClient<
     },
   ): Promise<TResolvedLoader['__types']['data']> => {
     const { key } = opts
-    const loader = this.loaders[key]
+    const loader = this.#getLoader(key)
 
     const getInstance = () => this.getInstance(opts as any)
 
@@ -501,7 +504,7 @@ export class LoaderClient<
       isFocusReload?: boolean
     },
   ): Promise<TResolvedLoader['__types']['data']> => {
-    const loader = this.loaders[opts.key]
+    const loader = this.#getLoader(opts.key)
     const instance = this.getInstance(opts as any)
     const fetchedAt = Date.now()
 
@@ -648,7 +651,7 @@ export class LoaderClient<
           prev: TResolvedLoader['__types']['data'] | undefined,
         ) => TResolvedLoader['__types']['data']),
   ): TResolvedLoader['__types']['data'] => {
-    const loader = this.loaders[opts.key]
+    const loader = this.#getLoader(opts.key)
 
     const data =
       typeof updater === 'function'
@@ -921,7 +924,7 @@ export function typedClient(client: LoaderClient): RegisteredLoaderClient {
 
 export function createLoaderOptions<
   TLoader extends AnyLoader = RegisteredLoaders,
-  TLoaders extends LoadersToRecord<TLoader> = LoadersToRecord<TLoader>,
+  TLoaders extends Record<string, AnyLoader> = LoadersToRecord<TLoader>,
   TKey extends keyof TLoaders = keyof RegisteredLoaders,
   TResolvedLoader extends AnyLoader = TLoaders[TKey],
 >(

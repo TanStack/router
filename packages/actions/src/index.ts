@@ -73,11 +73,8 @@ export interface SubmissionState<
   error?: TError
 }
 
-export type ActionsToRecord<TActions extends AnyAction> = {
-  [TKey in TActions['__types']['key']]: Extract<
-    TActions,
-    { options: { key: TKey } }
-  >
+export type ActionsToRecord<U extends AnyAction> = {
+  [E in U as E['options']['key']]: E
 }
 
 export class ActionContext<TContext> {
@@ -100,7 +97,7 @@ export class ActionContext<TContext> {
 export class ActionClient<
   _TActions extends AnyAction = Action,
   TContext = unknown,
-  TActions extends ActionsToRecord<_TActions> = ActionsToRecord<_TActions>,
+  TActions extends Record<string, AnyAction> = ActionsToRecord<_TActions>,
 > {
   options: ActionClientOptions<_TActions, TContext>
   actions: TActions
@@ -260,6 +257,8 @@ export class ActionClient<
       : { variables: TAction['__types']['variables'] }),
   ) => {
     const action = this.actions[opts.key]
+
+    invariant(action, `Could not find action with key ${opts.key as string}`)
 
     const submittedAt = Date.now()
 
