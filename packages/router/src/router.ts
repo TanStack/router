@@ -777,13 +777,18 @@ export class Router<
               ])
               if ((latestPromise = checkLatest())) return await latestPromise
 
-              this.#setEitherRouteMatch(match.id, (s) => ({
-                ...s,
-                error: undefined,
-                status: 'success',
-                updatedAt: Date.now(),
-                loader,
-              }))
+              if (
+                !opts?.preload ||
+                !this.state.matches.find((d) => d.id === match.id)
+              ) {
+                this.#setEitherRouteMatch(match.id, (s) => ({
+                  ...s,
+                  error: undefined,
+                  status: 'success',
+                  updatedAt: Date.now(),
+                  loader,
+                }))
+              }
             } catch (err) {
               if ((latestPromise = checkLatest())) return await latestPromise
 
@@ -1493,7 +1498,9 @@ export class Router<
       return this.setRouteMatch(id, updater)
     }
 
-    return this.setPreloadRouteMatch(id, updater)
+    if (this.state.preloadMatches[id]) {
+      return this.setPreloadRouteMatch(id, updater)
+    }
   }
 }
 

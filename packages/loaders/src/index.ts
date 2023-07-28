@@ -138,24 +138,35 @@ export class LoaderClient<
     // In the future, we might need to invert control here for more adapters
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (typeof window !== 'undefined' && window.addEventListener) {
-      window.addEventListener(visibilityChangeEvent, this.#reloadAll, false)
+      window.addEventListener(
+        visibilityChangeEvent,
+        this.#refetchAllFromFocus,
+        false,
+      )
     }
 
     return () => {
       if (typeof window !== 'undefined' && window.removeEventListener) {
-        window.removeEventListener(visibilityChangeEvent, this.#reloadAll)
+        window.removeEventListener(
+          visibilityChangeEvent,
+          this.#refetchAllFromFocus,
+        )
       }
     }
   }
 
-  #reloadAll = () => {
+  #refetchAllFromFocus = () => {
+    return this.invalidateAll({ isFocusReload: true })
+  }
+
+  invalidateAll = (opts: { isFocusReload?: boolean } = {}) => {
     return Promise.all(
       (Object.values(this.state.loaders) as LoaderState[]).map((loader) => {
         return Promise.all(
           Object.values(loader.instances).map((instance) => {
             return this.loadIfActive({
               ...(instance as any),
-              isFocusReload: true,
+              ...opts,
             })
           }),
         )
