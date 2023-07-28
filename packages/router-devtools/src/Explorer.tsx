@@ -77,6 +77,7 @@ type RendererProps = {
   toggleExpanded: () => void
   pageSize: number
   renderer?: Renderer
+  filterSubEntries?: (subEntries: Property[]) => Property[]
 }
 
 /**
@@ -216,6 +217,7 @@ export default function Explorer({
   defaultExpanded,
   renderer = DefaultRenderer,
   pageSize = 100,
+  filterSubEntries,
   ...rest
 }: ExplorerProps) {
   const [expanded, setExpanded] = React.useState(Boolean(defaultExpanded))
@@ -266,6 +268,8 @@ export default function Explorer({
     )
   }
 
+  subEntries = filterSubEntries ? filterSubEntries(subEntries) : subEntries
+
   const subEntryPages = chunkArray(subEntries, pageSize)
 
   return renderer({
@@ -274,6 +278,7 @@ export default function Explorer({
         key={entry.label}
         value={value}
         renderer={renderer}
+        filterSubEntries={filterSubEntries}
         {...rest}
         {...entry}
       />

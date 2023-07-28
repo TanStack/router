@@ -66,10 +66,10 @@ function App() {
       </div>
       <AuthProvider>
         <LoaderClientProvider
-          loaderClient={loaderClient}
+          client={loaderClient}
           defaultMaxAge={defaultLoaderMaxAge}
         >
-          <ActionClientProvider actionClient={actionClient}>
+          <ActionClientProvider client={actionClient}>
             <RouterProvider router={router} />
           </ActionClientProvider>
         </LoaderClientProvider>

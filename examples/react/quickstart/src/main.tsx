@@ -8,6 +8,7 @@ import {
   Route,
   RootRoute,
 } from '@tanstack/router'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 const rootRoute = new RootRoute({
   component: () => (
@@ -17,6 +18,7 @@ const rootRoute = new RootRoute({
       </div>
       <hr />
       <Outlet />
+      <TanStackRouterDevtools />
     </>
   ),
 })

@@ -1,16 +1,22 @@
 import * as React from 'react'
 import { fetchUserById } from '../../../mockTodos'
 import { usersLoader, usersRoute } from '.'
-import { Loader } from '@tanstack/react-loaders'
+import {
+  createLoaderOptions,
+  Loader,
+  typedClient,
+  useLoaderInstance,
+} from '@tanstack/react-loaders'
 import { Route } from '@tanstack/router'
 
 export const userLoader = new Loader({
+  key: 'user',
   fn: async (userId: number) => {
     console.log(`Fetching user with id ${userId}...`)
     return fetchUserById(userId)
   },
-  onInvalidate: async () => {
-    await usersLoader.invalidate()
+  onInvalidate: async ({ client }) => {
+    typedClient(client).invalidateLoader({ key: 'users' })
   },
 })
 
@@ -19,23 +25,25 @@ export const userRoute = new Route({
   path: '$userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
-  loader: async ({ context, params: { userId }, preload }) => {
-    const { userLoader } = context.loaderClient.loaders
-
-    const userLoaderInstance = userLoader.getInstance({
+  loader: async ({
+    context: { loaderClient },
+    params: { userId },
+    preload,
+  }) => {
+    const loaderOptions = createLoaderOptions({
+      key: 'user',
       variables: userId,
     })
 
-    await userLoaderInstance.load({
+    await loaderClient.load({
+      ...loaderOptions,
       preload,
     })
 
-    return () => userLoaderInstance.useInstance()
+    return () => useLoaderInstance(loaderOptions)
   },
   component: function User({ useLoader }) {
-    const {
-      state: { data: user },
-    } = useLoader()()
+    const { data: user } = useLoader()()
 
     return (
       <>

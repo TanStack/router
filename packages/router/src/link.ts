@@ -1,12 +1,6 @@
-import { AnyRoutesInfo, DefaultRoutesInfo, RouteByPath } from './routeInfo'
+import { AnyRoutesInfo, RouteByPath } from './routeInfo'
 import { ParsedLocation, LocationState, RegisteredRoutesInfo } from './router'
-import {
-  Expand,
-  NoInfer,
-  PickRequired,
-  UnionToIntersection,
-  Updater,
-} from './utils'
+import { NoInfer, PickRequired, UnionToIntersection, Updater } from './utils'
 
 export type LinkInfo =
   | {

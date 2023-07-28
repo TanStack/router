@@ -1,4 +1,4 @@
-import { Router } from '@tanstack/router'
+import { Router, RouterContext } from '@tanstack/router'
 import { LoaderClientProvider } from '@tanstack/react-loaders'
 
 import { rootRoute } from './routes/root'
@@ -10,10 +10,10 @@ import { postIdRoute } from './routes/posts/$postId'
 import { createLoaderClient } from './loaderClient'
 import React from 'react'
 
-export type RouterContext = {
+export const routerContext = new RouterContext<{
   loaderClient: ReturnType<typeof createLoaderClient>
   head: string
-}
+}>()
 
 export const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -42,7 +42,7 @@ export function createRouter() {
     // Wrap our router in the loader client provider
     Wrap: ({ children }) => {
       return (
-        <LoaderClientProvider loaderClient={loaderClient}>
+        <LoaderClientProvider client={loaderClient}>
           {children}
         </LoaderClientProvider>
       )

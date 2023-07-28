@@ -8,6 +8,7 @@ import {
   useParams,
   RootRoute,
   Route,
+  RouterContext,
 } from '@tanstack/router'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -18,6 +19,22 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 const queryClient = new QueryClient()
 
+export const trpc = createTRPCReact<AppRouter>({})
+
+const trpcClient = trpc.createClient({
+  links: [
+    httpBatchLink({
+      url: 'http://localhost:4000',
+      // optional
+      headers() {
+        return {
+          // authorization: getAuthCookie(),
+        }
+      },
+    }),
+  ],
+})
+
 export function Spinner() {
   return (
     <div className="animate-spin px-3 text-2xl inline-flex items-center justify-center">
@@ -26,7 +43,12 @@ export function Spinner() {
   )
 }
 
-const rootRoute = new RootRoute({
+const routerContext = new RouterContext<{
+  trpc: typeof trpc
+  queryClient: typeof queryClient
+}>()
+
+const rootRoute = routerContext.createRootRoute({
   component: () => {
     return (
       <>
@@ -60,8 +82,12 @@ const rootRoute = new RootRoute({
 const indexRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: () => {
-    const helloQuery = trpc.hello.useQuery()
+  loader: () => {
+    // TODO: Prefetch hello using TRPC
+    return () => trpc.hello.useQuery()
+  },
+  component: ({ useLoader }) => {
+    const helloQuery = useLoader()()
     if (!helloQuery.data) return <Spinner />
     return <div className="p-2 text-xl">{helloQuery.data}</div>
   },
@@ -71,9 +97,12 @@ const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
   errorComponent: () => 'Oh crap!',
-  // loader: async () => {}
-  component: () => {
-    const postsQuery = trpc.posts.useQuery()
+  loader: async () => {
+    // TODO: Prefetch posts using TRPC
+    return () => trpc.posts.useQuery()
+  },
+  component: ({ useLoader }) => {
+    const postsQuery = useLoader()()
 
     if (postsQuery.isLoading) {
       return <Spinner />
@@ -123,11 +152,10 @@ const postRoute = new Route({
   path: '$postId',
   loader: async ({ params: { postId } }) => {
     // TODO: Prefetch post using TRPC
-    return {}
+    return () => trpc.post.useQuery(postId)
   },
-  component: () => {
-    const { postId } = useParams({ from: postRoute.id })
-    const postQuery = trpc.post.useQuery(postId)
+  component: ({ useLoader }) => {
+    const postQuery = useLoader()()
 
     if (postQuery.isLoading) {
       return <Spinner />
@@ -150,6 +178,10 @@ const routeTree = rootRoute.addChildren([
 const router = new Router({
   routeTree,
   defaultPreload: 'intent',
+  context: {
+    trpc,
+    queryClient,
+  },
 })
 
 declare module '@tanstack/router' {
@@ -157,22 +189,6 @@ declare module '@tanstack/router' {
     router: typeof router
   }
 }
-
-export const trpc = createTRPCReact<AppRouter>({})
-
-const trpcClient = trpc.createClient({
-  links: [
-    httpBatchLink({
-      url: 'http://localhost:4000',
-      // optional
-      headers() {
-        return {
-          // authorization: getAuthCookie(),
-        }
-      },
-    }),
-  ],
-})
 
 function App() {
   return (

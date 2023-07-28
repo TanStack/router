@@ -13,15 +13,19 @@ export type RegisteredLoaderClient = Register extends {
   : LoaderClient
 
 export type RegisteredLoaders = Register extends {
-  loaderClient: LoaderClient<infer TLoader>
+  loaderClient: LoaderClient<infer TLoaders>
 }
-  ? TLoader
-  : Record<string, Loader>
+  ? TLoaders
+  : Loader
 
-export interface LoaderClientOptions<
-  TLoader extends Record<string, AnyLoader>,
-> {
-  getLoaders: () => TLoader
+export type RegisteredLoadersByKey = Register extends {
+  loaderClient: LoaderClient<infer TLoaders>
+}
+  ? LoadersToRecord<TLoaders>
+  : Loader
+
+export interface LoaderClientOptions<TLoader extends AnyLoader> {
+  loaders: TLoader[]
   defaultMaxAge?: number
   defaultPreloadMaxAge?: number
   defaultGcMaxAge?: number
@@ -30,10 +34,22 @@ export interface LoaderClientOptions<
   dehydrateLoaderInstanceFn?: (loader: LoaderInstance) => void
 }
 
-export type LoaderClientStore = Store<{
+export type LoaderClientStore<TLoaders> = Store<LoaderClientState<TLoaders>>
+
+export type LoaderClientState<TLoaders> = {
   isLoading: boolean
   isPreloading: boolean
-}>
+  loaders: Record<keyof TLoaders, LoaderState>
+}
+
+export type LoaderState = {
+  instances: Record<string, LoaderInstance>
+}
+
+export type LoaderInstanceMeta = {
+  store: Store<void>
+  subscriptionCount: number
+}
 
 export interface DehydratedLoaderClient {
   loaders: Record<
@@ -49,100 +65,704 @@ export interface DehydratedLoaderClient {
   >
 }
 
-type ResolveLoaders<TLoader extends Record<string, AnyLoader>> = {
-  [TKey in keyof TLoader]: TLoader[TKey] extends Loader<
-    infer _,
-    infer TVariables,
-    infer TData,
-    infer TError
+export type LoadersToRecord<TLoaders extends AnyLoader> = {
+  [TKey in TLoaders['__types']['key']]: Extract<
+    TLoaders,
+    { options: { key: TKey } }
   >
-    ? Loader<_, TVariables, TData, TError>
-    : Loader
 }
-
 // A loader client that tracks instances of loaders by unique key like react query
 export class LoaderClient<
-  _TLoaders extends Record<string, AnyLoader> = Record<string, Loader>,
-  TLoaders extends ResolveLoaders<_TLoaders> = ResolveLoaders<_TLoaders>,
+  _TLoader extends AnyLoader = Loader,
+  TLoaders extends LoadersToRecord<_TLoader> = LoadersToRecord<_TLoader>,
 > {
-  options: LoaderClientOptions<_TLoaders>
+  options: LoaderClientOptions<_TLoader>
   loaders: TLoaders
+  loaderInstanceMeta: Record<string, LoaderInstanceMeta> = {}
   loaderInstances: Record<string, LoaderInstance> = {}
-  __store: LoaderClientStore
-  state: LoaderClientStore['state']
+  __store: LoaderClientStore<TLoaders>
+  state: LoaderClientStore<TLoaders>['state']
 
-  initialized = false
-
-  constructor(options: LoaderClientOptions<_TLoaders>) {
+  constructor(options: LoaderClientOptions<_TLoader>) {
     this.options = options
     this.__store = new Store(
       {
         isLoading: false,
         isPreloading: false,
+        loaders: Object.values(this.options.loaders).reduce((acc, loader) => {
+          return {
+            ...acc,
+            [loader.options.key]: {
+              instances: {},
+            },
+          }
+        }, {} as any),
       },
       {
         onUpdate: () => {
           this.state = this.__store.state
+
+          // const isLoading = Object.values(client.loaders).some((loader) => {
+          //   return Object.values(loader.instances).some(
+          //     (instance) =>
+          //       instance.state.isFetching && !instance.state.preload,
+          //   )
+          // })
+
+          // const isPreloading = Object.values(client.loaders).some((loader) => {
+          //   return Object.values(loader.instances).some(
+          //     (instance) => instance.state.isFetching && instance.state.preload,
+          //   )
+          // })
+
+          // if (
+          //   client.state.isLoading === isLoading &&
+          //   client.state.isPreloading === isPreloading
+          // ) {
+          //   return
+          // }
+
+          // client.__store.setState((s) => {
+          //   return {
+          //     isLoading,
+          //     isPreloading,
+          //   }
+          // })
         },
       },
-    ) as LoaderClientStore
+    ) as LoaderClientStore<TLoaders>
 
     this.state = this.__store.state
     this.loaders = {} as any
-    this.init()
-  }
+    this.loaderInstanceMeta = {} as any
 
-  init = () => {
-    if (this.initialized) return
-    Object.entries(this.options.getLoaders()).forEach(
+    Object.entries(this.options.loaders).forEach(
       ([key, loader]: [string, Loader]) => {
-        ;(this.loaders as any)[key] = loader.init(key, this)
+        ;(this.loaders as any)[loader.options.key] = loader
       },
     )
-    this.initialized = true
   }
 
-  dehydrate = (): DehydratedLoaderClient => {
-    return {
-      loaders: Object.values(this.loaders).reduce(
-        (acc, loader: AnyLoader) => ({
-          ...acc,
-          [loader.key]: Object.values(loader.instances).reduce(
-            (acc, instance) => ({
-              ...acc,
-              [instance.hashedKey]: {
-                hashedKey: instance.hashedKey,
-                variables: instance.variables,
-                state: instance.state,
-              },
-            }),
-            {},
-          ),
-        }),
-        {},
-      ),
+  mount = () => {
+    const visibilityChangeEvent = 'visibilitychange'
+
+    // addEventListener does not exist in React Native, but window does
+    // In the future, we might need to invert control here for more adapters
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener(visibilityChangeEvent, this.#reloadAll, false)
+    }
+
+    return () => {
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener(visibilityChangeEvent, this.#reloadAll)
+      }
     }
   }
 
-  hydrate = (data: DehydratedLoaderClient) => {
-    Object.entries(data.loaders).forEach(([loaderKey, instances]) => {
-      const loader = this.loaders[loaderKey] as Loader
-
-      Object.values(instances).forEach((dehydratedInstance) => {
-        let instance = loader.instances[dehydratedInstance.hashedKey]
-
-        if (!instance) {
-          instance = loader.instances[dehydratedInstance.hashedKey] =
-            loader.getInstance({
-              variables: dehydratedInstance.variables,
+  #reloadAll = () => {
+    return Promise.all(
+      (Object.values(this.state.loaders) as LoaderState[]).map((loader) => {
+        return Promise.all(
+          Object.values(loader.instances).map((instance) => {
+            return this.loadIfActive({
+              ...(instance as any),
+              isFocusReload: true,
             })
-        }
+          }),
+        )
+      }),
+    )
+  }
 
-        instance.__store.setState(() => dehydratedInstance.state)
+  dehydrate = (): Record<keyof TLoaders, LoaderState> => {
+    return this.state.loaders
+  }
+
+  hydrate = (data: Record<keyof TLoaders, LoaderState>) => {
+    this.__store.setState((s) => ({
+      ...s,
+      loaders: data,
+    }))
+  }
+
+  subscribeToInstance = <
+    TKey extends keyof TLoaders,
+    TResolvedLoader extends AnyLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader>,
+    callback: () => void,
+  ) => {
+    const { key, variables } = opts
+    const hashedKey = hashKey([key, variables])
+
+    let meta = this.loaderInstanceMeta[hashedKey]
+
+    if (!meta) {
+      meta = {
+        subscriptionCount: 0,
+        store: new Store<void>(undefined, {
+          onSubscribe: () => {
+            if (!meta!.subscriptionCount) {
+              this.#stopInstanceGc(opts)
+            }
+            meta!.subscriptionCount++
+            return () => {
+              meta!.subscriptionCount--
+              if (!meta!.subscriptionCount) {
+                this.#startInstanceGc(opts)
+              }
+            }
+          },
+        }),
+      }
+      this.loaderInstanceMeta[hashedKey] = meta
+    }
+
+    const unsub = meta?.store.subscribe(callback)
+
+    if (meta.store.listeners.size) {
+      this.#stopInstanceGc(opts)
+    } else {
+      this.#startInstanceGc(opts)
+    }
+
+    return unsub
+  }
+
+  setInstance = <
+    TKey extends keyof TLoaders,
+    TResolvedLoader extends AnyLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader>,
+    updater: (
+      prev: LoaderInstance<
+        TResolvedLoader['__types']['data'],
+        TResolvedLoader['__types']['error']
+      >,
+    ) => LoaderInstance<
+      TResolvedLoader['__types']['data'],
+      TResolvedLoader['__types']['error']
+    >,
+  ) => {
+    const { key, variables } = opts
+    const hashedKey = hashKey([key, variables])
+
+    this.__store.setState((s) => ({
+      ...s,
+      loaders: {
+        ...s.loaders,
+        [key]: {
+          ...s.loaders[key],
+          instances: {
+            ...s.loaders[key].instances,
+            [hashedKey]: updater(
+              s.loaders[key].instances[hashedKey]! ||
+                createLoaderInstance({ ...opts, hashedKey } as any),
+            ),
+          },
+        },
+      },
+    }))
+  }
+
+  getInstance = <
+    TKey extends keyof TLoaders,
+    TResolvedLoader extends AnyLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader>,
+  ) => {
+    const { key, variables } = opts
+    const hashedKey = hashKey([key, variables])
+
+    let instance = this.state.loaders[key]?.instances[hashedKey]
+
+    if (!instance) {
+      instance = createLoaderInstance({
+        key,
+        hashedKey,
+        variables: opts.variables as any,
       })
+
+      setTimeout(() => {
+        this.setInstance(opts, () => instance!)
+      })
+    }
+
+    return instance
+  }
+
+  #startInstanceGc = <
+    TKey extends keyof TLoaders,
+    TResolvedLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader>,
+  ) => {
+    const loader = this.loaders[opts.key]
+
+    const gcTimeout = setTimeout(() => {
+      this.setInstance(opts, (s) => {
+        return {
+          ...s,
+          gcTimeout: undefined,
+        }
+      })
+      this.#gc(opts)
+    }, loader.options.gcMaxAge ?? this?.options.defaultGcMaxAge ?? 5 * 60 * 1000)
+
+    this.setInstance(opts, (s) => {
+      return {
+        ...s,
+        gcTimeout,
+      }
     })
   }
+
+  #stopInstanceGc = <
+    TKey extends keyof TLoaders,
+    TResolvedLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader>,
+  ) => {
+    const instance = this.getInstance(opts)
+
+    if (instance.gcTimeout) {
+      clearTimeout(instance.gcTimeout)
+      this.setInstance(opts, (s) => {
+        return {
+          ...s,
+          gcTimeout: undefined,
+        }
+      })
+    }
+  }
+
+  #gc = <TKey extends keyof TLoaders, TResolvedLoader = TLoaders[TKey]>(
+    opts: GetInstanceOptions<TKey, TResolvedLoader>,
+  ) => {
+    this.clearInstance(opts)
+  }
+
+  clearInstance = <
+    TKey extends keyof TLoaders,
+    TResolvedLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader>,
+  ) => {
+    const { key, variables } = opts
+    const hashedKey = hashKey([key, variables])
+
+    this.__store.setState((s) => {
+      return {
+        ...s,
+        loaders: {
+          ...s.loaders,
+          [key]: {
+            instances: {
+              ...s.loaders[key].instances,
+              [hashedKey]: undefined,
+            },
+          },
+        },
+      }
+    })
+  }
+
+  getIsInvalid = <
+    TKey extends keyof TLoaders,
+    TResolvedLoader extends AnyLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader> & {
+      preload?: boolean
+    },
+  ) => {
+    const instance = this.getInstance(opts as any)
+    const now = Date.now()
+
+    return (
+      instance.status === 'success' &&
+      (instance.invalid ||
+        (opts?.preload ? instance.preloadInvalidAt : instance.invalidAt) < now)
+    )
+  }
+
+  invalidateLoader = async <
+    TKey extends keyof TLoaders,
+    TResolvedLoader extends TLoaders[TKey] = TLoaders[TKey],
+  >(opts: {
+    key: TKey
+    variables?: TResolvedLoader['__types']['variables']
+  }) => {
+    const loader = this.loaders[opts.key]
+
+    await Promise.all(
+      Object.values(this.state.loaders[opts.key].instances).map((instance) =>
+        this.invalidateInstance(instance as any),
+      ),
+    )
+    await loader.options.onInvalidate?.({
+      loader: this.state.loaders[opts.key],
+      client: this as unknown as any,
+    })
+  }
+
+  invalidateInstance = async <
+    TKey extends keyof TLoaders,
+    TResolvedLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader>,
+  ) => {
+    const loader = this.loaders[opts.key]
+
+    this.setInstance(opts, (s) => {
+      return {
+        ...s,
+        invalid: true,
+      }
+    })
+
+    await this.loadIfActive(opts as any)
+    await loader.options.onEachInvalidate?.({
+      instance: this.getInstance(opts as any),
+      client: this as unknown as any,
+    })
+  }
+
+  loadIfActive = async <
+    TKey extends keyof TLoaders,
+    TResolvedLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader> & {
+      isFocusReload?: boolean
+    },
+  ) => {
+    const { key, variables } = opts
+    const hashedKey = hashKey([key, variables])
+
+    if (this.loaderInstanceMeta[hashedKey]?.store.listeners.size) {
+      this.load(opts as any)
+      try {
+        await this.getInstance(opts as any).loadPromise
+      } catch (err) {
+        // Ignore
+      }
+    }
+  }
+
+  load = async <
+    TKey extends keyof TLoaders,
+    TResolvedLoader extends AnyLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader> & {
+      maxAge?: number
+      preload?: boolean
+      isFocusReload?: boolean
+      signal?: AbortSignal
+    },
+  ): Promise<TResolvedLoader['__types']['data']> => {
+    const { key } = opts
+    const loader = this.loaders[key]
+
+    const getInstance = () => this.getInstance(opts as any)
+
+    if (opts?.isFocusReload) {
+      if (
+        !(
+          loader.options.refetchOnWindowFocus ??
+          this.options.defaultRefetchOnWindowFocus ??
+          true
+        )
+      ) {
+        return getInstance().data
+      }
+    }
+
+    if (
+      getInstance().status === 'error' ||
+      getInstance().status === 'idle' ||
+      this.getIsInvalid(opts as any)
+    ) {
+      // Start a fetch if we need to
+      if (getInstance().status !== 'pending') {
+        this.fetch(opts as any).catch(() => {
+          // Ignore
+        })
+      }
+    }
+
+    // If we already have data, always return it
+    if (typeof getInstance().data !== 'undefined') {
+      return getInstance().data!
+    }
+
+    // Otherwise wait for the data to be fetched
+    return getInstance().loadPromise
+  }
+
+  fetch = async <
+    TKey extends keyof TLoaders,
+    TResolvedLoader extends AnyLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader> & {
+      maxAge?: number
+      preload?: boolean
+      signal?: AbortSignal
+      isFocusReload?: boolean
+    },
+  ): Promise<TResolvedLoader['__types']['data']> => {
+    const loader = this.loaders[opts.key]
+    const instance = this.getInstance(opts as any)
+    const fetchedAt = Date.now()
+
+    this.__store.batch(() => {
+      // If the match was in an error state, set it
+      // to a loading state again. Otherwise, keep it
+      // as loading or resolved
+      if (instance.status === 'idle') {
+        this.setInstance(opts as any, (s) => ({
+          ...s,
+          status: 'pending',
+          fetchedAt,
+        }))
+      }
+
+      // We started loading the route, so it's no longer invalid
+      this.setInstance(opts as any, (s) => ({
+        ...s,
+        preload: !!opts?.preload,
+        invalid: false,
+        isFetching: true,
+      }))
+    })
+
+    const hasNewer = () => {
+      const latest = this.getInstance(opts as any)
+      return latest && latest.fetchedAt !== fetchedAt
+        ? latest.loadPromise
+        : undefined
+    }
+
+    let newer: ReturnType<typeof hasNewer>
+
+    const loadPromise = Promise.resolve().then(async () => {
+      const after = async () => {
+        this.setInstance(opts as any, (s) => ({
+          ...s,
+          isFetching: false,
+        }))
+
+        if ((newer = hasNewer())) {
+          await loader.options.onLatestSettled?.({
+            instance: this.getInstance(opts as any),
+            client: this as unknown as any,
+          })
+          return newer
+        } else {
+          await loader.options.onEachSettled?.({
+            instance: this.getInstance(opts as any),
+            client: this as unknown as any,
+          })
+        }
+
+        return
+      }
+
+      try {
+        const loaderFn =
+          loader.options.getFn?.(this.getInstance(opts as any)) ??
+          loader.options.fn!
+
+        const data = await loaderFn(this.getInstance(opts as any).variables)
+
+        if ((newer = hasNewer())) return newer
+
+        this.setInstanceData(opts as any, data)
+
+        if ((newer = hasNewer())) {
+          await loader.options.onLatestSuccess?.({
+            instance: this.getInstance(opts as any),
+            client: this as unknown as any,
+          })
+          return newer
+        } else {
+          await loader.options.onEachSuccess?.({
+            instance: this.getInstance(opts as any),
+            client: this as unknown as any,
+          })
+        }
+
+        this.setInstance(opts as any, (s) => ({
+          ...s,
+          status: 'success',
+        }))
+
+        await after()
+
+        return this.getInstance(opts as any).data
+      } catch (err) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error(err)
+        }
+
+        this.setInstance(opts as any, (s) => ({
+          ...s,
+          error: err as any,
+          updatedAt: Date.now(),
+        }))
+
+        if ((newer = hasNewer())) {
+          await loader.options.onLatestError?.({
+            instance: this.getInstance(opts as any),
+            client: this as unknown as any,
+          })
+          return newer
+        } else {
+          await loader.options.onEachError?.({
+            instance: this.getInstance(opts as any),
+            client: this as unknown as any,
+          })
+        }
+
+        this.setInstance(opts as any, (s) => ({
+          ...s,
+          status: 'error',
+        }))
+
+        await after()
+
+        throw err
+      }
+    })
+
+    this.setInstance(opts as any, (s) => ({
+      ...s,
+      loadPromise: loadPromise as any,
+      fetchedAt,
+    }))
+
+    return loadPromise
+  }
+
+  setInstanceData = <
+    TKey extends keyof TLoaders,
+    TResolvedLoader extends AnyLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader> & {
+      maxAge?: number
+      updatedAt?: number
+    },
+    updater:
+      | TResolvedLoader['__types']['data']
+      | ((
+          prev: TResolvedLoader['__types']['data'] | undefined,
+        ) => TResolvedLoader['__types']['data']),
+  ): TResolvedLoader['__types']['data'] => {
+    const loader = this.loaders[opts.key]
+
+    const data =
+      typeof updater === 'function'
+        ? (updater as any)(this.getInstance(opts as any).data)
+        : updater
+
+    invariant(
+      typeof data !== 'undefined',
+      'The data returned from a loader cannot be undefined.',
+    )
+
+    const updatedAt = opts?.updatedAt ?? Date.now()
+
+    const preloadInvalidAt =
+      updatedAt +
+      (opts?.maxAge ??
+        loader.options.preloadMaxAge ??
+        this.options.defaultPreloadMaxAge ??
+        10000)
+
+    const invalidAt =
+      updatedAt +
+      (opts?.maxAge ??
+        loader.options.maxAge ??
+        this.options.defaultMaxAge ??
+        1000)
+
+    this.setInstance(opts as any, (s) => ({
+      ...s,
+      error: undefined,
+      updatedAt,
+      data: replaceEqualDeep(s.data, data),
+      preloadInvalidAt: preloadInvalidAt,
+      invalidAt: invalidAt,
+    }))
+
+    return this.getInstance(opts as any).data
+  }
+
+  __hydrateLoaderInstance = <
+    TKey extends keyof TLoaders,
+    TResolvedLoader extends AnyLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader> & {
+      hydrate: HydrateUpdater<
+        TResolvedLoader['__types']['variables'],
+        TResolvedLoader['__types']['data'],
+        TResolvedLoader['__types']['error']
+      >
+    },
+  ) => {
+    if (typeof document !== 'undefined') {
+      const hydrateFn = opts?.hydrate ?? this.options.hydrateLoaderInstanceFn
+
+      const instance = this.getInstance(opts as any)
+
+      if (hydrateFn && instance.status === 'idle') {
+        // If we have a hydrate option, we need to do that first
+        const hydratedData =
+          typeof hydrateFn === 'function' ? hydrateFn(instance) : hydrateFn
+
+        if (hydratedData) {
+          this.state.loaders[opts.key].instances[instance.hashedKey] = {
+            ...hydratedData,
+            loadPromise: Promise.resolve(),
+          }
+        }
+      }
+    }
+  }
+
+  __dehydrateLoaderInstance = <
+    TKey extends keyof TLoaders,
+    TResolvedLoader extends AnyLoader = TLoaders[TKey],
+  >(
+    opts: GetInstanceOptions<TKey, TResolvedLoader> & {
+      dehydrate: (
+        instance: LoaderInstance<
+          TResolvedLoader['__types']['variables'],
+          TResolvedLoader['__types']['data'],
+          TResolvedLoader['__types']['error']
+        >,
+      ) => void
+    },
+  ) => {
+    const dehydrateFn =
+      opts?.dehydrate ?? this.options.dehydrateLoaderInstanceFn
+
+    dehydrateFn?.(this.getInstance(opts as any))
+  }
 }
+
+export type GetInstanceOptions<TKey, TLoader> = TLoader extends Loader<
+  infer _TKey,
+  infer TVariables,
+  infer TData,
+  infer TError
+>
+  ? undefined extends TVariables
+    ? {
+        key: TKey
+        variables?: TVariables
+      }
+    : { key: TKey; variables: TVariables }
+  : never
 
 export type LoaderByKey<
   TLoaders extends Record<string, AnyLoader>,
@@ -158,28 +778,35 @@ export type LoaderInstanceByKey<
   infer TData,
   infer TError
 >
-  ? LoaderInstance<_, TVariables, TData, TError>
+  ? LoaderInstance<TVariables, TData, TError>
   : never
 
-export type LoaderCallback<TKey extends string, TVariables, TData, TError> = (
-  loader: Loader<TKey, TVariables, TData, TError>,
-) => void | Promise<void>
+export type LoaderStateCallback<TKey, TVariables, TData, TError> = (ctx: {
+  loader: LoaderState
+  client: LoaderClient
+}) => void | Promise<void>
 
-export type LoaderInstanceCallback<
-  TKey extends string,
-  TVariables,
-  TData,
-  TError,
-> = (
-  loader: LoaderInstance<TKey, TVariables, TData, TError>,
-) => void | Promise<void>
+export type LoaderInstanceCallback<TVariables, TData, TError> = (ctx: {
+  instance: LoaderInstance<TVariables, TData, TError>
+  client: LoaderClient
+}) => void | Promise<void>
 
-export interface NullableLoaderStore<TData = unknown, TError = Error>
-  extends Omit<LoaderStore<TData, TError>, 'data'> {
+export interface NullableLoaderInstance<
+  TVariables = unknown,
+  TData = unknown,
+  TError = Error,
+> extends Omit<LoaderInstance<TVariables, TData, TError>, 'data'> {
   data?: TData
 }
 
-export interface LoaderStore<TData = unknown, TError = Error> {
+export interface LoaderInstance<
+  TVariables = unknown,
+  TData = unknown,
+  TError = Error,
+> {
+  key: string
+  hashedKey: string
+  variables: TVariables
   status: 'idle' | 'pending' | 'success' | 'error'
   isFetching: boolean
   invalidAt: number
@@ -189,6 +816,9 @@ export interface LoaderStore<TData = unknown, TError = Error> {
   data: TData
   error?: TError
   preload: boolean
+  gcTimeout?: ReturnType<typeof setTimeout>
+  loadPromise?: Promise<TData>
+  fetchedAt: number
 }
 
 export type LoaderFn<TVariables, TData> = (
@@ -196,7 +826,7 @@ export type LoaderFn<TVariables, TData> = (
 ) => TData | Promise<TData>
 
 export type LoaderOptions<
-  TKey extends string = string,
+  TKey = string,
   TVariables = unknown,
   TData = unknown,
   TError = Error,
@@ -207,12 +837,12 @@ export type LoaderOptions<
     }
   | {
       fn?: never
-      getFn: (ctx: {
-        loaderInstance: LoaderInstance<TKey, TVariables, TData, TError>
-        signal: AbortSignal | null
-      }) => LoaderFn<TVariables, TData>
+      getFn: (
+        state: LoaderInstance<TVariables, TData, TError>,
+      ) => LoaderFn<TVariables, TData>
     }
 ) & {
+  key: TKey
   // The max age to consider loader data fresh (not-stale) in milliseconds from the time of fetch
   // Defaults to 1000. Only stale loader data is refetched.
   maxAge?: number
@@ -220,67 +850,26 @@ export type LoaderOptions<
   // The max age to client the loader data in milliseconds from the time of route inactivity
   // before it is garbage collected.
   gcMaxAge?: number
-  onInvalidate?: LoaderCallback<TKey, TVariables, TData, TError>
-  onEachInvalidate?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
-  onLatestSuccess?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
-  onEachSuccess?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
-  onLatestError?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
-  onEachError?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
-  onLatestSettled?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
-  onEachSettled?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
-  onEachOutdated?: LoaderInstanceCallback<TKey, TVariables, TData, TError>
+  onInvalidate?: LoaderStateCallback<TKey, TVariables, TData, TError>
+  onEachInvalidate?: LoaderInstanceCallback<TVariables, TData, TError>
+  onLatestSuccess?: LoaderInstanceCallback<TVariables, TData, TError>
+  onEachSuccess?: LoaderInstanceCallback<TVariables, TData, TError>
+  onLatestError?: LoaderInstanceCallback<TVariables, TData, TError>
+  onEachError?: LoaderInstanceCallback<TVariables, TData, TError>
+  onLatestSettled?: LoaderInstanceCallback<TVariables, TData, TError>
+  onEachSettled?: LoaderInstanceCallback<TVariables, TData, TError>
+  onEachOutdated?: LoaderInstanceCallback<TVariables, TData, TError>
   refetchOnWindowFocus?: boolean
   debug?: boolean
 }
 
 export type HydrateUpdater<TVariables, TData, TError> =
-  | LoaderStore<TData, TError>
+  | LoaderInstance<TVariables, TData, TError>
   | ((
-      ctx: LoaderInstance<string, TVariables, TData, TError>,
-    ) => LoaderStore<TData, TError>)
-
-export function getInitialLoaderState(): LoaderStore<any, any> {
-  return {
-    status: 'idle',
-    invalid: false,
-    invalidAt: Infinity,
-    preloadInvalidAt: Infinity,
-    isFetching: false,
-    updatedAt: 0,
-    data: undefined!,
-    preload: false,
-  } as const
-}
-
-export type VariablesOptions<TVariables> = undefined extends TVariables
-  ? {
-      variables?: TVariables
-    }
-  : {
-      variables: TVariables
-    }
-
-export type VariablesFn<
-  TVariables,
-  TReturn,
-  TOptions = {},
-> = undefined extends TVariables
-  ? keyof PickRequired<TOptions> extends never
-    ? {
-        (opts?: VariablesOptions<TVariables> & TOptions): TReturn
-      }
-    : {
-        (opts: VariablesOptions<TVariables> & TOptions): TReturn
-      }
-  : {
-      (opts: VariablesOptions<TVariables> & TOptions): TReturn
-    }
-
-const visibilityChangeEvent = 'visibilitychange'
+      ctx: LoaderInstance<TVariables, TData, TError>,
+    ) => LoaderInstance<TVariables, TData, TError>)
 
 export type AnyLoader = Loader<any, any, any, any>
-
-let uid = 0
 
 export class Loader<
   TKey extends string = string,
@@ -294,514 +883,31 @@ export class Loader<
     data: TData
     error: TError
   }
-  options: LoaderOptions<TKey, TVariables, TData, TError>
-  key!: TKey
-  client?: LoaderClient<any>
-  instances: Record<string, LoaderInstance<TKey, TVariables, TData, TError>>
-
-  constructor(options: LoaderOptions<TKey, TVariables, TData, TError>) {
-    this.options = options
-    this.instances = {}
-    this.key = `loader-${uid++}` as TKey
-
-    // addEventListener does not exist in React Native, but window does
-    // In the future, we might need to invert control here for more adapters
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (typeof window !== 'undefined' && window.addEventListener) {
-      window.addEventListener(visibilityChangeEvent, this.#reloadAll, false)
-    }
-
-    Loader.onCreateFns.forEach((cb) => cb(this))
-  }
-
-  static onCreateFns: ((loader: AnyLoader) => void)[] = []
-
-  init = (key: TKey, client: LoaderClient) => {
-    this.client = client
-    this.key = key
-    this.instances = {}
-    return this as Loader<TKey, TVariables, TData, TError>
-  }
-
-  dispose = () => {
-    if (typeof window !== 'undefined' && window.removeEventListener) {
-      window.removeEventListener(visibilityChangeEvent, this.#reloadAll)
-    }
-  }
-
-  #reloadAll = () => {
-    Object.values(this.instances).forEach((instance) => {
-      instance.loadIfActive({
-        isFocusReload: true,
-      })
-    })
-  }
-
-  getInstance: VariablesFn<
-    TVariables,
-    LoaderInstance<TKey, TVariables, TData, TError>
-  > = (opts: any = {}) => {
-    const hashedKey = hashKey([this.key, opts.variables])
-    if (this.instances[hashedKey]) {
-      return this.instances[hashedKey] as any
-    }
-
-    const loader = new LoaderInstance<TKey, TVariables, TData, TError>({
-      hashedKey,
-      loader: this,
-      variables: opts.variables as any,
-    })
-
-    return (this.instances[hashedKey] = loader)
-  }
-
-  load: VariablesFn<
-    TVariables,
-    Promise<TData>,
-    {
-      maxAge?: number
-      preload?: boolean
-      signal?: AbortSignal
-    }
-  > = async (opts: any = {}) => {
-    return this.getInstance(opts).load(opts as any)
-  }
-
-  fetch: VariablesFn<
-    TVariables,
-    Promise<TData>,
-    {
-      maxAge?: number
-      preload?: boolean
-    }
-  > = async (opts: any = {}) => {
-    return this.getInstance(opts).fetch(opts as any)
-  }
-
-  invalidateInstance: VariablesFn<
-    TVariables,
-    Promise<void>,
-    {
-      maxAge?: number
-    }
-  > = async (opts: any = {}) => {
-    await this.getInstance(opts).invalidate()
-    await this.options.onInvalidate?.(this)
-  }
-
-  invalidate = async () => {
-    await Promise.all(
-      Object.values(this.instances).map((loader) => loader.invalidate()),
-    )
-  }
+  constructor(public options: LoaderOptions<TKey, TVariables, TData, TError>) {}
 }
 
-export interface LoaderInstanceOptions<
-  TKey extends string = string,
-  TVariables = unknown,
+export function createLoaderInstance<
+  TVariables,
   TData = unknown,
-  TError = Error,
-> {
+  TError = unknown,
+>(opts: {
+  key: any
   hashedKey: string
-  loader: Loader<TKey, TVariables, TData, TError>
-  variables: TVariables
-}
-
-export interface NullableLoaderInstance<
-  TKey extends string = string,
-  TVariables = unknown,
-  TData = unknown,
-  TError = Error,
-> extends Omit<
-    LoaderInstance<TKey, TVariables, TData, TError>,
-    '__store' | 'state'
-  > {
-  __store: Store<NullableLoaderStore<TData, TError>>
-  state: NullableLoaderStore<TData, TError>
-}
-
-export type AnyLoaderInstance = LoaderInstance<any, any, any, any>
-
-export class LoaderInstance<
-  TKey extends string = string,
-  TVariables = unknown,
-  TData = unknown,
-  TError = Error,
-> {
-  __types!: {
-    key: TKey
-    variables: TVariables
-    data: TData
-    error: TError
-  }
-  hashedKey: string
-  options: LoaderInstanceOptions<TKey, TVariables, TData, TError>
-  loader: Loader<TKey, TVariables, TData, TError>
-  __store: Store<LoaderStore<TData, TError>>
-  state: LoaderStore<TData, TError>
-  variables: TVariables
-  promise?: Promise<TData>
-  __loadPromise?: Promise<TData>
-  #subscriptionCount = 0
-
-  constructor(options: LoaderInstanceOptions<TKey, TVariables, TData, TError>) {
-    this.options = options
-    this.loader = options.loader
-    this.hashedKey = options.hashedKey
-    this.variables = options.variables
-    this.__store = new Store<LoaderStore<TData, TError>>(
-      getInitialLoaderState(),
-      {
-        onSubscribe: () => {
-          if (!this.#subscriptionCount) {
-            this.#stopGc()
-          }
-          this.#subscriptionCount++
-          return () => {
-            this.#subscriptionCount--
-            if (!this.#subscriptionCount) {
-              this.#startGc()
-            }
-          }
-        },
-        onUpdate: () => {
-          this.state = this.__store.state
-          this.#notifyClient()
-        },
-      },
-    )
-
-    this.state = this.__store.state
-
-    if (this.__store.listeners.size) {
-      this.#stopGc()
-    } else {
-      this.#startGc()
-    }
-
-    LoaderInstance.onCreateFns.forEach((cb) => cb(this))
-  }
-
-  static onCreateFns: ((loader: AnyLoaderInstance) => void)[] = []
-
-  #notifyClient = () => {
-    const client = this.loader.client
-
-    if (!client) return
-
-    const isLoading = Object.values(client.loaders).some((loader) => {
-      return Object.values(loader.instances).some(
-        (instance) => instance.state.isFetching && !instance.state.preload,
-      )
-    })
-
-    const isPreloading = Object.values(client.loaders).some((loader) => {
-      return Object.values(loader.instances).some(
-        (instance) => instance.state.isFetching && instance.state.preload,
-      )
-    })
-
-    if (
-      client.state.isLoading === isLoading &&
-      client.state.isPreloading === isPreloading
-    ) {
-      return
-    }
-
-    client.__store.setState((s) => {
-      return {
-        isLoading,
-        isPreloading,
-      }
-    })
-  }
-
-  #gcTimeout?: ReturnType<typeof setTimeout>
-
-  #startGc = () => {
-    this.#gcTimeout = setTimeout(() => {
-      this.#gcTimeout = undefined
-      this.#gc()
-    }, this.loader.options.gcMaxAge ?? this.loader.client?.options.defaultGcMaxAge ?? 5 * 60 * 1000)
-  }
-
-  #stopGc = () => {
-    if (this.#gcTimeout) {
-      clearTimeout(this.#gcTimeout)
-      this.#gcTimeout = undefined
-    }
-  }
-
-  #gc = () => {
-    this.#destroy()
-  }
-
-  #destroy = () => {
-    delete this.loader.instances[this.hashedKey]
-  }
-
-  getIsInvalid = (opts?: { preload?: boolean }) => {
-    const now = Date.now()
-
-    return (
-      this.state.status === 'success' &&
-      (this.state.invalid ||
-        (opts?.preload ? this.state.preloadInvalidAt : this.state.invalidAt) <
-          now)
-    )
-  }
-
-  invalidate = async () => {
-    this.__store.setState((s) => ({
-      ...s,
-      invalid: true,
-    }))
-
-    await this.loadIfActive()
-
-    await this.loader.options.onEachInvalidate?.(this)
-  }
-
-  loadIfActive = async (opts?: { isFocusReload?: boolean }) => {
-    if (this.__store.listeners.size) {
-      this.load(opts)
-      try {
-        await this.promise
-      } catch (err) {
-        // Ignore
-      }
-    }
-  }
-
-  load = async (opts?: {
-    maxAge?: number
-    preload?: boolean
-    isFocusReload?: boolean
-    signal?: AbortSignal
-  }): Promise<TData> => {
-    if (opts?.isFocusReload) {
-      if (
-        !(
-          this.loader.options.refetchOnWindowFocus ??
-          this.loader.client?.options.defaultRefetchOnWindowFocus ??
-          true
-        )
-      ) {
-        return this.state.data!
-      }
-    }
-
-    if (
-      this.state.status === 'error' ||
-      this.state.status === 'idle' ||
-      this.getIsInvalid(opts)
-    ) {
-      // Fetch if we need to
-      if (!this.__loadPromise) {
-        this.fetch(opts).catch(() => {
-          // Ignore
-        })
-      }
-    }
-
-    // If we already have data, return it
-    if (typeof this.state.data !== 'undefined') {
-      return this.state.data!
-    }
-
-    // Otherwise wait for the data to be fetched
-    return this.promise!
-  }
-
-  #latestId = ''
-
-  fetch = async (opts?: {
-    maxAge?: number
-    preload?: boolean
-    signal?: AbortSignal
-  }): Promise<TData> => {
-    // this.store.batch(() => {
-    // If the match was in an error state, set it
-    // to a loading state again. Otherwise, keep it
-    // as loading or resolved
-    if (this.state.status === 'idle') {
-      this.__store.setState((s) => ({
-        ...s,
-        status: 'pending',
-      }))
-    }
-
-    // We started loading the route, so it's no longer invalid
-    this.__store.setState((s) => ({
-      ...s,
-      preload: !!opts?.preload,
-      invalid: false,
-      isFetching: true,
-    }))
-    // })
-
-    const loadId = '' + Date.now() + Math.random()
-    this.#latestId = loadId
-
-    const hasNewer = () => {
-      if (loadId !== this.#latestId) {
-        this.promise = this.__loadPromise
-        return this.promise
-      }
-      return undefined
-    }
-
-    let newer: ReturnType<typeof hasNewer>
-
-    this.promise = this.__loadPromise = Promise.resolve().then(async () => {
-      const after = async () => {
-        this.__store.setState((s) => ({
-          ...s,
-          isFetching: false,
-        }))
-
-        if ((newer = hasNewer())) {
-          await this.loader.options.onLatestSettled?.(this)
-          return newer
-        } else {
-          await this.loader.options.onEachSettled?.(this)
-        }
-
-        return
-      }
-
-      try {
-        const loaderFn =
-          this.loader.options.getFn?.({
-            loaderInstance: this,
-            signal: opts?.signal ?? null,
-          }) ?? this.loader.options.fn!
-
-        const data = await loaderFn(this.variables as any)
-
-        if ((newer = hasNewer())) return newer
-
-        this.setData(data, opts)
-
-        if ((newer = hasNewer())) {
-          await this.loader.options.onLatestSuccess?.(this)
-          return newer
-        } else {
-          await this.loader.options.onEachSuccess?.(this)
-        }
-
-        this.__store.setState((s) => ({
-          ...s,
-          status: 'success',
-        }))
-
-        await after()
-
-        return this.state.data!
-      } catch (err) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.error(err)
-        }
-
-        this.__store.setState((s) => ({
-          ...s,
-          error: err as TError,
-          updatedAt: Date.now(),
-        }))
-
-        if ((newer = hasNewer())) {
-          await this.loader.options.onLatestError?.(this)
-          return newer
-        } else {
-          await this.loader.options.onEachError?.(this)
-        }
-
-        this.__store.setState((s) => ({
-          ...s,
-          status: 'error',
-        }))
-
-        await after()
-
-        throw err
-      }
-    })
-
-    this.__loadPromise
-      .then(() => {
-        delete this.__loadPromise
-      })
-      .catch(() => {})
-
-    return this.__loadPromise
-  }
-
-  setData = (
-    updater: TData | ((prev: TData | undefined) => TData),
-    opts?: { maxAge?: number; updatedAt?: number },
-  ) => {
-    const data =
-      typeof updater === 'function'
-        ? (updater as any)(this.state.data)
-        : updater
-
-    invariant(
-      typeof data !== 'undefined',
-      'The data returned from a loader cannot be undefined.',
-    )
-
-    const updatedAt = opts?.updatedAt ?? Date.now()
-
-    const preloadInvalidAt =
-      updatedAt +
-      (opts?.maxAge ??
-        this.loader.options.preloadMaxAge ??
-        this.loader.client?.options.defaultPreloadMaxAge ??
-        10000)
-
-    const invalidAt =
-      updatedAt +
-      (opts?.maxAge ??
-        this.loader.options.maxAge ??
-        this.loader.client?.options.defaultMaxAge ??
-        1000)
-
-    this.__store.setState((s) => ({
-      ...s,
-      error: undefined,
-      updatedAt,
-      data: replaceEqualDeep(s.data, data),
-      preloadInvalidAt: preloadInvalidAt,
-      invalidAt: invalidAt,
-    }))
-  }
-
-  __hydrate = (opts?: {
-    hydrate: HydrateUpdater<TVariables, TData, TError>
-  }) => {
-    const hydrateFn =
-      opts?.hydrate ?? this.loader.client?.options.hydrateLoaderInstanceFn
-
-    if (hydrateFn && this.state.status === 'idle') {
-      // If we have a hydrate option, we need to do that first
-      const hydratedData =
-        typeof hydrateFn === 'function' ? hydrateFn(this as any) : hydrateFn
-
-      if (hydratedData) {
-        this.__store.setState(() => hydratedData)
-      }
-    }
-  }
-
-  __dehydrate = (opts?: {
-    dehydrate: (
-      instance: LoaderInstance<TKey, TVariables, TData, TError>,
-    ) => void
-  }) => {
-    const dehydrateFn =
-      opts?.dehydrate ?? this.loader.client?.options.dehydrateLoaderInstanceFn
-
-    dehydrateFn?.(this as any)
+  variables: any
+}): LoaderInstance<TVariables, TData, TError> {
+  return {
+    key: opts.key,
+    hashedKey: opts.hashedKey,
+    variables: opts.variables,
+    status: 'idle',
+    invalid: false,
+    invalidAt: Infinity,
+    preloadInvalidAt: Infinity,
+    isFetching: false,
+    updatedAt: 0,
+    data: undefined!,
+    preload: false,
+    fetchedAt: 0,
   }
 }
 
@@ -818,6 +924,22 @@ export function hashKey(queryKey: any): string {
   )
 }
 
-type PickRequired<T> = {
-  [K in keyof T as undefined extends T[K] ? never : K]: T[K]
+export function typedClient(client: LoaderClient): RegisteredLoaderClient {
+  return client
+}
+
+export function createLoaderOptions<
+  TLoader extends AnyLoader = RegisteredLoaders,
+  TLoaders extends LoadersToRecord<TLoader> = LoadersToRecord<TLoader>,
+  TKey extends keyof TLoaders = keyof RegisteredLoaders,
+  TResolvedLoader extends AnyLoader = TLoaders[TKey],
+>(
+  opts: GetInstanceOptions<TKey, TResolvedLoader> & {
+    client?: LoaderClient<any, TLoaders>
+  },
+): {
+  key: TKey
+  variables: TResolvedLoader['__types']['variables']
+} {
+  return opts as any
 }

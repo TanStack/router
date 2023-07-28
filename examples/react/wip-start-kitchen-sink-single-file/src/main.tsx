@@ -12,6 +12,7 @@ import {
   useParams,
   RootRoute,
   Route,
+  RouterContext,
 } from '@tanstack/router'
 import {
   Action,
@@ -88,13 +89,13 @@ const randomIdLoader = new Loader({
 })
 
 const loaderClient = new LoaderClient({
-  getLoaders: () => ({
+  loaders: [
     invoicesLoader,
     invoiceLoader,
     usersLoader,
     userLoader,
     randomIdLoader,
-  }),
+  ],
 })
 
 // Register things for typesafety
@@ -123,7 +124,7 @@ const updateInvoiceAction = new Action({
 })
 
 const actionClient = new ActionClient({
-  getActions: () => ({ createInvoiceAction, updateInvoiceAction }),
+  actions: [createInvoiceAction, updateInvoiceAction],
 })
 
 // Register things for typesafety
@@ -135,8 +136,12 @@ declare module '@tanstack/react-actions' {
 
 // Routes
 
+const routerContext = new RouterContext<{
+  auth: AuthContext
+}>()
+
 // Build our routes. We could do this in our component, too.
-const rootRoute = RootRoute.withRouterContext<{ auth: AuthContext }>()({
+const rootRoute = routerContext.createRootRoute({
   component: () => {
     const loaderClient = useLoaderClient()
 
@@ -1012,10 +1017,10 @@ function SubApp() {
         </div>
       </div>
       <LoaderClientProvider
-        loaderClient={loaderClient}
+        client={loaderClient}
         defaultMaxAge={defaultLoaderMaxAge}
       >
-        <ActionClientProvider actionClient={actionClient}>
+        <ActionClientProvider client={actionClient}>
           <RouterProvider
             router={router}
             defaultPreload="intent"

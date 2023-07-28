@@ -216,7 +216,7 @@ export function createRouter() {
     // Optionally, we can use `Wrap` to wrap our router in the loader client provider
     Wrap: ({ children }) => {
       return (
-        <LoaderClientProvider loaderClient={loaderClient}>
+        <LoaderClientProvider client={loaderClient}>
           {children}
         </LoaderClientProvider>
       )

@@ -2,13 +2,13 @@ import { Link, Outlet, MatchRoute, Route } from '@tanstack/router'
 import * as React from 'react'
 import { Spinner } from '../../../components/Spinner'
 import { dashboardRoute } from '..'
-import { invoiceRoute, updateInvoiceAction } from './invoice'
-import { Loader } from '@tanstack/react-loaders'
+import { invoiceRoute } from './invoice'
+import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 import { useAction } from '@tanstack/react-actions'
-import { createInvoiceAction } from './invoices'
 import { fetchInvoices } from '../../../mockTodos'
 
 export const invoicesLoader = new Loader({
+  key: 'invoices',
   fn: async () => {
     console.log('Fetching invoices...')
     return fetchInvoices()
@@ -18,29 +18,27 @@ export const invoicesLoader = new Loader({
 export const invoicesRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'invoices',
-  loader: ({ context }) => {
-    const { invoicesLoader } = context.loaderClient.loaders
-    return () => invoicesLoader.useLoader()
+  loader: async ({ context: { loaderClient } }) => {
+    await loaderClient.load({ key: 'invoices' })
+    return () => useLoaderInstance({ key: 'invoices' })
   },
   component: function Invoices({ useLoader }) {
-    const {
-      state: { data: invoices },
-    } = useLoader()()
+    const { data: invoices } = useLoader()()
 
     // Get the action for a child route
-    const createInvoice = useAction({ action: createInvoiceAction })
-    const updateInvoice = useAction({ action: updateInvoiceAction })
+    const [createInvoice] = useAction({ key: 'createInvoice' })
+    const [updateInvoice] = useAction({ key: 'updateInvoice' })
 
     return (
       <div className="flex-1 flex">
         <div className="divide-y w-48">
           {invoices?.map((invoice) => {
-            const foundPending = updateInvoice.state.pendingSubmissions.find(
-              (d) => d.payload?.id === invoice.id,
+            const foundPending = updateInvoice.pendingSubmissions.find(
+              (d) => d.variables?.id === invoice.id,
             )
 
             if (foundPending) {
-              invoice = { ...invoice, ...foundPending.payload }
+              invoice = { ...invoice, ...foundPending.variables }
             }
 
             return (
@@ -74,11 +72,11 @@ export const invoicesRoute = new Route({
               </div>
             )
           })}
-          {createInvoice.state.pendingSubmissions.map((action) => (
-            <div key={action.submittedAt}>
+          {createInvoice.pendingSubmissions.map((submission) => (
+            <div key={submission.submittedAt}>
               <a href="#" className="block py-2 px-3 text-blue-700">
                 <pre className="text-sm">
-                  #<Spinner /> - {action.payload.title?.slice(0, 10)}
+                  #<Spinner /> - {submission.variables.title?.slice(0, 10)}
                 </pre>
               </a>
             </div>

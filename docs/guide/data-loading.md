@@ -194,16 +194,17 @@ const postsLoader = new Loader({
 })
 
 const loaderClient = new LoaderClient({
-  getLoaders: () => ({ postsLoader }),
+  loader: [postsLoader],
 })
 
-// Use RootRoute's special `withRouterContext` method to require a specific type
-// of router context to be both available in every route and to be passed to
-// the router for implementation.
+// Create a new routerContext using new RouterContext<{...}>() class and pass it whatever types you would like to be available in your router context.
 
-const rootRoute = RootRoute.withRouterContext<{
+const routerContext = new RouterContext<{
   loaderClient: typeof loaderClient
-}>()()
+}>()
+
+// Then use the same routerContext to create your root route
+const rootRoute = routerContext.createRootRoute()
 
 // Notice how our postsRoute references context to get the loader client
 // This can be a powerful tool for dependency injection across your router
@@ -211,8 +212,8 @@ const rootRoute = RootRoute.withRouterContext<{
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  async loader({ context }) {
-    const { postsLoader } = context.loaderClient
+  async loader({ context: { loaderClient } }) {
+    const { postsLoader } = loaderClient
     await postsLoader.load()
     return () => useLoader({ loader: postsLoader })
   },
@@ -225,10 +226,12 @@ const postsRoute = new Route({
 
 const routeTree = rootRoute.addChildren([postsRoute])
 
+// Use your routerContext to create a new router
+// This will require that you fullfil the type requirements of the routerContext
 const router = new Router({
   routeTree,
   context: {
-    // Supply our loaderClient to the whole router
+    // Supply our loaderClient to the router (and all routes)
     loaderClient,
   },
 })

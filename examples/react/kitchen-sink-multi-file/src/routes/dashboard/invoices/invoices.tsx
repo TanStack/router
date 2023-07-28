@@ -1,14 +1,16 @@
 import * as React from 'react'
 import { Invoice, postInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
-import { invoicesLoader, invoicesRoute } from '.'
-import { Action, useAction } from '@tanstack/react-actions'
+import { invoicesRoute } from '.'
+import { useAction } from '@tanstack/react-actions'
 import { Route } from '@tanstack/router'
+import { actionContext } from '../../../actionContext'
 
-export const createInvoiceAction = new Action({
+export const createInvoiceAction = actionContext.createAction({
+  key: 'createInvoice',
   fn: postInvoice,
-  onEachSuccess: async () => {
-    await invoicesLoader.invalidate()
+  onEachSuccess: async ({ context: { loaderClient } }) => {
+    await loaderClient.invalidateLoader({ key: 'invoices' })
   },
 })
 
@@ -16,7 +18,7 @@ export const invoicesIndexRoute = new Route({
   getParentRoute: () => invoicesRoute,
   path: '/',
   component: function InvoicesHome() {
-    const action = useAction({ action: createInvoiceAction })
+    const [action, actionClient] = useAction({ key: 'createInvoice' })
 
     return (
       <>
@@ -26,9 +28,12 @@ export const invoicesIndexRoute = new Route({
               event.preventDefault()
               event.stopPropagation()
               const formData = new FormData(event.target as HTMLFormElement)
-              action.submit({
-                title: formData.get('title') as string,
-                body: formData.get('body') as string,
+              actionClient.submitAction({
+                key: 'createInvoice',
+                variables: {
+                  title: formData.get('title') as string,
+                  body: formData.get('body') as string,
+                },
               })
             }}
             className="space-y-2"
@@ -43,11 +48,11 @@ export const invoicesIndexRoute = new Route({
                 Create
               </button>
             </div>
-            {action.state.latestSubmission?.status === 'success' ? (
+            {action.latestSubmission?.status === 'success' ? (
               <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Created!
               </div>
-            ) : action.state.latestSubmission?.status === 'error' ? (
+            ) : action.latestSubmission?.status === 'error' ? (
               <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Failed to create.
               </div>

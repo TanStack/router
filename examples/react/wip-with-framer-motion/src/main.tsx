@@ -6,12 +6,13 @@ import {
   RouterProvider,
   Router,
   Link,
-  RootRoute,
   Route,
   ErrorComponent,
-  useRouter,
-  useMatches,
   RouterContext,
+  useMatch,
+  MatchesProvider,
+  useRouterState,
+  useMatches,
 } from '@tanstack/router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -19,7 +20,9 @@ import {
   LoaderClient,
   Loader,
   LoaderClientProvider,
-  useLoader,
+  typedClient,
+  useLoaderInstance,
+  createLoaderOptions,
 } from '@tanstack/react-loaders'
 
 type PostType = {
@@ -51,21 +54,20 @@ const fetchPost = async (postId: string) => {
 }
 
 const postsLoader = new Loader({
+  key: 'posts',
   fn: fetchPosts,
 })
 
 const postLoader = new Loader({
+  key: 'post',
   fn: fetchPost,
-  onInvalidate: () => {
-    postsLoader.invalidate()
+  onInvalidate: async ({ client }) => {
+    await typedClient(client).invalidateLoader({ key: 'posts' })
   },
 })
 
 const loaderClient = new LoaderClient({
-  getLoaders: () => ({
-    posts: postsLoader,
-    post: postLoader,
-  }),
+  loaders: [postsLoader, postLoader],
 })
 
 declare module '@tanstack/react-loaders' {
@@ -74,11 +76,7 @@ declare module '@tanstack/react-loaders' {
   }
 }
 
-type RouterContext = {
-  loaderClient: typeof loaderClient
-}
-
-export const transitionProps = {
+export const mainTransitionProps = {
   initial: { y: -20, opacity: 0, position: 'absolute' },
   animate: { y: 0, opacity: 1, damping: 5 },
   exit: { y: 60, opacity: 0 },
@@ -89,10 +87,31 @@ export const transitionProps = {
   },
 } as const
 
-const rootRoute = RootRoute.withRouterContext<RouterContext>()({
+export const postTransitionProps = {
+  initial: { y: -20, opacity: 0 },
+  animate: { y: 0, opacity: 1, damping: 5 },
+  exit: { y: 60, opacity: 0 },
+  transition: {
+    type: 'spring',
+    stiffness: 150,
+    damping: 10,
+  },
+} as const
+
+const routerContext = new RouterContext<{
+  loaderClient: typeof loaderClient
+}>()
+
+const rootRoute = routerContext.createRootRoute({
   component: () => {
-    const router = useRouter()
     const matches = useMatches()
+    const match = useMatch()
+    const nextMatchIndex = matches.findIndex((d) => d.id === match.id) + 1
+    const nextMatch = matches[nextMatchIndex]
+    // const routerState = useRouterState()
+
+    console.log(nextMatch.id)
+
     return (
       <>
         <div className="p-2 flex gap-2 text-lg">
@@ -116,9 +135,7 @@ const rootRoute = RootRoute.withRouterContext<RouterContext>()({
         </div>
         <hr />
         <AnimatePresence mode="wait">
-          <RouterContext router={router} key={router.state.location.key}>
-            <Outlet />
-          </RouterContext>
+          <Outlet key={nextMatch.id} />
         </AnimatePresence>
         {/* Start rendering router matches */}
         <TanStackRouterDevtools position="bottom-right" />
@@ -132,7 +149,7 @@ const indexRoute = new Route({
   path: '/',
   component: () => {
     return (
-      <motion.div className="p-2" {...transitionProps}>
+      <motion.div className="p-2" {...mainTransitionProps}>
         <h3>Welcome Home!</h3>
       </motion.div>
     )
@@ -142,27 +159,23 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  loader: async ({ context }) => {
-    const postsLoader = context.loaderClient.loaders.posts
+  loader: async ({ context: { loaderClient } }) => {
+    await loaderClient.load({ key: 'posts' })
 
-    await postsLoader.load()
-
-    return {
-      promise: new Promise((r) => setTimeout(r, 500)),
-      useLoader: () =>
-        useLoader({
-          loader: postsLoader,
-        }),
-    }
+    return () =>
+      useLoaderInstance({
+        key: 'posts',
+      })
   },
   component: ({ useLoader }) => {
-    const postsLoader = useLoader().useLoader()
+    const { data: posts } = useLoader()()
+    const match = useMatch()
 
     return (
-      <motion.div className="p-2 flex gap-2" {...transitionProps}>
+      <motion.div className="p-2 flex gap-2" {...mainTransitionProps}>
         <ul className="list-disc pl-4">
           {[
-            ...postsLoader.state.data,
+            ...posts,
             { id: 'i-do-not-exist', title: 'Non-existent Post' },
           ]?.map((post) => {
             return (
@@ -182,7 +195,19 @@ const postsRoute = new Route({
           })}
         </ul>
         <hr />
-        <Outlet />
+        <AnimatePresence>
+          <Outlet
+            children={(children, { matches }) => {
+              return (
+                <React.Fragment key={match.id}>
+                  <MatchesProvider matches={matches}>
+                    {children}
+                  </MatchesProvider>
+                </React.Fragment>
+              )
+            }}
+          />
+        </AnimatePresence>
       </motion.div>
     )
   },
@@ -199,18 +224,20 @@ class NotFoundError extends Error {}
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  loader: async ({ context: { loaderClient }, params: { postId } }) => {
-    const postLoader = loaderClient.loaders.post
-    await postLoader.load({
+  loader: async ({
+    context: { loaderClient },
+    params: { postId },
+    preload,
+  }) => {
+    const loaderOptions = createLoaderOptions({
+      key: 'post',
       variables: postId,
     })
 
+    await loaderClient.load({ ...loaderOptions, preload })
+
     // Return a curried hook!
-    return () =>
-      useLoader({
-        loader: postLoader,
-        variables: postId,
-      })
+    return () => useLoaderInstance(loaderOptions)
   },
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {
@@ -220,15 +247,13 @@ const postRoute = new Route({
     return <ErrorComponent error={error} />
   },
   component: () => {
-    const {
-      state: { data: post },
-    } = postRoute.useLoader()()
+    const { data: post } = postRoute.useLoader()()
 
     return (
-      <div className="space-y-2">
+      <motion.div className="space-y-2" {...postTransitionProps}>
         <h4 className="text-xl font-bold underline">{post.title}</h4>
         <div className="text-sm">{post.body}</div>
-      </div>
+      </motion.div>
     )
   },
 })
@@ -261,7 +286,7 @@ if (!rootElement.innerHTML) {
 
   root.render(
     // <React.StrictMode>
-    <LoaderClientProvider loaderClient={loaderClient}>
+    <LoaderClientProvider client={loaderClient}>
       <RouterProvider router={router} />
     </LoaderClientProvider>,
     // </React.StrictMode>,

@@ -8,143 +8,118 @@ export interface Register {
 }
 
 export type RegisteredActionClient = Register extends {
-  actionClient: ActionClient<infer TActions>
+  actionClient: ActionClient<infer TAction, infer TContext, infer TActions>
 }
-  ? ActionClient<TActions>
+  ? ActionClient<TAction, TContext, TActions>
   : ActionClient
 
 export type RegisteredActions = Register extends {
-  actionClient: ActionClient<infer TActions>
+  actionClient: ActionClient<infer TActions, any, any>
 }
   ? TActions
+  : Action
+
+export type RegisteredActionsByKey = Register extends {
+  actionClient: ActionClient<infer TAction, any, any>
+}
+  ? ActionsToRecord<TAction>
   : Record<string, Action>
 
-export type AnyAction = Action<any, any, any, any>
+export type AnyAction = Action<any, any, any, any, any>
 
-export interface ActionClientOptions<
-  TActions extends Record<string, AnyAction>,
-> {
-  getActions: () => TActions
+export type ActionClientOptions<
+  TAction extends AnyAction,
+  TContext = unknown,
+> = {
+  actions: TAction[]
   defaultMaxAge?: number
   defaultGcMaxAge?: number
+} & (undefined extends TContext
+  ? { context?: TContext }
+  : { context: TContext })
+
+export type ActionClientStore = Store<ActionClientState>
+
+export type ActionClientState = {
+  isSubmitting?: SubmissionState[]
+  actions: Record<string, ActionState>
 }
 
-export type ActionClientStore = Store<{
-  isSubmitting?: ActionSubmission[]
-}>
+export interface ActionState<
+  TKey extends string = string,
+  TVariables = unknown,
+  TResponse = unknown,
+  TError = Error,
+> {
+  key: TKey
+  submissions: SubmissionState<TVariables, TResponse, TError>[]
+  latestSubmission?: SubmissionState<TVariables, TResponse, TError>
+  pendingSubmissions: SubmissionState<TVariables, TResponse, TError>[]
+}
 
-type ResolveActions<TAction extends Record<string, AnyAction>> = {
-  [TKey in keyof TAction]: TAction[TKey] extends Action<
-    infer _,
-    infer TVariables,
-    infer TData,
-    infer TError
+export type ActionFn<TActionVariables = unknown, TActionResponse = unknown> = (
+  submission: TActionVariables,
+) => TActionResponse | Promise<TActionResponse>
+
+export interface SubmissionState<
+  TVariables = unknown,
+  TResponse = unknown,
+  TError = Error,
+> {
+  submittedAt: number
+  status: 'pending' | 'success' | 'error'
+  variables: undefined extends TVariables ? undefined : TVariables
+  response?: TResponse
+  error?: TError
+}
+
+export type ActionsToRecord<TActions extends AnyAction> = {
+  [TKey in TActions['__types']['key']]: Extract<
+    TActions,
+    { options: { key: TKey } }
   >
-    ? Action<_, TVariables, TData, TError>
-    : Action
+}
+
+export class ActionContext<TContext> {
+  constructor() {}
+
+  createAction = <TKey extends string, TVariables, TResponse, TError>(
+    options: ActionOptions<TKey, TVariables, TResponse, TError, TContext>,
+  ) => {
+    return new Action<TKey, TVariables, TResponse, TError, TContext>(options)
+  }
+
+  createClient = <TActions extends AnyAction>(
+    options: ActionClientOptions<TActions, TContext>,
+  ) => {
+    return new ActionClient<TActions, TContext>(options)
+  }
 }
 
 // A action client that tracks instances of actions by unique key like react query
 export class ActionClient<
-  _TActions extends Record<string, AnyAction> = Record<string, Action>,
-  TActions extends ResolveActions<_TActions> = ResolveActions<_TActions>,
+  _TActions extends AnyAction = Action,
+  TContext = unknown,
+  TActions extends ActionsToRecord<_TActions> = ActionsToRecord<_TActions>,
 > {
-  options: ActionClientOptions<_TActions>
+  options: ActionClientOptions<_TActions, TContext>
   actions: TActions
   __store: ActionClientStore
   state: ActionClientStore['state']
 
-  initialized = false
-
-  constructor(options: ActionClientOptions<_TActions>) {
+  constructor(options: ActionClientOptions<_TActions, TContext>) {
     this.options = options
     this.__store = new Store(
-      {},
       {
-        onUpdate: () => {
-          this.state = this.__store.state
-        },
-      },
-    ) as ActionClientStore
-    this.state = this.__store.state
-    this.actions = {} as any
-    this.init()
-  }
-
-  init = () => {
-    if (this.initialized) return
-    Object.entries(this.options.getActions()).forEach(
-      ([key, action]: [string, Action]) => {
-        ;(this.actions as any)[key] = action.init(key, this)
-      },
-    )
-    this.initialized = true
-  }
-
-  clearAll = () => {
-    Object.keys(this.actions).forEach((key) => {
-      this.actions[key]!.clear()
-    })
-  }
-}
-
-export type ActionByKey<
-  TActions extends Record<string, AnyAction>,
-  TKey extends keyof TActions,
-> = TActions[TKey]
-
-export type SubmitFn<
-  TPayload = unknown,
-  TResponse = unknown,
-> = undefined extends TPayload
-  ? () => Promise<TResponse>
-  : (payload: TPayload) => Promise<TResponse>
-
-export interface ActionOptions<
-  TKey extends string = string,
-  TPayload = unknown,
-  TResponse = unknown,
-  TError = Error,
-> {
-  fn: (payload: TPayload) => TResponse | Promise<TResponse>
-  onLatestSuccess?: ActionCallback<TPayload, TResponse, TError>
-  onEachSuccess?: ActionCallback<TPayload, TResponse, TError>
-  onLatestError?: ActionCallback<TPayload, TResponse, TError>
-  onEachError?: ActionCallback<TPayload, TResponse, TError>
-  onLatestSettled?: ActionCallback<TPayload, TResponse, TError>
-  onEachSettled?: ActionCallback<TPayload, TResponse, TError>
-  maxSubmissions?: number
-  debug?: boolean
-}
-
-export type ActionCallback<TPayload, TResponse, TError> = (
-  submission: ActionSubmission<TPayload, TResponse, TError>,
-) => void | Promise<void>
-
-export class Action<
-  TKey extends string = string,
-  TPayload = unknown,
-  TResponse = unknown,
-  TError = Error,
-> {
-  __types!: {
-    key: TKey
-    payload: TPayload
-    response: TResponse
-    error: TError
-  }
-  key!: TKey
-  client?: ActionClient<any>
-  options: ActionOptions<TKey, TPayload, TResponse, TError>
-  __store: Store<ActionStore<TPayload, TResponse, TError>>
-  state: ActionStore<TPayload, TResponse, TError>
-
-  constructor(options: ActionOptions<TKey, TPayload, TResponse, TError>) {
-    this.__store = new Store<ActionStore<TPayload, TResponse, TError>>(
-      {
-        submissions: [],
-        pendingSubmissions: [],
-        latestSubmission: undefined,
+        actions: options.actions.reduce((acc, action) => {
+          return {
+            ...acc,
+            [action.options.key]: {
+              submissions: [],
+              pendingSubmissions: [],
+            },
+          }
+        }, {}),
       },
       {
         onUpdate: () => {
@@ -152,96 +127,156 @@ export class Action<
           this.state = this.__store.state
         },
       },
-    )
-    this.state = this.#resolveState(this.__store.state)
-    this.options = options
+    ) as ActionClientStore
+    this.state = this.__store.state
+    this.actions = {} as any
+
+    Object.values(this.options.actions).forEach((action: Action) => {
+      ;(this.actions as any)[action.options.key] = action
+    })
   }
 
-  init = (key: TKey, client: ActionClient<any, any>) => {
-    this.client = client
-    this.key = key as TKey
-    return this as Action<TKey, TPayload, TResponse, TError>
-  }
+  #resolveState = (state: ActionClientState): ActionClientState => {
+    Object.keys(state.actions).forEach((key) => {
+      let action = state.actions[key]!
+      const latestSubmission = action.submissions[action.submissions.length - 1]
+      const pendingSubmissions = action.submissions.filter(
+        (d) => d.status === 'pending',
+      )
 
-  #resolveState = (
-    state: ActionStore<TPayload, TResponse, TError>,
-  ): ActionStore<TPayload, TResponse, TError> => {
-    const latestSubmission = state.submissions[state.submissions.length - 1]
-    const pendingSubmissions = state.submissions.filter(
-      (d) => d.status === 'pending',
-    )
-
-    return {
-      ...state,
-      latestSubmission,
-      pendingSubmissions,
-    }
-  }
-
-  clear = async () => {
-    // await Promise.all(this.#promises)
-    this.__store.setState((s) => ({
-      ...s,
-      submissions: s.submissions.filter((d) => d.status === 'pending'),
-    }))
-  }
-
-  #promises: Promise<any>[] = []
-
-  submit: SubmitFn<TPayload, TResponse> = async (payload?: TPayload) => {
-    const promise = this.#submit(payload as TPayload)
-    this.#promises.push(promise)
-
-    const res = await promise
-    this.#promises = this.#promises.filter((d) => d !== promise)
-    return res
-  }
-
-  #submit: SubmitFn<TPayload, TResponse> = async (payload?: TPayload) => {
-    const submission: ActionSubmission<TPayload, TResponse, TError> = {
-      submittedAt: Date.now(),
-      status: 'pending',
-      payload: payload as ActionSubmission<
-        TPayload,
-        TResponse,
-        TError
-      >['payload'],
-      invalidate: () => {
-        setSubmission((s) => ({
-          ...s,
-          isInvalid: true,
-        }))
-      },
-      getIsLatest: () =>
-        this.state.submissions[this.state.submissions.length - 1]
-          ?.submittedAt === submission.submittedAt,
-    }
-
-    const setSubmission = (
-      updater: (
-        submission: ActionSubmission<TPayload, TResponse, TError>,
-      ) => ActionSubmission<TPayload, TResponse, TError>,
-    ) => {
-      this.__store.setState((s) => {
-        const a = s.submissions.find(
-          (d) => d.submittedAt === submission.submittedAt,
-        )
-
-        invariant(a, 'Could not find submission in submission store')
-
-        return {
-          ...s,
-          submissions: s.submissions.map((d) =>
-            d.submittedAt === submission.submittedAt ? updater(d) : d,
-          ),
+      // Only update if things have changed
+      if (latestSubmission !== action.latestSubmission) {
+        action = {
+          ...action,
+          latestSubmission,
         }
+      }
+
+      // Only update if things have changed
+      if (
+        pendingSubmissions.map((d) => d.submittedAt).join('-') !==
+        action.pendingSubmissions.map((d) => d.submittedAt).join('-')
+      ) {
+        action = {
+          ...action,
+          pendingSubmissions,
+        }
+      }
+
+      state.actions[key] = action
+    })
+
+    return state
+  }
+
+  clearAll = () => {
+    this.__store.batch(() => {
+      Object.keys(this.actions).forEach((key) => {
+        this.clearAction({ key })
       })
+    })
+  }
+
+  clearAction = <TKey extends keyof TActions>(opts: { key: TKey }) => {
+    this.#setAction(opts, (s) => {
+      return {
+        ...s,
+        submissions: s.submissions.filter((d) => d.status == 'pending'),
+      }
+    })
+  }
+
+  submitAction = async <
+    TKey extends keyof TActions,
+    TAction extends TActions[TKey],
+  >(
+    opts: {
+      key: TKey
+    } & (undefined extends TAction['__types']['variables']
+      ? { variables?: TAction['__types']['variables'] }
+      : { variables: TAction['__types']['variables'] }),
+  ): Promise<TAction['__types']['response']> => {
+    return this.#submitAction(opts as any)
+  }
+
+  #setAction = async <TKey extends keyof TActions>(
+    opts: {
+      key: TKey
+    },
+    updater: (action: ActionState) => ActionState,
+  ) => {
+    this.__store.setState((s) => {
+      const action = s.actions[opts.key as any] ?? createAction(opts)
+
+      return {
+        ...s,
+        actions: {
+          ...s.actions,
+          [opts.key]: updater(action),
+        },
+      }
+    })
+  }
+
+  #setSubmission = async <TKey extends keyof TActions>(
+    opts: {
+      key: TKey
+      submittedAt: number
+    },
+    updater: (submission: SubmissionState) => SubmissionState,
+  ) => {
+    this.#setAction(opts, (s) => {
+      const submission = s.submissions.find(
+        (d) => d.submittedAt === opts.submittedAt,
+      )
+
+      invariant(submission, 'Could not find submission in action store')
+
+      return {
+        ...s,
+        submissions: s.submissions.map((d) =>
+          d.submittedAt === opts.submittedAt ? updater(d) : d,
+        ),
+      }
+    })
+  }
+
+  #getIsLatestSubmission = <TKey extends keyof TActions>(opts: {
+    key: TKey
+    submittedAt: number
+  }) => {
+    const action = this.state.actions[opts.key as any]
+    return action?.latestSubmission?.submittedAt === opts.submittedAt
+  }
+
+  #submitAction = async <
+    TKey extends keyof TActions,
+    TAction extends TActions[TKey],
+  >(
+    opts: {
+      key: TKey
+    } & (undefined extends TAction['__types']['variables']
+      ? { variables?: TAction['__types']['variables'] }
+      : { variables: TAction['__types']['variables'] }),
+  ) => {
+    const action = this.actions[opts.key]
+
+    const submittedAt = Date.now()
+
+    const submission: SubmissionState<
+      TAction['__types']['variables'],
+      TAction['__types']['response'],
+      TAction['__types']['error']
+    > = {
+      submittedAt,
+      status: 'pending',
+      variables: opts.variables as any,
     }
 
-    this.__store.setState((s) => {
+    this.#setAction(opts, (s) => {
       let submissions = [...s.submissions, submission]
       submissions.reverse()
-      submissions = submissions.slice(0, this.options.maxSubmissions ?? 10)
+      submissions = submissions.slice(0, action.options.maxSubmissions ?? 10)
       submissions.reverse()
 
       return {
@@ -251,37 +286,57 @@ export class Action<
     })
 
     const after = async () => {
-      this.options.onEachSettled?.(submission)
-      if (submission.getIsLatest())
-        await this.options.onLatestSettled?.(submission)
+      action.options.onEachSettled?.({
+        submission,
+        context: this.options.context,
+      })
+      if (this.#getIsLatestSubmission({ ...opts, submittedAt }))
+        await action.options.onLatestSettled?.({
+          submission,
+          context: this.options.context,
+        })
     }
 
     try {
-      const res = await this.options.fn?.(submission.payload)
-      setSubmission((s) => ({
+      const res = await action.options.fn?.(submission.variables, {
+        context: this.options.context,
+      })
+      this.#setSubmission({ ...opts, submittedAt }, (s) => ({
         ...s,
         response: res,
       }))
-      await this.options.onEachSuccess?.(submission)
-      if (submission.getIsLatest())
-        await this.options.onLatestSuccess?.(submission)
+      await action.options.onEachSuccess?.({
+        submission,
+        context: this.options.context,
+      })
+      if (this.#getIsLatestSubmission({ ...opts, submittedAt }))
+        await action.options.onLatestSuccess?.({
+          submission,
+          context: this.options.context,
+        })
       await after()
-      setSubmission((s) => ({
+      this.#setSubmission({ ...opts, submittedAt }, (s) => ({
         ...s,
         status: 'success',
       }))
       return res
     } catch (err: any) {
       console.error(err)
-      setSubmission((s) => ({
+      this.#setSubmission({ ...opts, submittedAt }, (s) => ({
         ...s,
         error: err,
       }))
-      await this.options.onEachError?.(submission)
-      if (submission.getIsLatest())
-        await this.options.onLatestError?.(submission)
+      await action.options.onEachError?.({
+        submission,
+        context: this.options.context,
+      })
+      if (this.#getIsLatestSubmission({ ...opts, submittedAt }))
+        await action.options.onLatestError?.({
+          submission,
+          context: this.options.context,
+        })
       await after()
-      setSubmission((s) => ({
+      this.#setSubmission({ ...opts, submittedAt }, (s) => ({
         ...s,
         status: 'error',
       }))
@@ -290,31 +345,68 @@ export class Action<
   }
 }
 
-export interface ActionStore<
-  TPayload = unknown,
+export interface ActionOptions<
+  TKey extends string = string,
+  TVariables = unknown,
   TResponse = unknown,
   TError = Error,
+  TContext = unknown,
 > {
-  submissions: ActionSubmission<TPayload, TResponse, TError>[]
-  latestSubmission?: ActionSubmission<TPayload, TResponse, TError>
-  pendingSubmissions: ActionSubmission<TPayload, TResponse, TError>[]
+  key: TKey
+  fn: (
+    variables: TVariables,
+    opts: { context: TContext },
+  ) => TResponse | Promise<TResponse>
+  onLatestSuccess?: ActionCallback<TVariables, TResponse, TError, TContext>
+  onEachSuccess?: ActionCallback<TVariables, TResponse, TError, TContext>
+  onLatestError?: ActionCallback<TVariables, TResponse, TError, TContext>
+  onEachError?: ActionCallback<TVariables, TResponse, TError, TContext>
+  onLatestSettled?: ActionCallback<TVariables, TResponse, TError, TContext>
+  onEachSettled?: ActionCallback<TVariables, TResponse, TError, TContext>
+  maxSubmissions?: number
+  debug?: boolean
 }
 
-export type ActionFn<TActionPayload = unknown, TActionResponse = unknown> = (
-  submission: TActionPayload,
-) => TActionResponse | Promise<TActionResponse>
+export type ActionCallback<TVariables, TResponse, TError, TContext> = (opts: {
+  submission: SubmissionState<TVariables, TResponse, TError>
+  context: TContext
+}) => void | Promise<void>
 
-export interface ActionSubmission<
-  TPayload = unknown,
+export class Action<
+  TKey extends string = string,
+  TVariables = unknown,
   TResponse = unknown,
   TError = Error,
+  TContext = unknown,
 > {
-  submittedAt: number
-  status: 'pending' | 'success' | 'error'
-  payload: undefined extends TPayload ? undefined : TPayload
-  response?: TResponse
-  error?: TError
-  isInvalid?: boolean
-  invalidate: () => void
-  getIsLatest: () => boolean
+  __types!: {
+    key: TKey
+    variables: TVariables
+    response: TResponse
+    error: TError
+    context: TContext
+  }
+
+  constructor(
+    public options: ActionOptions<
+      TKey,
+      TVariables,
+      TResponse,
+      TError,
+      TContext
+    >,
+  ) {}
+}
+
+export function createAction<
+  TKey extends string = string,
+  TVariables = unknown,
+  TResponse = unknown,
+  TError = Error,
+>(opts: { key: any }): ActionState<TKey, TVariables, TResponse, TError> {
+  return {
+    key: opts.key,
+    submissions: [],
+    pendingSubmissions: [],
+  }
 }

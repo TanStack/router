@@ -12,11 +12,14 @@ import {
   RootRoute,
   Route,
   redirect,
+  RouterContext,
 } from '@tanstack/router'
 import {
-  Action,
-  ActionClient,
   ActionClientProvider,
+  ActionContext,
+  RegisteredActionClient,
+  RegisteredActions,
+  RegisteredActionsByKey,
   useAction,
 } from '@tanstack/react-actions'
 import {
@@ -24,6 +27,9 @@ import {
   LoaderClient,
   useLoaderClient,
   LoaderClientProvider,
+  typedClient,
+  useLoaderInstance,
+  createLoaderOptions,
 } from '@tanstack/react-loaders'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
@@ -47,6 +53,7 @@ type UsersViewSortBy = 'name' | 'id' | 'email'
 // Loaders
 
 const invoicesLoader = new Loader({
+  key: 'invoices',
   fn: async () => {
     console.log('Fetching invoices...')
     return fetchInvoices()
@@ -54,16 +61,18 @@ const invoicesLoader = new Loader({
 })
 
 const invoiceLoader = new Loader({
+  key: 'invoice',
   fn: async (invoiceId: number) => {
     console.log(`Fetching invoice with id ${invoiceId}...`)
     return fetchInvoiceById(invoiceId)
   },
-  onInvalidate: async () => {
-    await invoicesLoader.invalidate()
+  onInvalidate: async ({ client }) => {
+    await typedClient(client).invalidateLoader({ key: 'invoices' })
   },
 })
 
 const usersLoader = new Loader({
+  key: 'users',
   fn: async () => {
     console.log('Fetching users...')
     return fetchUsers()
@@ -71,29 +80,31 @@ const usersLoader = new Loader({
 })
 
 const userLoader = new Loader({
+  key: 'user',
   fn: async (userId: number) => {
     console.log(`Fetching user with id ${userId}...`)
     return fetchUserById(userId)
   },
-  onInvalidate: async () => {
-    await usersLoader.invalidate()
+  onInvalidate: async ({ client }) => {
+    await typedClient(client).invalidateLoader({ key: 'users' })
   },
 })
 
 const randomIdLoader = new Loader({
+  key: 'random',
   fn: () => {
     return fetchRandomNumber()
   },
 })
 
 const loaderClient = new LoaderClient({
-  getLoaders: () => ({
+  loaders: [
     invoicesLoader,
     invoiceLoader,
     usersLoader,
     userLoader,
     randomIdLoader,
-  }),
+  ],
 })
 
 // Register things for typesafety
@@ -105,24 +116,35 @@ declare module '@tanstack/react-loaders' {
 
 // Actions
 
-const createInvoiceAction = new Action({
+const actionContext = new ActionContext<{
+  loaderClient: typeof loaderClient
+}>()
+
+const createInvoiceAction = actionContext.createAction({
+  key: 'createInvoice',
   fn: postInvoice,
-  onEachSuccess: async () => {
-    await invoicesLoader.invalidate()
+  onEachSuccess: async ({ context: { loaderClient } }) => {
+    await loaderClient.invalidateLoader({ key: 'invoices' })
   },
 })
 
-const updateInvoiceAction = new Action({
+const updateInvoiceAction = actionContext.createAction({
+  key: 'updateInvoice',
   fn: patchInvoice,
-  onEachSuccess: async ({ payload }) => {
-    await invoiceLoader.invalidateInstance({
-      variables: payload.id,
+  onEachSuccess: async ({ submission, context: { loaderClient } }) => {
+    await loaderClient.invalidateLoader({ key: 'invoices' })
+    await loaderClient.invalidateInstance({
+      key: 'invoice',
+      variables: submission.variables.id,
     })
   },
 })
 
-const actionClient = new ActionClient({
-  getActions: () => ({ createInvoiceAction, updateInvoiceAction }),
+const actionClient = actionContext.createClient({
+  actions: [createInvoiceAction, updateInvoiceAction],
+  context: {
+    loaderClient,
+  },
 })
 
 // Register things for typesafety
@@ -134,8 +156,14 @@ declare module '@tanstack/react-actions' {
 
 // Routes
 
+export const routerContext = new RouterContext<{
+  auth: AuthContext
+  loaderClient: typeof loaderClient
+  actionClient: typeof actionClient
+}>()
+
 // Build our routes. We could do this in our component, too.
-const rootRoute = RootRoute.withRouterContext<{ auth: AuthContext }>()({
+const rootRoute = routerContext.createRootRoute({
   component: () => {
     const loaderClient = useLoaderClient()
 
@@ -145,14 +173,8 @@ const rootRoute = RootRoute.withRouterContext<{ auth: AuthContext }>()({
           <div className={`flex items-center border-b gap-2`}>
             <h1 className={`text-3xl p-2`}>Kitchen Sink</h1>
             {/* Show a global spinner when the router is transitioning */}
-            <div
-              className={`text-3xl duration-300 opacity-0 ${
-                loaderClient.state.isLoading
-                  ? ` duration-1000 opacity-40 delay-500`
-                  : 'delay-0'
-              }`}
-            >
-              <Spinner />
+            <div className={`text-3xl`}>
+              <Spinner show={loaderClient.state.isLoading} />
             </div>
           </div>
           <div className={`flex-1 flex`}>
@@ -241,7 +263,8 @@ const indexRoute = new Route({
 const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  loader: ({ preload }) => invoicesLoader.load({ preload }),
+  loader: ({ preload, context: { loaderClient } }) =>
+    loaderClient.load({ key: 'invoices', preload }),
   component: () => {
     return (
       <>
@@ -290,9 +313,7 @@ const dashboardIndexRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: '/',
   component: () => {
-    const {
-      state: { data: invoices },
-    } = invoicesLoader.useLoader()
+    const { data: invoices } = useLoaderInstance({ key: 'invoices' })
 
     return (
       <div className="p-2">
@@ -309,20 +330,14 @@ const invoicesRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'invoices',
   component: () => {
-    const {
-      state: { data: invoices },
-    } = invoicesLoader.useLoader()
+    const { data: invoices } = useLoaderInstance({ key: 'invoices' })
 
-    const {
-      state: { pendingSubmissions: updateSubmissions },
-    } = useAction({
-      action: updateInvoiceAction,
+    const [{ pendingSubmissions: updateSubmissions }] = useAction({
+      key: 'updateInvoice',
     })
 
-    const {
-      state: { pendingSubmissions: createSubmissions },
-    } = useAction({
-      action: createInvoiceAction,
+    const [{ pendingSubmissions: createSubmissions }] = useAction({
+      key: 'createInvoice',
     })
 
     return (
@@ -330,13 +345,13 @@ const invoicesRoute = new Route({
         <div className="divide-y w-48">
           {invoices?.map((invoice) => {
             const updateSubmission = updateSubmissions.find(
-              (d) => d.payload.id === invoice.id,
+              (d) => d.variables?.id === invoice.id,
             )
 
             if (updateSubmission) {
               invoice = {
                 ...invoice,
-                ...updateSubmission.payload,
+                ...updateSubmission.variables,
               }
             }
 
@@ -375,7 +390,7 @@ const invoicesRoute = new Route({
             <div key={action.submittedAt}>
               <a href="#" className="block py-2 px-3 text-blue-700">
                 <pre className="text-sm">
-                  #<Spinner /> - {action.payload.title?.slice(0, 10)}
+                  #<Spinner /> - {action.variables.title?.slice(0, 10)}
                 </pre>
               </a>
             </div>
@@ -393,9 +408,9 @@ const invoicesIndexRoute = new Route({
   getParentRoute: () => invoicesRoute,
   path: '/',
   component: () => {
-    const {
-      state: { latestSubmission },
-    } = useAction({ action: createInvoiceAction })
+    const [{ latestSubmission }, actionClient] = useAction({
+      key: 'createInvoice',
+    })
 
     return (
       <>
@@ -405,9 +420,12 @@ const invoicesIndexRoute = new Route({
               event.preventDefault()
               event.stopPropagation()
               const formData = new FormData(event.target as HTMLFormElement)
-              createInvoiceAction.submit({
-                title: formData.get('title') as string,
-                body: formData.get('body') as string,
+              actionClient.submitAction({
+                key: 'createInvoice',
+                variables: {
+                  title: formData.get('title') as string,
+                  body: formData.get('body') as string,
+                },
               })
             }}
             className="space-y-2"
@@ -452,29 +470,30 @@ const invoiceRoute = new Route({
         notes: z.string().optional(),
       })
       .parse(search),
-  loader: async ({ params: { invoiceId }, preload }) => {
-    const invoicesLoaderInstance = invoiceLoader.getInstance({
+  loader: async ({
+    params: { invoiceId },
+    preload,
+    context: { loaderClient },
+  }) => {
+    const loaderOptions = createLoaderOptions({
+      key: 'invoice',
       variables: invoiceId,
     })
 
-    await invoicesLoaderInstance.load({
+    await loaderClient.load({
+      ...loaderOptions,
       preload,
     })
 
-    return () => invoicesLoaderInstance.useInstance()
+    return () => useLoaderInstance(loaderOptions)
   },
   component: ({ useLoader, useSearch }) => {
     const search = useSearch()
     const navigate = useNavigate()
-
-    const {
-      state: { data: invoice },
-    } = useLoader()()
-
-    const {
-      state: { latestSubmission },
-    } = useAction({ action: updateInvoiceAction })
-
+    const { data: invoice } = useLoader()()
+    const [{ latestSubmission }, actionClient] = useAction({
+      key: 'updateInvoice',
+    })
     const [notes, setNotes] = React.useState(search.notes ?? '')
 
     React.useEffect(() => {
@@ -494,10 +513,13 @@ const invoiceRoute = new Route({
           event.preventDefault()
           event.stopPropagation()
           const formData = new FormData(event.target as HTMLFormElement)
-          updateInvoiceAction.submit({
-            id: invoice.id,
-            title: formData.get('title') as string,
-            body: formData.get('body') as string,
+          actionClient.submitAction({
+            key: 'updateInvoice',
+            variables: {
+              id: invoice.id,
+              title: formData.get('title') as string,
+              body: formData.get('body') as string,
+            },
           })
         }}
         className="p-2 space-y-2"
@@ -545,7 +567,7 @@ const invoiceRoute = new Route({
             Save
           </button>
         </div>
-        {latestSubmission?.payload.id === invoice.id ? (
+        {latestSubmission?.variables.id === invoice.id ? (
           <div key={latestSubmission?.submittedAt}>
             {latestSubmission?.status === 'success' ? (
               <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
@@ -584,15 +606,14 @@ const usersRoute = new Route({
       },
     }),
   ],
-  loader: ({ preload }) => usersLoader.load({ preload }),
-  component: ({ useSearch }) => {
+  loader: async ({ preload, context: { loaderClient } }) => {
+    await loaderClient.load({ key: 'users', preload })
+    return () => useLoaderInstance({ key: 'users' })
+  },
+  component: ({ useSearch, useLoader }) => {
     const navigate = useNavigate()
     const { usersView } = useSearch()
-
-    const {
-      state: { data: users },
-    } = usersLoader.useLoader()
-
+    const { data: users } = useLoader()()
     const sortBy = usersView?.sortBy ?? 'name'
     const filterBy = usersView?.filterBy
 
@@ -745,17 +766,21 @@ const userRoute = new Route({
   // Since our userId isn't part of our pathname, make sure we
   // augment the userId as the key for this route
   getKey: ({ search: { userId } }) => userId,
-  loader: async ({ search: { userId }, preload }) => {
-    const userLoaderInstance = userLoader.getInstance({ variables: userId })
+  loader: async ({
+    search: { userId },
+    preload,
+    context: { loaderClient },
+  }) => {
+    const loaderOptions = createLoaderOptions({
+      key: 'user',
+      variables: userId,
+    })
 
-    await userLoaderInstance.load({ preload })
-
-    return () => userLoaderInstance.useInstance()
+    await loaderClient.load({ ...loaderOptions, preload })
+    return () => useLoaderInstance(loaderOptions)
   },
   component: ({ useLoader }) => {
-    const {
-      state: { data: user },
-    } = useLoader()()
+    const { data: user } = useLoader()()
 
     return (
       <>
@@ -879,14 +904,17 @@ const loginRoute = new Route({
 const layoutRoute = new Route({
   getParentRoute: () => rootRoute,
   id: 'layout',
-  loader: async ({ preload }) => randomIdLoader.load({ preload }),
-  component: () => {
-    const randomIdLoaderInstance = randomIdLoader.useLoader()
+  loader: async ({ preload, context: { loaderClient } }) => {
+    await loaderClient.load({ key: 'random', preload })
+    return () => useLoaderInstance({ key: 'random' })
+  },
+  component: ({ useLoader }) => {
+    const { data } = useLoader()()
 
     return (
       <div>
         <div>Layout</div>
-        <div>Random #: {randomIdLoaderInstance.state.data}</div>
+        <div>Random #: {data}</div>
         <hr />
         <Outlet />
       </div>
@@ -942,7 +970,9 @@ const router = new Router({
     actionClient.clearAll()
   },
   context: {
-    auth: undefined!,
+    loaderClient,
+    actionClient,
+    auth: undefined!, // We'll inject this when we render
   },
 })
 
@@ -1019,10 +1049,10 @@ function SubApp() {
         </div>
       </div>
       <LoaderClientProvider
-        loaderClient={loaderClient}
+        client={loaderClient}
         defaultMaxAge={defaultLoaderMaxAge}
       >
-        <ActionClientProvider actionClient={actionClient}>
+        <ActionClientProvider client={actionClient}>
           <RouterProvider
             router={router}
             defaultPreload="intent"
@@ -1109,8 +1139,18 @@ function useAuth() {
   return React.useContext(AuthContext)
 }
 
-function Spinner() {
-  return <div className="inline-block animate-spin px-3">⍥</div>
+function Spinner({ show }: { show?: boolean }) {
+  return (
+    <div
+      className={`inline-block animate-spin px-3 transition ${
+        show ?? true
+          ? 'opacity-1 duration-500 delay-300'
+          : 'duration-1000 opacity-0 delay-0'
+      }`}
+    >
+      ⍥
+    </div>
+  )
 }
 
 function useSessionStorage<T>(key: string, initialValue: T) {

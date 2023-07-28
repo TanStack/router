@@ -6,6 +6,9 @@ export * from '@tanstack/store'
 
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 
+const useLayoutEffect =
+  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
+
 export function useStore<
   TState,
   TSelected = NoInfer<TState>,
@@ -15,9 +18,28 @@ export function useStore<
   selector: (state: NoInfer<TState>) => TSelected = (d) => d as any,
 ) {
   // const isMountedRef = React.useRef(false)
-  // const [state, setState] = React.useState<{ ref: TSelected }>({
-  //   ref: undefined!,
-  // })
+  // const [state, setState] = React.useState<{ ref: TSelected }>(() => ({
+  //   ref: selector(store.state),
+  // }))
+
+  // if (!shallow(selector(store.state), state.ref)) {
+  //   setState(() => ({ ref: selector(store.state) }))
+  // }
+
+  // useLayoutEffect(() => {
+  //   console.log('effect')
+
+  //   const cb = () => {
+  //     const next = selector(store.state)
+  //     console.log('onsub')
+  //     if (!shallow(next, state.ref)) {
+  //       console.log('set')
+  //       setState(() => ({ ref: selector(store.state) }))
+  //     }
+  //   }
+
+  //   return store.subscribe(cb)
+  // }, [])
 
   const slice = useSyncExternalStoreWithSelector(
     store.subscribe,
@@ -31,7 +53,7 @@ export function useStore<
   //   state.ref = slice
   // }
 
-  // if (slice !== state.ref) {
+  // if (!shallow(slice, state.ref)) {
   //   setState({ ref: slice })
   // }
 

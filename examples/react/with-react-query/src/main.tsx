@@ -8,6 +8,7 @@ import {
   Link,
   useParams,
   RootRoute,
+  RouterContext,
 } from '@tanstack/router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import {
@@ -26,7 +27,13 @@ type PostType = {
   body: string
 }
 
-const rootRoute = new RootRoute({
+const queryClient = new QueryClient()
+
+const routerContext = new RouterContext<{
+  queryClient: typeof queryClient
+}>()
+
+const rootRoute = routerContext.createRootRoute({
   component: () => {
     return (
       <>
@@ -72,10 +79,15 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  loader: () =>
-    queryClient.ensureQueryData({ queryKey: ['posts'], queryFn: fetchPosts }),
-  component: () => {
-    const postsQuery = useQuery(['posts'], fetchPosts)
+  loader: async ({ context: { queryClient } }) => {
+    await queryClient.ensureQueryData({
+      queryKey: ['posts'],
+      queryFn: fetchPosts,
+    })
+    return () => useQuery(['posts'], fetchPosts)
+  },
+  component: ({ useLoader }) => {
+    const postsQuery = useLoader()()
 
     return (
       <div className="p-2 flex gap-2">
@@ -120,13 +132,18 @@ const postsIndexRoute = new Route({
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  loader: async ({ params: { postId } }) =>
-    queryClient.ensureQueryData(['posts', postId], () => fetchPostById(postId)),
-  component: () => {
-    const { postId } = useParams({ from: postRoute.id })
-    const postQuery = useQuery(['posts', postId], () => fetchPostById(postId), {
-      enabled: !!postId,
-    })
+  loader: async ({ params: { postId }, context: { queryClient } }) => {
+    await queryClient.ensureQueryData(['posts', postId], () =>
+      fetchPostById(postId),
+    )
+
+    return () =>
+      useQuery(['posts', postId], () => fetchPostById(postId), {
+        enabled: !!postId,
+      })
+  },
+  component: ({ useLoader }) => {
+    const postQuery = useLoader()()
 
     return (
       <div className="space-y-2">
@@ -146,6 +163,9 @@ const routeTree = rootRoute.addChildren([
 const router = new Router({
   routeTree,
   defaultPreload: 'intent',
+  context: {
+    queryClient,
+  },
 })
 
 declare module '@tanstack/router' {
@@ -153,8 +173,6 @@ declare module '@tanstack/router' {
     router: typeof router
   }
 }
-
-const queryClient = new QueryClient()
 
 function App() {
   return (

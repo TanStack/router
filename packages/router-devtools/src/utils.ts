@@ -1,10 +1,5 @@
 import React from 'react'
-import {
-  AnyRootRoute,
-  AnyRoute,
-  AnyRouteMatch,
-  RouteMatch,
-} from '@tanstack/router'
+import { AnyRootRoute, AnyRoute, AnyRouteMatch } from '@tanstack/router'
 
 import { Theme, useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
@@ -31,11 +26,11 @@ type StyledComponent<T> = T extends 'button'
   : never
 
 export function getStatusColor(match: AnyRouteMatch, theme: Theme) {
-  return match.state.status === 'pending'
+  return match.status === 'pending'
     ? theme.active
-    : match.state.status === 'error'
+    : match.status === 'error'
     ? theme.danger
-    : match.state.status === 'success'
+    : match.status === 'success'
     ? theme.success
     : theme.gray
 }
@@ -45,14 +40,14 @@ export function getRouteStatusColor(
   route: AnyRoute | AnyRootRoute,
   theme: Theme,
 ) {
-  const found = matches.find((d) => d.route === route)
+  const found = matches.find((d) => d.routeId === route.id)
 
   return found
-    ? found.route.status === 'pending'
+    ? found.status === 'pending'
       ? theme.active
-      : found.state.status === 'error'
+      : found.status === 'error'
       ? theme.danger
-      : found.state.status === 'success'
+      : found.status === 'success'
       ? theme.success
       : theme.gray
     : theme.gray

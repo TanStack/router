@@ -1,21 +1,11 @@
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import {
-  ErrorComponent,
-  Link,
-  Outlet,
-  RootRoute,
-  useRouter,
-} from '@tanstack/router'
+import { ErrorComponent, Link, Outlet, useRouter } from '@tanstack/router'
 
 import { Scripts } from '@tanstack/react-start/client'
-import type { RegisteredLoaderClient } from '@tanstack/react-loaders'
 import { secret } from '../secrets.server$'
+import { routerContext } from '../router'
 
-export interface RouterContext {
-  loaderClient: RegisteredLoaderClient
-}
-
-export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
+export const rootRoute = routerContext.createRootRoute({
   wrapInSuspense: false,
   errorComponent: ({ error }) => <ErrorComponent error={error} />,
   component: function Root() {
