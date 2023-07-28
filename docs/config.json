@@ -124,7 +124,7 @@
           "to": "examples/react/kitchen-sink-single-file?file=src%2Fmain.tsx"
         },
         {
-          "label": "Kitchen Sink Single File",
+          "label": "Kitchen Sink Multi-File",
           "to": "examples/react/kitchen-sink-multi-file?file=src%2Froutes%2Froot.tsx"
         },
         {
