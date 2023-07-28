@@ -281,7 +281,7 @@ export class LoaderClient<
   }
 
   #getLoader = <TKey extends keyof TLoaders>(key: TKey): TLoaders[TKey] => {
-    const loader = this.#getLoader(key)
+    const loader = this.loaders[key]
     invariant(loader, `No loader found for key "${key as string}"`)
     return loader
   }
