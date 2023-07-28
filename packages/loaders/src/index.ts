@@ -103,7 +103,7 @@ export class LoaderClient<
           const isLoading = (
             Object.values(this.__store.state.loaders) as LoaderState[]
           ).some((loader) => {
-            return Object.values(loader.instances).some(
+            return Object.values(loader.instances || {}).some(
               (instance) => instance.isFetching && !instance.preload,
             )
           })
@@ -111,7 +111,7 @@ export class LoaderClient<
           const isPreloading = (
             Object.values(this.loaders) as LoaderState[]
           ).some((loader) => {
-            return Object.values(loader.instances).some(
+            return Object.values(loader.instances || {}).some(
               (instance) => instance.isFetching && instance.preload,
             )
           })
