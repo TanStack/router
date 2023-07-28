@@ -100,34 +100,25 @@ export class LoaderClient<
       },
       {
         onUpdate: () => {
+          const isLoading = (
+            Object.values(this.__store.state.loaders) as LoaderState[]
+          ).some((loader) => {
+            return Object.values(loader.instances).some(
+              (instance) => instance.isFetching && !instance.preload,
+            )
+          })
+
+          const isPreloading = (
+            Object.values(this.loaders) as LoaderState[]
+          ).some((loader) => {
+            return Object.values(loader.instances).some(
+              (instance) => instance.isFetching && instance.preload,
+            )
+          })
+
+          this.__store.state.isLoading = isLoading
+          this.__store.state.isPreloading = isPreloading
           this.state = this.__store.state
-
-          // const isLoading = Object.values(client.loaders).some((loader) => {
-          //   return Object.values(loader.instances).some(
-          //     (instance) =>
-          //       instance.state.isFetching && !instance.state.preload,
-          //   )
-          // })
-
-          // const isPreloading = Object.values(client.loaders).some((loader) => {
-          //   return Object.values(loader.instances).some(
-          //     (instance) => instance.state.isFetching && instance.state.preload,
-          //   )
-          // })
-
-          // if (
-          //   client.state.isLoading === isLoading &&
-          //   client.state.isPreloading === isPreloading
-          // ) {
-          //   return
-          // }
-
-          // client.__store.setState((s) => {
-          //   return {
-          //     isLoading,
-          //     isPreloading,
-          //   }
-          // })
         },
       },
     ) as LoaderClientStore<TLoaders>

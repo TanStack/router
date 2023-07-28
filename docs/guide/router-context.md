@@ -74,7 +74,10 @@ const userRoute = new Route({
   path: 'todos',
   component: Todos,
   loader: ({ context }) => {
-    await todosLoader.load({ variables: { user: context.user.id } })
+    await loaderClient.load({
+      key: 'todos',
+      variables: { user: context.user.id },
+    })
   },
 })
 ```

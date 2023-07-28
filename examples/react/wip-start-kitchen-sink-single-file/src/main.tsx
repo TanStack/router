@@ -49,6 +49,7 @@ type UsersViewSortBy = 'name' | 'id' | 'email'
 // Loaders
 
 const invoicesLoader = new Loader({
+  key: 'invoices',
   fn: async () => {
     console.log('Fetching invoices...')
     return fetchInvoices()
@@ -56,6 +57,7 @@ const invoicesLoader = new Loader({
 })
 
 const invoiceLoader = new Loader({
+  key: 'invoice',
   fn: async (invoiceId: number) => {
     console.log(`Fetching invoice with id ${invoiceId}...`)
     return fetchInvoiceById(invoiceId)
@@ -66,6 +68,7 @@ const invoiceLoader = new Loader({
 })
 
 const usersLoader = new Loader({
+  key: 'users',
   fn: async () => {
     console.log('Fetching users...')
     return fetchUsers()
@@ -73,6 +76,7 @@ const usersLoader = new Loader({
 })
 
 const userLoader = new Loader({
+  key: 'user',
   fn: async (userId: number) => {
     console.log(`Fetching user with id ${userId}...`)
     return fetchUserById(userId)
@@ -83,6 +87,7 @@ const userLoader = new Loader({
 })
 
 const randomIdLoader = new Loader({
+  key: 'random',
   fn: () => {
     return fetchRandomNumber()
   },
@@ -108,6 +113,7 @@ declare module '@tanstack/react-loaders' {
 // Actions
 
 const createInvoiceAction = new Action({
+  key: 'createInvoice',
   fn: postInvoice,
   onEachSuccess: async () => {
     await invoicesLoader.invalidate()
@@ -115,6 +121,7 @@ const createInvoiceAction = new Action({
 })
 
 const updateInvoiceAction = new Action({
+  key: 'updateInvoice',
   fn: patchInvoice,
   onEachSuccess: async ({ payload }) => {
     await invoiceLoader.invalidateInstance({

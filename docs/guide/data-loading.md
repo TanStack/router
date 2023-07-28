@@ -64,6 +64,7 @@ import { Route } from '@tanstack/router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
+  key: 'posts',
   fn: async (params) => {
     const res = await fetch(`/api/posts`)
     if (!res.ok) throw new Error('Failed to fetch posts')
@@ -71,19 +72,23 @@ const postsLoader = new Loader({
   },
 })
 
+const loaderClient = new LoaderClient({
+  loaders: [postsLoader],
+})
+
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
   fn: async () => {
     // Ensure our loader is loaded
-    await postsLoader.load()
+    await loaderClient.load({ key: 'posts' })
 
     // Return a hook fn we can use in our component
-    return () => useLoader({ loader: postsLoader })
+    return () => useLoaderInstance({ key: 'posts' })
   },
   component: ({ useLoader }) => {
     // Access the hook we made in the loader function (and call it)
-    const posts = useLoader()()
+    const { data: posts } = useLoader()()
 
     return <div>...</div>
   },
@@ -100,7 +105,7 @@ The `loader` function receives a single parameter, which is an object with the f
 - `hash` - The route's hash
 - `context` - The route's context object **including** inherited context from parent routes
 - `routeContext` - The route's context object, **excluding** inherited context from parent routes
-- `signal` - The route's abort signal which is cancelled when the route is unloaded or when the `loader` call becomes outdated.
+- `abortController` - The route's abortController. It's signal is cancelled when the route is unloaded or when the `loader` call becomes outdated.
 
 Using these parameters, we can do a lot of cool things. Let's take a look at a few examples
 
@@ -113,6 +118,7 @@ import { Route } from '@tanstack/router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 const postLoader = new Loader({
+  key: 'post',
   // Accept a postId string variable
   fn: async (postId: string) => {
     const res = await fetch(`/api/posts/${postId}`)
@@ -121,17 +127,21 @@ const postLoader = new Loader({
   },
 })
 
+const loaderClient = new LoaderClient({
+  loaders: [postLoader],
+})
+
 const postRoute = new Route({
   getParentPath: () => postsRoute,
   path: '$postId',
   async loader({ params }) {
     // Load our loader
-    await postLoader.load({ variables: params.postId })
+    await loaderClient.loade({ key: 'post', variables: params.postId })
     // Return a hook fn we can use in our component
-    return () => useLoader({ loader: postLoader, variables: params.postId })
+    return () => useLoaderInstance({ key: 'post', variables: params.postId })
   },
   component: ({ useLoader }) => {
-    const posts = useLoader()()
+    const { data: posts } = useLoader()()
 
     return <div>...</div>
   },
@@ -147,12 +157,17 @@ import { Route } from '@tanstack/router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
+  key: 'posts',
   // Accept a page number variable
   fn: async (pageIndex: number) => {
     const res = await fetch(`/api/posts?page=${pageIndex}`)
     if (!res.ok) throw new Error('Failed to fetch posts')
     return res.json()
   },
+})
+
+const loaderClient = new LoaderClient({
+  loaders: [postsLoader],
 })
 
 const postsRoute = new Route({
@@ -163,12 +178,13 @@ const postsRoute = new Route({
   }),
   async loader({ search }) {
     // Load our loader
-    await postsLoader.load({ variables: search.pageIndex })
+    await loaderClient.load({ key: 'posts', variables: search.pageIndex })
     // Return a hook fn we can use in our component
-    return () => useLoader({ loader: postsLoader, variables: search.pageIndex })
+    return () =>
+      useLoaderInstance({ key: 'posts', variables: search.pageIndex })
   },
   component: ({ useLoader }) => {
-    const posts = useLoader()()
+    const { data: posts } = useLoader()()
 
     return <div>...</div>
   },
@@ -186,6 +202,7 @@ import { Route } from '@tanstack/router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
+  key: 'posts',
   fn: async () => {
     const res = await fetch(`/api/posts`)
     if (!res.ok) throw new Error('Failed to fetch posts')
@@ -213,12 +230,11 @@ const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
   async loader({ context: { loaderClient } }) {
-    const { postsLoader } = loaderClient
-    await postsLoader.load()
-    return () => useLoader({ loader: postsLoader })
+    await loaderClient.load({ key: 'posts' })
+    return () => useLoaderInstance({ key: 'posts' })
   },
   component: ({ useLoader }) => {
-    const posts = useLoader()()
+    const { data: posts } = useLoader()()
 
     return <div>...</div>
   },
@@ -239,13 +255,14 @@ const router = new Router({
 
 ## Using the Abort Signal
 
-The `signal` property of the `loader` function is an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) which is cancelled when the route is unloaded or when the `loader` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change. Here is an example using TanStack Loader's signal passthrough:
+The `abortControler` property of the `loader` function is an [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController). Its signal is cancelled when the route is unloaded or when the `loader` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change. Here is an example using TanStack Loader's signal passthrough:
 
 ```tsx
 import { Route } from '@tanstack/router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
+  key: 'posts',
   // Accept a page number variable
   fn: async (pageIndex: number, { signal }) => {
     const res = await fetch(`/api/posts?page=${pageIndex}`, { signal })
@@ -254,16 +271,20 @@ const postsLoader = new Loader({
   },
 })
 
+const loaderClient = new LoaderClient({
+  loaders: [postsLoader],
+})
+
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  async loader({ signal }) {
+  async loader({ abortController }) {
     // Pass the route's signal to the loader
-    await postsLoader.load({ signal })
-    return () => useLoader({ loader: postsLoader })
+    await loaderClient.load({ key: 'posts', signal: abortController.signal })
+    return () => useLoaderInstance({ key: 'posts' })
   },
   component: ({ useLoader }) => {
-    const posts = useLoader()()
+    const { data: posts } = useLoader()()
 
     return <div>...</div>
   },
@@ -279,6 +300,7 @@ import { Route } from '@tanstack/router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 const postsLoader = new Loader({
+  key: 'posts',
   fn: async () => {
     const res = await fetch(`/api/posts?page=${pageIndex}`)
     if (!res.ok) throw new Error('Failed to fetch posts')
@@ -286,16 +308,20 @@ const postsLoader = new Loader({
   },
 })
 
+const loaderClient = new LoaderClient({
+  loaders: [postsLoader],
+})
+
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
   async loader({ preload }) {
     // Pass the route's preload to the loader
-    await postsLoader.load({ preload })
-    return () => useLoader({ loader: postsLoader })
+    await loaderClient.load({ key: 'posts', preload })
+    return () => useLoaderInstance({ loader: postsLoader })
   },
   component: ({ useLoader }) => {
-    const posts = useLoader()()
+    const { data: posts } = useLoader()()
 
     return <div>...</div>
   },

@@ -384,9 +384,9 @@ export function createRouter() {
   loaderClient.options = {
     ...loaderClient.options,
     hydrateLoaderInstanceFn: (instance) =>
-      router.hydrateData(instance.hashedKey) as any,
+      router.hydrateData(instance.hashedKey),
     dehydrateLoaderInstanceFn: (instance) =>
-      router.dehydrateData(instance.hashedKey, () => instance.state),
+      router.dehydrateData(instance.hashedKey, () => instance),
   }
 
   return router
@@ -402,6 +402,7 @@ import * as React from 'react'
 import { Loader } from '@tanstack/react-loaders'
 
 const testLoader = new Loader({
+  key: 'test',
   fn: async () => {
     await new Promise((resolve) => setTimeout(resolve, 1000))
     return 'Hello World!'
@@ -417,8 +418,8 @@ export function Test() {
 }
 
 export function Inner() {
-  const instance = testLoader.useLoader()
+  const instance = useLoaderInstance({ key: 'test' })
 
-  return instance.state.data
+  return instance.data
 }
 ```
