@@ -10,11 +10,6 @@ import { postIdRoute } from './routes/posts/$postId'
 import { createLoaderClient } from './loaderClient'
 import React from 'react'
 
-export const routerContext = new RouterContext<{
-  loaderClient: ReturnType<typeof createLoaderClient>
-  head: string
-}>()
-
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   postsRoute.addChildren([postsIndexRoute, postIdRoute]),
