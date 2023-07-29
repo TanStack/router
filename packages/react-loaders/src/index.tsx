@@ -133,14 +133,12 @@ export function useLoaderInstance<
 
   if (opts?.strict ?? true) {
     if (loaderInstance.status === 'pending') {
-      console.log('pending throw')
       throw loaderInstance.loadPromise
     }
   }
 
   // If we're still in an idle state, we need to suspend via load
   if (loaderInstance.status === 'idle') {
-    console.log('idle throw')
     throw client.load(opts)
   }
 
