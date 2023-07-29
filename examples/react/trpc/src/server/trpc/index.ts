@@ -23,6 +23,13 @@ export const appRouter = router({
       const user = await db.post.create(opts.input)
       return user
     }),
+
+  wait: publicProcedure
+    .input(z.object({ ms: z.number() }))
+    .query(async (opts) => {
+      await new Promise((resolve) => setTimeout(resolve, opts.input.ms))
+      return `done - ${new Date().toLocaleString()}`
+    }),
 })
 
 export type AppRouter = typeof appRouter

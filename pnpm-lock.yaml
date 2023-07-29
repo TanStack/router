@@ -594,14 +594,14 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@trpc/client':
-        specifier: 10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4+1803d04f9
-        version: 10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4(@trpc/server@10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4)
+        specifier: ^10.36.0
+        version: 10.36.0(@trpc/server@10.36.0)
       '@trpc/react-query':
-        specifier: 10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4+1803d04f9
-        version: 10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4(@tanstack/react-query@4.32.0)(@trpc/client@10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4)(@trpc/server@10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4)(react-dom@18.2.0)(react@18.2.0)
+        specifier: ^10.36.0
+        version: 10.36.0(@tanstack/react-query@4.32.0)(@trpc/client@10.36.0)(@trpc/server@10.36.0)(react-dom@18.2.0)(react@18.2.0)
       '@trpc/server':
-        specifier: 10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4+1803d04f9
-        version: 10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4
+        specifier: ^10.36.0
+        version: 10.36.0
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -3998,12 +3998,12 @@ packages:
       react-dom: 18.2.0(react@18.2.0)
     dev: true
 
-  /@trpc/client@10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4(@trpc/server@10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4):
-    resolution: {integrity: sha512-J9Z0Njk6nqt2HzLmipyNPEZvt86GZxRHvKxEo5OHwcTDvwUarMdlUvc5vypONAyTz19ZnbA6hmyNfAT4+whT1g==}
+  /@trpc/client@10.36.0(@trpc/server@10.36.0):
+    resolution: {integrity: sha512-Qj1T4vwhEEeLgXCUHFT7S5fqytkNYAudHwZtooEZ+NN+yN/a5oDZy1wd5D/gkY9y+nO8JCSgc7P5KhLjwzdeVw==}
     peerDependencies:
-      '@trpc/server': 10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4+1803d04f9
+      '@trpc/server': 10.36.0
     dependencies:
-      '@trpc/server': 10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4
+      '@trpc/server': 10.36.0
     dev: false
 
   /@trpc/client@10.4.1(@trpc/server@10.4.1):
@@ -4014,18 +4014,18 @@ packages:
       '@trpc/server': 10.4.1
     dev: false
 
-  /@trpc/react-query@10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4(@tanstack/react-query@4.32.0)(@trpc/client@10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4)(@trpc/server@10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-QJ3ZiWef2joVin4VJIHYed76oaDckmo2/S9nmpzzpSnI2gmO4Hg2jCFXxug7d95fhqE74k+rkP04MS3kZH8yIw==}
+  /@trpc/react-query@10.36.0(@tanstack/react-query@4.32.0)(@trpc/client@10.36.0)(@trpc/server@10.36.0)(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-ueIdfP/Xl4DIeBLMh6hEb0QdvcUjDZ+V+4lzIuztmkpRIvL4ZpwyBS7TGbKs+1EUwWu42AJB0t8n/LrtO6MxgQ==}
     peerDependencies:
       '@tanstack/react-query': ^4.18.0
-      '@trpc/client': 10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4+1803d04f9
-      '@trpc/server': 10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4+1803d04f9
+      '@trpc/client': 10.36.0
+      '@trpc/server': 10.36.0
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
     dependencies:
       '@tanstack/react-query': 4.32.0(react-dom@18.2.0)(react@18.2.0)
-      '@trpc/client': 10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4(@trpc/server@10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4)
-      '@trpc/server': 10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4
+      '@trpc/client': 10.36.0(@trpc/server@10.36.0)
+      '@trpc/server': 10.36.0
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
     dev: false
@@ -4046,8 +4046,8 @@ packages:
       react-dom: 18.2.0(react@18.2.0)
     dev: false
 
-  /@trpc/server@10.35.1-alpha-server-helpers-2023-07-23-20-35-45.4:
-    resolution: {integrity: sha512-AHEKpMRQ1k2LltmRbyy/LABjLpM6KrRh5bIMigqUftBi+sY4xukWEx1NUm0tWhDZg9G+Yd7/030+3KPdxr2cOg==}
+  /@trpc/server@10.36.0:
+    resolution: {integrity: sha512-9kwFeGBuihUPZT2wRv2cmTpSoI+sSGj0/lBwvtgIq1P0+ONpj5NJOcWlvYbpnr5nRxc/+44lM/mg4TnSuTd5Kg==}
     dev: false
 
   /@trpc/server@10.4.1:

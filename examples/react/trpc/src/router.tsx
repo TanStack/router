@@ -57,6 +57,7 @@ export function createRouter() {
     },
     // Wrap our router in the loader client provider
     Wrap: (props) => {
+      // Makes sure the dehydratede state is transformed properly
       const dehydratedState = trpc.useDehydratedState(
         trpcClient,
         props.dehydratedState,
@@ -66,7 +67,7 @@ export function createRouter() {
         <QueryClientProvider client={queryClient}>
           <trpc.Provider client={trpcClient} queryClient={queryClient}>
             <Hydrate state={dehydratedState}>
-              {/** @ts-ignore - not sure what it complains about... */}
+              {/** @ts-ignore - not sure what it complains about... probably some mismatching @types/react versions */}
               {props.children}
             </Hydrate>
           </trpc.Provider>

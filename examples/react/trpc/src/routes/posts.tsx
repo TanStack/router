@@ -2,6 +2,7 @@ import { Link, Outlet, Route } from '@tanstack/router'
 import { rootRoute } from './root'
 import { postIdRoute } from './posts/$postId'
 import { trpc } from '../utils/trpc'
+import { Suspense } from 'react'
 
 declare module 'react' {
   function use<T>(promise: Promise<T>): T
@@ -26,11 +27,11 @@ export const postsRoute = new Route({
 
     return (
       <div className="p-2 flex gap-2">
-        {/* <Test wait={1000 / 2} />
+        <Test wait={1000 / 2} />
         <Test wait={2000 / 2} />
         <Test wait={3000 / 2} />
         <Test wait={4000 / 2} />
-        <Test wait={5000 / 2} /> */}
+        <Test wait={5000 / 2} />
         <ul className="list-disc pl-4">
           {posts?.map((post) => {
             return (
@@ -56,18 +57,16 @@ export const postsRoute = new Route({
   },
 })
 
-// function Test({ wait }: { wait: number }) {
-//   return (
-//     <React.Suspense fallback={<div>...</div>}>
-//       <TestInner wait={wait} />
-//     </React.Suspense>
-//   );
-// }
+function Test({ wait }: { wait: number }) {
+  return (
+    <Suspense fallback={<div>...</div>}>
+      <TestInner wait={wait} />
+    </Suspense>
+  )
+}
 
-// function TestInner({ wait }: { wait: number }) {
-//   const instance = testLoader.useLoader({
-//     variables: wait,
-//   });
+function TestInner({ wait }: { wait: number }) {
+  const [state] = trpc.wait.useSuspenseQuery({ ms: wait })
 
-//   return <div>Test: {instance.state.data.test}</div>;
-// }
+  return <div>Test: {state}</div>
+}
