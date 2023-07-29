@@ -1,7 +1,15 @@
-import { Link, Outlet } from '@tanstack/router'
-import { routerContext } from '../router'
+import { Link, Outlet, RouterContext } from '@tanstack/router'
+
 import { DehydrateRouter } from '@tanstack/react-start/client'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+
+import type { createServerSideHelpers } from '@trpc/react-query/server'
+import type { AppRouter } from '../server/trpc'
+
+export const routerContext = new RouterContext<{
+  ssg: ReturnType<typeof createServerSideHelpers<AppRouter>>
+  head: string
+}>()
 
 export const rootRoute = routerContext.createRootRoute({
   component: Root,

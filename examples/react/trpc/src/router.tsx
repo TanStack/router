@@ -1,25 +1,19 @@
-import { Router, RouterContext } from '@tanstack/router'
+import { Router } from '@tanstack/router'
 
 import { rootRoute } from './routes/root'
 import { indexRoute } from './routes/index'
 import { postsRoute } from './routes/posts'
 import { postsIndexRoute } from './routes/posts/index'
 import { postIdRoute } from './routes/posts/$postId'
+
 import {
   Hydrate,
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query'
-
 import { createServerSideHelpers } from '@trpc/react-query/server'
-import { AppRouter } from './server/trpc'
 import { unstable_httpBatchStreamLink } from '@trpc/react-query'
 import { trpc } from './utils/trpc'
-
-export const routerContext = new RouterContext<{
-  ssg: ReturnType<typeof createServerSideHelpers<AppRouter>>
-  head: string
-}>()
 
 export const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -33,7 +27,7 @@ export function createRouter() {
     links: [unstable_httpBatchStreamLink({ url: 'http://localhost:4000' })],
   })
 
-  const ssg = createServerSideHelpers<AppRouter>({
+  const ssg = createServerSideHelpers({
     client: trpcClient,
   })
 

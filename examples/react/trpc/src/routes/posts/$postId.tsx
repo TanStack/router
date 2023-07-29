@@ -27,7 +27,7 @@ export const postIdRoute = new Route({
         <div className="text-sm">{post.body}</div>
         <h5 className="m-2">Comments</h5>
         {post.commentIds.map((id) => (
-          <Suspense fallback={`Loading comment ${id}`}>
+          <Suspense key={id} fallback={<div>Loading Comment {id}...</div>}>
             <Comment id={id} />
           </Suspense>
         ))}

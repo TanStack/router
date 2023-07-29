@@ -77,7 +77,7 @@ const postList = async (withAuthor = false) => {
 }
 
 const commentById = async (id: number) => {
-  await sleep(1000)
+  await sleep(1000 + id * 100) // different sleep time to showcase streaming
   const comment = comments.find((comment) => comment.id === id)
 
   if (!comment) throw new Error('Comment not found')
