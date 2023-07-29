@@ -498,6 +498,9 @@ importers:
       '@tanstack/router':
         specifier: workspace:*
         version: link:../../../packages/router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
       '@trpc/client':
         specifier: ^10.36.0
         version: 10.36.0(@trpc/server@10.36.0)
@@ -516,6 +519,9 @@ importers:
       react-dom:
         specifier: 18.3.0-canary-587ae49d7-20230720
         version: 18.3.0-canary-587ae49d7-20230720(react@18.3.0-canary-587ae49d7-20230720)
+      use-sync-external-store:
+        specifier: ^1.2.0
+        version: 1.2.0(react@18.3.0-canary-587ae49d7-20230720)
       zod:
         specifier: ^3.21.4
         version: 3.21.4

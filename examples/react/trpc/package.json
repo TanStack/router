@@ -12,13 +12,15 @@
     "@tanstack/react-query": "^4.32.0",
     "@tanstack/react-start": "0.0.1-beta.125",
     "@tanstack/router": "0.0.1-beta.125",
+    "@tanstack/router-devtools": "0.0.1-beta.125",
     "@trpc/client": "^10.36.0",
     "@trpc/react-query": "^10.36.0",
     "@trpc/server": "^10.36.0",
     "cors": "^2.8.5",
     "react": "18.3.0-canary-587ae49d7-20230720",
     "react-dom": "18.3.0-canary-587ae49d7-20230720",
-    "zod": "^3.21.4"
+    "zod": "^3.21.4",
+    "use-sync-external-store": "^1.2.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.13",
@@ -33,5 +35,8 @@
     "tsx": "^3.12.7",
     "typescript": "^5.0.2",
     "vite": "^4.4.5"
+  },
+  "resolutions": {
+    "use-sync-external-store": "1.2.0"
   }
 }
