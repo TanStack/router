@@ -12,6 +12,12 @@ export const appRouter = router({
 
   postById: publicProcedure.input(z.number()).query(async (opts) => {
     const user = await db.post.byId(opts.input)
+
+    return user
+  }),
+
+  commentById: publicProcedure.input(z.number()).query(async (opts) => {
+    const user = await db.comment.byId(opts.input)
     return user
   }),
 

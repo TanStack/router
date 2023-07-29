@@ -13,7 +13,7 @@ import {
 
 import { createServerSideHelpers } from '@trpc/react-query/server'
 import { AppRouter } from './server/trpc'
-import { httpBatchLink } from '@trpc/react-query'
+import { unstable_httpBatchStreamLink } from '@trpc/react-query'
 import { trpc } from './utils/trpc'
 
 export type RouterContext = {
@@ -30,7 +30,7 @@ export function createRouter() {
   const queryClient = new QueryClient()
 
   const trpcClient = trpc.createClient({
-    links: [httpBatchLink({ url: 'http://localhost:4000' })],
+    links: [unstable_httpBatchStreamLink({ url: 'http://localhost:4000' })],
   })
 
   const ssg = createServerSideHelpers<AppRouter>({
