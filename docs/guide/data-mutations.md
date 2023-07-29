@@ -45,6 +45,7 @@ Let's write a data mutation that will update a post on a server. We'll use TanSt
 import { Action } from '@tanstack/actions'
 
 const updatePostAction = new Action({
+  key: 'updatePost',
   fn: async (post: Post) => {
     const response = await fetch(`/api/posts/${post.id}`, {
       method: 'PATCH',
@@ -90,6 +91,7 @@ So how does my data loader get the updated data? **Invalidation**. When you muta
 import { Action } from '@tanstack/actions'
 
 const updatePostAction = new Action({
+  key: 'updatePost',
   fn: async (post: Post) => {
     //...
   },
@@ -97,7 +99,7 @@ const updatePostAction = new Action({
     // Invalidate the posts loader. Depending on your data loading library,
     // this may result in an immediate refetch or it could simply mark
     // the data as stale and refetch it the next time it's used.
-    postsLoader.invalidate()
+    loaderClient.invalidateLoader({ key: 'posts' })
   },
 })
 ```
@@ -110,13 +112,14 @@ Again, we'll assume we're using TanStack Actions here, but it's also possible to
 import { Action } from '@tanstack/actions'
 
 const updatePostAction = new Action({
+  key: 'updatePost',
   fn: async (post: Post) => {
     //...
   },
   onEachSuccess: (submission) => {
     // Use the submission payload to invalidate the specific post
     const post = submission.payload
-    postsLoader.invalidateInstance({ variables: post.id })
+    loaderClient.invalidateInstance({ key: 'post', variables: post.id })
   },
 })
 ```
@@ -129,11 +132,12 @@ It's very common to invalidate an entire subset of data based on hierarchy when 
 import { Action } from '@tanstack/actions'
 
 const updatePostAction = new Action({
+  key: 'updatePost',
   fn: async (post: Post) => {
     //...
   },
   onEachSuccess: (submission) => {
-    postsLoader.invalidate()
+    loaderClient.invalidateLoader({ key: 'post' })
   },
 })
 ```
@@ -201,11 +205,12 @@ This is a great place to reset your old mutation/actions states. We'll use TanSt
 
 ```tsx
 const updatePostAction = new Action({
+  key: 'updatePost',
   fn: async (post: Post) => {
     //...
   },
   onEachSuccess: (submission) => {
-    postsLoader.invalidate()
+    loaderClient.invalidateLoader({ key: 'posts' })
   },
 })
 

@@ -1,8 +1,7 @@
 import * as React from 'react'
 import { Link, Outlet, Route } from '@tanstack/router'
 import { rootRoute } from './root'
-// import { loaderClient } from '../entry-client'
-import { Loader } from '@tanstack/react-loaders'
+import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 import { postIdRoute } from './posts/$postId'
 
 export type PostType = {
@@ -12,6 +11,7 @@ export type PostType = {
 }
 
 export const postsLoader = new Loader({
+  key: 'posts',
   fn: async () => {
     console.log('Fetching posts...')
     await new Promise((r) =>
@@ -26,15 +26,12 @@ export const postsLoader = new Loader({
 export const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  loader: async ({ context, preload }) => {
-    const { postsLoader } = context.loaderClient.loaders
-    await postsLoader.load({ preload })
-    return () => postsLoader.useLoader()
+  loader: async ({ context: { loaderClient }, preload }) => {
+    await loaderClient.load({ key: 'posts', preload })
+    return () => useLoaderInstance({ key: 'posts' })
   },
   component: function Posts({ useLoader }) {
-    const {
-      state: { data: posts },
-    } = useLoader()()
+    const { data: posts } = useLoader()()
 
     return (
       <div className="p-2 flex gap-2">

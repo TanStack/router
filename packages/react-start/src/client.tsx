@@ -20,6 +20,7 @@ export function DehydrateRouter() {
 
   return (
     <script
+      id="__TSR_DEHYDRATED__"
       suppressHydrationWarning
       dangerouslySetInnerHTML={{
         __html: `

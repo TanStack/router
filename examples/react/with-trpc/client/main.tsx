@@ -12,13 +12,16 @@ import {
   Route,
   useParams,
   useRouter,
+  RouterContext,
 } from '@tanstack/router'
 import {
+  createLoaderOptions,
   Loader,
   LoaderClient,
   LoaderClientProvider,
+  typedClient,
   useLoaderClient,
-  useLoader,
+  useLoaderInstance,
 } from '@tanstack/react-loaders'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -35,19 +38,21 @@ export const trpc = createTRPCProxyClient<AppRouter>({
 })
 
 const postsLoader = new Loader({
+  key: 'posts',
   fn: () => trpc.posts.query(),
 })
 
 const postLoader = new Loader({
+  key: 'post',
   fn: (postId: number) => trpc.post.query(postId),
-  onInvalidate: () => {
+  onInvalidate: ({ client }) => {
     // Invalidate the posts loader when a post is invalidated
-    postsLoader.invalidate()
+    typedClient(client).invalidateLoader({ key: 'posts' })
   },
 })
 
 const loaderClient = new LoaderClient({
-  getLoaders: () => ({ postsLoader, postLoader }),
+  loaders: [postsLoader, postLoader],
 })
 
 declare module '@tanstack/react-loaders' {
@@ -60,11 +65,16 @@ function Spinner() {
   return <div className="inline-block animate-spin px-3">⍥</div>
 }
 
-const rootRoute = new RootRoute({
+const routerContext = new RouterContext<{
+  loaderClient: typeof loaderClient
+}>()
+
+const rootRoute = routerContext.createRootRoute({
   component: () => {
     const {
       state: { status },
     } = useRouter()
+
     const {
       state: { isLoading },
     } = useLoaderClient()
@@ -166,7 +176,9 @@ const indexRoute = new Route({
 const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  loader: ({ preload }) => postsLoader.load({ preload }),
+  loader: async ({ preload, context: { loaderClient } }) => {
+    await loaderClient.load({ key: 'posts', preload })
+  },
   component: () => {
     return (
       <>
@@ -213,9 +225,7 @@ const dashboardIndexRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: '/',
   component: () => {
-    const {
-      state: { data: posts },
-    } = useLoader({ loader: postsLoader })
+    const { data: posts } = useLoaderInstance({ key: 'posts' })
 
     return (
       <div className="p-2">
@@ -232,9 +242,7 @@ const postsRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'posts',
   component: () => {
-    const {
-      state: { data: posts },
-    } = useLoader({ loader: postsLoader })
+    const { data: posts } = useLoaderInstance({ key: 'posts' })
 
     return (
       <div className="flex-1 flex">
@@ -299,14 +307,20 @@ const postRoute = new Route({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
   }),
-  loader: async ({ params: { postId }, preload }) => {
-    await postLoader.load({ variables: postId, preload })
-    return () => useLoader({ loader: postLoader, variables: postId })
+  loader: async ({
+    params: { postId },
+    preload,
+    context: { loaderClient },
+  }) => {
+    const loaderOptions = createLoaderOptions({
+      key: 'post',
+      variables: postId,
+    })
+    await loaderClient.load({ ...loaderOptions, preload })
+    return () => useLoaderInstance(loaderOptions)
   },
   component: ({ useLoader }) => {
-    const {
-      state: { data: post },
-    } = useLoader()()
+    const { data: post } = useLoader()()
     const search = useSearch({ from: postRoute.id })
     const navigate = useNavigate({ from: postRoute.id })
 
@@ -387,6 +401,9 @@ const router = new Router({
       <Spinner />
     </div>
   ),
+  context: {
+    loaderClient,
+  },
 })
 
 declare module '@tanstack/router' {
@@ -399,7 +416,7 @@ const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
-    <LoaderClientProvider loaderClient={loaderClient}>
+    <LoaderClientProvider client={loaderClient}>
       <RouterProvider router={router} defaultPreload="intent" />
     </LoaderClientProvider>,
   )

@@ -1,6 +1,11 @@
 import { ParsePathParams } from './link'
-import { RouteMatch } from './routeMatch'
-import { AnyRouter, RegisteredRoutesInfo, Router } from './router'
+import {
+  AnyRouter,
+  Router,
+  AnyRouteMatch,
+  RouteMatch,
+  RouterConstructorOptions,
+} from './router'
 import {
   IsAny,
   NoInfer,
@@ -9,10 +14,9 @@ import {
   UnionToIntersection,
 } from './utils'
 import invariant from 'tiny-invariant'
-import { joinPaths, trimPath, trimPathRight } from './path'
-import { AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
+import { joinPaths, trimPath } from './path'
+import { AnyRoutesInfo, DefaultRoutesInfo, RoutesInfo } from './routeInfo'
 import {
-  MakeLinkOptions,
   RouteComponent,
   useLoader,
   useMatch,
@@ -260,7 +264,7 @@ export type RouteOptions<
   // If thrown during a preload event, the error will be logged to the console.
   beforeLoad?: (opts: {
     router: AnyRouter
-    match: RouteMatch
+    match: AnyRouteMatch
   }) => Promise<void> | void
   // This function will be called if the route's loader throws an error **during an attempted navigation**.
   // If you want to redirect due to an error, call `router.navigate()` from within this function.
@@ -363,13 +367,15 @@ export type OnLoadFn<
   TContext extends AnyContext = AnyContext,
   TAllContext extends AnyContext = AnyContext,
 > = (
-  loaderContext: LoaderContext<
+  match: LoaderContext<
     TSearchSchema,
     TFullSearchSchema,
     TAllParams,
     TContext,
     TAllContext
-  >,
+  > & {
+    parentMatchPromise?: Promise<void>
+  },
 ) => Promise<TLoader> | TLoader
 
 export type OnLoadFnKey<
@@ -402,7 +408,7 @@ export interface LoaderContext<
   params: TAllParams
   routeSearch: TSearchSchema
   search: TFullSearchSchema
-  signal?: AbortSignal
+  abortController: AbortController
   preload: boolean
   routeContext: TContext
   context: TAllContext
@@ -468,6 +474,27 @@ export interface AnyRoute
     any,
     any
   > {}
+
+export type AnyRouteWithRouterContext<TRouterContext extends AnyContext> =
+  Route<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    TRouterContext,
+    any,
+    any
+  >
 
 type MergeFromParent<T, U> = IsAny<T, U, T & U>
 
@@ -740,6 +767,71 @@ export class Route<
 
 export type AnyRootRoute = RootRoute<any, any, any, any>
 
+export class RouterContext<TRouterContext extends {}> {
+  constructor() {}
+
+  createRootRoute = <
+    TLoader = unknown,
+    TSearchSchema extends AnySearchSchema = {},
+    TContext extends RouteContext = RouteContext,
+  >(
+    options?: Omit<
+      RouteOptions<
+        AnyRoute,
+        RootRouteId,
+        '',
+        TLoader,
+        {},
+        TSearchSchema,
+        NoInfer<TSearchSchema>,
+        {},
+        TRouterContext,
+        TRouterContext,
+        TContext,
+        NoInfer<TContext>
+      >,
+      | 'path'
+      | 'id'
+      | 'getParentRoute'
+      | 'caseSensitive'
+      | 'parseParams'
+      | 'stringifyParams'
+    >,
+  ) => {
+    return new RootRoute<TLoader, TSearchSchema, TContext, TRouterContext>(
+      options,
+    )
+  }
+
+  //   return <
+  //     TLoader = unknown,
+  //     TSearchSchema extends AnySearchSchema = {},
+  //     TContext extends {} = {},
+  //   >(
+  //     options?: Omit<
+  //       RouteOptions<
+  //         AnyRoute,
+  //         RootRouteId,
+  //         '',
+  //         TLoader,
+  //         {},
+  //         TSearchSchema,
+  //         NoInfer<TSearchSchema>,
+  //         {},
+  //         TRouterContext,
+  //         TRouterContext,
+  //         TContext,
+  //         TRouterContext & TContext
+  //       >,
+  //       'path' | 'id' | 'getParentRoute' | 'caseSensitive'
+  //     >,
+  //   ) =>
+  //     new RootRoute<TLoader, TSearchSchema, TContext, TRouterContext>(
+  //       options as any,
+  //     )
+  // }
+}
+
 export class RootRoute<
   TLoader = unknown,
   TSearchSchema extends AnySearchSchema = {},
@@ -789,35 +881,6 @@ export class RootRoute<
     >,
   ) {
     super(options as any)
-  }
-
-  static withRouterContext = <TRouterContext extends {}>() => {
-    return <
-      TLoader = unknown,
-      TSearchSchema extends AnySearchSchema = {},
-      TContext extends {} = {},
-    >(
-      options?: Omit<
-        RouteOptions<
-          AnyRoute,
-          RootRouteId,
-          '',
-          TLoader,
-          {},
-          TSearchSchema,
-          NoInfer<TSearchSchema>,
-          {},
-          TRouterContext,
-          TRouterContext,
-          TContext,
-          TRouterContext & TContext
-        >,
-        'path' | 'id' | 'getParentRoute' | 'caseSensitive'
-      >,
-    ) =>
-      new RootRoute<TLoader, TSearchSchema, TContext, TRouterContext>(
-        options as any,
-      )
   }
 }
 

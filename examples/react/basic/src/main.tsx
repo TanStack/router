@@ -3,11 +3,11 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  Router,
   Link,
-  RootRoute,
   Route,
   ErrorComponent,
+  RouterContext,
+  Router,
 } from '@tanstack/router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -15,7 +15,9 @@ import {
   LoaderClient,
   Loader,
   LoaderClientProvider,
-  useLoader,
+  useLoaderInstance,
+  createLoaderOptions,
+  typedClient,
 } from '@tanstack/react-loaders'
 
 type PostType = {
@@ -47,21 +49,20 @@ const fetchPost = async (postId: string) => {
 }
 
 const postsLoader = new Loader({
+  key: 'posts',
   fn: fetchPosts,
 })
 
 const postLoader = new Loader({
+  key: 'post',
   fn: fetchPost,
-  onInvalidate: () => {
-    postsLoader.invalidate()
+  onInvalidate: ({ client }) => {
+    typedClient(client).invalidateLoader({ key: 'posts' })
   },
 })
 
 const loaderClient = new LoaderClient({
-  getLoaders: () => ({
-    posts: postsLoader,
-    post: postLoader,
-  }),
+  loaders: [postsLoader, postLoader],
 })
 
 declare module '@tanstack/react-loaders' {
@@ -70,11 +71,11 @@ declare module '@tanstack/react-loaders' {
   }
 }
 
-type RouterContext = {
+const routerContext = new RouterContext<{
   loaderClient: typeof loaderClient
-}
+}>()
 
-const rootRoute = RootRoute.withRouterContext<RouterContext>()({
+const rootRoute = routerContext.createRootRoute({
   component: () => {
     return (
       <>
@@ -121,27 +122,18 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  loader: async ({ context }) => {
-    const postsLoader = context.loaderClient.loaders.posts
-
-    await postsLoader.load()
-
-    return {
-      promise: new Promise((r) => setTimeout(r, 500)),
-      useLoader: () =>
-        useLoader({
-          loader: postsLoader,
-        }),
-    }
+  loader: async ({ context: { loaderClient } }) => {
+    await loaderClient.load({ key: 'posts' })
+    return () => useLoaderInstance({ key: 'posts' })
   },
   component: ({ useLoader }) => {
-    const postsLoader = useLoader().useLoader()
+    const { data: posts } = useLoader()()
 
     return (
       <div className="p-2 flex gap-2">
         <ul className="list-disc pl-4">
           {[
-            ...postsLoader.state.data,
+            ...posts,
             { id: 'i-do-not-exist', title: 'Non-existent Post' },
           ]?.map((post) => {
             return (
@@ -179,17 +171,15 @@ const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
   loader: async ({ context: { loaderClient }, params: { postId } }) => {
-    const postLoader = loaderClient.loaders.post
-    await postLoader.load({
+    const loaderOptions = createLoaderOptions({
+      key: 'post',
       variables: postId,
     })
 
+    await loaderClient.load(loaderOptions)
+
     // Return a curried hook!
-    return () =>
-      useLoader({
-        loader: postLoader,
-        variables: postId,
-      })
+    return () => useLoaderInstance(loaderOptions)
   },
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {
@@ -199,9 +189,7 @@ const postRoute = new Route({
     return <ErrorComponent error={error} />
   },
   component: () => {
-    const {
-      state: { data: post },
-    } = postRoute.useLoader()()
+    const { data: post } = postRoute.useLoader()()
 
     return (
       <div className="space-y-2">
@@ -240,7 +228,7 @@ if (!rootElement.innerHTML) {
 
   root.render(
     // <React.StrictMode>
-    <LoaderClientProvider loaderClient={loaderClient}>
+    <LoaderClientProvider client={loaderClient}>
       <RouterProvider router={router} />
     </LoaderClientProvider>,
     // </React.StrictMode>,

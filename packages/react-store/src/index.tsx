@@ -1,9 +1,13 @@
+import * as React from 'react'
 import { AnyUpdater, Store } from '@tanstack/store'
 import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
 
 export * from '@tanstack/store'
 
 export type NoInfer<T> = [T][T extends any ? 0 : never]
+
+const useLayoutEffect =
+  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
 export function useStore<
   TState,
@@ -13,6 +17,30 @@ export function useStore<
   store: Store<TState, TUpdater>,
   selector: (state: NoInfer<TState>) => TSelected = (d) => d as any,
 ) {
+  // const isMountedRef = React.useRef(false)
+  // const [state, setState] = React.useState<{ ref: TSelected }>(() => ({
+  //   ref: selector(store.state),
+  // }))
+
+  // if (!shallow(selector(store.state), state.ref)) {
+  //   setState(() => ({ ref: selector(store.state) }))
+  // }
+
+  // useLayoutEffect(() => {
+  //   console.log('effect')
+
+  //   const cb = () => {
+  //     const next = selector(store.state)
+  //     console.log('onsub')
+  //     if (!shallow(next, state.ref)) {
+  //       console.log('set')
+  //       setState(() => ({ ref: selector(store.state) }))
+  //     }
+  //   }
+
+  //   return store.subscribe(cb)
+  // }, [])
+
   const slice = useSyncExternalStoreWithSelector(
     store.subscribe,
     () => store.state,
@@ -20,6 +48,23 @@ export function useStore<
     selector,
     shallow,
   )
+
+  // if (!isMountedRef.current) {
+  //   state.ref = slice
+  // }
+
+  // if (!shallow(slice, state.ref)) {
+  //   setState({ ref: slice })
+  // }
+
+  // React.useEffect(() => {
+  //   isMountedRef.current = true
+  //   return () => {
+  //     isMountedRef.current = false
+  //   }
+  // }, [])
+
+  // return state.ref
 
   return slice
 }

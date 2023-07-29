@@ -9,13 +9,20 @@ import {
   Route,
   RegisteredRoutesInfo,
 } from '@tanstack/router'
-import { Loader } from '@tanstack/react-loaders'
+import {
+  createLoaderOptions,
+  Loader,
+  typedClient,
+  useLoaderInstance,
+} from '@tanstack/react-loaders'
 import { Action, useAction } from '@tanstack/react-actions'
 import { invoicesIndexRoute } from './invoices'
+import { actionContext } from '../../../actionContext'
 
 class InvoiceNotFoundError extends Error {}
 
 export const invoiceLoader = new Loader({
+  key: 'invoice',
   fn: async (invoiceId: number) => {
     console.log('Fetching invoice...')
     const invoice = await fetchInvoiceById(invoiceId)
@@ -26,16 +33,18 @@ export const invoiceLoader = new Loader({
 
     return invoice
   },
-  onInvalidate: async () => {
-    await invoicesLoader.invalidate()
+  onInvalidate: async ({ client }) => {
+    typedClient(client).invalidateLoader({ key: 'invoices' })
   },
 })
 
-export const updateInvoiceAction = new Action({
+export const updateInvoiceAction = actionContext.createAction({
+  key: 'updateInvoice',
   fn: patchInvoice,
-  onEachSuccess: async ({ payload }) => {
-    await invoiceLoader.invalidateInstance({
-      variables: payload.id,
+  onEachSuccess: async ({ submission, context: { loaderClient } }) => {
+    await loaderClient.invalidateInstance({
+      key: 'invoice',
+      variables: submission.variables.id,
     })
   },
 })
@@ -51,25 +60,27 @@ export const invoiceRoute = new Route({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
   }),
-  loader: async ({ context, params: { invoiceId }, preload }) => {
-    const { invoiceLoader } = context.loaderClient.loaders
-
-    const invoiceLoaderInstance = invoiceLoader.getInstance({
+  loader: async ({
+    context: { loaderClient },
+    params: { invoiceId },
+    preload,
+  }) => {
+    const loaderOptions = createLoaderOptions({
+      key: 'invoice',
       variables: invoiceId,
     })
 
-    await invoiceLoaderInstance.load({
+    await loaderClient.load({
+      ...loaderOptions,
       preload,
     })
 
-    return () => invoiceLoaderInstance.useInstance()
+    return () => useLoaderInstance(loaderOptions)
   },
   component: function InvoiceView({ useLoader, useSearch }) {
-    const {
-      state: { data: invoice },
-    } = useLoader()()
+    const { data: invoice } = useLoader()()
     const search = useSearch()
-    const action = useAction({ action: updateInvoiceAction })
+    const [action, actionClient] = useAction({ key: 'updateInvoice' })
     const navigate = useNavigate()
 
     const [notes, setNotes] = React.useState(search.notes ?? ``)
@@ -88,17 +99,20 @@ export const invoiceRoute = new Route({
           event.preventDefault()
           event.stopPropagation()
           const formData = new FormData(event.target as HTMLFormElement)
-          action.submit({
-            id: invoice.id,
-            title: formData.get('title') as string,
-            body: formData.get('body') as string,
+          actionClient.submitAction({
+            key: 'updateInvoice',
+            variables: {
+              id: invoice.id,
+              title: formData.get('title') as string,
+              body: formData.get('body') as string,
+            },
           })
         }}
         className="p-2 space-y-2"
       >
         <InvoiceFields
           invoice={invoice}
-          disabled={action.state.latestSubmission?.status === 'pending'}
+          disabled={action.latestSubmission?.status === 'pending'}
         />
         <div>
           <Link
@@ -132,18 +146,18 @@ export const invoiceRoute = new Route({
         <div>
           <button
             className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-            disabled={action.state.latestSubmission?.status === 'pending'}
+            disabled={action.latestSubmission?.status === 'pending'}
           >
             Save
           </button>
         </div>
-        {action.state.latestSubmission?.payload?.id === invoice.id ? (
-          <div key={action.state.latestSubmission?.submittedAt}>
-            {action.state.latestSubmission?.status === 'success' ? (
+        {action.latestSubmission?.variables?.id === invoice.id ? (
+          <div key={action.latestSubmission?.submittedAt}>
+            {action.latestSubmission?.status === 'success' ? (
               <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Saved!
               </div>
-            ) : action.state.latestSubmission?.status === 'error' ? (
+            ) : action.latestSubmission?.status === 'error' ? (
               <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Failed to save.
               </div>

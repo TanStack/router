@@ -15,7 +15,7 @@ These are just suggested uses of the router context. You can use it for whatever
 
 ## Typed Router Context
 
-Like everything else, the router context (at least the one you inject at `new Router()` is strictly typed. This type can be augemented via routes' `getContext` option. If that's the case, the type at the edge of the route is a merged interface-like type of the base context type and every route's `getContext` return type. To constrain the type of the router context, you must use the `RootRoute.withRouterContext()` factory instead of the `new RootRoute()` constructor. Here's an example:
+Like everything else, the router context (at least the one you inject at `new Router()` is strictly typed. This type can be augmented via any route's `getContext` option. If that's the case, the type at the edge of the route is a merged interface-like type of the base context type and every route's `getContext` return type. To constrain the type of the root router context, you must use the `new RouteContext<YourContextTypeHere>()` class to create a new `routerContext` and then use the `routerContext.createRootRoute()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
 
 ```tsx
 import { RootRoute } from '@tanstack/router'
@@ -24,12 +24,22 @@ interface MyRouterContext {
   user: User
 }
 
-const rootRoute = RootRoute.withRouterContext<MyRouterContext>()({
+const routerContext = new RouterContext<MyRouterContext>()
+
+// Use the routerContext to create your root route
+const rootRoute = routerContext.createRootRoute({
   component: App,
 })
-```
 
-> ⚠️ Did you notice the curried call above? Make sure you first call `RootRoute.withRouterContext<MyRouterContext>()` and then call the returned function with the route options. This is a requirement of the `RootRoute.withRouterContext` factory.
+const routeTree = rootRoute.addChildren([
+  // ...
+])
+
+// Use the routerContext to create your router
+const router = new Router({
+  routeTree,
+})
+```
 
 ## Passing the initial Router Context
 
@@ -40,6 +50,7 @@ The router context is passed to the router at instantiation time. You can pass t
 ```tsx
 import { Router } from '@tanstack/router'
 
+// Use the routerContext you created to create your router
 const router = new Router({
   routeTree,
   context: {
@@ -58,17 +69,20 @@ Once you have defined the router context type, you can use it in your route defi
 ```tsx
 import { Route } from '@tanstack/router'
 
-const userRoute = Route({
+const userRoute = new Route({
   getRootRoute: () => rootRoute,
   path: 'todos',
   component: Todos,
   loader: ({ context }) => {
-    await todosLoader.load({ variables: { user: context.user.id } })
+    await loaderClient.load({
+      key: 'todos',
+      variables: { user: context.user.id },
+    })
   },
 })
 ```
 
-You can even inject your data fetching client itself!
+You can even inject your data fetching client itself... in fact, this is highly recommended!
 
 ```tsx
 import { RootRoute } from '@tanstack/router'
@@ -77,9 +91,7 @@ interface MyRouterContext {
   queryClient: QueryClient
 }
 
-const rootRoute = RootRoute.withRouterContext<MyRouterContext>()({
-  component: App,
-})
+const routerContext = new RouterContext<MyRouterContext>()
 
 const queryClient = new QueryClient()
 
@@ -96,7 +108,7 @@ Then, in your route:
 ```tsx
 import { Route } from '@tanstack/router'
 
-const userRoute = Route({
+const userRoute = new Route({
   getRootRoute: () => rootRoute,
   path: 'todos',
   component: Todos,
@@ -120,7 +132,9 @@ interface MyRouterContext {
   foo: boolean
 }
 
-const rootRoute = RootRoute.withRouterContext<MyRouterContext>()({
+const routerContext = new RouterContext<MyRouterContext>()
+
+const rootRoute = routerContext.createRootRoute({
   component: App,
 })
 
@@ -131,7 +145,7 @@ const router = new Router({
   },
 })
 
-const userRoute = Route({
+const userRoute = new Route({
   getRootRoute: () => rootRoute,
   path: 'admin',
   component: Todos,

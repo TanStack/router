@@ -12,6 +12,7 @@ import {
   useParams,
   RootRoute,
   Route,
+  RouterContext,
 } from '@tanstack/router'
 import {
   Action,
@@ -48,6 +49,7 @@ type UsersViewSortBy = 'name' | 'id' | 'email'
 // Loaders
 
 const invoicesLoader = new Loader({
+  key: 'invoices',
   fn: async () => {
     console.log('Fetching invoices...')
     return fetchInvoices()
@@ -55,6 +57,7 @@ const invoicesLoader = new Loader({
 })
 
 const invoiceLoader = new Loader({
+  key: 'invoice',
   fn: async (invoiceId: number) => {
     console.log(`Fetching invoice with id ${invoiceId}...`)
     return fetchInvoiceById(invoiceId)
@@ -65,6 +68,7 @@ const invoiceLoader = new Loader({
 })
 
 const usersLoader = new Loader({
+  key: 'users',
   fn: async () => {
     console.log('Fetching users...')
     return fetchUsers()
@@ -72,6 +76,7 @@ const usersLoader = new Loader({
 })
 
 const userLoader = new Loader({
+  key: 'user',
   fn: async (userId: number) => {
     console.log(`Fetching user with id ${userId}...`)
     return fetchUserById(userId)
@@ -82,19 +87,20 @@ const userLoader = new Loader({
 })
 
 const randomIdLoader = new Loader({
+  key: 'random',
   fn: () => {
     return fetchRandomNumber()
   },
 })
 
 const loaderClient = new LoaderClient({
-  getLoaders: () => ({
+  loaders: [
     invoicesLoader,
     invoiceLoader,
     usersLoader,
     userLoader,
     randomIdLoader,
-  }),
+  ],
 })
 
 // Register things for typesafety
@@ -107,6 +113,7 @@ declare module '@tanstack/react-loaders' {
 // Actions
 
 const createInvoiceAction = new Action({
+  key: 'createInvoice',
   fn: postInvoice,
   onEachSuccess: async () => {
     await invoicesLoader.invalidate()
@@ -114,6 +121,7 @@ const createInvoiceAction = new Action({
 })
 
 const updateInvoiceAction = new Action({
+  key: 'updateInvoice',
   fn: patchInvoice,
   onEachSuccess: async ({ payload }) => {
     await invoiceLoader.invalidateInstance({
@@ -123,7 +131,7 @@ const updateInvoiceAction = new Action({
 })
 
 const actionClient = new ActionClient({
-  getActions: () => ({ createInvoiceAction, updateInvoiceAction }),
+  actions: [createInvoiceAction, updateInvoiceAction],
 })
 
 // Register things for typesafety
@@ -135,8 +143,12 @@ declare module '@tanstack/react-actions' {
 
 // Routes
 
+const routerContext = new RouterContext<{
+  auth: AuthContext
+}>()
+
 // Build our routes. We could do this in our component, too.
-const rootRoute = RootRoute.withRouterContext<{ auth: AuthContext }>()({
+const rootRoute = routerContext.createRootRoute({
   component: () => {
     const loaderClient = useLoaderClient()
 
@@ -1012,10 +1024,10 @@ function SubApp() {
         </div>
       </div>
       <LoaderClientProvider
-        loaderClient={loaderClient}
+        client={loaderClient}
         defaultMaxAge={defaultLoaderMaxAge}
       >
-        <ActionClientProvider actionClient={actionClient}>
+        <ActionClientProvider client={actionClient}>
           <RouterProvider
             router={router}
             defaultPreload="intent"

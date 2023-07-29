@@ -112,16 +112,28 @@
       "label": "Examples",
       "children": [
         {
+          "label": "Quick Start",
+          "to": "examples/react/quickstart?file=src%2Fmain.tsx"
+        },
+        {
           "label": "Basic",
           "to": "examples/react/basic?file=src%2Fmain.tsx"
         },
         {
-          "label": "Kitchen Sink",
-          "to": "examples/react/kitchen-sink-multi-file?file=src%2Fmain.tsx"
+          "label": "Kitchen Sink Single File",
+          "to": "examples/react/kitchen-sink-single-file?file=src%2Fmain.tsx"
         },
         {
-          "label": "Astro SSR",
-          "to": "examples/react/start-basic?file=src%2Froutes%2F__root.tsx"
+          "label": "Kitchen Sink Multi-File",
+          "to": "examples/react/kitchen-sink-multi-file?file=src%2Froutes%2Froot.tsx"
+        },
+        {
+          "label": "Basic SSR",
+          "to": "examples/react/basic-srr?file=src%2Fentry-server.tsx"
+        },
+        {
+          "label": "Basic SSR with Streaming",
+          "to": "examples/react/basic-srr?file=src%2Fentry-server.tsx"
         },
         {
           "label": "With React Query",
@@ -130,10 +142,6 @@
         {
           "label": "With TRPC",
           "to": "examples/react/with-trpc?file=client%2Fmain.tsx"
-        },
-        {
-          "label": "With TRPC & React Query",
-          "to": "examples/react/with-trpc-react-query?file=client%2Fmain.tsx"
         }
       ]
     }

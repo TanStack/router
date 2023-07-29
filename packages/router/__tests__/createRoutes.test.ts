@@ -1,17 +1,6 @@
-import { describe, it } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
-import {
-  createMemoryHistory,
-  RoutesInfo,
-  RootRoute,
-  Route,
-  ParseRoute,
-  ParseRouteChildren,
-  AnyRoute,
-  Values,
-  Router,
-  lazy
-} from '../src'
+import { createMemoryHistory, RootRoute, Route, Router, lazy } from '../src'
 
 // Write a test
 describe('everything', () => {
@@ -28,6 +17,7 @@ describe('everything', () => {
           })
           .parse(search),
     })
+
     const testRoute = new Route({
       getParentRoute: () => rootRoute,
       component: lazy(() => import('./TestComponent'), 'NamedComponent'),
@@ -40,6 +30,7 @@ describe('everything', () => {
           })
           .parse(search),
     })
+
     const dashboardRoute = new Route({
       getParentRoute: () => rootRoute,
       path: 'dashboard',
@@ -50,18 +41,22 @@ describe('everything', () => {
         }
       },
     })
+
     const dashboardIndexRoute = new Route({
       getParentRoute: () => dashboardRoute,
       path: '/',
     })
+
     const invoicesRoute = new Route({
       getParentRoute: () => dashboardRoute,
       path: 'invoices',
     })
+
     const invoicesIndexRoute = new Route({
       getParentRoute: () => invoicesRoute,
       path: '/',
     })
+
     const invoiceRoute = new Route({
       getParentRoute: () => invoicesRoute,
       path: '$invoiceId',
@@ -76,6 +71,7 @@ describe('everything', () => {
         }
       },
     })
+
     const usersRoute = new Route({
       getParentRoute: () => dashboardRoute,
       path: 'users',
@@ -106,6 +102,7 @@ describe('everything', () => {
         }),
       ],
     })
+
     const userRoute = new Route({
       getParentRoute: () => usersRoute,
       path: '$userId',
@@ -115,14 +112,17 @@ describe('everything', () => {
         }
       },
     })
+
     const authenticatedRoute = new Route({
       getParentRoute: () => rootRoute,
       path: 'authenticated/', // Trailing slash doesn't mean anything
     })
+
     const authenticatedIndexRoute = new Route({
       getParentRoute: () => authenticatedRoute,
       path: '/',
     })
+
     const layoutRoute = new Route({
       getParentRoute: () => rootRoute,
       id: 'layout',
@@ -134,11 +134,13 @@ describe('everything', () => {
           })
           .parse(search),
     })
+
     const layoutARoute = new Route({
       getParentRoute: () => layoutRoute,
       path: 'layout-a',
       component: () => 'layout-a',
     })
+
     const layoutBRoute = new Route({
       getParentRoute: () => layoutRoute,
       path: 'layout-b',
@@ -154,21 +156,8 @@ describe('everything', () => {
         usersRoute.addChildren([userRoute]),
       ]),
       authenticatedRoute.addChildren([authenticatedIndexRoute]),
-      layoutRoute.addChildren([layoutARoute, layoutBRoute])
+      layoutRoute.addChildren([layoutARoute, layoutBRoute]),
     ])
-
-    type MyRoutesInfo = RoutesInfo<typeof routeTree>
-
-    type Test = ParseRouteChildren<typeof routeTree>
-    //   ^?
-
-    type MyRootRoute = MyRoutesInfo['routeTree']
-    type RoutesById = MyRoutesInfo['routesById']
-    //   ^?
-    type RoutePaths = MyRoutesInfo['routesByFullPath']
-    //   ^?
-    type InvoiceRoute = RoutesById['/dashboard/invoices/$invoiceId']
-    //   ^?
 
     const router = new Router({
       routeTree,
@@ -178,7 +167,6 @@ describe('everything', () => {
     })
 
     const route = router.getRoute('/dashboard/users/$userId')
-    //    ^?
 
     router.buildLink({
       to: '/dashboard/users/$userId',
@@ -192,11 +180,13 @@ describe('everything', () => {
       }),
     })
 
-    // @ts-expect-error
-    router.buildLink({
-      from: '/',
-      to: '/test',
-    })
+    expect(() =>
+      // @ts-expect-error
+      router.buildLink({
+        from: '/',
+        to: '/test',
+      }),
+    ).toThrowError()
 
     router.buildLink({
       from: '/',
@@ -209,15 +199,19 @@ describe('everything', () => {
       },
     })
 
-    router.buildLink({
-      from: '/test',
-      to: '/',
-    })
+    expect(() => {
+      router.buildLink({
+        from: '/test',
+        to: '/',
+      })
+    }).toThrowError()
 
-    router.buildLink({
-      from: route.id,
-      to: '',
-    })
+    expect(() => {
+      router.buildLink({
+        from: route.id,
+        to: '',
+      })
+    }).toThrowError()
 
     router.buildLink({
       from: '/dashboard',
@@ -315,9 +309,9 @@ describe('everything', () => {
       to: '/dashboard',
     })
 
-    // @ts-expect-error
     router.buildLink({
       from: '/',
+      // @ts-expect-error
       to: '/does-not-exist',
     })
 

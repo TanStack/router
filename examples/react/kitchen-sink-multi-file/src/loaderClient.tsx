@@ -6,13 +6,13 @@ import { userLoader } from './routes/dashboard/users/user'
 import { randomIdLoader } from './routes/layout/'
 
 export const loaderClient = new LoaderClient({
-  getLoaders: () => ({
+  loaders: [
     invoicesLoader,
     invoiceLoader,
     usersLoader,
     userLoader,
     randomIdLoader,
-  }),
+  ],
 })
 
 declare module '@tanstack/react-loaders' {

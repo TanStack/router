@@ -1,10 +1,16 @@
-import { Loader } from '@tanstack/react-loaders'
+import {
+  createLoaderOptions,
+  Loader,
+  typedClient,
+  useLoaderInstance,
+} from '@tanstack/react-loaders'
 import { Route } from '@tanstack/router'
 import * as React from 'react'
 // import { loaderClient } from '../../entry-client'
-import { postsLoader, postsRoute, PostType } from '../posts'
+import { postsRoute, PostType } from '../posts'
 
 export const postLoader = new Loader({
+  key: 'post',
   fn: async (postId: string) => {
     console.log(`Fetching post with id ${postId}...`)
 
@@ -14,31 +20,33 @@ export const postLoader = new Loader({
       (r) => r.json() as Promise<PostType>,
     )
   },
-  onInvalidate: async () => {
-    await postsLoader.invalidate()
+  onInvalidate: async ({ client }) => {
+    await typedClient(client).invalidateLoader({ key: 'posts' })
   },
 })
 
 export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  loader: async ({ context, params: { postId }, preload }) => {
-    const { postLoader } = context.loaderClient.loaders
-
-    const instance = postLoader.getInstance({
+  loader: async ({
+    context: { loaderClient },
+    params: { postId },
+    preload,
+  }) => {
+    const loaderOptions = createLoaderOptions({
+      key: 'post',
       variables: postId,
     })
 
-    await instance.load({
+    await loaderClient.load({
+      ...loaderOptions,
       preload,
     })
 
-    return () => instance.useInstance()
+    return () => useLoaderInstance(loaderOptions)
   },
   component: function Post({ useLoader }) {
-    const {
-      state: { data: post },
-    } = useLoader()()
+    const { data: post } = useLoader()()
 
     return (
       <div className="space-y-2">

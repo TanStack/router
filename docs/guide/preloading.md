@@ -48,7 +48,7 @@ const postsRoute = new Route({
   path: 'posts',
   component: PostsComponent,
   loader: async ({ preload }) => {
-    postsLoader.load({ preload })
+    await loaderClient.load({ key: 'posts', preload })
   },
 })
 ```

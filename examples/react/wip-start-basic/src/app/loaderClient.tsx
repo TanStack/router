@@ -4,7 +4,7 @@ import { postLoader } from './routes/posts/$postId'
 
 export const createLoaderClient = () => {
   return new LoaderClient({
-    getLoaders: () => ({ postsLoader, postLoader }),
+    loaders: [postsLoader, postLoader],
   })
 }
 

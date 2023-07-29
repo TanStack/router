@@ -12,6 +12,7 @@ export type PostType = {
 }
 
 export const postsLoader = new Loader({
+  key: 'posts',
   fn: fetch$(async () => {
     console.log('Fetching posts...')
 

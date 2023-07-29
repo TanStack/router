@@ -10,13 +10,13 @@ import {
   AnyRootRoute,
   RouteMatch,
   trimPath,
+  useRouterState,
 } from '@tanstack/router'
 
 import useLocalStorage from './useLocalStorage'
 import {
   getRouteStatusColor,
   getStatusColor,
-  multiSortBy,
   useIsMounted,
   useSafeState,
 } from './utils'
@@ -422,7 +422,8 @@ function RouteComp({
   activeRouteId: string | undefined
   setActiveRouteId: (id: string) => void
 }) {
-  const isActive = matches.find((d) => d.route === route)
+  const isActive = matches.find((d) => d.routeId === route.id)
+
   return (
     <div>
       <div
@@ -505,7 +506,8 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   } = props
 
   const routerContextValue = React.useContext(routerContext)
-  const router = userRouter ?? routerContextValue?.router
+  const router = userRouter ?? routerContextValue
+  const routerState = useRouterState()
 
   invariant(
     router,
@@ -525,15 +527,13 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   )
 
   const allMatches: RouteMatch[] = React.useMemo(
-    () => [...Object.values(router.state.matches)],
-    [router.state.matches],
+    () => [...Object.values(routerState.matches)],
+    [routerState.matches],
   )
 
-  const activeMatch = allMatches?.find((d) => d.route.id === activeRouteId)
+  const activeMatch = allMatches?.find((d) => d.routeId === activeRouteId)
 
-  const hasSearch = Object.keys(
-    last(router.state.matches)?.state.search || {},
-  ).length
+  const hasSearch = Object.keys(routerState.location.search || {}).length
 
   return (
     <ThemeProvider theme={theme}>
@@ -646,7 +646,14 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 padding: '.5em',
               }}
             >
-              <Explorer label="Router" value={router} defaultExpanded={{}} />
+              <Explorer
+                label="Router"
+                value={router}
+                defaultExpanded={{ state: {} as any, context: {} as any }}
+                filterSubEntries={(subEntries) => {
+                  return subEntries.filter((d) => typeof d.value !== 'function')
+                }}
+              />
             </div>
           </div>
         </div>
@@ -680,7 +687,12 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               }}
               disabled={!showMatches}
               style={{
+                appearance: 'none',
                 opacity: showMatches ? 0.5 : 1,
+                border: 0,
+                background: 'transparent',
+                color: 'inherit',
+                cursor: 'pointer',
               }}
             >
               Routes
@@ -693,7 +705,12 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               }}
               disabled={showMatches}
               style={{
+                appearance: 'none',
                 opacity: !showMatches ? 0.5 : 1,
+                border: 0,
+                background: 'transparent',
+                color: 'inherit',
+                cursor: 'pointer',
               }}
             >
               Matches
@@ -709,15 +726,15 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             />
           ) : (
             <div>
-              {router.state.matches.map((match, i) => {
+              {routerState.matches.map((match, i) => {
                 return (
                   <div
-                    key={match.route.id || i}
+                    key={match.routeId || i}
                     role="button"
-                    aria-label={`Open match details for ${match.route.id}`}
+                    aria-label={`Open match details for ${match.routeId}`}
                     onClick={() =>
                       setActiveRouteId(
-                        activeRouteId === match.route.id ? '' : match.route.id,
+                        activeRouteId === match.routeId ? '' : match.routeId,
                       )
                     }
                     style={{
@@ -790,7 +807,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   </tr>
                   <tr>
                     <td style={{ opacity: '.5' }}>Status</td>
-                    <td>{activeMatch.state.status}</td>
+                    <td>{activeMatch.status}</td>
                   </tr>
                   {/* <tr>
                     <td style={{ opacity: '.5' }}>Invalid</td>
@@ -799,9 +816,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   <tr>
                     <td style={{ opacity: '.5' }}>Last Updated</td>
                     <td>
-                      {activeMatch.state.updatedAt
+                      {activeMatch.updatedAt
                         ? new Date(
-                            activeMatch.state.updatedAt as number,
+                            activeMatch.updatedAt as number,
                           ).toLocaleTimeString()
                         : 'N/A'}
                     </td>
@@ -891,9 +908,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               }}
             >
               <Explorer
-                value={last(router.state.matches)?.state.search || {}}
+                value={routerState.location.search || {}}
                 defaultExpanded={Object.keys(
-                  (last(router.state.matches)?.state.search as {}) || {},
+                  (routerState.location.search as {}) || {},
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj

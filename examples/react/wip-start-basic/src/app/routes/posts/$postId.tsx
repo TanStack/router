@@ -5,6 +5,7 @@ import { Route } from '@tanstack/router'
 import { postsLoader, postsRoute, PostType } from '../posts'
 
 export const postLoader = new Loader({
+  key: 'post',
   fn: fetch$(
     async (postId: string) => {
       console.log(`Fetching post with id ${postId}...`)

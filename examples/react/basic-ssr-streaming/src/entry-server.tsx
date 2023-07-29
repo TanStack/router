@@ -12,7 +12,6 @@ import express from 'express'
 // index.js
 import './fetch-polyfill'
 import { createRouter } from './router'
-import { Transform } from 'stream'
 
 type ReactReadableStream = ReadableStream<Uint8Array> & {
   allReady?: Promise<void> | undefined
@@ -34,7 +33,6 @@ export async function render(opts: {
   router.update({
     history: memoryHistory,
     context: {
-      ...router.context,
       head: opts.head,
     },
   })

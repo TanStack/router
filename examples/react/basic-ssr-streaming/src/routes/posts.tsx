@@ -1,22 +1,8 @@
 import * as React from 'react'
-import {
-  Link,
-  Outlet,
-  Route,
-  StreamedPromise,
-  useDehydrate,
-  useHydrate,
-  useInjectHtml,
-  useRouter,
-} from '@tanstack/router'
+import { Link, Outlet, Route } from '@tanstack/router'
 import { rootRoute } from './root'
-// import { loaderClient } from '../entry-client'
-import { Loader } from '@tanstack/react-loaders'
+import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
 import { postIdRoute } from './posts/$postId'
-
-declare module 'react' {
-  function use<T>(promise: Promise<T>): T
-}
 
 export type PostType = {
   id: string
@@ -25,6 +11,7 @@ export type PostType = {
 }
 
 export const postsLoader = new Loader({
+  key: 'posts',
   fn: async () => {
     console.log('Fetching posts...')
     await new Promise((r) =>
@@ -38,6 +25,7 @@ export const postsLoader = new Loader({
 })
 
 export const testLoader = new Loader({
+  key: 'test',
   fn: async (wait: number) => {
     await new Promise((r) => setTimeout(r, wait))
     return {
@@ -49,27 +37,20 @@ export const testLoader = new Loader({
 export const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  loader: async ({ context, preload }) => {
-    const { postsLoader } = context.loaderClient.loaders
-    await postsLoader.load({ preload })
-    return {
-      usePosts: () => postsLoader.useLoader(),
-    }
+  loader: async ({ context: { loaderClient }, preload }) => {
+    await loaderClient.load({ key: 'posts', preload })
+    return () => useLoaderInstance({ key: 'posts' })
   },
   component: function Posts({ useLoader }) {
-    const { usePosts } = useLoader()
-
-    const {
-      state: { data: posts },
-    } = usePosts()
+    const { data: posts } = useLoader()()
 
     return (
       <div className="p-2 flex gap-2">
         <Test wait={1000 / 2} />
-        <Test wait={2000 / 2} />
         <Test wait={3000 / 2} />
-        <Test wait={4000 / 2} />
+        <Test wait={2000 / 2} />
         <Test wait={5000 / 2} />
+        <Test wait={4000 / 2} />
         <ul className="list-disc pl-4">
           {posts?.map((post) => {
             return (
@@ -104,9 +85,10 @@ function Test({ wait }: { wait: number }) {
 }
 
 function TestInner({ wait }: { wait: number }) {
-  const instance = testLoader.useLoader({
+  const instance = useLoaderInstance({
+    key: 'test',
     variables: wait,
   })
 
-  return <div>Test: {instance.state.data.test}</div>
+  return <div>Test: {instance.data.test}</div>
 }

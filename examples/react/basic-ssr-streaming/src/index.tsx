@@ -30,7 +30,7 @@ export function App({
         />
       </head>
       <body>
-        <LoaderClientProvider loaderClient={loaderClient}>
+        <LoaderClientProvider client={loaderClient}>
           <RouterProvider router={router} />
         </LoaderClientProvider>
       </body>

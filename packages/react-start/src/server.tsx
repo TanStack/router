@@ -180,7 +180,10 @@ function transformStreamHtmlCallback(injector: () => Promise<string>) {
 
           callback()
         })
-        .catch(callback)
+        .catch((err) => {
+          console.error(err)
+          callback(err)
+        })
     },
     flush(callback) {
       if (leftover) {
