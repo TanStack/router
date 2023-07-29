@@ -1,77 +1,76 @@
-import ReactDOMServer, { PipeableStream } from "react-dom/server";
-import { createMemoryHistory } from "@tanstack/router";
+import ReactDOMServer, { PipeableStream } from 'react-dom/server'
+import { createMemoryHistory } from '@tanstack/router'
 import {
   StartServer,
   transformStreamWithRouter,
-} from "@tanstack/react-start/server";
-import isbot from "isbot";
-import { ServerResponse } from "http";
-import express from "express";
+} from '@tanstack/react-start/server'
+import isbot from 'isbot'
+import { ServerResponse } from 'http'
+import express from 'express'
 
 // index.js
-import "./fetch-polyfill";
-import { createRouter } from "./router";
+import './fetch-polyfill'
+import { createRouter } from './router'
 
 export async function render(opts: {
-  url: string;
-  head: string;
-  req: express.Request;
-  res: ServerResponse;
+  url: string
+  head: string
+  req: express.Request
+  res: ServerResponse
 }) {
-  const router = createRouter();
+  const router = createRouter()
 
   const memoryHistory = createMemoryHistory({
     initialEntries: [opts.url],
-  });
+  })
 
   // Update the history and context
   router.update({
     history: memoryHistory,
     context: {
-      ...router.context,
       head: opts.head,
     },
-  });
+  })
 
   // Wait for the router to load critical data
   // (streamed data will continue to load in the background)
-  await router.load();
+  await router.load()
 
   // Track errors
-  let didError = false;
+  let didError = false
 
   // Clever way to get the right callback. Thanks Remix!
-  const callbackName = isbot(opts.req.headers["user-agent"])
-    ? "onAllReady"
-    : "onShellReady";
+  const callbackName = isbot(opts.req.headers['user-agent'])
+    ? 'onAllReady'
+    : 'onShellReady'
 
   // Render the app to a readable stream
-  let stream!: PipeableStream;
+  let stream!: PipeableStream
 
   await new Promise<void>((resolve) => {
     stream = ReactDOMServer.renderToPipeableStream(
       <StartServer router={router} />,
       {
         [callbackName]: () => {
-          opts.res.statusCode = didError ? 500 : 200;
-          opts.res.setHeader("Content-Type", "text/html");
-          resolve();
+          opts.res.statusCode = didError ? 500 : 200
+          opts.res.setHeader('Content-Type', 'text/html')
+          resolve()
         },
         onError: (err) => {
-          didError = true;
-          console.log(err);
+          didError = true
+          console.log(err)
         },
-      }
-    );
-  });
+      },
+    )
+  })
 
   // Add our Router transform to the stream
-  const transforms = [transformStreamWithRouter(router)];
+  const transforms = [transformStreamWithRouter(router)]
 
   const transformedStream = transforms.reduce(
     (stream, transform) => stream.pipe(transform as any),
-    stream
-  );
+    stream,
+  )
 
-  transformedStream.pipe(opts.res);
+  transformedStream.pipe(opts.res)
 }

@@ -1,4 +1,4 @@
-import { Router } from '@tanstack/router'
+import { Router, RouterContext } from '@tanstack/router'
 
 import { rootRoute } from './routes/root'
 import { indexRoute } from './routes/index'
@@ -16,10 +16,10 @@ import { AppRouter } from './server/trpc'
 import { unstable_httpBatchStreamLink } from '@trpc/react-query'
 import { trpc } from './utils/trpc'
 
-export type RouterContext = {
+export const routerContext = new RouterContext<{
   ssg: ReturnType<typeof createServerSideHelpers<AppRouter>>
   head: string
-}
+}>()
 
 export const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -40,7 +40,7 @@ export function createRouter() {
   const router = new Router({
     routeTree,
     context: {
-      ssg: ssg,
+      ssg,
       head: '',
     },
     // On the server, dehydrate the query client

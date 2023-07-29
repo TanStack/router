@@ -9,25 +9,23 @@ export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
 
-  loader: async ({ context: { ssg }, params }) => {
-    const postId = z.coerce.number().parse(params.postId)
-    await ssg.postById.prefetch(parseInt(params.postId, 10))
+  loader: async ({ context: { ssg }, params: { postId } }) => {
+    const id = z.coerce.number().parse(postId)
+    await ssg.postById.prefetch(id)
 
-    return { postId }
+    return { postId: id }
   },
   component: function Post({ useLoader }) {
     const { postId } = useLoader()
     const { data: post } = trpc.postById.useQuery(postId)
 
-    if (!post) {
-      // should never happen
-      return null
-    }
+    if (!post) /** should never happen */ return null
 
     return (
       <div className="space-y-2">
         <h4 className="text-xl font-bold underline">{post.title}</h4>
         <div className="text-sm">{post.body}</div>
+        <h5 className="m-2">Comments</h5>
         {post.commentIds.map((id) => (
           <Suspense fallback={`Loading comment ${id}`}>
             <Comment id={id} />

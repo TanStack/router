@@ -491,7 +491,7 @@ importers:
     dependencies:
       '@tanstack/react-query':
         specifier: ^4.32.0
-        version: 4.32.0(react-dom@18.2.0)(react@18.2.0)
+        version: 4.32.0(react-dom@18.3.0-canary-587ae49d7-20230720)(react@18.3.0-canary-587ae49d7-20230720)
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -503,7 +503,7 @@ importers:
         version: 10.36.0(@trpc/server@10.36.0)
       '@trpc/react-query':
         specifier: ^10.36.0
-        version: 10.36.0(@tanstack/react-query@4.32.0)(@trpc/client@10.36.0)(@trpc/server@10.36.0)(react-dom@18.2.0)(react@18.2.0)
+        version: 10.36.0(@tanstack/react-query@4.32.0)(@trpc/client@10.36.0)(@trpc/server@10.36.0)(react-dom@18.3.0-canary-587ae49d7-20230720)(react@18.3.0-canary-587ae49d7-20230720)
       '@trpc/server':
         specifier: ^10.36.0
         version: 10.36.0
@@ -511,11 +511,11 @@ importers:
         specifier: ^2.8.5
         version: 2.8.5
       react:
-        specifier: ^18.2.0
-        version: 18.2.0
+        specifier: 18.3.0-canary-587ae49d7-20230720
+        version: 18.3.0-canary-587ae49d7-20230720
       react-dom:
-        specifier: ^18.2.0
-        version: 18.2.0(react@18.2.0)
+        specifier: 18.3.0-canary-587ae49d7-20230720
+        version: 18.3.0-canary-587ae49d7-20230720(react@18.3.0-canary-587ae49d7-20230720)
       zod:
         specifier: ^3.21.4
         version: 3.21.4
@@ -4013,6 +4013,24 @@ packages:
       use-sync-external-store: 1.2.0(react@18.2.0)
     dev: false
 
+  /@tanstack/react-query@4.32.0(react-dom@18.3.0-canary-587ae49d7-20230720)(react@18.3.0-canary-587ae49d7-20230720):
+    resolution: {integrity: sha512-B8WUMcByYAH9500ENejDCATOmEZhqjtS9wsfiQ3BNa+s+yAynY8SESI8WWHhSqUmjd0pmCSFRP6BOUGSda3QXA==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
+      react-native: '*'
+    peerDependenciesMeta:
+      react-dom:
+        optional: true
+      react-native:
+        optional: true
+    dependencies:
+      '@tanstack/query-core': 4.32.0
+      react: 18.3.0-canary-587ae49d7-20230720
+      react-dom: 18.3.0-canary-587ae49d7-20230720(react@18.3.0-canary-587ae49d7-20230720)
+      use-sync-external-store: 1.2.0(react@18.3.0-canary-587ae49d7-20230720)
+    dev: false
+
   /@tanstack/router-cli@0.0.1-beta.69:
     resolution: {integrity: sha512-LjE3E6ESgUrL7wCpyKYx9T3/DMKLpWlNd+U0hqJIyiwm+YLUTZIzCqgyUqxTKQI90+4Sbcl/chehk3tc/Tu3rg==}
     engines: {node: '>=12'}
@@ -4119,6 +4137,22 @@ packages:
       '@trpc/server': 10.36.0
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
+    dev: false
+
+  /@trpc/react-query@10.36.0(@tanstack/react-query@4.32.0)(@trpc/client@10.36.0)(@trpc/server@10.36.0)(react-dom@18.3.0-canary-587ae49d7-20230720)(react@18.3.0-canary-587ae49d7-20230720):
+    resolution: {integrity: sha512-ueIdfP/Xl4DIeBLMh6hEb0QdvcUjDZ+V+4lzIuztmkpRIvL4ZpwyBS7TGbKs+1EUwWu42AJB0t8n/LrtO6MxgQ==}
+    peerDependencies:
+      '@tanstack/react-query': ^4.18.0
+      '@trpc/client': 10.36.0
+      '@trpc/server': 10.36.0
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+    dependencies:
+      '@tanstack/react-query': 4.32.0(react-dom@18.3.0-canary-587ae49d7-20230720)(react@18.3.0-canary-587ae49d7-20230720)
+      '@trpc/client': 10.36.0(@trpc/server@10.36.0)
+      '@trpc/server': 10.36.0
+      react: 18.3.0-canary-587ae49d7-20230720
+      react-dom: 18.3.0-canary-587ae49d7-20230720(react@18.3.0-canary-587ae49d7-20230720)
     dev: false
 
   /@trpc/react-query@10.4.1(@tanstack/react-query@4.18.0)(@trpc/client@10.4.1)(@trpc/server@10.4.1)(react-dom@18.2.0)(react@18.2.0):

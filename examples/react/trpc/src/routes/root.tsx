@@ -1,8 +1,8 @@
-import { Link, Outlet, RootRoute } from '@tanstack/router'
-import { RouterContext } from '../router'
+import { Link, Outlet } from '@tanstack/router'
+import { routerContext } from '../router'
 import { DehydrateRouter } from '@tanstack/react-start/client'
 
-export const rootRoute = RootRoute.withRouterContext<RouterContext>()({
+export const rootRoute = routerContext.createRootRoute({
   component: Root,
 })
 
