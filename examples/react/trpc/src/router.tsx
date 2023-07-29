@@ -60,10 +60,7 @@ export function createRouter() {
       return (
         <trpc.Provider client={trpcClient} queryClient={queryClient}>
           <QueryClientProvider client={queryClient}>
-            <Hydrate state={dehydratedState}>
-              {/** @ts-ignore - not sure what it complains about... probably some mismatching @types/react versions */}
-              {props.children}
-            </Hydrate>
+            <Hydrate state={dehydratedState}>{props.children}</Hydrate>
           </QueryClientProvider>
         </trpc.Provider>
       )
