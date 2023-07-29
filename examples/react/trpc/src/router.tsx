@@ -9,7 +9,6 @@ import {
   Hydrate,
   QueryClient,
   QueryClientProvider,
-  hydrate,
 } from '@tanstack/react-query'
 
 import { createServerSideHelpers } from '@trpc/react-query/server'
@@ -49,11 +48,6 @@ export function createRouter() {
       const state = ssg.dehydrate()
       console.log('dehydrate', state)
       return state
-    },
-    // On the client, rehydrate the query client
-    hydrate: (dehydrated) => {
-      console.log('hydrate', dehydrated)
-      hydrate(queryClient, dehydrated)
     },
     // Wrap our router in the loader client provider
     Wrap: (props) => {
