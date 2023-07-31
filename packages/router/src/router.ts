@@ -170,7 +170,10 @@ export interface RouterOptions<
   onRouteChange?: () => void
   // fetchServerDataFn?: FetchServerDataFn
   context?: TRouteTree['__types']['routerContext']
-  Wrap?: React.ComponentType<{ children: React.ReactNode }>
+  Wrap?: React.ComponentType<{
+    children: React.ReactNode
+    dehydratedState?: TDehydrated
+  }>
   dehydrate?: () => TDehydrated
   hydrate?: (dehydrated: TDehydrated) => void
 }
@@ -574,12 +577,31 @@ export class Router<
       }
 
       // Create a fresh route match
-      return createRouteMatch({
-        route,
+      const hasLoaders = !!(
+        route.options.loader ||
+        componentTypes.some((d) => route.options[d]?.preload)
+      )
+
+
+      const routeMatch: RouteMatch = {
         id: matchId,
+        routeId: route.id,
         params: allParams,
         pathname: joinPaths([this.basepath, interpolatedPath]),
-      })
+        updatedAt: 0,
+        routeSearch: {},
+        search: {} as any,
+        status: hasLoaders ? 'pending' : 'success',
+        error: undefined,
+        loader: undefined,
+        loadPromise: Promise.resolve(),
+        routeContext: undefined!,
+        context: undefined!,
+        abortController: new AbortController(),
+        fetchedAt: 0,
+      }
+
+      return routeMatch
     })
 
     // Take each match and resolve its search params and context
@@ -1550,41 +1572,4 @@ function escapeJSON(jsonString: string) {
     .replace(/\\/g, '\\\\') // Escape backslashes
     .replace(/'/g, "\\'") // Escape single quotes
     .replace(/"/g, '\\"') // Escape double quotes
-}
-
-export function createRouteMatch({
-  route,
-  id,
-  params,
-  pathname,
-}: {
-  route: AnyRoute
-  id: string
-  params: AnyPathParams
-  pathname: string
-}) {
-  const hasLoaders = !!(
-    route.options.loader ||
-    componentTypes.some((d) => route.options[d]?.preload)
-  )
-
-  const state: RouteMatch = {
-    id: id,
-    routeId: route.id,
-    params: params,
-    pathname: pathname,
-    updatedAt: 0,
-    routeSearch: {},
-    search: {} as any,
-    status: hasLoaders ? 'pending' : 'success',
-    error: undefined,
-    loader: undefined,
-    loadPromise: Promise.resolve(),
-    routeContext: undefined!,
-    context: undefined!,
-    abortController: new AbortController(),
-    fetchedAt: 0,
-  }
-
-  return state
 }

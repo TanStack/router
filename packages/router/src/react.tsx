@@ -364,8 +364,8 @@ export function useRouter(): RegisteredRouter {
   return value
 }
 
-export function useRouterState<T = RegisteredRouter['state']>(
-  select?: (state: RegisteredRouter['state']) => T,
+export function useRouterState<T = Router['state']>(
+  select?: (state: Router['state']) => T,
 ): T {
   const state = React.useContext(routerStateContext)
   const next = select?.(state) ?? (state as T)
@@ -627,7 +627,9 @@ function Inner(props: { match: RouteMatch }): any {
 
   if (props.match.status === 'pending') {
     throw (
-      props.match.loadPromise || invariant(false, 'This should never happen')
+      props.match.loadPromise?.then(() => {
+        Object.assign(props.match, router.getRouteMatch(props.match.id))
+      }) || invariant(false, 'This should never happen')
     )
   }
 
