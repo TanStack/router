@@ -133,6 +133,7 @@ export class LoaderClient<
 
   mount = () => {
     const visibilityChangeEvent = 'visibilitychange'
+    const focusEvent = 'focus'
 
     // addEventListener does not exist in React Native, but window does
     // In the future, we might need to invert control here for more adapters
@@ -143,6 +144,7 @@ export class LoaderClient<
         this.#refetchAllFromFocus,
         false,
       )
+      window.addEventListener(focusEvent, this.#refetchAllFromFocus, false)
     }
 
     return () => {
@@ -151,6 +153,7 @@ export class LoaderClient<
           visibilityChangeEvent,
           this.#refetchAllFromFocus,
         )
+        window.removeEventListener(focusEvent, this.#refetchAllFromFocus)
       }
     }
   }

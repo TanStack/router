@@ -1,8 +1,13 @@
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import * as React from 'react'
-import { Link, Outlet } from '@tanstack/router'
-import { routerContext } from '../router'
+import { Link, Outlet, RouterContext } from '@tanstack/router'
 import { DehydrateRouter } from '@tanstack/react-start/client'
+import { createLoaderClient } from '../loaderClient'
+
+export const routerContext = new RouterContext<{
+  loaderClient: ReturnType<typeof createLoaderClient>
+  head: string
+}>()
 
 export const rootRoute = routerContext.createRootRoute({
   component: Root,
