@@ -492,6 +492,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^4.32.0
         version: 4.32.0(react-dom@18.3.0-canary-587ae49d7-20230720)(react@18.3.0-canary-587ae49d7-20230720)
+      '@tanstack/react-query-devtools':
+        specifier: 4.32.0
+        version: 4.32.0(@tanstack/react-query@4.32.0)(react-dom@18.3.0-canary-587ae49d7-20230720)(react@18.3.0-canary-587ae49d7-20230720)
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -3945,6 +3948,13 @@ packages:
       remove-accents: 0.4.2
     dev: false
 
+  /@tanstack/match-sorter-utils@8.8.4:
+    resolution: {integrity: sha512-rKH8LjZiszWEvmi01NR72QWZ8m4xmXre0OOwlRGnjU01Eqz/QnN+cqpty2PJ0efHblq09+KilvyR7lsbzmXVEw==}
+    engines: {node: '>=12'}
+    dependencies:
+      remove-accents: 0.4.2
+    dev: false
+
   /@tanstack/query-core@4.18.0:
     resolution: {integrity: sha512-PP4mG8MD08sq64RZCqMfXMYfaj7+Oulwg7xZ/fJoEOdTZNcPIgaOkHajZvUBsNLbi/0ViMvJB4cFkL2Jg2WPbw==}
     dev: false
@@ -3981,6 +3991,21 @@ packages:
       react-dom: 18.2.0(react@18.2.0)
       superjson: 1.11.0
       use-sync-external-store: 1.2.0(react@18.2.0)
+    dev: false
+
+  /@tanstack/react-query-devtools@4.32.0(@tanstack/react-query@4.32.0)(react-dom@18.3.0-canary-587ae49d7-20230720)(react@18.3.0-canary-587ae49d7-20230720):
+    resolution: {integrity: sha512-rOmWqzKzRmQrQULV5Ova2FGEEPT76FZA3hz8T+LFkvp3ehw9ugSZ1BosgRJ7AFCeir+5pcNvFwILy4pDK8HpRw==}
+    peerDependencies:
+      '@tanstack/react-query': 4.32.0
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
+    dependencies:
+      '@tanstack/match-sorter-utils': 8.8.4
+      '@tanstack/react-query': 4.32.0(react-dom@18.3.0-canary-587ae49d7-20230720)(react@18.3.0-canary-587ae49d7-20230720)
+      react: 18.3.0-canary-587ae49d7-20230720
+      react-dom: 18.3.0-canary-587ae49d7-20230720(react@18.3.0-canary-587ae49d7-20230720)
+      superjson: 1.11.0
+      use-sync-external-store: 1.2.0(react@18.3.0-canary-587ae49d7-20230720)
     dev: false
 
   /@tanstack/react-query@4.18.0(react-dom@18.2.0)(react@18.2.0):

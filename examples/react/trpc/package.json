@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^4.32.0",
+    "@tanstack/react-query-devtools": "4.32.0",
     "@tanstack/react-start": "0.0.1-beta.125",
     "@tanstack/router": "0.0.1-beta.125",
     "@tanstack/router-devtools": "0.0.1-beta.125",

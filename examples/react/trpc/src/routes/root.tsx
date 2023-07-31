@@ -5,6 +5,7 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 import type { createServerSideHelpers } from '@trpc/react-query/server'
 import type { AppRouter } from '../server/trpc'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 export const routerContext = new RouterContext<{
   ssg: ReturnType<typeof createServerSideHelpers<AppRouter>>
@@ -62,6 +63,7 @@ function Root() {
         <hr />
         <Outlet /> {/* Start rendering router matches */}
         <TanStackRouterDevtools position="bottom-right" />
+        <ReactQueryDevtools />
         <DehydrateRouter />
       </body>
     </html>

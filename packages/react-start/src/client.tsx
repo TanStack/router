@@ -18,6 +18,11 @@ export function DehydrateRouter() {
     cprc.getContext('TanStackRouterHydrationContext', {}),
   )
 
+  console.log(
+    '[dehydrate router]: dehydrated context',
+    JSON.stringify(dehydrated, null, 4),
+  )
+
   return (
     <script
       id="__TSR_DEHYDRATED__"

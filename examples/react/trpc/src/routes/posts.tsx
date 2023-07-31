@@ -9,7 +9,10 @@ export const postsRoute = new Route({
   loader: async ({ context: { ssg } }) => {
     await ssg.postList.prefetch()
   },
+  // wrapInSuspense: true,
+  // pendingComponent: () => <div>Loading...</div>,
   component: function Posts() {
+    // const [posts] = trpc.postList.useSuspenseQuery()
     const { data: posts } = trpc.postList.useQuery()
 
     return (
@@ -21,7 +24,7 @@ export const postsRoute = new Route({
                 <Link
                   to={postIdRoute.to}
                   params={{
-                    postId: post.id,
+                    postId: String(post.id),
                   }}
                   className="block py-1 text-blue-800 hover:text-blue-600"
                   activeProps={{ className: 'text-black font-bold' }}
