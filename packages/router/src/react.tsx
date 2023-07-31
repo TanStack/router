@@ -369,7 +369,7 @@ export function RouterProvider<
 }
 
 export function useHydrationContext() {
-  return cprc.getContext('TanStackRouterHydrationContext', {})
+  return cprc.getContext('TanStackRouterHydrationContext', {}).payload
 }
 
 export function useRouter(): RegisteredRouter {
