@@ -11,6 +11,7 @@ import {
   QueryClient,
   QueryClientProvider,
   hydrate,
+  dehydrate,
 } from '@tanstack/react-query'
 import { createServerSideHelpers } from '@trpc/react-query/server'
 import { unstable_httpBatchStreamLink } from '@trpc/react-query'
@@ -40,19 +41,20 @@ export function createRouter() {
     },
     // On the server, dehydrate the query client
     dehydrate: () => {
-      const state = ssg.dehydrate()
-      return state
+      return {
+        ssg: ssg.dehydrate(),
+      }
     },
     // Unsure if this is doing anything
     hydrate: (dehydratedState) => {
-      hydrate(queryClient, dehydratedState)
+      hydrate(queryClient, dehydratedState.ssg)
     },
     // Wrap our router in the loader client provider
     Wrap: (props) => {
-      // Makes sure the dehydratede state is transformed properly
+      // Makes sure the dehydrated state is transformed properly
       const dehydratedState = trpc.useDehydratedState(
         trpcClient,
-        props.dehydratedState,
+        router.dehydratedData?.ssg,
       )
 
       return (

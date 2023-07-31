@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { AnyRouter, RouterProvider } from '@tanstack/router'
+import { AnyRouter, RouterProvider, useRouter } from '@tanstack/router'
 // @ts-ignore
 import cprc from '@gisatcz/cross-package-react-context'
 
@@ -8,14 +8,13 @@ export function StartClient(props: { router: AnyRouter }) {
 }
 
 export function DehydrateRouter() {
-  const dehydrated = React.useContext(
+  const router = useRouter()
+
+  const dehydratedCtx = React.useContext(
     cprc.getContext('TanStackRouterHydrationContext', {}),
   )
 
-  console.log(
-    '[dehydrate router]: dehydrated context',
-    JSON.stringify(dehydrated, null, 4),
-  )
+  const dehydrated = router.dehydratedData || dehydratedCtx
 
   return (
     <script
