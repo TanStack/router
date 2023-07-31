@@ -4,13 +4,7 @@ import { AnyRouter, RouterProvider } from '@tanstack/router'
 import cprc from '@gisatcz/cross-package-react-context'
 
 export function StartClient(props: { router: AnyRouter }) {
-  const CustomRouterProvider = props.router.options.Wrap || React.Fragment
-
-  return (
-    <CustomRouterProvider>
-      <RouterProvider router={props.router} />
-    </CustomRouterProvider>
-  )
+  return <RouterProvider router={props.router} />
 }
 
 export function DehydrateRouter() {

@@ -8,7 +8,7 @@ import {
   ResolveRelativePath,
   NavigateOptions,
 } from './link'
-import { AnyContext, AnyRoute } from './route'
+import { AnyRoute } from './route'
 import { RouteByPath, AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
 import {
   RegisteredRoutesInfo,
@@ -17,8 +17,6 @@ import {
   RouterOptions,
   Router,
   RouteMatch,
-  RouterContextOptions,
-  RouterState,
 } from './router'
 import { functionalUpdate, last } from './utils'
 
@@ -345,24 +343,28 @@ export function RouterProvider<
 
   React.useEffect(router.mount, [router])
 
+  const Wrap = router.options.Wrap || React.Fragment
+
   return (
-    <routerContext.Provider value={router as any}>
-      <routerStateContext.Provider value={state as any}>
-        <matchesContext.Provider value={[undefined!, ...matches]}>
-          <CatchBoundary
-            errorComponent={ErrorComponent}
-            onCatch={() => {
-              warning(
-                false,
-                `Error in router! Consider setting an 'errorComponent' in your RootRoute! 👍`,
-              )
-            }}
-          >
-            <Outlet />
-          </CatchBoundary>
-        </matchesContext.Provider>
-      </routerStateContext.Provider>
-    </routerContext.Provider>
+    <Wrap>
+      <routerContext.Provider value={router as any}>
+        <routerStateContext.Provider value={state as any}>
+          <matchesContext.Provider value={[undefined!, ...matches]}>
+            <CatchBoundary
+              errorComponent={ErrorComponent}
+              onCatch={() => {
+                warning(
+                  false,
+                  `Error in router! Consider setting an 'errorComponent' in your RootRoute! 👍`,
+                )
+              }}
+            >
+              <Outlet />
+            </CatchBoundary>
+          </matchesContext.Provider>
+        </routerStateContext.Provider>
+      </routerContext.Provider>
+    </Wrap>
   )
 }
 
