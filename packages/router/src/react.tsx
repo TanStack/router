@@ -2,6 +2,8 @@ import * as React from 'react'
 import { NoInfer, useStore } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
+// @ts-ignore
+import cprc from '@gisatcz/cross-package-react-context'
 import {
   LinkOptions,
   ToOptions,
@@ -322,9 +324,7 @@ export function RouterProvider<
   TDehydrated extends Record<string, any> = Record<string, any>,
 >({ router, ...rest }: RouterProps<TRouteConfig, TRoutesInfo, TDehydrated>) {
   router.update(rest)
-
   const [state, _setState] = React.useState(() => router.state)
-
   const matches = state.matches
 
   // let unsubOptimistic = router.__store.subscribe(() => {
@@ -366,6 +366,10 @@ export function RouterProvider<
       </routerContext.Provider>
     </Wrap>
   )
+}
+
+export function useHydrationContext() {
+  return cprc.getContext('TanStackRouterHydrationContext', {})
 }
 
 export function useRouter(): RegisteredRouter {
