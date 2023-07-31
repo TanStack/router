@@ -274,6 +274,7 @@ export class Router<
   state: RouterState<TRoutesInfo>
   startedLoadingAt = Date.now()
   resolveNavigation: () => void = () => {}
+  dehydratedData?: TDehydrated
 
   constructor(options: RouterConstructorOptions<TRouteTree, TDehydrated>) {
     this.options = {
@@ -581,7 +582,6 @@ export class Router<
         route.options.loader ||
         componentTypes.some((d) => route.options[d]?.preload)
       )
-
 
       const routeMatch: RouteMatch = {
         id: matchId,
@@ -1104,13 +1104,7 @@ export class Router<
 
   dehydrate = (): DehydratedRouter => {
     return {
-      state: {
-        ...pick(this.state, ['location', 'status', 'lastUpdated']),
-        // matches: this.state.matches.map((m) => ({
-        //   id: m.id,
-        //   promiseKeys: Object.keys(m.__promisesByKey),
-        // })),
-      },
+      state: pick(this.state, ['location', 'status', 'lastUpdated']),
     }
   }
 
@@ -1127,7 +1121,7 @@ export class Router<
     )
 
     const ctx = _ctx
-
+    this.dehydratedData = ctx.payload as any
     this.options.hydrate?.(ctx.payload as any)
 
     this.__store.setState((s) => {
@@ -1140,11 +1134,6 @@ export class Router<
     })
 
     await this.load()
-
-    // this.state.matches.forEach((m) => {
-    //   m.__promiseKeys =
-    //     ctx.router.state.matches.find((d) => d.id === m.id)?.promiseKeys ?? []
-    // })
 
     return
   }

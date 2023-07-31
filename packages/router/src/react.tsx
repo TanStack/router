@@ -368,10 +368,6 @@ export function RouterProvider<
   )
 }
 
-export function useHydrationContext() {
-  return cprc.getContext('TanStackRouterHydrationContext', {}).payload
-}
-
 export function useRouter(): RegisteredRouter {
   const value = React.useContext(routerContext)
   warning(value, 'useRouter must be used inside a <Router> component!')
