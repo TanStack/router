@@ -329,9 +329,17 @@ export function RouterProvider<
 
   const matches = state.matches
 
+  // let unsubOptimistic = router.__store.subscribe(() => {
+  //   unsubOptimistic()
+  //   ;(React.startTransition || ((d) => d()))(() => _setState(router.state))
+  // })
+
   useLayoutEffect(() => {
+    // unsubOptimistic()
     return router.__store.subscribe(() => {
-      ;(React.startTransition || ((d) => d()))(() => _setState(router.state))
+      Promise.resolve().then(() => {
+        ;(React.startTransition || ((d) => d()))(() => _setState(router.state))
+      })
     })
   })
 
