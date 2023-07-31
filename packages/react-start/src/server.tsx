@@ -94,8 +94,6 @@ export function createRequestHandler<TRouter extends AnyRouter>(opts: {
 export function StartServer<TRouter extends AnyRouter>(props: {
   router: TRouter
 }) {
-  const Wrap = props.router.options.Wrap || React.Fragment
-
   const hydrationContext = cprc.getContext('TanStackRouterHydrationContext', {})
 
   const hydrationCtxValue = React.useMemo(
@@ -109,9 +107,7 @@ export function StartServer<TRouter extends AnyRouter>(props: {
   return (
     // Provide the hydration context still, since `<DehydrateRouter />` needs it.
     <hydrationContext.Provider value={hydrationCtxValue}>
-      <Wrap dehydratedState={hydrationCtxValue.payload}>
-        <RouterProvider router={props.router} />
-      </Wrap>
+      <RouterProvider router={props.router} />
     </hydrationContext.Provider>
   )
 }

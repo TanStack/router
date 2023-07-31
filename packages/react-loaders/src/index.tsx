@@ -48,7 +48,9 @@ export function LoaderClientProvider({
 
   useLayoutEffect(() => {
     return client.__store.subscribe(() => {
-      ;(React.startTransition || ((d) => d()))(() => _setState(client.state))
+      Promise.resolve().then(() => {
+        ;(React.startTransition || ((d) => d()))(() => _setState(client.state))
+      })
     })
   })
 
@@ -147,8 +149,7 @@ export function useLoaderInstance<
   }, [client])
 
   useLayoutEffect(() => {
-    const unsub = client.subscribeToInstance(opts, () => {})
-    return unsub
+    return client.subscribeToInstance(opts, () => {})
   }, [hashedKey])
 
   // useStore(loaderInstance.__store, (d) => opts?.track?.(d as any) ?? d)
