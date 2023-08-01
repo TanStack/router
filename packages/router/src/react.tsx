@@ -19,7 +19,7 @@ import {
   Router,
   RouteMatch,
 } from './router'
-import { functionalUpdate, last } from './utils'
+import { functionalUpdate, last, pick } from './utils'
 
 //
 
@@ -267,18 +267,8 @@ export function Navigate<
   return null
 }
 
-type MatchesContextValue = RouteMatch[]
-
-export const matchesContext = React.createContext<MatchesContextValue>(null!)
-export const routerStateContext = React.createContext<
-  RegisteredRouter['state']
->(null!)
+export const matchIdsContext = React.createContext<string[]>(null!)
 export const routerContext = React.createContext<RegisteredRouter>(null!)
-
-export type MatchesProviderProps = {
-  value: MatchesContextValue
-  children: ReactNode
-}
 
 export type RouterProps<
   TRouteConfig extends AnyRoute = AnyRoute,
@@ -287,20 +277,6 @@ export type RouterProps<
 > = Omit<RouterOptions<TRouteConfig, TDehydrated>, 'context'> & {
   router: Router<TRouteConfig, TRoutesInfo>
   context?: Partial<RouterOptions<TRouteConfig, TDehydrated>['context']>
-}
-
-export function MatchesProvider({
-  matches,
-  children,
-}: {
-  matches: RouteMatch[]
-  children: ReactNode
-}) {
-  return (
-    <matchesContext.Provider value={matches}>
-      {children}
-    </matchesContext.Provider>
-  )
 }
 
 const useLayoutEffect =
@@ -312,20 +288,6 @@ export function RouterProvider<
   TDehydrated extends Record<string, any> = Record<string, any>,
 >({ router, ...rest }: RouterProps<TRouteConfig, TRoutesInfo, TDehydrated>) {
   router.update(rest)
-  const [state, _setState] = React.useState(() => router.state)
-  const matches = state.matches
-  const [isPending, startTransition] = React.useTransition()
-
-  useLayoutEffect(() => {
-    // unsubOptimistic()
-    return router.__store.subscribe(() => {
-      Promise.resolve().then(() => {
-        ;(startTransition || ((d) => d()))(() => {
-          _setState(router.state)
-        })
-      })
-    })
-  })
 
   React.useEffect(router.mount, [router])
 
@@ -334,23 +296,65 @@ export function RouterProvider<
   return (
     <Wrap>
       <routerContext.Provider value={router as any}>
-        <routerStateContext.Provider value={state as any}>
-          <matchesContext.Provider value={[undefined!, ...matches]}>
-            <CatchBoundary
-              errorComponent={ErrorComponent}
-              onCatch={() => {
-                warning(
-                  false,
-                  `Error in router! Consider setting an 'errorComponent' in your RootRoute! 👍`,
-                )
-              }}
-            >
-              <Outlet />
-            </CatchBoundary>
-          </matchesContext.Provider>
-        </routerStateContext.Provider>
+        <Matches />
       </routerContext.Provider>
     </Wrap>
+  )
+}
+
+export function useRouterState<T = RegisteredRouter['state']>(
+  select?: (state: RegisteredRouter['state']) => T,
+  track?: (state: NoInfer<T>) => any,
+): T {
+  const router = useRouter()
+  const [state, _setState] = React.useState<T>(
+    () => select?.(router.state) ?? (router.state as T),
+  )
+  const [tracked, _setTracked] = React.useState<T>(() => track?.(state))
+  const [, startTransition] = React.useTransition()
+
+  useLayoutEffect(() => {
+    return router.__store.subscribe((ctx) => {
+      Promise.resolve().then(() => {
+        // shallow compare
+        const nextState = (select?.(router.state) ?? state) as T
+        const nextTracked = (track?.(nextState) ?? nextState) as T
+
+        if (!shallow(tracked, nextTracked)) {
+          if (ctx.priority === 'low') {
+            startTransition(() => {
+              _setState(nextState)
+              _setTracked(nextTracked)
+            })
+          } else {
+            _setState(nextState)
+            _setTracked(nextTracked)
+          }
+        }
+      })
+    })
+  }, [state])
+
+  return state as T
+}
+
+function Matches() {
+  const matchIds = useRouterState((d) => d.matches.map((d) => d.id))
+
+  return (
+    <matchIdsContext.Provider value={[undefined!, ...matchIds]}>
+      <CatchBoundary
+        errorComponent={ErrorComponent}
+        onCatch={() => {
+          warning(
+            false,
+            `Error in router! Consider setting an 'errorComponent' in your RootRoute! 👍`,
+          )
+        }}
+      >
+        <Outlet />
+      </CatchBoundary>
+    </matchIdsContext.Provider>
   )
 }
 
@@ -360,22 +364,18 @@ export function useRouter(): RegisteredRouter {
   return value
 }
 
-export function useRouterState<T = RegisteredRouter['state']>(
-  select?: (state: RegisteredRouter['state']) => T,
-): T {
-  const state = React.useContext(routerStateContext)
-  const next = select?.(state) ?? (state as T)
-  const valueRef = React.useRef(next)
+export function useMatches<T = RouteMatch[]>(opts?: {
+  select?: (matches: RouteMatch[]) => T
+  track?: (matches: T) => any
+}): T {
+  const matchIds = React.useContext(matchIdsContext)
+  return useRouterState((state) => {
+    const matches = state.matches.slice(
+      state.matches.findIndex((d) => d.id === matchIds[0]),
+    )
 
-  if (!shallow(valueRef.current, next)) {
-    valueRef.current = next as any
-  }
-
-  return valueRef.current
-}
-
-export function useMatches(): RouteMatch[] {
-  return React.useContext(matchesContext)
+    return (opts?.select?.(matches) ?? matches) as T
+  }, opts?.track)
 }
 
 export function useMatch<
@@ -385,41 +385,55 @@ export function useMatch<
     RegisteredRoutesInfo,
     RegisteredRoutesInfo['routesById'][TFrom]
   >,
+  TSelected = TRouteMatchState,
 >(opts?: {
   from: TFrom
   strict?: TStrict
-  track?: (match: TRouteMatchState) => any
+  select?: (match: TRouteMatchState) => TSelected
+  track?: (match: NoInfer<TSelected>) => any
 }): TStrict extends true ? TRouteMatchState : TRouteMatchState | undefined {
-  const routerState = useRouterState()
-  const nearestMatch = useMatches()[0]!
-  const matches = routerState.matches
-  const match = opts?.from
-    ? matches.find((d) => d.routeId === opts?.from)
-    : nearestMatch
+  const nearestMatchId = React.useContext(matchIdsContext)[0]
+  const nearestMatchRouteId = useRouterState((d) =>
+    d.matches.find((d) => d.id === nearestMatchId),
+  )?.routeId
 
-  invariant(
-    match,
-    `Could not find ${
-      opts?.from ? `an active match from "${opts.from}"` : 'a nearest match!'
-    }`,
-  )
+  const matchRouteId = useRouterState((state) => {
+    const matches = state.matches
+    const match = opts?.from
+      ? matches.find((d) => d.routeId === opts?.from)
+      : matches.find((d) => d.id === nearestMatchId)
+
+    return match!.routeId
+  })
 
   if (opts?.strict ?? true) {
     invariant(
-      nearestMatch.routeId == match?.routeId,
+      nearestMatchRouteId == matchRouteId,
       `useMatch("${
-        match?.routeId as string
-      }") is being called in a component that is meant to render the '${
-        nearestMatch.routeId
-      }' route. Did you mean to 'useMatch("${
-        match?.routeId as string
+        matchRouteId as string
+      }") is being called in a component that is meant to render the '${nearestMatchRouteId}' route. Did you mean to 'useMatch("${
+        matchRouteId as string
       }", { strict: false })' or 'useRoute("${
-        match?.routeId as string
+        matchRouteId as string
       }")' instead?`,
     )
   }
 
-  // useStore(match!.__store as any, (d) => opts?.track?.(match as any) ?? match)
+  const match = useRouterState((state) => {
+    const matches = state.matches
+    const match = opts?.from
+      ? matches.find((d) => d.routeId === opts?.from)
+      : matches.find((d) => d.id === nearestMatchId)
+
+    invariant(
+      match,
+      `Could not find ${
+        opts?.from ? `an active match from "${opts.from}"` : 'a nearest match!'
+      }`,
+    )
+
+    return (opts?.select?.(match as any) ?? match) as TSelected
+  }, opts?.track)
 
   return match as any
 }
@@ -440,10 +454,14 @@ export function useLoader<
 >(opts?: {
   from: TFrom
   strict?: TStrict
-  // track?: (search: TLoader) => TSelected
+  select?: (search: TLoader) => TSelected
+  track?: (search: TSelected) => any
 }): TStrict extends true ? TSelected : TSelected | undefined {
-  const { track, ...matchOpts } = opts as any
-  return useMatch(matchOpts).loader as TSelected
+  return useMatch({
+    ...(opts as any),
+    select: (match: RouteMatch) =>
+      (opts?.select?.(match.loader as TLoader) ?? match.loader) as TSelected,
+  })
 }
 
 export function useSearch<
@@ -454,11 +472,16 @@ export function useSearch<
 >(opts?: {
   from: TFrom
   strict?: TStrict
-  // track?: (search: TSearch) => TSelected
+  select?: (search: TSearch) => TSelected
+  track?: (search: NoInfer<TSelected>) => any
 }): TStrict extends true ? TSelected : TSelected | undefined {
-  const { track, ...matchOpts } = (opts ?? {}) as any
-  const match = useMatch(matchOpts)
-  return match.search as any
+  return useMatch({
+    ...(opts as any),
+    select: (match: RouteMatch) => {
+      return (opts?.select?.(match.search as TSearch) ??
+        match.search) as TSelected
+    },
+  })
 }
 
 export function useParams<
@@ -468,12 +491,15 @@ export function useParams<
   TSelected = TDefaultSelected,
 >(opts?: {
   from: TFrom
-  // track?: (search: TDefaultSelected) => TSelected
+  select?: (search: TDefaultSelected) => TSelected
+  track?: (search: NoInfer<TSelected>) => any
 }): TSelected {
-  return useRouterState((d) => {
-    const params = last(d.matches)?.params as any
-    return params
-    // return opts?.track?.(params) ?? params
+  return useRouterState({
+    ...(opts as any),
+    select: (state: any) => {
+      const params = (last(state.matches) as any)?.params
+      return (opts?.select?.(params) ?? params) as TSelected
+    },
   })
 }
 
@@ -526,26 +552,22 @@ export function MatchRoute<TFrom extends string = '/', TTo extends string = ''>(
 }
 
 export function Outlet() {
-  const matches = useMatches().slice(1)
-  const match = matches[0]
+  const matchIds = React.useContext(matchIdsContext).slice(1)
 
-  if (!match) {
+  if (!matchIds[0]) {
     return null
   }
 
-  return <SubOutlet matches={matches} match={match} />
+  return <Match matchIds={matchIds} />
 }
 
-function SubOutlet({
-  matches,
-  match,
-}: {
-  matches: RouteMatch[]
-  match: RouteMatch
-}) {
+const defaultPending = () => null
+
+function Match({ matchIds }: { matchIds: string[] }) {
   const router = useRouter()
-  const defaultPending = React.useCallback(() => null, [])
-  const route = router.getRoute(match.routeId)
+  const matchId = matchIds[0]!
+  const routeId = router.getRouteMatch(matchId)!.routeId
+  const route = router.getRoute(routeId)
 
   const PendingComponent = (route.options.pendingComponent ??
     router.options.defaultPendingComponent ??
@@ -562,20 +584,72 @@ function SubOutlet({
   const ResolvedCatchBoundary = errorComponent ? CatchBoundary : SafeFragment
 
   return (
-    <matchesContext.Provider value={matches}>
+    <matchIdsContext.Provider value={matchIds}>
       <ResolvedSuspenseBoundary fallback={<PendingComponent />}>
         <ResolvedCatchBoundary
           key={route.id}
           errorComponent={errorComponent}
           onCatch={() => {
-            warning(false, `Error in route match: ${match.id}`)
+            warning(false, `Error in route match: ${matchId}`)
           }}
         >
-          <Inner match={match} />
+          <MatchInner matchId={matchId} />
         </ResolvedCatchBoundary>
       </ResolvedSuspenseBoundary>
-    </matchesContext.Provider>
+    </matchIdsContext.Provider>
   )
+}
+
+function MatchInner({ matchId }: { matchId: string }): any {
+  const router = useRouter()
+
+  const match = useRouterState((d) =>
+    pick(d.matches.find((d) => d.id === matchId)!, [
+      'status',
+      'loadPromise',
+      'routeId',
+      'error',
+    ]),
+  )
+
+  const route = router.getRoute(match.routeId)
+
+  if (match.status === 'error') {
+    throw match.error
+  }
+
+  if (match.status === 'pending') {
+    throw (
+      match.loadPromise?.then(() => {
+        Object.assign(match, router.getRouteMatch(matchId))
+      }) || invariant(false, 'This should never happen')
+    )
+  }
+
+  if (match.status === 'success') {
+    let comp = route.options.component ?? router.options.defaultComponent
+
+    if (comp) {
+      return React.createElement(comp, {
+        useLoader: route.useLoader,
+        useMatch: route.useMatch,
+        useContext: route.useContext,
+        useSearch: route.useSearch,
+        useParams: route.useParams,
+      })
+    }
+
+    return <Outlet />
+  }
+
+  invariant(
+    false,
+    'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
+  )
+}
+
+function SafeFragment(props: any) {
+  return <>{props.children}</>
 }
 
 export function useInjectHtml() {
@@ -607,48 +681,6 @@ export function useHydrate() {
   return function hydrate<T = unknown>(key: any) {
     return router.hydrateData(key) as T
   }
-}
-
-function Inner(props: { match: RouteMatch }): any {
-  const router = useRouter()
-  const route = router.getRoute(props.match.routeId)
-
-  if (props.match.status === 'error') {
-    throw props.match.error
-  }
-
-  if (props.match.status === 'pending') {
-    throw (
-      props.match.loadPromise?.then(() => {
-        Object.assign(props.match, router.getRouteMatch(props.match.id))
-      }) || invariant(false, 'This should never happen')
-    )
-  }
-
-  if (props.match.status === 'success') {
-    let comp = route.options.component ?? router.options.defaultComponent
-
-    if (comp) {
-      return React.createElement(comp, {
-        useLoader: route.useLoader,
-        useMatch: route.useMatch,
-        useContext: route.useContext,
-        useSearch: route.useSearch,
-        useParams: route.useParams,
-      })
-    }
-
-    return <Outlet />
-  }
-
-  invariant(
-    false,
-    'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
-  )
-}
-
-function SafeFragment(props: any) {
-  return <>{props.children}</>
 }
 
 // This is the messiest thing ever... I'm either seriously tired (likely) or

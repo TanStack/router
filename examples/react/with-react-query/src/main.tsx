@@ -133,14 +133,15 @@ const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
   loader: async ({ params: { postId }, context: { queryClient } }) => {
-    await queryClient.ensureQueryData(['posts', postId], () =>
-      fetchPostById(postId),
-    )
+    const queryOptions = {
+      queryKey: ['posts', postId],
+      queryFn: () => fetchPostById(postId),
+      enabled: !!postId,
+    }
 
-    return () =>
-      useQuery(['posts', postId], () => fetchPostById(postId), {
-        enabled: !!postId,
-      })
+    await queryClient.ensureQueryData(queryOptions)
+
+    return () => useQuery(queryOptions)
   },
   component: ({ useLoader }) => {
     const postQuery = useLoader()()

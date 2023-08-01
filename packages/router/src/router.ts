@@ -69,9 +69,9 @@ export interface Register {
 export type AnyRouter = Router<any, any, any>
 
 export type RegisteredRouterPair = Register extends {
-  router: Router<infer TRoute, infer TRoutesInfo>
+  router: infer TRouter extends AnyRouter
 }
-  ? [Router<TRoute, TRoutesInfo>, TRoutesInfo]
+  ? [TRouter, TRouter['types']['RoutesInfo']]
   : [Router, AnyRoutesInfo]
 
 export type RegisteredRouter = RegisteredRouterPair[0]
@@ -287,6 +287,7 @@ export class Router<
         onUpdate: () => {
           this.state = this.__store.state
         },
+        defaultPriority: 'low',
       },
     )
     this.state = this.__store.state

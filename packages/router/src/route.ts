@@ -744,7 +744,7 @@ export class Route<
     strict?: TStrict
     track?: (search: TContext) => TSelected
   }): TStrict extends true ? TSelected : TSelected | undefined => {
-    return useMatch({ ...opts, from: this.id }).context
+    return useMatch({ ...opts, from: this.id } as any).context
   }
 
   useSearch = <
@@ -754,14 +754,14 @@ export class Route<
     strict?: TStrict
     track?: (search: TFullSearchSchema) => TSelected
   }): TStrict extends true ? TSelected : TSelected | undefined => {
-    return useSearch({ ...opts, from: this.id })
+    return useSearch({ ...opts, from: this.id } as any)
   }
 
   useParams = <TStrict extends boolean = true, TSelected = TAllParams>(opts?: {
     strict?: TStrict
     track?: (search: TAllParams) => TSelected
   }): TStrict extends true ? TSelected : TSelected | undefined => {
-    return useParams({ ...opts, from: this.id })
+    return useParams({ ...opts, from: this.id } as any)
   }
 }
 
