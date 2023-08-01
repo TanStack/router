@@ -3,7 +3,7 @@ import { Link, Outlet, useRouter } from '@tanstack/router'
 import { Spinner } from '../components/Spinner'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { useLoaderClient } from '@tanstack/react-loaders'
-import { routerContext } from '../router'
+import { routerContext } from '../routerContext'
 
 export const rootRoute = routerContext.createRootRoute({
   component: () => {
