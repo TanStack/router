@@ -9,7 +9,6 @@ import {
   useNavigate,
   useSearch,
   Router,
-  RootRoute,
   Route,
   redirect,
   RouterContext,
@@ -17,9 +16,6 @@ import {
 import {
   ActionClientProvider,
   ActionContext,
-  RegisteredActionClient,
-  RegisteredActions,
-  RegisteredActionsByKey,
   useAction,
 } from '@tanstack/react-actions'
 import {

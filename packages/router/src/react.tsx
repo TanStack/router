@@ -3,7 +3,6 @@ import { NoInfer, useStore } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 // @ts-ignore
-import cprc from '@gisatcz/cross-package-react-context'
 import {
   LinkOptions,
   ToOptions,

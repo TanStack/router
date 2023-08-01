@@ -27,8 +27,6 @@ import {
   RootRoute,
   AnyContext,
   AnyPathParams,
-  AnyRouteWithRouterContext,
-  AnyRootRoute,
 } from './route'
 import {
   RoutesInfo,
