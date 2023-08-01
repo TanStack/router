@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "@tanstack/react-loaders": "0.0.1-beta.129",
-    "@tanstack/react-start": "0.0.1-beta.132",
-    "@tanstack/router": "0.0.1-beta.132",
-    "@tanstack/router-devtools": "0.0.1-beta.132",
+    "@tanstack/react-start": "0.0.1-beta.133",
+    "@tanstack/router": "0.0.1-beta.133",
+    "@tanstack/router-devtools": "0.0.1-beta.133",
     "@tanstack/router-cli": "0.0.1-beta.69",
     "axios": "^1.1.3",
     "react": "18.3.0-canary-587ae49d7-20230720",
