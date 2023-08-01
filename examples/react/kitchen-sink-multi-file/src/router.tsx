@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Router, RouterContext } from '@tanstack/router'
+import { Router } from '@tanstack/router'
 
 import { rootRoute } from './routes/root'
 import { indexRoute } from './routes'
@@ -22,11 +22,6 @@ import { layoutRouteB } from './routes/layout/layout-b'
 import { Spinner } from './components/Spinner'
 import { loaderClient } from './loaderClient'
 import { actionClient } from './actionClient'
-
-export const routerContext = new RouterContext<{
-  loaderClient: typeof loaderClient
-  actionClient: typeof actionClient
-}>()
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
