@@ -68,17 +68,14 @@ export interface Register {
 
 export type AnyRouter = Router<any, any, any>
 
-export type RegisteredRouter = Register extends {
+export type RegisteredRouterPair = Register extends {
   router: Router<infer TRoute, infer TRoutesInfo>
 }
-  ? Router<TRoute, TRoutesInfo>
-  : Router
+  ? [Router<TRoute, TRoutesInfo>, TRoutesInfo]
+  : [Router, AnyRoutesInfo]
 
-export type RegisteredRoutesInfo = Register extends {
-  router: Router<infer TRoute, infer TRoutesInfo>
-}
-  ? TRoutesInfo
-  : AnyRoutesInfo
+export type RegisteredRouter = RegisteredRouterPair[0]
+export type RegisteredRoutesInfo = RegisteredRouterPair[1]
 
 export interface LocationState {}
 

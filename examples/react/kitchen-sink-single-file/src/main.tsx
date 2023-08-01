@@ -374,7 +374,7 @@ const invoicesRoute = new Route({
                         }}
                         pending
                       >
-                        {(match) => <Spinner show={match} wait="delay-50" />}
+                        {(match) => <Spinner show={!!match} wait="delay-50" />}
                       </MatchRoute>
                     )}
                   </pre>

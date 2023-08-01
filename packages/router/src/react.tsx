@@ -84,13 +84,13 @@ export type MakeMatchRouteOptions<
   MatchRouteOptions & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
-      | ReactNode
       | ((
-          params: RouteByPath<
+          params?: RouteByPath<
             RegisteredRoutesInfo,
             ResolveRelativePath<TFrom, NoInfer<TTo>>
           >['__types']['allParams'],
         ) => ReactNode)
+      | React.ReactNode
   }
 
 export type MakeLinkPropsOptions<
@@ -360,8 +360,8 @@ export function useRouter(): RegisteredRouter {
   return value
 }
 
-export function useRouterState<T = Router['state']>(
-  select?: (state: Router['state']) => T,
+export function useRouterState<T = RegisteredRouter['state']>(
+  select?: (state: RegisteredRouter['state']) => T,
 ): T {
   const state = React.useContext(routerStateContext)
   const next = select?.(state) ?? (state as T)
