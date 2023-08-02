@@ -9,7 +9,6 @@ import {
   useNavigate,
   useSearch,
   Router,
-  RootRoute,
   Route,
   redirect,
   RouterContext,
@@ -17,9 +16,6 @@ import {
 import {
   ActionClientProvider,
   ActionContext,
-  RegisteredActionClient,
-  RegisteredActions,
-  RegisteredActionsByKey,
   useAction,
 } from '@tanstack/react-actions'
 import {
@@ -378,7 +374,7 @@ const invoicesRoute = new Route({
                         }}
                         pending
                       >
-                        <Spinner />
+                        {(match) => <Spinner show={!!match} wait="delay-50" />}
                       </MatchRoute>
                     )}
                   </pre>
@@ -1139,12 +1135,12 @@ function useAuth() {
   return React.useContext(AuthContext)
 }
 
-function Spinner({ show }: { show?: boolean }) {
+function Spinner({ show, wait }: { show?: boolean; wait?: `delay-${number}` }) {
   return (
     <div
       className={`inline-block animate-spin px-3 transition ${
         show ?? true
-          ? 'opacity-1 duration-500 delay-300'
+          ? `opacity-1 duration-500 ${wait ?? 'delay-300'}`
           : 'duration-1000 opacity-0 delay-0'
       }`}
     >

@@ -3,7 +3,6 @@ import { NoInfer, useStore } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 // @ts-ignore
-import cprc from '@gisatcz/cross-package-react-context'
 import {
   LinkOptions,
   ToOptions,
@@ -85,13 +84,13 @@ export type MakeMatchRouteOptions<
   MatchRouteOptions & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
-      | ReactNode
       | ((
-          params: RouteByPath<
+          params?: RouteByPath<
             RegisteredRoutesInfo,
             ResolveRelativePath<TFrom, NoInfer<TTo>>
           >['__types']['allParams'],
         ) => ReactNode)
+      | React.ReactNode
   }
 
 export type MakeLinkPropsOptions<
@@ -171,17 +170,6 @@ export function useLinkProps<
     next,
   } = linkInfo
 
-  const reactHandleClick = (e: Event) => {
-    if (React.startTransition) {
-      // This is a hack for react < 18
-      React.startTransition(() => {
-        handleClick(e)
-      })
-    } else {
-      handleClick(e)
-    }
-  }
-
   const composeHandlers =
     (handlers: (undefined | ((e: any) => void))[]) =>
     (e: React.SyntheticEvent) => {
@@ -206,7 +194,7 @@ export function useLinkProps<
     ...resolvedInactiveProps,
     ...rest,
     href: disabled ? undefined : next.href,
-    onClick: composeHandlers([onClick, reactHandleClick]),
+    onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
@@ -326,17 +314,15 @@ export function RouterProvider<
   router.update(rest)
   const [state, _setState] = React.useState(() => router.state)
   const matches = state.matches
-
-  // let unsubOptimistic = router.__store.subscribe(() => {
-  //   unsubOptimistic()
-  //   ;(React.startTransition || ((d) => d()))(() => _setState(router.state))
-  // })
+  const [isPending, startTransition] = React.useTransition()
 
   useLayoutEffect(() => {
     // unsubOptimistic()
     return router.__store.subscribe(() => {
       Promise.resolve().then(() => {
-        ;(React.startTransition || ((d) => d()))(() => _setState(router.state))
+        ;(startTransition || ((d) => d()))(() => {
+          _setState(router.state)
+        })
       })
     })
   })
@@ -374,8 +360,8 @@ export function useRouter(): RegisteredRouter {
   return value
 }
 
-export function useRouterState<T = Router['state']>(
-  select?: (state: Router['state']) => T,
+export function useRouterState<T = RegisteredRouter['state']>(
+  select?: (state: RegisteredRouter['state']) => T,
 ): T {
   const state = React.useContext(routerStateContext)
   const next = select?.(state) ?? (state as T)
@@ -532,15 +518,11 @@ export function MatchRoute<TFrom extends string = '/', TTo extends string = ''>(
   const matchRoute = useMatchRoute()
   const params = matchRoute(props)
 
-  if (!params) {
-    return null
-  }
-
   if (typeof props.children === 'function') {
     return (props.children as any)(params)
   }
 
-  return params ? props.children : null
+  return !!params ? props.children : null
 }
 
 export function Outlet() {
