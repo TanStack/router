@@ -2,24 +2,22 @@ import * as React from 'react'
 import { z } from 'zod'
 import { fetchInvoiceById, patchInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
-import { invoicesLoader, invoicesRoute } from '.'
-import {
-  useNavigate,
-  Link,
-  Route,
-  RegisteredRoutesInfo,
-} from '@tanstack/router'
+import { invoicesRoute } from '.'
+import { useNavigate, Link, Route, ErrorComponent } from '@tanstack/router'
 import {
   createLoaderOptions,
   Loader,
   typedClient,
   useLoaderInstance,
 } from '@tanstack/react-loaders'
-import { Action, useAction } from '@tanstack/react-actions'
-import { invoicesIndexRoute } from './invoices'
+import { useAction } from '@tanstack/react-actions'
 import { actionContext } from '../../../actionContext'
 
-class InvoiceNotFoundError extends Error {}
+class InvoiceNotFoundError extends Error {
+  constructor(invoiceId: string) {
+    super(`Invoice not found: ${invoiceId}`)
+  }
+}
 
 export const invoiceLoader = new Loader({
   key: 'invoice',
@@ -76,6 +74,19 @@ export const invoiceRoute = new Route({
     })
 
     return () => useLoaderInstance(loaderOptions)
+  },
+  errorComponent: function InvoiceError({ error }) {
+    if (error instanceof InvoiceNotFoundError) {
+      return (
+        <div>
+          <div className="font-bold italic p-2 text-sm opacity-50">
+            Invoice not found!
+          </div>
+        </div>
+      )
+    }
+
+    return <ErrorComponent error={error} />
   },
   component: function InvoiceView({ useLoader, useSearch }) {
     const { data: invoice } = useLoader()()

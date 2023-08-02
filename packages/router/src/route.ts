@@ -153,18 +153,20 @@ export type RouteProps<
     TSelected = TSearch,
   >(opts?: {
     strict?: TStrict
-    track?: (search: TSearch) => TSelected
+    select?: (search: TSearch) => TSelected
   }) => TStrict extends true ? TSelected : TSelected | undefined
   useParams: <
     TDefaultSelected = TAllParams,
     TSelected = TDefaultSelected,
   >(opts?: {
-    track?: (search: TDefaultSelected) => TSelected
+    select?: (params: TDefaultSelected) => TSelected
   }) => TSelected
-  useContext: () => TContext
-  // navigate: <T extends TFullPath, TTo extends string = ''>(
-  //   opts?: MakeLinkOptions<T, TTo>,
-  // ) => Promise<void>
+  useContext: <
+    TDefaultSelected = TContext,
+    TSelected = TDefaultSelected,
+  >(opts?: {
+    select?: (context: TDefaultSelected) => TSelected
+  }) => TSelected
 }
 
 export type RouteOptions<
@@ -274,6 +276,7 @@ export type RouteOptions<
   // If you want to redirect due to an error, call `router.navigate()` from within this function.
   // If you want to display the errorComponent, rethrow the error
   onValidateSearchError?: (err: any) => void
+  onParseParamsError?: (err: any) => void
   // An asynchronous function responsible for preparing or fetching data for the route before it is rendered
   loader?: OnLoadFn<
     TLoader,
@@ -726,14 +729,14 @@ export class Route<
 
   useMatch = <TStrict extends boolean = true, TSelected = TContext>(opts?: {
     strict?: TStrict
-    track?: (search: TContext) => TSelected
+    select?: (search: TContext) => TSelected
   }): TStrict extends true ? TSelected : TSelected | undefined => {
     return useMatch({ ...opts, from: this.id }) as any
   }
 
   useLoader = <TStrict extends boolean = true, TSelected = TLoader>(opts?: {
     strict?: TStrict
-    track?: (search: TLoader) => TSelected
+    select?: (search: TLoader) => TSelected
   }): TStrict extends true
     ? UseLoaderResult<TSelected>
     : UseLoaderResult<TSelected> | undefined => {
@@ -742,9 +745,13 @@ export class Route<
 
   useContext = <TStrict extends boolean = true, TSelected = TContext>(opts?: {
     strict?: TStrict
-    track?: (search: TContext) => TSelected
+    select?: (search: TContext) => TSelected
   }): TStrict extends true ? TSelected : TSelected | undefined => {
-    return useMatch({ ...opts, from: this.id } as any).context
+    return useMatch({
+      ...opts,
+      from: this.id,
+      select: (d: any) => opts?.select?.(d.context) ?? d.context,
+    } as any)
   }
 
   useSearch = <
@@ -752,14 +759,14 @@ export class Route<
     TSelected = TFullSearchSchema,
   >(opts?: {
     strict?: TStrict
-    track?: (search: TFullSearchSchema) => TSelected
+    select?: (search: TFullSearchSchema) => TSelected
   }): TStrict extends true ? TSelected : TSelected | undefined => {
     return useSearch({ ...opts, from: this.id } as any)
   }
 
   useParams = <TStrict extends boolean = true, TSelected = TAllParams>(opts?: {
     strict?: TStrict
-    track?: (search: TAllParams) => TSelected
+    select?: (search: TAllParams) => TSelected
   }): TStrict extends true ? TSelected : TSelected | undefined => {
     return useParams({ ...opts, from: this.id } as any)
   }

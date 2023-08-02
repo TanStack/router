@@ -5,8 +5,9 @@ import { rootRoute } from '../root'
 export const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  loader: ({ context: { loaderClient }, preload }) =>
-    loaderClient.load({ key: 'invoices', preload }),
+  loader: ({ context: { loaderClient }, preload }) => {
+    loaderClient.load({ key: 'invoices', preload })
+  },
   component: function Dashboard() {
     return (
       <>

@@ -12,6 +12,7 @@ import {
   Route,
   redirect,
   RouterContext,
+  ErrorComponent,
 } from '@tanstack/router'
 import {
   ActionClientProvider,
@@ -962,6 +963,7 @@ const router = new Router({
       <Spinner />
     </div>
   ),
+  defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
   onRouteChange: () => {
     actionClient.clearAll()
   },

@@ -14,28 +14,14 @@ export * from '@tanstack/actions'
 
 const actionsContext = React.createContext<{
   client: ActionClient<any, any, any>
-  state: ActionClientState
 }>(null as any)
-
-const useLayoutEffect =
-  typeof document !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
 export function ActionClientProvider(props: {
   client: ActionClient<any, any, any>
   children: any
 }) {
-  const [state, _setState] = React.useState(() => props.client.state)
-
-  useLayoutEffect(() => {
-    return props.client.__store.subscribe(() => {
-      ;(React.startTransition || ((d) => d()))(() =>
-        _setState(props.client.state),
-      )
-    })
-  }, [])
-
   return (
-    <actionsContext.Provider value={{ client: props.client, state }}>
+    <actionsContext.Provider value={{ client: props.client }}>
       {props.children}
     </actionsContext.Provider>
   )
@@ -44,17 +30,23 @@ export function ActionClientProvider(props: {
 export function useAction<
   TKey extends keyof RegisteredActionsByKey,
   TAction extends RegisteredActionsByKey[TKey] = RegisteredActionsByKey[TKey],
->(opts: {
-  key: TKey
-}): [
-  state: ActionState<
+  TSelected = ActionState<
     TAction['__types']['key'],
     TAction['__types']['variables'],
     TAction['__types']['response'],
     TAction['__types']['error']
   >,
-  client: ActionClient<RegisteredActions>,
-] {
+>(opts: {
+  key: TKey
+  select?: (
+    state: ActionState<
+      TAction['__types']['key'],
+      TAction['__types']['variables'],
+      TAction['__types']['response'],
+      TAction['__types']['error']
+    >,
+  ) => TSelected
+}): [state: TSelected, client: ActionClient<RegisteredActions>] {
   const ctx = React.useContext(actionsContext)
 
   invariant(
@@ -62,11 +54,15 @@ export function useAction<
     'useAction must be used inside a <ActionClientProvider> component!',
   )
 
-  const { client, state } = ctx
+  const { client } = ctx
 
-  const action = state.actions[opts.key]
-
-  return [action as any, client]
+  return [
+    useStore(client.__store, (d) => {
+      const action = d.actions[opts.key]
+      return opts.select?.(action as any) ?? action
+    }) as TSelected,
+    client,
+  ]
 }
 
 export function useActionClient(opts?: {

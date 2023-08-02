@@ -60,6 +60,14 @@ declare global {
   interface Window {
     __TSR_DEHYDRATED__?: HydrationCtx
   }
+
+  interface Error {
+    cause: unknown
+  }
+
+  interface ErrorConstructor {
+    new (reason: string, options?: { cause?: unknown }): Error
+  }
 }
 
 export interface Register {
@@ -117,6 +125,8 @@ export interface RouteMatch<
   params: TRoute['__types']['allParams']
   status: 'pending' | 'success' | 'error'
   error: unknown
+  paramsError: unknown
+  searchError: unknown
   updatedAt: number
   loader: TRoute['__types']['loader']
   loadPromise?: Promise<void>
@@ -179,6 +189,7 @@ export interface RouterState<
 > {
   status: 'idle' | 'pending'
   matches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
+  pendingMatches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
   preloadMatches: Record<
     string,
     RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>
@@ -311,15 +322,10 @@ export class Router<
   }
 
   mount = () => {
-    // Mount only does anything on the client
-    if (!isServer) {
-      // If the router matches are empty, start loading the matches
-      if (!this.state.matches.length) {
-        this.safeLoad()
-      }
+    // If the router matches are empty, start loading the matches
+    if (!this.state.matches.length) {
+      this.safeLoad()
     }
-
-    return () => {}
   }
 
   update = (opts?: RouterOptions<any, any>): this => {
@@ -393,8 +399,8 @@ export class Router<
 
   safeLoad = (opts?: { next?: ParsedLocation }) => {
     this.load(opts).catch((err) => {
-      console.warn(err)
-      invariant(false, 'Encountered an error during router.load()! ☝️.')
+      // console.warn(err)
+      // invariant(false, 'Encountered an error during router.load()! ☝️.')
     })
   }
 
@@ -408,7 +414,7 @@ export class Router<
     // Cancel any pending matches
     this.cancelMatches()
 
-    let matches!: RouteMatch<any, any>[]
+    let pendingMatches!: RouteMatch<any, any>[]
 
     this.__store.batch(() => {
       if (opts?.next) {
@@ -420,24 +426,23 @@ export class Router<
       }
 
       // Match the routes
-      matches = this.matchRoutes(
+      pendingMatches = this.matchRoutes(
         this.state.location.pathname,
         this.state.location.search,
         {
-          strictParseParams: true,
-          debug: true,
+          // throwOnError: true,
         },
       )
 
       this.__store.setState((s) => ({
         ...s,
         status: 'pending',
-        matches,
+        pendingMatches,
       }))
     })
 
     // Load the matches
-    await this.loadMatches(matches)
+    await this.loadMatches(pendingMatches)
 
     if (this.startedLoadingAt !== startedAt) {
       // Ignore side-effects of outdated side-effects
@@ -450,7 +455,8 @@ export class Router<
       ...s,
       status: 'idle',
       resolvedLocation: s.location,
-      // matches,
+      matches: s.pendingMatches,
+      pendingMatches: [],
     }))
 
     if (prevLocation!.href !== this.state.location.href) {
@@ -475,7 +481,7 @@ export class Router<
   ) => {
     const next = this.buildNext(navigateOpts)
     const matches = this.matchRoutes(next.pathname, next.search, {
-      strictParseParams: true,
+      throwOnError: true,
     })
 
     const matchesById: any = {}
@@ -505,7 +511,7 @@ export class Router<
   matchRoutes = (
     pathname: string,
     locationSearch: AnySearchSchema,
-    opts?: { strictParseParams?: boolean; debug?: boolean },
+    opts?: { throwOnError?: boolean },
   ): RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[] => {
     let routeParams: AnyPathParams = {}
 
@@ -544,11 +550,17 @@ export class Router<
 
     const matches = matchedRoutes.map((route) => {
       let parsedParams
+      let parsedParamsError
+
       try {
         parsedParams = route.options.parseParams?.(routeParams!) ?? routeParams
-      } catch (err) {
-        if (opts?.strictParseParams) {
-          throw err
+      } catch (err: any) {
+        parsedParamsError = new PathParamError(err.message, {
+          cause: err,
+        })
+
+        if (opts?.throwOnError) {
+          throw parsedParamsError
         }
       }
 
@@ -589,6 +601,8 @@ export class Router<
         search: {} as any,
         status: hasLoaders ? 'pending' : 'success',
         error: undefined,
+        paramsError: parsedParamsError,
+        searchError: undefined,
         loader: undefined,
         loadPromise: Promise.resolve(),
         routeContext: undefined!,
@@ -632,19 +646,15 @@ export class Router<
             search: replaceEqualDeep(match.search, search),
           }
         } catch (err: any) {
-          if (isRedirect(err)) {
-            throw err
-          }
-
-          const errorHandler =
-            route.options.onValidateSearchError ?? route.options.onError
-          errorHandler?.(err)
-          const error = new (Error as any)('Invalid search params found', {
+          match.searchError = new SearchParamError(err.message, {
             cause: err,
           })
-          error.code = 'INVALID_SEARCH_PARAMS'
 
-          throw error
+          if (opts?.throwOnError) {
+            throw match.searchError
+          }
+
+          return parentSearchInfo
         }
       })()
 
@@ -696,39 +706,50 @@ export class Router<
         resolvedMatches.map(async (match, index) => {
           const route = this.getRoute(match.routeId)
 
-          try {
-            await route.options.beforeLoad?.({
-              router: this as any,
-              match,
-            })
-          } catch (err) {
+          const handleError = (
+            err: any,
+            handler: undefined | ((err: any) => void),
+          ) => {
+            firstBadMatchIndex = firstBadMatchIndex ?? index
+            handler = handler || route.options.onError
+
             if (isRedirect(err)) {
               throw err
             }
 
-            firstBadMatchIndex = firstBadMatchIndex ?? index
-
-            const errorHandler =
-              route.options.onBeforeLoadError ?? route.options.onError
-
-            let caughtError = err
-
             try {
-              errorHandler?.(err)
+              handler?.(err)
             } catch (errorHandlerErr) {
-              caughtError = errorHandlerErr
+              err = errorHandlerErr
 
               if (isRedirect(errorHandlerErr)) {
                 throw errorHandlerErr
               }
             }
 
-            this.#setEitherRouteMatch(match.id, (s) => ({
+            this.setRouteMatch(match.id, (s) => ({
               ...s,
-              error: caughtError,
+              error: err,
               status: 'error',
               updatedAt: Date.now(),
             }))
+          }
+
+          if (match.paramsError) {
+            handleError(match.paramsError, route.options.onParseParamsError)
+          }
+
+          if (match.searchError) {
+            handleError(match.searchError, route.options.onValidateSearchError)
+          }
+
+          try {
+            await route.options.beforeLoad?.({
+              router: this as any,
+              match,
+            })
+          } catch (err) {
+            handleError(err, route.options.onBeforeLoadError)
           }
         }),
       )
@@ -799,7 +820,7 @@ export class Router<
                 !opts?.preload ||
                 !this.state.matches.find((d) => d.id === match.id)
               ) {
-                this.#setEitherRouteMatch(match.id, (s) => ({
+                this.setRouteMatch(match.id, (s) => ({
                   ...s,
                   error: undefined,
                   status: 'success',
@@ -834,7 +855,7 @@ export class Router<
                 }
               }
 
-              this.#setEitherRouteMatch(match.id, (s) => ({
+              this.setRouteMatch(match.id, (s) => ({
                 ...s,
                 error: caughtError,
                 status: 'error',
@@ -855,7 +876,7 @@ export class Router<
             }
           })
 
-          this.#setEitherRouteMatch(match.id, (s) => ({
+          this.setRouteMatch(match.id, (s) => ({
             ...s,
             loadPromise,
             fetchedAt,
@@ -1313,9 +1334,6 @@ export class Router<
     const fromMatches = this.matchRoutes(
       this.state.location.pathname,
       this.state.location.search,
-      {
-        strictParseParams: true,
-      },
     )
 
     const prevParams = { ...last(fromMatches)?.params }
@@ -1461,7 +1479,7 @@ export class Router<
     )
   }
 
-  setRouteMatch = (
+  #setResolvedRouteMatch = (
     id: string,
     updater: (
       prev: RouteMatch<TRoutesInfo, AnyRoute>,
@@ -1478,7 +1496,24 @@ export class Router<
     }))
   }
 
-  setPreloadRouteMatch = (
+  #setPendingRouteMatch = (
+    id: string,
+    updater: (
+      prev: RouteMatch<TRoutesInfo, AnyRoute>,
+    ) => RouteMatch<TRoutesInfo, AnyRoute>,
+  ) => {
+    this.__store.setState((prev) => ({
+      ...prev,
+      pendingMatches: prev.pendingMatches.map((d) => {
+        if (d.id === id) {
+          return updater(d as any)
+        }
+        return d
+      }),
+    }))
+  }
+
+  #setPreloadRouteMatch = (
     id: string,
     updater: (
       prev: RouteMatch<TRoutesInfo, AnyRoute>,
@@ -1495,18 +1530,22 @@ export class Router<
     }))
   }
 
-  #setEitherRouteMatch = (
+  setRouteMatch = (
     id: string,
     updater: (
       prev: RouteMatch<TRoutesInfo, AnyRoute>,
     ) => RouteMatch<TRoutesInfo, AnyRoute>,
   ) => {
     if (this.state.matches.find((d) => d.id === id)) {
-      return this.setRouteMatch(id, updater)
+      return this.#setResolvedRouteMatch(id, updater)
+    }
+
+    if (this.state.pendingMatches.find((d) => d.id === id)) {
+      return this.#setPendingRouteMatch(id, updater)
     }
 
     if (this.state.preloadMatches[id]) {
-      return this.setPreloadRouteMatch(id, updater)
+      return this.#setPreloadRouteMatch(id, updater)
     }
   }
 }
@@ -1520,6 +1559,7 @@ function getInitialRouterState(): RouterState<any, any> {
     resolvedLocation: null!,
     location: null!,
     matches: [],
+    pendingMatches: [],
     preloadMatches: {},
     lastUpdated: Date.now(),
   }
@@ -1551,6 +1591,9 @@ export function redirect<
 export function isRedirect(obj: any): obj is AnyRedirect {
   return !!obj?.isRedirect
 }
+
+export class SearchParamError extends Error {}
+export class PathParamError extends Error {}
 
 function escapeJSON(jsonString: string) {
   return jsonString

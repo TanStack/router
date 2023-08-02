@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Router } from '@tanstack/router'
+import { ErrorComponent, Router } from '@tanstack/router'
 
 import { rootRoute } from './routes/root'
 import { indexRoute } from './routes'
@@ -46,6 +46,7 @@ export const router = new Router({
       <Spinner />
     </div>
   ),
+  defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
   onRouteChange: () => {
     actionClient.clearAll()
   },

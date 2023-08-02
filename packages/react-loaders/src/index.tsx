@@ -12,10 +12,10 @@ import {
   NullableLoaderInstance,
   LoadersToRecord,
   LoaderByKey,
-  LoaderClientState,
   hashKey,
   createLoaderInstance,
 } from '@tanstack/loaders'
+import { useStore } from '@tanstack/react-store'
 
 export * from '@tanstack/loaders'
 
@@ -25,7 +25,7 @@ export type NoInfer<T> = [T][T extends any ? 0 : never]
 
 const loadersContext = React.createContext<{
   client: LoaderClient<any>
-  state: LoaderClientState<any>
+  // state: LoaderClientState<any>
 }>(null as any)
 
 const useLayoutEffect =
@@ -44,20 +44,20 @@ export function LoaderClientProvider({
     ...rest,
   }
 
-  const [state, _setState] = React.useState(() => client.state)
+  // const [state, _setState] = React.useState(() => client.state)
 
-  useLayoutEffect(() => {
-    return client.__store.subscribe(() => {
-      Promise.resolve().then(() => {
-        ;(React.startTransition || ((d) => d()))(() => _setState(client.state))
-      })
-    })
-  })
+  // useLayoutEffect(() => {
+  //   return client.__store.subscribe(() => {
+  //     Promise.resolve().then(() => {
+  //       ;(React.startTransition || ((d) => d()))(() => _setState(client.state))
+  //     })
+  //   })
+  // })
 
   React.useEffect(client.mount, [client])
 
   return (
-    <loadersContext.Provider value={{ client, state }}>
+    <loadersContext.Provider value={{ client }}>
       {children}
     </loadersContext.Provider>
   )
@@ -85,16 +85,21 @@ export function useLoaderInstance<
   TData extends TLoaderInstance['data'] = TLoaderInstance['data'],
   TError extends TLoaderInstance['error'] = TLoaderInstance['error'],
   TStrict extends unknown = true,
+  TSelected = TStrict extends false
+    ? NullableLoaderInstance_<TLoaderInstance>
+    : TLoaderInstance,
 >(
   opts: GetInstanceOptions<TKey, TLoader> & {
     strict?: TStrict
     throwOnError?: boolean
     hydrate?: HydrateUpdater<TVariables, TData, TError>
-    // track?: (loaderStore: LoaderInstance<TVariables, TData, TError>) => any
+    select?: (
+      loaderStore: TStrict extends false
+        ? NullableLoaderInstance_<TLoaderInstance>
+        : TLoaderInstance,
+    ) => TSelected
   },
-): TStrict extends false
-  ? NullableLoaderInstance_<TLoaderInstance>
-  : TLoaderInstance {
+): TSelected {
   const ctx = React.useContext(loadersContext)
 
   invariant(
@@ -102,7 +107,7 @@ export function useLoaderInstance<
     `useLoaderInstance must be used inside a <LoaderClientProvider> component or be provided one via the 'client' option!`,
   )
 
-  const { client, state } = ctx
+  const { client } = ctx
 
   const { key, variables } = opts
   const hashedKey = hashKey([key, variables])
@@ -119,28 +124,32 @@ export function useLoaderInstance<
     [hashedKey],
   )
 
-  const stateLoaderInstance = state.loaders[opts.key].instances[hashedKey]
+  const { status, loadPromise, error } = useStore(client.__store, (state) => {
+    return pick(
+      (client.state.loaders[opts.key].instances[hashedKey] || defaultInstance)!,
+      ['status', 'error', 'loadPromise'],
+    )
+  })
 
-  const optimisticLoaderInstance =
-    client.state.loaders[opts.key].instances[hashedKey]!
+  const selected = useStore(client.__store, (state) => {
+    const instance =
+      client.state.loaders[opts.key].instances[hashedKey] || defaultInstance
+    return opts.select?.(instance as any) ?? instance
+  })
 
-  const loaderInstance =
-    (typeof document !== 'undefined'
-      ? stateLoaderInstance
-      : optimisticLoaderInstance) || defaultInstance
-
-  if (loaderInstance.status === 'error' && (opts?.throwOnError ?? true)) {
-    throw loaderInstance.error
+  if (status === 'error' && (opts?.throwOnError ?? true)) {
+    throw error
   }
 
   if (opts?.strict ?? true) {
-    if (loaderInstance.status === 'pending') {
-      throw loaderInstance.loadPromise
+    if (status === 'pending') {
+      // throw new Error('this should never happen')
+      throw loadPromise
     }
   }
 
   // If we're still in an idle state, we need to suspend via load
-  if (loaderInstance.status === 'idle') {
+  if (status === 'idle') {
     throw client.load(opts)
   }
 
@@ -152,12 +161,12 @@ export function useLoaderInstance<
     return client.subscribeToInstance(opts, () => {})
   }, [hashedKey])
 
-  // useStore(loaderInstance.__store, (d) => opts?.track?.(d as any) ?? d)
+  // useStore(instance.__store, (d) => opts?.track?.(d as any) ?? d)
 
   // If we didn't suspend, dehydrate the loader instance
   client.__dehydrateLoaderInstance(opts as any)
 
-  return loaderInstance as any
+  return selected as any
 }
 
 export function useLoaderClient(opts?: {
@@ -173,4 +182,11 @@ export function useLoaderClient(opts?: {
   // useStore(ctx.__store, (d) => opts?.track?.(d as any) ?? d)
 
   return ctx.client
+}
+
+export function pick<T, K extends keyof T>(parent: T, keys: K[]): Pick<T, K> {
+  return keys.reduce((obj: any, key: K) => {
+    obj[key] = parent[key]
+    return obj
+  }, {} as any)
 }
