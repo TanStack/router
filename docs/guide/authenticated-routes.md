@@ -76,4 +76,4 @@ const authenticatedRoute = new Route({
 })
 ```
 
-This keeps the user on the same page, but still allows you to render a login form. Once the user is authenticated, you can simply render the <Outlet /> and the child routes will be rendered.
+This keeps the user on the same page, but still allows you to render a login form. Once the user is authenticated, you can simply render the `<Outlet />` and the child routes will be rendered.
