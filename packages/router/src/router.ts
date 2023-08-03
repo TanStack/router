@@ -173,7 +173,6 @@ export interface RouterOptions<
   basepath?: string
   createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
   onRouteChange?: () => void
-  // fetchServerDataFn?: FetchServerDataFn
   context?: TRouteTree['__types']['routerContext']
   Wrap?: React.ComponentType<{
     children: React.ReactNode
@@ -745,8 +744,8 @@ export class Router<
 
           try {
             await route.options.beforeLoad?.({
-              router: this as any,
-              match,
+              ...match,
+              preload: !!opts?.preload,
             })
           } catch (err) {
             handleError(err, route.options.onBeforeLoadError)
@@ -754,14 +753,11 @@ export class Router<
         }),
       )
     } catch (err) {
-      if (isRedirect(err)) {
-        if (!opts?.preload) {
-          this.navigate(err as any)
-        }
-        return
+      if (!opts?.preload) {
+        this.navigate(err as any)
       }
 
-      throw err // we should never end up here
+      throw err
     }
 
     const validResolvedMatches = resolvedMatches.slice(0, firstBadMatchIndex)

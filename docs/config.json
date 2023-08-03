@@ -94,6 +94,10 @@
           "to": "guide/router-context"
         },
         {
+          "label": "Authenticated Routes",
+          "to": "guide/authenticated-routes"
+        },
+        {
           "label": "SSR & Streaming",
           "to": "guide/ssr-and-streaming"
         }
