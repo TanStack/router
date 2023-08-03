@@ -61,7 +61,7 @@ router.history.push(search.redirect)
 
 ## Non-Redirected Authentication
 
-Some applications choose to not redirect users to a login page, and instead keep the user on the same page and show a login form that either replaces the main content or hides it via a modal. This is also possible with TanStack Router by simply short circuiting rendering the <Outlet /> that would normally render the child routes:
+Some applications choose to not redirect users to a login page, and instead keep the user on the same page and show a login form that either replaces the main content or hides it via a modal. This is also possible with TanStack Router by simply short circuiting rendering the `<Outlet />` that would normally render the child routes:
 
 ```tsx
 const authenticatedRoute = new Route({
