@@ -9,7 +9,7 @@ import {
   ResolveRelativePath,
   NavigateOptions,
 } from './link'
-import { AnyRoute } from './route'
+import { AnyRoute, AnyRouteProps } from './route'
 import { RouteByPath, AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
 import {
   RegisteredRoutesInfo,
@@ -29,33 +29,55 @@ export { useStore }
 
 type ReactNode = any
 
-export type SyncRouteComponent<TProps = {}> = (props: TProps) => ReactNode
+export type SyncRouteComponent<TProps> =
+  | ((props: TProps) => ReactNode)
+  | React.LazyExoticComponent<(props: TProps) => ReactNode>
 
-export type RouteComponent<TProps = {}> = SyncRouteComponent<TProps> & {
+export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>
 }
 
-export function lazy<T extends Record<string, SyncRouteComponent>>(
+export type RouteErrorComponent = AsyncRouteComponent<RouteErrorComponentProps>
+
+export type RouteErrorComponentProps = {
+  error: Error
+  info: { componentStack: string }
+}
+
+export type AnyRouteComponent = RouteComponent<AnyRouteProps>
+
+export type RouteComponent<TProps> = AsyncRouteComponent<TProps>
+
+export function lazyRouteComponent<
+  T extends Record<string, any>,
+  TKey extends keyof T = 'default',
+>(
   importer: () => Promise<T>,
-  exportName: keyof T = 'default',
-): RouteComponent {
-  const lazyComp = React.lazy(async () => {
-    const moduleExports = await importer()
-    const component = moduleExports[exportName]
-    return { default: component }
-  })
+  exportName: TKey,
+): T[TKey] extends (props: infer TProps) => any
+  ? AsyncRouteComponent<TProps>
+  : never {
+  let loadPromise: Promise<any>
 
-  let preloaded: Promise<SyncRouteComponent>
-
-  const finalComp = lazyComp as unknown as RouteComponent
-
-  finalComp.preload = async () => {
-    if (!preloaded) {
-      await importer()
+  const load = () => {
+    if (!loadPromise) {
+      loadPromise = importer()
     }
+
+    return loadPromise
   }
 
-  return finalComp
+  const lazyComp = React.lazy(async () => {
+    const moduleExports = await load()
+    const comp = moduleExports[exportName]
+    return {
+      default: comp,
+    }
+  })
+
+  ;(lazyComp as any).preload = load
+
+  return lazyComp as any
 }
 
 export type LinkPropsOptions<
@@ -303,16 +325,26 @@ export function RouterProvider<
 >({ router, ...rest }: RouterProps<TRouteConfig, TRoutesInfo, TDehydrated>) {
   router.update(rest)
 
-  React.useEffect(router.mount, [router])
+  React.useEffect(() => {
+    let unsub
+
+    React.startTransition(() => {
+      unsub = router.mount()
+    })
+
+    return unsub
+  }, [router])
 
   const Wrap = router.options.Wrap || React.Fragment
 
   return (
-    <Wrap>
-      <routerContext.Provider value={router as any}>
-        <Matches />
-      </routerContext.Provider>
-    </Wrap>
+    <React.Suspense fallback={null}>
+      <Wrap>
+        <routerContext.Provider value={router as any}>
+          <Matches />
+        </routerContext.Provider>
+      </Wrap>
+    </React.Suspense>
   )
 }
 

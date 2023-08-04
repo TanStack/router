@@ -27,6 +27,7 @@ import {
   RootRoute,
   AnyContext,
   AnyPathParams,
+  RouteProps,
 } from './route'
 import {
   RoutesInfo,
@@ -52,7 +53,7 @@ import {
   createMemoryHistory,
   RouterHistory,
 } from './history'
-import { RouteComponent } from './react'
+import { RouteComponent, RouteErrorComponent } from './react'
 
 //
 
@@ -160,12 +161,13 @@ export interface RouterOptions<
   parseSearch?: SearchParser
   defaultPreload?: false | 'intent'
   defaultPreloadDelay?: number
-  defaultComponent?: RouteComponent
-  defaultErrorComponent?: RouteComponent<{
-    error: Error
-    info: { componentStack: string }
-  }>
-  defaultPendingComponent?: RouteComponent
+  defaultComponent?: RouteComponent<
+    RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext>
+  >
+  defaultErrorComponent?: RouteErrorComponent
+  defaultPendingComponent?: RouteComponent<
+    RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext>
+  >
   defaultLoaderMaxAge?: number
   defaultLoaderGcMaxAge?: number
   caseSensitive?: boolean
@@ -1596,4 +1598,17 @@ function escapeJSON(jsonString: string) {
     .replace(/\\/g, '\\\\') // Escape backslashes
     .replace(/'/g, "\\'") // Escape single quotes
     .replace(/"/g, '\\"') // Escape double quotes
+}
+
+// A function that takes an import() argument which is a function and returns a new function that will
+// proxy arguments from the caller to the imported function, retaining all type
+// information along the way
+export function lazyFn<
+  T extends Record<string, (...args: any[]) => any>,
+  TKey extends keyof T = 'default',
+>(fn: () => Promise<T>, key?: TKey) {
+  return async (...args: Parameters<T[TKey]>): Promise<ReturnType<T[TKey]>> => {
+    const imported = await fn()
+    return imported[key || 'default'](...args)
+  }
 }

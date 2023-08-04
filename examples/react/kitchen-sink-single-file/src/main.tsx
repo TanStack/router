@@ -816,9 +816,9 @@ const authenticatedRoute = new Route({
       throw redirect({
         to: loginRoute.to,
         search: {
-          // Use location (not location) to get the live url
-          // (as opposed to the committed url, which is technically async
-          // and resolved after the pending state)
+          // Use the current location to power a redirect after login
+          // (Do not use `router.state.resolvedLocation` as it can
+          // potentially lag behind the actual current location)
           redirect: router.state.location.href,
         },
       })
