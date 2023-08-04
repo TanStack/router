@@ -132,6 +132,10 @@
           "to": "examples/react/kitchen-sink-multi-file?file=src%2Froutes%2Froot.tsx"
         },
         {
+          "label": "Basic Code-Split",
+          "to": "examples/react/basic-code-split?file=src%2Frouter.tsx"
+        },
+        {
           "label": "Basic SSR",
           "to": "examples/react/basic-srr?file=src%2Fentry-server.tsx"
         },
