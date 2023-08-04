@@ -53,7 +53,7 @@ export function lazyRouteComponent<
   TKey extends keyof T = 'default',
 >(
   importer: () => Promise<T>,
-  exportName: TKey,
+  exportName?: TKey,
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
@@ -69,7 +69,7 @@ export function lazyRouteComponent<
 
   const lazyComp = React.lazy(async () => {
     const moduleExports = await load()
-    const comp = moduleExports[exportName]
+    const comp = moduleExports[exportName ?? 'default']
     return {
       default: comp,
     }
