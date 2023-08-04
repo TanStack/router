@@ -1,21 +1,21 @@
 ---
-id: lazy
-title: lazy
+id: lazyRouteComponent
+title: lazyRouteComponent
 ---
 
 ```tsx
-import { lazy } from '@tanstack/router'
+import { lazyRouteComponent } from '@tanstack/router'
 
 export const expensiveRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'expensive',
-  component: lazy(() => import('./Expensive')),
+  component: lazyRouteComponent(() => import('./Expensive')),
 })
 
 export const expensiveNamedRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'expensive',
-  component: lazy(() => import('./Expensive'), 'Expensive'),
+  component: lazyRouteComponent(() => import('./Expensive'), 'Expensive'),
 })
 ```
 

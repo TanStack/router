@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  lazy,
+  lazyRouteComponent,
   Link,
   MatchRoute,
   useNavigate,
@@ -794,7 +794,7 @@ const expensiveRoute = new Route({
   getParentRoute: () => rootRoute,
   // Your elements can be asynchronous, which means you can code-split!
   path: 'expensive',
-  component: lazy(() => import('./Expensive')),
+  component: lazyRouteComponent(() => import('./Expensive')),
 })
 
 const AuthError = new Error('Not logged in')
