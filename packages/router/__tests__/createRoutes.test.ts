@@ -1,6 +1,12 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it } from 'vitest'
 import { z } from 'zod'
-import { createMemoryHistory, RootRoute, Route, Router, lazy } from '../src'
+import {
+  createMemoryHistory,
+  RootRoute,
+  Route,
+  Router,
+  lazyRouteComponent,
+} from '../src'
 
 // Write a test
 describe('everything', () => {
@@ -20,7 +26,10 @@ describe('everything', () => {
 
     const testRoute = new Route({
       getParentRoute: () => rootRoute,
-      component: lazy(() => import('./TestComponent'), 'NamedComponent'),
+      component: lazyRouteComponent(
+        () => import('./TestComponent'),
+        'NamedComponent',
+      ),
       path: 'test',
       validateSearch: (search) =>
         z

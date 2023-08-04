@@ -431,7 +431,7 @@ export class Router<
         this.state.location.pathname,
         this.state.location.search,
         {
-          // throwOnError: true,
+          throwOnError: true,
         },
       )
 
@@ -781,20 +781,15 @@ export class Router<
 
             let latestPromise
 
-            const componentsPromise = (async () => {
-              // then run all component and data loaders in parallel
-              // For each component type, potentially load it asynchronously
+            const componentsPromise = Promise.all(
+              componentTypes.map(async (type) => {
+                const component = route.options[type]
 
-              await Promise.all(
-                componentTypes.map(async (type) => {
-                  const component = route.options[type]
-
-                  if (component?.preload) {
-                    await component.preload()
-                  }
-                }),
-              )
-            })()
+                if (component?.preload) {
+                  await component.preload()
+                }
+              }),
+            )
 
             const loaderPromise = Promise.resolve().then(() => {
               if (route.options.loader) {

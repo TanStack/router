@@ -17,8 +17,8 @@ const rootRoute = new RootRoute({
       <>
         <div>
           <Link to="/">Home</Link>{' '}
-          <Link to="/lazy-without-suspsense">Lazy without suspense</Link>{' '}
-          <Link to="/lazy-with-suspsense">Lazy with suspense</Link>{' '}
+          <Link to="/lazy-without-suspense">Lazy without suspense</Link>{' '}
+          <Link to="/lazy-with-suspense">Lazy with suspense</Link>{' '}
           <Link to="/with-loader">With loader</Link>
         </div>
         <hr />
@@ -38,7 +38,7 @@ const indexRoute = new Route({
 
 const lazyWithoutSuspense = new Route({
   getParentRoute: () => rootRoute,
-  path: '/lazy-without-suspsense',
+  path: '/lazy-without-suspense',
   component: lazyRouteComponent(
     () =>
       new Promise<Record<string, SyncRouteComponent<any>>>((res) => {
@@ -46,23 +46,23 @@ const lazyWithoutSuspense = new Route({
           res({
             default: () => <h1>Hello world from "lazy-without-suspense"</h1>,
           })
-        }, 1500)
+        }, 1000)
       }),
   ),
-  wrapInSuspense: false,
 })
 
 const lazyWithSuspense = new Route({
   getParentRoute: () => rootRoute,
-  path: '/lazy-with-suspsense',
+  path: '/lazy-with-suspense',
   component: lazyRouteComponent(
     () =>
       new Promise<Record<string, SyncRouteComponent<any>>>((res) => {
         setTimeout(() => {
+          console.log('res')
           res({
             default: () => <h1>Hello world from "lazy-with-suspense"</h1>,
           })
-        }, 1500)
+        }, 1000)
       }),
   ),
   pendingComponent: () => <h1>I'm loading</h1>,
@@ -98,11 +98,5 @@ declare module '@tanstack/router' {
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <Suspense>
-        <RouterProvider router={router} />
-      </Suspense>
-    </StrictMode>,
-  )
+  root.render(<RouterProvider router={router} />)
 }
