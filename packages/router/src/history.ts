@@ -82,7 +82,6 @@ function createHistory(opts: {
 
   const onUpdate = () => {
     location = opts.getLocation()
-    console.log('onUpdate', location)
     listeners.forEach((listener) => listener())
   }
 

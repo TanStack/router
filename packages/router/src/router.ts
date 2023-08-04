@@ -1468,6 +1468,7 @@ export class Router<
   ): undefined | RouteMatch<TRoutesInfo, AnyRoute> => {
     return (
       this.state.matches.find((d) => d.id === id) ||
+      this.state.pendingMatches.find((d) => d.id === id) ||
       this.state.preloadMatches[id]
     )
   }

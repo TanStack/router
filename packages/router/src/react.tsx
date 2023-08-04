@@ -349,8 +349,21 @@ export function RouterProvider<
 }
 
 function Matches() {
+  const router = useRouter()
+
   const matchIds = useRouterState({
-    select: (d) => d.matches.map((d) => d.id),
+    select: (d) => {
+      const hasPendingComponent = d.pendingMatches.some((d) => {
+        const route = router.getRoute(d.routeId as any)
+        return !!route?.options.pendingComponent
+      })
+
+      if (hasPendingComponent) {
+        return d.pendingMatches.map((d) => d.id)
+      }
+
+      return d.matches.map((d) => d.id)
+    },
   })
 
   return (
@@ -597,7 +610,15 @@ function Match({ matchIds }: { matchIds: string[] }) {
 
   return (
     <matchIdsContext.Provider value={matchIds}>
-      <ResolvedSuspenseBoundary fallback={<PendingComponent />}>
+      <ResolvedSuspenseBoundary
+        fallback={React.createElement(PendingComponent, {
+          useLoader: route.useLoader,
+          useMatch: route.useMatch,
+          useContext: route.useContext,
+          useSearch: route.useSearch,
+          useParams: route.useParams,
+        })}
+      >
         <ResolvedCatchBoundary
           key={route.id}
           errorComponent={errorComponent}
@@ -605,25 +626,33 @@ function Match({ matchIds }: { matchIds: string[] }) {
             warning(false, `Error in route match: ${matchId}`)
           }}
         >
-          <MatchInner matchId={matchId} />
+          <MatchInner matchId={matchId} PendingComponent={PendingComponent} />
         </ResolvedCatchBoundary>
       </ResolvedSuspenseBoundary>
     </matchIdsContext.Provider>
   )
 }
 
-function MatchInner({ matchId }: { matchId: string }): any {
+function MatchInner({
+  matchId,
+  PendingComponent,
+}: {
+  matchId: string
+  PendingComponent: any
+}): any {
   const router = useRouter()
 
   const match = useRouterState({
-    select: (d) =>
-      pick(d.matches.find((d) => d.id === matchId)!, [
-        'status',
-        'loadPromise',
-        'routeId',
-        'error',
-      ]),
+    select: (d) => {
+      const match =
+        d.pendingMatches.find((d) => d.id === matchId) ||
+        d.matches.find((d) => d.id === matchId)
+
+      return pick(match!, ['status', 'loadPromise', 'routeId', 'error'])
+    },
   })
+
+  console.log(match.status)
 
   const route = router.getRoute(match.routeId)
 
@@ -632,7 +661,13 @@ function MatchInner({ matchId }: { matchId: string }): any {
   }
 
   if (match.status === 'pending') {
-    invariant(false, 'This should never happen')
+    return React.createElement(PendingComponent, {
+      useLoader: route.useLoader,
+      useMatch: route.useMatch,
+      useContext: route.useContext,
+      useSearch: route.useSearch,
+      useParams: route.useParams,
+    })
   }
 
   if (match.status === 'success') {
