@@ -1,4 +1,4 @@
-import React, { StrictMode, Suspense } from 'react'
+import React, { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Outlet,
@@ -7,89 +7,45 @@ import {
   Router,
   Route,
   RootRoute,
-  lazyRouteComponent,
-  SyncRouteComponent,
 } from '@tanstack/router'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 const rootRoute = new RootRoute({
-  component: () => {
-    return (
-      <>
-        <div>
-          <Link to="/">Home</Link>
-          <br />
-          <Link to="/lazy-without-suspsense">Lazy without suspense</Link>
-          <br />
-          <Link to="/lazy-with-suspsense">Lazy with suspense</Link>
-          <br />
-          <Link to="/with-loader">With loader</Link>
-        </div>
-        <hr />
-        <Outlet />
-      </>
-    )
-  },
+  component: () => (
+    <>
+      <div>
+        <Link to="/">Home</Link> <Link to="/about">About</Link>
+      </div>
+      <hr />
+      <Outlet />
+      <TanStackRouterDevtools />
+    </>
+  ),
 })
 
 const indexRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/',
   component: function Index() {
-    return <h1>Hello world from "home"</h1>
+    return (
+      <div>
+        <h3>Welcome Home!</h3>
+      </div>
+    )
   },
 })
 
-const lazyWithoutSuspense = new Route({
+const aboutRoute = new Route({
   getParentRoute: () => rootRoute,
-  path: '/lazy-without-suspsense',
-  component: lazyRouteComponent(
-    () =>
-      new Promise<Record<string, SyncRouteComponent<any>>>((res) => {
-        setTimeout(() => {
-          res({
-            default: () => <h1>Hello world from "lazy-without-suspense"</h1>,
-          })
-        }, 1500)
-      }),
-  ),
+  path: '/about',
+  component: function About() {
+    return <div>Hello from About!</div>
+  },
 })
 
-const lazyWithSuspense = new Route({
-  getParentRoute: () => rootRoute,
-  path: '/lazy-with-suspsense',
-  component: lazyRouteComponent(
-    () =>
-      new Promise<Record<string, SyncRouteComponent<any>>>((res) => {
-        setTimeout(() => {
-          res({
-            default: () => <h1>Hello world from "lazy-with-suspense"</h1>,
-          })
-        }, 1500)
-      }),
-  ),
-  pendingComponent: () => <h1>I'm loading</h1>,
-  wrapInSuspense: true,
-})
+const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
 
-const withLoader = new Route({
-  getParentRoute: () => rootRoute,
-  path: '/with-loader',
-  loader: () => new Promise((res) => setTimeout(res, 1000)),
-  component: () => <h1>Hello world from "with-laoder"</h1>,
-  wrapInSuspense: true,
-  pendingComponent: () => <h1>I'm loading</h1>,
-})
-
-const routeTree = rootRoute.addChildren([
-  indexRoute,
-  lazyWithoutSuspense,
-  lazyWithSuspense,
-  withLoader,
-])
-
-const router = new Router({
-  routeTree,
-})
+const router = new Router({ routeTree })
 
 declare module '@tanstack/router' {
   interface Register {
@@ -100,5 +56,9 @@ declare module '@tanstack/router' {
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
-  root.render(<RouterProvider router={router} />)
+  root.render(
+    <StrictMode>
+      <RouterProvider router={router} />
+    </StrictMode>,
+  )
 }
