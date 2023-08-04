@@ -27,6 +27,7 @@ export interface RouterLocation extends ParsedPath {
 
 type BlockerFn = (retry: () => void, cancel: () => void) => void
 
+const pushStateEvent = 'pushstate'
 const popStateEvent = 'popstate'
 const beforeUnloadEvent = 'beforeunload'
 
@@ -71,7 +72,7 @@ function createHistory(opts: {
       queue.shift()?.()
     }
 
-    onUpdate()
+    // onUpdate()
   }
 
   const queueTask = (task: () => void) => {
@@ -81,6 +82,7 @@ function createHistory(opts: {
 
   const onUpdate = () => {
     location = opts.getLocation()
+    console.log('onUpdate', location)
     listeners.forEach((listener) => listener())
   }
 
@@ -161,8 +163,26 @@ export function createBrowserHistory(opts?: {
   return createHistory({
     getLocation,
     listener: (onUpdate) => {
+      window.addEventListener(pushStateEvent, onUpdate)
       window.addEventListener(popStateEvent, onUpdate)
+
+      var pushState = window.history.pushState
+      window.history.pushState = function () {
+        let res = pushState.apply(history, arguments as any)
+        onUpdate()
+        return res
+      }
+      var replaceState = window.history.replaceState
+      window.history.replaceState = function () {
+        let res = replaceState.apply(history, arguments as any)
+        onUpdate()
+        return res
+      }
+
       return () => {
+        window.history.pushState = pushState
+        window.history.replaceState = replaceState
+        window.removeEventListener(pushStateEvent, onUpdate)
         window.removeEventListener(popStateEvent, onUpdate)
       }
     },
