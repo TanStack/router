@@ -136,7 +136,7 @@ const postRoute = new Route({
   path: '$postId',
   async loader({ params }) {
     // Load our loader
-    await loaderClient.loade({ key: 'post', variables: params.postId })
+    await loaderClient.load({ key: 'post', variables: params.postId })
     // Return a hook fn we can use in our component
     return () => useLoaderInstance({ key: 'post', variables: params.postId })
   },
