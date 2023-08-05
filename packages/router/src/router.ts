@@ -279,8 +279,6 @@ export class Router<
 
   __store: Store<RouterState<TRoutesInfo>>
   state: RouterState<TRoutesInfo>
-  startedLoadingAt = Date.now()
-  resolveNavigation: () => void = () => {}
   dehydratedData?: TDehydrated
 
   constructor(options: RouterConstructorOptions<TRouteTree, TDehydrated>) {
@@ -324,9 +322,9 @@ export class Router<
 
   mount = () => {
     // If the router matches are empty, start loading the matches
-    if (!this.state.matches.length) {
-      this.safeLoad()
-    }
+    // if (!this.state.matches.length) {
+    this.safeLoad()
+    // }
   }
 
   update = (opts?: RouterOptions<any, any>): this => {
@@ -405,66 +403,87 @@ export class Router<
     })
   }
 
-  load = async (opts?: { next?: ParsedLocation }): Promise<void> => {
-    this.#createNavigationPromise()
+  latestLoadPromise: Promise<void> | null = null
 
-    let now = Date.now()
-    const startedAt = now
-    this.startedLoadingAt = startedAt
+  load = async (opts?: { next?: ParsedLocation }) => {
+    const promise = new Promise<void>(async (resolve, reject) => {
+      let latestPromise: Promise<void> | undefined | null
 
-    // Cancel any pending matches
-    this.cancelMatches()
-
-    let pendingMatches!: RouteMatch<any, any>[]
-
-    this.__store.batch(() => {
-      if (opts?.next) {
-        // Ingest the new location
-        this.__store.setState((s) => ({
-          ...s,
-          location: opts.next!,
-        }))
+      const checkLatest = (): undefined | Promise<void> | null => {
+        return this.latestLoadPromise !== promise
+          ? this.latestLoadPromise
+          : undefined
       }
 
-      // Match the routes
-      pendingMatches = this.matchRoutes(
-        this.state.location.pathname,
-        this.state.location.search,
-        {
-          throwOnError: true,
-        },
-      )
+      let now = Date.now()
 
-      this.__store.setState((s) => ({
-        ...s,
-        status: 'pending',
-        pendingMatches,
-      }))
+      // Cancel any pending matches
+      this.cancelMatches()
+
+      let pendingMatches!: RouteMatch<any, any>[]
+
+      this.__store.batch(() => {
+        if (opts?.next) {
+          // Ingest the new location
+          this.__store.setState((s) => ({
+            ...s,
+            location: opts.next!,
+          }))
+        }
+
+        // Match the routes
+        pendingMatches = this.matchRoutes(
+          this.state.location.pathname,
+          this.state.location.search,
+          {
+            throwOnError: true,
+          },
+        )
+
+        this.__store.setState((s) => ({
+          ...s,
+          status: 'pending',
+          pendingMatches,
+        }))
+      })
+
+      try {
+        // Load the matches
+        await this.loadMatches(pendingMatches)
+
+        // Only apply the latest transition
+        if ((latestPromise = checkLatest())) {
+          return await latestPromise
+        }
+
+        const prevLocation = this.state.resolvedLocation
+
+        this.__store.setState((s) => ({
+          ...s,
+          status: 'idle',
+          resolvedLocation: s.location,
+          matches: s.pendingMatches,
+          pendingMatches: [],
+        }))
+
+        if (prevLocation!.href !== this.state.location.href) {
+          this.options.onRouteChange?.()
+        }
+
+        resolve()
+      } catch (err) {
+        // Only apply the latest transition
+        if ((latestPromise = checkLatest())) {
+          return await latestPromise
+        }
+
+        reject(err)
+      }
     })
 
-    // Load the matches
-    await this.loadMatches(pendingMatches)
+    this.latestLoadPromise = promise
 
-    if (this.startedLoadingAt !== startedAt) {
-      // Ignore side-effects of outdated side-effects
-      return this.navigationPromise
-    }
-
-    const prevLocation = this.state.resolvedLocation
-
-    this.__store.setState((s) => ({
-      ...s,
-      status: 'idle',
-      resolvedLocation: s.location,
-      matches: s.pendingMatches,
-      pendingMatches: [],
-    }))
-
-    if (prevLocation!.href !== this.state.location.href) {
-      this.options.onRouteChange?.()
-    }
-
-    this.resolveNavigation()
+    return this.latestLoadPromise
   }
 
   getRoute = <TId extends keyof TRoutesInfo['routesById']>(
