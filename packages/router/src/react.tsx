@@ -599,14 +599,16 @@ function Match({ matchIds }: { matchIds: string[] }) {
     defaultPending) as any
 
   const errorComponent =
-    route.options.errorComponent ?? router.options.defaultErrorComponent
+    route.options.errorComponent ??
+    router.options.defaultErrorComponent ??
+    ErrorComponent
 
   const ResolvedSuspenseBoundary =
     route.options.wrapInSuspense ?? !route.isRoot
       ? React.Suspense
       : SafeFragment
 
-  const ResolvedCatchBoundary = errorComponent ? CatchBoundary : SafeFragment
+  const ResolvedCatchBoundary = !!errorComponent ? CatchBoundary : SafeFragment
 
   return (
     <matchIdsContext.Provider value={matchIds}>

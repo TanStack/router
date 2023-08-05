@@ -397,7 +397,7 @@ export class Router<
   }
 
   safeLoad = (opts?: { next?: ParsedLocation }) => {
-    this.load(opts).catch((err) => {
+    return this.load(opts).catch((err) => {
       // console.warn(err)
       // invariant(false, 'Encountered an error during router.load()! ☝️.')
     })
@@ -405,7 +405,7 @@ export class Router<
 
   latestLoadPromise: Promise<void> | null = null
 
-  load = async (opts?: { next?: ParsedLocation }) => {
+  load = async (opts?: { next?: ParsedLocation; throwOnError?: boolean }) => {
     const promise = new Promise<void>(async (resolve, reject) => {
       let latestPromise: Promise<void> | undefined | null
 
@@ -436,7 +436,7 @@ export class Router<
           this.state.location.pathname,
           this.state.location.search,
           {
-            throwOnError: true,
+            throwOnError: opts?.throwOnError,
           },
         )
 
@@ -1466,20 +1466,7 @@ export class Router<
       ...next.state,
     })
 
-    return this.#createNavigationPromise()
-  }
-
-  #createNavigationPromise = () => {
-    const previousNavigationResolve = this.resolveNavigation
-
-    this.navigationPromise = new Promise((resolve) => {
-      this.resolveNavigation = () => {
-        resolve()
-        previousNavigationResolve()
-      }
-    })
-
-    return this.navigationPromise
+    return this.latestLoadPromise
   }
 
   getRouteMatch = (
