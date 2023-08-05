@@ -1,6 +1,8 @@
 export type AnyUpdater = (...args: any[]) => any
 
-export type Listener = () => void
+export type Listener = (opts: { priority: Priority }) => void
+
+export type Priority = 'high' | 'low'
 
 interface StoreOptions<
   TState,
@@ -11,7 +13,8 @@ interface StoreOptions<
     listener: Listener,
     store: Store<TState, TUpdater>,
   ) => () => void
-  onUpdate?: () => void
+  onUpdate?: (opts: { priority: Priority }) => void
+  defaultPriority?: Priority
 }
 
 export class Store<
@@ -23,6 +26,7 @@ export class Store<
   options?: StoreOptions<TState, TUpdater>
   _batching = false
   _flushing = 0
+  _nextPriority: null | Priority = null
 
   constructor(initialState: TState, options?: StoreOptions<TState, TUpdater>) {
     this.state = initialState
@@ -38,14 +42,30 @@ export class Store<
     }
   }
 
-  setState = (updater: TUpdater) => {
+  setState = (
+    updater: TUpdater,
+    opts?: {
+      priority: Priority
+    },
+  ) => {
     const previous = this.state
     this.state = this.options?.updateFn
       ? this.options.updateFn(previous)(updater)
       : (updater as any)(previous)
 
+    const priority = opts?.priority ?? this.options?.defaultPriority ?? 'high'
+    if (this._nextPriority === null) {
+      this._nextPriority = priority
+    } else if (this._nextPriority === 'high') {
+      this._nextPriority = priority
+    } else {
+      this._nextPriority = this.options?.defaultPriority ?? 'high'
+    }
+
     // Always run onUpdate, regardless of batching
-    this.options?.onUpdate?.()
+    this.options?.onUpdate?.({
+      priority: this._nextPriority,
+    })
 
     // Attempt to flush
     this._flush()
@@ -56,7 +76,9 @@ export class Store<
     const flushId = ++this._flushing
     this.listeners.forEach((listener) => {
       if (this._flushing !== flushId) return
-      listener()
+      listener({
+        priority: this._nextPriority ?? 'high',
+      })
     })
   }
 

@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  lazy,
+  lazyRouteComponent,
   Link,
   MatchRoute,
   useNavigate,
@@ -12,6 +12,7 @@ import {
   Route,
   redirect,
   RouterContext,
+  ErrorComponent,
 } from '@tanstack/router'
 import {
   ActionClientProvider,
@@ -793,7 +794,7 @@ const expensiveRoute = new Route({
   getParentRoute: () => rootRoute,
   // Your elements can be asynchronous, which means you can code-split!
   path: 'expensive',
-  component: lazy(() => import('./Expensive')),
+  component: lazyRouteComponent(() => import('./Expensive')),
 })
 
 const AuthError = new Error('Not logged in')
@@ -815,9 +816,9 @@ const authenticatedRoute = new Route({
       throw redirect({
         to: loginRoute.to,
         search: {
-          // Use location (not location) to get the live url
-          // (as opposed to the committed url, which is technically async
-          // and resolved after the pending state)
+          // Use the current location to power a redirect after login
+          // (Do not use `router.state.resolvedLocation` as it can
+          // potentially lag behind the actual current location)
           redirect: router.state.location.href,
         },
       })
@@ -962,6 +963,7 @@ const router = new Router({
       <Spinner />
     </div>
   ),
+  defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
   onRouteChange: () => {
     actionClient.clearAll()
   },

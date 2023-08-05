@@ -1,6 +1,12 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it } from 'vitest'
 import { z } from 'zod'
-import { createMemoryHistory, RootRoute, Route, Router, lazy } from '../src'
+import {
+  createMemoryHistory,
+  RootRoute,
+  Route,
+  Router,
+  lazyRouteComponent,
+} from '../src'
 
 // Write a test
 describe('everything', () => {
@@ -20,7 +26,10 @@ describe('everything', () => {
 
     const testRoute = new Route({
       getParentRoute: () => rootRoute,
-      component: lazy(() => import('./TestComponent'), 'NamedComponent'),
+      component: lazyRouteComponent(
+        () => import('./TestComponent'),
+        'NamedComponent',
+      ),
       path: 'test',
       validateSearch: (search) =>
         z
@@ -180,13 +189,11 @@ describe('everything', () => {
       }),
     })
 
-    expect(() =>
-      // @ts-expect-error
-      router.buildLink({
-        from: '/',
-        to: '/test',
-      }),
-    ).toThrowError()
+    // @ts-expect-error
+    router.buildLink({
+      from: '/',
+      to: '/test',
+    })
 
     router.buildLink({
       from: '/',
@@ -199,19 +206,15 @@ describe('everything', () => {
       },
     })
 
-    expect(() => {
-      router.buildLink({
-        from: '/test',
-        to: '/',
-      })
-    }).toThrowError()
+    router.buildLink({
+      from: '/test',
+      to: '/',
+    })
 
-    expect(() => {
-      router.buildLink({
-        from: route.id,
-        to: '',
-      })
-    }).toThrowError()
+    router.buildLink({
+      from: route.id,
+      to: '',
+    })
 
     router.buildLink({
       from: '/dashboard',

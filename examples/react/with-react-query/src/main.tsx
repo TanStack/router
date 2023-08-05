@@ -1,4 +1,4 @@
-import React, { StrictMode } from 'react'
+import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Outlet,
@@ -6,14 +6,11 @@ import {
   Router,
   Route,
   Link,
-  useParams,
-  RootRoute,
   RouterContext,
 } from '@tanstack/router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import {
   useQuery,
-  useQueryClient,
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query'
@@ -84,7 +81,7 @@ const postsRoute = new Route({
       queryKey: ['posts'],
       queryFn: fetchPosts,
     })
-    return () => useQuery(['posts'], fetchPosts)
+    return () => useQuery({ queryKey: ['posts'], queryFn: fetchPosts })
   },
   component: ({ useLoader }) => {
     const postsQuery = useLoader()()
@@ -133,14 +130,15 @@ const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
   loader: async ({ params: { postId }, context: { queryClient } }) => {
-    await queryClient.ensureQueryData(['posts', postId], () =>
-      fetchPostById(postId),
-    )
+    const queryOptions = {
+      queryKey: ['posts', postId],
+      queryFn: () => fetchPostById(postId),
+      enabled: !!postId,
+    }
 
-    return () =>
-      useQuery(['posts', postId], () => fetchPostById(postId), {
-        enabled: !!postId,
-      })
+    await queryClient.ensureQueryData(queryOptions)
+
+    return () => useQuery(queryOptions)
   },
   component: ({ useLoader }) => {
     const postQuery = useLoader()()
@@ -182,14 +180,14 @@ function App() {
         <RouterProvider router={router} />
         <ReactQueryDevtools
           initialIsOpen
-          position="bottom-left"
-          toggleButtonProps={{
-            style: {
-              marginLeft: '5.5rem',
-              transform: `scale(.7)`,
-              transformOrigin: 'bottom left',
-            },
-          }}
+          // position="bottom-left"
+          // toggleButtonProps={{
+          //   style: {
+          //     marginLeft: '5.5rem',
+          //     transform: `scale(.7)`,
+          //     transformOrigin: 'bottom left',
+          //   },
+          // }}
         />
       </QueryClientProvider>
     </>
@@ -216,9 +214,5 @@ async function fetchPostById(postId: string) {
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  )
+  root.render(<App />)
 }

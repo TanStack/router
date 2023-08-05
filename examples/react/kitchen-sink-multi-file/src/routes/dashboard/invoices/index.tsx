@@ -32,7 +32,17 @@ export const invoicesRoute = new Route({
     return (
       <div className="flex-1 flex">
         <div className="divide-y w-48">
-          {invoices?.map((invoice) => {
+          {[
+            ...invoices,
+            {
+              id: 11,
+              title: 'Not Found',
+            },
+            {
+              id: 1 / 0,
+              title: 'Bad ID',
+            },
+          ]?.map((invoice) => {
             const foundPending = updateInvoice.pendingSubmissions.find(
               (d) => d.variables?.id === invoice.id,
             )

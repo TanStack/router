@@ -27,6 +27,7 @@ import {
   RootRoute,
   AnyContext,
   AnyPathParams,
+  RouteProps,
 } from './route'
 import {
   RoutesInfo,
@@ -52,13 +53,21 @@ import {
   createMemoryHistory,
   RouterHistory,
 } from './history'
-import { RouteComponent } from './react'
+import { RouteComponent, RouteErrorComponent } from './react'
 
 //
 
 declare global {
   interface Window {
     __TSR_DEHYDRATED__?: HydrationCtx
+  }
+
+  interface Error {
+    cause: unknown
+  }
+
+  interface ErrorConstructor {
+    new (reason: string, options?: { cause?: unknown }): Error
   }
 }
 
@@ -69,9 +78,9 @@ export interface Register {
 export type AnyRouter = Router<any, any, any>
 
 export type RegisteredRouterPair = Register extends {
-  router: Router<infer TRoute, infer TRoutesInfo>
+  router: infer TRouter extends AnyRouter
 }
-  ? [Router<TRoute, TRoutesInfo>, TRoutesInfo]
+  ? [TRouter, TRouter['types']['RoutesInfo']]
   : [Router, AnyRoutesInfo]
 
 export type RegisteredRouter = RegisteredRouterPair[0]
@@ -117,6 +126,8 @@ export interface RouteMatch<
   params: TRoute['__types']['allParams']
   status: 'pending' | 'success' | 'error'
   error: unknown
+  paramsError: unknown
+  searchError: unknown
   updatedAt: number
   loader: TRoute['__types']['loader']
   loadPromise?: Promise<void>
@@ -150,12 +161,13 @@ export interface RouterOptions<
   parseSearch?: SearchParser
   defaultPreload?: false | 'intent'
   defaultPreloadDelay?: number
-  defaultComponent?: RouteComponent
-  defaultErrorComponent?: RouteComponent<{
-    error: Error
-    info: { componentStack: string }
-  }>
-  defaultPendingComponent?: RouteComponent
+  defaultComponent?: RouteComponent<
+    RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext>
+  >
+  defaultErrorComponent?: RouteErrorComponent
+  defaultPendingComponent?: RouteComponent<
+    RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext>
+  >
   defaultLoaderMaxAge?: number
   defaultLoaderGcMaxAge?: number
   caseSensitive?: boolean
@@ -163,7 +175,6 @@ export interface RouterOptions<
   basepath?: string
   createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
   onRouteChange?: () => void
-  // fetchServerDataFn?: FetchServerDataFn
   context?: TRouteTree['__types']['routerContext']
   Wrap?: React.ComponentType<{
     children: React.ReactNode
@@ -179,6 +190,7 @@ export interface RouterState<
 > {
   status: 'idle' | 'pending'
   matches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
+  pendingMatches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
   preloadMatches: Record<
     string,
     RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>
@@ -287,6 +299,7 @@ export class Router<
         onUpdate: () => {
           this.state = this.__store.state
         },
+        defaultPriority: 'low',
       },
     )
     this.state = this.__store.state
@@ -310,15 +323,10 @@ export class Router<
   }
 
   mount = () => {
-    // Mount only does anything on the client
-    if (!isServer) {
-      // If the router matches are empty, start loading the matches
-      if (!this.state.matches.length) {
-        this.safeLoad()
-      }
+    // If the router matches are empty, start loading the matches
+    if (!this.state.matches.length) {
+      this.safeLoad()
     }
-
-    return () => {}
   }
 
   update = (opts?: RouterOptions<any, any>): this => {
@@ -392,8 +400,8 @@ export class Router<
 
   safeLoad = (opts?: { next?: ParsedLocation }) => {
     this.load(opts).catch((err) => {
-      console.warn(err)
-      invariant(false, 'Encountered an error during router.load()! ☝️.')
+      // console.warn(err)
+      // invariant(false, 'Encountered an error during router.load()! ☝️.')
     })
   }
 
@@ -407,7 +415,7 @@ export class Router<
     // Cancel any pending matches
     this.cancelMatches()
 
-    let matches!: RouteMatch<any, any>[]
+    let pendingMatches!: RouteMatch<any, any>[]
 
     this.__store.batch(() => {
       if (opts?.next) {
@@ -419,24 +427,23 @@ export class Router<
       }
 
       // Match the routes
-      matches = this.matchRoutes(
+      pendingMatches = this.matchRoutes(
         this.state.location.pathname,
         this.state.location.search,
         {
-          strictParseParams: true,
-          debug: true,
+          throwOnError: true,
         },
       )
 
       this.__store.setState((s) => ({
         ...s,
         status: 'pending',
-        matches,
+        pendingMatches,
       }))
     })
 
     // Load the matches
-    await this.loadMatches(matches)
+    await this.loadMatches(pendingMatches)
 
     if (this.startedLoadingAt !== startedAt) {
       // Ignore side-effects of outdated side-effects
@@ -449,7 +456,8 @@ export class Router<
       ...s,
       status: 'idle',
       resolvedLocation: s.location,
-      // matches,
+      matches: s.pendingMatches,
+      pendingMatches: [],
     }))
 
     if (prevLocation!.href !== this.state.location.href) {
@@ -474,7 +482,7 @@ export class Router<
   ) => {
     const next = this.buildNext(navigateOpts)
     const matches = this.matchRoutes(next.pathname, next.search, {
-      strictParseParams: true,
+      throwOnError: true,
     })
 
     const matchesById: any = {}
@@ -504,7 +512,7 @@ export class Router<
   matchRoutes = (
     pathname: string,
     locationSearch: AnySearchSchema,
-    opts?: { strictParseParams?: boolean; debug?: boolean },
+    opts?: { throwOnError?: boolean },
   ): RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[] => {
     let routeParams: AnyPathParams = {}
 
@@ -543,11 +551,17 @@ export class Router<
 
     const matches = matchedRoutes.map((route) => {
       let parsedParams
+      let parsedParamsError
+
       try {
         parsedParams = route.options.parseParams?.(routeParams!) ?? routeParams
-      } catch (err) {
-        if (opts?.strictParseParams) {
-          throw err
+      } catch (err: any) {
+        parsedParamsError = new PathParamError(err.message, {
+          cause: err,
+        })
+
+        if (opts?.throwOnError) {
+          throw parsedParamsError
         }
       }
 
@@ -588,6 +602,8 @@ export class Router<
         search: {} as any,
         status: hasLoaders ? 'pending' : 'success',
         error: undefined,
+        paramsError: parsedParamsError,
+        searchError: undefined,
         loader: undefined,
         loadPromise: Promise.resolve(),
         routeContext: undefined!,
@@ -631,19 +647,15 @@ export class Router<
             search: replaceEqualDeep(match.search, search),
           }
         } catch (err: any) {
-          if (isRedirect(err)) {
-            throw err
-          }
-
-          const errorHandler =
-            route.options.onValidateSearchError ?? route.options.onError
-          errorHandler?.(err)
-          const error = new (Error as any)('Invalid search params found', {
+          match.searchError = new SearchParamError(err.message, {
             cause: err,
           })
-          error.code = 'INVALID_SEARCH_PARAMS'
 
-          throw error
+          if (opts?.throwOnError) {
+            throw match.searchError
+          }
+
+          return parentSearchInfo
         }
       })()
 
@@ -695,51 +707,59 @@ export class Router<
         resolvedMatches.map(async (match, index) => {
           const route = this.getRoute(match.routeId)
 
-          try {
-            await route.options.beforeLoad?.({
-              router: this as any,
-              match,
-            })
-          } catch (err) {
+          const handleError = (
+            err: any,
+            handler: undefined | ((err: any) => void),
+          ) => {
+            firstBadMatchIndex = firstBadMatchIndex ?? index
+            handler = handler || route.options.onError
+
             if (isRedirect(err)) {
               throw err
             }
 
-            firstBadMatchIndex = firstBadMatchIndex ?? index
-
-            const errorHandler =
-              route.options.onBeforeLoadError ?? route.options.onError
-
-            let caughtError = err
-
             try {
-              errorHandler?.(err)
+              handler?.(err)
             } catch (errorHandlerErr) {
-              caughtError = errorHandlerErr
+              err = errorHandlerErr
 
               if (isRedirect(errorHandlerErr)) {
                 throw errorHandlerErr
               }
             }
 
-            this.#setEitherRouteMatch(match.id, (s) => ({
+            this.setRouteMatch(match.id, (s) => ({
               ...s,
-              error: caughtError,
+              error: err,
               status: 'error',
               updatedAt: Date.now(),
             }))
           }
+
+          if (match.paramsError) {
+            handleError(match.paramsError, route.options.onParseParamsError)
+          }
+
+          if (match.searchError) {
+            handleError(match.searchError, route.options.onValidateSearchError)
+          }
+
+          try {
+            await route.options.beforeLoad?.({
+              ...match,
+              preload: !!opts?.preload,
+            })
+          } catch (err) {
+            handleError(err, route.options.onBeforeLoadError)
+          }
         }),
       )
     } catch (err) {
-      if (isRedirect(err)) {
-        if (!opts?.preload) {
-          this.navigate(err as any)
-        }
-        return
+      if (!opts?.preload) {
+        this.navigate(err as any)
       }
 
-      throw err // we should never end up here
+      throw err
     }
 
     const validResolvedMatches = resolvedMatches.slice(0, firstBadMatchIndex)
@@ -761,20 +781,15 @@ export class Router<
 
             let latestPromise
 
-            const componentsPromise = (async () => {
-              // then run all component and data loaders in parallel
-              // For each component type, potentially load it asynchronously
+            const componentsPromise = Promise.all(
+              componentTypes.map(async (type) => {
+                const component = route.options[type]
 
-              await Promise.all(
-                componentTypes.map(async (type) => {
-                  const component = route.options[type]
-
-                  if (component?.preload) {
-                    await component.preload()
-                  }
-                }),
-              )
-            })()
+                if (component?.preload) {
+                  await component.preload()
+                }
+              }),
+            )
 
             const loaderPromise = Promise.resolve().then(() => {
               if (route.options.loader) {
@@ -798,7 +813,7 @@ export class Router<
                 !opts?.preload ||
                 !this.state.matches.find((d) => d.id === match.id)
               ) {
-                this.#setEitherRouteMatch(match.id, (s) => ({
+                this.setRouteMatch(match.id, (s) => ({
                   ...s,
                   error: undefined,
                   status: 'success',
@@ -833,7 +848,7 @@ export class Router<
                 }
               }
 
-              this.#setEitherRouteMatch(match.id, (s) => ({
+              this.setRouteMatch(match.id, (s) => ({
                 ...s,
                 error: caughtError,
                 status: 'error',
@@ -854,7 +869,7 @@ export class Router<
             }
           })
 
-          this.#setEitherRouteMatch(match.id, (s) => ({
+          this.setRouteMatch(match.id, (s) => ({
             ...s,
             loadPromise,
             fetchedAt,
@@ -1312,9 +1327,6 @@ export class Router<
     const fromMatches = this.matchRoutes(
       this.state.location.pathname,
       this.state.location.search,
-      {
-        strictParseParams: true,
-      },
     )
 
     const prevParams = { ...last(fromMatches)?.params }
@@ -1456,11 +1468,12 @@ export class Router<
   ): undefined | RouteMatch<TRoutesInfo, AnyRoute> => {
     return (
       this.state.matches.find((d) => d.id === id) ||
+      this.state.pendingMatches.find((d) => d.id === id) ||
       this.state.preloadMatches[id]
     )
   }
 
-  setRouteMatch = (
+  #setResolvedRouteMatch = (
     id: string,
     updater: (
       prev: RouteMatch<TRoutesInfo, AnyRoute>,
@@ -1477,7 +1490,24 @@ export class Router<
     }))
   }
 
-  setPreloadRouteMatch = (
+  #setPendingRouteMatch = (
+    id: string,
+    updater: (
+      prev: RouteMatch<TRoutesInfo, AnyRoute>,
+    ) => RouteMatch<TRoutesInfo, AnyRoute>,
+  ) => {
+    this.__store.setState((prev) => ({
+      ...prev,
+      pendingMatches: prev.pendingMatches.map((d) => {
+        if (d.id === id) {
+          return updater(d as any)
+        }
+        return d
+      }),
+    }))
+  }
+
+  #setPreloadRouteMatch = (
     id: string,
     updater: (
       prev: RouteMatch<TRoutesInfo, AnyRoute>,
@@ -1494,18 +1524,22 @@ export class Router<
     }))
   }
 
-  #setEitherRouteMatch = (
+  setRouteMatch = (
     id: string,
     updater: (
       prev: RouteMatch<TRoutesInfo, AnyRoute>,
     ) => RouteMatch<TRoutesInfo, AnyRoute>,
   ) => {
     if (this.state.matches.find((d) => d.id === id)) {
-      return this.setRouteMatch(id, updater)
+      return this.#setResolvedRouteMatch(id, updater)
+    }
+
+    if (this.state.pendingMatches.find((d) => d.id === id)) {
+      return this.#setPendingRouteMatch(id, updater)
     }
 
     if (this.state.preloadMatches[id]) {
-      return this.setPreloadRouteMatch(id, updater)
+      return this.#setPreloadRouteMatch(id, updater)
     }
   }
 }
@@ -1519,6 +1553,7 @@ function getInitialRouterState(): RouterState<any, any> {
     resolvedLocation: null!,
     location: null!,
     matches: [],
+    pendingMatches: [],
     preloadMatches: {},
     lastUpdated: Date.now(),
   }
@@ -1551,9 +1586,25 @@ export function isRedirect(obj: any): obj is AnyRedirect {
   return !!obj?.isRedirect
 }
 
+export class SearchParamError extends Error {}
+export class PathParamError extends Error {}
+
 function escapeJSON(jsonString: string) {
   return jsonString
     .replace(/\\/g, '\\\\') // Escape backslashes
     .replace(/'/g, "\\'") // Escape single quotes
     .replace(/"/g, '\\"') // Escape double quotes
+}
+
+// A function that takes an import() argument which is a function and returns a new function that will
+// proxy arguments from the caller to the imported function, retaining all type
+// information along the way
+export function lazyFn<
+  T extends Record<string, (...args: any[]) => any>,
+  TKey extends keyof T = 'default',
+>(fn: () => Promise<T>, key?: TKey) {
+  return async (...args: Parameters<T[TKey]>): Promise<ReturnType<T[TKey]>> => {
+    const imported = await fn()
+    return imported[key || 'default'](...args)
+  }
 }

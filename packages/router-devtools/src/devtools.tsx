@@ -507,7 +507,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
   const routerContextValue = React.useContext(routerContext)
   const router = userRouter ?? routerContextValue
-  const routerState = useRouterState()
 
   invariant(
     router,
@@ -527,13 +526,13 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   )
 
   const allMatches: RouteMatch[] = React.useMemo(
-    () => [...Object.values(routerState.matches)],
-    [routerState.matches],
+    () => [...Object.values(router.state.matches)],
+    [router.state.matches],
   )
 
   const activeMatch = allMatches?.find((d) => d.routeId === activeRouteId)
 
-  const hasSearch = Object.keys(routerState.location.search || {}).length
+  const hasSearch = Object.keys(router.state.location.search || {}).length
 
   return (
     <ThemeProvider theme={theme}>
@@ -726,7 +725,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             />
           ) : (
             <div>
-              {routerState.matches.map((match, i) => {
+              {router.state.matches.map((match, i) => {
                 return (
                   <div
                     key={match.routeId || i}
@@ -908,9 +907,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               }}
             >
               <Explorer
-                value={routerState.location.search || {}}
+                value={router.state.location.search || {}}
                 defaultExpanded={Object.keys(
-                  (routerState.location.search as {}) || {},
+                  (router.state.location.search as {}) || {},
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj

@@ -94,6 +94,10 @@
           "to": "guide/router-context"
         },
         {
+          "label": "Authenticated Routes",
+          "to": "guide/authenticated-routes"
+        },
+        {
           "label": "SSR & Streaming",
           "to": "guide/ssr-and-streaming"
         }
@@ -126,6 +130,10 @@
         {
           "label": "Kitchen Sink Multi-File",
           "to": "examples/react/kitchen-sink-multi-file?file=src%2Froutes%2Froot.tsx"
+        },
+        {
+          "label": "Basic Code-Split",
+          "to": "examples/react/basic-code-split?file=src%2Frouter.tsx"
         },
         {
           "label": "Basic SSR",

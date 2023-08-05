@@ -24,7 +24,7 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 ## Only importing and using Devtools in Development
 
-To do this, simply use lazy and the env variable of your choice to optionally return a dummy component:
+To do this, simply use `React.lazy` and the env variable of your choice to optionally return a dummy component:
 
 ```tsx
 const TanStackRouterDevtools =
