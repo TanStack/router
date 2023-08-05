@@ -799,24 +799,43 @@ function CatchBoundaryInner(props: {
 }
 
 export function ErrorComponent({ error }: { error: any }) {
+  const [show, setShow] = React.useState(process.env.NODE_ENV !== 'production')
+
   return (
     <div style={{ padding: '.5rem', maxWidth: '100%' }}>
-      <strong style={{ fontSize: '1.2rem' }}>Something went wrong!</strong>
-      <div style={{ height: '.5rem' }} />
-      <div>
-        <pre
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+        <strong style={{ fontSize: '1rem' }}>Something went wrong!</strong>
+        <button
           style={{
-            fontSize: '.7em',
-            border: '1px solid red',
+            appearance: 'none',
+            fontSize: '.6em',
+            border: '1px solid currentColor',
+            padding: '.1rem .2rem',
+            fontWeight: 'bold',
             borderRadius: '.25rem',
-            padding: '.5rem',
-            color: 'red',
-            overflow: 'auto',
           }}
+          onClick={() => setShow((d) => !d)}
         >
-          {error.message ? <code>{error.message}</code> : null}
-        </pre>
+          {show ? 'Hide Error' : 'Show Error'}
+        </button>
       </div>
+      <div style={{ height: '.25rem' }} />
+      {show ? (
+        <div>
+          <pre
+            style={{
+              fontSize: '.7em',
+              border: '1px solid red',
+              borderRadius: '.25rem',
+              padding: '.3rem',
+              color: 'red',
+              overflow: 'auto',
+            }}
+          >
+            {error.message ? <code>{error.message}</code> : null}
+          </pre>
+        </div>
+      ) : null}
     </div>
   )
 }
