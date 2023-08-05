@@ -652,8 +652,6 @@ function MatchInner({
     },
   })
 
-  console.log(match.status)
-
   const route = router.getRoute(match.routeId)
 
   if (match.status === 'error') {
