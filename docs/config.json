@@ -137,11 +137,11 @@
         },
         {
           "label": "Basic SSR",
-          "to": "examples/react/basic-srr?file=src%2Fentry-server.tsx"
+          "to": "examples/react/basic-ssr?file=src%2Fentry-server.tsx"
         },
         {
           "label": "Basic SSR with Streaming",
-          "to": "examples/react/basic-srr?file=src%2Fentry-server.tsx"
+          "to": "examples/react/basic-ssr-streaming?file=src%2Fentry-server.tsx"
         },
         {
           "label": "With React Query",
