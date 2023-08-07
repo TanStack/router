@@ -45,7 +45,7 @@ const stopBlocking = () => {
 
 function createHistory(opts: {
   getLocation: () => RouterLocation
-  listener: (onUpdate: () => void) => () => void
+  listener: false | ((onUpdate: () => void) => () => void)
   pushState: (path: string, state: any) => void
   replaceState: (path: string, state: any) => void
   go: (n: number) => void
@@ -72,7 +72,9 @@ function createHistory(opts: {
       queue.shift()?.()
     }
 
-    // onUpdate()
+    if (!opts.listener) {
+      onUpdate()
+    }
   }
 
   const queueTask = (task: () => void) => {
@@ -91,7 +93,10 @@ function createHistory(opts: {
     },
     listen: (cb: () => void) => {
       if (listeners.size === 0) {
-        unsub = opts.listener(onUpdate)
+        unsub =
+          typeof opts.listener === 'function'
+            ? opts.listener(onUpdate)
+            : () => {}
       }
       listeners.add(cb)
 
@@ -229,9 +234,7 @@ export function createMemoryHistory(
 
   return createHistory({
     getLocation,
-    listener: () => {
-      return () => {}
-    },
+    listener: false,
     pushState: (path, state) => {
       currentState = {
         ...state,
