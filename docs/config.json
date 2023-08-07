@@ -129,7 +129,7 @@
         },
         {
           "label": "With Loaders",
-          "to": "examples/react/basic?file=src%2Fmain.tsx"
+          "to": "examples/react/with-loaders?file=src%2Fmain.tsx"
         },
         {
           "label": "With Loaders Kitchen Sink Single File",
