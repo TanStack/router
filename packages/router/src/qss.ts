@@ -30,8 +30,7 @@ function toValue(mix) {
   var str = decodeURIComponent(mix)
   if (str === 'false') return false
   if (str === 'true') return true
-  if (str.charAt(0) === '0') return str
-  return +str * 0 === 0 ? +str : str
+  return +str * 0 === 0 && +str + '' === str ? +str : str
 }
 
 export function decode(str) {

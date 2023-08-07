@@ -413,7 +413,7 @@ Literally any library that **can return a promise and read/write data** is suppo
 
 ## TanStack Loaders
 
-While you may jump for joy that your favorite cache manager is in the list above, you may want to check out our custom-built router-centry caching library called **TanStack Loaders**.
+While you may jump for joy that your favorite cache manager is in the list above, you may want to check out our custom-built router-centric caching library called **TanStack Loaders**.
 
 You may not always need all of the features of the above libraries (or you may simply not want to pay their cost in bundle size). This is why we created [TanStack Loaders](https://tanstack.com/loaders/latest/docs/overview)!
 
