@@ -76,15 +76,18 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  loader: async ({ context: { queryClient } }) => {
-    await queryClient.ensureQueryData({
-      queryKey: ['posts'],
-      queryFn: fetchPosts,
-    })
-    return () => useQuery({ queryKey: ['posts'], queryFn: fetchPosts })
+  getContext: () => {
+    return { queryOptions: { queryKey: ['posts'], queryFn: fetchPosts } }
   },
-  component: ({ useLoader }) => {
-    const postsQuery = useLoader()()
+  loader: async ({
+    context: { queryClient },
+    routeContext: { queryOptions },
+  }) => {
+    await queryClient.ensureQueryData(queryOptions)
+  },
+  component: ({ useRouteContext }) => {
+    const { queryOptions } = useRouteContext()
+    const postsQuery = useQuery(queryOptions)
 
     return (
       <div className="p-2 flex gap-2">
@@ -129,19 +132,24 @@ const postsIndexRoute = new Route({
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  loader: async ({ params: { postId }, context: { queryClient } }) => {
+  getContext: ({ params: { postId } }) => {
     const queryOptions = {
       queryKey: ['posts', postId],
       queryFn: () => fetchPostById(postId),
       enabled: !!postId,
     }
 
-    await queryClient.ensureQueryData(queryOptions)
-
-    return () => useQuery(queryOptions)
+    return { queryOptions }
   },
-  component: ({ useLoader }) => {
-    const postQuery = useLoader()()
+  loader: async ({
+    context: { queryClient },
+    routeContext: { queryOptions },
+  }) => {
+    await queryClient.ensureQueryData(queryOptions)
+  },
+  component: ({ useRouteContext }) => {
+    const { queryOptions } = useRouteContext()
+    const postQuery = useQuery(queryOptions)
 
     return (
       <div className="space-y-2">

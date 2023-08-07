@@ -46,7 +46,7 @@ export type MetaOptions = keyof PickRequired<RouteMeta> extends never
       meta: RouteMeta
     }
 
-export type AnyRouteProps = RouteProps<any, any, any, any>
+export type AnyRouteProps = RouteProps<any, any, any, any, any>
 export type ComponentPropsFromRoute<TRoute> = TRoute extends Route<
   infer TParentRoute,
   infer TPath,
@@ -66,7 +66,7 @@ export type ComponentPropsFromRoute<TRoute> = TRoute extends Route<
   infer TChildren,
   infer TRoutesInfo
 >
-  ? RouteProps<TLoader, TFullSearchSchema, TAllParams, TContext>
+  ? RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
   : never
 
 export type ComponentFromRoute<TRoute> = RouteComponent<
@@ -86,6 +86,7 @@ export type RouteProps<
   TLoader = unknown,
   TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
   TAllParams = AnyPathParams,
+  TRouteContext = AnyContext,
   TContext = AnyContext,
 > = {
   useMatch: () => RouteMatch<AnyRoutesInfo, AnyRoute>
@@ -106,6 +107,12 @@ export type RouteProps<
   }) => TSelected
   useContext: <
     TDefaultSelected = TContext,
+    TSelected = TDefaultSelected,
+  >(opts?: {
+    select?: (context: TDefaultSelected) => TSelected
+  }) => TSelected
+  useRouteContext: <
+    TDefaultSelected = TRouteContext,
     TSelected = TDefaultSelected,
   >(opts?: {
     select?: (context: TDefaultSelected) => TSelected
@@ -163,6 +170,11 @@ export type RouteOptions<
     TContext
   >
 
+export type ParamsFallback<
+  TPath extends string,
+  TParams,
+> = unknown extends TParams ? Record<ParsePathParams<TPath>, string> : TParams
+
 export type BaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
@@ -172,8 +184,8 @@ export type BaseRouteOptions<
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = TSearchSchema,
   TParentParams extends AnyPathParams = AnyPathParams,
-  TParams = Record<ParsePathParams<TPath>, string>,
-  TAllParams = TParams,
+  TParams = unknown,
+  TAllParams = ParamsFallback<TPath, TParams>,
   TParentContext extends AnyContext = AnyContext,
   TAllParentContext extends IsAny<
     TParentRoute['__types']['allParams'],
@@ -200,11 +212,7 @@ export type BaseRouteOptions<
     NoInfer<TRouteContext>,
     TContext
   >
-} & (PickUnsafe<TParentParams, ParsePathParams<TPath>> extends never
-    ? // Detect if an existing path param is being redefined
-      {}
-    : 'Cannot redefined path params in child routes!') &
-  (
+} & (
     | {
         // Both or none
         parseParams?: (
@@ -212,8 +220,19 @@ export type BaseRouteOptions<
         ) => TParams extends Record<ParsePathParams<TPath>, any>
           ? TParams
           : 'parseParams must return an object'
+        // | {
+        //     parse: (
+        //       rawParams: IsAny<
+        //         TPath,
+        //         any,
+        //         Record<ParsePathParams<TPath>, string>
+        //       >,
+        //     ) => TParams extends Record<ParsePathParams<TPath>, any>
+        //       ? TParams
+        //       : 'parseParams must return an object'
+        //   }
         stringifyParams?: (
-          params: NoInfer<TParams>,
+          params: NoInfer<ParamsFallback<TPath, TParams>>,
         ) => Record<ParsePathParams<TPath>, string>
       }
     | {
@@ -273,20 +292,20 @@ export type UpdatableRouteOptions<
   TRouteContext extends AnyContext,
   TContext extends AnyContext,
 > = MetaOptions & {
-  getKey?: GetKeyFn<TFullSearchSchema, TAllParams>
+  key?: null | false | GetKeyFn<TFullSearchSchema, TAllParams>
   // If true, this route will be matched as case-sensitive
   caseSensitive?: boolean
   // If true, this route will be forcefully wrapped in a suspense boundary
   wrapInSuspense?: boolean
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
   component?: RouteComponent<
-    RouteProps<TLoader, TFullSearchSchema, TAllParams, TContext>
+    RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
   >
   // The content to be rendered when the route encounters an error
   errorComponent?: RouteErrorComponent //
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
   pendingComponent?: RouteComponent<
-    RouteProps<TLoader, TFullSearchSchema, TAllParams, TContext>
+    RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
   >
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
   // calls that match this route.
@@ -294,6 +313,12 @@ export type UpdatableRouteOptions<
   // Filter functions that can manipulate search params *after* they are passed to links and navigate
   // calls that match this route.
   postSearchFilters?: SearchFilter<TFullSearchSchema>[]
+  // If set, preload matches of this route will be considered fresh for this many milliseconds.
+  preloadMaxAge?: number
+  // If set, a match of this route will be considered fresh for this many milliseconds.
+  maxAge?: number
+  // If set, a match of this route that becomes inactive (or unused) will be garbage collected after this many milliseconds
+  gcMaxAge?: number
   // This async function is called before a route is loaded.
   // If an error is thrown here, the route's loader will not be called.
   // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onLoadError` function.
@@ -332,6 +357,22 @@ export type UpdatableRouteOptions<
     params: TAllParams
     search: TFullSearchSchema
   }) => void
+}
+
+export type ParseParamsOption<TPath extends string, TParams> = ParseParamsFn<
+  TPath,
+  TParams
+>
+// | ParseParamsObj<TPath, TParams>
+
+export type ParseParamsFn<TPath extends string, TParams> = (
+  rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
+) => TParams extends Record<ParsePathParams<TPath>, any>
+  ? TParams
+  : 'parseParams must return an object'
+
+export type ParseParamsObj<TPath extends string, TParams> = {
+  parse?: ParseParamsFn<TPath, TParams>
 }
 
 // The parse type here allows a zod schema to be passed directly to the validator
@@ -755,6 +796,20 @@ export class Route<
     } as any)
   }
 
+  useRouteContext = <
+    TStrict extends boolean = true,
+    TSelected = TRouteContext,
+  >(opts?: {
+    strict?: TStrict
+    select?: (search: TRouteContext) => TSelected
+  }): TStrict extends true ? TSelected : TSelected | undefined => {
+    return useMatch({
+      ...opts,
+      from: this.id,
+      select: (d: any) => opts?.select?.(d.routeContext) ?? d.routeContext,
+    } as any)
+  }
+
   useSearch = <
     TStrict extends boolean = true,
     TSelected = TFullSearchSchema,
@@ -797,34 +852,6 @@ export class RouterContext<TRouterContext extends {}> {
       options,
     )
   }
-
-  //   return <
-  //     TLoader = unknown,
-  //     TSearchSchema extends AnySearchSchema = {},
-  //     TContext extends {} = {},
-  //   >(
-  //     options?: Omit<
-  //       RouteOptions<
-  //         AnyRoute,
-  //         RootRouteId,
-  //         '',
-  //         TLoader,
-  //         {},
-  //         TSearchSchema,
-  //         NoInfer<TSearchSchema>,
-  //         {},
-  //         TRouterContext,
-  //         TRouterContext,
-  //         TContext,
-  //         TRouterContext & TContext
-  //       >,
-  //       'path' | 'id' | 'getParentRoute' | 'caseSensitive'
-  //     >,
-  //   ) =>
-  //     new RootRoute<TLoader, TSearchSchema, TContext, TRouterContext>(
-  //       options as any,
-  //     )
-  // }
 }
 
 export class RootRoute<

@@ -4,8 +4,8 @@ title: Router Context
 
 TanStack Router's router context is a very powerful tool that can be used for dependency injection among many other things. Aptly named, the router context is passed through the router and down through each matching route. At each route in the hierarchy, the context can be modified or added to. Here's a few ways you might use the router context practically:
 
-- Dependency injection
-  - You can supply dependencies (e.g. a data loader client or mutation service) which all child routes can access and use without importing them directly.
+- Dependency Injection
+  - You can supply dependencies (e.g. a loader function, a data fetching client, a mutation service) which the route and all child routes can access and use without importing or creating directly.
 - Breadcrumbs
   - While the main context object for each route is merged as it descends, each route's unique context is also stored making it possible to attach breadcrumbs or methods to each route's context.
 - Dynamic meta tag management
@@ -15,7 +15,7 @@ These are just suggested uses of the router context. You can use it for whatever
 
 ## Typed Router Context
 
-Like everything else, the router context (at least the one you inject at `new Router()` is strictly typed. This type can be augmented via any route's `getContext` option. If that's the case, the type at the edge of the route is a merged interface-like type of the base context type and every route's `getContext` return type. To constrain the type of the root router context, you must use the `new RouteContext<YourContextTypeHere>()` class to create a new `routerContext` and then use the `routerContext.createRootRoute()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
+Like everything else, the root router context is strictly typed. This type can be augmented via any route's `getContext` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `new RouteContext<YourContextTypeHere>()` class to create a new `routerContext` and then use the `routerContext.createRootRoute()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
 
 ```tsx
 import { RootRoute } from '@tanstack/router'
@@ -73,16 +73,46 @@ const userRoute = new Route({
   getRootRoute: () => rootRoute,
   path: 'todos',
   component: Todos,
-  loader: ({ context }) => {
-    await loaderClient.load({
-      key: 'todos',
-      variables: { user: context.user.id },
-    })
+  loader: ({ context }) => fetchTodosByUserId(context.user.id),
+})
+```
+
+You can even inject data fetching and mutation implementations themselves! In fact, this is highly recommended 😜
+
+Let's try this with a simple function to fetch some todos:
+
+```tsx
+import { RootRoute } from '@tanstack/router'
+
+const fetchTodosByUserId = async ({ userId }) => {
+  const response = await fetch(`/api/todos?userId=${userId}`)
+  const data = await response.json()
+  return data
+}
+
+const router = new Router({
+  routeTree: rootRoute,
+  context: {
+    userId: '123',
+    fetchTodosByUserId,
   },
 })
 ```
 
-You can even inject your data fetching client itself... in fact, this is highly recommended!
+Then, in your route:
+
+```tsx
+import { Route } from '@tanstack/router'
+
+const userRoute = new Route({
+  getRootRoute: () => rootRoute,
+  path: 'todos',
+  component: Todos,
+  loader: ({ context }) => context.fetchTodosByUserId(context.userId),
+})
+```
+
+### How about an external data fetching library?
 
 ```tsx
 import { RootRoute } from '@tanstack/router'
@@ -163,32 +193,47 @@ const userRoute = new Route({
 
 ## Unique Route Context
 
-In addition to the merged context, each route also has a unique context that is stored under the `routeContext` key. This context is not merged with the parent context. This means that you can attach unique data to each route's context. Here's an example:
+In addition to the merged context, each route also has a unique context that is stored under the `routeContext` key. This context is not merged with the parent context. This means that you can attach unique data to each route's context. Here's an example using context to create some reusable React Query logic specific to a route:
 
 ```tsx
 export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
   component: Post,
-  getContext: ({ context: { loaderClient }, params: { postId } }) => {
-    const loader = loaderClient.getLoader({ key: 'post' })
-    const loaderInstance = loader.getInstance({ variables: postId })
+  getContext: ({ context: { queryClient }, params: { postId } }) => {
+    const queryOptions = {
+      queryKey: ['posts', 'post', postId],
+      queryFn: () => fetchPostById(postId),
+    }
 
     return {
-      loader,
-      loaderInstance,
-      getTitle: () => `${loaderInstance.state.data?.title} | Post`,
+      queryOptions,
+      getTitle: () => `${queryClient.getQueryData(queryOptions)?.title} | Post`,
     }
   },
-  loader: async ({ params: { postId }, preload, context, routeContext }) =>
-    routeContext.loaderInstance.load({
-      variables: postId,
-      preload,
-    }),
+  loader: async ({
+    preload,
+    context: { queryClient },
+    routeContext: { queryOptions },
+  }) => {
+    await queryClient.ensureQueryData(queryOptions)
+  },
+  component: ({ useRouteContext }) => {
+    const { queryOptions } = useRouteContext()
+
+    const { data } = useQuery(queryOptions)
+
+    return (
+      <div>
+        <h1>{data.title}</h1>
+        <p>{data.body}</p>
+      </div>
+    )
+  },
 })
 ```
 
-## Process Accumulated Route Context
+## Processing Accumulated Route Context
 
 Context, especially the isolated `routeContext` objects, make it trivial to accumulate and process the route context objects for all matched routes. Here's an example where we use all of the matched route contexts to generate a breadcrumb trail:
 

@@ -16,9 +16,12 @@ const actionsContext = React.createContext<{
   client: ActionClient<any, any, any>
 }>(null as any)
 
-export function ActionClientProvider(props: {
-  client: ActionClient<any, any, any>
+export function ActionClientProvider<
+  TClient extends ActionClient<any, any, any>,
+>(props: {
+  client: TClient
   children: any
+  context?: Partial<TClient['options']['context']>
 }) {
   return (
     <actionsContext.Provider value={{ client: props.client }}>
@@ -46,7 +49,15 @@ export function useAction<
       TAction['__types']['error']
     >,
   ) => TSelected
-}): [state: TSelected, client: ActionClient<RegisteredActions>] {
+}): [
+  state: TSelected,
+  submit: (
+    opts: undefined extends TAction['__types']['variables']
+      ? { variables?: TAction['__types']['variables'] }
+      : { variables: TAction['__types']['variables'] },
+  ) => Promise<TAction['__types']['response']>,
+  client: ActionClient<RegisteredActions>,
+] {
   const ctx = React.useContext(actionsContext)
 
   invariant(
@@ -61,6 +72,12 @@ export function useAction<
       const action = d.actions[opts.key]
       return opts.select?.(action as any) ?? action
     }) as TSelected,
+    React.useCallback((callerOpts: any) => {
+      return client.submitAction({
+        key: opts.key,
+        ...callerOpts,
+      })
+    }, []),
     client,
   ]
 }

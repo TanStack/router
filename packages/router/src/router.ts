@@ -121,15 +121,20 @@ export interface RouteMatch<
   TRoute extends AnyRoute = Route,
 > {
   id: string
+  key?: string
   routeId: string
   pathname: string
   params: TRoute['__types']['allParams']
-  status: 'pending' | 'success' | 'error'
+  status: 'idle' | 'pending' | 'success' | 'error'
+  isFetching: boolean
+  invalid: boolean
   error: unknown
   paramsError: unknown
   searchError: unknown
   updatedAt: number
-  loader: TRoute['__types']['loader']
+  invalidAt: number
+  preloadInvalidAt: number
+  loaderData: TRoute['__types']['loader']
   loadPromise?: Promise<void>
   __resolveLoadPromise?: () => void
   routeContext: TRoute['__types']['routeContext']
@@ -162,14 +167,15 @@ export interface RouterOptions<
   defaultPreload?: false | 'intent'
   defaultPreloadDelay?: number
   defaultComponent?: RouteComponent<
-    RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext>
+    RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext, AnyContext>
   >
   defaultErrorComponent?: RouteErrorComponent
   defaultPendingComponent?: RouteComponent<
-    RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext>
+    RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext, AnyContext>
   >
-  defaultLoaderMaxAge?: number
-  defaultLoaderGcMaxAge?: number
+  defaultMaxAge?: number
+  defaultGcMaxAge?: number
+  defaultPreloadMaxAge?: number
   caseSensitive?: boolean
   routeTree?: TRouteTree
   basepath?: string
@@ -189,12 +195,15 @@ export interface RouterState<
   TState extends LocationState = LocationState,
 > {
   status: 'idle' | 'pending'
-  matches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
-  pendingMatches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
-  preloadMatches: Record<
+  isFetching: boolean
+  matchesById: Record<
     string,
     RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>
   >
+  matchIds: string[]
+  pendingMatchIds: string[]
+  matches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
+  pendingMatches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
   location: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
   resolvedLocation: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
   lastUpdated: number
@@ -295,11 +304,48 @@ export class Router<
       getInitialRouterState(),
       {
         onUpdate: () => {
+          const prev = this.state
+
           this.state = this.__store.state
+
+          const matchesByIdChanged = prev.matchesById !== this.state.matchesById
+          let matchesChanged
+          let pendingMatchesChanged
+
+          if (!matchesByIdChanged) {
+            matchesChanged =
+              prev.matchIds.length !== this.state.matchIds.length ||
+              prev.matchIds.some((d, i) => d !== this.state.matchIds[i])
+
+            pendingMatchesChanged =
+              prev.pendingMatchIds.length !==
+                this.state.pendingMatchIds.length ||
+              prev.pendingMatchIds.some(
+                (d, i) => d !== this.state.pendingMatchIds[i],
+              )
+          }
+
+          if (matchesByIdChanged || matchesChanged) {
+            this.state.matches = this.state.matchIds.map((id) => {
+              return this.state.matchesById[id] as any
+            })
+          }
+
+          if (matchesByIdChanged || pendingMatchesChanged) {
+            this.state.pendingMatches = this.state.pendingMatchIds.map((id) => {
+              return this.state.matchesById[id] as any
+            })
+          }
+
+          this.state.isFetching = [
+            ...this.state.matches,
+            ...this.state.pendingMatches,
+          ].some((d) => d.isFetching)
         },
         defaultPriority: 'low',
       },
     )
+
     this.state = this.__store.state
 
     this.update(options)
@@ -403,7 +449,7 @@ export class Router<
     })
   }
 
-  latestLoadPromise: Promise<void> | null = null
+  latestLoadPromise: Promise<void> = Promise.resolve()
 
   load = async (opts?: { next?: ParsedLocation; throwOnError?: boolean }) => {
     const promise = new Promise<void>(async (resolve, reject) => {
@@ -415,10 +461,8 @@ export class Router<
           : undefined
       }
 
-      let now = Date.now()
-
       // Cancel any pending matches
-      this.cancelMatches()
+      // this.cancelMatches()
 
       let pendingMatches!: RouteMatch<any, any>[]
 
@@ -437,13 +481,15 @@ export class Router<
           this.state.location.search,
           {
             throwOnError: opts?.throwOnError,
+            debug: true,
           },
         )
 
         this.__store.setState((s) => ({
           ...s,
           status: 'pending',
-          pendingMatches,
+          pendingMatchIds: pendingMatches.map((d) => d.id),
+          matchesById: this.#mergeMatches(s.matchesById, pendingMatches),
         }))
       })
 
@@ -462,8 +508,8 @@ export class Router<
           ...s,
           status: 'idle',
           resolvedLocation: s.location,
-          matches: s.pendingMatches,
-          pendingMatches: [],
+          matchIds: s.pendingMatchIds,
+          pendingMatchIds: [],
         }))
 
         if (prevLocation!.href !== this.state.location.href) {
@@ -486,6 +532,36 @@ export class Router<
     return this.latestLoadPromise
   }
 
+  #mergeMatches = (
+    prevMatchesById: Record<
+      string,
+      RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>
+    >,
+    nextMatches: RouteMatch[],
+  ): Record<
+    string,
+    RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>
+  > => {
+    const nextMatchesById: any = {
+      ...prevMatchesById,
+    }
+
+    let hadNew = false
+
+    nextMatches.forEach((match) => {
+      if (!nextMatchesById[match.id]) {
+        hadNew = true
+        nextMatchesById[match.id] = match
+      }
+    })
+
+    if (!hadNew) {
+      return prevMatchesById
+    }
+
+    return nextMatchesById
+  }
+
   getRoute = <TId extends keyof TRoutesInfo['routesById']>(
     id: TId,
   ): TRoutesInfo['routesById'][TId] => {
@@ -497,41 +573,65 @@ export class Router<
   }
 
   preloadRoute = async (
-    navigateOpts: BuildNextOptions = this.state.location,
+    navigateOpts: BuildNextOptions & {
+      maxAge?: number
+    } = this.state.location,
   ) => {
     const next = this.buildNext(navigateOpts)
     const matches = this.matchRoutes(next.pathname, next.search, {
       throwOnError: true,
     })
 
-    const matchesById: any = {}
-
-    matches.forEach((m) => {
-      if (!this.state.matches.find((d) => d.id === m.id)) {
-        matchesById[m.id] = m
-      }
-    })
-
     this.__store.setState((s) => {
       return {
         ...s,
-        preloadMatches: {
-          ...s.preloadMatches,
-          ...matchesById,
-        },
+        matchesById: this.#mergeMatches(s.matchesById, matches),
       }
     })
 
     await this.loadMatches(matches, {
       preload: true,
+      maxAge: navigateOpts.maxAge,
     })
+
     return matches
+  }
+
+  cleanMatches = () => {
+    const now = Date.now()
+
+    const outdatedMatchIds = Object.values(this.state.matchesById)
+      .filter((match) => {
+        const route = this.getRoute(match.routeId)
+        return (
+          !this.state.matchIds.includes(match.id) &&
+          !this.state.pendingMatchIds.includes(match.id) &&
+          match.preloadInvalidAt < now &&
+          (route.options.gcMaxAge
+            ? match.updatedAt + route.options.gcMaxAge < now
+            : true)
+        )
+      })
+      .map((d) => d.id)
+
+    if (outdatedMatchIds.length) {
+      this.__store.setState((s) => {
+        const matchesById = { ...s.matchesById }
+        outdatedMatchIds.forEach((id) => {
+          delete matchesById[id]
+        })
+        return {
+          ...s,
+          matchesById,
+        }
+      })
+    }
   }
 
   matchRoutes = (
     pathname: string,
     locationSearch: AnySearchSchema,
-    opts?: { throwOnError?: boolean },
+    opts?: { throwOnError?: boolean; debug?: boolean },
   ): RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[] => {
     let routeParams: AnyPathParams = {}
 
@@ -573,7 +673,12 @@ export class Router<
       let parsedParamsError
 
       try {
-        parsedParams = route.options.parseParams?.(routeParams!) ?? routeParams
+        parsedParams =
+          (route.options.parseParams as any)?.(routeParams!) ?? routeParams
+        // (typeof route.options.parseParams === 'object' &&
+        // route.options.parseParams.parse
+        //   ? route.options.parseParams.parse(routeParams)
+        //   : (route.options.parseParams as any)?.(routeParams!)) ?? routeParams
       } catch (err: any) {
         parsedParamsError = new PathParamError(err.message, {
           cause: err,
@@ -588,12 +693,17 @@ export class Router<
       Object.assign(allParams, parsedParams)
 
       const interpolatedPath = interpolatePath(route.path, allParams)
+      const key = route.options.key
+        ? route.options.key({
+            params: allParams,
+            search: locationSearch,
+          }) ?? ''
+        : ''
+
+      const stringifiedKey = key ? JSON.stringify(key) : ''
+
       const matchId =
-        interpolatePath(route.id, allParams, true) +
-        (route.options.getKey?.({
-          params: allParams,
-          search: locationSearch,
-        }) ?? '')
+        interpolatePath(route.id, allParams, true) + stringifiedKey
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
@@ -601,7 +711,6 @@ export class Router<
       const existingMatch = this.getRouteMatch(matchId)
 
       if (existingMatch) {
-        // Return a copy, we don't want to mutate the existing match
         return { ...existingMatch }
       }
 
@@ -613,17 +722,22 @@ export class Router<
 
       const routeMatch: RouteMatch = {
         id: matchId,
+        key: stringifiedKey,
         routeId: route.id,
         params: allParams,
         pathname: joinPaths([this.basepath, interpolatedPath]),
-        updatedAt: 0,
+        updatedAt: Date.now(),
+        invalidAt: Infinity,
+        preloadInvalidAt: Infinity,
         routeSearch: {},
         search: {} as any,
-        status: hasLoaders ? 'pending' : 'success',
+        status: hasLoaders ? 'idle' : 'success',
+        isFetching: false,
+        invalid: false,
         error: undefined,
         paramsError: parsedParamsError,
         searchError: undefined,
-        loader: undefined,
+        loaderData: undefined,
         loadPromise: Promise.resolve(),
         routeContext: undefined!,
         context: undefined!,
@@ -709,15 +823,18 @@ export class Router<
       })
     })
 
-    return matches
+    return matches as any
   }
 
   loadMatches = async (
     resolvedMatches: AnyRouteMatch[],
     opts?: {
       preload?: boolean
+      maxAge?: number
     },
   ) => {
+    this.cleanMatches()
+
     let firstBadMatchIndex: number | undefined
 
     // Check each match middleware to see if the route can be accessed
@@ -725,6 +842,21 @@ export class Router<
       await Promise.all(
         resolvedMatches.map(async (match, index) => {
           const route = this.getRoute(match.routeId)
+
+          if (!opts?.preload) {
+            // Update each match with its latest url data
+            this.setRouteMatch(match.id, (s) => ({
+              ...s,
+              routeSearch: match.routeSearch,
+              search: match.search,
+              routeContext: match.routeContext,
+              context: match.context,
+              error: match.error,
+              paramsError: match.paramsError,
+              searchError: match.searchError,
+              params: match.params,
+            }))
+          }
 
           const handleError = (
             err: any,
@@ -786,18 +918,27 @@ export class Router<
 
     validResolvedMatches.forEach((match, index) => {
       matchPromises.push(
-        Promise.resolve().then(async () => {
+        (async () => {
           const parentMatchPromise = matchPromises[index - 1]
           const route = this.getRoute(match.routeId)
-          const fetchedAt = Date.now()
-          const loadPromise = Promise.resolve().then(async () => {
-            const checkLatest = () => {
-              const latest = this.getRouteMatch(match.id)
-              return latest && latest.fetchedAt !== fetchedAt
-                ? latest.loadPromise
-                : undefined
-            }
 
+          if (
+            match.isFetching ||
+            (match.status === 'success' &&
+              !this.getIsInvalid({ matchId: match.id, preload: opts?.preload }))
+          ) {
+            return this.getRouteMatch(match.id)?.loadPromise
+          }
+
+          const fetchedAt = Date.now()
+          const checkLatest = () => {
+            const latest = this.getRouteMatch(match.id)
+            return latest && latest.fetchedAt !== fetchedAt
+              ? latest.loadPromise
+              : undefined
+          }
+
+          const loadPromise = (async () => {
             let latestPromise
 
             const componentsPromise = Promise.all(
@@ -810,16 +951,22 @@ export class Router<
               }),
             )
 
-            const loaderPromise = Promise.resolve().then(() => {
-              if (route.options.loader) {
-                return route.options.loader({
-                  ...match,
-                  preload: !!opts?.preload,
-                  parentMatchPromise,
-                })
-              }
-              return
+            const loaderPromise = route.options.loader?.({
+              ...match,
+              preload: !!opts?.preload,
+              parentMatchPromise,
             })
+
+            const handleError = (err: any) => {
+              if (isRedirect(err)) {
+                if (!opts?.preload) {
+                  this.navigate(err as any)
+                }
+                return true
+              }
+
+              return false
+            }
 
             try {
               const [_, loader] = await Promise.all([
@@ -828,25 +975,11 @@ export class Router<
               ])
               if ((latestPromise = checkLatest())) return await latestPromise
 
-              if (
-                !opts?.preload ||
-                !this.state.matches.find((d) => d.id === match.id)
-              ) {
-                this.setRouteMatch(match.id, (s) => ({
-                  ...s,
-                  error: undefined,
-                  status: 'success',
-                  updatedAt: Date.now(),
-                  loader,
-                }))
-              }
+              this.setRouteMatchData(match.id, () => loader, opts)
             } catch (err) {
               if ((latestPromise = checkLatest())) return await latestPromise
 
-              if (isRedirect(err)) {
-                if (!opts?.preload) {
-                  this.navigate(err as any)
-                }
+              if (handleError(err)) {
                 return
               }
 
@@ -859,10 +992,8 @@ export class Router<
                 errorHandler?.(err)
               } catch (errorHandlerErr) {
                 caughtError = errorHandlerErr
-                if (isRedirect(errorHandlerErr)) {
-                  if (!opts?.preload) {
-                    this.navigate(errorHandlerErr as any)
-                  }
+
+                if (handleError(errorHandlerErr)) {
                   return
                 }
               }
@@ -871,31 +1002,23 @@ export class Router<
                 ...s,
                 error: caughtError,
                 status: 'error',
+                isFetching: false,
                 updatedAt: Date.now(),
               }))
-            } finally {
-              if ((latestPromise = checkLatest())) return await latestPromise
-              if (opts?.preload) {
-                this.__store.setState((s) => {
-                  const preloadMatches = { ...s.preloadMatches }
-                  delete preloadMatches[match.id]
-                  return {
-                    ...s,
-                    preloadMatches,
-                  }
-                })
-              }
             }
-          })
+          })()
 
           this.setRouteMatch(match.id, (s) => ({
             ...s,
+            status: s.status !== 'success' ? 'pending' : s.status,
+            isFetching: true,
             loadPromise,
             fetchedAt,
+            invalid: false,
           }))
 
           await loadPromise
-        }),
+        })(),
       )
     })
 
@@ -903,7 +1026,7 @@ export class Router<
   }
 
   reload = () => {
-    this.navigate({
+    return this.navigate({
       fromCurrent: true,
       replace: true,
       search: true,
@@ -1157,7 +1280,6 @@ export class Router<
       return {
         ...s,
         ...ctx.router.state,
-        matches: s.matches,
         resolvedLocation: ctx.router.state.location,
       }
     })
@@ -1472,62 +1594,7 @@ export class Router<
   getRouteMatch = (
     id: string,
   ): undefined | RouteMatch<TRoutesInfo, AnyRoute> => {
-    return (
-      this.state.matches.find((d) => d.id === id) ||
-      this.state.pendingMatches.find((d) => d.id === id) ||
-      this.state.preloadMatches[id]
-    )
-  }
-
-  #setResolvedRouteMatch = (
-    id: string,
-    updater: (
-      prev: RouteMatch<TRoutesInfo, AnyRoute>,
-    ) => RouteMatch<TRoutesInfo, AnyRoute>,
-  ) => {
-    this.__store.setState((prev) => ({
-      ...prev,
-      matches: prev.matches.map((d) => {
-        if (d.id === id) {
-          return updater(d as any)
-        }
-        return d
-      }),
-    }))
-  }
-
-  #setPendingRouteMatch = (
-    id: string,
-    updater: (
-      prev: RouteMatch<TRoutesInfo, AnyRoute>,
-    ) => RouteMatch<TRoutesInfo, AnyRoute>,
-  ) => {
-    this.__store.setState((prev) => ({
-      ...prev,
-      pendingMatches: prev.pendingMatches.map((d) => {
-        if (d.id === id) {
-          return updater(d as any)
-        }
-        return d
-      }),
-    }))
-  }
-
-  #setPreloadRouteMatch = (
-    id: string,
-    updater: (
-      prev: RouteMatch<TRoutesInfo, AnyRoute>,
-    ) => RouteMatch<TRoutesInfo, AnyRoute>,
-  ) => {
-    invariant(this.state.preloadMatches[id], 'Match not found')
-
-    this.__store.setState((prev) => ({
-      ...prev,
-      preloadMatches: {
-        ...prev.preloadMatches,
-        [id]: updater(prev.preloadMatches[id] as any),
-      },
-    }))
+    return this.state.matchesById[id]
   }
 
   setRouteMatch = (
@@ -1536,17 +1603,111 @@ export class Router<
       prev: RouteMatch<TRoutesInfo, AnyRoute>,
     ) => RouteMatch<TRoutesInfo, AnyRoute>,
   ) => {
+    this.__store.setState((prev) => ({
+      ...prev,
+      matchesById: {
+        ...prev.matchesById,
+        [id]: updater(prev.matchesById[id] as any),
+      },
+    }))
+  }
+
+  setRouteMatchData = (
+    id: string,
+    updater: (prev: any) => any,
+    opts?: {
+      updatedAt?: number
+      maxAge?: number
+    },
+  ) => {
+    const match = this.getRouteMatch(id)
+
+    if (!match) return
+
+    const route = this.getRoute(match.routeId)
+    const updatedAt = opts?.updatedAt ?? Date.now()
+
+    const preloadInvalidAt =
+      updatedAt +
+      (opts?.maxAge ??
+        route.options.preloadMaxAge ??
+        this.options.defaultPreloadMaxAge ??
+        5000)
+
+    const invalidAt =
+      updatedAt +
+      (opts?.maxAge ??
+        route.options.maxAge ??
+        this.options.defaultMaxAge ??
+        Infinity)
+
+    this.setRouteMatch(id, (s) => ({
+      ...s,
+      error: undefined,
+      status: 'success',
+      isFetching: false,
+      updatedAt: Date.now(),
+      loaderData: functionalUpdate(updater, s.loaderData),
+      preloadInvalidAt,
+      invalidAt,
+    }))
+
     if (this.state.matches.find((d) => d.id === id)) {
-      return this.#setResolvedRouteMatch(id, updater)
+    }
+  }
+
+  invalidate = async (opts?: {
+    matchId?: string
+    reload?: boolean
+  }): Promise<void> => {
+    if (opts?.matchId) {
+      this.setRouteMatch(opts.matchId, (s) => ({
+        ...s,
+        invalid: true,
+      }))
+      const matchIndex = this.state.matches.findIndex(
+        (d) => d.id === opts.matchId,
+      )
+      const childMatch = this.state.matches[matchIndex + 1]
+
+      if (childMatch) {
+        return this.invalidate({ matchId: childMatch.id, reload: false })
+      }
+    } else {
+      this.__store.batch(() => {
+        Object.values(this.state.matchesById).forEach((match) => {
+          this.setRouteMatch(match.id, (s) => ({
+            ...s,
+            invalid: true,
+          }))
+        })
+      })
     }
 
-    if (this.state.pendingMatches.find((d) => d.id === id)) {
-      return this.#setPendingRouteMatch(id, updater)
+    if (opts?.reload ?? true) {
+      return this.reload()
+    }
+  }
+
+  getIsInvalid = (opts?: { matchId: string; preload?: boolean }): boolean => {
+    if (!opts?.matchId) {
+      return !!this.state.matches.find((d) =>
+        this.getIsInvalid({ matchId: d.id, preload: opts?.preload }),
+      )
     }
 
-    if (this.state.preloadMatches[id]) {
-      return this.#setPreloadRouteMatch(id, updater)
+    const match = this.getRouteMatch(opts?.matchId)
+
+    if (!match) {
+      return false
     }
+
+    const now = Date.now()
+
+    return (
+      match.invalid ||
+      (opts?.preload ? match.preloadInvalidAt : match.invalidAt) < now
+    )
   }
 }
 
@@ -1556,11 +1717,14 @@ const isServer = typeof window === 'undefined' || !window.document.createElement
 function getInitialRouterState(): RouterState<any, any> {
   return {
     status: 'idle',
+    isFetching: false,
     resolvedLocation: null!,
     location: null!,
+    matchesById: {},
+    matchIds: [],
+    pendingMatchIds: [],
     matches: [],
     pendingMatches: [],
-    preloadMatches: {},
     lastUpdated: Date.now(),
   }
 }

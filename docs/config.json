@@ -128,20 +128,28 @@
           "to": "examples/react/kitchen-sink-single-file?file=src%2Fmain.tsx"
         },
         {
-          "label": "Kitchen Sink Multi-File",
-          "to": "examples/react/kitchen-sink-multi-file?file=src%2Froutes%2Froot.tsx"
+          "label": "With Loaders",
+          "to": "examples/react/basic?file=src%2Fmain.tsx"
         },
         {
-          "label": "Basic Code-Split",
-          "to": "examples/react/basic-code-split?file=src%2Frouter.tsx"
+          "label": "With Loaders Kitchen Sink Single File",
+          "to": "examples/react/with-loaders-kitchen-sink-single-file?file=src%2Fmain.tsx"
         },
         {
-          "label": "Basic SSR",
-          "to": "examples/react/basic-srr?file=src%2Fentry-server.tsx"
+          "label": "With Loaders Kitchen Sink Multi-File",
+          "to": "examples/react/with-loaders-kitchen-sink-multi-file?file=src%2Froutes%2Froot.tsx"
         },
         {
-          "label": "Basic SSR with Streaming",
-          "to": "examples/react/basic-srr?file=src%2Fentry-server.tsx"
+          "label": "With Loaders Code-Split",
+          "to": "examples/react/with-loaders-code-split?file=src%2Frouter.tsx"
+        },
+        {
+          "label": "With Loaders SSR",
+          "to": "examples/react/with-loaders-basic-ssr?file=src%2Fentry-server.tsx"
+        },
+        {
+          "label": "With Loaders SSR with Streaming",
+          "to": "examples/react/with-loaders-ssr-streaming?file=src%2Fentry-server.tsx"
         },
         {
           "label": "With React Query",

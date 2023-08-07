@@ -10,7 +10,6 @@ import {
   ErrorComponent,
   RouterContext,
   useMatch,
-  MatchesProvider,
   useRouterState,
   useMatches,
 } from '@tanstack/router'
@@ -161,15 +160,11 @@ const postsRoute = new Route({
   path: 'posts',
   loader: async ({ context: { loaderClient } }) => {
     await loaderClient.load({ key: 'posts' })
-
-    return () =>
-      useLoaderInstance({
-        key: 'posts',
-      })
   },
-  component: ({ useLoader }) => {
-    const { data: posts } = useLoader()()
-    const match = useMatch()
+  component: () => {
+    const { data: posts } = useLoaderInstance({
+      key: 'posts',
+    })
 
     return (
       <motion.div className="p-2 flex gap-2" {...mainTransitionProps}>
@@ -196,17 +191,7 @@ const postsRoute = new Route({
         </ul>
         <hr />
         <AnimatePresence>
-          <Outlet
-            children={(children, { matches }) => {
-              return (
-                <React.Fragment key={match.id}>
-                  <MatchesProvider matches={matches}>
-                    {children}
-                  </MatchesProvider>
-                </React.Fragment>
-              )
-            }}
-          />
+          <Outlet />
         </AnimatePresence>
       </motion.div>
     )
@@ -224,20 +209,22 @@ class NotFoundError extends Error {}
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  loader: async ({
-    context: { loaderClient },
-    params: { postId },
-    preload,
-  }) => {
+  getContext: ({ params: { postId } }) => {
     const loaderOptions = createLoaderOptions({
       key: 'post',
       variables: postId,
     })
 
+    return {
+      loaderOptions,
+    }
+  },
+  loader: async ({
+    context: { loaderClient },
+    routeContext: { loaderOptions },
+    preload,
+  }) => {
     await loaderClient.load({ ...loaderOptions, preload })
-
-    // Return a curried hook!
-    return () => useLoaderInstance(loaderOptions)
   },
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {
@@ -246,8 +233,9 @@ const postRoute = new Route({
 
     return <ErrorComponent error={error} />
   },
-  component: () => {
-    const { data: post } = postRoute.useLoader()()
+  component: ({ useRouteContext }) => {
+    const { loaderOptions } = useRouteContext()
+    const { data: post } = useLoaderInstance(loaderOptions)
 
     return (
       <motion.div className="space-y-2" {...postTransitionProps}>

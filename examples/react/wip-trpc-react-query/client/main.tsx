@@ -84,10 +84,9 @@ const indexRoute = new Route({
   path: '/',
   loader: () => {
     // TODO: Prefetch hello using TRPC
-    return () => trpc.hello.useQuery()
   },
-  component: ({ useLoader }) => {
-    const helloQuery = useLoader()()
+  component: () => {
+    const helloQuery = trpc.hello.useQuery()
     if (!helloQuery.data) return <Spinner />
     return <div className="p-2 text-xl">{helloQuery.data}</div>
   },
@@ -99,10 +98,9 @@ const postsRoute = new Route({
   errorComponent: () => 'Oh crap!',
   loader: async () => {
     // TODO: Prefetch posts using TRPC
-    return () => trpc.posts.useQuery()
   },
   component: ({ useLoader }) => {
-    const postsQuery = useLoader()()
+    const postsQuery = trpc.posts.useQuery()
 
     if (postsQuery.isLoading) {
       return <Spinner />
@@ -152,10 +150,10 @@ const postRoute = new Route({
   path: '$postId',
   loader: async ({ params: { postId } }) => {
     // TODO: Prefetch post using TRPC
-    return () => trpc.post.useQuery(postId)
   },
-  component: ({ useLoader }) => {
-    const postQuery = useLoader()()
+  component: ({ useParams }) => {
+    const postId = useParams({ select: (d) => d.postId })
+    const postQuery = trpc.post.useQuery(postId)
 
     if (postQuery.isLoading) {
       return <Spinner />

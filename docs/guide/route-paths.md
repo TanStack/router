@@ -179,13 +179,13 @@ In the above example, the `layout` route will not add or match any path in the U
 
 ## Identifying Routes via Search Params
 
-Search Params by default are not used to identify matching paths mostly because they are extremely flexible, flat and can contain a lot of unrelated data to your actual route definition. However, in some cases you may choose to use them to uniquely identify a route match. For example, you may want to use a search param to identify a specific user in your application, you might model your url like this: `/user?userId=123`. This means that in your `user` route would need some extra help to identify a specific user. You can do this by adding a `getKey` function to your route:
+Search Params by default are not used to identify matching paths mostly because they are extremely flexible, flat and can contain a lot of unrelated data to your actual route definition. However, in some cases you may choose to use them to uniquely identify a route match. For example, you may want to use a search param to identify a specific user in your application, you might model your url like this: `/user?userId=123`. This means that in your `user` route would need some extra help to identify a specific user. You can do this by adding a `key` function to your route:
 
 ```tsx
 const userRoute = new Route({
   getParentRoute: () => usersRoute,
   path: 'user',
-  getKey: ({ search }) => search.userId,
+  key: ({ search }) => search.userId,
 })
 ```
 

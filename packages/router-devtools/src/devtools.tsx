@@ -422,7 +422,7 @@ function RouteComp({
   activeRouteId: string | undefined
   setActiveRouteId: (id: string) => void
 }) {
-  const isActive = matches.find((d) => d.routeId === route.id)
+  const match = matches.find((d) => d.routeId === route.id)
 
   return (
     <div>
@@ -430,13 +430,13 @@ function RouteComp({
         role="button"
         aria-label={`Open match details for ${route.id}`}
         onClick={() => {
-          if (isActive)
+          if (match)
             setActiveRouteId(activeRouteId === route.id ? '' : route.id)
         }}
         style={{
           display: 'flex',
           borderBottom: `solid 1px ${theme.grayAlt}`,
-          cursor: isActive ? 'pointer' : 'default',
+          cursor: match ? 'pointer' : 'default',
           alignItems: 'center',
           background:
             route.id === activeRouteId ? 'rgba(255,255,255,.1)' : undefined,
@@ -455,17 +455,23 @@ function RouteComp({
               borderRadius: '100%',
               transition: 'all .2s ease-out',
               background: getRouteStatusColor(matches, route, theme),
-              opacity: isActive ? 1 : 0.3,
+              opacity: match ? 1 : 0.3,
             }}
           />
         )}
         <Code
           style={{
-            padding: '.25rem 0',
+            flex: '1 0 auto',
+            display: 'flex',
+            justifyContent: 'space-between',
+            padding: '.25rem .5rem .25rem 0',
             paddingLeft: isRoot ? '.5rem' : 0,
-            opacity: isActive ? 1 : 0.7,
+            opacity: match ? 1 : 0.7,
           }}
-        >{`${route.path || trimPath(route.id)}`}</Code>
+        >
+          <span>{route.path || trimPath(route.id)} </span>
+          {match ? <span style={{ opacity: 0.3 }}>{match.id}</span> : null}
+        </Code>
       </div>
       {(route.children as Route[])?.length ? (
         <div

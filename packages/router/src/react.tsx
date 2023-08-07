@@ -352,17 +352,18 @@ function Matches() {
   const router = useRouter()
 
   const matchIds = useRouterState({
-    select: (d) => {
-      const hasPendingComponent = d.pendingMatches.some((d) => {
+    select: (state) => {
+      const hasPendingComponent = state.pendingMatches.some((d) => {
         const route = router.getRoute(d.routeId as any)
         return !!route?.options.pendingComponent
       })
 
       if (hasPendingComponent) {
-        return d.pendingMatches.map((d) => d.id)
+        console.log('hasPending')
+        return state.pendingMatchIds
       }
 
-      return d.matches.map((d) => d.id)
+      return state.matchIds
     },
   })
 
@@ -393,6 +394,7 @@ export function useMatches<T = RouteMatch[]>(opts?: {
   select?: (matches: RouteMatch[]) => T
 }): T {
   const matchIds = React.useContext(matchIdsContext)
+
   return useRouterState({
     select: (state) => {
       const matches = state.matches.slice(
@@ -488,7 +490,43 @@ export function useLoader<
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) =>
-      (opts?.select?.(match.loader as TLoader) ?? match.loader) as TSelected,
+      (opts?.select?.(match.loaderData as TLoader) ??
+        match.loaderData) as TSelected,
+  })
+}
+
+export function useRouterContext<
+  TFrom extends keyof RegisteredRoutesInfo['routesById'],
+  TStrict extends boolean = true,
+  TContext = RegisteredRoutesInfo['routesById'][TFrom]['__types']['context'],
+  TSelected = TContext,
+>(opts?: {
+  from: TFrom
+  strict?: TStrict
+  select?: (search: TContext) => TSelected
+}): TStrict extends true ? TSelected : TSelected | undefined {
+  return useMatch({
+    ...(opts as any),
+    select: (match: RouteMatch) =>
+      (opts?.select?.(match.context as TContext) ?? match.context) as TSelected,
+  })
+}
+
+export function useRouteContext<
+  TFrom extends keyof RegisteredRoutesInfo['routesById'],
+  TStrict extends boolean = true,
+  TRouteContext = RegisteredRoutesInfo['routesById'][TFrom]['__types']['routeContext'],
+  TSelected = TRouteContext,
+>(opts?: {
+  from: TFrom
+  strict?: TStrict
+  select?: (search: TRouteContext) => TSelected
+}): TStrict extends true ? TSelected : TSelected | undefined {
+  return useMatch({
+    ...(opts as any),
+    select: (match: RouteMatch) =>
+      (opts?.select?.(match.routeContext as TRouteContext) ??
+        match.routeContext) as TSelected,
   })
 }
 
@@ -617,6 +655,7 @@ function Match({ matchIds }: { matchIds: string[] }) {
           useLoader: route.useLoader,
           useMatch: route.useMatch,
           useContext: route.useContext,
+          useRouteContext: route.useRouteContext,
           useSearch: route.useSearch,
           useParams: route.useParams,
         })}
@@ -646,10 +685,7 @@ function MatchInner({
 
   const match = useRouterState({
     select: (d) => {
-      const match =
-        d.pendingMatches.find((d) => d.id === matchId) ||
-        d.matches.find((d) => d.id === matchId)
-
+      const match = d.matchesById[matchId]
       return pick(match!, ['status', 'loadPromise', 'routeId', 'error'])
     },
   })
@@ -665,6 +701,7 @@ function MatchInner({
       useLoader: route.useLoader,
       useMatch: route.useMatch,
       useContext: route.useContext,
+      useRouteContext: route.useRouteContext,
       useSearch: route.useSearch,
       useParams: route.useParams,
     })
@@ -678,6 +715,7 @@ function MatchInner({
         useLoader: route.useLoader,
         useMatch: route.useMatch,
         useContext: route.useContext,
+        useRouteContext: route.useRouteContext,
         useSearch: route.useSearch,
         useParams: route.useParams,
       })

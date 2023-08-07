@@ -10,7 +10,7 @@ Before you commit to a new tool, it's always nice to know how it stacks up again
 Feature/Capability Key:
 
 - ✅ 1st-class, built-in, and ready to use with no added configuration or code
-- 🟢 Full Support as an official plugin or addon package
+- 🔵 Supported via addon package
 - 🟡 Partial Support
 - 🔶 Possible, but requires custom code/implementation/casting
 - 🛑 Not officially supported
@@ -24,12 +24,12 @@ Feature/Capability Key:
 | History, Memory & Hash Routers                 | ✅                                               | ✅                                                    | 🛑                                                    |
 | Nested / Layout Routes                         | ✅                                               | ✅                                                    | ✅                                                    |
 | Suspense-like Route Transitions                | ✅                                               | ✅                                                    | ✅                                                    |
-| Typesafe Routes                                | ✅                                               | 🛑                                                    | 🛑                                                    |
-| Loaders                                        | 🟢                                               | ✅                                                    | ✅                                                    |
-| Typesafe Loaders                               | 🟢                                               | 🔶                                                    | 🛑                                                    |
-| Loader Caching (SWR + Invalidation)            | 🟢                                               | 🛑                                                    | ✅                                                    |
-| Actions                                        | 🟢                                               | ✅                                                    | 🛑                                                    |
-| Typesafe Actions                               | 🟢                                               | 🔶                                                    | 🛑                                                    |
+| Typesafe Routes                                | ✅                                               | 🛑                                                    | 🟡                                                    |
+| Loaders                                        | ✅                                               | ✅                                                    | ✅                                                    |
+| Typesafe Loaders                               | ✅                                               | 🔶                                                    | 🛑                                                    |
+| Loader Caching (SWR + Invalidation)            | ✅                                               | 🛑                                                    | ✅                                                    |
+| Actions                                        | 🔵                                               | ✅                                                    | 🛑                                                    |
+| Typesafe Actions                               | 🔵                                               | 🔶                                                    | 🛑                                                    |
 | Route Prefetching                              | ✅                                               | ✅                                                    | ✅                                                    |
 | Auto Route Prefetching                         | ✅                                               | 🛑                                                    | ✅                                                    |
 | Route Prefetching Delay                        | ✅                                               | 🔶                                                    | 🛑                                                    |
@@ -42,14 +42,14 @@ Feature/Capability Key:
 | Optimistic UI                                  | ✅                                               | ✅                                                    | 🔶                                                    |
 | Typesafe Absolute + Relative Navigation        | ✅                                               | 🛑                                                    | 🛑                                                    |
 | Route Mount/Transition/Unmount Events          | ✅                                               | 🛑                                                    | 🛑                                                    |
-| Devtools                                       | 🟢                                               | 🛑                                                    | 🛑                                                    |
+| Devtools                                       | ✅                                               | 🛑                                                    | 🛑                                                    |
 | Basic Search Params                            | ✅                                               | ✅                                                    | ✅                                                    |
 | Search Param Hooks                             | ✅                                               | ✅                                                    | ✅                                                    |
 | `<Link/>`/`useNavigate` Search Param API       | ✅                                               | 🟡 (search-string only via the `to`/`search` options) | 🟡 (search-string only via the `to`/`search` options) |
 | JSON Search Params                             | ✅                                               | 🔶                                                    | 🔶                                                    |
 | TypeSafe Search Params                         | ✅                                               | 🛑                                                    | 🛑                                                    |
 | Search Param Schema Validation                 | ✅                                               | 🛑                                                    | 🛑                                                    |
-| Search Param Immutability + Structural Sharing | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Search Param Immutability + Structural Sharing | ✅                                               | 🔶                                                    | 🛑                                                    |
 | Custom Search Param parsing/serialization      | ✅                                               | 🔶                                                    | 🛑                                                    |
 | Search Param Middleware                        | ✅                                               | 🛑                                                    | 🛑                                                    |
 | Async Route Elements                           | ✅                                               | 🛑                                                    | ✅                                                    |
@@ -59,7 +59,7 @@ Feature/Capability Key:
 | `<Prompt>`/`usePrompt`                         | ✅                                               | 🔶                                                    |                                                       |
 | SSR                                            | ✅                                               | ✅                                                    | ✅                                                    |
 | Navigation Scroll Restoration                  | 🛑                                               | ✅                                                    | 🛑                                                    |
-| Deferred Loader Streaming                      | 🛑                                               | ✅                                                    | 🔶                                                    |
+| Deferred Loader Streaming                      | 🟡                                               | ✅                                                    | 🔶                                                    |
 | `<Form>` API                                   | 🛑                                               | ✅                                                    | 🛑                                                    |
 
 [bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/router@beta?label=Router
