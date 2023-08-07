@@ -412,17 +412,22 @@ export function TanStackRouterDevtools({
 function RouteComp({
   route,
   isRoot,
-  matches,
+  router,
   activeRouteId,
+  activeMatchId,
   setActiveRouteId,
+  setActiveMatchId,
 }: {
   route: AnyRootRoute | AnyRoute
   isRoot?: boolean
-  matches: RouteMatch[]
+  router: AnyRouter
   activeRouteId: string | undefined
+  activeMatchId: string | undefined
   setActiveRouteId: (id: string) => void
+  setActiveMatchId: (id: string) => void
 }) {
-  const match = matches.find((d) => d.routeId === route.id)
+  const matches = Object.values(router.state.matchesById)
+  const match = router.state.matches.find((d) => d.routeId === route.id)
 
   return (
     <div>
@@ -430,8 +435,10 @@ function RouteComp({
         role="button"
         aria-label={`Open match details for ${route.id}`}
         onClick={() => {
-          if (match)
+          if (match) {
             setActiveRouteId(activeRouteId === route.id ? '' : route.id)
+            setActiveMatchId(match.id)
+          }
         }}
         style={{
           display: 'flex',
@@ -454,7 +461,7 @@ function RouteComp({
               fontWeight: 'bold',
               borderRadius: '100%',
               transition: 'all .2s ease-out',
-              background: getRouteStatusColor(matches, route, theme),
+              background: getRouteStatusColor(matches, route, theme, router),
               opacity: match ? 1 : 0.3,
             }}
           />
@@ -467,6 +474,7 @@ function RouteComp({
             padding: '.25rem .5rem .25rem 0',
             paddingLeft: isRoot ? '.5rem' : 0,
             opacity: match ? 1 : 0.7,
+            fontSize: '0.7rem',
           }}
         >
           <span>{route.path || trimPath(route.id)} </span>
@@ -488,9 +496,11 @@ function RouteComp({
               <RouteComp
                 key={r.id}
                 route={r}
-                matches={matches}
+                router={router}
                 activeRouteId={activeRouteId}
+                activeMatchId={activeMatchId}
                 setActiveRouteId={setActiveRouteId}
+                setActiveMatchId={setActiveMatchId}
               />
             ))}
         </div>
@@ -530,15 +540,36 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     'tanstackRouterDevtoolsActiveRouteId',
     '',
   )
-
-  const allMatches: RouteMatch[] = React.useMemo(
-    () => [...Object.values(router.state.matches)],
-    [router.state.matches],
+  const [activeMatchId, setActiveMatchId] = useLocalStorage(
+    'tanstackRouterDevtoolsActiveMatchId',
+    '',
   )
 
-  const activeMatch = allMatches?.find((d) => d.routeId === activeRouteId)
+  const activeMatch = React.useMemo(
+    () =>
+      router.state.matchesById[activeRouteId as any] ||
+      router.state.matchesById[activeMatchId as any],
+    [activeRouteId, activeMatchId],
+  )
 
   const hasSearch = Object.keys(router.state.location.search || {}).length
+
+  const preloadMatches = Object.values(router.state.matchesById).filter(
+    (match) => {
+      return (
+        !router.state.matchIds.includes(match.id) &&
+        !router.state.pendingMatchIds.includes(match.id)
+      )
+    },
+  )
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      router.cleanMatches()
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [router])
 
   return (
     <ThemeProvider theme={theme}>
@@ -675,71 +706,152 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
         >
           <div
             style={{
-              padding: '.5em',
-              background: theme.backgroundAlt,
-              position: 'sticky',
-              top: 0,
-              zIndex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '.5rem',
+              flex: '1 1 auto',
+              overflowY: 'auto',
             }}
           >
-            <button
-              type="button"
-              onClick={() => {
-                setShowMatches(false)
-              }}
-              disabled={!showMatches}
+            <div
               style={{
-                appearance: 'none',
-                opacity: showMatches ? 0.5 : 1,
-                border: 0,
-                background: 'transparent',
-                color: 'inherit',
-                cursor: 'pointer',
+                padding: '.5em',
+                background: theme.backgroundAlt,
+                position: 'sticky',
+                top: 0,
+                zIndex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '.5rem',
               }}
             >
-              Routes
-            </button>
-            /
-            <button
-              type="button"
-              onClick={() => {
-                setShowMatches(true)
-              }}
-              disabled={showMatches}
-              style={{
-                appearance: 'none',
-                opacity: !showMatches ? 0.5 : 1,
-                border: 0,
-                background: 'transparent',
-                color: 'inherit',
-                cursor: 'pointer',
-              }}
-            >
-              Matches
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMatches(false)
+                }}
+                disabled={!showMatches}
+                style={{
+                  appearance: 'none',
+                  opacity: showMatches ? 0.5 : 1,
+                  border: 0,
+                  background: 'transparent',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                Routes
+              </button>
+              /
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMatches(true)
+                }}
+                disabled={showMatches}
+                style={{
+                  appearance: 'none',
+                  opacity: !showMatches ? 0.5 : 1,
+                  border: 0,
+                  background: 'transparent',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                Matches
+              </button>
+            </div>
+            {!showMatches ? (
+              <RouteComp
+                route={router.routeTree}
+                router={router}
+                isRoot
+                activeRouteId={activeRouteId}
+                activeMatchId={activeMatchId}
+                setActiveRouteId={setActiveRouteId}
+                setActiveMatchId={setActiveMatchId}
+              />
+            ) : (
+              <div>
+                {router.state.matches.map((match, i) => {
+                  return (
+                    <div
+                      key={match.routeId || i}
+                      role="button"
+                      aria-label={`Open match details for ${match.routeId}`}
+                      onClick={() =>
+                        setActiveRouteId(
+                          activeRouteId === match.routeId ? '' : match.routeId,
+                        )
+                      }
+                      style={{
+                        display: 'flex',
+                        borderBottom: `solid 1px ${theme.grayAlt}`,
+                        cursor: 'pointer',
+                        alignItems: 'center',
+                        background:
+                          match === activeMatch
+                            ? 'rgba(255,255,255,.1)'
+                            : undefined,
+                      }}
+                    >
+                      <div
+                        style={{
+                          flex: '0 0 auto',
+                          width: '1.3rem',
+                          height: '1.3rem',
+                          marginLeft: '.25rem',
+                          background: getStatusColor(match, theme, router),
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 'bold',
+                          borderRadius: '.25rem',
+                          transition: 'all .2s ease-out',
+                        }}
+                      />
+
+                      <Code
+                        style={{
+                          padding: '.5em',
+                          fontSize: '0.7rem',
+                        }}
+                      >
+                        {`${match.id}`}
+                      </Code>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
-          {!showMatches ? (
-            <RouteComp
-              route={router.routeTree}
-              isRoot
-              matches={allMatches}
-              activeRouteId={activeRouteId}
-              setActiveRouteId={setActiveRouteId}
-            />
-          ) : (
-            <div>
-              {router.state.matches.map((match, i) => {
+          {preloadMatches?.length ? (
+            <div
+              style={{
+                flex: '1 1 auto',
+                overflowY: 'auto',
+                maxHeight: '50%',
+              }}
+            >
+              <div
+                style={{
+                  padding: '.5em',
+                  background: theme.backgroundAlt,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '.5rem',
+                }}
+              >
+                Preloaded Matches
+              </div>
+              {preloadMatches.map((match) => {
                 return (
                   <div
-                    key={match.routeId || i}
+                    key={match.id}
                     role="button"
                     aria-label={`Open match details for ${match.routeId}`}
                     onClick={() =>
-                      setActiveRouteId(
-                        activeRouteId === match.routeId ? '' : match.routeId,
+                      setActiveMatchId(
+                        activeMatchId === match.id ? '' : match.id,
                       )
                     }
                     style={{
@@ -759,7 +871,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                         width: '1.3rem',
                         height: '1.3rem',
                         marginLeft: '.25rem',
-                        background: getStatusColor(match, theme),
+                        background: getStatusColor(match, theme, router),
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 'bold',
@@ -771,6 +883,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                     <Code
                       style={{
                         padding: '.5em',
+                        fontSize: '0.7rem',
                       }}
                     >
                       {`${match.id}`}
@@ -779,7 +892,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 )
               })}
             </div>
-          )}
+          ) : null}
         </div>
         {activeMatch ? (
           <ActivePanel>
