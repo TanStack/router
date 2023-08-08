@@ -61,14 +61,6 @@ declare global {
   interface Window {
     __TSR_DEHYDRATED__?: HydrationCtx
   }
-
-  interface Error {
-    cause: unknown
-  }
-
-  interface ErrorConstructor {
-    new (reason: string, options?: { cause?: unknown }): Error
-  }
 }
 
 export interface Register {
