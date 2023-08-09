@@ -11,8 +11,8 @@
   "dependencies": {
     "@tanstack/react-actions": "0.0.1-beta.134",
     "@tanstack/react-loaders": "0.0.1-beta.134",
-    "@tanstack/react-router": "0.0.1-beta.144",
-    "@tanstack/router-devtools": "0.0.1-beta.144",
+    "@tanstack/react-router": "0.0.1-beta.145",
+    "@tanstack/router-devtools": "0.0.1-beta.145",
     "@vitejs/plugin-react": "^1.1.3",
     "axios": "^1.1.3",
     "framer-motion": "^10.13.0",
