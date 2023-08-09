@@ -54,6 +54,7 @@ import {
   createRenderEffect,
   createSignal,
   lazy,
+  mergeProps,
   splitProps,
   startTransition,
   useContext,
@@ -416,61 +417,63 @@ export type PromptProps = {
 
 //
 
-export function useLinkProps<
+export function createLinkProps<
   TFrom extends string = '/',
   TTo extends string = '',
 >(options: MakeLinkPropsOptions<TFrom, TTo>): AnchorAttributes {
   const router = useRouter()
 
-  const {
-    // custom props
-    type,
-    children,
-    target,
-    activeProps = () => ({ class: 'active' }),
-    inactiveProps = () => ({}),
-    activeOptions,
-    disabled,
-    // fromCurrent,
-    hash,
-    search,
-    params,
-    to = '.',
-    preload,
-    preloadDelay,
-    replace,
-    // element props
-    style,
-    class: aClass,
-    onClick,
-    onFocus,
-    onMouseEnter,
-    onMouseLeave,
-    onTouchStart,
-    ...rest
-  } = options
+  const props = mergeProps(
+    {
+      activeProps: () => ({ class: 'active' }),
+      inactiveProps: () => ({}),
+      to: 'a',
+    },
+    options,
+  )
 
-  const linkInfo = router.buildLink(options as any)
+  const [, rest] = splitProps(props, [
+    // custom props
+    'type',
+    'children',
+    'target',
+    'activeProps',
+    'inactiveProps',
+    'activeOptions',
+    'disabled',
+    // fromCurrent,
+    'hash',
+    'search',
+    'params',
+    'to',
+    'preload',
+    'preloadDelay',
+    'replace',
+    // element props
+    'style',
+    'class',
+    'onClick',
+    'onFocus',
+    'onMouseEnter',
+    'onMouseLeave',
+    'onTouchStart',
+  ])
+
+  const linkInfo = useRouterState({
+    select() {
+      return router.buildLink(options)
+    },
+  })
 
   if (linkInfo.type === 'external') {
     const { href } = linkInfo
     return { href }
   }
 
-  const {
-    handleClick,
-    handleFocus,
-    handleEnter,
-    handleLeave,
-    handleTouchStart,
-    isActive,
-    next,
-  } = linkInfo
-
   const handleSolidClick = (e: Event) => {
     if (options.startTransition ?? true) {
       ;(startTransition || ((d) => d))(() => {
-        handleClick(e)
+        linkInfo.handleClick(e)
       })
     }
   }
@@ -485,47 +488,51 @@ export function useLinkProps<
     }
 
   // Get the active props
-  const resolvedActiveProps: AnchorAttributes = isActive
-    ? functionalUpdate(activeProps as any, {}) ?? {}
-    : {}
+  const resolvedActiveProps = (): AnchorAttributes =>
+    linkInfo.isActive
+      ? functionalUpdate(props.activeProps as any, {}) ?? {}
+      : {}
 
   // Get the inactive props
-  const resolvedInactiveProps: AnchorAttributes = isActive
-    ? {}
-    : functionalUpdate(inactiveProps, {}) ?? {}
+  const resolvedInactiveProps = (): AnchorAttributes =>
+    linkInfo.isActive ? {} : functionalUpdate(props.inactiveProps, {}) ?? {}
 
   return {
-    ...resolvedActiveProps,
-    ...resolvedInactiveProps,
+    ...resolvedActiveProps(),
+    ...resolvedInactiveProps(),
     ...rest,
-    href: disabled ? undefined : next.href,
+    href: props.disabled ? undefined : linkInfo.next.href,
     // @ts-ignore
-    onClick: composeHandlers([onClick, handleSolidClick]),
+    onClick: composeHandlers([props.onClick, handleSolidClick]),
     // @ts-ignore
-    onFocus: composeHandlers([onFocus, handleFocus]),
+    onFocus: composeHandlers([props.onFocus, linkInfo.handleFocus]),
     // @ts-ignore
-    onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
+    onMouseEnter: composeHandlers([props.onMouseEnter, linkInfo.handleEnter]),
     // @ts-ignore
-    onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
-    // @ts-ignore
-    onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
-    target,
+    onMouseLeave: composeHandlers([props.onMouseLeave, linkInfo.handleLeave]),
+    onTouchStart: composeHandlers([
+      // @ts-ignore
+      props.onTouchStart,
+      linkInfo.handleTouchStart,
+    ]),
+    target: props.target,
     style: {
-      ...style,
-      ...resolvedActiveProps.style,
-      ...resolvedInactiveProps.style,
+      ...props.style,
+      ...resolvedActiveProps().style,
+      ...resolvedInactiveProps().style,
     },
     class:
-      [aClass, resolvedActiveProps.class, resolvedInactiveProps.class]
+      [props.class, resolvedActiveProps().class, resolvedInactiveProps().class]
         .filter(Boolean)
         .join(' ') || undefined,
-    ...(disabled
+    ...(props.disabled
       ? {
           role: 'link',
           'aria-disabled': true,
         }
       : undefined),
-    ['data-status']: isActive ? 'active' : undefined,
+    // @ts-ignore
+    ['data-status']: linkInfo.isActive ? 'active' : undefined,
   }
 }
 
@@ -542,21 +549,19 @@ export interface LinkFn<
 }
 
 export const Link: LinkFn = (props: any) => {
-  const linkProps = useLinkProps(props)
+  const linkProps = createLinkProps(props)
 
   return (
-    <a
-      {...{
-        ref: props.ref as any,
-        ...linkProps,
-        children:
-          typeof props.children === 'function'
-            ? props.children({
-                isActive: (linkProps as any)['data-status'] === 'active',
-              })
-            : props.children,
-      }}
-    />
+    <a ref={props.ref} {...linkProps}>
+      <Show
+        when={typeof props.children === 'function'}
+        fallback={props.children || ''}
+      >
+        {props.children({
+          isActive: (linkProps as any)['data-status'] === 'active',
+        })}
+      </Show>
+    </a>
   )
 }
 
