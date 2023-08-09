@@ -796,10 +796,8 @@ const defaultPending = () => null
 function Match(props: { matchIds: string[] }) {
   const router = useRouter()
 
-  console.log('MATCH', props.matchIds)
-  const routeId = () => router.getRouteMatch(props.matchIds[0])?.routeId
-  console.log('MATCH', routeId())
-  const route = () => router.getRoute(routeId()) as any
+  const routeId = () => router.getRouteMatch(props.matchIds[0])!.routeId
+  const route = () => router.getRoute(routeId())
 
   const PendingComponent = () =>
     (route().options.pendingComponent ??
@@ -814,29 +812,29 @@ function Match(props: { matchIds: string[] }) {
   return (
     <matchIdsContext.Provider value={props.matchIds}>
       <Dynamic
-        component={
-          (route().options.wrapInSuspense as any) ?? !route().isRoot
-            ? Suspense
-            : SafeFragment
-        }
-        fallback={
-          <Dynamic
-            component={PendingComponent()}
-            useLoader={route().useLoader}
-            useMatch={route().useMatch}
-            useContext={route().useContext}
-            useRouteContext={route().useRouteContext}
-            useSearch={route().useSearch}
-            useParams={route().useParams}
-          />
-        }
+        component={!!errorComponent() ? CatchBoundary : SafeFragment}
+        errorComponent={errorComponent()}
+        onCatch={() => {
+          warning(false, `Error in route match: ${props.matchIds[0]}`)
+        }}
       >
         <Dynamic
-          component={!!errorComponent() ? CatchBoundary : SafeFragment}
-          errorComponent={errorComponent()}
-          onCatch={() => {
-            warning(false, `Error in route match: ${props.matchIds[0]}`)
-          }}
+          component={
+            (route().options.wrapInSuspense as any) ?? !route().isRoot
+              ? Suspense
+              : SafeFragment
+          }
+          fallback={
+            <Dynamic
+              component={PendingComponent()}
+              useLoader={route().useLoader}
+              useMatch={route().useMatch}
+              useContext={route().useContext}
+              useRouteContext={route().useRouteContext}
+              useSearch={route().useSearch}
+              useParams={route().useParams}
+            />
+          }
         >
           <MatchInner
             matchId={props.matchIds[0]}
@@ -879,10 +877,6 @@ function MatchInner(props: { matchId: string; PendingComponent: any }) {
     useSearch: route().useSearch,
     useParams: route().useParams,
   })
-
-  console.log('MATCH_INNER', props.matchId, route)
-
-  createEffect(() => console.log('MATCH_INNER_EFFECT', route()))
 
   return (
     <Switch fallback={<Fallback />}>
@@ -935,11 +929,8 @@ export function useHydrate() {
   }
 }
 
-// This is the messiest thing ever... I'm either seriously tired (likely) or
-// there has to be a better way to reset error boundaries when the
-// router's location key changes.
-
 const CatchBoundary: ParentComponent<{
+  children: any
   errorComponent: any
   onCatch: (error: any, info: any) => void
 }> = (props) => {
@@ -947,7 +938,6 @@ const CatchBoundary: ParentComponent<{
     <ErrorBoundary
       fallback={(error, reset) => {
         return (
-          // @ts-ignore
           <CatchBoundaryInner
             {...props}
             errorState={{ error, info: error.message }}
@@ -972,7 +962,9 @@ function CatchBoundaryInner(props: {
       component={props.errorComponent ?? ErrorComponent}
       {...props.errorState}
       reset={props.reset}
-    />
+    >
+      {props.children}
+    </Dynamic>
   )
 }
 

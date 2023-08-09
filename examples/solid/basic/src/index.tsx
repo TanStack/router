@@ -32,7 +32,7 @@ const fetchPost = async (postId: string) => {
     `https://jsonplaceholder.typicode.com/posts/${postId}`,
   ).then((r) => r.json() as Promise<PostType>)
 
-  if (!post) {
+  if (!post?.id) {
     throw new NotFoundError(`Post with id "${postId}" not found!`)
   }
 
@@ -132,7 +132,7 @@ const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
   key: false,
-  loader: async ({ params: { postId } }) => fetchPost(postId),
+  loader: async ({ params: { postId } }) => await fetchPost(postId),
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {
       return <div>{error.message}</div>
@@ -164,11 +164,11 @@ const router = new Router({
 })
 
 // Register things for typesafety
-// declare module '@tanstack/router' {
-//   interface Register {
-//     router: typeof router
-//   }
-// }
+declare module './router/solid-router' {
+  interface Register {
+    router: typeof router
+  }
+}
 
 const root = document.getElementById('root')
 
