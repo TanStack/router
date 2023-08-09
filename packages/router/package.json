@@ -1,15 +1,13 @@
 {
   "name": "@tanstack/router",
   "author": "Tanner Linsley",
-  "version": "0.0.1-beta.144",
+  "version": "0.0.1-beta.145",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
   "description": "THIS PACKAGE HAS BEEN DEPRECATED. Please use @tanstack/[framework]-router packages instead.",
   "scripts": {
-    "build": "rollup --config rollup.config.js",
-    "test": "vitest",
-    "test:dev": "vitest --watch"
+    "build": "rollup --config rollup.config.js"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
