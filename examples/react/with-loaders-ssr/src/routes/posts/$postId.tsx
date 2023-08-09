@@ -4,7 +4,7 @@ import {
   typedClient,
   useLoaderInstance,
 } from '@tanstack/react-loaders'
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 import * as React from 'react'
 // import { loaderClient } from '../../entry-client'
 import { postsRoute, PostType } from '../posts'

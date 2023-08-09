@@ -11,7 +11,11 @@ To do so, you can [use `Router`'s `parseSearch` and `stringifySearch` options co
 For example: We can reimplement the default parser/serializer with the following code:
 
 ```tsx
-import { Router, parseSearchWith, stringifySearchWith } from '@tanstack/router'
+import {
+  Router,
+  parseSearchWith,
+  stringifySearchWith,
+} from '@tanstack/react-router'
 
 const router = new Router({
   parseSearch: parseSearchWith(JSON.parse),
@@ -24,7 +28,11 @@ const router = new Router({
 It's common to base64 encode your search params to achieve maximum compatibility across browsers and URL unfurlers, etc. This can be done with the following code:
 
 ```tsx
-import { Router, parseSearchWith, stringifySearchWith } from '@tanstack/router'
+import {
+  Router,
+  parseSearchWith,
+  stringifySearchWith,
+} from '@tanstack/react-router'
 
 const router = new Router({
   parseSearch: parseSearchWith((value) => JSON.parse(decodeFromBinary(value))),
@@ -58,7 +66,11 @@ export function encodeToBinary(str: string): string {
 [Zipson](https://jgranstrom.github.io/zipson/) is a very user-friendly and performant JSON compression library (both in runtime performance and the resulting compression performance). To compress your search params with it (which requires escaping/unescaping and base64 encoding/decoding them as well), you can use the following code:
 
 ```tsx
-import { Router, parseSearchWith, stringifySearchWith } from '@tanstack/router'
+import {
+  Router,
+  parseSearchWith,
+  stringifySearchWith,
+} from '@tanstack/react-router'
 import { stringify, parse } from 'zipson'
 
 const router = new Router({
@@ -99,7 +111,7 @@ import {
   ReactRouter,
   parseSearchWith,
   stringifySearchWith,
-} from '@tanstack/router'
+} from '@tanstack/react-router'
 import jsurl from 'jsurl2'
 
 const router = new Router({

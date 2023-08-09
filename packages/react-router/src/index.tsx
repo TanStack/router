@@ -2,28 +2,156 @@ import * as React from 'react'
 import { NoInfer, useStore } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
-// @ts-ignore
 import {
-  LinkOptions,
-  ToOptions,
-  ResolveRelativePath,
-  NavigateOptions,
-} from './link'
-import { AnyRoute, AnyRouteProps } from './route'
-import { RouteByPath, AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
-import {
+  functionalUpdate,
+  last,
+  pick,
   RegisteredRoutesInfo,
   MatchRouteOptions,
   RegisteredRouter,
   RouterOptions,
   Router,
   RouteMatch,
-} from './router'
-import { functionalUpdate, last, pick } from './utils'
+  RouteByPath,
+  AnyRoutesInfo,
+  DefaultRoutesInfo,
+  AnyRoute,
+  AnyRouteProps,
+  LinkOptions,
+  ToOptions,
+  ResolveRelativePath,
+  NavigateOptions,
+  ResolveFullPath,
+  ResolveId,
+  AnySearchSchema,
+  ParsePathParams,
+  MergeParamsFromParent,
+  RouteContext,
+  AnyContext,
+  UseLoaderResult,
+  ResolveFullSearchSchema,
+  Route,
+} from '@tanstack/router-core'
 
 //
 
+export * from '@tanstack/router-core'
 export { useStore }
+
+declare module '@tanstack/router-core' {
+  interface RegisterRouteComponent<TProps extends Record<string, any>> {
+    RouteComponent: RouteComponent<TProps>
+  }
+  interface RegisterRouteErrorComponent<TProps extends Record<string, any>> {
+    RouteComponent: RouteComponent<TProps>
+  }
+  // Extend the Route class to have some React-Specific methods
+  interface Route<
+    TParentRoute extends AnyRoute = AnyRoute,
+    TPath extends string = '/',
+    TFullPath extends ResolveFullPath<TParentRoute, TPath> = ResolveFullPath<
+      TParentRoute,
+      TPath
+    >,
+    TCustomId extends string = string,
+    TId extends ResolveId<TParentRoute, TCustomId, TPath> = ResolveId<
+      TParentRoute,
+      TCustomId,
+      TPath
+    >,
+    TLoader = unknown,
+    TSearchSchema extends AnySearchSchema = {},
+    TFullSearchSchema extends AnySearchSchema = ResolveFullSearchSchema<
+      TParentRoute,
+      TSearchSchema
+    >,
+    TParams extends Record<ParsePathParams<TPath>, any> = Record<
+      ParsePathParams<TPath>,
+      string
+    >,
+    TAllParams extends MergeParamsFromParent<
+      TParentRoute['__types']['allParams'],
+      TParams
+    > = MergeParamsFromParent<TParentRoute['__types']['allParams'], TParams>,
+    TParentContext extends TParentRoute['__types']['routeContext'] = TParentRoute['__types']['routeContext'],
+    TAllParentContext extends TParentRoute['__types']['context'] = TParentRoute['__types']['context'],
+    TRouteContext extends RouteContext = RouteContext,
+    TContext extends MergeParamsFromParent<
+      TParentRoute['__types']['context'],
+      TRouteContext
+    > = MergeParamsFromParent<
+      TParentRoute['__types']['context'],
+      TRouteContext
+    >,
+    TRouterContext extends AnyContext = AnyContext,
+    TChildren extends unknown = unknown,
+    TRoutesInfo extends DefaultRoutesInfo = DefaultRoutesInfo,
+  > {
+    useMatch: <TStrict extends boolean = true, TSelected = TContext>(opts?: {
+      strict?: TStrict
+      select?: (search: TContext) => TSelected
+    }) => TStrict extends true ? TSelected : TSelected | undefined
+    useLoader: <TStrict extends boolean = true, TSelected = TLoader>(opts?: {
+      strict?: TStrict
+      select?: (search: TLoader) => TSelected
+    }) => TStrict extends true
+      ? UseLoaderResult<TSelected>
+      : UseLoaderResult<TSelected> | undefined
+    useContext: <TStrict extends boolean = true, TSelected = TContext>(opts?: {
+      strict?: TStrict
+      select?: (search: TContext) => TSelected
+    }) => TStrict extends true ? TSelected : TSelected | undefined
+    useRouteContext: <
+      TStrict extends boolean = true,
+      TSelected = TRouteContext,
+    >(opts?: {
+      strict?: TStrict
+      select?: (search: TRouteContext) => TSelected
+    }) => TStrict extends true ? TSelected : TSelected | undefined
+    useSearch: <
+      TStrict extends boolean = true,
+      TSelected = TFullSearchSchema,
+    >(opts?: {
+      strict?: TStrict
+      select?: (search: TFullSearchSchema) => TSelected
+    }) => TStrict extends true ? TSelected : TSelected | undefined
+    useParams: <TStrict extends boolean = true, TSelected = TAllParams>(opts?: {
+      strict?: TStrict
+      select?: (search: TAllParams) => TSelected
+    }) => TStrict extends true ? TSelected : TSelected | undefined
+  }
+}
+
+Route.__onInit = (route) => {
+  Object.assign(route, {
+    useMatch: (opts = {}) => {
+      return useMatch({ ...opts, from: route.id }) as any
+    },
+    useLoader: (opts = {}) => {
+      return useLoader({ ...opts, from: route.id }) as any
+    },
+    useContext: (opts: any = {}) => {
+      return useMatch({
+        ...opts,
+        from: route.id,
+        select: (d: any) => opts?.select?.(d.context) ?? d.context,
+      } as any)
+    },
+    useRouteContext: (opts: any = {}) => {
+      return useMatch({
+        ...opts,
+        from: route.id,
+        select: (d: any) => opts?.select?.(d.routeContext) ?? d.routeContext,
+      } as any)
+    },
+    useSearch: (opts = {}) => {
+      return useSearch({ ...opts, from: route.id } as any)
+    },
+    useParams: (opts = {}) => {
+      return useParams({ ...opts, from: route.id } as any)
+    },
+  })
+}
 
 //
 

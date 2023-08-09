@@ -1,4 +1,4 @@
-import { lazyRouteComponent, RouterContext } from '@tanstack/router'
+import { lazyRouteComponent, RouterContext } from '@tanstack/react-router'
 import { loaderClient } from '../../loaderClient'
 import { Root } from './Root'
 

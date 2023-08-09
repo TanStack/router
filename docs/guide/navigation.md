@@ -140,7 +140,7 @@ export type LinkPropsOptions<
 Let's make a simple static !
 
 ```tsx
-import { Link } from '@tanstack/router'
+import { Link } from '@tanstack/react-router'
 
 const link = <Link to="/about">About</Link>
 ```

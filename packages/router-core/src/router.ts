@@ -28,6 +28,8 @@ import {
   AnyContext,
   AnyPathParams,
   RouteProps,
+  RegisteredRouteComponent,
+  RegisteredRouteErrorComponent,
 } from './route'
 import {
   RoutesInfo,
@@ -53,7 +55,6 @@ import {
   createMemoryHistory,
   RouterHistory,
 } from './history'
-import { RouteComponent, RouteErrorComponent } from './react'
 
 //
 
@@ -158,11 +159,13 @@ export interface RouterOptions<
   parseSearch?: SearchParser
   defaultPreload?: false | 'intent'
   defaultPreloadDelay?: number
-  defaultComponent?: RouteComponent<
+  defaultComponent?: RegisteredRouteComponent<
     RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext, AnyContext>
   >
-  defaultErrorComponent?: RouteErrorComponent
-  defaultPendingComponent?: RouteComponent<
+  defaultErrorComponent?: RegisteredRouteErrorComponent<
+    RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext, AnyContext>
+  >
+  defaultPendingComponent?: RegisteredRouteComponent<
     RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext, AnyContext>
   >
   defaultMaxAge?: number
@@ -709,7 +712,7 @@ export class Router<
       // Create a fresh route match
       const hasLoaders = !!(
         route.options.loader ||
-        componentTypes.some((d) => route.options[d]?.preload)
+        componentTypes.some((d) => (route.options[d] as any)?.preload)
       )
 
       const routeMatch: RouteMatch = {
@@ -937,8 +940,8 @@ export class Router<
               componentTypes.map(async (type) => {
                 const component = route.options[type]
 
-                if (component?.preload) {
-                  await component.preload()
+                if ((component as any)?.preload) {
+                  await (component as any).preload()
                 }
               }),
             )

@@ -1,4 +1,4 @@
-import { lazyRouteComponent, Route } from '@tanstack/router'
+import { lazyRouteComponent, Route } from '@tanstack/react-router'
 import { postsRoute } from '../postsRoute'
 
 export const postsIndexRoute = new Route({

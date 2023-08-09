@@ -14,7 +14,7 @@ import {
   useRouter,
   RouterContext,
   useRouterState,
-} from '@tanstack/router'
+} from '@tanstack/react-router'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
@@ -347,7 +347,7 @@ const router = new Router({
   ),
 })
 
-declare module '@tanstack/router' {
+declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
   }

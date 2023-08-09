@@ -11,7 +11,7 @@ import {
   RouteMatch,
   trimPath,
   useRouterState,
-} from '@tanstack/router'
+} from '@tanstack/react-router'
 
 import useLocalStorage from './useLocalStorage'
 import {

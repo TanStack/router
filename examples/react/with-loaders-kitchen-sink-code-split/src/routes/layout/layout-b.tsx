@@ -1,4 +1,4 @@
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 import * as React from 'react'
 import { layoutRoute } from '.'
 

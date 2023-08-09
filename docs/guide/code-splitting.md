@@ -61,7 +61,7 @@ Type safety ensures that you are only able to provide valid named exports from t
 Regardless of which data loading library you decide to go with, you may end up with a lot of data loaders that could potentially contribute to a large bundle size. If this is the case, you can code split your data loading logic using the Route's `loader` option. While this process makes it difficult to maintain type-safety with the parameters passed to your loader, you can always use the generic `LoaderContext` type to get most of the way there:
 
 ```tsx
-import { LoaderContext } from '@tanstack/router'
+import { LoaderContext } from '@tanstack/react-router'
 
 const route = new Route({
   path: '/my-route',
@@ -78,7 +78,7 @@ export const loader = async (context: LoaderContext) => {
 Again, this process can feel heavy-handed, so TanStack Router export another utility called `lazyFn` which is very similar to `lazyRouteComponent` that can help simplify this process:
 
 ```tsx
-import { lazyFn } from '@tanstack/router'
+import { lazyFn } from '@tanstack/react-router'
 
 const route = new Route({
   path: '/my-route',

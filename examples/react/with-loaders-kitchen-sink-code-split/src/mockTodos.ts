@@ -1,4 +1,4 @@
-import { PickAsRequired } from '@tanstack/router'
+import { PickAsRequired } from '@tanstack/react-router'
 import axios from 'axios'
 import { produce } from 'immer'
 import { actionDelayFn, loaderDelayFn, shuffle } from './utils'

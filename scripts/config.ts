@@ -30,8 +30,8 @@ export const packages: Package[] = [
     ],
   },
   {
-    name: '@tanstack/router',
-    packageDir: 'router',
+    name: '@tanstack/router-core',
+    packageDir: 'router-core',
     srcDir: 'src',
     builds: [
       {
@@ -94,6 +94,31 @@ export const packages: Package[] = [
     ],
   },
   {
+    name: '@tanstack/router',
+    packageDir: 'router',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'Router',
+        entryFile: 'src/index.ts',
+      },
+    ],
+  },
+  {
+    name: '@tanstack/react-router',
+    packageDir: 'react-router',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'ReactRouter',
+        entryFile: 'src/index.tsx',
+        globals: {
+          react: 'React',
+        },
+      },
+    ],
+  },
+  {
     name: '@tanstack/router-devtools',
     packageDir: 'router-devtools',
     srcDir: 'src',
@@ -101,7 +126,7 @@ export const packages: Package[] = [
       {
         jsName: 'TanStackRouterDevtools',
         entryFile: 'src/index.tsx',
-        globals: { react: 'React', '@tanstack/router': 'Router' },
+        globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
       },
     ],
   },
@@ -113,12 +138,12 @@ export const packages: Package[] = [
       {
         jsName: 'TanStackStartReactClient',
         entryFile: 'src/client.tsx',
-        globals: { react: 'React', '@tanstack/router': 'Router' },
+        globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
       },
       {
         jsName: 'TanStackStartReactServer',
         entryFile: 'src/server.tsx',
-        globals: { react: 'React', '@tanstack/router': 'Router' },
+        globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
         externals: ['stream', 'util', 'react-dom', 'react', 'react-dom/server'],
       },
     ],

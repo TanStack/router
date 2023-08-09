@@ -9,7 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/router": "0.0.1-beta.144",
+    "@tanstack/react-router": "0.0.1-beta.144",
     "@tanstack/react-actions": "0.0.1-beta.134",
     "@tanstack/react-loaders": "0.0.1-beta.134",
     "@tanstack/router-devtools": "0.0.1-beta.144",
@@ -27,7 +27,7 @@
   },
   "pnpm": {
     "overrides": {
-      "@tanstack/router": "workspace:*",
+      "@tanstack/react-router": "workspace:*",
       "@tanstack/react-actions": "workspace:*",
       "@tanstack/react-loaders": "workspace:*",
       "@tanstack/router-devtools": "workspace:*"

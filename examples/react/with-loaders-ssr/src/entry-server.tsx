@@ -1,6 +1,6 @@
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import { createMemoryHistory } from '@tanstack/router'
+import { createMemoryHistory } from '@tanstack/react-router'
 import { ServerResponse } from 'http'
 import express from 'express'
 import { StartServer } from '@tanstack/react-start/server'

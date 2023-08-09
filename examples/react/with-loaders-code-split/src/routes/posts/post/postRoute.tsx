@@ -1,6 +1,10 @@
 import * as React from 'react'
 import { createLoaderOptions, useLoaderInstance } from '@tanstack/react-loaders'
-import { ErrorComponent, lazyRouteComponent, Route } from '@tanstack/router'
+import {
+  ErrorComponent,
+  lazyRouteComponent,
+  Route,
+} from '@tanstack/react-router'
 import { NotFoundError } from '../../../loaderClient'
 import { postsRoute } from '../postsRoute'
 

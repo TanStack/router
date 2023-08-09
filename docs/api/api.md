@@ -377,7 +377,7 @@ const params = myRoute.useParams({ strict: true })
 # lazyRouteComponent
 
 ```tsx
-import { lazyRouteComponent } from '@tanstack/router'
+import { lazyRouteComponent } from '@tanstack/react-router'
 
 export const expensiveRoute = new Route({
   getParentRoute: () => rootRoute,

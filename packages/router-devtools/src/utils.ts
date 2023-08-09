@@ -4,7 +4,7 @@ import {
   AnyRoute,
   AnyRouteMatch,
   AnyRouter,
-} from '@tanstack/router'
+} from '@tanstack/react-router'
 
 import { Theme, useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'

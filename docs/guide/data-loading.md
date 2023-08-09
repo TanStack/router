@@ -83,7 +83,7 @@ The following options can modify the default behavior of all route matches:
 Route loaders are functions that are called when a route match is loaded. They are called with a single parameter which is an object containing many helpful properties. We'll go over those in a bit, but first, let's look at an example of a route loader:
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
@@ -118,7 +118,7 @@ Using these parameters, we can do a lot of cool things. Let's take a look at a f
 The `params` property of the `loader` function is an object containing the route's path params.
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 const postRoute = new Route({
   getParentPath: () => postsRoute,
@@ -136,7 +136,7 @@ const postRoute = new Route({
 The `search` and `routeSearch` properties of the `loader` function are objects containing the route's search params. `search` contains _all_ of the search params including parent search params. `routeSearch` only includes specific search params from this route. In this example, we'll use zod to validate and parse the search params for `/posts/$postId` route, then use them in our loader.
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
@@ -160,7 +160,7 @@ The `context` and `routeContext` properties of the `loader` function are objects
 > 🧠 Context is a powerful tool for dependency injection. You can use it to inject services, loaders, and other objects into your router and routes. You can also additively pass data down the route tree at every route using a route's `getContext` option.
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 const fetchPosts = async () => {
   const res = await fetch(`/api/posts?page=${pageIndex}`)
@@ -204,7 +204,7 @@ const router = new Router({
 The `abortController` property of the `loader` function is an [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController). Its signal is cancelled when the route is unloaded or when the `loader` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change. Here is an example using it with a fetch call:
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
@@ -224,7 +224,7 @@ const postsRoute = new Route({
 The `preload` property of the `loader` function is a boolean which is `true` when the route is being preloaded instead of loaded. Some data loading libraries may handle preloading differently than a standard fetch, so you may want to pass `preload` to your data loading library, or use it to execute the appropriate data loading logic. Here is an example using TanStack Loaders and it's built-in `preload` flag:
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 // Create a new loader
 const postsLoader = new Loader({
@@ -271,7 +271,7 @@ Each is available to allow access to the loader data at different contexts and a
 Let's retrieve the data from our loader using the `props.useLoader` hook:
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
@@ -291,7 +291,7 @@ const postsRoute = new Route({
 By manipulating the `maxAge` option, we can create a stale-while-revalidate pattern for our route matches and their loaders. This is useful for routes that may have frequently changing data caused by external events. Let's take a look at an example:
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
@@ -329,7 +329,7 @@ The result of these hooks has a lot of useful information about a route match, b
 This property is `true` when the route match is being loaded and `false` when it is not. This means that we can use it to display to our users that this particular route's loader data is being refreshed in the background. Let's take a look at an example:
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
@@ -434,7 +434,7 @@ The easiest way to use integrate and external caching/data library into Router i
 Here is a simple example of using a Route `loader` to seed the cache for TanStack Loaders:
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 import { Loader, useLoader } from '@tanstack/react-loaders'
 
 // Create a new loader

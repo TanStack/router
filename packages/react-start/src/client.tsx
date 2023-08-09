@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { AnyRouter, RouterProvider, useRouter } from '@tanstack/router'
+import { AnyRouter, RouterProvider, useRouter } from '@tanstack/react-router'
 // @ts-ignore
 import cprc from '@gisatcz/cross-package-react-context'
 

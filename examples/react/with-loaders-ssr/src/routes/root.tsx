@@ -1,6 +1,6 @@
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import * as React from 'react'
-import { Link, Outlet } from '@tanstack/router'
+import { Link, Outlet } from '@tanstack/react-router'
 import { DehydrateRouter } from '@tanstack/react-start/client'
 import { routerContext } from '../routerContext'
 

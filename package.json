@@ -27,6 +27,8 @@
     "overrides": {
       "@tanstack/store": "workspace:*",
       "@tanstack/router": "workspace:*",
+      "@tanstack/router-core": "workspace:*",
+      "@tanstack/react-router": "workspace:*",
       "@tanstack/loaders": "workspace:*",
       "@tanstack/actions": "workspace:*",
       "@tanstack/react-store": "workspace:*",

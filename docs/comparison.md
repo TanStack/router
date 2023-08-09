@@ -60,8 +60,8 @@ Feature/Capability Key:
 | Deferred Loader Streaming                      | 🟡                                                  | ✅                                                    | 🔶                                                    |
 | `<Form>` API                                   | 🛑                                                  | ✅                                                    | 🛑                                                    |
 
-[bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/router@beta
-[bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/router@beta
+[bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router@beta
+[bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/react-router@beta
 [bp-tanstack-loaders]: https://badgen.net/bundlephobia/minzip/@tanstack/react-loaders@beta?label=Loaders
 [bpl-tanstack-loaders]: https://bundlephobia.com/result?p=@tanstack/react-loaders@beta
 [bp-tanstack-actions]: https://badgen.net/bundlephobia/minzip/@tanstack/react-actions@beta?label=@tanstack/actions

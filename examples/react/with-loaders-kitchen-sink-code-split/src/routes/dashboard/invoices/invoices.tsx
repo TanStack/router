@@ -3,7 +3,7 @@ import { Invoice, postInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import { invoicesRoute } from '.'
 import { useAction } from '@tanstack/react-actions'
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 import { actionContext } from '../../../actionContext'
 
 export const createInvoiceAction = actionContext.createAction({

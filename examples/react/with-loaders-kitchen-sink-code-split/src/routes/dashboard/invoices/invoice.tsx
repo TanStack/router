@@ -3,7 +3,12 @@ import { z } from 'zod'
 import { fetchInvoiceById, patchInvoice } from '../../../mockTodos'
 import { InvoiceFields } from '../../../components/InvoiceFields'
 import { invoicesRoute } from '.'
-import { useNavigate, Link, Route, ErrorComponent } from '@tanstack/router'
+import {
+  useNavigate,
+  Link,
+  Route,
+  ErrorComponent,
+} from '@tanstack/react-router'
 import {
   createLoaderOptions,
   Loader,

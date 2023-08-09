@@ -1,12 +1,7 @@
-export { default as invariant } from 'tiny-invariant'
-export { default as warning } from 'tiny-warning'
-export * from './history'
-export * from './link'
-export * from './path'
-export * from './qss'
-export * from './route'
-export * from './routeInfo'
-export * from './router'
-export * from './searchParams'
-export * from './utils'
-export * from './react'
+;(() => {
+  console.error(
+    '@tanstack/router is not intended to be used directly. Please use @tanstack/[framework]-router packages or @tanstack/router-core instead.',
+  )
+})()
+
+export {}

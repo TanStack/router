@@ -1,4 +1,4 @@
-import { Router } from '@tanstack/router'
+import { Router } from '@tanstack/react-router'
 import { LoaderClientProvider } from '@tanstack/react-loaders'
 
 import { rootRoute } from './routes/root'
@@ -45,7 +45,7 @@ export function createRouter() {
   })
 }
 
-declare module '@tanstack/router' {
+declare module '@tanstack/react-router' {
   interface Register {
     router: ReturnType<typeof createRouter>
   }

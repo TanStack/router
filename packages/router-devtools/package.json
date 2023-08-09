@@ -45,6 +45,6 @@
   "dependencies": {
     "@babel/runtime": "^7.16.7",
     "date-fns": "^2.29.1",
-    "@tanstack/router": "workspace:*"
+    "@tanstack/react-router": "workspace:*"
   }
 }

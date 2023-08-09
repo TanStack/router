@@ -8,7 +8,7 @@ import {
   ErrorComponent,
   Router,
   RootRoute,
-} from '@tanstack/router'
+} from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
 
@@ -166,7 +166,7 @@ const router = new Router({
 })
 
 // Register things for typesafety
-declare module '@tanstack/router' {
+declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
   }

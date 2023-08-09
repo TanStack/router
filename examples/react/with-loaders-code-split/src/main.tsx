@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { RouterProvider, Router } from '@tanstack/router'
+import { RouterProvider, Router } from '@tanstack/react-router'
 import { rootRoute } from './routes/root/rootRoute'
 import { postsRoute } from './routes/posts/postsRoute'
 import { postRoute } from './routes/posts/post/postRoute'
@@ -24,7 +24,7 @@ const router = new Router({
 })
 
 // Register things for typesafety
-declare module '@tanstack/router' {
+declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
   }

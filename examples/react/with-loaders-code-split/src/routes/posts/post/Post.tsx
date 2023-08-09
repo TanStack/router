@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { ComponentFromRoute, useRouteContext } from '@tanstack/router'
+import { ComponentFromRoute, useRouteContext } from '@tanstack/react-router'
 import { postRoute } from './postRoute'
 import { useLoaderInstance } from '@tanstack/react-loaders'
 

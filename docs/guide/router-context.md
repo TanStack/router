@@ -18,7 +18,7 @@ These are just suggested uses of the router context. You can use it for whatever
 Like everything else, the root router context is strictly typed. This type can be augmented via any route's `getContext` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `new RouteContext<YourContextTypeHere>()` class to create a new `routerContext` and then use the `routerContext.createRootRoute()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
 
 ```tsx
-import { RootRoute } from '@tanstack/router'
+import { RootRoute } from '@tanstack/react-router'
 
 interface MyRouterContext {
   user: User
@@ -48,7 +48,7 @@ The router context is passed to the router at instantiation time. You can pass t
 > 🧠 If your context has any required properties, you will see a TypeScript error if you don't pass them in the initial router context. If all of your context properties are optional, you will not see a TypeScript error and passing the context will be optional. If you don't pass a router context, it defaults to `{}`.
 
 ```tsx
-import { Router } from '@tanstack/router'
+import { Router } from '@tanstack/react-router'
 
 // Use the routerContext you created to create your router
 const router = new Router({
@@ -67,7 +67,7 @@ const router = new Router({
 Once you have defined the router context type, you can use it in your route definitions:
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 const userRoute = new Route({
   getRootRoute: () => rootRoute,
@@ -82,7 +82,7 @@ You can even inject data fetching and mutation implementations themselves! In fa
 Let's try this with a simple function to fetch some todos:
 
 ```tsx
-import { RootRoute } from '@tanstack/router'
+import { RootRoute } from '@tanstack/react-router'
 
 const fetchTodosByUserId = async ({ userId }) => {
   const response = await fetch(`/api/todos?userId=${userId}`)
@@ -102,7 +102,7 @@ const router = new Router({
 Then, in your route:
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 const userRoute = new Route({
   getRootRoute: () => rootRoute,
@@ -115,7 +115,7 @@ const userRoute = new Route({
 ### How about an external data fetching library?
 
 ```tsx
-import { RootRoute } from '@tanstack/router'
+import { RootRoute } from '@tanstack/react-router'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -136,7 +136,7 @@ const router = new Router({
 Then, in your route:
 
 ```tsx
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 const userRoute = new Route({
   getRootRoute: () => rootRoute,
@@ -156,7 +156,7 @@ const userRoute = new Route({
 The router context is passed down the route tree and is merged at each route. This means that you can modify the context at each route and the modifications will be available to all child routes. Here's an example:
 
 ```tsx
-import { RootRoute, Route } from '@tanstack/router'
+import { RootRoute, Route } from '@tanstack/react-router'
 
 interface MyRouterContext {
   foo: boolean

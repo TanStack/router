@@ -6,7 +6,7 @@ import {
   useMatch,
   useNavigate,
   useSearch,
-} from '@tanstack/router'
+} from '@tanstack/react-router'
 import * as React from 'react'
 import { z } from 'zod'
 import { Spinner } from '../../../components/Spinner'

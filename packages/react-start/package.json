@@ -71,7 +71,7 @@
     "@gisatcz/cross-package-react-context": "^0.2.0",
     "@tanstack/bling": "^0.0.3",
     "@tanstack/react-loaders": "workspace:*",
-    "@tanstack/router": "workspace:*",
+    "@tanstack/react-router": "workspace:*",
     "@tanstack/store": "workspace:*",
     "isbot": "^3.6.6",
     "jsesc": "^3.0.2",

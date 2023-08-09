@@ -1,5 +1,5 @@
 import { useLoaderInstance } from '@tanstack/react-loaders'
-import { lazyRouteComponent, Route } from '@tanstack/router'
+import { lazyRouteComponent, Route } from '@tanstack/react-router'
 import { rootRoute } from '../root/rootRoute'
 
 export const postsRoute = new Route({

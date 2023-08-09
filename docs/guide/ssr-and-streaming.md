@@ -32,7 +32,7 @@ Since your router will exist both on the server and the client, it's important t
 
 ```js
 import * as React from 'react'
-import { Router } from '@tanstack/router'
+import { Router } from '@tanstack/react-router'
 import { rootRoute } from './routes/root'
 import { indexRoute } from './routes/index'
 import { postsRoute } from './routes/posts'
@@ -48,7 +48,7 @@ export function createRouter() {
   return new Router({ routeTree,})
 }
 
-declare module '@tanstack/router' {
+declare module '@tanstack/react-router' {
   interface Register {
     router: ReturnType<typeof createRouter>
   }
@@ -129,7 +129,7 @@ Here is a complete example of a server entry file that uses all of the concepts 
 // src/entry-server.tsx
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import { createMemoryHistory } from '@tanstack/router'
+import { createMemoryHistory } from '@tanstack/react-router'
 import { StartServer } from '@tanstack/react-start/server'
 import { createRouter } from './router'
 

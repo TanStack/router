@@ -14,7 +14,7 @@ import {
   Router,
   Route,
   RootRoute,
-} from '@tanstack/router'
+} from '@tanstack/react-router'
 
 // Create a root route
 const rootRoute = new RootRoute({
@@ -65,7 +65,7 @@ const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
 const router = new Router({ routeTree })
 
 // Register your router for maximum type safety
-declare module '@tanstack/router' {
+declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
   }

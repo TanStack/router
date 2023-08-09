@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, Outlet, Route } from '@tanstack/router'
+import { Link, Outlet, Route } from '@tanstack/react-router'
 import { rootRoute } from '../root'
 
 export const dashboardRoute = new Route({

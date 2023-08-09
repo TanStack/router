@@ -15,7 +15,7 @@ import {
   ErrorComponent,
   AnyRouter,
   useRouterState,
-} from '@tanstack/router'
+} from '@tanstack/react-router'
 import {
   ActionClientProvider,
   ActionContext,
@@ -853,7 +853,7 @@ const router = new Router({
 
 actionClient.options.context.router = router
 
-declare module '@tanstack/router' {
+declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
   }

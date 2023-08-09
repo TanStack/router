@@ -7,7 +7,7 @@ import {
   typedClient,
   useLoaderInstance,
 } from '@tanstack/react-loaders'
-import { Route } from '@tanstack/router'
+import { Route } from '@tanstack/react-router'
 
 export const userLoader = new Loader({
   key: 'user',

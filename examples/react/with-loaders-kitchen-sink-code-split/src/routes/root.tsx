@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, Outlet, useRouter } from '@tanstack/router'
+import { Link, Outlet, useRouter } from '@tanstack/react-router'
 import { Spinner } from '../components/Spinner'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { useLoaderClient } from '@tanstack/react-loaders'

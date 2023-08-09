@@ -1,23 +1,9 @@
 import { ParsePathParams } from './link'
 import { AnyRouter, Router, RouteMatch } from './router'
-import {
-  IsAny,
-  NoInfer,
-  PickRequired,
-  PickUnsafe,
-  UnionToIntersection,
-} from './utils'
+import { IsAny, NoInfer, PickRequired, UnionToIntersection } from './utils'
 import invariant from 'tiny-invariant'
 import { joinPaths, trimPath } from './path'
 import { AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
-import {
-  RouteComponent,
-  RouteErrorComponent,
-  useLoader,
-  useMatch,
-  useParams,
-  useSearch,
-} from './react'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -26,6 +12,28 @@ export type AnySearchSchema = {}
 export type AnyContext = {}
 export interface RouteMeta {}
 export interface RouteContext {}
+export interface RegisterRouteComponent<TProps> {
+  // RouteComponent: unknown // This is registered by the framework
+}
+export interface RegisterRouteErrorComponent<TProps> {
+  // RouteErrorComponent: unknown // This is registered by the framework
+}
+
+export type RegisteredRouteComponent<TProps> =
+  RegisterRouteComponent<TProps> extends {
+    RouteComponent: infer T
+  }
+    ? T
+    : (props: TProps) => unknown
+
+export type RegisteredRouteErrorComponent<TProps> =
+  RegisterRouteErrorComponent<TProps> extends {
+    RouteErrorComponent: infer T
+  }
+    ? T
+    : (props: TProps) => unknown
+
+export type PreloadableObj = { preload?: () => Promise<void> }
 
 export type RoutePathOptions<TCustomId, TPath> =
   | {
@@ -69,7 +77,7 @@ export type ComponentPropsFromRoute<TRoute> = TRoute extends Route<
   ? RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
   : never
 
-export type ComponentFromRoute<TRoute> = RouteComponent<
+export type ComponentFromRoute<TRoute> = RegisteredRouteComponent<
   ComponentPropsFromRoute<TRoute>
 >
 
@@ -141,10 +149,10 @@ export type RouteOptions<
     TParentRoute['__types']['allParams'] & TParentContext
   >,
   TRouteContext extends RouteContext = RouteContext,
-  TContext extends MergeFromParent<
+  TContext extends MergeParamsFromParent<
     TAllParentContext,
     TRouteContext
-  > = MergeFromParent<TAllParentContext, TRouteContext>,
+  > = MergeParamsFromParent<TAllParentContext, TRouteContext>,
 > = BaseRouteOptions<
   TParentRoute,
   TCustomId,
@@ -197,10 +205,10 @@ export type BaseRouteOptions<
     TParentRoute['__types']['allParams'] & TParentContext
   >,
   TRouteContext extends RouteContext = RouteContext,
-  TContext extends MergeFromParent<
+  TContext extends MergeParamsFromParent<
     TAllParentContext,
     TRouteContext
-  > = MergeFromParent<TAllParentContext, TRouteContext>,
+  > = MergeParamsFromParent<TAllParentContext, TRouteContext>,
 > = RoutePathOptions<TCustomId, TPath> & {
   getParentRoute: () => TParentRoute
   validateSearch?: SearchSchemaValidator<TSearchSchema, TParentSearchSchema>
@@ -298,13 +306,15 @@ export type UpdatableRouteOptions<
   // If true, this route will be forcefully wrapped in a suspense boundary
   wrapInSuspense?: boolean
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
-  component?: RouteComponent<
+  component?: RegisteredRouteComponent<
     RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
   >
   // The content to be rendered when the route encounters an error
-  errorComponent?: RouteErrorComponent //
+  errorComponent?: RegisterRouteErrorComponent<
+    RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
+  > //
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
-  pendingComponent?: RouteComponent<
+  pendingComponent?: RegisteredRouteComponent<
     RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
   >
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
@@ -450,7 +460,7 @@ export type UnloaderFn<TPath extends string> = (
 
 export type SearchFilter<T, U = T> = (prev: T) => U
 
-type ResolveId<
+export type ResolveId<
   TParentRoute,
   TCustomId extends string,
   TPath extends string,
@@ -518,7 +528,7 @@ export type AnyRouteWithRouterContext<TRouterContext extends AnyContext> =
     any
   >
 
-type MergeFromParent<T, U> = IsAny<T, U, T & U>
+export type MergeParamsFromParent<T, U> = IsAny<T, U, T & U>
 
 export type UseLoaderResult<T> = T extends Record<PropertyKey, infer U>
   ? {
@@ -560,17 +570,17 @@ export class Route<
     ParsePathParams<TPath>,
     string
   >,
-  TAllParams extends MergeFromParent<
+  TAllParams extends MergeParamsFromParent<
     TParentRoute['__types']['allParams'],
     TParams
-  > = MergeFromParent<TParentRoute['__types']['allParams'], TParams>,
+  > = MergeParamsFromParent<TParentRoute['__types']['allParams'], TParams>,
   TParentContext extends TParentRoute['__types']['routeContext'] = TParentRoute['__types']['routeContext'],
   TAllParentContext extends TParentRoute['__types']['context'] = TParentRoute['__types']['context'],
   TRouteContext extends RouteContext = RouteContext,
-  TContext extends MergeFromParent<
+  TContext extends MergeParamsFromParent<
     TParentRoute['__types']['context'],
     TRouteContext
-  > = MergeFromParent<TParentRoute['__types']['context'], TRouteContext>,
+  > = MergeParamsFromParent<TParentRoute['__types']['context'], TRouteContext>,
   TRouterContext extends AnyContext = AnyContext,
   TChildren extends unknown = unknown,
   TRoutesInfo extends DefaultRoutesInfo = DefaultRoutesInfo,
@@ -663,6 +673,7 @@ export class Route<
   ) {
     this.options = (options as any) || {}
     this.isRoot = !options?.getParentRoute as any
+    Route.__onInit(this as any)
   }
 
   init = (opts: { originalIndex: number; router: AnyRouter }) => {
@@ -769,62 +780,9 @@ export class Route<
     return this
   }
 
-  useMatch = <TStrict extends boolean = true, TSelected = TContext>(opts?: {
-    strict?: TStrict
-    select?: (search: TContext) => TSelected
-  }): TStrict extends true ? TSelected : TSelected | undefined => {
-    return useMatch({ ...opts, from: this.id }) as any
-  }
-
-  useLoader = <TStrict extends boolean = true, TSelected = TLoader>(opts?: {
-    strict?: TStrict
-    select?: (search: TLoader) => TSelected
-  }): TStrict extends true
-    ? UseLoaderResult<TSelected>
-    : UseLoaderResult<TSelected> | undefined => {
-    return useLoader({ ...opts, from: this.id }) as any
-  }
-
-  useContext = <TStrict extends boolean = true, TSelected = TContext>(opts?: {
-    strict?: TStrict
-    select?: (search: TContext) => TSelected
-  }): TStrict extends true ? TSelected : TSelected | undefined => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d: any) => opts?.select?.(d.context) ?? d.context,
-    } as any)
-  }
-
-  useRouteContext = <
-    TStrict extends boolean = true,
-    TSelected = TRouteContext,
-  >(opts?: {
-    strict?: TStrict
-    select?: (search: TRouteContext) => TSelected
-  }): TStrict extends true ? TSelected : TSelected | undefined => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d: any) => opts?.select?.(d.routeContext) ?? d.routeContext,
-    } as any)
-  }
-
-  useSearch = <
-    TStrict extends boolean = true,
-    TSelected = TFullSearchSchema,
-  >(opts?: {
-    strict?: TStrict
-    select?: (search: TFullSearchSchema) => TSelected
-  }): TStrict extends true ? TSelected : TSelected | undefined => {
-    return useSearch({ ...opts, from: this.id } as any)
-  }
-
-  useParams = <TStrict extends boolean = true, TSelected = TAllParams>(opts?: {
-    strict?: TStrict
-    select?: (search: TAllParams) => TSelected
-  }): TStrict extends true ? TSelected : TSelected | undefined => {
-    return useParams({ ...opts, from: this.id } as any)
+  static __onInit = (route: typeof this) => {
+    // This is a dummy static method that should get
+    // replaced by a framework specific implementation if necessary
   }
 }
 
@@ -872,8 +830,8 @@ export class RootRoute<
   {},
   TRouterContext,
   TRouterContext,
-  MergeFromParent<TRouterContext, TContext>,
-  MergeFromParent<TRouterContext, TContext>,
+  MergeParamsFromParent<TRouterContext, TContext>,
+  MergeParamsFromParent<TRouterContext, TContext>,
   TRouterContext,
   any,
   any
@@ -893,7 +851,7 @@ export class RootRoute<
   }
 }
 
-type ResolveFullPath<
+export type ResolveFullPath<
   TParentRoute extends AnyRoute,
   TPath extends string,
   TPrefixed extends RoutePrefix<TParentRoute['fullPath'], TPath> = RoutePrefix<

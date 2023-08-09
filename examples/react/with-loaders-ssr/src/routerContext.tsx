@@ -1,4 +1,4 @@
-import { RouterContext } from '@tanstack/router'
+import { RouterContext } from '@tanstack/react-router'
 import { createLoaderClient } from './loaderClient'
 
 export const routerContext = new RouterContext<{

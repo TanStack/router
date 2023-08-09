@@ -3,7 +3,7 @@ import {
   AnyRouter,
   createMemoryHistory,
   RouterProvider,
-} from '@tanstack/router'
+} from '@tanstack/react-router'
 // import { handleEvent, hasHandler, handlers } from '@tanstack/bling/server'
 import * as ReactDOMServer from 'react-dom/server'
 import * as React from 'react'

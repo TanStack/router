@@ -7,7 +7,7 @@ import {
   Router,
   Route,
   RootRoute,
-} from '@tanstack/router'
+} from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 const rootRoute = new RootRoute({
@@ -47,7 +47,7 @@ const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
 
 const router = new Router({ routeTree })
 
-declare module '@tanstack/router' {
+declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
   }
