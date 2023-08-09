@@ -7,7 +7,7 @@ import {
   Route,
   Router,
   RouterProvider,
-} from './solid-router'
+} from './router/solid-router'
 
 type PostType = {
   id: string
