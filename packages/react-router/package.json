@@ -7,9 +7,7 @@
   "homepage": "https://tanstack.com/router",
   "description": "",
   "scripts": {
-    "build": "rollup --config rollup.config.js",
-    "test": "vitest",
-    "test:dev": "vitest --watch"
+    "build": "rollup --config rollup.config.js"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
