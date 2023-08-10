@@ -22,9 +22,7 @@ export function useStore<
     const unsubscribe = routerStore.subscribe(() => {
       const updatedState = selector(routerStore.state)
 
-      setState('routerStore', (s) => {
-        return reconcile(updatedState)(s)
-      })
+      setState('routerStore', reconcile(updatedState))
     })
     onCleanup(unsubscribe)
   })

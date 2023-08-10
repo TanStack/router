@@ -20,7 +20,7 @@ const fetchPosts = async () => {
   await new Promise((r) => setTimeout(r, 500))
   const posts = fetch('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.json() as Promise<PostType[]>)
-    .then((r) => r.slice(0, 10))
+    .then((r) => r.slice(0, 2))
 
   return posts
 }

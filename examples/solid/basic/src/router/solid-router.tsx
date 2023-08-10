@@ -201,27 +201,21 @@ export function useMatch<
   const nearestMatchRouteId = () =>
     router.getRouteMatch(nearestMatchId())?.routeId
 
-  const matchRouteId = useRouterState({
+  const matchInfo = useRouterState({
     select: (state) => {
       const matches = state.matches
       const match = opts?.from
         ? matches.find((d) => d.routeId === opts?.from)
         : matches.find((d) => d.id === nearestMatchId())
 
-      return match!.routeId
+      return match!
     },
   })
 
   if (opts?.strict ?? true) {
     invariant(
-      nearestMatchRouteId() == matchRouteId,
-      `useMatch("${
-        matchRouteId as string
-      }") is being called in a component that is meant to render the '${nearestMatchRouteId}' route. Did you mean to 'useMatch("${
-        matchRouteId as string
-      }", { strict: false })' or 'useRoute("${
-        matchRouteId as string
-      }")' instead?`,
+      nearestMatchRouteId() == matchInfo.routeId,
+      `useMatch("${matchInfo.routeId}") is being called in a component that is meant to render the '${nearestMatchRouteId}' route. DrouteId you mean to 'useMatch("${matchInfo.routeId}", { strict: false })' or 'useRoute("${matchInfo.id}")' instead?`,
     )
   }
 
@@ -962,14 +956,42 @@ function CatchBoundaryInner(props: {
   errorState: { error: unknown; info: any }
   reset: () => void
 }) {
+  const [activeError, setActiveError] = createSignal(props.errorState)
+  const locationKey = useRouterState({
+    select: (d) => {
+      return d.resolvedLocation
+    },
+  })
+
+  let prevRefKey = locationKey.key
+
+  createEffect(() => {
+    if (activeError().error && prevRefKey !== locationKey.key) {
+      setActiveError({} as any)
+    }
+
+    prevRefKey = locationKey.key
+  })
+
+  createEffect(() => {
+    if (props.errorState) {
+      setActiveError(props.errorState)
+    }
+  })
+
   return (
-    <Dynamic
-      component={props.errorComponent ?? ErrorComponent}
-      {...props.errorState}
-      reset={props.reset}
+    <Show
+      when={props.errorState.error && activeError().error}
+      fallback={props.children}
     >
-      {props.children}
-    </Dynamic>
+      <Dynamic
+        component={props.errorComponent ?? ErrorComponent}
+        {...activeError()}
+        reset={props.reset}
+      >
+        {props.children}
+      </Dynamic>
+    </Show>
   )
 }
 
