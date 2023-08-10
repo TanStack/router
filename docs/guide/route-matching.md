@@ -92,6 +92,6 @@ Using that route tree, let's follow the matching process for a few different URL
     ✅ *
   ```
 
-## Pathless Layout Route Matching
+## Pathless Route Matching
 
-During matching, [pathless layout routes](../route-paths#pathless-layout-routes) are treated as if they are flat. If a route is not found in a pathless layout route's children, matching will continue out of the pathless layout route's children and on through the rest of the parent subtree like normal.
+During matching, [pathless routes](../route-paths#pathless-routes) are treated as if they are flat. If a route is not found in a pathless route's children, matching will continue out of the pathless route's children and on through the rest of the parent subtree like normal.

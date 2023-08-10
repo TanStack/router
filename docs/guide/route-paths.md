@@ -137,9 +137,9 @@ Splat routes capture their matched path in the `params` object under the `*` pro
 
 A 404 / non-matching route is really just a fancy name for a [Splat / Catch-All](#splat-catch-all-matching) path. If no other routes match, the splat/catch-all route will always match
 
-## Pathless Layout Routes
+## Pathless Routes
 
-Pathless layout routes are routes that do not have a `path` and instead an `id` to uniquely identify them. Pathless layout routes do not use path segments from the URL pathname, nor do they add path segments to it during linking. They can be used to:
+Pathless routes are routes that do not have a `path` and instead an `id` to uniquely identify them. Pathless routes do not use path segments from the URL pathname, nor do they add path segments to it during linking. They can be used to:
 
 - Wrap child routes with a layout component
 - Enforce an `loader` requirement before displaying any child routes
@@ -147,7 +147,7 @@ Pathless layout routes are routes that do not have a `path` and instead an `id` 
 - Provide fallbacks for error components or pending elements to child routes
 - Provide shared context to all child routes
 
-To create a layout route, define a route with an `id` property instead of a `path`:
+To create a pathless route, define a route with an `id` property instead of a `path`:
 
 ```tsx
 const rootRoute = new Route()
@@ -173,7 +173,7 @@ const routeConfig = rootRoute.addChildren([
 ])
 ```
 
-In the above example, the `layout` route will not add or match any path in the URL, but will wrap the `layout-a` and `layout-b` routes with any elements or logic defined in it.
+In the above example, the pathless route will not add or match any path in the URL, but will wrap the `layout-a` and `layout-b` routes with any elements or logic defined in it.
 
 > 🧠 An ID is required because every route must be uniquely identifiable, especially when using TypeScript so as to avoid type errors and accomplish autocomplete effectively.
 

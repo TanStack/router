@@ -148,6 +148,22 @@ export const packages: Package[] = [
       },
     ],
   },
+  {
+    name: '@tanstack/router-cli',
+    packageDir: 'router-cli',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'TanStackRouterCli',
+        entryFile: 'src/index.ts',
+        // globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
+        // externals: ['stream', 'util', 'react-dom', 'react', 'react-dom/server'],
+        esm: false,
+        umd: false,
+        // externals: [(d) => console.log(d)],
+      },
+    ],
+  },
 ]
 
 export const latestBranch = 'main'

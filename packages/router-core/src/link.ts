@@ -55,13 +55,15 @@ export type ParsePathParams<T extends string> = Split<T>[number] extends infer U
     : never
   : never
 
-type Join<T, Delimiter extends string = '/'> = T extends []
+export type Join<T, Delimiter extends string = '/'> = T extends []
   ? ''
   : T extends [infer L extends string]
   ? L
   : T extends [infer L extends string, ...infer Tail extends [...string[]]]
   ? CleanPath<`${L}${Delimiter}${Join<Tail>}`>
   : never
+
+export type Last<T extends any[]> = T extends [...infer _, infer L] ? L : never
 
 export type RelativeToPathAutoComplete<
   AllPaths extends string,

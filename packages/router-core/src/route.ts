@@ -310,8 +310,16 @@ export type UpdatableRouteOptions<
     RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
   >
   // The content to be rendered when the route encounters an error
-  errorComponent?: RegisterRouteErrorComponent<
-    RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
+  errorComponent?: RegisteredRouteErrorComponent<
+    { error: unknown } & Partial<
+      RouteProps<
+        TLoader,
+        TFullSearchSchema,
+        TAllParams,
+        TRouteContext,
+        TContext
+      >
+    >
   > //
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
   pendingComponent?: RegisteredRouteComponent<
@@ -807,7 +815,7 @@ export class RouterContext<TRouterContext extends {}> {
     >,
   ) => {
     return new RootRoute<TLoader, TSearchSchema, TContext, TRouterContext>(
-      options,
+      options as any,
     )
   }
 }
@@ -838,7 +846,7 @@ export class RootRoute<
 > {
   constructor(
     options?: Omit<
-      RouteOptions<AnyRoute, RootRouteId, '', {}, TSearchSchema, {}, {}>,
+      RouteOptions<AnyRoute, RootRouteId, '', TLoader, TSearchSchema, {}, {}>,
       | 'path'
       | 'id'
       | 'getParentRoute'
@@ -890,47 +898,3 @@ export type TrimPathRight<T extends string> = T extends '/'
   : T extends `${infer U}/`
   ? TrimPathRight<U>
   : T
-
-// const rootRoute = new RootRoute({
-//   validateSearch: () => null as unknown as { root?: boolean },
-// })
-
-// const aRoute = new Route({
-//   getParentRoute: () => rootRoute,
-//   path: 'a',
-//   validateSearch: () => null as unknown as { a?: string },
-// })
-
-// const bRoute = new Route({
-//   getParentRoute: () => aRoute,
-//   path: 'b',
-// })
-
-// const rootIsRoot = rootRoute.isRoot
-// //    ^?
-// const aIsRoot = aRoute.isRoot
-// //    ^?
-
-// const rId = rootRoute.id
-// //    ^?
-// const aId = aRoute.id
-// //    ^?
-// const bId = bRoute.id
-// //    ^?
-
-// const rPath = rootRoute.fullPath
-// //    ^?
-// const aPath = aRoute.fullPath
-// //    ^?
-// const bPath = bRoute.fullPath
-// //    ^?
-
-// const rSearch = rootRoute.__types.fullSearchSchema
-// //    ^?
-// const aSearch = aRoute.__types.fullSearchSchema
-// //    ^?
-// const bSearch = bRoute.__types.fullSearchSchema
-// //    ^?
-
-// const config = rootRoute.addChildren([aRoute.addChildren([bRoute])])
-// //    ^?

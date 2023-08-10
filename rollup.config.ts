@@ -19,7 +19,7 @@ type Options = {
   input: string
   packageDir: string
   umdExternal: RollupOptions['external']
-  external: RollupOptions['external']
+  external: RollupOptions['external'] | any[]
   banner: string
   jsName: string
   globals: Record<string, string>

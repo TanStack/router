@@ -42,9 +42,11 @@ declare module '@tanstack/router-core' {
   interface RegisterRouteComponent<TProps extends Record<string, any>> {
     RouteComponent: RouteComponent<TProps>
   }
+
   interface RegisterRouteErrorComponent<TProps extends Record<string, any>> {
-    RouteComponent: RouteComponent<TProps>
+    RouteErrorComponent: RouteComponent<TProps>
   }
+
   // Extend the Route class to have some React-Specific methods
   interface Route<
     TParentRoute extends AnyRoute = AnyRoute,

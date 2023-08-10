@@ -108,7 +108,7 @@ export function encodeToBinary(str: string): string {
 
 ```tsx
 import {
-  ReactRouter,
+  Router,
   parseSearchWith,
   stringifySearchWith,
 } from '@tanstack/react-router'
