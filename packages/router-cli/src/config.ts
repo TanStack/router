@@ -5,7 +5,7 @@ export type Config = {
   rootDirectory: string
   sourceDirectory: string
   routesDirectory: string
-  routeGenDirectory: string
+  generatedRouteTree: string
 }
 
 const configFilePathJson = path.resolve(process.cwd(), 'tsr.config.json')

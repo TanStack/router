@@ -2,5 +2,5 @@
   "rootDirectory": ".",
   "sourceDirectory": "./src",
   "routesDirectory": "./src/routes",
-  "routeGenDirectory": "./src/routes.gen"
+  "generatedRouteTree": "./src/routeTree.gen.ts"
 }

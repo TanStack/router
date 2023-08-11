@@ -24,7 +24,7 @@ const fetchPost = async (postId: string) => {
   return post
 }
 
-export const route = new FileRoute('/posts/$postId').createRoute({
+export const route = new FileRoute('posts/$postId').createRoute({
   loader: async ({ params: { postId } }) => fetchPost(postId),
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {

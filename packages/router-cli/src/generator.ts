@@ -1,51 +1,53 @@
-import klaw from 'klaw'
-import through2 from 'through2'
 import path from 'path'
 import fs from 'fs-extra'
 import crypto from 'crypto'
-import {
-  detectExports,
-  ensureBoilerplate,
-  generateRouteConfig,
-  isolatedProperties,
-  isolateOptionToExport,
-} from './transformCode'
 import { Config } from './config'
 
 let latestTask = 0
 export const rootRouteName = 'root'
-export const rootRouteClientName = 'root.client'
 
 export type RouteNode = {
   filename: string
-  clientFilename: string
-  fileNameNoExt: string
   fullPath: string
-  fullDir: string
-  isDirectory: boolean
-  isIndex: boolean
-  variable: string
-  childRoutesDir?: string
-  genPath: string
-  genDir: string
-  genPathNoExt: string
-  parent?: RouteNode
+  variableName: string
+  routePath?: string
+  path?: string
+  id?: string
   hash?: string
-  importedFiles?: string[]
   version?: number
   changed?: boolean
   new?: boolean
   isRoot?: boolean
   children?: RouteNode[]
-}
-
-export type IsolatedExport = {
-  key: string
-  exported: boolean
-  code?: string | null
+  parent?: RouteNode
 }
 
 let nodeCache: RouteNode[] = undefined!
+
+async function createRouteNode(
+  config: Config,
+  fileName: string,
+): Promise<RouteNode> {
+  const filename = path.basename(fileName)
+  const fullPath = path.resolve(config.routesDirectory, filename)
+  const fileNameNoExt = removeExt(filename)
+  let routePath = fileNameNoExt.split('.').join('/')
+
+  // Remove the index from the route path and
+  // if the route path is empty, use `/'
+  if (routePath.endsWith('/index')) {
+    routePath = routePath.replace(/\/index$/, '/')
+  } else if (routePath === 'index') {
+    routePath = '/'
+  }
+
+  return {
+    filename,
+    fullPath,
+    routePath,
+    variableName: fileToVariable(removeExt(filename)),
+  }
+}
 
 export async function generator(config: Config) {
   console.log()
@@ -74,7 +76,6 @@ export async function generator(config: Config) {
 
   const start = Date.now()
   let routeConfigImports: string[] = []
-  let routeConfigClientImports: string[] = []
 
   let nodesChanged = false
   const fileQueue: [string, string][] = []
@@ -82,97 +83,61 @@ export async function generator(config: Config) {
     fileQueue.push([filename, content])
   }
 
-  async function reparent(dir: string): Promise<RouteNode[]> {
-    let dirList
+  let dirList
 
-    try {
-      dirList = await fs.readdir(dir)
-    } catch (err) {
-      console.log()
-      console.error(
-        'TSR: Error reading the config.routesDirectory. Does it exist?',
-      )
-      console.log()
-      throw err
-    }
-
-    const dirListCombo = multiSortBy(
-      await Promise.all(
-        dirList.map(async (filename): Promise<RouteNode> => {
-          const fullPath = path.resolve(dir, filename)
-          const stat = await fs.lstat(fullPath)
-          const ext = path.extname(filename)
-
-          const clientFilename = filename.replace(ext, `.client${ext}`)
-
-          const pathFromRoutes = path.relative(config.routesDirectory, fullPath)
-          const genPath = path.resolve(config.routeGenDirectory, pathFromRoutes)
-
-          const genPathNoExt = removeExt(genPath)
-          const genDir = path.resolve(genPath, '..')
-
-          const fileNameNoExt = removeExt(filename)
-
-          return {
-            filename,
-            clientFilename,
-            fileNameNoExt,
-            fullPath,
-            fullDir: dir,
-            genPath,
-            genDir,
-            genPathNoExt,
-            variable: fileToVariable(removeExt(pathFromRoutes)),
-            isDirectory: stat.isDirectory(),
-            isIndex: fileNameNoExt === 'index',
-          }
-        }),
-      ),
-      [
-        (d) => (d.fileNameNoExt === 'index' ? -1 : 1),
-        (d) => d.fileNameNoExt,
-        (d) => (d.isDirectory ? 1 : -1),
-      ],
+  try {
+    dirList = await fs.readdir(config.routesDirectory)
+  } catch (err) {
+    console.log()
+    console.error(
+      'TSR: Error reading the config.routesDirectory. Does it exist?',
     )
-
-    const reparented: typeof dirListCombo = []
-
-    dirListCombo.forEach(async (d, i) => {
-      if (d.isDirectory) {
-        const parent = reparented.find(
-          (dd) => !dd.isDirectory && dd.fileNameNoExt === d.filename,
-        )
-
-        if (parent) {
-          parent.childRoutesDir = d.fullPath
-        } else {
-          reparented.push(d)
-        }
-      } else {
-        reparented.push(d)
-      }
-    })
-
-    return Promise.all(
-      reparented.map(async (d) => {
-        if (d.childRoutesDir) {
-          const children = await reparent(d.childRoutesDir)
-
-          d = {
-            ...d,
-            children,
-          }
-
-          children.forEach((child) => (child.parent = d))
-
-          return d
-        }
-        return d
-      }),
-    )
+    console.log()
+    throw err
   }
 
-  const reparented = await reparent(config.routesDirectory)
+  let routeNodes = await Promise.all(
+    dirList.map(async (filename): Promise<RouteNode> => {
+      return createRouteNode(config, filename)
+    }),
+  )
+
+  routeNodes = multiSortBy(routeNodes, [
+    (d) => (d.routePath === '/' ? -1 : 1),
+    (d) => d.routePath?.split('/').length,
+    (d) => (d.routePath?.endsWith('/') ? -1 : 1),
+    (d) => d.routePath,
+  ]).filter((d) => d.routePath !== '_root')
+
+  const routeTree: RouteNode[] = []
+
+  // Loop over the flat list of routeNodes and
+  // build up a tree based on the routeNodes' routePath
+  routeNodes.forEach((node) => {
+    const findParent = (
+      existing: RouteNode[],
+      node: RouteNode,
+      parentNode?: RouteNode,
+    ) => {
+      const parent = existing.find((d) => {
+        return node.routePath?.startsWith(d.path!)
+      })
+
+      if (parent) {
+        if (!parent.children) {
+          parent.children = []
+        }
+
+        findParent(parent.children, node, parent)
+      } else {
+        node.path = node.routePath?.replace(parentNode?.routePath ?? '', '')
+        node.parent = parentNode
+        existing.push(node)
+      }
+    }
+
+    findParent(routeTree, node)
+  })
 
   async function buildRouteConfig(
     nodes: RouteNode[],
@@ -192,12 +157,8 @@ export async function generator(config: Config) {
       }
 
       node.version = latestTask
-      if (node.fileNameNoExt === rootRouteName) {
-        node.isRoot = true
-      }
 
       const routeCode = await fs.readFile(node.fullPath, 'utf-8')
-
       const hashSum = crypto.createHash('sha256')
       hashSum.update(routeCode)
       const hash = hashSum.digest('hex')
@@ -214,89 +175,22 @@ export async function generator(config: Config) {
           if (code) {
             await fs.writeFile(node.fullPath, code)
           }
-
-          let imports: IsolatedExport[] = []
-
-          // Generate the isolated files
-          const transforms = await Promise.all(
-            isolatedProperties.map(async (key): Promise<IsolatedExport> => {
-              let exported = false
-              let exports: string[] = []
-
-              const transformed = await isolateOptionToExport(node, routeCode, {
-                isolate: key,
-              })
-
-              if (transformed) {
-                exports = await detectExports(transformed)
-                if (exports.includes(key)) {
-                  exported = true
-                }
-              }
-
-              return { key, exported, code: transformed }
-            }),
-          )
-
-          imports = transforms.filter(({ exported }) => exported)
-
-          node.importedFiles = await Promise.all(
-            imports.map(({ key, code }) => {
-              const importFilename = `${node.genPathNoExt}-${key}.tsx`
-              queueWriteFile(importFilename, code!)
-              return importFilename
-            }),
-          )
-
-          const routeConfigCode = await generateRouteConfig(
-            node,
-            routeCode,
-            imports,
-            false,
-          )
-
-          const clientRouteConfigCode = await generateRouteConfig(
-            node,
-            routeCode,
-            imports,
-            true,
-          )
-
-          queueWriteFile(node.genPath, routeConfigCode)
-          queueWriteFile(
-            path.resolve(node.genDir, node.clientFilename),
-            clientRouteConfigCode,
-          )
         } catch (err) {
           node.hash = ''
           throw err
         }
       }
 
+      const route = `${node.variableName}Route`
+
       routeConfigImports.push(
-        `import { route as ${node.variable}Route } from './${removeExt(
-          path
-            .relative(config.routeGenDirectory, node.genPath)
-            .replace(/\\/gi, '/'),
+        `import { route as ${route} } from './${removeExt(
+          path.relative(
+            path.dirname(config.generatedRouteTree),
+            path.resolve(config.routesDirectory, node.filename),
+          ),
         )}'`,
       )
-
-      routeConfigClientImports.push(
-        `import { route as ${node.variable}Route } from './${removeExt(
-          path
-            .relative(
-              config.routeGenDirectory,
-              path.resolve(node.genDir, node.clientFilename),
-            )
-            .replace(/\\/gi, '/'),
-        )}'`,
-      )
-
-      if (node.isRoot) {
-        return undefined
-      }
-
-      const route = `${node.variable}Route`
 
       if (node.children?.length) {
         const childConfigs = await buildRouteConfig(node.children, depth + 1)
@@ -313,7 +207,7 @@ export async function generator(config: Config) {
       .join(`,\n${spaces(depth * 2)}`)
   }
 
-  const routeConfigChildrenText = await buildRouteConfig(reparented)
+  const routeConfigChildrenText = await buildRouteConfig(routeTree)
 
   routeConfigImports = multiSortBy(routeConfigImports, [
     (d) => (d.includes(rootRouteName) ? -1 : 1),
@@ -322,40 +216,44 @@ export async function generator(config: Config) {
     (d) => d,
   ])
 
-  routeConfigClientImports = multiSortBy(routeConfigClientImports, [
-    (d) => (d.includes(rootRouteName) ? -1 : 1),
-    (d) => d.split('/').length,
-    (d) => (d.endsWith("index.client'") ? -1 : 1),
-    (d) => d,
-  ])
-
-  const routeConfig = `export const routeTree = rootRoute.addChildren([\n  ${routeConfigChildrenText}\n])\nexport type __GeneratedRouteConfig = typeof routeTree`
-  const routeConfigClient = `export const routeTreeClient = rootRoute.addChildren([\n  ${routeConfigChildrenText}\n]) as __GeneratedRouteConfig`
+  const routeConfig = `export const routeTree = rootRoute.addChildren([\n  ${routeConfigChildrenText}\n])`
 
   const routeConfigFileContent = [
+    `import { route as rootRoute } from './${path.relative(
+      path.dirname(config.generatedRouteTree),
+      path.resolve(config.routesDirectory, '_root'),
+    )}'`,
     routeConfigImports.join('\n'),
+    `declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    ${routeNodes
+      .map((routeNode) => {
+        return `'${routeNode.routePath}': {
+      parentRoute: typeof ${routeNode.parent?.variableName ?? 'root'}Route
+    }`
+      })
+      .join('\n    ')}  
+  }
+}`,
+    routeNodes
+      .map((routeNode) => {
+        return `Object.assign(${
+          routeNode.variableName ?? 'root'
+        }Route.options, {
+  path: '${routeNode.path}',
+  getParentRoute: () => ${`${routeNode.parent?.variableName ?? 'root'}Route,
+})`}`
+      })
+      .join('\n'),
     routeConfig,
-  ].join('\n\n')
-
-  const routeConfigClientFileContent = [
-    `import type { __GeneratedRouteConfig } from './routeTree'`,
-    routeConfigClientImports.join('\n'),
-    routeConfigClient,
   ].join('\n\n')
 
   if (nodesChanged) {
     queueWriteFile(
-      path.resolve(config.routeGenDirectory, 'routeTree.ts'),
+      path.resolve(config.generatedRouteTree),
       routeConfigFileContent,
     )
-    queueWriteFile(
-      path.resolve(config.routeGenDirectory, 'routeTree.client.ts'),
-      routeConfigClientFileContent,
-    )
   }
-
-  // Do all of our file system manipulation at the end
-  await fs.mkdir(config.routeGenDirectory, { recursive: true })
 
   if (!checkLatest()) return
 
@@ -375,10 +273,6 @@ export async function generator(config: Config) {
 
   if (!checkLatest()) return
 
-  const allFiles = await getAllFiles(config.routeGenDirectory)
-
-  if (!checkLatest()) return
-
   const removedNodes: RouteNode[] = []
 
   nodeCache = nodeCache.filter((d) => {
@@ -391,30 +285,6 @@ export async function generator(config: Config) {
 
   const newNodes = nodeCache.filter((d) => d.new)
   const updatedNodes = nodeCache.filter((d) => !d.new && d.changed)
-
-  const unusedFiles = allFiles.filter((d) => {
-    if (
-      d === path.resolve(config.routeGenDirectory, 'routeTree.ts') ||
-      d === path.resolve(config.routeGenDirectory, 'routeTree.client.ts')
-    ) {
-      return false
-    }
-
-    let node = nodeCache.find(
-      (n) =>
-        n.genPath === d ||
-        path.resolve(n.genDir, n.clientFilename) === d ||
-        n.importedFiles?.includes(d),
-    )
-
-    return !node
-  })
-
-  await Promise.all(
-    unusedFiles.map((d) => {
-      fs.remove(d)
-    }),
-  )
 
   console.log(
     `🌲 Processed ${nodeCache.length} routes in ${Date.now() - start}ms`,
@@ -437,21 +307,22 @@ export async function generator(config: Config) {
   }
 }
 
-function getAllFiles(dir: string): Promise<string[]> {
-  return new Promise((resolve, reject) => {
-    const excludeDirFilter = through2.obj(function (item, enc, next) {
-      if (!item.stats.isDirectory()) this.push(item)
-      next()
-    })
+async function ensureBoilerplate(node: RouteNode, code: string) {
+  if (node.isRoot) {
+    return
+  }
 
-    const items: string[] = []
+  // Ensure that new FileRoute(anything?) is replace with FileRoute(${node.routePath})
+  const replaced = code.replace(
+    /new\s+FileRoute\(([^)]*)\)/g,
+    `new FileRoute('${node.routePath}')`,
+  )
 
-    klaw(dir)
-      .pipe(excludeDirFilter)
-      .on('data', (item) => items.push(item.path))
-      .on('error', (err) => reject(err))
-      .on('end', () => resolve(items))
-  })
+  if (replaced !== code) {
+    return replaced
+  }
+
+  return
 }
 
 function fileToVariable(d: string) {

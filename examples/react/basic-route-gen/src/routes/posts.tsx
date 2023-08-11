@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { FileRoute, Link, Outlet } from '@tanstack/react-router'
 import axios from 'axios'
-import { PostType } from './posts.posts'
+import { PostType } from './posts.$postId'
 
 const fetchPosts = async () => {
   console.log('Fetching posts...')
@@ -12,7 +12,7 @@ const fetchPosts = async () => {
 }
 
 // @ts-ignore
-export const route = new FileRoute('/posts').createRoute({
+export const route = new FileRoute('posts').createRoute({
   loader: fetchPosts,
   component: ({ useLoader }) => {
     const posts = useLoader()
@@ -27,7 +27,7 @@ export const route = new FileRoute('/posts').createRoute({
             return (
               <li key={post.id} className="whitespace-nowrap">
                 <Link
-                  to=""
+                  to="/posts/$postId"
                   params={{
                     postId: post.id,
                   }}

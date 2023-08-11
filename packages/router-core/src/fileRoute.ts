@@ -115,6 +115,8 @@ export class FileRoute<
     TChildren,
     TRoutesInfo
   > => {
-    return new Route(options as any)
+    const route = new Route(options as any)
+    ;(route as any).isRoot = false
+    return route as any
   }
 }
