@@ -145,7 +145,7 @@
         },
         {
           "label": "With Loaders SSR",
-          "to": "examples/react/with-loaders-basic-ssr?file=src%2Fentry-server.tsx"
+          "to": "examples/react/with-loaders-ssr?file=src%2Fentry-server.tsx"
         },
         {
           "label": "With Loaders SSR with Streaming",
