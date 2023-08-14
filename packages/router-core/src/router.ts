@@ -791,6 +791,10 @@ export class Router<
         }
       })()
 
+      Object.assign(match, {
+        ...searchInfo,
+      })
+
       const contextInfo = (() => {
         try {
           const routeContext =
@@ -817,7 +821,6 @@ export class Router<
       })()
 
       Object.assign(match, {
-        ...searchInfo,
         ...contextInfo,
       })
     })
@@ -836,7 +839,7 @@ export class Router<
 
     if (!opts?.preload) {
       resolvedMatches.forEach((match) => {
-        // Update each match with its latest url data
+        // Update each match with its latest route data
         this.setRouteMatch(match.id, (s) => ({
           ...s,
           routeSearch: match.routeSearch,
