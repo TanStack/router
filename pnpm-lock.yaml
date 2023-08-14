@@ -1,7 +1,7 @@
 lockfileVersion: '6.0'
 
 settings:
-  autoInstallPeers: false
+  autoInstallPeers: true
   excludeLinksFromLockfile: false
 
 overrides:
@@ -207,7 +207,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -253,8 +253,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/actions
       '@tanstack/bling':
-        specifier: ^0.0.3
-        version: link:node_modules/@tanstack/bling
+        specifier: ^0.5.0
+        version: 0.5.0(vite@2.9.16)
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -277,7 +277,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -347,7 +347,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -414,7 +414,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -478,7 +478,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -566,7 +566,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -636,7 +636,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -706,7 +706,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -773,7 +773,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -840,7 +840,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -907,7 +907,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -974,7 +974,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1071,7 +1071,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1174,7 +1174,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1247,7 +1247,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.147
+        specifier: 0.0.1-beta.149
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1334,6 +1334,12 @@ importers:
       '@tanstack/react-store':
         specifier: workspace:*
         version: link:../react-store
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.0.5
         version: 1.3.1
@@ -1346,6 +1352,12 @@ importers:
       '@tanstack/react-store':
         specifier: workspace:*
         version: link:../react-store
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.0.5
         version: 1.3.1
@@ -1357,13 +1369,19 @@ importers:
         version: 7.21.0
       '@gisatcz/cross-package-react-context':
         specifier: ^0.2.0
-        version: 0.2.0
+        version: 0.2.0(react@18.2.0)
       '@tanstack/react-store':
         specifier: workspace:*
         version: link:../react-store
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1378,10 +1396,10 @@ importers:
         version: 7.21.0
       '@gisatcz/cross-package-react-context':
         specifier: ^0.2.0
-        version: 0.2.0
+        version: 0.2.0(react@18.2.0)
       '@tanstack/bling':
         specifier: ^0.0.3
-        version: 0.0.3
+        version: 0.0.3(vite@4.4.8)
       '@tanstack/react-loaders':
         specifier: workspace:*
         version: link:../react-loaders
@@ -1397,6 +1415,12 @@ importers:
       jsesc:
         specifier: ^3.0.2
         version: 3.0.2
+      react:
+        specifier: '>=18'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=18'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1406,7 +1430,7 @@ importers:
     devDependencies:
       astro:
         specifier: ^1.9.2
-        version: 1.9.2
+        version: 1.9.2(@types/node@17.0.45)(ts-node@10.9.1)
       esbuild:
         specifier: ^0.17.10
         version: 0.17.10
@@ -1416,9 +1440,15 @@ importers:
       '@tanstack/store':
         specifier: workspace:*
         version: link:../store
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       use-sync-external-store:
         specifier: ^1.2.0
-        version: 1.2.0
+        version: 1.2.0(react@18.2.0)
     devDependencies:
       '@types/use-sync-external-store':
         specifier: ^0.0.3
@@ -1487,10 +1517,16 @@ importers:
         version: 7.21.0
       '@gisatcz/cross-package-react-context':
         specifier: ^0.2.0
-        version: 0.2.0
+        version: 0.2.0(react@18.2.0)
       '@tanstack/react-store':
         specifier: workspace:*
         version: link:../react-store
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1509,6 +1545,12 @@ importers:
       date-fns:
         specifier: ^2.29.1
         version: 2.29.3
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
 
   packages/store: {}
 
@@ -3012,6 +3054,7 @@ packages:
 
   /@emotion/memoize@0.7.4:
     resolution: {integrity: sha512-Ja/Vfqe3HpuzRsG1oBtWTHk2PGZ7GR+2Vz5iYGelAw8dx32K0y7PjVuxK6z1nMpZOqAFsRUPCkK1YjJ56qJlgw==}
+    requiresBuild: true
     dev: false
     optional: true
 
@@ -3035,6 +3078,15 @@ packages:
       '@esbuild-kit/core-utils': 3.0.0
       get-tsconfig: 4.6.2
     dev: true
+
+  /@esbuild/android-arm64@0.16.17:
+    resolution: {integrity: sha512-MIGl6p5sc3RDTLLkYL1MyL8BMRN4tLMRCn+yRJJmEDvYZ2M7tmAf80hx1kbNEUX2KJ50RRtxZ4JHLvCfuB6kBg==}
+    engines: {node: '>=12'}
+    cpu: [arm64]
+    os: [android]
+    requiresBuild: true
+    dev: false
+    optional: true
 
   /@esbuild/android-arm64@0.17.10:
     resolution: {integrity: sha512-ht1P9CmvrPF5yKDtyC+z43RczVs4rrHpRqrmIuoSvSdn44Fs1n6DGlpZKdK6rM83pFLbVaSUwle8IN+TPmkv7g==}
@@ -3063,6 +3115,15 @@ packages:
     dev: true
     optional: true
 
+  /@esbuild/android-arm@0.16.17:
+    resolution: {integrity: sha512-N9x1CMXVhtWEAMS7pNNONyA14f71VPQN9Cnavj1XQh6T7bskqiLLrSca4O0Vr8Wdcga943eThxnVp3JLnBMYtw==}
+    engines: {node: '>=12'}
+    cpu: [arm]
+    os: [android]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@esbuild/android-arm@0.17.10:
     resolution: {integrity: sha512-7YEBfZ5lSem9Tqpsz+tjbdsEshlO9j/REJrfv4DXgKTt1+/MHqGwbtlyxQuaSlMeUZLxUKBaX8wdzlTfHkmnLw==}
     engines: {node: '>=12'}
@@ -3076,6 +3137,15 @@ packages:
     resolution: {integrity: sha512-blODaaL+lngG5bdK/t4qZcQvq2BBqrABmYwqPPcS5VRxrCSGHb9R/rA3fqxh7R18I7WU4KKv+NYkt22FDfalcg==}
     engines: {node: '>=12'}
     cpu: [arm]
+    os: [android]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@esbuild/android-x64@0.16.17:
+    resolution: {integrity: sha512-a3kTv3m0Ghh4z1DaFEuEDfz3OLONKuFvI4Xqczqx4BqLyuFaFkuaG4j2MtA6fuWEFeC5x9IvqnX7drmRq/fyAQ==}
+    engines: {node: '>=12'}
+    cpu: [x64]
     os: [android]
     requiresBuild: true
     dev: false
@@ -3099,6 +3169,15 @@ packages:
     dev: false
     optional: true
 
+  /@esbuild/darwin-arm64@0.16.17:
+    resolution: {integrity: sha512-/2agbUEfmxWHi9ARTX6OQ/KgXnOWfsNlTeLcoV7HSuSTv63E4DqtAc+2XqGw1KHxKMHGZgbVCZge7HXWX9Vn+w==}
+    engines: {node: '>=12'}
+    cpu: [arm64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@esbuild/darwin-arm64@0.17.10:
     resolution: {integrity: sha512-3HaGIowI+nMZlopqyW6+jxYr01KvNaLB5znXfbyyjuo4lE0VZfvFGcguIJapQeQMS4cX/NEispwOekJt3gr5Dg==}
     engines: {node: '>=12'}
@@ -3112,6 +3191,15 @@ packages:
     resolution: {integrity: sha512-9Hl2D2PBeDYZiNbnRKRWuxwHa9v5ssWBBjisXFkVcSP5cZqzZRFBUWEQuqBHO4+PKx4q4wgHoWtfQ1S7rUqJ2Q==}
     engines: {node: '>=12'}
     cpu: [arm64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@esbuild/darwin-x64@0.16.17:
+    resolution: {integrity: sha512-2By45OBHulkd9Svy5IOCZt376Aa2oOkiE9QWUK9fe6Tb+WDr8hXL3dpqi+DeLiMed8tVXspzsTAvd0jUl96wmg==}
+    engines: {node: '>=12'}
+    cpu: [x64]
     os: [darwin]
     requiresBuild: true
     dev: false
@@ -3135,6 +3223,15 @@ packages:
     dev: false
     optional: true
 
+  /@esbuild/freebsd-arm64@0.16.17:
+    resolution: {integrity: sha512-mt+cxZe1tVx489VTb4mBAOo2aKSnJ33L9fr25JXpqQqzbUIw/yzIzi+NHwAXK2qYV1lEFp4OoVeThGjUbmWmdw==}
+    engines: {node: '>=12'}
+    cpu: [arm64]
+    os: [freebsd]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@esbuild/freebsd-arm64@0.17.10:
     resolution: {integrity: sha512-ZkX40Z7qCbugeK4U5/gbzna/UQkM9d9LNV+Fro8r7HA7sRof5Rwxc46SsqeMvB5ZaR0b1/ITQ/8Y1NmV2F0fXQ==}
     engines: {node: '>=12'}
@@ -3148,6 +3245,15 @@ packages:
     resolution: {integrity: sha512-h3OqR80Da4oQCIa37zl8tU5MwHQ7qgPV0oVScPfKJK21fSRZEhLE4IIVpmcOxfAVmqjU6NDxcxhYaM8aDIGRLw==}
     engines: {node: '>=12'}
     cpu: [arm64]
+    os: [freebsd]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@esbuild/freebsd-x64@0.16.17:
+    resolution: {integrity: sha512-8ScTdNJl5idAKjH8zGAsN7RuWcyHG3BAvMNpKOBaqqR7EbUhhVHOqXRdL7oZvz8WNHL2pr5+eIT5c65kA6NHug==}
+    engines: {node: '>=12'}
+    cpu: [x64]
     os: [freebsd]
     requiresBuild: true
     dev: false
@@ -3171,6 +3277,15 @@ packages:
     dev: false
     optional: true
 
+  /@esbuild/linux-arm64@0.16.17:
+    resolution: {integrity: sha512-7S8gJnSlqKGVJunnMCrXHU9Q8Q/tQIxk/xL8BqAP64wchPCTzuM6W3Ra8cIa1HIflAvDnNOt2jaL17vaW+1V0g==}
+    engines: {node: '>=12'}
+    cpu: [arm64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@esbuild/linux-arm64@0.17.10:
     resolution: {integrity: sha512-g1EZJR1/c+MmCgVwpdZdKi4QAJ8DCLP5uTgLWSAVd9wlqk9GMscaNMEViG3aE1wS+cNMzXXgdWiW/VX4J+5nTA==}
     engines: {node: '>=12'}
@@ -3189,6 +3304,15 @@ packages:
     dev: false
     optional: true
 
+  /@esbuild/linux-arm@0.16.17:
+    resolution: {integrity: sha512-iihzrWbD4gIT7j3caMzKb/RsFFHCwqqbrbH9SqUSRrdXkXaygSZCZg1FybsZz57Ju7N/SHEgPyaR0LZ8Zbe9gQ==}
+    engines: {node: '>=12'}
+    cpu: [arm]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@esbuild/linux-arm@0.17.10:
     resolution: {integrity: sha512-whRdrrl0X+9D6o5f0sTZtDM9s86Xt4wk1bf7ltx6iQqrIIOH+sre1yjpcCdrVXntQPCNw/G+XqsD4HuxeS+2QA==}
     engines: {node: '>=12'}
@@ -3202,6 +3326,15 @@ packages:
     resolution: {integrity: sha512-5+7vehI1iqru5WRtJyU2XvTOvTGURw3OZxe3YTdE9muNNIdmKAVmSHpB3Vw2LazJk2ifEdIMt/wTWnVe5V98Kg==}
     engines: {node: '>=12'}
     cpu: [arm]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@esbuild/linux-ia32@0.16.17:
+    resolution: {integrity: sha512-kiX69+wcPAdgl3Lonh1VI7MBr16nktEvOfViszBSxygRQqSpzv7BffMKRPMFwzeJGPxcio0pdD3kYQGpqQ2SSg==}
+    engines: {node: '>=12'}
+    cpu: [ia32]
     os: [linux]
     requiresBuild: true
     dev: false
@@ -3242,6 +3375,15 @@ packages:
     dev: true
     optional: true
 
+  /@esbuild/linux-loong64@0.16.17:
+    resolution: {integrity: sha512-dTzNnQwembNDhd654cA4QhbS9uDdXC3TKqMJjgOWsC0yNCbpzfWoXdZvp0mY7HU6nzk5E0zpRGGx3qoQg8T2DQ==}
+    engines: {node: '>=12'}
+    cpu: [loong64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@esbuild/linux-loong64@0.17.10:
     resolution: {integrity: sha512-mvwAr75q3Fgc/qz3K6sya3gBmJIYZCgcJ0s7XshpoqIAIBszzfXsqhpRrRdVFAyV1G9VUjj7VopL2HnAS8aHFA==}
     engines: {node: '>=12'}
@@ -3255,6 +3397,15 @@ packages:
     resolution: {integrity: sha512-j2/Ex++DRUWIAaUDprXd3JevzGtZ4/d7VKz+AYDoHZ3HjJzCyYBub9CU1wwIXN+viOP0b4VR3RhGClsvyt/xSw==}
     engines: {node: '>=12'}
     cpu: [loong64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@esbuild/linux-mips64el@0.16.17:
+    resolution: {integrity: sha512-ezbDkp2nDl0PfIUn0CsQ30kxfcLTlcx4Foz2kYv8qdC6ia2oX5Q3E/8m6lq84Dj/6b0FrkgD582fJMIfHhJfSw==}
+    engines: {node: '>=12'}
+    cpu: [mips64el]
     os: [linux]
     requiresBuild: true
     dev: false
@@ -3278,6 +3429,15 @@ packages:
     dev: false
     optional: true
 
+  /@esbuild/linux-ppc64@0.16.17:
+    resolution: {integrity: sha512-dzS678gYD1lJsW73zrFhDApLVdM3cUF2MvAa1D8K8KtcSKdLBPP4zZSLy6LFZ0jYqQdQ29bjAHJDgz0rVbLB3g==}
+    engines: {node: '>=12'}
+    cpu: [ppc64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@esbuild/linux-ppc64@0.17.10:
     resolution: {integrity: sha512-kM4Rmh9l670SwjlGkIe7pYWezk8uxKHX4Lnn5jBZYBNlWpKMBCVfpAgAJqp5doLobhzF3l64VZVrmGeZ8+uKmQ==}
     engines: {node: '>=12'}
@@ -3291,6 +3451,15 @@ packages:
     resolution: {integrity: sha512-aGzXzd+djqeEC5IRkDKt3kWzvXoXC6K6GyYKxd+wsFJ2VQYnOWE954qV2tvy5/aaNrmgPTb52cSCHFE+Z7Z0yg==}
     engines: {node: '>=12'}
     cpu: [ppc64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@esbuild/linux-riscv64@0.16.17:
+    resolution: {integrity: sha512-ylNlVsxuFjZK8DQtNUwiMskh6nT0vI7kYl/4fZgV1llP5d6+HIeL/vmmm3jpuoo8+NuXjQVZxmKuhDApK0/cKw==}
+    engines: {node: '>=12'}
+    cpu: [riscv64]
     os: [linux]
     requiresBuild: true
     dev: false
@@ -3314,6 +3483,15 @@ packages:
     dev: false
     optional: true
 
+  /@esbuild/linux-s390x@0.16.17:
+    resolution: {integrity: sha512-gzy7nUTO4UA4oZ2wAMXPNBGTzZFP7mss3aKR2hH+/4UUkCOyqmjXiKpzGrY2TlEUhbbejzXVKKGazYcQTZWA/w==}
+    engines: {node: '>=12'}
+    cpu: [s390x]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@esbuild/linux-s390x@0.17.10:
     resolution: {integrity: sha512-LsY7QvOLPw9WRJ+fU5pNB3qrSfA00u32ND5JVDrn/xG5hIQo3kvTxSlWFRP0NJ0+n6HmhPGG0Q4jtQsb6PFoyg==}
     engines: {node: '>=12'}
@@ -3327,6 +3505,15 @@ packages:
     resolution: {integrity: sha512-G/Lf9iu8sRMM60OVGOh94ZW2nIStksEcITkXdkD09/T6QFD/o+g0+9WVyR/jajIb3A0LvBJ670tBnGe1GgXMgw==}
     engines: {node: '>=12'}
     cpu: [s390x]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@esbuild/linux-x64@0.16.17:
+    resolution: {integrity: sha512-mdPjPxfnmoqhgpiEArqi4egmBAMYvaObgn4poorpUaqmvzzbvqbowRllQ+ZgzGVMGKaPkqUmPDOOFQRUFDmeUw==}
+    engines: {node: '>=12'}
+    cpu: [x64]
     os: [linux]
     requiresBuild: true
     dev: false
@@ -3350,6 +3537,15 @@ packages:
     dev: false
     optional: true
 
+  /@esbuild/netbsd-x64@0.16.17:
+    resolution: {integrity: sha512-/PzmzD/zyAeTUsduZa32bn0ORug+Jd1EGGAUJvqfeixoEISYpGnAezN6lnJoskauoai0Jrs+XSyvDhppCPoKOA==}
+    engines: {node: '>=12'}
+    cpu: [x64]
+    os: [netbsd]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@esbuild/netbsd-x64@0.17.10:
     resolution: {integrity: sha512-lOMkailn4Ok9Vbp/q7uJfgicpDTbZFlXlnKT2DqC8uBijmm5oGtXAJy2ZZVo5hX7IOVXikV9LpCMj2U8cTguWA==}
     engines: {node: '>=12'}
@@ -3364,6 +3560,15 @@ packages:
     engines: {node: '>=12'}
     cpu: [x64]
     os: [netbsd]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@esbuild/openbsd-x64@0.16.17:
+    resolution: {integrity: sha512-2yaWJhvxGEz2RiftSk0UObqJa/b+rIAjnODJgv2GbGGpRwAfpgzyrg1WLK8rqA24mfZa9GvpjLcBBg8JHkoodg==}
+    engines: {node: '>=12'}
+    cpu: [x64]
+    os: [openbsd]
     requiresBuild: true
     dev: false
     optional: true
@@ -3386,6 +3591,15 @@ packages:
     dev: false
     optional: true
 
+  /@esbuild/sunos-x64@0.16.17:
+    resolution: {integrity: sha512-xtVUiev38tN0R3g8VhRfN7Zl42YCJvyBhRKw1RJjwE1d2emWTVToPLNEQj/5Qxc6lVFATDiy6LjVHYhIPrLxzw==}
+    engines: {node: '>=12'}
+    cpu: [x64]
+    os: [sunos]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@esbuild/sunos-x64@0.17.10:
     resolution: {integrity: sha512-ERNO0838OUm8HfUjjsEs71cLjLMu/xt6bhOlxcJ0/1MG3hNqCmbWaS+w/8nFLa0DDjbwZQuGKVtCUJliLmbVgg==}
     engines: {node: '>=12'}
@@ -3400,6 +3614,15 @@ packages:
     engines: {node: '>=12'}
     cpu: [x64]
     os: [sunos]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@esbuild/win32-arm64@0.16.17:
+    resolution: {integrity: sha512-ga8+JqBDHY4b6fQAmOgtJJue36scANy4l/rL97W+0wYmijhxKetzZdKOJI7olaBaMhWt8Pac2McJdZLxXWUEQw==}
+    engines: {node: '>=12'}
+    cpu: [arm64]
+    os: [win32]
     requiresBuild: true
     dev: false
     optional: true
@@ -3422,6 +3645,15 @@ packages:
     dev: false
     optional: true
 
+  /@esbuild/win32-ia32@0.16.17:
+    resolution: {integrity: sha512-WnsKaf46uSSF/sZhwnqE4L/F89AYNMiD4YtEcYekBt9Q7nj0DiId2XH2Ng2PHM54qi5oPrQ8luuzGszqi/veig==}
+    engines: {node: '>=12'}
+    cpu: [ia32]
+    os: [win32]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@esbuild/win32-ia32@0.17.10:
     resolution: {integrity: sha512-3s+HADrOdCdGOi5lnh5DMQEzgbsFsd4w57L/eLKKjMnN0CN4AIEP0DCP3F3N14xnxh3ruNc32A0Na9zYe1Z/AQ==}
     engines: {node: '>=12'}
@@ -3435,6 +3667,15 @@ packages:
     resolution: {integrity: sha512-EXAFttrdAxZkFQmpvcAQ2bywlWUsONp/9c2lcfvPUhu8vXBBenCXpoq9YkUvVP639ld3YGiYx0YUQ6/VQz3Maw==}
     engines: {node: '>=12'}
     cpu: [ia32]
+    os: [win32]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@esbuild/win32-x64@0.16.17:
+    resolution: {integrity: sha512-y+EHuSchhL7FjHgvQL/0fnnFmO4T1bhvWANX6gcnqTjtnKWbTvUMCpGnv2+t+31d7RzyEAYAd4u2fnIhHL6N/Q==}
+    engines: {node: '>=12'}
+    cpu: [x64]
     os: [win32]
     requiresBuild: true
     dev: false
@@ -3463,10 +3704,12 @@ packages:
     engines: {node: '>=14.0.0', npm: '>=6.0.0'}
     dev: true
 
-  /@gisatcz/cross-package-react-context@0.2.0:
+  /@gisatcz/cross-package-react-context@0.2.0(react@18.2.0):
     resolution: {integrity: sha512-E7aR/o1ArpXETO8bQi+Hltj3duHeZiLjR+x1VZrCDs3jplSLGoy+oqCcqNNE1BamTBa0YQTs8Go1Q1dtt3LEUg==}
     peerDependencies:
       react: ^16.13.1 || ^17.0.2 || ^18.1.0
+    dependencies:
+      react: 18.2.0
     dev: false
 
   /@jest/schemas@29.6.0:
@@ -3951,10 +4194,25 @@ packages:
       '@swc/core-win32-x64-msvc': 1.3.71
     dev: false
 
-  /@tanstack/bling@0.0.3:
+  /@tanstack/bling@0.0.3(vite@4.4.8):
     resolution: {integrity: sha512-6cmmp3cX9e9DZEkJ7F9vwEaU5RmjNYWcY69A1cx4FyGsuNryqumXCWuVItBsrIM0npqqCRa09BQ+y45LxiL6ng==}
     dependencies:
-      '@vitejs/plugin-react': 3.1.0
+      '@vitejs/plugin-react': 3.1.0(vite@4.4.8)
+    transitivePeerDependencies:
+      - supports-color
+      - vite
+    dev: false
+
+  /@tanstack/bling@0.5.0(vite@2.9.16):
+    resolution: {integrity: sha512-IPSFm7jtZiJcQsNuFFrZ15V10gp/CYbqnTyAEMaTFNV97SqnB2hbM8tildppVeM7BHu7pIp7+nsbYPCGjeG7FA==}
+    dependencies:
+      '@babel/generator': 7.22.9
+      '@babel/template': 7.22.5
+      '@babel/traverse': 7.22.8
+      '@babel/types': 7.22.5
+      '@vitejs/plugin-react': 3.1.0(vite@2.9.16)
+      esbuild: 0.16.17
+      esbuild-plugin-replace: 1.4.0
     transitivePeerDependencies:
       - supports-color
       - vite
@@ -4501,7 +4759,7 @@ packages:
       - supports-color
     dev: true
 
-  /@vitejs/plugin-react@3.1.0:
+  /@vitejs/plugin-react@3.1.0(vite@2.9.16):
     resolution: {integrity: sha512-AfgcRL8ZBhAlc3BFdigClmTUMISmmzHn7sB2h9U1odvc5U/MjWXsAaz18b/WoppUTDBzxOJwo2VdClfUcItu9g==}
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
@@ -4512,6 +4770,23 @@ packages:
       '@babel/plugin-transform-react-jsx-source': 7.22.5(@babel/core@7.22.9)
       magic-string: 0.27.0
       react-refresh: 0.14.0
+      vite: 2.9.16
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+  /@vitejs/plugin-react@3.1.0(vite@4.4.8):
+    resolution: {integrity: sha512-AfgcRL8ZBhAlc3BFdigClmTUMISmmzHn7sB2h9U1odvc5U/MjWXsAaz18b/WoppUTDBzxOJwo2VdClfUcItu9g==}
+    engines: {node: ^14.18.0 || >=16.0.0}
+    peerDependencies:
+      vite: ^4.1.0-beta.0
+    dependencies:
+      '@babel/core': 7.22.9
+      '@babel/plugin-transform-react-jsx-self': 7.22.5(@babel/core@7.22.9)
+      '@babel/plugin-transform-react-jsx-source': 7.22.5(@babel/core@7.22.9)
+      magic-string: 0.27.0
+      react-refresh: 0.14.0
+      vite: 4.4.8(@types/node@17.0.45)
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -4994,7 +5269,7 @@ packages:
       tslib: 2.5.0
     dev: true
 
-  /astro@1.9.2:
+  /astro@1.9.2(@types/node@17.0.45)(ts-node@10.9.1):
     resolution: {integrity: sha512-L+Ma0eR0Aa6QZg7RF0lEs+106Ye1/zukvtq3KtsYIogAojltlwllwU9X5CwMBzFwA55NxpNp4gSRh5US/xb+8Q==}
     engines: {node: ^14.18.0 || >=16.12.0, npm: '>=6.14.0'}
     hasBin: true
@@ -5040,7 +5315,7 @@ packages:
       path-browserify: 1.0.1
       path-to-regexp: 6.2.1
       postcss: 8.4.21
-      postcss-load-config: 3.1.4(postcss@8.4.21)
+      postcss-load-config: 3.1.4(postcss@8.4.21)(ts-node@10.9.1)
       preferred-pm: 3.0.3
       prompts: 2.4.2
       recast: 0.20.5
@@ -5058,7 +5333,7 @@ packages:
       typescript: 5.1.3
       unist-util-visit: 4.1.2
       vfile: 5.3.7
-      vite: 3.2.7
+      vite: 3.2.7(@types/node@17.0.45)
       vitefu: 0.2.4(vite@3.2.7)
       yargs-parser: 21.1.1
       zod: 3.21.4
@@ -6309,6 +6584,12 @@ packages:
     dev: true
     optional: true
 
+  /esbuild-plugin-replace@1.4.0:
+    resolution: {integrity: sha512-lP3ZAyzyRa5JXoOd59lJbRKNObtK8pJ/RO7o6vdjwLi71GfbL32NR22ZuS7/cLZkr10/L1lutoLma8E4DLngYg==}
+    dependencies:
+      magic-string: 0.25.9
+    dev: false
+
   /esbuild-sunos-64@0.14.54:
     resolution: {integrity: sha512-28GZ24KmMSeKi5ueWzMcco6EBHStL3B6ubM7M51RmPwXQGLe0teBGJocmWhgwccA1GeFXqxzILIxXpHbl9Q/Kw==}
     engines: {node: '>=12'}
@@ -6434,6 +6715,36 @@ packages:
       esbuild-windows-64: 0.15.18
       esbuild-windows-arm64: 0.15.18
     dev: true
+
+  /esbuild@0.16.17:
+    resolution: {integrity: sha512-G8LEkV0XzDMNwXKgM0Jwu3nY3lSTwSGY6XbxM9cr9+s0T/qSV1q1JVPBGzm3dcjhCic9+emZDmMffkwgPeOeLg==}
+    engines: {node: '>=12'}
+    hasBin: true
+    requiresBuild: true
+    optionalDependencies:
+      '@esbuild/android-arm': 0.16.17
+      '@esbuild/android-arm64': 0.16.17
+      '@esbuild/android-x64': 0.16.17
+      '@esbuild/darwin-arm64': 0.16.17
+      '@esbuild/darwin-x64': 0.16.17
+      '@esbuild/freebsd-arm64': 0.16.17
+      '@esbuild/freebsd-x64': 0.16.17
+      '@esbuild/linux-arm': 0.16.17
+      '@esbuild/linux-arm64': 0.16.17
+      '@esbuild/linux-ia32': 0.16.17
+      '@esbuild/linux-loong64': 0.16.17
+      '@esbuild/linux-mips64el': 0.16.17
+      '@esbuild/linux-ppc64': 0.16.17
+      '@esbuild/linux-riscv64': 0.16.17
+      '@esbuild/linux-s390x': 0.16.17
+      '@esbuild/linux-x64': 0.16.17
+      '@esbuild/netbsd-x64': 0.16.17
+      '@esbuild/openbsd-x64': 0.16.17
+      '@esbuild/sunos-x64': 0.16.17
+      '@esbuild/win32-arm64': 0.16.17
+      '@esbuild/win32-ia32': 0.16.17
+      '@esbuild/win32-x64': 0.16.17
+    dev: false
 
   /esbuild@0.17.10:
     resolution: {integrity: sha512-n7V3v29IuZy5qgxx25TKJrEm0FHghAlS6QweUcyIgh/U0zYmQcvogWROitrTyZId1mHSkuhhuyEXtI9OXioq7A==}
@@ -7785,7 +8096,6 @@ packages:
     resolution: {integrity: sha512-RmF0AsMzgt25qzqqLc1+MbHmhdx0ojF2Fvs4XnOqz2ZOBXzzkEwc/dJQZCYHAn7v1jbVOjAZfK8msRn4BxO4VQ==}
     dependencies:
       sourcemap-codec: 1.4.8
-    dev: true
 
   /magic-string@0.26.7:
     resolution: {integrity: sha512-hX9XH3ziStPoPhJxLq1syWuZMxbDvGNbVchfrdCtanC7D13888bMFow61x8axrx+GfHLtVeAx2kxL7tTGRl+Ow==}
@@ -8919,7 +9229,7 @@ packages:
       pathe: 1.1.1
     dev: false
 
-  /postcss-load-config@3.1.4(postcss@8.4.21):
+  /postcss-load-config@3.1.4(postcss@8.4.21)(ts-node@10.9.1):
     resolution: {integrity: sha512-6DiM4E7v4coTE4uzA8U//WhtPwyhiim3eyjEMFCnUpzbrkK9wJHgKDT2mR+HbtSrd/NubVaYTOpSpjUl8NQeRg==}
     engines: {node: '>= 10'}
     peerDependencies:
@@ -8933,6 +9243,7 @@ packages:
     dependencies:
       lilconfig: 2.0.6
       postcss: 8.4.21
+      ts-node: 10.9.1(@types/node@17.0.45)(typescript@4.9.5)
       yaml: 1.10.2
     dev: true
 
@@ -10571,12 +10882,6 @@ packages:
       punycode: 2.3.0
     dev: false
 
-  /use-sync-external-store@1.2.0:
-    resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0
-    dev: false
-
   /use-sync-external-store@1.2.0(react@18.2.0):
     resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
     peerDependencies:
@@ -10746,7 +11051,7 @@ packages:
     optionalDependencies:
       fsevents: 2.3.2
 
-  /vite@3.2.7:
+  /vite@3.2.7(@types/node@17.0.45):
     resolution: {integrity: sha512-29pdXjk49xAP0QBr0xXqu2s5jiQIXNvE/xwd0vUizYT2Hzqe4BksNNoWllFVXJf4eLZ+UlVQmXfB4lWrc+t18g==}
     engines: {node: ^14.18.0 || >=16.0.0}
     hasBin: true
@@ -10771,6 +11076,7 @@ packages:
       terser:
         optional: true
     dependencies:
+      '@types/node': 17.0.45
       esbuild: 0.15.18
       postcss: 8.4.27
       resolve: 1.22.1
@@ -10859,7 +11165,7 @@ packages:
       vite:
         optional: true
     dependencies:
-      vite: 3.2.7
+      vite: 3.2.7(@types/node@17.0.45)
     dev: true
 
   /vitest@0.33.0:
