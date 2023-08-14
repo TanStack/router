@@ -830,76 +830,84 @@ export class Router<
   ) => {
     this.cleanMatches()
 
+    if (!opts?.preload) {
+      resolvedMatches.forEach((match) => {
+        // Update each match with its latest url data
+        this.setRouteMatch(match.id, (s) => ({
+          ...s,
+          routeSearch: match.routeSearch,
+          search: match.search,
+          routeContext: match.routeContext,
+          context: match.context,
+          error: match.error,
+          paramsError: match.paramsError,
+          searchError: match.searchError,
+          params: match.params,
+        }))
+      })
+    }
+
     let firstBadMatchIndex: number | undefined
 
     // Check each match middleware to see if the route can be accessed
     try {
-      await Promise.all(
-        resolvedMatches.map(async (match, index) => {
-          const route = this.getRoute(match.routeId)
+      for (const [index, match] of resolvedMatches.entries()) {
+        const route = this.getRoute(match.routeId)
 
-          if (!opts?.preload) {
-            // Update each match with its latest url data
-            this.setRouteMatch(match.id, (s) => ({
-              ...s,
-              routeSearch: match.routeSearch,
-              search: match.search,
-              routeContext: match.routeContext,
-              context: match.context,
-              error: match.error,
-              paramsError: match.paramsError,
-              searchError: match.searchError,
-              params: match.params,
-            }))
-          }
+        const handleError = (
+          err: any,
+          handler: undefined | ((err: any) => void),
+        ) => {
+          firstBadMatchIndex = firstBadMatchIndex ?? index
+          handler = handler || route.options.onError
 
-          const handleError = (
-            err: any,
-            handler: undefined | ((err: any) => void),
-          ) => {
-            firstBadMatchIndex = firstBadMatchIndex ?? index
-            handler = handler || route.options.onError
-
-            if (isRedirect(err)) {
-              throw err
-            }
-
-            try {
-              handler?.(err)
-            } catch (errorHandlerErr) {
-              err = errorHandlerErr
-
-              if (isRedirect(errorHandlerErr)) {
-                throw errorHandlerErr
-              }
-            }
-
-            this.setRouteMatch(match.id, (s) => ({
-              ...s,
-              error: err,
-              status: 'error',
-              updatedAt: Date.now(),
-            }))
-          }
-
-          if (match.paramsError) {
-            handleError(match.paramsError, route.options.onParseParamsError)
-          }
-
-          if (match.searchError) {
-            handleError(match.searchError, route.options.onValidateSearchError)
+          if (isRedirect(err)) {
+            throw err
           }
 
           try {
-            await route.options.beforeLoad?.({
-              ...match,
-              preload: !!opts?.preload,
-            })
-          } catch (err) {
-            handleError(err, route.options.onBeforeLoadError)
+            handler?.(err)
+          } catch (errorHandlerErr) {
+            err = errorHandlerErr
+
+            if (isRedirect(errorHandlerErr)) {
+              throw errorHandlerErr
+            }
           }
-        }),
-      )
+
+          this.setRouteMatch(match.id, (s) => ({
+            ...s,
+            error: err,
+            status: 'error',
+            updatedAt: Date.now(),
+          }))
+        }
+
+        if (match.paramsError) {
+          handleError(match.paramsError, route.options.onParseParamsError)
+        }
+
+        if (match.searchError) {
+          handleError(match.searchError, route.options.onValidateSearchError)
+        }
+
+        let didError = false
+
+        try {
+          await route.options.beforeLoad?.({
+            ...match,
+            preload: !!opts?.preload,
+          })
+        } catch (err) {
+          handleError(err, route.options.onBeforeLoadError)
+          didError = true
+        }
+
+        // If we errored, do not run the next matches' middleware
+        if (didError) {
+          break
+        }
+      }
     } catch (err) {
       if (!opts?.preload) {
         this.navigate(err as any)
