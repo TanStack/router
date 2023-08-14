@@ -631,11 +631,15 @@ export class Router<
     let routeParams: AnyPathParams = {}
 
     let foundRoute = this.flatRoutes.find((route) => {
-      const matchedParams = matchPathname(this.basepath, pathname, {
-        to: route.fullPath,
-        caseSensitive:
-          route.options.caseSensitive ?? this.options.caseSensitive,
-      })
+      const matchedParams = matchPathname(
+        this.basepath,
+        trimPathRight(pathname),
+        {
+          to: route.fullPath,
+          caseSensitive:
+            route.options.caseSensitive ?? this.options.caseSensitive,
+        },
+      )
 
       if (matchedParams) {
         routeParams = matchedParams
