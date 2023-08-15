@@ -385,19 +385,18 @@ export function useLinkProps<
   }
 }
 
-export interface LinkFn<
-  TDefaultFrom extends RegisteredRoutesInfo['routePaths'] = '/',
-  TDefaultTo extends string = '',
-> {
+export interface LinkComponent<TProps extends Record<string, any> = {}> {
   <
-    TFrom extends RegisteredRoutesInfo['routePaths'] = TDefaultFrom,
-    TTo extends string = TDefaultTo,
+    TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
+    TTo extends string = '',
   >(
-    props: MakeLinkOptions<TFrom, TTo> & React.RefAttributes<HTMLAnchorElement>,
+    props: MakeLinkOptions<TFrom, TTo> &
+      TProps &
+      React.RefAttributes<HTMLAnchorElement>,
   ): ReactNode
 }
 
-export const Link: LinkFn = React.forwardRef((props: any, ref) => {
+export const Link: LinkComponent = React.forwardRef((props: any, ref) => {
   const linkProps = useLinkProps(props)
 
   return (

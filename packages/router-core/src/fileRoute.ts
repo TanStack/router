@@ -21,8 +21,6 @@ export interface FileRoutesByPath {
   // }
 }
 
-type Test = Last<Split<'/test/:id'>>
-
 export class FileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
