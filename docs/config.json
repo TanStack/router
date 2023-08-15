@@ -136,10 +136,6 @@
           "to": "examples/react/with-loaders-kitchen-sink-single-file?file=src%2Fmain.tsx"
         },
         {
-          "label": "With Loaders Kitchen Sink Multi-File",
-          "to": "examples/react/with-loaders-kitchen-sink-multi-file?file=src%2Froutes%2Froot.tsx"
-        },
-        {
           "label": "With Loaders Code-Split",
           "to": "examples/react/with-loaders-code-split?file=src%2Frouter.tsx"
         },
