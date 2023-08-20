@@ -9,7 +9,8 @@
     { "path": "packages/loaders" },
     { "path": "packages/react-loaders" },
     { "path": "packages/router-devtools" },
-    { "path": "packages/react-start" }
+    { "path": "packages/react-start" },
+    { "path": "packages/svelte-router" }
   ]
   // "include": ["examples/*"]
   // "exclude": ["node_modules"]

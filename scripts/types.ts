@@ -49,6 +49,7 @@ export type Build = {
   esm?: boolean
   cjs?: boolean
   umd?: boolean
+  svelte?: boolean
   externals?: any[]
 }
 

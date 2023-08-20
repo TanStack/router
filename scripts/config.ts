@@ -149,6 +149,29 @@ export const packages: Package[] = [
     ],
   },
   {
+    name: '@tanstack/svelte-router',
+    packageDir: 'svelte-router',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'SvelteRouter',
+        entryFile: 'src/index.ts',
+        cjs: false,
+        umd: false,
+        esm: false,
+        svelte: true,
+      },
+      {
+        jsName: 'SvelteRouter',
+        entryFile: 'src/Link.svelte',
+        cjs: false,
+        umd: false,
+        esm: false,
+        svelte: true,
+      },
+    ],
+  },
+  {
     name: '@tanstack/router-cli',
     packageDir: 'router-cli',
     srcDir: 'src',

@@ -1,0 +1,60 @@
+{
+  "name": "@tanstack/svelte-router",
+  "author": "Tanner Linsley",
+  "version": "0.0.1-beta.147",
+  "license": "MIT",
+  "repository": "tanstack/router",
+  "homepage": "https://tanstack.com/router",
+  "description": "",
+  "scripts": {
+    "build": "rollup --config rollup.config.js"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "exports": {
+    ".": {
+      "svelte": "./src/index.ts"
+    },
+    "./Link": {
+      "svelte": "./src/RouterProvider.svelte"
+    }
+  },
+  "engines": {
+    "node": ">=12"
+  },
+  "files": [
+    "build/**",
+    "src"
+  ],
+  "sideEffects": false,
+  "peerDependencies": {
+    "react": ">=16",
+    "react-dom": ">=16"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.16.7",
+    "@gisatcz/cross-package-react-context": "^0.2.0",
+    "@tanstack/router-core": "workspace:*",
+    "@tanstack/store": "workspace:*",
+    "rollup-plugin-svelte": "^7.1.6",
+    "svelte": "^4.2.0",
+    "svelte-preprocess": "^5.0.4",
+    "tiny-invariant": "^1.3.1",
+    "tiny-warning": "^1.0.3",
+    "typescript-svelte-plugin": "^0.3.30"
+  }
+}

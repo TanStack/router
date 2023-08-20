@@ -1,0 +1,19 @@
+{
+  "composite": true,
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./build/types",
+    "plugins": [
+      {
+        "name": "typescript-svelte-plugin"
+      }
+    ]
+  },
+  "include": [
+    "src/**/*.d.ts",
+    "src/**/*.ts",
+    "src/**/*.js",
+    "src/**/*.svelte",
+    "src/**/*.tsx"
+  ]
+}

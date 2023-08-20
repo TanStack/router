@@ -20,6 +20,7 @@
       "@tanstack/router-core": ["packages/router-core"],
       "@tanstack/react-router": ["packages/react-router"],
       "@tanstack/solid-router": ["packages/solid-router"],
+      "@tanstack/svelte-router": ["packages/svelte-router"],
       "@tanstack/router-devtools": ["packages/router-devtools"],
       "@tanstack/loaders": ["packages/loaders"],
       "@tanstack/react-loaders": ["packages/react-loaders"],

@@ -8,7 +8,7 @@ import replace from '@rollup/plugin-replace'
 import nodeResolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 import path from 'path'
-// import svelte from 'rollup-plugin-svelte'
+import svelte from 'rollup-plugin-svelte'
 import dts from 'rollup-plugin-dts'
 //
 import { packages } from './scripts/config'
@@ -40,7 +40,7 @@ const babelPlugin = babel({
 
 export default function rollup(options: RollupOptions): RollupOptions[] {
   return packages.flatMap((pkg: Package) => {
-    return pkg.builds.flatMap((build) =>
+    const config = pkg.builds.flatMap((build) =>
       buildConfigs({
         name: [pkg.name, build.entryFile].join('/'),
         packageDir: `packages/${pkg.packageDir}`,
@@ -51,9 +51,12 @@ export default function rollup(options: RollupOptions): RollupOptions[] {
         esm: build.esm ?? true,
         cjs: build.cjs ?? true,
         umd: build.umd ?? true,
+        svelte: build.svelte ?? false,
         externals: build.externals || [],
       }),
     )
+    console.log(config)
+    return config
   })
 }
 
@@ -61,6 +64,7 @@ function buildConfigs(opts: {
   esm: boolean
   cjs: boolean
   umd: boolean
+  svelte: boolean
   packageDir: string
   name: string
   jsName: string
@@ -97,6 +101,13 @@ function buildConfigs(opts: {
     opts.cjs ? cjs(options) : null,
     opts.umd ? umdDev(options) : null,
     opts.umd ? umdProd(options) : null,
+    opts.svelte
+      ? svelte_build({
+          input: options.input,
+          packageDir: options.packageDir,
+          banner: options.banner,
+        })
+      : null,
     types(options),
   ].filter(Boolean) as any
 }
@@ -114,13 +125,29 @@ function esm({ input, packageDir, external, banner }: Options): RollupOptions {
     },
 
     plugins: [
-      // svelte({
-      //   compilerOptions: {
-      //     hydratable: true,
-      //   },
-      // }),
       babelPlugin,
-      nodeResolve({ extensions: ['.ts', '.tsx'] }),
+      nodeResolve({
+        extensions: ['.ts', '.tsx'],
+      }),
+    ],
+  }
+}
+
+function svelte_build({ input, packageDir, banner }): RollupOptions {
+  return {
+    input,
+    output: {
+      dir: `${packageDir}/build/svelte`,
+      banner,
+    },
+
+    plugins: [
+      babelPlugin,
+      svelte(),
+      nodeResolve({
+        exportConditions: ['svelte'],
+        extensions: ['.ts', '.svelte'],
+      }),
     ],
   }
 }
@@ -139,10 +166,11 @@ function cjs({ input, external, packageDir, banner }: Options): RollupOptions {
       banner,
     },
     plugins: [
-      // svelte(),
       babelPlugin,
       commonjs(),
-      nodeResolve({ extensions: ['.ts', '.tsx'] }),
+      nodeResolve({
+        extensions: ['.ts', '.tsx'],
+      }),
     ],
   }
 }
@@ -168,10 +196,11 @@ function umdDev({
       banner,
     },
     plugins: [
-      // svelte(),
       babelPlugin,
       commonjs(),
-      nodeResolve({ extensions: ['.ts', '.tsx'] }),
+      nodeResolve({
+        extensions: ['.ts', '.tsx'],
+      }),
       umdDevPlugin('development'),
     ],
   }
@@ -198,10 +227,11 @@ function umdProd({
       banner,
     },
     plugins: [
-      // svelte(),
       babelPlugin,
       commonjs(),
-      nodeResolve({ extensions: ['.ts', '.tsx'] }),
+      nodeResolve({
+        extensions: ['.ts', '.tsx'],
+      }),
       umdDevPlugin('production'),
       terser(),
       size({}),
@@ -236,7 +266,7 @@ function types({
       }.d.ts`,
       banner,
     },
-    plugins: [dts()],
+    plugins: [svelte(), dts()],
   }
 }
 
