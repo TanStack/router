@@ -69,7 +69,7 @@ TSR CLI's generator is designed with an exceptional degree of flexibility, capab
 
 Both of the following configurations will result in a route path of `/posts/:postId/edit`:
 
-- Flat Syntax: `posts.$postId.edit.tsx` => `/posts/$postId/edit`
+- Flat Syntax: `posts.$postId.edit.tsx`
 - Nested Syntax:
   - `posts` (directory)
     - `$postId` (directory)
