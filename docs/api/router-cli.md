@@ -35,6 +35,8 @@ A typical configuration file usually looks something like this:
 
 ## Commands
 
+The following commands are available:
+
 ### `generate`
 
 Generates the routes for a project based on the provided configuration.
