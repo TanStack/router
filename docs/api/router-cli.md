@@ -77,6 +77,8 @@ Both of the following configurations will result in a route path of `/posts/:pos
 
 ### Examples
 
+The following examples illustrate how the CLI will interpret various file structures.
+
 #### Mixed Configuration (Default)
 
 By default, mixed flat and nested file-naming conventions are supported and encouraged. This allows developers to organize their routes in a way that makes sense for their project, without being forced to choose between a flat or nested structure.
