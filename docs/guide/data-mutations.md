@@ -13,7 +13,7 @@ This is a simple concept, but it's important to understand why it's important. L
 - User edits the `123` post's title and upon success, sees a success message below the editor that the post was updated
 - The user **should now see the updated post title in the sidebar**
 
-This is a simple expectation, but requires a bit of coordination between the router and the data mutation logic used to update the post. Let's consider the following interactions. Let's create simple hook-based mutation with a promise flow to update the post and then **invalidate the router's matches when the mutation is complete**:
+This is a simple expectation, but requires a bit of coordination between the router and the data mutation logic used to update the post. Let's consider the following interactions. Let's create a simple hook-based mutation with a promise flow to update the post and then **invalidate the router's matches when the mutation is complete**:
 
 ```tsx
 function useUpdatePost() {
@@ -258,7 +258,7 @@ When actions are fired, regardless of the mutation library managing them, they c
 - User navigates to the `/posts` screen
 - User navigates back to the `/posts/123/edit` screen again
 
-Without notifying your mutation management library about the route change, it's likely your submission state will still be around and your user would still see the **"Post updated successfully"** message when they return to the previous screen. This is not ideal. Obviously our intent wasn't to keep this mutation state around forever, right?!
+Without notifying your mutation management library about the route change, it's likely your submission state will still be around and your user would still see the **"Post updated successfully"** message when they return to the previous screen. This is not ideal. Obviously, our intent wasn't to keep this mutation state around forever, right?!
 
 To solve this, we can use TanStack Router's `onRouteChange` option to clear your action states when the user is no longer in need of them.
 

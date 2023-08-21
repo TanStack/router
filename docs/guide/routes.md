@@ -107,4 +107,4 @@ declare module '@tanstack/react-router' {
 }
 ```
 
-Now that you learned how to build a router, let's dig in to more of the Route options in the next section!
+Now that you learned how to build a router, let's dig into more of the Route options in the next section!

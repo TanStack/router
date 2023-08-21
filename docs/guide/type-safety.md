@@ -56,13 +56,13 @@ Every hook and component that requires a context hint will have a `from` param w
 
 ### What if I don't know the route? What if it's a shared component?
 
-The `from` property is optional, which means if you don't pass it, you'll get the router's best guess on what types will be available. Usually that means you'll get a nullable intersection of all of the types of all of the routes in the router.
+The `from` property is optional, which means if you don't pass it, you'll get the router's best guess on what types will be available. Usually, that means you'll get a nullable intersection of all of the types of all of the routes in the router.
 
 ## Router Context
 
 Router context is so extremely useful as it's the ultimate hierarchical dependency injection. You can supply context to the router and to each and every route it renders. As you build up this context, TanStack Router will merge it down with the hierarchy of routes, so that each route has access to the context of all of its parents.
 
-The `new RouteContext()` utility creates a new router context that when instantiated with a type, creates a requirement for you to fullfil the same type contract to your router, and will also ensure that your context is properly typed throughout the entire route tree.
+The `new RouteContext()` utility creates a new router context that when instantiated with a type, creates a requirement for you to fulfill the same type contract to your router, and will also ensure that your context is properly typed throughout the entire route tree.
 
 ```tsx
 const routeContext = new RouteContext<{ whateverYouWant: true }>()
