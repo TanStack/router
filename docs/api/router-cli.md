@@ -156,11 +156,11 @@ settings
 
 Via the `routeFilePrefix` and `routeFileIgnorePrefix` options, the CLI can be configured to only include files and directories that start with a specific prefix, or to ignore files and directories that start with a specific prefix. This is especially useful when mixing non-route files with route files in the same directory, or when using a flat structure and wanting to exclude certain files from routing.
 
-> 🧠 A prefix of `~` is generally recommended when using this option. Not only is this symbol typically associated with the home-folder navigation in unix-based systems, but it is also a valid character for use in filenames and urls that will typically force the file to the top of a directory for easier visual indication of routes.
-
 ## Route Inclusion Example
 
 To only consider files and directories that start with `~` for routing, the following configuration can be used:
+
+> 🧠 A prefix of `~` is generally recommended when using this option. Not only is this symbol typically associated with the home-folder navigation in unix-based systems, but it is also a valid character for use in filenames and urls that will typically force the file to the top of a directory for easier visual indication of routes.
 
 ```json
 {
@@ -208,6 +208,8 @@ utils
 ## Route Exclusion Example
 
 To ignore files and directories that start with `-` for routing, the following configuration can be used:
+
+> 🧠 A prefix of `-` is generally recommended when using this option since the minus symbol is typically associated with removal or exclusion.
 
 ```json
 {
