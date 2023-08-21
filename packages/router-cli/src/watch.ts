@@ -8,7 +8,7 @@ export async function watch() {
     path.resolve(process.cwd(), 'tsr.config.js'),
   )
 
-  let watcher = new chokidar.FSWatcher()
+  let watcher = new chokidar.FSWatcher({})
 
   const generatorWatcher = async () => {
     const config = await getConfig()
@@ -19,13 +19,6 @@ export async function watch() {
     watcher = chokidar.watch(config.routesDirectory)
 
     watcher.on('ready', async () => {
-      try {
-        await generator(config)
-      } catch (err) {
-        console.error(err)
-        console.log()
-      }
-
       const handle = async () => {
         try {
           await generator(config)
@@ -35,11 +28,21 @@ export async function watch() {
         }
       }
 
-      watcher.on('change', handle)
-      watcher.on('add', handle)
-      watcher.on('addDir', handle)
-      watcher.on('unlink', handle)
-      watcher.on('unlinkDir', handle)
+      await handle()
+
+      let timeout: ReturnType<typeof setTimeout>
+
+      const deduped = (file: string) => {
+        if (timeout) {
+          clearTimeout(timeout)
+        }
+
+        timeout = setTimeout(handle, 10)
+      }
+
+      watcher.on('change', deduped)
+      watcher.on('add', deduped)
+      watcher.on('unlink', deduped)
     })
   }
 

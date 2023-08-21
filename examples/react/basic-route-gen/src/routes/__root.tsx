@@ -23,6 +23,14 @@ export const route = new RootRoute({
         >
           Posts
         </Link>
+        <Link
+          to="/layout-a"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Layout
+        </Link>
       </div>
       <hr />
       <Outlet />

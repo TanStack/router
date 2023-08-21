@@ -1,3 +1,4 @@
+import { Trim } from './fileRoute'
 import { AnyRoutesInfo, RouteByPath } from './routeInfo'
 import { ParsedLocation, LocationState, RegisteredRoutesInfo } from './router'
 import { NoInfer, PickRequired, UnionToIntersection, Updater } from './utils'
@@ -19,7 +20,7 @@ export type LinkInfo =
       disabled?: boolean
     }
 
-type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
+export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
   ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
   : T extends `${infer L}//`
   ? `${CleanPath<L>}/`
@@ -49,11 +50,9 @@ export type Split<S, TIncludeTrailingSlash = true> = S extends unknown
     : never
   : never
 
-export type ParsePathParams<T extends string> = Split<T>[number] extends infer U
-  ? U extends `$${infer V}`
-    ? V
-    : never
-  : never
+export type ParsePathParams<T extends string> = keyof {
+  [K in Trim<Split<T>[number], '_'> as K extends `$${infer L}` ? L : never]: K
+}
 
 export type Join<T, Delimiter extends string = '/'> = T extends []
   ? ''

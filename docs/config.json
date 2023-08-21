@@ -109,6 +109,10 @@
         {
           "label": "Coming Soon",
           "to": "#"
+        },
+        {
+          "label": "Router CLI (Route-Gen)",
+          "to": "api/router-cli"
         }
       ]
     },

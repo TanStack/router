@@ -49,6 +49,7 @@
     "@babel/preset-env": "^7.20.2",
     "@babel/template": "^7.18.10",
     "@babel/types": "^7.20.2",
+    "@tanstack/router-core": "workspace:0.0.1-beta.150",
     "@types/fs-extra": "^9.0.13",
     "@types/klaw": "^3.0.3",
     "@types/through2": "^2.0.38",
@@ -58,7 +59,9 @@
     "fs-extra": "^10.1.0",
     "klaw": "^4.0.1",
     "nodemon": "^2.0.20",
+    "prettier": "^3.0.2",
     "through2": "^4.0.2",
-    "yargs": "^17.6.2"
+    "yargs": "^17.6.2",
+    "zod": "^3.19.1"
   }
 }

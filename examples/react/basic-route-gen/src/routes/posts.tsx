@@ -12,7 +12,7 @@ const fetchPosts = async () => {
 }
 
 // @ts-ignore
-export const route = new FileRoute('posts').createRoute({
+export const route = new FileRoute('/posts').createRoute({
   loader: fetchPosts,
   component: ({ useLoader }) => {
     const posts = useLoader()

@@ -1,5 +1,9 @@
 import * as React from 'react'
-import { ErrorComponent, FileRoute } from '@tanstack/react-router'
+import {
+  ErrorComponent,
+  FileRoute,
+  RouteErrorComponentProps,
+} from '@tanstack/react-router'
 import axios from 'axios'
 
 export type PostType = {
@@ -8,9 +12,9 @@ export type PostType = {
   body: string
 }
 
-class NotFoundError extends Error {}
+export class PostNotFoundError extends Error {}
 
-const fetchPost = async (postId: string) => {
+export const fetchPost = async (postId: string) => {
   console.log(`Fetching post with id ${postId}...`)
   await new Promise((r) => setTimeout(r, 500))
   const post = await axios
@@ -18,7 +22,7 @@ const fetchPost = async (postId: string) => {
     .then((r) => r.data)
 
   if (!post) {
-    throw new NotFoundError(`Post with id "${postId}" not found!`)
+    throw new PostNotFoundError(`Post with id "${postId}" not found!`)
   }
 
   return post
@@ -26,23 +30,27 @@ const fetchPost = async (postId: string) => {
 
 // 'posts/$postId' is automatically inserted and managed
 // by the `tsr generate/watch` CLI command
-export const route = new FileRoute('posts/$postId').createRoute({
+export const route = new FileRoute('/posts/$postId').createRoute({
   loader: async ({ params: { postId } }) => fetchPost(postId),
-  errorComponent: ({ error }) => {
-    if (error instanceof NotFoundError) {
-      return <div>{error.message}</div>
-    }
-
-    return <ErrorComponent error={error} />
-  },
-  component: ({ useLoader }) => {
-    const post = useLoader()
-
-    return (
-      <div className="space-y-2">
-        <h4 className="text-xl font-bold underline">{post.title}</h4>
-        <div className="text-sm">{post.body}</div>
-      </div>
-    )
-  },
+  errorComponent: PostErrorComponent as any,
+  component: PostComponent,
 })
+
+export function PostErrorComponent({ error }: RouteErrorComponentProps) {
+  if (error instanceof PostNotFoundError) {
+    return <div>{error.message}</div>
+  }
+
+  return <ErrorComponent error={error} />
+}
+
+export function PostComponent() {
+  const post = route.useLoader()
+
+  return (
+    <div className="space-y-2">
+      <h4 className="text-xl font-bold underline">{post.title}</h4>
+      <div className="text-sm">{post.body}</div>
+    </div>
+  )
+}

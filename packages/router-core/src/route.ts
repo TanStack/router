@@ -135,24 +135,12 @@ export type RouteOptions<
   TParentSearchSchema extends AnySearchSchema = {},
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = TSearchSchema,
-  TParentParams extends AnyPathParams = AnyPathParams,
-  TParams extends AnyPathParams = Record<ParsePathParams<TPath>, string>,
+  TParams extends AnyPathParams = AnyPathParams,
   TAllParams extends AnyPathParams = TParams,
   TParentContext extends AnyContext = AnyContext,
-  TAllParentContext extends IsAny<
-    TParentRoute['__types']['allParams'],
-    TParentContext,
-    TParentRoute['__types']['allParams'] & TParentContext
-  > = IsAny<
-    TParentRoute['__types']['allParams'],
-    TParentContext,
-    TParentRoute['__types']['allParams'] & TParentContext
-  >,
+  TAllParentContext extends AnyContext = AnyContext,
   TRouteContext extends RouteContext = RouteContext,
-  TContext extends MergeParamsFromParent<
-    TAllParentContext,
-    TRouteContext
-  > = MergeParamsFromParent<TAllParentContext, TRouteContext>,
+  TContext extends AnyContext = AnyContext,
 > = BaseRouteOptions<
   TParentRoute,
   TCustomId,
@@ -161,7 +149,6 @@ export type RouteOptions<
   TParentSearchSchema,
   TSearchSchema,
   TFullSearchSchema,
-  TParentParams,
   TParams,
   TAllParams,
   TParentContext,
@@ -183,6 +170,14 @@ export type ParamsFallback<
   TParams,
 > = unknown extends TParams ? Record<ParsePathParams<TPath>, string> : TParams
 
+type Prefix<T extends string, U extends string> = U extends `${T}${infer _}`
+  ? U
+  : never
+
+type PrefixOrExact<T extends string, U extends string> = U extends T
+  ? U
+  : Prefix<T, U>
+
 export type BaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
@@ -191,25 +186,14 @@ export type BaseRouteOptions<
   TParentSearchSchema extends AnySearchSchema = {},
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = TSearchSchema,
-  TParentParams extends AnyPathParams = AnyPathParams,
   TParams = unknown,
   TAllParams = ParamsFallback<TPath, TParams>,
   TParentContext extends AnyContext = AnyContext,
-  TAllParentContext extends IsAny<
-    TParentRoute['__types']['allParams'],
-    TParentContext,
-    TParentRoute['__types']['allParams'] & TParentContext
-  > = IsAny<
-    TParentRoute['__types']['allParams'],
-    TParentContext,
-    TParentRoute['__types']['allParams'] & TParentContext
-  >,
+  TAllParentContext extends AnyContext = AnyContext,
   TRouteContext extends RouteContext = RouteContext,
-  TContext extends MergeParamsFromParent<
-    TAllParentContext,
-    TRouteContext
-  > = MergeParamsFromParent<TAllParentContext, TRouteContext>,
+  TContext extends AnyContext = AnyContext,
 > = RoutePathOptions<TCustomId, TPath> & {
+  layoutLimit?: string
   getParentRoute: () => TParentRoute
   validateSearch?: SearchSchemaValidator<TSearchSchema, TParentSearchSchema>
   loader?: LoaderFn<
@@ -558,26 +542,16 @@ export type StreamedPromise<T> = {
 export class Route<
   TParentRoute extends AnyRoute = AnyRoute,
   TPath extends string = '/',
-  TFullPath extends ResolveFullPath<TParentRoute, TPath> = ResolveFullPath<
-    TParentRoute,
-    TPath
-  >,
+  TFullPath extends string = ResolveFullPath<TParentRoute, TPath>,
   TCustomId extends string = string,
-  TId extends ResolveId<TParentRoute, TCustomId, TPath> = ResolveId<
-    TParentRoute,
-    TCustomId,
-    TPath
-  >,
+  TId extends string = ResolveId<TParentRoute, TCustomId, TPath>,
   TLoader = unknown,
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = ResolveFullSearchSchema<
     TParentRoute,
     TSearchSchema
   >,
-  TParams extends Record<ParsePathParams<TPath>, any> = Record<
-    ParsePathParams<TPath>,
-    string
-  >,
+  TParams extends Record<string, any> = Record<ParsePathParams<TPath>, string>,
   TAllParams extends MergeParamsFromParent<
     TParentRoute['__types']['allParams'],
     TParams
@@ -622,7 +596,6 @@ export class Route<
     InferFullSearchSchema<TParentRoute>,
     TSearchSchema,
     TFullSearchSchema,
-    TParentRoute['__types']['allParams'],
     TParams,
     TAllParams,
     TParentContext,
@@ -662,7 +635,6 @@ export class Route<
       InferFullSearchSchema<TParentRoute>,
       TSearchSchema,
       TFullSearchSchema,
-      TParentRoute['__types']['allParams'],
       TParams,
       TAllParams,
       TParentContext,
@@ -694,7 +666,6 @@ export class Route<
       TPath,
       InferFullSearchSchema<TParentRoute>,
       TSearchSchema,
-      TParentRoute['__types']['allParams'],
       TParams
     > &
       RoutePathOptionsIntersection<TCustomId, TPath>
@@ -805,7 +776,7 @@ export class RouterContext<TRouterContext extends {}> {
     TContext extends RouteContext = RouteContext,
   >(
     options?: Omit<
-      RouteOptions<AnyRoute, RootRouteId, '', {}, TSearchSchema, {}, {}>,
+      RouteOptions<AnyRoute, RootRouteId, '', {}, TSearchSchema, {}>,
       | 'path'
       | 'id'
       | 'getParentRoute'
@@ -846,7 +817,7 @@ export class RootRoute<
 > {
   constructor(
     options?: Omit<
-      RouteOptions<AnyRoute, RootRouteId, '', TLoader, TSearchSchema, {}, {}>,
+      RouteOptions<AnyRoute, RootRouteId, '', TLoader, TSearchSchema, {}>,
       | 'path'
       | 'id'
       | 'getParentRoute'
@@ -862,10 +833,7 @@ export class RootRoute<
 export type ResolveFullPath<
   TParentRoute extends AnyRoute,
   TPath extends string,
-  TPrefixed extends RoutePrefix<TParentRoute['fullPath'], TPath> = RoutePrefix<
-    TParentRoute['fullPath'],
-    TPath
-  >,
+  TPrefixed = RoutePrefix<TParentRoute['fullPath'], TPath>,
 > = TPrefixed extends RootRouteId ? '/' : TPrefixed
 
 type RoutePrefix<

@@ -649,10 +649,11 @@ export class Router<
       return false
     })
 
-    let routeCursor = foundRoute || (this.routesById['__root__'] as any)
+    let routeCursor: AnyRoute =
+      foundRoute || (this.routesById['__root__'] as any)
 
     let matchedRoutes: AnyRoute[] = [routeCursor]
-
+    // let includingLayouts = true
     while (routeCursor?.parentRoute) {
       routeCursor = routeCursor.parentRoute
       if (routeCursor) matchedRoutes.unshift(routeCursor)

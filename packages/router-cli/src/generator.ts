@@ -1,63 +1,102 @@
 import path from 'path'
 import fs from 'fs-extra'
-import crypto from 'crypto'
+import * as prettier from 'prettier'
 import { Config } from './config'
+import { cleanPath, trimPathLeft } from '@tanstack/router-core'
 
 let latestTask = 0
-export const rootRouteName = 'root'
+export const rootPathId = '__root'
+export const fileRouteRegex = /new\s+FileRoute\(([^)]*)\)/g
 
 export type RouteNode = {
-  filename: string
+  filePath: string
   fullPath: string
   variableName: string
   routePath?: string
+  cleanedPath?: string
   path?: string
-  id?: string
-  hash?: string
-  version?: number
-  changed?: boolean
-  new?: boolean
+  isNonPath?: boolean
+  isNonLayout?: boolean
   isRoot?: boolean
   children?: RouteNode[]
   parent?: RouteNode
+  layoutLimit?: string
 }
 
-let nodeCache: RouteNode[] = undefined!
+async function getRouteNodes(config: Config) {
+  const { routeFilePrefix, routeFileIgnorePrefix } = config
 
-async function createRouteNode(
-  config: Config,
-  fileName: string,
-): Promise<RouteNode> {
-  const filename = path.basename(fileName)
-  const fullPath = path.resolve(config.routesDirectory, filename)
-  const fileNameNoExt = removeExt(filename)
-  let routePath = fileNameNoExt.split('.').join('/')
+  let routeNodes: RouteNode[] = []
 
-  // Remove the index from the route path and
-  // if the route path is empty, use `/'
-  if (routePath.endsWith('/index')) {
-    routePath = routePath.replace(/\/index$/, '/')
-  } else if (routePath === 'index') {
-    routePath = '/'
+  async function recurse(dir: string) {
+    const fullDir = path.resolve(config.routesDirectory, dir)
+    let dirList = await fs.readdir(fullDir)
+
+    dirList = dirList.filter((d) => {
+      if (d.startsWith('.') || d.startsWith(routeFileIgnorePrefix)) {
+        return false
+      }
+
+      if (routeFilePrefix) {
+        return d.startsWith(routeFilePrefix)
+      }
+
+      return true
+    })
+
+    await Promise.all(
+      dirList.map(async (fileName) => {
+        const fullPath = path.join(fullDir, fileName)
+        const relativePath = path.join(dir, fileName)
+        const stat = await fs.stat(fullPath)
+
+        if (stat.isDirectory()) {
+          await recurse(relativePath)
+        } else {
+          const filePath = path.join(dir, fileName)
+          const filePathNoExt = removeExt(filePath)
+          let routePath = cleanPath(`/${filePathNoExt.split('.').join('/')}`)
+          const variableName = fileToVariable(routePath)
+
+          // Remove the index from the route path and
+          // if the route path is empty, use `/'
+          if (routePath.endsWith('/index')) {
+            routePath = routePath.replace(/\/index$/, '/')
+          } else if (routePath === 'index') {
+            routePath = '/'
+          }
+
+          // console.log(filePath)
+
+          routeNodes.push({
+            filePath,
+            fullPath,
+            routePath,
+            variableName,
+          })
+        }
+      }),
+    )
+
+    return routeNodes
   }
 
-  return {
-    filename,
-    fullPath,
-    routePath,
-    variableName: fileToVariable(removeExt(filename)),
-  }
+  await recurse('./')
+
+  return routeNodes
 }
+
+let first = false
+let skipMessage = false
 
 export async function generator(config: Config) {
   console.log()
 
-  let first = false
-
-  if (!nodeCache) {
-    first = true
+  if (!first) {
     console.log('🔄 Generating routes...')
-    nodeCache = []
+    first = true
+  } else if (skipMessage) {
+    skipMessage = false
   } else {
     console.log('♻️  Regenerating routes...')
   }
@@ -67,7 +106,7 @@ export async function generator(config: Config) {
 
   const checkLatest = () => {
     if (latestTask !== taskId) {
-      console.log(`- Skipping since file changes were made while generating.`)
+      skipMessage = true
       return false
     }
 
@@ -75,262 +114,198 @@ export async function generator(config: Config) {
   }
 
   const start = Date.now()
-  let routeConfigImports: string[] = []
 
-  let nodesChanged = false
-  const fileQueue: [string, string][] = []
-  const queueWriteFile = (filename: string, content: string) => {
-    fileQueue.push([filename, content])
-  }
-
-  let dirList
-
-  try {
-    dirList = await fs.readdir(config.routesDirectory)
-  } catch (err) {
-    console.log()
-    console.error(
-      'TSR: Error reading the config.routesDirectory. Does it exist?',
-    )
-    console.log()
-    throw err
-  }
-
-  let routeNodes = await Promise.all(
-    dirList.map(async (filename): Promise<RouteNode> => {
-      return createRouteNode(config, filename)
-    }),
-  )
+  let routeNodes = await getRouteNodes(config)
 
   routeNodes = multiSortBy(routeNodes, [
     (d) => (d.routePath === '/' ? -1 : 1),
     (d) => d.routePath?.split('/').length,
     (d) => (d.routePath?.endsWith('/') ? -1 : 1),
     (d) => d.routePath,
-  ]).filter((d) => d.routePath !== '_root')
+  ]).filter((d) => d.routePath !== `/${rootPathId}`)
 
   const routeTree: RouteNode[] = []
 
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
   routeNodes.forEach((node) => {
-    const findParent = (
-      existing: RouteNode[],
-      node: RouteNode,
-      parentNode?: RouteNode,
-    ) => {
-      const parent = existing.find((d) => {
-        return node.routePath?.startsWith(d.path!)
-      })
-
-      if (parent) {
-        if (!parent.children) {
-          parent.children = []
-        }
-
-        findParent(parent.children, node, parent)
-      } else {
-        node.path = node.routePath?.replace(parentNode?.routePath ?? '', '')
-        node.parent = parentNode
-        existing.push(node)
+    routeNodes.forEach((existingNode) => {
+      if (
+        node.routePath?.startsWith(`${existingNode?.routePath ?? ''}/`)
+        // node.routePath.length > existingNode.routePath!.length
+      ) {
+        node.parent = existingNode
       }
-    }
+    })
 
-    findParent(routeTree, node)
+    node.path = node.parent
+      ? node.routePath?.replace(node.parent.routePath!, '') || '/'
+      : node.routePath
+
+    const trimmedPath = trimPathLeft(node.path ?? '')
+
+    const split = trimmedPath?.split('/') ?? []
+    let first = split[0] ?? trimmedPath ?? ''
+
+    node.isNonPath = first.startsWith('_')
+    node.isNonLayout = first.endsWith('_')
+
+    node.cleanedPath = removeUnderscores(node.path) ?? ''
+
+    if (node.parent) {
+      node.parent.children = node.parent.children ?? []
+      node.parent.children.push(node)
+    } else {
+      routeTree.push(node)
+    }
   })
 
   async function buildRouteConfig(
     nodes: RouteNode[],
     depth = 1,
   ): Promise<string> {
-    const children = nodes.map(async (n) => {
-      let node = nodeCache.find((d) => d.fullPath === n.fullPath)!
+    const children = nodes.map(async (node) => {
+      const routeCode = await fs.readFile(node.fullPath, 'utf-8')
 
-      if (node) {
-        node.new = false
-      } else {
-        node = n
-        nodeCache.push(node)
-        if (!first) {
-          node.new = true
-        }
+      // Ensure the boilerplate for the route exists
+      if (node.isRoot) {
+        return
       }
 
-      node.version = latestTask
+      // Ensure that new FileRoute(anything?) is replace with FileRoute(${node.routePath})
+      const replaced = routeCode.replace(
+        fileRouteRegex,
+        `new FileRoute('${node.routePath}')`,
+      )
 
-      const routeCode = await fs.readFile(node.fullPath, 'utf-8')
-      const hashSum = crypto.createHash('sha256')
-      hashSum.update(routeCode)
-      const hash = hashSum.digest('hex')
-
-      node.changed = node.hash !== hash
-      if (node.changed) {
-        nodesChanged = true
-        node.hash = hash
-
-        try {
-          // Ensure the boilerplate for the route exists
-          const code = await ensureBoilerplate(node, routeCode)
-
-          if (code) {
-            await fs.writeFile(node.fullPath, code)
-          }
-        } catch (err) {
-          node.hash = ''
-          throw err
-        }
+      if (replaced !== routeCode) {
+        await fs.writeFile(node.fullPath, replaced)
       }
 
       const route = `${node.variableName}Route`
 
-      routeConfigImports.push(
-        `import { route as ${route} } from './${removeExt(
-          path.relative(
-            path.dirname(config.generatedRouteTree),
-            path.resolve(config.routesDirectory, node.filename),
-          ),
-        )}'`,
-      )
-
       if (node.children?.length) {
         const childConfigs = await buildRouteConfig(node.children, depth + 1)
-        return `${route}.addChildren([\n${spaces(
-          depth * 4,
-        )}${childConfigs}\n${spaces(depth * 2)}])`
+        return `${route}.addChildren([${spaces(depth * 4)}${childConfigs}])`
       }
 
       return route
     })
 
-    return (await Promise.all(children))
-      .filter(Boolean)
-      .join(`,\n${spaces(depth * 2)}`)
+    return (await Promise.all(children)).filter(Boolean).join(`,`)
   }
 
   const routeConfigChildrenText = await buildRouteConfig(routeTree)
 
-  routeConfigImports = multiSortBy(routeConfigImports, [
-    (d) => (d.includes(rootRouteName) ? -1 : 1),
-    (d) => d.split('/').length,
-    (d) => (d.endsWith("index'") ? -1 : 1),
-    (d) => d,
-  ])
-
-  const routeConfig = `export const routeTree = rootRoute.addChildren([\n  ${routeConfigChildrenText}\n])`
-
-  const routeConfigFileContent = [
+  const routeImports = [
     `import { route as rootRoute } from './${path.relative(
       path.dirname(config.generatedRouteTree),
-      path.resolve(config.routesDirectory, '_root'),
+      path.resolve(config.routesDirectory, rootPathId),
     )}'`,
-    routeConfigImports.join('\n'),
-    `declare module '@tanstack/react-router' {
+    ...multiSortBy(routeNodes, [
+      (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
+      (d) => d.routePath?.split('/').length,
+      (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
+      (d) => d,
+    ]).map((node) => {
+      return `import { route as ${node.variableName}Route } from './${removeExt(
+        path.relative(
+          path.dirname(config.generatedRouteTree),
+          path.resolve(config.routesDirectory, node.filePath),
+        ),
+      )}'`
+    }),
+  ].join('\n')
+
+  const routeTypes = `declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
         return `'${routeNode.routePath}': {
-      parentRoute: typeof ${routeNode.parent?.variableName ?? 'root'}Route
-    }`
+          parentRoute: typeof ${routeNode.parent?.variableName ?? 'root'}Route
+        }`
       })
-      .join('\n    ')}  
+      .join('\n')}  
   }
-}`,
-    routeNodes
-      .map((routeNode) => {
-        return `Object.assign(${
-          routeNode.variableName ?? 'root'
-        }Route.options, {
-  path: '${routeNode.path}',
-  getParentRoute: () => ${`${routeNode.parent?.variableName ?? 'root'}Route,
-})`}`
-      })
-      .join('\n'),
-    routeConfig,
-  ].join('\n\n')
+}`
 
-  if (nodesChanged) {
-    queueWriteFile(
+  const routeOptions = routeNodes
+    .map((routeNode) => {
+      return `Object.assign(${routeNode.variableName ?? 'root'}Route.options, {
+        ${[
+          routeNode.isNonPath
+            ? `id: '${routeNode.cleanedPath}'`
+            : `path: '${routeNode.cleanedPath}'`,
+          `getParentRoute: () => ${
+            routeNode.parent?.variableName ?? 'root'
+          }Route`,
+          routeNode.layoutLimit
+            ? `layoutLimit: '${routeNode.layoutLimit}'`
+            : '',
+          // `\n// ${JSON.stringify(
+          //   {
+          //     ...routeNode,
+          //     parent: undefined,
+          //     children: undefined,
+          //     fullPath: undefined,
+          //     variableName: undefined,
+          //   },
+          //   null,
+          //   2,
+          // )
+          //   .split('\n')
+          //   .join('\n// ')}`,
+        ]
+          .filter(Boolean)
+          .join(',')}
+      })`
+    })
+    .join('\n\n')
+
+  const routeConfig = `export const routeTree = rootRoute.addChildren([${routeConfigChildrenText}])`
+
+  const routeConfigFileContent = await prettier.format(
+    [routeImports, routeTypes, routeOptions, routeConfig].join('\n\n'),
+    {
+      semi: false,
+      parser: 'typescript',
+    },
+  )
+
+  const routeTreeContent = await fs
+    .readFile(path.resolve(config.generatedRouteTree), 'utf-8')
+    .catch((err: any) => {
+      if (err.code === 'ENOENT') {
+        return undefined
+      }
+      throw err
+    })
+
+  if (!checkLatest()) return
+
+  if (routeTreeContent !== routeConfigFileContent) {
+    await fs.ensureDir(path.dirname(path.resolve(config.generatedRouteTree)))
+    if (!checkLatest()) return
+    await fs.writeFile(
       path.resolve(config.generatedRouteTree),
       routeConfigFileContent,
     )
   }
 
-  if (!checkLatest()) return
-
-  await Promise.all(
-    fileQueue.map(async ([filename, content]) => {
-      await fs.ensureDir(path.dirname(filename))
-      const exists = await fs.pathExists(filename)
-      let current = ''
-      if (exists) {
-        current = await fs.readFile(filename, 'utf-8')
-      }
-      if (current !== content) {
-        await fs.writeFile(filename, content)
-      }
-    }),
-  )
-
-  if (!checkLatest()) return
-
-  const removedNodes: RouteNode[] = []
-
-  nodeCache = nodeCache.filter((d) => {
-    if (d.version !== latestTask) {
-      removedNodes.push(d)
-      return false
-    }
-    return true
-  })
-
-  const newNodes = nodeCache.filter((d) => d.new)
-  const updatedNodes = nodeCache.filter((d) => !d.new && d.changed)
-
   console.log(
-    `🌲 Processed ${nodeCache.length} routes in ${Date.now() - start}ms`,
+    `🌲 Processed ${routeNodes.length} routes in ${Date.now() - start}ms`,
   )
-
-  if (newNodes.length || updatedNodes.length || removedNodes.length) {
-    if (newNodes.length) {
-      console.log(`🥳 Added ${newNodes.length} new routes`)
-    }
-
-    if (updatedNodes.length) {
-      console.log(`✅ Updated ${updatedNodes.length} routes`)
-    }
-
-    if (removedNodes.length) {
-      console.log(`🗑 Removed ${removedNodes.length} unused routes`)
-    }
-  } else {
-    console.log(`🎉 No changes were found. Carry on!`)
-  }
 }
 
-async function ensureBoilerplate(node: RouteNode, code: string) {
-  if (node.isRoot) {
-    return
-  }
-
-  // Ensure that new FileRoute(anything?) is replace with FileRoute(${node.routePath})
-  const replaced = code.replace(
-    /new\s+FileRoute\(([^)]*)\)/g,
-    `new FileRoute('${node.routePath}')`,
+function fileToVariable(d: string): string {
+  return (
+    removeUnderscores(d)
+      ?.replace(/\$/g, '')
+      ?.split(/[/-]/g)
+      .map((d, i) => (i > 0 ? capitalize(d) : d))
+      .join('')
+      .replace(/([^a-zA-Z0-9]|[\.])/gm, '') ?? ''
   )
-
-  if (replaced !== code) {
-    return replaced
-  }
-
-  return
-}
-
-function fileToVariable(d: string) {
-  return d
-    .split('/')
-    .map((d, i) => (i > 0 ? capitalize(d) : d))
-    .join('')
-    .replace(/([^a-zA-Z0-9]|[\.])/gm, '')
 }
 
 export function removeExt(d: string) {
@@ -376,4 +351,8 @@ export function multiSortBy<T>(
 function capitalize(s: string) {
   if (typeof s !== 'string') return ''
   return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+function removeUnderscores(s?: string) {
+  return s?.replace(/(^_|_$)/, '').replace(/(\/_|_\/)/, '/')
 }
