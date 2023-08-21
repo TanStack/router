@@ -31,6 +31,7 @@ import {
   UseLoaderResult,
   ResolveFullSearchSchema,
   Route,
+  RouteConstraints,
 } from '@tanstack/router-core'
 
 //
@@ -49,45 +50,42 @@ declare module '@tanstack/router-core' {
 
   // Extend the Route class to have some React-Specific methods
   interface Route<
-    TParentRoute extends AnyRoute = AnyRoute,
-    TPath extends string = '/',
-    TFullPath extends ResolveFullPath<TParentRoute, TPath> = ResolveFullPath<
+    TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
+    TPath extends RouteConstraints['TPath'] = '/',
+    TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
       TParentRoute,
       TPath
     >,
-    TCustomId extends string = string,
-    TId extends ResolveId<TParentRoute, TCustomId, TPath> = ResolveId<
+    TCustomId extends RouteConstraints['TCustomId'] = string,
+    TId extends RouteConstraints['TId'] = ResolveId<
       TParentRoute,
       TCustomId,
       TPath
     >,
     TLoader = unknown,
-    TSearchSchema extends AnySearchSchema = {},
-    TFullSearchSchema extends AnySearchSchema = ResolveFullSearchSchema<
+    TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
+    TFullSearchSchema extends RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
       TParentRoute,
       TSearchSchema
     >,
-    TParams extends Record<ParsePathParams<TPath>, any> = Record<
+    TParams extends RouteConstraints['TParams'] = Record<
       ParsePathParams<TPath>,
       string
     >,
-    TAllParams extends MergeParamsFromParent<
+    TAllParams extends RouteConstraints['TAllParams'] = MergeParamsFromParent<
       TParentRoute['__types']['allParams'],
       TParams
-    > = MergeParamsFromParent<TParentRoute['__types']['allParams'], TParams>,
-    TParentContext extends TParentRoute['__types']['routeContext'] = TParentRoute['__types']['routeContext'],
-    TAllParentContext extends TParentRoute['__types']['context'] = TParentRoute['__types']['context'],
-    TRouteContext extends RouteContext = RouteContext,
-    TContext extends MergeParamsFromParent<
-      TParentRoute['__types']['context'],
-      TRouteContext
-    > = MergeParamsFromParent<
+    >,
+    TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['__types']['routeContext'],
+    TAllParentContext extends RouteConstraints['TAllParentContext'] = TParentRoute['__types']['context'],
+    TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
+    TContext extends RouteConstraints['TContext'] = MergeParamsFromParent<
       TParentRoute['__types']['context'],
       TRouteContext
     >,
-    TRouterContext extends AnyContext = AnyContext,
-    TChildren extends unknown = unknown,
-    TRoutesInfo extends DefaultRoutesInfo = DefaultRoutesInfo,
+    TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+    TChildren extends RouteConstraints['TChildren'] = unknown,
+    TRoutesInfo extends RouteConstraints['TRoutesInfo'] = DefaultRoutesInfo,
   > {
     useMatch: <TStrict extends boolean = true, TSelected = TContext>(opts?: {
       strict?: TStrict

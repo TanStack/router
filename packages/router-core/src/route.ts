@@ -539,33 +539,62 @@ export type StreamedPromise<T> = {
   resolve: (value: T) => void
 }
 
+export type RouteConstraints = {
+  TParentRoute: AnyRoute
+  TPath: string
+  TFullPath: string
+  TCustomId: string
+  TId: string
+  TSearchSchema: AnySearchSchema
+  TFullSearchSchema: AnySearchSchema
+  TParams: Record<string, any>
+  TAllParams: Record<string, any>
+  TParentContext: AnyContext
+  TAllParentContext: AnyContext
+  TRouteContext: RouteContext
+  TContext: AnyContext
+  TRouterContext: AnyContext
+  TChildren: unknown
+  TRoutesInfo: DefaultRoutesInfo
+}
+
 export class Route<
-  TParentRoute extends AnyRoute = AnyRoute,
-  TPath extends string = '/',
-  TFullPath extends string = ResolveFullPath<TParentRoute, TPath>,
-  TCustomId extends string = string,
-  TId extends string = ResolveId<TParentRoute, TCustomId, TPath>,
+  TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
+  TPath extends RouteConstraints['TPath'] = '/',
+  TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
+    TParentRoute,
+    TPath
+  >,
+  TCustomId extends RouteConstraints['TCustomId'] = string,
+  TId extends RouteConstraints['TId'] = ResolveId<
+    TParentRoute,
+    TCustomId,
+    TPath
+  >,
   TLoader = unknown,
-  TSearchSchema extends AnySearchSchema = {},
-  TFullSearchSchema extends AnySearchSchema = ResolveFullSearchSchema<
+  TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
+  TFullSearchSchema extends RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
     TParentRoute,
     TSearchSchema
   >,
-  TParams extends Record<string, any> = Record<ParsePathParams<TPath>, string>,
-  TAllParams extends MergeParamsFromParent<
+  TParams extends RouteConstraints['TParams'] = Record<
+    ParsePathParams<TPath>,
+    string
+  >,
+  TAllParams extends RouteConstraints['TAllParams'] = MergeParamsFromParent<
     TParentRoute['__types']['allParams'],
     TParams
-  > = MergeParamsFromParent<TParentRoute['__types']['allParams'], TParams>,
-  TParentContext extends TParentRoute['__types']['routeContext'] = TParentRoute['__types']['routeContext'],
-  TAllParentContext extends TParentRoute['__types']['context'] = TParentRoute['__types']['context'],
-  TRouteContext extends RouteContext = RouteContext,
-  TContext extends MergeParamsFromParent<
+  >,
+  TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['__types']['routeContext'],
+  TAllParentContext extends RouteConstraints['TAllParentContext'] = TParentRoute['__types']['context'],
+  TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
+  TContext extends RouteConstraints['TContext'] = MergeParamsFromParent<
     TParentRoute['__types']['context'],
     TRouteContext
-  > = MergeParamsFromParent<TParentRoute['__types']['context'], TRouteContext>,
-  TRouterContext extends AnyContext = AnyContext,
-  TChildren extends unknown = unknown,
-  TRoutesInfo extends DefaultRoutesInfo = DefaultRoutesInfo,
+  >,
+  TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+  TChildren extends RouteConstraints['TChildren'] = unknown,
+  TRoutesInfo extends RouteConstraints['TRoutesInfo'] = DefaultRoutesInfo,
 > {
   __types!: {
     parentRoute: TParentRoute
