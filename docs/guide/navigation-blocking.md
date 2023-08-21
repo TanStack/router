@@ -2,9 +2,9 @@
 title: Navigation Blocking
 ---
 
-Navigation blocking is a way to prevent navigation from happening. This is typical if a user attempts to navigating while they:
+Navigation blocking is a way to prevent navigation from happening. This is typical if a user attempts to navigate while they:
 
-- Has unsaved changes
+- Have unsaved changes
 - Are in the middle of a form
 - Are in the middle of a payment
 
@@ -24,7 +24,7 @@ Depending on your framework adapter, you likely see 2 methods of navigation bloc
 
 ## Hook/logical-based blocking
 
-Each framework will have it's own logical/hook based blocker API, but for this example, we'll use React. Let's imagine we want to prevent navigation if a form is dirty. We can do this by using the `useBlocker` hook:
+Each framework will have its own logical/hook based blocker API, but for this example, we'll use React. Let's imagine we want to prevent navigation if a form is dirty. We can do this by using the `useBlocker` hook:
 
 ```tsx
 import { useBlocker } from '@tanstack/router-react'
@@ -45,7 +45,7 @@ The `useBlocker` hook takes 2 arguments:
 
 ## Component-based blocking
 
-In addition to logical/hook based blocking, each router adapter will export a component-based one as well. You can use the `Blocker` component to achive similar results:
+In addition to logical/hook based blocking, each router adapter will export a component-based one as well. You can use the `Blocker` component to achieve similar results:
 
 ```tsx
 import { Blocker } from '@tanstack/router-react'

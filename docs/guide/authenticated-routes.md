@@ -7,7 +7,7 @@ Authentication is an extremely common requirement for web applications. In this 
 
 ## The `route.beforeLoad` Option
 
-The `route.beforeLoad` option allows you to specify a function that will be called before a route is loaded. It recieves all of the same arguments that the `route.loader` function does. This is a great place to check if a user is authenticated, and redirect them to a login page if they are not.
+The `route.beforeLoad` option allows you to specify a function that will be called before a route is loaded. It receives all of the same arguments that the `route.loader` function does. This is a great place to check if a user is authenticated, and redirect them to a login page if they are not.
 
 The `beforeLoad` function runs in relative order to these other route loading functions:
 
@@ -53,7 +53,7 @@ const authenticatedRoute = new Route({
 
 > 🧠 `redirect()` takes all of the same options as the `navigate` function, so you can pass options like `replace: true` if you want to replace the current history entry instead of adding a new one.
 
-Once you have authenticated a user, it's also common practice to redirect them back to the page they were trying to access. To do this, you can utilize the `redirect` search param that we added in our original redirect. Since we'll be replace the entire URL with what it was, `router.history.push` is better suited for this than `router.navigate`:
+Once you have authenticated a user, it's also common practice to redirect them back to the page they were trying to access. To do this, you can utilize the `redirect` search param that we added in our original redirect. Since we'll be replacing the entire URL with what it was, `router.history.push` is better suited for this than `router.navigate`:
 
 ```tsx
 router.history.push(search.redirect)
