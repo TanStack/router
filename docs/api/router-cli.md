@@ -57,9 +57,9 @@ tsr watch
 
 ## File Naming Conventions
 
-- **`$` Token**: Routes with the `$` token are parameterized and will extract the value from the URL pathname as a route `param`.
-- **`_` Prefix**: Routes with this prefix behave normally but don't contribute the prefixed part to the URL pathname.
-- **`_` Suffix**: Routes with this suffix will only be wrapped with parent routes down to the path with the underscore prefix (but not including it).
+- **`$` Token**: Routes segments with the `$` token are parameterized and will extract the value from the URL pathname as a route `param`.
+- **`_` Prefix**: Routes segments with this prefix behave normally but don't contribute the prefixed part to the URL pathname.
+- **`_` Suffix**: Routes segments with this suffix will only be wrapped with parent routes down to the path with the underscore prefix (but not including it).
 
 ## File Structure
 
