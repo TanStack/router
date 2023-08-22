@@ -1,9 +1,8 @@
 import { ParsePathParams } from './link'
-import { AnyRouter, Router, RouteMatch } from './router'
+import { AnyRouter, Router, RouteMatch, RegisteredRouter } from './router'
 import { IsAny, NoInfer, PickRequired, UnionToIntersection } from './utils'
 import invariant from 'tiny-invariant'
 import { joinPaths, trimPath } from './path'
-import { AnyRoutesInfo, DefaultRoutesInfo } from './routeInfo'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -72,7 +71,7 @@ export type ComponentPropsFromRoute<TRoute> = TRoute extends Route<
   infer TContext,
   infer TRouterContext,
   infer TChildren,
-  infer TRoutesInfo
+  infer TRouteTree
 >
   ? RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
   : never
@@ -93,11 +92,11 @@ export type RouteLoaderFromRoute<TRoute extends AnyRoute> = LoaderFn<
 export type RouteProps<
   TLoader = unknown,
   TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
-  TAllParams = AnyPathParams,
-  TRouteContext = AnyContext,
-  TContext = AnyContext,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TRouteContext extends AnyContext = AnyContext,
+  TContext extends AnyContext = AnyContext,
 > = {
-  useMatch: () => RouteMatch<AnyRoutesInfo, AnyRoute>
+  useMatch: () => RouteMatch<any, any>
   useLoader: () => UseLoaderResult<TLoader>
   useSearch: <
     TStrict extends boolean = true,
@@ -499,27 +498,6 @@ export interface AnyRoute
     any
   > {}
 
-export type AnyRouteWithRouterContext<TRouterContext extends AnyContext> =
-  Route<
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    TRouterContext,
-    any,
-    any
-  >
-
 export type MergeParamsFromParent<T, U> = IsAny<T, U, T & U>
 
 export type UseLoaderResult<T> = T extends Record<PropertyKey, infer U>
@@ -555,7 +533,7 @@ export type RouteConstraints = {
   TContext: AnyContext
   TRouterContext: AnyContext
   TChildren: unknown
-  TRoutesInfo: DefaultRoutesInfo
+  TRouteTree: AnyRoute
 }
 
 export class Route<
@@ -594,7 +572,7 @@ export class Route<
   >,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TChildren extends RouteConstraints['TChildren'] = unknown,
-  TRoutesInfo extends RouteConstraints['TRoutesInfo'] = DefaultRoutesInfo,
+  TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
 > {
   __types!: {
     parentRoute: TParentRoute
@@ -613,7 +591,7 @@ export class Route<
     routeContext: TRouteContext
     context: TContext
     children: TChildren
-    routesInfo: TRoutesInfo
+    routeTree: TRouteTree
     routerContext: TRouterContext
   }
   isRoot: TParentRoute extends Route<any> ? true : false
@@ -652,7 +630,7 @@ export class Route<
   // Optional
   children?: TChildren
   originalIndex?: number
-  router?: Router<TRoutesInfo['routeTree'], TRoutesInfo>
+  router?: AnyRouter
   rank!: number
 
   constructor(
@@ -768,7 +746,7 @@ export class Route<
     TContext,
     TRouterContext,
     TNewChildren,
-    TRoutesInfo
+    TRouteTree
   > => {
     this.children = children as any
     return this as any

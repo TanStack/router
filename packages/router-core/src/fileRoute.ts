@@ -1,9 +1,7 @@
-import { T } from 'vitest/dist/types-198fd1d9'
-import { CleanPath, Last, ParsePathParams, Split } from './link'
+import { ParsePathParams } from './link'
 import {
   AnyRoute,
   ResolveFullPath,
-  ResolveId,
   AnySearchSchema,
   ResolveFullSearchSchema,
   MergeParamsFromParent,
@@ -16,8 +14,8 @@ import {
   AnyPathParams,
   RootRouteId,
   TrimPathLeft,
+  RouteConstraints,
 } from './route'
-import { DefaultRoutesInfo } from './routeInfo'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -48,6 +46,12 @@ export type Trim<T extends string, S extends string> = TrimLeft<
   S
 >
 
+export type RemoveUnderScores<T extends string> = Replace<
+  Replace<TrimRight<TrimLeft<T, '/_'>, '_'>, '_/', '/'>,
+  '/_',
+  '/'
+>
+
 export type ResolveFilePath<
   TParentRoute extends AnyRoute,
   TFilePath extends string,
@@ -69,44 +73,42 @@ export type FileRoutePath<
 export class FileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
-  TId extends string = TFilePath,
-  TPath extends string = FileRoutePath<TParentRoute, TFilePath>,
-  TFullPath extends string = ResolveFullPath<TParentRoute, TPath>,
+  TId extends RouteConstraints['TId'] = TFilePath,
+  TPath extends RouteConstraints['TPath'] = FileRoutePath<
+    TParentRoute,
+    TFilePath
+  >,
+  TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
+    TParentRoute,
+    RemoveUnderScores<TPath>
+  >,
 > {
   constructor(public path: TFilePath) {}
 
   createRoute = <
     TLoader = unknown,
-    TSearchSchema extends AnySearchSchema = {},
-    TFullSearchSchema extends AnySearchSchema = ResolveFullSearchSchema<
+    TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
+    TFullSearchSchema extends RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
       TParentRoute,
       TSearchSchema
     >,
-    TParams extends ParsePathParams<TPath> extends never
+    TParams extends RouteConstraints['TParams'] = ParsePathParams<TPath> extends never
       ? AnyPathParams
-      : Record<
-          ParsePathParams<TPath>,
-          any
-        > = ParsePathParams<TPath> extends never
-      ? AnyPathParams
-      : Record<ParsePathParams<TPath>, string>,
-    TAllParams extends MergeParamsFromParent<
+      : Record<ParsePathParams<TPath>, RouteConstraints['TPath']>,
+    TAllParams extends RouteConstraints['TAllParams'] = MergeParamsFromParent<
       TParentRoute['__types']['allParams'],
       TParams
-    > = MergeParamsFromParent<TParentRoute['__types']['allParams'], TParams>,
-    TParentContext extends TParentRoute['__types']['routeContext'] = TParentRoute['__types']['routeContext'],
-    TAllParentContext extends TParentRoute['__types']['context'] = TParentRoute['__types']['context'],
-    TRouteContext extends RouteContext = RouteContext,
-    TContext extends MergeParamsFromParent<
-      TParentRoute['__types']['context'],
-      TRouteContext
-    > = MergeParamsFromParent<
+    >,
+    TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['__types']['routeContext'],
+    TAllParentContext extends RouteConstraints['TId'] = TParentRoute['__types']['context'],
+    TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
+    TContext extends RouteConstraints['TContext'] = MergeParamsFromParent<
       TParentRoute['__types']['context'],
       TRouteContext
     >,
-    TRouterContext extends AnyContext = AnyContext,
-    TChildren extends unknown = unknown,
-    TRoutesInfo extends DefaultRoutesInfo = DefaultRoutesInfo,
+    TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+    TChildren extends RouteConstraints['TChildren'] = unknown,
+    TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
   >(
     options: Omit<
       RouteOptions<
@@ -151,7 +153,7 @@ export class FileRoute<
     TContext,
     TRouterContext,
     TChildren,
-    TRoutesInfo
+    TRouteTree
   > => {
     const route = new Route(options as any)
     ;(route as any).isRoot = false

@@ -24,7 +24,6 @@ import {
   Route,
   AnySearchSchema,
   AnyRoute,
-  RootRoute,
   AnyContext,
   AnyPathParams,
   RouteProps,
@@ -32,11 +31,12 @@ import {
   RegisteredRouteErrorComponent,
 } from './route'
 import {
-  RoutesInfo,
-  AnyRoutesInfo,
   RoutesById,
   RoutesByPath,
-  DefaultRoutesInfo,
+  ParseRoute,
+  FullSearchSchema,
+  RouteById,
+  RoutePaths,
 } from './routeInfo'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -68,28 +68,25 @@ export interface Register {
   // router: Router
 }
 
-export type AnyRouter = Router<any, any, any>
+export type AnyRouter = Router<any, any>
 
-export type RegisteredRouterPair = Register extends {
+export type RegisteredRouter = Register extends {
   router: infer TRouter extends AnyRouter
 }
-  ? [TRouter, TRouter['types']['RoutesInfo']]
-  : [Router, AnyRoutesInfo]
-
-export type RegisteredRouter = RegisteredRouterPair[0]
-export type RegisteredRoutesInfo = RegisteredRouterPair[1]
+  ? TRouter
+  : Router
 
 export interface LocationState {}
 
 export interface ParsedLocation<
   TSearchObj extends AnySearchSchema = {},
-  TState extends LocationState = LocationState,
+  // TState extends LocationState = LocationState,
 > {
   href: string
   pathname: string
   search: TSearchObj
   searchStr: string
-  state: TState
+  state: LocationState
   hash: string
   key?: string
 }
@@ -110,7 +107,7 @@ export type HydrationCtx = {
 }
 
 export interface RouteMatch<
-  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
+  TRouteTree extends AnyRoute = AnyRoute,
   TRoute extends AnyRoute = Route,
 > {
   id: string
@@ -133,13 +130,12 @@ export interface RouteMatch<
   routeContext: TRoute['__types']['routeContext']
   context: TRoute['__types']['context']
   routeSearch: TRoute['__types']['searchSchema']
-  search: TRoutesInfo['fullSearchSchema'] &
-    TRoute['__types']['fullSearchSchema']
+  search: FullSearchSchema<TRouteTree> & TRoute['__types']['fullSearchSchema']
   fetchedAt: number
   abortController: AbortController
 }
 
-export type AnyRouteMatch = RouteMatch<AnyRoutesInfo, AnyRoute>
+export type AnyRouteMatch = RouteMatch<AnyRoute, AnyRoute>
 
 export type RouterContextOptions<TRouteTree extends AnyRoute> =
   AnyContext extends TRouteTree['__types']['routerContext']
@@ -186,21 +182,18 @@ export interface RouterOptions<
 }
 
 export interface RouterState<
-  TRoutesInfo extends AnyRoutesInfo = AnyRoutesInfo,
-  TState extends LocationState = LocationState,
+  TRouteTree extends AnyRoute = AnyRoute,
+  // TState extends LocationState = LocationState,
 > {
   status: 'idle' | 'pending'
   isFetching: boolean
-  matchesById: Record<
-    string,
-    RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>
-  >
+  matchesById: Record<string, RouteMatch<any, any>>
   matchIds: string[]
   pendingMatchIds: string[]
-  matches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
-  pendingMatches: RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[]
-  location: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
-  resolvedLocation: ParsedLocation<TRoutesInfo['fullSearchSchema'], TState>
+  matches: RouteMatch<any, any>[]
+  pendingMatches: RouteMatch<any, any>[]
+  location: ParsedLocation<FullSearchSchema<TRouteTree>>
+  resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
   lastUpdated: number
 }
 
@@ -258,12 +251,10 @@ export const componentTypes = [
 
 export class Router<
   TRouteTree extends AnyRoute = AnyRoute,
-  TRoutesInfo extends AnyRoutesInfo = RoutesInfo<TRouteTree>,
   TDehydrated extends Record<string, any> = Record<string, any>,
 > {
   types!: {
     RootRoute: TRouteTree
-    RoutesInfo: TRoutesInfo
   }
 
   options: PickAsRequired<
@@ -273,16 +264,16 @@ export class Router<
   history!: RouterHistory
   #unsubHistory?: () => void
   basepath!: string
-  routeTree!: RootRoute
-  routesById!: RoutesById<TRoutesInfo>
-  routesByPath!: RoutesByPath<TRoutesInfo>
-  flatRoutes!: TRoutesInfo['routesByFullPath'][keyof TRoutesInfo['routesByFullPath']][]
+  routeTree!: TRouteTree
+  routesById!: RoutesById<TRouteTree>
+  routesByPath!: RoutesByPath<TRouteTree>
+  flatRoutes!: ParseRoute<TRouteTree>[]
   navigateTimeout: undefined | Timeout
   nextAction: undefined | 'push' | 'replace'
   navigationPromise: undefined | Promise<void>
 
-  __store: Store<RouterState<TRoutesInfo>>
-  state: RouterState<TRoutesInfo>
+  __store: Store<RouterState<TRouteTree>>
+  state: RouterState<TRouteTree>
   dehydratedData?: TDehydrated
 
   constructor(options: RouterConstructorOptions<TRouteTree, TDehydrated>) {
@@ -295,51 +286,47 @@ export class Router<
       // fetchServerDataFn: options?.fetchServerDataFn ?? defaultFetchServerDataFn,
     }
 
-    this.__store = new Store<RouterState<TRoutesInfo>>(
-      getInitialRouterState(),
-      {
-        onUpdate: () => {
-          const prev = this.state
+    this.__store = new Store<RouterState<TRouteTree>>(getInitialRouterState(), {
+      onUpdate: () => {
+        const prev = this.state
 
-          this.state = this.__store.state
+        this.state = this.__store.state
 
-          const matchesByIdChanged = prev.matchesById !== this.state.matchesById
-          let matchesChanged
-          let pendingMatchesChanged
+        const matchesByIdChanged = prev.matchesById !== this.state.matchesById
+        let matchesChanged
+        let pendingMatchesChanged
 
-          if (!matchesByIdChanged) {
-            matchesChanged =
-              prev.matchIds.length !== this.state.matchIds.length ||
-              prev.matchIds.some((d, i) => d !== this.state.matchIds[i])
+        if (!matchesByIdChanged) {
+          matchesChanged =
+            prev.matchIds.length !== this.state.matchIds.length ||
+            prev.matchIds.some((d, i) => d !== this.state.matchIds[i])
 
-            pendingMatchesChanged =
-              prev.pendingMatchIds.length !==
-                this.state.pendingMatchIds.length ||
-              prev.pendingMatchIds.some(
-                (d, i) => d !== this.state.pendingMatchIds[i],
-              )
-          }
+          pendingMatchesChanged =
+            prev.pendingMatchIds.length !== this.state.pendingMatchIds.length ||
+            prev.pendingMatchIds.some(
+              (d, i) => d !== this.state.pendingMatchIds[i],
+            )
+        }
 
-          if (matchesByIdChanged || matchesChanged) {
-            this.state.matches = this.state.matchIds.map((id) => {
-              return this.state.matchesById[id] as any
-            })
-          }
+        if (matchesByIdChanged || matchesChanged) {
+          this.state.matches = this.state.matchIds.map((id) => {
+            return this.state.matchesById[id] as any
+          })
+        }
 
-          if (matchesByIdChanged || pendingMatchesChanged) {
-            this.state.pendingMatches = this.state.pendingMatchIds.map((id) => {
-              return this.state.matchesById[id] as any
-            })
-          }
+        if (matchesByIdChanged || pendingMatchesChanged) {
+          this.state.pendingMatches = this.state.pendingMatchIds.map((id) => {
+            return this.state.matchesById[id] as any
+          })
+        }
 
-          this.state.isFetching = [
-            ...this.state.matches,
-            ...this.state.pendingMatches,
-          ].some((d) => d.isFetching)
-        },
-        defaultPriority: 'low',
+        this.state.isFetching = [
+          ...this.state.matches,
+          ...this.state.pendingMatches,
+        ].some((d) => d.isFetching)
       },
-    )
+      defaultPriority: 'low',
+    })
 
     this.state = this.__store.state
 
@@ -394,8 +381,8 @@ export class Router<
 
       this.__store.setState((s) => ({
         ...s,
-        resolvedLocation: parsedLocation,
-        location: parsedLocation,
+        resolvedLocation: parsedLocation as any,
+        location: parsedLocation as any,
       }))
 
       this.#unsubHistory = this.history.listen(() => {
@@ -466,7 +453,7 @@ export class Router<
           // Ingest the new location
           this.__store.setState((s) => ({
             ...s,
-            location: opts.next!,
+            location: opts.next! as any,
           }))
         }
 
@@ -530,13 +517,10 @@ export class Router<
   #mergeMatches = (
     prevMatchesById: Record<
       string,
-      RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>
+      RouteMatch<TRouteTree, ParseRoute<TRouteTree>>
     >,
     nextMatches: RouteMatch[],
-  ): Record<
-    string,
-    RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>
-  > => {
+  ): Record<string, RouteMatch<TRouteTree, ParseRoute<TRouteTree>>> => {
     const nextMatchesById: any = {
       ...prevMatchesById,
     }
@@ -557,14 +541,12 @@ export class Router<
     return nextMatchesById
   }
 
-  getRoute = <TId extends keyof TRoutesInfo['routesById']>(
-    id: TId,
-  ): TRoutesInfo['routesById'][TId] => {
-    const route = this.routesById[id]
+  getRoute = (id: string): Route => {
+    const route = (this.routesById as any)[id]
 
     invariant(route, `Route with id "${id as string}" not found`)
 
-    return route
+    return route as any
   }
 
   preloadRoute = async (
@@ -627,7 +609,7 @@ export class Router<
     pathname: string,
     locationSearch: AnySearchSchema,
     opts?: { throwOnError?: boolean; debug?: boolean },
-  ): RouteMatch<TRoutesInfo, TRoutesInfo['routeIntersection']>[] => {
+  ): RouteMatch<TRouteTree, ParseRoute<TRouteTree>>[] => {
     let routeParams: AnyPathParams = {}
 
     let foundRoute = this.flatRoutes.find((route) => {
@@ -650,7 +632,7 @@ export class Router<
     })
 
     let routeCursor: AnyRoute =
-      foundRoute || (this.routesById['__root__'] as any)
+      foundRoute || (this.routesById as any)['__root__']
 
     let matchedRoutes: AnyRoute[] = [routeCursor]
     // let includingLayouts = true
@@ -1048,14 +1030,17 @@ export class Router<
     return resolvePath(this.basepath!, from, cleanPath(path))
   }
 
-  navigate = async <TFrom extends string = '/', TTo extends string = ''>({
+  navigate = async <
+    TFrom extends RoutePaths<TRouteTree> = '/',
+    TTo extends string = '',
+  >({
     from,
     to = '' as any,
     search,
     hash,
     replace,
     params,
-  }: NavigateOptions<TRoutesInfo, TFrom, TTo>) => {
+  }: NavigateOptions<TRouteTree, TFrom, TTo>) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
@@ -1086,13 +1071,13 @@ export class Router<
   }
 
   matchRoute = <
-    TFrom extends string = '/',
+    TFrom extends RoutePaths<TRouteTree> = '/',
     TTo extends string = '',
     TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
   >(
-    location: ToOptions<TRoutesInfo, TFrom, TTo>,
+    location: ToOptions<TRouteTree, TFrom, TTo>,
     opts?: MatchRouteOptions,
-  ): false | TRoutesInfo['routesById'][TResolved]['__types']['allParams'] => {
+  ): false | RouteById<TRouteTree, TResolved>['__types']['allParams'] => {
     location = {
       ...location,
       to: location.to
@@ -1129,7 +1114,10 @@ export class Router<
     return match
   }
 
-  buildLink = <TFrom extends string = '/', TTo extends string = ''>({
+  buildLink = <
+    TFrom extends RoutePaths<TRouteTree> = '/',
+    TTo extends string = '',
+  >({
     from,
     to = '.' as any,
     search,
@@ -1141,7 +1129,7 @@ export class Router<
     preload,
     preloadDelay: userPreloadDelay,
     disabled,
-  }: LinkOptions<TRoutesInfo, TFrom, TTo>): LinkInfo => {
+  }: LinkOptions<TRouteTree, TFrom, TTo>): LinkInfo => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
@@ -1286,12 +1274,13 @@ export class Router<
     const ctx = _ctx
     this.dehydratedData = ctx.payload as any
     this.options.hydrate?.(ctx.payload as any)
+    const routerState = ctx.router.state as RouterState<TRouteTree>
 
     this.__store.setState((s) => {
       return {
         ...s,
-        ...ctx.router.state,
-        resolvedLocation: ctx.router.state.location,
+        ...routerState,
+        resolvedLocation: routerState.location,
       }
     })
 
@@ -1367,7 +1356,7 @@ export class Router<
         if (!route.isRoot && route.path) {
           const trimmedFullPath = trimPathRight(route.fullPath)
           if (
-            !this.routesByPath[trimmedFullPath] ||
+            !(this.routesByPath as any)[trimmedFullPath] ||
             route.fullPath.endsWith('/')
           ) {
             ;(this.routesByPath as any)[trimmedFullPath] = route
@@ -1447,7 +1436,9 @@ export class Router<
       }) as any
   }
 
-  #parseLocation = (previousLocation?: ParsedLocation): ParsedLocation => {
+  #parseLocation = (
+    previousLocation?: ParsedLocation,
+  ): ParsedLocation<FullSearchSchema<TRouteTree>> => {
     let { pathname, search, hash, state } = this.history.location
 
     const parsedSearch = this.options.parseSearch(search)
@@ -1455,7 +1446,7 @@ export class Router<
     return {
       pathname: pathname,
       searchStr: search,
-      search: replaceEqualDeep(previousLocation?.search, parsedSearch),
+      search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
       hash: hash.split('#').reverse()[0] ?? '',
       href: `${pathname}${search}${hash}`,
       state: state as LocationState,
@@ -1604,15 +1595,15 @@ export class Router<
 
   getRouteMatch = (
     id: string,
-  ): undefined | RouteMatch<TRoutesInfo, AnyRoute> => {
+  ): undefined | RouteMatch<TRouteTree, AnyRoute> => {
     return this.state.matchesById[id]
   }
 
   setRouteMatch = (
     id: string,
     updater: (
-      prev: RouteMatch<TRoutesInfo, AnyRoute>,
-    ) => RouteMatch<TRoutesInfo, AnyRoute>,
+      prev: RouteMatch<TRouteTree, AnyRoute>,
+    ) => RouteMatch<TRouteTree, AnyRoute>,
   ) => {
     this.__store.setState((prev) => ({
       ...prev,
@@ -1725,7 +1716,7 @@ export class Router<
 // Detect if we're in the DOM
 const isServer = typeof window === 'undefined' || !window.document.createElement
 
-function getInitialRouterState(): RouterState<any, any> {
+function getInitialRouterState(): RouterState<any> {
   return {
     status: 'idle',
     isFetching: false,
@@ -1747,18 +1738,18 @@ function isCtrlEvent(e: MouseEvent) {
 export type AnyRedirect = Redirect<any, any, any>
 
 export type Redirect<
-  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
-  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TRouteTree extends AnyRoute = AnyRoute,
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = NavigateOptions<TRoutesInfo, TFrom, TTo> & {
+> = NavigateOptions<TRouteTree, TFrom, TTo> & {
   code?: number
 }
 
 export function redirect<
-  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
-  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TRouteTree extends AnyRoute = AnyRoute,
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
->(opts: Redirect<TRoutesInfo, TFrom, TTo>): Redirect<TRoutesInfo, TFrom, TTo> {
+>(opts: Redirect<TRouteTree, TFrom, TTo>): Redirect<TRouteTree, TFrom, TTo> {
   ;(opts as any).isRedirect = true
   return opts
 }
