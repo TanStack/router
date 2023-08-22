@@ -111,7 +111,7 @@ In the above example, we're validating the search params of the `allProductsRout
 
 ### Validating Search Params
 
-The `validateSearch` option is a function that is provided the JSON parsed (but non-validated) search params as a `Record<string, unknown>` and returns a typed object of your choice. It's usually best to provide sensible fallbacks for malformed or unexpected search params so your users experience stays non-interrupted.
+The `validateSearch` option is a function that is provided the JSON parsed (but non-validated) search params as a `Record<string, unknown>` and returns a typed object of your choice. It's usually best to provide sensible fallbacks for malformed or unexpected search params so your users' experience stays non-interrupted.
 
 Here's an example:
 
@@ -307,8 +307,8 @@ const ProductList = () => {
 
 ### `router.navigate({ search })`
 
-The `router.navigate` function works exactly the same was as the `useNavigate`/`navigate` hook/function above.
+The `router.navigate` function works exactly the same way as the `useNavigate`/`navigate` hook/function above.
 
 ### `<Navigate search />`
 
-The `<Navigate search />` component works exactly the same was as the `useNavigate`/`navigate` hook/function above, but accepts its options as props instead of a function argument.
+The `<Navigate search />` component works exactly the same way as the `useNavigate`/`navigate` hook/function above, but accepts its options as props instead of a function argument.

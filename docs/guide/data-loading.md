@@ -109,7 +109,7 @@ The `loader` function receives a single object with the following properties:
 - `hash` - The route's hash
 - `context` - The route's context object **including** inherited context from parent routes
 - `routeContext` - The route's context object, **excluding** inherited context from parent routes
-- `abortController` - The route's abortController. It's signal is cancelled when the route is unloaded or when the `loader` call becomes outdated.
+- `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the `loader` call becomes outdated.
 
 Using these parameters, we can do a lot of cool things. Let's take a look at a few examples
 
@@ -221,7 +221,7 @@ const postsRoute = new Route({
 
 ## Using the `preload` flag
 
-The `preload` property of the `loader` function is a boolean which is `true` when the route is being preloaded instead of loaded. Some data loading libraries may handle preloading differently than a standard fetch, so you may want to pass `preload` to your data loading library, or use it to execute the appropriate data loading logic. Here is an example using TanStack Loaders and it's built-in `preload` flag:
+The `preload` property of the `loader` function is a boolean which is `true` when the route is being preloaded instead of loaded. Some data loading libraries may handle preloading differently than a standard fetch, so you may want to pass `preload` to your data loading library, or use it to execute the appropriate data loading logic. Here is an example using TanStack Loaders and its built-in `preload` flag:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
@@ -313,7 +313,7 @@ This route's `maxAge` is set to `10_000` milliseconds (10 seconds). This means t
 
 ## Using Match State
 
-Enabling patterns like `stale-while-revalidate` is great, but what if we want to know when our data is stale? This is where match state comes in. Match state is available via a few different hooks:
+Enabling patterns like `stale-while-revalidate` is great, but what if we want to know when our data is stale? This is where the match state comes in. Match state is available via a few different hooks:
 
 - `props.useMatch`
 - `route.useMatch`
@@ -350,9 +350,9 @@ const postsRoute = new Route({
 
 ## Loader Invalidation
 
-By default, route matches are never considered stale and garbage collected when they are no longer in use. This is great most for loaders that only change when navigation occurs, but what about loaders that change when user events occur?
+By default, route matches are never considered stale and garbage collected when they are no longer in use. This is great mostly for loaders that only change when navigation occurs, but what about loaders that change when user events occur?
 
-Our apps often contain events that could modify the results of our loaders. For example, a user may create a new post, or a user may delete a post. In these cases, we would want to invalidate the loader data for `/posts` and `/posts/$postId` so the user will see latest data.
+Our apps often contain events that could modify the results of our loaders. For example, a user may create a new post, or a user may delete a post. In these cases, we would want to invalidate the loader data for `/posts` and `/posts/$postId` so the user will see the latest data.
 
 The easiest way to do this is by **invalidating all route matches with `router.invalidate`**:
 
@@ -388,7 +388,7 @@ function App() {
 
 While Router can obviously be used to store and manage your data, sometimes you need something a bit more robust!
 
-So instead of using Router to store and managing your data, Router is also designed to simply **coordinate** your data fetching with external caching libraries. This means that you can use any data fetching/caching library you want, and the router will coordinate the loading of your data in a way that aligns with your users' navigation.
+So instead of using Router to store and manage your data, Router is also designed to simply **coordinate** your data fetching with external caching libraries. This means that you can use any data fetching/caching library you want, and the router will coordinate the loading of your data in a way that aligns with your users' navigation.
 
 ## What data fetching libraries are supported?
 

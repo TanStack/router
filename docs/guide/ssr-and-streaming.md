@@ -266,7 +266,7 @@ To achieve this streaming pattern with TanStack Router, the following additional
   - e.g. `router.dehydrateData('foo', () => ({ bar: 'baz' }))`
   - This function is a higher-level abstraction around `router.injectHtml`, designed for injecting JSON under a specific key. It can be called multiple times during rendering to inject arbitrary JSON data into the stream under a specific key which can be retrieved later on the client using the `router.hydrateData` function.
   - Use it to inject things like dehydrated data for your application.
-  - 🧠 Make sure you inject your data right after a successfully rendered Suspense boundary to ensure that the data is injected in unison with the its corresponding markup that requires it in the stream.
+  - 🧠 Make sure you inject your data right after a successfully rendered Suspense boundary to ensure that the data is injected in unison with the corresponding markup that requires it in the stream.
 - The `router.hydrateData` function
   - e.g. `router.hydrateData('foo')`
   - This function is a companion to `router.dehydrateData`, designed for retrieving JSON data that was injected into the stream using `router.dehydrateData`.
@@ -368,7 +368,7 @@ function Test() {
 
 ### Providing Dehydration/Hydration utilities to other tools
 
-The `router.dehydrateData` and `router.hydrateData` functions are designed to be used by other tools to dehydrate and hydrate data. For example, the `@tanstack/react-loaders` package can use generic `dehydrate`/`hydrate` options to dehydrate and hydrate each loader as it is fetch on the server and rendered on the client:
+The `router.dehydrateData` and `router.hydrateData` functions are designed to be used by other tools to dehydrate and hydrate data. For example, the `@tanstack/react-loaders` package can use generic `dehydrate`/`hydrate` options to dehydrate and hydrate each loader as it is fetched on the server and rendered on the client:
 
 ```tsx
 // src/router.tsx
