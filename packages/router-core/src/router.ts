@@ -115,7 +115,7 @@ export interface RouteMatch<
   routeId: string
   pathname: string
   params: TRoute['__types']['allParams']
-  status: 'idle' | 'pending' | 'success' | 'error'
+  status: 'pending' | 'success' | 'error'
   isFetching: boolean
   invalid: boolean
   error: unknown
@@ -713,7 +713,7 @@ export class Router<
         preloadInvalidAt: Infinity,
         routeSearch: {},
         search: {} as any,
-        status: hasLoaders ? 'idle' : 'success',
+        status: hasLoaders ? 'pending' : 'success',
         isFetching: false,
         invalid: false,
         error: undefined,
