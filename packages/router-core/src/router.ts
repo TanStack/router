@@ -74,7 +74,7 @@ export type RegisteredRouter = Register extends {
   router: infer TRouter extends AnyRouter
 }
   ? TRouter
-  : Router
+  : AnyRouter
 
 export interface LocationState {}
 
@@ -107,7 +107,7 @@ export type HydrationCtx = {
 }
 
 export interface RouteMatch<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TRoute extends AnyRoute = Route,
 > {
   id: string
@@ -182,16 +182,16 @@ export interface RouterOptions<
 }
 
 export interface RouterState<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   // TState extends LocationState = LocationState,
 > {
   status: 'idle' | 'pending'
   isFetching: boolean
-  matchesById: Record<string, RouteMatch<any, any>>
+  matchesById: Record<string, RouteMatch<TRouteTree, AnyRoute>>
   matchIds: string[]
   pendingMatchIds: string[]
-  matches: RouteMatch<any, any>[]
-  pendingMatches: RouteMatch<any, any>[]
+  matches: RouteMatch<TRouteTree, AnyRoute>[]
+  pendingMatches: RouteMatch<TRouteTree, AnyRoute>[]
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
   lastUpdated: number
@@ -250,7 +250,7 @@ export const componentTypes = [
 ] as const
 
 export class Router<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TDehydrated extends Record<string, any> = Record<string, any>,
 > {
   types!: {
@@ -1735,7 +1735,7 @@ function isCtrlEvent(e: MouseEvent) {
 export type AnyRedirect = Redirect<any, any, any>
 
 export type Redirect<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
 > = NavigateOptions<TRouteTree, TFrom, TTo> & {
@@ -1743,7 +1743,7 @@ export type Redirect<
 }
 
 export function redirect<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
 >(opts: Redirect<TRouteTree, TFrom, TTo>): Redirect<TRouteTree, TFrom, TTo> {

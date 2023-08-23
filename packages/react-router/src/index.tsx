@@ -436,7 +436,7 @@ export const matchIdsContext = React.createContext<string[]>(null!)
 export const routerContext = React.createContext<RegisteredRouter>(null!)
 
 export type RouterProps<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TDehydrated extends Record<string, any> = Record<string, any>,
 > = Omit<RouterOptions<TRouteTree, TDehydrated>, 'context'> & {
   router: Router<TRouteTree>
@@ -451,7 +451,7 @@ export function useRouterState<TSelected = RegisteredRouter['state']>(opts?: {
 }
 
 export function RouterProvider<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TDehydrated extends Record<string, any> = Record<string, any>,
 >({ router, ...rest }: RouterProps<TRouteTree, TDehydrated>) {
   router.update(rest)
