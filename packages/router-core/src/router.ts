@@ -1129,6 +1129,7 @@ export class Router<
     preload,
     preloadDelay: userPreloadDelay,
     disabled,
+    state
   }: LinkOptions<TRouteTree, TFrom, TTo>): LinkInfo => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
@@ -1151,6 +1152,7 @@ export class Router<
       params,
       hash,
       replace,
+      state
     }
 
     const next = this.buildNext(nextOpts)
