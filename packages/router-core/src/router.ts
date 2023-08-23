@@ -641,43 +641,38 @@ export class Router<
       if (routeCursor) matchedRoutes.unshift(routeCursor)
     }
 
-    // Alright, by now we should have all of our
-    // matching routes and their param pairs, let's
-    // Turn them into actual `Match` objects and
-    // accumulate the params into a single params bag
-    let allParams = {}
-
     // Existing matches are matches that are already loaded along with
     // pending matches that are still loading
 
-    const matches = matchedRoutes.map((route) => {
-      let parsedParams
+    const parseErrors = matchedRoutes.map((route) => {
       let parsedParamsError
 
-      try {
-        parsedParams =
-          (route.options.parseParams as any)?.(routeParams!) ?? routeParams
-        // (typeof route.options.parseParams === 'object' &&
-        // route.options.parseParams.parse
-        //   ? route.options.parseParams.parse(routeParams)
-        //   : (route.options.parseParams as any)?.(routeParams!)) ?? routeParams
-      } catch (err: any) {
-        parsedParamsError = new PathParamError(err.message, {
-          cause: err,
-        })
+      if (route.options.parseParams) {
+        try {
+          const parsedParams = route.options.parseParams(routeParams)
+          // Add the parsed params to the accumulated params bag
+          Object.assign(routeParams, parsedParams)
+        } catch (err: any) {
+          parsedParamsError = new PathParamError(err.message, {
+            cause: err,
+          })
 
-        if (opts?.throwOnError) {
-          throw parsedParamsError
+          if (opts?.throwOnError) {
+            throw parsedParamsError
+          }
+
+          return parsedParamsError
         }
       }
 
-      // Add the parsed params to the accumulated params bag
-      Object.assign(allParams, parsedParams)
+      return
+    })
 
-      const interpolatedPath = interpolatePath(route.path, allParams)
+    const matches = matchedRoutes.map((route, index) => {
+      const interpolatedPath = interpolatePath(route.path, routeParams)
       const key = route.options.key
         ? route.options.key({
-            params: allParams,
+            params: routeParams,
             search: locationSearch,
           }) ?? ''
         : ''
@@ -685,7 +680,7 @@ export class Router<
       const stringifiedKey = key ? JSON.stringify(key) : ''
 
       const matchId =
-        interpolatePath(route.id, allParams, true) + stringifiedKey
+        interpolatePath(route.id, routeParams, true) + stringifiedKey
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
@@ -706,7 +701,7 @@ export class Router<
         id: matchId,
         key: stringifiedKey,
         routeId: route.id,
-        params: allParams,
+        params: routeParams,
         pathname: joinPaths([this.basepath, interpolatedPath]),
         updatedAt: Date.now(),
         invalidAt: Infinity,
@@ -717,7 +712,7 @@ export class Router<
         isFetching: false,
         invalid: false,
         error: undefined,
-        paramsError: parsedParamsError,
+        paramsError: parseErrors[index],
         searchError: undefined,
         loaderData: undefined,
         loadPromise: Promise.resolve(),
@@ -1129,7 +1124,7 @@ export class Router<
     preload,
     preloadDelay: userPreloadDelay,
     disabled,
-    state
+    state,
   }: LinkOptions<TRouteTree, TFrom, TTo>): LinkInfo => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
@@ -1152,7 +1147,7 @@ export class Router<
       params,
       hash,
       replace,
-      state
+      state,
     }
 
     const next = this.buildNext(nextOpts)
