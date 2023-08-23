@@ -102,7 +102,7 @@ export class FileRoute<
     TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['__types']['routeContext'],
     TAllParentContext extends RouteConstraints['TId'] = TParentRoute['__types']['context'],
     TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
-    TContext extends RouteConstraints['TContext'] = MergeParamsFromParent<
+    TContext extends RouteConstraints['TAllContext'] = MergeParamsFromParent<
       TParentRoute['__types']['context'],
       TRouteContext
     >,

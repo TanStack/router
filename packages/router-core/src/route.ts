@@ -139,7 +139,7 @@ export type RouteOptions<
   TParentContext extends AnyContext = AnyContext,
   TAllParentContext extends AnyContext = AnyContext,
   TRouteContext extends RouteContext = RouteContext,
-  TContext extends AnyContext = AnyContext,
+  TAllContext extends AnyContext = AnyContext,
 > = BaseRouteOptions<
   TParentRoute,
   TCustomId,
@@ -153,7 +153,7 @@ export type RouteOptions<
   TParentContext,
   TAllParentContext,
   TRouteContext,
-  TContext
+  TAllContext
 > &
   UpdatableRouteOptions<
     TLoader,
@@ -161,7 +161,7 @@ export type RouteOptions<
     TFullSearchSchema,
     TAllParams,
     TRouteContext,
-    TContext
+    TAllContext
   >
 
 export type ParamsFallback<
@@ -190,7 +190,7 @@ export type BaseRouteOptions<
   TParentContext extends AnyContext = AnyContext,
   TAllParentContext extends AnyContext = AnyContext,
   TRouteContext extends RouteContext = RouteContext,
-  TContext extends AnyContext = AnyContext,
+  TAllContext extends AnyContext = AnyContext,
 > = RoutePathOptions<TCustomId, TPath> & {
   layoutLimit?: string
   getParentRoute: () => TParentRoute
@@ -201,7 +201,7 @@ export type BaseRouteOptions<
     TFullSearchSchema,
     TAllParams,
     NoInfer<TRouteContext>,
-    TContext
+    TAllContext
   >
 } & (
     | {
@@ -530,7 +530,7 @@ export type RouteConstraints = {
   TParentContext: AnyContext
   TAllParentContext: AnyContext
   TRouteContext: RouteContext
-  TContext: AnyContext
+  TAllContext: AnyContext
   TRouterContext: AnyContext
   TChildren: unknown
   TRouteTree: AnyRoute
@@ -566,7 +566,7 @@ export class Route<
   TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['__types']['routeContext'],
   TAllParentContext extends RouteConstraints['TAllParentContext'] = TParentRoute['__types']['context'],
   TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
-  TContext extends RouteConstraints['TContext'] = MergeParamsFromParent<
+  TAllContext extends RouteConstraints['TAllContext'] = MergeParamsFromParent<
     TParentRoute['__types']['context'],
     TRouteContext
   >,
@@ -589,7 +589,7 @@ export class Route<
     parentContext: TParentContext
     allParentContext: TAllParentContext
     routeContext: TRouteContext
-    context: TContext
+    context: TAllContext
     children: TChildren
     routeTree: TRouteTree
     routerContext: TRouterContext
@@ -608,7 +608,7 @@ export class Route<
     TParentContext,
     TAllParentContext,
     TRouteContext,
-    TContext
+    TAllContext
   > &
     UpdatableRouteOptions<
       TLoader,
@@ -616,7 +616,7 @@ export class Route<
       TFullSearchSchema,
       TAllParams,
       TRouteContext,
-      TContext
+      TAllContext
     >
 
   // Set up in this.init()
@@ -647,7 +647,7 @@ export class Route<
       TParentContext,
       TAllParentContext,
       TRouteContext,
-      TContext
+      TAllContext
     > &
       UpdatableRouteOptions<
         TLoader,
@@ -655,7 +655,7 @@ export class Route<
         TFullSearchSchema,
         TAllParams,
         TRouteContext,
-        TContext
+        TAllContext
       >,
   ) {
     this.options = (options as any) || {}
@@ -743,7 +743,7 @@ export class Route<
     TParentContext,
     TAllParentContext,
     TRouteContext,
-    TContext,
+    TAllContext,
     TRouterContext,
     TNewChildren,
     TRouteTree
@@ -759,7 +759,7 @@ export class Route<
       TFullSearchSchema,
       TAllParams,
       TRouteContext,
-      TContext
+      TAllContext
     >,
   ) => {
     Object.assign(this.options, options)
@@ -780,10 +780,24 @@ export class RouterContext<TRouterContext extends {}> {
   createRootRoute = <
     TLoader = unknown,
     TSearchSchema extends AnySearchSchema = {},
-    TContext extends RouteContext = RouteContext,
+    TRouteContext extends RouteContext = RouteContext,
   >(
     options?: Omit<
-      RouteOptions<AnyRoute, RootRouteId, '', {}, TSearchSchema, {}>,
+      RouteOptions<
+        AnyRoute,
+        RootRouteId,
+        '',
+        TLoader,
+        TSearchSchema,
+        TSearchSchema,
+        TSearchSchema,
+        {},
+        {},
+        TRouterContext,
+        TRouterContext,
+        TRouteContext,
+        MergeParamsFromParent<TRouterContext, TRouteContext>
+      >,
       | 'path'
       | 'id'
       | 'getParentRoute'
@@ -792,7 +806,7 @@ export class RouterContext<TRouterContext extends {}> {
       | 'stringifyParams'
     >,
   ) => {
-    return new RootRoute<TLoader, TSearchSchema, TContext, TRouterContext>(
+    return new RootRoute<TLoader, TSearchSchema, TRouteContext, TRouterContext>(
       options as any,
     )
   }
@@ -801,7 +815,7 @@ export class RouterContext<TRouterContext extends {}> {
 export class RootRoute<
   TLoader = unknown,
   TSearchSchema extends AnySearchSchema = {},
-  TContext extends RouteContext = RouteContext,
+  TRouteContext extends RouteContext = RouteContext,
   TRouterContext extends {} = {},
 > extends Route<
   any,
@@ -816,15 +830,29 @@ export class RootRoute<
   {},
   TRouterContext,
   TRouterContext,
-  MergeParamsFromParent<TRouterContext, TContext>,
-  MergeParamsFromParent<TRouterContext, TContext>,
+  TRouteContext,
+  MergeParamsFromParent<TRouterContext, TRouteContext>,
   TRouterContext,
   any,
   any
 > {
   constructor(
     options?: Omit<
-      RouteOptions<AnyRoute, RootRouteId, '', TLoader, TSearchSchema, {}>,
+      RouteOptions<
+        AnyRoute,
+        RootRouteId,
+        '',
+        TLoader,
+        TSearchSchema,
+        TSearchSchema,
+        TSearchSchema,
+        {},
+        {},
+        TRouterContext,
+        TRouterContext,
+        TRouteContext,
+        MergeParamsFromParent<TRouterContext, TRouteContext>
+      >,
       | 'path'
       | 'id'
       | 'getParentRoute'

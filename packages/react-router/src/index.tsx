@@ -82,7 +82,7 @@ declare module '@tanstack/router-core' {
     TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['__types']['routeContext'],
     TAllParentContext extends RouteConstraints['TAllParentContext'] = TParentRoute['__types']['context'],
     TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
-    TContext extends RouteConstraints['TContext'] = MergeParamsFromParent<
+    TAllContext extends RouteConstraints['TAllContext'] = MergeParamsFromParent<
       TParentRoute['__types']['context'],
       TRouteContext
     >,
@@ -90,9 +90,9 @@ declare module '@tanstack/router-core' {
     TChildren extends RouteConstraints['TChildren'] = unknown,
     TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
   > {
-    useMatch: <TStrict extends boolean = true, TSelected = TContext>(opts?: {
+    useMatch: <TStrict extends boolean = true, TSelected = TAllContext>(opts?: {
       strict?: TStrict
-      select?: (search: TContext) => TSelected
+      select?: (search: TAllContext) => TSelected
     }) => TStrict extends true ? TSelected : TSelected | undefined
     useLoader: <TStrict extends boolean = true, TSelected = TLoader>(opts?: {
       strict?: TStrict
@@ -100,9 +100,12 @@ declare module '@tanstack/router-core' {
     }) => TStrict extends true
       ? UseLoaderResult<TSelected>
       : UseLoaderResult<TSelected> | undefined
-    useContext: <TStrict extends boolean = true, TSelected = TContext>(opts?: {
+    useContext: <
+      TStrict extends boolean = true,
+      TSelected = TAllContext,
+    >(opts?: {
       strict?: TStrict
-      select?: (search: TContext) => TSelected
+      select?: (search: TAllContext) => TSelected
     }) => TStrict extends true ? TSelected : TSelected | undefined
     useRouteContext: <
       TStrict extends boolean = true,
