@@ -114,7 +114,7 @@ export interface RouteMatch<
   key?: string
   routeId: string
   pathname: string
-  params: TRoute['__types']['allParams']
+  params: TRoute['types']['allParams']
   status: 'pending' | 'success' | 'error'
   isFetching: boolean
   invalid: boolean
@@ -124,13 +124,13 @@ export interface RouteMatch<
   updatedAt: number
   invalidAt: number
   preloadInvalidAt: number
-  loaderData: TRoute['__types']['loader']
+  loaderData: TRoute['types']['loader']
   loadPromise?: Promise<void>
   __resolveLoadPromise?: () => void
-  routeContext: TRoute['__types']['routeContext']
-  context: TRoute['__types']['context']
-  routeSearch: TRoute['__types']['searchSchema']
-  search: FullSearchSchema<TRouteTree> & TRoute['__types']['fullSearchSchema']
+  routeContext: TRoute['types']['routeContext']
+  context: TRoute['types']['context']
+  routeSearch: TRoute['types']['searchSchema']
+  search: FullSearchSchema<TRouteTree> & TRoute['types']['fullSearchSchema']
   fetchedAt: number
   abortController: AbortController
 }
@@ -138,12 +138,12 @@ export interface RouteMatch<
 export type AnyRouteMatch = RouteMatch<AnyRoute, AnyRoute>
 
 export type RouterContextOptions<TRouteTree extends AnyRoute> =
-  AnyContext extends TRouteTree['__types']['routerContext']
+  AnyContext extends TRouteTree['types']['routerContext']
     ? {
-        context?: TRouteTree['__types']['routerContext']
+        context?: TRouteTree['types']['routerContext']
       }
     : {
-        context: TRouteTree['__types']['routerContext']
+        context: TRouteTree['types']['routerContext']
       }
 
 export interface RouterOptions<
@@ -172,7 +172,7 @@ export interface RouterOptions<
   basepath?: string
   createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
   onRouteChange?: () => void
-  context?: TRouteTree['__types']['routerContext']
+  context?: TRouteTree['types']['routerContext']
   Wrap?: React.ComponentType<{
     children: React.ReactNode
     dehydratedState?: TDehydrated
@@ -1089,7 +1089,7 @@ export class Router<
   >(
     location: ToOptions<TRouteTree, TFrom, TTo>,
     opts?: MatchRouteOptions,
-  ): false | RouteById<TRouteTree, TResolved>['__types']['allParams'] => {
+  ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
     location = {
       ...location,
       to: location.to

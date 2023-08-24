@@ -152,17 +152,17 @@ export type SearchParamOptions<
   TFromSchema = UnionToIntersection<
     FullSearchSchema<TRouteTree> & RouteByPath<TRouteTree, TFrom> extends never
       ? {}
-      : RouteByPath<TRouteTree, TFrom>['__types']['fullSearchSchema']
+      : RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']
   >,
   // Find the schema for the new path, and make optional any keys
   // that are already defined in the current schema
   TToSchema = Partial<
-    RouteByPath<TRouteTree, TFrom>['__types']['fullSearchSchema']
+    RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']
   > &
     Omit<
-      RouteByPath<TRouteTree, TTo>['__types']['fullSearchSchema'],
+      RouteByPath<TRouteTree, TTo>['types']['fullSearchSchema'],
       keyof PickRequired<
-        RouteByPath<TRouteTree, TFrom>['__types']['fullSearchSchema']
+        RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']
       >
     >,
   TFromFullSchema = UnionToIntersection<
@@ -188,14 +188,14 @@ export type PathParamOptions<
   TFromSchema = UnionToIntersection<
     RouteByPath<TRouteTree, TFrom> extends never
       ? {}
-      : RouteByPath<TRouteTree, TFrom>['__types']['allParams']
+      : RouteByPath<TRouteTree, TFrom>['types']['allParams']
   >,
   // Find the schema for the new path, and make optional any keys
   // that are already defined in the current schema
-  TToSchema = Partial<RouteByPath<TRouteTree, TFrom>['__types']['allParams']> &
+  TToSchema = Partial<RouteByPath<TRouteTree, TFrom>['types']['allParams']> &
     Omit<
-      RouteByPath<TRouteTree, TTo>['__types']['allParams'],
-      keyof PickRequired<RouteByPath<TRouteTree, TFrom>['__types']['allParams']>
+      RouteByPath<TRouteTree, TTo>['types']['allParams'],
+      keyof PickRequired<RouteByPath<TRouteTree, TFrom>['types']['allParams']>
     >,
   TFromFullParams = UnionToIntersection<AllParams<TRouteTree> & TFromSchema>,
   TToFullParams = UnionToIntersection<AllParams<TRouteTree> & TToSchema>,

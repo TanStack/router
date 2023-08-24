@@ -59,7 +59,7 @@ export type ResolveFilePath<
   ? TrimPathLeft<TFilePath>
   : Replace<
       TrimPathLeft<TFilePath>,
-      TrimPathLeft<TParentRoute['__types']['customId']>,
+      TrimPathLeft<TParentRoute['types']['customId']>,
       ''
     >
 
@@ -96,14 +96,14 @@ export class FileRoute<
       ? AnyPathParams
       : Record<ParsePathParams<TPath>, RouteConstraints['TPath']>,
     TAllParams extends RouteConstraints['TAllParams'] = MergeParamsFromParent<
-      TParentRoute['__types']['allParams'],
+      TParentRoute['types']['allParams'],
       TParams
     >,
-    TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['__types']['routeContext'],
-    TAllParentContext extends RouteConstraints['TId'] = TParentRoute['__types']['context'],
+    TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['types']['routeContext'],
+    TAllParentContext extends RouteConstraints['TId'] = TParentRoute['types']['context'],
     TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
     TContext extends RouteConstraints['TAllContext'] = MergeParamsFromParent<
-      TParentRoute['__types']['context'],
+      TParentRoute['types']['context'],
       TRouteContext
     >,
     TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,

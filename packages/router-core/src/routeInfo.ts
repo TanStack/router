@@ -63,9 +63,9 @@ export type RoutePaths<TRouteTree extends AnyRoute> =
   | '/'
 
 export type FullSearchSchema<TRouteTree extends AnyRoute> = MergeUnion<
-  ParseRoute<TRouteTree>['__types']['fullSearchSchema']
+  ParseRoute<TRouteTree>['types']['fullSearchSchema']
 > & {}
 
 export type AllParams<TRouteTree extends AnyRoute> = MergeUnion<
-  ParseRoute<TRouteTree>['__types']['allParams']
+  ParseRoute<TRouteTree>['types']['allParams']
 >

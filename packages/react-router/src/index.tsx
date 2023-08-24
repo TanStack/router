@@ -76,14 +76,14 @@ declare module '@tanstack/router-core' {
       string
     >,
     TAllParams extends RouteConstraints['TAllParams'] = MergeParamsFromParent<
-      TParentRoute['__types']['allParams'],
+      TParentRoute['types']['allParams'],
       TParams
     >,
-    TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['__types']['routeContext'],
-    TAllParentContext extends RouteConstraints['TAllParentContext'] = TParentRoute['__types']['context'],
+    TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['types']['routeContext'],
+    TAllParentContext extends RouteConstraints['TAllParentContext'] = TParentRoute['types']['context'],
     TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
     TAllContext extends RouteConstraints['TAllContext'] = MergeParamsFromParent<
-      TParentRoute['__types']['context'],
+      TParentRoute['types']['context'],
       TRouteContext
     >,
     TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
@@ -246,7 +246,7 @@ export type MakeMatchRouteOptions<
           params?: RouteByPath<
             RegisteredRouter['routeTree'],
             ResolveRelativePath<TFrom, NoInfer<TTo>>
-          >['__types']['allParams'],
+          >['types']['allParams'],
         ) => ReactNode)
       | React.ReactNode
   }
@@ -612,10 +612,7 @@ export type RouteFromIdOrRoute<T> = T extends ParseRoute<
 export function useLoader<
   TFrom extends RouteIds<RegisteredRouter['routeTree']>,
   TStrict extends boolean = true,
-  TLoader = RouteById<
-    RegisteredRouter['routeTree'],
-    TFrom
-  >['__types']['loader'],
+  TLoader = RouteById<RegisteredRouter['routeTree'], TFrom>['types']['loader'],
   TSelected = TLoader,
 >(opts?: {
   from: TFrom
@@ -636,7 +633,7 @@ export function useRouterContext<
   TContext = RouteById<
     RegisteredRouter['routeTree'],
     TFrom
-  >['__types']['context'],
+  >['types']['context'],
   TSelected = TContext,
 >(opts?: {
   from: TFrom
@@ -656,7 +653,7 @@ export function useRouteContext<
   TRouteContext = RouteById<
     RegisteredRouter['routeTree'],
     TFrom
-  >['__types']['routeContext'],
+  >['types']['routeContext'],
   TSelected = TRouteContext,
 >(opts?: {
   from: TFrom
@@ -677,7 +674,7 @@ export function useSearch<
   TSearch = RouteById<
     RegisteredRouter['routeTree'],
     TFrom
-  >['__types']['fullSearchSchema'],
+  >['types']['fullSearchSchema'],
   TSelected = TSearch,
 >(opts?: {
   from: TFrom
@@ -696,7 +693,7 @@ export function useSearch<
 export function useParams<
   TFrom extends RouteIds<RegisteredRouter['routeTree']> = '/',
   TDefaultSelected = AllParams<RegisteredRouter['routeTree']> &
-    RouteById<RegisteredRouter['routeTree'], TFrom>['__types']['allParams'],
+    RouteById<RegisteredRouter['routeTree'], TFrom>['types']['allParams'],
   TSelected = TDefaultSelected,
 >(opts?: {
   from: TFrom

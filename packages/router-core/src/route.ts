@@ -81,12 +81,12 @@ export type ComponentFromRoute<TRoute> = RegisteredRouteComponent<
 >
 
 export type RouteLoaderFromRoute<TRoute extends AnyRoute> = LoaderFn<
-  TRoute['__types']['loader'],
-  TRoute['__types']['searchSchema'],
-  TRoute['__types']['fullSearchSchema'],
-  TRoute['__types']['allParams'],
-  TRoute['__types']['routeContext'],
-  TRoute['__types']['context']
+  TRoute['types']['loader'],
+  TRoute['types']['searchSchema'],
+  TRoute['types']['fullSearchSchema'],
+  TRoute['types']['allParams'],
+  TRoute['types']['routeContext'],
+  TRoute['types']['context']
 >
 
 export type RouteProps<
@@ -443,13 +443,13 @@ export type ResolveId<
 
 export type InferFullSearchSchema<TRoute> = TRoute extends {
   isRoot: true
-  __types: {
+  types: {
     searchSchema: infer TSearchSchema
   }
 }
   ? TSearchSchema
   : TRoute extends {
-      __types: {
+      types: {
         fullSearchSchema: infer TFullSearchSchema
       }
     }
@@ -542,21 +542,21 @@ export class Route<
     string
   >,
   TAllParams extends RouteConstraints['TAllParams'] = MergeParamsFromParent<
-    TParentRoute['__types']['allParams'],
+    TParentRoute['types']['allParams'],
     TParams
   >,
-  TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['__types']['routeContext'],
-  TAllParentContext extends RouteConstraints['TAllParentContext'] = TParentRoute['__types']['context'],
+  TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['types']['routeContext'],
+  TAllParentContext extends RouteConstraints['TAllParentContext'] = TParentRoute['types']['context'],
   TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
   TAllContext extends RouteConstraints['TAllContext'] = MergeParamsFromParent<
-    TParentRoute['__types']['context'],
+    TParentRoute['types']['context'],
     TRouteContext
   >,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TChildren extends RouteConstraints['TChildren'] = unknown,
   TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
 > {
-  __types!: {
+  types!: {
     parentRoute: TParentRoute
     path: TPath
     to: TrimPathRight<TFullPath>
