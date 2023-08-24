@@ -490,7 +490,6 @@ function Matches() {
       })
 
       if (hasPendingComponent) {
-        console.log('hasPending')
         return state.pendingMatchIds
       }
 

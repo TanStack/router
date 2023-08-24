@@ -292,10 +292,6 @@ export class Router<
 
         const next = this.__store.state
 
-        console.log(
-          Object.values(next.matchesById).find((d) => d.status === 'error'),
-        )
-
         const matchesByIdChanged = prev.matchesById !== next.matchesById
         let matchesChanged
         let pendingMatchesChanged
@@ -869,7 +865,6 @@ export class Router<
             }
           }
 
-          console.log('set error')
           this.setRouteMatch(match.id, (s) => ({
             ...s,
             error: err,
@@ -936,19 +931,18 @@ export class Router<
               : undefined
           }
 
+          const handleIfRedirect = (err: any) => {
+            if (isRedirect(err)) {
+              if (!opts?.preload) {
+                this.navigate(err as any)
+              }
+              return true
+            }
+            return false
+          }
+
           const load = async () => {
             let latestPromise
-
-            const handleError = (err: any) => {
-              if (isRedirect(err)) {
-                if (!opts?.preload) {
-                  this.navigate(err as any)
-                }
-                return true
-              }
-
-              return false
-            }
 
             try {
               const componentsPromise = Promise.all(
@@ -975,44 +969,58 @@ export class Router<
 
               this.setRouteMatchData(match.id, () => loader, opts)
             } catch (loaderError) {
+              let latestError = loaderError
               if ((latestPromise = checkLatest())) return await latestPromise
-              handleError(loaderError)
+              if (handleIfRedirect(loaderError)) return
 
-              let error = loaderError
-
-              try {
-                if (route.options.onLoadError) {
-                  route.options.onLoadError?.(loaderError)
-                } else {
-                  route.options.onError?.(loaderError)
+              if (route.options.onLoadError) {
+                try {
+                  route.options.onLoadError(loaderError)
+                } catch (onLoadError) {
+                  latestError = onLoadError
+                  if (handleIfRedirect(onLoadError)) return
                 }
-              } catch (errorHandlerErr) {
-                error = errorHandlerErr
-                handleError(error)
               }
 
-              console.log('set error')
+              if (
+                (!route.options.onLoadError || latestError !== loaderError) &&
+                route.options.onError
+              ) {
+                try {
+                  route.options.onError(latestError)
+                } catch (onErrorError) {
+                  if (handleIfRedirect(onErrorError)) return
+                }
+              }
+
               this.setRouteMatch(match.id, (s) => ({
                 ...s,
-                error: error,
+                error: loaderError,
                 status: 'error',
                 isFetching: false,
                 updatedAt: Date.now(),
               }))
-              console.log(this.getRouteMatch(match.id)?.status)
             }
           }
 
-          const loadPromise = load()
+          let loadPromise: Promise<void> | undefined
 
-          this.setRouteMatch(match.id, (s) => ({
-            ...s,
-            status: s.status !== 'success' ? 'pending' : s.status,
-            isFetching: true,
-            loadPromise,
-            fetchedAt,
-            invalid: false,
-          }))
+          this.__store.batch(() => {
+            this.setRouteMatch(match.id, (s) => ({
+              ...s,
+              // status: s.status !== 'success' ? 'pending' : s.status,
+              isFetching: true,
+              fetchedAt,
+              invalid: false,
+            }))
+
+            loadPromise = load()
+
+            this.setRouteMatch(match.id, (s) => ({
+              ...s,
+              loadPromise,
+            }))
+          })
 
           await loadPromise
         })(),
@@ -1655,7 +1663,6 @@ export class Router<
         this.options.defaultMaxAge ??
         Infinity)
 
-    console.log('set success')
     this.setRouteMatch(id, (s) => ({
       ...s,
       error: undefined,

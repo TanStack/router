@@ -66,8 +66,6 @@ async function getRouteNodes(config: Config) {
             routePath = '/'
           }
 
-          // console.log(filePath)
-
           routeNodes.push({
             filePath,
             fullPath,
