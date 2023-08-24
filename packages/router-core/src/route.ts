@@ -90,7 +90,7 @@ export type RouteLoaderFromRoute<TRoute extends AnyRoute> = LoaderFn<
 >
 
 export type RouteProps<
-  TLoader = unknown,
+  TLoader extends any = unknown,
   TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
   TAllParams extends AnyPathParams = AnyPathParams,
   TRouteContext extends AnyContext = AnyContext,
@@ -173,10 +173,6 @@ type Prefix<T extends string, U extends string> = U extends `${T}${infer _}`
   ? U
   : never
 
-type PrefixOrExact<T extends string, U extends string> = U extends T
-  ? U
-  : Prefix<T, U>
-
 export type BaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
@@ -185,7 +181,7 @@ export type BaseRouteOptions<
   TParentSearchSchema extends AnySearchSchema = {},
   TSearchSchema extends AnySearchSchema = {},
   TFullSearchSchema extends AnySearchSchema = TSearchSchema,
-  TParams = unknown,
+  TParams extends AnyPathParams = {},
   TAllParams = ParamsFallback<TPath, TParams>,
   TParentContext extends AnyContext = AnyContext,
   TAllParentContext extends AnyContext = AnyContext,
@@ -194,7 +190,7 @@ export type BaseRouteOptions<
 > = RoutePathOptions<TCustomId, TPath> & {
   layoutLimit?: string
   getParentRoute: () => TParentRoute
-  validateSearch?: SearchSchemaValidator<TSearchSchema, TParentSearchSchema>
+  validateSearch?: SearchSchemaValidator<TSearchSchema>
   loader?: LoaderFn<
     TLoader,
     TSearchSchema,
@@ -203,7 +199,12 @@ export type BaseRouteOptions<
     NoInfer<TRouteContext>,
     TAllContext
   >
-} & (
+} & ([TLoader] extends [never]
+    ? {
+        loader: 'Loaders must return a type other than never. If you are throwing a redirect() and not returning anything, return a redirect() instead.'
+      }
+    : {}) &
+  (
     | {
         // Both or none
         parseParams?: (
@@ -211,17 +212,6 @@ export type BaseRouteOptions<
         ) => TParams extends Record<ParsePathParams<TPath>, any>
           ? TParams
           : 'parseParams must return an object'
-        // | {
-        //     parse: (
-        //       rawParams: IsAny<
-        //         TPath,
-        //         any,
-        //         Record<ParsePathParams<TPath>, string>
-        //       >,
-        //     ) => TParams extends Record<ParsePathParams<TPath>, any>
-        //       ? TParams
-        //       : 'parseParams must return an object'
-        //   }
         stringifyParams?: (
           params: NoInfer<ParamsFallback<TPath, TParams>>,
         ) => Record<ParsePathParams<TPath>, string>
@@ -364,7 +354,6 @@ export type ParseParamsOption<TPath extends string, TParams> = ParseParamsFn<
   TPath,
   TParams
 >
-// | ParseParamsObj<TPath, TParams>
 
 export type ParseParamsFn<TPath extends string, TParams> = (
   rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
@@ -377,24 +366,17 @@ export type ParseParamsObj<TPath extends string, TParams> = {
 }
 
 // The parse type here allows a zod schema to be passed directly to the validator
-export type SearchSchemaValidator<TReturn, TParentSchema> =
-  | SearchSchemaValidatorObj<TReturn, TParentSchema>
-  | SearchSchemaValidatorFn<TReturn, TParentSchema>
+export type SearchSchemaValidator<TReturn> =
+  | SearchSchemaValidatorObj<TReturn>
+  | SearchSchemaValidatorFn<TReturn>
 
-export type SearchSchemaValidatorObj<TReturn, TParentSchema> = {
-  parse?: SearchSchemaValidatorFn<TReturn, TParentSchema>
+export type SearchSchemaValidatorObj<TReturn> = {
+  parse?: SearchSchemaValidatorFn<TReturn>
 }
 
-export type SearchSchemaValidatorFn<TReturn, TParentSchema> = (
+export type SearchSchemaValidatorFn<TReturn> = (
   searchObj: Record<string, unknown>,
-) => {} extends TParentSchema
-  ? TReturn
-  : keyof TReturn extends keyof TParentSchema
-  ? {
-      error: 'Top level search params cannot be redefined by child routes!'
-      keys: keyof TReturn & keyof TParentSchema
-    }
-  : TReturn
+) => TReturn
 
 export type DefinedPathParamWarning =
   'Path params cannot be redefined by child routes!'
@@ -805,10 +787,8 @@ export class RouterContext<TRouterContext extends {}> {
       | 'parseParams'
       | 'stringifyParams'
     >,
-  ) => {
-    return new RootRoute<TLoader, TSearchSchema, TRouteContext, TRouterContext>(
-      options as any,
-    )
+  ): RootRoute<TLoader, TSearchSchema, TRouteContext, TRouterContext> => {
+    return new RootRoute(options) as any
   }
 }
 
