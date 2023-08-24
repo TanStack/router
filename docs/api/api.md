@@ -133,10 +133,7 @@ const myRoute = new Route({
   // An array of functions that can manipulate search params *after* they are passed to links and navigate
   // calls that match this route.
   postSearchFilters?: ((search: TFullSearchSchema) => TFullSearchSchema)[]
-  // This async function is called before a route is loaded.
-  // If an error is thrown here, the route will not be loaded (or preloaded).
-  // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onLoadError` function.
-  // If thrown during a preload event, the error will be logged to the console.
+  // A function that will run before a route is loaded. If you throw a redirect from this function during a navigation, the location will be updated. If you throw any other error, the route will not be loaded (even preloaded)
   beforeLoad?: (
     opts: {
       // The parsed path parameters available from this route and its parents.
@@ -155,17 +152,6 @@ const myRoute = new Route({
       context: TAllContext
     }
   ) => Promise<void> | void
-  // This function will be called if the route's loader throws an error.
-  // If you want to redirect due to an error, throw a `redirect(opts)` from within this function. Redirects thrown during a preload event will be ignored.
-  onBeforeLoadError?: (err: any) => void
-  // This function will be called when an attempt is made to load a matched route but the `validateSearch` option threw an error during the route matching process.
-  // If you want to redirect due to an error, call `redirect(opts)` from within this function. Redirects thrown during a preload event will be ignored.
-  onValidateSearchError?: (err: any) => void
-  // This function will be called when an attempt is made to load a matched route but the `parseParams` option threw an error during the route matching process.
-  // If you want to redirect due to an error, call `redirect(opts)` from within this function. Redirects thrown during a preload event will be ignored.
-  onParseParamsError?: (err: any) => void
-  // If
-  onLoadError?: (err: any) => void
   onError?: (err: any) => void
   // This function is called
   // when moving from an inactive state to an active one. Likewise, when moving from

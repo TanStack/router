@@ -692,7 +692,7 @@ const authenticatedRoute = new Route({
   },
   // If navigation is attempted while not authenticated, redirect to login
   // If the error is from a prefetch, redirects will be ignored
-  onBeforeLoadError: (error) => {
+  onError: (error) => {
     if (error === AuthError) {
       throw redirect({
         to: loginRoute.to,
@@ -842,13 +842,14 @@ const router = new Router({
     </div>
   ),
   defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
-  onRouteChange: () => {
-    actionClient.clearAll()
-  },
   context: {
     actionClient,
     auth: undefined!, // We'll inject this when we render
   },
+})
+
+router.subscribe('onLoad', () => {
+  actionClient.clearAll()
 })
 
 actionClient.options.context.router = router

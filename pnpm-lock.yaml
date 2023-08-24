@@ -1,9 +1,5 @@
 lockfileVersion: '6.0'
 
-settings:
-  autoInstallPeers: false
-  excludeLinksFromLockfile: false
-
 overrides:
   '@tanstack/store': workspace:*
   '@tanstack/router': workspace:*
@@ -70,7 +66,7 @@ importers:
         version: 6.3.1
       '@nrwl/nx-cloud':
         specifier: latest
-        version: 16.4.0-beta.1
+        version: 16.3.0
       '@rollup/plugin-babel':
         specifier: ^5.3.1
         version: 5.3.1(@babel/core@7.20.5)(@types/babel__core@7.1.20)(rollup@2.79.1)
@@ -207,7 +203,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -277,153 +273,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
-        version: link:../../../packages/router-cli
-      '@tanstack/router-core':
-        specifier: workspace:*
-        version: link:../../../packages/router-core
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
-      '@tanstack/store':
-        specifier: workspace:*
-        version: link:../../../packages/store
-      '@vitejs/plugin-react':
-        specifier: ^1.1.3
-        version: 1.3.2
-      axios:
-        specifier: ^1.1.3
-        version: 1.1.3
-      concurrently:
-        specifier: ^7.6.0
-        version: 7.6.0
-      immer:
-        specifier: ^9.0.15
-        version: 9.0.16
-      react:
-        specifier: ^18.2.0
-        version: 18.2.0
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.2.0(react@18.2.0)
-      vite:
-        specifier: ^2.8.6
-        version: 2.9.16
-      zod:
-        specifier: ^3.19.1
-        version: 3.20.2
-    devDependencies:
-      '@types/react':
-        specifier: ^18.0.25
-        version: 18.2.18
-      '@types/react-dom':
-        specifier: ^18.0.8
-        version: 18.2.7
-
-  examples/react/basic-route-gen-flat:
-    dependencies:
-      '@tanstack/actions':
-        specifier: workspace:*
-        version: link:../../../packages/actions
-      '@tanstack/bling':
-        specifier: ^0.5.0
-        version: 0.5.0(vite@2.9.16)
-      '@tanstack/loaders':
-        specifier: workspace:*
-        version: link:../../../packages/loaders
-      '@tanstack/react-actions':
-        specifier: workspace:*
-        version: link:../../../packages/react-actions
-      '@tanstack/react-loaders':
-        specifier: workspace:*
-        version: link:../../../packages/react-loaders
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../../../packages/react-router
-      '@tanstack/react-start':
-        specifier: workspace:*
-        version: link:../../../packages/react-start
-      '@tanstack/react-store':
-        specifier: workspace:*
-        version: link:../../../packages/react-store
-      '@tanstack/router':
-        specifier: workspace:*
-        version: link:../../../packages/router
-      '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
-        version: link:../../../packages/router-cli
-      '@tanstack/router-core':
-        specifier: workspace:*
-        version: link:../../../packages/router-core
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
-      '@tanstack/store':
-        specifier: workspace:*
-        version: link:../../../packages/store
-      '@vitejs/plugin-react':
-        specifier: ^1.1.3
-        version: 1.3.2
-      axios:
-        specifier: ^1.1.3
-        version: 1.1.3
-      concurrently:
-        specifier: ^7.6.0
-        version: 7.6.0
-      immer:
-        specifier: ^9.0.15
-        version: 9.0.16
-      react:
-        specifier: ^18.2.0
-        version: 18.2.0
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.2.0(react@18.2.0)
-      vite:
-        specifier: ^2.8.6
-        version: 2.9.16
-      zod:
-        specifier: ^3.19.1
-        version: 3.20.2
-    devDependencies:
-      '@types/react':
-        specifier: ^18.0.25
-        version: 18.2.18
-      '@types/react-dom':
-        specifier: ^18.0.8
-        version: 18.2.7
-
-  examples/react/basic-route-gen-nested:
-    dependencies:
-      '@tanstack/actions':
-        specifier: workspace:*
-        version: link:../../../packages/actions
-      '@tanstack/bling':
-        specifier: ^0.5.0
-        version: 0.5.0(vite@2.9.16)
-      '@tanstack/loaders':
-        specifier: workspace:*
-        version: link:../../../packages/loaders
-      '@tanstack/react-actions':
-        specifier: workspace:*
-        version: link:../../../packages/react-actions
-      '@tanstack/react-loaders':
-        specifier: workspace:*
-        version: link:../../../packages/react-loaders
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../../../packages/react-router
-      '@tanstack/react-start':
-        specifier: workspace:*
-        version: link:../../../packages/react-start
-      '@tanstack/react-store':
-        specifier: workspace:*
-        version: link:../../../packages/react-store
-      '@tanstack/router':
-        specifier: workspace:*
-        version: link:../../../packages/router
-      '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -493,7 +343,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -560,7 +410,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -624,7 +474,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -712,7 +562,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -782,7 +632,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -852,7 +702,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -919,7 +769,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -986,7 +836,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1053,7 +903,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1120,7 +970,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1217,7 +1067,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1320,7 +1170,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1393,7 +1243,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.150
+        specifier: 0.0.1-beta.161
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1480,6 +1330,12 @@ importers:
       '@tanstack/react-store':
         specifier: workspace:*
         version: link:../react-store
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.0.5
         version: 1.3.1
@@ -1492,6 +1348,12 @@ importers:
       '@tanstack/react-store':
         specifier: workspace:*
         version: link:../react-store
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.0.5
         version: 1.3.1
@@ -1503,13 +1365,19 @@ importers:
         version: 7.21.0
       '@gisatcz/cross-package-react-context':
         specifier: ^0.2.0
-        version: 0.2.0
+        version: 0.2.0(react@18.2.0)
       '@tanstack/react-store':
         specifier: workspace:*
         version: link:../react-store
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1524,10 +1392,10 @@ importers:
         version: 7.21.0
       '@gisatcz/cross-package-react-context':
         specifier: ^0.2.0
-        version: 0.2.0
+        version: 0.2.0(react@18.2.0)
       '@tanstack/bling':
         specifier: ^0.0.3
-        version: 0.0.3
+        version: 0.0.3(vite@4.4.8)
       '@tanstack/react-loaders':
         specifier: workspace:*
         version: link:../react-loaders
@@ -1543,6 +1411,12 @@ importers:
       jsesc:
         specifier: ^3.0.2
         version: 3.0.2
+      react:
+        specifier: '>=18'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=18'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1552,7 +1426,7 @@ importers:
     devDependencies:
       astro:
         specifier: ^1.9.2
-        version: 1.9.2
+        version: 1.9.2(@types/node@17.0.45)(ts-node@10.9.1)
       esbuild:
         specifier: ^0.17.10
         version: 0.17.10
@@ -1562,9 +1436,15 @@ importers:
       '@tanstack/store':
         specifier: workspace:*
         version: link:../store
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       use-sync-external-store:
         specifier: ^1.2.0
-        version: 1.2.0
+        version: 1.2.0(react@18.2.0)
     devDependencies:
       '@types/use-sync-external-store':
         specifier: ^0.0.3
@@ -1642,10 +1522,16 @@ importers:
         version: 7.21.0
       '@gisatcz/cross-package-react-context':
         specifier: ^0.2.0
-        version: 0.2.0
+        version: 0.2.0(react@18.2.0)
       '@tanstack/react-store':
         specifier: workspace:*
         version: link:../react-store
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1664,6 +1550,12 @@ importers:
       date-fns:
         specifier: ^2.29.1
         version: 2.29.3
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
 
   packages/store: {}
 
@@ -3807,10 +3699,12 @@ packages:
     engines: {node: '>=14.0.0', npm: '>=6.0.0'}
     dev: true
 
-  /@gisatcz/cross-package-react-context@0.2.0:
+  /@gisatcz/cross-package-react-context@0.2.0(react@18.2.0):
     resolution: {integrity: sha512-E7aR/o1ArpXETO8bQi+Hltj3duHeZiLjR+x1VZrCDs3jplSLGoy+oqCcqNNE1BamTBa0YQTs8Go1Q1dtt3LEUg==}
     peerDependencies:
       react: ^16.13.1 || ^17.0.2 || ^18.1.0
+    dependencies:
+      react: 18.2.0
     dev: false
 
   /@jest/schemas@29.6.0:
@@ -3919,10 +3813,10 @@ packages:
       - debug
     dev: true
 
-  /@nrwl/nx-cloud@16.4.0-beta.1:
-    resolution: {integrity: sha512-XQFmpVtGJghvR+JJWgp2so0eeJSG7U1W0/WcyAskTnCSMt8M5FFotJmF4upFfRK1rexlECZ7xbcZzUXuIEqzsw==}
+  /@nrwl/nx-cloud@16.3.0:
+    resolution: {integrity: sha512-nJrGsVufhY74KcP7kM7BqFOGAoO5OEF6+wfiM295DgmEG9c1yW+x5QiQaC42K9SWYn/eKQa1X7466ZA5lynXoQ==}
     dependencies:
-      nx-cloud: 16.4.0-beta.1
+      nx-cloud: 16.3.0
     transitivePeerDependencies:
       - debug
     dev: true
@@ -4295,16 +4189,10 @@ packages:
       '@swc/core-win32-x64-msvc': 1.3.71
     dev: false
 
-  /@swc/helpers@0.5.1:
-    resolution: {integrity: sha512-sJ902EfIzn1Fa+qYmjdQqh8tPsoxyBz+8yBKC2HKUxyezKJFwPGOn7pv4WY6QuQW//ySQi5lJjA/ZT9sNWWNTg==}
-    dependencies:
-      tslib: 2.5.0
-    dev: true
-
-  /@tanstack/bling@0.0.3:
+  /@tanstack/bling@0.0.3(vite@4.4.8):
     resolution: {integrity: sha512-6cmmp3cX9e9DZEkJ7F9vwEaU5RmjNYWcY69A1cx4FyGsuNryqumXCWuVItBsrIM0npqqCRa09BQ+y45LxiL6ng==}
     dependencies:
-      '@vitejs/plugin-react': 3.1.0
+      '@vitejs/plugin-react': 3.1.0(vite@4.4.8)
     transitivePeerDependencies:
       - supports-color
       - vite
@@ -4866,21 +4754,6 @@ packages:
       - supports-color
     dev: true
 
-  /@vitejs/plugin-react@3.1.0:
-    resolution: {integrity: sha512-AfgcRL8ZBhAlc3BFdigClmTUMISmmzHn7sB2h9U1odvc5U/MjWXsAaz18b/WoppUTDBzxOJwo2VdClfUcItu9g==}
-    engines: {node: ^14.18.0 || >=16.0.0}
-    peerDependencies:
-      vite: ^4.1.0-beta.0
-    dependencies:
-      '@babel/core': 7.22.9
-      '@babel/plugin-transform-react-jsx-self': 7.22.5(@babel/core@7.22.9)
-      '@babel/plugin-transform-react-jsx-source': 7.22.5(@babel/core@7.22.9)
-      magic-string: 0.27.0
-      react-refresh: 0.14.0
-    transitivePeerDependencies:
-      - supports-color
-    dev: false
-
   /@vitejs/plugin-react@3.1.0(vite@2.9.16):
     resolution: {integrity: sha512-AfgcRL8ZBhAlc3BFdigClmTUMISmmzHn7sB2h9U1odvc5U/MjWXsAaz18b/WoppUTDBzxOJwo2VdClfUcItu9g==}
     engines: {node: ^14.18.0 || >=16.0.0}
@@ -4893,6 +4766,22 @@ packages:
       magic-string: 0.27.0
       react-refresh: 0.14.0
       vite: 2.9.16
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+  /@vitejs/plugin-react@3.1.0(vite@4.4.8):
+    resolution: {integrity: sha512-AfgcRL8ZBhAlc3BFdigClmTUMISmmzHn7sB2h9U1odvc5U/MjWXsAaz18b/WoppUTDBzxOJwo2VdClfUcItu9g==}
+    engines: {node: ^14.18.0 || >=16.0.0}
+    peerDependencies:
+      vite: ^4.1.0-beta.0
+    dependencies:
+      '@babel/core': 7.22.9
+      '@babel/plugin-transform-react-jsx-self': 7.22.5(@babel/core@7.22.9)
+      '@babel/plugin-transform-react-jsx-source': 7.22.5(@babel/core@7.22.9)
+      magic-string: 0.27.0
+      react-refresh: 0.14.0
+      vite: 4.4.8(@types/node@17.0.45)
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -5375,7 +5264,7 @@ packages:
       tslib: 2.5.0
     dev: true
 
-  /astro@1.9.2:
+  /astro@1.9.2(@types/node@17.0.45)(ts-node@10.9.1):
     resolution: {integrity: sha512-L+Ma0eR0Aa6QZg7RF0lEs+106Ye1/zukvtq3KtsYIogAojltlwllwU9X5CwMBzFwA55NxpNp4gSRh5US/xb+8Q==}
     engines: {node: ^14.18.0 || >=16.12.0, npm: '>=6.14.0'}
     hasBin: true
@@ -5421,7 +5310,7 @@ packages:
       path-browserify: 1.0.1
       path-to-regexp: 6.2.1
       postcss: 8.4.21
-      postcss-load-config: 3.1.4(postcss@8.4.21)
+      postcss-load-config: 3.1.4(postcss@8.4.21)(ts-node@10.9.1)
       preferred-pm: 3.0.3
       prompts: 2.4.2
       recast: 0.20.5
@@ -5439,7 +5328,7 @@ packages:
       typescript: 5.1.3
       unist-util-visit: 4.1.2
       vfile: 5.3.7
-      vite: 3.2.7
+      vite: 3.2.7(@types/node@17.0.45)
       vitefu: 0.2.4(vite@3.2.7)
       yargs-parser: 21.1.1
       zod: 3.21.4
@@ -8999,12 +8888,11 @@ packages:
       - debug
     dev: true
 
-  /nx-cloud@16.4.0-beta.1:
-    resolution: {integrity: sha512-I62IBQDjbA3h+P8JVFrannVllj8O9/3YYfyg8sPLVYxFKwnqqsgR6kG2zHxB9Q2k0hoSU7JZ02d9oPJsRzL5rg==}
+  /nx-cloud@16.3.0:
+    resolution: {integrity: sha512-hmNgpeLO4v4WDSWa8YhwX+q+9ohIyY8iqxlWyIKixWzQH2XfRgYFjOLH4IDLGOlKa3hg7MB6+4+75cK9CfSmKw==}
     hasBin: true
     dependencies:
-      '@nrwl/nx-cloud': 16.4.0-beta.1
-      '@swc/helpers': 0.5.1
+      '@nrwl/nx-cloud': 16.3.0
       axios: 1.1.3
       chalk: 4.1.2
       dotenv: 10.0.0
@@ -9336,7 +9224,7 @@ packages:
       pathe: 1.1.1
     dev: false
 
-  /postcss-load-config@3.1.4(postcss@8.4.21):
+  /postcss-load-config@3.1.4(postcss@8.4.21)(ts-node@10.9.1):
     resolution: {integrity: sha512-6DiM4E7v4coTE4uzA8U//WhtPwyhiim3eyjEMFCnUpzbrkK9wJHgKDT2mR+HbtSrd/NubVaYTOpSpjUl8NQeRg==}
     engines: {node: '>= 10'}
     peerDependencies:
@@ -9350,6 +9238,7 @@ packages:
     dependencies:
       lilconfig: 2.0.6
       postcss: 8.4.21
+      ts-node: 10.9.1(@types/node@17.0.45)(typescript@4.9.5)
       yaml: 1.10.2
     dev: true
 
@@ -10995,12 +10884,6 @@ packages:
       punycode: 2.3.0
     dev: false
 
-  /use-sync-external-store@1.2.0:
-    resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0
-    dev: false
-
   /use-sync-external-store@1.2.0(react@18.2.0):
     resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
     peerDependencies:
@@ -11170,7 +11053,7 @@ packages:
     optionalDependencies:
       fsevents: 2.3.2
 
-  /vite@3.2.7:
+  /vite@3.2.7(@types/node@17.0.45):
     resolution: {integrity: sha512-29pdXjk49xAP0QBr0xXqu2s5jiQIXNvE/xwd0vUizYT2Hzqe4BksNNoWllFVXJf4eLZ+UlVQmXfB4lWrc+t18g==}
     engines: {node: ^14.18.0 || >=16.0.0}
     hasBin: true
@@ -11195,6 +11078,7 @@ packages:
       terser:
         optional: true
     dependencies:
+      '@types/node': 17.0.45
       esbuild: 0.15.18
       postcss: 8.4.27
       resolve: 1.22.1
@@ -11283,7 +11167,7 @@ packages:
       vite:
         optional: true
     dependencies:
-      vite: 3.2.7
+      vite: 3.2.7(@types/node@17.0.45)
     dev: true
 
   /vitest@0.33.0:
@@ -11702,3 +11586,7 @@ packages:
   /zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
     dev: true
+
+settings:
+  autoInstallPeers: false
+  excludeLinksFromLockfile: false

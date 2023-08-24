@@ -171,7 +171,6 @@ export interface RouterOptions<
   routeTree?: TRouteTree
   basepath?: string
   createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
-  onRouteChange?: () => void
   context?: TRouteTree['types']['routerContext']
   Wrap?: React.ComponentType<{
     children: React.ReactNode
@@ -197,7 +196,7 @@ export interface RouterState<
   lastUpdated: number
 }
 
-export type ListenerFn = () => void
+export type ListenerFn<TEvent extends RouterEvent> = (event: TEvent) => void
 
 export interface BuildNextOptions {
   to?: string | number | null
@@ -248,6 +247,28 @@ export const componentTypes = [
   'errorComponent',
   'pendingComponent',
 ] as const
+
+export type RouterEvents = {
+  onBeforeLoad: {
+    type: 'onBeforeLoad'
+    from: ParsedLocation
+    to: ParsedLocation
+    pathChanged: boolean
+  }
+  onLoad: {
+    type: 'onLoad'
+    from: ParsedLocation
+    to: ParsedLocation
+    pathChanged: boolean
+  }
+}
+
+export type RouterEvent = RouterEvents[keyof RouterEvents]
+
+export type RouterListener<TRouterEvent extends RouterEvent> = {
+  eventType: TRouterEvent['type']
+  fn: ListenerFn<TRouterEvent>
+}
 
 export class Router<
   TRouteTree extends AnyRoute = AnyRoute,
@@ -343,6 +364,32 @@ export class Router<
     }
   }
 
+  subscribers = new Set<RouterListener<RouterEvent>>()
+
+  subscribe = <TType extends keyof RouterEvents>(
+    eventType: TType,
+    fn: ListenerFn<RouterEvents[TType]>,
+  ) => {
+    const listener: RouterListener<any> = {
+      eventType,
+      fn,
+    }
+
+    this.subscribers.add(listener)
+
+    return () => {
+      this.subscribers.delete(listener)
+    }
+  }
+
+  #emit = (routerEvent: RouterEvent) => {
+    this.subscribers.forEach((listener) => {
+      if (listener.eventType === routerEvent.type) {
+        listener.fn(routerEvent)
+      }
+    })
+  }
+
   reset = () => {
     this.__store.setState((s) => Object.assign(s, getInitialRouterState()))
   }
@@ -384,7 +431,7 @@ export class Router<
         location: parsedLocation as any,
       }))
 
-      this.#unsubHistory = this.history.listen(() => {
+      this.#unsubHistory = this.history.subscribe(() => {
         this.safeLoad({
           next: this.#parseLocation(this.state.location),
         })
@@ -435,6 +482,11 @@ export class Router<
 
   load = async (opts?: { next?: ParsedLocation; throwOnError?: boolean }) => {
     const promise = new Promise<void>(async (resolve, reject) => {
+      const prevLocation = this.state.resolvedLocation
+      const pathDidChange = !!(
+        opts?.next && prevLocation!.href !== opts.next.href
+      )
+
       let latestPromise: Promise<void> | undefined | null
 
       const checkLatest = (): undefined | Promise<void> | null => {
@@ -447,6 +499,13 @@ export class Router<
       // this.cancelMatches()
 
       let pendingMatches!: RouteMatch<any, any>[]
+
+      this.#emit({
+        type: 'onBeforeLoad',
+        from: prevLocation,
+        to: opts?.next ?? this.state.location,
+        pathChanged: pathDidChange,
+      })
 
       this.__store.batch(() => {
         if (opts?.next) {
@@ -489,8 +548,6 @@ export class Router<
           return latestPromise
         }
 
-        const prevLocation = this.state.resolvedLocation
-
         this.__store.setState((s) => ({
           ...s,
           status: 'idle',
@@ -499,9 +556,12 @@ export class Router<
           pendingMatchIds: [],
         }))
 
-        if (prevLocation!.href !== this.state.location.href) {
-          this.options.onRouteChange?.()
-        }
+        this.#emit({
+          type: 'onLoad',
+          from: prevLocation,
+          to: this.state.location,
+          pathChanged: pathDidChange,
+        })
 
         resolve()
       } catch (err) {
@@ -844,19 +904,16 @@ export class Router<
       for (const [index, match] of resolvedMatches.entries()) {
         const route = this.getRoute(match.routeId)
 
-        const handleError = (
-          err: any,
-          handler: undefined | ((err: any) => void),
-        ) => {
+        const handleError = (err: any, code: string) => {
+          err.routerCode = code
           firstBadMatchIndex = firstBadMatchIndex ?? index
-          handler = handler || route.options.onError
 
           if (isRedirect(err)) {
             throw err
           }
 
           try {
-            handler?.(err)
+            route.options.onError?.(err)
           } catch (errorHandlerErr) {
             err = errorHandlerErr
 
@@ -874,11 +931,11 @@ export class Router<
         }
 
         if (match.paramsError) {
-          handleError(match.paramsError, route.options.onParseParamsError)
+          handleError(match.paramsError, 'PARSE_PARAMS')
         }
 
         if (match.searchError) {
-          handleError(match.searchError, route.options.onValidateSearchError)
+          handleError(match.searchError, 'VALIDATE_SEARCH')
         }
 
         let didError = false
@@ -889,7 +946,7 @@ export class Router<
             preload: !!opts?.preload,
           })
         } catch (err) {
-          handleError(err, route.options.onBeforeLoadError)
+          handleError(err, 'BEFORE_LOAD')
           didError = true
         }
 
@@ -968,34 +1025,20 @@ export class Router<
               if ((latestPromise = checkLatest())) return await latestPromise
 
               this.setRouteMatchData(match.id, () => loader, opts)
-            } catch (loaderError) {
-              let latestError = loaderError
+            } catch (error) {
               if ((latestPromise = checkLatest())) return await latestPromise
-              if (handleIfRedirect(loaderError)) return
+              if (handleIfRedirect(error)) return
 
-              if (route.options.onLoadError) {
-                try {
-                  route.options.onLoadError(loaderError)
-                } catch (onLoadError) {
-                  latestError = onLoadError
-                  if (handleIfRedirect(onLoadError)) return
-                }
-              }
-
-              if (
-                (!route.options.onLoadError || latestError !== loaderError) &&
-                route.options.onError
-              ) {
-                try {
-                  route.options.onError(latestError)
-                } catch (onErrorError) {
-                  if (handleIfRedirect(onErrorError)) return
-                }
+              try {
+                route.options.onError?.(error)
+              } catch (onErrorError) {
+                error = onErrorError
+                if (handleIfRedirect(onErrorError)) return
               }
 
               this.setRouteMatch(match.id, (s) => ({
                 ...s,
-                error: loaderError,
+                error,
                 status: 'error',
                 isFetching: false,
                 updatedAt: Date.now(),

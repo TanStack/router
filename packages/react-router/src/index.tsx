@@ -40,6 +40,8 @@ import {
 //
 
 export * from '@tanstack/router-core'
+export * from './scroll-restoration'
+
 export { useStore }
 
 declare module '@tanstack/router-core' {

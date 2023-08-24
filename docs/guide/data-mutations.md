@@ -260,11 +260,11 @@ When actions are fired, regardless of the mutation library managing them, they c
 
 Without notifying your mutation management library about the route change, it's likely your submission state will still be around and your user would still see the **"Post updated successfully"** message when they return to the previous screen. This is not ideal. Obviously, our intent wasn't to keep this mutation state around forever, right?!
 
-To solve this, we can use TanStack Router's `onRouteChange` option to clear your action states when the user is no longer in need of them.
+To solve this, we can use TanStack Router's `subscribe` method to clear your action states when the user is no longer in need of them.
 
-## The `onRouteChange` router option
+## The `router.subscribe` method
 
-This option is a function that is called whenever the router successfully loads a different route. It's important to understand that this truly means that the route is _changing_, and not just reloading the same route. If the router reloads or the user performs a URL altering action resulting in a new href, this function is called.
+This method is a function that subscribes a callback to various router events. The event in particular that we'll use here is the `locationChange` event. It's important to understand that this event is fired when the location path is _changed (not just reloaded) and has finally resolved_.
 
 This is a great place to reset your old mutation/actions states. We'll use TanStack Actions to demonstrate how to do this.
 
@@ -283,12 +283,11 @@ const actionClient = new ActionClient({
   actions: [updatePostAction],
 })
 
-const router = new Router({
-  //...
-  onRouteChange: () => {
-    // Reset the action state when the route changes
-    actionClient.clearAll
-  },
+const router = new Router()
+
+const unsubscribeFn = router.subscribe('onLoad', () => {
+  // Reset the action state when the route changes
+  actionClient.clearAll()
 })
 ```
 

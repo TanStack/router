@@ -164,7 +164,7 @@ validateSearch: productSearchSchema
 
 In the above example, we used Zod's `.catch()` modifier instead of `.default()` to avoid showing an error to the user because we firmly believe that if a search parameter is malformed, you probably don't want to halt the user's experience through the app to show a big fat error message. That said, there may be times that you **do want to show an error message**. In that case, you can use `.default()` instead of `.catch()`.
 
-The underlying mechanics why this works relies on the `validateSearch` function throwing an error. If an error is thrown, the route's `onValidateSearchError` and `onError` options will both be triggered and the `errorComponent` will be rendered instead of the route's `component` where you can handle the search param error however you'd like.
+The underlying mechanics why this works relies on the `validateSearch` function throwing an error. If an error is thrown, the route's `onError` option will be triggered (and `error.routerCode` will be set to `VALIDATE_SEARCH` and the `errorComponent` will be rendered instead of the route's `component` where you can handle the search param error however you'd like.
 
 ## Reading Search Params
 

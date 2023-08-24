@@ -312,7 +312,7 @@ export type UpdatableRouteOptions<
   gcMaxAge?: number
   // This async function is called before a route is loaded.
   // If an error is thrown here, the route's loader will not be called.
-  // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onLoadError` function.
+  // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function.
   // If thrown during a preload event, the error will be logged to the console.
   beforeLoad?: (
     opts: LoaderContext<
@@ -323,15 +323,6 @@ export type UpdatableRouteOptions<
       TContext
     >,
   ) => Promise<void> | void
-  // This function will be called if the route's loader throws an error **during an attempted navigation**.
-  // If you want to redirect due to an error, call `router.navigate()` from within this function.
-  onBeforeLoadError?: (err: any) => void
-  // This function will be called if the route's validateSearch option throws an error **during an attempted validation**.
-  // If you want to redirect due to an error, call `router.navigate()` from within this function.
-  // If you want to display the errorComponent, rethrow the error
-  onValidateSearchError?: (err: any) => void
-  onParseParamsError?: (err: any) => void
-  onLoadError?: (err: any) => void
   onError?: (err: any) => void
   // This function is called
   // when moving from an inactive state to an active one. Likewise, when moving from

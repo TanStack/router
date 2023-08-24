@@ -4,7 +4,7 @@
 
 export interface RouterHistory {
   location: RouterLocation
-  listen: (cb: () => void) => () => void
+  subscribe: (cb: () => void) => () => void
   push: (path: string, state?: any) => void
   replace: (path: string, state?: any) => void
   go: (index: number) => void
@@ -45,7 +45,7 @@ const stopBlocking = () => {
 
 function createHistory(opts: {
   getLocation: () => RouterLocation
-  listener: false | ((onUpdate: () => void) => () => void)
+  subscriber: false | ((onUpdate: () => void) => () => void)
   pushState: (path: string, state: any) => void
   replaceState: (path: string, state: any) => void
   go: (n: number) => void
@@ -55,7 +55,7 @@ function createHistory(opts: {
 }): RouterHistory {
   let location = opts.getLocation()
   let unsub = () => {}
-  let listeners = new Set<() => void>()
+  let subscribers = new Set<() => void>()
   let blockers: BlockerFn[] = []
   let queue: (() => void)[] = []
 
@@ -72,7 +72,7 @@ function createHistory(opts: {
       queue.shift()?.()
     }
 
-    if (!opts.listener) {
+    if (!opts.subscriber) {
       onUpdate()
     }
   }
@@ -84,25 +84,25 @@ function createHistory(opts: {
 
   const onUpdate = () => {
     location = opts.getLocation()
-    listeners.forEach((listener) => listener())
+    subscribers.forEach((subscriber) => subscriber())
   }
 
   return {
     get location() {
       return location
     },
-    listen: (cb: () => void) => {
-      if (listeners.size === 0) {
+    subscribe: (cb: () => void) => {
+      if (subscribers.size === 0) {
         unsub =
-          typeof opts.listener === 'function'
-            ? opts.listener(onUpdate)
+          typeof opts.subscriber === 'function'
+            ? opts.subscriber(onUpdate)
             : () => {}
       }
-      listeners.add(cb)
+      subscribers.add(cb)
 
       return () => {
-        listeners.delete(cb)
-        if (listeners.size === 0) {
+        subscribers.delete(cb)
+        if (subscribers.size === 0) {
           unsub()
         }
       }
@@ -166,7 +166,7 @@ export function createBrowserHistory(opts?: {
 
   return createHistory({
     getLocation,
-    listener: (onUpdate) => {
+    subscriber: (onUpdate) => {
       window.addEventListener(pushStateEvent, onUpdate)
       window.addEventListener(popStateEvent, onUpdate)
 
@@ -234,7 +234,7 @@ export function createMemoryHistory(
 
   return createHistory({
     getLocation,
-    listener: false,
+    subscriber: false,
     pushState: (path, state) => {
       currentState = {
         ...state,
