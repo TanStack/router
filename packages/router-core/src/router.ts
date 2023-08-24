@@ -186,11 +186,11 @@ export interface RouterState<
 > {
   status: 'idle' | 'pending'
   isFetching: boolean
-  matchesById: Record<string, RouteMatch<TRouteTree, AnyRoute>>
+  matchesById: Record<string, RouteMatch<TRouteTree, ParseRoute<TRouteTree>>>
   matchIds: string[]
   pendingMatchIds: string[]
-  matches: RouteMatch<TRouteTree, AnyRoute>[]
-  pendingMatches: RouteMatch<TRouteTree, AnyRoute>[]
+  matches: RouteMatch<TRouteTree, ParseRoute<TRouteTree>>[]
+  pendingMatches: RouteMatch<TRouteTree, ParseRoute<TRouteTree>>[]
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
   lastUpdated: number
