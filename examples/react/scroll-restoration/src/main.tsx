@@ -40,9 +40,14 @@ const indexRoute = new Route({
     return (
       <div className="p-2">
         <h3>Welcome Home!</h3>
-        <div>
-          {Array.from({ length: 1000 }).map((_, i) => (
-            <div key={i}>Home Item {i + 1}</div>
+        <div className="space-y-2">
+          {Array.from({ length: 50 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-[100px] p-2 rounded-lg bg-gray-100 border"
+            >
+              Home Item {i + 1}
+            </div>
           ))}
         </div>
       </div>
@@ -58,9 +63,14 @@ const aboutRoute = new Route({
     return (
       <div className="p-2">
         <div>Hello from About!</div>
-        <div>
-          {Array.from({ length: 1000 }).map((_, i) => (
-            <div key={i}>About Item {i + 1}</div>
+        <div className="space-y-2">
+          {Array.from({ length: 50 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-[100px] p-2 rounded-lg bg-gray-100 border"
+            >
+              About Item {i + 1}
+            </div>
           ))}
         </div>
       </div>
@@ -76,21 +86,31 @@ const byElementRoute = new Route({
     return (
       <div className="p-2 h-[calc(100vh-41px)] flex flex-col">
         <div>Hello from By-Element!</div>
-        <div className="h-full min-h-0 flex gap-2">
-          <div className="border rounded-lg p-2 overflow-auto flex-1">
-            {Array.from({ length: 1000 }).map((_, i) => (
-              <div key={i}>About Item {i + 1}</div>
+        <div className="h-full min-h-0 flex gap-4">
+          <div className="border rounded-lg p-2 overflow-auto flex-1 space-y-2">
+            {Array.from({ length: 50 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-[100px] p-2 rounded-lg bg-gray-100 border"
+              >
+                About Item {i + 1}
+              </div>
             ))}
           </div>
-          <div className="flex-1 overflow-auto flex flex-col gap-2">
+          <div className="flex-1 overflow-auto flex flex-col gap-4">
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
                 className="flex-1 border rounded-lg p-2 overflow-auto"
               >
-                <div>
-                  {Array.from({ length: 1000 }).map((_, i) => (
-                    <div key={i}>About Item {i + 1}</div>
+                <div className="space-y-2">
+                  {Array.from({ length: 50 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-[100px] p-2 rounded-lg bg-gray-100 border"
+                    >
+                      About Item {i + 1}
+                    </div>
                   ))}
                 </div>
               </div>
