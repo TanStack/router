@@ -98,6 +98,10 @@
           "to": "guide/authenticated-routes"
         },
         {
+          "label": "Scroll Restoration",
+          "to": "guide/scroll-restoration"
+        },
+        {
           "label": "SSR & Streaming",
           "to": "guide/ssr-and-streaming"
         }
@@ -126,6 +130,14 @@
         {
           "label": "Basic",
           "to": "examples/react/basic?file=src%2Fmain.tsx"
+        },
+        {
+          "label": "Basic File-Based Routes",
+          "to": "examples/react/basic-file-based-routes?file=src%2Fmain.tsx"
+        },
+        {
+          "label": "Scroll Restoration",
+          "to": "examples/react/scroll-restoration?file=src%2Fmain.tsx"
         },
         {
           "label": "Kitchen Sink Single File",
