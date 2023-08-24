@@ -107,8 +107,8 @@ export type HydrationCtx = {
 }
 
 export interface RouteMatch<
-  TRouteTree extends AnyRoute,
-  TRoute extends AnyRoute,
+  TRouteTree extends AnyRoute = AnyRoute,
+  TRoute extends AnyRoute = AnyRoute,
 > {
   id: string
   key?: string
