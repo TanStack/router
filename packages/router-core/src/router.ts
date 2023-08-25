@@ -26,10 +26,10 @@ import {
   AnyRoute,
   AnyContext,
   AnyPathParams,
-  RouteProps,
   RegisteredRouteComponent,
   RegisteredRouteErrorComponent,
-  ErrorRouteProps,
+  RegisteredRouteProps,
+  RegisteredErrorRouteProps,
 } from './route'
 import {
   RoutesById,
@@ -157,13 +157,30 @@ export interface RouterOptions<
   defaultPreload?: false | 'intent'
   defaultPreloadDelay?: number
   defaultComponent?: RegisteredRouteComponent<
-    RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext, AnyContext>
+    RegisteredRouteProps<
+      unknown,
+      AnySearchSchema,
+      AnyPathParams,
+      AnyContext,
+      AnyContext
+    >
   >
   defaultErrorComponent?: RegisteredRouteErrorComponent<
-    ErrorRouteProps<AnySearchSchema, AnyPathParams, AnyContext, AnyContext>
+    RegisteredErrorRouteProps<
+      AnySearchSchema,
+      AnyPathParams,
+      AnyContext,
+      AnyContext
+    >
   >
   defaultPendingComponent?: RegisteredRouteComponent<
-    RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext, AnyContext>
+    RegisteredRouteProps<
+      unknown,
+      AnySearchSchema,
+      AnyPathParams,
+      AnyContext,
+      AnyContext
+    >
   >
   defaultMaxAge?: number
   defaultGcMaxAge?: number
@@ -230,8 +247,20 @@ type LinkCurrentTargetElement = {
   preloadTimeout?: null | ReturnType<typeof setTimeout>
 }
 
-export interface DehydratedRouterState
-  extends Pick<RouterState, 'status' | 'location' | 'lastUpdated'> {}
+export interface DehydratedRouterState {
+  dehydratedMatches: DehydratedRouteMatch[]
+}
+
+export type DehydratedRouteMatch = Pick<
+  RouteMatch,
+  | 'fetchedAt'
+  | 'invalid'
+  | 'invalidAt'
+  | 'id'
+  | 'loaderData'
+  | 'status'
+  | 'updatedAt'
+>
 
 export interface DehydratedRouter {
   state: DehydratedRouterState
@@ -444,7 +473,7 @@ export class Router<
     this.basepath = `/${trimPath(basepath ?? '') ?? ''}`
 
     if (routeTree && routeTree !== this.routeTree) {
-      this.#buildRouteTree(routeTree)
+      this.#processRoutes(routeTree)
     }
 
     return this
@@ -481,7 +510,11 @@ export class Router<
 
   latestLoadPromise: Promise<void> = Promise.resolve()
 
-  load = async (opts?: { next?: ParsedLocation; throwOnError?: boolean }) => {
+  load = async (opts?: {
+    next?: ParsedLocation
+    throwOnError?: boolean
+    __dehydratedMatches?: DehydratedRouteMatch[]
+  }) => {
     const promise = new Promise<void>(async (resolve, reject) => {
       const prevLocation = this.state.resolvedLocation
       const pathDidChange = !!(
@@ -770,8 +803,8 @@ export class Router<
         params: routeParams,
         pathname: joinPaths([this.basepath, interpolatedPath]),
         updatedAt: Date.now(),
-        invalidAt: Infinity,
-        preloadInvalidAt: Infinity,
+        invalidAt: 9999999999999,
+        preloadInvalidAt: 9999999999999,
         routeSearch: {},
         search: {} as any,
         status: hasLoaders ? 'pending' : 'success',
@@ -1313,7 +1346,19 @@ export class Router<
 
   dehydrate = (): DehydratedRouter => {
     return {
-      state: pick(this.state, ['location', 'status', 'lastUpdated']),
+      state: {
+        dehydratedMatches: this.state.matches.map((d) =>
+          pick(d, [
+            'fetchedAt',
+            'invalid',
+            'invalidAt',
+            'id',
+            'loaderData',
+            'status',
+            'updatedAt',
+          ]),
+        ),
+      },
     }
   }
 
@@ -1332,19 +1377,35 @@ export class Router<
     const ctx = _ctx
     this.dehydratedData = ctx.payload as any
     this.options.hydrate?.(ctx.payload as any)
-    const routerState = ctx.router.state as RouterState<TRouteTree>
+    const { dehydratedMatches } = ctx.router.state
+
+    let matches = this.matchRoutes(
+      this.state.location.pathname,
+      this.state.location.search,
+    ).map((match) => {
+      const dehydratedMatch = dehydratedMatches.find((d) => d.id === match.id)
+
+      invariant(
+        dehydratedMatch,
+        `Could not find a client-side match for dehydrated match with id: ${match.id}!`,
+      )
+
+      if (dehydratedMatch) {
+        return {
+          ...match,
+          ...dehydratedMatch,
+        }
+      }
+      return match
+    })
 
     this.__store.setState((s) => {
       return {
         ...s,
-        ...routerState,
-        resolvedLocation: routerState.location,
+        matches,
+        matchesById: this.#mergeMatches(s.matchesById, matches),
       }
     })
-
-    await this.load()
-
-    return
   }
 
   injectedHtml: (string | (() => Promise<string> | string))[] = []
@@ -1364,10 +1425,10 @@ export class Router<
         return `<script id='${id}' suppressHydrationWarning>window["__TSR_DEHYDRATED__${escapeJSON(
           strKey,
         )}"] = ${JSON.stringify(data)}
-        ;(() => {
-          var el = document.getElementById('${id}')
-          el.parentElement.removeChild(el)
-        })()
+        // ;(() => {
+        //   var el = document.getElementById('${id}')
+        //   el.parentElement.removeChild(el)
+        // })()
         </script>`
       })
 
@@ -1393,7 +1454,7 @@ export class Router<
   //     ?.__promisesByKey[key]?.resolve(value)
   // }
 
-  #buildRouteTree = (routeTree: TRouteTree) => {
+  #processRoutes = (routeTree: TRouteTree) => {
     this.routeTree = routeTree as any
     this.routesById = {} as any
     this.routesByPath = {} as any
@@ -1705,7 +1766,7 @@ export class Router<
       (opts?.maxAge ??
         route.options.maxAge ??
         this.options.defaultMaxAge ??
-        Infinity)
+        9999999999999)
 
     this.setRouteMatch(id, (s) => ({
       ...s,

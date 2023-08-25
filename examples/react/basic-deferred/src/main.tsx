@@ -8,7 +8,8 @@ import {
   ErrorComponent,
   Router,
   RootRoute,
-  Await,
+  Deferred,
+  defer,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -48,13 +49,15 @@ const fetchPost = async (postId: string) => {
 
   return {
     post,
-    commentsPromise: new Promise((r) => setTimeout(r, 1500))
-      .then(() =>
-        axios.get<CommentType[]>(
-          `https://jsonplaceholder.typicode.com/comments?postId=${postId}`,
-        ),
-      )
-      .then((r) => r.data),
+    commentsPromise: defer(
+      new Promise((r) => setTimeout(r, 1500))
+        .then(() =>
+          axios.get<CommentType[]>(
+            `https://jsonplaceholder.typicode.com/comments?postId=${postId}`,
+          ),
+        )
+        .then((r) => r.data),
+    ),
   }
 }
 
@@ -168,7 +171,7 @@ const postRoute = new Route({
         <h4 className="text-xl font-bold underline">{post.title}</h4>
         <div className="text-sm">{post.body}</div>
         <React.Suspense fallback={<div>Loading comments...</div>}>
-          <Await promise={commentsPromise}>
+          <Deferred promise={commentsPromise}>
             {(comments) => {
               return (
                 <div className="space-y-2">
@@ -187,7 +190,7 @@ const postRoute = new Route({
                 </div>
               )
             }}
-          </Await>
+          </Deferred>
         </React.Suspense>
       </div>
     )

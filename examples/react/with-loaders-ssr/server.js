@@ -1,4 +1,5 @@
 import express from 'express'
+import getPort, { portNumbers } from 'get-port'
 
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.VITE_TEST_BUILD
 
@@ -84,8 +85,8 @@ export async function createServer(
 }
 
 if (!isTest) {
-  createServer().then(({ app }) =>
-    app.listen(3000, () => {
+  createServer().then(async ({ app }) =>
+    app.listen(await getPort({ port: portNumbers(3000, 3100) }), () => {
       console.log('Client Server: http://localhost:3000')
     }),
   )

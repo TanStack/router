@@ -36,22 +36,23 @@ import {
   ParseRoute,
   AllParams,
   rootRouteId,
+  AnyPathParams,
 } from '@tanstack/router-core'
 
 //
 
 export * from '@tanstack/router-core'
 export * from './scroll-restoration'
-export * from './await'
+export * from './deferred'
 
 export { useStore }
 
 declare module '@tanstack/router-core' {
-  interface RegisterRouteComponent<TProps extends Record<string, any>> {
+  interface RegisterRouteComponent<TProps> {
     RouteComponent: RouteComponent<TProps>
   }
 
-  interface RegisterRouteErrorComponent<TProps extends Record<string, any>> {
+  interface RegisterRouteErrorComponent<TProps> {
     RouteErrorComponent: RouteComponent<TProps>
   }
 
@@ -130,6 +131,102 @@ declare module '@tanstack/router-core' {
       select?: (search: TAllParams) => TSelected
     }) => TStrict extends true ? TSelected : TSelected | undefined
   }
+
+  interface RegisterRouteProps<
+    TLoader = unknown,
+    TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+    TAllParams extends AnyPathParams = AnyPathParams,
+    TRouteContext extends AnyContext = AnyContext,
+    TAllContext extends AnyContext = AnyContext,
+  > {
+    RouteProps: RouteProps<
+      TLoader,
+      TFullSearchSchema,
+      TAllParams,
+      TRouteContext,
+      TAllContext
+    >
+  }
+
+  interface RegisterPendingRouteProps<
+    TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+    TAllParams extends AnyPathParams = AnyPathParams,
+    TRouteContext extends AnyContext = AnyContext,
+    TAllContext extends AnyContext = AnyContext,
+  > {
+    PendingRouteProps: Omit<
+      RouteProps<
+        unknown,
+        TFullSearchSchema,
+        TAllParams,
+        TRouteContext,
+        TAllContext
+      >,
+      'useLoader'
+    >
+  }
+
+  interface RegisterErrorRouteProps<
+    TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+    TAllParams extends AnyPathParams = AnyPathParams,
+    TRouteContext extends AnyContext = AnyContext,
+    TAllContext extends AnyContext = AnyContext,
+  > {
+    ErrorRouteProps: {
+      error: unknown
+      info: { componentStack: string }
+    } & Omit<
+      RouteProps<
+        unknown,
+        TFullSearchSchema,
+        TAllParams,
+        TRouteContext,
+        TAllContext
+      >,
+      'useLoader'
+    >
+  }
+}
+
+export type RouteProps<
+  TLoader = unknown,
+  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TRouteContext extends AnyContext = AnyContext,
+  TAllContext extends AnyContext = AnyContext,
+> = {
+  useLoader: <TStrict extends boolean = true, TSelected = TLoader>(opts?: {
+    strict?: TStrict
+    select?: (search: TLoader) => TSelected
+  }) => TStrict extends true
+    ? UseLoaderResult<TSelected>
+    : UseLoaderResult<TSelected> | undefined
+  useMatch: <TStrict extends boolean = true, TSelected = TAllContext>(opts?: {
+    strict?: TStrict
+    select?: (search: TAllContext) => TSelected
+  }) => TStrict extends true ? TSelected : TSelected | undefined
+  useContext: <TStrict extends boolean = true, TSelected = TAllContext>(opts?: {
+    strict?: TStrict
+    select?: (search: TAllContext) => TSelected
+  }) => TStrict extends true ? TSelected : TSelected | undefined
+  useRouteContext: <
+    TStrict extends boolean = true,
+    TSelected = TRouteContext,
+  >(opts?: {
+    strict?: TStrict
+    select?: (search: TRouteContext) => TSelected
+  }) => TStrict extends true ? TSelected : TSelected | undefined
+  useSearch: <
+    TStrict extends boolean = true,
+    TSelected = TFullSearchSchema,
+  >(opts?: {
+    strict?: TStrict
+    select?: (search: TFullSearchSchema) => TSelected
+  }) => TStrict extends true ? TSelected : TSelected | undefined
+  useParams: <TStrict extends boolean = true, TSelected = TAllParams>(opts?: {
+    strict?: TStrict
+    select?: (search: TAllParams) => TSelected
+  }) => TStrict extends true ? TSelected : TSelected | undefined
 }
 
 Route.__onInit = (route) => {
@@ -473,13 +570,11 @@ export function RouterProvider<
   const Wrap = router.options.Wrap || React.Fragment
 
   return (
-    <React.Suspense fallback={null}>
-      <Wrap>
-        <routerContext.Provider value={router as any}>
-          <Matches />
-        </routerContext.Provider>
-      </Wrap>
-    </React.Suspense>
+    <Wrap>
+      <routerContext.Provider value={router as any}>
+        <Matches />
+      </routerContext.Provider>
+    </Wrap>
   )
 }
 

@@ -17,6 +17,32 @@ export interface RegisterRouteComponent<TProps> {
 export interface RegisterRouteErrorComponent<TProps> {
   // RouteErrorComponent: unknown // This is registered by the framework
 }
+export interface RegisterRouteProps<
+  TLoader = unknown,
+  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TRouteContext extends AnyContext = AnyContext,
+  TAllContext extends AnyContext = AnyContext,
+> {
+  // RouteProps: unknown // This is registered by the framework
+}
+export interface RegisterErrorRouteProps<
+  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TRouteContext extends AnyContext = AnyContext,
+  TAllContext extends AnyContext = AnyContext,
+> {
+  // ErrorRouteProps: unknown // This is registered by the framework
+}
+
+export interface RegisterPendingRouteProps<
+  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TRouteContext extends AnyContext = AnyContext,
+  TAllContext extends AnyContext = AnyContext,
+> {
+  // PendingRouteProps: unknown // This is registered by the framework
+}
 
 export type RegisteredRouteComponent<TProps> =
   RegisterRouteComponent<TProps> extends {
@@ -31,6 +57,56 @@ export type RegisteredRouteErrorComponent<TProps> =
   }
     ? T
     : (props: TProps) => unknown
+
+export type RegisteredRouteProps<
+  TLoader = unknown,
+  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TRouteContext extends AnyContext = AnyContext,
+  TAllContext extends AnyContext = AnyContext,
+> = RegisterRouteProps<
+  TLoader,
+  TFullSearchSchema,
+  TAllParams,
+  TRouteContext,
+  TAllContext
+> extends {
+  RouteProps: infer T
+}
+  ? T
+  : (props: {}) => unknown
+
+export type RegisteredErrorRouteProps<
+  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TRouteContext extends AnyContext = AnyContext,
+  TAllContext extends AnyContext = AnyContext,
+> = RegisterRouteProps<
+  TFullSearchSchema,
+  TAllParams,
+  TRouteContext,
+  TAllContext
+> extends {
+  ErrorRouteProps: infer T
+}
+  ? T
+  : (props: {}) => unknown
+
+export type RegisteredPendingRouteProps<
+  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TRouteContext extends AnyContext = AnyContext,
+  TAllContext extends AnyContext = AnyContext,
+> = RegisterRouteProps<
+  TFullSearchSchema,
+  TAllParams,
+  TRouteContext,
+  TAllContext
+> extends {
+  PendingRouteProps: infer T
+}
+  ? T
+  : (props: {}) => unknown
 
 export type PreloadableObj = { preload?: () => Promise<void> }
 
@@ -53,7 +129,7 @@ export type MetaOptions = keyof PickRequired<RouteMeta> extends never
       meta: RouteMeta
     }
 
-export type AnyRouteProps = RouteProps<any, any, any, any, any>
+export type AnyRouteProps = RegisteredRouteProps<any, any, any, any, any>
 export type ComponentPropsFromRoute<TRoute> = TRoute extends Route<
   infer TParentRoute,
   infer TPath,
@@ -73,7 +149,13 @@ export type ComponentPropsFromRoute<TRoute> = TRoute extends Route<
   infer TChildren,
   infer TRouteTree
 >
-  ? RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
+  ? RegisteredRouteProps<
+      TLoader,
+      TFullSearchSchema,
+      TAllParams,
+      TRouteContext,
+      TContext
+    >
   : never
 
 export type ComponentFromRoute<TRoute> = RegisteredRouteComponent<
@@ -88,67 +170,6 @@ export type RouteLoaderFromRoute<TRoute extends AnyRoute> = LoaderFn<
   TRoute['types']['routeContext'],
   TRoute['types']['context']
 >
-
-export type RouteProps<
-  TLoader extends any = unknown,
-  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TRouteContext extends AnyContext = AnyContext,
-  TContext extends AnyContext = AnyContext,
-> = {
-  useMatch: () => RouteMatch<any, any>
-  useLoader: () => UseLoaderResult<TLoader>
-  useSearch: <
-    TStrict extends boolean = true,
-    TSearch = TFullSearchSchema,
-    TSelected = TSearch,
-  >(opts?: {
-    strict?: TStrict
-    select?: (search: TSearch) => TSelected
-  }) => TStrict extends true ? TSelected : TSelected | undefined
-  useParams: <
-    TDefaultSelected = TAllParams,
-    TSelected = TDefaultSelected,
-  >(opts?: {
-    select?: (params: TDefaultSelected) => TSelected
-  }) => TSelected
-  useContext: <
-    TDefaultSelected = TContext,
-    TSelected = TDefaultSelected,
-  >(opts?: {
-    select?: (context: TDefaultSelected) => TSelected
-  }) => TSelected
-  useRouteContext: <
-    TDefaultSelected = TRouteContext,
-    TSelected = TDefaultSelected,
-  >(opts?: {
-    select?: (context: TDefaultSelected) => TSelected
-  }) => TSelected
-}
-
-export type PendingRouteProps<
-  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TRouteContext extends AnyContext = AnyContext,
-  TContext extends AnyContext = AnyContext,
-> = Omit<
-  RouteProps<any, TFullSearchSchema, TAllParams, TRouteContext, TContext>,
-  'useLoader'
->
-
-export type ErrorRouteProps<
-  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TRouteContext extends AnyContext = AnyContext,
-  TContext extends AnyContext = AnyContext,
-> = PendingRouteProps<
-  TFullSearchSchema,
-  TAllParams,
-  TRouteContext,
-  TContext
-> & {
-  error: unknown
-}
 
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
@@ -295,7 +316,7 @@ export type UpdatableRouteOptions<
   TFullSearchSchema extends AnySearchSchema,
   TAllParams extends AnyPathParams,
   TRouteContext extends AnyContext,
-  TContext extends AnyContext,
+  TAllContext extends AnyContext,
 > = MetaOptions & {
   key?: null | false | GetKeyFn<TFullSearchSchema, TAllParams>
   // If true, this route will be matched as case-sensitive
@@ -304,15 +325,31 @@ export type UpdatableRouteOptions<
   wrapInSuspense?: boolean
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
   component?: RegisteredRouteComponent<
-    RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
+    RegisteredRouteProps<
+      TLoader,
+      TFullSearchSchema,
+      TAllParams,
+      TRouteContext,
+      TAllContext
+    >
   >
   // The content to be rendered when the route encounters an error
   errorComponent?: RegisteredRouteErrorComponent<
-    ErrorRouteProps<TFullSearchSchema, TAllParams, TRouteContext, TContext>
+    RegisteredErrorRouteProps<
+      TFullSearchSchema,
+      TAllParams,
+      TRouteContext,
+      TAllContext
+    >
   > //
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
   pendingComponent?: RegisteredRouteComponent<
-    PendingRouteProps<TFullSearchSchema, TAllParams, TRouteContext, TContext>
+    RegisteredPendingRouteProps<
+      TFullSearchSchema,
+      TAllParams,
+      TRouteContext,
+      TAllContext
+    >
   >
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
   // calls that match this route.
@@ -336,7 +373,7 @@ export type UpdatableRouteOptions<
       TFullSearchSchema,
       TAllParams,
       NoInfer<TRouteContext>,
-      TContext
+      TAllContext
     >,
   ) => Promise<void> | void
   onError?: (err: any) => void

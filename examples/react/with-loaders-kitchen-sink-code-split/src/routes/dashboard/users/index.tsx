@@ -12,7 +12,11 @@ import { z } from 'zod'
 import { Spinner } from '../../../components/Spinner'
 import { fetchUsers } from '../../../mockTodos'
 import { dashboardRoute } from '..'
-import { Loader, useLoaderInstance } from '@tanstack/react-loaders'
+import {
+  createLoaderOptions,
+  Loader,
+  useLoaderInstance,
+} from '@tanstack/react-loaders'
 
 const usersViewSortBy = z.enum(['name', 'id', 'email'])
 export type UsersViewSortBy = z.infer<typeof usersViewSortBy>
@@ -46,14 +50,18 @@ export const usersRoute = new Route({
       },
     }),
   ],
-  loader: async ({ context: { loaderClient }, preload }) => {
-    await loaderClient.load({ key: 'users', preload })
-    return () => useLoaderInstance({ key: 'users' })
-  },
-  component: function Users({ useLoader, useSearch }) {
+  getContext: () => ({
+    loaderOpts: createLoaderOptions({
+      key: 'users',
+    }),
+  }),
+  loader: async ({ context: { loaderClient, loaderOpts }, preload }) =>
+    loaderClient.load({ ...loaderOpts, preload }),
+  component: function Users({ useContext, useSearch }) {
     const navigate = useNavigate()
     const { usersView } = useSearch()
-    const { data: users } = useLoader()()
+    const { loaderOpts } = useContext()
+    const { data: users } = useLoaderInstance(loaderOpts)
 
     const sortBy = usersView?.sortBy ?? 'name'
     const filterBy = usersView?.filterBy
