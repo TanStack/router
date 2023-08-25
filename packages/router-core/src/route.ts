@@ -489,15 +489,16 @@ export interface AnyRoute
 
 export type MergeParamsFromParent<T, U> = IsAny<T, U, T & U>
 
-export type UseLoaderResult<T> = T extends Record<PropertyKey, infer U>
-  ? {
-      [K in keyof T]: UseLoaderResultPromise<T[K]>
-    }
-  : UseLoaderResultPromise<T>
+export type UseLoaderResult<T> = T
+// T extends Record<PropertyKey, infer U>
+//   ? {
+//       [K in keyof T]: UseLoaderResultPromise<T[K]>
+//     }
+//   : UseLoaderResultPromise<T>
 
-export type UseLoaderResultPromise<T> = T extends Promise<infer U>
-  ? StreamedPromise<U>
-  : T
+// export type UseLoaderResultPromise<T> = T extends Promise<infer U>
+//   ? StreamedPromise<U>
+//   : T
 
 export type StreamedPromise<T> = {
   promise: Promise<T>

@@ -42,6 +42,7 @@ import {
 
 export * from '@tanstack/router-core'
 export * from './scroll-restoration'
+export * from './await'
 
 export { useStore }
 
