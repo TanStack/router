@@ -29,6 +29,7 @@ import {
   RouteProps,
   RegisteredRouteComponent,
   RegisteredRouteErrorComponent,
+  ErrorRouteProps,
 } from './route'
 import {
   RoutesById,
@@ -159,7 +160,7 @@ export interface RouterOptions<
     RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext, AnyContext>
   >
   defaultErrorComponent?: RegisteredRouteErrorComponent<
-    RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext, AnyContext>
+    ErrorRouteProps<AnySearchSchema, AnyPathParams, AnyContext, AnyContext>
   >
   defaultPendingComponent?: RegisteredRouteComponent<
     RouteProps<unknown, AnySearchSchema, AnyPathParams, AnyContext, AnyContext>

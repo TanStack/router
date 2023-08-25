@@ -35,6 +35,7 @@ import {
   RouteById,
   ParseRoute,
   AllParams,
+  rootRouteId,
 } from '@tanstack/router-core'
 
 //
@@ -503,6 +504,7 @@ function Matches() {
     <matchIdsContext.Provider value={[undefined!, ...matchIds]}>
       <CatchBoundary
         errorComponent={ErrorComponent}
+        route={router.getRoute(rootRouteId)}
         onCatch={() => {
           warning(
             false,
@@ -795,7 +797,6 @@ function Match({ matchIds }: { matchIds: string[] }) {
     <matchIdsContext.Provider value={matchIds}>
       <ResolvedSuspenseBoundary
         fallback={React.createElement(PendingComponent, {
-          useLoader: route.useLoader,
           useMatch: route.useMatch,
           useContext: route.useContext,
           useRouteContext: route.useRouteContext,
@@ -806,6 +807,7 @@ function Match({ matchIds }: { matchIds: string[] }) {
         <ResolvedCatchBoundary
           key={route.id}
           errorComponent={errorComponent}
+          route={route}
           onCatch={() => {
             warning(false, `Error in route match: ${matchId}`)
           }}
@@ -915,6 +917,7 @@ export function useHydrate() {
 class CatchBoundary extends React.Component<{
   children: any
   errorComponent: any
+  route: AnyRoute
   onCatch: (error: any, info: any) => void
 }> {
   state = {
@@ -942,6 +945,7 @@ class CatchBoundary extends React.Component<{
 function CatchBoundaryInner(props: {
   children: any
   errorComponent: any
+  route: AnyRoute
   errorState: { error: unknown; info: any }
   reset: () => void
 }) {
@@ -973,7 +977,14 @@ function CatchBoundaryInner(props: {
   }, [props.errorState.error])
 
   if (props.errorState.error && activeErrorState.error) {
-    return React.createElement(errorComponent, activeErrorState)
+    return React.createElement(errorComponent, {
+      ...activeErrorState,
+      useMatch: props.route.useMatch,
+      useContext: props.route.useContext,
+      useRouteContext: props.route.useRouteContext,
+      useSearch: props.route.useSearch,
+      useParams: props.route.useParams,
+    })
   }
 
   return props.children

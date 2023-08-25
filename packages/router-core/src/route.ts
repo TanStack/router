@@ -126,6 +126,30 @@ export type RouteProps<
   }) => TSelected
 }
 
+export type PendingRouteProps<
+  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TRouteContext extends AnyContext = AnyContext,
+  TContext extends AnyContext = AnyContext,
+> = Omit<
+  RouteProps<any, TFullSearchSchema, TAllParams, TRouteContext, TContext>,
+  'useLoader'
+>
+
+export type ErrorRouteProps<
+  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TRouteContext extends AnyContext = AnyContext,
+  TContext extends AnyContext = AnyContext,
+> = PendingRouteProps<
+  TFullSearchSchema,
+  TAllParams,
+  TRouteContext,
+  TContext
+> & {
+  error: unknown
+}
+
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
@@ -284,19 +308,11 @@ export type UpdatableRouteOptions<
   >
   // The content to be rendered when the route encounters an error
   errorComponent?: RegisteredRouteErrorComponent<
-    { error: unknown } & Partial<
-      RouteProps<
-        TLoader,
-        TFullSearchSchema,
-        TAllParams,
-        TRouteContext,
-        TContext
-      >
-    >
+    ErrorRouteProps<TFullSearchSchema, TAllParams, TRouteContext, TContext>
   > //
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
   pendingComponent?: RegisteredRouteComponent<
-    RouteProps<TLoader, TFullSearchSchema, TAllParams, TRouteContext, TContext>
+    PendingRouteProps<TFullSearchSchema, TAllParams, TRouteContext, TContext>
   >
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
   // calls that match this route.
