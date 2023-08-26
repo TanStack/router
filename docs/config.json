@@ -62,6 +62,14 @@
           "to": "guide/data-loading"
         },
         {
+          "label": "Deferred Data Loading",
+          "to": "guide/deferred-data-loading"
+        },
+        {
+          "label": "External Data Loading",
+          "to": "guide/external-data-loading"
+        },
+        {
           "label": "Data Mutations",
           "to": "guide/data-mutations"
         },
@@ -102,8 +110,8 @@
           "to": "guide/scroll-restoration"
         },
         {
-          "label": "SSR & Streaming",
-          "to": "guide/ssr-and-streaming"
+          "label": "SSR",
+          "to": "guide/ssr"
         }
       ]
     },
@@ -132,8 +140,12 @@
           "to": "examples/react/basic?file=src%2Fmain.tsx"
         },
         {
-          "label": "Basic File-Based Routes",
-          "to": "examples/react/basic-file-based-routes?file=src%2Fmain.tsx"
+          "label": "File-Based Routes",
+          "to": "examples/react/file-based-routes?file=src%2Fmain.tsx"
+        },
+        {
+          "label": "Deferred Data",
+          "to": "examples/react/deferred-data?file=src%2Fmain.tsx"
         },
         {
           "label": "Scroll Restoration",
@@ -142,6 +154,10 @@
         {
           "label": "Kitchen Sink Single File",
           "to": "examples/react/kitchen-sink-single-file?file=src%2Fmain.tsx"
+        },
+        {
+          "label": "SSR with Streaming",
+          "to": "examples/react/ssr-streaming?file=src%2Fmain.tsx"
         },
         {
           "label": "With Loaders",

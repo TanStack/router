@@ -1,4 +1,5 @@
 ---
+id: data-loading
 title: Data Loading
 ---
 
@@ -182,7 +183,6 @@ const rootRoute = routerContext.createRootRoute()
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-
   loader({ context: { fetchPosts } }) => fetchPosts(),
 })
 
@@ -383,95 +383,3 @@ function App() {
   }
 }
 ```
-
-## To **Store** or to **Coordinate**?
-
-While Router can obviously be used to store and manage your data, sometimes you need something a bit more robust!
-
-So instead of using Router to store and manage your data, Router is also designed to simply **coordinate** your data fetching with external caching libraries. This means that you can use any data fetching/caching library you want, and the router will coordinate the loading of your data in a way that aligns with your users' navigation.
-
-## What data fetching libraries are supported?
-
-Any data fetching library that supports asynchronous dependencies can be used with TanStack Router. This includes:
-
-- [TanStack Loaders](#tanstack-loaders)
-- [TanStack Query](https://tanstack.com/query/latest/docs/react/overview)
-- [SWR](https://swr.vercel.app/)
-- [RTK Query](https://redux-toolkit.js.org/rtk-query/overview)
-- [urql](https://formidable.com/open-source/urql/)
-- [Relay](https://relay.dev/)
-- [Apollo](https://www.apollographql.com/docs/react/)
-
-Or, even...
-
-- [Zustand](https://zustand-demo.pmnd.rs/)
-- [Jotai](https://jotai.org/)
-- [Recoil](https://recoiljs.org/)
-- [Redux](https://redux.js.org/)
-
-Literally any library that **can return a promise and read/write data** is supported.
-
-## TanStack Loaders
-
-While you may jump for joy that your favorite cache manager is in the list above, you may want to check out our custom-built router-centric caching library called **TanStack Loaders**.
-
-You may not always need all of the features of the above libraries (or you may simply not want to pay their cost in bundle size). This is why we created [TanStack Loaders](https://tanstack.com/loaders/latest/docs/overview)!
-
-## External Data Loading Basics
-
-For the following examples, we'll show you the basics of using an external data loading library like **TanStack Loaders**, but as we've already mentioned, these same principles can be applied to any state management library worth it's salt. Let's get started!
-
-## Using Loaders to Ensure Data is Loaded
-
-The easiest way to use integrate and external caching/data library into Router is to use `route.loader`s to ensure that the data required inside of a route has been loaded and is ready to be displayed.
-
-> ⚠️ BUT WHY? It's very important to preload your critical render data in the loader for a few reasons:
->
-> - No "flash of loading" states
-> - No waterfall data fetching, caused by component based fetching
-> - Better for SEO. If you data is available at render time, it will be indexed by search engines.
-
-Here is a simple example of using a Route `loader` to seed the cache for TanStack Loaders:
-
-```tsx
-import { Route } from '@tanstack/react-router'
-import { Loader, useLoader } from '@tanstack/react-loaders'
-
-// Create a new loader
-const postsLoader = new Loader({
-  key: 'posts',
-  fn: async (params) => {
-    const res = await fetch(`/api/posts`)
-    if (!res.ok) throw new Error('Failed to fetch posts')
-    return res.json()
-  },
-})
-
-// Create a new loader client
-const loaderClient = new LoaderClient({
-  loaders: [postsLoader],
-})
-
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
-  fn: async () => {
-    // Ensure our loader is loaded with an "await"
-    await loaderClient.load({ key: 'posts' })
-  },
-  component: ({ useLoader }) => {
-    const { data: posts } = useLoaderInstance({ key: 'posts' })
-
-    return <div>...</div>
-  },
-})
-```
-
-> 🧠 TanStack Loaders uses the `preload` flag to determine cache freshness vs non-preload calls and also to determine if the global `isLoading` or `isPrefetching` flags should be incremented or not.
-
-## Learn more about TanStack Loaders/Actions!
-
-There's plenty more to learn about TanStack Loaders (and Actions!). If you plan on using them with TanStack Router, it's highly recommended that you read through their documentation:
-
-- [TanStack Loaders](https://tanstack.com/loaders)
-- [TanStack Actions](https://tanstack.com/actions)
