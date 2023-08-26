@@ -1,4 +1,4 @@
-import { Deferred, defer, Route, useRouter } from '@tanstack/react-router'
+import { Await, defer, Route, useRouter } from '@tanstack/react-router'
 import * as React from 'react'
 import { CommentType, postsRoute, PostType } from '../posts'
 
@@ -39,7 +39,7 @@ export const postIdRoute = new Route({
         <h4 className="text-xl font-bold underline">{post.title}</h4>
         <div className="text-sm">{post.body}</div>
         <React.Suspense fallback={<div>Loading comments...</div>}>
-          <Deferred promise={commentsPromise}>
+          <Await promise={commentsPromise}>
             {(comments) => {
               return (
                 <div className="space-y-2">
@@ -58,7 +58,7 @@ export const postIdRoute = new Route({
                 </div>
               )
             }}
-          </Deferred>
+          </Await>
         </React.Suspense>
       </div>
     )

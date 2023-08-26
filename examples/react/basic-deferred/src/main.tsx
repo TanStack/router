@@ -8,7 +8,7 @@ import {
   ErrorComponent,
   Router,
   RootRoute,
-  Deferred,
+  Await,
   defer,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -171,7 +171,7 @@ const postRoute = new Route({
         <h4 className="text-xl font-bold underline">{post.title}</h4>
         <div className="text-sm">{post.body}</div>
         <React.Suspense fallback={<div>Loading comments...</div>}>
-          <Deferred promise={commentsPromise}>
+          <Await promise={commentsPromise}>
             {(comments) => {
               return (
                 <div className="space-y-2">
@@ -190,7 +190,7 @@ const postRoute = new Route({
                 </div>
               )
             }}
-          </Deferred>
+          </Await>
         </React.Suspense>
       </div>
     )

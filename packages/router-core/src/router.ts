@@ -27,9 +27,8 @@ import {
   AnyContext,
   AnyPathParams,
   RegisteredRouteComponent,
-  RegisteredRouteErrorComponent,
-  RegisteredRouteProps,
-  RegisteredErrorRouteProps,
+  RegisteredErrorRouteComponent,
+  RegisteredPendingRouteComponent,
 } from './route'
 import {
   RoutesById,
@@ -157,30 +156,23 @@ export interface RouterOptions<
   defaultPreload?: false | 'intent'
   defaultPreloadDelay?: number
   defaultComponent?: RegisteredRouteComponent<
-    RegisteredRouteProps<
-      unknown,
-      AnySearchSchema,
-      AnyPathParams,
-      AnyContext,
-      AnyContext
-    >
+    unknown,
+    AnySearchSchema,
+    AnyPathParams,
+    AnyContext,
+    AnyContext
   >
-  defaultErrorComponent?: RegisteredRouteErrorComponent<
-    RegisteredErrorRouteProps<
-      AnySearchSchema,
-      AnyPathParams,
-      AnyContext,
-      AnyContext
-    >
+  defaultErrorComponent?: RegisteredErrorRouteComponent<
+    AnySearchSchema,
+    AnyPathParams,
+    AnyContext,
+    AnyContext
   >
-  defaultPendingComponent?: RegisteredRouteComponent<
-    RegisteredRouteProps<
-      unknown,
-      AnySearchSchema,
-      AnyPathParams,
-      AnyContext,
-      AnyContext
-    >
+  defaultPendingComponent?: RegisteredPendingRouteComponent<
+    AnySearchSchema,
+    AnyPathParams,
+    AnyContext,
+    AnyContext
   >
   defaultMaxAge?: number
   defaultGcMaxAge?: number

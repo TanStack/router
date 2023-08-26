@@ -48,15 +48,51 @@ export * from './deferred'
 export { useStore }
 
 declare module '@tanstack/router-core' {
-  interface RegisterRouteComponent<TProps> {
-    RouteComponent: RouteComponent<TProps>
+  interface RegisterRouteComponent<
+    TLoader = unknown,
+    TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+    TAllParams extends AnyPathParams = AnyPathParams,
+    TRouteContext extends AnyContext = AnyContext,
+    TAllContext extends AnyContext = AnyContext,
+  > {
+    RouteComponent: RouteComponent<
+      RouteProps<
+        TLoader,
+        TFullSearchSchema,
+        TAllParams,
+        TRouteContext,
+        TAllContext
+      >
+    >
   }
 
-  interface RegisterRouteErrorComponent<TProps> {
-    RouteErrorComponent: RouteComponent<TProps>
+  interface RegisterErrorRouteComponent<
+    TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+    TAllParams extends AnyPathParams = AnyPathParams,
+    TRouteContext extends AnyContext = AnyContext,
+    TAllContext extends AnyContext = AnyContext,
+  > {
+    ErrorRouteComponent: RouteComponent<
+      ErrorRouteProps<TFullSearchSchema, TAllParams, TRouteContext, TAllContext>
+    >
   }
 
-  // Extend the Route class to have some React-Specific methods
+  interface RegisterPendingRouteComponent<
+    TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+    TAllParams extends AnyPathParams = AnyPathParams,
+    TRouteContext extends AnyContext = AnyContext,
+    TAllContext extends AnyContext = AnyContext,
+  > {
+    PendingRouteComponent: RouteComponent<
+      PendingRouteProps<
+        TFullSearchSchema,
+        TAllParams,
+        TRouteContext,
+        TAllContext
+      >
+    >
+  }
+
   interface Route<
     TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
     TPath extends RouteConstraints['TPath'] = '/',
@@ -154,15 +190,11 @@ declare module '@tanstack/router-core' {
     TRouteContext extends AnyContext = AnyContext,
     TAllContext extends AnyContext = AnyContext,
   > {
-    PendingRouteProps: Omit<
-      RouteProps<
-        unknown,
-        TFullSearchSchema,
-        TAllParams,
-        TRouteContext,
-        TAllContext
-      >,
-      'useLoader'
+    PendingRouteProps: PendingRouteProps<
+      TFullSearchSchema,
+      TAllParams,
+      TRouteContext,
+      TAllContext
     >
   }
 
@@ -172,19 +204,7 @@ declare module '@tanstack/router-core' {
     TRouteContext extends AnyContext = AnyContext,
     TAllContext extends AnyContext = AnyContext,
   > {
-    ErrorRouteProps: {
-      error: unknown
-      info: { componentStack: string }
-    } & Omit<
-      RouteProps<
-        unknown,
-        TFullSearchSchema,
-        TAllParams,
-        TRouteContext,
-        TAllContext
-      >,
-      'useLoader'
-    >
+    ErrorRouteProps: ErrorRouteProps
   }
 }
 
@@ -229,6 +249,41 @@ export type RouteProps<
   }) => TStrict extends true ? TSelected : TSelected | undefined
 }
 
+export type ErrorRouteProps<
+  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TRouteContext extends AnyContext = AnyContext,
+  TAllContext extends AnyContext = AnyContext,
+> = {
+  error: unknown
+  info: { componentStack: string }
+} & Omit<
+  RouteProps<
+    unknown,
+    TFullSearchSchema,
+    TAllParams,
+    TRouteContext,
+    TAllContext
+  >,
+  'useLoader'
+>
+
+export type PendingRouteProps<
+  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TRouteContext extends AnyContext = AnyContext,
+  TAllContext extends AnyContext = AnyContext,
+> = Omit<
+  RouteProps<
+    unknown,
+    TFullSearchSchema,
+    TAllParams,
+    TRouteContext,
+    TAllContext
+  >,
+  'useLoader'
+>
+
 Route.__onInit = (route) => {
   Object.assign(route, {
     useMatch: (opts = {}) => {
@@ -272,9 +327,9 @@ export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>
 }
 
-export type RouteErrorComponent = AsyncRouteComponent<RouteErrorComponentProps>
+export type ErrorRouteComponent = AsyncRouteComponent<ErrorRouteComponentProps>
 
-export type RouteErrorComponentProps = {
+export type ErrorRouteComponentProps = {
   error: Error
   info: { componentStack: string }
 }
@@ -959,7 +1014,7 @@ function MatchInner({
         useRouteContext: route.useRouteContext as any,
         useSearch: route.useSearch,
         useParams: route.useParams as any,
-      })
+      } as any)
     }
 
     return <Outlet />

@@ -56,8 +56,8 @@ Feature/Capability Key:
 | Route Pending Elements                         | ✅                                                  | 🛑                                                    | ✅                                                    |
 | `<Prompt>`/`usePrompt`                         | ✅                                                  | 🔶                                                    |                                                       |
 | SSR                                            | ✅                                                  | ✅                                                    | ✅                                                    |
-| Navigation Scroll Restoration                  | 🛑                                                  | ✅                                                    | 🛑                                                    |
-| Deferred Loader Streaming                      | 🟡                                                  | ✅                                                    | 🔶                                                    |
+| Deferred Loader Streaming                      | ✅                                                  | ✅                                                    | 🔶                                                    |
+| Navigation Scroll Restoration                  | ✅                                                  | ✅                                                    | 🛑                                                    |
 | `<Form>` API                                   | 🛑                                                  | ✅                                                    | 🛑                                                    |
 
 [bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router@beta

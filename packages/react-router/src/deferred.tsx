@@ -1,11 +1,10 @@
-import { DeferredPromise, isDehydratedDeferred } from '@tanstack/router-core'
-import { useRouter } from '.'
+import { useRouter, DeferredPromise, isDehydratedDeferred } from '.'
 
-export type DeferredOptions<T> = {
+export type AwaitOptions<T> = {
   promise: DeferredPromise<T>
 }
 
-export function useDeferred<T>({ promise }: DeferredOptions<T>): [T] {
+export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
   const router = useRouter()
 
   let state = promise.__deferredState
@@ -30,11 +29,11 @@ export function useDeferred<T>({ promise }: DeferredOptions<T>): [T] {
   return [state.data]
 }
 
-export function Deferred<T>(
-  props: DeferredOptions<T> & {
+export function Await<T>(
+  props: AwaitOptions<T> & {
     children: (result: T) => JSX.Element
   },
 ) {
-  const awaited = useDeferred(props)
+  const awaited = useAwaited(props)
   return props.children(...awaited)
 }

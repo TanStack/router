@@ -2,7 +2,6 @@ import { ParsePathParams } from './link'
 import {
   AnyRoute,
   ResolveFullPath,
-  AnySearchSchema,
   ResolveFullSearchSchema,
   MergeParamsFromParent,
   RouteContext,
