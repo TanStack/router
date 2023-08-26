@@ -38,7 +38,15 @@ const fetchPosts = async () => {
 
 const fetchPost = async (postId: string) => {
   console.log(`Fetching post with id ${postId}...`)
-  await new Promise((r) => setTimeout(r, 500))
+
+  const commentsPromise = new Promise((r) => setTimeout(r, 1500))
+    .then(() =>
+      axios.get<CommentType[]>(
+        `https://jsonplaceholder.typicode.com/comments?postId=${postId}`,
+      ),
+    )
+    .then((r) => r.data)
+
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .then((r) => r.data)
@@ -49,15 +57,7 @@ const fetchPost = async (postId: string) => {
 
   return {
     post,
-    commentsPromise: defer(
-      new Promise((r) => setTimeout(r, 1500))
-        .then(() =>
-          axios.get<CommentType[]>(
-            `https://jsonplaceholder.typicode.com/comments?postId=${postId}`,
-          ),
-        )
-        .then((r) => r.data),
-    ),
+    commentsPromise: defer(commentsPromise),
   }
 }
 
