@@ -1,29 +1,35 @@
 ---
-id: ssr-and-streaming
-title: SSR & Streaming
+id: ssr
+title: SSR
 ---
-
-Server Side Rendering (SSR) and Streaming are two different concepts that are often confused. This guide will explain the difference between the two and how to use one or both of them.
-
-## Server Side Rendering
 
 Server Side Rendering (SSR) is the process of rendering a component on the server and sending the HTML markup to the client. The client then hydrates the markup into a fully interactive component.
 
-In traditional SSR configurations, the entire page is rendered on the server and sent to the client in one single HTML request, including the serialized data the application needs to hydrate on the client.
+Ther are usually two different flavors of SSR to be considered:
 
-To make this process simple, use the following utilities:
+- Non-streaming SSR
+  - The entire page is rendered on the server and sent to the client in one single HTML request, including the serialized data the application needs to hydrate on the client.
+- Streaming SSR
+  - The critical first paint of the page is rendered on the server and sent to the client in one single HTML request, including the serialized data the application needs to hydrate on the client
+  - The rest of the page is then streamed to the client as it is rendered on the server.
 
-- The `@tanstack/react-start/server` package
-  - `StartServer`
-    - e.g. `<StartServer router={router} />`
-    - Rendering this component in your server entry will render your application and also automatically handle application-level hydration/dehydration and implement the `Wrap` component option on `Router`
-- The `@tanstack/react-start/client` package
-  - `StartClient`
-    - e.g. `<StartClient router={router} />`
-    - Rendering this component in your client entry will render your application and also automatically implement the `Wrap` component option on `Router`
-  - `DehydrateRouter`
-    - e.g. `<DehydrateRouter />`
-    - Render this component **inside your application** to embed the router's dehydrated data into the application.
+This guide will explain how to implement both flavors of SSR with TanStack Router!
+
+## Non-Streaming SSR
+
+Non-Streaming server-side rendering is the classic process of rendering the markup for your entire application page on the server and sending the completed HTML markup (and data) to the client. The client then hydrates the markup into a fully interactive application again.
+
+To implement non-streaming SSR with TanStack Router, you will need to do the following utilities:
+
+- `StartServer` from `@tanstack/react-start/server`
+  - e.g. `<StartServer router={router} />`
+  - Rendering this component in your server entry will render your application and also automatically handle application-level hydration/dehydration and implement the `Wrap` component option on `Router`
+- `StartClient` from `@tanstack/react-start/client`
+  - e.g. `<StartClient router={router} />`
+  - Rendering this component in your client entry will render your application and also automatically implement the `Wrap` component option on `Router`
+- `DehydrateRouter` from `@tanstack/react-start/client`
+  - e.g. `<DehydrateRouter />`
+  - Render this component **inside your application** to embed the router's dehydrated data into the application.
 
 ### Router Creation
 
@@ -209,19 +215,18 @@ ReactDOM.hydrateRoot(document, <StartClient router={router} />)
 
 With this setup, your application will be rendered on the server and then hydrated on the client!
 
-## SSR Streaming
+## Streaming SSR
 
-Streaming is the optional process of continuously and incrementally sending HTML markup to the client as it is rendered on the server. This is slightly different from traditional SSR in concept because beyond being able to dehydrate and rehydrate a critical first paint, markup and data with less priority or slower response times can be streamed to the client after the initial render, but in the same request.
+Streaming SSR is the most modern flavor of SSR and is the process of continuously and incrementally sending HTML markup to the client as it is rendered on the server. This is slightly different from traditional SSR in concept because beyond being able to dehydrate and rehydrate a critical first paint, markup and data with less priority or slower response times can be streamed to the client after the initial render, but in the same request.
 
 This pattern can be useful for pages that have slow or high-latency data fetching requirements. For example, if you have a page that needs to fetch data from a third-party API, you can stream the critical initial markup and data to the client and then stream the less-critical third-party data to the client as it is resolved.
 
-To achieve this streaming pattern with TanStack Router, use React's `renderToPipeableStream` function to render your application to a readable stream. This function returns a stream that can be piped to the response. To use it, import it from the following package:
+To enable this streaming pattern with TanStack Router, you will need to use React's `renderToPipeableStream` function to render your application to a readable stream. This function returns a stream that can be piped to the response. Here's the utility information:
 
-- The `@tanstack/react-start/server` package
-  - `transformStreamWithRouter`
-    - e.g. `transformStreamWithRouter(router)`
-    - This function returns a stream Transform instance that cam be used to transform a stream of HTML markup from React DOM's `renderToPipeableStream` function as it is piped to the response.
-    - This transform automatically and incrementally embeds fine-grained HTML injections and dehydrated data chunks into the stream as.
+- `transformStreamWithRouter` from `@tanstack/react-start/server`
+  - e.g. `transformStreamWithRouter(router)`
+  - This function returns a stream Transform instance that cam be used to transform a stream of HTML markup from React DOM's `renderToPipeableStream` function as it is piped to the response.
+  - This transform automatically and incrementally embeds fine-grained HTML injections and dehydrated data chunks into the stream as.
 
 ### Transforming the Stream
 
