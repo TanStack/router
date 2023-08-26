@@ -4,7 +4,7 @@ import {
   restoreScrollPositions,
   watchScrollPositions,
 } from '@tanstack/router-core'
-import { useRouter } from '.'
+import { useRouter } from './react'
 
 const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect

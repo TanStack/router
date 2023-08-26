@@ -1,4 +1,5 @@
-import { useRouter, DeferredPromise, isDehydratedDeferred } from '.'
+import { DeferredPromise, isDehydratedDeferred } from '@tanstack/router-core'
+import { useRouter } from './react'
 
 export type AwaitOptions<T> = {
   promise: DeferredPromise<T>

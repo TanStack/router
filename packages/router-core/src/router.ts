@@ -795,8 +795,8 @@ export class Router<
         params: routeParams,
         pathname: joinPaths([this.basepath, interpolatedPath]),
         updatedAt: Date.now(),
-        invalidAt: 9999999999999,
-        preloadInvalidAt: 9999999999999,
+        invalidAt: Infinity,
+        preloadInvalidAt: Infinity,
         routeSearch: {},
         search: {} as any,
         status: hasLoaders ? 'pending' : 'success',
@@ -904,8 +904,6 @@ export class Router<
       maxAge?: number
     },
   ) => {
-    this.cleanMatches()
-
     if (!opts?.preload) {
       resolvedMatches.forEach((match) => {
         // Update each match with its latest route data
@@ -919,9 +917,12 @@ export class Router<
           paramsError: match.paramsError,
           searchError: match.searchError,
           params: match.params,
+          preloadInvalidAt: 0,
         }))
       })
     }
+
+    this.cleanMatches()
 
     let firstBadMatchIndex: number | undefined
 
@@ -1097,6 +1098,8 @@ export class Router<
     })
 
     await Promise.all(matchPromises)
+
+    this.cleanMatches()
   }
 
   reload = () => {
@@ -1758,7 +1761,7 @@ export class Router<
       (opts?.maxAge ??
         route.options.maxAge ??
         this.options.defaultMaxAge ??
-        9999999999999)
+        Infinity)
 
     this.setRouteMatch(id, (s) => ({
       ...s,
@@ -1770,9 +1773,6 @@ export class Router<
       preloadInvalidAt,
       invalidAt,
     }))
-
-    if (this.state.matches.find((d) => d.id === id)) {
-    }
   }
 
   invalidate = async (opts?: {

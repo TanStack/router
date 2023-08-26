@@ -380,13 +380,11 @@ export type UpdatableRouteOptions<
   wrapInSuspense?: boolean
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
   component?: RegisteredRouteComponent<
-    RegisteredRouteProps<
-      TLoader,
-      TFullSearchSchema,
-      TAllParams,
-      TRouteContext,
-      TAllContext
-    >
+    TLoader,
+    TFullSearchSchema,
+    TAllParams,
+    TRouteContext,
+    TAllContext
   >
   // The content to be rendered when the route encounters an error
   errorComponent?: RegisteredErrorRouteComponent<
@@ -396,13 +394,11 @@ export type UpdatableRouteOptions<
     TAllContext
   > //
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
-  pendingComponent?: RegisteredRouteComponent<
-    RegisteredPendingRouteProps<
-      TFullSearchSchema,
-      TAllParams,
-      TRouteContext,
-      TAllContext
-    >
+  pendingComponent?: RegisteredPendingRouteComponent<
+    TFullSearchSchema,
+    TAllParams,
+    TRouteContext,
+    TAllContext
   >
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
   // calls that match this route.
