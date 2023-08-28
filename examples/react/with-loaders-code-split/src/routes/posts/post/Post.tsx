@@ -1,9 +1,8 @@
 import * as React from 'react'
-import { ComponentFromRoute, useRouteContext } from '@tanstack/react-router'
 import { postRoute } from './postRoute'
 import { useLoaderInstance } from '@tanstack/react-loaders'
 
-export const Posts: ComponentFromRoute<typeof postRoute> = ({
+export const Posts: typeof postRoute['options']['component'] = ({
   useRouteContext,
 }) => {
   const { loaderOptions } = useRouteContext()

@@ -1,9 +1,9 @@
 import * as React from 'react'
-import { Link, Outlet, ComponentFromRoute } from '@tanstack/react-router'
+import { Link, Outlet } from '@tanstack/react-router'
 import { postsRoute } from './postsRoute'
 import { useLoaderInstance } from '@tanstack/react-loaders'
 
-export const Posts: ComponentFromRoute<typeof postsRoute> = () => {
+export const Posts: typeof postsRoute['options']['component'] = () => {
   const { data: posts } = useLoaderInstance({ key: 'posts' })
 
   return (

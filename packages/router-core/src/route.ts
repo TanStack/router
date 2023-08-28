@@ -185,46 +185,6 @@ export type MetaOptions = keyof PickRequired<RouteMeta> extends never
     }
 
 export type AnyRouteProps = RegisteredRouteProps<any, any, any, any, any>
-export type ComponentPropsFromRoute<TRoute> = TRoute extends Route<
-  infer TParentRoute,
-  infer TPath,
-  infer TFullPath,
-  infer TCustomId,
-  infer TId,
-  infer TLoader,
-  infer TSearchSchema,
-  infer TFullSearchSchema,
-  infer TParams,
-  infer TAllParams,
-  infer TParentContext,
-  infer TAllParentContext,
-  infer TRouteContext,
-  infer TContext,
-  infer TRouterContext,
-  infer TChildren,
-  infer TRouteTree
->
-  ? RegisteredRouteProps<
-      TLoader,
-      TFullSearchSchema,
-      TAllParams,
-      TRouteContext,
-      TContext
-    >
-  : never
-
-export type ComponentFromRoute<TRoute> = RegisteredRouteComponent<
-  ComponentPropsFromRoute<TRoute>
->
-
-export type RouteLoaderFromRoute<TRoute extends AnyRoute> = LoaderFn<
-  TRoute['types']['loader'],
-  TRoute['types']['searchSchema'],
-  TRoute['types']['fullSearchSchema'],
-  TRoute['types']['allParams'],
-  TRoute['types']['routeContext'],
-  TRoute['types']['context']
->
 
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
