@@ -144,6 +144,10 @@ export function restoreScrollPositions(
   opts?: ScrollRestorationOptions,
 ) {
   if (pathDidChange) {
+    if (!router.resetNextScroll) {
+      return
+    }
+
     const getKey = opts?.getKey || defaultGetKey
 
     pathDidChange = false

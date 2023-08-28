@@ -87,6 +87,10 @@ function Root() {
 
 ## Preventing Scroll Restoration
 
-Currently there is no support for preventing the scroll restoration other than not rendering the `ScrollRestoration` component or not calling the `useScrollRestoration` hook.
+Sometimes you may want to prevent scroll restoration from happening. To do this you can utilize the `resetScroll` option available on the following APIs:
 
-If you encounter the need for this, please open an issue and we can pursue it further!
+- `<Link resetScroll={false}>`
+- `navigate({ resetScroll: false })`
+- `redirect({ resetScroll: false })`
+
+When `resetScroll` is set to `false`, the scroll position for the next navigation will not be restored (if navigating to an existing history event in the stack) or reset to the top (if it's a new history event in the stack).

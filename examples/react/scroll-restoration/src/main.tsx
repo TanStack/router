@@ -21,6 +21,9 @@ const rootRoute = new RootRoute({
         <Link to="/about" className="[&.active]:font-bold">
           About
         </Link>
+        <Link to="/about" className="[&.active]:font-bold" resetScroll={false}>
+          About (No Reset)
+        </Link>
         <Link to="/by-element" className="[&.active]:font-bold">
           By-Element
         </Link>

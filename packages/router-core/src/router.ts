@@ -318,6 +318,7 @@ export class Router<
   __store: Store<RouterState<TRouteTree>>
   state: RouterState<TRouteTree>
   dehydratedData?: TDehydrated
+  resetNextScroll = false
 
   constructor(options: RouterConstructorOptions<TRouteTree, TDehydrated>) {
     this.options = {
@@ -1124,6 +1125,7 @@ export class Router<
     hash,
     replace,
     params,
+    resetScroll,
   }: NavigateOptions<TRouteTree, TFrom, TTo>) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
@@ -1151,6 +1153,7 @@ export class Router<
       hash,
       replace,
       params,
+      resetScroll,
     })
   }
 
@@ -1214,6 +1217,7 @@ export class Router<
     preloadDelay: userPreloadDelay,
     disabled,
     state,
+    resetScroll,
   }: LinkOptions<TRouteTree, TFrom, TTo>): LinkInfo => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
@@ -1237,6 +1241,7 @@ export class Router<
       hash,
       replace,
       state,
+      resetScroll,
     }
 
     const next = this.buildNext(nextOpts)
@@ -1676,7 +1681,7 @@ export class Router<
   }
 
   #commitLocation = async (
-    location: BuildNextOptions & { replace?: boolean },
+    location: BuildNextOptions & { replace?: boolean; resetScroll?: boolean },
   ) => {
     const next = this.buildNext(location)
     const id = '' + Date.now() + Math.random()
@@ -1703,6 +1708,9 @@ export class Router<
       id,
       ...next.state,
     })
+
+    this.resetNextScroll = location.resetScroll ?? true
+    console.log('resetScroll', this.resetNextScroll)
 
     return this.latestLoadPromise
   }

@@ -124,6 +124,7 @@ export type NavigateOptions<
 > = ToOptions<TRouteTree, TFrom, TTo> & {
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
+  resetScroll?: boolean
 }
 
 export type ToOptions<

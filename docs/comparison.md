@@ -56,7 +56,8 @@ Feature/Capability Key:
 | Route Pending Elements                         | ✅                                                  | 🛑                                                    | ✅                                                    |
 | `<Prompt>`/`usePrompt`                         | ✅                                                  | 🔶                                                    |                                                       |
 | SSR                                            | ✅                                                  | ✅                                                    | ✅                                                    |
-| Deferred Loader Streaming                      | ✅                                                  | ✅                                                    | 🔶                                                    |
+| Streaming SSR                                  | ✅                                                  | ✅                                                    | 🔶                                                    |
+| Deferred Data Loading                          | ✅                                                  | ✅                                                    | 🔶                                                    |
 | Navigation Scroll Restoration                  | ✅                                                  | ✅                                                    | 🛑                                                    |
 | `<Form>` API                                   | 🛑                                                  | ✅                                                    | 🛑                                                    |
 
