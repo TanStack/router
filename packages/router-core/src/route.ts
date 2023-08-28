@@ -842,7 +842,7 @@ export class Route<
     return this
   }
 
-  static __onInit = (route: typeof this) => {
+  static __onInit = (route: Route) => {
     // This is a dummy static method that should get
     // replaced by a framework specific implementation if necessary
   }
