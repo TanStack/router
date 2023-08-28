@@ -28,4 +28,20 @@ describe('store', () => {
 
     expect(store.state).toEqual(4)
   })
+
+  test(`updateFn acts as state transformer`, () => {
+    const store = new Store(1, {
+      updateFn: v => updater => Number(updater(v))
+    });
+
+    store.setState((v) => `${v + 1}` as never);
+
+    expect(store.state).toEqual(2)
+
+    store.setState((v) => `${v + 2}` as never);
+
+    expect(store.state).toEqual(4)
+
+    expect(typeof store.state).toEqual("number")
+  })
 })
