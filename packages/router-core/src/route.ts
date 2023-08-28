@@ -736,7 +736,7 @@ export class Route<
   ) {
     this.options = (options as any) || {}
     this.isRoot = !options?.getParentRoute as any
-    Route.__onInit(this as any)
+    Route.__onInit(this)
   }
 
   init = (opts: { originalIndex: number; router: AnyRouter }) => {
@@ -842,7 +842,7 @@ export class Route<
     return this
   }
 
-  static __onInit = (route: typeof this) => {
+  static __onInit = (route: any) => {
     // This is a dummy static method that should get
     // replaced by a framework specific implementation if necessary
   }
