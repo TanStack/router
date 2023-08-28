@@ -7,7 +7,9 @@
   "homepage": "https://tanstack.com/store",
   "description": "",
   "scripts": {
-    "build": "rollup --config rollup.config.js"
+    "build": "rollup --config rollup.config.js",
+    "test": "vitest",
+    "test:dev": "vitest --watch"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
