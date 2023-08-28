@@ -13,12 +13,20 @@ describe('store', () => {
 
     const subscription = vi.fn();
 
-    store.subscribe(subscription)
+    const unsub = store.subscribe(subscription)
 
     store.setState(() => 1);
 
     expect(store.state).toEqual(1)
     expect(subscription).toHaveBeenCalled()
+
+    unsub();
+
+    store.setState(() => 2);
+
+    expect(store.state).toEqual(2)
+
+    expect(subscription).toHaveBeenCalledTimes(1)
   })
 
   test(`setState passes previous state`, () => {
