@@ -37,7 +37,7 @@ export type ParseRouteChildren<TRouteTree extends AnyRoute> =
     : never
 
 export type RoutesById<TRouteTree extends AnyRoute> = {
-  [K in ParseRoute<TRouteTree>['id'] as K['id']]: K
+  [K in ParseRoute<TRouteTree> as K['id']]: K
 }
 
 export type RouteById<TRouteTree extends AnyRoute, TId> = Extract<
@@ -45,12 +45,10 @@ export type RouteById<TRouteTree extends AnyRoute, TId> = Extract<
   { id: TId }
 >
 
-export type RouteIds<TRouteTree extends AnyRoute> = AnyRoute extends TRouteTree
-  ? string
-  : ParseRoute<TRouteTree>['id']
+export type RouteIds<TRouteTree extends AnyRoute> = ParseRoute<TRouteTree>['id']
 
 export type RoutesByPath<TRouteTree extends AnyRoute> = {
-  [K in ParseRoute<TRouteTree>['fullPath'] as K['fullPath']]: K
+  [K in ParseRoute<TRouteTree> as K['fullPath']]: K
 }
 
 export type RouteByPath<TRouteTree extends AnyRoute, TPath> = Extract<

@@ -123,41 +123,24 @@ declare module '@tanstack/router-core' {
     TChildren extends RouteConstraints['TChildren'] = unknown,
     TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
   > {
-    useMatch: <TStrict extends boolean = true, TSelected = TAllContext>(opts?: {
-      strict?: TStrict
+    useMatch: <TSelected = TAllContext>(opts?: {
       select?: (search: TAllContext) => TSelected
-    }) => TStrict extends true ? TSelected : TSelected | undefined
-    useLoader: <TStrict extends boolean = true, TSelected = TLoader>(opts?: {
-      strict?: TStrict
+    }) => TSelected
+    useLoader: <TSelected = TLoader>(opts?: {
       select?: (search: TLoader) => TSelected
-    }) => TStrict extends true
-      ? UseLoaderResult<TSelected>
-      : UseLoaderResult<TSelected> | undefined
-    useContext: <
-      TStrict extends boolean = true,
-      TSelected = TAllContext,
-    >(opts?: {
-      strict?: TStrict
+    }) => UseLoaderResult<TSelected>
+    useContext: <TSelected = TAllContext>(opts?: {
       select?: (search: TAllContext) => TSelected
-    }) => TStrict extends true ? TSelected : TSelected | undefined
-    useRouteContext: <
-      TStrict extends boolean = true,
-      TSelected = TRouteContext,
-    >(opts?: {
-      strict?: TStrict
+    }) => TSelected
+    useRouteContext: <TSelected = TRouteContext>(opts?: {
       select?: (search: TRouteContext) => TSelected
-    }) => TStrict extends true ? TSelected : TSelected | undefined
-    useSearch: <
-      TStrict extends boolean = true,
-      TSelected = TFullSearchSchema,
-    >(opts?: {
-      strict?: TStrict
+    }) => TSelected
+    useSearch: <TSelected = TFullSearchSchema>(opts?: {
       select?: (search: TFullSearchSchema) => TSelected
-    }) => TStrict extends true ? TSelected : TSelected | undefined
-    useParams: <TStrict extends boolean = true, TSelected = TAllParams>(opts?: {
-      strict?: TStrict
+    }) => TSelected
+    useParams: <TSelected = TAllParams>(opts?: {
       select?: (search: TAllParams) => TSelected
-    }) => TStrict extends true ? TSelected : TSelected | undefined
+    }) => TSelected
   }
 
   interface RegisterRouteProps<
@@ -682,6 +665,16 @@ export function useMatches<T = RouteMatch[]>(opts?: {
   })
 }
 
+type StrictOrFrom<TFrom> =
+  | {
+      from: TFrom
+      strict?: true
+    }
+  | {
+      from?: never
+      strict: false
+    }
+
 export function useMatch<
   TFrom extends RouteIds<RegisteredRouter['routeTree']>,
   TStrict extends boolean = true,
@@ -690,11 +683,11 @@ export function useMatch<
     RouteById<RegisteredRouter['routeTree'], TFrom>
   >,
   TSelected = TRouteMatchState,
->(opts?: {
-  from: TFrom
-  strict?: TStrict
-  select?: (match: TRouteMatchState) => TSelected
-}): TStrict extends true ? TRouteMatchState : TRouteMatchState | undefined {
+>(
+  opts: StrictOrFrom<TFrom> & {
+    select?: (match: TRouteMatchState) => TSelected
+  },
+): TStrict extends true ? TRouteMatchState : TRouteMatchState | undefined {
   const router = useRouter()
   const nearestMatchId = React.useContext(matchIdsContext)[0]!
   const nearestMatchRouteId = router.getRouteMatch(nearestMatchId)?.routeId
@@ -761,11 +754,11 @@ export function useLoader<
   TStrict extends boolean = true,
   TLoader = RouteById<RegisteredRouter['routeTree'], TFrom>['types']['loader'],
   TSelected = TLoader,
->(opts?: {
-  from: TFrom
-  strict?: TStrict
-  select?: (search: TLoader) => TSelected
-}): TStrict extends true ? TSelected : TSelected | undefined {
+>(
+  opts?: StrictOrFrom<TFrom> & {
+    select?: (search: TLoader) => TSelected
+  },
+): TStrict extends true ? TSelected : TSelected | undefined {
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) =>
@@ -782,11 +775,11 @@ export function useRouterContext<
     TFrom
   >['types']['context'],
   TSelected = TContext,
->(opts?: {
-  from: TFrom
-  strict?: TStrict
-  select?: (search: TContext) => TSelected
-}): TStrict extends true ? TSelected : TSelected | undefined {
+>(
+  opts?: StrictOrFrom<TFrom> & {
+    select?: (search: TContext) => TSelected
+  },
+): TStrict extends true ? TSelected : TSelected | undefined {
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) =>
@@ -802,11 +795,11 @@ export function useRouteContext<
     TFrom
   >['types']['routeContext'],
   TSelected = TRouteContext,
->(opts?: {
-  from: TFrom
-  strict?: TStrict
-  select?: (search: TRouteContext) => TSelected
-}): TStrict extends true ? TSelected : TSelected | undefined {
+>(
+  opts?: StrictOrFrom<TFrom> & {
+    select?: (search: TRouteContext) => TSelected
+  },
+): TStrict extends true ? TSelected : TSelected | undefined {
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) =>
@@ -823,11 +816,11 @@ export function useSearch<
     TFrom
   >['types']['fullSearchSchema'],
   TSelected = TSearch,
->(opts?: {
-  from: TFrom
-  strict?: TStrict
-  select?: (search: TSearch) => TSelected
-}): TStrict extends true ? TSelected : TSelected | undefined {
+>(
+  opts?: StrictOrFrom<TFrom> & {
+    select?: (search: TSearch) => TSelected
+  },
+): TStrict extends true ? TSelected : TSelected | undefined {
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) => {
@@ -842,10 +835,11 @@ export function useParams<
   TDefaultSelected = AllParams<RegisteredRouter['routeTree']> &
     RouteById<RegisteredRouter['routeTree'], TFrom>['types']['allParams'],
   TSelected = TDefaultSelected,
->(opts?: {
-  from: TFrom
-  select?: (search: TDefaultSelected) => TSelected
-}): TSelected {
+>(
+  opts?: StrictOrFrom<TFrom> & {
+    select?: (search: TDefaultSelected) => TSelected
+  },
+): TSelected {
   return useRouterState({
     select: (state: any) => {
       const params = (last(state.matches) as any)?.params
