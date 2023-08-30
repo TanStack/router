@@ -37,6 +37,7 @@ import {
   FullSearchSchema,
   RouteById,
   RoutePaths,
+  RouteIds,
 } from './routeInfo'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -108,13 +109,13 @@ export type HydrationCtx = {
 
 export interface RouteMatch<
   TRouteTree extends AnyRoute = AnyRoute,
-  TRoute extends AnyRoute = AnyRoute,
+  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
 > {
   id: string
   key?: string
-  routeId: string
+  routeId: TRouteId
   pathname: string
-  params: TRoute['types']['allParams']
+  params: RouteById<TRouteTree, TRouteId>['types']['allParams']
   status: 'pending' | 'success' | 'error'
   isFetching: boolean
   invalid: boolean
@@ -124,18 +125,19 @@ export interface RouteMatch<
   updatedAt: number
   invalidAt: number
   preloadInvalidAt: number
-  loaderData: TRoute['types']['loader']
+  loaderData: RouteById<TRouteTree, TRouteId>['types']['loader']
   loadPromise?: Promise<void>
   __resolveLoadPromise?: () => void
-  routeContext: TRoute['types']['routeContext']
-  context: TRoute['types']['context']
-  routeSearch: TRoute['types']['searchSchema']
-  search: FullSearchSchema<TRouteTree> & TRoute['types']['fullSearchSchema']
+  routeContext: RouteById<TRouteTree, TRouteId>['types']['routeContext']
+  context: RouteById<TRouteTree, TRouteId>['types']['context']
+  routeSearch: RouteById<TRouteTree, TRouteId>['types']['searchSchema']
+  search: FullSearchSchema<TRouteTree> &
+    RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema']
   fetchedAt: number
   abortController: AbortController
 }
 
-export type AnyRouteMatch = RouteMatch<AnyRoute, AnyRoute>
+export type AnyRouteMatch = RouteMatch<any>
 
 export type RouterContextOptions<TRouteTree extends AnyRoute> =
   AnyContext extends TRouteTree['types']['routerContext']
@@ -196,11 +198,11 @@ export interface RouterState<
 > {
   status: 'idle' | 'pending'
   isFetching: boolean
-  matchesById: Record<string, RouteMatch<TRouteTree, ParseRoute<TRouteTree>>>
+  matchesById: Record<string, RouteMatch<TRouteTree>>
   matchIds: string[]
   pendingMatchIds: string[]
-  matches: RouteMatch<TRouteTree, ParseRoute<TRouteTree>>[]
-  pendingMatches: RouteMatch<TRouteTree, ParseRoute<TRouteTree>>[]
+  matches: RouteMatch<TRouteTree>[]
+  pendingMatches: RouteMatch<TRouteTree>[]
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
   lastUpdated: number
@@ -607,12 +609,9 @@ export class Router<
   }
 
   #mergeMatches = (
-    prevMatchesById: Record<
-      string,
-      RouteMatch<TRouteTree, ParseRoute<TRouteTree>>
-    >,
+    prevMatchesById: Record<string, RouteMatch<TRouteTree>>,
     nextMatches: AnyRouteMatch[],
-  ): Record<string, RouteMatch<TRouteTree, ParseRoute<TRouteTree>>> => {
+  ): Record<string, RouteMatch<TRouteTree>> => {
     const nextMatchesById: any = {
       ...prevMatchesById,
     }
@@ -701,7 +700,7 @@ export class Router<
     pathname: string,
     locationSearch: AnySearchSchema,
     opts?: { throwOnError?: boolean; debug?: boolean },
-  ): RouteMatch<TRouteTree, ParseRoute<TRouteTree>>[] => {
+  ): RouteMatch<TRouteTree>[] => {
     let routeParams: AnyPathParams = {}
 
     let foundRoute = this.flatRoutes.find((route) => {
@@ -1715,17 +1714,13 @@ export class Router<
     return this.latestLoadPromise
   }
 
-  getRouteMatch = (
-    id: string,
-  ): undefined | RouteMatch<TRouteTree, AnyRoute> => {
+  getRouteMatch = (id: string): undefined | RouteMatch<TRouteTree> => {
     return this.state.matchesById[id]
   }
 
   setRouteMatch = (
     id: string,
-    updater: (
-      prev: RouteMatch<TRouteTree, AnyRoute>,
-    ) => RouteMatch<TRouteTree, AnyRoute>,
+    updater: (prev: RouteMatch<TRouteTree>) => RouteMatch<TRouteTree>,
   ) => {
     this.__store.setState((prev) => {
       if (!prev.matchesById[id]) {
