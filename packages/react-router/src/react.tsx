@@ -755,7 +755,7 @@ export function useLoader<
   TLoader = RouteById<RegisteredRouter['routeTree'], TFrom>['types']['loader'],
   TSelected = TLoader,
 >(
-  opts?: StrictOrFrom<TFrom> & {
+  opts: StrictOrFrom<TFrom> & {
     select?: (search: TLoader) => TSelected
   },
 ): TStrict extends true ? TSelected : TSelected | undefined {
@@ -776,7 +776,7 @@ export function useRouterContext<
   >['types']['context'],
   TSelected = TContext,
 >(
-  opts?: StrictOrFrom<TFrom> & {
+  opts: StrictOrFrom<TFrom> & {
     select?: (search: TContext) => TSelected
   },
 ): TStrict extends true ? TSelected : TSelected | undefined {
@@ -796,7 +796,7 @@ export function useRouteContext<
   >['types']['routeContext'],
   TSelected = TRouteContext,
 >(
-  opts?: StrictOrFrom<TFrom> & {
+  opts: StrictOrFrom<TFrom> & {
     select?: (search: TRouteContext) => TSelected
   },
 ): TStrict extends true ? TSelected : TSelected | undefined {
@@ -817,7 +817,7 @@ export function useSearch<
   >['types']['fullSearchSchema'],
   TSelected = TSearch,
 >(
-  opts?: StrictOrFrom<TFrom> & {
+  opts: StrictOrFrom<TFrom> & {
     select?: (search: TSearch) => TSelected
   },
 ): TStrict extends true ? TSelected : TSelected | undefined {
@@ -836,7 +836,7 @@ export function useParams<
     RouteById<RegisteredRouter['routeTree'], TFrom>['types']['allParams'],
   TSelected = TDefaultSelected,
 >(
-  opts?: StrictOrFrom<TFrom> & {
+  opts: StrictOrFrom<TFrom> & {
     select?: (search: TDefaultSelected) => TSelected
   },
 ): TSelected {
