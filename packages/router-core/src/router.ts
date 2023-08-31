@@ -1709,7 +1709,6 @@ export class Router<
     })
 
     this.resetNextScroll = location.resetScroll ?? true
-    console.log('resetScroll', this.resetNextScroll)
 
     return this.latestLoadPromise
   }
