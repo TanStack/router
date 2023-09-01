@@ -1,4 +1,4 @@
-import { Store } from '@tanstack/react-store'
+import { Store } from '@tanstack/store'
 import invariant from 'tiny-invariant'
 
 //
@@ -123,8 +123,8 @@ export interface RouteMatch<
   paramsError: unknown
   searchError: unknown
   updatedAt: number
-  invalidAt: number
-  preloadInvalidAt: number
+  maxAge: number
+  preloadMaxAge: number
   loaderData: RouteById<TRouteTree, TRouteId>['types']['loader']
   loadPromise?: Promise<void>
   __resolveLoadPromise?: () => void
@@ -249,7 +249,8 @@ export type DehydratedRouteMatch = Pick<
   RouteMatch,
   | 'fetchedAt'
   | 'invalid'
-  | 'invalidAt'
+  | 'maxAge'
+  | 'preloadMaxAge'
   | 'id'
   | 'loaderData'
   | 'status'
@@ -525,7 +526,6 @@ export class Router<
       }
 
       // Cancel any pending matches
-      // this.cancelMatches()
 
       let pendingMatches!: RouteMatch<any, any>[]
 
@@ -577,6 +577,18 @@ export class Router<
           return latestPromise
         }
 
+        const exitingMatchIds = this.state.matchIds.filter(
+          (id) => !this.state.pendingMatchIds.includes(id),
+        )
+
+        const enteringMatchIds = this.state.pendingMatchIds.filter(
+          (id) => !this.state.matchIds.includes(id),
+        )
+
+        const stayingMatchIds = this.state.matchIds.filter((id) =>
+          this.state.pendingMatchIds.includes(id),
+        )
+
         this.__store.setState((s) => ({
           ...s,
           status: 'idle',
@@ -584,6 +596,19 @@ export class Router<
           matchIds: s.pendingMatchIds,
           pendingMatchIds: [],
         }))
+        ;(
+          [
+            [exitingMatchIds, 'onLeave'],
+            [enteringMatchIds, 'onEnter'],
+            [stayingMatchIds, 'onTransition'],
+          ] as const
+        ).forEach(([matchIds, hook]) => {
+          matchIds.forEach((id) => {
+            const match = this.getRouteMatch(id)!
+            const route = this.getRoute(match.routeId)
+            route.options[hook]?.(match)
+          })
+        })
 
         this.#emit({
           type: 'onLoad',
@@ -604,6 +629,10 @@ export class Router<
     })
 
     this.latestLoadPromise = promise
+
+    this.latestLoadPromise.then(() => {
+      this.cleanMatches()
+    })
 
     return this.latestLoadPromise
   }
@@ -671,10 +700,13 @@ export class Router<
     const outdatedMatchIds = Object.values(this.state.matchesById)
       .filter((match) => {
         const route = this.getRoute(match.routeId)
+
         return (
           !this.state.matchIds.includes(match.id) &&
           !this.state.pendingMatchIds.includes(match.id) &&
-          match.preloadInvalidAt < now &&
+          (match.preloadMaxAge > -1
+            ? match.updatedAt + match.preloadMaxAge < now
+            : true) &&
           (route.options.gcMaxAge
             ? match.updatedAt + route.options.gcMaxAge < now
             : true)
@@ -795,8 +827,8 @@ export class Router<
         params: routeParams,
         pathname: joinPaths([this.basepath, interpolatedPath]),
         updatedAt: Date.now(),
-        invalidAt: Infinity,
-        preloadInvalidAt: Infinity,
+        maxAge: -1,
+        preloadMaxAge: -1,
         routeSearch: {},
         search: {} as any,
         status: hasLoaders ? 'pending' : 'success',
@@ -917,12 +949,13 @@ export class Router<
           paramsError: match.paramsError,
           searchError: match.searchError,
           params: match.params,
-          preloadInvalidAt: 0,
+          preloadMaxAge: 0,
         }))
       })
+    } else {
+      // If we're preloading, clean preload matches before we try and use them
+      this.cleanMatches({ preload: opts?.preload })
     }
-
-    this.cleanMatches()
 
     let firstBadMatchIndex: number | undefined
 
@@ -1002,7 +1035,9 @@ export class Router<
           if (
             match.isFetching ||
             (match.status === 'success' &&
-              !this.getIsInvalid({ matchId: match.id, preload: opts?.preload }))
+              !isMatchInvalid(match, {
+                preload: opts?.preload,
+              }))
           ) {
             return this.getRouteMatch(match.id)?.loadPromise
           }
@@ -1098,8 +1133,6 @@ export class Router<
     })
 
     await Promise.all(matchPromises)
-
-    this.cleanMatches()
   }
 
   reload = () => {
@@ -1350,7 +1383,8 @@ export class Router<
           pick(d, [
             'fetchedAt',
             'invalid',
-            'invalidAt',
+            'preloadMaxAge',
+            'maxAge',
             'id',
             'loaderData',
             'status',
@@ -1709,7 +1743,6 @@ export class Router<
     })
 
     this.resetNextScroll = location.resetScroll ?? true
-    console.log('resetScroll', this.resetNextScroll)
 
     return this.latestLoadPromise
   }
@@ -1752,29 +1785,24 @@ export class Router<
     const route = this.getRoute(match.routeId)
     const updatedAt = opts?.updatedAt ?? Date.now()
 
-    const preloadInvalidAt =
-      updatedAt +
-      (opts?.maxAge ??
-        route.options.preloadMaxAge ??
-        this.options.defaultPreloadMaxAge ??
-        5000)
+    const preloadMaxAge =
+      opts?.maxAge ??
+      route.options.preloadMaxAge ??
+      this.options.defaultPreloadMaxAge ??
+      5000
 
-    const invalidAt =
-      updatedAt +
-      (opts?.maxAge ??
-        route.options.maxAge ??
-        this.options.defaultMaxAge ??
-        Infinity)
+    const maxAge =
+      opts?.maxAge ?? route.options.maxAge ?? this.options.defaultMaxAge ?? -1
 
     this.setRouteMatch(id, (s) => ({
       ...s,
       error: undefined,
       status: 'success',
       isFetching: false,
-      updatedAt: Date.now(),
+      updatedAt: updatedAt,
       loaderData: functionalUpdate(updater, s.loaderData),
-      preloadInvalidAt,
-      invalidAt,
+      preloadMaxAge,
+      maxAge,
     }))
   }
 
@@ -1811,10 +1839,13 @@ export class Router<
     }
   }
 
-  getIsInvalid = (opts?: { matchId: string; preload?: boolean }): boolean => {
+  isMatchOrParentInvalid = (opts?: {
+    matchId: string
+    preload?: boolean
+  }): boolean => {
     if (!opts?.matchId) {
       return !!this.state.matches.find((d) =>
-        this.getIsInvalid({ matchId: d.id, preload: opts?.preload }),
+        this.isMatchOrParentInvalid({ matchId: d.id, preload: opts?.preload }),
       )
     }
 
@@ -1824,12 +1855,7 @@ export class Router<
       return false
     }
 
-    const now = Date.now()
-
-    return (
-      match.invalid ||
-      (opts?.preload ? match.preloadInvalidAt : match.invalidAt) < now
-    )
+    return isMatchInvalid(match, opts)
   }
 }
 
@@ -1899,4 +1925,23 @@ export function lazyFn<
     const imported = await fn()
     return imported[key || 'default'](...args)
   }
+}
+
+export function isMatchInvalid(
+  match: AnyRouteMatch,
+  opts?: { preload?: boolean },
+) {
+  const now = Date.now()
+
+  if (match.invalid) {
+    return true
+  }
+
+  if (opts?.preload) {
+    return match.preloadMaxAge < 0
+      ? false
+      : match.updatedAt + match.preloadMaxAge < now
+  }
+
+  return match.maxAge < 0 ? false : match.updatedAt + match.maxAge < now
 }

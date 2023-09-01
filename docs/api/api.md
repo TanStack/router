@@ -153,21 +153,11 @@ const myRoute = new Route({
     }
   ) => Promise<void> | void
   onError?: (err: any) => void
-  // This function is called
-  // when moving from an inactive state to an active one. Likewise, when moving from
-  // an active to an inactive state, the return function (if provided) is called.
-  onLoaded?: (matchContext: {
-    params: TAllParams
-    search: TFullSearchSchema
-  }) =>
-    | void
-    | undefined
-    | ((match: { params: TAllParams; search: TFullSearchSchema }) => void)
-  // This function is called when the route remains active from one transition to the next.
-  onTransition?: (match: {
-    params: TAllParams
-    search: TFullSearchSchema
-  }) => void
+  // These functions are called as route matches are loaded, stick around and leave the active
+  // matches
+  onEnter?: (match: AnyRouteMatch) => void
+  onTransition?: (match: AnyRouteMatch) => void
+  onLeave?: (match: AnyRouteMatch) => void
 })
 ```
 

@@ -25,21 +25,18 @@
   ],
   "pnpm": {
     "overrides": {
-      "@tanstack/store": "workspace:*",
-      "@tanstack/router": "workspace:*",
       "@tanstack/loaders": "workspace:*",
       "@tanstack/actions": "workspace:*",
       "@tanstack/router-core": "workspace:*",
       "@tanstack/react-router": "workspace:*",
-      "@tanstack/react-store": "workspace:*",
       "@tanstack/react-actions": "workspace:*",
       "@tanstack/react-loaders": "workspace:*",
       "@tanstack/router-devtools": "workspace:*",
       "@tanstack/solid-router": "workspace:*",
-      "@tanstack/solid-store": "workspace:*",
       "@tanstack/solid-loaders": "workspace:*",
       "@tanstack/solid-actions": "workspace:*",
-      "@tanstack/react-start": "workspace:*"
+      "@tanstack/react-start": "workspace:*",
+      "@tanstack/bling": "link:../bling/packages/bling"
     }
   },
   "devDependencies": {

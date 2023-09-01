@@ -37,7 +37,7 @@ export function getStatusColor(
 ) {
   return match.status === 'pending' || match.isFetching
     ? theme.active
-    : router.getIsInvalid({
+    : router.isMatchOrParentInvalid({
         matchId: match.id,
       })
     ? theme.warning

@@ -1,12 +1,12 @@
 {
   "composite": true,
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./build/types"
   },
-  "files": ["src/index.tsx"],
+  "files": ["src/main.tsx"],
   "include": [
     "src"
-    //  "__tests__/**/*.test.*"
+    // "__tests__/**/*.test.*"
   ]
 }

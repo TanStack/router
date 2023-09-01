@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "@tanstack/actions": "workspace:*",
-    "@tanstack/react-store": "workspace:*",
+    "@tanstack/react-store": "^0.0.1",
     "tiny-invariant": "^1.0.5"
   }
 }

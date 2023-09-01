@@ -33,7 +33,10 @@ async function getRouteNodes(config: Config) {
     let dirList = await fs.readdir(fullDir)
 
     dirList = dirList.filter((d) => {
-      if (d.startsWith('.') || d.startsWith(routeFileIgnorePrefix)) {
+      if (
+        d.startsWith('.') ||
+        (routeFileIgnorePrefix && d.startsWith(routeFileIgnorePrefix))
+      ) {
         return false
       }
 

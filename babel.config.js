@@ -42,7 +42,6 @@ module.exports = {
     {
       include: [
         './packages/solid-router/**',
-        './packages/solid-store/**',
         './packages/solid-loaders/**',
         './packages/solid-actions/**',
       ],

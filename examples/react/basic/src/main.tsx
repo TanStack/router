@@ -8,6 +8,12 @@ import {
   ErrorComponent,
   Router,
   RootRoute,
+  useMatch,
+  RegisteredRouter,
+  RouteIds,
+  RoutesById,
+  ParseRoute,
+  RoutePaths,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'

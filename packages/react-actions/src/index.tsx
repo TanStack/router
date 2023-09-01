@@ -68,7 +68,7 @@ export function useAction<
   const { client } = ctx
 
   return [
-    useStore(client.__store, (d) => {
+    useStore(client.__store, (d: any) => {
       const action = d.actions[opts.key]
       return opts.select?.(action as any) ?? action
     }) as TSelected,

@@ -578,7 +578,7 @@ export function useRouterState<TSelected = RegisteredRouter['state']>(opts?: {
   select: (state: RegisteredRouter['state']) => TSelected
 }): TSelected {
   const router = useRouter()
-  return useStore(router.__store, opts?.select)
+  return useStore(router.__store, opts?.select as any)
 }
 
 export function RouterProvider<

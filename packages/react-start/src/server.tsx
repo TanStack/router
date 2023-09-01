@@ -19,13 +19,6 @@ export function createRequestHandler<TRouter extends AnyRouter>(opts: {
     const fullUrl = new URL(request.url)
     const url = request.url.replace(fullUrl.origin, '')
 
-    // console.log(handlers)
-    // if (hasHandler(fullUrl.pathname)) {
-    //   return await handleEvent({
-    //     request,
-    //   })
-    // }
-
     if (fullUrl.pathname.includes('.')) {
       return new Response(null, {
         status: 404,

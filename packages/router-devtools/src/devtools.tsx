@@ -563,13 +563,13 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     },
   )
 
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      router.cleanMatches()
-    }, 1000)
+  // React.useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     router.cleanMatches()
+  //   }, 1000)
 
-    return () => clearInterval(interval)
-  }, [router])
+  //   return () => clearInterval(interval)
+  // }, [router])
 
   return (
     <ThemeProvider theme={theme}>

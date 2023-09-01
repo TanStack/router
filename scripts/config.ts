@@ -4,32 +4,6 @@ import { BranchConfig, Package } from './types'
 // TODO: List your npm packages here.
 export const packages: Package[] = [
   {
-    name: '@tanstack/store',
-    packageDir: 'store',
-    srcDir: 'src',
-    builds: [
-      {
-        jsName: 'Store',
-        entryFile: 'src/index.ts',
-        globals: {},
-      },
-    ],
-  },
-  {
-    name: '@tanstack/react-store',
-    packageDir: 'react-store',
-    srcDir: 'src',
-    builds: [
-      {
-        jsName: 'ReactLoaders',
-        entryFile: 'src/index.tsx',
-        globals: {
-          react: 'React',
-        },
-      },
-    ],
-  },
-  {
     name: '@tanstack/router-core',
     packageDir: 'router-core',
     srcDir: 'src',
@@ -90,17 +64,6 @@ export const packages: Package[] = [
         globals: {
           react: 'React',
         },
-      },
-    ],
-  },
-  {
-    name: '@tanstack/router',
-    packageDir: 'router',
-    srcDir: 'src',
-    builds: [
-      {
-        jsName: 'Router',
-        entryFile: 'src/index.ts',
       },
     ],
   },
