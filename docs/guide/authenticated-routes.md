@@ -13,7 +13,7 @@ The `beforeLoad` function runs in relative order to these other route loading fu
 
 - Route Matching (Top-Down)
   - `route.parseParams`
-  - `route.validateSearchParams`
+  - `route.validateSearch`
 - Route Loading (including Preloading)
   - **`route.beforeLoad`**
   - `route.onError`

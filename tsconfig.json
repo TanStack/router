@@ -9,8 +9,7 @@
     { "path": "packages/react-start" },
     { "path": "packages/router-cli" },
     { "path": "packages/router-core" },
-    { "path": "packages/router-devtools" },
-    { "path": "packages/solid-router" }
+    { "path": "packages/router-devtools" }
   ]
   // "include": ["examples/*"]
   // "exclude": ["node_modules"]

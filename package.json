@@ -32,9 +32,6 @@
       "@tanstack/react-actions": "workspace:*",
       "@tanstack/react-loaders": "workspace:*",
       "@tanstack/router-devtools": "workspace:*",
-      "@tanstack/solid-router": "workspace:*",
-      "@tanstack/solid-loaders": "workspace:*",
-      "@tanstack/solid-actions": "workspace:*",
       "@tanstack/react-start": "workspace:*",
       "@tanstack/bling": "link:../bling/packages/bling"
     }
