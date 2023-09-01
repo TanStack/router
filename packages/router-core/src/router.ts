@@ -974,9 +974,6 @@ export class Router<
           preloadMaxAge: 0,
         }))
       })
-    } else {
-      // If we're preloading, clean preload matches before we try and use them
-      this.cleanMatches()
     }
 
     let firstBadMatchIndex: number | undefined
