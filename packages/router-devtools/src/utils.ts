@@ -4,6 +4,7 @@ import {
   AnyRoute,
   AnyRouteMatch,
   AnyRouter,
+  isMatchInvalid,
 } from '@tanstack/react-router'
 
 import { Theme, useTheme } from './theme'
@@ -37,9 +38,7 @@ export function getStatusColor(
 ) {
   return match.status === 'pending' || match.isFetching
     ? theme.active
-    : router.isMatchOrParentInvalid({
-        matchId: match.id,
-      })
+    : isMatchInvalid(match)
     ? theme.warning
     : match.status === 'error'
     ? theme.danger

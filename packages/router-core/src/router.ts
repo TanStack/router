@@ -157,6 +157,7 @@ export interface RouterOptions<
   parseSearch?: SearchParser
   defaultPreload?: false | 'intent'
   defaultPreloadDelay?: number
+  refetchOnWindowFocus?: boolean
   defaultComponent?: RegisteredRouteComponent<
     unknown,
     AnySearchSchema,
@@ -295,6 +296,9 @@ export type RouterListener<TRouterEvent extends RouterEvent> = {
   fn: ListenerFn<TRouterEvent>
 }
 
+const visibilityChangeEvent = 'visibilitychange'
+const focusEvent = 'focus'
+
 export class Router<
   TRouteTree extends AnyRoute = AnyRoute,
   TDehydrated extends Record<string, any> = Record<string, any>,
@@ -421,10 +425,28 @@ export class Router<
   }
 
   mount = () => {
-    // If the router matches are empty, start loading the matches
-    // if (!this.state.matches.length) {
+    // addEventListener does not exist in React Native, but window does
+    // In the future, we might need to invert control here for more adapters
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener(visibilityChangeEvent, this.#onFocus, false)
+      window.addEventListener(focusEvent, this.#onFocus, false)
+    }
+
     this.safeLoad()
-    // }
+
+    return () => {
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener(visibilityChangeEvent, this.#onFocus)
+        window.removeEventListener(focusEvent, this.#onFocus)
+      }
+    }
+  }
+
+  #onFocus = () => {
+    if (this.options.refetchOnWindowFocus ?? true) {
+      this.reload()
+    }
   }
 
   update = (opts?: RouterOptions<any, any>): this => {
@@ -954,7 +976,7 @@ export class Router<
       })
     } else {
       // If we're preloading, clean preload matches before we try and use them
-      this.cleanMatches({ preload: opts?.preload })
+      this.cleanMatches()
     }
 
     let firstBadMatchIndex: number | undefined
@@ -1837,25 +1859,6 @@ export class Router<
     if (opts?.reload ?? true) {
       return this.reload()
     }
-  }
-
-  isMatchOrParentInvalid = (opts?: {
-    matchId: string
-    preload?: boolean
-  }): boolean => {
-    if (!opts?.matchId) {
-      return !!this.state.matches.find((d) =>
-        this.isMatchOrParentInvalid({ matchId: d.id, preload: opts?.preload }),
-      )
-    }
-
-    const match = this.getRouteMatch(opts?.matchId)
-
-    if (!match) {
-      return false
-    }
-
-    return isMatchInvalid(match, opts)
   }
 }
 
