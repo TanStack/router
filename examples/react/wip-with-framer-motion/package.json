@@ -9,10 +9,10 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-actions": "0.0.1-beta.174",
-    "@tanstack/react-loaders": "0.0.1-beta.174",
-    "@tanstack/react-router": "0.0.1-beta.174",
-    "@tanstack/router-devtools": "0.0.1-beta.174",
+    "@tanstack/react-actions": "0.0.1-beta.175",
+    "@tanstack/react-loaders": "0.0.1-beta.175",
+    "@tanstack/react-router": "0.0.1-beta.175",
+    "@tanstack/router-devtools": "0.0.1-beta.175",
     "@vitejs/plugin-react": "^1.1.3",
     "axios": "^1.1.3",
     "framer-motion": "^10.13.0",
@@ -23,11 +23,11 @@
     "zod": "^3.19.1",
     "@tanstack/store": "^0.0.1",
     "@tanstack/react-store": "^0.0.1",
-    "@tanstack/router-core": "0.0.1-beta.174",
-    "@tanstack/loaders": "0.0.1-beta.174",
-    "@tanstack/actions": "0.0.1-beta.174",
-    "@tanstack/react-start": "0.0.1-beta.174",
-    "@tanstack/router-cli": "0.0.1-beta.174"
+    "@tanstack/router-core": "0.0.1-beta.175",
+    "@tanstack/loaders": "0.0.1-beta.175",
+    "@tanstack/actions": "0.0.1-beta.175",
+    "@tanstack/react-start": "0.0.1-beta.175",
+    "@tanstack/router-cli": "0.0.1-beta.175"
   },
   "devDependencies": {
     "@types/react": "^18.0.25",
