@@ -467,7 +467,7 @@ const invoiceRoute = new Route({
         notes: z.string().optional(),
       })
       .parse(search),
-  getContext: ({ params: { invoiceId } }) => {
+  beforeLoad: ({ params: { invoiceId } }) => {
     const loaderOptions = createLoaderOptions({
       key: 'invoice',
       variables: invoiceId,
@@ -764,7 +764,7 @@ const userRoute = new Route({
   // Since our userId isn't part of our pathname, make sure we
   // augment the userId as the key for this route
   key: ({ search: { userId } }) => userId,
-  getContext: ({ search: { userId } }) => {
+  beforeLoad: ({ search: { userId } }) => {
     const loaderOptions = createLoaderOptions({
       key: 'user',
       variables: userId,

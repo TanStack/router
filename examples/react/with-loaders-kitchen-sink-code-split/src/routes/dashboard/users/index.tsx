@@ -50,7 +50,7 @@ export const usersRoute = new Route({
       },
     }),
   ],
-  getContext: () => ({
+  beforeLoad: () => ({
     loaderOpts: createLoaderOptions({
       key: 'users',
     }),

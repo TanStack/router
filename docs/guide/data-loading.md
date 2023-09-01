@@ -158,7 +158,7 @@ const postsRoute = new Route({
 
 The `context` and `routeContext` properties of the `loader` function are objects containing the route's context. `context` is the context object for the route including context from parent routes. `routeContext` is the context object for the route excluding context from parent routes. In this example, we'll create a function in our route context to fetch posts, then use it in our loader.
 
-> 🧠 Context is a powerful tool for dependency injection. You can use it to inject services, loaders, and other objects into your router and routes. You can also additively pass data down the route tree at every route using a route's `getContext` option.
+> 🧠 Context is a powerful tool for dependency injection. You can use it to inject services, loaders, and other objects into your router and routes. You can also additively pass data down the route tree at every route using a route's `beforeLoad` option.
 
 ```tsx
 import { Route } from '@tanstack/react-router'

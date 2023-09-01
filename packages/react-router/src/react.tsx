@@ -190,38 +190,24 @@ export type RouteProps<
   TRouteContext extends AnyContext = AnyContext,
   TAllContext extends AnyContext = AnyContext,
 > = {
-  useLoader: <TStrict extends boolean = true, TSelected = TLoader>(opts?: {
-    strict?: TStrict
+  useLoader: <TSelected = TLoader>(opts?: {
     select?: (search: TLoader) => TSelected
-  }) => TStrict extends true
-    ? UseLoaderResult<TSelected>
-    : UseLoaderResult<TSelected> | undefined
-  useMatch: <TStrict extends boolean = true, TSelected = TAllContext>(opts?: {
-    strict?: TStrict
+  }) => UseLoaderResult<TSelected>
+  useMatch: <TSelected = TAllContext>(opts?: {
     select?: (search: TAllContext) => TSelected
-  }) => TStrict extends true ? TSelected : TSelected | undefined
-  useContext: <TStrict extends boolean = true, TSelected = TAllContext>(opts?: {
-    strict?: TStrict
+  }) => TSelected
+  useContext: <TSelected = TAllContext>(opts?: {
     select?: (search: TAllContext) => TSelected
-  }) => TStrict extends true ? TSelected : TSelected | undefined
-  useRouteContext: <
-    TStrict extends boolean = true,
-    TSelected = TRouteContext,
-  >(opts?: {
-    strict?: TStrict
+  }) => TSelected
+  useRouteContext: <TSelected = TRouteContext>(opts?: {
     select?: (search: TRouteContext) => TSelected
-  }) => TStrict extends true ? TSelected : TSelected | undefined
-  useSearch: <
-    TStrict extends boolean = true,
-    TSelected = TFullSearchSchema,
-  >(opts?: {
-    strict?: TStrict
+  }) => TSelected
+  useSearch: <TSelected = TFullSearchSchema>(opts?: {
     select?: (search: TFullSearchSchema) => TSelected
-  }) => TStrict extends true ? TSelected : TSelected | undefined
-  useParams: <TStrict extends boolean = true, TSelected = TAllParams>(opts?: {
-    strict?: TStrict
+  }) => TSelected
+  useParams: <TSelected = TAllParams>(opts?: {
     select?: (search: TAllParams) => TSelected
-  }) => TStrict extends true ? TSelected : TSelected | undefined
+  }) => TSelected
 }
 
 export type ErrorRouteProps<
@@ -271,14 +257,15 @@ Route.__onInit = (route) => {
       return useMatch({
         ...opts,
         from: route.id,
-        select: (d: any) => opts?.select?.(d.context) ?? d.context,
+        select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
       } as any)
     },
     useRouteContext: (opts: any = {}) => {
       return useMatch({
         ...opts,
         from: route.id,
-        select: (d: any) => opts?.select?.(d.routeContext) ?? d.routeContext,
+        select: (d: any) =>
+          opts?.select ? opts.select(d.routeContext) : d.routeContext,
       } as any)
     },
     useSearch: (opts = {}) => {
@@ -660,7 +647,7 @@ export function useMatches<T = RouteMatch[]>(opts?: {
       const matches = state.matches.slice(
         state.matches.findIndex((d) => d.id === matchIds[0]),
       )
-      return (opts?.select?.(matches) ?? matches) as T
+      return opts?.select ? opts.select(matches) : (matches as T)
     },
   })
 }
@@ -716,7 +703,7 @@ export function useMatch<
     )
   }
 
-  const match = useRouterState({
+  const matchSelection = useRouterState({
     select: (state) => {
       const matches = state.matches
       const match = opts?.from
@@ -732,11 +719,11 @@ export function useMatch<
         }`,
       )
 
-      return (opts?.select?.(match as any) ?? match) as TSelected
+      return opts?.select ? opts.select(match as any) : match
     },
   })
 
-  return match as any
+  return matchSelection as any
 }
 
 export type RouteFromIdOrRoute<T> = T extends ParseRoute<
@@ -762,8 +749,9 @@ export function useLoader<
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) =>
-      (opts?.select?.(match.loaderData as TLoader) ??
-        match.loaderData) as TSelected,
+      opts?.select
+        ? opts?.select(match.loaderData as TLoader)
+        : match.loaderData,
   })
 }
 
@@ -783,7 +771,7 @@ export function useRouterContext<
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) =>
-      (opts?.select?.(match.context as TContext) ?? match.context) as TSelected,
+      opts?.select ? opts.select(match.context as TContext) : match.context,
   })
 }
 
@@ -803,8 +791,9 @@ export function useRouteContext<
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) =>
-      (opts?.select?.(match.routeContext as TRouteContext) ??
-        match.routeContext) as TSelected,
+      opts?.select
+        ? opts.select(match.routeContext as TRouteContext)
+        : match.routeContext,
   })
 }
 
@@ -824,8 +813,7 @@ export function useSearch<
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) => {
-      return (opts?.select?.(match.search as TSearch) ??
-        match.search) as TSelected
+      return opts?.select ? opts.select(match.search as TSearch) : match.search
     },
   })
 }
@@ -843,7 +831,7 @@ export function useParams<
   return useRouterState({
     select: (state: any) => {
       const params = (last(state.matches) as any)?.params
-      return (opts?.select?.(params) ?? params) as TSelected
+      return opts?.select ? opts.select(params) : params
     },
   })
 }

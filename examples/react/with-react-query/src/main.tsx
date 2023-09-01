@@ -76,7 +76,7 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  getContext: () => {
+  beforeLoad: () => {
     return { queryOptions: { queryKey: ['posts'], queryFn: fetchPosts } }
   },
   loader: async ({
@@ -132,7 +132,7 @@ const postsIndexRoute = new Route({
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  getContext: ({ params: { postId } }) => {
+  beforeLoad: ({ params: { postId } }) => {
     const queryOptions = {
       queryKey: ['posts', postId],
       queryFn: () => fetchPostById(postId),

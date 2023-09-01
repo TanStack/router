@@ -20,7 +20,6 @@ export type RouteNode = {
   isRoot?: boolean
   children?: RouteNode[]
   parent?: RouteNode
-  layoutLimit?: string
 }
 
 async function getRouteNodes(config: Config) {
@@ -240,9 +239,6 @@ export async function generator(config: Config) {
           `getParentRoute: () => ${
             routeNode.parent?.variableName ?? 'root'
           }Route`,
-          routeNode.layoutLimit
-            ? `layoutLimit: '${routeNode.layoutLimit}'`
-            : '',
           // `\n// ${JSON.stringify(
           //   {
           //     ...routeNode,

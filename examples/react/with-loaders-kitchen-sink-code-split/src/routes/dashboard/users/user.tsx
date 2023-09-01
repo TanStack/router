@@ -25,7 +25,7 @@ export const userRoute = new Route({
   path: '$userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
-  getContext: ({ params: { userId } }) => ({
+  beforeLoad: ({ params: { userId } }) => ({
     loaderOpts: createLoaderOptions({ key: 'user', variables: userId }),
   }),
   loader: async ({

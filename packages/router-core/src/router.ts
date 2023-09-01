@@ -914,52 +914,24 @@ export class Router<
         }
       })()
 
-      Object.assign(match, {
-        ...searchInfo,
-      })
-
-      const contextInfo = (() => {
-        try {
-          const routeContext =
-            route.options.getContext?.({
-              parentContext: parentMatch?.routeContext ?? {},
-              context: parentMatch?.context ?? this?.options.context ?? {},
-              params: match.params,
-              search: match.search,
-            }) || ({} as any)
-
-          const context = {
-            ...(parentMatch?.context ?? this?.options.context),
-            ...routeContext,
-          } as any
-
-          return {
-            context,
-            routeContext,
-          }
-        } catch (err) {
-          route.options.onError?.(err)
-          throw err
-        }
-      })()
-
-      Object.assign(match, {
-        ...contextInfo,
-      })
+      Object.assign(match, searchInfo)
     })
 
     return matches as any
   }
 
   loadMatches = async (
-    resolvedMatches: AnyRouteMatch[],
+    _resolvedMatches: AnyRouteMatch[],
     opts?: {
       preload?: boolean
       maxAge?: number
     },
   ) => {
+    const getFreshMatches = () =>
+      _resolvedMatches.map((d) => this.getRouteMatch(d.id)!)
+
     if (!opts?.preload) {
-      resolvedMatches.forEach((match) => {
+      getFreshMatches().forEach((match) => {
         // Update each match with its latest route data
         this.setRouteMatch(match.id, (s) => ({
           ...s,
@@ -980,7 +952,8 @@ export class Router<
 
     // Check each match middleware to see if the route can be accessed
     try {
-      for (const [index, match] of resolvedMatches.entries()) {
+      for (const [index, match] of getFreshMatches().entries()) {
+        const parentMatch = getFreshMatches()[index - 1]
         const route = this.getRoute(match.routeId)
 
         const handleError = (err: any, code: string) => {
@@ -1020,10 +993,24 @@ export class Router<
         let didError = false
 
         try {
-          await route.options.beforeLoad?.({
-            ...match,
-            preload: !!opts?.preload,
-          })
+          const routeContext =
+            (await route.options.beforeLoad?.({
+              ...match,
+              preload: !!opts?.preload,
+              parentContext: parentMatch?.routeContext ?? {},
+              context: parentMatch?.context ?? this?.options.context ?? {},
+            })) ?? ({} as any)
+
+          const context = {
+            ...(parentMatch?.context ?? this?.options.context),
+            ...routeContext,
+          } as any
+
+          this.setRouteMatch(match.id, (s) => ({
+            ...s,
+            context,
+            routeContext,
+          }))
         } catch (err) {
           handleError(err, 'BEFORE_LOAD')
           didError = true
@@ -1042,7 +1029,7 @@ export class Router<
       throw err
     }
 
-    const validResolvedMatches = resolvedMatches.slice(0, firstBadMatchIndex)
+    const validResolvedMatches = getFreshMatches().slice(0, firstBadMatchIndex)
     const matchPromises: Promise<any>[] = []
 
     validResolvedMatches.forEach((match, index) => {

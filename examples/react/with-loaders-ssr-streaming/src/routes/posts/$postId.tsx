@@ -30,7 +30,7 @@ export const postLoader = new Loader({
 export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  getContext: ({ params: { postId } }) => ({
+  beforeLoad: ({ params: { postId } }) => ({
     loaderOpts: createLoaderOptions({ key: 'post', variables: postId }),
   }),
   loader: async ({ context: { loaderClient, loaderOpts }, preload }) =>

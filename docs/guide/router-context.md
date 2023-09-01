@@ -15,7 +15,7 @@ These are just suggested uses of the router context. You can use it for whatever
 
 ## Typed Router Context
 
-Like everything else, the root router context is strictly typed. This type can be augmented via any route's `getContext` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `new RouteContext<YourContextTypeHere>()` class to create a new `routerContext` and then use the `routerContext.createRootRoute()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
+Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `new RouteContext<YourContextTypeHere>()` class to create a new `routerContext` and then use the `routerContext.createRootRoute()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
 
 ```tsx
 import { RootRoute } from '@tanstack/react-router'
@@ -179,7 +179,7 @@ const userRoute = new Route({
   getRootRoute: () => rootRoute,
   path: 'admin',
   component: Todos,
-  getContext: () => {
+  beforeLoad: () => {
     return {
       bar: true,
     }
@@ -200,7 +200,7 @@ export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
   component: Post,
-  getContext: ({ context: { queryClient }, params: { postId } }) => {
+  beforeLoad: ({ context: { queryClient }, params: { postId } }) => {
     const queryOptions = {
       queryKey: ['posts', 'post', postId],
       queryFn: () => fetchPostById(postId),

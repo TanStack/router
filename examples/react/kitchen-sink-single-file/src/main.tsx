@@ -77,7 +77,7 @@ declare module '@tanstack/react-actions' {
 // Routes
 
 export const routerContext = new RouterContext<{
-  auth: AuthContext
+  auth: Auth
   actionClient: typeof actionClient
 }>()
 
@@ -105,7 +105,7 @@ const rootRoute = routerContext.createRootRoute({
                   ['/expensive', 'Expensive'],
                   ['/layout-a', 'Layout A'],
                   ['/layout-b', 'Layout B'],
-                  ['/authenticated', 'Authenticated'],
+                  ['/profile', 'Profile'],
                   ['/login', 'Login'],
                 ] as const
               ).map(([to, label]) => {
@@ -678,22 +678,14 @@ const expensiveRoute = new Route({
   component: lazyRouteComponent(() => import('./Expensive')),
 })
 
-const AuthError = new Error('Not logged in')
-
-const authenticatedRoute = new Route({
+const authRoute = new Route({
   getParentRoute: () => rootRoute,
-  path: 'authenticated',
+  id: 'auth',
   // Before loading, authenticate the user via our auth context
   // This will also happen during prefetching (e.g. hovering over links, etc)
-  beforeLoad: () => {
-    if (router.options.context.auth.status === 'loggedOut') {
-      throw AuthError
-    }
-  },
-  // If navigation is attempted while not authenticated, redirect to login
-  // If the error is from a prefetch, redirects will be ignored
-  onError: (error) => {
-    if (error === AuthError) {
+  beforeLoad: ({ context }) => {
+    // If the user is logged out, redirect them to the login page
+    if (context.auth.status === 'loggedOut') {
       throw redirect({
         to: loginRoute.to,
         search: {
@@ -705,16 +697,31 @@ const authenticatedRoute = new Route({
       })
     }
 
-    throw error
+    // Otherwise, return the user in context
+    return {
+      username: auth.username,
+    }
   },
-  component: () => {
-    const auth = useAuth()
+})
+
+const profileRoute = new Route({
+  getParentRoute: () => authRoute,
+  path: 'profile',
+  // Before loading, authenticate the user via our auth context
+  // This will also happen during prefetching (e.g. hovering over links, etc)
+  loader: async ({ context }) => {
+    await new Promise((r) => setTimeout(r, 1000))
+    return `Hello ${context.auth.username}!`
+  },
+  component: ({ useLoader, useContext }) => {
+    const { username } = useContext()
+    const message = useLoader()
 
     return (
       <div className="p-2 space-y-2">
-        <div>Super secret authenticated route!</div>
+        <div>{message}</div>
         <div>
-          Your username is <strong>{auth.username}</strong>
+          Your username is <strong>{username}</strong>
         </div>
       </div>
     )
@@ -727,14 +734,15 @@ const loginRoute = new Route({
   validateSearch: z.object({
     redirect: z.string().optional(),
   }),
-  component: () => {
+  component: ({ useContext }) => {
+    const { auth } = useContext()
     const search = useSearch({ from: loginRoute.id })
-    const auth = useAuth()
     const [username, setUsername] = React.useState('')
 
     const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
       auth.login(username)
+      router.invalidate()
     }
 
     // Ah, the subtle nuances of client side auth. 🙄
@@ -829,7 +837,7 @@ const routeTree = rootRoute.addChildren([
     usersRoute.addChildren([usersIndexRoute, userRoute]),
   ]),
   expensiveRoute,
-  authenticatedRoute,
+  authRoute.addChildren([profileRoute]),
   loginRoute,
   layoutRoute.addChildren([layoutARoute, layoutBRoute]),
 ])
@@ -860,18 +868,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Provide our location and routes to our application
-function App() {
-  return (
-    <>
-      <AuthProvider>
-        <SubApp />
-      </AuthProvider>
-    </>
-  )
+const auth: Auth = {
+  status: 'loggedOut',
+  username: undefined,
+  login: (username: string) => {
+    auth.status = 'loggedIn'
+    auth.username = username
+  },
+  logout: () => {
+    auth.status = 'loggedOut'
+    auth.username = undefined
+  },
 }
 
-function SubApp() {
+function App() {
   // This stuff is just to tweak our sandbox setup in real-time
   const [loaderDelay, setLoaderDelay] = useSessionStorage('loaderDelay', 500)
   const [actionDelay, setActionDelay] = useSessionStorage('actionDelay', 500)
@@ -931,7 +941,7 @@ function SubApp() {
           router={router}
           defaultPreload="intent"
           context={{
-            auth: useAuth(),
+            auth,
           }}
         />
       </ActionClientProvider>
@@ -971,45 +981,11 @@ function InvoiceFields({
   )
 }
 
-type AuthContext = {
+type Auth = {
   login: (username: string) => void
   logout: () => void
-} & AuthContextState
-
-type AuthContextState = {
   status: 'loggedOut' | 'loggedIn'
   username?: string
-}
-
-const AuthContext = React.createContext<AuthContext>(null!)
-
-function AuthProvider(props: { children: React.ReactNode }) {
-  const [state, setState] = React.useState<AuthContextState>({
-    status: 'loggedOut',
-  })
-
-  const login = (username: string) => {
-    setState({ status: 'loggedIn', username })
-  }
-
-  const logout = () => {
-    setState({ status: 'loggedOut' })
-  }
-
-  const contextValue = React.useMemo(
-    () => ({
-      ...state,
-      login,
-      logout,
-    }),
-    [state],
-  )
-
-  return <AuthContext.Provider value={contextValue} children={props.children} />
-}
-
-function useAuth() {
-  return React.useContext(AuthContext)
 }
 
 function Spinner({ show, wait }: { show?: boolean; wait?: `delay-${number}` }) {
