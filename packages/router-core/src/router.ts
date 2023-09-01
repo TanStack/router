@@ -445,7 +445,7 @@ export class Router<
 
   #onFocus = () => {
     if (this.options.refetchOnWindowFocus ?? true) {
-      this.reload()
+      this.invalidate()
     }
   }
 
@@ -1154,14 +1154,6 @@ export class Router<
     await Promise.all(matchPromises)
   }
 
-  reload = () => {
-    return this.navigate({
-      fromCurrent: true,
-      replace: true,
-      search: true,
-    } as any)
-  }
-
   resolvePath = (from: string, path: string) => {
     return resolvePath(this.basepath!, from, cleanPath(path))
   }
@@ -1854,7 +1846,11 @@ export class Router<
     }
 
     if (opts?.reload ?? true) {
-      return this.reload()
+      return this.navigate({
+        fromCurrent: true,
+        replace: true,
+        search: true,
+      } as any)
     }
   }
 }

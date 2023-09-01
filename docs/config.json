@@ -148,6 +148,10 @@
           "to": "examples/react/deferred-data?file=src%2Fmain.tsx"
         },
         {
+          "label": "Focus Refetching",
+          "to": "examples/react/focus-refetching?file=src%2Fmain.tsx"
+        },
+        {
           "label": "Scroll Restoration",
           "to": "examples/react/scroll-restoration?file=src%2Fmain.tsx"
         },
