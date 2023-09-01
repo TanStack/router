@@ -58,7 +58,14 @@ export type Split<S, TIncludeTrailingSlash = true> = S extends unknown
   : never
 
 export type ParsePathParams<T extends string> = keyof {
-  [K in Trim<Split<T>[number], '_'> as K extends `$${infer L}` ? L : never]: K
+  [K in Trim<
+    Split<T>[number],
+    '_'
+  > as K extends `${string}$${infer L}$${string}`
+    ? L
+    : K extends `${string}$${infer L}`
+    ? L
+    : never]: K
 }
 
 export type Join<T, Delimiter extends string = '/'> = T extends []

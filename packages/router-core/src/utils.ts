@@ -56,12 +56,17 @@ export type DeepAwaited<T> = T extends Promise<infer A>
   ? { [K in A]: DeepAwaited<B> }
   : T
 
+type PathParamMaskSegment<S extends string> =
+  S extends `${infer P}$${string}$${infer S}`
+    ? `${P}${string}${S}`
+    : S extends `${infer P}$${string}`
+    ? `${P}${string}`
+    : S
+
 export type PathParamMask<TRoutePath extends string> =
-  TRoutePath extends `${infer L}/$${infer C}/${infer R}`
-    ? PathParamMask<`${L}/${string}/${R}`>
-    : TRoutePath extends `${infer L}/$${infer C}`
-    ? PathParamMask<`${L}/${string}`>
-    : TRoutePath
+  TRoutePath extends `${infer T}/${infer U}`
+    ? `${PathParamMaskSegment<T>}/${PathParamMask<U>}`
+    : PathParamMaskSegment<TRoutePath>
 
 export type Timeout = ReturnType<typeof setTimeout>
 

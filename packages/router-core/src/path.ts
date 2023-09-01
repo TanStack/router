@@ -97,7 +97,7 @@ export function parsePathname(pathname?: string): Segment[] {
         }
       }
 
-      if (part.charAt(0) === '$') {
+      if (part.includes('$')) {
         return {
           type: 'param',
           value: part,
@@ -138,7 +138,8 @@ export function interpolatePath(
       }
 
       if (segment.type === 'param') {
-        return params![segment.value.substring(1)] ?? ''
+        const [p, v, ...s] = segment.value.split('$')
+        return `${p!}${params![v!] ?? ''}${s.join('$')}`
       }
 
       return segment.value
@@ -238,8 +239,20 @@ export function matchByPath(
           if (baseSegment?.value === '/') {
             return false
           }
-          if (baseSegment.value.charAt(0) !== '$') {
-            params[routeSegment.value.substring(1)] = baseSegment.value
+
+          const [p, v, ...suf] = routeSegment.value.split('$')
+          const s = suf.join('$')
+          const staticMatch = matchLocation.caseSensitive
+            ? baseSegment.value.startsWith(p!) && baseSegment.value.endsWith(s)
+            : baseSegment.value.toLowerCase().startsWith(p!.toLowerCase()) &&
+              baseSegment.value.toLowerCase().endsWith(s.toLowerCase())
+          if (!staticMatch) {
+            return false
+          }
+
+          const paramValue = baseSegment.value.slice(p!.length, -s.length)
+          if (!paramValue.startsWith('$')) {
+            params[v!] = paramValue
           }
         }
       }
