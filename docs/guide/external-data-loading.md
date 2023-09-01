@@ -74,12 +74,12 @@ const loaderClient = new LoaderClient({
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  fn: async () => {
+  loader: async () => {
     // Ensure our loader is loaded with an "await"
     await loaderClient.load({ key: 'posts' })
   },
   component: ({ useLoader }) => {
-    const { data: posts } = useLoaderInstance({ key: 'posts' })
+    const { data: posts } = useLoader({ key: 'posts' })
 
     return <div>...</div>
   },
