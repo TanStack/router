@@ -681,7 +681,8 @@ export function useMatch<
 
   const matchRouteId = useRouterState({
     select: (state) => {
-      const matches = state.matches
+      const matches =
+        state.status === 'pending' ? state.pendingMatches : state.matches
       const match = opts?.from
         ? matches.find((d) => d.routeId === opts?.from)
         : matches.find((d) => d.id === nearestMatchId)
@@ -705,7 +706,8 @@ export function useMatch<
 
   const matchSelection = useRouterState({
     select: (state) => {
-      const matches = state.matches
+      const matches =
+        state.status === 'pending' ? state.pendingMatches : state.matches
       const match = opts?.from
         ? matches.find((d) => d.routeId === opts?.from)
         : matches.find((d) => d.id === nearestMatchId)
