@@ -205,6 +205,8 @@ export interface RouterState<
   pendingMatchIds: string[]
   matches: RouteMatch<TRouteTree>[]
   pendingMatches: RouteMatch<TRouteTree>[]
+  renderedMatchIds: string[]
+  renderedMatches: RouteMatch<TRouteTree>[]
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
   lastUpdated: number
@@ -368,6 +370,21 @@ export class Router<
 
         if (matchesByIdChanged || pendingMatchesChanged) {
           next.pendingMatches = next.pendingMatchIds.map((id) => {
+            return next.matchesById[id] as any
+          })
+        }
+
+        if (matchesByIdChanged || matchesChanged || pendingMatchesChanged) {
+          const hasPendingComponent = next.pendingMatches.some((d) => {
+            const route = this.getRoute(d.routeId as any)
+            return !!route?.options.pendingComponent
+          })
+
+          next.renderedMatchIds = hasPendingComponent
+            ? next.pendingMatchIds
+            : next.matchIds
+
+          next.renderedMatches = next.renderedMatchIds.map((id) => {
             return next.matchesById[id] as any
           })
         }
@@ -666,24 +683,10 @@ export class Router<
     prevMatchesById: Record<string, RouteMatch<TRouteTree>>,
     nextMatches: AnyRouteMatch[],
   ): Record<string, RouteMatch<TRouteTree>> => {
-    const nextMatchesById: any = {
+    return {
       ...prevMatchesById,
+      ...Object.fromEntries(nextMatches.map((match) => [match.id, match])),
     }
-
-    let hadNew = false
-
-    nextMatches.forEach((match) => {
-      if (!nextMatchesById[match.id]) {
-        hadNew = true
-        nextMatchesById[match.id] = match
-      }
-    })
-
-    if (!hadNew) {
-      return prevMatchesById
-    }
-
-    return nextMatchesById
   }
 
   getRoute = (id: string): Route => {
@@ -893,16 +896,20 @@ export class Router<
               ? route.options.validateSearch.parse
               : route.options.validateSearch
 
-          const routeSearch = validator?.(parentSearchInfo.search) ?? {}
+          let routeSearch = validator?.(parentSearchInfo.search) ?? {}
 
-          const search = {
+          let search = {
             ...parentSearchInfo.search,
             ...routeSearch,
           }
 
+          routeSearch = replaceEqualDeep(match.routeSearch, routeSearch)
+          search = replaceEqualDeep(match.search, search)
+
           return {
-            routeSearch: replaceEqualDeep(match.routeSearch, routeSearch),
-            search: replaceEqualDeep(match.search, search),
+            routeSearch,
+            search,
+            searchDidChange: match.routeSearch !== routeSearch,
           }
         } catch (err: any) {
           match.searchError = new SearchParamError(err.message, {
@@ -1722,7 +1729,6 @@ export class Router<
     location: BuildNextOptions & { replace?: boolean; resetScroll?: boolean },
   ) => {
     const next = this.buildNext(location)
-    const id = '' + Date.now() + Math.random()
 
     if (this.navigateTimeout) clearTimeout(this.navigateTimeout)
 
@@ -1742,10 +1748,7 @@ export class Router<
       next.hash ? `#${next.hash}` : ''
     }`
 
-    this.history[nextAction === 'push' ? 'push' : 'replace'](href, {
-      id,
-      ...next.state,
-    })
+    this.history[nextAction === 'push' ? 'push' : 'replace'](href, next.state)
 
     this.resetNextScroll = location.resetScroll ?? true
 
@@ -1863,6 +1866,8 @@ function getInitialRouterState(): RouterState<any> {
     pendingMatchIds: [],
     matches: [],
     pendingMatches: [],
+    renderedMatchIds: [],
+    renderedMatches: [],
     lastUpdated: Date.now(),
   }
 }

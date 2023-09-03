@@ -600,16 +600,7 @@ function Matches() {
 
   const matchIds = useRouterState({
     select: (state) => {
-      const hasPendingComponent = state.pendingMatches.some((d) => {
-        const route = router.getRoute(d.routeId as any)
-        return !!route?.options.pendingComponent
-      })
-
-      if (hasPendingComponent) {
-        return state.pendingMatchIds
-      }
-
-      return state.matchIds
+      return state.renderedMatchIds
     },
   })
 
@@ -644,8 +635,8 @@ export function useMatches<T = RouteMatch[]>(opts?: {
 
   return useRouterState({
     select: (state) => {
-      const matches = state.matches.slice(
-        state.matches.findIndex((d) => d.id === matchIds[0]),
+      const matches = state.renderedMatches.slice(
+        state.renderedMatches.findIndex((d) => d.id === matchIds[0]),
       )
       return opts?.select ? opts.select(matches) : (matches as T)
     },
@@ -681,11 +672,9 @@ export function useMatch<
 
   const matchRouteId = useRouterState({
     select: (state) => {
-      const matches =
-        state.status === 'pending' ? state.pendingMatches : state.matches
       const match = opts?.from
-        ? matches.find((d) => d.routeId === opts?.from)
-        : matches.find((d) => d.id === nearestMatchId)
+        ? state.renderedMatches.find((d) => d.routeId === opts?.from)
+        : state.renderedMatches.find((d) => d.id === nearestMatchId)
 
       return match!.routeId
     },
@@ -706,11 +695,9 @@ export function useMatch<
 
   const matchSelection = useRouterState({
     select: (state) => {
-      const matches =
-        state.status === 'pending' ? state.pendingMatches : state.matches
       const match = opts?.from
-        ? matches.find((d) => d.routeId === opts?.from)
-        : matches.find((d) => d.id === nearestMatchId)
+        ? state.renderedMatches.find((d) => d.routeId === opts?.from)
+        : state.renderedMatches.find((d) => d.id === nearestMatchId)
 
       invariant(
         match,
@@ -832,7 +819,7 @@ export function useParams<
 ): TSelected {
   return useRouterState({
     select: (state: any) => {
-      const params = (last(state.matches) as any)?.params
+      const params = (last(state.renderedMatches) as any)?.params
       return opts?.select ? opts.select(params) : params
     },
   })
