@@ -243,6 +243,7 @@ type LinkCurrentTargetElement = {
 }
 
 export interface DehydratedRouterState {
+  matchIds: string[]
   dehydratedMatches: DehydratedRouteMatch[]
 }
 
@@ -298,6 +299,7 @@ export type RouterListener<TRouterEvent extends RouterEvent> = {
 
 const visibilityChangeEvent = 'visibilitychange'
 const focusEvent = 'focus'
+const preloadWarning = 'Error preloading route! ☝️'
 
 export class Router<
   TRouteTree extends AnyRoute = AnyRoute,
@@ -1322,7 +1324,7 @@ export class Router<
       if (preload) {
         this.preloadRoute(nextOpts).catch((err) => {
           console.warn(err)
-          console.warn('Error preloading route! ☝️')
+          console.warn(preloadWarning)
         })
       }
     }
@@ -1330,7 +1332,7 @@ export class Router<
     const handleTouchStart = (e: TouchEvent) => {
       this.preloadRoute(nextOpts).catch((err) => {
         console.warn(err)
-        console.warn('Error preloading route! ☝️')
+        console.warn(preloadWarning)
       })
     }
 
@@ -1346,7 +1348,7 @@ export class Router<
           target.preloadTimeout = null
           this.preloadRoute(nextOpts).catch((err) => {
             console.warn(err)
-            console.warn('Error preloading route! ☝️')
+            console.warn(preloadWarning)
           })
         }, preloadDelay)
       }
@@ -1377,6 +1379,7 @@ export class Router<
   dehydrate = (): DehydratedRouter => {
     return {
       state: {
+        matchIds: this.state.matchIds,
         dehydratedMatches: this.state.matches.map((d) =>
           pick(d, [
             'fetchedAt',
@@ -1408,13 +1411,15 @@ export class Router<
     const ctx = _ctx
     this.dehydratedData = ctx.payload as any
     this.options.hydrate?.(ctx.payload as any)
-    const { dehydratedMatches } = ctx.router.state
+    const dehydratedState = ctx.router.state
 
     let matches = this.matchRoutes(
       this.state.location.pathname,
       this.state.location.search,
     ).map((match) => {
-      const dehydratedMatch = dehydratedMatches.find((d) => d.id === match.id)
+      const dehydratedMatch = dehydratedState.dehydratedMatches.find(
+        (d) => d.id === match.id,
+      )
 
       invariant(
         dehydratedMatch,
@@ -1433,6 +1438,7 @@ export class Router<
     this.__store.setState((s) => {
       return {
         ...s,
+        matchIds: dehydratedState.matchIds,
         matches,
         matchesById: this.#mergeMatches(s.matchesById, matches),
       }
@@ -1456,10 +1462,10 @@ export class Router<
         return `<script id='${id}' suppressHydrationWarning>window["__TSR_DEHYDRATED__${escapeJSON(
           strKey,
         )}"] = ${JSON.stringify(data)}
-        // ;(() => {
-        //   var el = document.getElementById('${id}')
-        //   el.parentElement.removeChild(el)
-        // })()
+        ;(() => {
+          var el = document.getElementById('${id}')
+          el.parentElement.removeChild(el)
+        })()
         </script>`
       })
 
