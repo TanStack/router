@@ -79,7 +79,7 @@ const postsRoute = new Route({
     await loaderClient.load({ key: 'posts' })
   },
   component: ({ useLoader }) => {
-    const { data: posts } = useLoader({ key: 'posts' })
+    const { data: posts } = useLoaderInstance({ key: 'posts' })
 
     return <div>...</div>
   },
