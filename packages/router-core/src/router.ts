@@ -56,6 +56,7 @@ import {
   createMemoryHistory,
   RouterHistory,
 } from './history'
+import warning from 'tiny-warning'
 
 //
 
@@ -1761,7 +1762,7 @@ export class Router<
   ) => {
     this.__store.setState((prev) => {
       if (!prev.matchesById[id]) {
-        console.warn(`No match found with id: ${id}`)
+        return prev
       }
 
       return {
