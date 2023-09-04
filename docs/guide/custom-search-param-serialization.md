@@ -20,7 +20,7 @@ To do so, [use `Router`'s `parseSearch` and `stringifySearch` options](../docs/a
   // output: ?key[]=value1&key[]=value2
 
   function customStringifier(searchObj) {
-    return qs.stringify(searchString, { arrayFormat: 'bracket' });
+    return qs.stringify(searchObj, { arrayFormat: 'bracket' });
   }
 
   function customParser(searchString) {
