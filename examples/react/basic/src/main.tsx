@@ -10,6 +10,8 @@ import {
   RootRoute,
   ParseRoute,
   RegisteredRouter,
+  useRouter,
+  useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -78,8 +80,6 @@ const rootRoute = new RootRoute({
 const indexRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/',
-  outlets: ['test'],
-
   component: () => {
     return (
       <div className="p-2">
@@ -94,7 +94,6 @@ const postsRoute = new Route({
   path: 'posts',
   key: false,
   loader: fetchPosts,
-  outlets: ['modal'],
   component: ({ useLoader }) => {
     const posts = useLoader()
 
@@ -123,7 +122,6 @@ const postsRoute = new Route({
         </ul>
         <hr />
         <Outlet />
-        <Outlet slot="" from="/posts" />
       </div>
     )
   },
@@ -158,34 +156,6 @@ const postRoute = new Route({
       </div>
     )
   },
-  // slots: {
-  //   modal: {
-  //     component: ({ useLoader }) => {
-  //       const post = useLoader()
-
-  //       return (
-  //         <Dialog.Root
-  //           open
-  //           onOpenChange={(open) => {
-  //             if (!open) {
-  //               router.history.back()
-  //             }
-  //           }}
-  //         >
-  //           <Dialog.Portal>
-  //             <Dialog.Overlay className="fixed inset-0 bg-black/70" />
-  //             <Dialog.DialogContent className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-  //               <div className="space-y-2">
-  //                 <h4 className="text-xl font-bold underline">{post.title}</h4>
-  //                 <div className="text-sm">{post.body}</div>
-  //               </div>
-  //             </Dialog.DialogContent>
-  //           </Dialog.Portal>
-  //         </Dialog.Root>
-  //       )
-  //     },
-  //   },
-  // },
 })
 
 const routeTree = rootRoute.addChildren([
