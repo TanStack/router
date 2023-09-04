@@ -194,7 +194,7 @@ Search params are a great way to provide additional context to a route. For exam
 const link = (
   <Link
     to="/search"
-    searchParams={{
+    search={{
       query: 'tanstack',
     }}
   >
@@ -208,7 +208,7 @@ It's also common to want to update a single search param without supplying any o
 ```tsx
 const link = (
   <Link
-    searchParams={(prev) => ({
+    search={(prev) => ({
       ...prev,
       page: prev.page + 1,
     })}
@@ -282,7 +282,7 @@ export interface ActiveOptions {
   // If true, the link will only be active if the current URL hash matches the `hash` prop
   // Defaults to `false`
   includeHash?: boolean // Defaults to false
-  // If true, the link will only be active if the current URL search params inclusively match the `searchParams` prop
+  // If true, the link will only be active if the current URL search params inclusively match the `search` prop
   // Defaults to `true`
   includeSearch?: boolean
 }
