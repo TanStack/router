@@ -22,7 +22,7 @@ export interface ParsedPath {
 }
 
 export interface RouterLocation extends ParsedPath {
-  state: any
+  state: Record<string, any>
 }
 
 type BlockerFn = (retry: () => void, cancel: () => void) => void
@@ -162,7 +162,7 @@ export function createBrowserHistory(opts?: {
     (() =>
       `${window.location.pathname}${window.location.search}${window.location.hash}`)
   const createHref = opts?.createHref ?? ((path) => path)
-  const getLocation = () => parseLocation(getHref(), history.state)
+  const getLocation = () => parseLocation(getHref(), window.history.state)
 
   return createHistory({
     getLocation,
