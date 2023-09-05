@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently 'tsr watch' 'vite --port=3000'",
+    "dev": "concurrently \"tsr watch\" \"vite --port=3000\"",
     "build": "tsr generate && vite build",
     "serve": "vite preview",
     "start": "vite"

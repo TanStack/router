@@ -57,15 +57,15 @@ async function getRouteNodes(config: Config) {
         } else {
           const filePath = path.join(dir, fileName)
           const filePathNoExt = removeExt(filePath)
-          let routePath = cleanPath(`/${filePathNoExt.split('.').join('/')}`)
+          let routePath = replaceBackslash(cleanPath(`/${filePathNoExt.split('.').join('/')}`)) ?? ''
           const variableName = fileToVariable(routePath)
 
           // Remove the index from the route path and
           // if the route path is empty, use `/'
-          if (routePath.endsWith('/index')) {
-            routePath = routePath.replace(/\/index$/, '/')
-          } else if (routePath === 'index') {
+          if (routePath === 'index') {
             routePath = '/'
+          } else if (routePath.endsWith('/index')) {
+            routePath = routePath.replace(/\/index$/, '/')
           }
 
           routeNodes.push({
@@ -129,14 +129,16 @@ export async function generator(config: Config) {
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
   routeNodes.forEach((node) => {
-    routeNodes.forEach((existingNode) => {
-      if (
-        node.routePath?.startsWith(`${existingNode?.routePath ?? ''}/`)
-        // node.routePath.length > existingNode.routePath!.length
-      ) {
-        node.parent = existingNode
-      }
-    })
+    // routeNodes.forEach((existingNode) => {
+    //   if (
+    //     node.routePath?.startsWith(`${existingNode?.routePath ?? ''}/`)
+    //     // node.routePath.length > existingNode.routePath!.length
+    //   ) {
+    //     node.parent = existingNode
+    //   }
+    // })
+    const parentRoute = hasParentRoute(routeNodes, node.routePath)
+    if (parentRoute) node.parent = parentRoute
 
     node.path = node.parent
       ? node.routePath?.replace(node.parent.routePath!, '') || '/'
@@ -198,22 +200,21 @@ export async function generator(config: Config) {
   const routeConfigChildrenText = await buildRouteConfig(routeTree)
 
   const routeImports = [
-    `import { route as rootRoute } from './${path.relative(
+    `import { route as rootRoute } from './${sanitize(path.relative(
       path.dirname(config.generatedRouteTree),
-      path.resolve(config.routesDirectory, rootPathId),
-    )}'`,
+      path.resolve(config.routesDirectory, rootPathId)))}'`,
     ...multiSortBy(routeNodes, [
       (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
       (d) => d.routePath?.split('/').length,
       (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
       (d) => d,
     ]).map((node) => {
-      return `import { route as ${node.variableName}Route } from './${removeExt(
+      return `import { route as ${node.variableName}Route } from './${sanitize(removeExt(
         path.relative(
           path.dirname(config.generatedRouteTree),
           path.resolve(config.routesDirectory, node.filePath),
         ),
-      )}'`
+      ))}'`
     }),
   ].join('\n')
 
@@ -236,8 +237,7 @@ export async function generator(config: Config) {
           routeNode.isNonPath
             ? `id: '${routeNode.cleanedPath}'`
             : `path: '${routeNode.cleanedPath}'`,
-          `getParentRoute: () => ${
-            routeNode.parent?.variableName ?? 'root'
+          `getParentRoute: () => ${routeNode.parent?.variableName ?? 'root'
           }Route`,
           // `\n// ${JSON.stringify(
           //   {
@@ -350,6 +350,30 @@ function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+function sanitize(s?: string) {
+  return replaceBackslash(s?.replace(/\\index/gi, ''))
+}
+
 function removeUnderscores(s?: string) {
-  return s?.replace(/(^_|_$)/, '').replace(/(\/_|_\/)/, '/')
+  return s?.replace(/(^_|_$)/, '').replace(/(\/_|_\/)/, '/');
+}
+
+function replaceBackslash(s?: string) {
+  return s?.replace(/\\/gi, '/')
+}
+
+function hasParentRoute(routes: RouteNode[], routeToCheck: string | undefined) {
+  if (!routeToCheck || routeToCheck === "/") {
+    return null;
+  }
+  for (const route of routes) {
+    if (route.routePath === '/') continue;
+    if (routeToCheck.startsWith(`${route.routePath}/`) && route.routePath !== routeToCheck) {
+      return route;
+    }
+  }
+  const segments = routeToCheck.split("/");
+  segments.pop(); // Remove the last segment
+  const parentRoute = segments.join("/");
+  return hasParentRoute(routes, parentRoute);
 }
