@@ -362,7 +362,7 @@ function replaceBackslash(s?: string) {
   return s?.replace(/\\/gi, '/')
 }
 
-function hasParentRoute(routes: RouteNode[], routeToCheck: string | undefined) {
+function hasParentRoute(routes: RouteNode[], routeToCheck: string | undefined): RouteNode | null {
   if (!routeToCheck || routeToCheck === "/") {
     return null;
   }
