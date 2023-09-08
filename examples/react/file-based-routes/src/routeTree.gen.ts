@@ -1,7 +1,7 @@
 import { route as rootRoute } from "./routes/__root"
 import { route as PostsRoute } from "./routes/posts"
 import { route as LayoutRoute } from "./routes/_layout"
-import { route as IndexRoute } from "./routes/index"
+import { route as IndexRoute } from "./routes"
 import { route as PostsPostIdRoute } from "./routes/posts.$postId"
 import { route as LayoutLayoutBRoute } from "./routes/_layout/layout-b"
 import { route as LayoutLayoutARoute } from "./routes/_layout/layout-a"
