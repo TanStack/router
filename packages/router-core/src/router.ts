@@ -194,10 +194,7 @@ export interface RouterOptions<
   hydrate?: (dehydrated: TDehydrated) => void
 }
 
-export interface RouterState<
-  TRouteTree extends AnyRoute = AnyRoute,
-  // TState extends LocationState = LocationState,
-> {
+export interface RouterState<TRouteTree extends AnyRoute = AnyRoute> {
   status: 'idle' | 'pending'
   isFetching: boolean
   matchesById: Record<string, RouteMatch<TRouteTree>>
