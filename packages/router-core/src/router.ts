@@ -1163,6 +1163,7 @@ export class Router<
     replace,
     params,
     resetScroll,
+    state,
   }: NavigateOptions<TRouteTree, TFrom, TTo>) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
@@ -1191,6 +1192,7 @@ export class Router<
       replace,
       params,
       resetScroll,
+      state,
     })
   }
 

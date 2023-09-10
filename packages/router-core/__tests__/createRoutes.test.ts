@@ -171,8 +171,6 @@ describe('everything', () => {
       }),
     })
 
-    const route = router.getRoute('/dashboard/users/$userId')
-
     router.buildLink({
       to: '/dashboard/users/$userId',
       params: {
@@ -208,7 +206,7 @@ describe('everything', () => {
     })
 
     router.buildLink({
-      from: route.id,
+      from: '/dashboard/users/$userId',
       to: '',
     })
 
@@ -301,6 +299,7 @@ describe('everything', () => {
       search: (prev: any) => ({
         version: prev.version,
       }),
+      state: { version: 2 },
     })
 
     router.buildLink({
@@ -318,6 +317,9 @@ describe('everything', () => {
       to: '/dashboard/invoices/$invoiceId',
       params: {
         invoiceId: 2,
+      },
+      state: {
+        version: 2,
       },
     })
 
