@@ -395,7 +395,7 @@ const invoiceRoute = new Route({
           ...old,
           notes: notes ? notes : undefined,
         }),
-        state:{ version: '1'},
+        state:{ version: 1},
         replace: true,
       })
     }, [notes])
@@ -553,7 +553,7 @@ const usersRoute = new Route({
             },
           }
         },
-        state:{ version: '1'},
+        state:{ version: 1},
         replace: true,
       })
     }, [filterDraft])
