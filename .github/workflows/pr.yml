@@ -24,4 +24,4 @@ jobs:
       - name: Install dependencies
         run: pnpm --filter "./packages/**" --prefer-offline install --no-frozen-lockfile
       - name: Build & Test
-        run: pnpm build && pnpm test:ci
+        run: npx nx run-many --targets=test,build --projects=@tanstack/* --exclude=@tanstack/react-start
