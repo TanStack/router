@@ -914,13 +914,7 @@ export function useNavigate<
       TMaskFrom extends RoutePaths<TRouteTree> = '/',
       TMaskTo extends string = '',
     >(
-      opts?: NavigateOptions<
-        RegisteredRouter['routeTree'],
-        TFrom,
-        TTo,
-        TMaskFrom,
-        TMaskTo
-      >,
+      opts?: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
     ) => {
       return router.navigate({ ...defaultOpts, ...(opts as any) })
     },
@@ -928,16 +922,18 @@ export function useNavigate<
   )
 }
 
-export function useMatchRoute() {
+export function useMatchRoute<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+>() {
   const router = useRouter()
 
   return React.useCallback(
     <
-      TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
       TFrom extends RoutePaths<TRouteTree> = '/',
       TTo extends string = '',
       TMaskFrom extends RoutePaths<TRouteTree> = '/',
       TMaskTo extends string = '',
+      TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
     >(
       opts: MakeUseMatchRouteOptions<
         TRouteTree,
@@ -946,7 +942,7 @@ export function useMatchRoute() {
         TMaskFrom,
         TMaskTo
       >,
-    ) => {
+    ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
       const { pending, caseSensitive, ...rest } = opts
 
       return router.matchRoute(rest as any, {
