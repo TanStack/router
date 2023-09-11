@@ -1679,7 +1679,7 @@ export class Router<
         `${dest.to ?? ''}`,
       )
 
-      const fromMatches = this.matchRoutes(from.pathname, from.search)
+      const fromMatches = this.matchRoutes(fromPathname, from.search)
 
       const prevParams = { ...last(fromMatches)?.params }
 
@@ -1778,20 +1778,27 @@ export class Router<
       let maskedNext = maskedDest ? build(maskedDest) : undefined
 
       if (!maskedNext) {
-        const foundMask = this.options.routeMasks?.find((d) => {
+        let params = {}
+
+        let foundMask = this.options.routeMasks?.find((d) => {
           const match = matchPathname(this.basepath, next.pathname, {
             to: d.from,
             fuzzy: false,
           })
 
           if (match) {
-            return match
+            params = match
+            return true
           }
 
           return false
         })
 
         if (foundMask) {
+          foundMask = {
+            ...foundMask,
+            from: interpolatePath(foundMask.from, params) as any,
+          }
           maskedDest = foundMask
           maskedNext = build(maskedDest)
         }
