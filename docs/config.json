@@ -86,6 +86,10 @@
           "to": "guide/code-splitting"
         },
         {
+          "label": "Route Masking",
+          "to": "guide/route-masking"
+        },
+        {
           "label": "Navigation Blocking",
           "to": "guide/navigation-blocking"
         },

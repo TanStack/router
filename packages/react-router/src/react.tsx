@@ -22,7 +22,7 @@ import {
   ResolveId,
   AnySearchSchema,
   ParsePathParams,
-  MergeParamsFromParent,
+  MergeFromFromParent,
   RouteContext,
   AnyContext,
   UseLoaderResult,
@@ -37,7 +37,12 @@ import {
   AllParams,
   rootRouteId,
   AnyPathParams,
+  Expand,
+  ResolveAllParams,
 } from '@tanstack/router-core'
+
+const useLayoutEffect =
+  typeof document !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
 declare module '@tanstack/router-core' {
   interface RegisterRouteComponent<
@@ -104,18 +109,17 @@ declare module '@tanstack/router-core' {
       TParentRoute,
       TSearchSchema
     >,
-    TParams extends RouteConstraints['TParams'] = Record<
-      ParsePathParams<TPath>,
-      string
+    TParams extends RouteConstraints['TParams'] = Expand<
+      Record<ParsePathParams<TPath>, string>
     >,
-    TAllParams extends RouteConstraints['TAllParams'] = MergeParamsFromParent<
-      TParentRoute['types']['allParams'],
+    TAllParams extends RouteConstraints['TAllParams'] = ResolveAllParams<
+      TParentRoute,
       TParams
     >,
     TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['types']['routeContext'],
     TAllParentContext extends RouteConstraints['TAllParentContext'] = TParentRoute['types']['context'],
     TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
-    TAllContext extends RouteConstraints['TAllContext'] = MergeParamsFromParent<
+    TAllContext extends RouteConstraints['TAllContext'] = MergeFromFromParent<
       TParentRoute['types']['context'],
       TRouteContext
     >,
@@ -333,9 +337,18 @@ export function lazyRouteComponent<
 }
 
 export type LinkPropsOptions<
-  TFrom extends RoutePaths<RegisteredRouter['routeTree']> = '/',
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = LinkOptions<RegisteredRouter['routeTree'], TFrom, TTo> & {
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
+> = LinkOptions<
+  RegisteredRouter['routeTree'],
+  TFrom,
+  TTo,
+  TMaskFrom,
+  TMaskTo
+> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   activeProps?:
     | React.AnchorHTMLAttributes<HTMLAnchorElement>
@@ -349,14 +362,21 @@ export type LinkPropsOptions<
 }
 
 export type MakeUseMatchRouteOptions<
-  TFrom extends RoutePaths<RegisteredRouter['routeTree']> = '/',
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = ToOptions<RegisteredRouter['routeTree'], TFrom, TTo> & MatchRouteOptions
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
+> = ToOptions<RegisteredRouter['routeTree'], TFrom, TTo, TMaskFrom, TMaskTo> &
+  MatchRouteOptions
 
 export type MakeMatchRouteOptions<
-  TFrom extends RoutePaths<RegisteredRouter['routeTree']> = '/',
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = ToOptions<RegisteredRouter['routeTree'], TFrom, TTo> &
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
+> = ToOptions<RegisteredRouter['routeTree'], TFrom, TTo, TMaskFrom, TMaskTo> &
   MatchRouteOptions & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
@@ -370,14 +390,21 @@ export type MakeMatchRouteOptions<
   }
 
 export type MakeLinkPropsOptions<
-  TFrom extends string = '/',
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = LinkPropsOptions<TFrom, TTo> & React.AnchorHTMLAttributes<HTMLAnchorElement>
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
+> = LinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
+  React.AnchorHTMLAttributes<HTMLAnchorElement>
 
 export type MakeLinkOptions<
-  TFrom extends RoutePaths<RegisteredRouter['routeTree']> = '/',
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = LinkPropsOptions<TFrom, TTo> &
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
+> = LinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
   Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
@@ -394,10 +421,13 @@ export type PromptProps = {
 //
 
 export function useLinkProps<
-  TFrom extends string = '/',
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
 >(
-  options: MakeLinkPropsOptions<TFrom, TTo>,
+  options: MakeLinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
   const router = useRouter()
 
@@ -415,6 +445,8 @@ export function useLinkProps<
     search,
     params,
     to = '.',
+    state,
+    mask,
     preload,
     preloadDelay,
     replace,
@@ -477,7 +509,11 @@ export function useLinkProps<
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
     ...rest,
-    href: disabled ? undefined : next.href,
+    href: disabled
+      ? undefined
+      : next.maskedLocation
+      ? next.maskedLocation.href
+      : next.href,
     onClick: composeHandlers([onClick, handleReactClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
@@ -509,10 +545,13 @@ export function useLinkProps<
 
 export interface LinkComponent<TProps extends Record<string, any> = {}> {
   <
-    TFrom extends RoutePaths<RegisteredRouter['routeTree']> = '/',
+    TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+    TFrom extends RoutePaths<TRouteTree> = '/',
     TTo extends string = '',
+    TMaskFrom extends RoutePaths<TRouteTree> = '/',
+    TMaskTo extends string = '',
   >(
-    props: MakeLinkOptions<TFrom, TTo> &
+    props: MakeLinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
       TProps &
       React.RefAttributes<HTMLAnchorElement>,
   ): ReactNode
@@ -538,9 +577,20 @@ export const Link: LinkComponent = React.forwardRef((props: any, ref) => {
 }) as any
 
 export function Navigate<
-  TFrom extends RoutePaths<RegisteredRouter['routeTree']> = '/',
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
->(props: NavigateOptions<RegisteredRouter['routeTree'], TFrom, TTo>): null {
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
+>(
+  props: NavigateOptions<
+    RegisteredRouter['routeTree'],
+    TFrom,
+    TTo,
+    TMaskFrom,
+    TMaskTo
+  >,
+): null {
   const router = useRouter()
 
   React.useLayoutEffect(() => {
@@ -604,11 +654,31 @@ function Matches() {
     },
   })
 
+  const locationKey = useRouterState({
+    select: (d) => d.resolvedLocation.state?.key,
+  })
+
+  const route = router.getRoute(rootRouteId)
+
+  const errorComponent = React.useCallback(
+    (props: any) => {
+      return React.createElement(ErrorComponent, {
+        ...props,
+        useMatch: route.useMatch,
+        useContext: route.useContext,
+        useRouteContext: route.useRouteContext,
+        useSearch: route.useSearch,
+        useParams: route.useParams,
+      })
+    },
+    [route],
+  )
+
   return (
     <matchIdsContext.Provider value={[undefined!, ...matchIds]}>
       <CatchBoundary
-        errorComponent={ErrorComponent}
-        route={router.getRoute(rootRouteId)}
+        resetKey={locationKey}
+        errorComponent={errorComponent}
         onCatch={() => {
           warning(
             false,
@@ -826,15 +896,24 @@ export function useParams<
 }
 
 export function useNavigate<
-  TDefaultFrom extends RoutePaths<RegisteredRouter['routeTree']> = '/',
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TDefaultFrom extends RoutePaths<TRouteTree> = '/',
 >(defaultOpts?: { from?: TDefaultFrom }) {
   const router = useRouter()
   return React.useCallback(
     <
-      TFrom extends RoutePaths<RegisteredRouter['routeTree']> = TDefaultFrom,
+      TFrom extends RoutePaths<TRouteTree> = TDefaultFrom,
       TTo extends string = '',
+      TMaskFrom extends RoutePaths<TRouteTree> = '/',
+      TMaskTo extends string = '',
     >(
-      opts?: NavigateOptions<RegisteredRouter['routeTree'], TFrom, TTo>,
+      opts?: NavigateOptions<
+        RegisteredRouter['routeTree'],
+        TFrom,
+        TTo,
+        TMaskFrom,
+        TMaskTo
+      >,
     ) => {
       return router.navigate({ ...defaultOpts, ...(opts as any) })
     },
@@ -846,8 +925,20 @@ export function useMatchRoute() {
   const router = useRouter()
 
   return React.useCallback(
-    <TFrom extends string = '/', TTo extends string = ''>(
-      opts: MakeUseMatchRouteOptions<TFrom, TTo>,
+    <
+      TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+      TFrom extends RoutePaths<TRouteTree> = '/',
+      TTo extends string = '',
+      TMaskFrom extends RoutePaths<TRouteTree> = '/',
+      TMaskTo extends string = '',
+    >(
+      opts: MakeUseMatchRouteOptions<
+        TRouteTree,
+        TFrom,
+        TTo,
+        TMaskFrom,
+        TMaskTo
+      >,
     ) => {
       const { pending, caseSensitive, ...rest } = opts
 
@@ -860,11 +951,17 @@ export function useMatchRoute() {
   )
 }
 
-export function MatchRoute<TFrom extends string = '/', TTo extends string = ''>(
-  props: MakeMatchRouteOptions<TFrom, TTo>,
+export function MatchRoute<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> = '/',
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
+>(
+  props: MakeMatchRouteOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): any {
   const matchRoute = useMatchRoute()
-  const params = matchRoute(props)
+  const params = matchRoute(props as any)
 
   if (typeof props.children === 'function') {
     return (props.children as any)(params)
@@ -890,12 +987,15 @@ function Match({ matchIds }: { matchIds: string[] }) {
   const matchId = matchIds[0]!
   const routeId = router.getRouteMatch(matchId)!.routeId
   const route = router.getRoute(routeId)
+  const locationKey = useRouterState({
+    select: (s) => s.resolvedLocation.state?.key,
+  })
 
   const PendingComponent = (route.options.pendingComponent ??
     router.options.defaultPendingComponent ??
     defaultPending) as any
 
-  const errorComponent =
+  const routeErrorComponent =
     route.options.errorComponent ??
     router.options.defaultErrorComponent ??
     ErrorComponent
@@ -905,7 +1005,23 @@ function Match({ matchIds }: { matchIds: string[] }) {
       ? React.Suspense
       : SafeFragment
 
-  const ResolvedCatchBoundary = !!errorComponent ? CatchBoundary : SafeFragment
+  const ResolvedCatchBoundary = !!routeErrorComponent
+    ? CatchBoundary
+    : SafeFragment
+
+  const errorComponent = React.useCallback(
+    (props: any) => {
+      return React.createElement(routeErrorComponent, {
+        ...props,
+        useMatch: route.useMatch,
+        useContext: route.useContext,
+        useRouteContext: route.useRouteContext,
+        useSearch: route.useSearch,
+        useParams: route.useParams,
+      })
+    },
+    [route],
+  )
 
   return (
     <matchIdsContext.Provider value={matchIds}>
@@ -919,9 +1035,8 @@ function Match({ matchIds }: { matchIds: string[] }) {
         })}
       >
         <ResolvedCatchBoundary
-          key={route.id}
+          resetKey={locationKey}
           errorComponent={errorComponent}
-          route={route}
           onCatch={() => {
             warning(false, `Error in route match: ${matchId}`)
           }}
@@ -1028,80 +1143,58 @@ export function useHydrate() {
 // there has to be a better way to reset error boundaries when the
 // router's location key changes.
 
-class CatchBoundary extends React.Component<{
+export function CatchBoundary(props: {
+  resetKey: string
   children: any
-  errorComponent: any
-  route: AnyRoute
-  onCatch: (error: any, info: any) => void
-}> {
-  state = {
-    error: false,
-    info: undefined,
-  }
-  componentDidCatch(error: any, info: any) {
-    this.props.onCatch(error, info)
-    this.setState({
-      error,
-      info,
-    })
-  }
-  render() {
-    return (
-      <CatchBoundaryInner
-        {...this.props}
-        errorState={this.state}
-        reset={() => this.setState({})}
-      />
-    )
-  }
+  errorComponent?: any
+  onCatch: (error: any) => void
+}) {
+  const errorComponent = props.errorComponent ?? ErrorComponent
+
+  return (
+    <CatchBoundaryImpl
+      resetKey={props.resetKey}
+      onCatch={props.onCatch}
+      children={({ error }) => {
+        if (error) {
+          return React.createElement(errorComponent, {
+            error,
+          })
+        }
+
+        return props.children
+      }}
+    />
+  )
 }
 
-function CatchBoundaryInner(props: {
-  children: any
-  errorComponent: any
-  route: AnyRoute
-  errorState: { error: unknown; info: any }
-  reset: () => void
-}) {
-  const locationKey = useRouterState({
-    select: (d) => d.resolvedLocation.key,
-  })
-
-  const [activeErrorState, setActiveErrorState] = React.useState(
-    props.errorState,
-  )
-  const errorComponent = props.errorComponent ?? ErrorComponent
-  const prevKeyRef = React.useRef('' as any)
-
-  React.useEffect(() => {
-    if (activeErrorState) {
-      if (locationKey !== prevKeyRef.current) {
-        setActiveErrorState({} as any)
-      }
-    }
-
-    prevKeyRef.current = locationKey
-  }, [activeErrorState, locationKey])
-
-  React.useEffect(() => {
-    if (props.errorState.error) {
-      setActiveErrorState(props.errorState)
-    }
-    // props.reset()
-  }, [props.errorState.error])
-
-  if (props.errorState.error && activeErrorState.error) {
-    return React.createElement(errorComponent, {
-      ...activeErrorState,
-      useMatch: props.route.useMatch,
-      useContext: props.route.useContext,
-      useRouteContext: props.route.useRouteContext,
-      useSearch: props.route.useSearch,
-      useParams: props.route.useParams,
-    })
+export class CatchBoundaryImpl extends React.Component<{
+  resetKey: string
+  children: (props: { error: any; reset: () => void }) => any
+  onCatch?: (error: any) => void
+}> {
+  state = { error: null } as any
+  static getDerivedStateFromError(error: any) {
+    return { error }
   }
-
-  return props.children
+  componentDidUpdate(
+    prevProps: Readonly<{
+      resetKey: string
+      children: (props: { error: any; reset: () => void }) => any
+      onCatch?: ((error: any, info: any) => void) | undefined
+    }>,
+    prevState: any,
+  ): void {
+    if (prevState.error && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ error: null })
+    }
+  }
+  componentDidCatch(error: any) {
+    this.props.onCatch?.(error)
+  }
+  render() {
+    return this.props.children(this.state)
+  }
 }
 
 export function ErrorComponent({ error }: { error: any }) {

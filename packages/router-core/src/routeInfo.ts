@@ -1,5 +1,5 @@
 import { AnyRoute, Route } from './route'
-import { MergeUnion } from './utils'
+import { UnionToIntersection } from './utils'
 
 export type ParseRoute<TRouteTree extends AnyRoute> =
   | TRouteTree
@@ -60,10 +60,10 @@ export type RoutePaths<TRouteTree extends AnyRoute> =
   | ParseRoute<TRouteTree>['fullPath']
   | '/'
 
-export type FullSearchSchema<TRouteTree extends AnyRoute> = MergeUnion<
+export type FullSearchSchema<TRouteTree extends AnyRoute> = UnionToIntersection<
   ParseRoute<TRouteTree>['types']['fullSearchSchema']
 > & {}
 
-export type AllParams<TRouteTree extends AnyRoute> = MergeUnion<
+export type AllParams<TRouteTree extends AnyRoute> = UnionToIntersection<
   ParseRoute<TRouteTree>['types']['allParams']
 >

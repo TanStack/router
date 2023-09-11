@@ -22,7 +22,7 @@ export type ScrollRestorationOptions = {
   getKey?: (location: ParsedLocation) => string
 }
 
-const defaultGetKey = (location: ParsedLocation) => location.key!
+const defaultGetKey = (location: ParsedLocation) => location.state.key!
 
 export function watchScrollPositions(
   router: AnyRouter,

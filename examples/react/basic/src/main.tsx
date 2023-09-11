@@ -8,14 +8,9 @@ import {
   ErrorComponent,
   Router,
   RootRoute,
-  ParseRoute,
-  RegisteredRouter,
-  useRouter,
-  useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
-import * as Dialog from '@radix-ui/react-dialog'
 
 type PostType = {
   id: string

@@ -29,6 +29,7 @@ import {
   RegisteredRouteComponent,
   RegisteredErrorRouteComponent,
   RegisteredPendingRouteComponent,
+  RouteMask,
 } from './route'
 import {
   RoutesById,
@@ -50,13 +51,15 @@ import {
   Updater,
   replaceEqualDeep,
   partialDeepEqual,
+  NonNullableUpdater,
 } from './utils'
 import {
   createBrowserHistory,
   createMemoryHistory,
+  HistoryLocation,
+  LocationState,
   RouterHistory,
 } from './history'
-import warning from 'tiny-warning'
 
 //
 
@@ -78,25 +81,20 @@ export type RegisteredRouter = Register extends {
   ? TRouter
   : AnyRouter
 
-export interface LocationState {}
-
-export interface ParsedLocation<
-  TSearchObj extends AnySearchSchema = {},
-  // TState extends LocationState = LocationState,
-> {
+export interface ParsedLocation<TSearchObj extends AnySearchSchema = {}> {
   href: string
   pathname: string
   search: TSearchObj
   searchStr: string
   state: LocationState
   hash: string
-  key?: string
+  maskedLocation?: ParsedLocation<TSearchObj>
+  unmaskOnReload?: boolean
 }
 
 export interface FromLocation {
   pathname: string
   search?: unknown
-  key?: string
   hash?: string
 }
 
@@ -158,7 +156,7 @@ export interface RouterOptions<
   parseSearch?: SearchParser
   defaultPreload?: false | 'intent'
   defaultPreloadDelay?: number
-  refetchOnWindowFocus?: boolean
+  reloadOnWindowFocus?: boolean
   defaultComponent?: RegisteredRouteComponent<
     unknown,
     AnySearchSchema,
@@ -192,6 +190,8 @@ export interface RouterOptions<
   }>
   dehydrate?: () => TDehydrated
   hydrate?: (dehydrated: TDehydrated) => void
+  routeMasks?: RouteMask<TRouteTree>[]
+  unmaskOnReload?: boolean
 }
 
 export interface RouterState<TRouteTree extends AnyRoute = AnyRoute> {
@@ -216,11 +216,21 @@ export interface BuildNextOptions {
   params?: true | Updater<unknown>
   search?: true | Updater<unknown>
   hash?: true | Updater<string>
-  state?: LocationState
-  key?: string
+  state?: true | NonNullableUpdater<LocationState>
+  mask?: {
+    to?: string | number | null
+    params?: true | Updater<unknown>
+    search?: true | Updater<unknown>
+    hash?: true | Updater<string>
+    state?: true | NonNullableUpdater<LocationState>
+    unmaskOnReload?: boolean
+  }
   from?: string
-  fromCurrent?: boolean
-  __matches?: AnyRouteMatch[]
+}
+
+export interface CommitLocationOptions {
+  replace?: boolean
+  resetScroll?: boolean
 }
 
 export interface MatchLocation {
@@ -228,7 +238,6 @@ export interface MatchLocation {
   fuzzy?: boolean
   caseSensitive?: boolean
   from?: string
-  fromCurrent?: boolean
 }
 
 export interface MatchRouteOptions {
@@ -328,6 +337,8 @@ export class Router<
   state: RouterState<TRouteTree>
   dehydratedData?: TDehydrated
   resetNextScroll = false
+  tempLocationKey = `${Math.round(Math.random() * 10000000)}`
+  // nextTemporaryLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
 
   constructor(options: RouterConstructorOptions<TRouteTree, TDehydrated>) {
     this.options = {
@@ -399,15 +410,15 @@ export class Router<
 
     this.update(options)
 
-    const next = this.buildNext({
-      hash: true,
-      fromCurrent: true,
+    const nextLocation = this.buildLocation({
       search: true,
+      params: true,
+      hash: true,
       state: true,
     })
 
-    if (this.state.location.href !== next.href) {
-      this.#commitLocation({ ...next, replace: true })
+    if (this.state.location.href !== nextLocation.href) {
+      this.#commitLocation({ ...nextLocation, replace: true })
     }
   }
 
@@ -461,8 +472,10 @@ export class Router<
   }
 
   #onFocus = () => {
-    if (this.options.refetchOnWindowFocus ?? true) {
-      this.invalidate()
+    if (this.options.reloadOnWindowFocus ?? true) {
+      this.invalidate({
+        __fromFocus: true,
+      })
     }
   }
 
@@ -512,17 +525,6 @@ export class Router<
     }
 
     return this
-  }
-
-  buildNext = (opts: BuildNextOptions): ParsedLocation => {
-    const next = this.#buildLocation(opts)
-
-    const __matches = this.matchRoutes(next.pathname, next.search)
-
-    return this.#buildLocation({
-      ...opts,
-      __matches,
-    })
   }
 
   cancelMatches = () => {
@@ -605,7 +607,7 @@ export class Router<
       try {
         // Load the matches
         try {
-          await this.loadMatches(pendingMatches)
+          await this.loadMatches(pendingMatches.map((d) => d.id))
         } catch (err) {
           // swallow this error, since we'll display the
           // errors on the route components
@@ -680,10 +682,20 @@ export class Router<
     prevMatchesById: Record<string, RouteMatch<TRouteTree>>,
     nextMatches: AnyRouteMatch[],
   ): Record<string, RouteMatch<TRouteTree>> => {
-    return {
-      ...prevMatchesById,
-      ...Object.fromEntries(nextMatches.map((match) => [match.id, match])),
-    }
+    let matchesById = { ...prevMatchesById }
+
+    nextMatches.forEach((match) => {
+      if (!matchesById[match.id]) {
+        matchesById[match.id] = match
+      }
+
+      matchesById[match.id] = {
+        ...matchesById[match.id],
+        ...match,
+      }
+    })
+
+    return matchesById
   }
 
   getRoute = (id: string): Route => {
@@ -699,7 +711,8 @@ export class Router<
       maxAge?: number
     } = this.state.location,
   ) => {
-    const next = this.buildNext(navigateOpts)
+    let next = this.buildLocation(navigateOpts)
+
     const matches = this.matchRoutes(next.pathname, next.search, {
       throwOnError: true,
     })
@@ -711,12 +724,15 @@ export class Router<
       }
     })
 
-    await this.loadMatches(matches, {
-      preload: true,
-      maxAge: navigateOpts.maxAge,
-    })
+    await this.loadMatches(
+      matches.map((d) => d.id),
+      {
+        preload: true,
+        maxAge: navigateOpts.maxAge,
+      },
+    )
 
-    return matches
+    return [last(matches)!, matches] as const
   }
 
   cleanMatches = () => {
@@ -928,14 +944,13 @@ export class Router<
   }
 
   loadMatches = async (
-    _resolvedMatches: AnyRouteMatch[],
+    matchIds: string[],
     opts?: {
       preload?: boolean
       maxAge?: number
     },
   ) => {
-    const getFreshMatches = () =>
-      _resolvedMatches.map((d) => this.getRouteMatch(d.id)!)
+    const getFreshMatches = () => matchIds.map((d) => this.getRouteMatch(d)!)
 
     if (!opts?.preload) {
       getFreshMatches().forEach((match) => {
@@ -1029,8 +1044,9 @@ export class Router<
         }
       }
     } catch (err) {
-      if (!opts?.preload) {
-        this.navigate(err as any)
+      if (isRedirect(err)) {
+        if (!opts?.preload) this.navigate(err as any)
+        return
       }
 
       throw err
@@ -1155,6 +1171,8 @@ export class Router<
   navigate = async <
     TFrom extends RoutePaths<TRouteTree> = '/',
     TTo extends string = '',
+    TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+    TMaskTo extends string = '',
   >({
     from,
     to = '' as any,
@@ -1163,7 +1181,7 @@ export class Router<
     replace,
     params,
     resetScroll,
-  }: NavigateOptions<TRouteTree, TFrom, TTo>) => {
+  }: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
@@ -1183,21 +1201,22 @@ export class Router<
       'Attempting to navigate to external url with this.navigate!',
     )
 
-    return this.#commitLocation({
+    return this.#buildAndCommitLocation({
       from: fromString,
       to: toString,
       search,
       hash,
-      replace,
       params,
+      replace,
       resetScroll,
     })
   }
 
   matchRoute = <
+    TRouteTree extends AnyRoute = AnyRoute,
     TFrom extends RoutePaths<TRouteTree> = '/',
     TTo extends string = '',
-    TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+    TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
   >(
     location: ToOptions<TRouteTree, TFrom, TTo>,
     opts?: MatchRouteOptions,
@@ -1209,7 +1228,7 @@ export class Router<
         : undefined,
     } as any
 
-    const next = this.buildNext(location)
+    const next = this.buildLocation(location)
     if (opts?.pending && this.state.status !== 'pending') {
       return false
     }
@@ -1254,6 +1273,7 @@ export class Router<
     preloadDelay: userPreloadDelay,
     disabled,
     state,
+    mask,
     resetScroll,
   }: LinkOptions<TRouteTree, TFrom, TTo>): LinkInfo => {
     // If this link simply reloads the current route,
@@ -1278,10 +1298,11 @@ export class Router<
       hash,
       replace,
       state,
+      mask,
       resetScroll,
     }
 
-    const next = this.buildNext(nextOpts)
+    const next = this.buildLocation(nextOpts)
 
     preload = preload ?? this.options.defaultPreload
     const preloadDelay =
@@ -1320,7 +1341,7 @@ export class Router<
         e.preventDefault()
 
         // All is well? Navigate!
-        this.#commitLocation(nextOpts as any)
+        this.#commitLocation({ ...next, replace, resetScroll })
       }
     }
 
@@ -1600,154 +1621,269 @@ export class Router<
   #parseLocation = (
     previousLocation?: ParsedLocation,
   ): ParsedLocation<FullSearchSchema<TRouteTree>> => {
-    let { pathname, search, hash, state } = this.history.location
-
-    const parsedSearch = this.options.parseSearch(search)
-
-    return {
-      pathname: pathname,
-      searchStr: search,
-      search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
-      hash: hash.split('#').reverse()[0] ?? '',
-      href: `${pathname}${search}${hash}`,
-      state: state as LocationState,
-      key: state?.key || '__init__',
-    }
-  }
-
-  #buildLocation = (dest: BuildNextOptions = {}): ParsedLocation => {
-    dest.fromCurrent = dest.fromCurrent ?? dest.to === ''
-
-    const fromPathname = dest.fromCurrent
-      ? this.state.location.pathname
-      : dest.from ?? this.state.location.pathname
-
-    let pathname = resolvePath(
-      this.basepath ?? '/',
-      fromPathname,
-      `${dest.to ?? ''}`,
-    )
-
-    const fromMatches = this.matchRoutes(
-      this.state.location.pathname,
-      this.state.location.search,
-    )
-
-    const prevParams = { ...last(fromMatches)?.params }
-
-    let nextParams =
-      (dest.params ?? true) === true
-        ? prevParams
-        : functionalUpdate(dest.params!, prevParams)
-
-    if (nextParams) {
-      dest.__matches
-        ?.map((d) => this.getRoute(d.routeId).options.stringifyParams)
-        .filter(Boolean)
-        .forEach((fn) => {
-          nextParams = { ...nextParams!, ...fn!(nextParams!) }
-        })
-    }
-
-    pathname = interpolatePath(pathname, nextParams ?? {})
-
-    const preSearchFilters =
-      dest.__matches
-        ?.map(
-          (match) =>
-            this.getRoute(match.routeId).options.preSearchFilters ?? [],
-        )
-        .flat()
-        .filter(Boolean) ?? []
-
-    const postSearchFilters =
-      dest.__matches
-        ?.map(
-          (match) =>
-            this.getRoute(match.routeId).options.postSearchFilters ?? [],
-        )
-        .flat()
-        .filter(Boolean) ?? []
-
-    // Pre filters first
-    const preFilteredSearch = preSearchFilters?.length
-      ? preSearchFilters?.reduce(
-          (prev, next) => next(prev),
-          this.state.location.search,
-        )
-      : this.state.location.search
-
-    // Then the link/navigate function
-    const destSearch =
-      dest.search === true
-        ? preFilteredSearch // Preserve resolvedFrom true
-        : dest.search
-        ? functionalUpdate(dest.search, preFilteredSearch) ?? {} // Updater
-        : preSearchFilters?.length
-        ? preFilteredSearch // Preserve resolvedFrom filters
-        : {}
-
-    // Then post filters
-    const postFilteredSearch = postSearchFilters?.length
-      ? postSearchFilters.reduce((prev, next) => next(prev), destSearch)
-      : destSearch
-
-    const search = replaceEqualDeep(
-      this.state.location.search,
-      postFilteredSearch,
-    )
-
-    const searchStr = this.options.stringifySearch(search)
-
-    const hash =
-      dest.hash === true
-        ? this.state.location.hash
-        : functionalUpdate(dest.hash!, this.state.location.hash)
-
-    const hashStr = hash ? `#${hash}` : ''
-
-    const nextState =
-      dest.state === true
-        ? this.state.location.state
-        : functionalUpdate(dest.state, this.state.location.state)!
-
-    return {
+    const parse = ({
       pathname,
       search,
-      searchStr,
-      state: nextState,
       hash,
-      href: this.history.createHref(`${pathname}${searchStr}${hashStr}`),
-      key: dest.key,
+      state,
+    }: HistoryLocation): ParsedLocation<FullSearchSchema<TRouteTree>> => {
+      const parsedSearch = this.options.parseSearch(search)
+
+      return {
+        pathname: pathname,
+        searchStr: search,
+        search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
+        hash: hash.split('#').reverse()[0] ?? '',
+        href: `${pathname}${search}${hash}`,
+        state: replaceEqualDeep(
+          previousLocation?.state,
+          state,
+        ) as LocationState,
+      }
     }
+
+    const location = parse(this.history.location)
+
+    let { __tempLocation, __tempKey } = location.state
+
+    if (__tempLocation && (!__tempKey || __tempKey === this.tempLocationKey)) {
+      // Sync up the location keys
+      const parsedTempLocation = parse(__tempLocation) as any
+      parsedTempLocation.state.key = location.state.key
+
+      delete parsedTempLocation.state.__tempLocation
+
+      return {
+        ...parsedTempLocation,
+        maskedLocation: location,
+      }
+    }
+
+    return location
   }
 
-  #commitLocation = async (
-    location: BuildNextOptions & { replace?: boolean; resetScroll?: boolean },
-  ) => {
-    const next = this.buildNext(location)
+  buildLocation = (opts: BuildNextOptions = {}): ParsedLocation => {
+    const build = (
+      dest: BuildNextOptions & {
+        unmaskOnReload?: boolean
+      } = {},
+      matches?: AnyRouteMatch[],
+    ): ParsedLocation => {
+      const from = this.state.location
 
+      const fromPathname = dest.from ?? from.pathname
+
+      let pathname = resolvePath(
+        this.basepath ?? '/',
+        fromPathname,
+        `${dest.to ?? ''}`,
+      )
+
+      const fromMatches = this.matchRoutes(from.pathname, from.search)
+
+      const prevParams = { ...last(fromMatches)?.params }
+
+      let nextParams =
+        (dest.params ?? true) === true
+          ? prevParams
+          : functionalUpdate(dest.params!, prevParams)
+
+      if (nextParams) {
+        matches
+          ?.map((d) => this.getRoute(d.routeId).options.stringifyParams)
+          .filter(Boolean)
+          .forEach((fn) => {
+            nextParams = { ...nextParams!, ...fn!(nextParams!) }
+          })
+      }
+
+      pathname = interpolatePath(pathname, nextParams ?? {})
+
+      const preSearchFilters =
+        matches
+          ?.map(
+            (match) =>
+              this.getRoute(match.routeId).options.preSearchFilters ?? [],
+          )
+          .flat()
+          .filter(Boolean) ?? []
+
+      const postSearchFilters =
+        matches
+          ?.map(
+            (match) =>
+              this.getRoute(match.routeId).options.postSearchFilters ?? [],
+          )
+          .flat()
+          .filter(Boolean) ?? []
+
+      // Pre filters first
+      const preFilteredSearch = preSearchFilters?.length
+        ? preSearchFilters?.reduce((prev, next) => next(prev), from.search)
+        : from.search
+
+      // Then the link/navigate function
+      const destSearch =
+        dest.search === true
+          ? preFilteredSearch // Preserve resolvedFrom true
+          : dest.search
+          ? functionalUpdate(dest.search, preFilteredSearch) ?? {} // Updater
+          : preSearchFilters?.length
+          ? preFilteredSearch // Preserve resolvedFrom filters
+          : {}
+
+      // Then post filters
+      const postFilteredSearch = postSearchFilters?.length
+        ? postSearchFilters.reduce((prev, next) => next(prev), destSearch)
+        : destSearch
+
+      const search = replaceEqualDeep(from.search, postFilteredSearch)
+
+      const searchStr = this.options.stringifySearch(search)
+
+      const hash =
+        dest.hash === true
+          ? from.hash
+          : dest.hash
+          ? functionalUpdate(dest.hash!, from.hash)
+          : from.hash
+
+      const hashStr = hash ? `#${hash}` : ''
+
+      let nextState =
+        dest.state === true
+          ? from.state
+          : dest.state
+          ? functionalUpdate(dest.state, from.state)
+          : from.state
+
+      nextState = replaceEqualDeep(from.state, nextState)
+
+      return {
+        pathname,
+        search,
+        searchStr,
+        state: nextState,
+        hash,
+        href: this.history.createHref(`${pathname}${searchStr}${hashStr}`),
+        unmaskOnReload: dest.unmaskOnReload,
+      }
+    }
+
+    const buildWithMatches = (
+      dest: BuildNextOptions = {},
+      maskedDest?: BuildNextOptions,
+    ) => {
+      let next = build(dest)
+      let maskedNext = maskedDest ? build(maskedDest) : undefined
+
+      if (!maskedNext) {
+        const foundMask = this.options.routeMasks?.find((d) => {
+          const match = matchPathname(this.basepath, next.pathname, {
+            to: d.from,
+            fuzzy: false,
+          })
+
+          if (match) {
+            return match
+          }
+
+          return false
+        })
+
+        if (foundMask) {
+          maskedDest = foundMask
+          maskedNext = build(maskedDest)
+        }
+      }
+
+      const nextMatches = this.matchRoutes(next.pathname, next.search)
+      const maskedMatches = maskedNext
+        ? this.matchRoutes(maskedNext.pathname, maskedNext.search)
+        : undefined
+      const maskedFinal = maskedNext
+        ? build(maskedDest, maskedMatches)
+        : undefined
+
+      const final = build(dest, nextMatches)
+
+      if (maskedFinal) {
+        final.maskedLocation = maskedFinal
+      }
+
+      return final
+    }
+
+    if (opts.mask) {
+      return buildWithMatches(opts, {
+        ...pick(opts, ['from']),
+        ...opts.mask,
+      })
+    }
+
+    return buildWithMatches(opts)
+  }
+
+  #buildAndCommitLocation = ({
+    replace,
+    resetScroll,
+    ...rest
+  }: BuildNextOptions & CommitLocationOptions = {}) => {
+    const location = this.buildLocation(rest)
+    return this.#commitLocation({
+      ...location,
+      replace,
+      resetScroll,
+    })
+  }
+
+  #commitLocation = async (next: ParsedLocation & CommitLocationOptions) => {
     if (this.navigateTimeout) clearTimeout(this.navigateTimeout)
 
     let nextAction: 'push' | 'replace' = 'replace'
 
-    if (!location.replace) {
+    if (!next.replace) {
       nextAction = 'push'
     }
 
     const isSameUrl = this.state.location.href === next.href
 
-    if (isSameUrl && !next.key) {
+    if (isSameUrl) {
       nextAction = 'replace'
     }
 
-    const href = `${next.pathname}${next.searchStr}${
-      next.hash ? `#${next.hash}` : ''
-    }`
+    let { maskedLocation, ...nextHistory } = next
 
-    this.history[nextAction === 'push' ? 'push' : 'replace'](href, next.state)
+    if (maskedLocation) {
+      nextHistory = {
+        ...maskedLocation,
+        state: {
+          ...maskedLocation.state,
+          __tempKey: undefined,
+          __tempLocation: {
+            ...nextHistory,
+            search: nextHistory.searchStr,
+            state: {
+              ...nextHistory.state,
+              __tempKey: undefined!,
+              __tempLocation: undefined!,
+              key: undefined!,
+            },
+          },
+        },
+      }
 
-    this.resetNextScroll = location.resetScroll ?? true
+      if (nextHistory.unmaskOnReload ?? this.options.unmaskOnReload ?? false) {
+        nextHistory.state.__tempKey = this.tempLocationKey
+      }
+    }
+
+    this.history[nextAction === 'push' ? 'push' : 'replace'](
+      nextHistory.href,
+      nextHistory.state,
+    )
+
+    this.resetNextScroll = next.resetScroll ?? true
 
     return this.latestLoadPromise
   }
@@ -1814,37 +1950,46 @@ export class Router<
   invalidate = async (opts?: {
     matchId?: string
     reload?: boolean
+    __fromFocus?: boolean
   }): Promise<void> => {
     if (opts?.matchId) {
       this.setRouteMatch(opts.matchId, (s) => ({
         ...s,
         invalid: true,
       }))
+
       const matchIndex = this.state.matches.findIndex(
         (d) => d.id === opts.matchId,
       )
       const childMatch = this.state.matches[matchIndex + 1]
 
       if (childMatch) {
-        return this.invalidate({ matchId: childMatch.id, reload: false })
+        return this.invalidate({
+          matchId: childMatch.id,
+          reload: false,
+          __fromFocus: opts.__fromFocus,
+        })
       }
     } else {
       this.__store.batch(() => {
         Object.values(this.state.matchesById).forEach((match) => {
-          this.setRouteMatch(match.id, (s) => ({
-            ...s,
-            invalid: true,
-          }))
+          const route = this.getRoute(match.routeId)
+          const shouldInvalidate = opts?.__fromFocus
+            ? route.options.reloadOnWindowFocus ?? true
+            : true
+
+          if (shouldInvalidate) {
+            this.setRouteMatch(match.id, (s) => ({
+              ...s,
+              invalid: true,
+            }))
+          }
         })
       })
     }
 
     if (opts?.reload ?? true) {
-      return this.navigate({
-        fromCurrent: true,
-        replace: true,
-        search: true,
-      } as any)
+      return this.load()
     }
   }
 }
@@ -1879,7 +2024,9 @@ export type Redirect<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = NavigateOptions<TRouteTree, TFrom, TTo> & {
+  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskTo extends string = '',
+> = NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
   code?: number
 }
 

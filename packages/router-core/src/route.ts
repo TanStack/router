@@ -1,14 +1,25 @@
-import { ParsePathParams } from './link'
+import invariant from 'tiny-invariant'
+import { RouteById, RoutePaths } from './routeInfo'
+import { joinPaths, trimPath } from './path'
 import {
   AnyRouter,
-  Router,
   RouteMatch,
-  RegisteredRouter,
   AnyRouteMatch,
+  RegisteredRouter,
 } from './router'
-import { IsAny, NoInfer, PickRequired, UnionToIntersection } from './utils'
-import invariant from 'tiny-invariant'
-import { joinPaths, trimPath } from './path'
+import {
+  Expand,
+  IsAny,
+  NoInfer,
+  PickRequired,
+  UnionToIntersection,
+} from './utils'
+import {
+  ParsePathParams,
+  ResolveRelativePath,
+  ToMaskOptions,
+  ToSubOptions,
+} from './link'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -393,6 +404,9 @@ export type UpdatableRouteOptions<
   onEnter?: (match: AnyRouteMatch) => void
   onTransition?: (match: AnyRouteMatch) => void
   onLeave?: (match: AnyRouteMatch) => void
+  // Set this to true or false to specifically set whether or not this route should be preloaded. If unset, will
+  // default to router.options.reloadOnWindowFocus
+  reloadOnWindowFocus?: boolean
 }
 
 export type ParseParamsOption<TPath extends string, TParams> = ParseParamsFn<
@@ -525,7 +539,7 @@ export interface AnyRoute
     any
   > {}
 
-export type MergeParamsFromParent<T, U> = IsAny<T, U, T & U>
+export type MergeFromFromParent<T, U> = IsAny<T, U, T & U>
 
 export type UseLoaderResult<T> = T
 // T extends Record<PropertyKey, infer U>
@@ -544,6 +558,15 @@ export type StreamedPromise<T> = {
   data: T
   resolve: (value: T) => void
 }
+
+export type ResolveAllParams<
+  TParentRoute extends AnyRoute,
+  TParams extends AnyPathParams,
+> = Record<never, string> extends TParentRoute['types']['allParams']
+  ? TParams
+  : Expand<
+      UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
+    >
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute
@@ -583,18 +606,17 @@ export class Route<
     TParentRoute,
     TSearchSchema
   >,
-  TParams extends RouteConstraints['TParams'] = Record<
-    ParsePathParams<TPath>,
-    string
+  TParams extends RouteConstraints['TParams'] = Expand<
+    Record<ParsePathParams<TPath>, string>
   >,
-  TAllParams extends RouteConstraints['TAllParams'] = MergeParamsFromParent<
-    TParentRoute['types']['allParams'],
+  TAllParams extends RouteConstraints['TAllParams'] = ResolveAllParams<
+    TParentRoute,
     TParams
   >,
   TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['types']['routeContext'],
   TAllParentContext extends RouteConstraints['TAllParentContext'] = TParentRoute['types']['context'],
   TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
-  TAllContext extends RouteConstraints['TAllContext'] = MergeParamsFromParent<
+  TAllContext extends RouteConstraints['TAllContext'] = MergeFromFromParent<
     TParentRoute['types']['context'],
     TRouteContext
   >,
@@ -816,7 +838,7 @@ export class RouterContext<TRouterContext extends {}> {
         TRouterContext,
         TRouterContext,
         TRouteContext,
-        MergeParamsFromParent<TRouterContext, TRouteContext>
+        MergeFromFromParent<TRouterContext, TRouteContext>
       >,
       | 'path'
       | 'id'
@@ -849,7 +871,7 @@ export class RootRoute<
   TRouterContext,
   TRouterContext,
   TRouteContext,
-  MergeParamsFromParent<TRouterContext, TRouteContext>,
+  MergeFromFromParent<TRouterContext, TRouteContext>,
   TRouterContext,
   any,
   any
@@ -869,7 +891,7 @@ export class RootRoute<
         TRouterContext,
         TRouterContext,
         TRouteContext,
-        MergeParamsFromParent<TRouterContext, TRouteContext>
+        MergeFromFromParent<TRouterContext, TRouteContext>
       >,
       | 'path'
       | 'id'
@@ -919,3 +941,26 @@ export type TrimPathRight<T extends string> = T extends '/'
   : T extends `${infer U}/`
   ? TrimPathRight<U>
   : T
+
+export type RouteMask<TRouteTree extends AnyRoute> = {
+  routeTree: TRouteTree
+  from: RoutePaths<TRouteTree>
+  to?: any
+  params?: any
+  search?: any
+  hash?: any
+  state?: any
+  unmaskOnReload?: boolean
+}
+
+export function createRouteMask<
+  TRouteTree extends AnyRoute,
+  TFrom extends RoutePaths<TRouteTree>,
+  TTo extends string,
+>(
+  opts: {
+    routeTree: TRouteTree
+  } & ToSubOptions<TRouteTree, TFrom, TTo>,
+): RouteMask<TRouteTree> {
+  return opts as any
+}
