@@ -33,7 +33,7 @@
       "@tanstack/react-loaders": "workspace:*",
       "@tanstack/router-devtools": "workspace:*",
       "@tanstack/react-start": "workspace:*",
-      "@tanstack/bling": "link:../bling/packages/bling"
+      "@tanstack/bling__": "link:../bling/packages/bling"
     }
   },
   "devDependencies": {
