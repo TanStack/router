@@ -20,6 +20,7 @@ import {
   on,
   onCleanup,
   onMount,
+  splitProps,
   useContext,
 } from 'solid-js'
 import invariant from 'tiny-invariant'
@@ -36,29 +37,35 @@ const loadersContext = createContext<{
   // state: LoaderClientState<any>
 }>(null as any)
 
-export function LoaderClientProvider({
-  client,
-  children,
-  ...rest
-}: {
-  client: LoaderClient<any>
-  children: any
-} & Omit<LoaderClientOptions<any>, 'loaders'>) {
-  client.options = {
-    ...client.options,
-    ...rest,
-  }
+export function LoaderClientProvider(
+  props: {
+    client: LoaderClient<any>
+    children: any
+  } & Omit<LoaderClientOptions<any>, 'loaders'>,
+) {
+  const [coreProps, optionProps] = splitProps(props, ['client', 'children'])
 
   createEffect(
     on(
-      () => client,
+      () => coreProps.client,
       (client) => client.mount(),
     ),
   )
 
   return (
-    <loadersContext.Provider value={{ client }}>
-      {children}
+    <loadersContext.Provider
+      value={{
+        // @ts-ignore
+        client: {
+          ...coreProps.client,
+          options: {
+            ...coreProps.client.options,
+            ...optionProps,
+          },
+        },
+      }}
+    >
+      {coreProps.children}
     </loadersContext.Provider>
   )
 }
@@ -107,7 +114,7 @@ export function useLoaderInstance<
     `useLoaderInstance must be used inside a <LoaderClientProvider> component or be provided one via the 'client' option!`,
   )
 
-  const hashedKey = hashKey([opts.key, opts.variables])
+  const hashedKey = () => hashKey([opts.key, opts.variables])
 
   onMount(() => {
     ctx.client.subscribeToInstance(opts, () => {})
@@ -127,7 +134,7 @@ export function useLoaderInstance<
 
   const store = useStore(ctx.client.__store, (_state) => {
     return pick(
-      (ctx.client.state.loaders[opts.key].instances[hashedKey] ||
+      (ctx.client.state.loaders[opts.key].instances[hashedKey()] ||
         defaultInstance())!,
       ['status', 'error', 'loadPromise'],
     )
@@ -135,7 +142,7 @@ export function useLoaderInstance<
 
   const selected = useStore(ctx.client.__store, (_state) => {
     const instance =
-      ctx.client.state.loaders[opts.key].instances[hashedKey] ||
+      ctx.client.state.loaders[opts.key].instances[hashedKey()] ||
       defaultInstance()
     return opts.select?.(instance as any) ?? instance
   })

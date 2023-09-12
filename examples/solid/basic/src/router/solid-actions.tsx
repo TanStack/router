@@ -33,28 +33,28 @@ export function useAction<
   TKey extends keyof RegisteredActionsByKey,
   TAction extends RegisteredActionsByKey[TKey] = RegisteredActionsByKey[TKey],
   TSelected = ActionState<
-    TAction['__types']['key'],
-    TAction['__types']['variables'],
-    TAction['__types']['response'],
-    TAction['__types']['error']
+    TAction['types']['key'],
+    TAction['types']['variables'],
+    TAction['types']['response'],
+    TAction['types']['error']
   >,
 >(opts: {
   key: TKey
   select?: (
     state: ActionState<
-      TAction['__types']['key'],
-      TAction['__types']['variables'],
-      TAction['__types']['response'],
-      TAction['__types']['error']
+      TAction['types']['key'],
+      TAction['types']['variables'],
+      TAction['types']['response'],
+      TAction['types']['error']
     >,
   ) => TSelected
 }): [
   state: TSelected,
   submit: (
-    opts: undefined extends TAction['__types']['variables']
-      ? { variables?: TAction['__types']['variables'] }
-      : { variables: TAction['__types']['variables'] },
-  ) => Promise<TAction['__types']['response']>,
+    opts: undefined extends TAction['types']['variables']
+      ? { variables?: TAction['types']['variables'] }
+      : { variables: TAction['types']['variables'] },
+  ) => Promise<TAction['types']['response']>,
   client: ActionClient<RegisteredActions>,
 ] {
   const ctx = useContext(actionsContext)
