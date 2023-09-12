@@ -344,5 +344,27 @@ describe('everything', () => {
         isLayout: !!current.version,
       }),
     })
+
+    router.buildLink({
+      to: '/',
+      state: true,
+    })
+
+    router.buildLink({
+      to: '/',
+      state: {},
+    })
+
+    router.buildLink({
+      to: '/',
+      state: (prev) => prev,
+    })
+
+    router.buildLink({
+      to: '/',
+      state: (prev) => ({
+        test: true,
+      }),
+    })
   })
 })

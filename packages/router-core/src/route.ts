@@ -1,12 +1,7 @@
 import invariant from 'tiny-invariant'
-import { RouteById, RoutePaths } from './routeInfo'
+import { RoutePaths } from './routeInfo'
 import { joinPaths, trimPath } from './path'
-import {
-  AnyRouter,
-  RouteMatch,
-  AnyRouteMatch,
-  RegisteredRouter,
-} from './router'
+import { AnyRouter, RouteMatch, AnyRouteMatch } from './router'
 import {
   Expand,
   IsAny,
@@ -14,12 +9,7 @@ import {
   PickRequired,
   UnionToIntersection,
 } from './utils'
-import {
-  ParsePathParams,
-  ResolveRelativePath,
-  ToMaskOptions,
-  ToSubOptions,
-} from './link'
+import { ParsePathParams, ToSubOptions } from './link'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -53,6 +43,7 @@ export interface RegisterPendingRouteComponent<
 > {
   // PendingRouteComponent: unknown // This is registered by the framework
 }
+
 export interface RegisterRouteProps<
   TLoader = unknown,
   TFullSearchSchema extends AnySearchSchema = AnySearchSchema,

@@ -1,19 +1,11 @@
 import { Trim } from './fileRoute'
-import { LocationState } from './history'
 import { AnyRoute } from './route'
-import {
-  AllParams,
-  FullSearchSchema,
-  RouteByPath,
-  RouteIds,
-  RoutePaths,
-} from './routeInfo'
-import { ParsedLocation } from './router'
+import { AllParams, RouteByPath, RouteIds, RoutePaths } from './routeInfo'
+import { LocationState, ParsedLocation } from './router'
 import {
   Expand,
   NoInfer,
   NonNullableUpdater,
-  PickAsRequired,
   PickRequired,
   UnionToIntersection,
   Updater,
