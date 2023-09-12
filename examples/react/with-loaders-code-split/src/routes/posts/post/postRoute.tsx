@@ -11,7 +11,7 @@ import { postsRoute } from '../postsRoute'
 export const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  getContext: ({ params: { postId } }) => {
+  beforeLoad: ({ params: { postId } }) => {
     const loaderOptions = createLoaderOptions({
       key: 'post',
       variables: postId,

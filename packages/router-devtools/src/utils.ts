@@ -4,6 +4,7 @@ import {
   AnyRoute,
   AnyRouteMatch,
   AnyRouter,
+  isMatchInvalid,
 } from '@tanstack/react-router'
 
 import { Theme, useTheme } from './theme'
@@ -30,16 +31,10 @@ type StyledComponent<T> = T extends 'button'
   ? React.HTMLAttributes<HTMLElementTagNameMap[T]>
   : never
 
-export function getStatusColor(
-  match: AnyRouteMatch,
-  theme: Theme,
-  router: AnyRouter,
-) {
+export function getStatusColor(match: AnyRouteMatch, theme: Theme) {
   return match.status === 'pending' || match.isFetching
     ? theme.active
-    : router.getIsInvalid({
-        matchId: match.id,
-      })
+    : isMatchInvalid(match)
     ? theme.warning
     : match.status === 'error'
     ? theme.danger
@@ -52,11 +47,10 @@ export function getRouteStatusColor(
   matches: AnyRouteMatch[],
   route: AnyRoute | AnyRootRoute,
   theme: Theme,
-  router: AnyRouter,
 ) {
   const found = matches.find((d) => d.routeId === route.id)
   if (!found) return theme.gray
-  return getStatusColor(found, theme, router)
+  return getStatusColor(found, theme)
 }
 
 type Styles =

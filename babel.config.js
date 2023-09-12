@@ -39,14 +39,13 @@ module.exports = {
       ],
       presets: ['@babel/react'],
     },
-    {
-      include: [
-        './packages/solid-router/**',
-        './packages/solid-store/**',
-        './packages/solid-loaders/**',
-        './packages/solid-actions/**',
-      ],
-      presets: ['babel-preset-solid'],
-    },
+    // {
+    //   include: [
+    //     './packages/solid-router/**',
+    //     './packages/solid-loaders/**',
+    //     './packages/solid-actions/**',
+    //   ],
+    //   presets: ['babel-preset-solid'],
+    // },
   ],
 }

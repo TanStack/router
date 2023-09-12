@@ -3,13 +3,10 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  // optimizeDeps: {
-  //   include: ['use-sync-external-store/shim/with-selector'],
-  // },
+  resolve: {
+    dedupe: ['react', 'react-dom', 'use-sync-external-store'],
+  },
   build: {
     minify: false,
-    // commonjsOptions: {
-    //   include: [/node_modules/],
-    // },
   },
 })

@@ -23,8 +23,8 @@ This is the core `ToOptions` interface that is used in every navigation and rout
 
 ```ts
 type ToOptions<
-  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
-  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TRouteTree extends AnyRoute = AnyRoute,
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
 > = {
   // `from` is an optional route ID or path. If it is not supplied, only absolute paths will be auto-completed and type-safe. It's common to supply the route.id of the origin route you are rendering from for convenience. If you don't know the origin route, leave this empty and work with absolute paths or unsafe relative paths.
@@ -62,10 +62,10 @@ This is the core `NavigateOptions` interface that extends `ToOptions`. Any API t
 
 ```ts
 export type NavigateOptions<
-  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
-  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TRouteTree extends AnyRoute = AnyRoute,
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = ToOptions<TRoutesInfo, TFrom, TTo> & {
+> = ToOptions<TRouteTree, TFrom, TTo> & {
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
 }
@@ -77,10 +77,10 @@ Anywhere an actual `<a>` tag the `LinkOptions` interface which extends `Navigate
 
 ```tsx
 export type LinkOptions<
-  TRoutesInfo extends AnyRoutesInfo = DefaultRoutesInfo,
-  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TRouteTree extends AnyRoute = AnyRoute,
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = NavigateOptions<TRoutesInfo, TFrom, TTo> & {
+> = NavigateOptions<TRouteTree, TFrom, TTo> & {
   // The standard anchor tag target attribute
   target?: HTMLAnchorElement['target']
   // Defaults to `{ exact: false, includeHash: false }`
@@ -121,9 +121,9 @@ In addition to the [`LinkOptions`](#linkoptions-interface) interface, the `Link`
 
 ```tsx
 export type LinkPropsOptions<
-  TFrom extends RegisteredRoutesInfo['routePaths'] = '/',
+  TFrom extends RoutePaths<RegisteredRouter['routeTree']> = '/',
   TTo extends string = '',
-> = LinkOptions<RegisteredRoutesInfo, TFrom, TTo> & {
+> = LinkOptions<RegisteredRouter['routeTree'], TFrom, TTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   activeProps?:
     | React.AnchorHTMLAttributes<HTMLAnchorElement>
@@ -132,6 +132,8 @@ export type LinkPropsOptions<
   inactiveProps?:
     | React.AnchorHTMLAttributes<HTMLAnchorElement>
     | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+  // If set to `true`, the link's underlying navigate() call will be wrapped in a `React.startTransition` call. Defaults to `true`.
+  startTransition?: boolean
 }
 ```
 
@@ -192,7 +194,7 @@ Search params are a great way to provide additional context to a route. For exam
 const link = (
   <Link
     to="/search"
-    searchParams={{
+    search={{
       query: 'tanstack',
     }}
   >
@@ -206,7 +208,7 @@ It's also common to want to update a single search param without supplying any o
 ```tsx
 const link = (
   <Link
-    searchParams={(prev) => ({
+    search={(prev) => ({
       ...prev,
       page: prev.page + 1,
     })}
@@ -280,7 +282,7 @@ export interface ActiveOptions {
   // If true, the link will only be active if the current URL hash matches the `hash` prop
   // Defaults to `false`
   includeHash?: boolean // Defaults to false
-  // If true, the link will only be active if the current URL search params inclusively match the `searchParams` prop
+  // If true, the link will only be active if the current URL search params inclusively match the `search` prop
   // Defaults to `true`
   includeSearch?: boolean
 }

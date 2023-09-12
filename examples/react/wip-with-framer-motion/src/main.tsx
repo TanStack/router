@@ -104,7 +104,7 @@ const routerContext = new RouterContext<{
 const rootRoute = routerContext.createRootRoute({
   component: () => {
     const matches = useMatches()
-    const match = useMatch()
+    const match = useMatch({ strict: false })
     const nextMatchIndex = matches.findIndex((d) => d.id === match.id) + 1
     const nextMatch = matches[nextMatchIndex]
     // const routerState = useRouterState()
@@ -209,7 +209,7 @@ class NotFoundError extends Error {}
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  getContext: ({ params: { postId } }) => {
+  beforeLoad: ({ params: { postId } }) => {
     const loaderOptions = createLoaderOptions({
       key: 'post',
       variables: postId,

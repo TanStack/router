@@ -30,22 +30,17 @@ export const postLoader = new Loader({
 export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  loader: async ({
-    context: { loaderClient },
-    params: { postId },
-    preload,
-  }) => {
-    const loaderOpts = createLoaderOptions({ key: 'post', variables: postId })
-
-    await loaderClient.load({
+  beforeLoad: ({ params: { postId } }) => ({
+    loaderOpts: createLoaderOptions({ key: 'post', variables: postId }),
+  }),
+  loader: async ({ context: { loaderClient, loaderOpts }, preload }) =>
+    loaderClient.load({
       ...loaderOpts,
       preload,
-    })
-
-    return () => useLoaderInstance(loaderOpts)
-  },
-  component: function Post({ useLoader }) {
-    const { data: post } = useLoader()()
+    }),
+  component: function Post({ useContext }) {
+    const { loaderOpts } = useContext()
+    const { data: post } = useLoaderInstance(loaderOpts)
 
     return (
       <div className="space-y-2">

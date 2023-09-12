@@ -13,8 +13,13 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 const rootRoute = new RootRoute({
   component: () => (
     <>
-      <div>
-        <Link to="/">Home</Link> <Link to="/about">About</Link>
+      <div className="p-2 flex gap-2">
+        <Link to="/" className="[&.active]:font-bold">
+          Home
+        </Link>{' '}
+        <Link to="/about" className="[&.active]:font-bold">
+          About
+        </Link>
       </div>
       <hr />
       <Outlet />
@@ -28,7 +33,7 @@ const indexRoute = new Route({
   path: '/',
   component: function Index() {
     return (
-      <div>
+      <div className="p-2">
         <h3>Welcome Home!</h3>
       </div>
     )
@@ -39,7 +44,7 @@ const aboutRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/about',
   component: function About() {
-    return <div>Hello from About!</div>
+    return <div className="p-2">Hello from About!</div>
   },
 })
 

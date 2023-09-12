@@ -189,10 +189,10 @@ export class ActionClient<
   >(
     opts: {
       key: TKey
-    } & (undefined extends TAction['__types']['variables']
-      ? { variables?: TAction['__types']['variables'] }
-      : { variables: TAction['__types']['variables'] }),
-  ): Promise<TAction['__types']['response']> => {
+    } & (undefined extends TAction['types']['variables']
+      ? { variables?: TAction['types']['variables'] }
+      : { variables: TAction['types']['variables'] }),
+  ): Promise<TAction['types']['response']> => {
     return this.#submitAction(opts as any)
   }
 
@@ -252,9 +252,9 @@ export class ActionClient<
   >(
     opts: {
       key: TKey
-    } & (undefined extends TAction['__types']['variables']
-      ? { variables?: TAction['__types']['variables'] }
-      : { variables: TAction['__types']['variables'] }),
+    } & (undefined extends TAction['types']['variables']
+      ? { variables?: TAction['types']['variables'] }
+      : { variables: TAction['types']['variables'] }),
   ) => {
     const action = this.actions[opts.key]
 
@@ -263,9 +263,9 @@ export class ActionClient<
     const submittedAt = Date.now()
 
     const submission: SubmissionState<
-      TAction['__types']['variables'],
-      TAction['__types']['response'],
-      TAction['__types']['error']
+      TAction['types']['variables'],
+      TAction['types']['response'],
+      TAction['types']['error']
     > = {
       submittedAt,
       status: 'pending',
@@ -378,7 +378,7 @@ export class Action<
   TError = Error,
   TContext = unknown,
 > {
-  __types!: {
+  types!: {
     key: TKey
     variables: TVariables
     response: TResponse

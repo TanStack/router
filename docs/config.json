@@ -62,6 +62,14 @@
           "to": "guide/data-loading"
         },
         {
+          "label": "Deferred Data Loading",
+          "to": "guide/deferred-data-loading"
+        },
+        {
+          "label": "External Data Loading",
+          "to": "guide/external-data-loading"
+        },
+        {
           "label": "Data Mutations",
           "to": "guide/data-mutations"
         },
@@ -76,6 +84,10 @@
         {
           "label": "Code-Splitting",
           "to": "guide/code-splitting"
+        },
+        {
+          "label": "Route Masking",
+          "to": "guide/route-masking"
         },
         {
           "label": "Navigation Blocking",
@@ -98,8 +110,12 @@
           "to": "guide/authenticated-routes"
         },
         {
-          "label": "SSR & Streaming",
-          "to": "guide/ssr-and-streaming"
+          "label": "Scroll Restoration",
+          "to": "guide/scroll-restoration"
+        },
+        {
+          "label": "SSR",
+          "to": "guide/ssr"
         }
       ]
     },
@@ -109,6 +125,10 @@
         {
           "label": "Coming Soon",
           "to": "#"
+        },
+        {
+          "label": "Router CLI (Route-Gen)",
+          "to": "api/router-cli"
         }
       ]
     },
@@ -124,8 +144,28 @@
           "to": "examples/react/basic?file=src%2Fmain.tsx"
         },
         {
+          "label": "File-Based Routes",
+          "to": "examples/react/file-based-routes?file=src%2Fmain.tsx"
+        },
+        {
+          "label": "Deferred Data",
+          "to": "examples/react/deferred-data?file=src%2Fmain.tsx"
+        },
+        {
+          "label": "Focus Refetching",
+          "to": "examples/react/focus-refetching?file=src%2Fmain.tsx"
+        },
+        {
+          "label": "Scroll Restoration",
+          "to": "examples/react/scroll-restoration?file=src%2Fmain.tsx"
+        },
+        {
           "label": "Kitchen Sink Single File",
           "to": "examples/react/kitchen-sink-single-file?file=src%2Fmain.tsx"
+        },
+        {
+          "label": "SSR with Streaming",
+          "to": "examples/react/ssr-streaming?file=src%2Fmain.tsx"
         },
         {
           "label": "With Loaders",
@@ -136,16 +176,12 @@
           "to": "examples/react/with-loaders-kitchen-sink-single-file?file=src%2Fmain.tsx"
         },
         {
-          "label": "With Loaders Kitchen Sink Multi-File",
-          "to": "examples/react/with-loaders-kitchen-sink-multi-file?file=src%2Froutes%2Froot.tsx"
-        },
-        {
           "label": "With Loaders Code-Split",
           "to": "examples/react/with-loaders-code-split?file=src%2Frouter.tsx"
         },
         {
           "label": "With Loaders SSR",
-          "to": "examples/react/with-loaders-basic-ssr?file=src%2Fentry-server.tsx"
+          "to": "examples/react/with-loaders-ssr?file=src%2Fentry-server.tsx"
         },
         {
           "label": "With Loaders SSR with Streaming",

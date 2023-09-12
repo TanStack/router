@@ -1,25 +1,25 @@
-import { ExternalOption, RollupOptions } from 'rollup'
 import babel from '@rollup/plugin-babel'
+import { RollupOptions } from 'rollup'
 import { terser } from 'rollup-plugin-terser'
 // @ts-ignore
+import commonjs from '@rollup/plugin-commonjs'
+import nodeResolve from '@rollup/plugin-node-resolve'
+import replace from '@rollup/plugin-replace'
+import path from 'path'
 import size from 'rollup-plugin-size'
 import visualizer from 'rollup-plugin-visualizer'
-import replace from '@rollup/plugin-replace'
-import nodeResolve from '@rollup/plugin-node-resolve'
-import commonjs from '@rollup/plugin-commonjs'
-import path from 'path'
 // import svelte from 'rollup-plugin-svelte'
 import dts from 'rollup-plugin-dts'
 //
-import { packages } from './scripts/config'
 import { readJsonSync } from 'fs-extra'
+import { packages } from './scripts/config'
 import { Package } from './scripts/types'
 
 type Options = {
   input: string
   packageDir: string
   umdExternal: RollupOptions['external']
-  external: RollupOptions['external']
+  external: RollupOptions['external'] | any[]
   banner: string
   jsName: string
   globals: Record<string, string>
@@ -211,7 +211,7 @@ function umdProd({
       }),
       visualizer({
         filename: `${packageDir}/build/stats-react.json`,
-        template: 'raw-data',
+        template: 'network',
         gzipSize: true,
       }),
     ],

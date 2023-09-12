@@ -86,8 +86,8 @@ const postsRoute = new Route({
   path: 'posts',
   key: false,
   loader: fetchPosts,
-  component: ({ useLoader }) => {
-    const posts = useLoader()
+  component: (props) => {
+    const posts = props.useLoader()
 
     const items = () => [
       ...posts,
@@ -133,15 +133,15 @@ const postRoute = new Route({
   path: '$postId',
   key: false,
   loader: async ({ params: { postId } }) => await fetchPost(postId),
-  errorComponent: ({ error }) => {
-    if (error instanceof NotFoundError) {
-      return <div>{error.message}</div>
+  errorComponent: (props) => {
+    if (props.error instanceof NotFoundError) {
+      return <div>{props.error.message}</div>
     }
 
-    return <ErrorComponent error={error} />
+    return <ErrorComponent error={props.error} />
   },
-  component: ({ useLoader }) => {
-    const post = useLoader()
+  component: (props) => {
+    const post = props.useLoader()
 
     return (
       <div class="space-y-2">

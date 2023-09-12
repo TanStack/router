@@ -49,7 +49,7 @@ export type Build = {
   esm?: boolean
   cjs?: boolean
   umd?: boolean
-  externals?: string[]
+  externals?: any[]
 }
 
 export type BranchConfig = {

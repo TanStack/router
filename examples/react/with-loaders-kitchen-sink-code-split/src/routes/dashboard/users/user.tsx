@@ -25,25 +25,21 @@ export const userRoute = new Route({
   path: '$userId',
   parseParams: ({ userId }) => ({ userId: Number(userId) }),
   stringifyParams: ({ userId }) => ({ userId: `${userId}` }),
+  beforeLoad: ({ params: { userId } }) => ({
+    loaderOpts: createLoaderOptions({ key: 'user', variables: userId }),
+  }),
   loader: async ({
     context: { loaderClient },
-    params: { userId },
+    routeContext: { loaderOpts },
     preload,
-  }) => {
-    const loaderOptions = createLoaderOptions({
-      key: 'user',
-      variables: userId,
-    })
-
-    await loaderClient.load({
-      ...loaderOptions,
+  }) =>
+    loaderClient.load({
+      ...loaderOpts,
       preload,
-    })
-
-    return () => useLoaderInstance(loaderOptions)
-  },
-  component: function User({ useLoader }) {
-    const { data: user } = useLoader()()
+    }),
+  component: function User({ useRouteContext }) {
+    const { loaderOpts } = useRouteContext()
+    const { data: user } = useLoaderInstance(loaderOpts)
 
     return (
       <>

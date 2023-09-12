@@ -47,9 +47,10 @@ export const router = new Router({
     </div>
   ),
   defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
-  onRouteChange: () => {
-    actionClient.clearAll()
-  },
+})
+
+router.subscribe('onLoad', () => {
+  actionClient.clearAll()
 })
 
 declare module '@tanstack/react-router' {

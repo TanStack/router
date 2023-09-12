@@ -111,7 +111,7 @@ In the above example, we're validating the search params of the `allProductsRout
 
 ### Validating Search Params
 
-The `validateSearch` option is a function that is provided the JSON parsed (but non-validated) search params as a `Record<string, unknown>` and returns a typed object of your choice. It's usually best to provide sensible fallbacks for malformed or unexpected search params so your users experience stays non-interrupted.
+The `validateSearch` option is a function that is provided the JSON parsed (but non-validated) search params as a `Record<string, unknown>` and returns a typed object of your choice. It's usually best to provide sensible fallbacks for malformed or unexpected search params so your users' experience stays non-interrupted.
 
 Here's an example:
 
@@ -164,7 +164,7 @@ validateSearch: productSearchSchema
 
 In the above example, we used Zod's `.catch()` modifier instead of `.default()` to avoid showing an error to the user because we firmly believe that if a search parameter is malformed, you probably don't want to halt the user's experience through the app to show a big fat error message. That said, there may be times that you **do want to show an error message**. In that case, you can use `.default()` instead of `.catch()`.
 
-The underlying mechanics why this works relies on the `validateSearch` function throwing an error. If an error is thrown, the route's `onValidateSearchError` and `onError` options will both be triggered and the `errorComponent` will be rendered instead of the route's `component` where you can handle the search param error however you'd like.
+The underlying mechanics why this works relies on the `validateSearch` function throwing an error. If an error is thrown, the route's `onError` option will be triggered (and `error.routerCode` will be set to `VALIDATE_SEARCH` and the `errorComponent` will be rendered instead of the route's `component` where you can handle the search param error however you'd like.
 
 ## Reading Search Params
 
@@ -307,8 +307,8 @@ const ProductList = () => {
 
 ### `router.navigate({ search })`
 
-The `router.navigate` function works exactly the same was as the `useNavigate`/`navigate` hook/function above.
+The `router.navigate` function works exactly the same way as the `useNavigate`/`navigate` hook/function above.
 
 ### `<Navigate search />`
 
-The `<Navigate search />` component works exactly the same was as the `useNavigate`/`navigate` hook/function above, but accepts its options as props instead of a function argument.
+The `<Navigate search />` component works exactly the same way as the `useNavigate`/`navigate` hook/function above, but accepts its options as props instead of a function argument.

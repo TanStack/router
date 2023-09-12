@@ -169,7 +169,7 @@ class NotFoundError extends Error {}
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  getContext: ({ params: { postId } }) => {
+  beforeLoad: ({ params: { postId } }) => {
     return {
       loaderOptions: createLoaderOptions({
         key: 'post',

@@ -239,12 +239,12 @@ export class LoaderClient<
     opts: GetInstanceOptions<TKey, TResolvedLoader>,
     updater: (
       prev: LoaderInstance<
-        TResolvedLoader['__types']['data'],
-        TResolvedLoader['__types']['error']
+        TResolvedLoader['types']['data'],
+        TResolvedLoader['types']['error']
       >,
     ) => LoaderInstance<
-      TResolvedLoader['__types']['data'],
-      TResolvedLoader['__types']['error']
+      TResolvedLoader['types']['data'],
+      TResolvedLoader['types']['error']
     >,
   ) => {
     const { key, variables } = opts
@@ -399,7 +399,7 @@ export class LoaderClient<
     TResolvedLoader extends TLoaders[TKey] = TLoaders[TKey],
   >(opts: {
     key: TKey
-    variables?: TResolvedLoader['__types']['variables']
+    variables?: TResolvedLoader['types']['variables']
   }) => {
     const loader = this.#getLoader(opts.key)
 
@@ -467,7 +467,7 @@ export class LoaderClient<
       isFocusReload?: boolean
       signal?: AbortSignal
     },
-  ): Promise<TResolvedLoader['__types']['data']> => {
+  ): Promise<TResolvedLoader['types']['data']> => {
     const { key } = opts
     const loader = this.#getLoader(key)
 
@@ -517,7 +517,7 @@ export class LoaderClient<
       signal?: AbortSignal
       isFocusReload?: boolean
     },
-  ): Promise<TResolvedLoader['__types']['data']> => {
+  ): Promise<TResolvedLoader['types']['data']> => {
     const loader = this.#getLoader(opts.key)
     const instance = this.getInstance(opts as any)
     const fetchedAt = Date.now()
@@ -660,11 +660,11 @@ export class LoaderClient<
       updatedAt?: number
     },
     updater:
-      | TResolvedLoader['__types']['data']
+      | TResolvedLoader['types']['data']
       | ((
-          prev: TResolvedLoader['__types']['data'] | undefined,
-        ) => TResolvedLoader['__types']['data']),
-  ): TResolvedLoader['__types']['data'] => {
+          prev: TResolvedLoader['types']['data'] | undefined,
+        ) => TResolvedLoader['types']['data']),
+  ): TResolvedLoader['types']['data'] => {
     const loader = this.#getLoader(opts.key)
 
     const data =
@@ -711,9 +711,9 @@ export class LoaderClient<
   >(
     opts: GetInstanceOptions<TKey, TResolvedLoader> & {
       hydrate: HydrateUpdater<
-        TResolvedLoader['__types']['variables'],
-        TResolvedLoader['__types']['data'],
-        TResolvedLoader['__types']['error']
+        TResolvedLoader['types']['variables'],
+        TResolvedLoader['types']['data'],
+        TResolvedLoader['types']['error']
       >
     },
   ) => {
@@ -744,9 +744,9 @@ export class LoaderClient<
     opts: GetInstanceOptions<TKey, TResolvedLoader> & {
       dehydrate: (
         instance: LoaderInstance<
-          TResolvedLoader['__types']['variables'],
-          TResolvedLoader['__types']['data'],
-          TResolvedLoader['__types']['error']
+          TResolvedLoader['types']['variables'],
+          TResolvedLoader['types']['data'],
+          TResolvedLoader['types']['error']
         >,
       ) => void
     },
@@ -885,7 +885,7 @@ export class Loader<
   TData = unknown,
   TError = Error,
 > {
-  __types!: {
+  types!: {
     key: TKey
     variables: TVariables
     data: TData
@@ -947,7 +947,7 @@ export function createLoaderOptions<
   },
 ): {
   key: TKey
-  variables: TResolvedLoader['__types']['variables']
+  variables: TResolvedLoader['types']['variables']
 } {
   return opts as any
 }

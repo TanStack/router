@@ -63,7 +63,7 @@ export const invoiceRoute = new Route({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
   }),
-  getContext: ({ params: { invoiceId } }) => {
+  beforeLoad: ({ params: { invoiceId } }) => {
     const loaderOptions = createLoaderOptions({
       key: 'invoice',
       variables: invoiceId,

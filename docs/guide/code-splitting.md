@@ -75,7 +75,7 @@ export const loader = async (context: LoaderContext) => {
 }
 ```
 
-Again, this process can feel heavy-handed, so TanStack Router export another utility called `lazyFn` which is very similar to `lazyRouteComponent` that can help simplify this process:
+Again, this process can feel heavy-handed, so TanStack Router exports another utility called `lazyFn` which is very similar to `lazyRouteComponent` that can help simplify this process:
 
 ```tsx
 import { lazyFn } from '@tanstack/react-router'

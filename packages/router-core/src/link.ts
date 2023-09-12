@@ -1,6 +1,23 @@
-import { AnyRoutesInfo, RouteByPath } from './routeInfo'
-import { ParsedLocation, LocationState, RegisteredRoutesInfo } from './router'
-import { NoInfer, PickRequired, UnionToIntersection, Updater } from './utils'
+import { Trim } from './fileRoute'
+import { LocationState } from './history'
+import { AnyRoute } from './route'
+import {
+  AllParams,
+  FullSearchSchema,
+  RouteByPath,
+  RouteIds,
+  RoutePaths,
+} from './routeInfo'
+import { ParsedLocation } from './router'
+import {
+  Expand,
+  NoInfer,
+  NonNullableUpdater,
+  PickAsRequired,
+  PickRequired,
+  UnionToIntersection,
+  Updater,
+} from './utils'
 
 export type LinkInfo =
   | {
@@ -19,7 +36,7 @@ export type LinkInfo =
       disabled?: boolean
     }
 
-type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
+export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
   ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
   : T extends `${infer L}//`
   ? `${CleanPath<L>}/`
@@ -49,19 +66,19 @@ export type Split<S, TIncludeTrailingSlash = true> = S extends unknown
     : never
   : never
 
-export type ParsePathParams<T extends string> = Split<T>[number] extends infer U
-  ? U extends `$${infer V}`
-    ? V
-    : never
-  : never
+export type ParsePathParams<T extends string> = keyof {
+  [K in Trim<Split<T>[number], '_'> as K extends `$${infer L}` ? L : never]: K
+}
 
-type Join<T, Delimiter extends string = '/'> = T extends []
+export type Join<T, Delimiter extends string = '/'> = T extends []
   ? ''
   : T extends [infer L extends string]
   ? L
   : T extends [infer L extends string, ...infer Tail extends [...string[]]]
   ? CleanPath<`${L}${Delimiter}${Join<Tail>}`>
   : never
+
+export type Last<T extends any[]> = T extends [...infer _, infer L] ? L : never
 
 export type RelativeToPathAutoComplete<
   AllPaths extends string,
@@ -110,122 +127,122 @@ export type RelativeToPathAutoComplete<
       | AllPaths
 
 export type NavigateOptions<
-  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
-  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TRouteTree extends AnyRoute = AnyRoute,
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = ToOptions<TRoutesInfo, TFrom, TTo> & {
+  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskTo extends string = '',
+> = ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
+  resetScroll?: boolean
 }
 
 export type ToOptions<
-  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
-  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TRouteTree extends AnyRoute = AnyRoute,
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-  TResolvedTo = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
+> = ToSubOptions<TRouteTree, TFrom, TTo> & {
+  mask?: ToMaskOptions<TRouteTree, TMaskFrom, TMaskTo>
+}
+
+export type ToMaskOptions<
+  TRouteTree extends AnyRoute = AnyRoute,
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
+> = ToSubOptions<TRouteTree, TMaskFrom, TMaskTo> & {
+  unmaskOnReload?: boolean
+}
+
+export type ToSubOptions<
+  TRouteTree extends AnyRoute = AnyRoute,
+  TFrom extends RoutePaths<TRouteTree> = '/',
+  TTo extends string = '',
+  TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
 > = {
-  to?: ToPathOption<TRoutesInfo, TFrom, TTo>
+  to?: ToPathOption<TRouteTree, TFrom, TTo>
   // The new has string or a function to update it
-  hash?: Updater<string>
+  hash?: true | Updater<string>
   // State to pass to the history stack
-  state?: LocationState
+  state?: true | NonNullableUpdater<LocationState>
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
   from?: TFrom
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
   // fromCurrent?: boolean
-} & CheckPath<TRoutesInfo, NoInfer<TResolvedTo>, {}> &
-  SearchParamOptions<TRoutesInfo, TFrom, TResolvedTo> &
-  PathParamOptions<TRoutesInfo, TFrom, TResolvedTo>
+} & CheckPath<TRouteTree, NoInfer<TResolved>, {}> &
+  SearchParamOptions<TRouteTree, TFrom, TResolved> &
+  PathParamOptions<TRouteTree, TFrom, TResolved>
 
 export type SearchParamOptions<
-  TRoutesInfo extends AnyRoutesInfo,
+  TRouteTree extends AnyRoute,
   TFrom,
   TTo,
-  TFromSchema = UnionToIntersection<
-    TRoutesInfo['fullSearchSchema'] &
-      RouteByPath<TRoutesInfo, TFrom> extends never
-      ? {}
-      : RouteByPath<TRoutesInfo, TFrom>['__types']['fullSearchSchema']
+  TFromSearchEnsured = Expand<
+    UnionToIntersection<
+      PickRequired<RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']>
+    >
   >,
-  // Find the schema for the new path, and make optional any keys
-  // that are already defined in the current schema
-  TToSchema = Partial<
-    RouteByPath<TRoutesInfo, TFrom>['__types']['fullSearchSchema']
-  > &
-    Omit<
-      RouteByPath<TRoutesInfo, TTo>['__types']['fullSearchSchema'],
-      keyof PickRequired<
-        RouteByPath<TRoutesInfo, TFrom>['__types']['fullSearchSchema']
-      >
-    >,
-  TFromFullSchema = UnionToIntersection<
-    TRoutesInfo['fullSearchSchema'] & TFromSchema
-  >,
-  TToFullSchema = UnionToIntersection<
-    TRoutesInfo['fullSearchSchema'] & TToSchema
-  >,
-> = keyof PickRequired<TToSchema> extends never
+  TFromSearchOptional = Omit<AllParams<TRouteTree>, keyof TFromSearchEnsured>,
+  TFromSearch = Expand<TFromSearchEnsured & TFromSearchOptional>,
+  TToSearch = Expand<RouteByPath<TRouteTree, TTo>['types']['fullSearchSchema']>,
+> = keyof PickRequired<TToSearch> extends never
   ? {
-      search?: true | SearchReducer<TFromFullSchema, TToFullSchema>
+      search?: true | SearchReducer<TFromSearch, TToSearch>
     }
   : {
-      search: SearchReducer<TFromFullSchema, TToFullSchema>
+      search: TFromSearchEnsured extends PickRequired<TToSearch>
+        ? true | SearchReducer<TFromSearch, TToSearch>
+        : SearchReducer<TFromSearch, TToSearch>
     }
 
-type SearchReducer<TFrom, TTo> =
-  | { [TKey in keyof TTo]: TTo[TKey] }
-  | ((current: TFrom) => TTo)
+type SearchReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
 export type PathParamOptions<
-  TRoutesInfo extends AnyRoutesInfo,
+  TRouteTree extends AnyRoute,
   TFrom,
   TTo,
-  TFromSchema = UnionToIntersection<
-    RouteByPath<TRoutesInfo, TFrom> extends never
-      ? {}
-      : RouteByPath<TRoutesInfo, TFrom>['__types']['allParams']
+  TFromParamsEnsured = Expand<
+    UnionToIntersection<
+      PickRequired<RouteByPath<TRouteTree, TFrom>['types']['allParams']>
+    >
   >,
-  // Find the schema for the new path, and make optional any keys
-  // that are already defined in the current schema
-  TToSchema = Partial<RouteByPath<TRoutesInfo, TFrom>['__types']['allParams']> &
-    Omit<
-      RouteByPath<TRoutesInfo, TTo>['__types']['allParams'],
-      keyof PickRequired<
-        RouteByPath<TRoutesInfo, TFrom>['__types']['allParams']
-      >
-    >,
-  TFromFullParams = UnionToIntersection<TRoutesInfo['allParams'] & TFromSchema>,
-  TToFullParams = UnionToIntersection<TRoutesInfo['allParams'] & TToSchema>,
-> = keyof PickRequired<TToSchema> extends never
+  TFromParamsOptional = Omit<AllParams<TRouteTree>, keyof TFromParamsEnsured>,
+  TFromParams = Expand<TFromParamsOptional & TFromParamsEnsured>,
+  TToParams = Expand<RouteByPath<TRouteTree, TTo>['types']['allParams']>,
+> = keyof PickRequired<TToParams> extends never
   ? {
-      params?: ParamsReducer<TFromFullParams, TToFullParams>
+      params?: true | ParamsReducer<TFromParams, TToParams>
     }
   : {
-      params: ParamsReducer<TFromFullParams, TToFullParams>
+      params: TFromParamsEnsured extends PickRequired<TToParams>
+        ? true | ParamsReducer<TFromParams, TToParams>
+        : ParamsReducer<TFromParams, TToParams>
     }
 
 type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
 export type ToPathOption<
-  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
-  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TRouteTree extends AnyRoute = AnyRoute,
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
 > =
   | TTo
   | RelativeToPathAutoComplete<
-      TRoutesInfo['routePaths'],
+      RoutePaths<TRouteTree>,
       NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
       NoInfer<TTo> & string
     >
 
 export type ToIdOption<
-  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
-  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TRouteTree extends AnyRoute = AnyRoute,
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
 > =
   | TTo
   | RelativeToPathAutoComplete<
-      TRoutesInfo['routeIds'],
+      RouteIds<TRouteTree>,
       NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
       NoInfer<TTo> & string
     >
@@ -237,10 +254,12 @@ export interface ActiveOptions {
 }
 
 export type LinkOptions<
-  TRoutesInfo extends AnyRoutesInfo = RegisteredRoutesInfo,
-  TFrom extends TRoutesInfo['routePaths'] = '/',
+  TRouteTree extends AnyRoute = AnyRoute,
+  TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = NavigateOptions<TRoutesInfo, TFrom, TTo> & {
+  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskTo extends string = '',
+> = NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // The standard anchor tag target attribute
   target?: HTMLAnchorElement['target']
   // Defaults to `{ exact: false, includeHash: false }`
@@ -254,47 +273,46 @@ export type LinkOptions<
 }
 
 export type CheckRelativePath<
-  TRoutesInfo extends AnyRoutesInfo,
+  TRouteTree extends AnyRoute,
   TFrom,
   TTo,
 > = TTo extends string
   ? TFrom extends string
-    ? ResolveRelativePath<TFrom, TTo> extends TRoutesInfo['routePaths']
+    ? ResolveRelativePath<TFrom, TTo> extends RoutePaths<TRouteTree>
       ? {}
       : {
           Error: `${TFrom} + ${TTo} resolves to ${ResolveRelativePath<
             TFrom,
             TTo
           >}, which is not a valid route path.`
-          'Valid Route Paths': TRoutesInfo['routePaths']
+          'Valid Route Paths': RoutePaths<TRouteTree>
         }
     : {}
   : {}
 
-export type CheckPath<
-  TRoutesInfo extends AnyRoutesInfo,
+export type CheckPath<TRouteTree extends AnyRoute, TPath, TPass> = Exclude<
   TPath,
-  TPass,
-> = Exclude<TPath, TRoutesInfo['routePaths']> extends never
-  ? TPass
-  : CheckPathError<TRoutesInfo, Exclude<TPath, TRoutesInfo['routePaths']>>
-
-export type CheckPathError<TRoutesInfo extends AnyRoutesInfo, TInvalids> = {
-  to: TRoutesInfo['routePaths']
-}
-
-export type CheckId<TRoutesInfo extends AnyRoutesInfo, TPath, TPass> = Exclude<
-  TPath,
-  TRoutesInfo['routeIds']
+  RoutePaths<TRouteTree>
 > extends never
   ? TPass
-  : CheckIdError<TRoutesInfo, Exclude<TPath, TRoutesInfo['routeIds']>>
+  : CheckPathError<TRouteTree, Exclude<TPath, RoutePaths<TRouteTree>>>
 
-export type CheckIdError<TRoutesInfo extends AnyRoutesInfo, TInvalids> = {
+export type CheckPathError<TRouteTree extends AnyRoute, TInvalids> = {
+  to: RoutePaths<TRouteTree>
+}
+
+export type CheckId<TRouteTree extends AnyRoute, TPath, TPass> = Exclude<
+  TPath,
+  RouteIds<TRouteTree>
+> extends never
+  ? TPass
+  : CheckIdError<TRouteTree, Exclude<TPath, RouteIds<TRouteTree>>>
+
+export type CheckIdError<TRouteTree extends AnyRoute, TInvalids> = {
   Error: `${TInvalids extends string
     ? TInvalids
     : never} is not a valid route ID.`
-  'Valid Route IDs': TRoutesInfo['routeIds']
+  'Valid Route IDs': RouteIds<TRouteTree>
 }
 
 export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string

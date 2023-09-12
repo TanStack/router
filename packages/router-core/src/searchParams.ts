@@ -2,7 +2,10 @@ import { decode, encode } from './qss'
 import { AnySearchSchema } from './route'
 
 export const defaultParseSearch = parseSearchWith(JSON.parse)
-export const defaultStringifySearch = stringifySearchWith(JSON.stringify)
+export const defaultStringifySearch = stringifySearchWith(
+  JSON.stringify,
+  JSON.parse,
+)
 
 export function parseSearchWith(parser: (str: string) => any) {
   return (searchStr: string): AnySearchSchema => {
@@ -28,7 +31,30 @@ export function parseSearchWith(parser: (str: string) => any) {
   }
 }
 
-export function stringifySearchWith(stringify: (search: any) => string) {
+export function stringifySearchWith(
+  stringify: (search: any) => string,
+  parser?: (str: string) => any,
+) {
+  function stringifyValue(val: any) {
+    if (typeof val === 'object' && val !== null) {
+      try {
+        return stringify(val)
+      } catch (err) {
+        // silent
+      }
+    } else if (typeof val === 'string' && typeof parser === 'function') {
+      try {
+        // Check if it's a valid parseable string.
+        // If it is, then stringify it again.
+        parser(val)
+        return stringify(val)
+      } catch (err) {
+        // silent
+      }
+    }
+    return val
+  }
+
   return (search: Record<string, any>) => {
     search = { ...search }
 
@@ -37,12 +63,8 @@ export function stringifySearchWith(stringify: (search: any) => string) {
         const val = search[key]
         if (typeof val === 'undefined' || val === undefined) {
           delete search[key]
-        } else if (val && typeof val === 'object' && val !== null) {
-          try {
-            search[key] = stringify(val)
-          } catch (err) {
-            // silent
-          }
+        } else {
+          search[key] = stringifyValue(val)
         }
       })
     }
