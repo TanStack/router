@@ -57,7 +57,7 @@ import {
   createBrowserHistory,
   createMemoryHistory,
   HistoryLocation,
-  LocationState,
+  HistoryState,
   RouterHistory,
 } from './history'
 
@@ -73,6 +73,8 @@ export interface Register {
   // router: Router
 }
 
+export interface LocationState {}
+
 export type AnyRouter = Router<any, any>
 
 export type RegisteredRouter = Register extends {
@@ -86,7 +88,7 @@ export interface ParsedLocation<TSearchObj extends AnySearchSchema = {}> {
   pathname: string
   search: TSearchObj
   searchStr: string
-  state: LocationState
+  state: HistoryState
   hash: string
   maskedLocation?: ParsedLocation<TSearchObj>
   unmaskOnReload?: boolean
@@ -184,10 +186,6 @@ export interface RouterOptions<
   basepath?: string
   createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
   context?: TRouteTree['types']['routerContext']
-  Wrap?: React.ComponentType<{
-    children: React.ReactNode
-    dehydratedState?: TDehydrated
-  }>
   dehydrate?: () => TDehydrated
   hydrate?: (dehydrated: TDehydrated) => void
   routeMasks?: RouteMask<TRouteTree>[]
@@ -1176,12 +1174,7 @@ export class Router<
   >({
     from,
     to = '' as any,
-    search,
-    hash,
-    replace,
-    params,
-    resetScroll,
-    state,
+    ...rest
   }: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
@@ -1203,14 +1196,9 @@ export class Router<
     )
 
     return this.#buildAndCommitLocation({
+      ...rest,
       from: fromString,
       to: toString,
-      search,
-      hash,
-      params,
-      replace,
-      resetScroll,
-      state,
     })
   }
 
@@ -1262,51 +1250,39 @@ export class Router<
   buildLink = <
     TFrom extends RoutePaths<TRouteTree> = '/',
     TTo extends string = '',
-  >({
-    from,
-    to = '.' as any,
-    search,
-    params,
-    hash,
-    target,
-    replace,
-    activeOptions,
-    preload,
-    preloadDelay: userPreloadDelay,
-    disabled,
-    state,
-    mask,
-    resetScroll,
-  }: LinkOptions<TRouteTree, TFrom, TTo>): LinkInfo => {
+  >(
+    dest: LinkOptions<TRouteTree, TFrom, TTo>,
+  ): LinkInfo => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
     // If this `to` is a valid external URL, return
     // null for LinkUtils
 
+    const {
+      to,
+      preload: userPreload,
+      preloadDelay: userPreloadDelay,
+      activeOptions,
+      disabled,
+      target,
+      replace,
+      resetScroll,
+    } = dest
+
     try {
       new URL(`${to}`)
       return {
         type: 'external',
-        href: to,
+        href: to as any,
       }
     } catch (e) {}
 
-    const nextOpts = {
-      from,
-      to,
-      search,
-      params,
-      hash,
-      replace,
-      state,
-      mask,
-      resetScroll,
-    }
+    const nextOpts = dest
 
     const next = this.buildLocation(nextOpts)
 
-    preload = preload ?? this.options.defaultPreload
+    const preload = userPreload ?? this.options.defaultPreload
     const preloadDelay =
       userPreloadDelay ?? this.options.defaultPreloadDelay ?? 0
 
@@ -1637,10 +1613,7 @@ export class Router<
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
         hash: hash.split('#').reverse()[0] ?? '',
         href: `${pathname}${search}${hash}`,
-        state: replaceEqualDeep(
-          previousLocation?.state,
-          state,
-        ) as LocationState,
+        state: replaceEqualDeep(previousLocation?.state, state) as HistoryState,
       }
     }
 
@@ -1765,7 +1738,7 @@ export class Router<
         pathname,
         search,
         searchStr,
-        state: nextState,
+        state: nextState as any,
         hash,
         href: this.history.createHref(`${pathname}${searchStr}${hashStr}`),
         unmaskOnReload: dest.unmaskOnReload,

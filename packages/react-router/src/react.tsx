@@ -41,10 +41,17 @@ import {
   ResolveAllParams,
 } from '@tanstack/router-core'
 
-const useLayoutEffect =
-  typeof document !== 'undefined' ? React.useLayoutEffect : React.useEffect
-
 declare module '@tanstack/router-core' {
+  interface RouterOptions<
+    TRouteTree extends AnyRoute,
+    TDehydrated extends Record<string, any>,
+  > {
+    Wrap?: React.ComponentType<{
+      children: React.ReactNode
+      dehydratedState?: TDehydrated
+    }>
+  }
+
   interface RegisterRouteComponent<
     TLoader = unknown,
     TFullSearchSchema extends AnySearchSchema = AnySearchSchema,

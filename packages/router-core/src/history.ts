@@ -15,7 +15,7 @@ export interface RouterHistory {
 }
 
 export interface HistoryLocation extends ParsedPath {
-  state: LocationState
+  state: HistoryState
 }
 
 export interface ParsedPath {
@@ -25,7 +25,7 @@ export interface ParsedPath {
   hash: string
 }
 
-export interface LocationState {
+export interface HistoryState {
   key: string
   __tempLocation?: HistoryLocation
   __tempKey?: string
@@ -161,7 +161,7 @@ function createHistory(opts: {
   }
 }
 
-function assignKey(state: LocationState) {
+function assignKey(state: HistoryState) {
   state.key = createRandomKey()
   // if (state.__actualLocation) {
   //   state.__actualLocation.state = {
@@ -242,7 +242,7 @@ export function createMemoryHistory(
   let index = opts.initialIndex ?? entries.length - 1
   let currentState = {
     key: createRandomKey(),
-  } as LocationState
+  } as HistoryState
 
   const getLocation = () => parseLocation(entries[index]!, currentState)
 
@@ -269,7 +269,7 @@ export function createMemoryHistory(
   })
 }
 
-function parseLocation(href: string, state: LocationState): HistoryLocation {
+function parseLocation(href: string, state: HistoryState): HistoryLocation {
   let hashIndex = href.indexOf('#')
   let searchIndex = href.indexOf('?')
 
