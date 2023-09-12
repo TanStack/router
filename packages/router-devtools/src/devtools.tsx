@@ -1,6 +1,5 @@
 import React from 'react'
 import {
-  last,
   routerContext,
   invariant,
   AnyRouter,
@@ -8,9 +7,7 @@ import {
   Route,
   AnyRoute,
   AnyRootRoute,
-  RouteMatch,
   trimPath,
-  useRouterState,
 } from '@tanstack/react-router'
 
 import useLocalStorage from './useLocalStorage'
@@ -720,6 +717,60 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 display: 'flex',
                 alignItems: 'center',
                 gap: '.5rem',
+                fontWeight: 'bold',
+              }}
+            >
+              Pathname{' '}
+              {router.state.location.maskedLocation ? (
+                <div
+                  style={{
+                    padding: '.1rem .5rem',
+                    background: theme.warning,
+                    color: 'black',
+                    borderRadius: '.5rem',
+                  }}
+                >
+                  Masked
+                </div>
+              ) : null}
+            </div>
+            <div
+              style={{
+                padding: '.5rem',
+                display: 'flex',
+                gap: '.5rem',
+                alignItems: 'center',
+              }}
+            >
+              <code
+                style={{
+                  opacity: 0.6,
+                }}
+              >
+                {router.state.location.pathname}
+              </code>
+              {router.state.location.maskedLocation ? (
+                <code
+                  style={{
+                    color: theme.warning,
+                    fontWeight: 'bold',
+                  }}
+                >
+                  {router.state.location.maskedLocation.pathname}
+                </code>
+              ) : null}
+            </div>
+            <div
+              style={{
+                padding: '.5em',
+                background: theme.backgroundAlt,
+                position: 'sticky',
+                top: 0,
+                zIndex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '.5rem',
+                fontWeight: 'bold',
               }}
             >
               <button
@@ -839,6 +890,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   display: 'flex',
                   alignItems: 'center',
                   gap: '.5rem',
+                  fontWeight: 'bold',
                 }}
               >
                 Preloaded Matches
@@ -1016,6 +1068,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 top: 0,
                 bottom: 0,
                 zIndex: 1,
+                fontWeight: 'bold',
               }}
             >
               Search Params

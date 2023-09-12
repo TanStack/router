@@ -1,4 +1,5 @@
 import { Trim } from './fileRoute'
+import { LocationState } from './history'
 import { AnyRoute } from './route'
 import {
   AllParams,
@@ -7,8 +8,16 @@ import {
   RouteIds,
   RoutePaths,
 } from './routeInfo'
-import { ParsedLocation, LocationState } from './router'
-import { NoInfer, PickRequired, UnionToIntersection, Updater } from './utils'
+import { ParsedLocation } from './router'
+import {
+  Expand,
+  NoInfer,
+  NonNullableUpdater,
+  PickAsRequired,
+  PickRequired,
+  UnionToIntersection,
+  Updater,
+} from './utils'
 
 export type LinkInfo =
   | {
@@ -121,7 +130,9 @@ export type NavigateOptions<
   TRouteTree extends AnyRoute = AnyRoute,
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = ToOptions<TRouteTree, TFrom, TTo> & {
+  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskTo extends string = '',
+> = ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
   resetScroll?: boolean
@@ -131,81 +142,83 @@ export type ToOptions<
   TRouteTree extends AnyRoute = AnyRoute,
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-  TResolvedTo = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
+> = ToSubOptions<TRouteTree, TFrom, TTo> & {
+  mask?: ToMaskOptions<TRouteTree, TMaskFrom, TMaskTo>
+}
+
+export type ToMaskOptions<
+  TRouteTree extends AnyRoute = AnyRoute,
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
+> = ToSubOptions<TRouteTree, TMaskFrom, TMaskTo> & {
+  unmaskOnReload?: boolean
+}
+
+export type ToSubOptions<
+  TRouteTree extends AnyRoute = AnyRoute,
+  TFrom extends RoutePaths<TRouteTree> = '/',
+  TTo extends string = '',
+  TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
 > = {
   to?: ToPathOption<TRouteTree, TFrom, TTo>
   // The new has string or a function to update it
-  hash?: Updater<string>
+  hash?: true | Updater<string>
   // State to pass to the history stack
-  state?: LocationState
+  state?: true | NonNullableUpdater<LocationState>
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
   from?: TFrom
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
   // fromCurrent?: boolean
-} & CheckPath<TRouteTree, NoInfer<TResolvedTo>, {}> &
-  SearchParamOptions<TRouteTree, TFrom, TResolvedTo> &
-  PathParamOptions<TRouteTree, TFrom, TResolvedTo>
+} & CheckPath<TRouteTree, NoInfer<TResolved>, {}> &
+  SearchParamOptions<TRouteTree, TFrom, TResolved> &
+  PathParamOptions<TRouteTree, TFrom, TResolved>
 
 export type SearchParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
   TTo,
-  TFromSchema = UnionToIntersection<
-    FullSearchSchema<TRouteTree> & RouteByPath<TRouteTree, TFrom> extends never
-      ? {}
-      : RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']
+  TFromSearchEnsured = Expand<
+    UnionToIntersection<
+      PickRequired<RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']>
+    >
   >,
-  // Find the schema for the new path, and make optional any keys
-  // that are already defined in the current schema
-  TToSchema = Partial<
-    RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']
-  > &
-    Omit<
-      RouteByPath<TRouteTree, TTo>['types']['fullSearchSchema'],
-      keyof PickRequired<
-        RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']
-      >
-    >,
-  TFromFullSchema = UnionToIntersection<
-    FullSearchSchema<TRouteTree> & TFromSchema
-  >,
-  TToFullSchema = UnionToIntersection<FullSearchSchema<TRouteTree> & TToSchema>,
-> = keyof PickRequired<TToSchema> extends never
+  TFromSearchOptional = Omit<AllParams<TRouteTree>, keyof TFromSearchEnsured>,
+  TFromSearch = Expand<TFromSearchEnsured & TFromSearchOptional>,
+  TToSearch = Expand<RouteByPath<TRouteTree, TTo>['types']['fullSearchSchema']>,
+> = keyof PickRequired<TToSearch> extends never
   ? {
-      search?: true | SearchReducer<TFromFullSchema, TToFullSchema>
+      search?: true | SearchReducer<TFromSearch, TToSearch>
     }
   : {
-      search: SearchReducer<TFromFullSchema, TToFullSchema>
+      search: TFromSearchEnsured extends PickRequired<TToSearch>
+        ? true | SearchReducer<TFromSearch, TToSearch>
+        : SearchReducer<TFromSearch, TToSearch>
     }
 
-type SearchReducer<TFrom, TTo> =
-  | { [TKey in keyof TTo]: TTo[TKey] }
-  | ((current: TFrom) => TTo)
+type SearchReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
 export type PathParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
   TTo,
-  TFromSchema = UnionToIntersection<
-    RouteByPath<TRouteTree, TFrom> extends never
-      ? {}
-      : RouteByPath<TRouteTree, TFrom>['types']['allParams']
+  TFromParamsEnsured = Expand<
+    UnionToIntersection<
+      PickRequired<RouteByPath<TRouteTree, TFrom>['types']['allParams']>
+    >
   >,
-  // Find the schema for the new path, and make optional any keys
-  // that are already defined in the current schema
-  TToSchema = Partial<RouteByPath<TRouteTree, TFrom>['types']['allParams']> &
-    Omit<
-      RouteByPath<TRouteTree, TTo>['types']['allParams'],
-      keyof PickRequired<RouteByPath<TRouteTree, TFrom>['types']['allParams']>
-    >,
-  TFromFullParams = UnionToIntersection<AllParams<TRouteTree> & TFromSchema>,
-  TToFullParams = UnionToIntersection<AllParams<TRouteTree> & TToSchema>,
-> = keyof PickRequired<TToSchema> extends never
+  TFromParamsOptional = Omit<AllParams<TRouteTree>, keyof TFromParamsEnsured>,
+  TFromParams = Expand<TFromParamsOptional & TFromParamsEnsured>,
+  TToParams = Expand<RouteByPath<TRouteTree, TTo>['types']['allParams']>,
+> = keyof PickRequired<TToParams> extends never
   ? {
-      params?: ParamsReducer<TFromFullParams, TToFullParams>
+      params?: true | ParamsReducer<TFromParams, TToParams>
     }
   : {
-      params: ParamsReducer<TFromFullParams, TToFullParams>
+      params: TFromParamsEnsured extends PickRequired<TToParams>
+        ? true | ParamsReducer<TFromParams, TToParams>
+        : ParamsReducer<TFromParams, TToParams>
     }
 
 type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
@@ -244,7 +257,9 @@ export type LinkOptions<
   TRouteTree extends AnyRoute = AnyRoute,
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
-> = NavigateOptions<TRouteTree, TFrom, TTo> & {
+  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskTo extends string = '',
+> = NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // The standard anchor tag target attribute
   target?: HTMLAnchorElement['target']
   // Defaults to `{ exact: false, includeHash: false }`

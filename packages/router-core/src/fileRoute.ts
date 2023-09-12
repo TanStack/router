@@ -3,7 +3,7 @@ import {
   AnyRoute,
   ResolveFullPath,
   ResolveFullSearchSchema,
-  MergeParamsFromParent,
+  MergeFromFromParent,
   RouteContext,
   AnyContext,
   RouteOptions,
@@ -94,14 +94,14 @@ export class FileRoute<
     TParams extends RouteConstraints['TParams'] = ParsePathParams<TPath> extends never
       ? AnyPathParams
       : Record<ParsePathParams<TPath>, RouteConstraints['TPath']>,
-    TAllParams extends RouteConstraints['TAllParams'] = MergeParamsFromParent<
+    TAllParams extends RouteConstraints['TAllParams'] = MergeFromFromParent<
       TParentRoute['types']['allParams'],
       TParams
     >,
     TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['types']['routeContext'],
     TAllParentContext extends RouteConstraints['TId'] = TParentRoute['types']['context'],
     TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
-    TContext extends RouteConstraints['TAllContext'] = MergeParamsFromParent<
+    TContext extends RouteConstraints['TAllContext'] = MergeFromFromParent<
       TParentRoute['types']['context'],
       TRouteContext
     >,

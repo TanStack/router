@@ -3,7 +3,7 @@
 // making assumptions about the way TanStack Router works
 
 export interface RouterHistory {
-  location: RouterLocation
+  location: HistoryLocation
   subscribe: (cb: () => void) => () => void
   push: (path: string, state?: any) => void
   replace: (path: string, state?: any) => void
@@ -14,6 +14,10 @@ export interface RouterHistory {
   block: (blockerFn: BlockerFn) => () => void
 }
 
+export interface HistoryLocation extends ParsedPath {
+  state: LocationState
+}
+
 export interface ParsedPath {
   href: string
   pathname: string
@@ -21,8 +25,10 @@ export interface ParsedPath {
   hash: string
 }
 
-export interface RouterLocation extends ParsedPath {
-  state: Record<string, any>
+export interface LocationState {
+  key: string
+  __tempLocation?: HistoryLocation
+  __tempKey?: string
 }
 
 type BlockerFn = (retry: () => void, cancel: () => void) => void
@@ -44,7 +50,7 @@ const stopBlocking = () => {
 }
 
 function createHistory(opts: {
-  getLocation: () => RouterLocation
+  getLocation: () => HistoryLocation
   subscriber: false | ((onUpdate: () => void) => () => void)
   pushState: (path: string, state: any) => void
   replaceState: (path: string, state: any) => void
@@ -108,11 +114,13 @@ function createHistory(opts: {
       }
     },
     push: (path: string, state: any) => {
+      assignKey(state)
       queueTask(() => {
         opts.pushState(path, state)
       })
     },
     replace: (path: string, state: any) => {
+      assignKey(state)
       queueTask(() => {
         opts.replaceState(path, state)
       })
@@ -153,6 +161,16 @@ function createHistory(opts: {
   }
 }
 
+function assignKey(state: LocationState) {
+  state.key = createRandomKey()
+  // if (state.__actualLocation) {
+  //   state.__actualLocation.state = {
+  //     ...state.__actualLocation.state,
+  //     key,
+  //   }
+  // }
+}
+
 export function createBrowserHistory(opts?: {
   getHref?: () => string
   createHref?: (path: string) => string
@@ -161,7 +179,9 @@ export function createBrowserHistory(opts?: {
     opts?.getHref ??
     (() =>
       `${window.location.pathname}${window.location.search}${window.location.hash}`)
+
   const createHref = opts?.createHref ?? ((path) => path)
+
   const getLocation = () => parseLocation(getHref(), window.history.state)
 
   return createHistory({
@@ -191,18 +211,10 @@ export function createBrowserHistory(opts?: {
       }
     },
     pushState: (path, state) => {
-      window.history.pushState(
-        { ...state, key: createRandomKey() },
-        '',
-        createHref(path),
-      )
+      window.history.pushState(state, '', createHref(path))
     },
     replaceState: (path, state) => {
-      window.history.replaceState(
-        { ...state, key: createRandomKey() },
-        '',
-        createHref(path),
-      )
+      window.history.replaceState(state, '', createHref(path))
     },
     back: () => window.history.back(),
     forward: () => window.history.forward(),
@@ -228,7 +240,9 @@ export function createMemoryHistory(
 ): RouterHistory {
   const entries = opts.initialEntries
   let index = opts.initialIndex ?? entries.length - 1
-  let currentState = {}
+  let currentState = {
+    key: createRandomKey(),
+  } as LocationState
 
   const getLocation = () => parseLocation(entries[index]!, currentState)
 
@@ -236,18 +250,12 @@ export function createMemoryHistory(
     getLocation,
     subscriber: false,
     pushState: (path, state) => {
-      currentState = {
-        ...state,
-        key: createRandomKey(),
-      }
+      currentState = state
       entries.push(path)
       index++
     },
     replaceState: (path, state) => {
-      currentState = {
-        ...state,
-        key: createRandomKey(),
-      }
+      currentState = state
       entries[index] = path
     },
     back: () => {
@@ -261,7 +269,7 @@ export function createMemoryHistory(
   })
 }
 
-function parseLocation(href: string, state: any): RouterLocation {
+function parseLocation(href: string, state: LocationState): HistoryLocation {
   let hashIndex = href.indexOf('#')
   let searchIndex = href.indexOf('?')
 
@@ -282,7 +290,7 @@ function parseLocation(href: string, state: any): RouterLocation {
       searchIndex > -1
         ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
         : '',
-    state,
+    state: state || {},
   }
 }
 

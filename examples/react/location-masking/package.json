@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-react-example-with-loaders-code-split",
+  "name": "tanstack-router-react-example-basic",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -9,24 +9,21 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "0.0.1-beta.188",
+    "@tanstack/actions": "0.0.1-beta.188",
+    "@tanstack/loaders": "0.0.1-beta.188",
     "@tanstack/react-actions": "0.0.1-beta.188",
     "@tanstack/react-loaders": "0.0.1-beta.188",
+    "@tanstack/react-query": "5.0.0-beta.20",
+    "@tanstack/react-router": "0.0.1-beta.188",
+    "@tanstack/react-start": "0.0.1-beta.188",
+    "@tanstack/router-cli": "0.0.1-beta.188",
+    "@tanstack/router-core": "0.0.1-beta.188",
     "@tanstack/router-devtools": "0.0.1-beta.188",
     "@vitejs/plugin-react": "^1.1.3",
     "axios": "^1.1.3",
-    "immer": "^9.0.15",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "vite": "^2.8.6",
-    "zod": "^3.19.1",
-    "@tanstack/store": "^0.0.1",
-    "@tanstack/react-store": "^0.0.1",
-    "@tanstack/router-core": "0.0.1-beta.188",
-    "@tanstack/loaders": "0.0.1-beta.188",
-    "@tanstack/actions": "0.0.1-beta.188",
-    "@tanstack/react-start": "0.0.1-beta.188",
-    "@tanstack/router-cli": "0.0.1-beta.188"
+    "vite": "^2.8.6"
   },
   "devDependencies": {
     "@types/react": "^18.0.25",
