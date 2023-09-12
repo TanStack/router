@@ -329,6 +329,27 @@ A few more options to be aware of:
 - If you want to include the hash in your matching, you can pass the `includeHash: true` option
 - If you do **not** want to include the search params in your matching, you can pass the `includeSearch: false` option
 
+### Passing `isActive` to children
+
+The `Link` component accepts a function for its children, allowing you to propagate its `isActive` property to children. For example, you could style a child component based on whether the parent link is active:
+
+```tsx
+const link = (
+  <Link to="/blog/post">
+    {
+      ({isActive}) => {
+        return (
+          <>
+            <span>My Blog Post</span>
+            <icon className={isActive ? "active" : "inactive"} />
+          </>
+        )
+      }
+    }
+  </Link>
+)
+```
+
 ### Link Preloading
 
 The `Link` component supports automatically preloading routes on intent (hovering or touchstart for now). This can be configured as a default in the router options (which we'll talk more about soon) or by passing a `preload='intent'` prop to the `Link` component. Here's an example:
