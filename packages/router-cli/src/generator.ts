@@ -175,9 +175,14 @@ export async function generator(config: Config) {
       }
 
       // Ensure that new FileRoute(anything?) is replace with FileRoute(${node.routePath})
+      // routePath can contain $ characters, which have special meaning when used in replace
+      // so we have to escape it by turning all $ into $$. But since we do it through a replace call
+      // we have to double escape it into $$$$. For more information, see
+      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace#specifying_a_string_as_the_replacement
+      const escapedRoutePath = node.routePath?.replaceAll('$', '$$$$') ?? ''
       const replaced = routeCode.replace(
         fileRouteRegex,
-        `new FileRoute('${node.routePath}')`,
+        `new FileRoute('${escapedRoutePath}')`,
       )
 
       if (replaced !== routeCode) {
@@ -226,7 +231,7 @@ export async function generator(config: Config) {
           parentRoute: typeof ${routeNode.parent?.variableName ?? 'root'}Route
         }`
       })
-      .join('\n')}  
+      .join('\n')}
   }
 }`
 
