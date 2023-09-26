@@ -367,12 +367,20 @@ function replaceBackslash(s?: string) {
   return s?.replace(/\\/gi, '/')
 }
 
-function hasParentRoute(routes: RouteNode[], routeToCheck: string | undefined): RouteNode | null {
+export function hasParentRoute(routes: RouteNode[], routeToCheck: string | undefined): RouteNode | null {
   if (!routeToCheck || routeToCheck === "/") {
     return null;
   }
-  for (const route of routes) {
+
+  const sortedNodes  = multiSortBy(routes, [        
+    (d) => d.routePath!.length * -1,
+    (d) => d.variableName,
+    
+  ]).filter((d) => d.routePath !== `/${rootPathId}`)
+
+  for (const route of sortedNodes) {
     if (route.routePath === '/') continue;
+
     if (routeToCheck.startsWith(`${route.routePath}/`) && route.routePath !== routeToCheck) {
       return route;
     }
@@ -380,5 +388,6 @@ function hasParentRoute(routes: RouteNode[], routeToCheck: string | undefined): 
   const segments = routeToCheck.split("/");
   segments.pop(); // Remove the last segment
   const parentRoute = segments.join("/");
+
   return hasParentRoute(routes, parentRoute);
 }
