@@ -475,11 +475,7 @@ const invoiceRoute = new Route({
 
     return { loaderOptions }
   },
-  loader: async ({
-    preload,
-    context: { loaderClient },
-    routeContext: { loaderOptions },
-  }) => {
+  loader: async ({ preload, context: { loaderClient, loaderOptions } }) => {
     await loaderClient.load({
       ...loaderOptions,
       preload,
@@ -763,8 +759,8 @@ const userRoute = new Route({
   }),
   // Since our userId isn't part of our pathname, make sure we
   // augment the userId as the key for this route
-  key: ({ search: { userId } }) => userId,
-  beforeLoad: ({ search: { userId } }) => {
+  loaderContext: ({ search: { userId } }) => ({ userId }),
+  beforeLoad: ({ context: { userId } }) => {
     const loaderOptions = createLoaderOptions({
       key: 'user',
       variables: userId,
@@ -772,11 +768,7 @@ const userRoute = new Route({
 
     return { loaderOptions }
   },
-  loader: async ({
-    context: { loaderClient },
-    routeContext: { loaderOptions },
-    preload,
-  }) => {
+  loader: async ({ context: { loaderClient, loaderOptions }, preload }) => {
     await loaderClient.load({ ...loaderOptions, preload })
   },
   component: ({ useRouteContext, useLoader }) => {

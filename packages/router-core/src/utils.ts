@@ -47,6 +47,26 @@ export type UnionToIntersection<U> = (
 //   }
 // >
 
+export type DeepMerge<A, B> = {
+  [K in keyof (A & B)]: K extends keyof B
+    ? B[K]
+    : K extends keyof A
+    ? A[K]
+    : never
+} & (A extends Record<string, any>
+  ? Pick<A, Exclude<keyof A, keyof B>>
+  : never) &
+  (B extends Record<string, any> ? Pick<B, Exclude<keyof B, keyof A>> : never)
+
+export type DeepMergeAll<T extends any[]> = T extends [
+  infer Left,
+  ...infer Rest,
+]
+  ? Rest extends any[]
+    ? DeepMerge<Left, DeepMergeAll<Rest>>
+    : Left
+  : {}
+
 export type Values<O> = O[ValueKeys<O>]
 export type ValueKeys<O> = Extract<keyof O, PropertyKey>
 

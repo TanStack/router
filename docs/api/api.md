@@ -48,22 +48,23 @@ const myRoute = new Route({
   id: string,
   // A function to validate the search parameters for the route.
   validateSearch: (search: string) => boolean,
+  // A function to provide any params or search params to the loader context
+  loaderContext: (opts: {
+    // The parsed path parameters available from this route and its parents.
+    param: Record<string, string>
+    // The parsed search parameters available from this route only.
+    search: TFullSearchSchema
+  }) =>
+    // The loader context for this route only. The return value must be serializable.
+    (TLoaderContext extends JSON.serializable),
   // An async function to load or prepare any required prerequisites for the route.
   loader: (match: {
-    // The parsed path parameters available from this route and its parents.
-    params: TAllParams
-    // The parsed search parameters available from this route only.
-    routeSearch: TSearchSchema
-    // The marged and parsed search parameters available from this route and its parents.
-    search: TFullSearchSchema
     // The abortController used internally by the router
     abortController: AbortController
     // A boolean indicating whether or not the route is being preloaded.
     preload: boolean
-    // The context for this route only.
-    routeContext: TContext
     // The merged context for this route and its parents.
-    context: TAllContext
+    context: TAllContext & TLoaderContext
     // If there is a parent route, this will be a promise that resolves when the parent route has been loaded.
     parentMatchPromise?: Promise<void>
   }) =>
@@ -78,16 +79,6 @@ const myRoute = new Route({
   // 🧠: The following options can be set in both the constructor AND via the Route.update method.
   //
   //
-  // If a loader is specified, this option will be required. Either return a falsey value if the `pathname` is
-  // enough to uniquely identify this route. If more is needed, return a unique key for this route via the function.
-  key?: undefined | null | false | ((loaderContext: {
-    // The parsed path parameters available from this route and its parents.
-    params: TAllParams
-    // The parsed search parameters available from this route only.
-    search: TFullSearchSchema
-  }) =>
-    // An optional but additional unique key for this route to be combined with the full path of this route.
-    JSON.serializable),
   // If true, this route will be matched as case-sensitive
   caseSensitive?: boolean,
   // If true, this route will be forcefully wrapped in a suspense boundary

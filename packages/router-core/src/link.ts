@@ -1,7 +1,13 @@
 import { Trim } from './fileRoute'
 import { AnyRoute } from './route'
-import { AllParams, RouteByPath, RouteIds, RoutePaths } from './routeInfo'
-import { LocationState, ParsedLocation } from './router'
+import {
+  AllParams,
+  FullSearchSchema,
+  RouteByPath,
+  RouteIds,
+  RoutePaths,
+} from './routeInfo'
+import { LocationState, ParsedLocation, RegisteredRouter } from './router'
 import {
   Expand,
   NoInfer,
@@ -119,7 +125,7 @@ export type RelativeToPathAutoComplete<
       | AllPaths
 
 export type NavigateOptions<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
@@ -131,7 +137,7 @@ export type NavigateOptions<
 }
 
 export type ToOptions<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = '/',
@@ -141,7 +147,7 @@ export type ToOptions<
 }
 
 export type ToMaskOptions<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TMaskFrom extends RoutePaths<TRouteTree> = '/',
   TMaskTo extends string = '',
 > = ToSubOptions<TRouteTree, TMaskFrom, TMaskTo> & {
@@ -149,7 +155,7 @@ export type ToMaskOptions<
 }
 
 export type ToSubOptions<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
   TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
@@ -164,21 +170,28 @@ export type ToSubOptions<
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
   // fromCurrent?: boolean
 } & CheckPath<TRouteTree, NoInfer<TResolved>, {}> &
-  SearchParamOptions<TRouteTree, TFrom, TResolved> &
+  SearchParamOptions<TRouteTree, TFrom, TTo, TResolved> &
   PathParamOptions<TRouteTree, TFrom, TResolved>
 
 export type SearchParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
   TTo,
-  TFromSearchEnsured = Expand<
-    UnionToIntersection<
-      PickRequired<RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']>
-    >
-  >,
+  TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+  TFromSearchEnsured = '/' extends TFrom
+    ? FullSearchSchema<TRouteTree>
+    : Expand<
+        UnionToIntersection<
+          PickRequired<
+            RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']
+          >
+        >
+      >,
   TFromSearchOptional = Omit<AllParams<TRouteTree>, keyof TFromSearchEnsured>,
   TFromSearch = Expand<TFromSearchEnsured & TFromSearchOptional>,
-  TToSearch = Expand<RouteByPath<TRouteTree, TTo>['types']['fullSearchSchema']>,
+  TToSearch = '' extends TTo
+    ? FullSearchSchema<TRouteTree>
+    : Expand<RouteByPath<TRouteTree, TResolved>['types']['fullSearchSchema']>,
 > = keyof PickRequired<TToSearch> extends never
   ? {
       search?: true | SearchReducer<TFromSearch, TToSearch>
@@ -246,7 +259,7 @@ export interface ActiveOptions {
 }
 
 export type LinkOptions<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = TFrom,

@@ -8,6 +8,9 @@ import {
   Link,
   Route,
   ErrorComponent,
+  ParseRoute,
+  RegisteredRouter,
+  InferFullSearchSchema,
 } from '@tanstack/react-router'
 import {
   createLoaderOptions,
@@ -73,11 +76,7 @@ export const invoiceRoute = new Route({
       loaderOptions,
     }
   },
-  loader: async ({
-    context: { loaderClient },
-    routeContext: { loaderOptions },
-    preload,
-  }) => {
+  loader: async ({ context: { loaderClient, loaderOptions }, preload }) => {
     await loaderClient.load({
       ...loaderOptions,
       preload,

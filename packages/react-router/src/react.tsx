@@ -54,10 +54,10 @@ declare module '@tanstack/router-core' {
 
   interface RegisterRouteComponent<
     TLoader = unknown,
-    TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+    TFullSearchSchema extends Record<string, any> = AnySearchSchema,
     TAllParams extends AnyPathParams = AnyPathParams,
-    TRouteContext extends AnyContext = AnyContext,
-    TAllContext extends AnyContext = AnyContext,
+    TRouteContext extends Record<string, any> = AnyContext,
+    TAllContext extends Record<string, any> = AnyContext,
   > {
     RouteComponent: RouteComponent<
       RouteProps<
@@ -71,10 +71,10 @@ declare module '@tanstack/router-core' {
   }
 
   interface RegisterErrorRouteComponent<
-    TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+    TFullSearchSchema extends Record<string, any> = AnySearchSchema,
     TAllParams extends AnyPathParams = AnyPathParams,
-    TRouteContext extends AnyContext = AnyContext,
-    TAllContext extends AnyContext = AnyContext,
+    TRouteContext extends Record<string, any> = AnyContext,
+    TAllContext extends Record<string, any> = AnyContext,
   > {
     ErrorRouteComponent: RouteComponent<
       ErrorRouteProps<TFullSearchSchema, TAllParams, TRouteContext, TAllContext>
@@ -82,10 +82,10 @@ declare module '@tanstack/router-core' {
   }
 
   interface RegisterPendingRouteComponent<
-    TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+    TFullSearchSchema extends Record<string, any> = AnySearchSchema,
     TAllParams extends AnyPathParams = AnyPathParams,
-    TRouteContext extends AnyContext = AnyContext,
-    TAllContext extends AnyContext = AnyContext,
+    TRouteContext extends Record<string, any> = AnyContext,
+    TAllContext extends Record<string, any> = AnyContext,
   > {
     PendingRouteComponent: RouteComponent<
       PendingRouteProps<
@@ -110,6 +110,7 @@ declare module '@tanstack/router-core' {
       TCustomId,
       TPath
     >,
+    TLoaderContext extends RouteConstraints['TLoaderContext'] = AnyContext,
     TLoader = unknown,
     TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
     TFullSearchSchema extends RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
@@ -156,10 +157,10 @@ declare module '@tanstack/router-core' {
 
   interface RegisterRouteProps<
     TLoader = unknown,
-    TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+    TFullSearchSchema extends Record<string, any> = AnySearchSchema,
     TAllParams extends AnyPathParams = AnyPathParams,
-    TRouteContext extends AnyContext = AnyContext,
-    TAllContext extends AnyContext = AnyContext,
+    TRouteContext extends Record<string, any> = AnyContext,
+    TAllContext extends Record<string, any> = AnyContext,
   > {
     RouteProps: RouteProps<
       TLoader,
@@ -171,10 +172,10 @@ declare module '@tanstack/router-core' {
   }
 
   interface RegisterPendingRouteProps<
-    TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+    TFullSearchSchema extends Record<string, any> = AnySearchSchema,
     TAllParams extends AnyPathParams = AnyPathParams,
-    TRouteContext extends AnyContext = AnyContext,
-    TAllContext extends AnyContext = AnyContext,
+    TRouteContext extends Record<string, any> = AnyContext,
+    TAllContext extends Record<string, any> = AnyContext,
   > {
     PendingRouteProps: PendingRouteProps<
       TFullSearchSchema,
@@ -185,10 +186,10 @@ declare module '@tanstack/router-core' {
   }
 
   interface RegisterErrorRouteProps<
-    TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+    TFullSearchSchema extends Record<string, any> = AnySearchSchema,
     TAllParams extends AnyPathParams = AnyPathParams,
-    TRouteContext extends AnyContext = AnyContext,
-    TAllContext extends AnyContext = AnyContext,
+    TRouteContext extends Record<string, any> = AnyContext,
+    TAllContext extends Record<string, any> = AnyContext,
   > {
     ErrorRouteProps: ErrorRouteProps
   }
@@ -196,10 +197,10 @@ declare module '@tanstack/router-core' {
 
 export type RouteProps<
   TLoader = unknown,
-  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
   TAllParams extends AnyPathParams = AnyPathParams,
-  TRouteContext extends AnyContext = AnyContext,
-  TAllContext extends AnyContext = AnyContext,
+  TRouteContext extends Record<string, any> = AnyContext,
+  TAllContext extends Record<string, any> = AnyContext,
 > = {
   useLoader: <TSelected = TLoader>(opts?: {
     select?: (search: TLoader) => TSelected
@@ -222,10 +223,10 @@ export type RouteProps<
 }
 
 export type ErrorRouteProps<
-  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
   TAllParams extends AnyPathParams = AnyPathParams,
-  TRouteContext extends AnyContext = AnyContext,
-  TAllContext extends AnyContext = AnyContext,
+  TRouteContext extends Record<string, any> = AnyContext,
+  TAllContext extends Record<string, any> = AnyContext,
 > = {
   error: unknown
   info: { componentStack: string }
@@ -241,10 +242,10 @@ export type ErrorRouteProps<
 >
 
 export type PendingRouteProps<
-  TFullSearchSchema extends AnySearchSchema = AnySearchSchema,
+  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
   TAllParams extends AnyPathParams = AnyPathParams,
-  TRouteContext extends AnyContext = AnyContext,
-  TAllContext extends AnyContext = AnyContext,
+  TRouteContext extends Record<string, any> = AnyContext,
+  TAllContext extends Record<string, any> = AnyContext,
 > = Omit<
   RouteProps<
     unknown,
@@ -349,13 +350,7 @@ export type LinkPropsOptions<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = '/',
   TMaskTo extends string = '',
-> = LinkOptions<
-  RegisteredRouter['routeTree'],
-  TFrom,
-  TTo,
-  TMaskFrom,
-  TMaskTo
-> & {
+> = LinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   activeProps?:
     | React.AnchorHTMLAttributes<HTMLAnchorElement>
@@ -383,13 +378,13 @@ export type MakeMatchRouteOptions<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = '/',
   TMaskTo extends string = '',
-> = ToOptions<RegisteredRouter['routeTree'], TFrom, TTo, TMaskFrom, TMaskTo> &
+> = ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
   MatchRouteOptions & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
       | ((
           params?: RouteByPath<
-            RegisteredRouter['routeTree'],
+            TRouteTree,
             ResolveRelativePath<TFrom, NoInfer<TTo>>
           >['types']['allParams'],
         ) => ReactNode)
@@ -589,15 +584,7 @@ export function Navigate<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = '/',
   TMaskTo extends string = '',
->(
-  props: NavigateOptions<
-    RegisteredRouter['routeTree'],
-    TFrom,
-    TTo,
-    TMaskFrom,
-    TMaskTo
-  >,
-): null {
+>(props: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const router = useRouter()
 
   React.useLayoutEffect(() => {
@@ -731,12 +718,10 @@ type StrictOrFrom<TFrom> =
     }
 
 export function useMatch<
-  TFrom extends RouteIds<RegisteredRouter['routeTree']>,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
   TStrict extends boolean = true,
-  TRouteMatchState = RouteMatch<
-    RegisteredRouter['routeTree'],
-    RouteById<RegisteredRouter['routeTree'], TFrom>
-  >,
+  TRouteMatchState = RouteMatch<TRouteTree, TFrom>,
   TSelected = TRouteMatchState,
 >(
   opts: StrictOrFrom<TFrom> & {
@@ -792,20 +777,22 @@ export function useMatch<
   return matchSelection as any
 }
 
-export type RouteFromIdOrRoute<T> = T extends ParseRoute<
-  RegisteredRouter['routeTree']
->
+export type RouteFromIdOrRoute<
+  T,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+> = T extends ParseRoute<TRouteTree>
   ? T
-  : T extends RouteIds<RegisteredRouter['routeTree']>
-  ? RoutesById<RegisteredRouter['routeTree']>[T]
+  : T extends RouteIds<TRouteTree>
+  ? RoutesById<TRouteTree>[T]
   : T extends string
-  ? RouteIds<RegisteredRouter['routeTree']>
+  ? RouteIds<TRouteTree>
   : never
 
 export function useLoader<
-  TFrom extends RouteIds<RegisteredRouter['routeTree']>,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
   TStrict extends boolean = true,
-  TLoader = RouteById<RegisteredRouter['routeTree'], TFrom>['types']['loader'],
+  TLoader = RouteById<TRouteTree, TFrom>['types']['loader'],
   TSelected = TLoader,
 >(
   opts: StrictOrFrom<TFrom> & {
@@ -822,12 +809,10 @@ export function useLoader<
 }
 
 export function useRouterContext<
-  TFrom extends RouteIds<RegisteredRouter['routeTree']>,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
   TStrict extends boolean = true,
-  TContext = RouteById<
-    RegisteredRouter['routeTree'],
-    TFrom
-  >['types']['context'],
+  TContext = RouteById<TRouteTree, TFrom>['types']['context'],
   TSelected = TContext,
 >(
   opts: StrictOrFrom<TFrom> & {
@@ -842,12 +827,10 @@ export function useRouterContext<
 }
 
 export function useRouteContext<
-  TFrom extends RouteIds<RegisteredRouter['routeTree']>,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
   TStrict extends boolean = true,
-  TRouteContext = RouteById<
-    RegisteredRouter['routeTree'],
-    TFrom
-  >['types']['routeContext'],
+  TRouteContext = RouteById<TRouteTree, TFrom>['types']['context'],
   TSelected = TRouteContext,
 >(
   opts: StrictOrFrom<TFrom> & {
@@ -858,18 +841,16 @@ export function useRouteContext<
     ...(opts as any),
     select: (match: RouteMatch) =>
       opts?.select
-        ? opts.select(match.routeContext as TRouteContext)
-        : match.routeContext,
+        ? opts.select(match.context as TRouteContext)
+        : match.context,
   })
 }
 
 export function useSearch<
-  TFrom extends RouteIds<RegisteredRouter['routeTree']>,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
   TStrict extends boolean = true,
-  TSearch = RouteById<
-    RegisteredRouter['routeTree'],
-    TFrom
-  >['types']['fullSearchSchema'],
+  TSearch = RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'],
   TSelected = TSearch,
 >(
   opts: StrictOrFrom<TFrom> & {
@@ -885,9 +866,10 @@ export function useSearch<
 }
 
 export function useParams<
-  TFrom extends RouteIds<RegisteredRouter['routeTree']> = '/',
-  TDefaultSelected = AllParams<RegisteredRouter['routeTree']> &
-    RouteById<RegisteredRouter['routeTree'], TFrom>['types']['allParams'],
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
+  TDefaultSelected = AllParams<TRouteTree> &
+    RouteById<TRouteTree, TFrom>['types']['allParams'],
   TSelected = TDefaultSelected,
 >(
   opts: StrictOrFrom<TFrom> & {

@@ -219,11 +219,7 @@ const postRoute = new Route({
       loaderOptions,
     }
   },
-  loader: async ({
-    context: { loaderClient },
-    routeContext: { loaderOptions },
-    preload,
-  }) => {
+  loader: async ({ context: { loaderClient, loaderOptions }, preload }) => {
     await loaderClient.load({ ...loaderOptions, preload })
   },
   errorComponent: ({ error }) => {

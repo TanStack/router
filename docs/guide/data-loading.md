@@ -98,65 +98,31 @@ const postsRoute = new Route({
 })
 ```
 
-The data returned from the loader is stored in a unique `RouteMatch` that is identified by the route's `fullPath` and optionally, the result of the `routeOptions.key` function, which can optionally be used to help uniquely identify a route match. This is useful for routes that have the same `fullPath` but different `search` or `context` values, e.g. `/posts?page=1` and `/posts?page=2`. In the case above, the pathName is sufficient to uniquely identify the route, so we pass `key: null` to disable the `key` function.
+The data returned from the loader is stored in a unique `RouteMatch` that is identified by the route's `fullPath` and optionally, the result of the `routeOptions.loaderContext` function, which is required to use any path params, search params or hash in a loader. This ensures that routes with the same `fullPath` but different variables e.g. `/posts?page=1` and `/posts?page=2` are stored separately. In the case above, the pathName is sufficient to uniquely identify the route and it doesn't need any access to path params, search params or hash, so `loaderContext` is not required.
 
 ## `loader` Parameters
 
 The `loader` function receives a single object with the following properties:
 
-- `params` - The route's parsed path params
-- `search` - The route's search query, parsed, validated and typed **including** inherited search params from parent routes
-- `routeSearch` - The route's search query, parsed, validated and typed **excluding** inherited search params from parent routes
-- `hash` - The route's hash
-- `context` - The route's context object **including** inherited context from parent routes
-- `routeContext` - The route's context object, **excluding** inherited context from parent routes
+- `context` - The route's context object, which is a merged union of:
+  - Parent route context
+  - This route's context as provided by the `beforeLoad` option
+  - This route's loader context as provided by the `loaderContext` option
 - `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the `loader` call becomes outdated.
 
 Using these parameters, we can do a lot of cool things. Let's take a look at a few examples
 
-## Using Path Params
+## Using Router Context
 
-The `params` property of the `loader` function is an object containing the route's path params.
+The `context` argument passed to the `loader` function is an object containing a merged union of:
 
-```tsx
-import { Route } from '@tanstack/react-router'
+- Parent route context
+- This route's context as provided by the `beforeLoad` option
+- This route's loader context as provided by the `loaderContext` option
 
-const postRoute = new Route({
-  getParentPath: () => postsRoute,
-  path: '$postId',
-  loader: ({ params: { postId } }) => {
-    const res = await fetch(`/api/posts/${postId}`)
-    if (!res.ok) throw new Error('Failed to fetch posts')
-    return res.json()
-  },
-})
-```
+Starting at the very top of the router, you can pass an initial context to the router via the `context` option. This context will be available to all routes in the router and get copied and extended by each route as they are matched. This happens by passing a context to a route via the `beforeLoad` option. This context will be available to all child routes of the route. Finally, you can pass a context to a route via the `loaderContext` option. This context will be available to the route's loader.
 
-## Using Search Params
-
-The `search` and `routeSearch` properties of the `loader` function are objects containing the route's search params. `search` contains _all_ of the search params including parent search params. `routeSearch` only includes specific search params from this route. In this example, we'll use zod to validate and parse the search params for `/posts/$postId` route, then use them in our loader.
-
-```tsx
-import { Route } from '@tanstack/react-router'
-
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
-  key: ({ search }) => search.pageIndex,
-  validateSearch: z.object({
-    pageIndex: z.number().int().nonnegative().catch(0),
-  }),
-  loader: async ({ search: { pageIndex } }) => {
-    const res = await fetch(`/api/posts?page=${pageIndex}`)
-    if (!res.ok) throw new Error('Failed to fetch posts')
-    return res.json()
-  },
-})
-```
-
-## Using Context
-
-The `context` and `routeContext` properties of the `loader` function are objects containing the route's context. `context` is the context object for the route including context from parent routes. `routeContext` is the context object for the route excluding context from parent routes. In this example, we'll create a function in our route context to fetch posts, then use it in our loader.
+In this example, we'll create a function in our route context to fetch posts, then use it in our loader.
 
 > 🧠 Context is a powerful tool for dependency injection. You can use it to inject services, loaders, and other objects into your router and routes. You can also additively pass data down the route tree at every route using a route's `beforeLoad` option.
 
@@ -195,6 +161,71 @@ const router = new Router({
   context: {
     // Supply the fetchPosts function to the router context
     fetchPosts,
+  },
+})
+```
+
+## Using Path Params
+
+To use path params in your loader, access them via the `params` property on the loader's parameters. Here's an example:
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
+const postRoute = new Route({
+  getParentPath: () => postsRoute,
+  path: '$postId',
+  loader: ({ params: { postId } }) => {
+    const res = await fetch(`/api/posts/${postId}`)
+    if (!res.ok) throw new Error('Failed to fetch posts')
+    return res.json()
+  },
+})
+```
+
+## Using Route Context
+
+Passing down global context to your router is great, but what if you want to provide context that is specific to a route? This is where the `beforeLoad` option comes in. The `beforeLoad` option is a function that runs right before attempting to load a route and receives the same `loader` parameters. Beyond its ability to redirect potential matches, it can also return an object that will be merged into the route's context. Let's take a look at an example where we provide `fetchPosts` to our route context via the `beforeLoad` option:
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
+const fetchPosts = async () => {
+  const res = await fetch(`/api/posts?page=${pageIndex}`)
+    if (!res.ok) throw new Error('Failed to fetch posts')
+    return res.json()
+}
+
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  // Pass the fetchPosts function to the route context
+  beforeLoad: () => ({ fetchPosts }),
+  loader({ context: { fetchPosts } }) => fetchPosts(),
+})
+```
+
+## Using Search Params
+
+Search parameters can be accessed via the `loaderContext` function. The `loaderContext`'s `search` property contains _all_ of the search params including parent search params, of which you can choose which search params you specifically rely on in your loader. In this example, we'll use zod to validate and parse the search params for the `/posts` route that uses pagination, then pass them and use them in our loader.
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  // Use zod to validate and parse the search params
+  validateSearch: z.object({
+    pageIndex: z.number().int().nonnegative().catch(0),
+  }),
+  // Pass the pageIndex to the loader context
+  loaderContext: ({ search: { pageIndex } }) => ({ pageIndex }),
+  // Use the pageIndex from context in the loader
+  loader: async ({ context: { pageIndex } }) => {
+    const res = await fetch(`/api/posts?page=${pageIndex}`)
+    if (!res.ok) throw new Error('Failed to fetch posts')
+    return res.json()
   },
 })
 ```

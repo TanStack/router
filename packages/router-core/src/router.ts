@@ -113,7 +113,8 @@ export interface RouteMatch<
   TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
 > {
   id: string
-  key?: string
+  // loaderContext?: RouteById<TRouteTree, TRouteId>['types']['loaderContext']
+  loaderContext?: any
   routeId: TRouteId
   pathname: string
   params: RouteById<TRouteTree, TRouteId>['types']['allParams']
@@ -129,7 +130,6 @@ export interface RouteMatch<
   loaderData: RouteById<TRouteTree, TRouteId>['types']['loader']
   loadPromise?: Promise<void>
   __resolveLoadPromise?: () => void
-  routeContext: RouteById<TRouteTree, TRouteId>['types']['routeContext']
   context: RouteById<TRouteTree, TRouteId>['types']['context']
   routeSearch: RouteById<TRouteTree, TRouteId>['types']['searchSchema']
   search: FullSearchSchema<TRouteTree> &
@@ -832,17 +832,34 @@ export class Router<
 
     const matches = matchedRoutes.map((route, index) => {
       const interpolatedPath = interpolatePath(route.path, routeParams)
-      const key = route.options.key
-        ? route.options.key({
-            params: routeParams,
+      const loaderContext = route.options.loaderContext
+        ? route.options.loaderContext({
             search: locationSearch,
-          }) ?? ''
-        : ''
+          })
+        : undefined
 
-      const stringifiedKey = key ? JSON.stringify(key) : ''
-
-      const matchId =
-        interpolatePath(route.id, routeParams, true) + stringifiedKey
+      const matchId = JSON.stringify(
+        [interpolatePath(route.id, routeParams, true), loaderContext].filter(
+          (d) => d !== undefined,
+        ),
+        (key, value) => {
+          if (typeof value === 'function') {
+            console.info(route)
+            invariant(
+              false,
+              `Cannot return functions and other non-serializable values from routeOptions.loaderContext! Please use routeOptions.beforeLoad to do this. Route info is logged above 👆`,
+            )
+          }
+          if (typeof value === 'object' && value !== null) {
+            return Object.fromEntries(
+              Object.keys(value)
+                .sort()
+                .map((key) => [key, value[key]]),
+            )
+          }
+          return value
+        },
+      )
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
@@ -861,7 +878,7 @@ export class Router<
 
       const routeMatch: AnyRouteMatch = {
         id: matchId,
-        key: stringifiedKey,
+        loaderContext,
         routeId: route.id,
         params: routeParams,
         pathname: joinPaths([this.basepath, interpolatedPath]),
@@ -878,7 +895,6 @@ export class Router<
         searchError: undefined,
         loaderData: undefined,
         loadPromise: Promise.resolve(),
-        routeContext: undefined!,
         context: undefined!,
         abortController: new AbortController(),
         fetchedAt: 0,
@@ -957,7 +973,6 @@ export class Router<
           ...s,
           routeSearch: match.routeSearch,
           search: match.search,
-          routeContext: match.routeContext,
           context: match.context,
           error: match.error,
           paramsError: match.paramsError,
@@ -1012,24 +1027,30 @@ export class Router<
 
         let didError = false
 
+        const parentContext =
+          parentMatch?.context ?? this?.options.context ?? {}
+
         try {
-          const routeContext =
+          const beforeLoadContext =
             (await route.options.beforeLoad?.({
-              ...match,
+              abortController: match.abortController,
+              params: match.params,
               preload: !!opts?.preload,
-              parentContext: parentMatch?.routeContext ?? {},
-              context: parentMatch?.context ?? this?.options.context ?? {},
+              context: {
+                ...parentContext,
+                ...match.loaderContext,
+              },
             })) ?? ({} as any)
 
           const context = {
-            ...(parentMatch?.context ?? this?.options.context),
-            ...routeContext,
-          } as any
+            ...parentContext,
+            ...match.loaderContext,
+            ...beforeLoadContext,
+          }
 
           this.setRouteMatch(match.id, (s) => ({
             ...s,
             context,
-            routeContext,
           }))
         } catch (err) {
           handleError(err, 'BEFORE_LOAD')
@@ -1102,9 +1123,11 @@ export class Router<
               )
 
               const loaderPromise = route.options.loader?.({
-                ...match,
+                params: match.params,
                 preload: !!opts?.preload,
                 parentMatchPromise,
+                abortController: match.abortController,
+                context: match.context,
               })
 
               const [_, loader] = await Promise.all([
@@ -1694,7 +1717,10 @@ export class Router<
 
       // Pre filters first
       const preFilteredSearch = preSearchFilters?.length
-        ? preSearchFilters?.reduce((prev, next) => next(prev), from.search)
+        ? preSearchFilters?.reduce(
+            (prev, next) => next(prev) as any,
+            from.search,
+          )
         : from.search
 
       // Then the link/navigate function

@@ -655,8 +655,8 @@ const userRoute = new Route({
   }),
   // Since our userId isn't part of our pathname, make sure we
   // augment the userId as the key for this route
-  key: ({ search: { userId } }) => userId,
-  loader: async ({ search: { userId } }) => fetchUserById(userId),
+  loaderContext: ({ search: { userId } }) => ({ userId }),
+  loader: async ({ context: { userId } }) => fetchUserById(userId),
   component: ({ useLoader }) => {
     const user = useLoader()
 

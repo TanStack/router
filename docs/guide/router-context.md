@@ -193,7 +193,7 @@ const userRoute = new Route({
 
 ## Unique Route Context
 
-In addition to the merged context, each route also has a unique context that is stored under the `routeContext` key. This context is not merged with the parent context. This means that you can attach unique data to each route's context. Here's an example using context to create some reusable React Query logic specific to a route:
+While the main router context is merged as it descends, each route's unique context is also stored making it a nice place to pass configuration or implementation details specific to your route. Here's an example where we use the route context to generate a title for each route:
 
 ```tsx
 export const postIdRoute = new Route({
@@ -211,11 +211,7 @@ export const postIdRoute = new Route({
       getTitle: () => `${queryClient.getQueryData(queryOptions)?.title} | Post`,
     }
   },
-  loader: async ({
-    preload,
-    context: { queryClient },
-    routeContext: { queryOptions },
-  }) => {
+  loader: async ({ preload, context: { queryClient, queryOptions } }) => {
     await queryClient.ensureQueryData(queryOptions)
   },
   component: ({ useRouteContext }) => {

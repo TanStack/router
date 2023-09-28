@@ -87,7 +87,6 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  key: false,
   loader: fetchPosts,
   component: ({ useLoader }) => {
     const posts = useLoader()

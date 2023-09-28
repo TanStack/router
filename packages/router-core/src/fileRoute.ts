@@ -85,6 +85,7 @@ export class FileRoute<
   constructor(public path: TFilePath) {}
 
   createRoute = <
+    TLoaderContext extends RouteConstraints['TLoaderContext'] = {},
     TLoader = unknown,
     TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
     TFullSearchSchema extends RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
@@ -99,7 +100,7 @@ export class FileRoute<
       TParams
     >,
     TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['types']['routeContext'],
-    TAllParentContext extends RouteConstraints['TId'] = TParentRoute['types']['context'],
+    TAllParentContext extends RouteConstraints['TAllParentContext'] = TParentRoute['types']['context'],
     TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
     TContext extends RouteConstraints['TAllContext'] = MergeFromFromParent<
       TParentRoute['types']['context'],
@@ -114,8 +115,8 @@ export class FileRoute<
         TParentRoute,
         string,
         string,
+        TLoaderContext,
         TLoader,
-        InferFullSearchSchema<TParentRoute>,
         TSearchSchema,
         TFullSearchSchema,
         TParams,
@@ -141,6 +142,7 @@ export class FileRoute<
     TFullPath,
     TFilePath,
     TId,
+    TLoaderContext,
     TLoader,
     TSearchSchema,
     TFullSearchSchema,

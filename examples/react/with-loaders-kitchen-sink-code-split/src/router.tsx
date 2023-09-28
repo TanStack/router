@@ -1,5 +1,12 @@
 import * as React from 'react'
-import { ErrorComponent, Router } from '@tanstack/react-router'
+import {
+  ErrorComponent,
+  FullSearchSchema,
+  InferFullSearchSchema,
+  ParseRoute,
+  Router,
+  UnionToIntersection,
+} from '@tanstack/react-router'
 
 import { rootRoute } from './routes/root'
 import { indexRoute } from './routes'
