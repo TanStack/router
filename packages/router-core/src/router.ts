@@ -1050,7 +1050,7 @@ export class Router<
 
           this.setRouteMatch(match.id, (s) => ({
             ...s,
-            context,
+            context: replaceEqualDeep(s.context, context),
           }))
         } catch (err) {
           handleError(err, 'BEFORE_LOAD')

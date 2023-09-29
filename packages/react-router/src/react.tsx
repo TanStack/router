@@ -39,6 +39,8 @@ import {
   AnyPathParams,
   Expand,
   ResolveAllParams,
+  DeepMergeAll,
+  IsAny,
 } from '@tanstack/router-core'
 
 declare module '@tanstack/router-core' {
@@ -124,12 +126,15 @@ declare module '@tanstack/router-core' {
       TParentRoute,
       TParams
     >,
-    TParentContext extends RouteConstraints['TParentContext'] = TParentRoute['types']['routeContext'],
-    TAllParentContext extends RouteConstraints['TAllParentContext'] = TParentRoute['types']['context'],
     TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
-    TAllContext extends RouteConstraints['TAllContext'] = MergeFromFromParent<
-      TParentRoute['types']['context'],
-      TRouteContext
+    TAllContext extends RouteConstraints['TAllContext'] = Expand<
+      DeepMergeAll<
+        [
+          IsAny<TParentRoute['types']['context'], {}>,
+          TLoaderContext,
+          TRouteContext,
+        ]
+      >
     >,
     TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
     TChildren extends RouteConstraints['TChildren'] = unknown,
@@ -141,11 +146,8 @@ declare module '@tanstack/router-core' {
     useLoader: <TSelected = TLoader>(opts?: {
       select?: (search: TLoader) => TSelected
     }) => UseLoaderResult<TSelected>
-    useContext: <TSelected = TAllContext>(opts?: {
+    useRouteContext: <TSelected = TAllContext>(opts?: {
       select?: (search: TAllContext) => TSelected
-    }) => TSelected
-    useRouteContext: <TSelected = TRouteContext>(opts?: {
-      select?: (search: TRouteContext) => TSelected
     }) => TSelected
     useSearch: <TSelected = TFullSearchSchema>(opts?: {
       select?: (search: TFullSearchSchema) => TSelected
@@ -208,11 +210,8 @@ export type RouteProps<
   useMatch: <TSelected = TAllContext>(opts?: {
     select?: (search: TAllContext) => TSelected
   }) => TSelected
-  useContext: <TSelected = TAllContext>(opts?: {
+  useRouteContext: <TSelected = TAllContext>(opts?: {
     select?: (search: TAllContext) => TSelected
-  }) => TSelected
-  useRouteContext: <TSelected = TRouteContext>(opts?: {
-    select?: (search: TRouteContext) => TSelected
   }) => TSelected
   useSearch: <TSelected = TFullSearchSchema>(opts?: {
     select?: (search: TFullSearchSchema) => TSelected
@@ -265,19 +264,11 @@ Route.__onInit = (route) => {
     useLoader: (opts = {}) => {
       return useLoader({ ...opts, from: route.id }) as any
     },
-    useContext: (opts: any = {}) => {
-      return useMatch({
-        ...opts,
-        from: route.id,
-        select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-      } as any)
-    },
     useRouteContext: (opts: any = {}) => {
       return useMatch({
         ...opts,
         from: route.id,
-        select: (d: any) =>
-          opts?.select ? opts.select(d.routeContext) : d.routeContext,
+        select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
       } as any)
     },
     useSearch: (opts = {}) => {
@@ -659,7 +650,6 @@ function Matches() {
       return React.createElement(ErrorComponent, {
         ...props,
         useMatch: route.useMatch,
-        useContext: route.useContext,
         useRouteContext: route.useRouteContext,
         useSearch: route.useSearch,
         useParams: route.useParams,
@@ -999,7 +989,6 @@ function Match({ matchIds }: { matchIds: string[] }) {
       return React.createElement(routeErrorComponent, {
         ...props,
         useMatch: route.useMatch,
-        useContext: route.useContext,
         useRouteContext: route.useRouteContext,
         useSearch: route.useSearch,
         useParams: route.useParams,
@@ -1013,7 +1002,6 @@ function Match({ matchIds }: { matchIds: string[] }) {
       <ResolvedSuspenseBoundary
         fallback={React.createElement(PendingComponent, {
           useMatch: route.useMatch,
-          useContext: route.useContext,
           useRouteContext: route.useRouteContext,
           useSearch: route.useSearch,
           useParams: route.useParams,
@@ -1059,7 +1047,6 @@ function MatchInner({
     return React.createElement(PendingComponent, {
       useLoader: route.useLoader,
       useMatch: route.useMatch,
-      useContext: route.useContext,
       useRouteContext: route.useRouteContext,
       useSearch: route.useSearch,
       useParams: route.useParams,
@@ -1073,7 +1060,6 @@ function MatchInner({
       return React.createElement(comp, {
         useLoader: route.useLoader,
         useMatch: route.useMatch,
-        useContext: route.useContext as any,
         useRouteContext: route.useRouteContext as any,
         useSearch: route.useSearch,
         useParams: route.useParams as any,
