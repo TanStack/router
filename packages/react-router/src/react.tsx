@@ -22,7 +22,6 @@ import {
   ResolveId,
   AnySearchSchema,
   ParsePathParams,
-  MergeFromFromParent,
   RouteContext,
   AnyContext,
   UseLoaderResult,
@@ -58,44 +57,30 @@ declare module '@tanstack/router-core' {
     TLoader = unknown,
     TFullSearchSchema extends Record<string, any> = AnySearchSchema,
     TAllParams extends AnyPathParams = AnyPathParams,
-    TRouteContext extends Record<string, any> = AnyContext,
     TAllContext extends Record<string, any> = AnyContext,
   > {
     RouteComponent: RouteComponent<
-      RouteProps<
-        TLoader,
-        TFullSearchSchema,
-        TAllParams,
-        TRouteContext,
-        TAllContext
-      >
+      RouteProps<TLoader, TFullSearchSchema, TAllParams, TAllContext>
     >
   }
 
   interface RegisterErrorRouteComponent<
     TFullSearchSchema extends Record<string, any> = AnySearchSchema,
     TAllParams extends AnyPathParams = AnyPathParams,
-    TRouteContext extends Record<string, any> = AnyContext,
     TAllContext extends Record<string, any> = AnyContext,
   > {
     ErrorRouteComponent: RouteComponent<
-      ErrorRouteProps<TFullSearchSchema, TAllParams, TRouteContext, TAllContext>
+      ErrorRouteProps<TFullSearchSchema, TAllParams, TAllContext>
     >
   }
 
   interface RegisterPendingRouteComponent<
     TFullSearchSchema extends Record<string, any> = AnySearchSchema,
     TAllParams extends AnyPathParams = AnyPathParams,
-    TRouteContext extends Record<string, any> = AnyContext,
     TAllContext extends Record<string, any> = AnyContext,
   > {
     PendingRouteComponent: RouteComponent<
-      PendingRouteProps<
-        TFullSearchSchema,
-        TAllParams,
-        TRouteContext,
-        TAllContext
-      >
+      PendingRouteProps<TFullSearchSchema, TAllParams, TAllContext>
     >
   }
 
@@ -161,28 +146,19 @@ declare module '@tanstack/router-core' {
     TLoader = unknown,
     TFullSearchSchema extends Record<string, any> = AnySearchSchema,
     TAllParams extends AnyPathParams = AnyPathParams,
-    TRouteContext extends Record<string, any> = AnyContext,
     TAllContext extends Record<string, any> = AnyContext,
   > {
-    RouteProps: RouteProps<
-      TLoader,
-      TFullSearchSchema,
-      TAllParams,
-      TRouteContext,
-      TAllContext
-    >
+    RouteProps: RouteProps<TLoader, TFullSearchSchema, TAllParams, TAllContext>
   }
 
   interface RegisterPendingRouteProps<
     TFullSearchSchema extends Record<string, any> = AnySearchSchema,
     TAllParams extends AnyPathParams = AnyPathParams,
-    TRouteContext extends Record<string, any> = AnyContext,
     TAllContext extends Record<string, any> = AnyContext,
   > {
     PendingRouteProps: PendingRouteProps<
       TFullSearchSchema,
       TAllParams,
-      TRouteContext,
       TAllContext
     >
   }
@@ -190,7 +166,6 @@ declare module '@tanstack/router-core' {
   interface RegisterErrorRouteProps<
     TFullSearchSchema extends Record<string, any> = AnySearchSchema,
     TAllParams extends AnyPathParams = AnyPathParams,
-    TRouteContext extends Record<string, any> = AnyContext,
     TAllContext extends Record<string, any> = AnyContext,
   > {
     ErrorRouteProps: ErrorRouteProps
@@ -201,7 +176,6 @@ export type RouteProps<
   TLoader = unknown,
   TFullSearchSchema extends Record<string, any> = AnySearchSchema,
   TAllParams extends AnyPathParams = AnyPathParams,
-  TRouteContext extends Record<string, any> = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
 > = {
   useLoader: <TSelected = TLoader>(opts?: {
@@ -224,35 +198,21 @@ export type RouteProps<
 export type ErrorRouteProps<
   TFullSearchSchema extends Record<string, any> = AnySearchSchema,
   TAllParams extends AnyPathParams = AnyPathParams,
-  TRouteContext extends Record<string, any> = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
 > = {
   error: unknown
   info: { componentStack: string }
 } & Omit<
-  RouteProps<
-    unknown,
-    TFullSearchSchema,
-    TAllParams,
-    TRouteContext,
-    TAllContext
-  >,
+  RouteProps<unknown, TFullSearchSchema, TAllParams, TAllContext>,
   'useLoader'
 >
 
 export type PendingRouteProps<
   TFullSearchSchema extends Record<string, any> = AnySearchSchema,
   TAllParams extends AnyPathParams = AnyPathParams,
-  TRouteContext extends Record<string, any> = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
 > = Omit<
-  RouteProps<
-    unknown,
-    TFullSearchSchema,
-    TAllParams,
-    TRouteContext,
-    TAllContext
-  >,
+  RouteProps<unknown, TFullSearchSchema, TAllParams, TAllContext>,
   'useLoader'
 >
 

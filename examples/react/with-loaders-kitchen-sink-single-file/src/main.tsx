@@ -771,7 +771,7 @@ const userRoute = new Route({
   loader: async ({ context: { loaderClient, loaderOptions }, preload }) => {
     await loaderClient.load({ ...loaderOptions, preload })
   },
-  component: ({ useRouteContext, useLoader }) => {
+  component: ({ useRouteContext }) => {
     const { loaderOptions } = useRouteContext()
     const { data: user } = useLoaderInstance(loaderOptions)
 
