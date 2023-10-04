@@ -87,7 +87,7 @@ Route loaders are functions that are called when a route match is loaded. They a
 import { Route } from '@tanstack/react-router'
 
 const postsRoute = new Route({
-  getParentPath: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'posts',
   loader: async () => {
     // Load our posts
@@ -147,7 +147,7 @@ const rootRoute = routerContext.createRootRoute()
 // This can be a powerful tool for dependency injection across your router
 // and routes.
 const postsRoute = new Route({
-  getParentPath: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'posts',
   loader({ context: { fetchPosts } }) => fetchPosts(),
 })
@@ -173,7 +173,7 @@ To use path params in your loader, access them via the `params` property on the 
 import { Route } from '@tanstack/react-router'
 
 const postRoute = new Route({
-  getParentPath: () => postsRoute,
+  getParentRoute: () => postsRoute,
   path: '$postId',
   loader: ({ params: { postId } }) => {
     const res = await fetch(`/api/posts/${postId}`)
@@ -197,7 +197,7 @@ const fetchPosts = async () => {
 }
 
 const postsRoute = new Route({
-  getParentPath: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'posts',
   // Pass the fetchPosts function to the route context
   beforeLoad: () => ({ fetchPosts }),
@@ -213,7 +213,7 @@ Search parameters can be accessed via the `loaderContext` function. The `loaderC
 import { Route } from '@tanstack/react-router'
 
 const postsRoute = new Route({
-  getParentPath: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'posts',
   // Use zod to validate and parse the search params
   validateSearch: z.object({
@@ -238,7 +238,7 @@ The `abortController` property of the `loader` function is an [AbortController](
 import { Route } from '@tanstack/react-router'
 
 const postsRoute = new Route({
-  getParentPath: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'posts',
   loader: ({ abortController }) => {
     const res = await fetch(`/api/posts?page=${pageIndex}`, {
@@ -273,7 +273,7 @@ const loaderClient = new LoaderClient({
 })
 
 const postsRoute = new Route({
-  getParentPath: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'posts',
   loader: async ({ preload }) => {
     // Passing the preload flag to the loader client
@@ -305,7 +305,7 @@ Let's retrieve the data from our loader using the `props.useLoader` hook:
 import { Route } from '@tanstack/react-router'
 
 const postsRoute = new Route({
-  getParentPath: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'posts',
   loader: async () => {
     // ...
@@ -325,7 +325,7 @@ By manipulating the `maxAge` option, we can create a stale-while-revalidate patt
 import { Route } from '@tanstack/react-router'
 
 const postsRoute = new Route({
-  getParentPath: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'posts',
   loader: async () => {
     // Load our posts
@@ -363,7 +363,7 @@ This property is `true` when the route match is being loaded and `false` when it
 import { Route } from '@tanstack/react-router'
 
 const postsRoute = new Route({
-  getParentPath: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'posts',
   loader: async () => {
     // ...

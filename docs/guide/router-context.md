@@ -70,7 +70,7 @@ Once you have defined the router context type, you can use it in your route defi
 import { Route } from '@tanstack/react-router'
 
 const userRoute = new Route({
-  getRootRoute: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'todos',
   component: Todos,
   loader: ({ context }) => fetchTodosByUserId(context.user.id),
@@ -105,7 +105,7 @@ Then, in your route:
 import { Route } from '@tanstack/react-router'
 
 const userRoute = new Route({
-  getRootRoute: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'todos',
   component: Todos,
   loader: ({ context }) => context.fetchTodosByUserId(context.userId),
@@ -139,7 +139,7 @@ Then, in your route:
 import { Route } from '@tanstack/react-router'
 
 const userRoute = new Route({
-  getRootRoute: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'todos',
   component: Todos,
   loader: ({ context }) => {
@@ -176,7 +176,7 @@ const router = new Router({
 })
 
 const userRoute = new Route({
-  getRootRoute: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: 'admin',
   component: Todos,
   beforeLoad: () => {
