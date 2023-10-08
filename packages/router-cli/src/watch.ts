@@ -5,7 +5,7 @@ import { generator } from './generator'
 
 export async function watch() {
   const configWatcher = chokidar.watch(
-    path.resolve(process.cwd(), 'tsr.config.js'),
+    path.resolve(process.cwd(), 'tsr.config.json'),
   )
 
   let watcher = new chokidar.FSWatcher({})
