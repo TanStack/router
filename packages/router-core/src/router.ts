@@ -119,6 +119,7 @@ export interface RouteMatch<
   pathname: string
   params: RouteById<TRouteTree, TRouteId>['types']['allParams']
   status: 'pending' | 'success' | 'error'
+  isPreloaded: boolean
   isFetching: boolean
   invalid: boolean
   error: unknown
@@ -741,14 +742,16 @@ export class Router<
         const route = this.getRoute(match.routeId)
 
         return (
-          !this.state.matchIds.includes(match.id) &&
-          !this.state.pendingMatchIds.includes(match.id) &&
-          (match.preloadMaxAge > -1
-            ? match.updatedAt + match.preloadMaxAge < now
-            : true) &&
+          (
+            match.isPreloaded &&
+            (match.preloadMaxAge > -1
+              ? match.updatedAt + match.preloadMaxAge >= now 
+              : false)
+          )
+          ||
           (route.options.gcMaxAge
-            ? match.updatedAt + route.options.gcMaxAge < now
-            : true)
+            ? match.updatedAt + route.options.gcMaxAge >= now
+            : false)
         )
       })
       .map((d) => d.id)
@@ -898,6 +901,7 @@ export class Router<
         context: undefined!,
         abortController: new AbortController(),
         fetchedAt: 0,
+        isPreloaded: false,
       }
 
       return routeMatch
@@ -979,6 +983,7 @@ export class Router<
           searchError: match.searchError,
           params: match.params,
           preloadMaxAge: 0,
+          isPreloaded: false,
         }))
       })
     }
@@ -1014,6 +1019,7 @@ export class Router<
             error: err,
             status: 'error',
             updatedAt: Date.now(),
+            isPreloaded: opts?.preload ?? false,
           }))
         }
 
@@ -1051,6 +1057,7 @@ export class Router<
           this.setRouteMatch(match.id, (s) => ({
             ...s,
             context: replaceEqualDeep(s.context, context),
+            isPreloaded: opts?.preload ?? false,
           }))
         } catch (err) {
           handleError(err, 'BEFORE_LOAD')

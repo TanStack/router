@@ -552,12 +552,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   const hasSearch = Object.keys(router.state.location.search || {}).length
 
   const preloadMatches = Object.values(router.state.matchesById).filter(
-    (match) => {
-      return (
-        !router.state.matchIds.includes(match.id) &&
-        !router.state.pendingMatchIds.includes(match.id)
-      )
-    },
+    (match) => match.isPreloaded,
   )
 
   // React.useEffect(() => {
