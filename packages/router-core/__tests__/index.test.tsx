@@ -12,6 +12,7 @@ import {
   Segment,
   trimPath,
   trimPathLeft,
+  trimPathRight,
 } from '../src'
 
 import { createTimer, sleep } from './utils'
@@ -447,6 +448,111 @@ describe('matchRoute', () => {
     })
   })
 
+  describe('trimPathLeft', () => {
+    ;(
+      [
+        [
+          '',
+          ''
+        ],
+        [
+          '/',
+          '/'
+        ],
+        [
+          '/a',
+          'a'
+        ],
+        [
+          '/a/',
+          'a/'
+        ],
+        [
+          '/a/b/c',
+         'a/b/c'
+        ],
+        [
+          '/a/b/c/',
+         'a/b/c/'
+        ],
+      ] as const
+    ).forEach(([input, eq]) => {
+      test(`${input} == ${eq}`, () => {
+        expect(trimPathLeft(input)).toEqual(eq)
+      })
+    })
+  })
+
+  describe('trimPathRight', () => {
+    ;(
+      [
+        [
+          '',
+          ''
+        ],
+        [
+          '/',
+          '/'
+        ],
+        [
+          '/a',
+          '/a'
+        ],
+        [
+          '/a/',
+          '/a'
+        ],
+        [
+          '/a/b/c',
+         '/a/b/c'
+        ],
+        [
+          '/a/b/c/',
+         '/a/b/c'
+        ],
+      ] as const
+    ).forEach(([input, eq]) => {
+      test(`${input} == ${eq}`, () => {
+        expect(trimPathRight(input)).toEqual(eq)
+      })
+    })
+  })
+
+  describe('trimPath', () => {
+    ;(
+      [
+        [
+          '',
+          ''
+        ],
+        [
+          '/',
+          '/'
+        ],
+        [
+          '/a',
+          'a'
+        ],
+        [
+          '/a/',
+          'a'
+        ],
+        [
+          '/a/b/c',
+         'a/b/c'
+        ],
+        [
+          '/a/b/c/',
+         'a/b/c'
+        ],
+      ] as const
+    ).forEach(([input, eq]) => {
+      test(`${input} == ${eq}`, () => {
+        expect(trimPath(input)).toEqual(eq)
+      })
+    })
+  })
+
   describe('basepath', () => {
     ;(
       [
@@ -491,6 +597,14 @@ describe('matchRoute', () => {
           },
           undefined,
         ],
+        [
+          '/',
+          '/a',
+          {
+            to: 'a'
+          },
+          {}
+        ]
       ] as const
     ).forEach(([a, b, c, eq]) => {
       test(`${b} == ${a} + ${c.to}`, () => {

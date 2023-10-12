@@ -516,7 +516,12 @@ export class Router<
 
     const { basepath, routeTree } = this.options
 
-    this.basepath = `/${trimPath(basepath ?? '') ?? ''}`
+    if (basepath === undefined || basepath === '' || basepath === '/') {
+      this.basepath = '/'
+    }
+    else {
+      this.basepath = `/${trimPath(basepath)}`
+    }
 
     if (routeTree && routeTree !== this.routeTree) {
       this.#processRoutes(routeTree)
