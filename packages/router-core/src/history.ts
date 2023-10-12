@@ -49,7 +49,7 @@ const stopBlocking = () => {
   })
 }
 
-function createHistory(opts: {
+export function createHistory(opts: {
   getLocation: () => HistoryLocation
   subscriber: false | ((onUpdate: () => void) => () => void)
   pushState: (path: string, state: any) => void
