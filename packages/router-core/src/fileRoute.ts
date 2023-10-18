@@ -101,7 +101,7 @@ export class FileRoute<
       TParams
     >,
     TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
-    TContext extends RouteConstraints['TAllContext'] = Expand<
+    TAllContext extends RouteConstraints['TAllContext'] = Expand<
       DeepMergeAll<
         [
           IsAny<TParentRoute['types']['context'], {}>,
@@ -126,17 +126,15 @@ export class FileRoute<
         TParams,
         TAllParams,
         TRouteContext,
-        TContext
+        TAllContext
       >,
       'getParentRoute' | 'path' | 'id'
     > &
       UpdatableRouteOptions<
         TLoader,
-        TSearchSchema,
         TFullSearchSchema,
         TAllParams,
-        TRouteContext,
-        TContext
+        TAllContext
       >,
   ): Route<
     TParentRoute,
@@ -151,7 +149,7 @@ export class FileRoute<
     TParams,
     TAllParams,
     TRouteContext,
-    TContext,
+    TAllContext,
     TRouterContext,
     TChildren,
     TRouteTree
