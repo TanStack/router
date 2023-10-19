@@ -202,10 +202,6 @@ export type ParamsFallback<
   TParams,
 > = unknown extends TParams ? Record<ParsePathParams<TPath>, string> : TParams
 
-type Prefix<T extends string, U extends string> = U extends `${T}${infer _}`
-  ? U
-  : never
-
 export type BaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
