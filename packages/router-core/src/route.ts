@@ -590,13 +590,7 @@ export class Route<
       TAllParams,
       TRouteContext,
       TAllContext
-    > &
-      UpdatableRouteOptions<
-        TLoader,
-        TFullSearchSchema,
-        TAllParams,
-        TAllContext
-      >,
+    >
   ) {
     this.options = (options as any) || {}
     this.isRoot = !options?.getParentRoute as any
