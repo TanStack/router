@@ -27,7 +27,7 @@ Depending on your framework adapter, you likely see 2 methods of navigation bloc
 Each framework will have its own logical/hook based blocker API, but for this example, we'll use React. Let's imagine we want to prevent navigation if a form is dirty. We can do this by using the `useBlocker` hook:
 
 ```tsx
-import { useBlocker } from '@tanstack/router-react'
+import { useBlocker } from '@tanstack/react-router'
 
 function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
