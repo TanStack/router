@@ -1,7 +1,7 @@
 import invariant from 'tiny-invariant'
 import { RoutePaths } from './routeInfo'
 import { joinPaths, trimPath } from './path'
-import { AnyRouter, RouteMatch, AnyRouteMatch } from './router'
+import { AnyRouter, AnyRouteMatch } from './router'
 import {
   DeepMerge,
   DeepMergeAll,
