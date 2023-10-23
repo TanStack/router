@@ -9,6 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.0.5",
     "@tanstack/actions": "0.0.1-beta.194",
     "@tanstack/loaders": "0.0.1-beta.194",
     "@tanstack/react-actions": "0.0.1-beta.194",
