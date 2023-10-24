@@ -130,14 +130,7 @@ export class FileRoute<
       >,
       'getParentRoute' | 'path' | 'id'
     > &
-      UpdatableRouteOptions<
-        TLoader,
-        TSearchSchema,
-        TFullSearchSchema,
-        TAllParams,
-        TRouteContext,
-        TContext
-      >,
+      UpdatableRouteOptions<TLoader, TFullSearchSchema, TAllParams, TContext>,
   ): Route<
     TParentRoute,
     TPath,

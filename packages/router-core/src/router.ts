@@ -163,19 +163,16 @@ export interface RouterOptions<
     unknown,
     AnySearchSchema,
     AnyPathParams,
-    AnyContext,
     AnyContext
   >
   defaultErrorComponent?: RegisteredErrorRouteComponent<
     AnySearchSchema,
     AnyPathParams,
-    AnyContext,
     AnyContext
   >
   defaultPendingComponent?: RegisteredPendingRouteComponent<
     AnySearchSchema,
     AnyPathParams,
-    AnyContext,
     AnyContext
   >
   defaultMaxAge?: number

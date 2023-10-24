@@ -61,9 +61,7 @@ export type RoutePaths<TRouteTree extends AnyRoute> =
 
 export type FullSearchSchema<TRouteTree extends AnyRoute> = Partial<
   Expand<
-    UnionToIntersection<
-      ParseRoute<TRouteTree>['types']['fullSearchSchema']
-    > & {}
+    UnionToIntersection<ParseRoute<TRouteTree>['types']['fullSearchSchema']>
   >
 >
 

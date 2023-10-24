@@ -19,6 +19,7 @@ export type PickRequired<T> = {
   [K in keyof T as undefined extends T[K] ? never : K]: T[K]
 }
 
+// export type Expand<T> = T
 export type Expand<T> = T extends object
   ? T extends infer O
     ? { [K in keyof O]: O[K] }

@@ -42,6 +42,9 @@ import {
   IsAny,
 } from '@tanstack/router-core'
 
+const useLayoutEffect =
+  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
+
 declare module '@tanstack/router-core' {
   interface RouterOptions<
     TRouteTree extends AnyRoute,
@@ -320,8 +323,7 @@ export type MakeUseMatchRouteOptions<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = '/',
   TMaskTo extends string = '',
-> = ToOptions<RegisteredRouter['routeTree'], TFrom, TTo, TMaskFrom, TMaskTo> &
-  MatchRouteOptions
+> = ToOptions<AnyRoute, TFrom, TTo, TMaskFrom, TMaskTo> & MatchRouteOptions
 
 export type MakeMatchRouteOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -538,7 +540,7 @@ export function Navigate<
 >(props: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const router = useRouter()
 
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     router.navigate(props as any)
   }, [])
 
