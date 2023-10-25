@@ -28,8 +28,6 @@ export interface ParsedPath {
 
 export interface HistoryState {
   key: string
-  __tempLocation?: HistoryLocation
-  __tempKey?: string
 }
 
 type BlockerFn = (retry: () => void, cancel: () => void) => void
