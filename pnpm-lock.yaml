@@ -192,7 +192,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/react-start
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -247,7 +247,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -314,7 +314,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -378,7 +378,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/react-start
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -433,7 +433,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -497,7 +497,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/react-start
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -552,7 +552,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -607,7 +607,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -662,7 +662,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.3.0-canary-ab31a9ed2-20230824)(react@18.3.0-canary-ab31a9ed2-20230824)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -768,7 +768,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -853,7 +853,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.3.0-canary-7118f5dd7-20230705)(react@18.3.0-canary-7118f5dd7-20230705)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -920,7 +920,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -990,7 +990,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.3.0-canary-ab31a9ed2-20230824)(react@18.3.0-canary-ab31a9ed2-20230824)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1096,7 +1096,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1160,7 +1160,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1224,7 +1224,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1288,7 +1288,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1352,7 +1352,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1449,7 +1449,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.3.0-canary-587ae49d7-20230720)(react@18.3.0-canary-587ae49d7-20230720)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1552,7 +1552,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1622,7 +1622,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.194
+        specifier: 0.0.1-beta.195
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
