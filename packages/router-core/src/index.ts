@@ -1,6 +1,6 @@
+export * from '@tanstack/history'
 export { default as invariant } from 'tiny-invariant'
 export { default as warning } from 'tiny-warning'
-export * from './history'
 export * from './link'
 export * from './path'
 export * from './qss'

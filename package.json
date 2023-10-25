@@ -25,6 +25,7 @@
   ],
   "pnpm": {
     "overrides": {
+      "@tanstack/history": "workspace:*",
       "@tanstack/loaders": "workspace:*",
       "@tanstack/actions": "workspace:*",
       "@tanstack/router-core": "workspace:*",

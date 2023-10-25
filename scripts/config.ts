@@ -1,8 +1,19 @@
 import path from 'path'
 import { BranchConfig, Package } from './types'
 
-// TODO: List your npm packages here.
 export const packages: Package[] = [
+  {
+    name: '@tanstack/history',
+    packageDir: 'history',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'TanStackHistory',
+        entryFile: 'src/index.ts',
+        globals: {},
+      },
+    ],
+  },
   {
     name: '@tanstack/router-core',
     packageDir: 'router-core',

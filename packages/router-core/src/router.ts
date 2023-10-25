@@ -1,5 +1,12 @@
 import { Store } from '@tanstack/store'
 import invariant from 'tiny-invariant'
+import {
+  createBrowserHistory,
+  createMemoryHistory,
+  HistoryLocation,
+  HistoryState,
+  RouterHistory,
+} from '@tanstack/history'
 
 //
 
@@ -53,13 +60,6 @@ import {
   partialDeepEqual,
   NonNullableUpdater,
 } from './utils'
-import {
-  createBrowserHistory,
-  createMemoryHistory,
-  HistoryLocation,
-  HistoryState,
-  RouterHistory,
-} from './history'
 
 //
 
