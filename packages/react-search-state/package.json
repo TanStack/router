@@ -1,26 +1,19 @@
 {
-  "name": "@tanstack/router-core",
+  "name": "@tanstack/react-search-state",
   "author": "Tanner Linsley",
-  "version": "0.0.1-beta.195",
+  "version": "0.0.1-beta.194",
   "license": "MIT",
-  "repository": "tanstack/router",
-  "homepage": "https://tanstack.com/router",
+  "repository": "tanstack/react-search-state",
+  "homepage": "https://tanstack.com/react-search-state",
   "description": "",
   "scripts": {
-    "build": "rollup --config rollup.config.js",
-    "test": "vitest",
-    "test:dev": "vitest --watch"
+    "build": "rollup --config rollup.config.js"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
   "keywords": [
-    "react",
-    "location",
-    "router",
-    "routing",
-    "async",
-    "async router",
+    "react-search-state",
     "typescript"
   ],
   "funding": {
@@ -44,11 +37,9 @@
     "react-dom": ">=16"
   },
   "dependencies": {
-    "@babel/runtime": "^7.16.7",
-    "tiny-invariant": "^1.3.1",
-    "tiny-warning": "^1.0.3",
-    "@tanstack/store": "^0.0.1",
-    "@tanstack/history": "0.0.1-beta.194",
-    "@gisatcz/cross-package-react-context": "^0.2.0"
+    "@tanstack/router-core": "workspace:0.0.1-beta.195"
+  },
+  "resolutions": {
+    "@tanstack/history": "workspace:^0.0.1-beta.194"
   }
 }

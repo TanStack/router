@@ -18,6 +18,7 @@
     "allowUnreachableCode": true,
     "paths": {
       "@tanstack/history": ["packages/history"],
+      "@tanstack/react-search-state": ["packages/react-search-state"],
       "@tanstack/router-core": ["packages/router-core"],
       "@tanstack/react-router": ["packages/react-router"],
       "@tanstack/router-devtools": ["packages/router-devtools"],

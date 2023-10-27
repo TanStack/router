@@ -114,13 +114,13 @@ function createHistory(opts: {
       }
     },
     push: (path: string, state: any) => {
-      assignKey(state)
+      state = assignKey(state)
       queueTask(() => {
         opts.pushState(path, state, onUpdate)
       })
     },
     replace: (path: string, state: any) => {
-      assignKey(state)
+      state = assignKey(state)
       queueTask(() => {
         opts.replaceState(path, state, onUpdate)
       })
@@ -163,13 +163,11 @@ function createHistory(opts: {
 }
 
 function assignKey(state: HistoryState) {
+  if (!state) {
+    state = {} as HistoryState
+  }
   state.key = createRandomKey()
-  // if (state.__actualLocation) {
-  //   state.__actualLocation.state = {
-  //     ...state.__actualLocation.state,
-  //     key,
-  //   }
-  // }
+  return state
 }
 
 /**

@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "packages/history" },
+    { "path": "packages/react-search-state" },
     { "path": "packages/actions" },
     { "path": "packages/loaders" },
     { "path": "packages/react-actions" },
