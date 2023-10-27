@@ -37,9 +37,6 @@
     "react-dom": ">=16"
   },
   "dependencies": {
-    "@tanstack/router-core": "workspace:0.0.1-beta.195"
-  },
-  "resolutions": {
-    "@tanstack/history": "workspace:^0.0.1-beta.194"
+    "@tanstack/router-core": "workspace:*"
   }
 }
