@@ -82,10 +82,7 @@ export const createUrl = (search: Updater<SearchParams>) => {
   const searchString = defaultStringifySearch(
     functionalUpdate(search, getSearch()),
   )
-  return new URL(
-    `${pathname}${searchString}${hash ? `#${hash}` : ''}`,
-    window.location.origin,
-  ).toString()
+  return `${pathname}${searchString}${hash ? `#${hash}` : ''}`
 }
 
 export const navigate = ({
