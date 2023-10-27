@@ -1,7 +1,7 @@
 lockfileVersion: '6.0'
 
 settings:
-  autoInstallPeers: false
+  autoInstallPeers: true
   excludeLinksFromLockfile: false
 
 overrides:
@@ -181,6 +181,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -193,11 +196,14 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -233,6 +239,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -245,6 +254,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -252,7 +264,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -300,6 +312,9 @@ importers:
       '@tanstack/bling':
         specifier: ^0.5.0
         version: 0.5.0(vite@2.8.6)
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -312,6 +327,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -319,7 +337,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -367,6 +385,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -379,11 +400,14 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -419,6 +443,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -431,6 +458,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -438,7 +468,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -483,6 +513,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -498,11 +531,14 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -538,6 +574,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -550,6 +589,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -557,7 +599,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -590,9 +632,39 @@ importers:
 
   examples/react/react-search-state:
     dependencies:
+      '@tanstack/actions':
+        specifier: workspace:*
+        version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
+      '@tanstack/loaders':
+        specifier: workspace:*
+        version: link:../../../packages/loaders
+      '@tanstack/react-actions':
+        specifier: workspace:*
+        version: link:../../../packages/react-actions
+      '@tanstack/react-loaders':
+        specifier: workspace:*
+        version: link:../../../packages/react-loaders
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
       '@tanstack/react-search-state':
         specifier: workspace:*
         version: link:../../../packages/react-search-state
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      '@tanstack/router-cli':
+        specifier: 0.0.1-beta.196
+        version: link:../../../packages/router-cli
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../../../packages/router-core
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
       '@vitejs/plugin-react':
         specifier: ^1.1.3
         version: 1.1.3
@@ -624,6 +696,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -636,6 +711,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -643,7 +721,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -679,6 +757,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -691,6 +772,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -698,7 +782,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.3.0-canary-ab31a9ed2-20230824)(react@18.3.0-canary-ab31a9ed2-20230824)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -779,6 +863,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -797,6 +884,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -804,7 +894,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -870,6 +960,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -882,6 +975,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -889,7 +985,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.3.0-canary-7118f5dd7-20230705)(react@18.3.0-canary-7118f5dd7-20230705)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -937,6 +1033,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -949,6 +1048,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -956,7 +1058,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1007,6 +1109,9 @@ importers:
       '@tanstack/bling':
         specifier: ^0.5.0
         version: 0.5.0(vite@4.4.9)
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -1019,6 +1124,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -1026,7 +1134,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.3.0-canary-ab31a9ed2-20230824)(react@18.3.0-canary-ab31a9ed2-20230824)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1113,6 +1221,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -1125,6 +1236,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -1132,7 +1246,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1177,6 +1291,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -1189,6 +1306,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -1196,7 +1316,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1241,6 +1361,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -1253,6 +1376,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -1260,7 +1386,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1305,6 +1431,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -1317,6 +1446,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -1324,7 +1456,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1369,6 +1501,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -1381,6 +1516,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -1388,7 +1526,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1466,6 +1604,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -1478,6 +1619,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -1485,7 +1629,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.3.0-canary-587ae49d7-20230720)(react@18.3.0-canary-587ae49d7-20230720)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1563,6 +1707,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -1581,6 +1728,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -1588,7 +1738,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1633,6 +1783,9 @@ importers:
       '@tanstack/actions':
         specifier: workspace:*
         version: link:../../../packages/actions
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
       '@tanstack/loaders':
         specifier: workspace:*
         version: link:../../../packages/loaders
@@ -1651,6 +1804,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-search-state':
+        specifier: workspace:*
+        version: link:../../../packages/react-search-state
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -1658,7 +1814,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-cli':
-        specifier: 0.0.1-beta.195
+        specifier: 0.0.1-beta.196
         version: link:../../../packages/router-cli
       '@tanstack/router-core':
         specifier: workspace:*
@@ -1746,7 +1902,13 @@ importers:
         version: link:../actions
       '@tanstack/react-store':
         specifier: ^0.0.1
-        version: 0.0.1
+        version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.0.5
         version: 1.3.1
@@ -1758,7 +1920,13 @@ importers:
         version: link:../loaders
       '@tanstack/react-store':
         specifier: ^0.0.1
-        version: 0.0.1
+        version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.0.5
         version: 1.3.1
@@ -1770,13 +1938,19 @@ importers:
         version: 7.21.0
       '@gisatcz/cross-package-react-context':
         specifier: ^0.2.0
-        version: 0.2.0
+        version: 0.2.0(react@18.2.0)
       '@tanstack/react-store':
         specifier: ^0.0.1
-        version: 0.0.1
+        version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1789,6 +1963,12 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
 
   packages/react-start:
     dependencies:
@@ -1797,10 +1977,10 @@ importers:
         version: 7.21.0
       '@gisatcz/cross-package-react-context':
         specifier: ^0.2.0
-        version: 0.2.0
+        version: 0.2.0(react@18.2.0)
       '@tanstack/bling':
         specifier: ^0.0.3
-        version: 0.0.3
+        version: 0.0.3(vite@4.4.9)
       '@tanstack/react-loaders':
         specifier: workspace:*
         version: link:../react-loaders
@@ -1816,6 +1996,12 @@ importers:
       jsesc:
         specifier: ^3.0.2
         version: 3.0.2
+      react:
+        specifier: '>=18'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=18'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1825,7 +2011,7 @@ importers:
     devDependencies:
       astro:
         specifier: ^1.9.2
-        version: 1.9.2
+        version: 1.9.2(@types/node@17.0.45)(ts-node@10.9.1)
       esbuild:
         specifier: ^0.17.10
         version: 0.17.10
@@ -1900,13 +2086,19 @@ importers:
         version: 7.21.0
       '@gisatcz/cross-package-react-context':
         specifier: ^0.2.0
-        version: 0.2.0
+        version: 0.2.0(react@18.2.0)
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
       '@tanstack/store':
         specifier: ^0.0.1
         version: 0.0.1
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1925,6 +2117,12 @@ importers:
       date-fns:
         specifier: ^2.29.1
         version: 2.29.3
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
 
 packages:
 
@@ -3576,6 +3774,7 @@ packages:
 
   /@emotion/memoize@0.7.4:
     resolution: {integrity: sha512-Ja/Vfqe3HpuzRsG1oBtWTHk2PGZ7GR+2Vz5iYGelAw8dx32K0y7PjVuxK6z1nMpZOqAFsRUPCkK1YjJ56qJlgw==}
+    requiresBuild: true
     dev: false
     optional: true
 
@@ -4226,10 +4425,12 @@ packages:
       fast-json-stringify: 5.8.0
     dev: false
 
-  /@gisatcz/cross-package-react-context@0.2.0:
+  /@gisatcz/cross-package-react-context@0.2.0(react@18.2.0):
     resolution: {integrity: sha512-E7aR/o1ArpXETO8bQi+Hltj3duHeZiLjR+x1VZrCDs3jplSLGoy+oqCcqNNE1BamTBa0YQTs8Go1Q1dtt3LEUg==}
     peerDependencies:
       react: ^16.13.1 || ^17.0.2 || ^18.1.0
+    dependencies:
+      react: 18.2.0
     dev: false
 
   /@jest/schemas@29.6.3:
@@ -4776,10 +4977,10 @@ packages:
       '@swc/core-win32-x64-msvc': 1.3.71
     dev: false
 
-  /@tanstack/bling@0.0.3:
+  /@tanstack/bling@0.0.3(vite@4.4.9):
     resolution: {integrity: sha512-6cmmp3cX9e9DZEkJ7F9vwEaU5RmjNYWcY69A1cx4FyGsuNryqumXCWuVItBsrIM0npqqCRa09BQ+y45LxiL6ng==}
     dependencies:
-      '@vitejs/plugin-react': 3.1.0
+      '@vitejs/plugin-react': 3.1.0(vite@4.4.9)
     transitivePeerDependencies:
       - supports-color
       - vite
@@ -4918,17 +5119,6 @@ packages:
       client-only: 0.0.1
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-    dev: false
-
-  /@tanstack/react-store@0.0.1:
-    resolution: {integrity: sha512-UMAHrm1FjehpfnSCi5Uel7fdoYM8fk2ovyHmoTBv4SPS66hLLEEVPQhALrIkJ0OSi1h+p96HapCFNqlavZADIA==}
-    engines: {node: '>=12'}
-    peerDependencies:
-      react: '>=16'
-      react-dom: '>=16'
-    dependencies:
-      '@tanstack/store': 0.0.1
-      use-sync-external-store: 1.2.0
     dev: false
 
   /@tanstack/react-store@0.0.1(react-dom@18.2.0)(react@18.2.0):
@@ -5467,21 +5657,6 @@ packages:
       '@rollup/pluginutils': 4.2.1
       react-refresh: 0.13.0
       resolve: 1.22.1
-    transitivePeerDependencies:
-      - supports-color
-    dev: false
-
-  /@vitejs/plugin-react@3.1.0:
-    resolution: {integrity: sha512-AfgcRL8ZBhAlc3BFdigClmTUMISmmzHn7sB2h9U1odvc5U/MjWXsAaz18b/WoppUTDBzxOJwo2VdClfUcItu9g==}
-    engines: {node: ^14.18.0 || >=16.0.0}
-    peerDependencies:
-      vite: ^4.1.0-beta.0
-    dependencies:
-      '@babel/core': 7.22.11
-      '@babel/plugin-transform-react-jsx-self': 7.22.5(@babel/core@7.22.11)
-      '@babel/plugin-transform-react-jsx-source': 7.22.5(@babel/core@7.22.11)
-      magic-string: 0.27.0
-      react-refresh: 0.14.0
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -6030,7 +6205,7 @@ packages:
       tslib: 2.5.0
     dev: true
 
-  /astro@1.9.2:
+  /astro@1.9.2(@types/node@17.0.45)(ts-node@10.9.1):
     resolution: {integrity: sha512-L+Ma0eR0Aa6QZg7RF0lEs+106Ye1/zukvtq3KtsYIogAojltlwllwU9X5CwMBzFwA55NxpNp4gSRh5US/xb+8Q==}
     engines: {node: ^14.18.0 || >=16.12.0, npm: '>=6.14.0'}
     hasBin: true
@@ -6076,7 +6251,7 @@ packages:
       path-browserify: 1.0.1
       path-to-regexp: 6.2.1
       postcss: 8.4.29
-      postcss-load-config: 3.1.4(postcss@8.4.29)
+      postcss-load-config: 3.1.4(postcss@8.4.29)(ts-node@10.9.1)
       preferred-pm: 3.0.3
       prompts: 2.4.2
       recast: 0.20.5
@@ -6094,7 +6269,7 @@ packages:
       typescript: 5.1.3
       unist-util-visit: 4.1.2
       vfile: 5.3.7
-      vite: 3.2.7
+      vite: 3.2.7(@types/node@17.0.45)
       vitefu: 0.2.4(vite@3.2.7)
       yargs-parser: 21.1.1
       zod: 3.22.2
@@ -6414,7 +6589,7 @@ packages:
       assertion-error: 1.1.0
       check-error: 1.0.2
       deep-eql: 4.1.3
-      get-func-name: 2.0.0
+      get-func-name: 2.0.2
       loupe: 2.3.6
       pathval: 1.1.1
       type-detect: 4.0.8
@@ -8076,8 +8251,8 @@ packages:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
     engines: {node: 6.* || 8.* || >= 10.*}
 
-  /get-func-name@2.0.0:
-    resolution: {integrity: sha512-Hm0ixYtaSZ/V7C8FJrtZIuBBI+iSgL+1Aq82zSu8VQNB4S3Gk8e7Qs3VwBDJAhmRZcFqkl3tQu36g/Foh5I5ig==}
+  /get-func-name@2.0.2:
+    resolution: {integrity: sha512-8vXOvuE167CtIc3OyItco7N/dpRtBbYOsPsXCz7X/PMnlGjYjSGuZJgM1Y7mmew7BKf9BqvLX2tnOVy1BBUsxQ==}
     dev: false
 
   /get-intrinsic@1.2.1:
@@ -8971,7 +9146,7 @@ packages:
   /loupe@2.3.6:
     resolution: {integrity: sha512-RaPMZKiMy8/JruncMU5Bt6na1eftNoo++R4Y+N2FrxkDVTrGvcyzFTsaGif4QTeKESheMGegbhw6iUAq+5A8zA==}
     dependencies:
-      get-func-name: 2.0.0
+      get-func-name: 2.0.2
     dev: false
 
   /lru-cache@4.1.5:
@@ -10171,7 +10346,7 @@ packages:
       pathe: 1.1.1
     dev: false
 
-  /postcss-load-config@3.1.4(postcss@8.4.29):
+  /postcss-load-config@3.1.4(postcss@8.4.29)(ts-node@10.9.1):
     resolution: {integrity: sha512-6DiM4E7v4coTE4uzA8U//WhtPwyhiim3eyjEMFCnUpzbrkK9wJHgKDT2mR+HbtSrd/NubVaYTOpSpjUl8NQeRg==}
     engines: {node: '>= 10'}
     peerDependencies:
@@ -10185,6 +10360,7 @@ packages:
     dependencies:
       lilconfig: 2.0.6
       postcss: 8.4.29
+      ts-node: 10.9.1(@types/node@17.0.45)(typescript@4.9.5)
       yaml: 1.10.2
     dev: true
 
@@ -11985,12 +12161,6 @@ packages:
       punycode: 2.3.0
     dev: false
 
-  /use-sync-external-store@1.2.0:
-    resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0
-    dev: false
-
   /use-sync-external-store@1.2.0(react@18.2.0):
     resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
     peerDependencies:
@@ -12229,7 +12399,7 @@ packages:
       fsevents: 2.3.3
     dev: false
 
-  /vite@3.2.7:
+  /vite@3.2.7(@types/node@17.0.45):
     resolution: {integrity: sha512-29pdXjk49xAP0QBr0xXqu2s5jiQIXNvE/xwd0vUizYT2Hzqe4BksNNoWllFVXJf4eLZ+UlVQmXfB4lWrc+t18g==}
     engines: {node: ^14.18.0 || >=16.0.0}
     hasBin: true
@@ -12254,6 +12424,7 @@ packages:
       terser:
         optional: true
     dependencies:
+      '@types/node': 17.0.45
       esbuild: 0.15.18
       postcss: 8.4.29
       resolve: 1.22.4
@@ -12305,7 +12476,7 @@ packages:
       vite:
         optional: true
     dependencies:
-      vite: 3.2.7
+      vite: 3.2.7(@types/node@17.0.45)
     dev: true
 
   /vitest@0.34.3:
