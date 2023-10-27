@@ -182,7 +182,7 @@ export function useSearchState<
           ...prev,
           [key]: functionalUpdate(updater, prev[key]),
         }),
-        replace: opts?.replace ?? defaultReplace,
+        replace: opts?.replace ?? defaultReplace ?? true,
         state: opts?.state,
       })
 

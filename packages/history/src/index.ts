@@ -13,6 +13,8 @@ export interface RouterHistory {
   createHref: (href: string) => string
   block: (blockerFn: BlockerFn) => () => void
   flush: () => void
+  destroy: () => void
+  update: () => void
 }
 
 export interface HistoryLocation extends ParsedPath {
@@ -50,7 +52,6 @@ const stopBlocking = () => {
 
 function createHistory(opts: {
   getLocation: () => HistoryLocation
-  subscriber: false | ((onUpdate: () => void) => () => void)
   pushState: (path: string, state: any, onUpdate: () => void) => void
   replaceState: (path: string, state: any, onUpdate: () => void) => void
   go: (n: number) => void
@@ -58,16 +59,21 @@ function createHistory(opts: {
   forward: () => void
   createHref: (path: string) => string
   flush?: () => void
+  destroy?: () => void
 }): RouterHistory {
   let location = opts.getLocation()
-  let unsub = () => {}
   let subscribers = new Set<() => void>()
   let blockers: BlockerFn[] = []
   let queue: (() => void)[] = []
 
-  const tryFlush = () => {
+  const onUpdate = () => {
+    location = opts.getLocation()
+    subscribers.forEach((subscriber) => subscriber())
+  }
+
+  const tryUnblock = () => {
     if (blockers.length) {
-      blockers[0]?.(tryFlush, () => {
+      blockers[0]?.(tryUnblock, () => {
         blockers = []
         stopBlocking()
       })
@@ -78,19 +84,12 @@ function createHistory(opts: {
       queue.shift()?.()
     }
 
-    if (!opts.subscriber) {
-      onUpdate()
-    }
+    onUpdate()
   }
 
   const queueTask = (task: () => void) => {
     queue.push(task)
-    tryFlush()
-  }
-
-  const onUpdate = () => {
-    location = opts.getLocation()
-    subscribers.forEach((subscriber) => subscriber())
+    tryUnblock()
   }
 
   return {
@@ -98,19 +97,10 @@ function createHistory(opts: {
       return location
     },
     subscribe: (cb: () => void) => {
-      if (subscribers.size === 0) {
-        unsub =
-          typeof opts.subscriber === 'function'
-            ? opts.subscriber(onUpdate)
-            : () => {}
-      }
       subscribers.add(cb)
 
       return () => {
         subscribers.delete(cb)
-        if (subscribers.size === 0) {
-          unsub()
-        }
       }
     },
     push: (path: string, state: any) => {
@@ -159,6 +149,8 @@ function createHistory(opts: {
       }
     },
     flush: () => opts.flush?.(),
+    destroy: () => opts.destroy?.(),
+    update: onUpdate,
   }
 }
 
@@ -273,38 +265,8 @@ export function createBrowserHistory(opts?: {
     }
   }
 
-  return createHistory({
+  const history = createHistory({
     getLocation,
-    subscriber: (onUpdate) => {
-      window.addEventListener(pushStateEvent, () => {
-        currentLocation = parseLocation(getHref(), window.history.state)
-        onUpdate()
-      })
-      window.addEventListener(popStateEvent, () => {
-        currentLocation = parseLocation(getHref(), window.history.state)
-        onUpdate()
-      })
-
-      var pushState = window.history.pushState
-      window.history.pushState = function () {
-        let res = pushState.apply(history, arguments as any)
-        if (tracking) onUpdate()
-        return res
-      }
-      var replaceState = window.history.replaceState
-      window.history.replaceState = function () {
-        let res = replaceState.apply(history, arguments as any)
-        if (tracking) onUpdate()
-        return res
-      }
-
-      return () => {
-        window.history.pushState = pushState
-        window.history.replaceState = replaceState
-        window.removeEventListener(pushStateEvent, onUpdate)
-        window.removeEventListener(popStateEvent, onUpdate)
-      }
-    },
     pushState: (path, state, onUpdate) =>
       queueHistoryAction('push', path, state, onUpdate),
     replaceState: (path, state, onUpdate) =>
@@ -314,7 +276,37 @@ export function createBrowserHistory(opts?: {
     go: (n) => window.history.go(n),
     createHref: (path) => createHref(path),
     flush,
+    destroy: () => {
+      window.history.pushState = pushState
+      window.history.replaceState = replaceState
+      window.removeEventListener(pushStateEvent, history.update)
+      window.removeEventListener(popStateEvent, history.update)
+    },
   })
+
+  window.addEventListener(pushStateEvent, () => {
+    currentLocation = parseLocation(getHref(), window.history.state)
+    history.update
+  })
+  window.addEventListener(popStateEvent, () => {
+    currentLocation = parseLocation(getHref(), window.history.state)
+    history.update
+  })
+
+  var pushState = window.history.pushState
+  window.history.pushState = function () {
+    let res = pushState.apply(window.history, arguments as any)
+    if (tracking) history.update()
+    return res
+  }
+  var replaceState = window.history.replaceState
+  window.history.replaceState = function () {
+    let res = replaceState.apply(window.history, arguments as any)
+    if (tracking) history.update()
+    return res
+  }
+
+  return history
 }
 
 export function createHashHistory(): RouterHistory {
@@ -342,7 +334,6 @@ export function createMemoryHistory(
 
   return createHistory({
     getLocation,
-    subscriber: false,
     pushState: (path, state) => {
       currentState = state
       entries.push(path)

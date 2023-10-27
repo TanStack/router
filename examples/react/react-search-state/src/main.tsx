@@ -43,7 +43,7 @@ function App() {
   const projectState = useSearchState({
     key: 'project',
     useDefaultValue: () => 'Nozzle',
-    // writeDefault: true,
+    writeDefault: true,
     // defaultReplace: true,
   })
 
@@ -51,7 +51,7 @@ function App() {
     key: 'mode',
     useDeps: () => [projectState.state],
     useDefaultValue: useLocalDefaultValue(() => 'users'),
-    // writeDefault: true,
+    writeDefault: true,
     usePersister: localPersister,
     defaultReplace: true,
   })
