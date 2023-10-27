@@ -15,18 +15,6 @@ export const packages: Package[] = [
     ],
   },
   {
-    name: '@tanstack/react-search-state',
-    packageDir: 'react-search-state',
-    srcDir: 'src',
-    builds: [
-      {
-        jsName: 'TanStackReactSearchState',
-        entryFile: 'src/index.tsx',
-        globals: {},
-      },
-    ],
-  },
-  {
     name: '@tanstack/router-core',
     packageDir: 'router-core',
     srcDir: 'src',
@@ -34,6 +22,18 @@ export const packages: Package[] = [
       {
         jsName: 'RouterCore',
         entryFile: 'src/index.ts',
+        globals: {},
+      },
+    ],
+  },
+  {
+    name: '@tanstack/react-search-state',
+    packageDir: 'react-search-state',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'TanStackReactSearchState',
+        entryFile: 'src/index.tsx',
         globals: {},
       },
     ],
