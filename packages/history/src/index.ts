@@ -286,11 +286,11 @@ export function createBrowserHistory(opts?: {
 
   window.addEventListener(pushStateEvent, () => {
     currentLocation = parseLocation(getHref(), window.history.state)
-    history.update
+    history.update()
   })
   window.addEventListener(popStateEvent, () => {
     currentLocation = parseLocation(getHref(), window.history.state)
-    history.update
+    history.update()
   })
 
   var pushState = window.history.pushState
