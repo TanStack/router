@@ -279,19 +279,21 @@ export function createBrowserHistory(opts?: {
     destroy: () => {
       window.history.pushState = pushState
       window.history.replaceState = replaceState
-      window.removeEventListener(pushStateEvent, history.update)
-      window.removeEventListener(popStateEvent, history.update)
+      window.removeEventListener(
+        pushStateEvent,
+        updateCurrentLocationAndHistory,
+      )
+      window.removeEventListener(popStateEvent, updateCurrentLocationAndHistory)
     },
   })
 
-  window.addEventListener(pushStateEvent, () => {
+  function updateCurrentLocationAndHistory() {
     currentLocation = parseLocation(getHref(), window.history.state)
     history.update()
-  })
-  window.addEventListener(popStateEvent, () => {
-    currentLocation = parseLocation(getHref(), window.history.state)
-    history.update()
-  })
+  }
+
+  window.addEventListener(pushStateEvent, updateCurrentLocationAndHistory)
+  window.addEventListener(popStateEvent, updateCurrentLocationAndHistory)
 
   var pushState = window.history.pushState
   window.history.pushState = function () {
