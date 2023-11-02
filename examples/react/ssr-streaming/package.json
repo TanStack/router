@@ -12,16 +12,16 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/actions": "0.0.1-beta.200",
-    "@tanstack/loaders": "0.0.1-beta.200",
-    "@tanstack/react-actions": "0.0.1-beta.200",
-    "@tanstack/react-loaders": "0.0.1-beta.200",
-    "@tanstack/react-router": "0.0.1-beta.200",
-    "@tanstack/react-start": "0.0.1-beta.200",
+    "@tanstack/actions": "0.0.1-beta.201",
+    "@tanstack/loaders": "0.0.1-beta.201",
+    "@tanstack/react-actions": "0.0.1-beta.201",
+    "@tanstack/react-loaders": "0.0.1-beta.201",
+    "@tanstack/react-router": "0.0.1-beta.201",
+    "@tanstack/react-start": "0.0.1-beta.201",
     "@tanstack/react-store": "^0.0.1",
-    "@tanstack/router-cli": "0.0.1-beta.200",
-    "@tanstack/router-core": "0.0.1-beta.200",
-    "@tanstack/router-devtools": "0.0.1-beta.200",
+    "@tanstack/router-cli": "0.0.1-beta.201",
+    "@tanstack/router-core": "0.0.1-beta.201",
+    "@tanstack/router-devtools": "0.0.1-beta.201",
     "@tanstack/store": "^0.0.1",
     "axios": "^1.1.3",
     "get-port": "^7.0.0",
@@ -29,8 +29,8 @@
     "react-dom": "18.3.0-canary-ab31a9ed2-20230824",
     "resolve-from": "^5.0.0",
     "use-sync-external-store": "1.3.0-canary-ab31a9ed2-20230824",
-    "@tanstack/history": "0.0.1-beta.200",
-    "@tanstack/react-search-state": "0.0.1-beta.200"
+    "@tanstack/history": "0.0.1-beta.201",
+    "@tanstack/react-search-state": "0.0.1-beta.201"
   },
   "devDependencies": {
     "@babel/core": "^7.20.2",
