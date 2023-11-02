@@ -11,11 +11,11 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-loaders": "0.0.1-beta.198",
+    "@tanstack/react-loaders": "0.0.1-beta.199",
     "@tanstack/react-query": "^4.14.1",
     "@tanstack/react-query-devtools": "^4.14.1",
-    "@tanstack/react-router": "0.0.1-beta.198",
-    "@tanstack/router-devtools": "0.0.1-beta.198",
+    "@tanstack/react-router": "0.0.1-beta.199",
+    "@tanstack/router-devtools": "0.0.1-beta.199",
     "@trpc/client": "^10.0.0-rc.6",
     "@trpc/react-query": "^10.0.0-rc.6",
     "@trpc/server": "^10.0.0-rc.6",
@@ -29,14 +29,14 @@
     "zod": "^3.19.1",
     "@tanstack/store": "^0.0.1",
     "@tanstack/react-store": "^0.0.1",
-    "@tanstack/router-core": "0.0.1-beta.198",
-    "@tanstack/loaders": "0.0.1-beta.198",
-    "@tanstack/actions": "0.0.1-beta.198",
-    "@tanstack/react-actions": "0.0.1-beta.198",
-    "@tanstack/react-start": "0.0.1-beta.198",
-    "@tanstack/router-cli": "0.0.1-beta.198",
-    "@tanstack/history": "0.0.1-beta.198",
-    "@tanstack/react-search-state": "0.0.1-beta.198"
+    "@tanstack/router-core": "0.0.1-beta.199",
+    "@tanstack/loaders": "0.0.1-beta.199",
+    "@tanstack/actions": "0.0.1-beta.199",
+    "@tanstack/react-actions": "0.0.1-beta.199",
+    "@tanstack/react-start": "0.0.1-beta.199",
+    "@tanstack/router-cli": "0.0.1-beta.199",
+    "@tanstack/history": "0.0.1-beta.199",
+    "@tanstack/react-search-state": "0.0.1-beta.199"
   },
   "devDependencies": {
     "@types/react": "^18.0.14",
