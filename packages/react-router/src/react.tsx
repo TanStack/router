@@ -385,6 +385,9 @@ export function useLinkProps<
   options: MakeLinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
   const router = useRouter()
+  const match = useMatch({
+    strict: false,
+  })
 
   const {
     // custom props
@@ -395,7 +398,6 @@ export function useLinkProps<
     inactiveProps = () => ({}),
     activeOptions,
     disabled,
-    // fromCurrent,
     hash,
     search,
     params,
@@ -416,7 +418,10 @@ export function useLinkProps<
     ...rest
   } = options
 
-  const linkInfo = router.buildLink(options as any)
+  const linkInfo = router.buildLink({
+    from: match.pathname,
+    ...options,
+  } as any)
 
   if (linkInfo.type === 'external') {
     const { href } = linkInfo
@@ -539,9 +544,10 @@ export function Navigate<
   TMaskTo extends string = '',
 >(props: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const router = useRouter()
+  const match = useMatch({ strict: false })
 
   useLayoutEffect(() => {
-    router.navigate(props as any)
+    router.navigate({ from: match.pathname, ...props } as any)
   }, [])
 
   return null
@@ -841,6 +847,9 @@ export function useNavigate<
   TDefaultFrom extends RoutePaths<TRouteTree> = '/',
 >(defaultOpts?: { from?: TDefaultFrom }) {
   const router = useRouter()
+  const match = useMatch({
+    strict: false,
+  })
   return React.useCallback(
     <
       TFrom extends RoutePaths<TRouteTree> = TDefaultFrom,
@@ -850,7 +859,11 @@ export function useNavigate<
     >(
       opts?: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
     ) => {
-      return router.navigate({ ...defaultOpts, ...(opts as any) })
+      return router.navigate({
+        from: match.pathname,
+        ...defaultOpts,
+        ...(opts as any),
+      })
     },
     [],
   )
