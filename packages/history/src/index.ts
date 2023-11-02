@@ -265,6 +265,14 @@ export function createBrowserHistory(opts?: {
     }
   }
 
+  const onPushPop = () => {
+    currentLocation = parseLocation(getHref(), window.history.state)
+    history.update()
+  }
+
+  var originalPushState = window.history.pushState
+  var originalReplaceState = window.history.replaceState
+
   const history = createHistory({
     getLocation,
     pushState: (path, state, onUpdate) =>
@@ -277,31 +285,24 @@ export function createBrowserHistory(opts?: {
     createHref: (path) => createHref(path),
     flush,
     destroy: () => {
-      window.history.pushState = pushState
-      window.history.replaceState = replaceState
-      window.removeEventListener(pushStateEvent, history.update)
-      window.removeEventListener(popStateEvent, history.update)
+      window.history.pushState = originalPushState
+      window.history.replaceState = originalReplaceState
+      window.removeEventListener(pushStateEvent, onPushPop)
+      window.removeEventListener(popStateEvent, onPushPop)
     },
   })
 
-  window.addEventListener(pushStateEvent, () => {
-    currentLocation = parseLocation(getHref(), window.history.state)
-    history.update
-  })
-  window.addEventListener(popStateEvent, () => {
-    currentLocation = parseLocation(getHref(), window.history.state)
-    history.update
-  })
+  window.addEventListener(pushStateEvent, onPushPop)
+  window.addEventListener(popStateEvent, onPushPop)
 
-  var pushState = window.history.pushState
   window.history.pushState = function () {
-    let res = pushState.apply(window.history, arguments as any)
+    let res = originalPushState.apply(window.history, arguments as any)
     if (tracking) history.update()
     return res
   }
-  var replaceState = window.history.replaceState
+
   window.history.replaceState = function () {
-    let res = replaceState.apply(window.history, arguments as any)
+    let res = originalReplaceState.apply(window.history, arguments as any)
     if (tracking) history.update()
     return res
   }
