@@ -9,22 +9,22 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "0.0.1-beta.202",
-    "@tanstack/router-devtools": "0.0.1-beta.202",
+    "@tanstack/react-router": "0.0.1-beta.203",
+    "@tanstack/router-devtools": "0.0.1-beta.203",
     "@vitejs/plugin-react": "^1.1.3",
     "axios": "^1.1.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "vite": "^2.8.6",
-    "@tanstack/router-core": "0.0.1-beta.202",
-    "@tanstack/loaders": "0.0.1-beta.202",
-    "@tanstack/react-loaders": "0.0.1-beta.202",
-    "@tanstack/actions": "0.0.1-beta.202",
-    "@tanstack/react-actions": "0.0.1-beta.202",
-    "@tanstack/react-start": "0.0.1-beta.202",
-    "@tanstack/router-cli": "0.0.1-beta.202",
-    "@tanstack/history": "0.0.1-beta.202",
-    "@tanstack/react-search-state": "0.0.1-beta.202"
+    "@tanstack/router-core": "0.0.1-beta.203",
+    "@tanstack/loaders": "0.0.1-beta.203",
+    "@tanstack/react-loaders": "0.0.1-beta.203",
+    "@tanstack/actions": "0.0.1-beta.203",
+    "@tanstack/react-actions": "0.0.1-beta.203",
+    "@tanstack/react-start": "0.0.1-beta.203",
+    "@tanstack/router-cli": "0.0.1-beta.203",
+    "@tanstack/history": "0.0.1-beta.203",
+    "@tanstack/react-search-state": "0.0.1-beta.203"
   },
   "devDependencies": {
     "@types/react": "^18.0.25",
