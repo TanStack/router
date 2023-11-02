@@ -1859,7 +1859,7 @@ export class Router<
 
     // If the next urls are the same and we're not replacing,
     // do nothing
-    if (!isSameUrl || next.replace) {
+    if (!isSameUrl || !next.replace) {
       let { maskedLocation, ...nextHistory } = next
 
       if (maskedLocation) {
