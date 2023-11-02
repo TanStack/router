@@ -1682,6 +1682,9 @@ export class Router<
       )
 
       const fromMatches = this.matchRoutes(fromPathname, from.search)
+      const stayingMatches = matches?.filter((d) =>
+        fromMatches?.find((e) => e.routeId === d.routeId),
+      )
 
       const prevParams = { ...last(fromMatches)?.params }
 
@@ -1702,7 +1705,7 @@ export class Router<
       pathname = interpolatePath(pathname, nextParams ?? {})
 
       const preSearchFilters =
-        matches
+        stayingMatches
           ?.map(
             (match) =>
               this.getRoute(match.routeId).options.preSearchFilters ?? [],
@@ -1711,7 +1714,7 @@ export class Router<
           .filter(Boolean) ?? []
 
       const postSearchFilters =
-        matches
+        stayingMatches
           ?.map(
             (match) =>
               this.getRoute(match.routeId).options.postSearchFilters ?? [],
@@ -1856,40 +1859,42 @@ export class Router<
 
     // If the next urls are the same and we're not replacing,
     // do nothing
-    if (isSameUrl && !next.replace) {
-      return
-    }
+    if (!isSameUrl || next.replace) {
+      let { maskedLocation, ...nextHistory } = next
 
-    let { maskedLocation, ...nextHistory } = next
-
-    if (maskedLocation) {
-      nextHistory = {
-        ...maskedLocation,
-        state: {
-          ...maskedLocation.state,
-          __tempKey: undefined,
-          __tempLocation: {
-            ...nextHistory,
-            search: nextHistory.searchStr,
-            state: {
-              ...nextHistory.state,
-              __tempKey: undefined!,
-              __tempLocation: undefined!,
-              key: undefined!,
+      if (maskedLocation) {
+        nextHistory = {
+          ...maskedLocation,
+          state: {
+            ...maskedLocation.state,
+            __tempKey: undefined,
+            __tempLocation: {
+              ...nextHistory,
+              search: nextHistory.searchStr,
+              state: {
+                ...nextHistory.state,
+                __tempKey: undefined!,
+                __tempLocation: undefined!,
+                key: undefined!,
+              },
             },
           },
-        },
+        }
+
+        if (
+          nextHistory.unmaskOnReload ??
+          this.options.unmaskOnReload ??
+          false
+        ) {
+          nextHistory.state.__tempKey = this.tempLocationKey
+        }
       }
 
-      if (nextHistory.unmaskOnReload ?? this.options.unmaskOnReload ?? false) {
-        nextHistory.state.__tempKey = this.tempLocationKey
-      }
+      this.history[next.replace ? 'replace' : 'push'](
+        nextHistory.href,
+        nextHistory.state,
+      )
     }
-
-    this.history[next.replace ? 'replace' : 'push'](
-      nextHistory.href,
-      nextHistory.state,
-    )
 
     this.resetNextScroll = next.resetScroll ?? true
 

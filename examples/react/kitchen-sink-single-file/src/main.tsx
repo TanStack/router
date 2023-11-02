@@ -191,16 +191,15 @@ const dashboardRoute = new Route({
         <div className="flex flex-wrap divide-x">
           {(
             [
-              ['/dashboard', 'Summary', undefined, true],
+              ['/dashboard', 'Summary', true],
               ['/dashboard/invoices', 'Invoices'],
-              ['/dashboard/users', 'Users', true],
+              ['/dashboard/users', 'Users'],
             ] as const
-          ).map(([to, label, search, exact]) => {
+          ).map(([to, label, exact]) => {
             return (
               <Link
                 key={to}
                 to={to}
-                search={search}
                 activeOptions={{ exact }}
                 activeProps={{ className: `font-bold` }}
                 className="p-2"
@@ -480,7 +479,6 @@ const invoiceRoute = new Route({
 const usersRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'users',
-
   validateSearch: z.object({
     usersView: z
       .object({
@@ -508,6 +506,10 @@ const usersRoute = new Route({
     const filterBy = usersView?.filterBy
 
     const [filterDraft, setFilterDraft] = React.useState(filterBy ?? '')
+
+    React.useEffect(() => {
+      setFilterDraft(filterBy ?? '')
+    }, [filterBy])
 
     const sortedUsers = React.useMemo(() => {
       if (!users) return []
