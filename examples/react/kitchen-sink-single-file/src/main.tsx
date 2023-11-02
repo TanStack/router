@@ -713,8 +713,8 @@ const profileRoute = new Route({
     await new Promise((r) => setTimeout(r, 1000))
     return `Hello ${context.auth.username}!`
   },
-  component: ({ useLoader, useContext }) => {
-    const { username } = useContext()
+  component: ({ useLoader, useRouteContext }) => {
+    const { username } = useRouteContext()
     const message = useLoader()
 
     return (
@@ -734,8 +734,8 @@ const loginRoute = new Route({
   validateSearch: z.object({
     redirect: z.string().optional(),
   }),
-  component: ({ useContext }) => {
-    const { auth } = useContext()
+  component: ({ useRouteContext }) => {
+    const { auth } = useRouteContext()
     const search = useSearch({ from: loginRoute.id })
     const [username, setUsername] = React.useState('')
 
@@ -746,7 +746,7 @@ const loginRoute = new Route({
     }
 
     // Ah, the subtle nuances of client side auth. 🙄
-    React.useEffect(() => {
+    React.useLayoutEffect(() => {
       if (auth.status === 'loggedIn' && search.redirect) {
         router.history.push(search.redirect)
       }

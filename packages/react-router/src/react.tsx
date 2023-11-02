@@ -401,7 +401,7 @@ export function useLinkProps<
     hash,
     search,
     params,
-    to = '.',
+    to,
     state,
     mask,
     preload,
@@ -419,7 +419,7 @@ export function useLinkProps<
   } = options
 
   const linkInfo = router.buildLink({
-    from: match.pathname,
+    from: options.to ? match.pathname : undefined,
     ...options,
   } as any)
 
@@ -547,7 +547,10 @@ export function Navigate<
   const match = useMatch({ strict: false })
 
   useLayoutEffect(() => {
-    router.navigate({ from: match.pathname, ...props } as any)
+    router.navigate({
+      from: props.to ? match.pathname : undefined,
+      ...props,
+    } as any)
   }, [])
 
   return null
@@ -860,7 +863,7 @@ export function useNavigate<
       opts?: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
     ) => {
       return router.navigate({
-        from: match.pathname,
+        from: opts?.to ? match.pathname : undefined,
         ...defaultOpts,
         ...(opts as any),
       })
