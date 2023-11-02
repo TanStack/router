@@ -1852,16 +1852,12 @@ export class Router<
   #commitLocation = async (next: ParsedLocation & CommitLocationOptions) => {
     if (this.navigateTimeout) clearTimeout(this.navigateTimeout)
 
-    let nextAction: 'push' | 'replace' = 'replace'
-
-    if (!next.replace) {
-      nextAction = 'push'
-    }
-
     const isSameUrl = this.state.location.href === next.href
 
-    if (isSameUrl) {
-      nextAction = 'replace'
+    // If the next urls are the same and we're not replacing,
+    // do nothing
+    if (isSameUrl && !next.replace) {
+      return
     }
 
     let { maskedLocation, ...nextHistory } = next
@@ -1890,7 +1886,7 @@ export class Router<
       }
     }
 
-    this.history[nextAction === 'push' ? 'push' : 'replace'](
+    this.history[next.replace ? 'replace' : 'push'](
       nextHistory.href,
       nextHistory.state,
     )
