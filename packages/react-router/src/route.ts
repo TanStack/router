@@ -118,7 +118,7 @@ export type BaseRouteOptions<
           TRouteMeta
         >
       }) & {
-    load?: LoadFn<
+    load?: RouteLoadFn<
       TAllParams,
       TFullSearchSchema,
       NoInfer<TAllContext>,
@@ -238,7 +238,7 @@ export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
       [Key in keyof TParentParams]?: DefinedPathParamWarning
     }
 
-export type LoadFn<
+export type RouteLoadFn<
   TAllParams = {},
   TFullSearchSchema extends Record<string, any> = {},
   TAllContext extends Record<string, any> = AnyContext,
