@@ -1,3 +1,4 @@
+import * as React from 'react'
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<T, Y, N = T> = 1 extends 0 & T ? Y : N
 export type IsAnyBoolean<T> = 1 extends 0 & T ? true : false
@@ -48,25 +49,49 @@ export type UnionToIntersection<U> = (
 //   }
 // >
 
-export type DeepMerge<A, B> = {
-  [K in keyof (A & B)]: K extends keyof B
-    ? B[K]
-    : K extends keyof A
-    ? A[K]
-    : never
-} & (A extends Record<string, any>
-  ? Pick<A, Exclude<keyof A, keyof B>>
-  : never) &
-  (B extends Record<string, any> ? Pick<B, Exclude<keyof B, keyof A>> : never)
+export type Assign<Left, Right> = Omit<Left, keyof Right> & Right
 
-export type DeepMergeAll<T extends any[]> = T extends [
-  infer Left,
-  ...infer Rest,
-]
-  ? Rest extends any[]
-    ? DeepMerge<Left, DeepMergeAll<Rest>>
+export type AssignAll<T extends any[]> = T extends [infer Left, ...infer Right]
+  ? Right extends any[]
+    ? Assign<Left, AssignAll<Right>>
     : Left
   : {}
+
+// // Sample types to merge
+// type TypeA = {
+//   shared: string
+//   onlyInA: string
+//   nested: {
+//     shared: string
+//     aProp: string
+//   }
+//   array: string[]
+// }
+
+// type TypeB = {
+//   shared: number
+//   onlyInB: number
+//   nested: {
+//     shared: number
+//     bProp: number
+//   }
+//   array: number[]
+// }
+
+// type TypeC = {
+//   shared: boolean
+//   onlyInC: boolean
+//   nested: {
+//     shared: boolean
+//     cProp: boolean
+//   }
+//   array: boolean[]
+// }
+
+// type Test = Expand<Assign<TypeA, TypeB>>
+
+// // Using DeepMerge to merge TypeA and TypeB
+// type MergedType = Expand<AssignAll<[TypeA, TypeB, TypeC]>>
 
 export type Values<O> = O[ValueKeys<O>]
 export type ValueKeys<O> = Extract<keyof O, PropertyKey>
@@ -101,6 +126,10 @@ export type PickExtract<T, U> = {
 export type PickExclude<T, U> = {
   [K in keyof T as T[K] extends U ? never : K]: T[K]
 }
+
+//
+
+export const isServer = typeof document === 'undefined'
 
 export function last<T>(arr: T[]) {
   return arr[arr.length - 1]
@@ -217,4 +246,12 @@ export function partialDeepEqual(a: any, b: any): boolean {
   }
 
   return false
+}
+
+export function useStableCallback<T extends (...args: any[]) => any>(fn: T): T {
+  const fnRef = React.useRef(fn)
+  fnRef.current = fn
+
+  const ref = React.useRef((...args: any[]) => fnRef.current(...args))
+  return ref.current as T
 }

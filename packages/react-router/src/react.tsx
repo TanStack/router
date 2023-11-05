@@ -1,193 +1,46 @@
 import * as React from 'react'
-import { NoInfer, useStore } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
-  functionalUpdate,
-  last,
-  pick,
-  MatchRouteOptions,
-  RegisteredRouter,
-  RouterOptions,
-  Router,
-  RouteMatch,
-  RouteByPath,
-  AnyRoute,
-  AnyRouteProps,
   LinkOptions,
   ToOptions,
   ResolveRelativePath,
   NavigateOptions,
-  ResolveFullPath,
-  ResolveId,
+} from './link'
+import {
   AnySearchSchema,
-  ParsePathParams,
-  RouteContext,
-  AnyContext,
-  UseLoaderResult,
-  ResolveFullSearchSchema,
-  Route,
-  RouteConstraints,
-  RoutePaths,
-  RoutesById,
-  RouteIds,
-  RouteById,
-  ParseRoute,
-  AllParams,
-  rootRouteId,
   AnyPathParams,
-  Expand,
-  ResolveAllParams,
-  DeepMergeAll,
-  IsAny,
-} from '@tanstack/router-core'
+  AnyContext,
+  AnyRoute,
+  rootRouteId,
+} from './route'
+import {
+  RoutePaths,
+  RouteByPath,
+  RouteIds,
+  ParseRoute,
+  RoutesById,
+  RouteById,
+  AllParams,
+} from './routeInfo'
+import { RegisteredRouter, RouterOptions, Router, RouterState } from './router'
+import { RouteMatch } from './RouteMatch'
+import { NoInfer, functionalUpdate, last } from './utils'
+import { MatchRouteOptions, RouterContext } from './RouterProvider'
+import { routerContext } from './RouterProvider'
 
 const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
-declare module '@tanstack/router-core' {
-  interface RouterOptions<
-    TRouteTree extends AnyRoute,
-    TDehydrated extends Record<string, any>,
-  > {
-    Wrap?: React.ComponentType<{
-      children: React.ReactNode
-      dehydratedState?: TDehydrated
-    }>
-  }
-
-  interface RegisterRouteComponent<
-    TLoader = unknown,
-    TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-    TAllParams extends AnyPathParams = AnyPathParams,
-    TAllContext extends Record<string, any> = AnyContext,
-  > {
-    RouteComponent: RouteComponent<
-      RouteProps<TLoader, TFullSearchSchema, TAllParams, TAllContext>
-    >
-  }
-
-  interface RegisterErrorRouteComponent<
-    TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-    TAllParams extends AnyPathParams = AnyPathParams,
-    TAllContext extends Record<string, any> = AnyContext,
-  > {
-    ErrorRouteComponent: RouteComponent<
-      ErrorRouteProps<TFullSearchSchema, TAllParams, TAllContext>
-    >
-  }
-
-  interface RegisterPendingRouteComponent<
-    TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-    TAllParams extends AnyPathParams = AnyPathParams,
-    TAllContext extends Record<string, any> = AnyContext,
-  > {
-    PendingRouteComponent: RouteComponent<
-      PendingRouteProps<TFullSearchSchema, TAllParams, TAllContext>
-    >
-  }
-
-  interface Route<
-    TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
-    TPath extends RouteConstraints['TPath'] = '/',
-    TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
-      TParentRoute,
-      TPath
-    >,
-    TCustomId extends RouteConstraints['TCustomId'] = string,
-    TId extends RouteConstraints['TId'] = ResolveId<
-      TParentRoute,
-      TCustomId,
-      TPath
-    >,
-    TLoaderContext extends RouteConstraints['TLoaderContext'] = AnyContext,
-    TLoader = unknown,
-    TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
-    TFullSearchSchema extends RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
-      TParentRoute,
-      TSearchSchema
-    >,
-    TParams extends RouteConstraints['TParams'] = Expand<
-      Record<ParsePathParams<TPath>, string>
-    >,
-    TAllParams extends RouteConstraints['TAllParams'] = ResolveAllParams<
-      TParentRoute,
-      TParams
-    >,
-    TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
-    TAllContext extends RouteConstraints['TAllContext'] = Expand<
-      DeepMergeAll<
-        [
-          IsAny<TParentRoute['types']['context'], {}>,
-          TLoaderContext,
-          TRouteContext,
-        ]
-      >
-    >,
-    TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
-    TChildren extends RouteConstraints['TChildren'] = unknown,
-    TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
-  > {
-    useMatch: <TSelected = TAllContext>(opts?: {
-      select?: (search: TAllContext) => TSelected
-    }) => TSelected
-    useLoader: <TSelected = TLoader>(opts?: {
-      select?: (search: TLoader) => TSelected
-    }) => UseLoaderResult<TSelected>
-    useRouteContext: <TSelected = TAllContext>(opts?: {
-      select?: (search: TAllContext) => TSelected
-    }) => TSelected
-    useSearch: <TSelected = TFullSearchSchema>(opts?: {
-      select?: (search: TFullSearchSchema) => TSelected
-    }) => TSelected
-    useParams: <TSelected = TAllParams>(opts?: {
-      select?: (search: TAllParams) => TSelected
-    }) => TSelected
-  }
-
-  interface RegisterRouteProps<
-    TLoader = unknown,
-    TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-    TAllParams extends AnyPathParams = AnyPathParams,
-    TAllContext extends Record<string, any> = AnyContext,
-  > {
-    RouteProps: RouteProps<TLoader, TFullSearchSchema, TAllParams, TAllContext>
-  }
-
-  interface RegisterPendingRouteProps<
-    TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-    TAllParams extends AnyPathParams = AnyPathParams,
-    TAllContext extends Record<string, any> = AnyContext,
-  > {
-    PendingRouteProps: PendingRouteProps<
-      TFullSearchSchema,
-      TAllParams,
-      TAllContext
-    >
-  }
-
-  interface RegisterErrorRouteProps<
-    TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-    TAllParams extends AnyPathParams = AnyPathParams,
-    TAllContext extends Record<string, any> = AnyContext,
-  > {
-    ErrorRouteProps: ErrorRouteProps
-  }
-}
-
 export type RouteProps<
-  TLoader = unknown,
   TFullSearchSchema extends Record<string, any> = AnySearchSchema,
   TAllParams extends AnyPathParams = AnyPathParams,
   TAllContext extends Record<string, any> = AnyContext,
 > = {
-  useLoader: <TSelected = TLoader>(opts?: {
-    select?: (search: TLoader) => TSelected
-  }) => UseLoaderResult<TSelected>
   useMatch: <TSelected = TAllContext>(opts?: {
     select?: (search: TAllContext) => TSelected
   }) => TSelected
-  useRouteContext: <TSelected = TAllContext>(opts?: {
+  useRouteMeta: <TSelected = TAllContext>(opts?: {
     select?: (search: TAllContext) => TSelected
   }) => TSelected
   useSearch: <TSelected = TFullSearchSchema>(opts?: {
@@ -205,43 +58,13 @@ export type ErrorRouteProps<
 > = {
   error: unknown
   info: { componentStack: string }
-} & Omit<
-  RouteProps<unknown, TFullSearchSchema, TAllParams, TAllContext>,
-  'useLoader'
->
+} & RouteProps<TFullSearchSchema, TAllParams, TAllContext>
 
 export type PendingRouteProps<
   TFullSearchSchema extends Record<string, any> = AnySearchSchema,
   TAllParams extends AnyPathParams = AnyPathParams,
   TAllContext extends Record<string, any> = AnyContext,
-> = Omit<
-  RouteProps<unknown, TFullSearchSchema, TAllParams, TAllContext>,
-  'useLoader'
->
-
-Route.__onInit = (route) => {
-  Object.assign(route, {
-    useMatch: (opts = {}) => {
-      return useMatch({ ...opts, from: route.id }) as any
-    },
-    useLoader: (opts = {}) => {
-      return useLoader({ ...opts, from: route.id }) as any
-    },
-    useRouteContext: (opts: any = {}) => {
-      return useMatch({
-        ...opts,
-        from: route.id,
-        select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-      } as any)
-    },
-    useSearch: (opts = {}) => {
-      return useSearch({ ...opts, from: route.id } as any)
-    },
-    useParams: (opts = {}) => {
-      return useParams({ ...opts, from: route.id } as any)
-    },
-  })
-}
+> = RouteProps<TFullSearchSchema, TAllParams, TAllContext>
 
 //
 
@@ -255,16 +78,29 @@ export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>
 }
 
-export type ErrorRouteComponent = AsyncRouteComponent<ErrorRouteComponentProps>
+export type RouteComponent<
+  TFullSearchSchema extends Record<string, any>,
+  TAllParams extends AnyPathParams,
+  TAllContext extends Record<string, any>,
+> = AsyncRouteComponent<RouteProps<TFullSearchSchema, TAllParams, TAllContext>>
 
-export type ErrorRouteComponentProps = {
-  error: Error
-  info: { componentStack: string }
-}
+export type ErrorRouteComponent<
+  TFullSearchSchema extends Record<string, any>,
+  TAllParams extends AnyPathParams,
+  TAllContext extends Record<string, any>,
+> = AsyncRouteComponent<
+  ErrorRouteProps<TFullSearchSchema, TAllParams, TAllContext>
+>
 
-export type AnyRouteComponent = RouteComponent<AnyRouteProps>
+export type PendingRouteComponent<
+  TFullSearchSchema extends Record<string, any>,
+  TAllParams extends AnyPathParams,
+  TAllContext extends Record<string, any>,
+> = AsyncRouteComponent<
+  PendingRouteProps<TFullSearchSchema, TAllParams, TAllContext>
+>
 
-export type RouteComponent<TProps> = AsyncRouteComponent<TProps>
+export type AnyRouteComponent = RouteComponent<any, any, any>
 
 export function lazyRouteComponent<
   T extends Record<string, any>,
@@ -384,7 +220,7 @@ export function useLinkProps<
 >(
   options: MakeLinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
-  const router = useRouter()
+  const { buildLink, state: routerState } = useRouter()
   const match = useMatch({
     strict: false,
   })
@@ -418,7 +254,7 @@ export function useLinkProps<
     ...rest
   } = options
 
-  const linkInfo = router.buildLink({
+  const linkInfo = buildLink(routerState, {
     from: options.to ? match.pathname : undefined,
     ...options,
   } as any)
@@ -543,11 +379,11 @@ export function Navigate<
   TMaskFrom extends RoutePaths<TRouteTree> = '/',
   TMaskTo extends string = '',
 >(props: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>): null {
-  const router = useRouter()
+  const { navigate } = useRouter()
   const match = useMatch({ strict: false })
 
   useLayoutEffect(() => {
-    router.navigate({
+    navigate({
       from: props.to ? match.pathname : undefined,
       ...props,
     } as any)
@@ -556,112 +392,42 @@ export function Navigate<
   return null
 }
 
-export const matchIdsContext = React.createContext<string[]>(null!)
-export const routerContext = React.createContext<RegisteredRouter>(null!)
-
+export const matchesContext = React.createContext<RouteMatch[]>(null!)
 export type RouterProps<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TDehydrated extends Record<string, any> = Record<string, any>,
 > = Omit<RouterOptions<TRouteTree, TDehydrated>, 'context'> & {
   router: Router<TRouteTree>
-  context?: Partial<RouterOptions<TRouteTree, TDehydrated>['context']>
+  context?: Partial<RouterOptions<TRouteTree, TDehydrated>['meta']>
 }
 
-export function useRouterState<TSelected = RegisteredRouter['state']>(opts?: {
-  select: (state: RegisteredRouter['state']) => TSelected
-}): TSelected {
-  const router = useRouter()
-  return useStore(router.__store, opts?.select as any)
-}
-
-export function RouterProvider<
+export function useRouter<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TDehydrated extends Record<string, any> = Record<string, any>,
->({ router, ...rest }: RouterProps<TRouteTree, TDehydrated>) {
-  router.update(rest)
-
-  React.useEffect(() => {
-    let unsub
-
-    React.startTransition(() => {
-      unsub = router.mount()
-    })
-
-    return unsub
-  }, [router])
-
-  const Wrap = router.options.Wrap || React.Fragment
-
-  return (
-    <Wrap>
-      <routerContext.Provider value={router as any}>
-        <Matches />
-      </routerContext.Provider>
-    </Wrap>
-  )
-}
-
-function Matches() {
-  const router = useRouter()
-
-  const matchIds = useRouterState({
-    select: (state) => {
-      return state.renderedMatchIds
-    },
-  })
-
-  const locationKey = useRouterState({
-    select: (d) => d.resolvedLocation.state?.key,
-  })
-
-  const route = router.getRoute(rootRouteId)
-
-  const errorComponent = React.useCallback(
-    (props: any) => {
-      return React.createElement(ErrorComponent, {
-        ...props,
-        useMatch: route.useMatch,
-        useRouteContext: route.useRouteContext,
-        useSearch: route.useSearch,
-        useParams: route.useParams,
-      })
-    },
-    [route],
-  )
-
-  return (
-    <matchIdsContext.Provider value={[undefined!, ...matchIds]}>
-      <CatchBoundary
-        resetKey={locationKey}
-        errorComponent={errorComponent}
-        onCatch={() => {
-          warning(
-            false,
-            `Error in router! Consider setting an 'errorComponent' in your RootRoute! 👍`,
-          )
-        }}
-      >
-        <Outlet />
-      </CatchBoundary>
-    </matchIdsContext.Provider>
-  )
-}
-
-export function useRouter(): RegisteredRouter {
+>(): RouterContext<TRouteTree> {
   const value = React.useContext(routerContext)
-  warning(value, 'useRouter must be used inside a <Router> component!')
-  return value
+  warning(value, 'useRouter must be used inside a <RouterProvider> component!')
+  return value as any
+}
+
+export function useRouterState<
+  TSelected = RouterState<RegisteredRouter['routeTree']>,
+>(opts?: {
+  select: (state: RouterState<RegisteredRouter['routeTree']>) => TSelected
+}): TSelected {
+  const { state } = useRouter()
+  // return useStore(router.__store, opts?.select as any)
+  return opts?.select ? opts.select(state) : (state as any)
 }
 
 export function useMatches<T = RouteMatch[]>(opts?: {
   select?: (matches: RouteMatch[]) => T
 }): T {
-  const matchIds = React.useContext(matchIdsContext)
+  const contextMatches = React.useContext(matchesContext)
 
   return useRouterState({
     select: (state) => {
-      const matches = state.renderedMatches.slice(
-        state.renderedMatches.findIndex((d) => d.id === matchIds[0]),
+      const matches = state.matches.slice(
+        state.matches.findIndex((d) => d.id === contextMatches[0]?.id),
       )
       return opts?.select ? opts.select(matches) : (matches as T)
     },
@@ -689,15 +455,14 @@ export function useMatch<
     select?: (match: TRouteMatchState) => TSelected
   },
 ): TStrict extends true ? TRouteMatchState : TRouteMatchState | undefined {
-  const router = useRouter()
-  const nearestMatchId = React.useContext(matchIdsContext)[0]!
-  const nearestMatchRouteId = router.getRouteMatch(nearestMatchId)?.routeId
+  const nearestMatch = React.useContext(matchesContext)[0]!
+  const nearestMatchRouteId = nearestMatch?.routeId
 
   const matchRouteId = useRouterState({
     select: (state) => {
       const match = opts?.from
-        ? state.renderedMatches.find((d) => d.routeId === opts?.from)
-        : state.renderedMatches.find((d) => d.id === nearestMatchId)
+        ? state.matches.find((d) => d.routeId === opts?.from)
+        : state.matches.find((d) => d.id === nearestMatch.id)
 
       return match!.routeId
     },
@@ -719,8 +484,8 @@ export function useMatch<
   const matchSelection = useRouterState({
     select: (state) => {
       const match = opts?.from
-        ? state.renderedMatches.find((d) => d.routeId === opts?.from)
-        : state.renderedMatches.find((d) => d.id === nearestMatchId)
+        ? state.matches.find((d) => d.routeId === opts?.from)
+        : state.matches.find((d) => d.id === nearestMatch.id)
 
       invariant(
         match,
@@ -749,61 +514,21 @@ export type RouteFromIdOrRoute<
   ? RouteIds<TRouteTree>
   : never
 
-export function useLoader<
+export function useRouteMeta<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
   TStrict extends boolean = true,
-  TLoader = RouteById<TRouteTree, TFrom>['types']['loader'],
-  TSelected = TLoader,
+  TRouteMeta = RouteById<TRouteTree, TFrom>['types']['allMeta'],
+  TSelected = TRouteMeta,
 >(
   opts: StrictOrFrom<TFrom> & {
-    select?: (search: TLoader) => TSelected
+    select?: (search: TRouteMeta) => TSelected
   },
 ): TStrict extends true ? TSelected : TSelected | undefined {
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) =>
-      opts?.select
-        ? opts?.select(match.loaderData as TLoader)
-        : match.loaderData,
-  })
-}
-
-export function useRouterContext<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TStrict extends boolean = true,
-  TContext = RouteById<TRouteTree, TFrom>['types']['context'],
-  TSelected = TContext,
->(
-  opts: StrictOrFrom<TFrom> & {
-    select?: (search: TContext) => TSelected
-  },
-): TStrict extends true ? TSelected : TSelected | undefined {
-  return useMatch({
-    ...(opts as any),
-    select: (match: RouteMatch) =>
-      opts?.select ? opts.select(match.context as TContext) : match.context,
-  })
-}
-
-export function useRouteContext<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TStrict extends boolean = true,
-  TRouteContext = RouteById<TRouteTree, TFrom>['types']['context'],
-  TSelected = TRouteContext,
->(
-  opts: StrictOrFrom<TFrom> & {
-    select?: (search: TRouteContext) => TSelected
-  },
-): TStrict extends true ? TSelected : TSelected | undefined {
-  return useMatch({
-    ...(opts as any),
-    select: (match: RouteMatch) =>
-      opts?.select
-        ? opts.select(match.context as TRouteContext)
-        : match.context,
+      opts?.select ? opts.select(match.meta as TRouteMeta) : match.meta,
   })
 }
 
@@ -839,7 +564,7 @@ export function useParams<
 ): TSelected {
   return useRouterState({
     select: (state: any) => {
-      const params = (last(state.renderedMatches) as any)?.params
+      const params = (last(state.matches) as any)?.params
       return opts?.select ? opts.select(params) : params
     },
   })
@@ -849,7 +574,7 @@ export function useNavigate<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TDefaultFrom extends RoutePaths<TRouteTree> = '/',
 >(defaultOpts?: { from?: TDefaultFrom }) {
-  const router = useRouter()
+  const { navigate } = useRouter()
   const match = useMatch({
     strict: false,
   })
@@ -862,7 +587,7 @@ export function useNavigate<
     >(
       opts?: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
     ) => {
-      return router.navigate({
+      return navigate({
         from: opts?.to ? match.pathname : undefined,
         ...defaultOpts,
         ...(opts as any),
@@ -875,7 +600,7 @@ export function useNavigate<
 export function useMatchRoute<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
 >() {
-  const router = useRouter()
+  const { state, matchRoute } = useRouter()
 
   return React.useCallback(
     <
@@ -895,12 +620,60 @@ export function useMatchRoute<
     ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
       const { pending, caseSensitive, ...rest } = opts
 
-      return router.matchRoute(rest as any, {
+      return matchRoute(state, rest as any, {
         pending,
         caseSensitive,
       })
     },
     [],
+  )
+}
+
+export function Matches() {
+  const { routesById, state } = useRouter()
+
+  // const matches = useRouterState({
+  //   select: (state) => {
+  //     return state.matches
+  //   },
+  // })
+
+  const { matches } = state
+
+  const locationKey = useRouterState({
+    select: (d) => d.resolvedLocation.state?.key,
+  })
+
+  const route = routesById[rootRouteId]
+
+  const errorComponent = React.useCallback(
+    (props: any) => {
+      return React.createElement(ErrorComponent, {
+        ...props,
+        useMatch: route.useMatch,
+        useRouteMeta: route.useRouteMeta,
+        useSearch: route.useSearch,
+        useParams: route.useParams,
+      })
+    },
+    [route],
+  )
+
+  return (
+    <matchesContext.Provider value={matches}>
+      <CatchBoundary
+        resetKey={locationKey}
+        errorComponent={errorComponent}
+        onCatch={() => {
+          warning(
+            false,
+            `Error in router! Consider setting an 'errorComponent' in your RootRoute! 👍`,
+          )
+        }}
+      >
+        {matches.length ? <Match matches={matches} /> : null}
+      </CatchBoundary>
+    </matchesContext.Provider>
   )
 }
 
@@ -924,33 +697,33 @@ export function MatchRoute<
 }
 
 export function Outlet() {
-  const matchIds = React.useContext(matchIdsContext).slice(1)
+  const matches = React.useContext(matchesContext).slice(1)
 
-  if (!matchIds[0]) {
+  if (!matches[0]) {
     return null
   }
 
-  return <Match matchIds={matchIds} />
+  return <Match matches={matches} />
 }
 
 const defaultPending = () => null
 
-function Match({ matchIds }: { matchIds: string[] }) {
-  const router = useRouter()
-  const matchId = matchIds[0]!
-  const routeId = router.getRouteMatch(matchId)!.routeId
-  const route = router.getRoute(routeId)
+function Match({ matches }: { matches: RouteMatch[] }) {
+  const { options, routesById } = useRouter()
+  const match = matches[0]!
+  const routeId = match?.routeId
+  const route = routesById[routeId]
   const locationKey = useRouterState({
     select: (s) => s.resolvedLocation.state?.key,
   })
 
   const PendingComponent = (route.options.pendingComponent ??
-    router.options.defaultPendingComponent ??
+    options.defaultPendingComponent ??
     defaultPending) as any
 
   const routeErrorComponent =
     route.options.errorComponent ??
-    router.options.defaultErrorComponent ??
+    options.defaultErrorComponent ??
     ErrorComponent
 
   const ResolvedSuspenseBoundary =
@@ -967,7 +740,7 @@ function Match({ matchIds }: { matchIds: string[] }) {
       return React.createElement(routeErrorComponent, {
         ...props,
         useMatch: route.useMatch,
-        useRouteContext: route.useRouteContext,
+        useRouteMeta: route.useRouteMeta,
         useSearch: route.useSearch,
         useParams: route.useParams,
       })
@@ -976,11 +749,11 @@ function Match({ matchIds }: { matchIds: string[] }) {
   )
 
   return (
-    <matchIdsContext.Provider value={matchIds}>
+    <matchesContext.Provider value={matches}>
       <ResolvedSuspenseBoundary
         fallback={React.createElement(PendingComponent, {
           useMatch: route.useMatch,
-          useRouteContext: route.useRouteContext,
+          useRouteMeta: route.useRouteMeta,
           useSearch: route.useSearch,
           useParams: route.useParams,
         })}
@@ -989,56 +762,35 @@ function Match({ matchIds }: { matchIds: string[] }) {
           resetKey={locationKey}
           errorComponent={errorComponent}
           onCatch={() => {
-            warning(false, `Error in route match: ${matchId}`)
+            warning(false, `Error in route match: ${match.id}`)
           }}
         >
-          <MatchInner matchId={matchId} PendingComponent={PendingComponent} />
+          <MatchInner match={match} />
         </ResolvedCatchBoundary>
       </ResolvedSuspenseBoundary>
-    </matchIdsContext.Provider>
+    </matchesContext.Provider>
   )
 }
 
-function MatchInner({
-  matchId,
-  PendingComponent,
-}: {
-  matchId: string
-  PendingComponent: any
-}): any {
-  const router = useRouter()
-
-  const match = useRouterState({
-    select: (d) => {
-      const match = d.matchesById[matchId]
-      return pick(match!, ['status', 'loadPromise', 'routeId', 'error'])
-    },
-  })
-
-  const route = router.getRoute(match.routeId)
+function MatchInner({ match }: { match: RouteMatch }): any {
+  const { options, routesById } = useRouter()
+  const route = routesById[match.routeId]
 
   if (match.status === 'error') {
     throw match.error
   }
 
   if (match.status === 'pending') {
-    return React.createElement(PendingComponent, {
-      useLoader: route.useLoader,
-      useMatch: route.useMatch,
-      useRouteContext: route.useRouteContext,
-      useSearch: route.useSearch,
-      useParams: route.useParams,
-    })
+    throw match.loadPromise
   }
 
   if (match.status === 'success') {
-    let comp = route.options.component ?? router.options.defaultComponent
+    let comp = route.options.component ?? options.defaultComponent
 
     if (comp) {
       return React.createElement(comp, {
-        useLoader: route.useLoader,
         useMatch: route.useMatch,
-        useRouteContext: route.useRouteContext as any,
+        useRouteMeta: route.useRouteMeta as any,
         useSearch: route.useSearch,
         useParams: route.useParams as any,
       } as any)
@@ -1057,36 +809,36 @@ function SafeFragment(props: any) {
   return <>{props.children}</>
 }
 
-export function useInjectHtml() {
-  const router = useRouter()
+// export function useInjectHtml() {
+//   const { } = useRouter()
 
-  return React.useCallback(
-    (html: string | (() => Promise<string> | string)) => {
-      router.injectHtml(html)
-    },
-    [],
-  )
-}
+//   return React.useCallback(
+//     (html: string | (() => Promise<string> | string)) => {
+//       router.injectHtml(html)
+//     },
+//     [],
+//   )
+// }
 
-export function useDehydrate() {
-  const router = useRouter()
+// export function useDehydrate() {
+//   const { } = useRouter()
 
-  return React.useCallback(function dehydrate<T>(
-    key: any,
-    data: T | (() => Promise<T> | T),
-  ) {
-    return router.dehydrateData(key, data)
-  },
-  [])
-}
+//   return React.useCallback(function dehydrate<T>(
+//     key: any,
+//     data: T | (() => Promise<T> | T),
+//   ) {
+//     return router.dehydrateData(key, data)
+//   },
+//   [])
+// }
 
-export function useHydrate() {
-  const router = useRouter()
+// export function useHydrate() {
+//   const { } = useRouter()
 
-  return function hydrate<T = unknown>(key: any) {
-    return router.hydrateData(key) as T
-  }
-}
+//   return function hydrate<T = unknown>(key: any) {
+//     return router.hydrateData(key) as T
+//   }
+// }
 
 // This is the messiest thing ever... I'm either seriously tired (likely) or
 // there has to be a better way to reset error boundaries when the
@@ -1192,12 +944,12 @@ export function useBlocker(
   message: string,
   condition: boolean | any = true,
 ): void {
-  const router = useRouter()
+  const { history } = useRouter()
 
   React.useEffect(() => {
     if (!condition) return
 
-    let unblock = router.history.block((retry, cancel) => {
+    let unblock = history.block((retry, cancel) => {
       if (window.confirm(message)) {
         unblock()
         retry()

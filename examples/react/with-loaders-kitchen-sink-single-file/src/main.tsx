@@ -481,10 +481,10 @@ const invoiceRoute = new Route({
       preload,
     })
   },
-  component: ({ useLoader, useSearch, useRouteContext }) => {
+  component: ({ useLoader, useSearch, useRouteMeta }) => {
     const search = useSearch()
     const navigate = useNavigate()
-    const { loaderOptions } = useRouteContext()
+    const { loaderOptions } = useRouteMeta()
     const { data: invoice } = useLoaderInstance(loaderOptions)
     const [{ latestSubmission }, submitUpdateInvoice] = useAction({
       key: 'updateInvoice',
@@ -759,8 +759,7 @@ const userRoute = new Route({
   }),
   // Since our userId isn't part of our pathname, make sure we
   // augment the userId as the key for this route
-  loaderContext: ({ search: { userId } }) => ({ userId }),
-  beforeLoad: ({ context: { userId } }) => {
+  beforeLoad: ({ search: { userId } }) => {
     const loaderOptions = createLoaderOptions({
       key: 'user',
       variables: userId,
@@ -771,8 +770,8 @@ const userRoute = new Route({
   loader: async ({ context: { loaderClient, loaderOptions }, preload }) => {
     await loaderClient.load({ ...loaderOptions, preload })
   },
-  component: ({ useRouteContext }) => {
-    const { loaderOptions } = useRouteContext()
+  component: ({ useRouteMeta }) => {
+    const { loaderOptions } = useRouteMeta()
     const { data: user } = useLoaderInstance(loaderOptions)
 
     return (

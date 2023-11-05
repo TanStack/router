@@ -232,8 +232,8 @@ const postRoute = new Route({
 
     return <ErrorComponent error={error} />
   },
-  component: ({ useRouteContext }) => {
-    const { loaderOptions } = useRouteContext()
+  component: ({ useRouteMeta }) => {
+    const { loaderOptions } = useRouteMeta()
     const { data: post } = useLoaderInstance(loaderOptions)
 
     return (

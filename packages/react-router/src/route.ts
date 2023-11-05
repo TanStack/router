@@ -1,17 +1,28 @@
 import invariant from 'tiny-invariant'
 import { RoutePaths } from './routeInfo'
 import { joinPaths, trimPath } from './path'
-import { AnyRouter, RouteMatch, AnyRouteMatch } from './router'
+import { AnyRouter } from './router'
+import { AnyRouteMatch } from './RouteMatch'
 import {
-  DeepMerge,
-  DeepMergeAll,
   Expand,
   IsAny,
   NoInfer,
   PickRequired,
   UnionToIntersection,
+  Assign,
 } from './utils'
 import { ParsePathParams, ToSubOptions } from './link'
+import {
+  ErrorRouteComponent,
+  PendingRouteComponent,
+  RouteComponent,
+  RouteProps,
+  useMatch,
+  useParams,
+  useSearch,
+} from './react'
+import { HistoryLocation } from '@tanstack/history'
+import { ParsedLocation } from './location'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -19,133 +30,6 @@ export type AnyPathParams = {}
 export type AnySearchSchema = {}
 export type AnyContext = {}
 export interface RouteMeta {}
-export interface RouteContext {}
-export interface RegisterRouteComponent<
-  TLoader = unknown,
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> {
-  // RouteComponent: unknown // This is registered by the framework
-}
-export interface RegisterErrorRouteComponent<
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> {
-  // ErrorRouteComponent: unknown // This is registered by the framework
-}
-export interface RegisterPendingRouteComponent<
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> {
-  // PendingRouteComponent: unknown // This is registered by the framework
-}
-
-export interface RegisterRouteProps<
-  TLoader = unknown,
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> {
-  // RouteProps: unknown // This is registered by the framework
-}
-export interface RegisterErrorRouteProps<
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> {
-  // ErrorRouteProps: unknown // This is registered by the framework
-}
-
-export interface RegisterPendingRouteProps<
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> {
-  // PendingRouteProps: unknown // This is registered by the framework
-}
-
-export type RegisteredRouteComponent<
-  TLoader = unknown,
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> = RegisterRouteComponent<
-  TLoader,
-  TFullSearchSchema,
-  TAllParams,
-  TAllContext
-> extends {
-  RouteComponent: infer T
-}
-  ? T
-  : () => unknown
-
-export type RegisteredErrorRouteComponent<
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> = RegisterErrorRouteComponent<
-  TFullSearchSchema,
-  TAllParams,
-  TAllContext
-> extends {
-  ErrorRouteComponent: infer T
-}
-  ? T
-  : () => unknown
-
-export type RegisteredPendingRouteComponent<
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> = RegisterPendingRouteComponent<
-  TFullSearchSchema,
-  TAllParams,
-  TAllContext
-> extends {
-  PendingRouteComponent: infer T
-}
-  ? T
-  : () => unknown
-
-export type RegisteredRouteProps<
-  TLoader = unknown,
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> = RegisterRouteProps<
-  TLoader,
-  TFullSearchSchema,
-  TAllParams,
-  TAllContext
-> extends {
-  RouteProps: infer T
-}
-  ? T
-  : {}
-
-export type RegisteredErrorRouteProps<
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> = RegisterRouteProps<TFullSearchSchema, TAllParams, TAllContext> extends {
-  ErrorRouteProps: infer T
-}
-  ? T
-  : {}
-
-export type RegisteredPendingRouteProps<
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> = RegisterRouteProps<TFullSearchSchema, TAllParams, TAllContext> extends {
-  PendingRouteProps: infer T
-}
-  ? T
-  : {}
 
 export type PreloadableObj = { preload?: () => Promise<void> }
 
@@ -160,42 +44,36 @@ export type RoutePathOptions<TCustomId, TPath> =
 export type RoutePathOptionsIntersection<TCustomId, TPath> =
   UnionToIntersection<RoutePathOptions<TCustomId, TPath>>
 
-export type MetaOptions = keyof PickRequired<RouteMeta> extends never
-  ? {
-      meta?: RouteMeta
-    }
-  : {
-      meta: RouteMeta
-    }
-
-export type AnyRouteProps = RegisteredRouteProps<any, any, any, any>
+// export type MetaOptions = keyof PickRequired<RouteMeta> extends never
+//   ? {
+//       meta?: RouteMeta
+//     }
+//   : {
+//       meta: RouteMeta
+//     }
 
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
   TPath extends string = string,
-  TLoaderContext extends Record<string, any> = AnyContext,
-  TLoader = unknown,
   TSearchSchema extends Record<string, any> = {},
   TFullSearchSchema extends Record<string, any> = TSearchSchema,
   TParams extends AnyPathParams = AnyPathParams,
   TAllParams extends AnyPathParams = TParams,
-  TRouteContext extends RouteContext = RouteContext,
-  TAllContext extends Record<string, any> = AnyContext,
+  TRouteMeta extends RouteMeta = RouteMeta,
+  TAllMeta extends Record<string, any> = AnyContext,
 > = BaseRouteOptions<
   TParentRoute,
   TCustomId,
   TPath,
-  TLoaderContext,
-  TLoader,
   TSearchSchema,
   TFullSearchSchema,
   TParams,
   TAllParams,
-  TRouteContext,
-  TAllContext
+  TRouteMeta,
+  TAllMeta
 > &
-  UpdatableRouteOptions<TLoader, TFullSearchSchema, TAllParams, TAllContext>
+  NoInfer<UpdatableRouteOptions<TFullSearchSchema, TAllParams, TAllMeta>>
 
 export type ParamsFallback<
   TPath extends string,
@@ -210,52 +88,43 @@ export type BaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
   TPath extends string = string,
-  TLoaderContext extends Record<string, any> = AnyContext,
-  TLoader = unknown,
   TSearchSchema extends Record<string, any> = {},
   TFullSearchSchema extends Record<string, any> = TSearchSchema,
   TParams extends AnyPathParams = {},
   TAllParams = ParamsFallback<TPath, TParams>,
-  TRouteContext extends RouteContext = RouteContext,
+  TRouteMeta extends RouteMeta = RouteMeta,
   TAllContext extends Record<string, any> = AnyContext,
 > = RoutePathOptions<TCustomId, TPath> & {
   getParentRoute: () => TParentRoute
   validateSearch?: SearchSchemaValidator<TSearchSchema>
-  loaderContext?: (opts: { search: TFullSearchSchema }) => TLoaderContext
-} & (keyof PickRequired<RouteContext> extends never
+} & (keyof PickRequired<RouteMeta> extends never
     ? // This async function is called before a route is loaded.
       // If an error is thrown here, the route's loader will not be called.
       // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function.
       // If thrown during a preload event, the error will be logged to the console.
       {
         beforeLoad?: BeforeLoadFn<
+          TFullSearchSchema,
           TParentRoute,
           TAllParams,
-          NoInfer<TLoaderContext>,
-          TRouteContext
+          TRouteMeta
         >
       }
     : {
         beforeLoad: BeforeLoadFn<
+          TFullSearchSchema,
           TParentRoute,
           TAllParams,
-          NoInfer<TLoaderContext>,
-          TRouteContext
+          TRouteMeta
         >
       }) & {
-    loader?: LoaderFn<
-      TLoader,
+    load?: LoadFn<
       TAllParams,
-      NoInfer<TLoaderContext>,
+      TFullSearchSchema,
       NoInfer<TAllContext>,
-      NoInfer<TRouteContext>
+      NoInfer<TRouteMeta>
     >
-  } & ([TLoader] extends [never]
-    ? {
-        loader: 'Loaders must return a type other than never. If you are throwing a redirect() and not returning anything, return a redirect() instead.'
-      }
-    : {}) &
-  (
+  } & (
     | {
         // Both or none
         parseParams?: (
@@ -274,68 +143,63 @@ export type BaseRouteOptions<
   )
 
 type BeforeLoadFn<
+  TFullSearchSchema extends Record<string, any>,
   TParentRoute extends AnyRoute,
   TAllParams,
-  TLoaderContext,
-  TRouteContext,
+  TRouteMeta,
 > = (opts: {
+  search: TFullSearchSchema
   abortController: AbortController
   preload: boolean
   params: TAllParams
-  context: Expand<TParentRoute['types']['context'] & TLoaderContext>
-}) => Promise<TRouteContext> | TRouteContext | void
+  meta: TParentRoute['types']['allMeta']
+  location: ParsedLocation
+}) => Promise<TRouteMeta> | TRouteMeta | void
 
 export type UpdatableRouteOptions<
-  TLoader,
   TFullSearchSchema extends Record<string, any>,
   TAllParams extends AnyPathParams,
-  TAllContext extends Record<string, any>,
-> = MetaOptions & {
-  // If true, this route will be matched as case-sensitive
-  caseSensitive?: boolean
-  // If true, this route will be forcefully wrapped in a suspense boundary
-  wrapInSuspense?: boolean
-  // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
-  component?: RegisteredRouteComponent<
-    TLoader,
-    TFullSearchSchema,
-    TAllParams,
-    TAllContext
-  >
-  // The content to be rendered when the route encounters an error
-  errorComponent?: RegisteredErrorRouteComponent<
-    TFullSearchSchema,
-    TAllParams,
-    TAllContext
-  > //
-  // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
-  pendingComponent?: RegisteredPendingRouteComponent<
-    TFullSearchSchema,
-    TAllParams,
-    TAllContext
-  >
-  // Filter functions that can manipulate search params *before* they are passed to links and navigate
-  // calls that match this route.
-  preSearchFilters?: SearchFilter<TFullSearchSchema>[]
-  // Filter functions that can manipulate search params *after* they are passed to links and navigate
-  // calls that match this route.
-  postSearchFilters?: SearchFilter<TFullSearchSchema>[]
-  // If set, preload matches of this route will be considered fresh for this many milliseconds.
-  preloadMaxAge?: number
-  // If set, a match of this route will be considered fresh for this many milliseconds.
-  maxAge?: number
-  // If set, a match of this route that becomes inactive (or unused) will be garbage collected after this many milliseconds
-  gcMaxAge?: number
-  onError?: (err: any) => void
-  // These functions are called as route matches are loaded, stick around and leave the active
-  // matches
-  onEnter?: (match: AnyRouteMatch) => void
-  onTransition?: (match: AnyRouteMatch) => void
-  onLeave?: (match: AnyRouteMatch) => void
-  // Set this to true or false to specifically set whether or not this route should be preloaded. If unset, will
-  // default to router.options.reloadOnWindowFocus
-  reloadOnWindowFocus?: boolean
-}
+  TAllContext extends AnyContext,
+> =
+  // MetaOptions &
+  {
+    // test?: (args: TAllContext) => void
+    // If true, this route will be matched as case-sensitive
+    caseSensitive?: boolean
+    // If true, this route will be forcefully wrapped in a suspense boundary
+    wrapInSuspense?: boolean
+    // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
+    component?: RouteComponent<TFullSearchSchema, TAllParams, TAllContext>
+    // The content to be rendered when the route encounters an error
+    errorComponent?: ErrorRouteComponent<
+      TFullSearchSchema,
+      TAllParams,
+      {}
+      // TAllContext // TODO: I have no idea why this breaks the universe,
+      // so we'll come back to it later.
+    > //
+    // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
+    pendingComponent?: PendingRouteComponent<
+      TFullSearchSchema,
+      TAllParams,
+      TAllContext
+    >
+    // Filter functions that can manipulate search params *before* they are passed to links and navigate
+    // calls that match this route.
+    preSearchFilters?: SearchFilter<TFullSearchSchema>[]
+    // Filter functions that can manipulate search params *after* they are passed to links and navigate
+    // calls that match this route.
+    postSearchFilters?: SearchFilter<TFullSearchSchema>[]
+    onError?: (err: any) => void
+    // These functions are called as route matches are loaded, stick around and leave the active
+    // matches
+    onEnter?: (match: AnyRouteMatch) => void
+    onTransition?: (match: AnyRouteMatch) => void
+    onLeave?: (match: AnyRouteMatch) => void
+    // Set this to true or false to specifically set whether or not this route should be preloaded. If unset, will
+    // default to router.options.reloadOnWindowFocus
+    reloadOnWindowFocus?: boolean
+  }
 
 export type ParseParamsOption<TPath extends string, TParams> = ParseParamsFn<
   TPath,
@@ -374,33 +238,33 @@ export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
       [Key in keyof TParentParams]?: DefinedPathParamWarning
     }
 
-export type LoaderFn<
-  TLoader = unknown,
+export type LoadFn<
   TAllParams = {},
-  TLoaderContext extends Record<string, any> = AnyContext,
+  TFullSearchSchema extends Record<string, any> = {},
   TAllContext extends Record<string, any> = AnyContext,
-  TRouteContext extends Record<string, any> = AnyContext,
+  TRouteMeta extends Record<string, any> = AnyContext,
 > = (
-  match: LoaderContext<
+  match: LoadFnContext<
     TAllParams,
-    TLoaderContext,
+    TFullSearchSchema,
     TAllContext,
-    TRouteContext
+    TRouteMeta
   > & {
     parentMatchPromise?: Promise<void>
   },
-) => Promise<TLoader> | TLoader
+) => any
 
-export interface LoaderContext<
+export interface LoadFnContext<
   TAllParams = {},
-  TLoaderContext = {},
+  TFullSearchSchema extends Record<string, any> = {},
   TAllContext extends Record<string, any> = AnyContext,
-  TRouteContext extends Record<string, any> = AnyContext,
+  TRouteMeta extends Record<string, any> = AnyContext,
 > {
   abortController: AbortController
   preload: boolean
   params: TAllParams
-  context: Expand<DeepMergeAll<[TAllContext, TLoaderContext, TRouteContext]>>
+  search: TFullSearchSchema
+  meta: Expand<Assign<TAllContext, TRouteMeta>>
 }
 
 export type SearchFilter<T, U = T> = (prev: T) => U
@@ -422,7 +286,7 @@ export type InferFullSearchSchema<TRoute> = TRoute extends {
   : {}
 
 export type ResolveFullSearchSchema<TParentRoute, TSearchSchema> = Expand<
-  DeepMerge<InferFullSearchSchema<TParentRoute>, TSearchSchema>
+  Assign<InferFullSearchSchema<TParentRoute>, TSearchSchema>
 >
 
 export interface AnyRoute
@@ -440,23 +304,10 @@ export interface AnyRoute
     any,
     any,
     any,
-    any,
-    any,
     any
   > {}
 
 export type MergeFromFromParent<T, U> = IsAny<T, U, T & U>
-
-export type UseLoaderResult<T> = T
-// T extends Record<PropertyKey, infer U>
-//   ? {
-//       [K in keyof T]: UseLoaderResultPromise<T[K]>
-//     }
-//   : UseLoaderResultPromise<T>
-
-// export type UseLoaderResultPromise<T> = T extends Promise<infer U>
-//   ? StreamedPromise<U>
-//   : T
 
 export type StreamedPromise<T> = {
   promise: Promise<T>
@@ -480,15 +331,14 @@ export type RouteConstraints = {
   TFullPath: string
   TCustomId: string
   TId: string
-  TLoaderContext: Record<string, any>
   TSearchSchema: AnySearchSchema
   TFullSearchSchema: AnySearchSchema
   TParams: Record<string, any>
   TAllParams: Record<string, any>
   TParentContext: AnyContext
-  TRouteContext: RouteContext
+  TRouteMeta: RouteMeta
   TAllContext: AnyContext
-  TRouterContext: AnyContext
+  TRouterMeta: AnyContext
   TChildren: unknown
   TRouteTree: AnyRoute
 }
@@ -506,8 +356,6 @@ export class Route<
     TCustomId,
     TPath
   >,
-  TLoaderContext extends RouteConstraints['TLoaderContext'] = {},
-  TLoader = unknown,
   TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
   TFullSearchSchema extends RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
     TParentRoute,
@@ -520,52 +368,28 @@ export class Route<
     TParentRoute,
     TParams
   >,
-  TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
-  TAllContext extends RouteConstraints['TAllContext'] = Expand<
-    DeepMergeAll<
-      [
-        IsAny<TParentRoute['types']['context'], {}>,
-        TLoaderContext,
-        TRouteContext,
-      ]
-    >
-  >,
-  TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+  TRouteMeta extends RouteConstraints['TRouteMeta'] = RouteMeta,
+  TAllMeta extends Expand<
+    Assign<IsAny<TParentRoute['types']['allMeta'], {}>, TRouteMeta>
+  > = Expand<Assign<IsAny<TParentRoute['types']['allMeta'], {}>, TRouteMeta>>,
+  TRouterMeta extends RouteConstraints['TRouterMeta'] = AnyContext,
   TChildren extends RouteConstraints['TChildren'] = unknown,
   TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
 > {
-  types!: {
-    parentRoute: TParentRoute
-    path: TPath
-    to: TrimPathRight<TFullPath>
-    fullPath: TFullPath
-    customId: TCustomId
-    id: TId
-    loader: TLoader
-    searchSchema: TSearchSchema
-    fullSearchSchema: TFullSearchSchema
-    params: TParams
-    allParams: TAllParams
-    routeContext: TRouteContext
-    context: TAllContext
-    children: TChildren
-    routeTree: TRouteTree
-    routerContext: TRouterContext
-  }
   isRoot: TParentRoute extends Route<any> ? true : false
   options: RouteOptions<
     TParentRoute,
     TCustomId,
     TPath,
-    TLoaderContext,
-    TLoader,
     TSearchSchema,
     TFullSearchSchema,
     TParams,
     TAllParams,
-    TRouteContext,
-    TAllContext
+    TRouteMeta,
+    TAllMeta
   >
+
+  test!: Expand<Assign<IsAny<TParentRoute['types']['allMeta'], {}>, TRouteMeta>>
 
   // Set up in this.init()
   parentRoute!: TParentRoute
@@ -586,43 +410,50 @@ export class Route<
       TParentRoute,
       TCustomId,
       TPath,
-      TLoaderContext,
-      TLoader,
       TSearchSchema,
       TFullSearchSchema,
       TParams,
       TAllParams,
-      TRouteContext,
-      TAllContext
-    > &
-      UpdatableRouteOptions<
-        TLoader,
-        TFullSearchSchema,
-        TAllParams,
-        TAllContext
-      >,
+      TRouteMeta,
+      TAllMeta
+    >,
   ) {
     this.options = (options as any) || {}
     this.isRoot = !options?.getParentRoute as any
     Route.__onInit(this)
   }
 
-  init = (opts: { originalIndex: number; router: AnyRouter }) => {
+  types!: {
+    parentRoute: TParentRoute
+    path: TPath
+    to: TrimPathRight<TFullPath>
+    fullPath: TFullPath
+    customId: TCustomId
+    id: TId
+    searchSchema: TSearchSchema
+    fullSearchSchema: TFullSearchSchema
+    params: TParams
+    allParams: TAllParams
+    routeMeta: TRouteMeta
+    allMeta: TAllMeta
+    children: TChildren
+    routeTree: TRouteTree
+    routerMeta: TRouterMeta
+  }
+
+  init = (opts: { originalIndex: number }) => {
     this.originalIndex = opts.originalIndex
-    this.router = opts.router
 
     const options = this.options as RouteOptions<
       TParentRoute,
       TCustomId,
       TPath,
-      TLoaderContext,
-      TLoader,
       TSearchSchema,
       TFullSearchSchema,
       TParams,
       TAllParams,
-      TRouteContext,
-      TAllContext
+      TRouteMeta,
+      TAllMeta
     > &
       RoutePathOptionsIntersection<TCustomId, TPath>
 
@@ -684,15 +515,13 @@ export class Route<
     TFullPath,
     TCustomId,
     TId,
-    TLoaderContext,
-    TLoader,
     TSearchSchema,
     TFullSearchSchema,
     TParams,
     TAllParams,
-    TRouteContext,
-    TAllContext,
-    TRouterContext,
+    TRouteMeta,
+    TAllMeta,
+    TRouterMeta,
     TNewChildren,
     TRouteTree
   > => {
@@ -702,10 +531,9 @@ export class Route<
 
   update = (
     options: UpdatableRouteOptions<
-      TLoader,
       TFullSearchSchema,
       TAllParams,
-      TAllContext
+      Expand<Assign<IsAny<TParentRoute['types']['allMeta'], {}>, TRouteMeta>>
     >,
   ) => {
     Object.assign(this.options, options)
@@ -716,32 +544,53 @@ export class Route<
     // This is a dummy static method that should get
     // replaced by a framework specific implementation if necessary
   }
+
+  useMatch = <TSelected = TAllMeta>(opts?: {
+    select?: (search: TAllMeta) => TSelected
+  }): TSelected => {
+    return useMatch({ ...opts, from: this.id }) as any
+  }
+  useRouteMeta = <TSelected = TAllMeta>(opts?: {
+    select?: (search: TAllMeta) => TSelected
+  }): TSelected => {
+    return useMatch({
+      ...opts,
+      from: this.id,
+      select: (d: any) => (opts?.select ? opts.select(d.meta) : d.meta),
+    } as any)
+  }
+  useSearch = <TSelected = TFullSearchSchema>(opts?: {
+    select?: (search: TFullSearchSchema) => TSelected
+  }): TSelected => {
+    return useSearch({ ...opts, from: this.id } as any)
+  }
+  useParams = <TSelected = TAllParams>(opts?: {
+    select?: (search: TAllParams) => TSelected
+  }): TSelected => {
+    return useParams({ ...opts, from: this.id } as any)
+  }
 }
 
-export type AnyRootRoute = RootRoute<any, any, any, any>
+export type AnyRootRoute = RootRoute<any, any, any>
 
-export class RouterContext<TRouterContext extends {}> {
+export class RouterMeta<TRouterMeta extends {}> {
   constructor() {}
 
   createRootRoute = <
-    TLoaderContext extends Record<string, any> = AnyContext,
-    TLoader = unknown,
     TSearchSchema extends Record<string, any> = {},
-    TRouteContext extends RouteContext = RouteContext,
+    TRouteMeta extends RouteMeta = RouteMeta,
   >(
     options?: Omit<
       RouteOptions<
         AnyRoute, // TParentRoute
         RootRouteId, // TCustomId
         '', // TPath
-        TLoaderContext, // TLoaderContext
-        TLoader, // TLoader
         TSearchSchema, // TSearchSchema
         TSearchSchema, // TFullSearchSchema
         {}, // TParams
         {}, // TAllParams
-        TRouteContext, // TRouteContext
-        DeepMergeAll<[TRouterContext, TLoaderContext, TRouteContext]> // TAllContext
+        TRouteMeta, // TRouteMeta
+        Assign<TRouterMeta, TRouteMeta> // TAllContext
       >,
       | 'path'
       | 'id'
@@ -750,38 +599,28 @@ export class RouterContext<TRouterContext extends {}> {
       | 'parseParams'
       | 'stringifyParams'
     >,
-  ): RootRoute<
-    TLoaderContext,
-    TLoader,
-    TSearchSchema,
-    TRouteContext,
-    TRouterContext
-  > => {
+  ): RootRoute<TSearchSchema, TRouteMeta, TRouterMeta> => {
     return new RootRoute(options) as any
   }
 }
 
 export class RootRoute<
-  TLoaderContext extends Record<string, any> = AnyContext,
-  TLoader = unknown,
   TSearchSchema extends Record<string, any> = {},
-  TRouteContext extends RouteContext = RouteContext,
-  TRouterContext extends {} = {},
+  TRouteMeta extends RouteMeta = RouteMeta,
+  TRouterMeta extends {} = {},
 > extends Route<
   any, // TParentRoute
   '/', // TPath
   '/', // TFullPath
   string, // TCustomId
   RootRouteId, // TId
-  TLoaderContext, // TLoaderContext
-  TLoader, // TLoader
   TSearchSchema, // TSearchSchema
   TSearchSchema, // TFullSearchSchema
   {}, // TParams
   {}, // TAllParams
-  TRouteContext, // TRouteContext
-  DeepMergeAll<[TRouterContext, TLoaderContext, TRouteContext]>, // TAllContext
-  TRouterContext, // TRouterContext
+  TRouteMeta, // TRouteMeta
+  Expand<Assign<TRouterMeta, TRouteMeta>>, // TAllContext
+  TRouterMeta, // TRouterMeta
   any, // TChildren
   any // TRouteTree
 > {
@@ -791,14 +630,12 @@ export class RootRoute<
         AnyRoute, // TParentRoute
         RootRouteId, // TCustomId
         '', // TPath
-        TLoaderContext, // TLoaderContext
-        TLoader, // TLoader
         TSearchSchema, // TSearchSchema
         TSearchSchema, // TFullSearchSchema
         {}, // TParams
         {}, // TAllParams
-        TRouteContext, // TRouteContext
-        DeepMergeAll<[TRouterContext, TLoaderContext, TRouteContext]> // TAllContext
+        TRouteMeta, // TRouteMeta
+        Assign<TRouterMeta, TRouteMeta> // TAllContext
       >,
       | 'path'
       | 'id'

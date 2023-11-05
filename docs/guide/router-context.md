@@ -214,8 +214,8 @@ export const postIdRoute = new Route({
   loader: async ({ preload, context: { queryClient, queryOptions } }) => {
     await queryClient.ensureQueryData(queryOptions)
   },
-  component: ({ useRouteContext }) => {
-    const { queryOptions } = useRouteContext()
+  component: ({ useRouteMeta }) => {
+    const { queryOptions } = useRouteMeta()
 
     const { data } = useQuery(queryOptions)
 

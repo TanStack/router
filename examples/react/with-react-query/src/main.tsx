@@ -82,8 +82,8 @@ const postsRoute = new Route({
   loader: async ({ context: { queryClient, queryOptions } }) => {
     await queryClient.ensureQueryData(queryOptions)
   },
-  component: ({ useRouteContext }) => {
-    const { queryOptions } = useRouteContext()
+  component: ({ useRouteMeta }) => {
+    const { queryOptions } = useRouteMeta()
     const postsQuery = useQuery(queryOptions)
 
     return (
@@ -141,8 +141,8 @@ const postRoute = new Route({
   loader: async ({ context: { queryClient, queryOptions } }) => {
     await queryClient.ensureQueryData(queryOptions)
   },
-  component: ({ useRouteContext }) => {
-    const { queryOptions } = useRouteContext()
+  component: ({ useRouteMeta }) => {
+    const { queryOptions } = useRouteMeta()
     const postQuery = useQuery(queryOptions)
 
     return (

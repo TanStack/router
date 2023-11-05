@@ -1,5 +1,5 @@
+import { MatchLocation } from './RouterProvider'
 import { AnyPathParams } from './route'
-import { MatchLocation } from './router'
 import { last } from './utils'
 
 export interface Segment {

@@ -3,11 +3,12 @@ import {
   routerContext,
   invariant,
   AnyRouter,
-  useStore,
+  // useStore,
   Route,
   AnyRoute,
   AnyRootRoute,
   trimPath,
+  useRouter,
 } from '@tanstack/react-router'
 
 import useLocalStorage from './useLocalStorage'
@@ -409,7 +410,6 @@ export function TanStackRouterDevtools({
 function RouteComp({
   route,
   isRoot,
-  router,
   activeRouteId,
   activeMatchId,
   setActiveRouteId,
@@ -417,13 +417,13 @@ function RouteComp({
 }: {
   route: AnyRootRoute | AnyRoute
   isRoot?: boolean
-  router: AnyRouter
   activeRouteId: string | undefined
   activeMatchId: string | undefined
   setActiveRouteId: (id: string) => void
   setActiveMatchId: (id: string) => void
 }) {
-  const matches = Object.values(router.state.matchesById)
+  const router = useRouter()
+  const matches = [...router.state.pendingMatches, ...router.state.matches]
   const match = router.state.matches.find((d) => d.routeId === route.id)
 
   return (
@@ -493,7 +493,6 @@ function RouteComp({
               <RouteComp
                 key={r.id}
                 route={r}
-                router={router}
                 activeRouteId={activeRouteId}
                 activeMatchId={activeMatchId}
                 setActiveRouteId={setActiveRouteId}
@@ -518,15 +517,15 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     ...panelProps
   } = props
 
-  const routerContextValue = React.useContext(routerContext)
-  const router = userRouter ?? routerContextValue
+  const router = useRouter()
+  const matches = [...router.state.pendingMatches, ...router.state.matches]
 
   invariant(
     router,
     'No router was found for the TanStack Router Devtools. Please place the devtools in the <RouterProvider> component tree or pass the router instance to the devtools manually.',
   )
 
-  useStore(router.__store)
+  // useStore(router.__store)
 
   const [showMatches, setShowMatches] = useLocalStorage(
     'tanstackRouterDevtoolsShowMatches',
@@ -544,21 +543,19 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
   const activeMatch = React.useMemo(
     () =>
-      router.state.matchesById[activeRouteId as any] ||
-      router.state.matchesById[activeMatchId as any],
+      matches.find((d) => d.id === activeRouteId) ||
+      matches.find((d) => d.id === activeMatchId),
     [activeRouteId, activeMatchId],
   )
 
   const hasSearch = Object.keys(router.state.location.search || {}).length
 
-  const preloadMatches = Object.values(router.state.matchesById).filter(
-    (match) => {
-      return (
-        !router.state.matchIds.includes(match.id) &&
-        !router.state.pendingMatchIds.includes(match.id)
-      )
-    },
-  )
+  // const preloadMatches = matches.filter((match) => {
+  //   return (
+  //     !state.matchIds.includes(match.id) &&
+  //     !state.pendingMatchIds.includes(match.id)
+  //   )
+  // })
 
   // React.useEffect(() => {
   //   const interval = setInterval(() => {
@@ -812,7 +809,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             {!showMatches ? (
               <RouteComp
                 route={router.routeTree}
-                router={router}
                 isRoot
                 activeRouteId={activeRouteId}
                 activeMatchId={activeMatchId}
@@ -872,7 +868,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               </div>
             )}
           </div>
-          {preloadMatches?.length ? (
+          {/* {preloadMatches?.length ? (
             <div
               style={{
                 flex: '1 1 auto',
@@ -944,7 +940,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 )
               })}
             </div>
-          ) : null}
+          ) : null} */}
         </div>
         {activeMatch ? (
           <ActivePanel>

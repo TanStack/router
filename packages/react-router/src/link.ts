@@ -7,7 +7,9 @@ import {
   RouteIds,
   RoutePaths,
 } from './routeInfo'
-import { LocationState, ParsedLocation, RegisteredRouter } from './router'
+import { RegisteredRouter } from './router'
+import { LocationState } from './location'
+import { ParsedLocation } from './location'
 import {
   Expand,
   NoInfer,
