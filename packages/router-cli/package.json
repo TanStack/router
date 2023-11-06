@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-cli",
   "author": "Tanner Linsley",
-  "version": "0.0.1-beta.199",
+  "version": "0.0.1-beta.206",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
@@ -49,7 +49,7 @@
     "@babel/preset-env": "^7.20.2",
     "@babel/template": "^7.18.10",
     "@babel/types": "^7.20.2",
-    "@tanstack/router-core": "workspace:0.0.1-beta.150",
+    "@tanstack/react-router": "workspace:0.0.1-beta.150",
     "@types/fs-extra": "^9.0.13",
     "@types/klaw": "^3.0.3",
     "@types/through2": "^2.0.38",

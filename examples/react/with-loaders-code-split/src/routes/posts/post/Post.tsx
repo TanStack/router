@@ -3,9 +3,9 @@ import { postRoute } from './postRoute'
 import { useLoaderInstance } from '@tanstack/react-loaders'
 
 export const Posts: typeof postRoute['options']['component'] = ({
-  useRouteContext,
+  useRouteMeta,
 }) => {
-  const { loaderOptions } = useRouteContext()
+  const { loaderOptions } = useRouteMeta()
   const { data: post } = useLoaderInstance(loaderOptions)
 
   return (

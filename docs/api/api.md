@@ -48,15 +48,26 @@ const myRoute = new Route({
   id: string,
   // A function to validate the search parameters for the route.
   validateSearch: (search: string) => boolean,
-  // A function to provide any params or search params to the loader context
-  loaderContext: (opts: {
-    // The parsed path parameters available from this route and its parents.
-    param: Record<string, string>
-    // The parsed search parameters available from this route only.
-    search: TFullSearchSchema
-  }) =>
-    // The loader context for this route only. The return value must be serializable.
-    (TLoaderContext extends JSON.serializable),
+  // A function that will run before a route is loaded. If you throw a redirect from this function during a navigation, the location will be updated. If you throw any other error, the route will not be loaded (even preloaded)
+  // If you choose to return an object, it will be assigned to this route's `routeContext` value and be merged onto the router's `context` value.
+  beforeLoad?: (
+    opts: {
+      // The parsed path parameters available from this route and its parents.
+      params: TAllParams
+      // The parsed search parameters available from this route only.
+      routeSearch: TSearchSchema
+      // The marged and parsed search parameters available from this route and its parents.
+      search: TFullSearchSchema
+      // The abortController used internally by the router
+      abortController: AbortController
+      // A boolean indicating whether or not the route is being preloaded.
+      preload: boolean
+      // The context for this route only.
+      routeContext: TContext
+      // The merged context for thi,bs route and its parents.
+      context: TAllContext
+    // TContext extends Record<string, any>
+    Promise<TContext> | TContext
   // An async function to load or prepare any required prerequisites for the route.
   loader: (match: {
     // The abortController used internally by the router
@@ -64,7 +75,7 @@ const myRoute = new Route({
     // A boolean indicating whether or not the route is being preloaded.
     preload: boolean
     // The merged context for this route and its parents.
-    context: TAllContext & TLoaderContext
+    context: TAllContext & TOnLoadContext
     // If there is a parent route, this will be a promise that resolves when the parent route has been loaded.
     parentMatchPromise?: Promise<void>
   }) =>
@@ -121,26 +132,6 @@ const myRoute = new Route({
   // An array of functions that can manipulate search params *after* they are passed to links and navigate
   // calls that match this route.
   postSearchFilters?: ((search: TFullSearchSchema) => TFullSearchSchema)[]
-  // A function that will run before a route is loaded. If you throw a redirect from this function during a navigation, the location will be updated. If you throw any other error, the route will not be loaded (even preloaded)
-  // If you choose to return an object, it will be assigned to this route's `routeContext` value and be merged onto the router's `context` value.
-  beforeLoad?: (
-    opts: {
-      // The parsed path parameters available from this route and its parents.
-      params: TAllParams
-      // The parsed search parameters available from this route only.
-      routeSearch: TSearchSchema
-      // The marged and parsed search parameters available from this route and its parents.
-      search: TFullSearchSchema
-      // The abortController used internally by the router
-      abortController: AbortController
-      // A boolean indicating whether or not the route is being preloaded.
-      preload: boolean
-      // The context for this route only.
-      routeContext: TContext
-      // The merged context for thi,bs route and its parents.
-      context: TAllContext
-    // TContext extends Record<string, any>
-    Promise<TContext> | TContext
   // If an error is encountered in any of the lifecycle methods, this function will be called with the error.
   onError?: (err: any) => void
   // These functions are called as route matches are loaded, stick around and leave the active

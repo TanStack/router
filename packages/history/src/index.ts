@@ -14,7 +14,7 @@ export interface RouterHistory {
   block: (blockerFn: BlockerFn) => () => void
   flush: () => void
   destroy: () => void
-  update: () => void
+  notify: () => void
 }
 
 export interface HistoryLocation extends ParsedPath {
@@ -83,8 +83,6 @@ function createHistory(opts: {
     while (queue.length) {
       queue.shift()?.()
     }
-
-    onUpdate()
   }
 
   const queueTask = (task: () => void) => {
@@ -150,7 +148,7 @@ function createHistory(opts: {
     },
     flush: () => opts.flush?.(),
     destroy: () => opts.destroy?.(),
-    update: onUpdate,
+    notify: onUpdate,
   }
 }
 
@@ -269,7 +267,7 @@ export function createBrowserHistory(opts?: {
 
   const onPushPop = () => {
     currentLocation = parseLocation(getHref(), win.history.state)
-    history.update()
+    history.notify()
   }
 
   var originalPushState = win.history.pushState
@@ -299,13 +297,13 @@ export function createBrowserHistory(opts?: {
 
   win.history.pushState = function () {
     let res = originalPushState.apply(win.history, arguments as any)
-    if (tracking) history.update()
+    if (tracking) history.notify()
     return res
   }
 
   win.history.replaceState = function () {
     let res = originalReplaceState.apply(win.history, arguments as any)
-    if (tracking) history.update()
+    if (tracking) history.notify()
     return res
   }
 

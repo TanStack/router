@@ -191,16 +191,15 @@ const dashboardRoute = new Route({
         <div className="flex flex-wrap divide-x">
           {(
             [
-              ['/dashboard', 'Summary', undefined, true],
+              ['/dashboard', 'Summary', true],
               ['/dashboard/invoices', 'Invoices'],
-              ['/dashboard/users', 'Users', true],
+              ['/dashboard/users', 'Users'],
             ] as const
-          ).map(([to, label, search, exact]) => {
+          ).map(([to, label, exact]) => {
             return (
               <Link
                 key={to}
                 to={to}
-                search={search}
                 activeOptions={{ exact }}
                 activeProps={{ className: `font-bold` }}
                 className="p-2"
@@ -480,7 +479,6 @@ const invoiceRoute = new Route({
 const usersRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'users',
-
   validateSearch: z.object({
     usersView: z
       .object({
@@ -508,6 +506,10 @@ const usersRoute = new Route({
     const filterBy = usersView?.filterBy
 
     const [filterDraft, setFilterDraft] = React.useState(filterBy ?? '')
+
+    React.useEffect(() => {
+      setFilterDraft(filterBy ?? '')
+    }, [filterBy])
 
     const sortedUsers = React.useMemo(() => {
       if (!users) return []
@@ -713,8 +715,8 @@ const profileRoute = new Route({
     await new Promise((r) => setTimeout(r, 1000))
     return `Hello ${context.auth.username}!`
   },
-  component: ({ useLoader, useContext }) => {
-    const { username } = useContext()
+  component: ({ useLoader, useRouteContext }) => {
+    const { username } = useRouteContext()
     const message = useLoader()
 
     return (
@@ -734,8 +736,8 @@ const loginRoute = new Route({
   validateSearch: z.object({
     redirect: z.string().optional(),
   }),
-  component: ({ useContext }) => {
-    const { auth } = useContext()
+  component: ({ useRouteContext }) => {
+    const { auth } = useRouteContext()
     const search = useSearch({ from: loginRoute.id })
     const [username, setUsername] = React.useState('')
 
@@ -746,7 +748,7 @@ const loginRoute = new Route({
     }
 
     // Ah, the subtle nuances of client side auth. 🙄
-    React.useEffect(() => {
+    React.useLayoutEffect(() => {
       if (auth.status === 'loggedIn' && search.redirect) {
         router.history.push(search.redirect)
       }

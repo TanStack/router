@@ -7,8 +7,14 @@ import {
   Route,
   ErrorComponent,
   Router,
-  RootRoute,
+  RouterContext,
+  RouterMeta,
 } from '@tanstack/react-router'
+import {
+  QueryClient,
+  QueryClientProvider,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
 
@@ -40,7 +46,11 @@ const fetchPost = async (postId: string) => {
   return post
 }
 
-const rootRoute = new RootRoute({
+const routerMeta = new RouterMeta<{
+  queryClient: QueryClient
+}>()
+
+const rootRoute = routerMeta.createRootRoute({
   component: () => {
     return (
       <>
@@ -66,7 +76,7 @@ const rootRoute = new RootRoute({
         <hr />
         <Outlet />
         {/* Start rendering router matches */}
-        <TanStackRouterDevtools position="bottom-right" />
+        {/* <TanStackRouterDevtools position="bottom-right" /> */}
       </>
     )
   },
@@ -87,9 +97,23 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  loader: fetchPosts,
-  component: ({ useLoader }) => {
-    const posts = useLoader()
+  beforeLoad: () => ({
+    queryOpts: {
+      queryKey: ['posts'],
+      queryFn: () => fetchPosts(),
+    } as const,
+  }),
+  load: ({ meta: { queryClient, queryOpts } }) =>
+    queryClient.ensureQueryData(queryOpts),
+  component: ({ useRouteMeta }) => {
+    const { queryOpts } = useRouteMeta()
+
+    const postsQuery = useSuspenseQuery({
+      ...queryOpts,
+      staleTime: 10 * 1000,
+    })
+
+    const posts = postsQuery.data
 
     return (
       <div className="p-2 flex gap-2">
@@ -132,7 +156,6 @@ class NotFoundError extends Error {}
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  loader: async ({ params: { postId } }) => fetchPost(postId),
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {
       return <div>{error.message}</div>
@@ -140,8 +163,23 @@ const postRoute = new Route({
 
     return <ErrorComponent error={error} />
   },
-  component: ({ useLoader }) => {
-    const post = useLoader()
+  beforeLoad: ({ params: { postId } }) => ({
+    queryOptions: {
+      queryKey: ['posts', { postId }],
+      queryFn: () => fetchPost(postId),
+    } as const,
+  }),
+  load: ({ meta: { queryClient, queryOptions } }) =>
+    queryClient.ensureQueryData(queryOptions),
+  component: ({ useRouteMeta }) => {
+    const { queryOptions } = useRouteMeta()
+
+    const postQuery = useSuspenseQuery({
+      ...queryOptions,
+      staleTime: 10 * 1000,
+    })
+
+    const post = postQuery.data
 
     return (
       <div className="space-y-2">
@@ -152,15 +190,24 @@ const postRoute = new Route({
   },
 })
 
+type Test = typeof postRoute.types.routeMeta
+type Test2 = typeof postRoute.types.allMeta
+type Test3 = typeof postRoute.test
+
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
   indexRoute,
 ])
 
+const queryClient = new QueryClient()
+
 // Set up a Router instance
 const router = new Router({
   routeTree,
   defaultPreload: 'intent',
+  meta: {
+    queryClient,
+  },
 })
 
 // Register things for typesafety
@@ -176,8 +223,8 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
 
   root.render(
-    // <React.StrictMode>
-    <RouterProvider router={router} />,
-    // </React.StrictMode>,
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
   )
 }

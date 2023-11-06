@@ -1,6 +1,5 @@
 import * as React from 'react'
-import { Link, Outlet } from '@tanstack/react-router'
-import { FileRoute } from '@tanstack/router-core'
+import { Link, Outlet, FileRoute } from '@tanstack/react-router'
 
 export const route = new FileRoute('/_layout').createRoute({
   component: () => {

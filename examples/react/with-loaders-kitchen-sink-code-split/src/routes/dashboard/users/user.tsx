@@ -33,8 +33,8 @@ export const userRoute = new Route({
       ...loaderOpts,
       preload,
     }),
-  component: function User({ useRouteContext }) {
-    const { loaderOpts } = useRouteContext()
+  component: function User({ useRouteMeta }) {
+    const { loaderOpts } = useRouteMeta()
     const { data: user } = useLoaderInstance(loaderOpts)
 
     return (

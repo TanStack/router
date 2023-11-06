@@ -18,14 +18,8 @@
     "allowUnreachableCode": true,
     "paths": {
       "@tanstack/history": ["packages/history"],
-      "@tanstack/react-search-state": ["packages/react-search-state"],
-      "@tanstack/router-core": ["packages/router-core"],
       "@tanstack/react-router": ["packages/react-router"],
       "@tanstack/router-devtools": ["packages/router-devtools"],
-      "@tanstack/loaders": ["packages/loaders"],
-      "@tanstack/react-loaders": ["packages/react-loaders"],
-      "@tanstack/actions": ["packages/actions"],
-      "@tanstack/react-actions": ["packages/react-actions"],
       "@tanstack/router-cli": ["packages/router-cli"]
     }
   },

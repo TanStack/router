@@ -2,7 +2,7 @@ import path from 'path'
 import fs from 'fs-extra'
 import * as prettier from 'prettier'
 import { Config } from './config'
-import { cleanPath, trimPathLeft } from '@tanstack/router-core'
+import { cleanPath, trimPathLeft } from '@tanstack/react-router'
 
 let latestTask = 0
 export const rootPathId = '__root'
@@ -57,7 +57,10 @@ async function getRouteNodes(config: Config) {
         } else {
           const filePath = path.join(dir, fileName)
           const filePathNoExt = removeExt(filePath)
-          let routePath = replaceBackslash(cleanPath(`/${filePathNoExt.split('.').join('/')}`)) ?? ''
+          let routePath =
+            replaceBackslash(
+              cleanPath(`/${filePathNoExt.split('.').join('/')}`),
+            ) ?? ''
           const variableName = fileToVariable(routePath)
 
           // Remove the index from the route path and
@@ -205,21 +208,26 @@ export async function generator(config: Config) {
   const routeConfigChildrenText = await buildRouteConfig(routeTree)
 
   const routeImports = [
-    `import { route as rootRoute } from './${sanitize(path.relative(
-      path.dirname(config.generatedRouteTree),
-      path.resolve(config.routesDirectory, rootPathId)))}'`,
+    `import { route as rootRoute } from './${sanitize(
+      path.relative(
+        path.dirname(config.generatedRouteTree),
+        path.resolve(config.routesDirectory, rootPathId),
+      ),
+    )}'`,
     ...multiSortBy(routeNodes, [
       (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
       (d) => d.routePath?.split('/').length,
       (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
       (d) => d,
     ]).map((node) => {
-      return `import { route as ${node.variableName}Route } from './${sanitize(removeExt(
-        path.relative(
-          path.dirname(config.generatedRouteTree),
-          path.resolve(config.routesDirectory, node.filePath),
+      return `import { route as ${node.variableName}Route } from './${sanitize(
+        removeExt(
+          path.relative(
+            path.dirname(config.generatedRouteTree),
+            path.resolve(config.routesDirectory, node.filePath),
+          ),
         ),
-      ))}'`
+      )}'`
     }),
   ].join('\n')
 
@@ -242,7 +250,8 @@ export async function generator(config: Config) {
           routeNode.isNonPath
             ? `id: '${routeNode.cleanedPath}'`
             : `path: '${routeNode.cleanedPath}'`,
-          `getParentRoute: () => ${routeNode.parent?.variableName ?? 'root'
+          `getParentRoute: () => ${
+            routeNode.parent?.variableName ?? 'root'
           }Route`,
           // `\n// ${JSON.stringify(
           //   {
@@ -360,34 +369,39 @@ function sanitize(s?: string) {
 }
 
 function removeUnderscores(s?: string) {
-  return s?.replace(/(^_|_$)/, '').replace(/(\/_|_\/)/, '/');
+  return s?.replace(/(^_|_$)/, '').replace(/(\/_|_\/)/, '/')
 }
 
 function replaceBackslash(s?: string) {
   return s?.replace(/\\/gi, '/')
 }
 
-export function hasParentRoute(routes: RouteNode[], routeToCheck: string | undefined): RouteNode | null {
-  if (!routeToCheck || routeToCheck === "/") {
-    return null;
+export function hasParentRoute(
+  routes: RouteNode[],
+  routeToCheck: string | undefined,
+): RouteNode | null {
+  if (!routeToCheck || routeToCheck === '/') {
+    return null
   }
 
-  const sortedNodes  = multiSortBy(routes, [        
+  const sortedNodes = multiSortBy(routes, [
     (d) => d.routePath!.length * -1,
     (d) => d.variableName,
-    
   ]).filter((d) => d.routePath !== `/${rootPathId}`)
 
   for (const route of sortedNodes) {
-    if (route.routePath === '/') continue;
+    if (route.routePath === '/') continue
 
-    if (routeToCheck.startsWith(`${route.routePath}/`) && route.routePath !== routeToCheck) {
-      return route;
+    if (
+      routeToCheck.startsWith(`${route.routePath}/`) &&
+      route.routePath !== routeToCheck
+    ) {
+      return route
     }
   }
-  const segments = routeToCheck.split("/");
-  segments.pop(); // Remove the last segment
-  const parentRoute = segments.join("/");
+  const segments = routeToCheck.split('/')
+  segments.pop() // Remove the last segment
+  const parentRoute = segments.join('/')
 
-  return hasParentRoute(routes, parentRoute);
+  return hasParentRoute(routes, parentRoute)
 }
