@@ -528,7 +528,7 @@ export function RouterProvider<
         } = {},
         matches?: AnyRouteMatch[],
       ): ParsedLocation => {
-        const from = state.location
+        const from = latestLocationRef.current
         const fromPathname = dest.from ?? from.pathname
 
         let pathname = resolvePathWithBase(fromPathname, `${dest.to ?? ''}`)
@@ -697,7 +697,7 @@ export function RouterProvider<
     async (next: ParsedLocation & CommitLocationOptions) => {
       if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current)
 
-      const isSameUrl = state.location.href === next.href
+      const isSameUrl = latestLocationRef.current.href === next.href
 
       // If the next urls are the same and we're not replacing,
       // do nothing
@@ -741,7 +741,7 @@ export function RouterProvider<
   )
 
   const buildAndCommitLocation = useStableCallback(
-    <TRouteTree extends AnyRoute>({
+    ({
       replace,
       resetScroll,
       ...rest
@@ -844,7 +844,7 @@ export function RouterProvider<
                 params: match.params,
                 preload: !!preload,
                 meta: parentMeta,
-                location: state.location,
+                location: state.location, // TODO: This might need to be latestLocationRef.current...?
               })) ?? ({} as any)
 
             const meta = {
@@ -1158,21 +1158,21 @@ export function RouterProvider<
       const preloadDelay = userPreloadDelay ?? options.defaultPreloadDelay ?? 0
 
       // Compare path/hash for matches
-      const currentPathSplit = state.location.pathname.split('/')
+      const currentPathSplit = latestLocationRef.current.pathname.split('/')
       const nextPathSplit = next.pathname.split('/')
       const pathIsFuzzyEqual = nextPathSplit.every(
         (d, i) => d === currentPathSplit[i],
       )
       // Combine the matches based on user options
       const pathTest = activeOptions?.exact
-        ? state.location.pathname === next.pathname
+        ? latestLocationRef.current.pathname === next.pathname
         : pathIsFuzzyEqual
       const hashTest = activeOptions?.includeHash
-        ? state.location.hash === next.hash
+        ? latestLocationRef.current.hash === next.hash
         : true
       const searchTest =
         activeOptions?.includeSearch ?? true
-          ? partialDeepEqual(state.location.search, next.search)
+          ? partialDeepEqual(latestLocationRef.current.search, next.search)
           : true
 
       // The final "active" test
@@ -1252,12 +1252,16 @@ export function RouterProvider<
     },
   )
 
+  const latestLocationRef = React.useRef(state.location)
+
   React.useLayoutEffect(() => {
     const unsub = history.subscribe(() => {
+      latestLocationRef.current = parseLocation(latestLocationRef.current)
+
       React.startTransition(() => {
         setState((s) => ({
           ...s,
-          location: parseLocation(state.location),
+          location: latestLocationRef.current,
         }))
       })
     })
@@ -1309,7 +1313,9 @@ export function RouterProvider<
       return false
     }
 
-    const baseLocation = opts?.pending ? state.location : state.resolvedLocation
+    const baseLocation = opts?.pending
+      ? latestLocationRef.current
+      : state.resolvedLocation
 
     if (!baseLocation) {
       return false

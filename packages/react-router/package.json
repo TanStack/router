@@ -43,9 +43,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.16.7",
-    "@gisatcz/cross-package-react-context": "^0.2.0",
     "@tanstack/history": "workspace:*",
-    "@tanstack/react-router": "^0.0.1-beta.203",
     "tiny-invariant": "^1.3.1",
     "tiny-warning": "^1.0.3"
   }
