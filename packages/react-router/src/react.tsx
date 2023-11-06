@@ -404,7 +404,8 @@ export type RouterProps<
 export function useRouter<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
 >(): RouterContext<TRouteTree> {
-  const value = React.useContext(routerContext)
+  const resolvedContext = window.__TSR_ROUTER_CONTEXT__ || routerContext
+  const value = React.useContext(resolvedContext)
   warning(value, 'useRouter must be used inside a <RouterProvider> component!')
   return value as any
 }

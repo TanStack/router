@@ -78,6 +78,7 @@
   },
   "dependencies": {
     "@rollup/plugin-commonjs": "^23.0.4",
+    "@tanstack/react-router": "^0.0.1-beta.205",
     "@types/babel__core": "^7.1.20",
     "@types/fs-extra": "^9.0.13",
     "fs-extra": "^10.1.0",

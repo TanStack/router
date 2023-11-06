@@ -134,6 +134,10 @@ export type RouterContext<
 
 export const routerContext = React.createContext<RouterContext<any>>(null!)
 
+if (typeof document !== 'undefined') {
+  window.__TSR_ROUTER_CONTEXT__ = routerContext as any
+}
+
 export function getInitialRouterState(
   location: ParsedLocation,
 ): RouterState<any> {
@@ -174,6 +178,14 @@ export function RouterProvider<
   const resetNextScrollRef = React.useRef<boolean>(false)
 
   const navigateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+
+  const latestLoadPromiseRef = React.useRef<Promise<void>>(Promise.resolve())
+
+  const checkLatest = (promise: Promise<void>): undefined | Promise<void> => {
+    return latestLoadPromiseRef.current !== promise
+      ? latestLoadPromiseRef.current
+      : undefined
+  }
 
   const parseLocation = useStableCallback(
     (
@@ -345,8 +357,6 @@ export function RouterProvider<
         }),
     [routesByPath],
   )
-
-  const latestLoadPromiseRef = React.useRef<Promise<void>>(Promise.resolve())
 
   const matchRoutes = useStableCallback(
     <TRouteTree extends AnyRoute>(
@@ -786,12 +796,15 @@ export function RouterProvider<
 
   const loadMatches = useStableCallback(
     async ({
+      checkLatest,
       matches,
       preload,
     }: {
+      checkLatest: () => Promise<void> | undefined
       matches: AnyRouteMatch[]
       preload?: boolean
-    }) => {
+    }): Promise<RouteMatch[]> => {
+      let latestPromise
       let firstBadMatchIndex: number | undefined
 
       // Check each match middleware to see if the route can be accessed
@@ -864,7 +877,7 @@ export function RouterProvider<
       } catch (err) {
         if (isRedirect(err)) {
           if (!preload) navigate(err as any)
-          return
+          return matches
         }
 
         throw err
@@ -883,14 +896,6 @@ export function RouterProvider<
               return getRouteMatch(state, match.id)?.loadPromise
             }
 
-            const fetchedAt = Date.now()
-            const checkLatest = () => {
-              const latest = getRouteMatch(state, match.id)
-              return latest && latest.fetchedAt !== fetchedAt
-                ? latest.loadPromise
-                : undefined
-            }
-
             const handleIfRedirect = (err: any) => {
               if (isRedirect(err)) {
                 if (!preload) {
@@ -902,8 +907,6 @@ export function RouterProvider<
             }
 
             const load = async () => {
-              let latestPromise
-
               try {
                 const componentsPromise = Promise.all(
                   componentTypes.map(async (type) => {
@@ -953,6 +956,15 @@ export function RouterProvider<
                   updatedAt: Date.now(),
                 }
               }
+
+              if (!preload) {
+                setState((s) => ({
+                  ...s,
+                  matches: s.matches.map((d) =>
+                    d.id === match.id ? match : d,
+                  ),
+                }))
+              }
             }
 
             let loadPromise: Promise<void> | undefined
@@ -960,7 +972,7 @@ export function RouterProvider<
             matches[index] = match = {
               ...match,
               isFetching: true,
-              fetchedAt,
+              fetchedAt: Date.now(),
               invalid: false,
             }
 
@@ -977,23 +989,16 @@ export function RouterProvider<
       })
 
       await Promise.all(matchPromises)
+      return matches
     },
   )
 
-  const load = useStableCallback<LoadFn>(async (opts) => {
+  const load = useStableCallback<LoadFn>(async () => {
     const promise = new Promise<void>(async (resolve, reject) => {
+      const next = latestLocationRef.current
       const prevLocation = state.resolvedLocation
-      const pathDidChange = !!(
-        opts?.next && prevLocation!.href !== opts.next.href
-      )
-
+      const pathDidChange = !!(next && prevLocation!.href !== next.href)
       let latestPromise: Promise<void> | undefined | null
-
-      const checkLatest = (): undefined | Promise<void> | null => {
-        return latestLoadPromiseRef.current !== promise
-          ? latestLoadPromiseRef.current
-          : undefined
-      }
 
       // Cancel any pending matches
       cancelMatches(state)
@@ -1001,24 +1006,21 @@ export function RouterProvider<
       router.emit({
         type: 'onBeforeLoad',
         from: prevLocation,
-        to: opts?.next ?? state.location,
+        to: next ?? state.location,
         pathChanged: pathDidChange,
       })
 
-      if (opts?.next) {
-        // Ingest the new location
-        setState((s) => ({
-          ...s,
-          location: opts.next! as any,
-        }))
-      }
+      // Ingest the new location
+      setState((s) => ({
+        ...s,
+        location: next,
+      }))
 
       // Match the routes
-      const matches: RouteMatch<any, any>[] = matchRoutes(
-        state.location.pathname,
-        state.location.search,
+      let matches: RouteMatch<any, any>[] = matchRoutes(
+        next.pathname,
+        next.search,
         {
-          throwOnError: opts?.throwOnError,
           debug: true,
         },
       )
@@ -1030,10 +1032,11 @@ export function RouterProvider<
       }))
 
       try {
-        // Load the matches
         try {
+          // Load the matches
           await loadMatches({
             matches,
+            checkLatest: () => checkLatest(promise),
           })
         } catch (err) {
           // swallow this error, since we'll display the
@@ -1041,7 +1044,7 @@ export function RouterProvider<
         }
 
         // Only apply the latest transition
-        if ((latestPromise = checkLatest())) {
+        if ((latestPromise = checkLatest(promise))) {
           return latestPromise
         }
 
@@ -1078,14 +1081,14 @@ export function RouterProvider<
         router.emit({
           type: 'onLoad',
           from: prevLocation,
-          to: state.location,
+          to: next,
           pathChanged: pathDidChange,
         })
 
         resolve()
       } catch (err) {
         // Only apply the latest transition
-        if ((latestPromise = checkLatest())) {
+        if ((latestPromise = checkLatest(promise))) {
           return latestPromise
         }
 
@@ -1098,14 +1101,6 @@ export function RouterProvider<
     return latestLoadPromiseRef.current
   })
 
-  const safeLoad = React.useCallback(async () => {
-    try {
-      return load()
-    } catch (err) {
-      // Don't do anything
-    }
-  }, [])
-
   const preloadRoute = useStableCallback(
     async (navigateOpts: BuildNextOptions = state.location) => {
       let next = buildLocation(navigateOpts)
@@ -1117,6 +1112,7 @@ export function RouterProvider<
       await loadMatches({
         matches,
         preload: true,
+        checkLatest: () => undefined,
       })
 
       return [last(matches)!, matches] as const
@@ -1259,10 +1255,13 @@ export function RouterProvider<
       latestLocationRef.current = parseLocation(latestLocationRef.current)
 
       React.startTransition(() => {
-        setState((s) => ({
-          ...s,
-          location: latestLocationRef.current,
-        }))
+        if (state.location !== latestLocationRef.current) {
+          try {
+            load()
+          } catch (err) {
+            console.error(err)
+          }
+        }
       })
     })
 
@@ -1286,14 +1285,12 @@ export function RouterProvider<
 
   if (initialLoad.current) {
     initialLoad.current = false
-    safeLoad()
-  }
-
-  React.useLayoutEffect(() => {
-    if (state.resolvedLocation !== state.location) {
-      safeLoad()
+    try {
+      load()
+    } catch (err) {
+      console.error(err)
     }
-  }, [state.location])
+  }
 
   const isFetching = React.useMemo(
     () => [...state.matches, ...state.pendingMatches].some((d) => d.isFetching),

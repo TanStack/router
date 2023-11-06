@@ -21,12 +21,14 @@ import { RouteMatch } from './RouteMatch'
 import { ParsedLocation } from './location'
 import { LocationState } from './location'
 import { SearchSerializer, SearchParser } from './searchParams'
+import { RouterContext } from './RouterProvider'
 
 //
 
 declare global {
   interface Window {
     __TSR_DEHYDRATED__?: HydrationCtx
+    __TSR_ROUTER_CONTEXT__?: React.Context<RouterContext<any>>
   }
 }
 
