@@ -11,7 +11,7 @@ import {
   UnionToIntersection,
   Assign,
 } from './utils'
-import { ParsePathParams, ToSubOptions } from './link'
+import { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
 import {
   ErrorRouteComponent,
   PendingRouteComponent,
@@ -154,6 +154,7 @@ type BeforeLoadFn<
   params: TAllParams
   meta: TParentRoute['types']['allMeta']
   location: ParsedLocation
+  navigate: (opts: NavigateOptions<AnyRoute>) => Promise<void>
 }) => Promise<TRouteMeta> | TRouteMeta | void
 
 export type UpdatableRouteOptions<
@@ -265,6 +266,8 @@ export interface LoadFnContext<
   params: TAllParams
   search: TFullSearchSchema
   meta: Expand<Assign<TAllContext, TRouteMeta>>
+  location: ParsedLocation<TFullSearchSchema>
+  navigate: (opts: NavigateOptions<AnyRoute>) => Promise<void>
 }
 
 export type SearchFilter<T, U = T> = (prev: T) => U

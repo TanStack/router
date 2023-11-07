@@ -858,6 +858,7 @@ export function RouterProvider<
                 preload: !!preload,
                 meta: parentMeta,
                 location: state.location, // TODO: This might need to be latestLocationRef.current...?
+                navigate: (opts) => navigate({ ...opts, from: match.pathname }),
               })) ?? ({} as any)
 
             const meta = {
@@ -925,6 +926,9 @@ export function RouterProvider<
                   parentMatchPromise,
                   abortController: match.abortController,
                   meta: match.meta,
+                  location: state.location,
+                  navigate: (opts) =>
+                    navigate({ ...opts, from: match.pathname }),
                 })
 
                 await Promise.all([componentsPromise, loaderPromise])
