@@ -24,10 +24,8 @@ interface MyRouterContext {
   user: User
 }
 
-const routerContext = new RouterContext<MyRouterContext>()
-
 // Use the routerContext to create your root route
-const rootRoute = routerContext.createRootRoute({
+const rootRoute = rootRouteWithContext<MyRouterContext>()({
   component: App,
 })
 
@@ -121,7 +119,9 @@ interface MyRouterContext {
   queryClient: QueryClient
 }
 
-const routerContext = new RouterContext<MyRouterContext>()
+const rootRoute = rootRouteWithContext<MyRouterContext>()({
+  component: App,
+})
 
 const queryClient = new QueryClient()
 
@@ -162,9 +162,7 @@ interface MyRouterContext {
   foo: boolean
 }
 
-const routerContext = new RouterContext<MyRouterContext>()
-
-const rootRoute = routerContext.createRootRoute({
+const rootRoute = rootRouteWithContext<MyRouterContext>()({
   component: App,
 })
 
@@ -214,8 +212,8 @@ export const postIdRoute = new Route({
   loader: async ({ preload, context: { queryClient, queryOptions } }) => {
     await queryClient.ensureQueryData(queryOptions)
   },
-  component: ({ useRouteMeta }) => {
-    const { queryOptions } = useRouteMeta()
+  component: ({ useRouteContext }) => {
+    const { queryOptions } = useRouteContext()
 
     const { data } = useQuery(queryOptions)
 

@@ -13,6 +13,7 @@ import {
   redirect,
   RouterContext,
   ErrorComponent,
+  rootRouteWithContext,
 } from '@tanstack/react-router'
 import {
   ActionClientProvider,
@@ -153,14 +154,11 @@ declare module '@tanstack/react-actions' {
 
 // Routes
 
-export const routerContext = new RouterContext<{
+export const rootRoute = rootRouteWithContext<{
   auth: AuthContext
   loaderClient: typeof loaderClient
   actionClient: typeof actionClient
-}>()
-
-// Build our routes. We could do this in our component, too.
-const rootRoute = routerContext.createRootRoute({
+}>()({
   component: () => {
     const loaderClient = useLoaderClient()
 
@@ -481,10 +479,10 @@ const invoiceRoute = new Route({
       preload,
     })
   },
-  component: ({ useLoader, useSearch, useRouteMeta }) => {
+  component: ({ useLoader, useSearch, useRouteContext }) => {
     const search = useSearch()
     const navigate = useNavigate()
-    const { loaderOptions } = useRouteMeta()
+    const { loaderOptions } = useRouteContext()
     const { data: invoice } = useLoaderInstance(loaderOptions)
     const [{ latestSubmission }, submitUpdateInvoice] = useAction({
       key: 'updateInvoice',
@@ -770,8 +768,8 @@ const userRoute = new Route({
   loader: async ({ context: { loaderClient, loaderOptions }, preload }) => {
     await loaderClient.load({ ...loaderOptions, preload })
   },
-  component: ({ useRouteMeta }) => {
-    const { loaderOptions } = useRouteMeta()
+  component: ({ useRouteContext }) => {
+    const { loaderOptions } = useRouteContext()
     const { data: user } = useLoaderInstance(loaderOptions)
 
     return (

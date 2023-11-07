@@ -44,8 +44,8 @@ export const postIdRoute = new Route({
       preload,
     })
   },
-  component: function Post({ useRouteMeta }) {
-    const { loaderOptions } = useRouteMeta()
+  component: function Post({ useRouteContext }) {
+    const { loaderOptions } = useRouteContext()
     const { data: post } = useLoaderInstance(loaderOptions)
 
     return (

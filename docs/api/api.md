@@ -3,28 +3,29 @@ id: api
 title: API Reference
 ---
 
-# RouterContext
+# rootRouteWithContext
 
-Use this class to create a new routing context. This context can be used to create a new root route, which will in turn require that you satisfy this context when creating a router that uses it.
+Use this function to create a root route **with a required router context**. The resulting function can be used to create a new root route, which will then require that you satisfy this context type when creating a router that uses it.
 
 ```tsx
-const routerContext =
-  new RouterContext<// This context will be available router-wide
-  ContextType>()
+const createRootRoute = rootRouteWithContext<ContextType>()
+
+const rootRoute = createRootRoute({
+  // ...
+})
 ```
 
-# RouterContext.createRootRoute
-
-Use this method to create a new root route from a routing context. See [RootRoute](#rootroute) for more information.
+You can also skip the intermediate variable and create a root route directly from the function.
 
 ```tsx
-const routerContext = new RouterContext()
-const rootRoute = routerContext.createRootRoute()
+const rootRoute = rootRouteWithContext<ContextType>()({
+  // ...
+})
 ```
 
 # RootRoute
 
-Use this class to create a new root route. Only use this if you do not plan on supplying a routing context to your router. If you do need a routing context, create a new routing context and use the `RouterContext` class and its `createRootRoute` method instead.
+Use this class to create a new root route **without a required router context**. Only use this if you do not plan on supplying a routing context to your router. If you do need a routing context, create a new routing context and use the `rootRouteWithContext` function and its return function instead.
 
 The root route constructor takes a subset of options from the normal [Route](#route) class. The `path` and `id` options are not required for the root route. See [Route](#route) for more information.
 
@@ -358,3 +359,7 @@ export const expensiveNamedRoute = new Route({
 **Returns**
 
 - `element: RouteComponent`
+
+```
+
+```

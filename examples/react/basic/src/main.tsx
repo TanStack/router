@@ -8,7 +8,8 @@ import {
   ErrorComponent,
   Router,
   RouterContext,
-  RouterMeta,
+  typedNavigate,
+  rootRouteWithContext,
 } from '@tanstack/react-router'
 import {
   QueryClient,
@@ -46,11 +47,9 @@ const fetchPost = async (postId: string) => {
   return post
 }
 
-const routerMeta = new RouterMeta<{
+const rootRoute = rootRouteWithContext<{
   queryClient: QueryClient
-}>()
-
-const rootRoute = routerMeta.createRootRoute({
+}>()({
   component: () => {
     return (
       <>
@@ -103,10 +102,11 @@ const postsRoute = new Route({
       queryFn: () => fetchPosts(),
     } as const,
   }),
-  load: ({ meta: { queryClient, queryOpts } }) =>
-    queryClient.ensureQueryData(queryOpts),
-  component: ({ useRouteMeta }) => {
-    const { queryOpts } = useRouteMeta()
+  load: ({ context: { queryClient, queryOpts } }) => {
+    return queryClient.ensureQueryData(queryOpts)
+  },
+  component: ({ useRouteContext }) => {
+    const { queryOpts } = useRouteContext()
 
     const postsQuery = useSuspenseQuery({
       ...queryOpts,
@@ -169,10 +169,10 @@ const postRoute = new Route({
       queryFn: () => fetchPost(postId),
     } as const,
   }),
-  load: ({ meta: { queryClient, queryOptions } }) =>
+  load: ({ context: { queryClient, queryOptions } }) =>
     queryClient.ensureQueryData(queryOptions),
-  component: ({ useRouteMeta }) => {
-    const { queryOptions } = useRouteMeta()
+  component: ({ useRouteContext }) => {
+    const { queryOptions } = useRouteContext()
 
     const postQuery = useSuspenseQuery({
       ...queryOptions,
@@ -190,8 +190,8 @@ const postRoute = new Route({
   },
 })
 
-type Test = typeof postRoute.types.routeMeta
-type Test2 = typeof postRoute.types.allMeta
+type Test = typeof postRoute.types.routeContext
+type Test2 = typeof postRoute.types.allContext
 type Test3 = typeof postRoute.test
 
 const routeTree = rootRoute.addChildren([
@@ -205,7 +205,7 @@ const queryClient = new QueryClient()
 const router = new Router({
   routeTree,
   defaultPreload: 'intent',
-  meta: {
+  context: {
     queryClient,
   },
 })

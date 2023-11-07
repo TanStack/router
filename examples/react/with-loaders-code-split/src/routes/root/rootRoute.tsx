@@ -1,11 +1,13 @@
-import { lazyRouteComponent, RouterContext } from '@tanstack/react-router'
+import {
+  lazyRouteComponent,
+  rootRouteWithContext,
+  RouterContext,
+} from '@tanstack/react-router'
 import { loaderClient } from '../../loaderClient'
 import { Root } from './Root'
 
-const routerContext = new RouterContext<{
+export const rootRoute = rootRouteWithContext<{
   loaderClient: typeof loaderClient
-}>()
-
-export const rootRoute = routerContext.createRootRoute({
+}>()({
   component: Root,
 })

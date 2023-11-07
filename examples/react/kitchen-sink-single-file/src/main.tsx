@@ -15,6 +15,7 @@ import {
   ErrorComponent,
   AnyRouter,
   useRouterState,
+  rootRouteWithContext,
 } from '@tanstack/react-router'
 import {
   ActionClientProvider,
@@ -76,13 +77,11 @@ declare module '@tanstack/react-actions' {
 
 // Routes
 
-export const routerContext = new RouterContext<{
+// Build our routes. We could do this in our component, too.
+const rootRoute = rootRouteWithContext<{
   auth: Auth
   actionClient: typeof actionClient
-}>()
-
-// Build our routes. We could do this in our component, too.
-const rootRoute = routerContext.createRootRoute({
+}>()({
   component: () => {
     const isFetching = useRouterState({ select: (s) => s.isFetching })
 

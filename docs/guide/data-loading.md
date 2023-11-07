@@ -135,13 +135,10 @@ const fetchPosts = async () => {
     return res.json()
 }
 
-// Create a new routerContext using new RouterContext<{...}>() class and pass it whatever types you would like to be available in your router context.
-const routerContext = new RouterContext<{
+// Create a new routerContext using new rootRouteWithContext<{...}>() function and pass it whatever types you would like to be available in your router context.
+const rootRoute = rootRouteWithContext<{
   fetchPosts: typeof fetchPosts
-}>()
-
-// Then use the same routerContext to create your root route
-const rootRoute = routerContext.createRootRoute()
+}>()() // NOTE: the double call is on purpose, since rootRouteWithContext is a factory ;)
 
 // Notice how our postsRoute references context to get our fetchPosts function
 // This can be a powerful tool for dependency injection across your router

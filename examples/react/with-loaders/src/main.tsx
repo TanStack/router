@@ -8,6 +8,7 @@ import {
   ErrorComponent,
   RouterContext,
   Router,
+  rootRouteWithContext,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -71,11 +72,9 @@ declare module '@tanstack/react-loaders' {
   }
 }
 
-const routerContext = new RouterContext<{
+const rootRoute = rootRouteWithContext<{
   loaderClient: typeof loaderClient
-}>()
-
-const rootRoute = routerContext.createRootRoute({
+}>()({
   component: () => {
     return (
       <>

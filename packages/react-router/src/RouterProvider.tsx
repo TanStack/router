@@ -159,13 +159,13 @@ export function RouterProvider<
   const options = {
     ...router.options,
     ...rest,
-    meta: {
-      ...router.options.meta,
-      ...rest?.meta,
+    context: {
+      ...router.options.context,
+      ...rest?.context,
     },
   } as PickAsRequired<
     RouterOptions<TRouteTree, TDehydrated>,
-    'stringifySearch' | 'parseSearch' | 'meta'
+    'stringifySearch' | 'parseSearch' | 'context'
   >
 
   const history = React.useState(
@@ -451,7 +451,7 @@ export function RouterProvider<
           paramsError: parseErrors[index],
           searchError: undefined,
           loadPromise: Promise.resolve(),
-          meta: undefined!,
+          context: undefined!,
           abortController: new AbortController(),
           fetchedAt: 0,
         }
@@ -459,9 +459,9 @@ export function RouterProvider<
         return routeMatch
       })
 
-      // Take each match and resolve its search params and meta
+      // Take each match and resolve its search params and context
       // This has to happen after the matches are created or found
-      // so that we can use the parent match's search params and meta
+      // so that we can use the parent match's search params and context
       matches.forEach((match, i): any => {
         const parentMatch = matches[i - 1]
         const route = looseRoutesById[match.routeId]!
@@ -848,27 +848,27 @@ export function RouterProvider<
               handleError(match.searchError, 'VALIDATE_SEARCH')
             }
 
-            const parentMeta = parentMatch?.meta ?? options.meta ?? {}
+            const parentContext = parentMatch?.context ?? options.context ?? {}
 
-            const beforeLoadMeta =
+            const beforeLoadContext =
               (await route.options.beforeLoad?.({
                 search: match.search,
                 abortController: match.abortController,
                 params: match.params,
                 preload: !!preload,
-                meta: parentMeta,
+                context: parentContext,
                 location: state.location, // TODO: This might need to be latestLocationRef.current...?
                 navigate: (opts) => navigate({ ...opts, from: match.pathname }),
               })) ?? ({} as any)
 
-            const meta = {
-              ...parentMeta,
-              ...beforeLoadMeta,
+            const context = {
+              ...parentContext,
+              ...beforeLoadContext,
             }
 
             matches[index] = match = {
               ...match,
-              meta: replaceEqualDeep(match.meta, meta),
+              context: replaceEqualDeep(match.context, context),
             }
           } catch (err) {
             handleError(err, 'BEFORE_LOAD')
@@ -925,7 +925,7 @@ export function RouterProvider<
                   preload: !!preload,
                   parentMatchPromise,
                   abortController: match.abortController,
-                  meta: match.meta,
+                  context: match.context,
                   location: state.location,
                   navigate: (opts) =>
                     navigate({ ...opts, from: match.pathname }),

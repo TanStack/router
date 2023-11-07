@@ -50,12 +50,12 @@ export type HydrationCtx = {
 }
 
 export type RouterContextOptions<TRouteTree extends AnyRoute> =
-  AnyContext extends TRouteTree['types']['routerMeta']
+  AnyContext extends TRouteTree['types']['routerContext']
     ? {
-        meta?: TRouteTree['types']['routerMeta']
+        context?: TRouteTree['types']['routerContext']
       }
     : {
-        meta: TRouteTree['types']['routerMeta']
+        context: TRouteTree['types']['routerContext']
       }
 
 export interface RouterOptions<
@@ -85,7 +85,7 @@ export interface RouterOptions<
   routeTree?: TRouteTree
   basepath?: string
   createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
-  meta?: TRouteTree['types']['routerMeta']
+  context?: TRouteTree['types']['routerContext']
   // dehydrate?: () => TDehydrated
   // hydrate?: (dehydrated: TDehydrated) => void
   routeMasks?: RouteMask<TRouteTree>[]
@@ -174,7 +174,7 @@ export class Router<
 > {
   options: PickAsRequired<
     RouterOptions<TRouteTree, TDehydrated>,
-    'stringifySearch' | 'parseSearch' | 'meta'
+    'stringifySearch' | 'parseSearch' | 'context'
   >
   routeTree: TRouteTree
   // dehydratedData?: TDehydrated
@@ -184,7 +184,7 @@ export class Router<
   constructor(options: RouterConstructorOptions<TRouteTree, TDehydrated>) {
     this.options = {
       defaultPreloadDelay: 50,
-      meta: undefined!,
+      context: undefined!,
       ...options,
       stringifySearch: options?.stringifySearch ?? defaultStringifySearch,
       parseSearch: options?.parseSearch ?? defaultParseSearch,

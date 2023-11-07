@@ -7,6 +7,7 @@ import {
   Route,
   Link,
   RouterContext,
+  rootRouteWithContext,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import {
@@ -26,11 +27,9 @@ type PostType = {
 
 const queryClient = new QueryClient()
 
-const routerContext = new RouterContext<{
+const rootRoute = rootRouteWithContext<{
   queryClient: typeof queryClient
-}>()
-
-const rootRoute = routerContext.createRootRoute({
+}>()({
   component: () => {
     return (
       <>
@@ -82,8 +81,8 @@ const postsRoute = new Route({
   loader: async ({ context: { queryClient, queryOptions } }) => {
     await queryClient.ensureQueryData(queryOptions)
   },
-  component: ({ useRouteMeta }) => {
-    const { queryOptions } = useRouteMeta()
+  component: ({ useRouteContext }) => {
+    const { queryOptions } = useRouteContext()
     const postsQuery = useQuery(queryOptions)
 
     return (
@@ -141,8 +140,8 @@ const postRoute = new Route({
   loader: async ({ context: { queryClient, queryOptions } }) => {
     await queryClient.ensureQueryData(queryOptions)
   },
-  component: ({ useRouteMeta }) => {
-    const { queryOptions } = useRouteMeta()
+  component: ({ useRouteContext }) => {
+    const { queryOptions } = useRouteContext()
     const postQuery = useQuery(queryOptions)
 
     return (

@@ -18,7 +18,7 @@ export interface RouteMatch<
   updatedAt: number
   loadPromise?: Promise<void>
   __resolveLoadPromise?: () => void
-  meta: RouteById<TRouteTree, TRouteId>['types']['allMeta']
+  context: RouteById<TRouteTree, TRouteId>['types']['allContext']
   routeSearch: RouteById<TRouteTree, TRouteId>['types']['searchSchema']
   search: FullSearchSchema<TRouteTree> &
     RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema']

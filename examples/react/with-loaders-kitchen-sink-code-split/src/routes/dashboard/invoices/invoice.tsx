@@ -95,8 +95,8 @@ export const invoiceRoute = new Route({
 
     return <ErrorComponent error={error} />
   },
-  component: function InvoiceView({ useRouteMeta, useSearch }) {
-    const { loaderOptions } = useRouteMeta()
+  component: function InvoiceView({ useRouteContext, useSearch }) {
+    const { loaderOptions } = useRouteContext()
     const { data: invoice } = useLoaderInstance(loaderOptions)
     const search = useSearch()
     const navigate = useNavigate()

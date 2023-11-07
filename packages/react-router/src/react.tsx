@@ -40,7 +40,7 @@ export type RouteProps<
   useMatch: <TSelected = TAllContext>(opts?: {
     select?: (search: TAllContext) => TSelected
   }) => TSelected
-  useRouteMeta: <TSelected = TAllContext>(opts?: {
+  useRouteContext: <TSelected = TAllContext>(opts?: {
     select?: (search: TAllContext) => TSelected
   }) => TSelected
   useSearch: <TSelected = TFullSearchSchema>(opts?: {
@@ -398,7 +398,7 @@ export type RouterProps<
   TDehydrated extends Record<string, any> = Record<string, any>,
 > = Omit<RouterOptions<TRouteTree, TDehydrated>, 'context'> & {
   router: Router<TRouteTree>
-  context?: Partial<RouterOptions<TRouteTree, TDehydrated>['meta']>
+  context?: Partial<RouterOptions<TRouteTree, TDehydrated>['context']>
 }
 
 export function useRouter<
@@ -515,21 +515,23 @@ export type RouteFromIdOrRoute<
   ? RouteIds<TRouteTree>
   : never
 
-export function useRouteMeta<
+export function useRouteContext<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
   TStrict extends boolean = true,
-  TRouteMeta = RouteById<TRouteTree, TFrom>['types']['allMeta'],
-  TSelected = TRouteMeta,
+  TRouteContext = RouteById<TRouteTree, TFrom>['types']['allContext'],
+  TSelected = TRouteContext,
 >(
   opts: StrictOrFrom<TFrom> & {
-    select?: (search: TRouteMeta) => TSelected
+    select?: (search: TRouteContext) => TSelected
   },
 ): TStrict extends true ? TSelected : TSelected | undefined {
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) =>
-      opts?.select ? opts.select(match.meta as TRouteMeta) : match.meta,
+      opts?.select
+        ? opts.select(match.context as TRouteContext)
+        : match.context,
   })
 }
 
@@ -666,7 +668,7 @@ export function Matches() {
       return React.createElement(ErrorComponent, {
         ...props,
         useMatch: route.useMatch,
-        useRouteMeta: route.useRouteMeta,
+        useRouteContext: route.useRouteContext,
         useSearch: route.useSearch,
         useParams: route.useParams,
       })
@@ -755,7 +757,7 @@ function Match({ matches }: { matches: RouteMatch[] }) {
       return React.createElement(routeErrorComponent, {
         ...props,
         useMatch: route.useMatch,
-        useRouteMeta: route.useRouteMeta,
+        useRouteContext: route.useRouteContext,
         useSearch: route.useSearch,
         useParams: route.useParams,
       })
@@ -768,7 +770,7 @@ function Match({ matches }: { matches: RouteMatch[] }) {
       <ResolvedSuspenseBoundary
         fallback={React.createElement(PendingComponent, {
           useMatch: route.useMatch,
-          useRouteMeta: route.useRouteMeta,
+          useRouteContext: route.useRouteContext,
           useSearch: route.useSearch,
           useParams: route.useParams,
         })}
@@ -805,7 +807,7 @@ function MatchInner({ match }: { match: RouteMatch }): any {
     if (comp) {
       return React.createElement(comp, {
         useMatch: route.useMatch,
-        useRouteMeta: route.useRouteMeta as any,
+        useRouteContext: route.useRouteContext as any,
         useSearch: route.useSearch,
         useParams: route.useParams as any,
       } as any)
