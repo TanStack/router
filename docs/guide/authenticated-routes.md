@@ -21,7 +21,7 @@ The `beforeLoad` function runs in relative order to these other route loading fu
   - `route.component.preload?`
   - `route.loader`
 
-**It's important to know that the `beforeLoad` function for a route is called _before any of it's child routes' `beforeLoad` functions_.** It is essentially a middleware function for the route and all of it's children.
+**It's important to know that the `beforeLoad` function for a route is called _before any of its child routes' `beforeLoad` functions_.** It is essentially a middleware function for the route and all of its children.
 
 **If you throw an error in `beforeLoad`, none of its children will attempt to load**.
 
