@@ -71,7 +71,7 @@ const userRoute = new Route({
   getRootRoute: () => rootRoute,
   path: 'todos',
   component: Todos,
-  loader: ({ context }) => fetchTodosByUserId(context.user.id),
+  load: ({ context }) => fetchTodosByUserId(context.user.id),
 })
 ```
 
@@ -106,7 +106,7 @@ const userRoute = new Route({
   getRootRoute: () => rootRoute,
   path: 'todos',
   component: Todos,
-  loader: ({ context }) => context.fetchTodosByUserId(context.userId),
+  load: ({ context }) => context.fetchTodosByUserId(context.userId),
 })
 ```
 
@@ -142,7 +142,7 @@ const userRoute = new Route({
   getRootRoute: () => rootRoute,
   path: 'todos',
   component: Todos,
-  loader: ({ context }) => {
+  load: ({ context }) => {
     await context.queryClient.ensureQueryData({
       queryKey: ['todos', { userId: user.id }],
       queryFn: fetchTodos,
@@ -182,7 +182,7 @@ const userRoute = new Route({
       bar: true,
     }
   }
-  loader: ({ context }) => {
+  load: ({ context }) => {
     context.foo // true
     context.bar // true
   },
@@ -209,7 +209,7 @@ export const postIdRoute = new Route({
       getTitle: () => `${queryClient.getQueryData(queryOptions)?.title} | Post`,
     }
   },
-  loader: async ({ preload, context: { queryClient, queryOptions } }) => {
+  load: async ({ preload, context: { queryClient, queryOptions } }) => {
     await queryClient.ensureQueryData(queryOptions)
   },
   component: ({ useRouteContext }) => {

@@ -11,7 +11,7 @@ export type PostType = {
 // 'posts/$postId' is automatically inserted and managed
 // by the `tsr generate/watch` CLI command
 export const route = new FileRoute('/posts_/$postId/deep').createRoute({
-  loader: async ({ params: { postId } }) => fetchPost(postId),
+  load: async ({ params: { postId } }) => fetchPost(postId),
   errorComponent: PostErrorComponent as any,
   component: () => {
     const post = route.useLoader()

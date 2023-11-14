@@ -13,7 +13,7 @@ export const randomIdLoader = new Loader({
 export const layoutRoute = new Route({
   getParentRoute: () => rootRoute,
   id: 'layout',
-  loader: async ({ context: { loaderClient } }) => {
+  load: async ({ context: { loaderClient } }) => {
     await loaderClient.load({ key: 'random' })
   },
   component: function LayoutWrapper({ useLoader }) {

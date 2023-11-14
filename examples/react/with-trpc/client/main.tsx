@@ -177,7 +177,7 @@ const dashboardRoute = new Route({
 const dashboardIndexRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: '/',
-  loader: () => trpc.posts.query(),
+  load: () => trpc.posts.query(),
   component: ({ useLoader }) => {
     const posts = useLoader()
 
@@ -195,7 +195,7 @@ const dashboardIndexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'posts',
-  loader: () => trpc.posts.query(),
+  load: () => trpc.posts.query(),
   component: ({ useLoader }) => {
     const posts = useLoader()
 
@@ -262,7 +262,7 @@ const postRoute = new Route({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
   }),
-  loader: async ({ params: { postId } }) => trpc.post.query(postId),
+  load: async ({ params: { postId } }) => trpc.post.query(postId),
   component: ({ useLoader }) => {
     const post = useLoader()
     const search = useSearch({ from: postRoute.id })

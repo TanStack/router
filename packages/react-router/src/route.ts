@@ -1,35 +1,35 @@
+import { HistoryLocation } from '@tanstack/history'
+import * as React from 'react'
 import invariant from 'tiny-invariant'
-import { RoutePaths } from './routeInfo'
+import { useMatch } from './Matches'
+import { AnyRouteMatch } from './RouterProvider'
+import { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
+import { ParsedLocation } from './location'
 import { joinPaths, trimPath } from './path'
+import { RoutePaths } from './routeInfo'
 import { AnyRouter } from './router'
-import { AnyRouteMatch } from './RouteMatch'
+import { useParams } from './useParams'
+import { useSearch } from './useSearch'
 import {
+  Assign,
   Expand,
   IsAny,
   NoInfer,
   PickRequired,
   UnionToIntersection,
-  Assign,
 } from './utils'
-import { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
-import {
-  ErrorRouteComponent,
-  PendingRouteComponent,
-  RouteComponent,
-  RouteProps,
-  useMatch,
-  useParams,
-  useSearch,
-} from './react'
-import { HistoryLocation } from '@tanstack/history'
-import { ParsedLocation } from './location'
+import { BuildLocationFn, NavigateFn } from './RouterProvider'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
 export type AnyPathParams = {}
+
 export type AnySearchSchema = {}
+
 export type AnyContext = {}
+
 export interface RouteContext {}
+
 export interface RouteMeta {}
 
 export type PreloadableObj = { preload?: () => Promise<void> }
@@ -155,7 +155,8 @@ type BeforeLoadFn<
   params: TAllParams
   context: TParentRoute['types']['allContext']
   location: ParsedLocation
-  navigate: (opts: NavigateOptions<AnyRoute>) => Promise<void>
+  navigate: NavigateFn<AnyRoute>
+  buildLocation: BuildLocationFn<AnyRoute>
 }) => Promise<TRouteContext> | TRouteContext | void
 
 export type UpdatableRouteOptions<
@@ -714,3 +715,72 @@ export function createRouteMask<
 ): RouteMask<TRouteTree> {
   return opts as any
 }
+
+export type RouteProps<
+  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TAllContext extends Record<string, any> = AnyContext,
+> = {
+  useMatch: <TSelected = TAllContext>(opts?: {
+    select?: (search: TAllContext) => TSelected
+  }) => TSelected
+  useRouteContext: <TSelected = TAllContext>(opts?: {
+    select?: (search: TAllContext) => TSelected
+  }) => TSelected
+  useSearch: <TSelected = TFullSearchSchema>(opts?: {
+    select?: (search: TFullSearchSchema) => TSelected
+  }) => TSelected
+  useParams: <TSelected = TAllParams>(opts?: {
+    select?: (search: TAllParams) => TSelected
+  }) => TSelected
+}
+
+export type ErrorRouteProps<
+  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TAllContext extends Record<string, any> = AnyContext,
+> = {
+  error: unknown
+  info: { componentStack: string }
+} & RouteProps<TFullSearchSchema, TAllParams, TAllContext>
+
+export type PendingRouteProps<
+  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
+  TAllParams extends AnyPathParams = AnyPathParams,
+  TAllContext extends Record<string, any> = AnyContext,
+> = RouteProps<TFullSearchSchema, TAllParams, TAllContext>
+//
+
+export type ReactNode = any
+
+export type SyncRouteComponent<TProps> =
+  | ((props: TProps) => ReactNode)
+  | React.LazyExoticComponent<(props: TProps) => ReactNode>
+
+export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
+  preload?: () => Promise<void>
+}
+
+export type RouteComponent<
+  TFullSearchSchema extends Record<string, any>,
+  TAllParams extends AnyPathParams,
+  TAllContext extends Record<string, any>,
+> = AsyncRouteComponent<RouteProps<TFullSearchSchema, TAllParams, TAllContext>>
+
+export type ErrorRouteComponent<
+  TFullSearchSchema extends Record<string, any>,
+  TAllParams extends AnyPathParams,
+  TAllContext extends Record<string, any>,
+> = AsyncRouteComponent<
+  ErrorRouteProps<TFullSearchSchema, TAllParams, TAllContext>
+>
+
+export type PendingRouteComponent<
+  TFullSearchSchema extends Record<string, any>,
+  TAllParams extends AnyPathParams,
+  TAllContext extends Record<string, any>,
+> = AsyncRouteComponent<
+  PendingRouteProps<TFullSearchSchema, TAllParams, TAllContext>
+>
+
+export type AnyRouteComponent = RouteComponent<any, any, any>

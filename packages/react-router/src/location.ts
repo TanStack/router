@@ -11,4 +11,5 @@ export interface ParsedLocation<TSearchObj extends AnySearchSchema = {}> {
   maskedLocation?: ParsedLocation<TSearchObj>
   unmaskOnReload?: boolean
 }
+
 export interface LocationState {}

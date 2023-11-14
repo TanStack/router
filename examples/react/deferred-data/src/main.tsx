@@ -155,7 +155,7 @@ const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
   key: false,
-  loader: async ({ params: { postId } }) => fetchPost(postId),
+  load: async ({ params: { postId } }) => fetchPost(postId),
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {
       return <div>{error.message}</div>

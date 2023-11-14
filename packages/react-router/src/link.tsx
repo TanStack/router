@@ -1,5 +1,9 @@
+import * as React from 'react'
+import { useMatch } from './Matches'
+import { useRouter } from './RouterProvider'
 import { Trim } from './fileRoute'
-import { AnyRoute } from './route'
+import { LocationState, ParsedLocation } from './location'
+import { AnyRoute, ReactNode } from './route'
 import {
   AllParams,
   FullSearchSchema,
@@ -8,8 +12,7 @@ import {
   RoutePaths,
 } from './routeInfo'
 import { RegisteredRouter } from './router'
-import { LocationState } from './location'
-import { ParsedLocation } from './location'
+import { MakeLinkOptions, MakeLinkPropsOptions } from './useNavigate'
 import {
   Expand,
   NoInfer,
@@ -17,6 +20,7 @@ import {
   PickRequired,
   UnionToIntersection,
   Updater,
+  functionalUpdate,
 } from './utils'
 
 export type LinkInfo =
@@ -136,6 +140,8 @@ export type NavigateOptions<
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
   resetScroll?: boolean
+  // If set to `true`, the link's underlying navigate() call will be wrapped in a `React.startTransition` call. Defaults to `true`.
+  startTransition?: boolean
 }
 
 export type ToOptions<
@@ -345,3 +351,157 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
       : CleanPath<Join<['/', ...Split<TFrom>, ...Split<TTo>]>>
     : never
   : never
+
+export function useLinkProps<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> = '/',
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskTo extends string = '',
+>(
+  options: MakeLinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
+): React.AnchorHTMLAttributes<HTMLAnchorElement> {
+  const { buildLink } = useRouter()
+  const match = useMatch({
+    strict: false,
+  })
+
+  const {
+    // custom props
+    type,
+    children,
+    target,
+    activeProps = () => ({ className: 'active' }),
+    inactiveProps = () => ({}),
+    activeOptions,
+    disabled,
+    hash,
+    search,
+    params,
+    to,
+    state,
+    mask,
+    preload,
+    preloadDelay,
+    replace,
+    startTransition,
+    // element props
+    style,
+    className,
+    onClick,
+    onFocus,
+    onMouseEnter,
+    onMouseLeave,
+    onTouchStart,
+    ...rest
+  } = options
+
+  const linkInfo = buildLink({
+    from: options.to ? match.pathname : undefined,
+    ...options,
+  } as any)
+
+  if (linkInfo.type === 'external') {
+    const { href } = linkInfo
+    return { href }
+  }
+
+  const {
+    handleClick,
+    handleFocus,
+    handleEnter,
+    handleLeave,
+    handleTouchStart,
+    isActive,
+    next,
+  } = linkInfo
+
+  const composeHandlers =
+    (handlers: (undefined | ((e: any) => void))[]) =>
+    (e: React.SyntheticEvent) => {
+      if (e.persist) e.persist()
+      handlers.filter(Boolean).forEach((handler) => {
+        if (e.defaultPrevented) return
+        handler!(e)
+      })
+    }
+
+  // Get the active props
+  const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
+    ? functionalUpdate(activeProps as any, {}) ?? {}
+    : {}
+
+  // Get the inactive props
+  const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+    isActive ? {} : functionalUpdate(inactiveProps, {}) ?? {}
+
+  return {
+    ...resolvedActiveProps,
+    ...resolvedInactiveProps,
+    ...rest,
+    href: disabled
+      ? undefined
+      : next.maskedLocation
+      ? next.maskedLocation.href
+      : next.href,
+    onClick: composeHandlers([onClick, handleClick]),
+    onFocus: composeHandlers([onFocus, handleFocus]),
+    onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
+    onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
+    onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
+    target,
+    style: {
+      ...style,
+      ...resolvedActiveProps.style,
+      ...resolvedInactiveProps.style,
+    },
+    className:
+      [
+        className,
+        resolvedActiveProps.className,
+        resolvedInactiveProps.className,
+      ]
+        .filter(Boolean)
+        .join(' ') || undefined,
+    ...(disabled
+      ? {
+          role: 'link',
+          'aria-disabled': true,
+        }
+      : undefined),
+    ['data-status']: isActive ? 'active' : undefined,
+  }
+}
+
+export interface LinkComponent<TProps extends Record<string, any> = {}> {
+  <
+    TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+    TFrom extends RoutePaths<TRouteTree> = '/',
+    TTo extends string = '',
+    TMaskFrom extends RoutePaths<TRouteTree> = '/',
+    TMaskTo extends string = '',
+  >(
+    props: MakeLinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
+      TProps &
+      React.RefAttributes<HTMLAnchorElement>,
+  ): ReactNode
+}
+
+export const Link: LinkComponent = React.forwardRef((props: any, ref) => {
+  const linkProps = useLinkProps(props)
+
+  return (
+    <a
+      {...{
+        ref: ref as any,
+        ...linkProps,
+        children:
+          typeof props.children === 'function'
+            ? props.children({
+                isActive: (linkProps as any)['data-status'] === 'active',
+              })
+            : props.children,
+      }}
+    />
+  )
+}) as any

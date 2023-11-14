@@ -34,7 +34,7 @@ const test = server$(() => {
 export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  loader: async ({ params: { postId } }) => {
+  load: async ({ params: { postId } }) => {
     const commentsPromise = fetchComments(postId)
     const post = await fetchPostById(postId)
 

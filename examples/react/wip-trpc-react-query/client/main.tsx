@@ -81,7 +81,7 @@ const rootRoute = rootRouteWithContext<{
 const indexRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/',
-  loader: () => {
+  load: () => {
     // TODO: Prefetch hello using TRPC
   },
   component: () => {
@@ -95,7 +95,7 @@ const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
   errorComponent: () => 'Oh crap!',
-  loader: async () => {
+  load: async () => {
     // TODO: Prefetch posts using TRPC
   },
   component: ({ useLoader }) => {
@@ -147,7 +147,7 @@ const postsIndexRoute = new Route({
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  loader: async ({ params: { postId } }) => {
+  load: async ({ params: { postId } }) => {
     // TODO: Prefetch post using TRPC
   },
   component: ({ useParams }) => {

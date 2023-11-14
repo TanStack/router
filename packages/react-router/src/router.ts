@@ -16,8 +16,8 @@ import {
   ErrorRouteComponent,
   PendingRouteComponent,
   RouteComponent,
-} from './react'
-import { RouteMatch } from './RouteMatch'
+} from './route'
+import { RouteMatch } from './RouterProvider'
 import { ParsedLocation } from './location'
 import { LocationState } from './location'
 import { SearchSerializer, SearchParser } from './searchParams'
@@ -93,12 +93,11 @@ export interface RouterOptions<
 }
 
 export interface RouterState<TRouteTree extends AnyRoute = AnyRoute> {
-  status: 'idle' | 'pending'
-  isFetching: boolean
+  status: 'pending' | 'idle'
   matches: RouteMatch<TRouteTree>[]
   pendingMatches: RouteMatch<TRouteTree>[]
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
-  resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
+  resolvedLocation: undefined | ParsedLocation<FullSearchSchema<TRouteTree>>
   lastUpdated: number
 }
 
@@ -149,13 +148,13 @@ export const componentTypes = [
 export type RouterEvents = {
   onBeforeLoad: {
     type: 'onBeforeLoad'
-    from: ParsedLocation
+    from: undefined | ParsedLocation
     to: ParsedLocation
     pathChanged: boolean
   }
   onLoad: {
     type: 'onLoad'
-    from: ParsedLocation
+    from: undefined | ParsedLocation
     to: ParsedLocation
     pathChanged: boolean
   }

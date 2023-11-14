@@ -18,6 +18,7 @@ export interface User {
   website: string
   company: Company
 }
+
 export interface Address {
   street: string
   suite: string

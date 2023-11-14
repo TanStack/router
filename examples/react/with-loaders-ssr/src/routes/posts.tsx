@@ -26,7 +26,7 @@ export const postsLoader = new Loader({
 export const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  loader: async ({ context: { loaderClient }, preload }) => {
+  load: async ({ context: { loaderClient }, preload }) => {
     await loaderClient.load({ key: 'posts', preload })
   },
   component: function Posts() {

@@ -258,7 +258,7 @@ const indexRoute = new Route({
 const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  loader: ({ preload, context: { loaderClient } }) =>
+  load: ({ preload, context: { loaderClient } }) =>
     loaderClient.load({ key: 'invoices', preload }),
   component: () => {
     return (
@@ -473,7 +473,7 @@ const invoiceRoute = new Route({
 
     return { loaderOptions }
   },
-  loader: async ({ preload, context: { loaderClient, loaderOptions } }) => {
+  load: async ({ preload, context: { loaderClient, loaderOptions } }) => {
     await loaderClient.load({
       ...loaderOptions,
       preload,
@@ -599,7 +599,7 @@ const usersRoute = new Route({
       },
     }),
   ],
-  loader: async ({ preload, context: { loaderClient } }) => {
+  load: async ({ preload, context: { loaderClient } }) => {
     await loaderClient.load({ key: 'users', preload })
   },
   component: ({ useSearch, useLoader }) => {
@@ -765,7 +765,7 @@ const userRoute = new Route({
 
     return { loaderOptions }
   },
-  loader: async ({ context: { loaderClient, loaderOptions }, preload }) => {
+  load: async ({ context: { loaderClient, loaderOptions }, preload }) => {
     await loaderClient.load({ ...loaderOptions, preload })
   },
   component: ({ useRouteContext }) => {
@@ -894,7 +894,7 @@ const loginRoute = new Route({
 const layoutRoute = new Route({
   getParentRoute: () => rootRoute,
   id: 'layout',
-  loader: async ({ preload, context: { loaderClient } }) => {
+  load: async ({ preload, context: { loaderClient } }) => {
     await loaderClient.load({ key: 'random', preload })
   },
   component: ({ useLoader }) => {

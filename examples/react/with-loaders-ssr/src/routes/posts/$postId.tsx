@@ -38,7 +38,7 @@ export const postIdRoute = new Route({
       loaderOptions,
     }
   },
-  loader: async ({ context: { loaderClient, loaderOptions }, preload }) => {
+  load: async ({ context: { loaderClient, loaderOptions }, preload }) => {
     await loaderClient.load({
       ...loaderOptions,
       preload,

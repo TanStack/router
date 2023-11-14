@@ -66,7 +66,7 @@ import { LoaderContext } from '@tanstack/react-router'
 const route = new Route({
   path: '/my-route',
   component: MyComponent,
-  loader: (...args) => import('./loader').then((d) => d.loader(...args)),
+  load: (...args) => import('./loader').then((d) => d.loader(...args)),
 })
 
 // In another file...

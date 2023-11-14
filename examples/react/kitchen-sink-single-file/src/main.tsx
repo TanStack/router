@@ -5,25 +5,25 @@ import {
   RouterProvider,
   lazyRouteComponent,
   Link,
-  MatchRoute,
   useNavigate,
   useSearch,
   Router,
   Route,
   redirect,
-  RouterContext,
   ErrorComponent,
-  AnyRouter,
-  useRouterState,
   rootRouteWithContext,
+  useRouter,
+  MatchRoute,
 } from '@tanstack/react-router'
-import {
-  ActionClientProvider,
-  ActionContext,
-  useAction,
-} from '@tanstack/react-actions'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-
+import {
+  QueryClient,
+  QueryClientProvider,
+  queryOptions,
+  useMutation,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import {
   fetchInvoices,
   fetchInvoiceById,
@@ -32,7 +32,6 @@ import {
   Invoice,
   postInvoice,
   patchInvoice,
-  fetchRandomNumber,
 } from './mockTodos'
 
 import { z } from 'zod'
@@ -41,38 +40,43 @@ import { z } from 'zod'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
-// Actions
+const invoicesQueryOptions = () =>
+  queryOptions({
+    queryKey: ['invoices'],
+    queryFn: () => fetchInvoices(),
+  })
 
-const actionContext = new ActionContext<{
-  router: AnyRouter
-}>()
+const invoiceQueryOptions = (invoiceId: number) =>
+  queryOptions({
+    queryKey: ['invoices', invoiceId],
+    queryFn: () => fetchInvoiceById(invoiceId),
+  })
 
-const createInvoiceAction = actionContext.createAction({
-  key: 'createInvoice',
-  fn: postInvoice,
-  onEachSuccess: async ({ context: { router } }) => {
-    await router.invalidate()
-  },
-})
+const usersQueryOptions = () =>
+  queryOptions({
+    queryKey: ['users'],
+    queryFn: () => fetchUsers(),
+  })
 
-const updateInvoiceAction = actionContext.createAction({
-  key: 'updateInvoice',
-  fn: patchInvoice,
-  onEachSuccess: async ({ context: { router } }) => {
-    await router.invalidate()
-  },
-})
+const userQueryOptions = (userId: number) =>
+  queryOptions({
+    queryKey: ['users', userId],
+    queryFn: () => fetchUserById(userId),
+  })
 
-const actionClient = actionContext.createClient({
-  actions: [createInvoiceAction, updateInvoiceAction],
-  context: { router: undefined! },
-})
+const useCreateInvoiceMutation = () => {
+  return useMutation({
+    // mutationKey: ['invoices', 'create'],
+    mutationFn: postInvoice,
+  })
+}
 
-// Register things for typesafety
-declare module '@tanstack/react-actions' {
-  interface Register {
-    actionClient: typeof actionClient
-  }
+const useUpdateInvoiceMutation = () => {
+  return useMutation({
+    // mutationKey: ['invoices', 'update'],
+    mutationFn: patchInvoice,
+    gcTime: 0,
+  })
 }
 
 // Routes
@@ -80,10 +84,10 @@ declare module '@tanstack/react-actions' {
 // Build our routes. We could do this in our component, too.
 const rootRoute = rootRouteWithContext<{
   auth: Auth
-  actionClient: typeof actionClient
+  queryClient: QueryClient
 }>()({
   component: () => {
-    const isFetching = useRouterState({ select: (s) => s.isFetching })
+    const { state } = useRouter()
 
     return (
       <>
@@ -92,7 +96,7 @@ const rootRoute = rootRouteWithContext<{
             <h1 className={`text-3xl p-2`}>Kitchen Sink</h1>
             {/* Show a global spinner when the router is transitioning */}
             <div className={`text-3xl`}>
-              <Spinner show={isFetching} />
+              <Spinner show={state.status === 'pending'} />
             </div>
           </div>
           <div className={`flex-1 flex`}>
@@ -137,6 +141,7 @@ const rootRoute = rootRouteWithContext<{
           </div>
         </div>
         <TanStackRouterDevtools position="bottom-right" />
+        <ReactQueryDevtools buttonPosition="top-right" />
       </>
     )
   },
@@ -218,9 +223,11 @@ const dashboardRoute = new Route({
 const dashboardIndexRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: '/',
-  loader: fetchInvoices,
-  component: ({ useLoader }) => {
-    const invoices = useLoader()
+  load: (opts) =>
+    opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
+  component: () => {
+    const invoicesQuery = useSuspenseQuery(invoicesQueryOptions())
+    const invoices = invoicesQuery.data
 
     return (
       <div className="p-2">
@@ -236,32 +243,29 @@ const dashboardIndexRoute = new Route({
 const invoicesRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'invoices',
-  loader: fetchInvoices,
-  component: ({ useLoader }) => {
-    const invoices = useLoader()
-
-    const [{ pendingSubmissions: updateSubmissions }] = useAction({
-      key: 'updateInvoice',
-    })
-
-    const [{ pendingSubmissions: createSubmissions }] = useAction({
-      key: 'createInvoice',
-    })
+  load: (opts) =>
+    opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
+  component: () => {
+    const invoicesQuery = useSuspenseQuery(invoicesQueryOptions())
+    const invoices = invoicesQuery.data
+    const updateInvoiceMutation = useUpdateInvoiceMutation()
+    const createInvoiceMutation = useCreateInvoiceMutation()
 
     return (
       <div className="flex-1 flex">
+        {/* {routerTransitionIsPending ? 'pending' : 'null'} */}
         <div className="divide-y w-48">
           {invoices?.map((invoice) => {
-            const updateSubmission = updateSubmissions.find(
-              (d) => d.variables?.id === invoice.id,
-            )
+            // const updateSubmission = createInvoiceMutation.find(
+            //   (d) => d.variables?.id === invoice.id,
+            // )
 
-            if (updateSubmission) {
-              invoice = {
-                ...invoice,
-                ...updateSubmission.variables,
-              }
-            }
+            // if (updateSubmission) {
+            //   invoice = {
+            //     ...invoice,
+            //     ...updateSubmission.variables,
+            //   }
+            // }
 
             return (
               <div key={invoice.id}>
@@ -276,25 +280,25 @@ const invoicesRoute = new Route({
                 >
                   <pre className="text-sm">
                     #{invoice.id} - {invoice.title.slice(0, 10)}{' '}
-                    {updateSubmission ? (
+                    {/* {updateSubmission ? (
                       <Spinner />
-                    ) : (
-                      <MatchRoute
-                        to={invoiceRoute.to}
-                        params={{
-                          invoiceId: invoice.id,
-                        }}
-                        pending
-                      >
-                        {(match) => <Spinner show={!!match} wait="delay-50" />}
-                      </MatchRoute>
-                    )}
+                    ) : ( */}
+                    <MatchRoute
+                      to={invoiceRoute.to}
+                      params={{
+                        invoiceId: invoice.id,
+                      }}
+                      pending
+                    >
+                      {(match) => <Spinner show={!!match} wait="delay-50" />}
+                    </MatchRoute>
+                    {/* )} */}
                   </pre>
                 </Link>
               </div>
             )
           })}
-          {createSubmissions.map((action) => (
+          {/* {createSubmissions.map((action) => (
             <div key={action.submittedAt}>
               <a href="#" className="block py-2 px-3 text-blue-700">
                 <pre className="text-sm">
@@ -302,7 +306,7 @@ const invoicesRoute = new Route({
                 </pre>
               </a>
             </div>
-          ))}
+          ))} */}
         </div>
         <div className="flex-1 border-l border-gray-200">
           <Outlet />
@@ -316,9 +320,7 @@ const invoicesIndexRoute = new Route({
   getParentRoute: () => invoicesRoute,
   path: '/',
   component: () => {
-    const [{ latestSubmission }, submitCreateInvoice] = useAction({
-      key: 'createInvoice',
-    })
+    const createInvoiceMutation = useCreateInvoiceMutation()
 
     return (
       <>
@@ -328,11 +330,9 @@ const invoicesIndexRoute = new Route({
               event.preventDefault()
               event.stopPropagation()
               const formData = new FormData(event.target as HTMLFormElement)
-              submitCreateInvoice({
-                variables: {
-                  title: formData.get('title') as string,
-                  body: formData.get('body') as string,
-                },
+              createInvoiceMutation.mutate({
+                title: formData.get('title') as string,
+                body: formData.get('body') as string,
               })
             }}
             className="space-y-2"
@@ -347,11 +347,11 @@ const invoicesIndexRoute = new Route({
                 Create
               </button>
             </div>
-            {latestSubmission?.status === 'success' ? (
+            {createInvoiceMutation?.status === 'success' ? (
               <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Created!
               </div>
-            ) : latestSubmission?.status === 'error' ? (
+            ) : createInvoiceMutation?.status === 'error' ? (
               <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Failed to create.
               </div>
@@ -377,14 +377,17 @@ const invoiceRoute = new Route({
         notes: z.string().optional(),
       })
       .parse(search),
-  loader: async ({ params: { invoiceId } }) => fetchInvoiceById(invoiceId),
-  component: ({ useLoader, useSearch }) => {
+  load: (opts) =>
+    opts.context.queryClient.ensureQueryData(
+      invoiceQueryOptions(opts.params.invoiceId),
+    ),
+  component: ({ useSearch, useParams }) => {
+    const params = useParams()
     const search = useSearch()
     const navigate = useNavigate()
-    const invoice = useLoader()
-    const [{ latestSubmission }, submitUpdateInvoice] = useAction({
-      key: 'updateInvoice',
-    })
+    const invoiceQuery = useSuspenseQuery(invoiceQueryOptions(params.invoiceId))
+    const invoice = invoiceQuery.data
+    const updateInvoiceMutation = useUpdateInvoiceMutation()
     const [notes, setNotes] = React.useState(search.notes ?? '')
 
     React.useEffect(() => {
@@ -404,19 +407,17 @@ const invoiceRoute = new Route({
           event.preventDefault()
           event.stopPropagation()
           const formData = new FormData(event.target as HTMLFormElement)
-          submitUpdateInvoice({
-            variables: {
-              id: invoice.id,
-              title: formData.get('title') as string,
-              body: formData.get('body') as string,
-            },
+          updateInvoiceMutation.mutate({
+            id: invoice.id,
+            title: formData.get('title') as string,
+            body: formData.get('body') as string,
           })
         }}
         className="p-2 space-y-2"
       >
         <InvoiceFields
           invoice={invoice}
-          disabled={latestSubmission?.status === 'pending'}
+          disabled={updateInvoiceMutation?.status === 'pending'}
         />
         <div>
           <Link
@@ -452,18 +453,18 @@ const invoiceRoute = new Route({
         <div>
           <button
             className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-            disabled={latestSubmission?.status === 'pending'}
+            disabled={updateInvoiceMutation?.status === 'pending'}
           >
             Save
           </button>
         </div>
-        {latestSubmission?.variables.id === invoice.id ? (
-          <div key={latestSubmission?.submittedAt}>
-            {latestSubmission?.status === 'success' ? (
+        {updateInvoiceMutation?.variables?.id === invoice.id ? (
+          <div key={updateInvoiceMutation?.submittedAt}>
+            {updateInvoiceMutation?.status === 'success' ? (
               <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Saved!
               </div>
-            ) : latestSubmission?.status === 'error' ? (
+            ) : updateInvoiceMutation?.status === 'error' ? (
               <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
                 Failed to save.
               </div>
@@ -496,11 +497,12 @@ const usersRoute = new Route({
       },
     }),
   ],
-  loader: fetchUsers,
-  component: ({ useSearch, useLoader }) => {
+  load: (opts) => opts.context.queryClient.ensureQueryData(usersQueryOptions()),
+  component: ({ useSearch }) => {
     const navigate = useNavigate()
     const { usersView } = useSearch()
-    const users = useLoader()
+    const usersQuery = useSuspenseQuery(usersQueryOptions())
+    const users = usersQuery.data
     const sortBy = usersView?.sortBy ?? 'name'
     const filterBy = usersView?.filterBy
 
@@ -603,7 +605,7 @@ const usersRoute = new Route({
                       })}
                       pending
                     >
-                      <Spinner />
+                      {(match) => <Spinner show={!!match} wait="delay-50" />}
                     </MatchRoute>
                   </pre>
                 </Link>
@@ -654,12 +656,14 @@ const userRoute = new Route({
   validateSearch: z.object({
     userId: z.number(),
   }),
-  // Since our userId isn't part of our pathname, make sure we
-  // augment the userId as the key for this route
-  loaderContext: ({ search: { userId } }) => ({ userId }),
-  loader: async ({ context: { userId } }) => fetchUserById(userId),
-  component: ({ useLoader }) => {
-    const user = useLoader()
+  load: (opts) =>
+    opts.context.queryClient.ensureQueryData(
+      userQueryOptions(opts.search.userId),
+    ),
+  component: ({ useSearch }) => {
+    const search = useSearch()
+    const userQuery = useSuspenseQuery(userQueryOptions(search.userId))
+    const user = userQuery.data
 
     return (
       <>
@@ -684,7 +688,7 @@ const authRoute = new Route({
   id: 'auth',
   // Before loading, authenticate the user via our auth context
   // This will also happen during prefetching (e.g. hovering over links, etc)
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, location }) => {
     // If the user is logged out, redirect them to the login page
     if (context.auth.status === 'loggedOut') {
       throw redirect({
@@ -693,7 +697,7 @@ const authRoute = new Route({
           // Use the current location to power a redirect after login
           // (Do not use `router.state.resolvedLocation` as it can
           // potentially lag behind the actual current location)
-          redirect: router.state.location.href,
+          redirect: location.href,
         },
       })
     }
@@ -708,21 +712,13 @@ const authRoute = new Route({
 const profileRoute = new Route({
   getParentRoute: () => authRoute,
   path: 'profile',
-  // Before loading, authenticate the user via our auth context
-  // This will also happen during prefetching (e.g. hovering over links, etc)
-  loader: async ({ context }) => {
-    await new Promise((r) => setTimeout(r, 1000))
-    return `Hello ${context.auth.username}!`
-  },
-  component: ({ useLoader, useRouteContext }) => {
+  component: ({ useRouteContext }) => {
     const { username } = useRouteContext()
-    const message = useLoader()
 
     return (
       <div className="p-2 space-y-2">
-        <div>{message}</div>
         <div>
-          Your username is <strong>{username}</strong>
+          Username:<strong>{username}</strong>
         </div>
       </div>
     )
@@ -736,6 +732,7 @@ const loginRoute = new Route({
     redirect: z.string().optional(),
   }),
   component: ({ useRouteContext }) => {
+    const router = useRouter()
     const { auth } = useRouteContext()
     const search = useSearch({ from: loginRoute.id })
     const [username, setUsername] = React.useState('')
@@ -743,7 +740,7 @@ const loginRoute = new Route({
     const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
       auth.login(username)
-      router.invalidate()
+      router.load()
     }
 
     // Ah, the subtle nuances of client side auth. 🙄
@@ -791,14 +788,10 @@ const loginRoute = new Route({
 const layoutRoute = new Route({
   getParentRoute: () => rootRoute,
   id: 'layout',
-  loader: fetchRandomNumber,
-  component: ({ useLoader }) => {
-    const data = useLoader()
-
+  component: () => {
     return (
       <div>
         <div>Layout</div>
-        <div>Random #: {data}</div>
         <hr />
         <Outlet />
       </div>
@@ -843,6 +836,8 @@ const routeTree = rootRoute.addChildren([
   layoutRoute.addChildren([layoutARoute, layoutBRoute]),
 ])
 
+const queryClient = new QueryClient()
+
 const router = new Router({
   routeTree,
   defaultPendingComponent: () => (
@@ -852,16 +847,14 @@ const router = new Router({
   ),
   defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
   context: {
-    actionClient,
     auth: undefined!, // We'll inject this when we render
+    queryClient,
   },
 })
 
 router.subscribe('onLoad', () => {
-  actionClient.clearAll()
+  queryClient.getMutationCache().clear()
 })
-
-actionClient.options.context.router = router
 
 declare module '@tanstack/react-router' {
   interface Register {
@@ -937,7 +930,7 @@ function App() {
           />
         </div>
       </div>
-      <ActionClientProvider client={actionClient}>
+      <QueryClientProvider client={queryClient}>
         <RouterProvider
           router={router}
           defaultPreload="intent"
@@ -945,7 +938,7 @@ function App() {
             auth,
           }}
         />
-      </ActionClientProvider>
+      </QueryClientProvider>
     </>
   )
 }
@@ -995,7 +988,7 @@ function Spinner({ show, wait }: { show?: boolean; wait?: `delay-${number}` }) {
       className={`inline-block animate-spin px-3 transition ${
         show ?? true
           ? `opacity-1 duration-500 ${wait ?? 'delay-300'}`
-          : 'duration-1000 opacity-0 delay-0'
+          : 'duration-500 opacity-0 delay-0'
       }`}
     >
       ⍥
@@ -1019,5 +1012,9 @@ function useSessionStorage<T>(key: string, initialValue: T) {
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
-  root.render(<App />)
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  )
 }

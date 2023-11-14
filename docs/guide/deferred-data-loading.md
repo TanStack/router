@@ -17,7 +17,7 @@ import { defer } from '@tanstack/react-router'
 
 export const postIdRoute = new Route('post', {
   // ...
-  loader: () => {
+  load: () => {
     // Fetch some slower data, but do not await it
     const slowDataPromise = fetchSlowData()
 

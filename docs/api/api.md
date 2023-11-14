@@ -70,7 +70,7 @@ const myRoute = new Route({
     // TContext extends Record<string, any>
     Promise<TContext> | TContext
   // An async function to load or prepare any required prerequisites for the route.
-  loader: (match: {
+  load: (match: {
     // The abortController used internally by the router
     abortController: AbortController
     // A boolean indicating whether or not the route is being preloaded.

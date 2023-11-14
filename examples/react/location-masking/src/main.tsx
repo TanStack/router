@@ -181,7 +181,7 @@ const photosRoute = new Route({
 const photoRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'photos/$photoId',
-  loader: async ({ params: { photoId } }) => fetchPhoto(photoId),
+  load: async ({ params: { photoId } }) => fetchPhoto(photoId),
   errorComponent: ({ error }) => {
     return (
       <div className="p-4">
@@ -208,7 +208,7 @@ const photoRoute = new Route({
 const photoModalRoute = new Route({
   getParentRoute: () => photosRoute,
   path: '$photoId/modal',
-  loader: async ({ params: { photoId } }) => fetchPhoto(photoId),
+  load: async ({ params: { photoId } }) => fetchPhoto(photoId),
   errorComponent: ({ error }) => {
     const navigate = useNavigate()
 

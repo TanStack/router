@@ -160,7 +160,7 @@ const postsRoute = new Route({
   beforeLoad: () => ({
     test: true,
   }),
-  loader: async ({ context: { loaderClient } }) => {
+  load: async ({ context: { loaderClient } }) => {
     await loaderClient.load({ key: 'posts' })
   },
   component: () => {
@@ -221,7 +221,7 @@ const postRoute = new Route({
       loaderOptions,
     }
   },
-  loader: async ({ context: { loaderClient, loaderOptions }, preload }) => {
+  load: async ({ context: { loaderClient, loaderOptions }, preload }) => {
     await loaderClient.load({ ...loaderOptions, preload })
   },
   errorComponent: ({ error }) => {

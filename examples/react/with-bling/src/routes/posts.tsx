@@ -35,7 +35,7 @@ const fetchPosts = server$(async () => {
 export const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  loader: () => fetchPosts(),
+  load: () => fetchPosts(),
   gcMaxAge: 0,
   component: lazyRouteComponent(() =>
     import$({

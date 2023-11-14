@@ -55,7 +55,7 @@ export const usersRoute = new Route({
       key: 'users',
     }),
   }),
-  loader: async ({ context: { loaderClient, loaderOpts }, preload }) =>
+  load: async ({ context: { loaderClient, loaderOpts }, preload }) =>
     loaderClient.load({ ...loaderOpts, preload }),
   component: function Users({ useContext, useSearch }) {
     const navigate = useNavigate()

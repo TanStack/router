@@ -74,5 +74,6 @@ export function stringifySearchWith(
     return searchStr ? `?${searchStr}` : ''
   }
 }
+
 export type SearchSerializer = (searchObj: Record<string, any>) => string
 export type SearchParser = (searchStr: string) => Record<string, any>

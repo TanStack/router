@@ -78,7 +78,7 @@ const postsRoute = new Route({
   beforeLoad: () => {
     return { queryOptions: { queryKey: ['posts'], queryFn: fetchPosts } }
   },
-  loader: async ({ context: { queryClient, queryOptions } }) => {
+  load: async ({ context: { queryClient, queryOptions } }) => {
     await queryClient.ensureQueryData(queryOptions)
   },
   component: ({ useRouteContext }) => {
@@ -137,7 +137,7 @@ const postRoute = new Route({
 
     return { queryOptions }
   },
-  loader: async ({ context: { queryClient, queryOptions } }) => {
+  load: async ({ context: { queryClient, queryOptions } }) => {
     await queryClient.ensureQueryData(queryOptions)
   },
   component: ({ useRouteContext }) => {

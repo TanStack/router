@@ -1,27 +1,21 @@
+import {
+  HistoryLocation,
+  HistoryState,
+  RouterHistory,
+  createBrowserHistory,
+} from '@tanstack/history'
 import * as React from 'react'
-import { AnyPathParams, AnySearchSchema, Route } from './route'
+import invariant from 'tiny-invariant'
+import warning from 'tiny-warning'
+import { Matches } from './Matches'
 import {
-  RegisteredRouter,
-  DehydratedRouteMatch,
-  componentTypes,
-  BuildNextOptions,
-  RouterOptions,
-} from './router'
+  LinkInfo,
+  LinkOptions,
+  NavigateOptions,
+  ResolveRelativePath,
+  ToOptions,
+} from './link'
 import { ParsedLocation } from './location'
-import { AnyRouteMatch } from './RouteMatch'
-import { RouteMatch } from './RouteMatch'
-import { isRedirect } from './redirects'
-import {
-  functionalUpdate,
-  replaceEqualDeep,
-  useStableCallback,
-  last,
-  pick,
-  partialDeepEqual,
-  NoInfer,
-  PickAsRequired,
-} from './utils'
-import { RouterProps, Matches } from './react'
 import {
   cleanPath,
   interpolatePath,
@@ -32,33 +26,42 @@ import {
   trimPath,
   trimPathRight,
 } from './path'
-import invariant from 'tiny-invariant'
+import { isRedirect } from './redirects'
+import { AnyPathParams, AnyRoute, AnySearchSchema, Route } from './route'
 import {
   FullSearchSchema,
+  ParseRoute,
   RouteById,
+  RouteIds,
   RoutePaths,
   RoutesById,
   RoutesByPath,
 } from './routeInfo'
 import {
-  LinkInfo,
-  LinkOptions,
-  NavigateOptions,
-  ResolveRelativePath,
-  ToOptions,
-} from './link'
+  BuildNextOptions,
+  DehydratedRouteMatch,
+  RegisteredRouter,
+  Router,
+  RouterOptions,
+  RouterState,
+  componentTypes,
+} from './router'
 import {
-  HistoryLocation,
-  HistoryState,
-  RouterHistory,
-  createBrowserHistory,
-} from '.'
-import { AnyRoute } from './route'
-import { RouterState } from './router'
+  NoInfer,
+  PickAsRequired,
+  functionalUpdate,
+  last,
+  partialDeepEqual,
+  pick,
+  replaceEqualDeep,
+  useStableCallback,
+} from './utils'
+import { MatchRouteOptions } from './Matches'
 
 export interface CommitLocationOptions {
   replace?: boolean
   resetScroll?: boolean
+  startTransition?: boolean
 }
 
 export interface MatchLocation {
@@ -66,13 +69,6 @@ export interface MatchLocation {
   fuzzy?: boolean
   caseSensitive?: boolean
   from?: string
-}
-
-export interface MatchRouteOptions {
-  pending?: boolean
-  caseSensitive?: boolean
-  includeSearch?: boolean
-  fuzzy?: boolean
 }
 
 type LinkCurrentTargetElement = {
@@ -83,7 +79,6 @@ export type BuildLinkFn<TRouteTree extends AnyRoute> = <
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
 >(
-  state: RouterState,
   dest: LinkOptions<TRouteTree, TFrom, TTo>,
 ) => LinkInfo
 
@@ -104,7 +99,6 @@ export type MatchRouteFn<TRouteTree extends AnyRoute> = <
   TTo extends string = '',
   TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
 >(
-  state: RouterState<TRouteTree>,
   location: ToOptions<TRouteTree, TFrom, TTo>,
   opts?: MatchRouteOptions,
 ) => false | RouteById<TRouteTree, TResolved>['types']['allParams']
@@ -115,7 +109,9 @@ export type LoadFn = (opts?: {
   __dehydratedMatches?: DehydratedRouteMatch[]
 }) => Promise<void>
 
-const preloadWarning = 'Error preloading route! ☝️'
+export type BuildLocationFn<TRouteTree extends AnyRoute> = (
+  opts: BuildNextOptions,
+) => ParsedLocation
 
 export type RouterContext<
   TRouteTree extends AnyRoute,
@@ -130,6 +126,7 @@ export type RouterContext<
   options: RouterOptions<TRouteTree>
   history: RouterHistory
   load: LoadFn
+  buildLocation: BuildLocationFn<TRouteTree>
 }
 
 export const routerContext = React.createContext<RouterContext<any>>(null!)
@@ -138,13 +135,22 @@ if (typeof document !== 'undefined') {
   window.__TSR_ROUTER_CONTEXT__ = routerContext as any
 }
 
+const preloadWarning = 'Error preloading route! ☝️'
+
+function isCtrlEvent(e: MouseEvent) {
+  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+}
+
+export class SearchParamError extends Error {}
+
+export class PathParamError extends Error {}
+
 export function getInitialRouterState(
   location: ParsedLocation,
 ): RouterState<any> {
   return {
     status: 'idle',
-    isFetching: false,
-    resolvedLocation: location!,
+    resolvedLocation: undefined,
     location: location!,
     matches: [],
     pendingMatches: [],
@@ -239,9 +245,27 @@ export function RouterProvider<
     },
   )
 
-  const [state, setState] = React.useState<RouterState<TRouteTree>>(() =>
+  const [preState, setState] = React.useState<RouterState<TRouteTree>>(() =>
     getInitialRouterState(parseLocation()),
   )
+  const [isTransitioning, startReactTransition] = React.useTransition()
+
+  const state = React.useMemo<RouterState<TRouteTree>>(
+    () => ({
+      ...preState,
+      status: isTransitioning ? 'pending' : 'idle',
+    }),
+    [preState, isTransitioning],
+  )
+
+  React.useLayoutEffect(() => {
+    if (!isTransitioning && state.resolvedLocation !== state.location) {
+      setState((s) => ({
+        ...s,
+        resolvedLocation: s.location,
+      }))
+    }
+  })
 
   const basepath = `/${trimPath(options.basepath ?? '') ?? ''}`
 
@@ -528,10 +552,8 @@ export function RouterProvider<
     },
   )
 
-  const buildLocation = useStableCallback(
-    <TRouteTree extends AnyRoute>(
-      opts: BuildNextOptions = {},
-    ): ParsedLocation => {
+  const buildLocation = useStableCallback<BuildLocationFn<TRouteTree>>(
+    (opts) => {
       const build = (
         dest: BuildNextOptions & {
           unmaskOnReload?: boolean
@@ -704,7 +726,10 @@ export function RouterProvider<
   )
 
   const commitLocation = useStableCallback(
-    async (next: ParsedLocation & CommitLocationOptions) => {
+    async ({
+      startTransition,
+      ...next
+    }: ParsedLocation & CommitLocationOptions) => {
       if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current)
 
       const isSameUrl = latestLocationRef.current.href === next.href
@@ -738,10 +763,18 @@ export function RouterProvider<
           }
         }
 
-        history[next.replace ? 'replace' : 'push'](
-          nextHistory.href,
-          nextHistory.state,
-        )
+        const apply = () => {
+          history[next.replace ? 'replace' : 'push'](
+            nextHistory.href,
+            nextHistory.state,
+          )
+        }
+
+        if (startTransition ?? true) {
+          startReactTransition(apply)
+        } else {
+          apply()
+        }
       }
 
       resetNextScrollRef.current = next.resetScroll ?? true
@@ -754,11 +787,13 @@ export function RouterProvider<
     ({
       replace,
       resetScroll,
+      startTransition,
       ...rest
     }: BuildNextOptions & CommitLocationOptions = {}) => {
       const location = buildLocation(rest)
       return commitLocation({
         ...location,
+        startTransition,
         replace,
         resetScroll,
       })
@@ -858,7 +893,9 @@ export function RouterProvider<
                 preload: !!preload,
                 context: parentContext,
                 location: state.location, // TODO: This might need to be latestLocationRef.current...?
-                navigate: (opts) => navigate({ ...opts, from: match.pathname }),
+                navigate: (opts) =>
+                  navigate({ ...opts, from: match.pathname } as any),
+                buildLocation,
               })) ?? ({} as any)
 
             const context = {
@@ -931,7 +968,10 @@ export function RouterProvider<
                     navigate({ ...opts, from: match.pathname }),
                 })
 
-                await Promise.all([componentsPromise, loaderPromise])
+                const [_, loaderContext] = await Promise.all([
+                  componentsPromise,
+                  loaderPromise,
+                ])
                 if ((latestPromise = checkLatest())) return await latestPromise
 
                 matches[index] = match = {
@@ -1000,7 +1040,7 @@ export function RouterProvider<
   const load = useStableCallback<LoadFn>(async () => {
     const promise = new Promise<void>(async (resolve, reject) => {
       const next = latestLocationRef.current
-      const prevLocation = state.resolvedLocation
+      const prevLocation = state.resolvedLocation || state.location
       const pathDidChange = !!(next && prevLocation!.href !== next.href)
       let latestPromise: Promise<void> | undefined | null
 
@@ -1014,12 +1054,6 @@ export function RouterProvider<
         pathChanged: pathDidChange,
       })
 
-      // Ingest the new location
-      setState((s) => ({
-        ...s,
-        location: next,
-      }))
-
       // Match the routes
       let matches: RouteMatch<any, any>[] = matchRoutes(
         next.pathname,
@@ -1029,9 +1063,9 @@ export function RouterProvider<
         },
       )
 
+      // Ingest the new matches
       setState((s) => ({
         ...s,
-        status: 'pending',
         matches,
       }))
 
@@ -1063,11 +1097,11 @@ export function RouterProvider<
         //   state.pendingMatches.includes(id),
         // )
 
-        setState((s) => ({
-          ...s,
-          status: 'idle',
-          resolvedLocation: s.location,
-        }))
+        // setState((s) => ({
+        //   ...s,
+        //   status: 'idle',
+        //   resolvedLocation: s.location,
+        // }))
 
         // TODO:
         // ;(
@@ -1123,134 +1157,132 @@ export function RouterProvider<
     },
   )
 
-  const buildLink = useStableCallback<BuildLinkFn<TRouteTree>>(
-    (state, dest) => {
-      // If this link simply reloads the current route,
-      // make sure it has a new key so it will trigger a data refresh
+  const buildLink = useStableCallback<BuildLinkFn<TRouteTree>>((dest) => {
+    // If this link simply reloads the current route,
+    // make sure it has a new key so it will trigger a data refresh
 
-      // If this `to` is a valid external URL, return
-      // null for LinkUtils
+    // If this `to` is a valid external URL, return
+    // null for LinkUtils
 
-      const {
-        to,
-        preload: userPreload,
-        preloadDelay: userPreloadDelay,
-        activeOptions,
-        disabled,
-        target,
-        replace,
-        resetScroll,
-      } = dest
+    const {
+      to,
+      preload: userPreload,
+      preloadDelay: userPreloadDelay,
+      activeOptions,
+      disabled,
+      target,
+      replace,
+      resetScroll,
+      startTransition,
+    } = dest
 
-      try {
-        new URL(`${to}`)
-        return {
-          type: 'external',
-          href: to as any,
-        }
-      } catch (e) {}
+    try {
+      new URL(`${to}`)
+      return {
+        type: 'external',
+        href: to as any,
+      }
+    } catch (e) {}
 
-      const nextOpts = dest
+    const nextOpts = dest
+    const next = buildLocation(nextOpts as any)
 
-      const next = buildLocation(nextOpts as any)
+    const preload = userPreload ?? options.defaultPreload
+    const preloadDelay = userPreloadDelay ?? options.defaultPreloadDelay ?? 0
 
-      const preload = userPreload ?? options.defaultPreload
-      const preloadDelay = userPreloadDelay ?? options.defaultPreloadDelay ?? 0
-
-      // Compare path/hash for matches
-      const currentPathSplit = latestLocationRef.current.pathname.split('/')
-      const nextPathSplit = next.pathname.split('/')
-      const pathIsFuzzyEqual = nextPathSplit.every(
-        (d, i) => d === currentPathSplit[i],
-      )
-      // Combine the matches based on user options
-      const pathTest = activeOptions?.exact
-        ? latestLocationRef.current.pathname === next.pathname
-        : pathIsFuzzyEqual
-      const hashTest = activeOptions?.includeHash
-        ? latestLocationRef.current.hash === next.hash
+    // Compare path/hash for matches
+    const currentPathSplit = latestLocationRef.current.pathname.split('/')
+    const nextPathSplit = next.pathname.split('/')
+    const pathIsFuzzyEqual = nextPathSplit.every(
+      (d, i) => d === currentPathSplit[i],
+    )
+    // Combine the matches based on user options
+    const pathTest = activeOptions?.exact
+      ? latestLocationRef.current.pathname === next.pathname
+      : pathIsFuzzyEqual
+    const hashTest = activeOptions?.includeHash
+      ? latestLocationRef.current.hash === next.hash
+      : true
+    const searchTest =
+      activeOptions?.includeSearch ?? true
+        ? partialDeepEqual(latestLocationRef.current.search, next.search)
         : true
-      const searchTest =
-        activeOptions?.includeSearch ?? true
-          ? partialDeepEqual(latestLocationRef.current.search, next.search)
-          : true
 
-      // The final "active" test
-      const isActive = pathTest && hashTest && searchTest
+    // The final "active" test
+    const isActive = pathTest && hashTest && searchTest
 
-      // The click handler
-      const handleClick = (e: MouseEvent) => {
-        if (
-          !disabled &&
-          !isCtrlEvent(e) &&
-          !e.defaultPrevented &&
-          (!target || target === '_self') &&
-          e.button === 0
-        ) {
-          e.preventDefault()
+    // The click handler
+    const handleClick = (e: MouseEvent) => {
+      if (
+        !disabled &&
+        !isCtrlEvent(e) &&
+        !e.defaultPrevented &&
+        (!target || target === '_self') &&
+        e.button === 0
+      ) {
+        e.preventDefault()
 
-          // All is well? Navigate!
-          commitLocation({ ...next, replace, resetScroll })
-        }
+        // All is well? Navigate!
+        commitLocation({ ...next, replace, resetScroll, startTransition })
       }
+    }
 
-      // The click handler
-      const handleFocus = (e: MouseEvent) => {
-        if (preload) {
-          preloadRoute(nextOpts as any).catch((err) => {
-            console.warn(err)
-            console.warn(preloadWarning)
-          })
-        }
-      }
-
-      const handleTouchStart = (e: TouchEvent) => {
+    // The click handler
+    const handleFocus = (e: MouseEvent) => {
+      if (preload) {
         preloadRoute(nextOpts as any).catch((err) => {
           console.warn(err)
           console.warn(preloadWarning)
         })
       }
+    }
 
-      const handleEnter = (e: MouseEvent) => {
-        const target = (e.target || {}) as LinkCurrentTargetElement
+    const handleTouchStart = (e: TouchEvent) => {
+      preloadRoute(nextOpts as any).catch((err) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
+    }
 
-        if (preload) {
-          if (target.preloadTimeout) {
-            return
-          }
+    const handleEnter = (e: MouseEvent) => {
+      const target = (e.target || {}) as LinkCurrentTargetElement
 
-          target.preloadTimeout = setTimeout(() => {
-            target.preloadTimeout = null
-            preloadRoute(nextOpts as any).catch((err) => {
-              console.warn(err)
-              console.warn(preloadWarning)
-            })
-          }, preloadDelay)
-        }
-      }
-
-      const handleLeave = (e: MouseEvent) => {
-        const target = (e.target || {}) as LinkCurrentTargetElement
-
+      if (preload) {
         if (target.preloadTimeout) {
-          clearTimeout(target.preloadTimeout)
-          target.preloadTimeout = null
+          return
         }
-      }
 
-      return {
-        type: 'internal',
-        next,
-        handleFocus,
-        handleClick,
-        handleEnter,
-        handleLeave,
-        handleTouchStart,
-        isActive,
-        disabled,
+        target.preloadTimeout = setTimeout(() => {
+          target.preloadTimeout = null
+          preloadRoute(nextOpts as any).catch((err) => {
+            console.warn(err)
+            console.warn(preloadWarning)
+          })
+        }, preloadDelay)
       }
-    },
-  )
+    }
+
+    const handleLeave = (e: MouseEvent) => {
+      const target = (e.target || {}) as LinkCurrentTargetElement
+
+      if (target.preloadTimeout) {
+        clearTimeout(target.preloadTimeout)
+        target.preloadTimeout = null
+      }
+    }
+
+    return {
+      type: 'internal',
+      next,
+      handleFocus,
+      handleClick,
+      handleEnter,
+      handleLeave,
+      handleTouchStart,
+      isActive,
+      disabled,
+    }
+  })
 
   const latestLocationRef = React.useRef(state.location)
 
@@ -1258,15 +1290,17 @@ export function RouterProvider<
     const unsub = history.subscribe(() => {
       latestLocationRef.current = parseLocation(latestLocationRef.current)
 
-      React.startTransition(() => {
-        if (state.location !== latestLocationRef.current) {
-          try {
-            load()
-          } catch (err) {
-            console.error(err)
-          }
+      setState((s) => ({
+        ...s,
+        status: 'pending',
+      }))
+      if (state.location !== latestLocationRef.current) {
+        try {
+          load()
+        } catch (err) {
+          console.error(err)
         }
-      })
+      }
     })
 
     const nextLocation = buildLocation({
@@ -1289,54 +1323,58 @@ export function RouterProvider<
 
   if (initialLoad.current) {
     initialLoad.current = false
-    try {
-      load()
-    } catch (err) {
-      console.error(err)
-    }
+    startReactTransition(() => {
+      try {
+        load()
+      } catch (err) {
+        console.error(err)
+      }
+    })
   }
 
-  const isFetching = React.useMemo(
-    () => [...state.matches, ...state.pendingMatches].some((d) => d.isFetching),
-    [state.matches, state.pendingMatches],
+  const matchRoute = useStableCallback<MatchRouteFn<TRouteTree>>(
+    (location, opts) => {
+      location = {
+        ...location,
+        to: location.to
+          ? resolvePathWithBase((location.from || '') as string, location.to)
+          : undefined,
+      } as any
+
+      const next = buildLocation(location as any)
+
+      if (opts?.pending && state.status !== 'pending') {
+        return false
+      }
+
+      const baseLocation = opts?.pending
+        ? latestLocationRef.current
+        : state.resolvedLocation
+
+      // const baseLocation = state.resolvedLocation
+
+      if (!baseLocation) {
+        return false
+      }
+
+      const match = matchPathname(basepath, baseLocation.pathname, {
+        ...opts,
+        to: next.pathname,
+      }) as any
+
+      if (!match) {
+        return false
+      }
+
+      if (match && (opts?.includeSearch ?? true)) {
+        return partialDeepEqual(baseLocation.search, next.search)
+          ? match
+          : false
+      }
+
+      return match
+    },
   )
-
-  const matchRoute = useStableCallback((state, location, opts) => {
-    location = {
-      ...location,
-      to: location.to
-        ? resolvePathWithBase((location.from || '') as string, location.to)
-        : undefined,
-    } as any
-
-    const next = buildLocation(location as any)
-    if (opts?.pending && state.status !== 'pending') {
-      return false
-    }
-
-    const baseLocation = opts?.pending
-      ? latestLocationRef.current
-      : state.resolvedLocation
-
-    if (!baseLocation) {
-      return false
-    }
-
-    const match = matchPathname(basepath, baseLocation.pathname, {
-      ...opts,
-      to: next.pathname,
-    }) as any
-
-    if (!match) {
-      return false
-    }
-
-    if (opts?.includeSearch ?? true) {
-      return partialDeepEqual(baseLocation.search, next.search) ? match : false
-    }
-
-    return match
-  })
 
   const routerContextValue: RouterContext<TRouteTree> = {
     routeTree: router.routeTree,
@@ -1348,6 +1386,7 @@ export function RouterProvider<
     options,
     history,
     load,
+    buildLocation,
   }
 
   return (
@@ -1357,35 +1396,62 @@ export function RouterProvider<
   )
 }
 
-function mergeMatches<TRouteTree extends AnyRoute>(
-  prevMatchesById: Record<string, RouteMatch<TRouteTree>>,
-  nextMatches: AnyRouteMatch[],
-): Record<string, RouteMatch<TRouteTree>> {
-  let matchesById = { ...prevMatchesById }
-
-  nextMatches.forEach((match) => {
-    if (!matchesById[match.id]) {
-      matchesById[match.id] = match
-    }
-
-    matchesById[match.id] = {
-      ...matchesById[match.id],
-      ...match,
-    }
-  })
-
-  return matchesById
-}
-
-function isCtrlEvent(e: MouseEvent) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
-}
-export class SearchParamError extends Error {}
-export class PathParamError extends Error {}
-
 export function getRouteMatch<TRouteTree extends AnyRoute>(
   state: RouterState<TRouteTree>,
   id: string,
 ): undefined | RouteMatch<TRouteTree> {
   return [...state.pendingMatches, ...state.matches].find((d) => d.id === id)
 }
+
+export function useRouterState<
+  TSelected = RouterState<RegisteredRouter['routeTree']>,
+>(opts?: {
+  select: (state: RouterState<RegisteredRouter['routeTree']>) => TSelected
+}): TSelected {
+  const { state } = useRouter()
+  // return useStore(router.__store, opts?.select as any)
+  return opts?.select ? opts.select(state) : (state as any)
+}
+
+export type RouterProps<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TDehydrated extends Record<string, any> = Record<string, any>,
+> = Omit<RouterOptions<TRouteTree, TDehydrated>, 'context'> & {
+  router: Router<TRouteTree>
+  context?: Partial<RouterOptions<TRouteTree, TDehydrated>['context']>
+}
+
+export function useRouter<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+>(): RouterContext<TRouteTree> {
+  const resolvedContext = window.__TSR_ROUTER_CONTEXT__ || routerContext
+  const value = React.useContext(resolvedContext)
+  warning(value, 'useRouter must be used inside a <RouterProvider> component!')
+  return value as any
+}
+export interface RouteMatch<
+  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
+> {
+  id: string
+  routeId: TRouteId
+  pathname: string
+  params: RouteById<TRouteTree, TRouteId>['types']['allParams']
+  status: 'pending' | 'success' | 'error'
+  isFetching: boolean
+  invalid: boolean
+  error: unknown
+  paramsError: unknown
+  searchError: unknown
+  updatedAt: number
+  loadPromise?: Promise<void>
+  __resolveLoadPromise?: () => void
+  context: RouteById<TRouteTree, TRouteId>['types']['allContext']
+  routeSearch: RouteById<TRouteTree, TRouteId>['types']['searchSchema']
+  search: FullSearchSchema<TRouteTree> &
+    RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema']
+  fetchedAt: number
+  abortController: AbortController
+}
+
+export type AnyRouteMatch = RouteMatch<any>

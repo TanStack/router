@@ -18,7 +18,7 @@ export const invoicesLoader = new Loader({
 export const invoicesRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'invoices',
-  loader: async ({ context: { loaderClient } }) => {
+  load: async ({ context: { loaderClient } }) => {
     await loaderClient.load({ key: 'invoices' })
   },
   component: function Invoices({ useLoader }) {

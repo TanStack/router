@@ -32,7 +32,7 @@ export const fetchPost = async (postId: string) => {
 // 'posts/$postId' is automatically inserted and managed
 // by the `tsr generate/watch` CLI command
 export const route = new FileRoute('/posts/$postId').createRoute({
-  loader: async ({ params: { postId } }) => fetchPost(postId),
+  load: async ({ params: { postId } }) => fetchPost(postId),
   errorComponent: PostErrorComponent as any,
   component: PostComponent,
 })
