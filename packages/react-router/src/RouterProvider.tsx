@@ -892,7 +892,7 @@ export function RouterProvider<
                 params: match.params,
                 preload: !!preload,
                 context: parentContext,
-                location: state.location, // TODO: This might need to be latestLocationRef.current...?
+                location: state.location,
                 navigate: (opts) =>
                   navigate({ ...opts, from: match.pathname } as any),
                 buildLocation,
