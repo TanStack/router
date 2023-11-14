@@ -14,11 +14,11 @@
     "@tanstack/loaders": "0.0.1-beta.203",
     "@tanstack/react-actions": "0.0.1-beta.203",
     "@tanstack/react-loaders": "0.0.1-beta.203",
-    "@tanstack/react-router": "0.0.1-beta.209",
+    "@tanstack/react-router": "0.0.1-beta.210",
     "@tanstack/react-start": "0.0.1-beta.203",
     "@tanstack/react-store": "^0.0.1",
-    "@tanstack/router-cli": "0.0.1-beta.209",
-    "@tanstack/router-devtools": "0.0.1-beta.209",
+    "@tanstack/router-cli": "0.0.1-beta.210",
+    "@tanstack/router-devtools": "0.0.1-beta.210",
     "@tanstack/store": "^0.0.1",
     "@vitejs/plugin-react": "^1.1.3",
     "axios": "^1.1.3",
@@ -28,7 +28,7 @@
     "react": "^18.2.0",
     "vite": "^2.8.6",
     "zod": "^3.19.1",
-    "@tanstack/history": "0.0.1-beta.209",
+    "@tanstack/history": "0.0.1-beta.210",
     "@tanstack/react-search-state": "0.0.1-beta.203"
   },
   "devDependencies": {
