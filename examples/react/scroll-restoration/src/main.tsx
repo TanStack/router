@@ -14,9 +14,9 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 const rootRoute = new RootRoute({
   component: () => {
-    const {
-      state: { location, resolvedLocation },
-    } = useRouter()
+    // const {
+    //   state: { location, resolvedLocation },
+    // } = useRouter()
     return (
       <>
         <div className="p-2 flex gap-2 sticky top-0 bg-white border-b">

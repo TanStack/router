@@ -3,10 +3,8 @@ import * as React from 'react'
 const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
-import { AnyRouter, RouterState } from './router'
 import { ParsedLocation } from './location'
 import { useRouter } from './RouterProvider'
-import { Updater } from '../build/types'
 import { NonNullableUpdater, functionalUpdate } from './utils'
 
 const windowKey = 'window'
@@ -140,10 +138,6 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
         }
       }
     })
-
-    // const unsubOnLoad = subscribe('onLoad', (event) => {
-    //   if (event.pathChanged) pathDidChange = true
-    // })
 
     const unsubOnResolved = subscribe('onResolved', (event) => {
       if (event.pathChanged) {
