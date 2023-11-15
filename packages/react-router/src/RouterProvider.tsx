@@ -127,6 +127,8 @@ export type RouterContext<
   history: RouterHistory
   load: LoadFn
   buildLocation: BuildLocationFn<TRouteTree>
+  subscribe: Router<TRouteTree>['subscribe']
+  resetNextScrollRef: React.MutableRefObject<boolean>
 }
 
 export const routerContext = React.createContext<RouterContext<any>>(null!)
@@ -150,8 +152,8 @@ export function getInitialRouterState(
 ): RouterState<any> {
   return {
     status: 'idle',
-    resolvedLocation: undefined,
-    location: location!,
+    resolvedLocation: location,
+    location,
     matches: [],
     pendingMatches: [],
     lastUpdated: Date.now(),
@@ -181,10 +183,8 @@ export function RouterProvider<
   const tempLocationKeyRef = React.useRef<string | undefined>(
     `${Math.round(Math.random() * 10000000)}`,
   )
-  const resetNextScrollRef = React.useRef<boolean>(false)
-
+  const resetNextScrollRef = React.useRef<boolean>(true)
   const navigateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
-
   const latestLoadPromiseRef = React.useRef<Promise<void>>(Promise.resolve())
 
   const checkLatest = (promise: Promise<void>): undefined | Promise<void> => {
@@ -245,8 +245,9 @@ export function RouterProvider<
     },
   )
 
+  const latestLocationRef = React.useRef<ParsedLocation>(parseLocation())
   const [preState, setState] = React.useState<RouterState<TRouteTree>>(() =>
-    getInitialRouterState(parseLocation()),
+    getInitialRouterState(latestLocationRef.current),
   )
   const [isTransitioning, startReactTransition] = React.useTransition()
 
@@ -254,12 +255,19 @@ export function RouterProvider<
     () => ({
       ...preState,
       status: isTransitioning ? 'pending' : 'idle',
+      location: isTransitioning ? latestLocationRef.current : preState.location,
     }),
     [preState, isTransitioning],
   )
 
   React.useLayoutEffect(() => {
     if (!isTransitioning && state.resolvedLocation !== state.location) {
+      router.emit({
+        type: 'onResolved',
+        fromLocation: state.resolvedLocation,
+        toLocation: state.location,
+        pathChanged: state.location!.href !== state.resolvedLocation?.href,
+      })
       setState((s) => ({
         ...s,
         resolvedLocation: s.location,
@@ -1040,8 +1048,8 @@ export function RouterProvider<
   const load = useStableCallback<LoadFn>(async () => {
     const promise = new Promise<void>(async (resolve, reject) => {
       const next = latestLocationRef.current
-      const prevLocation = state.resolvedLocation || state.location
-      const pathDidChange = !!(next && prevLocation!.href !== next.href)
+      const prevLocation = state.resolvedLocation
+      const pathDidChange = prevLocation!.href !== next.href
       let latestPromise: Promise<void> | undefined | null
 
       // Cancel any pending matches
@@ -1049,8 +1057,8 @@ export function RouterProvider<
 
       router.emit({
         type: 'onBeforeLoad',
-        from: prevLocation,
-        to: next ?? state.location,
+        fromLocation: prevLocation,
+        toLocation: next,
         pathChanged: pathDidChange,
       })
 
@@ -1063,9 +1071,13 @@ export function RouterProvider<
         },
       )
 
+      const previousMatches = state.matches
+
       // Ingest the new matches
       setState((s) => ({
         ...s,
+        status: 'pending',
+        location: next,
         matches,
       }))
 
@@ -1086,16 +1098,15 @@ export function RouterProvider<
           return latestPromise
         }
 
-        // TODO:
-        // const exitingMatchIds = previousMatches.filter(
-        //   (id) => !state.pendingMatches.includes(id),
-        // )
-        // const enteringMatchIds = state.pendingMatches.filter(
-        //   (id) => !previousMatches.includes(id),
-        // )
-        // const stayingMatchIds = previousMatches.filter((id) =>
-        //   state.pendingMatches.includes(id),
-        // )
+        const exitingMatchIds = previousMatches.filter(
+          (id) => !state.pendingMatches.includes(id),
+        )
+        const enteringMatchIds = state.pendingMatches.filter(
+          (id) => !previousMatches.includes(id),
+        )
+        const stayingMatchIds = previousMatches.filter((id) =>
+          state.pendingMatches.includes(id),
+        )
 
         // setState((s) => ({
         //   ...s,
@@ -1103,23 +1114,23 @@ export function RouterProvider<
         //   resolvedLocation: s.location,
         // }))
 
-        // TODO:
-        // ;(
-        //   [
-        //     [exitingMatchIds, 'onLeave'],
-        //     [enteringMatchIds, 'onEnter'],
-        //     [stayingMatchIds, 'onTransition'],
-        //   ] as const
-        // ).forEach(([matches, hook]) => {
-        //   matches.forEach((match) => {
-        //     const route = this.getRoute(match.routeId)
-        //     route.options[hook]?.(match)
-        //   })
-        // })
+        //
+        ;(
+          [
+            [exitingMatchIds, 'onLeave'],
+            [enteringMatchIds, 'onEnter'],
+            [stayingMatchIds, 'onTransition'],
+          ] as const
+        ).forEach(([matches, hook]) => {
+          matches.forEach((match) => {
+            looseRoutesById[match.routeId]!.options[hook]?.(match)
+          })
+        })
+
         router.emit({
           type: 'onLoad',
-          from: prevLocation,
-          to: next,
+          fromLocation: prevLocation,
+          toLocation: next,
           pathChanged: pathDidChange,
         })
 
@@ -1284,22 +1295,18 @@ export function RouterProvider<
     }
   })
 
-  const latestLocationRef = React.useRef(state.location)
-
   React.useLayoutEffect(() => {
     const unsub = history.subscribe(() => {
       latestLocationRef.current = parseLocation(latestLocationRef.current)
 
-      setState((s) => ({
-        ...s,
-        status: 'pending',
-      }))
       if (state.location !== latestLocationRef.current) {
-        try {
-          load()
-        } catch (err) {
-          console.error(err)
-        }
+        startReactTransition(() => {
+          try {
+            load()
+          } catch (err) {
+            console.error(err)
+          }
+        })
       }
     })
 
@@ -1387,6 +1394,8 @@ export function RouterProvider<
     history,
     load,
     buildLocation,
+    subscribe: router.subscribe,
+    resetNextScrollRef,
   }
 
   return (

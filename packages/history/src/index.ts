@@ -156,8 +156,10 @@ function assignKey(state: HistoryState) {
   if (!state) {
     state = {} as HistoryState
   }
-  state.key = createRandomKey()
-  return state
+  return {
+    ...state,
+    key: createRandomKey(),
+  }
 }
 
 /**

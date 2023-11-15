@@ -97,7 +97,7 @@ export interface RouterState<TRouteTree extends AnyRoute = AnyRoute> {
   matches: RouteMatch<TRouteTree>[]
   pendingMatches: RouteMatch<TRouteTree>[]
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
-  resolvedLocation: undefined | ParsedLocation<FullSearchSchema<TRouteTree>>
+  resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
   lastUpdated: number
 }
 
@@ -148,14 +148,20 @@ export const componentTypes = [
 export type RouterEvents = {
   onBeforeLoad: {
     type: 'onBeforeLoad'
-    from: undefined | ParsedLocation
-    to: ParsedLocation
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
     pathChanged: boolean
   }
   onLoad: {
     type: 'onLoad'
-    from: undefined | ParsedLocation
-    to: ParsedLocation
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+  }
+  onResolved: {
+    type: 'onResolved'
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
     pathChanged: boolean
   }
 }

@@ -385,6 +385,7 @@ export function useLinkProps<
     preloadDelay,
     replace,
     startTransition,
+    resetScroll,
     // element props
     style,
     className,

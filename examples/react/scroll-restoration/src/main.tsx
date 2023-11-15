@@ -8,31 +8,40 @@ import {
   Route,
   RootRoute,
   ScrollRestoration,
+  useRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 const rootRoute = new RootRoute({
-  component: () => (
-    <>
-      <div className="p-2 flex gap-2 sticky top-0 bg-white border-b">
-        <Link to="/" className="[&.active]:font-bold">
-          Home
-        </Link>{' '}
-        <Link to="/about" className="[&.active]:font-bold">
-          About
-        </Link>
-        <Link to="/about" className="[&.active]:font-bold" resetScroll={false}>
-          About (No Reset)
-        </Link>
-        <Link to="/by-element" className="[&.active]:font-bold">
-          By-Element
-        </Link>
-      </div>
-      <Outlet />
-      <ScrollRestoration />
-      <TanStackRouterDevtools />
-    </>
-  ),
+  component: () => {
+    const {
+      state: { location, resolvedLocation },
+    } = useRouter()
+    return (
+      <>
+        <div className="p-2 flex gap-2 sticky top-0 bg-white border-b">
+          <Link to="/" className="[&.active]:font-bold">
+            Home
+          </Link>{' '}
+          <Link to="/about" className="[&.active]:font-bold">
+            About
+          </Link>
+          <Link to="/about" resetScroll={false}>
+            About (No Reset)
+          </Link>
+          <Link to="/by-element" className="[&.active]:font-bold">
+            By-Element
+          </Link>
+        </div>
+        {/* <pre className="text-[.5rem]">
+          <code>{JSON.stringify({ resolvedLocation, location }, null, 2)}</code>
+        </pre> */}
+        <Outlet />
+        <ScrollRestoration />
+        <TanStackRouterDevtools />
+      </>
+    )
+  },
 })
 
 const indexRoute = new Route({

@@ -1,205 +1,198 @@
-// import * as React from 'react'
-// import { useRouter } from './react'
+import * as React from 'react'
 
-// const useLayoutEffect =
-//   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
+const useLayoutEffect =
+  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
-// import { AnyRouter, RouterState } from './router'
-// import { ParsedLocation } from './location'
+import { AnyRouter, RouterState } from './router'
+import { ParsedLocation } from './location'
+import { useRouter } from './RouterProvider'
+import { Updater } from '../build/types'
+import { NonNullableUpdater, functionalUpdate } from './utils'
 
-// const windowKey = 'window'
-// const delimiter = '___'
+const windowKey = 'window'
+const delimiter = '___'
 
-// let weakScrolledElementsByRestoreKey: Record<string, WeakSet<any>> = {}
+let weakScrolledElements = new WeakSet<any>()
 
-// type CacheValue = Record<string, { scrollX: number; scrollY: number }>
+type CacheValue = Record<string, { scrollX: number; scrollY: number }>
+type CacheState = {
+  cached: CacheValue
+  next: CacheValue
+}
 
-// type Cache = {
-//   current: CacheValue
-//   set: (key: string, value: any) => void
-// }
+type Cache = {
+  state: CacheState
+  set: (updater: NonNullableUpdater<CacheState>) => void
+}
 
-// let cache: Cache
+let cache: Cache
 
-// let pathDidChange = false
+const sessionsStorage = typeof window !== 'undefined' && window.sessionStorage
 
-// const sessionsStorage = typeof window !== 'undefined' && window.sessionStorage
+export type ScrollRestorationOptions = {
+  getKey?: (location: ParsedLocation) => string
+}
 
-// export type ScrollRestorationOptions = {
-//   getKey?: (location: ParsedLocation) => string
-// }
+const defaultGetKey = (location: ParsedLocation) => location.state.key!
 
-// const defaultGetKey = (location: ParsedLocation) => location.state.key!
+export function useScrollRestoration(options?: ScrollRestorationOptions) {
+  const { state, subscribe, resetNextScrollRef } = useRouter()
 
-// export function watchScrollPositions(
-//   router: AnyRouter,
-//   state: RouterState,
-//   opts?: ScrollRestorationOptions,
-// ) {
-//   const getKey = opts?.getKey || defaultGetKey
+  useLayoutEffect(() => {
+    const getKey = options?.getKey || defaultGetKey
 
-//   if (sessionsStorage) {
-//     if (!cache) {
-//       cache = (() => {
-//         const storageKey = 'tsr-scroll-restoration-v1'
+    if (sessionsStorage) {
+      if (!cache) {
+        cache = (() => {
+          const storageKey = 'tsr-scroll-restoration-v2'
 
-//         const current: CacheValue = JSON.parse(
-//           window.sessionStorage.getItem(storageKey) || '{}',
-//         )
+          const state: CacheState = JSON.parse(
+            window.sessionStorage.getItem(storageKey) || 'null',
+          ) || { cached: {}, next: {} }
 
-//         return {
-//           current,
-//           set: (key: string, value: any) => {
-//             current[key] = value
-//             window.sessionStorage.setItem(storageKey, JSON.stringify(cache))
-//           },
-//         }
-//       })()
-//     }
-//   }
+          return {
+            state,
+            set: (updater) => {
+              cache.state = functionalUpdate(updater, cache.state)
+              window.sessionStorage.setItem(
+                storageKey,
+                JSON.stringify(cache.state),
+              )
+            },
+          }
+        })()
+      }
+    }
 
-//   const { history } = window
-//   if (history.scrollRestoration) {
-//     history.scrollRestoration = 'manual'
-//   }
+    const { history } = window
+    if (history.scrollRestoration) {
+      history.scrollRestoration = 'manual'
+    }
 
-//   const onScroll = (event: Event) => {
-//     const restoreKey = getKey(state.resolvedLocation)
+    const onScroll = (event: Event) => {
+      if (weakScrolledElements.has(event.target)) return
+      weakScrolledElements.add(event.target)
 
-//     if (!weakScrolledElementsByRestoreKey[restoreKey]) {
-//       weakScrolledElementsByRestoreKey[restoreKey] = new WeakSet()
-//     }
+      const elementSelector =
+        event.target === document || event.target === window
+          ? windowKey
+          : getCssSelector(event.target)
 
-//     const set = weakScrolledElementsByRestoreKey[restoreKey]!
+      if (!cache.state.next[elementSelector]) {
+        cache.set((c) => ({
+          ...c,
+          next: {
+            ...c.next,
+            [elementSelector]: {
+              scrollX: NaN,
+              scrollY: NaN,
+            },
+          },
+        }))
+      }
+    }
 
-//     if (set.has(event.target)) return
-//     set.add(event.target)
+    const getCssSelector = (el: any): string => {
+      let path = [],
+        parent
+      while ((parent = el.parentNode)) {
+        path.unshift(
+          `${el.tagName}:nth-child(${
+            ([].indexOf as any).call(parent.children, el) + 1
+          })`,
+        )
+        el = parent
+      }
+      return `${path.join(' > ')}`.toLowerCase()
+    }
 
-//     const cacheKey = [
-//       restoreKey,
-//       event.target === document || event.target === window
-//         ? windowKey
-//         : getCssSelector(event.target),
-//     ].join(delimiter)
+    if (typeof document !== 'undefined') {
+      document.addEventListener('scroll', onScroll, true)
+    }
 
-//     if (!cache.current[cacheKey]) {
-//       cache.set(cacheKey, {
-//         scrollX: NaN,
-//         scrollY: NaN,
-//       })
-//     }
-//   }
+    const unsubOnBeforeLoad = subscribe('onBeforeLoad', (event) => {
+      if (event.pathChanged) {
+        const restoreKey = getKey(event.fromLocation)
+        for (const elementSelector in cache.state.next) {
+          const entry = cache.state.next[elementSelector]!
+          if (elementSelector === windowKey) {
+            entry.scrollX = window.scrollX || 0
+            entry.scrollY = window.scrollY || 0
+          } else if (elementSelector) {
+            const element = document.querySelector(elementSelector)
+            entry.scrollX = element?.scrollLeft || 0
+            entry.scrollY = element?.scrollTop || 0
+          }
 
-//   const getCssSelector = (el: any): string => {
-//     let path = [],
-//       parent
-//     while ((parent = el.parentNode)) {
-//       path.unshift(
-//         `${el.tagName}:nth-child(${
-//           ([].indexOf as any).call(parent.children, el) + 1
-//         })`,
-//       )
-//       el = parent
-//     }
-//     return `${path.join(' > ')}`.toLowerCase()
-//   }
+          cache.set((c) => {
+            const next = { ...c.next }
+            delete next[elementSelector]
 
-//   const onPathWillChange = (from: ParsedLocation) => {
-//     const restoreKey = getKey(from)
-//     for (const cacheKey in cache.current) {
-//       const entry = cache.current[cacheKey]!
-//       const [key, elementSelector] = cacheKey.split(delimiter)
-//       if (restoreKey === key) {
-//         if (elementSelector === windowKey) {
-//           entry.scrollX = window.scrollX || 0
-//           entry.scrollY = window.scrollY || 0
-//         } else if (elementSelector) {
-//           const element = document.querySelector(elementSelector)
-//           entry.scrollX = element?.scrollLeft || 0
-//           entry.scrollY = element?.scrollTop || 0
-//         }
+            return {
+              ...c,
+              next,
+              cached: {
+                ...c.cached,
+                [[restoreKey, elementSelector].join(delimiter)]: entry,
+              },
+            }
+          })
+        }
+      }
+    })
 
-//         cache.set(cacheKey, entry)
-//       }
-//     }
-//   }
+    // const unsubOnLoad = subscribe('onLoad', (event) => {
+    //   if (event.pathChanged) pathDidChange = true
+    // })
 
-//   const onPathChange = () => {
-//     pathDidChange = true
-//   }
+    const unsubOnResolved = subscribe('onResolved', (event) => {
+      if (event.pathChanged) {
+        if (!resetNextScrollRef.current) {
+          return
+        }
 
-//   if (typeof document !== 'undefined') {
-//     document.addEventListener('scroll', onScroll, true)
-//   }
+        resetNextScrollRef.current = true
 
-//   const unsubOnBeforeLoad = router.subscribe('onBeforeLoad', (event) => {
-//     if (event.pathChanged) onPathWillChange(event.from)
-//   })
+        const getKey = options?.getKey || defaultGetKey
 
-//   const unsubOnLoad = router.subscribe('onLoad', (event) => {
-//     if (event.pathChanged) onPathChange()
-//   })
+        const restoreKey = getKey(event.toLocation)
+        let windowRestored = false
 
-//   return () => {
-//     document.removeEventListener('scroll', onScroll)
-//     unsubOnBeforeLoad()
-//     unsubOnLoad()
-//   }
-// }
+        for (const cacheKey in cache.state.cached) {
+          const entry = cache.state.cached[cacheKey]!
+          const [key, elementSelector] = cacheKey.split(delimiter)
+          if (key === restoreKey) {
+            if (elementSelector === windowKey) {
+              windowRestored = true
+              window.scrollTo(entry.scrollX, entry.scrollY)
+            } else if (elementSelector) {
+              const element = document.querySelector(elementSelector)
+              if (element) {
+                element.scrollLeft = entry.scrollX
+                element.scrollTop = entry.scrollY
+              }
+            }
+          }
+        }
 
-// export function restoreScrollPositions(
-//   router: AnyRouter,
-//   state: RouterState,
-//   opts?: ScrollRestorationOptions,
-// ) {
-//   if (pathDidChange) {
-//     if (!router.resetNextScroll) {
-//       return
-//     }
+        if (!windowRestored) {
+          window.scrollTo(0, 0)
+        }
 
-//     const getKey = opts?.getKey || defaultGetKey
+        cache.set((c) => ({ ...c, next: {} }))
+        weakScrolledElements = new WeakSet<any>()
+      }
+    })
 
-//     pathDidChange = false
+    return () => {
+      document.removeEventListener('scroll', onScroll)
+      unsubOnBeforeLoad()
+      unsubOnResolved()
+    }
+  }, [])
+}
 
-//     const restoreKey = getKey(state.location)
-//     let windowRestored = false
-
-//     for (const cacheKey in cache.current) {
-//       const entry = cache.current[cacheKey]!
-//       const [key, elementSelector] = cacheKey.split(delimiter)
-//       if (key === restoreKey) {
-//         if (elementSelector === windowKey) {
-//           windowRestored = true
-//           window.scrollTo(entry.scrollX, entry.scrollY)
-//         } else if (elementSelector) {
-//           const element = document.querySelector(elementSelector)
-//           if (element) {
-//             element.scrollLeft = entry.scrollX
-//             element.scrollTop = entry.scrollY
-//           }
-//         }
-//       }
-//     }
-
-//     if (!windowRestored) {
-//       window.scrollTo(0, 0)
-//     }
-//   }
-// }
-
-// export function useScrollRestoration(options?: ScrollRestorationOptions) {
-//   const { router, state } = useRouter()
-
-//   useLayoutEffect(() => {
-//     return watchScrollPositions(router, state, options)
-//   }, [])
-
-//   useLayoutEffect(() => {
-//     restoreScrollPositions(router, state, options)
-//   })
-// }
-
-// export function ScrollRestoration(props: ScrollRestorationOptions) {
-//   useScrollRestoration(props)
-//   return null
-// }
+export function ScrollRestoration(props: ScrollRestorationOptions) {
+  useScrollRestoration(props)
+  return null
+}
