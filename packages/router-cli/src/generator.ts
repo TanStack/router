@@ -117,6 +117,7 @@ export async function generator(config: Config) {
   }
 
   const start = Date.now()
+  const routePathIdPrefix = config.routeFilePrefix ?? ''
 
   let routeNodes = await getRouteNodes(config)
 
@@ -125,7 +126,7 @@ export async function generator(config: Config) {
     (d) => d.routePath?.split('/').length,
     (d) => (d.routePath?.endsWith('/') ? -1 : 1),
     (d) => d.routePath,
-  ]).filter((d) => d.routePath !== `/${rootPathId}`)
+  ]).filter((d) => d.routePath !== `/${routePathIdPrefix + rootPathId}`)
 
   const routeTree: RouteNode[] = []
 
@@ -211,11 +212,11 @@ export async function generator(config: Config) {
     `import { route as rootRoute } from './${sanitize(
       path.relative(
         path.dirname(config.generatedRouteTree),
-        path.resolve(config.routesDirectory, rootPathId),
+        path.resolve(config.routesDirectory, routePathIdPrefix + rootPathId),
       ),
     )}'`,
     ...multiSortBy(routeNodes, [
-      (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
+      (d) => (d.routePath?.includes(`/${routePathIdPrefix + rootPathId}`) ? -1 : 1),
       (d) => d.routePath?.split('/').length,
       (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
       (d) => d,
