@@ -20,7 +20,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "vite": "^2.8.6",
-    "zod": "^3.19.1",
+    "zod": "^3.22.3",
     "@tanstack/store": "^0.0.1",
     "@tanstack/react-store": "^0.0.1",
     "@tanstack/loaders": "0.0.1-beta.203",
