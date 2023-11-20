@@ -47,6 +47,7 @@ export class CatchBoundaryImpl extends React.Component<{
     }
   }
   componentDidCatch(error: any) {
+    console.error(error)
     this.props.onCatch?.(error)
   }
   render() {
