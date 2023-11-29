@@ -18,10 +18,10 @@ export const invoicesLoader = new Loader({
 export const invoicesRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'invoices',
-  load: async ({ context: { loaderClient } }) => {
+  loader: async ({ context: { loaderClient } }) => {
     await loaderClient.load({ key: 'invoices' })
   },
-  component: function Invoices({ useLoader }) {
+  component: function Invoices({ useLoaderData }) {
     const { data: invoices } = useLoaderInstance({ key: 'invoices' })
 
     // Get the action for a child route

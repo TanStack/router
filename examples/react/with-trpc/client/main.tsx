@@ -177,9 +177,9 @@ const dashboardRoute = new Route({
 const dashboardIndexRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: '/',
-  load: () => trpc.posts.query(),
-  component: ({ useLoader }) => {
-    const posts = useLoader()
+  loader: () => trpc.posts.query(),
+  component: ({ useLoaderData }) => {
+    const posts = useLoaderData()
 
     return (
       <div className="p-2">
@@ -195,9 +195,9 @@ const dashboardIndexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'posts',
-  load: () => trpc.posts.query(),
-  component: ({ useLoader }) => {
-    const posts = useLoader()
+  loader: () => trpc.posts.query(),
+  component: ({ useLoaderData }) => {
+    const posts = useLoaderData()
 
     return (
       <div className="flex-1 flex">
@@ -262,9 +262,9 @@ const postRoute = new Route({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
   }),
-  load: async ({ params: { postId } }) => trpc.post.query(postId),
-  component: ({ useLoader }) => {
-    const post = useLoader()
+  loader: async ({ params: { postId } }) => trpc.post.query(postId),
+  component: ({ useLoaderData }) => {
+    const post = useLoaderData()
     const search = useSearch({ from: postRoute.id })
     const navigate = useNavigate({ from: postRoute.id })
 

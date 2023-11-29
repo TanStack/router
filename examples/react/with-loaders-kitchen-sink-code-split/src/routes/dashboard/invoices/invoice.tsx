@@ -76,7 +76,7 @@ export const invoiceRoute = new Route({
       loaderOptions,
     }
   },
-  load: async ({ context: { loaderClient, loaderOptions }, preload }) => {
+  loader: async ({ context: { loaderClient, loaderOptions }, preload }) => {
     await loaderClient.load({
       ...loaderOptions,
       preload,

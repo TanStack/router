@@ -17,7 +17,7 @@ import { defer } from '@tanstack/react-router'
 
 export const postIdRoute = new Route('post', {
   // ...
-  load: () => {
+  loader: () => {
     // Fetch some slower data, but do not await it
     const slowDataPromise = fetchSlowData()
 
@@ -44,8 +44,8 @@ import { Await } from '@tanstack/react-router'
 
 export const postIdRoute = new Route('post', {
   // ...
-  component: ({ useLoader }) => {
-    const { slowData } = useLoader()
+  component: ({ useLoaderData }) => {
+    const { slowData } = useLoaderData()
 
     return (
       <Suspense fallback={<div>Loading...</div>}>

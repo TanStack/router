@@ -37,7 +37,7 @@ export const testLoader = new Loader({
 export const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  load: async ({ context: { loaderClient }, preload }) => {
+  loader: async ({ context: { loaderClient }, preload }) => {
     await loaderClient.load({ key: 'posts', preload })
   },
   component: function Posts() {

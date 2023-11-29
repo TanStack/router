@@ -33,7 +33,7 @@ export const postIdRoute = new Route({
   beforeLoad: ({ params: { postId } }) => ({
     loaderOpts: createLoaderOptions({ key: 'post', variables: postId }),
   }),
-  load: async ({ context: { loaderClient, loaderOpts }, preload }) =>
+  loader: async ({ context: { loaderClient, loaderOpts }, preload }) =>
     loaderClient.load({
       ...loaderOpts,
       preload,

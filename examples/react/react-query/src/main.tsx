@@ -7,9 +7,14 @@ import {
   Route,
   ErrorComponent,
   Router,
-  RootRoute,
+  rootRouteWithContext,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import {
+  QueryClient,
+  QueryClientProvider,
+  queryOptions,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import axios from 'axios'
 
 type PostType = {
@@ -40,8 +45,9 @@ const fetchPost = async (postId: string) => {
   return post
 }
 
-const rootRoute = new RootRoute({
-  loader: () => new Promise((r) => setTimeout(() => r(new Date()), 1000)),
+const rootRoute = rootRouteWithContext<{
+  queryClient: QueryClient
+}>()({
   component: () => {
     return (
       <>
@@ -66,7 +72,8 @@ const rootRoute = new RootRoute({
         </div>
         <hr />
         <Outlet />
-        <TanStackRouterDevtools position="bottom-right" />
+        {/* Start rendering router matches */}
+        {/* <TanStackRouterDevtools position="bottom-right" /> */}
       </>
     )
   },
@@ -84,11 +91,26 @@ const indexRoute = new Route({
   },
 })
 
+const postsQueryOptions = queryOptions({
+  queryKey: ['posts'],
+  queryFn: () => fetchPosts(),
+})
+
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: () => fetchPosts(),
+  // loader: ({ context: { queryClient } }) => {
+  //   return queryClient.ensureQueryData()
+  // },
   component: ({ useLoaderData }) => {
+    // const postsQuery = useSuspenseQuery({
+    //   ...postsQueryOptions,
+    //   // staleTime: 10 * 1000,
+    // })
+
+    // const posts = postsQuery.data
+
     const posts = useLoaderData()
 
     return (
@@ -129,6 +151,12 @@ const postsIndexRoute = new Route({
 
 class NotFoundError extends Error {}
 
+const postQueryOptions = (postId: string) =>
+  queryOptions({
+    queryKey: ['posts', { postId }],
+    queryFn: () => fetchPost(postId),
+  })
+
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
@@ -139,9 +167,17 @@ const postRoute = new Route({
 
     return <ErrorComponent error={error} />
   },
-  loader: ({ params }) => fetchPost(params.postId),
-  component: ({ useLoaderData }) => {
-    const post = useLoaderData()
+  // loader: ({ context: { queryClient, queryOptions } }) =>
+  //   queryClient.ensureQueryData(queryOptions),
+  component: ({ useParams }) => {
+    const { postId } = useParams()
+
+    const postQuery = useSuspenseQuery({
+      ...postQueryOptions(postId),
+      // staleTime: 10 * 1000,
+    })
+
+    const post = postQuery.data
 
     return (
       <div className="space-y-2">
@@ -157,9 +193,22 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
 ])
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 10,
+      gcTime: 10,
+    },
+  },
+})
+
 // Set up a Router instance
 const router = new Router({
   routeTree,
+  // defaultPreload: 'intent',
+  context: {
+    queryClient,
+  },
 })
 
 // Register things for typesafety
@@ -174,5 +223,9 @@ const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
 
-  root.render(<RouterProvider router={router} />)
+  root.render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
 }

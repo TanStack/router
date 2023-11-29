@@ -134,8 +134,8 @@ const photosRoute = new Route({
   path: 'photos',
   key: false,
   loader: fetchPhotos,
-  component: ({ useLoader }) => {
-    const photos = useLoader()
+  component: ({ useLoaderData }) => {
+    const photos = useLoaderData()
 
     return (
       <div className="p-2 space-y-2">
@@ -181,7 +181,7 @@ const photosRoute = new Route({
 const photoRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'photos/$photoId',
-  load: async ({ params: { photoId } }) => fetchPhoto(photoId),
+  loader: async ({ params: { photoId } }) => fetchPhoto(photoId),
   errorComponent: ({ error }) => {
     return (
       <div className="p-4">
@@ -194,8 +194,8 @@ const photoRoute = new Route({
       </div>
     )
   },
-  component: ({ useLoader }) => {
-    const photo = useLoader()
+  component: ({ useLoaderData }) => {
+    const photo = useLoaderData()
 
     return (
       <div className="p-4">
@@ -208,7 +208,7 @@ const photoRoute = new Route({
 const photoModalRoute = new Route({
   getParentRoute: () => photosRoute,
   path: '$photoId/modal',
-  load: async ({ params: { photoId } }) => fetchPhoto(photoId),
+  loader: async ({ params: { photoId } }) => fetchPhoto(photoId),
   errorComponent: ({ error }) => {
     const navigate = useNavigate()
 
@@ -252,9 +252,9 @@ const photoModalRoute = new Route({
       </Modal>
     )
   },
-  component: ({ useLoader }) => {
+  component: ({ useLoaderData }) => {
     const navigate = useNavigate()
-    const photo = useLoader()
+    const photo = useLoaderData()
 
     return (
       <Modal

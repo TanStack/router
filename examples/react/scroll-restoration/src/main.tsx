@@ -47,7 +47,7 @@ const rootRoute = new RootRoute({
 const indexRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/',
-  load: () => new Promise((r) => setTimeout(r, 500)),
+  loader: () => new Promise((r) => setTimeout(r, 500)),
   component: function Index() {
     return (
       <div className="p-2">
@@ -70,7 +70,7 @@ const indexRoute = new Route({
 const aboutRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/about',
-  load: () => new Promise((r) => setTimeout(r, 500)),
+  loader: () => new Promise((r) => setTimeout(r, 500)),
   component: function About() {
     return (
       <div className="p-2">
@@ -93,7 +93,7 @@ const aboutRoute = new Route({
 const byElementRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/by-element',
-  load: () => new Promise((r) => setTimeout(r, 500)),
+  loader: () => new Promise((r) => setTimeout(r, 500)),
   component: function About() {
     return (
       <div className="p-2 h-[calc(100vh-41px)] flex flex-col">

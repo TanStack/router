@@ -70,7 +70,7 @@ const myRoute = new Route({
     // TContext extends Record<string, any>
     Promise<TContext> | TContext
   // An async function to load or prepare any required prerequisites for the route.
-  load: (match: {
+  loader: (match: {
     // The abortController used internally by the router
     abortController: AbortController
     // A boolean indicating whether or not the route is being preloaded.
@@ -80,7 +80,7 @@ const myRoute = new Route({
     // If there is a parent route, this will be a promise that resolves when the parent route has been loaded.
     parentMatchPromise?: Promise<void>
   }) =>
-    // The result of the loader function which wil be made available via this routes `useLoader` method.
+    // The result of the loader function which wil be made available via this routes `useLoaderData` method.
     Promise<LoaderResult>,
   // A function to parse the path parameters for the route from the URL
   parseParams: (rawParams: Record<string, string>) => Record<string, TParams>,
@@ -100,7 +100,7 @@ const myRoute = new Route({
     // A function that returns the RouteMatch state for this route.
     useMatch: () => RouteMatch,
     // A function that return the loader return value for this route.
-    useLoader: () => TLoader,
+    useLoaderData: () => TLoader,
     // A function that returns the merged search parameters, including parent search parameters for this route.
     useSearch: (opts?: {
       // Defaults to `true`
@@ -224,9 +224,9 @@ const myRoute = new Route({
 const match = myRoute.useMatch({ strict: true })
 ```
 
-# Route.useLoader
+# Route.useLoaderData
 
-The `useLoader` method returns the loader for the given route.
+The `useLoaderData` method returns the loader for the given route.
 
 ### Options
 
@@ -248,7 +248,7 @@ const myRoute = new Route({
   id: 'homeId',
   component: HomeComponent,
 })
-const loader = myRoute.useLoader({ strict: true })
+const loader = myRoute.useLoaderData({ strict: true })
 ```
 
 # Route.useContext

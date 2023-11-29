@@ -23,7 +23,7 @@ async function fetchComments(postId: string) {
 export const postIdRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  load: async ({ params: { postId } }) => {
+  loader: async ({ params: { postId } }) => {
     const commentsPromise = fetchComments(postId)
     const post = await fetchPostById(postId)
 
@@ -32,8 +32,8 @@ export const postIdRoute = new Route({
       commentsPromise: defer(commentsPromise),
     }
   },
-  component: function Post({ useLoader }) {
-    const { post, commentsPromise } = useLoader()
+  component: function Post({ useLoaderData }) {
+    const { post, commentsPromise } = useLoaderData()
 
     return (
       <div className="space-y-2">

@@ -223,7 +223,7 @@ const dashboardRoute = new Route({
 const dashboardIndexRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: '/',
-  load: (opts) =>
+  loader: (opts) =>
     opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
   component: () => {
     const invoicesQuery = useSuspenseQuery(invoicesQueryOptions())
@@ -243,7 +243,7 @@ const dashboardIndexRoute = new Route({
 const invoicesRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'invoices',
-  load: (opts) =>
+  loader: (opts) =>
     opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
   component: () => {
     const invoicesQuery = useSuspenseQuery(invoicesQueryOptions())
@@ -377,7 +377,7 @@ const invoiceRoute = new Route({
         notes: z.string().optional(),
       })
       .parse(search),
-  load: (opts) =>
+  loader: (opts) =>
     opts.context.queryClient.ensureQueryData(
       invoiceQueryOptions(opts.params.invoiceId),
     ),
@@ -497,7 +497,8 @@ const usersRoute = new Route({
       },
     }),
   ],
-  load: (opts) => opts.context.queryClient.ensureQueryData(usersQueryOptions()),
+  loader: (opts) =>
+    opts.context.queryClient.ensureQueryData(usersQueryOptions()),
   component: ({ useSearch }) => {
     const navigate = useNavigate()
     const { usersView } = useSearch()
@@ -656,7 +657,7 @@ const userRoute = new Route({
   validateSearch: z.object({
     userId: z.number(),
   }),
-  load: (opts) =>
+  loader: (opts) =>
     opts.context.queryClient.ensureQueryData(
       userQueryOptions(opts.search.userId),
     ),

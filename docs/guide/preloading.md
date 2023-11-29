@@ -47,7 +47,7 @@ const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
   component: PostsComponent,
-  load: async ({ preload }) => {
+  loader: async ({ preload }) => {
     await loaderClient.load({ key: 'posts', preload })
   },
 })

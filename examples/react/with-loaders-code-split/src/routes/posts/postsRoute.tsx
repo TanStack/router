@@ -5,7 +5,7 @@ import { rootRoute } from '../root/rootRoute'
 export const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  load: async ({ context: { loaderClient } }) => {
+  loader: async ({ context: { loaderClient } }) => {
     await loaderClient.load({ key: 'posts' })
   },
 }).update({

@@ -187,11 +187,11 @@ test('it works', () => {})
 //       },
 //       {
 //         path: 'a',
-//         load: () => sleep(10).then((d) => ({ a: true })),
+//         loader: () => sleep(10).then((d) => ({ a: true })),
 //         children: [
 //           {
 //             path: 'b',
-//             load: () => sleep(10).then((d) => ({ b: true })),
+//             loader: () => sleep(10).then((d) => ({ b: true })),
 //           },
 //         ],
 //       },
@@ -225,7 +225,7 @@ test('it works', () => {})
 //         import: async () => {
 //           await sleep(10)
 //           return {
-//             load: () => sleep(10).then((d) => ({ a: true })),
+//             loader: () => sleep(10).then((d) => ({ a: true })),
 //           }
 //         },
 //         children: [
@@ -234,7 +234,7 @@ test('it works', () => {})
 //             import: async () => {
 //               await sleep(10)
 //               return {
-//                 load: () =>
+//                 loader: () =>
 //                   sleep(10).then((d) => ({
 //                     b: true,
 //                   })),
@@ -277,7 +277,7 @@ test('it works', () => {})
 //               await sleep(20)
 //               return 'element'
 //             },
-//             load: () => sleep(30).then((d) => ({ a: true })),
+//             loader: () => sleep(30).then((d) => ({ a: true })),
 //           }
 //         },
 //         children: [
@@ -290,7 +290,7 @@ test('it works', () => {})
 //                   await sleep(20)
 //                   return 'element'
 //                 },
-//                 load: () =>
+//                 loader: () =>
 //                   sleep(30).then((d) => ({
 //                     b: true,
 //                   })),
@@ -326,12 +326,12 @@ test('it works', () => {})
 //       {
 //         path: 'a',
 //         pendingMs: 10,
-//         load: () => sleep(20),
+//         loader: () => sleep(20),
 //         children: [
 //           {
 //             path: 'b',
 //             pendingMs: 30,
-//             load: () => sleep(40),
+//             loader: () => sleep(40),
 //           },
 //         ],
 //       },

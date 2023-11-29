@@ -9,7 +9,7 @@ title: External Data Loading
 
 While Router is very capable of storing and managing your data needs out of the box, sometimes you just might want something different!
 
-Router is also designed to be a **coordinator** for external data fetching and caching libraries. This means that you can use any data fetching/caching library you want, and the router will coordinate the loading of your data in a way that aligns with your users' navigation.
+Router is designed to be a perfect **coordinator** for external data fetching and caching libraries. This means that you can use any data fetching/caching library you want, and the router will coordinate the loading of your data in a way that aligns with your users' navigation.
 
 ## What data fetching libraries are supported?
 
@@ -32,14 +32,6 @@ Or, even...
 
 Literally any library that **can return a promise and read/write data** can be integrated.
 
-## TanStack Loaders
-
-While you may jump for joy that your favorite cache manager is in the list above, you may want to check out our custom-built router-centric caching library called [TanStack Loaders](https://tanstack.com/loaders/latest/docs/overview), a powerful and flexible data caching library that is designed to work with TanStack Router.
-
-## External Data Loading Basics
-
-For the following examples, we'll show you the basics of using an external data loading library like **TanStack Loaders**, but as we've already mentioned, these same principles can be applied to any state management library worth it's salt. Let's get started!
-
 ## Using Loaders to Ensure Data is Loaded
 
 The easiest way to use integrate and external caching/data library into Router is to use `route.loader`s to ensure that the data required inside of a route has been loaded and is ready to be displayed.
@@ -50,24 +42,35 @@ The easiest way to use integrate and external caching/data library into Router i
 > - No waterfall data fetching, caused by component based fetching
 > - Better for SEO. If you data is available at render time, it will be indexed by search engines.
 
-Here is a simple example of using a Route's `load` option to seed the cache for some data:
+Here is a naive illustration (don't do this) of using a Route's `load` option to seed the cache for some data:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
 
+let postsCache = []
+
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  load: async () => {
-    await fetchPosts()
+  loader: async () => {
+    postsCache = await fetchPosts()
   },
   component: () => {
-    const posts = usePosts()
-
-    return <div>...</div>
+    return (
+      <div>
+        {postsCache.map((post) => (
+          <Post key={post.id} post={post} />
+        ))}
+      </div>
+    )
   },
 })
 ```
+
+This example is **obviously flawed**, but illustrates the point that you can use a route's `loader` option to seed your cache with data. Let's take a look at a more realistic example using TanStack Query.
+
+- Replace `fetchPosts` with your preferred data fetching library's prefetching API
+- Replace `postsCache` with your preferred data fetching library's read-or-fetch API or hook
 
 ## SSR Dehydration/Hydration
 

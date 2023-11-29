@@ -187,7 +187,7 @@ const allProductsRoute = new Route({
   getParentRoute: () => shopRoute,
   path: 'products',
   validateSearch: productSearchSchema,
-  load: ({ search }) => {
+  loader: ({ search }) => {
     search
     // ^? ProductSearch ✅
   },
@@ -214,7 +214,7 @@ const allProductsRoute = new Route({
 const productRoute = new Route({
   getParentRoute: () => allProductsRoute,
   path: ':productId',
-  load: ({ search }) => {
+  loader: ({ search }) => {
     search
     // ^? ProductSearch ✅
   },

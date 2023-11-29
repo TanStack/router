@@ -32,7 +32,7 @@ export const fetchPost = async (postId: string) => {
 // 'posts/$postId' is automatically inserted and managed
 // by the `tsr generate/watch` CLI command
 export const route = new FileRoute('/posts/$postId').createRoute({
-  load: async ({ params: { postId } }) => fetchPost(postId),
+  loader: async ({ params: { postId } }) => fetchPost(postId),
   errorComponent: PostErrorComponent as any,
   component: PostComponent,
 })
@@ -46,7 +46,7 @@ export function PostErrorComponent({ error }: RouteErrorComponentProps) {
 }
 
 export function PostComponent() {
-  const post = route.useLoader()
+  const post = route.useLoaderData()
 
   return (
     <div className="space-y-2">

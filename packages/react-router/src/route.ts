@@ -1,7 +1,7 @@
 import { HistoryLocation } from '@tanstack/history'
 import * as React from 'react'
 import invariant from 'tiny-invariant'
-import { useMatch } from './Matches'
+import { useLoaderData, useMatch } from './Matches'
 import { AnyRouteMatch } from './RouterProvider'
 import { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
 import { ParsedLocation } from './location'
@@ -63,6 +63,7 @@ export type RouteOptions<
   TAllParams extends AnyPathParams = TParams,
   TRouteContext extends RouteContext = RouteContext,
   TAllContext extends Record<string, any> = AnyContext,
+  TLoaderData extends any = unknown,
 > = BaseRouteOptions<
   TParentRoute,
   TCustomId,
@@ -72,9 +73,17 @@ export type RouteOptions<
   TParams,
   TAllParams,
   TRouteContext,
-  TAllContext
+  TAllContext,
+  TLoaderData
 > &
-  NoInfer<UpdatableRouteOptions<TFullSearchSchema, TAllParams, TAllContext>>
+  NoInfer<
+    UpdatableRouteOptions<
+      TFullSearchSchema,
+      TAllParams,
+      TAllContext,
+      TLoaderData
+    >
+  >
 
 export type ParamsFallback<
   TPath extends string,
@@ -95,6 +104,7 @@ export type BaseRouteOptions<
   TAllParams = ParamsFallback<TPath, TParams>,
   TRouteContext extends RouteContext = RouteContext,
   TAllContext extends Record<string, any> = AnyContext,
+  TLoaderData extends any = unknown,
 > = RoutePathOptions<TCustomId, TPath> & {
   getParentRoute: () => TParentRoute
   validateSearch?: SearchSchemaValidator<TSearchSchema>
@@ -119,11 +129,12 @@ export type BaseRouteOptions<
           TRouteContext
         >
       }) & {
-    load?: RouteLoadFn<
+    loader?: RouteLoadFn<
       TAllParams,
       TFullSearchSchema,
       NoInfer<TAllContext>,
-      NoInfer<TRouteContext>
+      NoInfer<TRouteContext>,
+      TLoaderData
     >
   } & (
     | {
@@ -163,6 +174,7 @@ export type UpdatableRouteOptions<
   TFullSearchSchema extends Record<string, any>,
   TAllParams extends AnyPathParams,
   TAllContext extends AnyContext,
+  TLoaderData extends any = unknown,
 > = MetaOptions & {
   // test?: (args: TAllContext) => void
   // If true, this route will be matched as case-sensitive
@@ -170,7 +182,12 @@ export type UpdatableRouteOptions<
   // If true, this route will be forcefully wrapped in a suspense boundary
   wrapInSuspense?: boolean
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
-  component?: RouteComponent<TFullSearchSchema, TAllParams, TAllContext>
+  component?: RouteComponent<
+    TFullSearchSchema,
+    TAllParams,
+    TAllContext,
+    TLoaderData
+  >
   // The content to be rendered when the route encounters an error
   errorComponent?: ErrorRouteComponent<
     TFullSearchSchema,
@@ -244,8 +261,9 @@ export type RouteLoadFn<
   TFullSearchSchema extends Record<string, any> = {},
   TAllContext extends Record<string, any> = AnyContext,
   TRouteContext extends Record<string, any> = AnyContext,
+  TLoaderData extends any = unknown,
 > = (
-  match: LoadFnContext<
+  match: LoaderFnContext<
     TAllParams,
     TFullSearchSchema,
     TAllContext,
@@ -253,9 +271,9 @@ export type RouteLoadFn<
   > & {
     parentMatchPromise?: Promise<void>
   },
-) => any
+) => Promise<TLoaderData> | TLoaderData
 
-export interface LoadFnContext<
+export interface LoaderFnContext<
   TAllParams = {},
   TFullSearchSchema extends Record<string, any> = {},
   TAllContext extends Record<string, any> = AnyContext,
@@ -378,6 +396,7 @@ export class Route<
     Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
   >,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+  TLoaderData extends any = unknown,
   TChildren extends RouteConstraints['TChildren'] = unknown,
   TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
 > {
@@ -391,7 +410,8 @@ export class Route<
     TParams,
     TAllParams,
     TRouteContext,
-    TAllContext
+    TAllContext,
+    TLoaderData
   >
 
   test!: Expand<
@@ -422,7 +442,8 @@ export class Route<
       TParams,
       TAllParams,
       TRouteContext,
-      TAllContext
+      TAllContext,
+      TLoaderData
     >,
   ) {
     this.options = (options as any) || {}
@@ -446,6 +467,7 @@ export class Route<
     children: TChildren
     routeTree: TRouteTree
     routerContext: TRouterContext
+    loaderData: TLoaderData
   }
 
   init = (opts: { originalIndex: number }) => {
@@ -460,7 +482,8 @@ export class Route<
       TParams,
       TAllParams,
       TRouteContext,
-      TAllContext
+      TAllContext,
+      TLoaderData
     > &
       RoutePathOptionsIntersection<TCustomId, TPath>
 
@@ -542,7 +565,8 @@ export class Route<
       TAllParams,
       Expand<
         Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
-      >
+      >,
+      TLoaderData
     >,
   ) => {
     Object.assign(this.options, options)
@@ -578,6 +602,11 @@ export class Route<
   }): TSelected => {
     return useParams({ ...opts, from: this.id } as any)
   }
+  useLoaderData = <TSelected = TLoaderData>(opts?: {
+    select?: (search: TLoaderData) => TSelected
+  }): TSelected => {
+    return useLoaderData({ ...opts, from: this.id } as any) as any
+  }
 }
 
 export type AnyRootRoute = RootRoute<any, any, any>
@@ -586,6 +615,7 @@ export function rootRouteWithContext<TRouterContext extends {}>() {
   return <
     TSearchSchema extends Record<string, any> = {},
     TRouteContext extends RouteContext = RouteContext,
+    TLoaderData extends any = unknown,
   >(
     options?: Omit<
       RouteOptions<
@@ -597,7 +627,8 @@ export function rootRouteWithContext<TRouterContext extends {}>() {
         {}, // TParams
         {}, // TAllParams
         TRouteContext, // TRouteContext
-        Assign<TRouterContext, TRouteContext> // TAllContext
+        Assign<TRouterContext, TRouteContext>, // TAllContext
+        TLoaderData // TLoaderData
       >,
       | 'path'
       | 'id'
@@ -615,6 +646,7 @@ export class RootRoute<
   TSearchSchema extends Record<string, any> = {},
   TRouteContext extends RouteContext = RouteContext,
   TRouterContext extends {} = {},
+  TLoaderData extends any = unknown,
 > extends Route<
   any, // TParentRoute
   '/', // TPath
@@ -628,6 +660,7 @@ export class RootRoute<
   TRouteContext, // TRouteContext
   Expand<Assign<TRouterContext, TRouteContext>>, // TAllContext
   TRouterContext, // TRouterContext
+  TLoaderData,
   any, // TChildren
   any // TRouteTree
 > {
@@ -642,7 +675,8 @@ export class RootRoute<
         {}, // TParams
         {}, // TAllParams
         TRouteContext, // TRouteContext
-        Assign<TRouterContext, TRouteContext> // TAllContext
+        Assign<TRouterContext, TRouteContext>, // TAllContext
+        TLoaderData
       >,
       | 'path'
       | 'id'
@@ -720,6 +754,7 @@ export type RouteProps<
   TFullSearchSchema extends Record<string, any> = AnySearchSchema,
   TAllParams extends AnyPathParams = AnyPathParams,
   TAllContext extends Record<string, any> = AnyContext,
+  TLoaderData extends any = unknown,
 > = {
   useMatch: <TSelected = TAllContext>(opts?: {
     select?: (search: TAllContext) => TSelected
@@ -732,6 +767,9 @@ export type RouteProps<
   }) => TSelected
   useParams: <TSelected = TAllParams>(opts?: {
     select?: (search: TAllParams) => TSelected
+  }) => TSelected
+  useLoaderData: <TSelected = TLoaderData>(opts?: {
+    select?: (search: TLoaderData) => TSelected
   }) => TSelected
 }
 
@@ -765,7 +803,10 @@ export type RouteComponent<
   TFullSearchSchema extends Record<string, any>,
   TAllParams extends AnyPathParams,
   TAllContext extends Record<string, any>,
-> = AsyncRouteComponent<RouteProps<TFullSearchSchema, TAllParams, TAllContext>>
+  TLoaderData extends any = unknown,
+> = AsyncRouteComponent<
+  RouteProps<TFullSearchSchema, TAllParams, TAllContext, TLoaderData>
+>
 
 export type ErrorRouteComponent<
   TFullSearchSchema extends Record<string, any>,
@@ -783,4 +824,4 @@ export type PendingRouteComponent<
   PendingRouteProps<TFullSearchSchema, TAllParams, TAllContext>
 >
 
-export type AnyRouteComponent = RouteComponent<any, any, any>
+export type AnyRouteComponent = RouteComponent<any, any, any, any>

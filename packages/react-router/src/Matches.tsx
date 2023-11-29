@@ -8,7 +8,7 @@ import { ResolveRelativePath, ToOptions } from './link'
 import { AnyRoute, ReactNode, rootRouteId } from './route'
 import { RouteById, RouteByPath, RouteIds, RoutePaths } from './routeInfo'
 import { RegisteredRouter } from './router'
-import { NoInfer, StrictOrFrom } from './utils'
+import { NoInfer, StrictOrFrom, functionalUpdate } from './utils'
 
 export function Matches() {
   const { routesById, state } = useRouter()
@@ -16,7 +16,7 @@ export function Matches() {
 
   const locationKey = useRouterState().location.state.key
 
-  const route = routesById[rootRouteId]
+  const route = routesById[rootRouteId]!
 
   const errorComponent = React.useCallback(
     (props: any) => {
@@ -58,7 +58,7 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
   const { options, routesById } = useRouter()
   const match = matches[0]!
   const routeId = match?.routeId
-  const route = routesById[routeId]
+  const route = routesById[routeId]!
   const locationKey = useRouterState().location.state?.key
 
   const PendingComponent = (route.options.pendingComponent ??
@@ -70,9 +70,9 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
     options.defaultErrorComponent ??
     ErrorComponent
 
-  const ResolvedSuspenseBoundary =
-    route.options.wrapInSuspense ?? React.Suspense
-  // const ResolvedSuspenseBoundary = SafeFragment
+  const ResolvedSuspenseBoundary = route.options.wrapInSuspense
+    ? React.Suspense
+    : SafeFragment
 
   const errorComponent = React.useCallback(
     (props: any) => {
@@ -112,7 +112,7 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
 }
 function MatchInner({ match }: { match: RouteMatch }): any {
   const { options, routesById } = useRouter()
-  const route = routesById[match.routeId]
+  const route = routesById[match.routeId]!
 
   if (match.status === 'error') {
     throw match.error
@@ -131,7 +131,8 @@ function MatchInner({ match }: { match: RouteMatch }): any {
         useRouteContext: route.useRouteContext as any,
         useSearch: route.useSearch,
         useParams: route.useParams as any,
-      } as any)
+        useLoaderData: route.useLoaderData,
+      })
     }
 
     return <Outlet />
@@ -248,7 +249,7 @@ export function useMatch<
   opts: StrictOrFrom<TFrom> & {
     select?: (match: TRouteMatchState) => TSelected
   },
-): TStrict extends true ? TRouteMatchState : TRouteMatchState | undefined {
+): TStrict extends true ? TSelected : TSelected | undefined {
   const nearestMatch = React.useContext(matchesContext)[0]!
   const nearestMatchRouteId = nearestMatch?.routeId
 
@@ -312,4 +313,25 @@ export function useMatches<T = RouteMatch[]>(opts?: {
       return opts?.select ? opts.select(matches) : (matches as T)
     },
   })
+}
+
+export function useLoaderData<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
+  TStrict extends boolean = true,
+  TRouteMatch extends RouteMatch<TRouteTree, TFrom> = RouteMatch<
+    TRouteTree,
+    TFrom
+  >,
+  TSelected = TRouteMatch['loaderData'],
+>(
+  opts: StrictOrFrom<TFrom> & {
+    select?: (match: TRouteMatch) => TSelected
+  },
+): TStrict extends true ? TSelected : TSelected | undefined {
+  const match = useMatch({ ...opts, select: undefined })!
+
+  return typeof opts.select === 'function'
+    ? opts.select(match?.loaderData)
+    : match?.loaderData
 }

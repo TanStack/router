@@ -28,7 +28,7 @@ export const userRoute = new Route({
   beforeLoad: ({ params: { userId } }) => ({
     loaderOpts: createLoaderOptions({ key: 'user', variables: userId }),
   }),
-  load: async ({ context: { loaderClient, loaderOpts }, preload }) =>
+  loader: async ({ context: { loaderClient, loaderOpts }, preload }) =>
     loaderClient.load({
       ...loaderOpts,
       preload,

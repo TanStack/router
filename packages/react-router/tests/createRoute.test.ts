@@ -37,7 +37,7 @@ describe('everything', () => {
     // const dashboardRoute = new Route({
     //   getParentRoute: () => rootRoute,
     //   path: 'dashboard',
-    //   load: async () => {
+    //   loader: async () => {
     //     console.log('Fetching all invoices...')
     //     return {
     //       invoices: 'await fetchInvoices()',
@@ -63,7 +63,7 @@ describe('everything', () => {
     //   stringifyParams: ({ invoiceId }) => ({
     //     invoiceId: String(invoiceId),
     //   }),
-    //   load: async ({ params: { invoiceId } }) => {
+    //   loader: async ({ params: { invoiceId } }) => {
     //     console.log('Fetching invoice...')
     //     return {
     //       invoice: 'await fetchInvoiceById(invoiceId!)',
@@ -73,7 +73,7 @@ describe('everything', () => {
     // const usersRoute = new Route({
     //   getParentRoute: () => dashboardRoute,
     //   path: 'users',
-    //   load: async () => {
+    //   loader: async () => {
     //     return {
     //       users: 'await fetchUsers()',
     //     }
@@ -103,7 +103,7 @@ describe('everything', () => {
     // const userRoute = new Route({
     //   getParentRoute: () => usersRoute,
     //   path: '$userId',
-    //   load: async ({ params: { userId }, search }) => {
+    //   loader: async ({ params: { userId }, search }) => {
     //     return {
     //       user: 'await fetchUserById(userId!)',
     //     }

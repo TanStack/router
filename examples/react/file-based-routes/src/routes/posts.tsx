@@ -14,8 +14,8 @@ const fetchPosts = async () => {
 // @ts-ignore
 export const route = new FileRoute('/posts').createRoute({
   loader: fetchPosts,
-  component: ({ useLoader }) => {
-    const posts = useLoader()
+  component: ({ useLoaderData }) => {
+    const posts = useLoaderData()
 
     return (
       <div className="p-2 flex gap-2">

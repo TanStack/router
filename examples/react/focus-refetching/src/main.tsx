@@ -109,8 +109,8 @@ const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: fetchPosts,
-  component: ({ useLoader }) => {
-    const posts = useLoader()
+  component: ({ useLoaderData }) => {
+    const posts = useLoaderData()
 
     return (
       <div className="p-2 flex gap-2">
@@ -154,7 +154,7 @@ const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
   key: false,
-  load: async ({ params: { postId } }) => fetchPost(postId),
+  loader: async ({ params: { postId } }) => fetchPost(postId),
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {
       return <div>{error.message}</div>
@@ -162,8 +162,8 @@ const postRoute = new Route({
 
     return <ErrorComponent error={error} />
   },
-  component: ({ useLoader }) => {
-    const post = useLoader()
+  component: ({ useLoaderData }) => {
+    const post = useLoaderData()
 
     return (
       <div className="space-y-2">

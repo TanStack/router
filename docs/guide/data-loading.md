@@ -19,11 +19,11 @@ Every time a URL/history update is detected, the router the following sequence i
   - `route.onError`
 - Route Loading (Parallel)
   - `route.component.preload?`
-  - `route.load`
+  - `route.loader`
 
 ## URL Update/Loading Frequency
 
-Similar to TanStack Query, TanStack router errs on the side of thorough and truthful events about when the URL changes and when routes are matched and loaded. This means that your routes' **beforeLoad** and **load** function could potentially be called at the speed at which the URL changes. This includes:
+Similar to TanStack Query, TanStack router errs on the side of thorough and truthful events about when the URL changes and when routes are matched and loaded. This means that your routes' **beforeLoad** and **loader** function could potentially be called at the speed at which the URL changes. This includes:
 
 - User Navigation
 - History Back/Forward Actions
@@ -35,11 +35,11 @@ Whatever you do in these route option function should be prepared to depupe and/
 
 ## No Caching
 
-TanStack Router does not provide data management or caching of data, but **is designed to work well with data caches like TanStack Query, SWR, etc.**
+Heads up! TanStack Router **does not provide loader data caching out of the box**, but **is designed to work well with data caches like TanStack Query, SWR, etc.**
 
-## Route `load`
+## Route `loader`s
 
-Route `load` functions are called when a route match is loaded. They are called with a single parameter which is an object containing many helpful properties. We'll go over those in a bit, but first, let's look at an example of a route `load` function:
+Route `loader` functions are called when a route match is loaded. They are called with a single parameter which is an object containing many helpful properties. We'll go over those in a bit, but first, let's look at an example of a route `loader` function:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
@@ -47,22 +47,20 @@ import { Route } from '@tanstack/react-router'
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  load: async () => {
-    await prefetchPosts()
-  },
+  loader: () => fetchPosts(),
 })
 ```
 
-## `load` Parameters
+## `loader` Parameters
 
-The `load` function receives a single object with the following properties:
+The `loader` function receives a single object with the following properties:
 
 - `params` - The route's path params
 - `search` - The route's search params
 - `context` - The route's context object, which is a merged union of:
   - Parent route context
   - This route's context as provided by the `beforeLoad` option
-- `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the Route is no longer relevant and the current invocation of the `load` function becomes outdated.
+- `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the Route is no longer relevant and the current invocation of the `loader` function becomes outdated.
 - `navigate` - A function that can be used to navigate to a new location
 - `location` - The current location
 
@@ -70,14 +68,14 @@ Using these parameters, we can do a lot of cool things. Let's take a look at a f
 
 ## Using Router Context
 
-The `context` argument passed to the `load` function is an object containing a merged union of:
+The `context` argument passed to the `loader` function is an object containing a merged union of:
 
 - Parent route context
 - This route's context as provided by the `beforeLoad` option
 
-Starting at the very top of the router, you can pass an initial context to the router via the `context` option. This context will be available to all routes in the router and get copied and extended by each route as they are matched. This happens by passing a context to a route via the `beforeLoad` option. This context will be available to all child routes of the route. The resulting context will be available to the route's `load` function.
+Starting at the very top of the router, you can pass an initial context to the router via the `context` option. This context will be available to all routes in the router and get copied and extended by each route as they are matched. This happens by passing a context to a route via the `beforeLoad` option. This context will be available to all child routes of the route. The resulting context will be available to the route's `loader` function.
 
-In this example, we'll create a function in our route context to fetch posts, then use it in our `load` function.
+In this example, we'll create a function in our route context to fetch posts, then use it in our `loader` function.
 
 > 🧠 Context is a powerful tool for dependency injection. You can use it to inject services, hooks, and other objects into your router and routes. You can also additively pass data down the route tree at every route using a route's `beforeLoad` option.
 
@@ -101,9 +99,7 @@ const rootRoute = rootRouteWithContext<{
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  load: ({ context: { fetchPosts } }) => {
-    await fetchPosts()
-  },
+  loader: ({ context: { fetchPosts } }) => fetchPosts(),
 })
 
 const routeTree = rootRoute.addChildren([postsRoute])
@@ -121,7 +117,7 @@ const router = new Router({
 
 ## Using Path Params
 
-To use path params in your `load` function, access them via the `params` property on the function's parameters. Here's an example:
+To use path params in your `loader` function, access them via the `params` property on the function's parameters. Here's an example:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
@@ -129,15 +125,13 @@ import { Route } from '@tanstack/react-router'
 const postRoute = new Route({
   getParentPath: () => postsRoute,
   path: '$postId',
-  load: ({ params: { postId } }) => {
-    await prefetchPostById(postId)
-  },
+  loader: ({ params: { postId } }) => fetchPostById(postId),
 })
 ```
 
 ## Using Route Context
 
-Passing down global context to your router is great, but what if you want to provide context that is specific to a route? This is where the `beforeLoad` option comes in. The `beforeLoad` option is a function that runs right before attempting to load a route and receives the same `load` function parameters. Beyond its ability to redirect potential matches, it can also return an object that will be merged into the route's context. Let's take a look at an example where we provide `fetchPosts` to our route context via the `beforeLoad` option:
+Passing down global context to your router is great, but what if you want to provide context that is specific to a route? This is where the `beforeLoad` option comes in. The `beforeLoad` option is a function that runs right before attempting to load a route and receives the same `loader` function parameters. Beyond its ability to redirect potential matches, it can also return an object that will be merged into the route's context. Let's take a look at an example where we provide `fetchPosts` to our route context via the `beforeLoad` option:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
@@ -145,21 +139,19 @@ import { Route } from '@tanstack/react-router'
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  // Pass the prefetchPosts function to the route context
+  // Pass the fetchPosts function to the route context
   beforeLoad: () => ({
-    prefetchPosts: () => {
+    fetchPosts: () => {
       // ...
     },
   }),
-  load: ({ context: { prefetchPosts } }) => {
-    prefetchPosts()
-  },
+  loader: ({ context: { fetchPosts } }) => fetchPosts(),
 })
 ```
 
 ## Using Search Params
 
-Search parameters can be accessed via the `beforeLoad` and `load` functions. The `search` property provided to these functions contains _all_ of the search params including parent search params. In this example, we'll use zod to validate and parse the search params for the `/posts` route that uses pagination, then use them in our `load` function.
+Search parameters can be accessed via the `beforeLoad` and `loader` functions. The `search` property provided to these functions contains _all_ of the search params including parent search params. In this example, we'll use zod to validate and parse the search params for the `/posts` route that uses pagination, then use them in our `loader` function.
 
 ```tsx
 import { Route } from '@tanstack/react-router'
@@ -171,18 +163,17 @@ const postsRoute = new Route({
   validateSearch: z.object({
     offset: z.number().int().nonnegative().catch(0),
   }),
-  // Use the offset from context in the load function
-  load: async ({ search: { offset } }) => {
-    await prefetchPosts({
+  // Use the offset from context in the loader function
+  loader: async ({ search: { offset } }) =>
+    fetchPosts({
       offset,
-    })
-  },
+    }),
 })
 ```
 
 ## Using the Abort Signal
 
-The `abortController` property of the `load` function is an [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController). Its signal is cancelled when the route is unloaded or when the `load` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change. Here is an example using it with a fetch call:
+The `abortController` property of the `loader` function is an [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController). Its signal is cancelled when the route is unloaded or when the `loader` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change. Here is an example using it with a fetch call:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
@@ -190,18 +181,17 @@ import { Route } from '@tanstack/react-router'
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  load: ({ abortController }) => {
-    await fetchPosts({
+  loader: ({ abortController }) =>
+    fetchPosts({
       // Pass this to an underlying fetch call or anything that supports signals
       signal: abortController.signal,
-    })
-  },
+    }),
 })
 ```
 
 ## Using the `preload` flag
 
-The `preload` property of the `load` function is a boolean which is `true` when the route is being preloaded instead of loaded. Some data loading libraries may handle preloading differently than a standard fetch, so you may want to pass `preload` to your data loading library, or use it to execute the appropriate data loading logic:
+The `preload` property of the `loader` function is a boolean which is `true` when the route is being preloaded instead of loaded. Some data loading libraries may handle preloading differently than a standard fetch, so you may want to pass `preload` to your data loading library, or use it to execute the appropriate data loading logic:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
@@ -209,10 +199,9 @@ import { Route } from '@tanstack/react-router'
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  load: async ({ preload }) => {
-    await prefetchPosts({
+  loader: async ({ preload }) =>
+    fetchPosts({
       maxAge: preload ? 10_000 : 0, // Preloads should hang around a bit longer
-    })
-  },
+    }),
 })
 ```

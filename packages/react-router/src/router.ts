@@ -36,7 +36,7 @@ export interface Register {
   // router: Router
 }
 
-export type AnyRouter = Router<any, any>
+export type AnyRouter = Router<AnyRoute, any>
 
 export type RegisteredRouter = Register extends {
   router: infer TRouter extends AnyRouter

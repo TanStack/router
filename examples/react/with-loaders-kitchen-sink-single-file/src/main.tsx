@@ -258,7 +258,7 @@ const indexRoute = new Route({
 const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  load: ({ preload, context: { loaderClient } }) =>
+  loader: ({ preload, context: { loaderClient } }) =>
     loaderClient.load({ key: 'invoices', preload }),
   component: () => {
     return (
@@ -473,13 +473,13 @@ const invoiceRoute = new Route({
 
     return { loaderOptions }
   },
-  load: async ({ preload, context: { loaderClient, loaderOptions } }) => {
+  loader: async ({ preload, context: { loaderClient, loaderOptions } }) => {
     await loaderClient.load({
       ...loaderOptions,
       preload,
     })
   },
-  component: ({ useLoader, useSearch, useRouteContext }) => {
+  component: ({ useLoaderData, useSearch, useRouteContext }) => {
     const search = useSearch()
     const navigate = useNavigate()
     const { loaderOptions } = useRouteContext()
@@ -599,10 +599,10 @@ const usersRoute = new Route({
       },
     }),
   ],
-  load: async ({ preload, context: { loaderClient } }) => {
+  loader: async ({ preload, context: { loaderClient } }) => {
     await loaderClient.load({ key: 'users', preload })
   },
-  component: ({ useSearch, useLoader }) => {
+  component: ({ useSearch, useLoaderData }) => {
     const navigate = useNavigate()
     const { usersView } = useSearch()
     const { data: users } = useLoaderInstance({ key: 'users' })
@@ -765,7 +765,7 @@ const userRoute = new Route({
 
     return { loaderOptions }
   },
-  load: async ({ context: { loaderClient, loaderOptions }, preload }) => {
+  loader: async ({ context: { loaderClient, loaderOptions }, preload }) => {
     await loaderClient.load({ ...loaderOptions, preload })
   },
   component: ({ useRouteContext }) => {
@@ -894,10 +894,10 @@ const loginRoute = new Route({
 const layoutRoute = new Route({
   getParentRoute: () => rootRoute,
   id: 'layout',
-  load: async ({ preload, context: { loaderClient } }) => {
+  loader: async ({ preload, context: { loaderClient } }) => {
     await loaderClient.load({ key: 'random', preload })
   },
-  component: ({ useLoader }) => {
+  component: ({ useLoaderData }) => {
     const { data } = useLoaderInstance({ key: 'random' })
 
     return (

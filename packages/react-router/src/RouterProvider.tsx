@@ -83,16 +83,13 @@ export type BuildLinkFn<TRouteTree extends AnyRoute> = <
 ) => LinkInfo
 
 export type NavigateFn<TRouteTree extends AnyRoute> = <
-  TRouteTree extends AnyRoute,
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
   TMaskTo extends string = '',
->({
-  from,
-  to = '' as any,
-  ...rest
-}: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>) => Promise<void>
+>(
+  opts: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => Promise<void>
 
 export type MatchRouteFn<TRouteTree extends AnyRoute> = <
   TFrom extends RoutePaths<TRouteTree> = '/',
@@ -250,12 +247,14 @@ export function RouterProvider<
     getInitialRouterState(latestLocationRef.current),
   )
   const [isTransitioning, startReactTransition] = React.useTransition()
+  const pendingMatchesRef = React.useRef<AnyRouteMatch[]>([])
 
   const state = React.useMemo<RouterState<TRouteTree>>(
     () => ({
       ...preState,
       status: isTransitioning ? 'pending' : 'idle',
       location: isTransitioning ? latestLocationRef.current : preState.location,
+      pendingMatches: pendingMatchesRef.current,
     }),
     [preState, isTransitioning],
   )
@@ -268,6 +267,8 @@ export function RouterProvider<
         toLocation: state.location,
         pathChanged: state.location!.href !== state.resolvedLocation?.href,
       })
+      pendingMatchesRef.current = []
+
       setState((s) => ({
         ...s,
         resolvedLocation: s.location,
@@ -464,7 +465,7 @@ export function RouterProvider<
 
         // Create a fresh route match
         const hasLoaders = !!(
-          route.options.load ||
+          route.options.loader ||
           componentTypes.some((d) => (route.options[d] as any)?.preload)
         )
 
@@ -938,10 +939,6 @@ export function RouterProvider<
             const parentMatchPromise = matchPromises[index - 1]
             const route = looseRoutesById[match.routeId]!
 
-            if (match.isFetching) {
-              return getRouteMatch(state, match.id)?.loadPromise
-            }
-
             const handleIfRedirect = (err: any) => {
               if (isRedirect(err)) {
                 if (!preload) {
@@ -952,90 +949,101 @@ export function RouterProvider<
               return false
             }
 
-            const load = async () => {
-              try {
-                const componentsPromise = Promise.all(
-                  componentTypes.map(async (type) => {
-                    const component = route.options[type]
-
-                    if ((component as any)?.preload) {
-                      await (component as any).preload()
-                    }
-                  }),
-                )
-
-                const loaderPromise = route.options.load?.({
-                  params: match.params,
-                  search: match.search,
-                  preload: !!preload,
-                  parentMatchPromise,
-                  abortController: match.abortController,
-                  context: match.context,
-                  location: state.location,
-                  navigate: (opts) =>
-                    navigate({ ...opts, from: match.pathname }),
-                })
-
-                const [_, loaderContext] = await Promise.all([
-                  componentsPromise,
-                  loaderPromise,
-                ])
-                if ((latestPromise = checkLatest())) return await latestPromise
-
-                matches[index] = match = {
-                  ...match,
-                  error: undefined,
-                  status: 'success',
-                  isFetching: false,
-                  updatedAt: Date.now(),
-                }
-              } catch (error) {
-                if ((latestPromise = checkLatest())) return await latestPromise
-                if (handleIfRedirect(error)) return
-
-                try {
-                  route.options.onError?.(error)
-                } catch (onErrorError) {
-                  error = onErrorError
-                  if (handleIfRedirect(onErrorError)) return
-                }
-
-                matches[index] = match = {
-                  ...match,
-                  error,
-                  status: 'error',
-                  isFetching: false,
-                  updatedAt: Date.now(),
-                }
-              }
-
-              if (!preload) {
-                setState((s) => ({
-                  ...s,
-                  matches: s.matches.map((d) =>
-                    d.id === match.id ? match : d,
-                  ),
-                }))
-              }
-            }
-
             let loadPromise: Promise<void> | undefined
 
             matches[index] = match = {
               ...match,
-              isFetching: true,
               fetchedAt: Date.now(),
               invalid: false,
             }
 
-            loadPromise = load()
+            if (match.isFetching) {
+              loadPromise = getRouteMatch(state, match.id)?.loadPromise
+            } else {
+              matches[index] = match = {
+                ...match,
+                isFetching: true,
+              }
+
+              const componentsPromise = Promise.all(
+                componentTypes.map(async (type) => {
+                  const component = route.options[type]
+
+                  if ((component as any)?.preload) {
+                    await (component as any).preload()
+                  }
+                }),
+              )
+
+              const loaderPromise = route.options.loader?.({
+                params: match.params,
+                search: match.search,
+                preload: !!preload,
+                parentMatchPromise,
+                abortController: match.abortController,
+                context: match.context,
+                location: state.location,
+                navigate: (opts) =>
+                  navigate({ ...opts, from: match.pathname } as any),
+              })
+
+              loadPromise = Promise.all([
+                componentsPromise,
+                loaderPromise,
+              ]).then((d) => d[1])
+            }
 
             matches[index] = match = {
               ...match,
               loadPromise,
             }
 
-            await loadPromise
+            if (!preload) {
+              setState((s) => ({
+                ...s,
+                matches: s.matches.map((d) => (d.id === match.id ? match : d)),
+              }))
+            }
+
+            try {
+              const loaderData = await loadPromise
+              if ((latestPromise = checkLatest())) return await latestPromise
+
+              matches[index] = match = {
+                ...match,
+                error: undefined,
+                status: 'success',
+                isFetching: false,
+                updatedAt: Date.now(),
+                loaderData,
+                loadPromise: undefined,
+              }
+            } catch (error) {
+              if ((latestPromise = checkLatest())) return await latestPromise
+              if (handleIfRedirect(error)) return
+
+              try {
+                route.options.onError?.(error)
+              } catch (onErrorError) {
+                error = onErrorError
+                if (handleIfRedirect(onErrorError)) return
+              }
+
+              matches[index] = match = {
+                ...match,
+                error,
+                status: 'error',
+                isFetching: false,
+                updatedAt: Date.now(),
+              }
+            }
+
+            if (!preload) {
+              setState((s) => ({
+                ...s,
+                matches: s.matches.map((d) => (d.id === match.id ? match : d)),
+              }))
+            }
           })(),
         )
       })
@@ -1071,6 +1079,8 @@ export function RouterProvider<
         },
       )
 
+      pendingMatchesRef.current = matches
+
       const previousMatches = state.matches
 
       // Ingest the new matches
@@ -1099,13 +1109,13 @@ export function RouterProvider<
         }
 
         const exitingMatchIds = previousMatches.filter(
-          (id) => !state.pendingMatches.includes(id),
+          (id) => !pendingMatchesRef.current.includes(id),
         )
-        const enteringMatchIds = state.pendingMatches.filter(
+        const enteringMatchIds = pendingMatchesRef.current.filter(
           (id) => !previousMatches.includes(id),
         )
         const stayingMatchIds = previousMatches.filter((id) =>
-          state.pendingMatches.includes(id),
+          pendingMatchesRef.current.includes(id),
         )
 
         // setState((s) => ({
@@ -1326,10 +1336,7 @@ export function RouterProvider<
     }
   }, [history])
 
-  const initialLoad = React.useRef(true)
-
-  if (initialLoad.current) {
-    initialLoad.current = false
+  React.useLayoutEffect(() => {
     startReactTransition(() => {
       try {
         load()
@@ -1337,7 +1344,7 @@ export function RouterProvider<
         console.error(err)
       }
     })
-  }
+  }, [])
 
   const matchRoute = useStableCallback<MatchRouteFn<TRouteTree>>(
     (location, opts) => {
@@ -1454,6 +1461,7 @@ export interface RouteMatch<
   searchError: unknown
   updatedAt: number
   loadPromise?: Promise<void>
+  loaderData?: RouteById<TRouteTree, TRouteId>['types']['loaderData']
   __resolveLoadPromise?: () => void
   context: RouteById<TRouteTree, TRouteId>['types']['allContext']
   routeSearch: RouteById<TRouteTree, TRouteId>['types']['searchSchema']

@@ -29,8 +29,8 @@ export const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: fetchPosts,
-  component: function Posts({ useLoader }) {
-    const posts = useLoader()
+  component: function Posts({ useLoaderData }) {
+    const posts = useLoaderData()
 
     return (
       <div className="p-2 flex gap-2">
