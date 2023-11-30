@@ -74,18 +74,20 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
     ? React.Suspense
     : SafeFragment
 
-  const errorComponent = React.useCallback(
-    (props: any) => {
-      return React.createElement(routeErrorComponent, {
-        ...props,
-        useMatch: route.useMatch,
-        useRouteContext: route.useRouteContext,
-        useSearch: route.useSearch,
-        useParams: route.useParams,
-      })
-    },
-    [route],
-  )
+  const errorComponent = routeErrorComponent
+    ? React.useCallback(
+        (props: any) => {
+          return React.createElement(routeErrorComponent, {
+            ...props,
+            useMatch: route.useMatch,
+            useRouteContext: route.useRouteContext,
+            useSearch: route.useSearch,
+            useParams: route.useParams,
+          })
+        },
+        [route],
+      )
+    : undefined
 
   return (
     <matchesContext.Provider value={matches}>
@@ -97,15 +99,21 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
           useParams: route.useParams,
         })}
       >
-        <CatchBoundary
-          resetKey={locationKey}
-          errorComponent={errorComponent}
-          onCatch={() => {
-            warning(false, `Error in route match: ${match.id}`)
-          }}
-        >
-          <MatchInner match={match} />
-        </CatchBoundary>
+        {errorComponent ? (
+          <CatchBoundary
+            resetKey={locationKey}
+            errorComponent={errorComponent}
+            onCatch={() => {
+              warning(false, `Error in route match: ${match.id}`)
+            }}
+          >
+            <MatchInner match={match} />
+          </CatchBoundary>
+        ) : (
+          <SafeFragment>
+            <MatchInner match={match} />
+          </SafeFragment>
+        )}
       </ResolvedSuspenseBoundary>
     </matchesContext.Provider>
   )

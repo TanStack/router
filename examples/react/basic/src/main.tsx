@@ -134,13 +134,14 @@ class NotFoundError extends Error {}
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  errorComponent: ({ error }) => {
-    if (error instanceof NotFoundError) {
-      return <div>{error.message}</div>
-    }
+  // errorComponent: false,
+  // errorComponent: ({ error }) => {
+  //   if (error instanceof NotFoundError) {
+  //     return <div>{error.message}</div>
+  //   }
 
-    return <ErrorComponent error={error} />
-  },
+  //   return <ErrorComponent error={error} />
+  // },
   // Only reload the data if we are entering the route
   shouldReload: ({ cause }) => cause === 'enter',
   loader: ({ params }) => fetchPost(params.postId),
