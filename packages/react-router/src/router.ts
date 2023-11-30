@@ -281,49 +281,6 @@ export class Router<
   //   })
   // }
 
-  // TODO:
-  // injectedHtml: (string | (() => Promise<string> | string))[] = []
-
-  // TODO:
-  // injectHtml = async (html: string | (() => Promise<string> | string)) => {
-  //   this.injectedHtml.push(html)
-  // }
-
-  // TODO:
-  // dehydrateData = <T>(key: any, getData: T | (() => Promise<T> | T)) => {
-  //   if (typeof document === 'undefined') {
-  //     const strKey = typeof key === 'string' ? key : JSON.stringify(key)
-
-  //     this.injectHtml(async () => {
-  //       const id = `__TSR_DEHYDRATED__${strKey}`
-  //       const data =
-  //         typeof getData === 'function' ? await (getData as any)() : getData
-  //       return `<script id='${id}' suppressHydrationWarning>window["__TSR_DEHYDRATED__${escapeJSON(
-  //         strKey,
-  //       )}"] = ${JSON.stringify(data)}
-  //       ;(() => {
-  //         var el = document.getElementById('${id}')
-  //         el.parentElement.removeChild(el)
-  //       })()
-  //       </script>`
-  //     })
-
-  //     return () => this.hydrateData<T>(key)
-  //   }
-
-  //   return () => undefined
-  // }
-
-  // hydrateData = <T = unknown>(key: any) => {
-  //   if (typeof document !== 'undefined') {
-  //     const strKey = typeof key === 'string' ? key : JSON.stringify(key)
-
-  //     return window[`__TSR_DEHYDRATED__${strKey}` as any] as T
-  //   }
-
-  //   return undefined
-  // }
-
   // resolveMatchPromise = (matchId: string, key: string, value: any) => {
   //   state.matches
   //     .find((d) => d.id === matchId)
@@ -357,13 +314,6 @@ export class Router<
   // ) => {
   //   this.setRouteMatch(id, true, updater)
   // }
-}
-
-function escapeJSON(jsonString: string) {
-  return jsonString
-    .replace(/\\/g, '\\\\') // Escape backslashes
-    .replace(/'/g, "\\'") // Escape single quotes
-    .replace(/"/g, '\\"') // Escape double quotes
 }
 
 // A function that takes an import() argument which is a function and returns a new function that will

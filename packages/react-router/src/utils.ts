@@ -341,3 +341,10 @@ export function useRouteContext<
 
 export const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
+
+export function escapeJSON(jsonString: string) {
+  return jsonString
+    .replace(/\\/g, '\\\\') // Escape backslashes
+    .replace(/'/g, "\\'") // Escape single quotes
+    .replace(/"/g, '\\"') // Escape double quotes
+}

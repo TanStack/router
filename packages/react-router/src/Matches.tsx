@@ -8,7 +8,7 @@ import { ResolveRelativePath, ToOptions } from './link'
 import { AnyRoute, ReactNode, rootRouteId } from './route'
 import { RouteById, RouteByPath, RouteIds, RoutePaths } from './routeInfo'
 import { RegisteredRouter } from './router'
-import { NoInfer, StrictOrFrom, functionalUpdate } from './utils'
+import { NoInfer, StrictOrFrom } from './utils'
 
 export function Matches() {
   const { routesById, state } = useRouter()

@@ -61,6 +61,7 @@ import {
   pick,
   replaceEqualDeep,
   useStableCallback,
+  escapeJSON,
 } from './utils'
 import { MatchRouteOptions } from './Matches'
 
@@ -116,6 +117,8 @@ export type BuildLocationFn<TRouteTree extends AnyRoute> = (
   opts: BuildNextOptions,
 ) => ParsedLocation
 
+export type InjectedHtmlEntry = string | (() => Promise<string> | string)
+
 export type RouterContext<
   TRouteTree extends AnyRoute,
   // TDehydrated extends Record<string, any>,
@@ -132,6 +135,13 @@ export type RouterContext<
   buildLocation: BuildLocationFn<TRouteTree>
   subscribe: Router<TRouteTree>['subscribe']
   resetNextScrollRef: React.MutableRefObject<boolean>
+  injectedHtmlRef: React.MutableRefObject<InjectedHtmlEntry[]>
+  injectHtml: (entry: InjectedHtmlEntry) => void
+  dehydrateData: <T>(
+    key: any,
+    getData: T | (() => Promise<T> | T),
+  ) => () => void
+  hydrateData: <T>(key: any) => T | undefined
 }
 
 export const routerContext = React.createContext<RouterContext<any>>(null!)
@@ -986,21 +996,24 @@ export function RouterProvider<
 
               // Default to reloading the route all the time
               let shouldReload = true
-              let shouldReloadDeps =
-                typeof route.options.shouldReload === 'function'
-                  ? route.options.shouldReload?.(loaderContext)
-                  : !!route.options.shouldReload
 
-              if (typeof shouldReloadDeps === 'object') {
-                // compare the deps to see if they've changed
-                shouldReload = !deepEqual(
-                  shouldReloadDeps,
-                  match.shouldReloadDeps,
-                )
+              if (cause !== 'enter') {
+                let shouldReloadDeps =
+                  typeof route.options.shouldReload === 'function'
+                    ? route.options.shouldReload?.(loaderContext)
+                    : !!(route.options.shouldReload ?? true)
 
-                match.shouldReloadDeps = shouldReloadDeps
-              } else {
-                shouldReload = !!shouldReloadDeps
+                if (typeof shouldReloadDeps === 'object') {
+                  // compare the deps to see if they've changed
+                  shouldReload = !deepEqual(
+                    shouldReloadDeps,
+                    match.shouldReloadDeps,
+                  )
+
+                  match.shouldReloadDeps = shouldReloadDeps
+                } else {
+                  shouldReload = !!shouldReloadDeps
+                }
               }
 
               // If the user doesn't want the route to reload, just
@@ -1377,16 +1390,6 @@ export function RouterProvider<
     }
   }, [history])
 
-  React.useLayoutEffect(() => {
-    startReactTransition(() => {
-      try {
-        load()
-      } catch (err) {
-        console.error(err)
-      }
-    })
-  }, [])
-
   const matchRoute = useStableCallback<MatchRouteFn<TRouteTree>>(
     (location, opts) => {
       location = {
@@ -1429,6 +1432,60 @@ export function RouterProvider<
     },
   )
 
+  const injectedHtmlRef = React.useRef<InjectedHtmlEntry[]>([])
+
+  const injectHtml = useStableCallback(
+    async (html: string | (() => Promise<string> | string)) => {
+      injectedHtmlRef.current.push(html)
+    },
+  )
+
+  const dehydrateData = useStableCallback(
+    <T,>(key: any, getData: T | (() => Promise<T> | T)) => {
+      if (typeof document === 'undefined') {
+        const strKey = typeof key === 'string' ? key : JSON.stringify(key)
+
+        injectHtml(async () => {
+          const id = `__TSR_DEHYDRATED__${strKey}`
+          const data =
+            typeof getData === 'function' ? await (getData as any)() : getData
+          return `<script id='${id}' suppressHydrationWarning>window["__TSR_DEHYDRATED__${escapeJSON(
+            strKey,
+          )}"] = ${JSON.stringify(data)}
+        ;(() => {
+          var el = document.getElementById('${id}')
+          el.parentElement.removeChild(el)
+        })()
+        </script>`
+        })
+
+        return () => hydrateData<T>(key)
+      }
+
+      return () => undefined
+    },
+  )
+
+  const hydrateData = useStableCallback(<T extends any = unknown>(key: any) => {
+    if (typeof document !== 'undefined') {
+      const strKey = typeof key === 'string' ? key : JSON.stringify(key)
+
+      return window[`__TSR_DEHYDRATED__${strKey}` as any] as T
+    }
+
+    return undefined
+  })
+
+  React.useLayoutEffect(() => {
+    startReactTransition(() => {
+      try {
+        load()
+      } catch (err) {
+        console.error(err)
+      }
+    })
+  }, [])
+
   const routerContextValue: RouterContext<TRouteTree> = {
     routeTree: router.routeTree,
     navigate,
@@ -1442,6 +1499,10 @@ export function RouterProvider<
     buildLocation,
     subscribe: router.subscribe,
     resetNextScrollRef,
+    injectedHtmlRef,
+    injectHtml,
+    dehydrateData,
+    hydrateData,
   }
 
   return (

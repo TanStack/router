@@ -49,11 +49,13 @@ const fetchPost = async (postId: string) => {
 
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+    .catch((err) => {
+      if (err.response.status === 404) {
+        throw new NotFoundError(`Post with id "${postId}" not found!`)
+      }
+      throw err
+    })
     .then((r) => r.data)
-
-  if (!post) {
-    throw new NotFoundError(`Post with id "${postId}" not found!`)
-  }
 
   return {
     post,
@@ -108,10 +110,10 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  key: false,
   loader: fetchPosts,
   component: ({ useLoaderData }) => {
     const posts = useLoaderData()
+    console.log(posts)
 
     return (
       <div className="p-2 flex gap-2">
@@ -154,7 +156,6 @@ class NotFoundError extends Error {}
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  key: false,
   loader: async ({ params: { postId } }) => fetchPost(postId),
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {

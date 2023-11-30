@@ -2,8 +2,8 @@
 export * from '@tanstack/history'
 export { default as invariant } from 'tiny-invariant'
 export { default as warning } from 'tiny-warning'
-// export * from './awaited
-// export * from './defer'
+export * from './awaited'
+export * from './defer'
 export * from './CatchBoundary'
 export * from './fileRoute'
 export * from './history'

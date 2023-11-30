@@ -31,11 +31,13 @@ const fetchPost = async (postId: string) => {
   await new Promise((r) => setTimeout(r, 500))
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+    .catch((err) => {
+      if (err.response.status === 404) {
+        throw new NotFoundError(`Post with id "${postId}" not found!`)
+      }
+      throw err
+    })
     .then((r) => r.data)
-
-  if (!post) {
-    throw new NotFoundError(`Post with id "${postId}" not found!`)
-  }
 
   return post
 }
@@ -134,14 +136,13 @@ class NotFoundError extends Error {}
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  // errorComponent: false,
-  // errorComponent: ({ error }) => {
-  //   if (error instanceof NotFoundError) {
-  //     return <div>{error.message}</div>
-  //   }
+  errorComponent: ({ error }) => {
+    if (error instanceof NotFoundError) {
+      return <div>{error.message}</div>
+    }
 
-  //   return <ErrorComponent error={error} />
-  // },
+    return <ErrorComponent error={error} />
+  },
   // Only reload the data if we are entering the route
   shouldReload: ({ cause }) => cause === 'enter',
   loader: ({ params }) => fetchPost(params.postId),
