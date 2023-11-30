@@ -997,11 +997,6 @@ export function RouterProvider<
                   shouldReloadDeps,
                   match.shouldReloadDeps,
                 )
-                console.log(
-                  shouldReloadDeps,
-                  match.shouldReloadDeps,
-                  shouldReload,
-                )
 
                 match.shouldReloadDeps = shouldReloadDeps
               } else {
