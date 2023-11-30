@@ -108,6 +108,14 @@ export type BaseRouteOptions<
 > = RoutePathOptions<TCustomId, TPath> & {
   getParentRoute: () => TParentRoute
   validateSearch?: SearchSchemaValidator<TSearchSchema>
+  shouldReload?: (
+    match: LoaderFnContext<
+      TAllParams,
+      TFullSearchSchema,
+      TAllContext,
+      TRouteContext
+    >,
+  ) => any
 } & (keyof PickRequired<RouteContext> extends never
     ? // This async function is called before a route is loaded.
       // If an error is thrown here, the route's loader will not be called.
@@ -268,9 +276,7 @@ export type RouteLoadFn<
     TFullSearchSchema,
     TAllContext,
     TRouteContext
-  > & {
-    parentMatchPromise?: Promise<void>
-  },
+  >,
 ) => Promise<TLoaderData> | TLoaderData
 
 export interface LoaderFnContext<
@@ -286,6 +292,8 @@ export interface LoaderFnContext<
   context: Expand<Assign<TAllContext, TRouteContext>>
   location: ParsedLocation<TFullSearchSchema>
   navigate: (opts: NavigateOptions<AnyRoute>) => Promise<void>
+  parentMatchPromise?: Promise<void>
+  cause: 'enter' | 'stay'
 }
 
 export type SearchFilter<T, U = T> = (prev: T) => U

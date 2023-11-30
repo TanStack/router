@@ -87,6 +87,7 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
+  shouldReload: ({ cause }) => cause === 'enter',
   loader: () => fetchPosts(),
   component: ({ useLoaderData }) => {
     const posts = useLoaderData()
@@ -139,6 +140,7 @@ const postRoute = new Route({
 
     return <ErrorComponent error={error} />
   },
+  shouldReload: ({ cause }) => cause === 'enter',
   loader: ({ params }) => fetchPost(params.postId),
   component: ({ useLoaderData }) => {
     const post = useLoaderData()

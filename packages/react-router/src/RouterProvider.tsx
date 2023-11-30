@@ -27,7 +27,13 @@ import {
   trimPathRight,
 } from './path'
 import { isRedirect } from './redirects'
-import { AnyPathParams, AnyRoute, AnySearchSchema, Route } from './route'
+import {
+  AnyPathParams,
+  AnyRoute,
+  AnySearchSchema,
+  LoaderFnContext,
+  Route,
+} from './route'
 import {
   FullSearchSchema,
   ParseRoute,
@@ -960,22 +966,11 @@ export function RouterProvider<
             if (match.isFetching) {
               loadPromise = getRouteMatch(state, match.id)?.loadPromise
             } else {
-              matches[index] = match = {
-                ...match,
-                isFetching: true,
-              }
+              const cause = state.matches.find((d) => d.id === match.id)
+                ? 'stay'
+                : 'enter'
 
-              const componentsPromise = Promise.all(
-                componentTypes.map(async (type) => {
-                  const component = route.options[type]
-
-                  if ((component as any)?.preload) {
-                    await (component as any).preload()
-                  }
-                }),
-              )
-
-              const loaderPromise = route.options.loader?.({
+              const loaderContext: LoaderFnContext = {
                 params: match.params,
                 search: match.search,
                 preload: !!preload,
@@ -985,12 +980,42 @@ export function RouterProvider<
                 location: state.location,
                 navigate: (opts) =>
                   navigate({ ...opts, from: match.pathname } as any),
-              })
+                cause,
+              }
 
-              loadPromise = Promise.all([
-                componentsPromise,
-                loaderPromise,
-              ]).then((d) => d[1])
+              // Default to reloading the route all the time
+              const shouldReload =
+                route.options.shouldReload?.(loaderContext) ?? true
+
+              // If the user doesn't want the route to reload, just
+              // resolve with the existing loader data
+
+              if (!shouldReload) {
+                loadPromise = Promise.resolve(match.loaderData)
+              } else {
+                // Otherwise, load the route
+                matches[index] = match = {
+                  ...match,
+                  isFetching: true,
+                }
+
+                const componentsPromise = Promise.all(
+                  componentTypes.map(async (type) => {
+                    const component = route.options[type]
+
+                    if ((component as any)?.preload) {
+                      await (component as any).preload()
+                    }
+                  }),
+                )
+
+                const loaderPromise = route.options.loader?.(loaderContext)
+
+                loadPromise = Promise.all([
+                  componentsPromise,
+                  loaderPromise,
+                ]).then((d) => d[1])
+              }
             }
 
             matches[index] = match = {
