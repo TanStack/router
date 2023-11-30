@@ -113,7 +113,6 @@ const postsRoute = new Route({
   loader: fetchPosts,
   component: ({ useLoaderData }) => {
     const posts = useLoaderData()
-    console.log(posts)
 
     return (
       <div className="p-2 flex gap-2">
