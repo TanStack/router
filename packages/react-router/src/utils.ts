@@ -231,7 +231,7 @@ function hasObjectPrototype(o: any) {
   return Object.prototype.toString.call(o) === '[object Object]'
 }
 
-export function partialDeepEqual(a: any, b: any): boolean {
+export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
   if (a === b) {
     return true
   }
@@ -241,14 +241,20 @@ export function partialDeepEqual(a: any, b: any): boolean {
   }
 
   if (isPlainObject(a) && isPlainObject(b)) {
-    return !Object.keys(b).some((key) => !partialDeepEqual(a[key], b[key]))
+    const aKeys = Object.keys(a)
+    const bKeys = Object.keys(b)
+
+    if (!partial && aKeys.length !== bKeys.length) {
+      return false
+    }
+
+    return !bKeys.some(
+      (key) => !(key in a) || !deepEqual(a[key], b[key], partial),
+    )
   }
 
   if (Array.isArray(a) && Array.isArray(b)) {
-    return !(
-      a.length !== b.length ||
-      a.some((item, index) => !partialDeepEqual(item, b[index]))
-    )
+    return !a.some((item, index) => !deepEqual(item, b[index], partial))
   }
 
   return false

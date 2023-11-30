@@ -57,7 +57,7 @@ import {
   PickAsRequired,
   functionalUpdate,
   last,
-  partialDeepEqual,
+  deepEqual,
   pick,
   replaceEqualDeep,
   useStableCallback,
@@ -492,6 +492,7 @@ export function RouterProvider<
           loadPromise: Promise.resolve(),
           context: undefined!,
           abortController: new AbortController(),
+          shouldReloadDeps: undefined,
           fetchedAt: 0,
         }
 
@@ -984,8 +985,28 @@ export function RouterProvider<
               }
 
               // Default to reloading the route all the time
-              const shouldReload =
-                route.options.shouldReload?.(loaderContext) ?? true
+              let shouldReload = true
+              let shouldReloadDeps =
+                typeof route.options.shouldReload === 'function'
+                  ? route.options.shouldReload?.(loaderContext)
+                  : !!route.options.shouldReload
+
+              if (typeof shouldReloadDeps === 'object') {
+                // compare the deps to see if they've changed
+                shouldReload = !deepEqual(
+                  shouldReloadDeps,
+                  match.shouldReloadDeps,
+                )
+                console.log(
+                  shouldReloadDeps,
+                  match.shouldReloadDeps,
+                  shouldReload,
+                )
+
+                match.shouldReloadDeps = shouldReloadDeps
+              } else {
+                shouldReload = !!shouldReloadDeps
+              }
 
               // If the user doesn't want the route to reload, just
               // resolve with the existing loader data
@@ -1251,7 +1272,7 @@ export function RouterProvider<
       : true
     const searchTest =
       activeOptions?.includeSearch ?? true
-        ? partialDeepEqual(latestLocationRef.current.search, next.search)
+        ? deepEqual(latestLocationRef.current.search, next.search, true)
         : true
 
     // The final "active" test
@@ -1406,9 +1427,7 @@ export function RouterProvider<
       }
 
       if (match && (opts?.includeSearch ?? true)) {
-        return partialDeepEqual(baseLocation.search, next.search)
-          ? match
-          : false
+        return deepEqual(baseLocation.search, next.search, true) ? match : false
       }
 
       return match
@@ -1493,6 +1512,7 @@ export interface RouteMatch<
   search: FullSearchSchema<TRouteTree> &
     RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema']
   fetchedAt: number
+  shouldReloadDeps: any
   abortController: AbortController
 }
 

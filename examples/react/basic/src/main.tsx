@@ -87,7 +87,8 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  shouldReload: ({ cause }) => cause === 'enter',
+  // A fun way to revalidate the data every 10 seconds :)
+  shouldReload: () => [`${Date.now()}`.substring(0, 9)],
   loader: () => fetchPosts(),
   component: ({ useLoaderData }) => {
     const posts = useLoaderData()
@@ -140,6 +141,7 @@ const postRoute = new Route({
 
     return <ErrorComponent error={error} />
   },
+  // Only reload the data if we are entering the route
   shouldReload: ({ cause }) => cause === 'enter',
   loader: ({ params }) => fetchPost(params.postId),
   component: ({ useLoaderData }) => {
