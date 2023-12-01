@@ -1,7 +1,7 @@
 import { AnyRoute } from './route'
 import { RouteIds, RouteById } from './routeInfo'
 import { RegisteredRouter } from './router'
-import { RouteMatch } from './RouterProvider'
+import { RouteMatch } from './Matches'
 import { useMatch } from './Matches'
 import { StrictOrFrom } from './utils'
 

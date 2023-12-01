@@ -17,7 +17,7 @@ import {
   PendingRouteComponent,
   RouteComponent,
 } from './route'
-import { RouteMatch } from './RouterProvider'
+import { RouteMatch } from './Matches'
 import { ParsedLocation } from './location'
 import { LocationState } from './location'
 import { SearchSerializer, SearchParser } from './searchParams'

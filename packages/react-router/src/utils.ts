@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useMatch } from './Matches'
-import { RouteMatch } from './RouterProvider'
+import { RouteMatch } from './Matches'
 import { AnyRoute } from './route'
 import { ParseRoute, RouteIds, RoutesById, RouteById } from './routeInfo'
 import { RegisteredRouter } from './router'

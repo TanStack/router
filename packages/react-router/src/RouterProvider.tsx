@@ -36,9 +36,7 @@ import {
 } from './route'
 import {
   FullSearchSchema,
-  ParseRoute,
   RouteById,
-  RouteIds,
   RoutePaths,
   RoutesById,
   RoutesByPath,
@@ -64,6 +62,7 @@ import {
   escapeJSON,
 } from './utils'
 import { MatchRouteOptions } from './Matches'
+import { AnyRouteMatch, RouteMatch } from './Matches'
 
 export interface CommitLocationOptions {
   replace?: boolean
@@ -475,8 +474,12 @@ export function RouterProvider<
         // around between navigation actions that only change leaf routes.
         const existingMatch = getRouteMatch(state, matchId)
 
+        const cause = state.matches.find((d) => d.id === matchId)
+          ? 'stay'
+          : 'enter'
+
         if (existingMatch) {
-          return { ...existingMatch }
+          return { ...existingMatch, cause }
         }
 
         // Create a fresh route match
@@ -504,6 +507,7 @@ export function RouterProvider<
           abortController: new AbortController(),
           shouldReloadDeps: undefined,
           fetchedAt: 0,
+          cause,
         }
 
         return routeMatch
@@ -922,6 +926,7 @@ export function RouterProvider<
                 navigate: (opts) =>
                   navigate({ ...opts, from: match.pathname } as any),
                 buildLocation,
+                cause: match.cause,
               })) ?? ({} as any)
 
             const context = {
@@ -977,10 +982,6 @@ export function RouterProvider<
             if (match.isFetching) {
               loadPromise = getRouteMatch(state, match.id)?.loadPromise
             } else {
-              const cause = state.matches.find((d) => d.id === match.id)
-                ? 'stay'
-                : 'enter'
-
               const loaderContext: LoaderFnContext = {
                 params: match.params,
                 search: match.search,
@@ -991,7 +992,7 @@ export function RouterProvider<
                 location: state.location,
                 navigate: (opts) =>
                   navigate({ ...opts, from: match.pathname } as any),
-                cause,
+                cause: match.cause,
               }
 
               // Default to reloading the route all the time
@@ -1002,9 +1003,9 @@ export function RouterProvider<
                   ? route.options.shouldReload?.(loaderContext)
                   : !!(route.options.shouldReload ?? true)
 
-              if (cause === 'enter') {
+              if (match.cause === 'enter') {
                 match.shouldReloadDeps = shouldReloadDeps
-              } else if (cause === 'stay') {
+              } else if (match.cause === 'stay') {
                 if (typeof shouldReloadDeps === 'object') {
                   // compare the deps to see if they've changed
                   shouldReload = !deepEqual(
@@ -1547,31 +1548,3 @@ export function useRouter<
   warning(value, 'useRouter must be used inside a <RouterProvider> component!')
   return value as any
 }
-export interface RouteMatch<
-  TRouteTree extends AnyRoute = AnyRoute,
-  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-> {
-  id: string
-  routeId: TRouteId
-  pathname: string
-  params: RouteById<TRouteTree, TRouteId>['types']['allParams']
-  status: 'pending' | 'success' | 'error'
-  isFetching: boolean
-  invalid: boolean
-  error: unknown
-  paramsError: unknown
-  searchError: unknown
-  updatedAt: number
-  loadPromise?: Promise<void>
-  loaderData?: RouteById<TRouteTree, TRouteId>['types']['loaderData']
-  __resolveLoadPromise?: () => void
-  context: RouteById<TRouteTree, TRouteId>['types']['allContext']
-  routeSearch: RouteById<TRouteTree, TRouteId>['types']['searchSchema']
-  search: FullSearchSchema<TRouteTree> &
-    RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema']
-  fetchedAt: number
-  shouldReloadDeps: any
-  abortController: AbortController
-}
-
-export type AnyRouteMatch = RouteMatch<any>

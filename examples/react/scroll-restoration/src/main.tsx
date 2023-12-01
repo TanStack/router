@@ -8,7 +8,6 @@ import {
   Route,
   RootRoute,
   ScrollRestoration,
-  useRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
@@ -110,7 +109,7 @@ const byElementRoute = new Route({
             ))}
           </div>
           <div className="flex-1 overflow-auto flex flex-col gap-4">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {Array.from({ length: 2 }).map((_, i) => (
               <div
                 key={i}
                 className="flex-1 border rounded-lg p-2 overflow-auto"
@@ -127,6 +126,21 @@ const byElementRoute = new Route({
                 </div>
               </div>
             ))}
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="font-bold">Virtualized</div>
+              <div className="flex-1 border rounded-lg p-2 overflow-auto">
+                <div className="space-y-2">
+                  {Array.from({ length: 50 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-[100px] p-2 rounded-lg bg-gray-100 border"
+                    >
+                      About Item {i + 1}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { HistoryLocation } from '@tanstack/history'
 import * as React from 'react'
 import invariant from 'tiny-invariant'
 import { useLoaderData, useMatch } from './Matches'
-import { AnyRouteMatch } from './RouterProvider'
+import { AnyRouteMatch } from './Matches'
 import { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
 import { ParsedLocation } from './location'
 import { joinPaths, trimPath } from './path'
@@ -178,6 +178,7 @@ type BeforeLoadFn<
   location: ParsedLocation
   navigate: NavigateFn<AnyRoute>
   buildLocation: BuildLocationFn<AnyRoute>
+  cause: 'enter' | 'stay'
 }) => Promise<TRouteContext> | TRouteContext | void
 
 export type UpdatableRouteOptions<

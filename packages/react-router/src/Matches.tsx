@@ -2,13 +2,49 @@ import * as React from 'react'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
-import { RouteMatch } from './RouterProvider'
 import { useRouter, useRouterState } from './RouterProvider'
 import { ResolveRelativePath, ToOptions } from './link'
 import { AnyRoute, ReactNode, rootRouteId } from './route'
-import { RouteById, RouteByPath, RouteIds, RoutePaths } from './routeInfo'
+import {
+  FullSearchSchema,
+  ParseRoute,
+  RouteById,
+  RouteByPath,
+  RouteIds,
+  RoutePaths,
+} from './routeInfo'
 import { RegisteredRouter } from './router'
 import { NoInfer, StrictOrFrom } from './utils'
+
+export interface RouteMatch<
+  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
+> {
+  id: string
+  routeId: TRouteId
+  pathname: string
+  params: RouteById<TRouteTree, TRouteId>['types']['allParams']
+  status: 'pending' | 'success' | 'error'
+  isFetching: boolean
+  invalid: boolean
+  error: unknown
+  paramsError: unknown
+  searchError: unknown
+  updatedAt: number
+  loadPromise?: Promise<void>
+  loaderData?: RouteById<TRouteTree, TRouteId>['types']['loaderData']
+  __resolveLoadPromise?: () => void
+  context: RouteById<TRouteTree, TRouteId>['types']['allContext']
+  routeSearch: RouteById<TRouteTree, TRouteId>['types']['searchSchema']
+  search: FullSearchSchema<TRouteTree> &
+    RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema']
+  fetchedAt: number
+  shouldReloadDeps: any
+  abortController: AbortController
+  cause: 'enter' | 'stay'
+}
+
+export type AnyRouteMatch = RouteMatch<any>
 
 export function Matches() {
   const { routesById, state } = useRouter()

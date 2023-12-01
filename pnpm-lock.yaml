@@ -765,6 +765,9 @@ importers:
       '@tanstack/react-store':
         specifier: ^0.0.1
         version: 0.0.1(react-dom@18.2.0)(react@18.2.0)
+      '@tanstack/react-virtual':
+        specifier: 3.0.0-alpha.0
+        version: 3.0.0-alpha.0(react@18.2.0)
       '@tanstack/router-cli':
         specifier: workspace:*
         version: link:../../../packages/router-cli
@@ -4472,7 +4475,6 @@ packages:
 
   /@reach/observe-rect@1.2.0:
     resolution: {integrity: sha512-Ba7HmkFgfQxZqqaeIWWkNK0rEhpxVQHIoVyW1YDSkGsGIXzcaW4deC8B0pZrNSSyLTdIk7y+5olKt5+g0GmFIQ==}
-    dev: true
 
   /@rollup/plugin-babel@5.3.1(@babel/core@7.20.5)(@types/babel__core@7.1.20)(rollup@2.79.1):
     resolution: {integrity: sha512-WFfdLWU/xVWKeRQnKmIAQULUI7Il0gZnBIH/ZFO069wYIfPu+8zrfp/KMW0atmELoRDq8FbiP3VCss9MhCut7Q==}
@@ -5396,6 +5398,17 @@ packages:
       react: 18.3.0-canary-ab31a9ed2-20230824
       react-dom: 18.3.0-canary-ab31a9ed2-20230824(react@18.3.0-canary-ab31a9ed2-20230824)
       use-sync-external-store: 1.2.0(react@18.3.0-canary-ab31a9ed2-20230824)
+    dev: false
+
+  /@tanstack/react-virtual@3.0.0-alpha.0(react@18.2.0):
+    resolution: {integrity: sha512-WpHU/dt34NwZZ8qtiE05TF+nX/b1W6qrWZarO+s8jJFpPVicrTbJKp5Bjt4eSJuk7aYw272oEfsH3ABBRgj+3A==}
+    engines: {node: '>=12'}
+    peerDependencies:
+      react: '>=16'
+    dependencies:
+      '@babel/runtime': 7.21.0
+      '@reach/observe-rect': 1.2.0
+      react: 18.2.0
     dev: false
 
   /@tanstack/router-core@0.0.1-beta.203(react-dom@18.2.0)(react@18.2.0):
