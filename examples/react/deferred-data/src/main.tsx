@@ -205,7 +205,6 @@ const routeTree = rootRoute.addChildren([
 // Set up a Router instance
 const router = new Router({
   routeTree,
-  defaultPreload: 'intent',
 })
 
 // Register things for typesafety

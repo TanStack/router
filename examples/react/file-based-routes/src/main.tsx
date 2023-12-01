@@ -6,7 +6,6 @@ import { routeTree } from './routeTree.gen'
 // Set up a Router instance
 const router = new Router({
   routeTree,
-  defaultPreload: 'intent',
 })
 
 // Register things for typesafety

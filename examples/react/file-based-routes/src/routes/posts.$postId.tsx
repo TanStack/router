@@ -21,10 +21,12 @@ export const fetchPost = async (postId: string) => {
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .then((r) => r.data)
-
-  if (!post) {
-    throw new PostNotFoundError(`Post with id "${postId}" not found!`)
-  }
+    .catch((err) => {
+      if (err.response.status === 404) {
+        throw new PostNotFoundError(`Post with id "${postId}" not found!`)
+      }
+      throw err
+    })
 
   return post
 }
@@ -33,6 +35,7 @@ export const fetchPost = async (postId: string) => {
 // by the `tsr generate/watch` CLI command
 export const route = new FileRoute('/posts/$postId').createRoute({
   loader: async ({ params: { postId } }) => fetchPost(postId),
+  shouldReload: false,
   errorComponent: PostErrorComponent as any,
   component: PostComponent,
 })

@@ -997,12 +997,14 @@ export function RouterProvider<
               // Default to reloading the route all the time
               let shouldReload = true
 
-              if (cause !== 'enter') {
-                let shouldReloadDeps =
-                  typeof route.options.shouldReload === 'function'
-                    ? route.options.shouldReload?.(loaderContext)
-                    : !!(route.options.shouldReload ?? true)
+              let shouldReloadDeps =
+                typeof route.options.shouldReload === 'function'
+                  ? route.options.shouldReload?.(loaderContext)
+                  : !!(route.options.shouldReload ?? true)
 
+              if (cause === 'enter') {
+                match.shouldReloadDeps = shouldReloadDeps
+              } else if (cause === 'stay') {
                 if (typeof shouldReloadDeps === 'object') {
                   // compare the deps to see if they've changed
                   shouldReload = !deepEqual(
