@@ -637,6 +637,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.4.3
         version: 5.7.0(react-dom@18.2.0)(react@18.2.0)
+      '@tanstack/react-query-devtools':
+        specifier: ^5.10.0
+        version: 5.10.0(@tanstack/react-query@5.7.0)(react@18.2.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -4867,6 +4870,10 @@ packages:
     resolution: {integrity: sha512-n+UFgL4C/OWNpmVR8v/cj4WIMw5xapGLsZS0qHXgGrpXqNTp2IPWzeU848KHpL7BqBQZeuKDj20BuID+1FsmgA==}
     dev: false
 
+  /@tanstack/query-devtools@5.10.0:
+    resolution: {integrity: sha512-ZN17ZHiPFc8B1AZplueTLI6qxqNPuelV/8Q6gx2coNac2++AD1gq8NvCQxfq9HoaqFJM8xqS3oPYxa3HZZTo8w==}
+    dev: false
+
   /@tanstack/query-devtools@5.8.3:
     resolution: {integrity: sha512-tgVzqWpIg611UXqoIkyOLjEdrV3uNXg86kPrst0/OUP59znma68mOAHw8OEy/xxjN3t94InOfWhmVtkSQ9E8Lg==}
     dev: false
@@ -5009,6 +5016,17 @@ packages:
       '@tanstack/react-query': 5.0.0-beta.9(react-dom@18.2.0)(react@18.2.0)
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
+    dev: false
+
+  /@tanstack/react-query-devtools@5.10.0(@tanstack/react-query@5.7.0)(react@18.2.0):
+    resolution: {integrity: sha512-amQN/6BdSMiYtILISk5j3IrZZiWz+HOHjJdcJNZHaTpzS7aIM1Z82bghCSoPdBtS7P1KbdoW35aD4glm9EkIuQ==}
+    peerDependencies:
+      '@tanstack/react-query': ^5.10.0
+      react: ^18.0.0
+    dependencies:
+      '@tanstack/query-devtools': 5.10.0
+      '@tanstack/react-query': 5.7.0(react-dom@18.2.0)(react@18.2.0)
+      react: 18.2.0
     dev: false
 
   /@tanstack/react-query-devtools@5.8.3(@tanstack/react-query@5.7.0)(react-dom@18.2.0)(react@18.2.0):

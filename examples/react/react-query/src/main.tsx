@@ -9,6 +9,8 @@ import {
   Router,
   rootRouteWithContext,
 } from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import {
   QueryClient,
   QueryClientProvider,
@@ -73,7 +75,8 @@ const rootRoute = rootRouteWithContext<{
         <hr />
         <Outlet />
         {/* Start rendering router matches */}
-        {/* <TanStackRouterDevtools position="bottom-right" /> */}
+        <ReactQueryDevtools buttonPosition="top-right" />
+        <TanStackRouterDevtools position="bottom-right" />
       </>
     )
   },
@@ -99,19 +102,15 @@ const postsQueryOptions = queryOptions({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  loader: () => fetchPosts(),
-  // loader: ({ context: { queryClient } }) => {
-  //   return queryClient.ensureQueryData()
-  // },
-  component: ({ useLoaderData }) => {
-    // const postsQuery = useSuspenseQuery({
-    //   ...postsQueryOptions,
-    //   // staleTime: 10 * 1000,
-    // })
+  loader: ({ context: { queryClient } }) =>
+    queryClient.ensureQueryData(postsQueryOptions),
+  component: () => {
+    const postsQuery = useSuspenseQuery({
+      ...postsQueryOptions,
+      // staleTime: 10 * 1000,
+    })
 
-    // const posts = postsQuery.data
-
-    const posts = useLoaderData()
+    const posts = postsQuery.data
 
     return (
       <div className="p-2 flex gap-2">
@@ -167,15 +166,12 @@ const postRoute = new Route({
 
     return <ErrorComponent error={error} />
   },
-  // loader: ({ context: { queryClient, queryOptions } }) =>
-  //   queryClient.ensureQueryData(queryOptions),
+  loader: ({ context: { queryClient }, params: { postId } }) =>
+    queryClient.ensureQueryData(postQueryOptions(postId)),
   component: ({ useParams }) => {
     const { postId } = useParams()
 
-    const postQuery = useSuspenseQuery({
-      ...postQueryOptions(postId),
-      // staleTime: 10 * 1000,
-    })
+    const postQuery = useSuspenseQuery(postQueryOptions(postId))
 
     const post = postQuery.data
 
@@ -193,19 +189,12 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
 ])
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 10,
-      gcTime: 10,
-    },
-  },
-})
+const queryClient = new QueryClient()
 
 // Set up a Router instance
 const router = new Router({
   routeTree,
-  // defaultPreload: 'intent',
+  defaultPreload: 'intent',
   context: {
     queryClient,
   },

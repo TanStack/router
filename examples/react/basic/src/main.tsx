@@ -90,7 +90,7 @@ const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
   // A fun way to revalidate the data every 10 seconds :)
-  shouldReload: () => [`${Date.now()}`.substring(0, 9)],
+  shouldReload: () => [Math.floor(Date.now() / 10000)],
   loader: () => fetchPosts(),
   component: ({ useLoaderData }) => {
     const posts = useLoaderData()
