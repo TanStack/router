@@ -132,7 +132,6 @@ const indexRoute = new Route({
 const photosRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'photos',
-  key: false,
   loader: fetchPhotos,
   component: ({ useLoaderData }) => {
     const photos = useLoaderData()
@@ -267,6 +266,9 @@ const photoModalRoute = new Route({
         }}
       >
         <div className="bg-white p-2 rounded-lg">
+          <Link target="_blank" className="underline text-blue-500">
+            Open in new tab (to test de-masking)
+          </Link>
           <Photo photo={photo} />
         </div>
       </Modal>
@@ -301,7 +303,6 @@ const photoModalToPhotoMask = createRouteMask({
 // Set up a Router instance
 const router = new Router({
   routeTree,
-  reloadOnWindowFocus: true,
   routeMasks: [photoModalToPhotoMask],
 })
 

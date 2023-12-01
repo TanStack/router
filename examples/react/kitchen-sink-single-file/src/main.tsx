@@ -498,7 +498,6 @@ const usersRoute = new Route({
     }),
   ],
   loader: (opts) =>
-    console.log('users') ||
     opts.context.queryClient.ensureQueryData(usersQueryOptions()),
   component: ({ useSearch }) => {
     const navigate = useNavigate()
