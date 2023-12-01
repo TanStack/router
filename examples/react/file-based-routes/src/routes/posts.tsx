@@ -14,7 +14,7 @@ const fetchPosts = async () => {
 // @ts-ignore
 export const route = new FileRoute('/posts').createRoute({
   loader: fetchPosts,
-  shouldReload: () => [Math.floor(Date.now() / 10000)], // Only rerun every 10 seconds
+  shouldReload: () => [Math.floor(Date.now() / 10000)], // Only reload every 10 seconds
   component: ({ useLoaderData }) => {
     const posts = useLoaderData()
 
