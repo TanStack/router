@@ -34,7 +34,7 @@ export type ScrollRestorationOptions = {
 const defaultGetKey = (location: ParsedLocation) => location.state.key!
 
 export function useScrollRestoration(options?: ScrollRestorationOptions) {
-  const { state, subscribe, resetNextScrollRef } = useRouter()
+  const router = useRouter()
 
   useLayoutEffect(() => {
     const getKey = options?.getKey || defaultGetKey
@@ -108,7 +108,7 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
       document.addEventListener('scroll', onScroll, true)
     }
 
-    const unsubOnBeforeLoad = subscribe('onBeforeLoad', (event) => {
+    const unsubOnBeforeLoad = router.subscribe('onBeforeLoad', (event) => {
       if (event.pathChanged) {
         const restoreKey = getKey(event.fromLocation)
         for (const elementSelector in cache.state.next) {
@@ -139,13 +139,13 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
       }
     })
 
-    const unsubOnResolved = subscribe('onResolved', (event) => {
+    const unsubOnResolved = router.subscribe('onResolved', (event) => {
       if (event.pathChanged) {
-        if (!resetNextScrollRef.current) {
+        if (!router.resetNextScroll) {
           return
         }
 
-        resetNextScrollRef.current = true
+        router.resetNextScroll = true
 
         const getKey = options?.getKey || defaultGetKey
 

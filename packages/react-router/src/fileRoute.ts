@@ -108,7 +108,7 @@ export class FileRoute<
     TChildren extends RouteConstraints['TChildren'] = unknown,
     TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
   >(
-    options: Omit<
+    options?: Omit<
       RouteOptions<
         TParentRoute,
         string,

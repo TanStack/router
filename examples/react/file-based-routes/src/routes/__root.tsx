@@ -2,8 +2,12 @@ import * as React from 'react'
 import { Link, Outlet, RootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
-export const route = new RootRoute({
-  component: () => (
+export const Route = new RootRoute({
+  component: RootComponent,
+})
+
+function RootComponent() {
+  return (
     <>
       <div className="p-2 flex gap-2 text-lg">
         <Link
@@ -37,5 +41,5 @@ export const route = new RootRoute({
       {/* Start rendering router matches */}
       <TanStackRouterDevtools position="bottom-right" />
     </>
-  ),
-})
+  )
+}

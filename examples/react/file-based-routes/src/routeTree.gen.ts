@@ -1,12 +1,12 @@
-import { route as rootRoute } from "./routes/__root"
-import { route as PostsRoute } from "./routes/posts"
-import { route as LayoutRoute } from "./routes/_layout"
-import { route as IndexRoute } from "./routes/index"
-import { route as PostsPostIdRoute } from "./routes/posts.$postId"
-import { route as LayoutLayoutBRoute } from "./routes/_layout/layout-b"
-import { route as LayoutLayoutARoute } from "./routes/_layout/layout-a"
-import { route as PostsIndexRoute } from "./routes/posts.index"
-import { route as PostsPostIdDeepRoute } from "./routes/posts_.$postId.deep"
+import { Route as rootRoute } from "./routes/__root"
+import { Route as PostsRoute } from "./routes/posts"
+import { Route as LayoutRoute } from "./routes/_layout"
+import { Route as IndexRoute } from "./routes/index"
+import { Route as PostsPostIdRoute } from "./routes/posts.$postId"
+import { Route as LayoutLayoutBRoute } from "./routes/_layout/layout-b"
+import { Route as LayoutLayoutARoute } from "./routes/_layout/layout-a"
+import { Route as PostsIndexRoute } from "./routes/posts.index"
+import { Route as PostsPostIdDeepRoute } from "./routes/posts_.$postId.deep"
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {

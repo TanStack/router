@@ -836,3 +836,25 @@ export type PendingRouteComponent<
 >
 
 export type AnyRouteComponent = RouteComponent<any, any, any, any>
+
+export type ComponentPropsFromRoute<TRoute> =
+  TRoute extends (() => infer T extends AnyRoute)
+    ? ComponentPropsFromRoute<T>
+    : TRoute extends Route<
+        infer TParentRoute,
+        infer TPath,
+        infer TFullPath,
+        infer TCustomId,
+        infer TId,
+        infer TSearchSchema,
+        infer TFullSearchSchema,
+        infer TParams,
+        infer TAllParams,
+        infer TRouteContext,
+        infer TAllContext,
+        infer TRouterContext,
+        infer TLoaderData,
+        infer TChildren
+      >
+    ? RouteProps<TFullSearchSchema, TAllParams, TAllContext, TLoaderData>
+    : {}

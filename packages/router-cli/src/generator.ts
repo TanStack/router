@@ -209,19 +209,20 @@ export async function generator(config: Config) {
   const routeConfigChildrenText = await buildRouteConfig(routeTree)
 
   const routeImports = [
-    `import { route as rootRoute } from './${sanitize(
+    `import { Route as rootRoute } from './${sanitize(
       path.relative(
         path.dirname(config.generatedRouteTree),
         path.resolve(config.routesDirectory, routePathIdPrefix + rootPathId),
       ),
     )}'`,
     ...multiSortBy(routeNodes, [
-      (d) => (d.routePath?.includes(`/${routePathIdPrefix + rootPathId}`) ? -1 : 1),
+      (d) =>
+        d.routePath?.includes(`/${routePathIdPrefix + rootPathId}`) ? -1 : 1,
       (d) => d.routePath?.split('/').length,
       (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
       (d) => d,
     ]).map((node) => {
-      return `import { route as ${node.variableName}Route } from './${sanitize(
+      return `import { Route as ${node.variableName}Route } from './${sanitize(
         removeExt(
           path.relative(
             path.dirname(config.generatedRouteTree),

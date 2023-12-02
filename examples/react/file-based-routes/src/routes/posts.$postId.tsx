@@ -3,44 +3,20 @@ import {
   ErrorComponent,
   FileRoute,
   Link,
-  RouteErrorComponentProps,
+  ErrorRouteProps,
 } from '@tanstack/react-router'
-import axios from 'axios'
-
-export type PostType = {
-  id: string
-  title: string
-  body: string
-}
-
-export class PostNotFoundError extends Error {}
-
-export const fetchPost = async (postId: string) => {
-  console.log(`Fetching post with id ${postId}...`)
-  await new Promise((r) => setTimeout(r, 500))
-  const post = await axios
-    .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-    .then((r) => r.data)
-    .catch((err) => {
-      if (err.response.status === 404) {
-        throw new PostNotFoundError(`Post with id "${postId}" not found!`)
-      }
-      throw err
-    })
-
-  return post
-}
+import { fetchPost, PostNotFoundError } from '../posts'
 
 // 'posts/$postId' is automatically inserted and managed
 // by the `tsr generate/watch` CLI command
-export const route = new FileRoute('/posts/$postId').createRoute({
+export const Route = new FileRoute('/posts/$postId').createRoute({
   loader: async ({ params: { postId } }) => fetchPost(postId),
   shouldReload: false,
   errorComponent: PostErrorComponent as any,
   component: PostComponent,
 })
 
-export function PostErrorComponent({ error }: RouteErrorComponentProps) {
+export function PostErrorComponent({ error }: ErrorRouteProps) {
   if (error instanceof PostNotFoundError) {
     return <div>{error.message}</div>
   }
@@ -48,8 +24,8 @@ export function PostErrorComponent({ error }: RouteErrorComponentProps) {
   return <ErrorComponent error={error} />
 }
 
-export function PostComponent() {
-  const post = route.useLoaderData()
+function PostComponent() {
+  const post = Route.useLoaderData()
 
   return (
     <div className="space-y-2">

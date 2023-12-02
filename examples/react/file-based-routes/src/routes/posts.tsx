@@ -1,30 +1,21 @@
 import * as React from 'react'
 import { FileRoute, Link, Outlet } from '@tanstack/react-router'
-import axios from 'axios'
-import { PostType } from './posts.$postId'
+import { fetchPosts } from '../posts'
 
-const fetchPosts = async () => {
-  console.log('Fetching posts...')
-  await new Promise((r) => setTimeout(r, 500))
-  return axios
-    .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
-    .then((r) => r.data.slice(0, 10))
-}
-
-// @ts-ignore
-export const route = new FileRoute('/posts').createRoute({
+export const Route = new FileRoute('/posts').createRoute({
   loader: fetchPosts,
   shouldReload: () => [Math.floor(Date.now() / 10000)], // Only reload every 10 seconds
-  component: ({ useLoaderData }) => {
-    const posts = useLoaderData()
+  component: PostsComponent,
+})
 
-    return (
-      <div className="p-2 flex gap-2">
-        <ul className="list-disc pl-4">
-          {[
-            ...posts,
-            { id: 'i-do-not-exist', title: 'Non-existent Post' },
-          ]?.map((post) => {
+function PostsComponent() {
+  const posts = Route.useLoaderData()
+
+  return (
+    <div className="p-2 flex gap-2">
+      <ul className="list-disc pl-4">
+        {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }]?.map(
+          (post) => {
             return (
               <li key={post.id} className="whitespace-nowrap">
                 <Link
@@ -39,11 +30,11 @@ export const route = new FileRoute('/posts').createRoute({
                 </Link>
               </li>
             )
-          })}
-        </ul>
-        <hr />
-        <Outlet />
-      </div>
-    )
-  },
-})
+          },
+        )}
+      </ul>
+      <hr />
+      <Outlet />
+    </div>
+  )
+}
