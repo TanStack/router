@@ -9,11 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/actions": "0.0.1-beta.203",
-    "@tanstack/history": "0.0.1-beta.224",
-    "@tanstack/loaders": "0.0.1-beta.203",
-    "@tanstack/react-actions": "0.0.1-beta.203",
-    "@tanstack/react-loaders": "0.0.1-beta.203",
+    "@tanstack/history": "0.0.1-beta.223",
     "@tanstack/react-query": "^5.4.3",
     "@tanstack/react-router": "0.0.1-beta.224",
     "@tanstack/react-search-state": "0.0.1-beta.203",
@@ -33,8 +29,6 @@
   "pnpm": {
     "overrides": {
       "@tanstack/react-router": "workspace:*",
-      "@tanstack/react-actions": "workspace:*",
-      "@tanstack/react-loaders": "workspace:*",
       "@tanstack/router-devtools": "workspace:*"
     }
   }

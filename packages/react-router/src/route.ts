@@ -460,6 +460,7 @@ export class Route<
     this.options = (options as any) || {}
     this.isRoot = !options?.getParentRoute as any
     Route.__onInit(this)
+    ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
   types!: {

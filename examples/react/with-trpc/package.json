@@ -11,7 +11,6 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-loaders": "0.0.1-beta.203",
     "@tanstack/react-query": "^4.14.1",
     "@tanstack/react-query-devtools": "^4.14.1",
     "@tanstack/react-router": "0.0.1-beta.224",
@@ -27,11 +26,6 @@
     "react-dom": "^18.2.0",
     "vite": "^2.8.6",
     "zod": "^3.19.1",
-    "@tanstack/store": "^0.0.1",
-    "@tanstack/react-store": "^0.0.1",
-    "@tanstack/loaders": "0.0.1-beta.203",
-    "@tanstack/actions": "0.0.1-beta.203",
-    "@tanstack/react-actions": "0.0.1-beta.203",
     "@tanstack/react-start": "0.0.1-beta.203",
     "@tanstack/router-cli": "0.0.1-beta.224",
     "@tanstack/history": "0.0.1-beta.224",

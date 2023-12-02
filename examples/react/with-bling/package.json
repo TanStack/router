@@ -12,17 +12,11 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/actions": "0.0.1-beta.203",
     "@tanstack/bling": "^0.5.0",
-    "@tanstack/loaders": "0.0.1-beta.203",
-    "@tanstack/react-actions": "0.0.1-beta.203",
-    "@tanstack/react-loaders": "0.0.1-beta.203",
-    "@tanstack/react-router": "0.0.1-beta.224",
+    "@tanstack/react-router": "0.0.1-beta.223",
     "@tanstack/react-start": "0.0.1-beta.203",
-    "@tanstack/react-store": "^0.0.1",
-    "@tanstack/router-cli": "0.0.1-beta.224",
-    "@tanstack/router-devtools": "0.0.1-beta.224",
-    "@tanstack/store": "^0.0.1",
+    "@tanstack/router-cli": "0.0.1-beta.223",
+    "@tanstack/router-devtools": "0.0.1-beta.223",
     "axios": "^1.1.3",
     "fastify": "^4.22.0",
     "get-port": "^7.0.0",
@@ -31,7 +25,7 @@
     "react-dom": "18.3.0-canary-ab31a9ed2-20230824",
     "resolve-from": "^5.0.0",
     "use-sync-external-store": "1.3.0-canary-ab31a9ed2-20230824",
-    "@tanstack/history": "0.0.1-beta.224",
+    "@tanstack/history": "0.0.1-beta.223",
     "@tanstack/react-search-state": "0.0.1-beta.203"
   },
   "devDependencies": {
