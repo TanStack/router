@@ -13,8 +13,8 @@
   "dependencies": {
     "@tanstack/react-query": "^4.14.1",
     "@tanstack/react-query-devtools": "^4.14.1",
-    "@tanstack/react-router": "0.0.1-beta.224",
-    "@tanstack/router-devtools": "0.0.1-beta.224",
+    "@tanstack/react-router": "0.0.1-beta.225",
+    "@tanstack/router-devtools": "0.0.1-beta.225",
     "@trpc/client": "^10.0.0-rc.6",
     "@trpc/react-query": "^10.0.0-rc.6",
     "@trpc/server": "^10.0.0-rc.6",
@@ -27,8 +27,8 @@
     "vite": "^2.8.6",
     "zod": "^3.19.1",
     "@tanstack/react-start": "0.0.1-beta.203",
-    "@tanstack/router-cli": "0.0.1-beta.224",
-    "@tanstack/history": "0.0.1-beta.224",
+    "@tanstack/router-cli": "0.0.1-beta.225",
+    "@tanstack/history": "0.0.1-beta.225",
     "@tanstack/react-search-state": "0.0.1-beta.203"
   },
   "devDependencies": {

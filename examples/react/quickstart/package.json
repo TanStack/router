@@ -9,15 +9,15 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "0.0.1-beta.224",
-    "@tanstack/router-devtools": "0.0.1-beta.224",
+    "@tanstack/react-router": "0.0.1-beta.225",
+    "@tanstack/router-devtools": "0.0.1-beta.225",
     "@vitejs/plugin-react": "^1.1.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "vite": "^2.8.6",
     "@tanstack/react-start": "0.0.1-beta.203",
-    "@tanstack/router-cli": "0.0.1-beta.224",
-    "@tanstack/history": "0.0.1-beta.224",
+    "@tanstack/router-cli": "0.0.1-beta.225",
+    "@tanstack/history": "0.0.1-beta.225",
     "@tanstack/react-search-state": "0.0.1-beta.203"
   },
   "devDependencies": {
