@@ -152,10 +152,6 @@ function MatchInner({ match }: { match: RouteMatch }): any {
   const { options, routesById } = useRouter()
   const route = routesById[match.routeId]!
 
-  if (match.id.split('/').length === 4) {
-    console.log(match.id, pick(match, ['status', 'cause', 'isFetching']))
-  }
-
   if (match.status === 'error') {
     throw match.error
   }
