@@ -182,7 +182,6 @@ export function createBrowserHistory(opts?: {
   getHref?: () => string
   createHref?: (path: string) => string
 }): RouterHistory {
-  console.log('hello')
   const getHref =
     opts?.getHref ??
     (() =>

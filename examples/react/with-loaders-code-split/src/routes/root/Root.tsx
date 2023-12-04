@@ -30,5 +30,3 @@ export const Root = () => {
     </>
   )
 }
-
-export const tanner = 'hello'

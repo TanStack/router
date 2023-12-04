@@ -71,11 +71,12 @@ const useCreateInvoiceMutation = () => {
   })
 }
 
-const useUpdateInvoiceMutation = () => {
+const useUpdateInvoiceMutation = (invoiceId: number) => {
   return useMutation({
-    // mutationKey: ['invoices', 'update'],
+    mutationKey: ['invoices', 'update', invoiceId],
     mutationFn: patchInvoice,
     onSuccess: () => queryClient.invalidateQueries(),
+    gcTime: 1000 * 10,
   })
 }
 
@@ -258,15 +259,15 @@ const invoicesRoute = new Route({
 function InvoicesComponent() {
   const invoicesQuery = useSuspenseQuery(invoicesQueryOptions())
   const invoices = invoicesQuery.data
-  const updateInvoiceMutation = useUpdateInvoiceMutation()
-  const createInvoiceMutation = useCreateInvoiceMutation()
+  // const updateInvoiceMutation = useUpdateInvoiceMutation()
+  // const createInvoiceMutation = useCreateInvoiceMutation()
 
   return (
     <div className="flex-1 flex">
       {/* {routerTransitionIsPending ? 'pending' : 'null'} */}
       <div className="divide-y w-48">
         {invoices?.map((invoice) => {
-          // const updateSubmission = createInvoiceMutation.find(
+          // const updateSubmission = updateInvoiceMutation.submissions.find(
           //   (d) => d.variables?.id === invoice.id,
           // )
 
@@ -407,7 +408,7 @@ function InvoiceComponent() {
   const navigate = useNavigate()
   const invoiceQuery = useSuspenseQuery(invoiceQueryOptions(params.invoiceId))
   const invoice = invoiceQuery.data
-  const updateInvoiceMutation = useUpdateInvoiceMutation()
+  const updateInvoiceMutation = useUpdateInvoiceMutation(params.invoiceId)
   const [notes, setNotes] = React.useState(search.notes ?? '')
 
   React.useEffect(() => {
@@ -887,9 +888,12 @@ const router = new Router({
   },
 })
 
-router.subscribe('onLoad', () => {
-  queryClient.getMutationCache().clear()
-})
+// router.subscribe('onResolved', ({ pathChanged }) => {
+//   if (pathChanged) {
+//     console.log('invalidate')
+//     queryClient.getMutationCache().clear()
+//   }
+// })
 
 declare module '@tanstack/react-router' {
   interface Register {

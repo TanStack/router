@@ -3,8 +3,6 @@ import { FileRoute, Link } from '@tanstack/react-router'
 import { PostErrorComponent } from './posts.$postId'
 import { fetchPost } from '../posts'
 
-// 'posts/$postId' is automatically inserted and managed
-// by the `tsr generate/watch` CLI command
 export const Route = new FileRoute('/posts_/$postId/deep').createRoute({
   loader: async ({ params: { postId } }) => fetchPost(postId),
   errorComponent: PostErrorComponent as any,

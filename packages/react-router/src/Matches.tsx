@@ -14,7 +14,7 @@ import {
   RoutePaths,
 } from './routeInfo'
 import { RegisteredRouter } from './router'
-import { NoInfer, StrictOrFrom } from './utils'
+import { NoInfer, StrictOrFrom, pick } from './utils'
 
 export interface RouteMatch<
   TRouteTree extends AnyRoute = AnyRoute,
@@ -35,7 +35,6 @@ export interface RouteMatch<
   loaderData?: RouteById<TRouteTree, TRouteId>['types']['loaderData']
   __resolveLoadPromise?: () => void
   context: RouteById<TRouteTree, TRouteId>['types']['allContext']
-  routeSearch: RouteById<TRouteTree, TRouteId>['types']['searchSchema']
   search: FullSearchSchema<TRouteTree> &
     RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema']
   fetchedAt: number
@@ -85,7 +84,6 @@ export function Matches() {
   )
 }
 
-const defaultPending = () => null
 function SafeFragment(props: any) {
   return <>{props.children}</>
 }
@@ -98,17 +96,17 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
   const locationKey = useRouterState().location.state?.key
 
   const PendingComponent = (route.options.pendingComponent ??
-    options.defaultPendingComponent ??
-    defaultPending) as any
+    options.defaultPendingComponent) as any
 
   const routeErrorComponent =
     route.options.errorComponent ??
     options.defaultErrorComponent ??
     ErrorComponent
 
-  const ResolvedSuspenseBoundary = route.options.wrapInSuspense
-    ? React.Suspense
-    : SafeFragment
+  const ResolvedSuspenseBoundary =
+    route.options.wrapInSuspense ?? PendingComponent
+      ? React.Suspense
+      : SafeFragment
 
   const errorComponent = routeErrorComponent
     ? React.useCallback(
@@ -125,6 +123,8 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
       )
     : undefined
 
+  const ResolvedCatchBoundary = errorComponent ? CatchBoundary : SafeFragment
+
   return (
     <matchesContext.Provider value={matches}>
       <ResolvedSuspenseBoundary
@@ -135,21 +135,15 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
           useParams: route.useParams,
         })}
       >
-        {errorComponent ? (
-          <CatchBoundary
-            resetKey={locationKey}
-            errorComponent={errorComponent}
-            onCatch={() => {
-              warning(false, `Error in route match: ${match.id}`)
-            }}
-          >
-            <MatchInner match={match} />
-          </CatchBoundary>
-        ) : (
-          <SafeFragment>
-            <MatchInner match={match} />
-          </SafeFragment>
-        )}
+        <ResolvedCatchBoundary
+          resetKey={locationKey}
+          errorComponent={errorComponent}
+          onCatch={() => {
+            warning(false, `Error in route match: ${match.id}`)
+          }}
+        >
+          <MatchInner match={match} />
+        </ResolvedCatchBoundary>
       </ResolvedSuspenseBoundary>
     </matchesContext.Provider>
   )
@@ -157,6 +151,10 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
 function MatchInner({ match }: { match: RouteMatch }): any {
   const { options, routesById } = useRouter()
   const route = routesById[match.routeId]!
+
+  if (match.id.split('/').length === 4) {
+    console.log(match.id, pick(match, ['status', 'cause', 'isFetching']))
+  }
 
   if (match.status === 'error') {
     throw match.error

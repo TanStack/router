@@ -14,7 +14,7 @@ import {
   TrimPathLeft,
   RouteConstraints,
 } from './route'
-import { Assign, AssignAll, Expand, IsAny } from './utils'
+import { Assign, Expand, IsAny } from './utils'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -86,13 +86,14 @@ export class FileRoute<
 
   createRoute = <
     TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
-    TFullSearchSchema extends RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
+    TFullSearchSchema extends
+      RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
       TParentRoute,
       TSearchSchema
     >,
-    TParams extends RouteConstraints['TParams'] = ParsePathParams<TPath> extends never
-      ? AnyPathParams
-      : Record<ParsePathParams<TPath>, RouteConstraints['TPath']>,
+    TParams extends RouteConstraints['TParams'] = Expand<
+      Record<ParsePathParams<TPath>, string>
+    >,
     TAllParams extends RouteConstraints['TAllParams'] = MergeFromFromParent<
       TParentRoute['types']['allParams'],
       TParams
@@ -112,7 +113,7 @@ export class FileRoute<
       RouteOptions<
         TParentRoute,
         string,
-        string,
+        TPath,
         TSearchSchema,
         TFullSearchSchema,
         TParams,

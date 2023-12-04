@@ -7,8 +7,6 @@ import {
 } from '@tanstack/react-router'
 import { fetchPost, PostNotFoundError } from '../posts'
 
-// 'posts/$postId' is automatically inserted and managed
-// by the `tsr generate/watch` CLI command
 export const Route = new FileRoute('/posts/$postId').createRoute({
   loader: async ({ params: { postId } }) => fetchPost(postId),
   shouldReload: false,

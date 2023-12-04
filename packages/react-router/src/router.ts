@@ -553,9 +553,57 @@ export class Router<
       return
     })
 
-    const matches = matchedRoutes.map((route, index) => {
+    const matches: AnyRouteMatch[] = []
+
+    matchedRoutes.forEach((route, index) => {
+      // Take each matched route and resolve + validate its search params
+      // This has to happen serially because each route's search params
+      // can depend on the parent route's search params
+      // It must also happen before we create the match so that we can
+      // pass the search params to the route's potential key function
+      // which is used to uniquely identify the route match in state
+
+      const parentMatch = matches[index - 1]
+
+      const [preMatchSearch, searchError]: [Record<string, any>, any] = (() => {
+        // Validate the search params and stabilize them
+        const parentSearch = parentMatch?.search ?? locationSearch
+
+        try {
+          const validator =
+            typeof route.options.validateSearch === 'object'
+              ? route.options.validateSearch.parse
+              : route.options.validateSearch
+
+          let search = validator?.(parentSearch) ?? {}
+
+          return [
+            {
+              ...parentSearch,
+              ...search,
+            },
+            undefined,
+          ]
+        } catch (err: any) {
+          const searchError = new SearchParamError(err.message, {
+            cause: err,
+          })
+
+          if (opts?.throwOnError) {
+            throw searchError
+          }
+
+          return [parentSearch, searchError]
+        }
+      })()
+
       const interpolatedPath = interpolatePath(route.path, routeParams)
-      const matchId = interpolatePath(route.id, routeParams, true)
+      const matchId =
+        interpolatePath(route.id, routeParams, true) +
+        (route.options.key?.({
+          search: preMatchSearch,
+          location: this.state.location,
+        }) ?? '')
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
@@ -566,90 +614,42 @@ export class Router<
         ? 'stay'
         : 'enter'
 
-      if (existingMatch) {
-        return { ...existingMatch, cause }
-      }
-
       // Create a fresh route match
       const hasLoaders = !!(
         route.options.loader ||
         componentTypes.some((d) => (route.options[d] as any)?.preload)
       )
 
-      const routeMatch: AnyRouteMatch = {
-        id: matchId,
-        routeId: route.id,
-        params: routeParams,
-        pathname: joinPaths([this.basepath, interpolatedPath]),
-        updatedAt: Date.now(),
-        routeSearch: {},
-        search: {} as any,
-        status: hasLoaders ? 'pending' : 'success',
-        isFetching: false,
-        invalid: false,
-        error: undefined,
-        paramsError: parseErrors[index],
-        searchError: undefined,
-        loadPromise: Promise.resolve(),
-        context: undefined!,
-        abortController: new AbortController(),
-        shouldReloadDeps: undefined,
-        fetchedAt: 0,
-        cause,
-      }
-
-      return routeMatch
-    })
-
-    // Take each match and resolve its search params and context
-    // This has to happen after the matches are created or found
-    // so that we can use the parent match's search params and context
-    matches.forEach((match, i): any => {
-      const parentMatch = matches[i - 1]
-      const route = this.looseRoutesById[match.routeId]!
-
-      const searchInfo = (() => {
-        // Validate the search params and stabilize them
-        const parentSearchInfo = {
-          search: parentMatch?.search ?? locationSearch,
-          routeSearch: parentMatch?.routeSearch ?? locationSearch,
-        }
-
-        try {
-          const validator =
-            typeof route.options.validateSearch === 'object'
-              ? route.options.validateSearch.parse
-              : route.options.validateSearch
-
-          let routeSearch = validator?.(parentSearchInfo.search) ?? {}
-
-          let search = {
-            ...parentSearchInfo.search,
-            ...routeSearch,
+      const match: AnyRouteMatch = existingMatch
+        ? { ...existingMatch, cause }
+        : {
+            id: matchId,
+            routeId: route.id,
+            params: routeParams,
+            pathname: joinPaths([this.basepath, interpolatedPath]),
+            updatedAt: Date.now(),
+            search: {} as any,
+            searchError: undefined,
+            status: hasLoaders ? 'pending' : 'success',
+            isFetching: false,
+            invalid: false,
+            error: undefined,
+            paramsError: parseErrors[index],
+            loadPromise: Promise.resolve(),
+            context: undefined!,
+            abortController: new AbortController(),
+            shouldReloadDeps: undefined,
+            fetchedAt: 0,
+            cause,
           }
 
-          routeSearch = replaceEqualDeep(match.routeSearch, routeSearch)
-          search = replaceEqualDeep(match.search, search)
+      // Regardless of whether we're reusing an existing match or creating
+      // a new one, we need to update the match's search params
+      match.search = replaceEqualDeep(match.search, preMatchSearch)
+      // And also update the searchError if there is one
+      match.searchError = searchError
 
-          return {
-            routeSearch,
-            search,
-            searchDidChange: match.routeSearch !== routeSearch,
-          }
-        } catch (err: any) {
-          match.searchError = new SearchParamError(err.message, {
-            cause: err,
-          })
-
-          if (opts?.throwOnError) {
-            throw match.searchError
-          }
-
-          return parentSearchInfo
-        }
-      })()
-
-      Object.assign(match, searchInfo)
+      matches.push(match)
     })
 
     return matches as any

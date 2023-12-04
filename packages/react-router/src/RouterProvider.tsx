@@ -1,11 +1,4 @@
-import {
-  HistoryLocation,
-  HistoryState,
-  RouterHistory,
-  createBrowserHistory,
-} from '@tanstack/history'
 import * as React from 'react'
-import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import { Matches } from './Matches'
 import {
@@ -16,53 +9,18 @@ import {
   ToOptions,
 } from './link'
 import { ParsedLocation } from './location'
-import {
-  cleanPath,
-  interpolatePath,
-  joinPaths,
-  matchPathname,
-  parsePathname,
-  resolvePath,
-  trimPath,
-  trimPathRight,
-} from './path'
-import { isRedirect } from './redirects'
-import {
-  AnyPathParams,
-  AnyRoute,
-  AnySearchSchema,
-  LoaderFnContext,
-  Route,
-} from './route'
-import {
-  FullSearchSchema,
-  RouteById,
-  RoutePaths,
-  RoutesById,
-  RoutesByPath,
-} from './routeInfo'
+import { AnyRoute } from './route'
+import { RouteById, RoutePaths } from './routeInfo'
 import {
   BuildNextOptions,
-  DehydratedRouteMatch,
   RegisteredRouter,
   Router,
   RouterOptions,
   RouterState,
-  componentTypes,
 } from './router'
-import {
-  NoInfer,
-  PickAsRequired,
-  functionalUpdate,
-  last,
-  deepEqual,
-  pick,
-  replaceEqualDeep,
-  useStableCallback,
-  escapeJSON,
-} from './utils'
+import { NoInfer, PickAsRequired } from './utils'
 import { MatchRouteOptions } from './Matches'
-import { AnyRouteMatch, RouteMatch } from './Matches'
+import { RouteMatch } from './Matches'
 
 export interface CommitLocationOptions {
   replace?: boolean
@@ -107,31 +65,6 @@ export type BuildLocationFn<TRouteTree extends AnyRoute> = (
 ) => ParsedLocation
 
 export type InjectedHtmlEntry = string | (() => Promise<string> | string)
-
-// export type RouterContext<
-//   TRouteTree extends AnyRoute,
-//   // TDehydrated extends Record<string, any>,
-// > = {
-//   buildLink: BuildLinkFn<TRouteTree>
-//   state: RouterState<TRouteTree>
-//   navigate: NavigateFn<TRouteTree>
-//   matchRoute: MatchRouteFn<TRouteTree>
-//   routeTree: TRouteTree
-//   routesById: RoutesById<TRouteTree>
-//   options: RouterOptions<TRouteTree>
-//   history: RouterHistory
-//   load: LoadFn
-//   buildLocation: BuildLocationFn<TRouteTree>
-//   subscribe: Router<TRouteTree>['subscribe']
-//   resetNextScrollRef: React.MutableRefObject<boolean>
-//   injectedHtmlRef: React.MutableRefObject<InjectedHtmlEntry[]>
-//   injectHtml: (entry: InjectedHtmlEntry) => void
-//   dehydrateData: <T>(
-//     key: any,
-//     getData: T | (() => Promise<T> | T),
-//   ) => () => void
-//   hydrateData: <T>(key: any) => T | undefined
-// }
 
 export const routerContext = React.createContext<Router<any>>(null!)
 

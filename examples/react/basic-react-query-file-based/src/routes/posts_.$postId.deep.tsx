@@ -4,8 +4,6 @@ import { PostErrorComponent } from './posts.$postId'
 import { postQueryOptions } from '../postQueryOptions'
 import { fetchPost } from '../posts'
 
-// 'posts/$postId' is automatically inserted and managed
-// by the `tsr generate/watch` CLI command
 export const Route = new FileRoute('/posts_/$postId/deep').createRoute({
   loader: ({ context: { queryClient }, params: { postId } }) =>
     queryClient.ensureQueryData(postQueryOptions(postId)),

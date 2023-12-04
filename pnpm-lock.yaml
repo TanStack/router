@@ -1,7 +1,7 @@
 lockfileVersion: '6.0'
 
 settings:
-  autoInstallPeers: false
+  autoInstallPeers: true
   excludeLinksFromLockfile: false
 
 overrides:
@@ -363,6 +363,172 @@ importers:
       zod:
         specifier: ^3.19.1
         version: 3.20.2
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.41
+        version: 18.2.41
+      '@types/react-dom':
+        specifier: ^18.2.17
+        version: 18.2.17
+
+  examples/react/kitchen-sink:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@vitejs/plugin-react':
+        specifier: ^1.1.3
+        version: 1.3.2
+      axios:
+        specifier: ^1.1.3
+        version: 1.6.2
+      immer:
+        specifier: ^9.0.15
+        version: 9.0.16
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
+      vite:
+        specifier: ^2.8.6
+        version: 2.9.16
+      zod:
+        specifier: ^3.19.1
+        version: 3.22.4
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.41
+        version: 18.2.41
+      '@types/react-dom':
+        specifier: ^18.2.17
+        version: 18.2.17
+
+  examples/react/kitchen-sink-file-based:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-cli':
+        specifier: workspace:*
+        version: link:../../../packages/router-cli
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@vitejs/plugin-react':
+        specifier: ^1.1.3
+        version: 1.3.2
+      axios:
+        specifier: ^1.1.3
+        version: 1.6.2
+      immer:
+        specifier: ^9.0.15
+        version: 9.0.16
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
+      vite:
+        specifier: ^2.8.6
+        version: 2.9.16
+      zod:
+        specifier: ^3.19.1
+        version: 3.22.4
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.41
+        version: 18.2.41
+      '@types/react-dom':
+        specifier: ^18.2.17
+        version: 18.2.17
+
+  examples/react/kitchen-sink-react-query:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.7.0
+        version: 5.12.2(react@18.2.0)
+      '@tanstack/react-query-devtools':
+        specifier: ^5.8.3
+        version: 5.12.2(@tanstack/react-query@5.12.2)(react@18.2.0)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@vitejs/plugin-react':
+        specifier: ^1.1.3
+        version: 1.3.2
+      axios:
+        specifier: ^1.1.3
+        version: 1.6.2
+      immer:
+        specifier: ^9.0.15
+        version: 9.0.16
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
+      vite:
+        specifier: ^2.8.6
+        version: 2.9.16
+      zod:
+        specifier: ^3.19.1
+        version: 3.22.4
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.41
+        version: 18.2.41
+      '@types/react-dom':
+        specifier: ^18.2.17
+        version: 18.2.17
+
+  examples/react/kitchen-sink-react-query-file-based:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.12.2
+        version: 5.12.2(react@18.2.0)
+      '@tanstack/react-query-devtools':
+        specifier: ^5.12.2
+        version: 5.12.2(@tanstack/react-query@5.12.2)(react@18.2.0)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-cli':
+        specifier: workspace:*
+        version: link:../../../packages/router-cli
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@vitejs/plugin-react':
+        specifier: ^1.1.3
+        version: 1.3.2
+      axios:
+        specifier: ^1.1.3
+        version: 1.6.2
+      immer:
+        specifier: ^9.0.15
+        version: 9.0.16
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
+      vite:
+        specifier: ^2.8.6
+        version: 2.9.16
+      zod:
+        specifier: ^3.19.1
+        version: 3.22.4
     devDependencies:
       '@types/react':
         specifier: ^18.2.41
@@ -1248,6 +1414,12 @@ importers:
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1329,6 +1501,12 @@ importers:
       date-fns:
         specifier: ^2.29.1
         version: 2.29.3
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
 
 packages:
 
@@ -3273,16 +3451,6 @@ packages:
       '@babel/helper-plugin-utils': 7.22.5
     dev: true
 
-  /@babel/plugin-transform-react-jsx-development@7.18.6(@babel/core@7.23.5):
-    resolution: {integrity: sha512-SA6HEjwYFKF7WDjWcMcMGUimmw/nhNRDWxr+KaLSCrkD/LMDBvWRmHAYgE1HDeF8KUuI8OAu+RT6EOtKxSW2qA==}
-    engines: {node: '>=6.9.0'}
-    peerDependencies:
-      '@babel/core': ^7.0.0-0
-    dependencies:
-      '@babel/core': 7.23.5
-      '@babel/plugin-transform-react-jsx': 7.21.0(@babel/core@7.23.5)
-    dev: false
-
   /@babel/plugin-transform-react-jsx-development@7.22.5(@babel/core@7.23.5):
     resolution: {integrity: sha512-bDhuzwWMuInwCYeDeMzyi7TaBgRQei6DqxhbyniL7/VG4RSS7HtSL2QbY4eESy1KJqlWt8g3xeEBGPuo+XqC8A==}
     engines: {node: '>=6.9.0'}
@@ -3290,7 +3458,7 @@ packages:
       '@babel/core': ^7.0.0-0
     dependencies:
       '@babel/core': 7.23.5
-      '@babel/plugin-transform-react-jsx': 7.22.5(@babel/core@7.23.5)
+      '@babel/plugin-transform-react-jsx': 7.23.4(@babel/core@7.23.5)
 
   /@babel/plugin-transform-react-jsx-self@7.22.5(@babel/core@7.23.5):
     resolution: {integrity: sha512-nTh2ogNUtxbiSbxaT4Ds6aXnXEipHweN9YRgOX/oNXdf0cCrGn/+2LozFa3lnPV5D90MkjhgckCPBrsoSc1a7g==}
@@ -3330,20 +3498,6 @@ packages:
       '@babel/helper-plugin-utils': 7.22.5
     dev: false
 
-  /@babel/plugin-transform-react-jsx@7.21.0(@babel/core@7.23.5):
-    resolution: {integrity: sha512-6OAWljMvQrZjR2DaNhVfRz6dkCAVV+ymcLUmaf8bccGOHn2v5rHJK3tTpij0BuhdYWP4LLaqj5lwcdlpAAPuvg==}
-    engines: {node: '>=6.9.0'}
-    peerDependencies:
-      '@babel/core': ^7.0.0-0
-    dependencies:
-      '@babel/core': 7.23.5
-      '@babel/helper-annotate-as-pure': 7.18.6
-      '@babel/helper-module-imports': 7.22.15
-      '@babel/helper-plugin-utils': 7.22.5
-      '@babel/plugin-syntax-jsx': 7.23.3(@babel/core@7.23.5)
-      '@babel/types': 7.23.5
-    dev: false
-
   /@babel/plugin-transform-react-jsx@7.22.5(@babel/core@7.23.5):
     resolution: {integrity: sha512-rog5gZaVbUip5iWDMTYbVM15XQq+RkUKhET/IHR6oizR+JEoN6CAfTTuHcK4vwUyzca30qqHqEpzBOnaRMWYMA==}
     engines: {node: '>=6.9.0'}
@@ -3356,6 +3510,7 @@ packages:
       '@babel/helper-plugin-utils': 7.22.5
       '@babel/plugin-syntax-jsx': 7.23.3(@babel/core@7.23.5)
       '@babel/types': 7.23.5
+    dev: false
 
   /@babel/plugin-transform-react-jsx@7.23.4(@babel/core@7.23.5):
     resolution: {integrity: sha512-5xOpoPguCZCRbo/JeHlloSkTA8Bld1J/E1/kLfD1nsuiW1m8tduTA1ERCgIZokDflX/IBzKcqR3l7VlRgiIfHA==}
@@ -3369,7 +3524,6 @@ packages:
       '@babel/helper-plugin-utils': 7.22.5
       '@babel/plugin-syntax-jsx': 7.23.3(@babel/core@7.23.5)
       '@babel/types': 7.23.5
-    dev: true
 
   /@babel/plugin-transform-react-pure-annotations@7.23.3(@babel/core@7.23.5):
     resolution: {integrity: sha512-qMFdSS+TUhB7Q/3HVPnEdYJDQIk57jkntAwSuz9xfSE4n+3I+vHYCli3HoHawN1Z3RfCz/y1zXA/JXjG6cVImQ==}
@@ -5451,10 +5605,10 @@ packages:
   /@tanstack/bling@0.5.0(vite@4.4.9):
     resolution: {integrity: sha512-IPSFm7jtZiJcQsNuFFrZ15V10gp/CYbqnTyAEMaTFNV97SqnB2hbM8tildppVeM7BHu7pIp7+nsbYPCGjeG7FA==}
     dependencies:
-      '@babel/generator': 7.22.10
-      '@babel/template': 7.22.5
-      '@babel/traverse': 7.22.11
-      '@babel/types': 7.22.11
+      '@babel/generator': 7.23.5
+      '@babel/template': 7.22.15
+      '@babel/traverse': 7.23.5
+      '@babel/types': 7.23.5
       '@vitejs/plugin-react': 3.1.0(vite@4.4.9)
       esbuild: 0.16.17
       esbuild-plugin-replace: 1.4.0
@@ -5983,13 +6137,13 @@ packages:
     engines: {node: '>=12.0.0'}
     dependencies:
       '@babel/core': 7.23.5
-      '@babel/plugin-transform-react-jsx': 7.21.0(@babel/core@7.23.5)
-      '@babel/plugin-transform-react-jsx-development': 7.18.6(@babel/core@7.23.5)
-      '@babel/plugin-transform-react-jsx-self': 7.22.5(@babel/core@7.23.5)
-      '@babel/plugin-transform-react-jsx-source': 7.22.5(@babel/core@7.23.5)
+      '@babel/plugin-transform-react-jsx': 7.23.4(@babel/core@7.23.5)
+      '@babel/plugin-transform-react-jsx-development': 7.22.5(@babel/core@7.23.5)
+      '@babel/plugin-transform-react-jsx-self': 7.23.3(@babel/core@7.23.5)
+      '@babel/plugin-transform-react-jsx-source': 7.23.3(@babel/core@7.23.5)
       '@rollup/pluginutils': 4.2.1
       react-refresh: 0.13.0
-      resolve: 1.22.1
+      resolve: 1.22.8
     transitivePeerDependencies:
       - supports-color
     dev: false
