@@ -282,7 +282,6 @@ export class Router<
       'stringifySearch' | 'parseSearch' | 'context'
     >,
   ) => {
-    const previousOptions = this.options
     this.options = {
       ...this.options,
       ...newOptions,
@@ -1065,7 +1064,19 @@ export class Router<
             showPending: false,
           }
 
-          const pendingPromise = new Promise((r) => setTimeout(r, 1000))
+          const pendingMs =
+            route.options.pendingMs ?? this.options.defaultPendingMs
+
+          let pendingPromise: Promise<void> | undefined
+
+          if (
+            !preload &&
+            pendingMs &&
+            (route.options.pendingComponent ??
+              this.options.defaultPendingComponent)
+          ) {
+            pendingPromise = new Promise((r) => setTimeout(r, pendingMs))
+          }
 
           if (match.isFetching) {
             loadPromise = getRouteMatch(this.state, match.id)?.loadPromise
@@ -1155,12 +1166,7 @@ export class Router<
           await new Promise<void>(async (resolve) => {
             // If the route has a pending component and a pendingMs option,
             // forcefully show the pending component
-            if (
-              !preload &&
-              (route.options.pendingComponent ??
-                this.options.defaultPendingComponent) &&
-              (route.options.pendingMs ?? this.options.defaultPendingMs)
-            ) {
+            if (pendingPromise) {
               pendingPromise.then(() => {
                 didShowPending = true
                 matches[index] = match = {

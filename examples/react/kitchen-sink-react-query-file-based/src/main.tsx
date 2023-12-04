@@ -34,12 +34,8 @@ declare module '@tanstack/react-router' {
 function App() {
   // This stuff is just to tweak our sandbox setup in real-time
   const [loaderDelay, setLoaderDelay] = useSessionStorage('loaderDelay', 500)
-  const [actionDelay, setActionDelay] = useSessionStorage('actionDelay', 500)
-
-  const [defaultLoaderMaxAge, setDefaultLoaderMaxAge] = useSessionStorage(
-    'defaultLoaderMaxAge',
-    0,
-  )
+  const [pendingMs, setPendingMs] = useSessionStorage('pendingMs', 1000)
+  const [pendingMinMs, setPendingMinMs] = useSessionStorage('pendingMinMs', 500)
 
   return (
     <>
@@ -57,38 +53,48 @@ function App() {
             className="w-full"
           />
         </div>
-
-        <div>Action Delay: {actionDelay}ms</div>
+        <div>defaultPendingMs: {pendingMs}ms</div>
         <div>
           <input
             type="range"
             min="0"
             max="5000"
             step="100"
-            value={actionDelay}
-            onChange={(e) => setActionDelay(e.target.valueAsNumber)}
+            value={pendingMs}
+            onChange={(e) => setPendingMs(e.target.valueAsNumber)}
             className="w-full"
           />
         </div>
-        <div>
-          Loader Max Age:{' '}
-          {defaultLoaderMaxAge ? `${defaultLoaderMaxAge}ms` : 'Off'}
-        </div>
+        <div>defaultPendingMinMs: {pendingMinMs}ms</div>
         <div>
           <input
             type="range"
             min="0"
-            max="10000"
-            step="250"
-            value={defaultLoaderMaxAge}
-            onChange={(e) => setDefaultLoaderMaxAge(e.target.valueAsNumber)}
-            className={`w-full`}
+            max="5000"
+            step="100"
+            value={pendingMinMs}
+            onChange={(e) => setPendingMinMs(e.target.valueAsNumber)}
+            className="w-full"
           />
+        </div>
+        <div>
+          <button
+            className="bg-blue-500 text-white rounded p-1 px-2"
+            onClick={() => {
+              setLoaderDelay(1000)
+              setPendingMs(1000)
+              setPendingMinMs(500)
+            }}
+          >
+            Reset
+          </button>
         </div>
       </div>
       <RouterProvider
         router={router}
         defaultPreload="intent"
+        defaultPendingMs={pendingMs}
+        defaultPendingMinMs={pendingMinMs}
         context={{
           auth,
         }}
