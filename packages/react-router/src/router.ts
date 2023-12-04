@@ -1168,6 +1168,8 @@ export class Router<
             // forcefully show the pending component
             if (pendingPromise) {
               pendingPromise.then(() => {
+                if ((latestPromise = checkLatest())) return
+
                 didShowPending = true
                 matches[index] = match = {
                   ...match,
@@ -1194,6 +1196,8 @@ export class Router<
               if (didShowPending && pendingMinMs) {
                 await new Promise((r) => setTimeout(r, pendingMinMs))
               }
+
+              if ((latestPromise = checkLatest())) return await latestPromise
 
               matches[index] = match = {
                 ...match,
