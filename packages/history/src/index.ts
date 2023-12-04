@@ -182,6 +182,7 @@ export function createBrowserHistory(opts?: {
   getHref?: () => string
   createHref?: (path: string) => string
 }): RouterHistory {
+  console.log('hello')
   const getHref =
     opts?.getHref ??
     (() =>
@@ -368,8 +369,8 @@ function parseLocation(href: string, state: HistoryState): HistoryLocation {
           ? Math.min(hashIndex, searchIndex)
           : hashIndex
         : searchIndex > 0
-        ? searchIndex
-        : href.length,
+          ? searchIndex
+          : href.length,
     ),
     hash: hashIndex > -1 ? href.substring(hashIndex) : '',
     search:

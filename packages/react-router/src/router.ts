@@ -43,7 +43,6 @@ import {
   BuildLocationFn,
   CommitLocationOptions,
   InjectedHtmlEntry,
-  LoadFn,
   MatchRouteFn,
   NavigateFn,
   PathParamError,
@@ -679,8 +678,8 @@ export class Router<
       let pathname = this.resolvePathWithBase(fromPathname, `${dest.to ?? ''}`)
 
       const fromMatches = this.matchRoutes(fromPathname, from.search)
-      const stayingMatches = matches?.filter((d) =>
-        fromMatches?.find((e) => e.routeId === d.routeId),
+      const stayingMatches = matches?.filter(
+        (d) => fromMatches?.find((e) => e.routeId === d.routeId),
       )
 
       const prevParams = { ...last(fromMatches)?.params }
@@ -734,10 +733,10 @@ export class Router<
         dest.search === true
           ? preFilteredSearch // Preserve resolvedFrom true
           : dest.search
-          ? functionalUpdate(dest.search, preFilteredSearch) ?? {} // Updater
-          : preSearchFilters?.length
-          ? preFilteredSearch // Preserve resolvedFrom filters
-          : {}
+            ? functionalUpdate(dest.search, preFilteredSearch) ?? {} // Updater
+            : preSearchFilters?.length
+              ? preFilteredSearch // Preserve resolvedFrom filters
+              : {}
 
       // Then post filters
       const postFilteredSearch = postSearchFilters?.length
@@ -752,8 +751,8 @@ export class Router<
         dest.hash === true
           ? from.hash
           : dest.hash
-          ? functionalUpdate(dest.hash!, from.hash)
-          : from.hash
+            ? functionalUpdate(dest.hash!, from.hash)
+            : from.hash
 
       const hashStr = hash ? `#${hash}` : ''
 
@@ -761,8 +760,8 @@ export class Router<
         dest.state === true
           ? from.state
           : dest.state
-          ? functionalUpdate(dest.state, from.state)
-          : from.state
+            ? functionalUpdate(dest.state, from.state)
+            : from.state
 
       nextState = replaceEqualDeep(from.state, nextState)
 
@@ -945,10 +944,12 @@ export class Router<
     checkLatest,
     matches,
     preload,
+    invalidate,
   }: {
     checkLatest: () => Promise<void> | undefined
     matches: AnyRouteMatch[]
     preload?: boolean
+    invalidate?: boolean
   }): Promise<RouteMatch[]> => {
     let latestPromise
     let firstBadMatchIndex: number | undefined
@@ -1086,7 +1087,7 @@ export class Router<
                 ? route.options.shouldReload?.(loaderContext)
                 : !!(route.options.shouldReload ?? true)
 
-            if (match.cause === 'enter') {
+            if (match.cause === 'enter' || invalidate) {
               match.shouldReloadDeps = shouldReloadDeps
             } else if (match.cause === 'stay') {
               if (typeof shouldReloadDeps === 'object') {
@@ -1192,7 +1193,12 @@ export class Router<
     return matches
   }
 
-  load: LoadFn = async () => {
+  invalidate = () =>
+    this.load({
+      invalidate: true,
+    })
+
+  load = async (opts?: { invalidate?: boolean }): Promise<void> => {
     const promise = new Promise<void>(async (resolve, reject) => {
       const next = this.latestLocation
       const prevLocation = this.state.resolvedLocation
@@ -1236,6 +1242,7 @@ export class Router<
           await this.loadMatches({
             matches,
             checkLatest: () => this.checkLatest(promise),
+            invalidate: opts?.invalidate,
           })
         } catch (err) {
           // swallow this error, since we'll display the

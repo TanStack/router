@@ -8,6 +8,7 @@ import {
   ErrorComponent,
   Router,
   rootRouteWithContext,
+  ErrorRouteProps,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
@@ -50,49 +51,52 @@ const fetchPost = async (postId: string) => {
 const rootRoute = rootRouteWithContext<{
   queryClient: QueryClient
 }>()({
-  component: () => {
-    return (
-      <>
-        <div className="p-2 flex gap-2 text-lg">
-          <Link
-            to="/"
-            activeProps={{
-              className: 'font-bold',
-            }}
-            activeOptions={{ exact: true }}
-          >
-            Home
-          </Link>{' '}
-          <Link
-            to={'/posts'}
-            activeProps={{
-              className: 'font-bold',
-            }}
-          >
-            Posts
-          </Link>
-        </div>
-        <hr />
-        <Outlet />
-        {/* Start rendering router matches */}
-        <ReactQueryDevtools buttonPosition="top-right" />
-        <TanStackRouterDevtools position="bottom-right" />
-      </>
-    )
-  },
+  component: RootComponent,
 })
+
+function RootComponent() {
+  return (
+    <>
+      <div className="p-2 flex gap-2 text-lg">
+        <Link
+          to="/"
+          activeProps={{
+            className: 'font-bold',
+          }}
+          activeOptions={{ exact: true }}
+        >
+          Home
+        </Link>{' '}
+        <Link
+          to={'/posts'}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Posts
+        </Link>
+      </div>
+      <hr />
+      <Outlet />
+      <ReactQueryDevtools buttonPosition="top-right" />
+      <TanStackRouterDevtools position="bottom-right" />
+    </>
+  )
+}
 
 const indexRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: () => {
-    return (
-      <div className="p-2">
-        <h3>Welcome Home!</h3>
-      </div>
-    )
-  },
+  component: IndexRouteComponent,
 })
+
+function IndexRouteComponent() {
+  return (
+    <div className="p-2">
+      <h3>Welcome Home!</h3>
+    </div>
+  )
+}
 
 const postsQueryOptions = queryOptions({
   queryKey: ['posts'],
@@ -104,21 +108,19 @@ const postsRoute = new Route({
   path: 'posts',
   loader: ({ context: { queryClient } }) =>
     queryClient.ensureQueryData(postsQueryOptions),
-  component: () => {
-    const postsQuery = useSuspenseQuery({
-      ...postsQueryOptions,
-      // staleTime: 10 * 1000,
-    })
+  component: PostsRouteComponent,
+})
 
-    const posts = postsQuery.data
+function PostsRouteComponent() {
+  const postsQuery = useSuspenseQuery(postsQueryOptions)
 
-    return (
-      <div className="p-2 flex gap-2">
-        <ul className="list-disc pl-4">
-          {[
-            ...posts,
-            { id: 'i-do-not-exist', title: 'Non-existent Post' },
-          ]?.map((post) => {
+  const posts = postsQuery.data
+
+  return (
+    <div className="p-2 flex gap-2">
+      <ul className="list-disc pl-4">
+        {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }]?.map(
+          (post) => {
             return (
               <li key={post.id} className="whitespace-nowrap">
                 <Link
@@ -133,20 +135,24 @@ const postsRoute = new Route({
                 </Link>
               </li>
             )
-          })}
-        </ul>
-        <hr />
-        <Outlet />
-      </div>
-    )
-  },
-})
+          },
+        )}
+      </ul>
+      <hr />
+      <Outlet />
+    </div>
+  )
+}
 
 const postsIndexRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '/',
-  component: () => <div>Select a post.</div>,
+  component: PostsIndexRouteComponent,
 })
+
+function PostsIndexRouteComponent() {
+  return <div>Select a post.</div>
+}
 
 class NotFoundError extends Error {}
 
@@ -159,30 +165,32 @@ const postQueryOptions = (postId: string) =>
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  errorComponent: ({ error }) => {
-    if (error instanceof NotFoundError) {
-      return <div>{error.message}</div>
-    }
-
-    return <ErrorComponent error={error} />
-  },
+  errorComponent: PostErrorComponent,
   loader: ({ context: { queryClient }, params: { postId } }) =>
     queryClient.ensureQueryData(postQueryOptions(postId)),
-  component: ({ useParams }) => {
-    const { postId } = useParams()
-
-    const postQuery = useSuspenseQuery(postQueryOptions(postId))
-
-    const post = postQuery.data
-
-    return (
-      <div className="space-y-2">
-        <h4 className="text-xl font-bold underline">{post.title}</h4>
-        <div className="text-sm">{post.body}</div>
-      </div>
-    )
-  },
+  component: PostRouteComponent,
 })
+
+function PostErrorComponent({ error }: ErrorRouteProps) {
+  if (error instanceof NotFoundError) {
+    return <div>{error.message}</div>
+  }
+
+  return <ErrorComponent error={error} />
+}
+
+function PostRouteComponent() {
+  const { postId } = postRoute.useParams()
+  const postQuery = useSuspenseQuery(postQueryOptions(postId))
+  const post = postQuery.data
+
+  return (
+    <div className="space-y-2">
+      <h4 className="text-xl font-bold underline">{post.title}</h4>
+      <div className="text-sm">{post.body}</div>
+    </div>
+  )
+}
 
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),

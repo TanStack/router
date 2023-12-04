@@ -102,12 +102,6 @@ export type MatchRouteFn<TRouteTree extends AnyRoute> = <
   opts?: MatchRouteOptions,
 ) => false | RouteById<TRouteTree, TResolved>['types']['allParams']
 
-export type LoadFn = (opts?: {
-  next?: ParsedLocation
-  throwOnError?: boolean
-  __dehydratedMatches?: DehydratedRouteMatch[]
-}) => Promise<void>
-
 export type BuildLocationFn<TRouteTree extends AnyRoute> = (
   opts: BuildNextOptions,
 ) => ParsedLocation
@@ -170,11 +164,15 @@ export function RouterProvider<
   router.updateOptions({
     ...router.options,
     ...rest,
+
     context: {
       ...router.options.context,
       ...rest?.context,
     },
-  } as PickAsRequired<RouterOptions<TRouteTree, TDehydrated>, 'stringifySearch' | 'parseSearch' | 'context'>)
+  } as PickAsRequired<
+    RouterOptions<TRouteTree, TDehydrated>,
+    'stringifySearch' | 'parseSearch' | 'context'
+  >)
 
   const [preState, setState] = React.useState(() => router.state)
   const [isTransitioning, startReactTransition] = React.useTransition()
@@ -222,7 +220,7 @@ export function RouterProvider<
     return () => {
       unsub()
     }
-  }, [history])
+  }, [router.history])
 
   React.useLayoutEffect(() => {
     if (!isTransitioning && state.resolvedLocation !== state.location) {

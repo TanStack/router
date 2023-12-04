@@ -76,13 +76,11 @@ export type RouteOptions<
   TAllContext,
   TLoaderData
 > &
-  NoInfer<
-    UpdatableRouteOptions<
-      TFullSearchSchema,
-      TAllParams,
-      TAllContext,
-      TLoaderData
-    >
+  UpdatableRouteOptions<
+    NoInfer<TFullSearchSchema>,
+    NoInfer<TAllParams>,
+    NoInfer<TAllContext>,
+    NoInfer<TLoaderData>
   >
 
 export type ParamsFallback<
@@ -389,7 +387,8 @@ export class Route<
     TPath
   >,
   TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
-  TFullSearchSchema extends RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
+  TFullSearchSchema extends
+    RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
     TParentRoute,
     TSearchSchema
   >,
@@ -714,14 +713,14 @@ type RoutePrefix<
 > = string extends TPath
   ? RootRouteId
   : TPath extends string
-  ? TPrefix extends RootRouteId
-    ? TPath extends '/'
-      ? '/'
-      : `/${TrimPath<TPath>}`
-    : `${TPrefix}/${TPath}` extends '/'
-    ? '/'
-    : `/${TrimPathLeft<`${TrimPathRight<TPrefix>}/${TrimPath<TPath>}`>}`
-  : never
+    ? TPrefix extends RootRouteId
+      ? TPath extends '/'
+        ? '/'
+        : `/${TrimPath<TPath>}`
+      : `${TPrefix}/${TPath}` extends '/'
+        ? '/'
+        : `/${TrimPathLeft<`${TrimPathRight<TPrefix>}/${TrimPath<TPath>}`>}`
+    : never
 
 export type TrimPath<T extends string> = '' extends T
   ? ''
@@ -731,13 +730,13 @@ export type TrimPathLeft<T extends string> =
   T extends `${RootRouteId}/${infer U}`
     ? TrimPathLeft<U>
     : T extends `/${infer U}`
-    ? TrimPathLeft<U>
-    : T
+      ? TrimPathLeft<U>
+      : T
 export type TrimPathRight<T extends string> = T extends '/'
   ? '/'
   : T extends `${infer U}/`
-  ? TrimPathRight<U>
-  : T
+    ? TrimPathRight<U>
+    : T
 
 export type RouteMask<TRouteTree extends AnyRoute> = {
   routeTree: TRouteTree
@@ -842,20 +841,20 @@ export type ComponentPropsFromRoute<TRoute> =
   TRoute extends (() => infer T extends AnyRoute)
     ? ComponentPropsFromRoute<T>
     : TRoute extends Route<
-        infer TParentRoute,
-        infer TPath,
-        infer TFullPath,
-        infer TCustomId,
-        infer TId,
-        infer TSearchSchema,
-        infer TFullSearchSchema,
-        infer TParams,
-        infer TAllParams,
-        infer TRouteContext,
-        infer TAllContext,
-        infer TRouterContext,
-        infer TLoaderData,
-        infer TChildren
-      >
-    ? RouteProps<TFullSearchSchema, TAllParams, TAllContext, TLoaderData>
-    : {}
+          infer TParentRoute,
+          infer TPath,
+          infer TFullPath,
+          infer TCustomId,
+          infer TId,
+          infer TSearchSchema,
+          infer TFullSearchSchema,
+          infer TParams,
+          infer TAllParams,
+          infer TRouteContext,
+          infer TAllContext,
+          infer TRouterContext,
+          infer TLoaderData,
+          infer TChildren
+        >
+      ? RouteProps<TFullSearchSchema, TAllParams, TAllContext, TLoaderData>
+      : {}
