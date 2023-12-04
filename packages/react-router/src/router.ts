@@ -119,13 +119,11 @@ export interface RouterOptions<
     AnyPathParams,
     AnyContext
   >
-  defaultMaxAge?: number
-  defaultGcMaxAge?: number
-  defaultPreloadMaxAge?: number
+  defaultPendingMs?: number
+  defaultPendingMinMs?: number
   caseSensitive?: boolean
   routeTree?: TRouteTree
   basepath?: string
-  createRoute?: (opts: { route: AnyRoute; router: AnyRouter }) => void
   context?: TRouteTree['types']['routerContext']
   // dehydrate?: () => TDehydrated
   // hydrate?: (dehydrated: TDehydrated) => void
@@ -253,6 +251,8 @@ export class Router<
   constructor(options: RouterConstructorOptions<TRouteTree, TDehydrated>) {
     this.updateOptions({
       defaultPreloadDelay: 50,
+      defaultPendingMs: 1000,
+      defaultPendingMinMs: 500,
       context: undefined!,
       ...options,
       stringifySearch: options?.stringifySearch ?? defaultStringifySearch,
@@ -631,6 +631,7 @@ export class Router<
             search: {} as any,
             searchError: undefined,
             status: hasLoaders ? 'pending' : 'success',
+            showPending: false,
             isFetching: false,
             invalid: false,
             error: undefined,
@@ -1061,7 +1062,10 @@ export class Router<
             ...match,
             fetchedAt: Date.now(),
             invalid: false,
+            showPending: false,
           }
+
+          const pendingPromise = new Promise((r) => setTimeout(r, 1000))
 
           if (match.isFetching) {
             loadPromise = getRouteMatch(this.state, match.id)?.loadPromise
@@ -1146,45 +1150,83 @@ export class Router<
             }))
           }
 
-          try {
-            const loaderData = await loadPromise
-            if ((latestPromise = checkLatest())) return await latestPromise
+          let didShowPending = false
 
-            matches[index] = match = {
-              ...match,
-              error: undefined,
-              status: 'success',
-              isFetching: false,
-              updatedAt: Date.now(),
-              loaderData,
-              loadPromise: undefined,
+          await new Promise<void>(async (resolve) => {
+            // If the route has a pending component and a pendingMs option,
+            // forcefully show the pending component
+            if (
+              !preload &&
+              (route.options.pendingComponent ??
+                this.options.defaultPendingComponent) &&
+              (route.options.pendingMs ?? this.options.defaultPendingMs)
+            ) {
+              pendingPromise.then(() => {
+                didShowPending = true
+                matches[index] = match = {
+                  ...match,
+                  showPending: true,
+                }
+
+                this.setState((s) => ({
+                  ...s,
+                  matches: s.matches.map((d) =>
+                    d.id === match.id ? match : d,
+                  ),
+                }))
+                resolve()
+              })
             }
-          } catch (error) {
-            if ((latestPromise = checkLatest())) return await latestPromise
-            if (handleIfRedirect(error)) return
 
             try {
-              route.options.onError?.(error)
-            } catch (onErrorError) {
-              error = onErrorError
-              if (handleIfRedirect(onErrorError)) return
+              const loaderData = await loadPromise
+              if ((latestPromise = checkLatest())) return await latestPromise
+
+              const pendingMinMs =
+                route.options.pendingMinMs ?? this.options.defaultPendingMinMs
+
+              if (didShowPending && pendingMinMs) {
+                await new Promise((r) => setTimeout(r, pendingMinMs))
+              }
+
+              matches[index] = match = {
+                ...match,
+                error: undefined,
+                status: 'success',
+                isFetching: false,
+                updatedAt: Date.now(),
+                loaderData,
+                loadPromise: undefined,
+              }
+            } catch (error) {
+              if ((latestPromise = checkLatest())) return await latestPromise
+              if (handleIfRedirect(error)) return
+
+              try {
+                route.options.onError?.(error)
+              } catch (onErrorError) {
+                error = onErrorError
+                if (handleIfRedirect(onErrorError)) return
+              }
+
+              matches[index] = match = {
+                ...match,
+                error,
+                status: 'error',
+                isFetching: false,
+                updatedAt: Date.now(),
+              }
             }
 
-            matches[index] = match = {
-              ...match,
-              error,
-              status: 'error',
-              isFetching: false,
-              updatedAt: Date.now(),
+            if (!preload) {
+              this.setState((s) => ({
+                ...s,
+                matches: s.matches.map((d) => (d.id === match.id ? match : d)),
+              }))
             }
-          }
 
-          if (!preload) {
-            this.setState((s) => ({
-              ...s,
-              matches: s.matches.map((d) => (d.id === match.id ? match : d)),
-            }))
-          }
+            resolve()
+          })
         })(),
       )
     })

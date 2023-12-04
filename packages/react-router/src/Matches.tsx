@@ -26,6 +26,7 @@ export interface RouteMatch<
   params: RouteById<TRouteTree, TRouteId>['types']['allParams']
   status: 'pending' | 'success' | 'error'
   isFetching: boolean
+  showPending: boolean
   invalid: boolean
   error: unknown
   paramsError: unknown
@@ -98,13 +99,22 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
   const PendingComponent = (route.options.pendingComponent ??
     options.defaultPendingComponent) as any
 
+  const pendingElement = PendingComponent
+    ? React.createElement(PendingComponent, {
+        useMatch: route.useMatch,
+        useRouteContext: route.useRouteContext,
+        useSearch: route.useSearch,
+        useParams: route.useParams,
+      })
+    : undefined
+
   const routeErrorComponent =
     route.options.errorComponent ??
     options.defaultErrorComponent ??
     ErrorComponent
 
   const ResolvedSuspenseBoundary =
-    route.options.wrapInSuspense ?? PendingComponent
+    route.options.wrapInSuspense ?? pendingElement
       ? React.Suspense
       : SafeFragment
 
@@ -127,14 +137,7 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
 
   return (
     <matchesContext.Provider value={matches}>
-      <ResolvedSuspenseBoundary
-        fallback={React.createElement(PendingComponent, {
-          useMatch: route.useMatch,
-          useRouteContext: route.useRouteContext,
-          useSearch: route.useSearch,
-          useParams: route.useParams,
-        })}
-      >
+      <ResolvedSuspenseBoundary fallback={pendingElement}>
         <ResolvedCatchBoundary
           resetKey={locationKey}
           errorComponent={errorComponent}
@@ -142,13 +145,19 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
             warning(false, `Error in route match: ${match.id}`)
           }}
         >
-          <MatchInner match={match} />
+          <MatchInner match={match} pendingElement={pendingElement} />
         </ResolvedCatchBoundary>
       </ResolvedSuspenseBoundary>
     </matchesContext.Provider>
   )
 }
-function MatchInner({ match }: { match: RouteMatch }): any {
+function MatchInner({
+  match,
+  pendingElement,
+}: {
+  match: RouteMatch
+  pendingElement: any
+}): any {
   const { options, routesById } = useRouter()
   const route = routesById[match.routeId]!
 
@@ -157,6 +166,9 @@ function MatchInner({ match }: { match: RouteMatch }): any {
   }
 
   if (match.status === 'pending') {
+    if (match.showPending) {
+      return pendingElement || null
+    }
     throw match.loadPromise
   }
 

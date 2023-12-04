@@ -202,9 +202,7 @@ export type UpdatableRouteOptions<
   errorComponent?: ErrorRouteComponent<
     TFullSearchSchema,
     TAllParams,
-    {}
-    // TAllContext // TODO: I have no idea why this breaks the universe,
-    // so we'll come back to it later.
+    TAllContext // NOTE: This used to break the universe.... but it seems to work now?
   > //
   // If supported by your framework, the content to be rendered as the fallback content until the route is ready to render
   pendingComponent?: PendingRouteComponent<
@@ -212,6 +210,8 @@ export type UpdatableRouteOptions<
     TAllParams,
     TAllContext
   >
+  pendingMs?: number
+  pendingMinMs?: number
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
   // calls that match this route.
   preSearchFilters?: SearchFilter<TFullSearchSchema>[]

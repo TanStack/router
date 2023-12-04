@@ -322,6 +322,7 @@ const invoiceRoute = new Route({
       .parse(search),
   loader: ({ params: { invoiceId } }) => fetchInvoiceById(invoiceId),
   component: InvoiceComponent,
+  pendingComponent: () => <Spinner />,
 })
 
 function InvoiceComponent() {
