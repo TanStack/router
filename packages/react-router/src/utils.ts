@@ -1,4 +1,10 @@
 import * as React from 'react'
+import { useMatch } from './Matches'
+import { RouteMatch } from './Matches'
+import { AnyRoute } from './route'
+import { ParseRoute, RouteIds, RoutesById, RouteById } from './routeInfo'
+import { RegisteredRouter } from './router'
+
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<T, Y, N = T> = 1 extends 0 & T ? Y : N
 export type IsAnyBoolean<T> = 1 extends 0 & T ? true : false
@@ -225,7 +231,7 @@ function hasObjectPrototype(o: any) {
   return Object.prototype.toString.call(o) === '[object Object]'
 }
 
-export function partialDeepEqual(a: any, b: any): boolean {
+export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
   if (a === b) {
     return true
   }
@@ -235,14 +241,20 @@ export function partialDeepEqual(a: any, b: any): boolean {
   }
 
   if (isPlainObject(a) && isPlainObject(b)) {
-    return !Object.keys(b).some((key) => !partialDeepEqual(a[key], b[key]))
+    const aKeys = Object.keys(a)
+    const bKeys = Object.keys(b)
+
+    if (!partial && aKeys.length !== bKeys.length) {
+      return false
+    }
+
+    return !bKeys.some(
+      (key) => !(key in a) || !deepEqual(a[key], b[key], partial),
+    )
   }
 
   if (Array.isArray(a) && Array.isArray(b)) {
-    return (
-      a.length === b.length &&
-      a.every((item, index) => partialDeepEqual(item, b[index]))
-    )
+    return !a.some((item, index) => !deepEqual(item, b[index], partial))
   }
 
   return false
@@ -254,4 +266,85 @@ export function useStableCallback<T extends (...args: any[]) => any>(fn: T): T {
 
   const ref = React.useRef((...args: any[]) => fnRef.current(...args))
   return ref.current as T
+}
+
+export function shallow<T>(objA: T, objB: T) {
+  if (Object.is(objA, objB)) {
+    return true
+  }
+
+  if (
+    typeof objA !== 'object' ||
+    objA === null ||
+    typeof objB !== 'object' ||
+    objB === null
+  ) {
+    return false
+  }
+
+  const keysA = Object.keys(objA)
+  if (keysA.length !== Object.keys(objB).length) {
+    return false
+  }
+
+  for (let i = 0; i < keysA.length; i++) {
+    if (
+      !Object.prototype.hasOwnProperty.call(objB, keysA[i] as string) ||
+      !Object.is(objA[keysA[i] as keyof T], objB[keysA[i] as keyof T])
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+export type StrictOrFrom<TFrom> =
+  | {
+      from: TFrom
+      strict?: true
+    }
+  | {
+      from?: never
+      strict: false
+    }
+
+export type RouteFromIdOrRoute<
+  T,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+> = T extends ParseRoute<TRouteTree>
+  ? T
+  : T extends RouteIds<TRouteTree>
+  ? RoutesById<TRouteTree>[T]
+  : T extends string
+  ? RouteIds<TRouteTree>
+  : never
+
+export function useRouteContext<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
+  TStrict extends boolean = true,
+  TRouteContext = RouteById<TRouteTree, TFrom>['types']['allContext'],
+  TSelected = TRouteContext,
+>(
+  opts: StrictOrFrom<TFrom> & {
+    select?: (search: TRouteContext) => TSelected
+  },
+): TStrict extends true ? TSelected : TSelected | undefined {
+  return useMatch({
+    ...(opts as any),
+    select: (match: RouteMatch) =>
+      opts?.select
+        ? opts.select(match.context as TRouteContext)
+        : match.context,
+  })
+}
+
+export const useLayoutEffect =
+  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
+
+export function escapeJSON(jsonString: string) {
+  return jsonString
+    .replace(/\\/g, '\\\\') // Escape backslashes
+    .replace(/'/g, "\\'") // Escape single quotes
+    .replace(/"/g, '\\"') // Escape double quotes
 }

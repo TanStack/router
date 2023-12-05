@@ -12,27 +12,35 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 const rootRoute = new RootRoute({
-  component: () => (
-    <>
-      <div className="p-2 flex gap-2 sticky top-0 bg-white border-b">
-        <Link to="/" className="[&.active]:font-bold">
-          Home
-        </Link>{' '}
-        <Link to="/about" className="[&.active]:font-bold">
-          About
-        </Link>
-        <Link to="/about" className="[&.active]:font-bold" resetScroll={false}>
-          About (No Reset)
-        </Link>
-        <Link to="/by-element" className="[&.active]:font-bold">
-          By-Element
-        </Link>
-      </div>
-      <Outlet />
-      <ScrollRestoration />
-      <TanStackRouterDevtools />
-    </>
-  ),
+  component: () => {
+    // const {
+    //   state: { location, resolvedLocation },
+    // } = useRouter()
+    return (
+      <>
+        <div className="p-2 flex gap-2 sticky top-0 bg-white border-b">
+          <Link to="/" className="[&.active]:font-bold">
+            Home
+          </Link>{' '}
+          <Link to="/about" className="[&.active]:font-bold">
+            About
+          </Link>
+          <Link to="/about" resetScroll={false}>
+            About (No Reset)
+          </Link>
+          <Link to="/by-element" className="[&.active]:font-bold">
+            By-Element
+          </Link>
+        </div>
+        {/* <pre className="text-[.5rem]">
+          <code>{JSON.stringify({ resolvedLocation, location }, null, 2)}</code>
+        </pre> */}
+        <Outlet />
+        <ScrollRestoration />
+        <TanStackRouterDevtools />
+      </>
+    )
+  },
 })
 
 const indexRoute = new Route({
@@ -101,7 +109,7 @@ const byElementRoute = new Route({
             ))}
           </div>
           <div className="flex-1 overflow-auto flex flex-col gap-4">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {Array.from({ length: 2 }).map((_, i) => (
               <div
                 key={i}
                 className="flex-1 border rounded-lg p-2 overflow-auto"
@@ -118,6 +126,21 @@ const byElementRoute = new Route({
                 </div>
               </div>
             ))}
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="font-bold">Virtualized</div>
+              <div className="flex-1 border rounded-lg p-2 overflow-auto">
+                <div className="space-y-2">
+                  {Array.from({ length: 50 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-[100px] p-2 rounded-lg bg-gray-100 border"
+                    >
+                      About Item {i + 1}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

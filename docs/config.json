@@ -168,32 +168,20 @@
           "to": "examples/react/ssr-streaming?file=src%2Fmain.tsx"
         },
         {
-          "label": "With Loaders",
-          "to": "examples/react/with-loaders?file=src%2Fmain.tsx"
+          "label": "Code-Splitting",
+          "to": "examples/react/react-query-code-split?file=src%2Frouter.tsx"
         },
         {
-          "label": "With Loaders Kitchen Sink Single File",
-          "to": "examples/react/with-loaders-kitchen-sink-single-file?file=src%2Fmain.tsx"
+          "label": "React Query SSR",
+          "to": "examples/react/react-query-ssr?file=src%2Fentry-server.tsx"
         },
         {
-          "label": "With Loaders Code-Split",
-          "to": "examples/react/with-loaders-code-split?file=src%2Frouter.tsx"
+          "label": "React Query SSR with Streaming",
+          "to": "examples/react/react-query-ssr-streaming?file=src%2Fentry-server.tsx"
         },
         {
-          "label": "With Loaders SSR",
-          "to": "examples/react/with-loaders-ssr?file=src%2Fentry-server.tsx"
-        },
-        {
-          "label": "With Loaders SSR with Streaming",
-          "to": "examples/react/with-loaders-ssr-streaming?file=src%2Fentry-server.tsx"
-        },
-        {
-          "label": "With React Query",
-          "to": "examples/react/with-react-query?file=src%2Fmain.tsx"
-        },
-        {
-          "label": "With TRPC",
-          "to": "examples/react/with-trpc?file=client%2Fmain.tsx"
+          "label": "TRPC",
+          "to": "examples/react/trpc?file=client%2Fmain.tsx"
         }
       ]
     }

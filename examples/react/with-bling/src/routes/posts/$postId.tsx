@@ -4,7 +4,7 @@ import {
   defer,
   lazyRouteComponent,
   Route,
-  useLoader,
+  useLoaderData,
 } from '@tanstack/react-router'
 import * as React from 'react'
 import { CommentType, postsRoute, PostType } from '../posts'
@@ -46,7 +46,7 @@ export const postIdRoute = new Route({
   component: lazyRouteComponent(() =>
     import$({
       default: function Posts() {
-        const { post, commentsPromise } = useLoader({
+        const { post, commentsPromise } = useLoaderData({
           from: '/posts/$postId',
         })
 

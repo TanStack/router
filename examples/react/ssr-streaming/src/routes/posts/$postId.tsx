@@ -32,8 +32,8 @@ export const postIdRoute = new Route({
       commentsPromise: defer(commentsPromise),
     }
   },
-  component: function Post({ useLoader }) {
-    const { post, commentsPromise } = useLoader()
+  component: function Post({ useLoaderData }) {
+    const { post, commentsPromise } = useLoaderData()
 
     return (
       <div className="space-y-2">

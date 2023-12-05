@@ -4,7 +4,7 @@ import {
   ResolveFullPath,
   ResolveFullSearchSchema,
   MergeFromFromParent,
-  RouteMeta,
+  RouteContext,
   AnyContext,
   RouteOptions,
   UpdatableRouteOptions,
@@ -14,7 +14,7 @@ import {
   TrimPathLeft,
   RouteConstraints,
 } from './route'
-import { Assign, AssignAll, Expand, IsAny } from './utils'
+import { Assign, Expand, IsAny } from './utils'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -86,40 +86,50 @@ export class FileRoute<
 
   createRoute = <
     TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
-    TFullSearchSchema extends RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
+    TFullSearchSchema extends
+      RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
       TParentRoute,
       TSearchSchema
     >,
-    TParams extends RouteConstraints['TParams'] = ParsePathParams<TPath> extends never
-      ? AnyPathParams
-      : Record<ParsePathParams<TPath>, RouteConstraints['TPath']>,
+    TParams extends RouteConstraints['TParams'] = Expand<
+      Record<ParsePathParams<TPath>, string>
+    >,
     TAllParams extends RouteConstraints['TAllParams'] = MergeFromFromParent<
       TParentRoute['types']['allParams'],
       TParams
     >,
-    TRouteMeta extends RouteConstraints['TRouteMeta'] = RouteMeta,
+    TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
     TContext extends Expand<
-      Assign<IsAny<TParentRoute['types']['allMeta'], {}>, TRouteMeta>
-    > = Expand<Assign<IsAny<TParentRoute['types']['allMeta'], {}>, TRouteMeta>>,
-    TRouterMeta extends RouteConstraints['TRouterMeta'] = AnyContext,
+      Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
+    > = Expand<
+      Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
+    >,
+    TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+    TLoaderData extends any = unknown,
     TChildren extends RouteConstraints['TChildren'] = unknown,
     TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
   >(
-    options: Omit<
+    options?: Omit<
       RouteOptions<
         TParentRoute,
         string,
-        string,
+        TPath,
         TSearchSchema,
         TFullSearchSchema,
         TParams,
         TAllParams,
-        TRouteMeta,
-        TContext
+        TRouteContext,
+        TContext,
+        TLoaderData
       >,
       'getParentRoute' | 'path' | 'id'
     > &
-      UpdatableRouteOptions<TFullSearchSchema, TAllParams, TContext>,
+      UpdatableRouteOptions<
+        TFullSearchSchema,
+        TAllParams,
+        TContext,
+        TLoaderData
+      >,
   ): Route<
     TParentRoute,
     TPath,
@@ -130,9 +140,10 @@ export class FileRoute<
     TFullSearchSchema,
     TParams,
     TAllParams,
-    TRouteMeta,
+    TRouteContext,
     TContext,
-    TRouterMeta,
+    TRouterContext,
+    TLoaderData,
     TChildren,
     TRouteTree
   > => {

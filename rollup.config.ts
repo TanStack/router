@@ -1,4 +1,4 @@
-import { ExternalOption, RollupOptions } from 'rollup'
+import { RollupOptions } from 'rollup'
 import babel from '@rollup/plugin-babel'
 import { terser } from 'rollup-plugin-terser'
 // @ts-ignore

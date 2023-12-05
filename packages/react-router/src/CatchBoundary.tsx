@@ -1,0 +1,98 @@
+import * as React from 'react'
+
+export function CatchBoundary(props: {
+  resetKey: string
+  children: any
+  errorComponent?: any
+  onCatch: (error: any) => void
+}) {
+  const errorComponent = props.errorComponent ?? ErrorComponent
+
+  return (
+    <CatchBoundaryImpl
+      resetKey={props.resetKey}
+      onCatch={props.onCatch}
+      children={({ error }) => {
+        if (error) {
+          return React.createElement(errorComponent, {
+            error,
+          })
+        }
+
+        return props.children
+      }}
+    />
+  )
+}
+
+export class CatchBoundaryImpl extends React.Component<{
+  resetKey: string
+  children: (props: { error: any; reset: () => void }) => any
+  onCatch?: (error: any) => void
+}> {
+  state = { error: null } as any
+  static getDerivedStateFromError(error: any) {
+    return { error }
+  }
+  componentDidUpdate(
+    prevProps: Readonly<{
+      resetKey: string
+      children: (props: { error: any; reset: () => void }) => any
+      onCatch?: ((error: any, info: any) => void) | undefined
+    }>,
+    prevState: any,
+  ): void {
+    if (prevState.error && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ error: null })
+    }
+  }
+  componentDidCatch(error: any) {
+    console.error(error)
+    this.props.onCatch?.(error)
+  }
+  render() {
+    return this.props.children(this.state)
+  }
+}
+
+export function ErrorComponent({ error }: { error: any }) {
+  const [show, setShow] = React.useState(process.env.NODE_ENV !== 'production')
+
+  return (
+    <div style={{ padding: '.5rem', maxWidth: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+        <strong style={{ fontSize: '1rem' }}>Something went wrong!</strong>
+        <button
+          style={{
+            appearance: 'none',
+            fontSize: '.6em',
+            border: '1px solid currentColor',
+            padding: '.1rem .2rem',
+            fontWeight: 'bold',
+            borderRadius: '.25rem',
+          }}
+          onClick={() => setShow((d) => !d)}
+        >
+          {show ? 'Hide Error' : 'Show Error'}
+        </button>
+      </div>
+      <div style={{ height: '.25rem' }} />
+      {show ? (
+        <div>
+          <pre
+            style={{
+              fontSize: '.7em',
+              border: '1px solid red',
+              borderRadius: '.25rem',
+              padding: '.3rem',
+              color: 'red',
+              overflow: 'auto',
+            }}
+          >
+            {error.message ? <code>{error.message}</code> : null}
+          </pre>
+        </div>
+      ) : null}
+    </div>
+  )
+}

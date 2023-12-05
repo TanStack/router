@@ -156,8 +156,10 @@ function assignKey(state: HistoryState) {
   if (!state) {
     state = {} as HistoryState
   }
-  state.key = createRandomKey()
-  return state
+  return {
+    ...state,
+    key: createRandomKey(),
+  }
 }
 
 /**
@@ -369,8 +371,8 @@ function parseLocation(href: string, state: HistoryState): HistoryLocation {
           ? Math.min(hashIndex, searchIndex)
           : hashIndex
         : searchIndex > 0
-        ? searchIndex
-        : href.length,
+          ? searchIndex
+          : href.length,
     ),
     hash: hashIndex > -1 ? href.substring(hashIndex) : '',
     search:

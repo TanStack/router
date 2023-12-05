@@ -4,7 +4,7 @@ import {
   Link,
   Outlet,
   Route,
-  useLoader,
+  useLoaderData,
 } from '@tanstack/react-router'
 import { rootRoute } from './root'
 import { postIdRoute } from './posts/$postId'
@@ -40,7 +40,7 @@ export const postsRoute = new Route({
   component: lazyRouteComponent(() =>
     import$({
       default: function Posts() {
-        const posts = useLoader({ from: '/posts' })
+        const posts = useLoaderData({ from: '/posts' })
 
         return (
           <div className="p-2 flex gap-2">

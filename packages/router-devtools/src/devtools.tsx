@@ -1,9 +1,7 @@
 import React from 'react'
 import {
-  routerContext,
   invariant,
   AnyRouter,
-  // useStore,
   Route,
   AnyRoute,
   AnyRootRoute,
@@ -411,19 +409,19 @@ function RouteComp({
   route,
   isRoot,
   activeRouteId,
-  activeMatchId,
   setActiveRouteId,
-  setActiveMatchId,
 }: {
   route: AnyRootRoute | AnyRoute
   isRoot?: boolean
   activeRouteId: string | undefined
-  activeMatchId: string | undefined
   setActiveRouteId: (id: string) => void
-  setActiveMatchId: (id: string) => void
 }) {
   const router = useRouter()
-  const matches = [...router.state.pendingMatches, ...router.state.matches]
+  const matches =
+    router.state.status === 'pending'
+      ? router.state.pendingMatches
+      : router.state.matches
+
   const match = router.state.matches.find((d) => d.routeId === route.id)
 
   return (
@@ -434,7 +432,6 @@ function RouteComp({
         onClick={() => {
           if (match) {
             setActiveRouteId(activeRouteId === route.id ? '' : route.id)
-            setActiveMatchId(match.id)
           }
         }}
         style={{
@@ -494,9 +491,7 @@ function RouteComp({
                 key={r.id}
                 route={r}
                 activeRouteId={activeRouteId}
-                activeMatchId={activeMatchId}
                 setActiveRouteId={setActiveRouteId}
-                setActiveMatchId={setActiveMatchId}
               />
             ))}
         </div>
@@ -536,16 +531,10 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     'tanstackRouterDevtoolsActiveRouteId',
     '',
   )
-  const [activeMatchId, setActiveMatchId] = useLocalStorage(
-    'tanstackRouterDevtoolsActiveMatchId',
-    '',
-  )
 
   const activeMatch = React.useMemo(
-    () =>
-      matches.find((d) => d.id === activeRouteId) ||
-      matches.find((d) => d.id === activeMatchId),
-    [activeRouteId, activeMatchId],
+    () => matches.find((d) => d.routeId === activeRouteId),
+    [matches, activeRouteId],
   )
 
   const hasSearch = Object.keys(router.state.location.search || {}).length
@@ -811,13 +800,14 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 route={router.routeTree}
                 isRoot
                 activeRouteId={activeRouteId}
-                activeMatchId={activeMatchId}
                 setActiveRouteId={setActiveRouteId}
-                setActiveMatchId={setActiveMatchId}
               />
             ) : (
               <div>
-                {router.state.matches.map((match, i) => {
+                {(router.state.status === 'pending'
+                  ? router.state.pendingMatches
+                  : router.state.matches
+                ).map((match, i) => {
                   return (
                     <div
                       key={match.routeId || i}
@@ -1019,6 +1009,33 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 Reload
               </Button>
             </div> */}
+            {activeMatch.loaderData ? (
+              <>
+                <div
+                  style={{
+                    background: theme.backgroundAlt,
+                    padding: '.5em',
+                    position: 'sticky',
+                    top: 0,
+                    bottom: 0,
+                    zIndex: 1,
+                  }}
+                >
+                  Loader Data
+                </div>
+                <div
+                  style={{
+                    padding: '.5em',
+                  }}
+                >
+                  <Explorer
+                    label="loaderData"
+                    value={activeMatch.loaderData}
+                    defaultExpanded={{}}
+                  />
+                </div>
+              </>
+            ) : null}
             <div
               style={{
                 background: theme.backgroundAlt,

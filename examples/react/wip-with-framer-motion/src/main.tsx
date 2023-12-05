@@ -12,6 +12,7 @@ import {
   useMatch,
   useRouterState,
   useMatches,
+  rootRouteWithContext,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -97,11 +98,9 @@ export const postTransitionProps = {
   },
 } as const
 
-const routerContext = new RouterContext<{
+const rootRoute = rootRouteWithContext<{
   loaderClient: typeof loaderClient
-}>()
-
-const rootRoute = routerContext.createRootRoute({
+}>()({
   component: () => {
     const matches = useMatches()
     const match = useMatch({ strict: false })
@@ -232,8 +231,8 @@ const postRoute = new Route({
 
     return <ErrorComponent error={error} />
   },
-  component: ({ useRouteMeta }) => {
-    const { loaderOptions } = useRouteMeta()
+  component: ({ useRouteContext }) => {
+    const { loaderOptions } = useRouteContext()
     const { data: post } = useLoaderInstance(loaderOptions)
 
     return (
