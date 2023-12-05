@@ -136,52 +136,64 @@
       "label": "Examples",
       "children": [
         {
-          "label": "Quick Start",
-          "to": "examples/react/quickstart?file=src%2Fmain.tsx"
+          "label": "Quickstart",
+          "to": "examples/react/quickstart"
+        },
+        {
+          "label": "Quickstart (file-based)",
+          "to": "examples/react/quickstart-file-based"
         },
         {
           "label": "Basic",
-          "to": "examples/react/basic?file=src%2Fmain.tsx"
+          "to": "examples/react/basic"
         },
         {
-          "label": "File-Based Routes",
-          "to": "examples/react/file-based-routes?file=src%2Fmain.tsx"
+          "label": "Basic (file-based)",
+          "to": "examples/react/basic-file-based"
         },
         {
-          "label": "Deferred Data",
-          "to": "examples/react/deferred-data?file=src%2Fmain.tsx"
+          "label": "Basic + React Query",
+          "to": "examples/react/basic-react-query"
         },
         {
-          "label": "Focus Refetching",
-          "to": "examples/react/focus-refetching?file=src%2Fmain.tsx"
+          "label": "Basic + React Query (file-based)",
+          "to": "examples/react/basic-react-query-file-based"
+        },
+        {
+          "label": "Basic + SSR (file-based)",
+          "to": "examples/react/basic-ssr-file-based"
+        },
+        {
+          "label": "Basic + SSR Streaming (file-based)",
+          "to": "examples/react/basic-ssr-streaming-file-based"
+        },
+        {
+          "label": "Kitchen Sink",
+          "to": "examples/react/kitchen-sink"
+        },
+        {
+          "label": "Kitchen Sink (file-based)",
+          "to": "examples/react/kitchen-sink-file-based"
+        },
+        {
+          "label": "Kitchen Sink + React Query",
+          "to": "examples/react/kitchen-sink-react-query"
+        },
+        {
+          "label": "Kitchen Sink + React Query (file-based)",
+          "to": "examples/react/kitchen-sink-react-query-file-based"
+        },
+        {
+          "label": "Location Masking",
+          "to": "examples/react/location-masking"
         },
         {
           "label": "Scroll Restoration",
-          "to": "examples/react/scroll-restoration?file=src%2Fmain.tsx"
+          "to": "examples/react/scroll-restoration"
         },
         {
-          "label": "Kitchen Sink Single File",
-          "to": "examples/react/kitchen-sink-single-file?file=src%2Fmain.tsx"
-        },
-        {
-          "label": "SSR with Streaming",
-          "to": "examples/react/ssr-streaming?file=src%2Fmain.tsx"
-        },
-        {
-          "label": "Code-Splitting",
-          "to": "examples/react/react-query-code-split?file=src%2Frouter.tsx"
-        },
-        {
-          "label": "React Query SSR",
-          "to": "examples/react/react-query-ssr?file=src%2Fentry-server.tsx"
-        },
-        {
-          "label": "React Query SSR with Streaming",
-          "to": "examples/react/react-query-ssr-streaming?file=src%2Fentry-server.tsx"
-        },
-        {
-          "label": "TRPC",
-          "to": "examples/react/trpc?file=client%2Fmain.tsx"
+          "label": "Deferred Data",
+          "to": "examples/react/deferred-data"
         }
       ]
     }
