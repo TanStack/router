@@ -180,8 +180,9 @@ function assignKey(state: HistoryState) {
 export function createBrowserHistory(opts?: {
   getHref?: () => string
   createHref?: (path: string) => string
-  win: Window = window
+  window?: Window
 }): RouterHistory {
+  const win = opts?.window ?? window
   const getHref =
     opts?.getHref ??
     (() =>
