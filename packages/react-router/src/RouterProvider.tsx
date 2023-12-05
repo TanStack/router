@@ -119,21 +119,21 @@ function RouterProviderInner<
   router.startReactTransition = startReactTransition
 
   const tryLoad = () => {
-    if (state.location !== router.latestLocation) {
-      startReactTransition(() => {
-        try {
-          router.load()
-        } catch (err) {
-          console.error(err)
-        }
-      })
-    }
+    startReactTransition(() => {
+      try {
+        router.load()
+      } catch (err) {
+        console.error(err)
+      }
+    })
   }
 
   useLayoutEffect(() => {
     const unsub = router.history.subscribe(() => {
       router.latestLocation = router.parseLocation(router.latestLocation)
-      tryLoad()
+      if (state.location !== router.latestLocation) {
+        tryLoad()
+      }
     })
 
     const nextLocation = router.buildLocation({
