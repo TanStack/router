@@ -1,12 +1,7 @@
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import * as React from 'react'
-import {
-  Link,
-  Outlet,
-  RouterContext,
-  rootRouteWithContext,
-} from '@tanstack/react-router'
-import { DehydrateRouter } from '@tanstack/react-start/client'
+import { Link, Outlet, rootRouteWithContext } from '@tanstack/react-router'
+import { DehydrateRouter } from '@tanstack/react-router-server/client'
 
 const rootRoute = rootRouteWithContext<{
   head: string

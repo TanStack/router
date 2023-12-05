@@ -7,7 +7,7 @@
     "test": "is-ci-cli test:ci test:dev",
     "test:ci": "pnpm --parallel test",
     "test:dev": "vitest",
-    "buildNx": "nx run-many --target=build --projects=@tanstack/* --exclude=@tanstack/react-start",
+    "buildNx": "nx run-many --target=build --projects=@tanstack/*",
     "build": "rollup --config rollup.config.js && pnpm typecheck",
     "watch": "concurrently --no-color --prefix \"watch\" --kill-others --raw \"rollup --config rollup.config.js -w\" \"tsc -b --watch --preserveWatchOutput\"",
     "dev": "pnpm watch",

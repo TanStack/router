@@ -3,7 +3,7 @@ import ReactDOMServer from 'react-dom/server'
 import { createMemoryHistory } from '@tanstack/react-router'
 import { ServerResponse } from 'http'
 import express from 'express'
-import { StartServer } from '@tanstack/react-start/server'
+import { StartServer } from '@tanstack/react-router-server/server'
 import { createRouter } from './router'
 
 // index.js

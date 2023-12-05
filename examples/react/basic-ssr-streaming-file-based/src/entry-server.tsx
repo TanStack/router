@@ -4,7 +4,7 @@ import { createMemoryHistory } from '@tanstack/react-router'
 import {
   StartServer,
   transformStreamWithRouter,
-} from '@tanstack/react-start/server'
+} from '@tanstack/react-router-server/server'
 import isbot from 'isbot'
 import { ServerResponse } from 'http'
 import express from 'express'

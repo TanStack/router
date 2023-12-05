@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "0.0.1-beta.232",
-    "@tanstack/react-start": "0.0.1-beta.204",
+    "@tanstack/react-router-server": "0.0.1-beta.232",
     "@tanstack/router-cli": "0.0.1-beta.232",
     "@tanstack/router-devtools": "0.0.1-beta.232",
     "axios": "^1.1.3",
