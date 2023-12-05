@@ -174,7 +174,7 @@ function assignKey(state: HistoryState) {
  * @param opts
  * @param opts.getHref A function that returns the current href (path + search + hash)
  * @param opts.createHref A function that takes a path and returns a href (path + search + hash)
- * @param opts.win A reference to the Window object
+ * @param opts.window A reference to the Window object
  * @returns A history instance
  */
 export function createBrowserHistory(opts?: {
@@ -182,15 +182,15 @@ export function createBrowserHistory(opts?: {
   createHref?: (path: string) => string
   window?: Window
 }): RouterHistory {
-  const win = opts?.window ?? window
+  const _window = opts?.window ?? window
   const getHref =
     opts?.getHref ??
     (() =>
-      `${win.location.pathname}${win.location.search}${win.location.hash}`)
+      `${_window.location.pathname}${_window.location.search}${_window.location.hash}`)
 
   const createHref = opts?.createHref ?? ((path) => path)
 
-  let currentLocation = parseLocation(getHref(), win.history.state)
+  let currentLocation = parseLocation(getHref(), _window.history.state)
 
   const getLocation = () => currentLocation
 
@@ -228,7 +228,7 @@ export function createBrowserHistory(opts?: {
     // Do not notify subscribers about this push/replace call
     untrack(() => {
       if (!next) return
-      win.history[next.isPush ? 'pushState' : 'replaceState'](
+      _window.history[next.isPush ? 'pushState' : 'replaceState'](
         next.state,
         '',
         next.href,
@@ -267,12 +267,12 @@ export function createBrowserHistory(opts?: {
   }
 
   const onPushPop = () => {
-    currentLocation = parseLocation(getHref(), win.history.state)
+    currentLocation = parseLocation(getHref(), _window.history.state)
     history.notify()
   }
 
-  var originalPushState = win.history.pushState
-  var originalReplaceState = win.history.replaceState
+  var originalPushState = _window.history.pushState
+  var originalReplaceState = _window.history.replaceState
 
   const history = createHistory({
     getLocation,
@@ -280,30 +280,30 @@ export function createBrowserHistory(opts?: {
       queueHistoryAction('push', path, state, onUpdate),
     replaceState: (path, state, onUpdate) =>
       queueHistoryAction('replace', path, state, onUpdate),
-    back: () => win.history.back(),
-    forward: () => win.history.forward(),
-    go: (n) => win.history.go(n),
+    back: () => _window.history.back(),
+    forward: () => _window.history.forward(),
+    go: (n) => _window.history.go(n),
     createHref: (path) => createHref(path),
     flush,
     destroy: () => {
-      win.history.pushState = originalPushState
-      win.history.replaceState = originalReplaceState
-      win.removeEventListener(pushStateEvent, onPushPop)
-      win.removeEventListener(popStateEvent, onPushPop)
+      _window.history.pushState = originalPushState
+      _window.history.replaceState = originalReplaceState
+      _window.removeEventListener(pushStateEvent, onPushPop)
+      _window.removeEventListener(popStateEvent, onPushPop)
     },
   })
 
-  win.addEventListener(pushStateEvent, onPushPop)
-  win.addEventListener(popStateEvent, onPushPop)
+  _window.addEventListener(pushStateEvent, onPushPop)
+  _window.addEventListener(popStateEvent, onPushPop)
 
-  win.history.pushState = function () {
-    let res = originalPushState.apply(win.history, arguments as any)
+  _window.history.pushState = function () {
+    let res = originalPushState.apply(_window.history, arguments as any)
     if (tracking) history.notify()
     return res
   }
 
-  win.history.replaceState = function () {
-    let res = originalReplaceState.apply(win.history, arguments as any)
+  _window.history.replaceState = function () {
+    let res = originalReplaceState.apply(_window.history, arguments as any)
     if (tracking) history.notify()
     return res
   }
