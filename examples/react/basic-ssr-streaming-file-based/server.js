@@ -1,21 +1,13 @@
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import express from 'express'
 import getPort, { portNumbers } from 'get-port'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.VITE_TEST_BUILD
-
-process.env.MY_CUSTOM_SECRET = 'API_KEY_qwertyuiop'
 
 export async function createServer(
   root = process.cwd(),
   isProd = process.env.NODE_ENV === 'production',
   hmrPort,
 ) {
-  const resolve = (p) => path.resolve(__dirname, p)
-
   const app = express()
 
   /**
@@ -46,11 +38,6 @@ export async function createServer(
     app.use(vite.middlewares)
   } else {
     app.use((await import('compression')).default())
-    app.use(
-      (await import('serve-static')).default(resolve('dist/client'), {
-        index: false,
-      }),
-    )
   }
 
   app.use('*', async (req, res) => {
@@ -59,7 +46,9 @@ export async function createServer(
 
       if (url.includes('.')) {
         console.warn(`${url} is not valid router path`)
-        return res.status(404)
+        res.status(404)
+        res.end(`${url} is not valid router path`)
+        return
       }
 
       // Extract the head from vite's index transformation hook
@@ -83,10 +72,7 @@ export async function createServer(
         }
       })()
 
-      // Control/hydrate all the way up to <html>
-      // Modify head
-      // Request/Response control at the route level
-
+      console.log('Rendering: ', url, '...')
       entry.render({ req, res, url, head: viteHead })
     } catch (e) {
       !isProd && vite.ssrFixStacktrace(e)
