@@ -878,7 +878,8 @@ function App() {
             <button
               className="bg-blue-500 text-white rounded p-1 px-2"
               onClick={() => {
-                setLoaderDelay(150)
+                setPendingMs(1000)
+                setPendingMinMs(500)
               }}
             >
               Reset to Default
