@@ -572,6 +572,9 @@ importers:
       axios:
         specifier: ^1.1.3
         version: 1.6.2
+      concurrently:
+        specifier: ^8.2.2
+        version: 8.2.2
       immer:
         specifier: ^9.0.15
         version: 9.0.16
