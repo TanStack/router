@@ -48,6 +48,7 @@ const fetchPost = async (postId: string) => {
     )
     .then((r) => r.data)
 
+  await new Promise((r) => setTimeout(r, 150))
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .catch((err) => {
@@ -175,7 +176,7 @@ function PostComponent() {
     <div className="space-y-2">
       <h4 className="text-xl font-bold underline">{post.title}</h4>
       <div className="text-sm">{post.body}</div>
-      <React.Suspense fallback={<div>Loading comments...</div>}>
+      <React.Suspense fallback={<div>Loading comments...</div>} key={post.id}>
         <Await promise={commentsPromise}>
           {(comments) => {
             return (

@@ -23,9 +23,25 @@ type Cache = {
   set: (updater: NonNullableUpdater<CacheState>) => void
 }
 
-let cache: Cache
-
 const sessionsStorage = typeof window !== 'undefined' && window.sessionStorage
+
+let cache: Cache = sessionsStorage
+  ? (() => {
+      const storageKey = 'tsr-scroll-restoration-v2'
+
+      const state: CacheState = JSON.parse(
+        window.sessionStorage.getItem(storageKey) || 'null',
+      ) || { cached: {}, next: {} }
+
+      return {
+        state,
+        set: (updater) => {
+          cache.state = functionalUpdate(updater, cache.state)
+          window.sessionStorage.setItem(storageKey, JSON.stringify(cache.state))
+        },
+      }
+    })()
+  : (undefined as any)
 
 export type ScrollRestorationOptions = {
   getKey?: (location: ParsedLocation) => string
@@ -39,29 +55,6 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
   useLayoutEffect(() => {
     const getKey = options?.getKey || defaultGetKey
 
-    if (sessionsStorage) {
-      if (!cache) {
-        cache = (() => {
-          const storageKey = 'tsr-scroll-restoration-v2'
-
-          const state: CacheState = JSON.parse(
-            window.sessionStorage.getItem(storageKey) || 'null',
-          ) || { cached: {}, next: {} }
-
-          return {
-            state,
-            set: (updater) => {
-              cache.state = functionalUpdate(updater, cache.state)
-              window.sessionStorage.setItem(
-                storageKey,
-                JSON.stringify(cache.state),
-              )
-            },
-          }
-        })()
-      }
-    }
-
     const { history } = window
     if (history.scrollRestoration) {
       history.scrollRestoration = 'manual'
@@ -71,10 +64,21 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
       if (weakScrolledElements.has(event.target)) return
       weakScrolledElements.add(event.target)
 
-      const elementSelector =
-        event.target === document || event.target === window
-          ? windowKey
-          : getCssSelector(event.target)
+      let elementSelector = ''
+
+      if (event.target === document || event.target === window) {
+        elementSelector = windowKey
+      } else {
+        const attrId = (event.target as Element).getAttribute(
+          'data-scroll-restoration-id',
+        )
+
+        if (attrId) {
+          elementSelector = `[data-scroll-restoration-id="${attrId}"]`
+        } else {
+          elementSelector = getCssSelector(event.target)
+        }
+      }
 
       if (!cache.state.next[elementSelector]) {
         cache.set((c) => ({
@@ -88,20 +92,6 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
           },
         }))
       }
-    }
-
-    const getCssSelector = (el: any): string => {
-      let path = [],
-        parent
-      while ((parent = el.parentNode)) {
-        path.unshift(
-          `${el.tagName}:nth-child(${
-            ([].indexOf as any).call(parent.children, el) + 1
-          })`,
-        )
-        el = parent
-      }
-      return `${path.join(' > ')}`.toLowerCase()
     }
 
     if (typeof document !== 'undefined') {
@@ -189,4 +179,52 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
 export function ScrollRestoration(props: ScrollRestorationOptions) {
   useScrollRestoration(props)
   return null
+}
+
+export function useElementScrollRestoration(
+  options: (
+    | {
+        id: string
+        getElement?: () => Element | undefined | null
+      }
+    | {
+        id?: string
+        getElement: () => Element | undefined | null
+      }
+  ) & {
+    getKey?: (location: ParsedLocation) => string
+  },
+) {
+  const router = useRouter()
+  const getKey = options?.getKey || defaultGetKey
+
+  let elementSelector = ''
+
+  if (options.id) {
+    elementSelector = `[data-scroll-restoration-id="${options.id}"]`
+  } else {
+    const element = options.getElement?.()
+    if (!element) {
+      return
+    }
+    elementSelector = getCssSelector(element)
+  }
+
+  const restoreKey = getKey(router.latestLocation)
+  const cacheKey = [restoreKey, elementSelector].join(delimiter)
+  return cache.state.cached[cacheKey]
+}
+
+function getCssSelector(el: any): string {
+  let path = [],
+    parent
+  while ((parent = el.parentNode)) {
+    path.unshift(
+      `${el.tagName}:nth-child(${
+        ([].indexOf as any).call(parent.children, el) + 1
+      })`,
+    )
+    el = parent
+  }
+  return `${path.join(' > ')}`.toLowerCase()
 }

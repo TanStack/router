@@ -18,10 +18,10 @@ import {
 
 // Create a root route
 const rootRoute = new RootRoute({
-  component: Root,
+  component: RootComponent,
 })
 
-function Root() {
+function RootComponent() {
   return (
     <>
       <div>
@@ -37,10 +37,10 @@ function Root() {
 const indexRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: Index,
+  component: IndexComponent,
 })
 
-function Index() {
+function IndexComponent() {
   return (
     <div>
       <h3>Welcome Home!</h3>
@@ -51,10 +51,10 @@ function Index() {
 const aboutRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/about',
-  component: About,
+  component: AboutComponent,
 })
 
-function About() {
+function AboutComponent() {
   return <div>Hello from About!</div>
 }
 

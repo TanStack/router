@@ -1,7 +1,7 @@
 lockfileVersion: '6.0'
 
 settings:
-  autoInstallPeers: false
+  autoInstallPeers: true
   excludeLinksFromLockfile: false
 
 overrides:
@@ -728,8 +728,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/react-router
       '@tanstack/react-virtual':
-        specifier: 3.0.0-alpha.0
-        version: 3.0.0-alpha.0(react@18.2.0)
+        specifier: 3.0.1
+        version: 3.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
@@ -1414,6 +1414,12 @@ importers:
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1495,6 +1501,12 @@ importers:
       date-fns:
         specifier: ^2.29.1
         version: 2.29.3
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
 
 packages:
 
@@ -5222,6 +5234,7 @@ packages:
 
   /@reach/observe-rect@1.2.0:
     resolution: {integrity: sha512-Ba7HmkFgfQxZqqaeIWWkNK0rEhpxVQHIoVyW1YDSkGsGIXzcaW4deC8B0pZrNSSyLTdIk7y+5olKt5+g0GmFIQ==}
+    dev: true
 
   /@rollup/plugin-babel@6.0.2(@babel/core@7.20.2)(@types/babel__core@7.20.5)(rollup@4.6.1):
     resolution: {integrity: sha512-Vnt8XIWYwCf3MD7qhBWYlP9pjSZvcE++nlPXhQYw6YNehl5742AzFbrV6h4BHb20VAOVUlIksVLymQCTwVCGDg==}
@@ -5784,15 +5797,19 @@ packages:
       react-dom: 18.2.0(react@18.2.0)
     dev: false
 
-  /@tanstack/react-virtual@3.0.0-alpha.0(react@18.2.0):
-    resolution: {integrity: sha512-WpHU/dt34NwZZ8qtiE05TF+nX/b1W6qrWZarO+s8jJFpPVicrTbJKp5Bjt4eSJuk7aYw272oEfsH3ABBRgj+3A==}
-    engines: {node: '>=12'}
+  /@tanstack/react-virtual@3.0.1(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-IFOFuRUTaiM/yibty9qQ9BfycQnYXIDHGP2+cU+0LrFFGNhVxCXSQnaY6wkX8uJVteFEBjUondX0Hmpp7TNcag==}
     peerDependencies:
-      react: '>=16'
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
     dependencies:
-      '@babel/runtime': 7.21.0
-      '@reach/observe-rect': 1.2.0
+      '@tanstack/virtual-core': 3.0.0
       react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+    dev: false
+
+  /@tanstack/virtual-core@3.0.0:
+    resolution: {integrity: sha512-SYXOBTjJb05rXa2vl55TTwO40A6wKu0R5i1qQwhJYNDIqaIGF7D0HsLw+pJAyi2OvntlEIVusx3xtbbgSUi6zg==}
     dev: false
 
   /@testing-library/dom@9.3.3:

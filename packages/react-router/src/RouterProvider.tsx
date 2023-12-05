@@ -109,11 +109,13 @@ export function RouterProvider<
 
   const [preState, setState] = React.useState(() => router.state)
   const [isTransitioning, startReactTransition] = React.useTransition()
+  const isAnyTransitioning =
+    isTransitioning || preState.matches.some((d) => d.status === 'pending')
 
   const state = React.useMemo<RouterState<TRouteTree>>(
     () => ({
       ...preState,
-      status: isTransitioning ? 'pending' : 'idle',
+      status: isAnyTransitioning ? 'pending' : 'idle',
       location: isTransitioning ? router.latestLocation : preState.location,
       pendingMatches: router.pendingMatches,
     }),

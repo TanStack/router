@@ -94,7 +94,9 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
   const match = matches[0]!
   const routeId = match?.routeId
   const route = routesById[routeId]!
-  const locationKey = useRouterState().location.state?.key
+  const router = useRouter()
+  const locationKey = router.latestLocation.state?.key
+  // const locationKey = useRouterState().location.state?.key
 
   const PendingComponent = (route.options.pendingComponent ??
     options.defaultPendingComponent) as any

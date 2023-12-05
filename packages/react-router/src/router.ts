@@ -1283,7 +1283,7 @@ export class Router<
       // Ingest the new matches
       this.setState((s) => ({
         ...s,
-        status: 'pending',
+        // status: 'pending',
         location: next,
         matches,
       }))

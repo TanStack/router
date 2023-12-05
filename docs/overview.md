@@ -7,7 +7,7 @@ TanStack Router is a router for building web applications using your favorite mo
 - 100% inferred TypeScript support
 - Typesafe absolute and relative navigation
 - Nested Routing and layout routes
-- Route Load Suspense Transitions
+- Built-in Route Loaders + Suspense Transitions
 - Designed to support data caches (TanStack Query, SWR, etc.)
 - Automatic route prefetching
 - Asynchronous route elements and error boundaries
