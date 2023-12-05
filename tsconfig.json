@@ -4,7 +4,8 @@
     { "path": "packages/history" },
     { "path": "packages/react-router" },
     { "path": "packages/router-cli" },
-    { "path": "packages/router-devtools" }
+    { "path": "packages/router-devtools" },
+    { "path": "packages/react-router-server" }
   ]
   // "include": ["examples/*"]
   // "exclude": ["node_modules"]

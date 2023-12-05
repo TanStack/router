@@ -56,6 +56,21 @@ export const packages: Package[] = [
       },
     ],
   },
+  {
+    name: '@tanstack/react-router-server',
+    packageDir: 'react-router-server',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'TanStackRouterServer',
+        entryFile: 'src/server.tsx',
+      },
+      {
+        jsName: 'TanStackRouterServerClient',
+        entryFile: 'src/client.tsx',
+      },
+    ],
+  },
 ]
 
 export const latestBranch = 'main'

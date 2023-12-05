@@ -3,6 +3,7 @@ import {
   HistoryState,
   RouterHistory,
   createBrowserHistory,
+  createMemoryHistory,
 } from '@tanstack/history'
 
 //
@@ -28,6 +29,7 @@ import {
   functionalUpdate,
   last,
   pick,
+  PickAsPartial,
 } from './utils'
 import {
   ErrorRouteComponent,
@@ -45,11 +47,9 @@ import {
   InjectedHtmlEntry,
   MatchRouteFn,
   NavigateFn,
-  PathParamError,
-  SearchParamError,
-  getInitialRouterState,
   getRouteMatch,
 } from './RouterProvider'
+
 import {
   cleanPath,
   interpolatePath,
@@ -62,7 +62,7 @@ import {
 } from './path'
 import invariant from 'tiny-invariant'
 import { isRedirect } from './redirects'
-import warning from 'tiny-warning'
+// import warning from 'tiny-warning'
 
 //
 
@@ -125,10 +125,11 @@ export interface RouterOptions<
   routeTree?: TRouteTree
   basepath?: string
   context?: TRouteTree['types']['routerContext']
-  // dehydrate?: () => TDehydrated
-  // hydrate?: (dehydrated: TDehydrated) => void
+  dehydrate?: () => TDehydrated
+  hydrate?: (dehydrated: TDehydrated) => void
   routeMasks?: RouteMask<TRouteTree>[]
   unmaskOnReload?: boolean
+  Wrap?: (props: { children: any }) => JSX.Element
 }
 
 export interface RouterState<TRouteTree extends AnyRoute = AnyRoute> {
@@ -249,7 +250,7 @@ export class Router<
   flatRoutes!: AnyRoute[]
 
   constructor(options: RouterConstructorOptions<TRouteTree, TDehydrated>) {
-    this.updateOptions({
+    this.update({
       defaultPreloadDelay: 50,
       defaultPendingMs: 1000,
       defaultPendingMinMs: 500,
@@ -260,28 +261,17 @@ export class Router<
     })
   }
 
-  startReactTransition: (fn: () => void) => void = () => {
-    warning(
-      false,
-      'startReactTransition implementation is missing. If you see this, please file an issue.',
-    )
-  }
-
-  setState: (
-    fn: (s: RouterState<TRouteTree>) => RouterState<TRouteTree>,
-  ) => void = () => {
-    warning(
-      false,
-      'setState implementation is missing. If you see this, please file an issue.',
-    )
-  }
-
-  updateOptions = (
-    newOptions: PickAsRequired<
-      RouterOptions<TRouteTree, TDehydrated>,
-      'stringifySearch' | 'parseSearch' | 'context'
-    >,
+  // These are default implementations that can optionally be overridden
+  // by the router provider once rendered. We provide these so that the
+  // router can be used in a non-react environment if necessary
+  startReactTransition: (fn: () => void) => void = (fn) => fn()
+  setState: (updater: NonNullableUpdater<RouterState<TRouteTree>>) => void = (
+    updater,
   ) => {
+    this.state = functionalUpdate(updater, this.state)
+  }
+
+  update = (newOptions: RouterConstructorOptions<TRouteTree, TDehydrated>) => {
     this.options = {
       ...this.options,
       ...newOptions,
@@ -293,7 +283,11 @@ export class Router<
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
-      this.history = this.options.history ?? createBrowserHistory()
+      this.history =
+        this.options.history ??
+        (typeof document !== 'undefined'
+          ? createBrowserHistory()
+          : createMemoryHistory())
       this.latestLocation = this.parseLocation()
     }
 
@@ -1320,6 +1314,7 @@ export class Router<
         //   ...s,
         //   status: 'idle',
         //   resolvedLocation: s.location,
+        //   matches,
         // }))
 
         //
@@ -1582,62 +1577,69 @@ export class Router<
     return undefined
   }
 
-  // dehydrate = (): DehydratedRouter => {
-  //   return {
-  //     state: {
-  //       dehydratedMatches: this.state.matches.map((d) =>
-  //         pick(d, ['fetchedAt', 'invalid', 'id', 'status', 'updatedAt']),
-  //       ),
-  //     },
-  //   }
-  // }
+  dehydrate = (): DehydratedRouter => {
+    return {
+      state: {
+        dehydratedMatches: this.state.matches.map((d) =>
+          pick(d, [
+            'fetchedAt',
+            'invalid',
+            'id',
+            'status',
+            'updatedAt',
+            'loaderData',
+          ]),
+        ),
+      },
+    }
+  }
 
-  // hydrate = async (__do_not_use_server_ctx?: HydrationCtx) => {
-  //   let _ctx = __do_not_use_server_ctx
-  //   // Client hydrates from window
-  //   if (typeof document !== 'undefined') {
-  //     _ctx = window.__TSR_DEHYDRATED__
-  //   }
+  hydrate = async (__do_not_use_server_ctx?: HydrationCtx) => {
+    let _ctx = __do_not_use_server_ctx
+    // Client hydrates from window
+    if (typeof document !== 'undefined') {
+      _ctx = window.__TSR_DEHYDRATED__
+    }
 
-  //   invariant(
-  //     _ctx,
-  //     'Expected to find a __TSR_DEHYDRATED__ property on window... but we did not. Did you forget to render <DehydrateRouter /> in your app?',
-  //   )
+    invariant(
+      _ctx,
+      'Expected to find a __TSR_DEHYDRATED__ property on window... but we did not. Did you forget to render <DehydrateRouter /> in your app?',
+    )
 
-  //   const ctx = _ctx
-  //   this.dehydratedData = ctx.payload as any
-  //   this.options.hydrate?.(ctx.payload as any)
-  //   const dehydratedState = ctx.router.state
+    const ctx = _ctx
+    this.dehydratedData = ctx.payload as any
+    this.options.hydrate?.(ctx.payload as any)
+    const dehydratedState = ctx.router.state
 
-  //   let matches = this.matchRoutes(
-  //     this.state.location.pathname,
-  //     this.state.location.search,
-  //   ).map((match) => {
-  //     const dehydratedMatch = dehydratedState.dehydratedMatches.find(
-  //       (d) => d.id === match.id,
-  //     )
+    let matches = this.matchRoutes(
+      this.state.location.pathname,
+      this.state.location.search,
+    ).map((match) => {
+      const dehydratedMatch = dehydratedState.dehydratedMatches.find(
+        (d) => d.id === match.id,
+      )
 
-  //     invariant(
-  //       dehydratedMatch,
-  //       `Could not find a client-side match for dehydrated match with id: ${match.id}!`,
-  //     )
+      invariant(
+        dehydratedMatch,
+        `Could not find a client-side match for dehydrated match with id: ${match.id}!`,
+      )
 
-  //     if (dehydratedMatch) {
-  //       return {
-  //         ...match,
-  //         ...dehydratedMatch,
-  //       }
-  //     }
-  //     return match
-  //   })
+      if (dehydratedMatch) {
+        return {
+          ...match,
+          ...dehydratedMatch,
+        }
+      }
+      return match
+    })
 
-  //   this.setState((s) => {
-  //     return {
-  //       ...s,
-  //       matches: dehydratedState.dehydratedMatches as any,
-  //     }
-  //   })
-  // }
+    this.setState((s) => {
+      return {
+        ...s,
+        matches: matches as any,
+      }
+    })
+  }
 
   // resolveMatchPromise = (matchId: string, key: string, value: any) => {
   //   state.matches
@@ -1661,4 +1663,20 @@ export function lazyFn<
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+}
+export class SearchParamError extends Error {}
+
+export class PathParamError extends Error {}
+
+export function getInitialRouterState(
+  location: ParsedLocation,
+): RouterState<any> {
+  return {
+    status: 'idle',
+    resolvedLocation: location,
+    location,
+    matches: [],
+    pendingMatches: [],
+    lastUpdated: Date.now(),
+  }
 }

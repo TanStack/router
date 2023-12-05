@@ -20,7 +20,8 @@
       "@tanstack/history": ["packages/history"],
       "@tanstack/react-router": ["packages/react-router"],
       "@tanstack/router-devtools": ["packages/router-devtools"],
-      "@tanstack/router-cli": ["packages/router-cli"]
+      "@tanstack/router-cli": ["packages/router-cli"],
+      "@tanstack/react-router-server": ["packages/react-router-server"]
     }
   },
   "ts-node": {

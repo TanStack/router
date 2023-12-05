@@ -18,7 +18,7 @@ import {
   RouterOptions,
   RouterState,
 } from './router'
-import { NoInfer, PickAsRequired } from './utils'
+import { NoInfer, PickAsRequired, useLayoutEffect } from './utils'
 import { MatchRouteOptions } from './Matches'
 import { RouteMatch } from './Matches'
 
@@ -72,41 +72,33 @@ if (typeof document !== 'undefined') {
   window.__TSR_ROUTER_CONTEXT__ = routerContext as any
 }
 
-export class SearchParamError extends Error {}
-
-export class PathParamError extends Error {}
-
-export function getInitialRouterState(
-  location: ParsedLocation,
-): RouterState<any> {
-  return {
-    status: 'idle',
-    resolvedLocation: location,
-    location,
-    matches: [],
-    pendingMatches: [],
-    lastUpdated: Date.now(),
-  }
-}
-
 export function RouterProvider<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TDehydrated extends Record<string, any> = Record<string, any>,
 >({ router, ...rest }: RouterProps<TRouteTree, TDehydrated>) {
   // Allow the router to update options on the router instance
-  router.updateOptions({
+  router.update({
     ...router.options,
     ...rest,
-
     context: {
       ...router.options.context,
       ...rest?.context,
     },
-  } as PickAsRequired<
-    RouterOptions<TRouteTree, TDehydrated>,
-    'stringifySearch' | 'parseSearch' | 'context'
-  >)
+  } as any)
 
+  const inner = <RouterProviderInner<TRouteTree, TDehydrated> router={router} />
+
+  if (router.options.Wrap) {
+    return <router.options.Wrap>{inner}</router.options.Wrap>
+  }
+
+  return inner
+}
+
+function RouterProviderInner<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TDehydrated extends Record<string, any> = Record<string, any>,
+>({ router }: RouterProps<TRouteTree, TDehydrated>) {
   const [preState, setState] = React.useState(() => router.state)
   const [isTransitioning, startReactTransition] = React.useTransition()
   const isAnyTransitioning =
@@ -126,19 +118,22 @@ export function RouterProvider<
   router.state = state
   router.startReactTransition = startReactTransition
 
-  React.useLayoutEffect(() => {
+  const tryLoad = () => {
+    if (state.location !== router.latestLocation) {
+      startReactTransition(() => {
+        try {
+          router.load()
+        } catch (err) {
+          console.error(err)
+        }
+      })
+    }
+  }
+
+  useLayoutEffect(() => {
     const unsub = router.history.subscribe(() => {
       router.latestLocation = router.parseLocation(router.latestLocation)
-
-      if (state.location !== router.latestLocation) {
-        startReactTransition(() => {
-          try {
-            router.load()
-          } catch (err) {
-            console.error(err)
-          }
-        })
-      }
+      tryLoad()
     })
 
     const nextLocation = router.buildLocation({
@@ -157,7 +152,7 @@ export function RouterProvider<
     }
   }, [router.history])
 
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     if (!isTransitioning && state.resolvedLocation !== state.location) {
       router.emit({
         type: 'onResolved',
@@ -174,14 +169,10 @@ export function RouterProvider<
     }
   })
 
-  React.useLayoutEffect(() => {
-    startReactTransition(() => {
-      try {
-        router.load()
-      } catch (err) {
-        console.error(err)
-      }
-    })
+  useLayoutEffect(() => {
+    if (!window.__TSR_DEHYDRATED__) {
+      tryLoad()
+    }
   }, [])
 
   return (
@@ -219,7 +210,10 @@ export type RouterProps<
 export function useRouter<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
 >(): Router<TRouteTree> {
-  const resolvedContext = window.__TSR_ROUTER_CONTEXT__ || routerContext
+  const resolvedContext =
+    typeof document !== 'undefined'
+      ? window.__TSR_ROUTER_CONTEXT__ || routerContext
+      : routerContext
   const value = React.useContext(resolvedContext)
   warning(value, 'useRouter must be used inside a <RouterProvider> component!')
   return value as any

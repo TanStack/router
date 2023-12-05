@@ -16,14 +16,6 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
-import {
-  LoaderClient,
-  Loader,
-  LoaderClientProvider,
-  typedClient,
-  useLoaderInstance,
-  createLoaderOptions,
-} from '@tanstack/react-loaders'
 
 type PostType = {
   id: string
@@ -69,12 +61,6 @@ const postLoader = new Loader({
 const loaderClient = new LoaderClient({
   loaders: [postsLoader, postLoader],
 })
-
-declare module '@tanstack/react-loaders' {
-  interface Register {
-    loaderClient: typeof loaderClient
-  }
-}
 
 export const mainTransitionProps = {
   initial: { y: -20, opacity: 0, position: 'absolute' },
