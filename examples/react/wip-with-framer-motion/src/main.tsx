@@ -8,7 +8,9 @@ import {
   Link,
   Route,
   ErrorComponent,
+  RouterContext,
   useMatch,
+  useRouterState,
   useMatches,
   rootRouteWithContext,
 } from '@tanstack/react-router'
@@ -90,6 +92,7 @@ const rootRoute = rootRouteWithContext<{
     const match = useMatch({ strict: false })
     const nextMatchIndex = matches.findIndex((d) => d.id === match.id) + 1
     const nextMatch = matches[nextMatchIndex]
+    // const routerState = useRouterState()
 
     console.log(nextMatch.id)
 

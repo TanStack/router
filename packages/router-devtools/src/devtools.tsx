@@ -338,16 +338,16 @@ export function TanStackRouterDevtools({
                     right: '0',
                   }
                 : position === 'top-left'
-                ? {
-                    left: '0',
-                  }
-                : position === 'bottom-right'
-                ? {
-                    right: '0',
-                  }
-                : {
-                    left: '0',
-                  }),
+                  ? {
+                      left: '0',
+                    }
+                  : position === 'bottom-right'
+                    ? {
+                        right: '0',
+                      }
+                    : {
+                        left: '0',
+                      }),
               ...closeButtonStyle,
             }}
           >
@@ -382,19 +382,19 @@ export function TanStackRouterDevtools({
                   right: '0',
                 }
               : position === 'top-left'
-              ? {
-                  top: '0',
-                  left: '0',
-                }
-              : position === 'bottom-right'
-              ? {
-                  bottom: '0',
-                  right: '0',
-                }
-              : {
-                  bottom: '0',
-                  left: '0',
-                }),
+                ? {
+                    top: '0',
+                    left: '0',
+                  }
+                : position === 'bottom-right'
+                  ? {
+                      bottom: '0',
+                      right: '0',
+                    }
+                  : {
+                      bottom: '0',
+                      left: '0',
+                    }),
             ...toggleButtonStyle,
           }}
         >
@@ -419,7 +419,7 @@ function RouteComp({
   const router = useRouter()
   const matches =
     router.state.status === 'pending'
-      ? router.state.pendingMatches
+      ? router.state.pendingMatches ?? []
       : router.state.matches
 
   const match = router.state.matches.find((d) => d.routeId === route.id)
@@ -513,7 +513,10 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   } = props
 
   const router = useRouter()
-  const matches = [...router.state.pendingMatches, ...router.state.matches]
+  const matches = [
+    ...(router.state.pendingMatches ?? []),
+    ...router.state.matches,
+  ]
 
   invariant(
     router,
@@ -805,7 +808,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             ) : (
               <div>
                 {(router.state.status === 'pending'
-                  ? router.state.pendingMatches
+                  ? router.state.pendingMatches ?? []
                   : router.state.matches
                 ).map((match, i) => {
                   return (

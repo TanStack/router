@@ -1,5 +1,6 @@
 import * as React from 'react'
 import warning from 'tiny-warning'
+import { useStore } from '@tanstack/react-store'
 import { Matches } from './Matches'
 import {
   LinkInfo,
@@ -99,39 +100,33 @@ function RouterProviderInner<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TDehydrated extends Record<string, any> = Record<string, any>,
 >({ router }: RouterProps<TRouteTree, TDehydrated>) {
-  const [preState, setState] = React.useState(() => router.state)
   const [isTransitioning, startReactTransition] = React.useTransition()
-  const isAnyTransitioning =
-    isTransitioning || preState.matches.some((d) => d.status === 'pending')
 
-  const state = React.useMemo<RouterState<TRouteTree>>(
-    () => ({
-      ...preState,
-      status: isAnyTransitioning ? 'pending' : 'idle',
-      location: isTransitioning ? router.latestLocation : preState.location,
-      pendingMatches: router.pendingMatches,
-    }),
-    [preState, isTransitioning],
-  )
-
-  router.setState = setState
-  router.state = state
   router.startReactTransition = startReactTransition
 
+  React.useEffect(() => {
+    if (isTransitioning) {
+      router.__store.setState((s) => ({
+        ...s,
+        isTransitioning,
+      }))
+    }
+  }, [isTransitioning])
+
   const tryLoad = () => {
-    startReactTransition(() => {
-      try {
-        router.load()
-      } catch (err) {
-        console.error(err)
-      }
-    })
+    // startReactTransition(() => {
+    try {
+      router.load()
+    } catch (err) {
+      console.error(err)
+    }
+    // })
   }
 
   useLayoutEffect(() => {
     const unsub = router.history.subscribe(() => {
       router.latestLocation = router.parseLocation(router.latestLocation)
-      if (state.location !== router.latestLocation) {
+      if (router.state.location !== router.latestLocation) {
         tryLoad()
       }
     })
@@ -143,7 +138,7 @@ function RouterProviderInner<
       state: true,
     })
 
-    if (state.location.href !== nextLocation.href) {
+    if (router.state.location.href !== nextLocation.href) {
       router.commitLocation({ ...nextLocation, replace: true })
     }
 
@@ -153,21 +148,26 @@ function RouterProviderInner<
   }, [router.history])
 
   useLayoutEffect(() => {
-    if (!isTransitioning && state.resolvedLocation !== state.location) {
+    if (
+      !isTransitioning &&
+      router.state.resolvedLocation !== router.state.location
+    ) {
       router.emit({
         type: 'onResolved',
-        fromLocation: state.resolvedLocation,
-        toLocation: state.location,
-        pathChanged: state.location!.href !== state.resolvedLocation?.href,
+        fromLocation: router.state.resolvedLocation,
+        toLocation: router.state.location,
+        pathChanged:
+          router.state.location!.href !== router.state.resolvedLocation?.href,
       })
       router.pendingMatches = []
 
-      setState((s) => ({
+      router.__store.setState((s) => ({
         ...s,
+        isTransitioning: false,
         resolvedLocation: s.location,
       }))
     }
-  })
+  }, [isTransitioning])
 
   useLayoutEffect(() => {
     if (!window.__TSR_DEHYDRATED__) {
@@ -186,7 +186,18 @@ export function getRouteMatch<TRouteTree extends AnyRoute>(
   state: RouterState<TRouteTree>,
   id: string,
 ): undefined | RouteMatch<TRouteTree> {
-  return [...state.pendingMatches, ...state.matches].find((d) => d.id === id)
+  return [...(state.pendingMatches ?? []), ...state.matches].find(
+    (d) => d.id === id,
+  )
+}
+
+export function useRouterState<
+  TSelected = RouterState<RegisteredRouter['routeTree']>,
+>(opts?: {
+  select: (state: RouterState<RegisteredRouter['routeTree']>) => TSelected
+}): TSelected {
+  const router = useRouter()
+  return useStore(router.__store, opts?.select as any)
 }
 
 export type RouterProps<

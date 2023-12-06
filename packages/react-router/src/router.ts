@@ -5,6 +5,7 @@ import {
   createBrowserHistory,
   createMemoryHistory,
 } from '@tanstack/history'
+import { Store } from '@tanstack/store'
 
 //
 
@@ -29,7 +30,6 @@ import {
   functionalUpdate,
   last,
   pick,
-  PickAsPartial,
 } from './utils'
 import {
   ErrorRouteComponent,
@@ -134,8 +134,10 @@ export interface RouterOptions<
 
 export interface RouterState<TRouteTree extends AnyRoute = AnyRoute> {
   status: 'pending' | 'idle'
+  isLoading: boolean
+  isTransitioning: boolean
   matches: RouteMatch<TRouteTree>[]
-  pendingMatches: RouteMatch<TRouteTree>[]
+  pendingMatches?: RouteMatch<TRouteTree>[]
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
   lastUpdated: number
@@ -236,7 +238,7 @@ export class Router<
   dehydratedData?: TDehydrated
 
   // Must build in constructor
-  state!: RouterState<TRouteTree>
+  __store!: Store<RouterState<TRouteTree>>
   options!: PickAsRequired<
     RouterOptions<TRouteTree, TDehydrated>,
     'stringifySearch' | 'parseSearch' | 'context'
@@ -265,11 +267,6 @@ export class Router<
   // by the router provider once rendered. We provide these so that the
   // router can be used in a non-react environment if necessary
   startReactTransition: (fn: () => void) => void = (fn) => fn()
-  setState: (updater: NonNullableUpdater<RouterState<TRouteTree>>) => void = (
-    updater,
-  ) => {
-    this.state = functionalUpdate(updater, this.state)
-  }
 
   update = (newOptions: RouterConstructorOptions<TRouteTree, TDehydrated>) => {
     this.options = {
@@ -296,9 +293,23 @@ export class Router<
       this.buildRouteTree()
     }
 
-    if (!this.state) {
-      this.state = getInitialRouterState(this.latestLocation)
+    if (!this.__store) {
+      this.__store = new Store(getInitialRouterState(this.latestLocation), {
+        onUpdate: () => {
+          this.__store.state = {
+            ...this.state,
+            status:
+              this.state.isTransitioning || this.state.isLoading
+                ? 'pending'
+                : 'idle',
+          }
+        },
+      })
     }
+  }
+
+  get state() {
+    return this.__store.state
   }
 
   buildRouteTree = () => {
@@ -654,7 +665,7 @@ export class Router<
   }
 
   cancelMatches = () => {
-    this.state.matches.forEach((match) => {
+    this.state.pendingMatches?.forEach((match) => {
       this.cancelMatch(match.id)
     })
   }
@@ -948,6 +959,15 @@ export class Router<
     let latestPromise
     let firstBadMatchIndex: number | undefined
 
+    const updatePendingMatch = (match: AnyRouteMatch) => {
+      this.__store.setState((s) => ({
+        ...s,
+        pendingMatches: s.pendingMatches?.map((d) =>
+          d.id === match.id ? match : d,
+        ),
+      }))
+    }
+
     // Check each match middleware to see if the route can be accessed
     try {
       for (let [index, match] of matches.entries()) {
@@ -1149,13 +1169,12 @@ export class Router<
           }
 
           if (!preload) {
-            this.setState((s) => ({
-              ...s,
-              matches: s.matches.map((d) => (d.id === match.id ? match : d)),
-            }))
+            updatePendingMatch(match)
           }
 
           let didShowPending = false
+          const pendingMinMs =
+            route.options.pendingMinMs ?? this.options.defaultPendingMinMs
 
           await new Promise<void>(async (resolve) => {
             // If the route has a pending component and a pendingMs option,
@@ -1170,12 +1189,7 @@ export class Router<
                   showPending: true,
                 }
 
-                this.setState((s) => ({
-                  ...s,
-                  matches: s.matches.map((d) =>
-                    d.id === match.id ? match : d,
-                  ),
-                }))
+                updatePendingMatch(match)
                 resolve()
               })
             }
@@ -1183,9 +1197,6 @@ export class Router<
             try {
               const loaderData = await loadPromise
               if ((latestPromise = checkLatest())) return await latestPromise
-
-              const pendingMinMs =
-                route.options.pendingMinMs ?? this.options.defaultPendingMinMs
 
               if (didShowPending && pendingMinMs) {
                 await new Promise((r) => setTimeout(r, pendingMinMs))
@@ -1220,13 +1231,22 @@ export class Router<
                 isFetching: false,
                 updatedAt: Date.now(),
               }
+            } finally {
+              // If we showed the pending component, that means
+              // we already moved the pendingMatches to the matches
+              // state, so we need to update that specific match
+              if (didShowPending && pendingMinMs && match.showPending) {
+                this.__store.setState((s) => ({
+                  ...s,
+                  matches: s.matches?.map((d) =>
+                    d.id === match.id ? match : d,
+                  ),
+                }))
+              }
             }
 
             if (!preload) {
-              this.setState((s) => ({
-                ...s,
-                matches: s.matches.map((d) => (d.id === match.id ? match : d)),
-              }))
+              updatePendingMatch(match)
             }
 
             resolve()
@@ -1262,7 +1282,7 @@ export class Router<
       })
 
       // Match the routes
-      let matches: RouteMatch<any, any>[] = this.matchRoutes(
+      let pendingMatches: RouteMatch<any, any>[] = this.matchRoutes(
         next.pathname,
         next.search,
         {
@@ -1270,23 +1290,21 @@ export class Router<
         },
       )
 
-      this.pendingMatches = matches
-
       const previousMatches = this.state.matches
 
       // Ingest the new matches
-      this.setState((s) => ({
+      this.__store.setState((s) => ({
         ...s,
-        // status: 'pending',
+        isLoading: true,
         location: next,
-        matches,
+        pendingMatches,
       }))
 
       try {
         try {
           // Load the matches
           await this.loadMatches({
-            matches,
+            matches: pendingMatches,
             checkLatest: () => this.checkLatest(promise),
             invalidate: opts?.invalidate,
           })
@@ -1310,12 +1328,12 @@ export class Router<
           this.pendingMatches.includes(id),
         )
 
-        // setState((s) => ({
-        //   ...s,
-        //   status: 'idle',
-        //   resolvedLocation: s.location,
-        //   matches,
-        // }))
+        this.__store.setState((s) => ({
+          ...s,
+          isLoading: false,
+          matches: pendingMatches,
+          pendingMatches: undefined,
+        }))
 
         //
         ;(
@@ -1517,8 +1535,6 @@ export class Router<
       ? this.latestLocation
       : this.state.resolvedLocation
 
-    // const baseLocation = state.resolvedLocation
-
     if (!baseLocation) {
       return false
     }
@@ -1633,7 +1649,7 @@ export class Router<
       return match
     })
 
-    this.setState((s) => {
+    this.__store.setState((s) => {
       return {
         ...s,
         matches: matches as any,
@@ -1672,6 +1688,8 @@ export function getInitialRouterState(
   location: ParsedLocation,
 ): RouterState<any> {
   return {
+    isLoading: false,
+    isTransitioning: false,
     status: 'idle',
     resolvedLocation: location,
     location,

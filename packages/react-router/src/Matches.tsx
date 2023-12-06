@@ -2,7 +2,7 @@ import * as React from 'react'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
-import { useRouter } from './RouterProvider'
+import { useRouter, useRouterState } from './RouterProvider'
 import { ResolveRelativePath, ToOptions } from './link'
 import { AnyRoute, ReactNode, rootRouteId } from './route'
 import {
@@ -47,10 +47,13 @@ export interface RouteMatch<
 export type AnyRouteMatch = RouteMatch<any>
 
 export function Matches() {
-  const router = useRouter()
-  const { matches } = router.state
-  const locationKey = router.state.location.state.key
-  const route = router.routesById[rootRouteId]!
+  const { routesById } = useRouter()
+  const routerState = useRouterState()
+  const matches = routerState.pendingMatches?.some((d) => d.showPending)
+    ? routerState.pendingMatches
+    : routerState.matches
+  const locationKey = useRouterState().location.state.key
+  const route = routesById[rootRouteId]!
 
   const errorComponent = React.useCallback(
     (props: any) => {
@@ -294,20 +297,28 @@ export function useMatch<
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
   TStrict extends boolean = true,
   TRouteMatchState = RouteMatch<TRouteTree, TFrom>,
+  TSelected = TRouteMatchState,
 >(
-  opts: StrictOrFrom<TFrom>,
-): TStrict extends true ? TRouteMatchState : TRouteMatchState | undefined {
-  const router = useRouter()
+  opts: StrictOrFrom<TFrom> & {
+    select?: (match: TRouteMatchState) => TSelected
+  },
+): TStrict extends true ? TSelected : TSelected | undefined {
   const nearestMatch = React.useContext(matchesContext)[0]!
   const nearestMatchRouteId = nearestMatch?.routeId
 
-  const matchRouteId = (() => {
-    const match = opts?.from
-      ? router.state.matches.find((d) => d.routeId === opts?.from)
-      : router.state.matches.find((d) => d.id === nearestMatch.id)
+  const matchRouteId = useRouterState({
+    select: (state) => {
+      const matches = state.pendingMatches?.some((d) => d.showPending)
+        ? state.pendingMatches
+        : state.matches
 
-    return match!.routeId
-  })()
+      const match = opts?.from
+        ? matches.find((d) => d.routeId === opts?.from)
+        : matches.find((d) => d.id === nearestMatch.id)
+
+      return match!.routeId
+    },
+  })
 
   if (opts?.strict ?? true) {
     invariant(
@@ -322,32 +333,51 @@ export function useMatch<
     )
   }
 
-  const matchSelection = (() => {
-    const match = opts?.from
-      ? router.state.matches.find((d) => d.routeId === opts?.from)
-      : router.state.matches.find((d) => d.id === nearestMatch.id)
+  const matchSelection = useRouterState({
+    select: (state) => {
+      const matches = state.pendingMatches?.some((d) => d.showPending)
+        ? state.pendingMatches
+        : state.matches
 
-    invariant(
-      match,
-      `Could not find ${
-        opts?.from ? `an active match from "${opts.from}"` : 'a nearest match!'
-      }`,
-    )
+      const match = opts?.from
+        ? matches.find((d) => d.routeId === opts?.from)
+        : matches.find((d) => d.id === nearestMatch.id)
 
-    return match
-  })()
+      invariant(
+        match,
+        `Could not find ${
+          opts?.from
+            ? `an active match from "${opts.from}"`
+            : 'a nearest match!'
+        }`,
+      )
+
+      return opts?.select ? opts.select(match as any) : match
+    },
+  })
 
   return matchSelection as any
 }
 
 export const matchesContext = React.createContext<RouteMatch[]>(null!)
 
-export function useMatches(): RouteMatch[] {
-  const router = useRouter()
+export function useMatches<T = RouteMatch[]>(opts?: {
+  select?: (matches: RouteMatch[]) => T
+}): T {
   const contextMatches = React.useContext(matchesContext)
-  return router.state.matches.slice(
-    router.state.matches.findIndex((d) => d.id === contextMatches[0]?.id),
-  )
+
+  return useRouterState({
+    select: (state) => {
+      let matches = state.pendingMatches?.some((d) => d.showPending)
+        ? state.pendingMatches
+        : state.matches
+
+      matches = matches.slice(
+        matches.findIndex((d) => d.id === contextMatches[0]?.id),
+      )
+      return opts?.select ? opts.select(matches) : (matches as T)
+    },
+  })
 }
 
 export function useLoaderData<
@@ -358,10 +388,15 @@ export function useLoaderData<
     TRouteTree,
     TFrom
   >,
+  TSelected = TRouteMatch['loaderData'],
 >(
-  opts: StrictOrFrom<TFrom>,
-): TStrict extends true
-  ? TRouteMatch['loaderData']
-  : TRouteMatch['loaderData'] | undefined {
-  return useMatch(opts)?.loaderData
+  opts: StrictOrFrom<TFrom> & {
+    select?: (match: TRouteMatch) => TSelected
+  },
+): TStrict extends true ? TSelected : TSelected | undefined {
+  const match = useMatch({ ...opts, select: undefined })!
+
+  return typeof opts.select === 'function'
+    ? opts.select(match?.loaderData)
+    : match?.loaderData
 }

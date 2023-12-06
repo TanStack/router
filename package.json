@@ -85,5 +85,8 @@
     "vitest": "^0.34.6",
     "vue": "^3.3.9",
     "zod": "^3.22.4"
+  },
+  "resolutions": {
+    "use-sync-external-store": "1.2.0"
   }
 }

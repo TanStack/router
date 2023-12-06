@@ -10,8 +10,16 @@ export function useSearch<
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
   TStrict extends boolean = true,
   TSearch = RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'],
+  TSelected = TSearch,
 >(
-  opts: StrictOrFrom<TFrom>,
-): TStrict extends true ? TSearch : TSearch | undefined {
-  return useMatch(opts).search
+  opts: StrictOrFrom<TFrom> & {
+    select?: (search: TSearch) => TSelected
+  },
+): TStrict extends true ? TSelected : TSelected | undefined {
+  return useMatch({
+    ...(opts as any),
+    select: (match: RouteMatch) => {
+      return opts?.select ? opts.select(match.search as TSearch) : match.search
+    },
+  })
 }

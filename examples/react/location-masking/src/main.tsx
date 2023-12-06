@@ -8,10 +8,10 @@ import {
   ErrorComponent,
   Router,
   RootRoute,
+  useRouterState,
   useNavigate,
   createRouteMask,
   ErrorRouteProps,
-  useRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -75,7 +75,7 @@ const rootRoute = new RootRoute({
 })
 
 function RootComponent() {
-  const router = useRouter()
+  const status = useRouterState({ select: (s) => s.status })
 
   return (
     <>
@@ -97,7 +97,7 @@ function RootComponent() {
         >
           Photos
         </Link>{' '}
-        {router.state.status === 'pending' ? <Spinner /> : null}
+        {status === 'pending' ? <Spinner /> : null}
       </div>
       <hr />
       <Outlet />
