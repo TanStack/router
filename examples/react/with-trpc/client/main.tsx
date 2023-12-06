@@ -13,7 +13,6 @@ import {
   useParams,
   useRouter,
   RouterContext,
-  useRouterState,
 } from '@tanstack/react-router'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -35,7 +34,7 @@ function Spinner() {
 
 const rootRoute = new RootRoute({
   component: () => {
-    const isFetching = useRouterState({ select: (s) => s.isFetching })
+    const isFetching = useRouter().state.isFetching
 
     return (
       <>

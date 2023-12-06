@@ -189,16 +189,6 @@ export function getRouteMatch<TRouteTree extends AnyRoute>(
   return [...state.pendingMatches, ...state.matches].find((d) => d.id === id)
 }
 
-export function useRouterState<
-  TSelected = RouterState<RegisteredRouter['routeTree']>,
->(opts?: {
-  select: (state: RouterState<RegisteredRouter['routeTree']>) => TSelected
-}): TSelected {
-  const { state } = useRouter()
-  // return useStore(router.__store, opts?.select as any)
-  return opts?.select ? opts.select(state) : (state as any)
-}
-
 export type RouterProps<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TDehydrated extends Record<string, any> = Record<string, any>,

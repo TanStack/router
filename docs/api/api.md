@@ -106,19 +106,11 @@ const myRoute = new Route({
       // Defaults to `true`
       // If strict is set to `false`, will allow you to get this route's search parameters from a different route's rendering context
       strict?: TStrict
-      // A function to select and subscribe to a subset of the search parameters for this route.
-      select?: (search: TSearch) => TSelected
-    }) => TStrict extends true ? TSelected : TSelected | undefined,
+    }) => TStrict extends true ? TSearch : TSearch | undefined,
     // A function that returns the merged path parameters, including parent path parameters for this route.
-    useParams: (opts?: {
-      // A function to select and subscribe to a subset of the path parameters for this route.
-      select?: (params: TDefaultSelected) => TSelected
-    }) => TSelected,
+    useParams: () => TParams,
     // A function that returns the merged context, including parent context for this route.
-    useContext: (opts?: {
-      // A function to select and subscribe to a subset of the context for this route.
-      select?: (context: TDefaultSelected) => TSelected
-    }) => TSelected
+    useRouteContext: () => TRouteContext
   }) => ReactNode,
   // The content to be rendered when the route encounters an error
   errorComponent?: (props: {

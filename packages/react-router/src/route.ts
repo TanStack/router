@@ -590,34 +590,22 @@ export class Route<
     // replaced by a framework specific implementation if necessary
   }
 
-  useMatch = <TSelected = TAllContext>(opts?: {
-    select?: (search: TAllContext) => TSelected
-  }): TSelected => {
-    return useMatch({ ...opts, from: this.id }) as any
+  useMatch = (): TAllContext => {
+    return useMatch({ from: this.id }) as any
   }
-  useRouteContext = <TSelected = TAllContext>(opts?: {
-    select?: (search: TAllContext) => TSelected
-  }): TSelected => {
+  useRouteContext = (): TAllContext => {
     return useMatch({
-      ...opts,
       from: this.id,
-      select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-    } as any)
+    } as any).context
   }
-  useSearch = <TSelected = TFullSearchSchema>(opts?: {
-    select?: (search: TFullSearchSchema) => TSelected
-  }): TSelected => {
-    return useSearch({ ...opts, from: this.id } as any)
+  useSearch = (): TFullSearchSchema => {
+    return useSearch({ from: this.id } as any)
   }
-  useParams = <TSelected = TAllParams>(opts?: {
-    select?: (search: TAllParams) => TSelected
-  }): TSelected => {
-    return useParams({ ...opts, from: this.id } as any)
+  useParams = (): TAllParams => {
+    return useParams({ from: this.id } as any)
   }
-  useLoaderData = <TSelected = TLoaderData>(opts?: {
-    select?: (search: TLoaderData) => TSelected
-  }): TSelected => {
-    return useLoaderData({ ...opts, from: this.id } as any) as any
+  useLoaderData = (): TLoaderData => {
+    return useLoaderData({ from: this.id } as any) as any
   }
 }
 
@@ -768,21 +756,11 @@ export type RouteProps<
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderData extends any = unknown,
 > = {
-  useMatch: <TSelected = TAllContext>(opts?: {
-    select?: (search: TAllContext) => TSelected
-  }) => TSelected
-  useRouteContext: <TSelected = TAllContext>(opts?: {
-    select?: (search: TAllContext) => TSelected
-  }) => TSelected
-  useSearch: <TSelected = TFullSearchSchema>(opts?: {
-    select?: (search: TFullSearchSchema) => TSelected
-  }) => TSelected
-  useParams: <TSelected = TAllParams>(opts?: {
-    select?: (search: TAllParams) => TSelected
-  }) => TSelected
-  useLoaderData: <TSelected = TLoaderData>(opts?: {
-    select?: (search: TLoaderData) => TSelected
-  }) => TSelected
+  useMatch: () => TAllContext
+  useRouteContext: () => TAllContext
+  useSearch: () => TFullSearchSchema
+  useParams: () => TAllParams
+  useLoaderData: () => TLoaderData
 }
 
 export type ErrorRouteProps<

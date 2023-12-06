@@ -151,7 +151,7 @@ const postRoute = new Route({
     // TODO: Prefetch post using TRPC
   },
   component: ({ useParams }) => {
-    const postId = useParams({ select: (d) => d.postId })
+    const postId = useParams().postId
     const postQuery = trpc.post.useQuery(postId)
 
     if (postQuery.isLoading) {
