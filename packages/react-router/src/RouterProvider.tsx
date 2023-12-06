@@ -89,7 +89,8 @@ export function RouterProvider<
 
   const inner = (
     <routerContext.Provider value={router}>
-      <RouterProviderInner<TRouteTree, TDehydrated> router={router} />
+      <Matches />
+      <Transitioner />
     </routerContext.Provider>
   )
 
@@ -98,18 +99,6 @@ export function RouterProvider<
   }
 
   return inner
-}
-
-function RouterProviderInner<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TDehydrated extends Record<string, any> = Record<string, any>,
->({ router }: RouterProps<TRouteTree, TDehydrated>) {
-  return (
-    <>
-      <Matches />
-      <Transitioner />
-    </>
-  )
 }
 
 function Transitioner() {
