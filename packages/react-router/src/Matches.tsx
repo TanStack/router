@@ -47,13 +47,13 @@ export interface RouteMatch<
 export type AnyRouteMatch = RouteMatch<any>
 
 export function Matches() {
-  const { routesById } = useRouter()
+  const router = useRouter()
   const routerState = useRouterState()
   const matches = routerState.pendingMatches?.some((d) => d.showPending)
     ? routerState.pendingMatches
     : routerState.matches
-  const locationKey = useRouterState().location.state.key
-  const route = routesById[rootRouteId]!
+  const locationKey = router.latestLocation.state.key
+  const route = router.routesById[rootRouteId]!
 
   const errorComponent = React.useCallback(
     (props: any) => {

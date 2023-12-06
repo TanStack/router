@@ -11,6 +11,7 @@ import {
   Await,
   defer,
   ErrorRouteProps,
+  MatchRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -63,6 +64,20 @@ const fetchPost = async (postId: string) => {
     post,
     commentsPromise: defer(commentsPromise),
   }
+}
+
+function Spinner({ show, wait }: { show?: boolean; wait?: `delay-${number}` }) {
+  return (
+    <div
+      className={`inline-block animate-spin px-3 transition ${
+        show ?? true
+          ? `opacity-1 duration-500 ${wait ?? 'delay-300'}`
+          : 'duration-500 opacity-0 delay-0'
+      }`}
+    >
+      ⍥
+    </div>
+  )
 }
 
 const rootRoute = new RootRoute({
@@ -135,10 +150,21 @@ function PostsComponent() {
                   params={{
                     postId: post.id,
                   }}
-                  className="block py-1 text-blue-800 hover:text-blue-600"
+                  className="flex py-1 text-blue-800 hover:text-blue-600 gap-2 items-center"
                   activeProps={{ className: 'text-black font-bold' }}
                 >
                   <div>{post.title.substring(0, 20)}</div>
+                  <MatchRoute
+                    to={postRoute.to}
+                    params={{
+                      postId: post.id,
+                    }}
+                    pending
+                  >
+                    {(match) => {
+                      return <Spinner show={!!match} wait="0" />
+                    }}
+                  </MatchRoute>
                 </Link>
               </li>
             )
@@ -176,7 +202,15 @@ function PostComponent() {
     <div className="space-y-2">
       <h4 className="text-xl font-bold underline">{post.title}</h4>
       <div className="text-sm">{post.body}</div>
-      <React.Suspense fallback={<div>Loading comments...</div>} key={post.id}>
+      <React.Suspense
+        fallback={
+          <div className="flex items-center gap-2">
+            <Spinner />
+            Loading comments...
+          </div>
+        }
+        key={post.id}
+      >
         <Await promise={commentsPromise}>
           {(comments) => {
             return (

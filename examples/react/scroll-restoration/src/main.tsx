@@ -18,9 +18,6 @@ const rootRoute = new RootRoute({
 })
 
 function RootComponent() {
-  // const {
-  //   state: { location, resolvedLocation },
-  // } = useRouter()
   return (
     <>
       <div className="p-2 flex gap-2 sticky top-0 bg-white border-b">
@@ -37,9 +34,6 @@ function RootComponent() {
           By-Element
         </Link>
       </div>
-      {/* <pre className="text-[.5rem]">
-          <code>{JSON.stringify({ resolvedLocation, location }, null, 2)}</code>
-        </pre> */}
       <Outlet />
       <ScrollRestoration />
       <TanStackRouterDevtools />

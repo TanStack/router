@@ -19,7 +19,7 @@ import {
   RouterOptions,
   RouterState,
 } from './router'
-import { NoInfer, PickAsRequired, useLayoutEffect } from './utils'
+import { NoInfer, PickAsRequired, pick, useLayoutEffect } from './utils'
 import { MatchRouteOptions } from './Matches'
 import { RouteMatch } from './Matches'
 
@@ -87,7 +87,11 @@ export function RouterProvider<
     },
   } as any)
 
-  const inner = <RouterProviderInner<TRouteTree, TDehydrated> router={router} />
+  const inner = (
+    <routerContext.Provider value={router}>
+      <RouterProviderInner<TRouteTree, TDehydrated> router={router} />
+    </routerContext.Provider>
+  )
 
   if (router.options.Wrap) {
     return <router.options.Wrap>{inner}</router.options.Wrap>
@@ -100,6 +104,21 @@ function RouterProviderInner<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TDehydrated extends Record<string, any> = Record<string, any>,
 >({ router }: RouterProps<TRouteTree, TDehydrated>) {
+  return (
+    <>
+      <Matches />
+      <Transitioner />
+    </>
+  )
+}
+
+function Transitioner() {
+  const router = useRouter()
+  const routerState = useRouterState({
+    select: (s) =>
+      pick(s, ['isLoading', 'location', 'resolvedLocation', 'isTransitioning']),
+  })
+
   const [isTransitioning, startReactTransition] = React.useTransition()
 
   router.startReactTransition = startReactTransition
@@ -114,19 +133,27 @@ function RouterProviderInner<
   }, [isTransitioning])
 
   const tryLoad = () => {
-    // startReactTransition(() => {
-    try {
-      router.load()
-    } catch (err) {
-      console.error(err)
+    const apply = (cb: () => void) => {
+      if (!routerState.isTransitioning) {
+        startReactTransition(() => cb())
+      } else {
+        cb()
+      }
     }
-    // })
+
+    apply(() => {
+      try {
+        router.load()
+      } catch (err) {
+        console.error(err)
+      }
+    })
   }
 
   useLayoutEffect(() => {
     const unsub = router.history.subscribe(() => {
       router.latestLocation = router.parseLocation(router.latestLocation)
-      if (router.state.location !== router.latestLocation) {
+      if (routerState.location !== router.latestLocation) {
         tryLoad()
       }
     })
@@ -138,7 +165,7 @@ function RouterProviderInner<
       state: true,
     })
 
-    if (router.state.location.href !== nextLocation.href) {
+    if (routerState.location.href !== nextLocation.href) {
       router.commitLocation({ ...nextLocation, replace: true })
     }
 
@@ -150,14 +177,16 @@ function RouterProviderInner<
   useLayoutEffect(() => {
     if (
       !isTransitioning &&
-      router.state.resolvedLocation !== router.state.location
+      !routerState.isLoading &&
+      routerState.resolvedLocation !== routerState.location
     ) {
+      console.log('onResolved', routerState.location)
       router.emit({
         type: 'onResolved',
-        fromLocation: router.state.resolvedLocation,
-        toLocation: router.state.location,
+        fromLocation: routerState.resolvedLocation,
+        toLocation: routerState.location,
         pathChanged:
-          router.state.location!.href !== router.state.resolvedLocation?.href,
+          routerState.location!.href !== routerState.resolvedLocation?.href,
       })
       router.pendingMatches = []
 
@@ -167,7 +196,7 @@ function RouterProviderInner<
         resolvedLocation: s.location,
       }))
     }
-  }, [isTransitioning])
+  }, [isTransitioning, routerState.isLoading])
 
   useLayoutEffect(() => {
     if (!window.__TSR_DEHYDRATED__) {
@@ -175,11 +204,7 @@ function RouterProviderInner<
     }
   }, [])
 
-  return (
-    <routerContext.Provider value={router}>
-      <Matches />
-    </routerContext.Provider>
-  )
+  return null
 }
 
 export function getRouteMatch<TRouteTree extends AnyRoute>(
