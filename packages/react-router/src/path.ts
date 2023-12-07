@@ -138,7 +138,7 @@ export function interpolatePath(
       }
 
       if (segment.type === 'param') {
-        return params![segment.value.substring(1)] ?? ''
+        return params![segment.value.substring(1)] ?? 'undefined'
       }
 
       return segment.value
