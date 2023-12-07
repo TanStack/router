@@ -120,6 +120,7 @@ function RootComponent() {
 const indexRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/',
+}).update({
   component: IndexComponent,
 })
 
@@ -165,7 +166,7 @@ function PostsComponent() {
                     pending
                   >
                     {(match) => {
-                      return <Spinner show={!!match} wait="0" />
+                      return <Spinner show={!!match} wait="delay-0" />
                     }}
                   </MatchRoute>
                 </Link>
