@@ -43,31 +43,31 @@ export type LinkInfo =
 export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
   ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
   : T extends `${infer L}//`
-  ? `${CleanPath<L>}/`
-  : T extends `//${infer L}`
-  ? `/${CleanPath<L>}`
-  : T
+    ? `${CleanPath<L>}/`
+    : T extends `//${infer L}`
+      ? `/${CleanPath<L>}`
+      : T
 
 export type Split<S, TIncludeTrailingSlash = true> = S extends unknown
   ? string extends S
     ? string[]
     : S extends string
-    ? CleanPath<S> extends ''
-      ? []
-      : TIncludeTrailingSlash extends true
-      ? CleanPath<S> extends `${infer T}/`
-        ? [...Split<T>, '/']
-        : CleanPath<S> extends `/${infer U}`
-        ? Split<U>
-        : CleanPath<S> extends `${infer T}/${infer U}`
-        ? [...Split<T>, ...Split<U>]
-        : [S]
-      : CleanPath<S> extends `${infer T}/${infer U}`
-      ? [...Split<T>, ...Split<U>]
-      : S extends string
-      ? [S]
+      ? CleanPath<S> extends ''
+        ? []
+        : TIncludeTrailingSlash extends true
+          ? CleanPath<S> extends `${infer T}/`
+            ? [...Split<T>, '/']
+            : CleanPath<S> extends `/${infer U}`
+              ? Split<U>
+              : CleanPath<S> extends `${infer T}/${infer U}`
+                ? [...Split<T>, ...Split<U>]
+                : [S]
+          : CleanPath<S> extends `${infer T}/${infer U}`
+            ? [...Split<T>, ...Split<U>]
+            : S extends string
+              ? [S]
+              : never
       : never
-    : never
   : never
 
 export type ParsePathParams<T extends string> = keyof {
@@ -77,10 +77,10 @@ export type ParsePathParams<T extends string> = keyof {
 export type Join<T, Delimiter extends string = '/'> = T extends []
   ? ''
   : T extends [infer L extends string]
-  ? L
-  : T extends [infer L extends string, ...infer Tail extends [...string[]]]
-  ? CleanPath<`${L}${Delimiter}${Join<Tail>}`>
-  : never
+    ? L
+    : T extends [infer L extends string, ...infer Tail extends [...string[]]]
+      ? CleanPath<`${L}${Delimiter}${Join<Tail>}`>
+      : never
 
 export type Last<T extends any[]> = T extends [...infer _, infer L] ? L : never
 
@@ -112,23 +112,23 @@ export type RelativeToPathAutoComplete<
       >}`
     : never
   : TTo extends `./${infer RestTTo}`
-  ? SplitPaths extends [
-      ...Split<TFrom, false>,
-      ...Split<RestTTo, false>,
-      ...infer RestPath,
-    ]
-    ? `${TTo}${Join<RestPath>}`
-    : never
-  :
-      | (TFrom extends `/`
-          ? never
-          : SplitPaths extends [...Split<TFrom, false>, ...infer RestPath]
-          ? Join<RestPath> extends { length: 0 }
+    ? SplitPaths extends [
+        ...Split<TFrom, false>,
+        ...Split<RestTTo, false>,
+        ...infer RestPath,
+      ]
+      ? `${TTo}${Join<RestPath>}`
+      : never
+    :
+        | (TFrom extends `/`
             ? never
-            : './'
-          : never)
-      | (TFrom extends `/` ? never : '../')
-      | AllPaths
+            : SplitPaths extends [...Split<TFrom, false>, ...infer RestPath]
+              ? Join<RestPath> extends { length: 0 }
+                ? never
+                : './'
+              : never)
+        | (TFrom extends `/` ? never : '../')
+        | AllPaths
 
 export type NavigateOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -333,22 +333,22 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
     ? TTo extends '.'
       ? TFrom
       : TTo extends `./`
-      ? Join<[TFrom, '/']>
-      : TTo extends `./${infer TRest}`
-      ? ResolveRelativePath<TFrom, TRest>
-      : TTo extends `/${infer TRest}`
-      ? TTo
-      : Split<TTo> extends ['..', ...infer ToRest]
-      ? Split<TFrom> extends [...infer FromRest, infer FromTail]
-        ? ToRest extends ['/']
-          ? Join<[...FromRest, '/']>
-          : ResolveRelativePath<Join<FromRest>, Join<ToRest>>
-        : never
-      : Split<TTo> extends ['.', ...infer ToRest]
-      ? ToRest extends ['/']
         ? Join<[TFrom, '/']>
-        : ResolveRelativePath<TFrom, Join<ToRest>>
-      : CleanPath<Join<['/', ...Split<TFrom>, ...Split<TTo>]>>
+        : TTo extends `./${infer TRest}`
+          ? ResolveRelativePath<TFrom, TRest>
+          : TTo extends `/${infer TRest}`
+            ? TTo
+            : Split<TTo> extends ['..', ...infer ToRest]
+              ? Split<TFrom> extends [...infer FromRest, infer FromTail]
+                ? ToRest extends ['/']
+                  ? Join<[...FromRest, '/']>
+                  : ResolveRelativePath<Join<FromRest>, Join<ToRest>>
+                : never
+              : Split<TTo> extends ['.', ...infer ToRest]
+                ? ToRest extends ['/']
+                  ? Join<[TFrom, '/']>
+                  : ResolveRelativePath<TFrom, Join<ToRest>>
+                : CleanPath<Join<['/', ...Split<TFrom>, ...Split<TTo>]>>
     : never
   : never
 
@@ -443,8 +443,8 @@ export function useLinkProps<
     href: disabled
       ? undefined
       : next.maskedLocation
-      ? next.maskedLocation.href
-      : next.href,
+        ? next.maskedLocation.href
+        : next.href,
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),

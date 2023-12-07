@@ -1,7 +1,7 @@
 import * as React from 'react'
 
 export function CatchBoundary(props: {
-  resetKey: string
+  getResetKey: () => string
   children: any
   errorComponent?: any
   onCatch: (error: any) => void
@@ -10,7 +10,7 @@ export function CatchBoundary(props: {
 
   return (
     <CatchBoundaryImpl
-      resetKey={props.resetKey}
+      getResetKey={props.getResetKey}
       onCatch={props.onCatch}
       children={({ error }) => {
         if (error) {
@@ -26,23 +26,26 @@ export function CatchBoundary(props: {
 }
 
 export class CatchBoundaryImpl extends React.Component<{
-  resetKey: string
+  getResetKey: () => string
   children: (props: { error: any; reset: () => void }) => any
   onCatch?: (error: any) => void
 }> {
   state = { error: null } as any
+  static getDerivedStateFromProps(props: any) {
+    return { resetKey: props.getResetKey() }
+  }
   static getDerivedStateFromError(error: any) {
     return { error }
   }
   componentDidUpdate(
     prevProps: Readonly<{
-      resetKey: string
+      getResetKey: () => string
       children: (props: { error: any; reset: () => void }) => any
       onCatch?: ((error: any, info: any) => void) | undefined
     }>,
     prevState: any,
   ): void {
-    if (prevState.error && prevProps.resetKey !== this.props.resetKey) {
+    if (prevState.error && prevState.resetKey !== this.state.resetKey) {
       this.setState({ error: null })
     }
   }

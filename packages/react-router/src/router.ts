@@ -601,7 +601,7 @@ export class Router<
         }
       })()
 
-      const interpolatedPath = interpolatePath(route.path, routeParams)
+      const interpolatedPath = interpolatePath(route.fullPath, routeParams)
       const matchId =
         interpolatePath(route.id, routeParams, true) +
         (route.options.key?.({
