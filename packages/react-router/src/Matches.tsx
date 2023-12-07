@@ -52,7 +52,7 @@ export function Matches() {
   const matches = routerState.pendingMatches?.some((d) => d.showPending)
     ? routerState.pendingMatches
     : routerState.matches
-  const locationKey = router.latestLocation.state.key
+  const locationKey = routerState.resolvedLocation.state.key
   const route = router.routesById[rootRouteId]!
 
   const errorComponent = React.useCallback(
@@ -96,8 +96,7 @@ export function Match({ matches }: { matches: RouteMatch[] }) {
   const routeId = match?.routeId
   const route = routesById[routeId]!
   const router = useRouter()
-  const locationKey = router.latestLocation.state?.key
-  // const locationKey = useRouterState().location.state?.key
+  const locationKey = useRouterState().resolvedLocation.state?.key
 
   const PendingComponent = (route.options.pendingComponent ??
     options.defaultPendingComponent) as any
