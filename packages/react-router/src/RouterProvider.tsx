@@ -165,11 +165,11 @@ function Transitioner() {
 
   useLayoutEffect(() => {
     if (
+      routerState.isTransitioning &&
       !isTransitioning &&
       !routerState.isLoading &&
       routerState.resolvedLocation !== routerState.location
     ) {
-      console.log('onResolved', routerState.location)
       router.emit({
         type: 'onResolved',
         fromLocation: routerState.resolvedLocation,
@@ -185,7 +185,13 @@ function Transitioner() {
         resolvedLocation: s.location,
       }))
     }
-  }, [isTransitioning, routerState.isLoading])
+  }, [
+    routerState.isTransitioning,
+    isTransitioning,
+    routerState.isLoading,
+    routerState.resolvedLocation,
+    routerState.location,
+  ])
 
   useLayoutEffect(() => {
     if (!window.__TSR_DEHYDRATED__) {

@@ -1691,7 +1691,7 @@ export function getInitialRouterState(
     isLoading: false,
     isTransitioning: false,
     status: 'idle',
-    resolvedLocation: location,
+    resolvedLocation: { ...location },
     location,
     matches: [],
     pendingMatches: [],

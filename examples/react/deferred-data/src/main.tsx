@@ -32,7 +32,7 @@ type CommentType = {
 
 const fetchPosts = async () => {
   console.log('Fetching posts...')
-  await new Promise((r) => setTimeout(r, 500))
+  await new Promise((r) => setTimeout(r, 100))
   return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
@@ -41,7 +41,7 @@ const fetchPosts = async () => {
 const fetchPost = async (postId: string) => {
   console.log(`Fetching post with id ${postId}...`)
 
-  const commentsPromise = new Promise((r) => setTimeout(r, 1500))
+  const commentsPromise = new Promise((r) => setTimeout(r, 2000))
     .then(() =>
       axios.get<CommentType[]>(
         `https://jsonplaceholder.typicode.com/comments?postId=${postId}`,
@@ -49,9 +49,12 @@ const fetchPost = async (postId: string) => {
     )
     .then((r) => r.data)
 
-  await new Promise((r) => setTimeout(r, 150))
-  const post = await axios
-    .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+  const post = await new Promise((r) => setTimeout(r, 1000))
+    .then(() =>
+      axios.get<PostType>(
+        `https://jsonplaceholder.typicode.com/posts/${postId}`,
+      ),
+    )
     .catch((err) => {
       if (err.response.status === 404) {
         throw new NotFoundError(`Post with id "${postId}" not found!`)
