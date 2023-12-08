@@ -12,8 +12,9 @@ export function useNavigate<
   TDefaultFrom extends RoutePaths<TRouteTree> = '/',
 >(defaultOpts?: { from?: TDefaultFrom }) {
   const { navigate } = useRouter()
-  const match = useMatch({
+  const matchPathname = useMatch({
     strict: false,
+    select: (s) => s.pathname,
   })
   return React.useCallback(
     <
@@ -25,7 +26,7 @@ export function useNavigate<
       opts?: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
     ) => {
       return navigate({
-        from: opts?.to ? match.pathname : undefined,
+        from: opts?.to ? matchPathname : undefined,
         ...defaultOpts,
         ...(opts as any),
       })

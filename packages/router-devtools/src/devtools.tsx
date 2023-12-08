@@ -7,6 +7,7 @@ import {
   AnyRootRoute,
   trimPath,
   useRouter,
+  useRouterState,
 } from '@tanstack/react-router'
 
 import useLocalStorage from './useLocalStorage'
@@ -416,13 +417,13 @@ function RouteComp({
   activeRouteId: string | undefined
   setActiveRouteId: (id: string) => void
 }) {
-  const router = useRouter()
+  const routerState = useRouterState()
   const matches =
-    router.state.status === 'pending'
-      ? router.state.pendingMatches ?? []
-      : router.state.matches
+    routerState.status === 'pending'
+      ? routerState.pendingMatches ?? []
+      : routerState.matches
 
-  const match = router.state.matches.find((d) => d.routeId === route.id)
+  const match = routerState.matches.find((d) => d.routeId === route.id)
 
   return (
     <div>
@@ -513,9 +514,11 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   } = props
 
   const router = useRouter()
+  const routerState = useRouterState()
+
   const matches = [
-    ...(router.state.pendingMatches ?? []),
-    ...router.state.matches,
+    ...(routerState.pendingMatches ?? []),
+    ...routerState.matches,
   ]
 
   invariant(
@@ -540,7 +543,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     [matches, activeRouteId],
   )
 
-  const hasSearch = Object.keys(router.state.location.search || {}).length
+  const hasSearch = Object.keys(routerState.location.search || {}).length
 
   // const preloadMatches = matches.filter((match) => {
   //   return (
@@ -710,7 +713,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               }}
             >
               Pathname{' '}
-              {router.state.location.maskedLocation ? (
+              {routerState.location.maskedLocation ? (
                 <div
                   style={{
                     padding: '.1rem .5rem',
@@ -736,16 +739,16 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   opacity: 0.6,
                 }}
               >
-                {router.state.location.pathname}
+                {routerState.location.pathname}
               </code>
-              {router.state.location.maskedLocation ? (
+              {routerState.location.maskedLocation ? (
                 <code
                   style={{
                     color: theme.warning,
                     fontWeight: 'bold',
                   }}
                 >
-                  {router.state.location.maskedLocation.pathname}
+                  {routerState.location.maskedLocation.pathname}
                 </code>
               ) : null}
             </div>
@@ -807,9 +810,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               />
             ) : (
               <div>
-                {(router.state.status === 'pending'
-                  ? router.state.pendingMatches ?? []
-                  : router.state.matches
+                {(routerState.status === 'pending'
+                  ? routerState.pendingMatches ?? []
+                  : routerState.matches
                 ).map((match, i) => {
                   return (
                     <div
@@ -1095,9 +1098,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               }}
             >
               <Explorer
-                value={router.state.location.search || {}}
+                value={routerState.location.search || {}}
                 defaultExpanded={Object.keys(
-                  (router.state.location.search as {}) || {},
+                  (routerState.location.search as {}) || {},
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj
