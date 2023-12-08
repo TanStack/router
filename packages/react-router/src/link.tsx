@@ -362,8 +362,9 @@ export function useLinkProps<
   options: MakeLinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
   const { buildLink } = useRouter()
-  const match = useMatch({
+  const matchPathname = useMatch({
     strict: false,
+    select: (s) => s.pathname,
   })
 
   const {
@@ -398,7 +399,7 @@ export function useLinkProps<
   } = options
 
   const linkInfo = buildLink({
-    from: options.to ? match.pathname : undefined,
+    from: options.to ? matchPathname : undefined,
     ...options,
   } as any)
 
