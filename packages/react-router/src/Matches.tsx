@@ -219,7 +219,7 @@ function MatchInner({
   )
 }
 
-export function Outlet() {
+export const Outlet = React.memo(function Outlet() {
   const matchId = React.useContext(matchContext)
 
   const childMatchId = useRouterState({
@@ -235,7 +235,7 @@ export function Outlet() {
   }
 
   return <Match matchId={childMatchId} />
-}
+})
 
 export interface MatchRouteOptions {
   pending?: boolean
