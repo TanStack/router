@@ -1,13 +1,12 @@
+import Context from '@tanstack/react-cross-context'
 import { AnyRouter, RouterProvider } from '@tanstack/react-router'
 import * as React from 'react'
 import { Transform } from 'stream'
-// @ts-ignore
-import cprc from '@gisatcz/cross-package-react-context'
 
 export function StartServer<TRouter extends AnyRouter>(props: {
   router: TRouter
 }) {
-  const hydrationContext = cprc.getContext('TanStackRouterHydrationContext', {})
+  const hydrationContext = Context.get('TanStackRouterHydrationContext', {})
 
   const hydrationCtxValue = React.useMemo(
     () => ({

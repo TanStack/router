@@ -56,7 +56,7 @@
   "sideEffects": false,
   "dependencies": {
     "@babel/runtime": "^7.21.0",
-    "@gisatcz/cross-package-react-context": "^0.2.0",
+    "@tanstack/react-cross-context": "workspace:^",
     "@tanstack/react-router": "workspace:*",
     "isbot": "^3.6.6",
     "jsesc": "^3.0.2",
