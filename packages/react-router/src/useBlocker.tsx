@@ -10,15 +10,7 @@ export function useBlocker(
 
   React.useEffect(() => {
     if (!condition) return
-
-    let unblock = history.block((retry, cancel) => {
-      if (window.confirm(message)) {
-        unblock()
-        retry()
-      }
-    })
-
-    return unblock
+    return history.block(message)
   })
 }
 

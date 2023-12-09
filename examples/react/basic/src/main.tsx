@@ -9,6 +9,7 @@ import {
   Router,
   RootRoute,
   ErrorRouteProps,
+  NotFoundRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -21,7 +22,7 @@ type PostType = {
 
 const fetchPosts = async () => {
   console.log('Fetching posts...')
-  await new Promise((r) => setTimeout(r, 500))
+  await new Promise((r) => setTimeout(r, 300))
   return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
@@ -29,7 +30,7 @@ const fetchPosts = async () => {
 
 const fetchPost = async (postId: string) => {
   console.log(`Fetching post with id ${postId}...`)
-  await new Promise((r) => setTimeout(r, 500))
+  await new Promise((r) => setTimeout(r, 300))
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .catch((err) => {
@@ -44,7 +45,6 @@ const fetchPost = async (postId: string) => {
 }
 
 const rootRoute = new RootRoute({
-  loader: () => new Promise((r) => setTimeout(() => r(new Date()), 1000)),
   component: RootComponent,
 })
 
@@ -143,7 +143,7 @@ class NotFoundError extends Error {}
 
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
-  path: '$postId',
+  path: 'post/$postId',
   errorComponent: PostErrorComponent,
   shouldReload: ({ cause }) => cause === 'enter',
   loader: ({ params }) => fetchPost(params.postId),
@@ -169,6 +169,19 @@ function PostComponent() {
   )
 }
 
+const notFoundRoute = new NotFoundRoute({
+  getParentRoute: () => rootRoute,
+  component: NotFound,
+})
+
+function NotFound() {
+  return (
+    <div className="p-2">
+      <h3>404 - Not Found</h3>
+    </div>
+  )
+}
+
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
   indexRoute,
@@ -177,6 +190,7 @@ const routeTree = rootRoute.addChildren([
 // Set up a Router instance
 const router = new Router({
   routeTree,
+  notFoundRoute,
 })
 
 // Register things for typesafety

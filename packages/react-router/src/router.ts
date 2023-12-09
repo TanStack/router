@@ -56,8 +56,10 @@ import {
   joinPaths,
   matchPathname,
   parsePathname,
+  removeBasepath,
   resolvePath,
   trimPath,
+  trimPathLeft,
   trimPathRight,
 } from './path'
 import invariant from 'tiny-invariant'
@@ -130,6 +132,7 @@ export interface RouterOptions<
   routeMasks?: RouteMask<TRouteTree>[]
   unmaskOnReload?: boolean
   Wrap?: (props: { children: any }) => JSX.Element
+  notFoundRoute?: AnyRoute
 }
 
 export interface RouterState<TRouteTree extends AnyRoute = AnyRoute> {
@@ -316,11 +319,14 @@ export class Router<
     this.routesById = {} as RoutesById<TRouteTree>
     this.routesByPath = {} as RoutesByPath<TRouteTree>
 
+    const notFoundRoute = this.options.notFoundRoute
+    if (notFoundRoute) {
+      notFoundRoute.init({ originalIndex: 99999999999 })
+      ;(this.routesById as any)[notFoundRoute.id] = notFoundRoute
+    }
+
     const recurseRoutes = (childRoutes: AnyRoute[]) => {
       childRoutes.forEach((childRoute, i) => {
-        // if (typeof childRoute === 'function') {
-        //   childRoute = (childRoute as any)()
-        // }
         childRoute.init({ originalIndex: i })
 
         const existingRoute = (this.routesById as any)[childRoute.id]
@@ -351,29 +357,42 @@ export class Router<
 
     recurseRoutes([this.routeTree])
 
-    this.flatRoutes = (Object.values(this.routesByPath) as AnyRoute[])
-      .map((d, i) => {
-        const trimmed = trimPath(d.fullPath)
-        const parsed = parsePathname(trimmed)
+    const scoredRoutes: {
+      child: AnyRoute
+      trimmed: string
+      parsed: ReturnType<typeof parsePathname>
+      index: number
+      score: number[]
+    }[] = []
 
-        while (parsed.length > 1 && parsed[0]?.value === '/') {
-          parsed.shift()
+    ;(Object.values(this.routesById) as AnyRoute[]).forEach((d, i) => {
+      if (d.isRoot || !d.path) {
+        return
+      }
+
+      const trimmed = trimPathLeft(d.fullPath)
+      const parsed = parsePathname(trimmed)
+
+      while (parsed.length > 1 && parsed[0]?.value === '/') {
+        parsed.shift()
+      }
+
+      const score = parsed.map((d) => {
+        if (d.type === 'param') {
+          return 0.5
         }
 
-        const score = parsed.map((d) => {
-          if (d.type === 'param') {
-            return 0.5
-          }
+        if (d.type === 'wildcard') {
+          return 0.25
+        }
 
-          if (d.type === 'wildcard') {
-            return 0.25
-          }
-
-          return 1
-        })
-
-        return { child: d, trimmed, parsed, index: i, score }
+        return 1
       })
+
+      scoredRoutes.push({ child: d, trimmed, parsed, index: i, score })
+    })
+
+    this.flatRoutes = scoredRoutes
       .sort((a, b) => {
         let isIndex = a.trimmed === '/' ? 1 : b.trimmed === '/' ? -1 : 0
 
@@ -498,7 +517,7 @@ export class Router<
     locationSearch: AnySearchSchema,
     opts?: { throwOnError?: boolean; debug?: boolean },
   ): RouteMatch<TRouteTree>[] => {
-    let routeParams: AnyPathParams = {}
+    let routeParams: Record<string, string> = {}
 
     let foundRoute = this.flatRoutes.find((route) => {
       const matchedParams = matchPathname(
@@ -508,7 +527,7 @@ export class Router<
           to: route.fullPath,
           caseSensitive:
             route.options.caseSensitive ?? this.options.caseSensitive,
-          fuzzy: false,
+          fuzzy: true,
         },
       )
 
@@ -524,7 +543,20 @@ export class Router<
       foundRoute || (this.routesById as any)['__root__']
 
     let matchedRoutes: AnyRoute[] = [routeCursor]
-    // let includingLayouts = true
+
+    // Check to see if the route needs a 404 entry
+    if (
+      // If we found a route, and it's not an index route and we have left over path
+      (foundRoute
+        ? foundRoute.path !== '/' && routeParams['**']
+        : // Or if we didn't find a route and we have left over path
+          trimPathRight(pathname)) &&
+      // And we have a 404 route configured
+      this.options.notFoundRoute
+    ) {
+      matchedRoutes.push(this.options.notFoundRoute)
+    }
+
     while (routeCursor?.parentRoute) {
       routeCursor = routeCursor.parentRoute
       if (routeCursor) matchedRoutes.unshift(routeCursor)
@@ -1380,13 +1412,13 @@ export class Router<
       throwOnError: true,
     })
 
-    await this.loadMatches({
+    matches = await this.loadMatches({
       matches,
       preload: true,
       checkLatest: () => undefined,
     })
 
-    return [last(matches)!, matches] as const
+    return matches
   }
 
   buildLink: BuildLinkFn<TRouteTree> = (dest) => {

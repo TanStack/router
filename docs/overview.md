@@ -2,13 +2,13 @@
 title: Overview
 ---
 
-TanStack Router is a router for building web applications using your favorite modern web frameworks. Some of its features include:
+TanStack Router is a router for building React applications. Some of its features include:
 
 - 100% inferred TypeScript support
-- Typesafe absolute and relative navigation
+- Typesafe navigation
 - Nested Routing and layout routes
-- Built-in Route Loaders + Suspense Transitions
-- Designed to support data caches (TanStack Query, SWR, etc.)
+- Built-in Route Loaders
+- Designed for client-side data caches (TanStack Query, SWR, etc.)
 - Automatic route prefetching
 - Asynchronous route elements and error boundaries
 - Typesafe JSON-first Search Params state management APIs

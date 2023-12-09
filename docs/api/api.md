@@ -8,9 +8,9 @@ title: API Reference
 Use this function to create a root route **with a required router context**. The resulting function can be used to create a new root route, which will then require that you satisfy this context type when creating a router that uses it.
 
 ```tsx
-const createRootRoute = rootRouteWithContext<ContextType>()
+const rootRouteWithContext = rootRouteWithContext<ContextType>()
 
-const rootRoute = createRootRoute({
+const rootRoute = rootRouteWithContext({
   // ...
 })
 ```

@@ -161,13 +161,17 @@ export function matchPathname(
   return pathParams ?? {}
 }
 
+export function removeBasepath(basepath: string, pathname: string) {
+  return basepath != '/' ? pathname.substring(basepath.length) : pathname
+}
+
 export function matchByPath(
   basepath: string,
   from: string,
   matchLocation: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
 ): Record<string, string> | undefined {
   // Remove the base path from the pathname
-  from = basepath != '/' ? from.substring(basepath.length) : from
+  from = removeBasepath(basepath, from)
   // Default to to $ (wildcard)
   const to = `${matchLocation.to ?? '$'}`
   // Parse the from and to
@@ -245,7 +249,8 @@ export function matchByPath(
       }
 
       if (!isLastBaseSegment && isLastRouteSegment) {
-        return !!matchLocation.fuzzy
+        params['**'] = joinPaths(baseSegments.slice(i + 1).map((d) => d.value))
+        return !!matchLocation.fuzzy && routeSegment?.value !== '/'
       }
     }
 

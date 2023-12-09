@@ -11,7 +11,7 @@ export interface RouterHistory {
   back: () => void
   forward: () => void
   createHref: (href: string) => string
-  block: (blockerFn: BlockerFn) => () => void
+  block: (message: string) => () => void
   flush: () => void
   destroy: () => void
   notify: () => void
@@ -32,7 +32,9 @@ export interface HistoryState {
   key: string
 }
 
-type BlockerFn = (retry: () => void, cancel: () => void) => void
+type Blocker = {
+  message: string
+}
 
 const pushStateEvent = 'pushstate'
 const popStateEvent = 'popstate'
@@ -60,34 +62,28 @@ function createHistory(opts: {
   createHref: (path: string) => string
   flush?: () => void
   destroy?: () => void
+  onBlocked?: (onUpdate: () => void) => void
 }): RouterHistory {
   let location = opts.getLocation()
   let subscribers = new Set<() => void>()
-  let blockers: BlockerFn[] = []
-  let queue: (() => void)[] = []
+  let blockers: Blocker[] = []
 
   const onUpdate = () => {
     location = opts.getLocation()
     subscribers.forEach((subscriber) => subscriber())
   }
 
-  const tryUnblock = () => {
+  const tryNavigation = (task: () => void) => {
     if (blockers.length) {
-      blockers[0]?.(tryUnblock, () => {
-        blockers = []
-        stopBlocking()
-      })
-      return
+      for (let blocker of blockers) {
+        if (!window.confirm(blocker.message)) {
+          opts.onBlocked?.(onUpdate)
+          return
+        }
+      }
     }
 
-    while (queue.length) {
-      queue.shift()?.()
-    }
-  }
-
-  const queueTask = (task: () => void) => {
-    queue.push(task)
-    tryUnblock()
+    task()
   }
 
   return {
@@ -103,34 +99,38 @@ function createHistory(opts: {
     },
     push: (path: string, state: any) => {
       state = assignKey(state)
-      queueTask(() => {
+      tryNavigation(() => {
         opts.pushState(path, state, onUpdate)
       })
     },
     replace: (path: string, state: any) => {
       state = assignKey(state)
-      queueTask(() => {
+      tryNavigation(() => {
         opts.replaceState(path, state, onUpdate)
       })
     },
     go: (index) => {
-      queueTask(() => {
+      tryNavigation(() => {
         opts.go(index)
       })
     },
     back: () => {
-      queueTask(() => {
+      tryNavigation(() => {
         opts.back()
       })
     },
     forward: () => {
-      queueTask(() => {
+      tryNavigation(() => {
         opts.forward()
       })
     },
     createHref: (str) => opts.createHref(str),
-    block: (cb) => {
-      blockers.push(cb)
+    block: (message) => {
+      const payload: Blocker = {
+        message,
+      }
+
+      blockers.push(payload)
 
       if (blockers.length === 1) {
         addEventListener(beforeUnloadEvent, beforeUnloadListener, {
@@ -139,7 +139,7 @@ function createHistory(opts: {
       }
 
       return () => {
-        blockers = blockers.filter((b) => b !== cb)
+        blockers = blockers.filter((b) => b !== payload)
 
         if (!blockers.length) {
           stopBlocking()
@@ -190,6 +190,7 @@ export function createBrowserHistory(opts?: {
   const createHref = opts?.createHref ?? ((path) => path)
 
   let currentLocation = parseLocation(getHref(), window.history.state)
+  let rollbackLocation: HistoryLocation | undefined
 
   const getLocation = () => currentLocation
 
@@ -235,6 +236,7 @@ export function createBrowserHistory(opts?: {
       // Reset the nextIsPush flag and clear the scheduled update
       next = undefined
       scheduled = undefined
+      rollbackLocation = undefined
     })
   }
 
@@ -247,6 +249,10 @@ export function createBrowserHistory(opts?: {
   ) => {
     const href = createHref(path)
 
+    if (!scheduled) {
+      rollbackLocation = currentLocation
+    }
+
     // Update the location in memory
     currentLocation = parseLocation(href, state)
 
@@ -256,6 +262,7 @@ export function createBrowserHistory(opts?: {
       state,
       isPush: next?.isPush || type === 'push',
     }
+
     // Notify subscribers
     onUpdate()
 
@@ -289,6 +296,15 @@ export function createBrowserHistory(opts?: {
       window.history.replaceState = originalReplaceState
       window.removeEventListener(pushStateEvent, onPushPop)
       window.removeEventListener(popStateEvent, onPushPop)
+    },
+    onBlocked: (onUpdate) => {
+      // If a navigation is blocked, we need to rollback the location
+      // that we optimistically updated in memory.
+      if (rollbackLocation && currentLocation !== rollbackLocation) {
+        currentLocation = rollbackLocation
+        // Notify subscribers
+        onUpdate()
+      }
     },
   })
 

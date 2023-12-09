@@ -15,67 +15,64 @@ import {
   Route,
   RootRoute,
 } from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
-// Create a root route
 const rootRoute = new RootRoute({
-  component: RootComponent,
-})
-
-function RootComponent() {
-  return (
+  component: () => (
     <>
-      <div>
-        <Link to="/">Home</Link> <Link to="/about">About</Link>
+      <div className="p-2 flex gap-2">
+        <Link to="/" className="[&.active]:font-bold">
+          Home
+        </Link>{' '}
+        <Link to="/about" className="[&.active]:font-bold">
+          About
+        </Link>
       </div>
       <hr />
       <Outlet />
+      <TanStackRouterDevtools />
     </>
-  )
-}
+  ),
+})
 
-// Create an index route
 const indexRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: IndexComponent,
+  component: function Index() {
+    return (
+      <div className="p-2">
+        <h3>Welcome Home!</h3>
+      </div>
+    )
+  },
 })
-
-function IndexComponent() {
-  return (
-    <div>
-      <h3>Welcome Home!</h3>
-    </div>
-  )
-}
 
 const aboutRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/about',
-  component: AboutComponent,
+  component: function About() {
+    return <div className="p-2">Hello from About!</div>
+  },
 })
 
-function AboutComponent() {
-  return <div>Hello from About!</div>
-}
-
-// Create the route tree using your routes
 const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
 
-// Create the router using your route tree
 const router = new Router({ routeTree })
 
-// Register your router for maximum type safety
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
   }
 }
 
-// Render our app!
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
-  root.render(<RouterProvider router={router} />)
+  root.render(
+    <StrictMode>
+      <RouterProvider router={router} />
+    </StrictMode>,
+  )
 }
 ```
 

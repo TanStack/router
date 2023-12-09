@@ -224,9 +224,6 @@ export type UpdatableRouteOptions<
   onEnter?: (match: AnyRouteMatch) => void
   onTransition?: (match: AnyRouteMatch) => void
   onLeave?: (match: AnyRouteMatch) => void
-  // Set this to true or false to specifically set whether or not this route should be preloaded. If unset, will
-  // default to router.options.reloadOnWindowFocus
-  reloadOnWindowFocus?: boolean
 }
 
 export type ParseParamsOption<TPath extends string, TParams> = ParseParamsFn<
@@ -459,7 +456,6 @@ export class Route<
   ) {
     this.options = (options as any) || {}
     this.isRoot = !options?.getParentRoute as any
-    Route.__onInit(this)
     ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
@@ -583,11 +579,6 @@ export class Route<
   ) => {
     Object.assign(this.options, options)
     return this
-  }
-
-  static __onInit = (route: any) => {
-    // This is a dummy static method that should get
-    // replaced by a framework specific implementation if necessary
   }
 
   useMatch = <TSelected = TAllContext>(opts?: {
@@ -859,3 +850,62 @@ export type ComponentPropsFromRoute<TRoute> =
         >
       ? RouteProps<TFullSearchSchema, TAllParams, TAllContext, TLoaderData>
       : {}
+
+export class NotFoundRoute<
+  TParentRoute extends AnyRootRoute,
+  TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
+  TFullSearchSchema extends
+    RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
+    TParentRoute,
+    TSearchSchema
+  >,
+  TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
+  TAllContext extends Expand<
+    Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
+  > = Expand<
+    Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
+  >,
+  TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+  TLoaderData extends any = unknown,
+  TChildren extends RouteConstraints['TChildren'] = unknown,
+  TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
+> extends Route<
+  TParentRoute,
+  '/404',
+  '/404',
+  '404',
+  '404',
+  TSearchSchema,
+  TFullSearchSchema,
+  {},
+  {},
+  TRouteContext,
+  TAllContext,
+  TRouterContext,
+  TLoaderData,
+  TChildren,
+  TRouteTree
+> {
+  constructor(
+    options: Omit<
+      RouteOptions<
+        TParentRoute,
+        string,
+        string,
+        TSearchSchema,
+        TFullSearchSchema,
+        {},
+        {},
+        TRouteContext,
+        TAllContext,
+        TLoaderData
+      >,
+      'caseSensitive' | 'parseParams' | 'stringifyParams' | 'path' | 'id'
+    >,
+  ) {
+    super({
+      ...(options as any),
+      id: '404',
+    })
+  }
+}

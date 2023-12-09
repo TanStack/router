@@ -23,7 +23,7 @@ Feature/Capability Key:
 | Nested / Layout Routes                         | ✅                                               | ✅                                                    | ✅                                                    |
 | Suspense-like Route Transitions                | ✅                                               | ✅                                                    | ✅                                                    |
 | Typesafe Routes                                | ✅                                               | 🛑                                                    | 🟡                                                    |
-| Load-Route Suspense                            | ✅                                               | ✅                                                    | ✅                                                    |
+| Router Loaders                                 | ✅                                               | ✅                                                    | ✅                                                    |
 | Route Prefetching                              | ✅                                               | ✅                                                    | ✅                                                    |
 | Auto Route Prefetching                         | ✅                                               | 🛑                                                    | ✅                                                    |
 | Route Prefetching Delay                        | ✅                                               | 🔶                                                    | 🛑                                                    |
@@ -54,7 +54,6 @@ Feature/Capability Key:
 | Streaming SSR                                  | ✅                                               | ✅                                                    | ✅                                                    |
 | Deferred Primitives                            | ✅                                               | ✅                                                    | ✅                                                    |
 | Navigation Scroll Restoration                  | ✅                                               | ✅                                                    | ❓                                                    |
-| Integrated Data Loaders                        | 🔶 (TanStack Query is recommended)               | ✅                                                    | ✅                                                    |
 | Loader Caching (SWR + Invalidation)            | 🔶 (TanStack Query is recommended)               | 🛑                                                    | ✅                                                    |
 | Actions                                        | 🔶 (TanStack Query is recommended)               | ✅                                                    | ✅                                                    |
 | `<Form>` API                                   | 🛑                                               | ✅                                                    | ✅                                                    |
