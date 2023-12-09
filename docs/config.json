@@ -194,6 +194,10 @@
         {
           "label": "Deferred Data",
           "to": "examples/react/deferred-data"
+        },
+        {
+          "label": "Navigation Blocking",
+          "to": "examples/react/navigation-blocking"
         }
       ]
     }
