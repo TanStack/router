@@ -4,9 +4,11 @@ title: Routes
 
 Routes are the primary way of configuring TanStack Router and are created using the `RootRoute` and `Route` classes. Multiple routes can be nested within each other to create a route tree, which is then used to create a router.
 
+> 🧠 Even though TanStack Router provides a file-based routing solution via TanStack Router CLI, it's still important to learn how to create routes manually, as it's the foundation of how the CLI works under the hood.
+
 ## The Root Route
 
-To start building your route hierarchy, you can call `new RootRoute()` to create a root route. `RootRoute` optionally accepts an options object similar to that of `new Route()`, but excludes any `path` related options, since the root route implicitly has no path.
+To start building your route hierarchy, call `new RootRoute()` to create a root route. The `RootRoute` class optionally accepts an options object. The root Route is the only route that doesn't require a `path` or `id` option.
 
 ```tsx
 import { RootRoute } from '@tanstack/react-router'
@@ -14,26 +16,32 @@ import { RootRoute } from '@tanstack/react-router'
 const rootRoute = new RootRoute()
 ```
 
-> 🧠 Another way to create a root route is via the `new RouteContext<Type>().createRootRoute()` method, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./router-context)
+> 🧠 You can also create a root route via the `rootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./router-context)
 
 ## Outlets
 
-The `Outlet` component is used to render the next matching child (if there are more child routes that match). It doesn't take any props and can be rendered anywhere within a route's component that you'd like to render a child route match.
+The `Outlet` component is used to potentially render any matching child routes (if they match the current URL). `<Outlet />` doesn't take any props and can be rendered anywhere within a route's component where you'd like to potentially render the next child route match.
 
-If a `component` isn't supplied to a route, it will render an `<Outlet />` automatically. Let's give our root route a component that renders a title, then an `<Outlet />` for child routes to render.
+Let's give our root route a component that renders a title, then an `<Outlet />` for our top-level routes to render.
 
 ```tsx
 import { RootRoute } from '@tanstack/react-router'
 
 const rootRoute = new RootRoute({
-  component: () => (
+  component: RootComponent,
+})
+
+function RootComponent() {
+  return (
     <div>
       <h1>My App</h1>
       <Outlet /> {/* This is where child routes will render */}
     </div>
-  ),
-})
+  )
+}
 ```
+
+> 🧠 If a route's `component` is left undefined, it will render an `<Outlet />` automatically.
 
 ## Routes
 
@@ -48,7 +56,7 @@ const postRoute = new Route({ getParentRoute: () => blogRoute, path: '$slug' })
 
 ## Building a Route Tree
 
-Once all of your child routes have been created, a final route tree can be assembled using the `routeConfig.addChildren([...])` utility. This utility accepts an array of route definitions, and returns a final type-safe route tree.
+Once all of your routes have been created, assemble a route tree using the `rootRoute.addChildren([...])` and `route.addChildren([...])` utilities. The `addChildren` method accepts an array of child route definitions, and returns a final type-safe route tree.
 
 ```ts
 const routeTree = rootRoute.addChildren([
@@ -58,11 +66,11 @@ const routeTree = rootRoute.addChildren([
 ```
 
 > ❓ Why do you have to create a route tree if each route already knows it's parent?
-> ✅ Each route may know everything about its parents, but we don't yet have a single source of truth that knows about every single route in our application. The route tree is that source of truth that powers the wholistic type-safety of TanStack Router.
+> ✅ Each route may know everything about its parent, but we don't yet have a single source of truth that knows about every single route in our application. The route tree is that source of truth that powers the wholistic type-safety of TanStack Router.
 
 ## Creating a Router
 
-Once you have a route tree, you can create a router using the framework `Router` class of your choice. For example, if you are using React, you would use call `new Router()`. The Router class takes a route tree as one of its many options, and returns a router instance.
+Once you have a route tree, create a router using the `Router` class, which takes a route tree as one of its many options, and returns a router instance.
 
 ```tsx
 const router = new Router({ routeTree })
@@ -70,7 +78,7 @@ const router = new Router({ routeTree })
 
 ## Registering Router Types
 
-TanStack Router provides amazing support for TypeScript, even for things you wouldn't expect like bare imports straight from the library! To make this possible, you must register your router's types using TypeScripts' [Declaration Merging](https://www.typescriptlang.org/docs/handbook/declaration-merging.html) feature. This is done by extending the `Register` interface on your framework's router module. For example, if you are using React, you would extend the `Register` interface on `@tanstack/react-router` with a `router` property that has the type of your `router` instance:
+TanStack Router provides amazing support for TypeScript, even for things you wouldn't expect like bare imports straight from the library! To make this possible, you must register your router's types using TypeScripts' [Declaration Merging](https://www.typescriptlang.org/docs/handbook/declaration-merging.html) feature. This is done by extending the `Register` interface on `@tanstack/react-router` with a `router` property that has the type of your `router` instance:
 
 ```tsx
 declare module '@tanstack/react-router' {
@@ -81,14 +89,14 @@ declare module '@tanstack/react-router' {
 }
 ```
 
-With your router type registered, you'll now get type-safety across your entire project for anything related to routing.
+With your router registered, you'll now get type-safety across your entire project for anything related to routing.
 
 ## All together now!
 
 ```ts
 import { RootRoute, Route, Router } from '@tanstack/react-router'
-let rootRoute = new RootRoute()
 
+let rootRoute = new RootRoute()
 const indexRoute = new Route({ getParentRoute: () => rootRoute, path: '/' })
 const blogRoute = new Route({ getParentRoute: () => rootRoute, path: 'blog' })
 const postRoute = new Route({ getParentRoute: () => blogRoute, path: '$slug' })
@@ -107,4 +115,4 @@ declare module '@tanstack/react-router' {
 }
 ```
 
-Now that you learned how to build a router, let's dig into more of the Route options in the next section!
+Now that you know how to build a router, let's dig into more of the Route options in the next section!

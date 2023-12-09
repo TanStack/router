@@ -15,7 +15,7 @@ These are just suggested uses of the router context. You can use it for whatever
 
 ## Typed Router Context
 
-Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `new RouteContext<YourContextTypeHere>()` class to create a new `routerContext` and then use the `routerContext.createRootRoute()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
+Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `new RouteContext<YourContextTypeHere>()` class to create a new `routerContext` and then use the `routerContext.rootRouteWithContext()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
 
 ```tsx
 import { RootRoute } from '@tanstack/react-router'
@@ -185,44 +185,6 @@ const userRoute = new Route({
   loader: ({ context }) => {
     context.foo // true
     context.bar // true
-  },
-})
-```
-
-## Unique Route Context
-
-While the main router context is merged as it descends, each route's unique context is also stored making it a nice place to pass configuration or implementation details specific to your route. Here's an example where we use the route context to generate a title for each route:
-
-```tsx
-export const postIdRoute = new Route({
-  getParentRoute: () => postsRoute,
-  path: '$postId',
-  component: Post,
-  beforeLoad: ({ context: { queryClient }, params: { postId } }) => {
-    const queryOptions = {
-      queryKey: ['posts', 'post', postId],
-      queryFn: () => fetchPostById(postId),
-    }
-
-    return {
-      queryOptions,
-      getTitle: () => `${queryClient.getQueryData(queryOptions)?.title} | Post`,
-    }
-  },
-  loader: async ({ preload, context: { queryClient, queryOptions } }) => {
-    await queryClient.ensureQueryData(queryOptions)
-  },
-  component: ({ useRouteContext }) => {
-    const { queryOptions } = useRouteContext()
-
-    const { data } = useQuery(queryOptions)
-
-    return (
-      <div>
-        <h1>{data.title}</h1>
-        <p>{data.body}</p>
-      </div>
-    )
   },
 })
 ```

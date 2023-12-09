@@ -15,7 +15,7 @@ TanStack Router keeps this constant concept of relative navigation in mind for e
 
 ## Shared Navigation API
 
-Every navigation and route matching API in TanStack Router uses the same core interface with minor differences depending on the API. This means that you can learn navigation and route matching once and use the same syntax and concepts across the library, even in other frameworks!
+Every navigation and route matching API in TanStack Router uses the same core interface with minor differences depending on the API. This means that you can learn navigation and route matching once and use the same syntax and concepts across the library.
 
 ### `ToOptions` Interface
 
@@ -139,7 +139,7 @@ export type LinkPropsOptions<
 
 ### Absolute Links
 
-Let's make a simple static !
+Let's make a simple static link!
 
 ```tsx
 import { Link } from '@tanstack/react-router'
@@ -336,16 +336,14 @@ The `Link` component accepts a function for its children, allowing you to propag
 ```tsx
 const link = (
   <Link to="/blog/post">
-    {
-      ({isActive}) => {
-        return (
-          <>
-            <span>My Blog Post</span>
-            <icon className={isActive ? "active" : "inactive"} />
-          </>
-        )
-      }
-    }
+    {({ isActive }) => {
+      return (
+        <>
+          <span>My Blog Post</span>
+          <icon className={isActive ? 'active' : 'inactive'} />
+        </>
+      )
+    }}
   </Link>
 )
 ```
@@ -426,5 +424,65 @@ Think of the `Navigate` component as a way to navigate to a route immediately wh
 ## `router.navigate`
 
 The `router.navigate` method is the same as the `navigate` function returned by `useNavigate` and accepts the same [`NavigateOptions` interface](#navigateoptions-interface). Unlike the `useNavigate` hook, it is available anywhere your `router` instance is available and is thus a great way to navigate imperatively from anywhere in your application, including outside of your framework.
+
+## `useMatchRoute` and `<MatchRoute>`
+
+The `useMatchRoute` hook and `<MatchRoute>` component are the same thing, but the hook is a bit more flexible. They both accept the standard navigation `ToOptions` interface either as options or props and return `true/false` if that route is currently matched. It also has a handy `pending` option that will return `true` if the route is currently pending (e.g. a route is currently transitioning to that route). This can be extremely useful for showing optimistic UI around where a user is navigating:
+
+```tsx
+function Component() {
+  return (
+    <div>
+      <Link to="/users">
+        Users
+        <MatchRoute to="/users" pending>
+          <Spinner />
+        </MatchRoute>
+      </Link>
+    </div>
+  )
+}
+```
+
+The component version `<MatchRoute>` can also be used with a function as children to render something when the route is matched:
+
+```tsx
+function Component() {
+  return (
+    <div>
+      <Link to="/users">
+        Users
+        <MatchRoute to="/users" pending>
+          {(match) => {
+            return <Spinner show={match} />
+          }}
+        </MatchRoute>
+      </Link>
+    </div>
+  )
+}
+```
+
+The hook version `useMatchRoute` returns a function that can be called programmatically to check if a route is matched:
+
+```tsx
+function Component() {
+  const matchRoute = useMatchRoute()
+
+  useEffect(() => {
+    if (matchRoute({ to: '/users', pending: true })) {
+      console.log('The /users route is matched and pending')
+    }
+  })
+
+  return (
+    <div>
+      <Link to="/users">Users</Link>
+    </div>
+  )
+}
+```
+
+---
 
 Phew! That's a lot of navigating! That said, hopefully you're feeling pretty good about getting around your application now. Let's move on!

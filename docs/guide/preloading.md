@@ -38,7 +38,7 @@ You can also set the `preloadDelay` prop on individual `<Link>` components to ov
 
 Preloading is most useful when combined with the built-in loaders (or your favorite data loading library). To make this easier, the `loader` route option function receives a `preload` boolean denoting whether the route is being preloaded or not. **If you're using the built-in loader state, preload states are already handled for you automatically**. If that's not the case, then the `preload` flag allows you to load data differently depending on whether the user is navigating to the route or preloading it.
 
-Here's an example using TanStack Loaders:
+Here's a simple example of how you might use the `preload` flag with the built-in loader state:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
@@ -46,14 +46,11 @@ import { Route } from '@tanstack/react-router'
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  component: PostsComponent,
-  loader: async ({ preload }) => {
-    await loaderClient.load({ key: 'posts', preload })
-  },
+  loader: ({ preload }) => fetchPosts({ isPreload: preload }),
 })
 ```
 
-Not all data loading libraries will differentiate between preloading or not, but usually a preload method or option is available and can control different aspects of the actual data fetching or caching strategy of the data. For example, when you pass `preload` to TanStack Loaders, the maxAge and maxGcAge are tracked separately from the normal load method (just as they are automatically if you use the built-in route loader state).
+Not all data loading libraries will differentiate between preloading or not, but usually a preload method or option is available and can control different aspects of the actual data fetching or caching strategy of the data.
 
 ## Preloading Manually
 
@@ -65,7 +62,10 @@ function Component() {
 
   useEffect(() => {
     try {
-      router.preloadRoute({ to: postRoute, params: { id: 1 } })
+      const matches = await router.preloadRoute({
+        to: postRoute,
+        params: { id: 1 },
+      })
     } catch (err) {
       // Failed to preload route
     }

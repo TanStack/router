@@ -2,19 +2,13 @@
 title: History Types
 ---
 
-While it's not required to know the history API itself to use TanStack Router, it's a good idea to understand how it works. Under the hood, TanStack Router requires and uses a history instance to manage the routing history.
+While it's not required to know the `@tanstack/history` API itself to use TanStack Router, it's a good idea to understand how it works. Under the hood, TanStack Router requires and uses a `history` abstraction to manage the routing history.
 
-If you don't create a history instance, a browser history instance is created for you when the router is initialized.
+If you don't create a history instance, a browser-oriented instance of this API is created for you when the router is initialized. If you need a special history API type, You can use the `@tanstack/history` package to create your own:
 
-If you need a special history instance type, You can use the history package to create your own history instance:
-
-`createBrowserHistory`: The default history type.
-
-`createHashHistory`: A history type that uses a hash to track history.
-
-`createMemoryHistory`: A history type that keeps the history in memory.
-
-Each of these APIs behaves slightly differently and documentation for them can be found in the [history](https://github.com/remix-run/history) package.
+- `createBrowserHistory`: The default history type.
+- `createHashHistory`: A history type that uses a hash to track history.
+- `createMemoryHistory`: A history type that keeps the history in memory.
 
 Once you have a history instance, you can pass it to the `Router` constructor:
 

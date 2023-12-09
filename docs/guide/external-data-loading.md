@@ -7,13 +7,13 @@ title: External Data Loading
 
 ## To **Store** or to **Coordinate**?
 
-While Router is very capable of storing and managing your data needs out of the box, sometimes you just might want something different!
+While Router is very capable of storing and managing most data needs out of the box, sometimes you just might want something more robust!
 
-Router is designed to be a perfect **coordinator** for external data fetching and caching libraries. This means that you can use any data fetching/caching library you want, and the router will coordinate the loading of your data in a way that aligns with your users' navigation.
+Router is designed to be a perfect **coordinator** for external data fetching and caching libraries. This means that you can use any data fetching/caching library you want, and the router will coordinate the loading of your data in a way that aligns with your users' navigation and expectations of freshness.
 
 ## What data fetching libraries are supported?
 
-Any data fetching library that supports asynchronous dependencies can be used with TanStack Router. This includes:
+Any data fetching library that supports asynchronous promises can be used with TanStack Router. This includes:
 
 - [TanStack Loaders](#tanstack-loaders)
 - [TanStack Query](https://tanstack.com/query/latest/docs/react/overview)
@@ -32,7 +32,7 @@ Or, even...
 
 Literally any library that **can return a promise and read/write data** can be integrated.
 
-## Using Loaders to Ensure Data is Loaded
+## Using Loaders to ensure data is loaded
 
 The easiest way to use integrate and external caching/data library into Router is to use `route.loader`s to ensure that the data required inside of a route has been loaded and is ready to be displayed.
 
@@ -71,6 +71,38 @@ This example is **obviously flawed**, but illustrates the point that you can use
 
 - Replace `fetchPosts` with your preferred data fetching library's prefetching API
 - Replace `postsCache` with your preferred data fetching library's read-or-fetch API or hook
+
+## A more realistic example using TanStack Query
+
+Let's take a look at a more realistic example using TanStack Query.
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
+const postsQueryOptions = queryOptions({
+  queryKey: 'posts',
+  queryFn: () => fetchPosts,
+})
+
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  // Use the `loader` option to ensure that the data is loaded
+  loader: () => queryClient.ensureQueryData(postsQueryOptions),
+  component: () => {
+    // Read the data from the cache and subscribe to updates
+    const posts = useSuspenseQuery(postsQueryOptions)
+
+    return (
+      <div>
+        {posts.map((post) => (
+          <Post key={post.id} post={post} />
+        ))}
+      </div>
+    )
+  },
+})
+```
 
 ## SSR Dehydration/Hydration
 
@@ -158,7 +190,7 @@ function Test() {
 }
 ```
 
-### Dehydrating and Hydrating Data
+### Dehydrating and Hydrating Deferred Data
 
 Injecting HTML is pretty low-level, so let's use the `router.dehydrateData` and `router.hydrateData` functions to inject and retrieve some JSON data instead.
 
@@ -201,58 +233,45 @@ function Test() {
 
 ### Providing Dehydration/Hydration utilities to external tools
 
-The `router.dehydrateData` and `router.hydrateData` functions are designed to be used by external tools to dehydrate and hydrate data. For example, any separate NPM package can use the generic `dehydrateData` and `hydrateData` methods on the router to dehydrate and hydrate each route as it is fetched on the server and rendered on the client:
+The `router.dehydrateData` and `router.hydrateData` functions are designed to be used by external tools to dehydrate and hydrate data. For example, imagine an external data fetching library called `cool-cache` (not real) that allows for custom hydration and dehydration functions to be provided. We could use the `router.dehydrateData` and `router.hydrateData` functions to provide hydration and dehydration capabilities to `cool-cache`:
 
 ```tsx
 // src/router.tsx
 
 export function createRouter() {
-  const loaderClient = createLoaderClient()
+  const coolCache = createCoolCache()
 
   const router = new Router({
     ...
   })
 
-  // Provide hydration and dehydration functions to loader instances
-  loaderClient.options = {
-    ...loaderClient.options,
-    hydrateLoaderInstanceFn: (instance) =>
-      router.hydrateData(instance.hashedKey),
-    dehydrateLoaderInstanceFn: (instance) =>
-      router.dehydrateData(instance.hashedKey, () => instance),
-  }
+  coolCache.setHydrationFn((coolCacheEntry) =>
+      router.hydrateData(coolCacheEntry.hashedKey))
+
+  coolCache.setDehydrationFn((coolCacheEntry) =>
+      router.dehydrateData(coolCacheEntry.hashedKey, () => coolCacheEntry))
 
   return router
 }
 ```
 
-This allows the loader client to automatically dehydrate and hydrate each loader instance as it is fetched on the server and rendered on the client, leaving your application code free of any boilerplate or knowledge of the hydration/dehydration process:
+This would allow `cool-cache` to be used with TanStack Router and have its data automatically hydrated and dehydrated with no extra work.
 
 ```tsx
 // src/components/MyComponent.tsx
 
 import * as React from 'react'
-import { Loader } from '@tanstack/react-loaders'
 
-const testLoader = new Loader({
-  key: 'test',
-  fn: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    return 'Hello World!'
-  },
+const coolCacheFetcher = createCoolCacheFetcher({
+  key: 'todos',
+  fetchFn: () => fetchTodos(),
 })
 
 export function Test() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <Inner />
-    </Suspense>
-  )
-}
+  // On the client, hydration would happen before `useCoolCacheFetcher` returns the data
+  const data = useCoolCacheFetcher(coolCacheFetcher)
+  // On the server, dehydration would happen after `useCoolCacheFetcher` is able to resolve the data
 
-export function Inner() {
-  const instance = useLoaderInstance({ key: 'test' })
-
-  return instance.data
+  return <>...</>
 }
 ```

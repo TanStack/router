@@ -4,7 +4,7 @@ title: Custom Search Param Serialization
 
 > TODO This portion of documentation is currently under construction
 
-By default, TanStack Router parses and serializes your search params automatically. Depending on your needs though, you may want to customize the serialization process.
+By default, TanStack Router parses and serializes your search params automatically using `JSON.stringify/JSON.parse`. Depending on your needs though, you may want to customize the serialization process.
 
 To do so, [use `Router`'s `parseSearch` and `stringifySearch` options](../docs/api#search-param-parsing-and-serialization):
 

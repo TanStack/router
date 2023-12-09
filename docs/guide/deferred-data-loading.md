@@ -3,7 +3,9 @@ id: deferred-data-loading
 title: Deferred Data Loading
 ---
 
-Deferred data loading is a pattern that allows the router to begin rendering the next location's critical route data while slower, non-critical route data is resolved in the background. This process works on both the client and server (via streaming) and is a great way to improve the perceived performance of your application.
+TanStack Router is designed to run loaders in parallel and wait for all of them to resolve before rendering the next route. This is great most of the time, but occasionally, you may want to show the user something sooner while the rest of the data loads in the background.
+
+Deferred data loading is a pattern that allows the router to rendering the next location's critical data/markup while slower, non-critical route data is resolved in the background. This process works on both the client and server (via streaming) and is a great way to improve the perceived performance of your application.
 
 ## Deferred Data Loading with `defer` and `Await`
 
@@ -25,8 +27,9 @@ export const postIdRoute = new Route('post', {
     const fastData = await fetchFastData()
 
     return {
+      fastData,
       // Wrap the slow promise in `defer()`
-      slowData: defer(slowDataPromise),
+      deferredSlowData: defer(slowDataPromise),
     }
   },
 })
@@ -44,20 +47,22 @@ import { Await } from '@tanstack/react-router'
 
 export const postIdRoute = new Route('post', {
   // ...
-  component: ({ useLoaderData }) => {
-    const { slowData } = useLoaderData()
-
-    return (
-      <Suspense fallback={<div>Loading...</div>}>
-        <Await promise={slowData}>
-          {(data) => {
-            return <div>{data}</div>
-          }}
-        </Await>
-      </Suspense>
-    )
-  },
+  component: PostIdComponent,
 })
+
+function PostIdComponent() {
+  const { deferredSlowData } = postIdRoute.useLoaderData()
+
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Await promise={deferredSlowData}>
+        {(data) => {
+          return <div>{data}</div>
+        }}
+      </Await>
+    </Suspense>
+  )
+}
 ```
 
 The `Await` component resolves the promise by triggering the nearest suspense boundary until it is resolved, after which it renders the component's `children` as a function with the resolved data.
@@ -66,9 +71,7 @@ If the promise is rejected, the `Await` component will throw the serialized erro
 
 ## Caching and Invalidation
 
-Streamed promises follow the same lifecycle as the loader data they are associated with including maxAge, gcMaxAge, invalidation, etc.
-
-They can even be preloaded!
+Streamed promises follow the same lifecycle as the loader data they are associated with. They can even be preloaded!
 
 ## SSR & Streaming Deferred Data
 

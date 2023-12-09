@@ -32,7 +32,7 @@ While not required, some authentication flows require redirecting to a login pag
 ```tsx
 const authenticatedRoute = new Route({
   id: 'authenticated',
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     if (!isAuthenticated()) {
       throw redirect({
         to: '/login',
@@ -40,7 +40,7 @@ const authenticatedRoute = new Route({
           // Use the current location to power a redirect after login
           // (Do not use `router.state.resolvedLocation` as it can
           // potentially lag behind the actual current location)
-          redirect: router.state.location.href,
+          redirect: location.href,
         },
       })
     }

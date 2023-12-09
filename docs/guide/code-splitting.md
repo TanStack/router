@@ -35,7 +35,7 @@ const route = new Route({
 This is a bit noisy and repetitive, so the TanStack Router exports a `lazyRouteComponent` wrapper that you can use to simplify this process:
 
 ```tsx
-import { lazyRouteComponent } from '@tanstack/router-react'
+import { lazyRouteComponent } from '@tanstack/react-router'
 
 const route = new Route({
   component: lazyRouteComponent(() => import('./MyComponent')),

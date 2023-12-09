@@ -31,9 +31,32 @@ Similar to data fetching, mutation state isn't a one-size-fits-all solution, so 
 
 > ⚠️ Still here? Submission state is an interesting topic when it comes to persistence. Do you keep every mutation around forever? How do you know when to get rid of it? What if the user navigates away from the screen and then back? Let's dig in!
 
-## Mutation management can be augmented by router events
+## Invalidating TanStack Router after a mutation
 
-Regardless of the mutation library used, mutations create state related to their submission. Most state managers will correctly keep this submission state around and expose it to make it possible to show UI elements like loading spinners, success messages, error messages, etc. Let's consider the following interactions:
+TanStack Router comes with short-term caching built-in. So even though we're not storing any data after a route match is unmounted, there is a high probability that if any mutations are made related to the data stored in the Router, the current route matches' data could become stale.
+
+When mutations related to loader data are made, we can use `router.invalidate` to force the router to reload all of the current route matches:
+
+```tsx
+const router = new Router()
+
+const addTodo = async (todo: Todo) => {
+  try {
+    await api.addTodo()
+    router.invalidate()
+  } catch {
+    //
+  }
+}
+```
+
+Invalidating all of the current route matches happens in the background, so existing data will continue to be served until the new data is ready, just as if you were navigating to a new route.
+
+## Long-term mutation State
+
+Regardless of the mutation library used, mutations often create state related to their submission. While most mutations are set-and-forget, some mutation states are more long-lived, either to support optimistic UI or to provide feedback to the user about the status of their submissions. Most state managers will correctly keep this submission state around and expose it to make it possible to show UI elements like loading spinners, success messages, error messages, etc.
+
+Let's consider the following interactions:
 
 - User navigates to the `/posts/123/edit` screen to edit a post
 - User edits the `123` post and upon success, sees a success message below the editor that the post was updated
@@ -42,19 +65,57 @@ Regardless of the mutation library used, mutations create state related to their
 
 Without notifying your mutation management library about the route change, it's possible that your submission state could still be around and your user would still see the **"Post updated successfully"** message when they return to the previous screen. This is not ideal. Obviously, our intent wasn't to keep this mutation state around forever, right?!
 
-To solve this, we can use TanStack Router's `subscribe` method to clear mutation states when the user is no longer in need of them.
+## Using mutation keys
 
-## The `router.subscribe` method
+Hopefully and hypothetically, the easiest way is for your mutation library to support a keying mechanism that will allow your mutations's state to be reset when the key changes:
 
-This method is a function that subscribes a callback to various router events. The event in particular that we'll use here is the `locationChange` event. It's important to understand that this event is fired when the location path is _changed (not just reloaded) and has finally resolved_.
+```tsx
+function EditPost() {
+  const { roomId } = chatRoute.useParams()
+
+  const sendMessageMutation = useCoolMutation({
+    fn: sendMessage,
+    // Clear the mutation state when the roomId changes
+    // including any submission state
+    key: ['sendMessage', roomId],
+  })
+
+  // Fire off a bunch of messages
+  const test = () => {
+    sendMessageMutation.mutate({ roomId, message: 'Hello!' })
+    sendMessageMutation.mutate({ roomId, message: 'How are you?' })
+    sendMessageMutation.mutate({ roomId, message: 'Goodbye!' })
+  }
+
+  return (
+    <>
+      {sendMessageMutation.submissions.map((submission) => {
+        return (
+          <div>
+            <div>{submission.status}</div>
+            <div>{submission.message}</div>
+          </div>
+        )
+      })}
+    </>
+  )
+}
+```
+
+## Using the `router.subscribe` method
+
+For libraries that don't have a keying mechanism, we'll likely need to manually reset the mutation state when the user navigates away from the screen. To solve this, we can use TanStack Router's `invalidate` and `subscribe` method to clear mutation states when the user is no longer in need of them.
+
+The `router.subscribe` method is a function that subscribes a callback to various router events. The event in particular that we'll use here is the `onResolved` event. It's important to understand that this event is fired when the location path is _changed (not just reloaded) and has finally resolved_.
 
 This is a great place to reset your old mutation states. Here's an example:
 
 ```tsx
 const router = new Router()
+const coolMutationCache = createCoolMutationCache()
 
-const unsubscribeFn = router.subscribe('onLoad', () => {
+const unsubscribeFn = router.subscribe('onResolved', () => {
   // Reset mutation states when the route changes
-  clearMutationCache()
+  coolMutationCache.clear()
 })
 ```

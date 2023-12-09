@@ -94,3 +94,46 @@ Sometimes you may want to prevent scroll restoration from happening. To do this 
 - `redirect({ resetScroll: false })`
 
 When `resetScroll` is set to `false`, the scroll position for the next navigation will not be restored (if navigating to an existing history event in the stack) or reset to the top (if it's a new history event in the stack).
+
+## Manual Scroll Restoration
+
+Most of the time, you won't need to do anything special to get scroll restoration to work. However, there are some cases where you may need to manually control scroll restoration. The most common example is **virtualized lists**.
+
+To manually control scroll restoration, you can use the `useElementScrollRestoration` hook and the `data-scroll-restoration-id` DOM attribute:
+
+```tsx
+function Component() {
+  // We need a unique ID for manual scroll restoration on a specific element
+  // It should be as unique as possible for this element across your app
+  const scrollRestorationId = 'myVirtualizedContent'
+
+  // We use that ID to get the scroll entry for this element
+  const scrollEntry = useElementScrollRestoration({
+    id: scrollRestorationId,
+  })
+
+  // Let's use TanStack Virtual to virtualize some content!
+  const virtualizerParentRef = React.useRef<HTMLDivElement>(null)
+  const virtualizer = useVirtualizer({
+    count: 10000,
+    getScrollElement: () => virtualizerParentRef.current,
+    estimateSize: () => 100,
+    // We pass the scrollY from the scroll restoration entry to the virtualizer
+    // as the initial offset
+    initialOffset: scrollEntry?.scrollY,
+  })
+
+  return (
+    <div
+      ref={virtualizerParentRef}
+      // We pass the scroll restoration ID to the element
+      // as a custom attribute that will get picked up by the
+      // scroll restoration watcher
+      data-scroll-restoration-id={scrollRestorationId}
+      className="flex-1 border rounded-lg overflow-auto relative"
+    >
+      ...
+    </div>
+  )
+}
+```
