@@ -362,7 +362,7 @@ const link = (
 
 With preloading enabled and relatively quick asynchronous route dependencies (if any), this simple trick can increase the perceived performance of your application with very little effort.
 
-What's even better is that by using a cache-first library like `@tanstack/loaders` or `@tanstack/query`, preloaded routes will stick around and be ready for a stale-while-revalidate experience if if the user decides to navigate to the route later on.
+What's even better is that by using a cache-first library like `@tanstack/loaders` or `@tanstack/query`, preloaded routes will stick around and be ready for a stale-while-revalidate experience if the user decides to navigate to the route later on.
 
 ### Link Preloading Timeout
 
