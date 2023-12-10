@@ -13,7 +13,7 @@
     "@tanstack/react-router": "0.0.1-beta.248",
     "@tanstack/router-devtools": "0.0.1-beta.248",
     "@vitejs/plugin-react": "^4.2.0",
-    "axios": "^1.6.2",
+    "axios": "^1.6.0",
     "concurrently": "^8.2.2",
     "immer": "^10.0.3",
     "react": "^18.2.0",

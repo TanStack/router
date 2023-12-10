@@ -1,10 +1,11 @@
 lockfileVersion: '6.0'
 
 settings:
-  autoInstallPeers: false
+  autoInstallPeers: true
   excludeLinksFromLockfile: false
 
 overrides:
+  use-sync-external-store: 1.2.0
   '@tanstack/history': workspace:*
   '@tanstack/react-router': workspace:*
   '@tanstack/router-devtools': workspace:*
@@ -82,8 +83,8 @@ importers:
         specifier: ^7.5.6
         version: 7.5.6
       axios:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.0
+        version: 1.6.0
       babel-plugin-transform-async-to-promises:
         specifier: ^0.8.18
         version: 0.8.18
@@ -187,8 +188,8 @@ importers:
         specifier: ^1.1.3
         version: 1.3.2
       axios:
-        specifier: ^1.1.3
-        version: 1.2.0
+        specifier: ^1.6.0
+        version: 1.6.2
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -221,7 +222,7 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(vite@5.0.4)
       axios:
-        specifier: ^1.6.2
+        specifier: ^1.6.0
         version: 1.6.2
       concurrently:
         specifier: ^8.2.2
@@ -267,7 +268,7 @@ importers:
         specifier: ^1.1.3
         version: 1.3.2
       axios:
-        specifier: ^1.1.3
+        specifier: ^1.6.0
         version: 1.6.2
       react:
         specifier: ^18.2.0
@@ -307,7 +308,7 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(vite@5.0.4)
       axios:
-        specifier: ^1.6.2
+        specifier: ^1.6.0
         version: 1.6.2
       concurrently:
         specifier: ^8.2.2
@@ -350,7 +351,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       axios:
-        specifier: ^1.1.3
+        specifier: ^1.6.0
         version: 1.6.2
       get-port:
         specifier: ^7.0.0
@@ -423,7 +424,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       axios:
-        specifier: ^1.1.3
+        specifier: ^1.6.0
         version: 1.6.2
       get-port:
         specifier: ^7.0.0
@@ -493,8 +494,8 @@ importers:
         specifier: ^1.1.3
         version: 1.1.3
       axios:
-        specifier: ^1.1.3
-        version: 1.1.3
+        specifier: ^1.6.0
+        version: 1.6.2
       immer:
         specifier: ^9.0.15
         version: 9.0.15
@@ -530,7 +531,7 @@ importers:
         specifier: ^1.1.3
         version: 1.3.2
       axios:
-        specifier: ^1.1.3
+        specifier: ^1.6.0
         version: 1.6.2
       immer:
         specifier: ^9.0.15
@@ -570,7 +571,7 @@ importers:
         specifier: ^1.1.3
         version: 1.3.2
       axios:
-        specifier: ^1.1.3
+        specifier: ^1.6.0
         version: 1.6.2
       concurrently:
         specifier: ^8.2.2
@@ -616,7 +617,7 @@ importers:
         specifier: ^1.1.3
         version: 1.3.2
       axios:
-        specifier: ^1.1.3
+        specifier: ^1.6.0
         version: 1.6.2
       immer:
         specifier: ^9.0.15
@@ -662,7 +663,7 @@ importers:
         specifier: ^1.1.3
         version: 1.3.2
       axios:
-        specifier: ^1.1.3
+        specifier: ^1.6.0
         version: 1.6.2
       concurrently:
         specifier: ^8.2.2
@@ -708,8 +709,8 @@ importers:
         specifier: ^1.1.3
         version: 1.1.3
       axios:
-        specifier: ^1.1.3
-        version: 1.1.3
+        specifier: ^1.6.0
+        version: 1.6.2
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -719,6 +720,40 @@ importers:
       vite:
         specifier: ^2.8.6
         version: 2.8.6
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.41
+        version: 18.2.41
+      '@types/react-dom':
+        specifier: ^18.2.17
+        version: 18.2.17
+
+  examples/react/navigation-blocking:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.4.3
+        version: 5.12.2(react@18.2.0)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@vitejs/plugin-react':
+        specifier: ^1.1.3
+        version: 1.3.2
+      axios:
+        specifier: ^1.6.0
+        version: 1.6.2
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
+      vite:
+        specifier: ^2.8.6
+        version: 2.9.16
     devDependencies:
       '@types/react':
         specifier: ^18.2.41
@@ -770,7 +805,7 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(vite@5.0.4)
       axios:
-        specifier: ^1.6.2
+        specifier: ^1.6.0
         version: 1.6.2
       concurrently:
         specifier: ^8.2.2
@@ -856,8 +891,8 @@ importers:
         specifier: ^1.1.3
         version: 1.3.2
       axios:
-        specifier: ^1.1.3
-        version: 1.1.3
+        specifier: ^1.6.0
+        version: 1.6.2
       express:
         specifier: ^4.18.2
         version: 4.18.2
@@ -945,7 +980,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       axios:
-        specifier: ^1.1.3
+        specifier: ^1.6.0
         version: 1.6.2
       fastify:
         specifier: ^4.22.0
@@ -966,8 +1001,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0
       use-sync-external-store:
-        specifier: 1.3.0-canary-ab31a9ed2-20230824
-        version: 1.3.0-canary-ab31a9ed2-20230824(react@18.3.0-canary-ab31a9ed2-20230824)
+        specifier: 1.2.0
+        version: 1.2.0(react@18.3.0-canary-ab31a9ed2-20230824)
     devDependencies:
       '@babel/core':
         specifier: ^7.20.2
@@ -1027,8 +1062,8 @@ importers:
         specifier: ^1.1.3
         version: 1.3.2
       axios:
-        specifier: ^1.1.3
-        version: 1.1.3
+        specifier: ^1.6.0
+        version: 1.6.2
       framer-motion:
         specifier: ^10.13.0
         version: 10.13.0(react-dom@18.2.0)(react@18.2.0)
@@ -1082,8 +1117,8 @@ importers:
         specifier: ^1.1.3
         version: 1.3.2
       axios:
-        specifier: ^1.1.3
-        version: 1.2.0
+        specifier: ^1.6.0
+        version: 1.6.2
       express:
         specifier: ^4.18.2
         version: 4.18.2
@@ -1121,7 +1156,14 @@ importers:
 
   packages/history: {}
 
-  packages/react-cross-context: {}
+  packages/react-cross-context:
+    dependencies:
+      react:
+        specifier: '>=18'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=18'
+        version: 18.2.0(react@18.2.0)
 
   packages/react-router:
     dependencies:
@@ -1133,10 +1175,16 @@ importers:
         version: link:../history
       '@tanstack/react-store':
         specifier: ^0.2.1
-        version: 0.2.1
+        version: 0.2.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/store':
         specifier: ^0.1.3
         version: 0.1.3
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1161,6 +1209,12 @@ importers:
       jsesc:
         specifier: ^3.0.2
         version: 3.0.2
+      react:
+        specifier: '>=18'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=18'
+        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1246,6 +1300,12 @@ importers:
       date-fns:
         specifier: ^2.29.1
         version: 2.29.3
+      react:
+        specifier: '>=16'
+        version: 18.2.0
+      react-dom:
+        specifier: '>=16'
+        version: 18.2.0(react@18.2.0)
 
 packages:
 
@@ -1370,17 +1430,6 @@ packages:
       '@babel/types': 7.23.5
     dev: true
 
-  /@babel/helper-compilation-targets@7.22.10:
-    resolution: {integrity: sha512-JMSwHD4J7SLod0idLq5PKgI+6g/hLD/iuWBq08ZX49xE14VpVEojJ5rHWptpirV2j020MvypRLAXAO50igCJ5Q==}
-    engines: {node: '>=6.9.0'}
-    dependencies:
-      '@babel/compat-data': 7.22.9
-      '@babel/helper-validator-option': 7.22.5
-      browserslist: 4.21.10
-      lru-cache: 5.1.1
-      semver: 6.3.1
-    dev: false
-
   /@babel/helper-compilation-targets@7.22.15:
     resolution: {integrity: sha512-y6EEzULok0Qvz8yyLkCvVX+02ic+By2UdOhylwUOvOn9dvYc9mKICJuuU1n1XBI02YWsNsnrY1kc6DVbjcXbtw==}
     engines: {node: '>=6.9.0'}
@@ -1413,8 +1462,8 @@ packages:
     dependencies:
       '@babel/core': 7.20.5
       '@babel/helper-annotate-as-pure': 7.22.5
-      '@babel/helper-environment-visitor': 7.22.5
-      '@babel/helper-function-name': 7.22.5
+      '@babel/helper-environment-visitor': 7.22.20
+      '@babel/helper-function-name': 7.23.0
       '@babel/helper-member-expression-to-functions': 7.18.9
       '@babel/helper-optimise-call-expression': 7.18.6
       '@babel/helper-replace-supers': 7.19.1
@@ -1474,7 +1523,7 @@ packages:
       '@babel/helper-plugin-utils': 7.22.5
       debug: 4.3.4
       lodash.debounce: 4.0.8
-      resolve: 1.22.4
+      resolve: 1.22.8
       semver: 6.3.1
     transitivePeerDependencies:
       - supports-color
@@ -1573,6 +1622,20 @@ packages:
       '@babel/helper-validator-identifier': 7.22.5
     dev: false
 
+  /@babel/helper-module-transforms@7.23.3(@babel/core@7.20.5):
+    resolution: {integrity: sha512-7bBs4ED9OmswdfDzpz4MpWgSrV7FXlc3zIagvLFjS5H+Mk7Snr21vQ6QwrsoCGMfNC4e4LQPdoULEt4ykz0SRQ==}
+    engines: {node: '>=6.9.0'}
+    peerDependencies:
+      '@babel/core': ^7.0.0
+    dependencies:
+      '@babel/core': 7.20.5
+      '@babel/helper-environment-visitor': 7.22.20
+      '@babel/helper-module-imports': 7.22.15
+      '@babel/helper-simple-access': 7.22.5
+      '@babel/helper-split-export-declaration': 7.22.6
+      '@babel/helper-validator-identifier': 7.22.20
+    dev: false
+
   /@babel/helper-module-transforms@7.23.3(@babel/core@7.23.5):
     resolution: {integrity: sha512-7bBs4ED9OmswdfDzpz4MpWgSrV7FXlc3zIagvLFjS5H+Mk7Snr21vQ6QwrsoCGMfNC4e4LQPdoULEt4ykz0SRQ==}
     engines: {node: '>=6.9.0'}
@@ -1612,7 +1675,7 @@ packages:
     dependencies:
       '@babel/core': 7.20.5
       '@babel/helper-annotate-as-pure': 7.22.5
-      '@babel/helper-environment-visitor': 7.22.5
+      '@babel/helper-environment-visitor': 7.22.20
       '@babel/helper-wrap-function': 7.20.5
       '@babel/types': 7.23.5
     transitivePeerDependencies:
@@ -1635,7 +1698,7 @@ packages:
     resolution: {integrity: sha512-T7ahH7wV0Hfs46SFh5Jz3s0B6+o8g3c+7TMxu7xKfmHikg7EAZ3I2Qk9LFhjxXq8sL7UkP5JflezNwoZa8WvWw==}
     engines: {node: '>=6.9.0'}
     dependencies:
-      '@babel/helper-environment-visitor': 7.22.5
+      '@babel/helper-environment-visitor': 7.22.20
       '@babel/helper-member-expression-to-functions': 7.18.9
       '@babel/helper-optimise-call-expression': 7.18.6
       '@babel/traverse': 7.23.5
@@ -1845,7 +1908,7 @@ packages:
       '@babel/core': ^7.0.0-0
     dependencies:
       '@babel/core': 7.20.5
-      '@babel/helper-environment-visitor': 7.22.5
+      '@babel/helper-environment-visitor': 7.22.20
       '@babel/helper-plugin-utils': 7.22.5
       '@babel/helper-remap-async-to-generator': 7.18.9(@babel/core@7.20.5)
       '@babel/plugin-syntax-async-generators': 7.8.4(@babel/core@7.20.5)
@@ -1952,9 +2015,9 @@ packages:
     peerDependencies:
       '@babel/core': ^7.0.0-0
     dependencies:
-      '@babel/compat-data': 7.22.9
+      '@babel/compat-data': 7.23.5
       '@babel/core': 7.20.5
-      '@babel/helper-compilation-targets': 7.22.10
+      '@babel/helper-compilation-targets': 7.22.15
       '@babel/helper-plugin-utils': 7.22.5
       '@babel/plugin-syntax-object-rest-spread': 7.8.3(@babel/core@7.20.5)
       '@babel/plugin-transform-parameters': 7.20.5(@babel/core@7.20.5)
@@ -2508,9 +2571,9 @@ packages:
     dependencies:
       '@babel/core': 7.20.5
       '@babel/helper-annotate-as-pure': 7.18.6
-      '@babel/helper-compilation-targets': 7.22.10
-      '@babel/helper-environment-visitor': 7.22.5
-      '@babel/helper-function-name': 7.22.5
+      '@babel/helper-compilation-targets': 7.22.15
+      '@babel/helper-environment-visitor': 7.22.20
+      '@babel/helper-function-name': 7.23.0
       '@babel/helper-optimise-call-expression': 7.18.6
       '@babel/helper-plugin-utils': 7.22.5
       '@babel/helper-replace-supers': 7.19.1
@@ -2692,8 +2755,8 @@ packages:
       '@babel/core': ^7.0.0-0
     dependencies:
       '@babel/core': 7.20.5
-      '@babel/helper-compilation-targets': 7.22.10
-      '@babel/helper-function-name': 7.22.5
+      '@babel/helper-compilation-targets': 7.22.15
+      '@babel/helper-function-name': 7.23.0
       '@babel/helper-plugin-utils': 7.22.5
     dev: false
 
@@ -2778,7 +2841,7 @@ packages:
       '@babel/core': ^7.0.0-0
     dependencies:
       '@babel/core': 7.20.5
-      '@babel/helper-module-transforms': 7.22.9(@babel/core@7.20.5)
+      '@babel/helper-module-transforms': 7.23.3(@babel/core@7.20.5)
       '@babel/helper-plugin-utils': 7.22.5
     dev: false
 
@@ -2800,7 +2863,7 @@ packages:
       '@babel/core': ^7.0.0-0
     dependencies:
       '@babel/core': 7.20.5
-      '@babel/helper-module-transforms': 7.22.9(@babel/core@7.20.5)
+      '@babel/helper-module-transforms': 7.23.3(@babel/core@7.20.5)
       '@babel/helper-plugin-utils': 7.22.5
       '@babel/helper-simple-access': 7.22.5
     dev: false
@@ -2825,9 +2888,9 @@ packages:
     dependencies:
       '@babel/core': 7.20.5
       '@babel/helper-hoist-variables': 7.22.5
-      '@babel/helper-module-transforms': 7.22.9(@babel/core@7.20.5)
+      '@babel/helper-module-transforms': 7.23.3(@babel/core@7.20.5)
       '@babel/helper-plugin-utils': 7.22.5
-      '@babel/helper-validator-identifier': 7.22.5
+      '@babel/helper-validator-identifier': 7.22.20
     dev: false
 
   /@babel/plugin-transform-modules-systemjs@7.23.3(@babel/core@7.23.5):
@@ -2850,7 +2913,7 @@ packages:
       '@babel/core': ^7.0.0-0
     dependencies:
       '@babel/core': 7.20.5
-      '@babel/helper-module-transforms': 7.22.9(@babel/core@7.20.5)
+      '@babel/helper-module-transforms': 7.23.3(@babel/core@7.20.5)
       '@babel/helper-plugin-utils': 7.22.5
     dev: false
 
@@ -5480,14 +5543,16 @@ packages:
       react-dom: 18.2.0(react@18.2.0)
     dev: false
 
-  /@tanstack/react-store@0.2.1:
+  /@tanstack/react-store@0.2.1(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-tEbMCQjbeVw9KOP/202LfqZMSNAVi6zYkkp1kBom8nFuMx/965Hzes3+6G6b/comCwVxoJU8Gg9IrcF8yRPthw==}
     peerDependencies:
       react: '>=16'
       react-dom: '>=16'
     dependencies:
       '@tanstack/store': 0.1.3
-      use-sync-external-store: 1.2.0
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+      use-sync-external-store: 1.2.0(react@18.2.0)
     dev: false
 
   /@tanstack/react-virtual@3.0.1(react-dom@18.2.0)(react@18.2.0):
@@ -6428,21 +6493,22 @@ packages:
   /axios@1.1.3:
     resolution: {integrity: sha512-00tXVRwKx/FZr/IDVFt4C+f9FYairX517WoGCL6dpOntqLkZofjhu43F/Xl44UOpqa+9sLFDrG/XAnFsUYgkDA==}
     dependencies:
-      follow-redirects: 1.15.2
+      follow-redirects: 1.15.3
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
+    dev: true
 
-  /axios@1.2.0:
-    resolution: {integrity: sha512-zT7wZyNYu3N5Bu0wuZ6QccIf93Qk1eV8LOewxgjOZFd2DenOs98cJ7+Y6703d0wkaXGY6/nZd4EweJaHz9uzQw==}
+  /axios@1.6.0:
+    resolution: {integrity: sha512-EZ1DYihju9pwVB+jg67ogm+Tmqc6JmhamRN6I4Zt8DfZu5lbcQGw3ozH9lFejSJgs/ibaef3A9PMXPLeefFGJg==}
     dependencies:
-      follow-redirects: 1.15.2
+      follow-redirects: 1.15.3
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
-    dev: false
+    dev: true
 
   /axios@1.6.2:
     resolution: {integrity: sha512-7i24Ri4pmDRfJTR7LDBhsOTtcm+9kjX5WiY1X3wIisx6G9So3pfMkEiU7emUBe46oceVImccTEM3k6C5dbVW8A==}
@@ -6481,7 +6547,7 @@ packages:
     peerDependencies:
       '@babel/core': ^7.0.0-0
     dependencies:
-      '@babel/compat-data': 7.22.9
+      '@babel/compat-data': 7.23.5
       '@babel/core': 7.20.5
       '@babel/helper-define-polyfill-provider': 0.3.3(@babel/core@7.20.5)
       semver: 6.3.1
@@ -6641,7 +6707,7 @@ packages:
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
     dependencies:
-      caniuse-lite: 1.0.30001565
+      caniuse-lite: 1.0.30001566
       electron-to-chromium: 1.4.601
       node-releases: 2.0.14
       update-browserslist-db: 1.0.13(browserslist@4.22.1)
@@ -6717,10 +6783,6 @@ packages:
   /caniuse-lite@1.0.30001527:
     resolution: {integrity: sha512-YkJi7RwPgWtXVSgK4lG9AHH57nSzvvOp9MesgXmw4Q7n0C3H04L0foHqfxcmSAm5AcWb8dW9AYj2tR7/5GnddQ==}
     dev: false
-
-  /caniuse-lite@1.0.30001565:
-    resolution: {integrity: sha512-xrE//a3O7TP0vaJ8ikzkD2c2NgcVUvsEe2IvFTntV4Yd1Z9FVzh+gW+enX96L0psrbaFMcVcH2l90xNuGDWc8w==}
-    dev: true
 
   /caniuse-lite@1.0.30001566:
     resolution: {integrity: sha512-ggIhCsTxmITBAMmK8yZjEhCO5/47jKXPu6Dha/wuCS4JePVL+3uiDEBuhu2aIoT+bqTOR8L76Ip1ARL9xYsEJA==}
@@ -6976,7 +7038,7 @@ packages:
   /core-js-compat@3.26.1:
     resolution: {integrity: sha512-622/KzTudvXCDLRw70iHW4KKs1aGpcRcowGWyYJr2DEBfRrd6hNJybxSWJFuZYD4ma86xhrwDDHxmDaIq4EA8A==}
     dependencies:
-      browserslist: 4.21.10
+      browserslist: 4.22.2
     dev: false
 
   /core-js-compat@3.33.3:
@@ -8129,15 +8191,6 @@ packages:
     resolution: {integrity: sha512-b6suED+5/3rTpUBdG1gupIl8MPFCAMA0QXwmljLhvCUKcUvdE4gWky9zpuGCcXHOsz4J9wPGNWq6OKpmIzz3hQ==}
     hasBin: true
     dev: true
-
-  /follow-redirects@1.15.2:
-    resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
-    engines: {node: '>=4.0'}
-    peerDependencies:
-      debug: '*'
-    peerDependenciesMeta:
-      debug:
-        optional: true
 
   /follow-redirects@1.15.3:
     resolution: {integrity: sha512-1VzOtuEM8pC9SFU1E+8KfTjZyMztRsgEfwQl44z8A25uy13jSzTj6dyK2Df52iV0vgHCfBwLhDWevLn95w5v6Q==}
@@ -10940,12 +10993,6 @@ packages:
       tslib: 2.5.0
     dev: false
 
-  /use-sync-external-store@1.2.0:
-    resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0
-    dev: false
-
   /use-sync-external-store@1.2.0(react@18.2.0):
     resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
     peerDependencies:
@@ -10954,10 +11001,10 @@ packages:
       react: 18.2.0
     dev: false
 
-  /use-sync-external-store@1.3.0-canary-ab31a9ed2-20230824(react@18.3.0-canary-ab31a9ed2-20230824):
-    resolution: {integrity: sha512-XWfYrJUH/y5l36QCTMsPqwU3ZrC1oReBFxmHv6hdp8hZ5k1XhEq/SoRyslEg4jFmEN2MUAtjttVwIzSWe2W9NA==}
+  /use-sync-external-store@1.2.0(react@18.3.0-canary-ab31a9ed2-20230824):
+    resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
     peerDependencies:
-      react: 18.3.0-canary-ab31a9ed2-20230824
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
     dependencies:
       react: 18.3.0-canary-ab31a9ed2-20230824
     dev: false
