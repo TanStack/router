@@ -8,5 +8,6 @@
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"
-  }
+  },
+  "version": "0.0.1-beta.248"
 }
