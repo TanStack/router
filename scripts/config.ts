@@ -57,6 +57,17 @@ export const packages: Package[] = [
     ],
   },
   {
+    name: '@tanstack/react-cross-context',
+    packageDir: 'react-cross-context',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'ReactCrossContext',
+        entryFile: 'src/index.ts',
+      },
+    ],
+  },
+  {
     name: '@tanstack/react-router-server',
     packageDir: 'react-router-server',
     srcDir: 'src',
