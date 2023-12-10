@@ -4,11 +4,38 @@ title: Custom Search Param Serialization
 
 > TODO This portion of documentation is currently under construction
 
-By default, TanStack Router parses and serializes your search params automatically. Depending on your needs though, you may want to customize the serialization process.
+By default, TanStack Router parses and serializes your search params automatically using `JSON.stringify/JSON.parse`. Depending on your needs though, you may want to customize the serialization process.
 
-To do so, you can [use `Router`'s `parseSearch` and `stringifySearch` options combined with the `parseSearchWith` and `stringifySearchWith` utilities](../docs/api#search-param-parsing-and-serialization).
+To do so, [use `Router`'s `parseSearch` and `stringifySearch` options](../docs/api#search-param-parsing-and-serialization):
 
-For example: We can reimplement the default parser/serializer with the following code:
+```tsx
+import {
+  Router,
+  parseSearchWith,
+  stringifySearchWith,
+} from '@tanstack/react-router'
+import qs from 'query-string'
+
+// For example, we use `query-string` to render arrays in bracket notation:
+// output: ?key[]=value1&key[]=value2
+
+function customStringifier(searchObj) {
+  return qs.stringify(searchObj, { arrayFormat: 'bracket' })
+}
+
+function customParser(searchString) {
+  return qs.parse(searchString, { arrayFormat: 'bracket' })
+}
+
+const router = new Router({
+  stringifySearch: customStringifier,
+  parseSearch: customParser,
+})
+```
+
+Additionally, you can [use the `parseSearchWith` and `stringifySearchWith` utilities](../docs/api#search-param-parsing-and-serialization) to parse and serialize the search values specifically.
+
+For example, we can reimplement the default parser/serializer with the following code:
 
 ```tsx
 import {
@@ -50,6 +77,7 @@ export function decodeFromBinary(str: string): string {
       .join(''),
   )
 }
+
 export function encodeToBinary(str: string): string {
   return btoa(
     encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function (match, p1) {
@@ -91,6 +119,7 @@ export function decodeFromBinary(str: string): string {
       .join(''),
   )
 }
+
 export function encodeToBinary(str: string): string {
   return btoa(
     encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function (match, p1) {

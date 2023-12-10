@@ -9,6 +9,7 @@ import {
   RootRoute,
   Route,
   RouterContext,
+  rootRouteWithContext,
 } from '@tanstack/react-router'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -43,12 +44,10 @@ export function Spinner() {
   )
 }
 
-const routerContext = new RouterContext<{
+const rootRoute = rootRouteWithContext<{
   trpc: typeof trpc
   queryClient: typeof queryClient
-}>()
-
-const rootRoute = routerContext.createRootRoute({
+}>()({
   component: () => {
     return (
       <>
@@ -99,7 +98,7 @@ const postsRoute = new Route({
   loader: async () => {
     // TODO: Prefetch posts using TRPC
   },
-  component: ({ useLoader }) => {
+  component: ({ useLoaderData }) => {
     const postsQuery = trpc.posts.useQuery()
 
     if (postsQuery.isLoading) {

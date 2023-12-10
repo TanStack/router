@@ -1,0 +1,35 @@
+{
+  "name": "@tanstack/history",
+  "author": "Tanner Linsley",
+  "version": "0.0.1-beta.248",
+  "license": "MIT",
+  "repository": "tanstack/history",
+  "homepage": "https://tanstack.com",
+  "description": "",
+  "scripts": {
+    "build": "rollup --config rollup.config.js"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "history",
+    "typescript"
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "module": "build/esm/index.js",
+  "main": "build/cjs/index.js",
+  "browser": "build/umd/index.production.js",
+  "types": "build/types/index.d.ts",
+  "engines": {
+    "node": ">=12"
+  },
+  "files": [
+    "build/**",
+    "src"
+  ],
+  "sideEffects": false
+}

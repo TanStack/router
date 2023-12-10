@@ -6,19 +6,21 @@ Similar to how TanStack Query made handling server-state in your React applicati
 
 ## Why not just use `URLSearchParams`?
 
-We get it, you've been hearing a lot of "use the platform" lately and for the most part, we agree. However, we also believe it's important to recognize where the platform falls short for more advanced use-cases and `URLSearchParams` is one of these circumstances.
+We get it, you've been hearing a lot of "use the platform" lately and for the most part, we agree. However, we also believe it's important to recognize where the platform falls short for more advanced use-cases and we believe `URLSearchParams` is one of these circumstances.
 
 Traditional Search Param APIs usually assume a few things:
 
 - Search params are always strings
 - They are _mostly_ flat
-- Serializing and deserializing using `URLSearchParams` is good enough (Spoiler alert: it's not, it sucks)
+- Serializing and deserializing using `URLSearchParams` is good enough (Spoiler alert: it's not.)
+- Search params modifications are tightly coupled with the URL's pathname and must be updated together, even if the pathname is not changing.
 
 Reality is very different from these assumptions though.
 
 - Search params represent application state, so inevitably, we will expect them to have the same DX associated with other state managers. This means having the capable of distinguishing between primitive value types and efficiently storing and manipulating complex data structures like nested arrays and objects.
 - There are many ways to serialize and deserialize state with different tradeoffs. You should be able to choose the best one for your application or at the very least get a better default than `URLSearchParams`.
 - Immutability & Structural Sharing. Every time you stringify and parse urls search params, referential integrity and object identity is lost because each new parse creates a brand new data structure with a unique memory reference. If not properly managed over its lifetime, this constant serialization and parsing can result in unexpected and undesirable performance issues, especially in frameworks like React that choose to track reactivity via immutability or in Solid that normally relies on reconciliation to detect changes from deserialized data sources.
+- Search params, while an important part of the URL, do frequently change independently of the URL's pathname. For example, a user may want to change the page number of a paginated list without touching the URL's pathname.
 
 ## Search Params, the "OG" State Manager
 
@@ -188,8 +190,7 @@ const allProductsRoute = new Route({
   path: 'products',
   validateSearch: productSearchSchema,
   loader: ({ search }) => {
-    search
-    // ^? ProductSearch ✅
+    //       ^? ProductSearch ✅
   },
 })
 ```
@@ -223,7 +224,7 @@ const productRoute = new Route({
 
 ### Search Params in Components
 
-You can access your route's validated search params in your route's `component` via the `useSearch` hook (or your framework's equivalent). By passing the `from` id/path of your origin route, you'll get even better type safety:
+You can access your route's validated search params in your route's `component` via the `useSearch` hook.
 
 ```tsx
 const allProductsRoute = new Route({
@@ -233,18 +234,50 @@ const allProductsRoute = new Route({
 })
 
 const ProductList = () => {
-  const { page, filter, sort } = useSearch({ from: allProductsRoute.id })
+  const { page, filter, sort } = allProductsRoute.useSearch()
 
   return <div>...</div>
 }
 ```
 
-### Search Params outside of Components
+### Search Params outside of Route Components
 
-You can access your route's validated search params anywhere in your app using:
+You can access your route's validated search params anywhere in your app using the `useSearch` hook. By passing the `from` id/path of your origin route, you'll get even better type safety:
 
-- `router.state.location.state` - The most up-to-date location of the router, regardless of loading state.
-- `router.state.currentLocation.state` - The latest **loaded/resolved** location. This location is only set after a navigation has completed.
+```tsx
+const allProductsRoute = new Route({
+  getParentRoute: () => shopRoute,
+  path: 'products',
+  validateSearch: productSearchSchema,
+})
+
+// Somewhere else...
+
+const ProductList = () => {
+  const { page, filter, sort } = useSearch({
+    from: allProductsRoute.id,
+  })
+
+  return <div>...</div>
+}
+```
+
+Or, you can loosen up the type-safety and get an optional `search` object by passing `strict: false`:
+
+```tsx
+function ProductList() {
+  const search = useSearch({
+    strict: false,
+  })
+  // {
+  //   page: number | undefined
+  //   filter: string | undefined
+  //   sort: 'newest' | 'oldest' | 'price' | undefined
+  // }
+
+  return <div>...</div>
+}
+```
 
 ## Writing Search Params
 

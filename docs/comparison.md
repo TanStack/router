@@ -15,58 +15,52 @@ Feature/Capability Key:
 - 🔶 Possible, but requires custom code/implementation/casting
 - 🛑 Not officially supported
 
-|                                                | TanStack Router                                     | React Router DOM [_(Website)_][router]                | Next.JS [_(Website)_][nextjs]                         |
-| ---------------------------------------------- | --------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
-| Github Repo / Stars                            | [![][stars-tanstack-router]][gh-tanstack-router]    | [![][stars-router]][gh-router]                        | [![][stars-nextjs]][gh-nextjs]                        |
-| Bundle Size                                    | [![][bp-tanstack-router]][bpl-tanstack-router]      | [![][bp-router]][bpl-router]                          | ❓                                                    |
-| History, Memory & Hash Routers                 | ✅                                                  | ✅                                                    | 🛑                                                    |
-| Nested / Layout Routes                         | ✅                                                  | ✅                                                    | ✅                                                    |
-| Suspense-like Route Transitions                | ✅                                                  | ✅                                                    | ✅                                                    |
-| Typesafe Routes                                | ✅                                                  | 🛑                                                    | 🟡                                                    |
-| Loaders                                        | ✅                                                  | ✅                                                    | ✅                                                    |
-| Typesafe Loaders                               | ✅                                                  | 🔶                                                    | 🛑                                                    |
-| Loader Caching (SWR + Invalidation)            | ✅                                                  | 🛑                                                    | ✅                                                    |
-| Actions                                        | 🔵 [![][bp-tanstack-actions]][bpl-tanstack-actions] | ✅                                                    | 🛑                                                    |
-| Typesafe Actions                               | 🔵                                                  | 🔶                                                    | 🛑                                                    |
-| Route Prefetching                              | ✅                                                  | ✅                                                    | ✅                                                    |
-| Auto Route Prefetching                         | ✅                                                  | 🛑                                                    | ✅                                                    |
-| Route Prefetching Delay                        | ✅                                                  | 🔶                                                    | 🛑                                                    |
-| Path Params                                    | ✅                                                  | ✅                                                    | ✅                                                    |
-| Typesafe Path Params                           | ✅                                                  | 🛑                                                    | 🛑                                                    |
-| Path Param Validation                          | ✅                                                  | 🛑                                                    | 🛑                                                    |
-| Custom Path Param Parsing/Serialization        | ✅                                                  | 🛑                                                    | 🛑                                                    |
-| Ranked Routes                                  | ✅                                                  | ✅                                                    | ✅                                                    |
-| Active Link Customization                      | ✅                                                  | ✅                                                    | ✅                                                    |
-| Optimistic UI                                  | ✅                                                  | ✅                                                    | 🔶                                                    |
-| Typesafe Absolute + Relative Navigation        | ✅                                                  | 🛑                                                    | 🛑                                                    |
-| Route Mount/Transition/Unmount Events          | ✅                                                  | 🛑                                                    | 🛑                                                    |
-| Devtools                                       | ✅                                                  | 🛑                                                    | 🛑                                                    |
-| Basic Search Params                            | ✅                                                  | ✅                                                    | ✅                                                    |
-| Search Param Hooks                             | ✅                                                  | ✅                                                    | ✅                                                    |
-| `<Link/>`/`useNavigate` Search Param API       | ✅                                                  | 🟡 (search-string only via the `to`/`search` options) | 🟡 (search-string only via the `to`/`search` options) |
-| JSON Search Params                             | ✅                                                  | 🔶                                                    | 🔶                                                    |
-| TypeSafe Search Params                         | ✅                                                  | 🛑                                                    | 🛑                                                    |
-| Search Param Schema Validation                 | ✅                                                  | 🛑                                                    | 🛑                                                    |
-| Search Param Immutability + Structural Sharing | ✅                                                  | 🔶                                                    | 🛑                                                    |
-| Custom Search Param parsing/serialization      | ✅                                                  | 🔶                                                    | 🛑                                                    |
-| Search Param Middleware                        | ✅                                                  | 🛑                                                    | 🛑                                                    |
-| Async Route Elements                           | ✅                                                  | 🛑                                                    | ✅                                                    |
-| Suspense Route Elements                        | ✅                                                  | ✅                                                    | ✅                                                    |
-| Route Error Elements                           | ✅                                                  | ✅                                                    | ✅                                                    |
-| Route Pending Elements                         | ✅                                                  | 🛑                                                    | ✅                                                    |
-| `<Prompt>`/`usePrompt`                         | ✅                                                  | 🔶                                                    |                                                       |
-| SSR                                            | ✅                                                  | ✅                                                    | ✅                                                    |
-| Streaming SSR                                  | ✅                                                  | ✅                                                    | 🔶                                                    |
-| Deferred Data Loading                          | ✅                                                  | ✅                                                    | 🔶                                                    |
-| Navigation Scroll Restoration                  | ✅                                                  | ✅                                                    | 🛑                                                    |
-| `<Form>` API                                   | 🛑                                                  | ✅                                                    | 🛑                                                    |
+|                                                | TanStack Router                                  | React Router DOM [_(Website)_][router]                | Next.JS [_(Website)_][nextjs]                         |
+| ---------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------------------- |
+| Github Repo / Stars                            | [![][stars-tanstack-router]][gh-tanstack-router] | [![][stars-router]][gh-router]                        | [![][stars-nextjs]][gh-nextjs]                        |
+| Bundle Size                                    | [![][bp-tanstack-router]][bpl-tanstack-router]   | [![][bp-router]][bpl-router]                          | ❓                                                    |
+| History, Memory & Hash Routers                 | ✅                                               | ✅                                                    | 🛑                                                    |
+| Nested / Layout Routes                         | ✅                                               | ✅                                                    | ✅                                                    |
+| Suspense-like Route Transitions                | ✅                                               | ✅                                                    | ✅                                                    |
+| Typesafe Routes                                | ✅                                               | 🛑                                                    | 🟡                                                    |
+| Router Loaders                                 | ✅                                               | ✅                                                    | ✅                                                    |
+| Route Prefetching                              | ✅                                               | ✅                                                    | ✅                                                    |
+| Auto Route Prefetching                         | ✅                                               | 🛑                                                    | ✅                                                    |
+| Route Prefetching Delay                        | ✅                                               | 🔶                                                    | 🛑                                                    |
+| Path Params                                    | ✅                                               | ✅                                                    | ✅                                                    |
+| Typesafe Path Params                           | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Path Param Validation                          | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Custom Path Param Parsing/Serialization        | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Ranked Routes                                  | ✅                                               | ✅                                                    | ✅                                                    |
+| Active Link Customization                      | ✅                                               | ✅                                                    | ✅                                                    |
+| Optimistic UI                                  | ✅                                               | ✅                                                    | 🔶                                                    |
+| Typesafe Absolute + Relative Navigation        | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Route Mount/Transition/Unmount Events          | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Devtools                                       | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Basic Search Params                            | ✅                                               | ✅                                                    | ✅                                                    |
+| Search Param Hooks                             | ✅                                               | ✅                                                    | ✅                                                    |
+| `<Link/>`/`useNavigate` Search Param API       | ✅                                               | 🟡 (search-string only via the `to`/`search` options) | 🟡 (search-string only via the `to`/`search` options) |
+| JSON Search Params                             | ✅                                               | 🔶                                                    | 🔶                                                    |
+| TypeSafe Search Params                         | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Search Param Schema Validation                 | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Search Param Immutability + Structural Sharing | ✅                                               | 🔶                                                    | 🛑                                                    |
+| Custom Search Param parsing/serialization      | ✅                                               | 🔶                                                    | 🛑                                                    |
+| Search Param Middleware                        | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Suspense Route Elements                        | ✅                                               | ✅                                                    | ✅                                                    |
+| Route Error Elements                           | ✅                                               | ✅                                                    | ✅                                                    |
+| Route Pending Elements                         | ✅                                               | ✅                                                    | ✅                                                    |
+| `<Prompt>`/`usePrompt`                         | ✅                                               | 🔶                                                    | ❓                                                    |
+| SSR                                            | ✅                                               | ✅                                                    | ✅                                                    |
+| Streaming SSR                                  | ✅                                               | ✅                                                    | ✅                                                    |
+| Deferred Primitives                            | ✅                                               | ✅                                                    | ✅                                                    |
+| Navigation Scroll Restoration                  | ✅                                               | ✅                                                    | ❓                                                    |
+| Loader Caching (SWR + Invalidation)            | 🔶 (TanStack Query is recommended)               | 🛑                                                    | ✅                                                    |
+| Actions                                        | 🔶 (TanStack Query is recommended)               | ✅                                                    | ✅                                                    |
+| `<Form>` API                                   | 🛑                                               | ✅                                                    | ✅                                                    |
+| Full-Stack APIs                                | 🛑                                               | ✅                                                    | ✅                                                    |
 
 [bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router@beta
 [bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/react-router@beta
-[bp-tanstack-loaders]: https://badgen.net/bundlephobia/minzip/@tanstack/react-loaders@beta?label=Loaders
-[bpl-tanstack-loaders]: https://bundlephobia.com/result?p=@tanstack/react-loaders@beta
-[bp-tanstack-actions]: https://badgen.net/bundlephobia/minzip/@tanstack/react-actions@beta?label=@tanstack/actions
-[bpl-tanstack-actions]: https://bundlephobia.com/result?p=@tanstack/react-actions@beta
 [gh-tanstack-router]: https://github.com/tanstack/router
 [stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?label=%F0%9F%8C%9F
 [_]: _

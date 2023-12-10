@@ -1,15 +1,11 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/store" },
-    { "path": "packages/react-store" },
-    { "path": "packages/router" },
-    { "path": "packages/actions" },
-    { "path": "packages/react-actions" },
-    { "path": "packages/loaders" },
-    { "path": "packages/react-loaders" },
+    { "path": "packages/history" },
+    { "path": "packages/react-router" },
+    { "path": "packages/router-cli" },
     { "path": "packages/router-devtools" },
-    { "path": "packages/react-start" }
+    { "path": "packages/react-router-server" }
   ]
   // "include": ["examples/*"]
   // "exclude": ["node_modules"]

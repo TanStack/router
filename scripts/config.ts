@@ -1,106 +1,16 @@
 import path from 'path'
 import { BranchConfig, Package } from './types'
 
-// TODO: List your npm packages here.
 export const packages: Package[] = [
   {
-    name: '@tanstack/store',
-    packageDir: 'store',
+    name: '@tanstack/history',
+    packageDir: 'history',
     srcDir: 'src',
     builds: [
       {
-        jsName: 'Store',
+        jsName: 'TanStackHistory',
         entryFile: 'src/index.ts',
         globals: {},
-      },
-    ],
-  },
-  {
-    name: '@tanstack/react-store',
-    packageDir: 'react-store',
-    srcDir: 'src',
-    builds: [
-      {
-        jsName: 'ReactLoaders',
-        entryFile: 'src/index.tsx',
-        globals: {
-          react: 'React',
-        },
-      },
-    ],
-  },
-  {
-    name: '@tanstack/router-core',
-    packageDir: 'router-core',
-    srcDir: 'src',
-    builds: [
-      {
-        jsName: 'RouterCore',
-        entryFile: 'src/index.ts',
-        globals: {},
-      },
-    ],
-  },
-  {
-    name: '@tanstack/loaders',
-    packageDir: 'loaders',
-    srcDir: 'src',
-    builds: [
-      {
-        jsName: 'LoadersCore',
-        entryFile: 'src/index.ts',
-        globals: {},
-      },
-    ],
-  },
-  {
-    name: '@tanstack/react-loaders',
-    packageDir: 'react-loaders',
-    srcDir: 'src',
-    builds: [
-      {
-        jsName: 'ReactLoaders',
-        entryFile: 'src/index.tsx',
-        globals: {
-          react: 'React',
-        },
-      },
-    ],
-  },
-  {
-    name: '@tanstack/actions',
-    packageDir: 'actions',
-    srcDir: 'src',
-    builds: [
-      {
-        jsName: 'ActionsCore',
-        entryFile: 'src/index.ts',
-        globals: {},
-      },
-    ],
-  },
-  {
-    name: '@tanstack/react-actions',
-    packageDir: 'react-actions',
-    srcDir: 'src',
-    builds: [
-      {
-        jsName: 'ReactActions',
-        entryFile: 'src/index.tsx',
-        globals: {
-          react: 'React',
-        },
-      },
-    ],
-  },
-  {
-    name: '@tanstack/router',
-    packageDir: 'router',
-    srcDir: 'src',
-    builds: [
-      {
-        jsName: 'Router',
-        entryFile: 'src/index.ts',
       },
     ],
   },
@@ -131,24 +41,6 @@ export const packages: Package[] = [
     ],
   },
   {
-    name: '@tanstack/react-start',
-    packageDir: 'react-start',
-    srcDir: 'src',
-    builds: [
-      {
-        jsName: 'TanStackStartReactClient',
-        entryFile: 'src/client.tsx',
-        globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
-      },
-      {
-        jsName: 'TanStackStartReactServer',
-        entryFile: 'src/server.tsx',
-        globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
-        externals: ['stream', 'util', 'react-dom', 'react', 'react-dom/server'],
-      },
-    ],
-  },
-  {
     name: '@tanstack/router-cli',
     packageDir: 'router-cli',
     srcDir: 'src',
@@ -161,6 +53,32 @@ export const packages: Package[] = [
         esm: false,
         umd: false,
         // externals: [(d) => console.log(d)],
+      },
+    ],
+  },
+  {
+    name: '@tanstack/react-cross-context',
+    packageDir: 'react-cross-context',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'ReactCrossContext',
+        entryFile: 'src/index.ts',
+      },
+    ],
+  },
+  {
+    name: '@tanstack/react-router-server',
+    packageDir: 'react-router-server',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'TanStackRouterServer',
+        entryFile: 'src/server.tsx',
+      },
+      {
+        jsName: 'TanStackRouterServerClient',
+        entryFile: 'src/client.tsx',
       },
     ],
   },

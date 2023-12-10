@@ -15,7 +15,7 @@ TanStack Router keeps this constant concept of relative navigation in mind for e
 
 ## Shared Navigation API
 
-Every navigation and route matching API in TanStack Router uses the same core interface with minor differences depending on the API. This means that you can learn navigation and route matching once and use the same syntax and concepts across the library, even in other frameworks!
+Every navigation and route matching API in TanStack Router uses the same core interface with minor differences depending on the API. This means that you can learn navigation and route matching once and use the same syntax and concepts across the library.
 
 ### `ToOptions` Interface
 
@@ -139,7 +139,7 @@ export type LinkPropsOptions<
 
 ### Absolute Links
 
-Let's make a simple static !
+Let's make a simple static link!
 
 ```tsx
 import { Link } from '@tanstack/react-router'
@@ -194,7 +194,7 @@ Search params are a great way to provide additional context to a route. For exam
 const link = (
   <Link
     to="/search"
-    searchParams={{
+    search={{
       query: 'tanstack',
     }}
   >
@@ -208,7 +208,7 @@ It's also common to want to update a single search param without supplying any o
 ```tsx
 const link = (
   <Link
-    searchParams={(prev) => ({
+    search={(prev) => ({
       ...prev,
       page: prev.page + 1,
     })}
@@ -282,7 +282,7 @@ export interface ActiveOptions {
   // If true, the link will only be active if the current URL hash matches the `hash` prop
   // Defaults to `false`
   includeHash?: boolean // Defaults to false
-  // If true, the link will only be active if the current URL search params inclusively match the `searchParams` prop
+  // If true, the link will only be active if the current URL search params inclusively match the `search` prop
   // Defaults to `true`
   includeSearch?: boolean
 }
@@ -329,6 +329,25 @@ A few more options to be aware of:
 - If you want to include the hash in your matching, you can pass the `includeHash: true` option
 - If you do **not** want to include the search params in your matching, you can pass the `includeSearch: false` option
 
+### Passing `isActive` to children
+
+The `Link` component accepts a function for its children, allowing you to propagate its `isActive` property to children. For example, you could style a child component based on whether the parent link is active:
+
+```tsx
+const link = (
+  <Link to="/blog/post">
+    {({ isActive }) => {
+      return (
+        <>
+          <span>My Blog Post</span>
+          <icon className={isActive ? 'active' : 'inactive'} />
+        </>
+      )
+    }}
+  </Link>
+)
+```
+
 ### Link Preloading
 
 The `Link` component supports automatically preloading routes on intent (hovering or touchstart for now). This can be configured as a default in the router options (which we'll talk more about soon) or by passing a `preload='intent'` prop to the `Link` component. Here's an example:
@@ -343,7 +362,7 @@ const link = (
 
 With preloading enabled and relatively quick asynchronous route dependencies (if any), this simple trick can increase the perceived performance of your application with very little effort.
 
-What's even better is that by using a cache-first library like `@tanstack/loaders` or `@tanstack/query`, preloaded routes will stick around and be ready for a stale-while-revalidate experience if if the user decides to navigate to the route later on.
+What's even better is that by using a cache-first library like `@tanstack/loaders` or `@tanstack/query`, preloaded routes will stick around and be ready for a stale-while-revalidate experience if the user decides to navigate to the route later on.
 
 ### Link Preloading Timeout
 
@@ -405,5 +424,65 @@ Think of the `Navigate` component as a way to navigate to a route immediately wh
 ## `router.navigate`
 
 The `router.navigate` method is the same as the `navigate` function returned by `useNavigate` and accepts the same [`NavigateOptions` interface](#navigateoptions-interface). Unlike the `useNavigate` hook, it is available anywhere your `router` instance is available and is thus a great way to navigate imperatively from anywhere in your application, including outside of your framework.
+
+## `useMatchRoute` and `<MatchRoute>`
+
+The `useMatchRoute` hook and `<MatchRoute>` component are the same thing, but the hook is a bit more flexible. They both accept the standard navigation `ToOptions` interface either as options or props and return `true/false` if that route is currently matched. It also has a handy `pending` option that will return `true` if the route is currently pending (e.g. a route is currently transitioning to that route). This can be extremely useful for showing optimistic UI around where a user is navigating:
+
+```tsx
+function Component() {
+  return (
+    <div>
+      <Link to="/users">
+        Users
+        <MatchRoute to="/users" pending>
+          <Spinner />
+        </MatchRoute>
+      </Link>
+    </div>
+  )
+}
+```
+
+The component version `<MatchRoute>` can also be used with a function as children to render something when the route is matched:
+
+```tsx
+function Component() {
+  return (
+    <div>
+      <Link to="/users">
+        Users
+        <MatchRoute to="/users" pending>
+          {(match) => {
+            return <Spinner show={match} />
+          }}
+        </MatchRoute>
+      </Link>
+    </div>
+  )
+}
+```
+
+The hook version `useMatchRoute` returns a function that can be called programmatically to check if a route is matched:
+
+```tsx
+function Component() {
+  const matchRoute = useMatchRoute()
+
+  useEffect(() => {
+    if (matchRoute({ to: '/users', pending: true })) {
+      console.log('The /users route is matched and pending')
+    }
+  })
+
+  return (
+    <div>
+      <Link to="/users">Users</Link>
+    </div>
+  )
+}
+```
+
+---
 
 Phew! That's a lot of navigating! That said, hopefully you're feeling pretty good about getting around your application now. Let's move on!

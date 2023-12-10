@@ -2,7 +2,7 @@ import path from 'path'
 import fs from 'fs-extra'
 import * as prettier from 'prettier'
 import { Config } from './config'
-import { cleanPath, trimPathLeft } from '@tanstack/router-core'
+import { cleanPath, trimPathLeft } from '@tanstack/react-router'
 
 let latestTask = 0
 export const rootPathId = '__root'
@@ -20,7 +20,6 @@ export type RouteNode = {
   isRoot?: boolean
   children?: RouteNode[]
   parent?: RouteNode
-  layoutLimit?: string
 }
 
 async function getRouteNodes(config: Config) {
@@ -33,7 +32,10 @@ async function getRouteNodes(config: Config) {
     let dirList = await fs.readdir(fullDir)
 
     dirList = dirList.filter((d) => {
-      if (d.startsWith('.') || d.startsWith(routeFileIgnorePrefix)) {
+      if (
+        d.startsWith('.') ||
+        (routeFileIgnorePrefix && d.startsWith(routeFileIgnorePrefix))
+      ) {
         return false
       }
 
@@ -55,15 +57,18 @@ async function getRouteNodes(config: Config) {
         } else {
           const filePath = path.join(dir, fileName)
           const filePathNoExt = removeExt(filePath)
-          let routePath = cleanPath(`/${filePathNoExt.split('.').join('/')}`)
+          let routePath =
+            replaceBackslash(
+              cleanPath(`/${filePathNoExt.split('.').join('/')}`),
+            ) ?? ''
           const variableName = fileToVariable(routePath)
 
           // Remove the index from the route path and
           // if the route path is empty, use `/'
-          if (routePath.endsWith('/index')) {
-            routePath = routePath.replace(/\/index$/, '/')
-          } else if (routePath === 'index') {
+          if (routePath === 'index') {
             routePath = '/'
+          } else if (routePath.endsWith('/index')) {
+            routePath = routePath.replace(/\/index$/, '/')
           }
 
           routeNodes.push({
@@ -112,6 +117,7 @@ export async function generator(config: Config) {
   }
 
   const start = Date.now()
+  const routePathIdPrefix = config.routeFilePrefix ?? ''
 
   let routeNodes = await getRouteNodes(config)
 
@@ -120,21 +126,23 @@ export async function generator(config: Config) {
     (d) => d.routePath?.split('/').length,
     (d) => (d.routePath?.endsWith('/') ? -1 : 1),
     (d) => d.routePath,
-  ]).filter((d) => d.routePath !== `/${rootPathId}`)
+  ]).filter((d) => d.routePath !== `/${routePathIdPrefix + rootPathId}`)
 
   const routeTree: RouteNode[] = []
 
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
   routeNodes.forEach((node) => {
-    routeNodes.forEach((existingNode) => {
-      if (
-        node.routePath?.startsWith(`${existingNode?.routePath ?? ''}/`)
-        // node.routePath.length > existingNode.routePath!.length
-      ) {
-        node.parent = existingNode
-      }
-    })
+    // routeNodes.forEach((existingNode) => {
+    //   if (
+    //     node.routePath?.startsWith(`${existingNode?.routePath ?? ''}/`)
+    //     // node.routePath.length > existingNode.routePath!.length
+    //   ) {
+    //     node.parent = existingNode
+    //   }
+    // })
+    const parentRoute = hasParentRoute(routeNodes, node.routePath)
+    if (parentRoute) node.parent = parentRoute
 
     node.path = node.parent
       ? node.routePath?.replace(node.parent.routePath!, '') || '/'
@@ -171,9 +179,14 @@ export async function generator(config: Config) {
       }
 
       // Ensure that new FileRoute(anything?) is replace with FileRoute(${node.routePath})
+      // routePath can contain $ characters, which have special meaning when used in replace
+      // so we have to escape it by turning all $ into $$. But since we do it through a replace call
+      // we have to double escape it into $$$$. For more information, see
+      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace#specifying_a_string_as_the_replacement
+      const escapedRoutePath = node.routePath?.replaceAll('$', '$$$$') ?? ''
       const replaced = routeCode.replace(
         fileRouteRegex,
-        `new FileRoute('${node.routePath}')`,
+        `new FileRoute('${escapedRoutePath}')`,
       )
 
       if (replaced !== routeCode) {
@@ -196,20 +209,25 @@ export async function generator(config: Config) {
   const routeConfigChildrenText = await buildRouteConfig(routeTree)
 
   const routeImports = [
-    `import { route as rootRoute } from './${path.relative(
-      path.dirname(config.generatedRouteTree),
-      path.resolve(config.routesDirectory, rootPathId),
+    `import { Route as rootRoute } from './${sanitize(
+      path.relative(
+        path.dirname(config.generatedRouteTree),
+        path.resolve(config.routesDirectory, routePathIdPrefix + rootPathId),
+      ),
     )}'`,
     ...multiSortBy(routeNodes, [
-      (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
+      (d) =>
+        d.routePath?.includes(`/${routePathIdPrefix + rootPathId}`) ? -1 : 1,
       (d) => d.routePath?.split('/').length,
       (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
       (d) => d,
     ]).map((node) => {
-      return `import { route as ${node.variableName}Route } from './${removeExt(
-        path.relative(
-          path.dirname(config.generatedRouteTree),
-          path.resolve(config.routesDirectory, node.filePath),
+      return `import { Route as ${node.variableName}Route } from './${sanitize(
+        removeExt(
+          path.relative(
+            path.dirname(config.generatedRouteTree),
+            path.resolve(config.routesDirectory, node.filePath),
+          ),
         ),
       )}'`
     }),
@@ -223,7 +241,7 @@ export async function generator(config: Config) {
           parentRoute: typeof ${routeNode.parent?.variableName ?? 'root'}Route
         }`
       })
-      .join('\n')}  
+      .join('\n')}
   }
 }`
 
@@ -237,9 +255,6 @@ export async function generator(config: Config) {
           `getParentRoute: () => ${
             routeNode.parent?.variableName ?? 'root'
           }Route`,
-          routeNode.layoutLimit
-            ? `layoutLimit: '${routeNode.layoutLimit}'`
-            : '',
           // `\n// ${JSON.stringify(
           //   {
           //     ...routeNode,
@@ -351,6 +366,44 @@ function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+function sanitize(s?: string) {
+  return replaceBackslash(s?.replace(/\\index/gi, ''))
+}
+
 function removeUnderscores(s?: string) {
   return s?.replace(/(^_|_$)/, '').replace(/(\/_|_\/)/, '/')
+}
+
+function replaceBackslash(s?: string) {
+  return s?.replace(/\\/gi, '/')
+}
+
+export function hasParentRoute(
+  routes: RouteNode[],
+  routeToCheck: string | undefined,
+): RouteNode | null {
+  if (!routeToCheck || routeToCheck === '/') {
+    return null
+  }
+
+  const sortedNodes = multiSortBy(routes, [
+    (d) => d.routePath!.length * -1,
+    (d) => d.variableName,
+  ]).filter((d) => d.routePath !== `/${rootPathId}`)
+
+  for (const route of sortedNodes) {
+    if (route.routePath === '/') continue
+
+    if (
+      routeToCheck.startsWith(`${route.routePath}/`) &&
+      route.routePath !== routeToCheck
+    ) {
+      return route
+    }
+  }
+  const segments = routeToCheck.split('/')
+  segments.pop() // Remove the last segment
+  const parentRoute = segments.join('/')
+
+  return hasParentRoute(routes, parentRoute)
 }

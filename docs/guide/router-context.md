@@ -15,7 +15,7 @@ These are just suggested uses of the router context. You can use it for whatever
 
 ## Typed Router Context
 
-Like everything else, the root router context is strictly typed. This type can be augmented via any route's `getContext` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `new RouteContext<YourContextTypeHere>()` class to create a new `routerContext` and then use the `routerContext.createRootRoute()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
+Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `new RouteContext<YourContextTypeHere>()` class to create a new `routerContext` and then use the `routerContext.rootRouteWithContext()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
 
 ```tsx
 import { RootRoute } from '@tanstack/react-router'
@@ -24,10 +24,8 @@ interface MyRouterContext {
   user: User
 }
 
-const routerContext = new RouterContext<MyRouterContext>()
-
 // Use the routerContext to create your root route
-const rootRoute = routerContext.createRootRoute({
+const rootRoute = rootRouteWithContext<MyRouterContext>()({
   component: App,
 })
 
@@ -121,7 +119,9 @@ interface MyRouterContext {
   queryClient: QueryClient
 }
 
-const routerContext = new RouterContext<MyRouterContext>()
+const rootRoute = rootRouteWithContext<MyRouterContext>()({
+  component: App,
+})
 
 const queryClient = new QueryClient()
 
@@ -162,9 +162,7 @@ interface MyRouterContext {
   foo: boolean
 }
 
-const routerContext = new RouterContext<MyRouterContext>()
-
-const rootRoute = routerContext.createRootRoute({
+const rootRoute = rootRouteWithContext<MyRouterContext>()({
   component: App,
 })
 
@@ -179,7 +177,7 @@ const userRoute = new Route({
   getRootRoute: () => rootRoute,
   path: 'admin',
   component: Todos,
-  getContext: () => {
+  beforeLoad: () => {
     return {
       bar: true,
     }
@@ -187,48 +185,6 @@ const userRoute = new Route({
   loader: ({ context }) => {
     context.foo // true
     context.bar // true
-  },
-})
-```
-
-## Unique Route Context
-
-In addition to the merged context, each route also has a unique context that is stored under the `routeContext` key. This context is not merged with the parent context. This means that you can attach unique data to each route's context. Here's an example using context to create some reusable React Query logic specific to a route:
-
-```tsx
-export const postIdRoute = new Route({
-  getParentRoute: () => postsRoute,
-  path: '$postId',
-  component: Post,
-  getContext: ({ context: { queryClient }, params: { postId } }) => {
-    const queryOptions = {
-      queryKey: ['posts', 'post', postId],
-      queryFn: () => fetchPostById(postId),
-    }
-
-    return {
-      queryOptions,
-      getTitle: () => `${queryClient.getQueryData(queryOptions)?.title} | Post`,
-    }
-  },
-  loader: async ({
-    preload,
-    context: { queryClient },
-    routeContext: { queryOptions },
-  }) => {
-    await queryClient.ensureQueryData(queryOptions)
-  },
-  component: ({ useRouteContext }) => {
-    const { queryOptions } = useRouteContext()
-
-    const { data } = useQuery(queryOptions)
-
-    return (
-      <div>
-        <h1>{data.title}</h1>
-        <p>{data.body}</p>
-      </div>
-    )
   },
 })
 ```

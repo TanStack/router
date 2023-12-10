@@ -1,5 +1,5 @@
-import { DeferredPromise, isDehydratedDeferred } from '@tanstack/router-core'
-import { useRouter } from './react'
+import { useRouter } from './RouterProvider'
+import { DeferredPromise, isDehydratedDeferred } from './defer'
 
 export type AwaitOptions<T> = {
   promise: DeferredPromise<T>
@@ -18,7 +18,7 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
   }
 
   if (state.status === 'pending') {
-    throw promise
+    throw new Promise((r) => setTimeout(r, 1)).then(() => promise)
   }
 
   if (state.status === 'error') {

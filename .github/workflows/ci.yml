@@ -34,6 +34,7 @@ jobs:
         run: |
           git config --global user.name 'Tanner Linsley'
           git config --global user.email 'tannerlinsley@users.noreply.github.com'
+          npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
           pnpm cipublish
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}

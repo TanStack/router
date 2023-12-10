@@ -48,3 +48,4 @@ ts-perf
 .netlify
 
 nx-cloud.env
+.vscode

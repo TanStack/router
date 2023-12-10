@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-devtools",
   "author": "Tanner Linsley",
-  "version": "0.0.1-beta.174",
+  "version": "0.0.1-beta.248",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router/",
@@ -15,7 +15,6 @@
   "keywords": [
     "react",
     "location",
-    "@tanstack/router",
     "router",
     "routing",
     "async",

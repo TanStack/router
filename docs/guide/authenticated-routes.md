@@ -13,15 +13,15 @@ The `beforeLoad` function runs in relative order to these other route loading fu
 
 - Route Matching (Top-Down)
   - `route.parseParams`
-  - `route.validateSearchParams`
+  - `route.validateSearch`
 - Route Loading (including Preloading)
   - **`route.beforeLoad`**
   - `route.onError`
 - Route Loading (Parallel)
   - `route.component.preload?`
-  - `route.loader`
+  - `route.load`
 
-**It's important to know that the `beforeLoad` function for a route is called _before any of it's child routes' `beforeLoad` functions_.** It is essentially a middleware function for the route and all of it's children.
+**It's important to know that the `beforeLoad` function for a route is called _before any of its child routes' `beforeLoad` functions_.** It is essentially a middleware function for the route and all of its children.
 
 **If you throw an error in `beforeLoad`, none of its children will attempt to load**.
 
@@ -32,7 +32,7 @@ While not required, some authentication flows require redirecting to a login pag
 ```tsx
 const authenticatedRoute = new Route({
   id: 'authenticated',
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     if (!isAuthenticated()) {
       throw redirect({
         to: '/login',
@@ -40,7 +40,7 @@ const authenticatedRoute = new Route({
           // Use the current location to power a redirect after login
           // (Do not use `router.state.resolvedLocation` as it can
           // potentially lag behind the actual current location)
-          redirect: router.state.location.href,
+          redirect: location.href,
         },
       })
     }

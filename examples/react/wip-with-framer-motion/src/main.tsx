@@ -12,17 +12,10 @@ import {
   useMatch,
   useRouterState,
   useMatches,
+  rootRouteWithContext,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
-import {
-  LoaderClient,
-  Loader,
-  LoaderClientProvider,
-  typedClient,
-  useLoaderInstance,
-  createLoaderOptions,
-} from '@tanstack/react-loaders'
 
 type PostType = {
   id: string
@@ -69,12 +62,6 @@ const loaderClient = new LoaderClient({
   loaders: [postsLoader, postLoader],
 })
 
-declare module '@tanstack/react-loaders' {
-  interface Register {
-    loaderClient: typeof loaderClient
-  }
-}
-
 export const mainTransitionProps = {
   initial: { y: -20, opacity: 0, position: 'absolute' },
   animate: { y: 0, opacity: 1, damping: 5 },
@@ -97,14 +84,12 @@ export const postTransitionProps = {
   },
 } as const
 
-const routerContext = new RouterContext<{
+const rootRoute = rootRouteWithContext<{
   loaderClient: typeof loaderClient
-}>()
-
-const rootRoute = routerContext.createRootRoute({
+}>()({
   component: () => {
     const matches = useMatches()
-    const match = useMatch()
+    const match = useMatch({ strict: false })
     const nextMatchIndex = matches.findIndex((d) => d.id === match.id) + 1
     const nextMatch = matches[nextMatchIndex]
     // const routerState = useRouterState()
@@ -158,6 +143,9 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
+  beforeLoad: () => ({
+    test: true,
+  }),
   loader: async ({ context: { loaderClient } }) => {
     await loaderClient.load({ key: 'posts' })
   },
@@ -209,7 +197,7 @@ class NotFoundError extends Error {}
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  getContext: ({ params: { postId } }) => {
+  beforeLoad: ({ params: { postId } }) => {
     const loaderOptions = createLoaderOptions({
       key: 'post',
       variables: postId,
@@ -219,11 +207,7 @@ const postRoute = new Route({
       loaderOptions,
     }
   },
-  loader: async ({
-    context: { loaderClient },
-    routeContext: { loaderOptions },
-    preload,
-  }) => {
+  loader: async ({ context: { loaderClient, loaderOptions }, preload }) => {
     await loaderClient.load({ ...loaderOptions, preload })
   },
   errorComponent: ({ error }) => {

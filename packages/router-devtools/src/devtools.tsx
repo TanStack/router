@@ -1,15 +1,12 @@
 import React from 'react'
 import {
-  last,
-  routerContext,
   invariant,
   AnyRouter,
-  useStore,
   Route,
   AnyRoute,
   AnyRootRoute,
-  RouteMatch,
   trimPath,
+  useRouter,
   useRouterState,
 } from '@tanstack/react-router'
 
@@ -342,16 +339,16 @@ export function TanStackRouterDevtools({
                     right: '0',
                   }
                 : position === 'top-left'
-                ? {
-                    left: '0',
-                  }
-                : position === 'bottom-right'
-                ? {
-                    right: '0',
-                  }
-                : {
-                    left: '0',
-                  }),
+                  ? {
+                      left: '0',
+                    }
+                  : position === 'bottom-right'
+                    ? {
+                        right: '0',
+                      }
+                    : {
+                        left: '0',
+                      }),
               ...closeButtonStyle,
             }}
           >
@@ -386,19 +383,19 @@ export function TanStackRouterDevtools({
                   right: '0',
                 }
               : position === 'top-left'
-              ? {
-                  top: '0',
-                  left: '0',
-                }
-              : position === 'bottom-right'
-              ? {
-                  bottom: '0',
-                  right: '0',
-                }
-              : {
-                  bottom: '0',
-                  left: '0',
-                }),
+                ? {
+                    top: '0',
+                    left: '0',
+                  }
+                : position === 'bottom-right'
+                  ? {
+                      bottom: '0',
+                      right: '0',
+                    }
+                  : {
+                      bottom: '0',
+                      left: '0',
+                    }),
             ...toggleButtonStyle,
           }}
         >
@@ -412,22 +409,21 @@ export function TanStackRouterDevtools({
 function RouteComp({
   route,
   isRoot,
-  router,
   activeRouteId,
-  activeMatchId,
   setActiveRouteId,
-  setActiveMatchId,
 }: {
   route: AnyRootRoute | AnyRoute
   isRoot?: boolean
-  router: AnyRouter
   activeRouteId: string | undefined
-  activeMatchId: string | undefined
   setActiveRouteId: (id: string) => void
-  setActiveMatchId: (id: string) => void
 }) {
-  const matches = Object.values(router.state.matchesById)
-  const match = router.state.matches.find((d) => d.routeId === route.id)
+  const routerState = useRouterState()
+  const matches =
+    routerState.status === 'pending'
+      ? routerState.pendingMatches ?? []
+      : routerState.matches
+
+  const match = routerState.matches.find((d) => d.routeId === route.id)
 
   return (
     <div>
@@ -437,7 +433,6 @@ function RouteComp({
         onClick={() => {
           if (match) {
             setActiveRouteId(activeRouteId === route.id ? '' : route.id)
-            setActiveMatchId(match.id)
           }
         }}
         style={{
@@ -461,7 +456,7 @@ function RouteComp({
               fontWeight: 'bold',
               borderRadius: '100%',
               transition: 'all .2s ease-out',
-              background: getRouteStatusColor(matches, route, theme, router),
+              background: getRouteStatusColor(matches, route, theme),
               opacity: match ? 1 : 0.3,
             }}
           />
@@ -496,11 +491,8 @@ function RouteComp({
               <RouteComp
                 key={r.id}
                 route={r}
-                router={router}
                 activeRouteId={activeRouteId}
-                activeMatchId={activeMatchId}
                 setActiveRouteId={setActiveRouteId}
-                setActiveMatchId={setActiveMatchId}
               />
             ))}
         </div>
@@ -521,15 +513,20 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     ...panelProps
   } = props
 
-  const routerContextValue = React.useContext(routerContext)
-  const router = userRouter ?? routerContextValue
+  const router = useRouter()
+  const routerState = useRouterState()
+
+  const matches = [
+    ...(routerState.pendingMatches ?? []),
+    ...routerState.matches,
+  ]
 
   invariant(
     router,
     'No router was found for the TanStack Router Devtools. Please place the devtools in the <RouterProvider> component tree or pass the router instance to the devtools manually.',
   )
 
-  useStore(router.__store)
+  // useStore(router.__store)
 
   const [showMatches, setShowMatches] = useLocalStorage(
     'tanstackRouterDevtoolsShowMatches',
@@ -540,36 +537,28 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     'tanstackRouterDevtoolsActiveRouteId',
     '',
   )
-  const [activeMatchId, setActiveMatchId] = useLocalStorage(
-    'tanstackRouterDevtoolsActiveMatchId',
-    '',
-  )
 
   const activeMatch = React.useMemo(
-    () =>
-      router.state.matchesById[activeRouteId as any] ||
-      router.state.matchesById[activeMatchId as any],
-    [activeRouteId, activeMatchId],
+    () => matches.find((d) => d.routeId === activeRouteId),
+    [matches, activeRouteId],
   )
 
-  const hasSearch = Object.keys(router.state.location.search || {}).length
+  const hasSearch = Object.keys(routerState.location.search || {}).length
 
-  const preloadMatches = Object.values(router.state.matchesById).filter(
-    (match) => {
-      return (
-        !router.state.matchIds.includes(match.id) &&
-        !router.state.pendingMatchIds.includes(match.id)
-      )
-    },
-  )
+  // const preloadMatches = matches.filter((match) => {
+  //   return (
+  //     !state.matchIds.includes(match.id) &&
+  //     !state.pendingMatchIds.includes(match.id)
+  //   )
+  // })
 
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      router.cleanMatches()
-    }, 1000)
+  // React.useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     router.cleanMatches()
+  //   }, 1000)
 
-    return () => clearInterval(interval)
-  }, [router])
+  //   return () => clearInterval(interval)
+  // }, [router])
 
   return (
     <ThemeProvider theme={theme}>
@@ -720,6 +709,60 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 display: 'flex',
                 alignItems: 'center',
                 gap: '.5rem',
+                fontWeight: 'bold',
+              }}
+            >
+              Pathname{' '}
+              {routerState.location.maskedLocation ? (
+                <div
+                  style={{
+                    padding: '.1rem .5rem',
+                    background: theme.warning,
+                    color: 'black',
+                    borderRadius: '.5rem',
+                  }}
+                >
+                  Masked
+                </div>
+              ) : null}
+            </div>
+            <div
+              style={{
+                padding: '.5rem',
+                display: 'flex',
+                gap: '.5rem',
+                alignItems: 'center',
+              }}
+            >
+              <code
+                style={{
+                  opacity: 0.6,
+                }}
+              >
+                {routerState.location.pathname}
+              </code>
+              {routerState.location.maskedLocation ? (
+                <code
+                  style={{
+                    color: theme.warning,
+                    fontWeight: 'bold',
+                  }}
+                >
+                  {routerState.location.maskedLocation.pathname}
+                </code>
+              ) : null}
+            </div>
+            <div
+              style={{
+                padding: '.5em',
+                background: theme.backgroundAlt,
+                position: 'sticky',
+                top: 0,
+                zIndex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '.5rem',
+                fontWeight: 'bold',
               }}
             >
               <button
@@ -761,16 +804,16 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             {!showMatches ? (
               <RouteComp
                 route={router.routeTree}
-                router={router}
                 isRoot
                 activeRouteId={activeRouteId}
-                activeMatchId={activeMatchId}
                 setActiveRouteId={setActiveRouteId}
-                setActiveMatchId={setActiveMatchId}
               />
             ) : (
               <div>
-                {router.state.matches.map((match, i) => {
+                {(routerState.status === 'pending'
+                  ? routerState.pendingMatches ?? []
+                  : routerState.matches
+                ).map((match, i) => {
                   return (
                     <div
                       key={match.routeId || i}
@@ -798,7 +841,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                           width: '1.3rem',
                           height: '1.3rem',
                           marginLeft: '.25rem',
-                          background: getStatusColor(match, theme, router),
+                          background: getStatusColor(match, theme),
                           alignItems: 'center',
                           justifyContent: 'center',
                           fontWeight: 'bold',
@@ -821,7 +864,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               </div>
             )}
           </div>
-          {preloadMatches?.length ? (
+          {/* {preloadMatches?.length ? (
             <div
               style={{
                 flex: '1 1 auto',
@@ -839,6 +882,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   display: 'flex',
                   alignItems: 'center',
                   gap: '.5rem',
+                  fontWeight: 'bold',
                 }}
               >
                 Preloaded Matches
@@ -871,7 +915,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                         width: '1.3rem',
                         height: '1.3rem',
                         marginLeft: '.25rem',
-                        background: getStatusColor(match, theme, router),
+                        background: getStatusColor(match, theme),
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 'bold',
@@ -892,7 +936,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 )
               })}
             </div>
-          ) : null}
+          ) : null} */}
         </div>
         {activeMatch ? (
           <ActivePanel>
@@ -971,6 +1015,33 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 Reload
               </Button>
             </div> */}
+            {activeMatch.loaderData ? (
+              <>
+                <div
+                  style={{
+                    background: theme.backgroundAlt,
+                    padding: '.5em',
+                    position: 'sticky',
+                    top: 0,
+                    bottom: 0,
+                    zIndex: 1,
+                  }}
+                >
+                  Loader Data
+                </div>
+                <div
+                  style={{
+                    padding: '.5em',
+                  }}
+                >
+                  <Explorer
+                    label="loaderData"
+                    value={activeMatch.loaderData}
+                    defaultExpanded={{}}
+                  />
+                </div>
+              </>
+            ) : null}
             <div
               style={{
                 background: theme.backgroundAlt,
@@ -1016,6 +1087,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 top: 0,
                 bottom: 0,
                 zIndex: 1,
+                fontWeight: 'bold',
               }}
             >
               Search Params
@@ -1026,9 +1098,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               }}
             >
               <Explorer
-                value={router.state.location.search || {}}
+                value={routerState.location.search || {}}
                 defaultExpanded={Object.keys(
-                  (router.state.location.search as {}) || {},
+                  (routerState.location.search as {}) || {},
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj

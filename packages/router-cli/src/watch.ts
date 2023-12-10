@@ -5,7 +5,7 @@ import { generator } from './generator'
 
 export async function watch() {
   const configWatcher = chokidar.watch(
-    path.resolve(process.cwd(), 'tsr.config.js'),
+    path.resolve(process.cwd(), 'tsr.config.json'),
   )
 
   let watcher = new chokidar.FSWatcher({})
@@ -15,7 +15,7 @@ export async function watch() {
 
     watcher.close()
 
-    console.log(`TSR: Watching routes (${config.routesDirectory})...`)
+    console.info(`TSR: Watching routes (${config.routesDirectory})...`)
     watcher = chokidar.watch(config.routesDirectory)
 
     watcher.on('ready', async () => {
@@ -24,7 +24,7 @@ export async function watch() {
           await generator(config)
         } catch (err) {
           console.error(err)
-          console.log()
+          console.info()
         }
       }
 

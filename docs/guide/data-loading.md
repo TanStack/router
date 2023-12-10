@@ -5,83 +5,29 @@ title: Data Loading
 
 Data loading is a common concern for web applications and is extremely related to routing. When loading any page for your app, it's ideal if all of the async requirements for those routes are fetched and fulfilled as early as possible and in parallel. The router is the best place to coordinate all of these async dependencies as it's usually the only place in your app that knows about where users are headed before content is rendered.
 
-You may be familiar with `getServerSideProps` from Next.js or `loaders` from Remix/React-Router. TanStack Router is designed with similar functionality to preload assets on a per-route basis in parallel and optionally store and retrieve it in your components as well.
+You may be familiar with `getServerSideProps` from Next.js or `loader`s from Remix/React-Router. TanStack Router is designed with similar functionality to preload/load assets on a per-route basis in parallel allowing React to render as quickly as possible as it fetches via suspense.
 
-## TanStack Router's data loading lifecycle
+## The route loading lifecycle
 
-Most application routers, if they support route loading at all, will fetch data for **new routes matches** as they enter the application during navigation. Consider the following navigation flow:
+Every time a URL/history update is detected, the router the following sequence is executed:
 
-- The user lands in your app on the `/posts/123` pathname.
-  - The following route structure is matched
-    - /
-      - posts
-        - $postId
-  - All of the loaders for all three routes for `/`, `/posts` and `/posts/$postId` load in parallel:
-    - **Load** `/`
-    - **Load** `/posts`
-    - **Load** `/posts/$postId` (with `postId` === `123`)
-- The user navigates to the `/posts/456` pathname
-  - The following route structure is matched
-    - /
-      - posts
-        - $postId
-  - The `/` and `/posts` loaders are skipped because they have already been loaded.
-  - The `$postId` match detects a change in params to `456` and the following loaders are called:
-    - **Load** `/posts/$postId` (with `postId` === `123`)
-- The user navigates to the `/` pathname
-  - The following route structure is matched
-    - /
-  - The `/` loader is skipped because it has already been loaded.
-- The user navigates to the `/posts` pathname
-  - The following route structure is matched
-    - /
-      - posts
-  - The `/` loader is skipped because it has already been loaded.
-  - The `/posts` match is detected as new and the following loaders are called:
-    - **Load** `/posts`
+- Route Matching (Top-Down)
+  - `route.parseParams`
+  - `route.validateSearch`
+- Route Pre-Loading (Serial)
+  - `route.beforeLoad`
+  - `route.onError`
+- Route Loading (Parallel)
+  - `route.component.preload?`
+  - `route.loader`
 
-From the flow above, you'll notice that
+## No Caching
 
-- Route matches are, **by default, identified by their path params**
-- Once a unique match is loaded, **by default, it is cached for `Infinity` until it is no longer in use (or invalidated)**
-- When a route match is no longer in use, **by default, it is garbage collected immediately**.
+While TanStack Router **does provide short-term caching of loader data that may persist between navigations**, it **does not provide long-term loader data caching out of the box**. To aid with this frequent requirement, we have designed TanStack Router to work extremely well with data caches like TanStack Query, SWR, etc.\*\*
 
-## Atomic Defaults, Stale-While-Revalidate Capabilities
+## Route `loader`s
 
-Defaults are what make tools great, but as you might have guessed, there are plenty of ways to configure route match caching and garbage collection. Let's go over some concepts and terminology.
-
-- `maxAge` - The maximum amount of time in milliseconds a route match should be considered "fresh". Defaults to `Infinity`.
-- `gcMaxAge` - The amount of time in milliseconds an **unused/inactive** route match will be held in memory before it is garbage collected. Defaults to `0`.
-- `preloadMaxAge` - The amount of time in milliseconds an **unused/preloaded** route match will be held in memory before it is garbage collected. Defaults to `10_000`.
-
-## Caching
-
-Similar to TanStack Query, TanStack Router has some awesome caching utilities built-in, but **contrary to Query, Router has the following defaults**:
-
-- `maxAge: Infinity`
-- `gcMaxAge: 0`
-
-This means that, **by default, all route matches are cached forever until they are no longer in use at which point they are garbage collected immediately**. This is a great default for most applications using the router as a data fetcher since it compliments nested routing patterns and meets the user at their expectations that **only the parts of the screen change will be loaded**. These options can be changed though!
-
-## Route Caching Options
-
-The following options can modify the caching behavior of a route match:
-
-- `maxAge`
-- `gcMaxAge`
-- `preloadMaxAge`
-
-## Router-wide Caching Options
-
-The following options can modify the default behavior of all route matches:
-
-- `defaultMaxAge`
-- `defaultGcMaxAge`
-- `defaultPreloadMaxAge`
-
-## Route Loaders
-
-Route loaders are functions that are called when a route match is loaded. They are called with a single parameter which is an object containing many helpful properties. We'll go over those in a bit, but first, let's look at an example of a route loader:
+Route `loader` functions are called when a route match is loaded. They are called with a single parameter which is an object containing many helpful properties. We'll go over those in a bit, but first, let's look at an example of a route `loader` function:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
@@ -89,93 +35,136 @@ import { Route } from '@tanstack/react-router'
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  loader: async () => {
-    // Load our posts
-    const res = await fetch(`/api/posts`)
-    if (!res.ok) throw new Error('Failed to fetch posts')
-    return res.json()
-  },
+  loader: () => fetchPosts(),
 })
 ```
-
-The data returned from the loader is stored in a unique `RouteMatch` that is identified by the route's `fullPath` and optionally, the result of the `routeOptions.key` function, which can optionally be used to help uniquely identify a route match. This is useful for routes that have the same `fullPath` but different `search` or `context` values, e.g. `/posts?page=1` and `/posts?page=2`. In the case above, the pathName is sufficient to uniquely identify the route, so we pass `key: null` to disable the `key` function.
 
 ## `loader` Parameters
 
 The `loader` function receives a single object with the following properties:
 
-- `params` - The route's parsed path params
-- `search` - The route's search query, parsed, validated and typed **including** inherited search params from parent routes
-- `routeSearch` - The route's search query, parsed, validated and typed **excluding** inherited search params from parent routes
-- `hash` - The route's hash
-- `context` - The route's context object **including** inherited context from parent routes
-- `routeContext` - The route's context object, **excluding** inherited context from parent routes
-- `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the `loader` call becomes outdated.
+- `params` - The route's path params
+- `search` - The route's search params
+- `context` - The route's context object, which is a merged union of:
+  - Parent route context
+  - This route's context as provided by the `beforeLoad` option
+- `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the Route is no longer relevant and the current invocation of the `loader` function becomes outdated.
+- `navigate` - A function that can be used to navigate to a new location
+- `location` - The current location
+- `cause` - The cause of the current route match, either `enter` or `stay`.
 
 Using these parameters, we can do a lot of cool things. Let's take a look at a few examples
 
-## Using Path Params
+Before we get into using the `loader` function, let's take a look at how we can control if and when the `loader` function is called.
 
-The `params` property of the `loader` function is an object containing the route's path params.
+## Controlling when the `loader` function is called
+
+Similar to TanStack Query, TanStack router's defaults err on the side of frequently calling `loader` functions so as to keep your data as up to date as possible. Without knowing much about the nature of your data, this is the safest "route" we can take.
+
+This means that your routes' `beforeLoad` and `loader` function will **by default** be called at the speed at which the URL changes. This includes:
+
+- User Navigation
+- History Back/Forward Actions
+- History Push/Replace Actions
+- Search Parameter updates
+- Hash updates
+
+**If you chose to store your data in short-term caching with TanStack Router, you will likely want to opt-out of some of these updates.** There are a few ways you can do this which we'll cover in the next section.
+
+**If you chose to store your data in a long-term cache, like the one in TanStack Query, the default frequent updates will be beneficial to you**. They will ensure that your external cache is aware of every attempt to load the data and the expectations of the data's freshness.
+
+## Opting out `loader` calls with the `shouldReload` option
+
+First, let's establish a very important design decision of TanStack Router: **The `loader` function will always be called at least once when a route **enters** as a new match. There is no way to opt-out of this initial call.**
+
+That said, if you're storing your data in TanStack Router using route loaders, calling the `loader` function again and frequently may be unnecessary or expensive. To opt-out of subsequent `loader` calls, you can use the `shouldReload` option.
+
+This option can be configured as:
+
+- `false` - Never reload the route after the initial `enter` lifecycle.
+- A function that returns `true` or `false` denoting whether or not the route should be reloaded
+- A function that returns a serializable object, usually an array or object of dependencies, that, when changed from navigation to navigation, will cause the route to reload. These dependencies are compared using a deep equality check.
+
+For example, let's opt out of reloading a list of posts in the `/posts` route if/when the user navigates between sub posts on the `/posts/$postId` route:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const postRoute = new Route({
-  getParentPath: () => postsRoute,
-  path: '$postId',
-  loader: ({ params: { postId } }) => {
-    const res = await fetch(`/api/posts/${postId}`)
-    if (!res.ok) throw new Error('Failed to fetch posts')
-    return res.json()
-  },
-})
-```
-
-## Using Search Params
-
-The `search` and `routeSearch` properties of the `loader` function are objects containing the route's search params. `search` contains _all_ of the search params including parent search params. `routeSearch` only includes specific search params from this route. In this example, we'll use zod to validate and parse the search params for `/posts/$postId` route, then use them in our loader.
-
-```tsx
-import { Route } from '@tanstack/react-router'
-
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  key: ({ search }) => search.pageIndex,
-  validateSearch: z.object({
-    pageIndex: z.number().int().nonnegative().catch(0),
-  }),
-  loader: async ({ search: { pageIndex } }) => {
-    const res = await fetch(`/api/posts?page=${pageIndex}`)
-    if (!res.ok) throw new Error('Failed to fetch posts')
-    return res.json()
-  },
+  loader: () => fetchPosts(),
+  shouldReload: false,
 })
 ```
 
-## Using Context
+By passing `false` to the `shouldReload` option, we are telling the router to never reload the `/posts` route after the initial `enter` lifecycle. This means that if the user navigates to `/posts` from `/about`, the `loader` function will be called. If the user then navigates to `/posts/$postId`, the `loader` function will not be called.
 
-The `context` and `routeContext` properties of the `loader` function are objects containing the route's context. `context` is the context object for the route including context from parent routes. `routeContext` is the context object for the route excluding context from parent routes. In this example, we'll create a function in our route context to fetch posts, then use it in our loader.
+### Using a function that returns dependencies to opt-out of `loader` calls
 
-> 🧠 Context is a powerful tool for dependency injection. You can use it to inject services, loaders, and other objects into your router and routes. You can also additively pass data down the route tree at every route using a route's `getContext` option.
+Imagine our `/posts` route supports some pagination via search params `offset` and `limit`. We may only want to reload the route when those search params change. We can do this by passing a function that returns an array of dependencies to the `shouldReload` option:
+
+```tsx
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  loader: ({ search: { offset, limit } }) =>
+    fetchPosts({
+      offset,
+      limit,
+    }),
+  shouldReload: ({ search: { offset, limit } }) => [offset, limit],
+})
+```
+
+In this example, the `loader` function will be called:
+
+- On initial `enter` lifecycle
+- On navigations when the `offset` or `limit` search params change
+
+### Achieving short-term Stale-While-Revalidate caching with `shouldReload`
+
+While TanStack Router does not provide long-term caching out of the box, it does provide short-term caching that can be used to achieve a Stale-While-Revalidate pattern for routes that stay matched between navigations. We can do this by passing a function that returns dependencies that change at the frequency at which we want to revalidate the route's data. For example, let's say we want to revalidate the `/posts` route's data every 10 seconds:
+
+```tsx
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  loader: () => fetchPosts(),
+  shouldReload: () => [Date.now() / 10_000],
+})
+```
+
+By passing a function that returns the current time divided by 10,000, we are telling the route loader that its dependencies have changed every 10 seconds. This doesn't mean the loader will forcibly reload every 10 seconds on its own, but it does mean that after at least 10 seconds, the route will be reloaded the next time a navigation occurs, or the URL changes.
+
+While not as robust as a long-term cache, this simple pattern can get you 90% of the way there for many use cases.
+
+Regardless of how you configure `shouldReload`, `beforeLoad` and `loader` should always be prepared to depupe, opt-out and/or cancel any async operations that are no longer relevant. This is especially important for loaders that make expensive network requests.
+
+## Using Router Context
+
+The `context` argument passed to the `loader` function is an object containing a merged union of:
+
+- Parent route context
+- This route's context as provided by the `beforeLoad` option
+
+Starting at the very top of the router, you can pass an initial context to the router via the `context` option. This context will be available to all routes in the router and get copied and extended by each route as they are matched. This happens by passing a context to a route via the `beforeLoad` option. This context will be available to all child routes of the route. The resulting context will be available to the route's `loader` function.
+
+In this example, we'll create a function in our route context to fetch posts, then use it in our `loader` function.
+
+> 🧠 Context is a powerful tool for dependency injection. You can use it to inject services, hooks, and other objects into your router and routes. You can also additively pass data down the route tree at every route using a route's `beforeLoad` option.
 
 ```tsx
 import { Route } from '@tanstack/react-router'
 
 const fetchPosts = async () => {
   const res = await fetch(`/api/posts?page=${pageIndex}`)
-    if (!res.ok) throw new Error('Failed to fetch posts')
-    return res.json()
+  if (!res.ok) throw new Error('Failed to fetch posts')
+  return res.json()
 }
 
-// Create a new routerContext using new RouterContext<{...}>() class and pass it whatever types you would like to be available in your router context.
-const routerContext = new RouterContext<{
+// Create a new routerContext using new rootRouteWithContext<{...}>() function and pass it whatever types you would like to be available in your router context.
+const rootRoute = rootRouteWithContext<{
   fetchPosts: typeof fetchPosts
-}>()
-
-// Then use the same routerContext to create your root route
-const rootRoute = routerContext.createRootRoute()
+}>()() // NOTE: the double call is on purpose, since rootRouteWithContext is a factory ;)
 
 // Notice how our postsRoute references context to get our fetchPosts function
 // This can be a powerful tool for dependency injection across your router
@@ -183,7 +172,7 @@ const rootRoute = routerContext.createRootRoute()
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  loader({ context: { fetchPosts } }) => fetchPosts(),
+  loader: ({ context: { fetchPosts } }) => fetchPosts(),
 })
 
 const routeTree = rootRoute.addChildren([postsRoute])
@@ -199,6 +188,64 @@ const router = new Router({
 })
 ```
 
+## Using Path Params
+
+To use path params in your `loader` function, access them via the `params` property on the function's parameters. Here's an example:
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
+const postRoute = new Route({
+  getParentPath: () => postsRoute,
+  path: '$postId',
+  loader: ({ params: { postId } }) => fetchPostById(postId),
+})
+```
+
+## Using Route Context
+
+Passing down global context to your router is great, but what if you want to provide context that is specific to a route? This is where the `beforeLoad` option comes in. The `beforeLoad` option is a function that runs right before attempting to load a route and receives the same `loader` function parameters. Beyond its ability to redirect potential matches, it can also return an object that will be merged into the route's context. Let's take a look at an example where we provide `fetchPosts` to our route context via the `beforeLoad` option:
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  // Pass the fetchPosts function to the route context
+  beforeLoad: () => ({
+    fetchPosts: () => {
+      // ...
+    },
+  }),
+  loader: ({ context: { fetchPosts } }) => fetchPosts(),
+})
+```
+
+## Using Search Params
+
+> ⚠️ Using search params in loaders is likely indication that you should also be uniquely identifying your routes with a unique `key` option. This is because search params are not used in the default matchID that is used to uniquely identify route matches . This means that if you have two routes with the same path but different search params, they will be considered the same route and will not be reloaded when the search params change. This is usually not the desired behavior.
+
+Search parameters can be accessed via the `beforeLoad` and `loader` functions. The `search` property provided to these functions contains _all_ of the search params including parent search params. In this example, we'll use zod to validate and parse the search params for the `/posts` route that uses pagination, then use them in our `loader` function.
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  // Use zod to validate and parse the search params
+  validateSearch: z.object({
+    offset: z.number().int().nonnegative().catch(0),
+  }),
+  // Use the offset from context in the loader function
+  loader: async ({ search: { offset } }) =>
+    fetchPosts({
+      offset,
+    }),
+})
+```
+
 ## Using the Abort Signal
 
 The `abortController` property of the `loader` function is an [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController). Its signal is cancelled when the route is unloaded or when the `loader` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change. Here is an example using it with a fetch call:
@@ -209,66 +256,17 @@ import { Route } from '@tanstack/react-router'
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  loader: ({ abortController }) => {
-    const res = await fetch(`/api/posts?page=${pageIndex}`, {
+  loader: ({ abortController }) =>
+    fetchPosts({
+      // Pass this to an underlying fetch call or anything that supports signals
       signal: abortController.signal,
-    })
-    if (!res.ok) throw new Error('Failed to fetch posts')
-    return res.json()
-  },
+    }),
 })
 ```
 
 ## Using the `preload` flag
 
-The `preload` property of the `loader` function is a boolean which is `true` when the route is being preloaded instead of loaded. Some data loading libraries may handle preloading differently than a standard fetch, so you may want to pass `preload` to your data loading library, or use it to execute the appropriate data loading logic. Here is an example using TanStack Loaders and its built-in `preload` flag:
-
-```tsx
-import { Route } from '@tanstack/react-router'
-
-// Create a new loader
-const postsLoader = new Loader({
-  key: 'posts',
-  fn: async (params) => {
-    const res = await fetch(`/api/posts`)
-    if (!res.ok) throw new Error('Failed to fetch posts')
-    return res.json()
-  },
-})
-
-// Create a new loader client
-const loaderClient = new LoaderClient({
-  loaders: [postsLoader],
-})
-
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
-  loader: async ({ preload }) => {
-    // Passing the preload flag to the loader client
-    // will enforce slightly different caching behavior
-    // in TanStack Loaders caching logic
-    await loaderClient.load({ key: 'posts', preload })
-  },
-  component: ({ useLoader }) => {
-    const { data: posts } = useLoaderInstance({ key: 'posts' })
-
-    return <div>...</div>
-  },
-})
-```
-
-## Retrieving Loader Data
-
-The data returned from the loader can be retrieved a few different ways:
-
-- The `props.useLoader` hook
-- The `route.useLoader` hook
-- The `useLoader` hook
-
-Each is available to allow access to the loader data at different contexts and are in order from simplest to most flexible.
-
-Let's retrieve the data from our loader using the `props.useLoader` hook:
+The `preload` property of the `loader` function is a boolean which is `true` when the route is being preloaded instead of loaded. Some data loading libraries may handle preloading differently than a standard fetch, so you may want to pass `preload` to your data loading library, or use it to execute the appropriate data loading logic:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
@@ -276,110 +274,9 @@ import { Route } from '@tanstack/react-router'
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  loader: async () => {
-    // ...
-  },
-  component: ({ useLoader }) => {
-    const posts = useLoader()
-    return <div>...</div>
-  },
+  loader: async ({ preload }) =>
+    fetchPosts({
+      maxAge: preload ? 10_000 : 0, // Preloads should hang around a bit longer
+    }),
 })
-```
-
-## Stale-While-Revalidate
-
-By manipulating the `maxAge` option, we can create a stale-while-revalidate pattern for our route matches and their loaders. This is useful for routes that may have frequently changing data caused by external events. Let's take a look at an example:
-
-```tsx
-import { Route } from '@tanstack/react-router'
-
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
-  loader: async () => {
-    // Load our posts
-    const res = await fetch(`/api/posts`)
-    if (!res.ok) throw new Error('Failed to fetch posts')
-    return res.json()
-  },
-  maxAge: 10_000,
-})
-```
-
-This route's `maxAge` is set to `10_000` milliseconds (10 seconds). This means that the route match data will be considered "fresh" for 10 seconds.
-
-- If the route is loaded again **within** 10 seconds, the cached data will be returned immediately and the loader will not be called.
-- If the route is loaded again **after** 10 seconds, the cached data will be returned immediately and the loader will be called again in the background to refresh the data.
-
-## Using Match State
-
-Enabling patterns like `stale-while-revalidate` is great, but what if we want to know when our data is stale? This is where the match state comes in. Match state is available via a few different hooks:
-
-- `props.useMatch`
-- `route.useMatch`
-- `useMatch`
-
-They are ordered from simplest to most flexible.
-
-The result of these hooks has a lot of useful information about a route match, but on the topic of `stale-while-revalidate`, one property is particularly useful:
-
-- `isFetching`
-  - `boolean`
-
-This property is `true` when the route match is being loaded and `false` when it is not. This means that we can use it to display to our users that this particular route's loader data is being refreshed in the background. Let's take a look at an example:
-
-```tsx
-import { Route } from '@tanstack/react-router'
-
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
-  loader: async () => {
-    // ...
-  },
-  maxAge: 10_000,
-  component: ({ useMatch }) => {
-    const { isFetching } = useMatch()
-    return <div>
-      {isFetching ? Loading... : null}
-      ...
-    </div>
-  },
-})
-```
-
-## Loader Invalidation
-
-By default, route matches are never considered stale and garbage collected when they are no longer in use. This is great mostly for loaders that only change when navigation occurs, but what about loaders that change when user events occur?
-
-Our apps often contain events that could modify the results of our loaders. For example, a user may create a new post, or a user may delete a post. In these cases, we would want to invalidate the loader data for `/posts` and `/posts/$postId` so the user will see the latest data.
-
-The easiest way to do this is by **invalidating all route matches with `router.invalidate`**:
-
-```tsx
-function App() {
-  const router = useRouter
-
-  const mutate = () => {
-    //... some mutation logic
-    router.invalidate()
-  }
-}
-```
-
-`router.invalidate` will invalidate all route matches and **by default, reload the currently matched routes**. For any route matches that are not currently in use and not garbage collected, they will be marked as invalid and their loader will be called again when they are matched or preloaded.
-
-## Invalidating Specific Route Matches
-
-If you want to invalidate specific route matches, you can use the same `router.invalidate` method, but pass a `matchId` option to it:
-
-```tsx
-function App() {
-  const router = useRouter
-
-  const mutate = () => {
-    //... some mutation logic
-    router.invalidate({ matchId: '/posts' })
-  }
-}
 ```

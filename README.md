@@ -8,10 +8,10 @@
   <img alt="#TanStack" src="https://img.shields.io/twitter/url?color=%2308a0e9&label=%23TanStack&style=social&url=https%3A%2F%2Ftwitter.com%2Fintent%2Ftweet%3Fbutton_hashtag%3DTanStack">
 </a><a href="https://discord.com/invite/WrRKjPJ" target="\_parent">
   <img alt="" src="https://img.shields.io/badge/Discord-TanStack-%235865F2" />
-</a><a href="https://npmjs.com/package/@tanstack/router" target="\_parent">
+</a><a href="https://npmjs.com/package/@tanstack/react-router" target="\_parent">
   <img alt="" src="https://img.shields.io/npm/dm/@tanstack/router.svg" />
-</a><a href="https://bundlephobia.com/result?p=@tanstack/router" target="\_parent">
-  <img alt="" src="https://badgen.net/bundlephobia/minzip/@tanstack/router" />
+</a><a href="https://bundlephobia.com/result?p=@tanstack/react-router" target="\_parent">
+  <img alt="" src="https://badgen.net/bundlephobia/minzip/@tanstack/react-router" />
 </a><a href="#badge">
     <img alt="semantic-release" src="https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg">
   </a><a href="https://github.com/tanstack/router/discussions">

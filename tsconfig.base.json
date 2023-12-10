@@ -17,17 +17,11 @@
     "baseUrl": ".",
     "allowUnreachableCode": true,
     "paths": {
-      "@tanstack/router-core": ["packages/router-core"],
+      "@tanstack/history": ["packages/history"],
       "@tanstack/react-router": ["packages/react-router"],
-      "@tanstack/solid-router": ["packages/solid-router"],
       "@tanstack/router-devtools": ["packages/router-devtools"],
-      "@tanstack/loaders": ["packages/loaders"],
-      "@tanstack/react-loaders": ["packages/react-loaders"],
-      "@tanstack/actions": ["packages/actions"],
-      "@tanstack/react-actions": ["packages/react-actions"],
-      "@tanstack/store": ["packages/store"],
-      "@tanstack/react-store": ["packages/react-store"],
-      "@tanstack/router-cli": ["packages/router-cli"]
+      "@tanstack/router-cli": ["packages/router-cli"],
+      "@tanstack/react-router-server": ["packages/react-router-server"]
     }
   },
   "ts-node": {

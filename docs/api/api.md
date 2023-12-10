@@ -3,28 +3,29 @@ id: api
 title: API Reference
 ---
 
-# RouterContext
+# rootRouteWithContext
 
-Use this class to create a new routing context. This context can be used to create a new root route, which will in turn require that you satisfy this context when creating a router that uses it.
+Use this function to create a root route **with a required router context**. The resulting function can be used to create a new root route, which will then require that you satisfy this context type when creating a router that uses it.
 
 ```tsx
-const routerContext =
-  new RouterContext<// This context will be available router-wide
-  ContextType>()
+const rootRouteWithContext = rootRouteWithContext<ContextType>()
+
+const rootRoute = rootRouteWithContext({
+  // ...
+})
 ```
 
-# RouterContext.createRootRoute
-
-Use this method to create a new root route from a routing context. See [RootRoute](#rootroute) for more information.
+You can also skip the intermediate variable and create a root route directly from the function.
 
 ```tsx
-const routerContext = new RouterContext()
-const rootRoute = routerContext.createRootRoute()
+const rootRoute = rootRouteWithContext<ContextType>()({
+  // ...
+})
 ```
 
 # RootRoute
 
-Use this class to create a new root route. Only use this if you do not plan on supplying a routing context to your router. If you do need a routing context, create a new routing context and use the `RouterContext` class and its `createRootRoute` method instead.
+Use this class to create a new root route **without a required router context**. Only use this if you do not plan on supplying a routing context to your router. If you do need a routing context, create a new routing context and use the `rootRouteWithContext` function and its return function instead.
 
 The root route constructor takes a subset of options from the normal [Route](#route) class. The `path` and `id` options are not required for the root route. See [Route](#route) for more information.
 
@@ -48,49 +49,48 @@ const myRoute = new Route({
   id: string,
   // A function to validate the search parameters for the route.
   validateSearch: (search: string) => boolean,
+  // A function that will run before a route is loaded. If you throw a redirect from this function during a navigation, the location will be updated. If you throw any other error, the route will not be loaded (even preloaded)
+  // If you choose to return an object, it will be assigned to this route's `routeContext` value and be merged onto the router's `context` value.
+  beforeLoad?: (
+    opts: {
+      // The parsed path parameters available from this route and its parents.
+      params: TAllParams
+      // The parsed search parameters available from this route only.
+      routeSearch: TSearchSchema
+      // The marged and parsed search parameters available from this route and its parents.
+      search: TFullSearchSchema
+      // The abortController used internally by the router
+      abortController: AbortController
+      // A boolean indicating whether or not the route is being preloaded.
+      preload: boolean
+      // The context for this route only.
+      routeContext: TContext
+      // The merged context for thi,bs route and its parents.
+      context: TAllContext
+    // TContext extends Record<string, any>
+    Promise<TContext> | TContext
   // An async function to load or prepare any required prerequisites for the route.
   loader: (match: {
-    // The parsed path parameters available from this route and its parents.
-    params: TAllParams
-    // The parsed search parameters available from this route only.
-    routeSearch: TSearchSchema
-    // The marged and parsed search parameters available from this route and its parents.
-    search: TFullSearchSchema
     // The abortController used internally by the router
     abortController: AbortController
     // A boolean indicating whether or not the route is being preloaded.
     preload: boolean
-    // The context for this route only.
-    routeContext: TContext
     // The merged context for this route and its parents.
-    context: TAllContext
+    context: TAllContext & TOnLoadContext
     // If there is a parent route, this will be a promise that resolves when the parent route has been loaded.
     parentMatchPromise?: Promise<void>
   }) =>
-    // The result of the loader function which wil be made available via this routes `useLoader` method.
+    // The result of the loader function which wil be made available via this routes `useLoaderData` method.
     Promise<LoaderResult>,
   // A function to parse the path parameters for the route from the URL
   parseParams: (rawParams: Record<string, string>) => Record<string, TParams>,
   // A function to stringify the path parameters for the route back to the URL
   stringifyParams: (params: Record<string, TParams>) => Record<string, string>,
-  // A function that returns the context for the route. This context will be merged with parent context and be made available to this route and its children
-  getContext: (ctx: { params: TAllParams; search: TFullSearchSchema }) =>
-    Record<string, TContext>,
   //
   //
   // 🧠: The following options can be set in both the constructor AND via the Route.update method.
   //
   //
-  // If a loader is specified, this option will be required. Either return a falsey value if the `pathname` is
-  // enough to uniquely identify this route. If more is needed, return a unique key for this route via the function.
-  key?: undefined | null | false | ((loaderContext: {
-    // The parsed path parameters available from this route and its parents.
-    params: TAllParams
-    // The parsed search parameters available from this route only.
-    search: TFullSearchSchema
-  }) =>
-    // An optional but additional unique key for this route to be combined with the full path of this route.
-    JSON.serializable),
   // If true, this route will be matched as case-sensitive
   caseSensitive?: boolean,
   // If true, this route will be forcefully wrapped in a suspense boundary
@@ -100,7 +100,7 @@ const myRoute = new Route({
     // A function that returns the RouteMatch state for this route.
     useMatch: () => RouteMatch,
     // A function that return the loader return value for this route.
-    useLoader: () => TLoader,
+    useLoaderData: () => TLoader,
     // A function that returns the merged search parameters, including parent search parameters for this route.
     useSearch: (opts?: {
       // Defaults to `true`
@@ -133,41 +133,13 @@ const myRoute = new Route({
   // An array of functions that can manipulate search params *after* they are passed to links and navigate
   // calls that match this route.
   postSearchFilters?: ((search: TFullSearchSchema) => TFullSearchSchema)[]
-  // A function that will run before a route is loaded. If you throw a redirect from this function during a navigation, the location will be updated. If you throw any other error, the route will not be loaded (even preloaded)
-  beforeLoad?: (
-    opts: {
-      // The parsed path parameters available from this route and its parents.
-      params: TAllParams
-      // The parsed search parameters available from this route only.
-      routeSearch: TSearchSchema
-      // The marged and parsed search parameters available from this route and its parents.
-      search: TFullSearchSchema
-      // The abortController used internally by the router
-      abortController: AbortController
-      // A boolean indicating whether or not the route is being preloaded.
-      preload: boolean
-      // The context for this route only.
-      routeContext: TContext
-      // The merged context for this route and its parents.
-      context: TAllContext
-    }
-  ) => Promise<void> | void
+  // If an error is encountered in any of the lifecycle methods, this function will be called with the error.
   onError?: (err: any) => void
-  // This function is called
-  // when moving from an inactive state to an active one. Likewise, when moving from
-  // an active to an inactive state, the return function (if provided) is called.
-  onLoaded?: (matchContext: {
-    params: TAllParams
-    search: TFullSearchSchema
-  }) =>
-    | void
-    | undefined
-    | ((match: { params: TAllParams; search: TFullSearchSchema }) => void)
-  // This function is called when the route remains active from one transition to the next.
-  onTransition?: (match: {
-    params: TAllParams
-    search: TFullSearchSchema
-  }) => void
+  // These functions are called as route matches are loaded, stick around and leave the active
+  // matches
+  onEnter?: (match: AnyRouteMatch) => void
+  onTransition?: (match: AnyRouteMatch) => void
+  onLeave?: (match: AnyRouteMatch) => void
 })
 ```
 
@@ -252,9 +224,9 @@ const myRoute = new Route({
 const match = myRoute.useMatch({ strict: true })
 ```
 
-# Route.useLoader
+# Route.useLoaderData
 
-The `useLoader` method returns the loader for the given route.
+The `useLoaderData` method returns the loader for the given route.
 
 ### Options
 
@@ -276,7 +248,7 @@ const myRoute = new Route({
   id: 'homeId',
   component: HomeComponent,
 })
-const loader = myRoute.useLoader({ strict: true })
+const loader = myRoute.useLoaderData({ strict: true })
 ```
 
 # Route.useContext
@@ -387,3 +359,7 @@ export const expensiveNamedRoute = new Route({
 **Returns**
 
 - `element: RouteComponent`
+
+```
+
+```
