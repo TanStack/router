@@ -1503,10 +1503,12 @@ export class Router<
     }
 
     const handleTouchStart = (e: TouchEvent) => {
-      this.preloadRoute(nextOpts as any).catch((err) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
+      if (preload) {
+        this.preloadRoute(nextOpts as any).catch((err) => {
+          console.warn(err)
+          console.warn(preloadWarning)
+        })
+      }
     }
 
     const handleEnter = (e: MouseEvent) => {

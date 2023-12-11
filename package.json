@@ -16,7 +16,8 @@
     "cipublish": "ts-node scripts/publish.ts",
     "cipublishforce": "CI=true pnpm cipublish",
     "typecheck": "tsc -b",
-    "typecheck-perf": "tsc -b --generateTrace ts-perf"
+    "typecheck-perf": "tsc -b --generateTrace ts-perf",
+    "gpt-generate": "ts-node gpt/generate.js"
   },
   "workspaces": [
     "./packages/*",
@@ -88,5 +89,8 @@
   },
   "resolutions": {
     "use-sync-external-store": "1.2.0"
+  },
+  "dependencies": {
+    "glob": "^10.3.10"
   }
 }
