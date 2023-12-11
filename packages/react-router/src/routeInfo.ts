@@ -25,12 +25,12 @@ export type ParseRouteChildren<TRouteTree extends AnyRoute> =
     ? unknown extends TChildren
       ? never
       : TChildren extends AnyRoute[]
-      ? {
-          [TId in TChildren[number]['id'] as string]: ParseRoute<
-            TChildren[number]
-          >
-        }[string]
-      : never
+        ? {
+            [TId in TChildren[number]['id'] as string]: ParseRoute<
+              TChildren[number]
+            >
+          }[string]
+        : never
     : never
 
 export type RoutesById<TRouteTree extends AnyRoute> = {

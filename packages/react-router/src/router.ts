@@ -1006,7 +1006,7 @@ export class Router<
         const parentMatch = matches[index - 1]
         const route = this.looseRoutesById[match.routeId]!
 
-        const handleError = (err: any, code: string) => {
+        const handleErrorAndRedirect = (err: any, code: string) => {
           err.routerCode = code
           firstBadMatchIndex = firstBadMatchIndex ?? index
 
@@ -1034,11 +1034,11 @@ export class Router<
 
         try {
           if (match.paramsError) {
-            handleError(match.paramsError, 'PARSE_PARAMS')
+            handleErrorAndRedirect(match.paramsError, 'PARSE_PARAMS')
           }
 
           if (match.searchError) {
-            handleError(match.searchError, 'VALIDATE_SEARCH')
+            handleErrorAndRedirect(match.searchError, 'VALIDATE_SEARCH')
           }
 
           const parentContext =
@@ -1059,6 +1059,10 @@ export class Router<
               cause: match.cause,
             })) ?? ({} as any)
 
+          if (isRedirect(beforeLoadContext)) {
+            throw beforeLoadContext
+          }
+
           const context = {
             ...parentContext,
             ...beforeLoadContext,
@@ -1069,7 +1073,7 @@ export class Router<
             context: replaceEqualDeep(match.context, context),
           }
         } catch (err) {
-          handleError(err, 'BEFORE_LOAD')
+          handleErrorAndRedirect(err, 'BEFORE_LOAD')
           break
         }
       }
@@ -1091,7 +1095,7 @@ export class Router<
           const parentMatchPromise = matchPromises[index - 1]
           const route = this.looseRoutesById[match.routeId]!
 
-          const handleIfRedirect = (err: any) => {
+          const handleErrorAndRedirect = (err: any) => {
             if (isRedirect(err)) {
               if (!preload) {
                 this.navigate(err as any)
@@ -1230,6 +1234,10 @@ export class Router<
               const loaderData = await loadPromise
               if ((latestPromise = checkLatest())) return await latestPromise
 
+              if (isRedirect(loaderData)) {
+                if (handleErrorAndRedirect(loaderData)) return
+              }
+
               if (didShowPending && pendingMinMs) {
                 await new Promise((r) => setTimeout(r, pendingMinMs))
               }
@@ -1247,13 +1255,13 @@ export class Router<
               }
             } catch (error) {
               if ((latestPromise = checkLatest())) return await latestPromise
-              if (handleIfRedirect(error)) return
+              if (handleErrorAndRedirect(error)) return
 
               try {
                 route.options.onError?.(error)
               } catch (onErrorError) {
                 error = onErrorError
-                if (handleIfRedirect(onErrorError)) return
+                if (handleErrorAndRedirect(onErrorError)) return
               }
 
               matches[index] = match = {
