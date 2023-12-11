@@ -179,7 +179,7 @@ function assignKey(state: HistoryState) {
  * @returns A history instance
  */
 export function createBrowserHistory(opts?: {
-  getHref?: () => string
+  parseLocation?: () => HistoryLocation
   createHref?: (path: string) => string
   window?: any
 }): RouterHistory {
@@ -187,13 +187,16 @@ export function createBrowserHistory(opts?: {
     opts?.window ??
     (typeof document !== 'undefined' ? window : (undefined as any))
 
-  const getHref =
-    opts?.getHref ??
-    (() => `${win.location.pathname}${win.location.search}${win.location.hash}`)
-
   const createHref = opts?.createHref ?? ((path) => path)
+  const parseLocation =
+    opts?.parseLocation ??
+    (() =>
+      parseHref(
+        `${win.location.pathname}${win.location.search}${win.location.hash}`,
+        win.history.state,
+      ))
 
-  let currentLocation = parseLocation(getHref(), win.history.state)
+  let currentLocation = parseLocation()
   let rollbackLocation: HistoryLocation | undefined
 
   const getLocation = () => currentLocation
@@ -247,18 +250,19 @@ export function createBrowserHistory(opts?: {
   // This function queues up a call to update the browser history
   const queueHistoryAction = (
     type: 'push' | 'replace',
-    path: string,
+    destHref: string,
     state: any,
     onUpdate: () => void,
   ) => {
-    const href = createHref(path)
+    console.log(destHref)
+    const href = createHref(destHref)
 
     if (!scheduled) {
       rollbackLocation = currentLocation
     }
 
     // Update the location in memory
-    currentLocation = parseLocation(href, state)
+    currentLocation = parseHref(destHref, state)
 
     // Keep track of the next location we need to flush to the URL
     next = {
@@ -277,7 +281,7 @@ export function createBrowserHistory(opts?: {
   }
 
   const onPushPop = () => {
-    currentLocation = parseLocation(getHref(), win.history.state)
+    currentLocation = parseLocation()
     history.notify()
   }
 
@@ -286,14 +290,14 @@ export function createBrowserHistory(opts?: {
 
   const history = createHistory({
     getLocation,
-    pushState: (path, state, onUpdate) =>
-      queueHistoryAction('push', path, state, onUpdate),
-    replaceState: (path, state, onUpdate) =>
-      queueHistoryAction('replace', path, state, onUpdate),
+    pushState: (href, state, onUpdate) =>
+      queueHistoryAction('push', href, state, onUpdate),
+    replaceState: (href, state, onUpdate) =>
+      queueHistoryAction('replace', href, state, onUpdate),
     back: () => win.history.back(),
     forward: () => win.history.forward(),
     go: (n) => win.history.go(n),
-    createHref: (path) => createHref(path),
+    createHref: (href) => createHref(href),
     flush,
     destroy: () => {
       win.history.pushState = originalPushState
@@ -335,9 +339,14 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
     opts?.window ??
     (typeof document !== 'undefined' ? window : (undefined as any))
   return createBrowserHistory({
-    getHref: () => win.location.hash.substring(1),
-    createHref: (path) => `#${path}`,
     window: win,
+    parseLocation: () => {
+      const hashHref = win.location.hash.split('#').slice(1).join('#') ?? '/'
+      console.log(hashHref)
+      return parseHref(hashHref, win.history.state)
+    },
+    createHref: (href) =>
+      `${win.location.pathname}${win.location.search}#${href}`,
   })
 }
 
@@ -355,7 +364,7 @@ export function createMemoryHistory(
     key: createRandomKey(),
   } as HistoryState
 
-  const getLocation = () => parseLocation(entries[index]!, currentState)
+  const getLocation = () => parseHref(entries[index]!, currentState)
 
   return createHistory({
     getLocation,
@@ -381,7 +390,7 @@ export function createMemoryHistory(
   })
 }
 
-function parseLocation(href: string, state: HistoryState): HistoryLocation {
+function parseHref(href: string, state: HistoryState): HistoryLocation {
   let hashIndex = href.indexOf('#')
   let searchIndex = href.indexOf('?')
 

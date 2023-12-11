@@ -808,7 +808,7 @@ export class Router<
         searchStr,
         state: nextState as any,
         hash,
-        href: this.history.createHref(`${pathname}${searchStr}${hashStr}`),
+        href: `${pathname}${searchStr}${hashStr}`,
         unmaskOnReload: dest.unmaskOnReload,
       }
     }
