@@ -254,7 +254,6 @@ export function createBrowserHistory(opts?: {
     state: any,
     onUpdate: () => void,
   ) => {
-    console.log(destHref)
     const href = createHref(destHref)
 
     if (!scheduled) {
