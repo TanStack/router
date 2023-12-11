@@ -143,7 +143,7 @@ class NotFoundError extends Error {}
 
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
-  path: 'post/$postId',
+  path: '$postId',
   errorComponent: PostErrorComponent,
   shouldReload: ({ cause }) => cause === 'enter',
   loader: ({ params }) => fetchPost(params.postId),
