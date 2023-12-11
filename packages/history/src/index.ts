@@ -330,11 +330,10 @@ export function createBrowserHistory(opts?: {
   return history
 }
 
-export function createHashHistory({
-  window: win,
-}: {
-  window?: any
-}): RouterHistory {
+export function createHashHistory(opts?: { window?: any }): RouterHistory {
+  const win =
+    opts?.window ??
+    (typeof document !== 'undefined' ? window : (undefined as any))
   return createBrowserHistory({
     getHref: () => win.location.hash.substring(1),
     createHref: (path) => `#${path}`,
