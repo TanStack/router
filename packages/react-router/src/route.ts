@@ -457,7 +457,7 @@ export class Route<
     this.options = (options as any) || {}
     this.isRoot = !options?.getParentRoute as any
     invariant(
-      !((options as any).id && (options as any).path),
+      !((options as any)?.id && (options as any)?.path),
       `Route cannot have both an 'id' and a 'path' option.`,
     )
     ;(this as any).$$typeof = Symbol.for('react.memo')
