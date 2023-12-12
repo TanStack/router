@@ -685,6 +685,10 @@ export class Router<
       match.search = replaceEqualDeep(match.search, preMatchSearch)
       // And also update the searchError if there is one
       match.searchError = searchError
+      // Refresh the AbortController if needed
+      if (match.abortController.signal.aborted){
+        match.abortController = new AbortController()
+      }
 
       matches.push(match)
     })
