@@ -710,11 +710,14 @@ export class Router<
       matches?: AnyRouteMatch[],
     ): ParsedLocation => {
       const from = this.latestLocation
+      const fromSearch =
+        (this.state.pendingMatches || this.state.matches).at(-1)?.search ||
+        from.search
       const fromPathname = dest.from ?? from.pathname
 
       let pathname = this.resolvePathWithBase(fromPathname, `${dest.to ?? ''}`)
 
-      const fromMatches = this.matchRoutes(fromPathname, from.search)
+      const fromMatches = this.matchRoutes(fromPathname, fromSearch)
       const stayingMatches = matches?.filter(
         (d) => fromMatches?.find((e) => e.routeId === d.routeId),
       )
@@ -761,9 +764,9 @@ export class Router<
       const preFilteredSearch = preSearchFilters?.length
         ? preSearchFilters?.reduce(
             (prev, next) => next(prev) as any,
-            from.search,
+            fromSearch,
           )
-        : from.search
+        : fromSearch
 
       // Then the link/navigate function
       const destSearch =
@@ -780,7 +783,7 @@ export class Router<
         ? postSearchFilters.reduce((prev, next) => next(prev), destSearch)
         : destSearch
 
-      const search = replaceEqualDeep(from.search, postFilteredSearch)
+      const search = replaceEqualDeep(fromSearch, postFilteredSearch)
 
       const searchStr = this.options.stringifySearch(search)
 
