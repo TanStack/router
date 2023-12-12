@@ -17,9 +17,14 @@ Every time a URL/history update is detected, the router the following sequence i
 - Route Pre-Loading (Serial)
   - `route.beforeLoad`
   - `route.onError`
+    - `route.errorComponent' / `parentRoute.errorComponent`/`router.defaultErrorComponent`
 - Route Loading (Parallel)
   - `route.component.preload?`
   - `route.loader`
+    - `route.pendingComponent` (Optional)
+    - `route.component`
+  - `route.onError`
+    - `route.errorComponent' / `parentRoute.errorComponent`/`router.defaultErrorComponent`
 
 ## No Caching
 
@@ -278,5 +283,93 @@ const postsRoute = new Route({
     fetchPosts({
       maxAge: preload ? 10_000 : 0, // Preloads should hang around a bit longer
     }),
+})
+```
+
+## Handling Slow Loaders
+
+Ideally most route loaders can resolve their data within a short moment, removing the need to render a placeholder spinner and simply rely on suspense to render the next route when it's completely ready. When critical data that is required to render a route's component is slow though, you have 2 options:
+
+- Split up your fast and slow data into separate promises and `defer` the slow data until after the fast data is loaded (see [deferred-data-loading](./deferred-data-loading))
+- Show a pending component after an optimistic suspense threshold until all of the data is ready (See below).
+
+## Showing a pending component
+
+**By default, TanStack Router will show a pending component for loaders that take longer than 1 second to resolve.** This is an optimistic threshold that can be configured via:
+
+- `routeOptions.pendingMs` or
+- `routerOptions.defaultPendingMs`
+
+When the pending time threshold is exceeded, the router will render the `pendingComponent` option of the route, if configured.
+
+## Avoiding Pending Component Flash
+
+If you're using a pending component, the last thing you want is for your pending time threshold to be met, then have your data resolve immediately after, resulting in a jarring flash of your pending component. To avoid this, **TanStack Router by default will show your pending component for at least 500ms**. This is an optimistic threshold that can be configured via:
+
+- `routeOptions.pendingMinMs` or
+- `routerOptions.defaultPendingMinMs`
+
+## Handling Errors
+
+TanStack Router provides a few ways to handle errors that occur during the route loading lifecycle. Let's take a look at them.
+
+### Handling Errors with `routeOptions.onError`
+
+The `routeOptions.onError` option is a function that is called when an error occurs during the route loading or rendering lifecycle.
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  loader: () => fetchPosts(),
+  onError: ({ error }) => {
+    // Log the error
+    console.error(error)
+  },
+})
+```
+
+### Handling Errors with `routeOptions.errorComponent`
+
+The `routeOptions.errorComponent` option is a component that is rendered when an error occurs during the route loading or rendering lifecycle. It is rendered with the following props:
+
+- `error` - The error that occurred
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  loader: () => fetchPosts(),
+  errorComponent: ({ error }) => {
+    // Render an error message
+    return <div>{error.message}</div>
+  },
+})
+```
+
+### Using the default `ErrorComponent`
+
+TanStack Router provides a default `ErrorComponent` that is rendered when an error occurs during the route loading or rendering lifecycle. If you choose to override your routes' error components, it's still wise to always fallback to rendering any uncaught errors with the default `ErrorComponent`:
+
+```tsx
+import { Route, ErrorComponent } from '@tanstack/react-router'
+
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  loader: () => fetchPosts(),
+  errorComponent: ({ error }) => {
+    if (error instanceof MyCustomError) {
+      // Render a custom error message
+      return <div>{error.message}</div>
+    }
+
+    // Fallback to the default ErrorComponent
+    return <ErrorComponent error={error} />
+  },
 })
 ```
