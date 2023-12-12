@@ -59,7 +59,7 @@ export function Navigate<
   const { navigate } = useRouter()
   const match = useMatch({ strict: false })
 
-  useLayoutEffect(() => {
+  React.useEffect(() => {
     navigate({
       from: props.to ? match.pathname : undefined,
       ...props,
