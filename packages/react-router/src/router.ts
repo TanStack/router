@@ -218,12 +218,6 @@ export type RouterListener<TRouterEvent extends RouterEvent> = {
   fn: ListenerFn<TRouterEvent>
 }
 
-type LinkCurrentTargetElement = {
-  preloadTimeout?: null | ReturnType<typeof setTimeout>
-}
-
-const preloadWarning = 'Error preloading route! ☝️'
-
 export class Router<
   TRouteTree extends AnyRoute = AnyRoute,
   TDehydrated extends Record<string, any> = Record<string, any>,
@@ -1437,136 +1431,6 @@ export class Router<
     return matches
   }
 
-  buildLink: BuildLinkFn<TRouteTree> = (dest) => {
-    // If this link simply reloads the current route,
-    // make sure it has a new key so it will trigger a data refresh
-
-    // If this `to` is a valid external URL, return
-    // null for LinkUtils
-
-    const {
-      to,
-      preload: userPreload,
-      preloadDelay: userPreloadDelay,
-      activeOptions,
-      disabled,
-      target,
-      replace,
-      resetScroll,
-      startTransition,
-    } = dest
-
-    try {
-      new URL(`${to}`)
-      return {
-        type: 'external',
-        href: to as any,
-      }
-    } catch (e) {}
-
-    const nextOpts = dest
-    const next = this.buildLocation(nextOpts as any)
-
-    const preload = userPreload ?? this.options.defaultPreload
-    const preloadDelay =
-      userPreloadDelay ?? this.options.defaultPreloadDelay ?? 0
-
-    // Compare path/hash for matches
-    const currentPathSplit = this.latestLocation.pathname.split('/')
-    const nextPathSplit = next.pathname.split('/')
-    const pathIsFuzzyEqual = nextPathSplit.every(
-      (d, i) => d === currentPathSplit[i],
-    )
-    // Combine the matches based on user this.options
-    const pathTest = activeOptions?.exact
-      ? this.latestLocation.pathname === next.pathname
-      : pathIsFuzzyEqual
-    const hashTest = activeOptions?.includeHash
-      ? this.latestLocation.hash === next.hash
-      : true
-    const searchTest =
-      activeOptions?.includeSearch ?? true
-        ? deepEqual(this.latestLocation.search, next.search, true)
-        : true
-
-    // The final "active" test
-    const isActive = pathTest && hashTest && searchTest
-
-    // The click handler
-    const handleClick = (e: MouseEvent) => {
-      if (
-        !disabled &&
-        !isCtrlEvent(e) &&
-        !e.defaultPrevented &&
-        (!target || target === '_self') &&
-        e.button === 0
-      ) {
-        e.preventDefault()
-
-        // All is well? Navigate!
-        this.commitLocation({ ...next, replace, resetScroll, startTransition })
-      }
-    }
-
-    // The click handler
-    const handleFocus = (e: MouseEvent) => {
-      if (preload) {
-        this.preloadRoute(nextOpts as any).catch((err) => {
-          console.warn(err)
-          console.warn(preloadWarning)
-        })
-      }
-    }
-
-    const handleTouchStart = (e: TouchEvent) => {
-      if (preload) {
-        this.preloadRoute(nextOpts as any).catch((err) => {
-          console.warn(err)
-          console.warn(preloadWarning)
-        })
-      }
-    }
-
-    const handleEnter = (e: MouseEvent) => {
-      const target = (e.target || {}) as LinkCurrentTargetElement
-
-      if (preload) {
-        if (target.preloadTimeout) {
-          return
-        }
-
-        target.preloadTimeout = setTimeout(() => {
-          target.preloadTimeout = null
-          this.preloadRoute(nextOpts as any).catch((err) => {
-            console.warn(err)
-            console.warn(preloadWarning)
-          })
-        }, preloadDelay)
-      }
-    }
-
-    const handleLeave = (e: MouseEvent) => {
-      const target = (e.target || {}) as LinkCurrentTargetElement
-
-      if (target.preloadTimeout) {
-        clearTimeout(target.preloadTimeout)
-        target.preloadTimeout = null
-      }
-    }
-
-    return {
-      type: 'internal',
-      next,
-      handleFocus,
-      handleClick,
-      handleEnter,
-      handleLeave,
-      handleTouchStart,
-      isActive,
-      disabled,
-    }
-  }
-
   matchRoute: MatchRouteFn<TRouteTree> = (location, opts) => {
     location = {
       ...location,
@@ -1727,9 +1591,6 @@ export function lazyFn<
   }
 }
 
-function isCtrlEvent(e: MouseEvent) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
-}
 export class SearchParamError extends Error {}
 
 export class PathParamError extends Error {}

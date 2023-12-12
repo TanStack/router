@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useMatch } from './Matches'
-import { useRouter } from './RouterProvider'
+import { useRouter, useRouterState } from './RouterProvider'
 import { Trim } from './fileRoute'
 import { LocationState, ParsedLocation } from './location'
 import { AnyRoute, ReactNode } from './route'
@@ -20,6 +20,7 @@ import {
   PickRequired,
   UnionToIntersection,
   Updater,
+  deepEqual,
   functionalUpdate,
 } from './utils'
 
@@ -352,6 +353,12 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
     : never
   : never
 
+type LinkCurrentTargetElement = {
+  preloadTimeout?: null | ReturnType<typeof setTimeout>
+}
+
+const preloadWarning = 'Error preloading route! ☝️'
+
 export function useLinkProps<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
@@ -361,7 +368,7 @@ export function useLinkProps<
 >(
   options: MakeLinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
-  const { buildLink } = useRouter()
+  const router = useRouter()
   const matchPathname = useMatch({
     strict: false,
     select: (s) => s.pathname,
@@ -369,7 +376,6 @@ export function useLinkProps<
 
   const {
     // custom props
-    type,
     children,
     target,
     activeProps = () => ({ className: 'active' }),
@@ -382,8 +388,8 @@ export function useLinkProps<
     to,
     state,
     mask,
-    preload,
-    preloadDelay,
+    preload: userPreload,
+    preloadDelay: userPreloadDelay,
     replace,
     startTransition,
     resetScroll,
@@ -398,25 +404,122 @@ export function useLinkProps<
     ...rest
   } = options
 
-  const linkInfo = buildLink({
+  // If this link simply reloads the current route,
+  // make sure it has a new key so it will trigger a data refresh
+
+  // If this `to` is a valid external URL, return
+  // null for LinkUtils
+
+  const dest = {
     from: options.to ? matchPathname : undefined,
     ...options,
-  } as any)
-
-  if (linkInfo.type === 'external') {
-    const { href } = linkInfo
-    return { href }
   }
 
-  const {
-    handleClick,
-    handleFocus,
-    handleEnter,
-    handleLeave,
-    handleTouchStart,
-    isActive,
-    next,
-  } = linkInfo
+  let type: 'internal' | 'external' = 'internal'
+
+  try {
+    new URL(`${to}`)
+    type = 'external'
+  } catch {}
+
+  if (type === 'external') {
+    return {
+      href: to,
+    }
+  }
+
+  const next = router.buildLocation(dest as any)
+
+  const preload = userPreload ?? router.options.defaultPreload
+  const preloadDelay =
+    userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
+
+  const isActive = useRouterState({
+    select: (s) => {
+      // Compare path/hash for matches
+      const currentPathSplit = s.location.pathname.split('/')
+      const nextPathSplit = next.pathname.split('/')
+      const pathIsFuzzyEqual = nextPathSplit.every(
+        (d, i) => d === currentPathSplit[i],
+      )
+      // Combine the matches based on user router.options
+      const pathTest = activeOptions?.exact
+        ? s.location.pathname === next.pathname
+        : pathIsFuzzyEqual
+      const hashTest = activeOptions?.includeHash
+        ? s.location.hash === next.hash
+        : true
+      const searchTest =
+        activeOptions?.includeSearch ?? true
+          ? deepEqual(s.location.search, next.search, true)
+          : true
+
+      // The final "active" test
+      return pathTest && hashTest && searchTest
+    },
+  })
+
+  // The click handler
+  const handleClick = (e: MouseEvent) => {
+    if (
+      !disabled &&
+      !isCtrlEvent(e) &&
+      !e.defaultPrevented &&
+      (!target || target === '_self') &&
+      e.button === 0
+    ) {
+      e.preventDefault()
+
+      // All is well? Navigate!
+      router.commitLocation({ ...next, replace, resetScroll, startTransition })
+    }
+  }
+
+  // The click handler
+  const handleFocus = (e: MouseEvent) => {
+    if (preload) {
+      router.preloadRoute(dest as any).catch((err) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
+    }
+  }
+
+  const handleTouchStart = (e: TouchEvent) => {
+    if (preload) {
+      router.preloadRoute(dest as any).catch((err) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
+    }
+  }
+
+  const handleEnter = (e: MouseEvent) => {
+    const target = (e.target || {}) as LinkCurrentTargetElement
+
+    if (preload) {
+      if (target.preloadTimeout) {
+        return
+      }
+
+      target.preloadTimeout = setTimeout(() => {
+        target.preloadTimeout = null
+        router.preloadRoute(dest as any).catch((err) => {
+          console.warn(err)
+          console.warn(preloadWarning)
+        })
+      }, preloadDelay)
+    }
+  }
+
+  const handleLeave = (e: MouseEvent) => {
+    const target = (e.target || {}) as LinkCurrentTargetElement
+
+    if (target.preloadTimeout) {
+      clearTimeout(target.preloadTimeout)
+      target.preloadTimeout = null
+    }
+  }
 
   const composeHandlers =
     (handlers: (undefined | ((e: any) => void))[]) =>
@@ -507,3 +610,7 @@ export const Link: LinkComponent = React.forwardRef((props: any, ref) => {
     />
   )
 }) as any
+
+function isCtrlEvent(e: MouseEvent) {
+  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+}
