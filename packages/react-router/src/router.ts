@@ -1003,13 +1003,14 @@ export class Router<
       }))
     }
 
-    const abortController = new AbortController()
+    
 
     // Check each match middleware to see if the route can be accessed
     try {
       for (let [index, match] of matches.entries()) {
         const parentMatch = matches[index - 1]
         const route = this.looseRoutesById[match.routeId]!
+        const abortController = new AbortController()
 
         const handleErrorAndRedirect = (err: any, code: string) => {
           err.routerCode = code
@@ -1034,7 +1035,7 @@ export class Router<
             error: err,
             status: 'error',
             updatedAt: Date.now(),
-            abortController,
+            abortController: new AbortController(),
           }
         }
 
@@ -1053,7 +1054,7 @@ export class Router<
           const beforeLoadContext =
             (await route.options.beforeLoad?.({
               search: match.search,
-              abortController: match.abortController,
+              abortController,
               params: match.params,
               preload: !!preload,
               context: parentContext,
@@ -1077,6 +1078,7 @@ export class Router<
           matches[index] = match = {
             ...match,
             context: replaceEqualDeep(match.context, context),
+            abortController,
           }
         } catch (err) {
           handleErrorAndRedirect(err, 'BEFORE_LOAD')
