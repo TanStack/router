@@ -177,6 +177,19 @@ function Transitioner() {
         pathChanged:
           routerState.location!.href !== routerState.resolvedLocation?.href,
       })
+
+      if (
+        routerState.location.hash !== routerState.resolvedLocation?.hash &&
+        (document as any).querySelector
+      ) {
+        console.log('hello', routerState.location.hash)
+        const el = document.getElementById(
+          routerState.location.hash,
+        ) as HTMLElement | null
+        if (el) {
+          el.scrollIntoView()
+        }
+      }
       router.pendingMatches = []
 
       router.__store.setState((s) => ({
