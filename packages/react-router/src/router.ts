@@ -1003,6 +1003,8 @@ export class Router<
       }))
     }
 
+    const abortController = new AbortController()
+
     // Check each match middleware to see if the route can be accessed
     try {
       for (let [index, match] of matches.entries()) {
@@ -1032,6 +1034,7 @@ export class Router<
             error: err,
             status: 'error',
             updatedAt: Date.now(),
+            abortController,
           }
         }
 
