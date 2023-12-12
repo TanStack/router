@@ -13,16 +13,24 @@ export type Redirect<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
   TMaskTo extends string = '',
-> = NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
+> = {
   code?: number
-}
+  throw?: any
+} & NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export function redirect<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
->(opts: Redirect<TRouteTree, TFrom, TTo>): Redirect<TRouteTree, TFrom, TTo> {
+  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskTo extends string = '',
+>(
+  opts: Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
+): Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> {
   ;(opts as any).isRedirect = true
+  if (opts.throw) {
+    throw opts
+  }
   return opts
 }
 
