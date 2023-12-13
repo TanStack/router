@@ -226,7 +226,7 @@ export class Router<
     Math.random() * 10000000,
   )}`
   resetNextScroll: boolean = true
-  navigateTimeout: NodeJS.Timeout | null = null
+  navigateTimeout: ReturnType<typeof setTimeout> | null = null
   latestLoadPromise: Promise<void> = Promise.resolve()
   subscribers = new Set<RouterListener<RouterEvent>>()
   pendingMatches: AnyRouteMatch[] = []
