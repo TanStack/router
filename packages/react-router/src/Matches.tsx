@@ -411,7 +411,7 @@ export function useLoaderData<
     TRouteTree,
     TFrom
   >,
-  TSelected = TRouteMatch['loaderData'],
+  TSelected = Required<TRouteMatch>['loaderData'],
 >(
   opts: StrictOrFrom<TFrom> & {
     select?: (match: TRouteMatch) => TSelected

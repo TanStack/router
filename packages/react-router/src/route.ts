@@ -6,8 +6,8 @@ import { AnyRouteMatch } from './Matches'
 import { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
 import { ParsedLocation } from './location'
 import { joinPaths, trimPath } from './path'
-import { RoutePaths } from './routeInfo'
-import { AnyRouter } from './router'
+import { RouteById, RouteIds, RoutePaths } from './routeInfo'
+import { AnyRouter, RegisteredRouter } from './router'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
 import {
@@ -371,6 +371,58 @@ export type RouteConstraints = {
   TRouteTree: AnyRoute
 }
 
+export class RouteApi<
+  TId extends RouteIds<RegisteredRouter['routeTree']>,
+  TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
+  TFullSearchSchema extends Record<
+    string,
+    any
+  > = TRoute['types']['fullSearchSchema'],
+  TAllParams extends AnyPathParams = TRoute['types']['allParams'],
+  TAllContext extends Record<string, any> = TRoute['types']['allContext'],
+  TLoaderData extends any = TRoute['types']['loaderData'],
+> {
+  id: TId
+
+  constructor({ id }: { id: TId }) {
+    this.id = id as any
+  }
+
+  useMatch = <TSelected = TAllContext>(opts?: {
+    select?: (search: TAllContext) => TSelected
+  }): TSelected => {
+    return useMatch({ ...opts, from: this.id }) as any
+  }
+
+  useRouteContext = <TSelected = TAllContext>(opts?: {
+    select?: (search: TAllContext) => TSelected
+  }): TSelected => {
+    return useMatch({
+      ...opts,
+      from: this.id,
+      select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
+    } as any)
+  }
+
+  useSearch = <TSelected = TFullSearchSchema>(opts?: {
+    select?: (search: TFullSearchSchema) => TSelected
+  }): TSelected => {
+    return useSearch({ ...opts, from: this.id } as any)
+  }
+
+  useParams = <TSelected = TAllParams>(opts?: {
+    select?: (search: TAllParams) => TSelected
+  }): TSelected => {
+    return useParams({ ...opts, from: this.id } as any)
+  }
+
+  useLoaderData = <TSelected = TLoaderData>(opts?: {
+    select?: (search: TLoaderData) => TSelected
+  }): TSelected => {
+    return useLoaderData({ ...opts, from: this.id } as any) as any
+  }
+}
+
 export class Route<
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
   TPath extends RouteConstraints['TPath'] = '/',
@@ -590,6 +642,7 @@ export class Route<
   }): TSelected => {
     return useMatch({ ...opts, from: this.id }) as any
   }
+
   useRouteContext = <TSelected = TAllContext>(opts?: {
     select?: (search: TAllContext) => TSelected
   }): TSelected => {
@@ -599,16 +652,19 @@ export class Route<
       select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
     } as any)
   }
+
   useSearch = <TSelected = TFullSearchSchema>(opts?: {
     select?: (search: TFullSearchSchema) => TSelected
   }): TSelected => {
     return useSearch({ ...opts, from: this.id } as any)
   }
+
   useParams = <TSelected = TAllParams>(opts?: {
     select?: (search: TAllParams) => TSelected
   }): TSelected => {
     return useParams({ ...opts, from: this.id } as any)
   }
+
   useLoaderData = <TSelected = TLoaderData>(opts?: {
     select?: (search: TLoaderData) => TSelected
   }): TSelected => {

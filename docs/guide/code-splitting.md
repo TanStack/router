@@ -86,8 +86,44 @@ const route = new Route({
   loader: lazyFn(() => import('./loader'), 'loader'),
 })
 
-// In another file...
+// In another file...a
 export const loader = async (context: LoaderContext) => {
   /// ...
 }
 ```
+
+## Accessing Route APIs in Code Split Files with the `RouteApi` class
+
+As you might have guessed, importing the very route that is already importing the code-split file your in is a circular dependency, both in types and at runtime. To avoid this, TanStack Router exports a handy `RouteApi` class that you can use to access a route's type-safe APIs:
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
+const route = new Route({
+  path: '/my-route',
+  loader: () => ({
+    foo: 'bar',
+  }),
+  component: lazyRouteComponent(() => import('./my-component'), 'MyComponent'),
+})
+
+// In my-component.tsx
+import { RouteApi } from '@tanstack/react-router'
+
+const routeApi = new RouteApi({ id: '/my-route' })
+
+export function MyComponent() {
+  const loaderData = routeApi.useLoaderData()
+  //    ^? { foo: string }
+
+  return <div>...</div>
+}
+```
+
+The `RouteApi` class is also useful for accessing other type-safe APIs:
+
+- `useMatch`
+- `useParams`
+- `useRouteContext`
+- `useRouteData`
+- `useSearch`

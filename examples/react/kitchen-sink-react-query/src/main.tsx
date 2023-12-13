@@ -65,7 +65,7 @@ const userQueryOptions = (userId: number) =>
 
 const useCreateInvoiceMutation = () => {
   return useMutation({
-    // mutationKey: ['invoices', 'create'],
+    mutationKey: ['invoices', 'create'],
     mutationFn: postInvoice,
     onSuccess: () => queryClient.invalidateQueries(),
   })
