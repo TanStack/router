@@ -67,7 +67,10 @@ const editor1Route = new Route({
 function Editor1Component() {
   const [value, setValue] = React.useState('')
 
-  useBlocker('Are you sure you want to leave editor 1?', value)
+  useBlocker(
+    () => window.confirm('Are you sure you want to leave editor 1?'),
+    value,
+  )
 
   return (
     <div className="p-2">
@@ -93,7 +96,10 @@ const editor2Route = new Route({
 function Editor2Component() {
   const [value, setValue] = React.useState('')
 
-  useBlocker('Are you sure you want to leave editor 2?', value)
+  useBlocker(
+    () => window.confirm('Are you sure you want to leave editor 2?'),
+    value,
+  )
 
   return (
     <div className="p-2">

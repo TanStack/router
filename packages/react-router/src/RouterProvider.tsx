@@ -2,13 +2,7 @@ import * as React from 'react'
 import warning from 'tiny-warning'
 import { useStore } from '@tanstack/react-store'
 import { Matches } from './Matches'
-import {
-  LinkInfo,
-  LinkOptions,
-  NavigateOptions,
-  ResolveRelativePath,
-  ToOptions,
-} from './link'
+import { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import { ParsedLocation } from './location'
 import { AnyRoute } from './route'
 import { RouteById, RoutePaths } from './routeInfo'
@@ -19,7 +13,7 @@ import {
   RouterOptions,
   RouterState,
 } from './router'
-import { NoInfer, PickAsRequired, pick, useLayoutEffect } from './utils'
+import { NoInfer, pick, useLayoutEffect } from './utils'
 import { MatchRouteOptions } from './Matches'
 import { RouteMatch } from './Matches'
 
@@ -35,13 +29,6 @@ export interface MatchLocation {
   caseSensitive?: boolean
   from?: string
 }
-
-export type BuildLinkFn<TRouteTree extends AnyRoute> = <
-  TFrom extends RoutePaths<TRouteTree> = '/',
-  TTo extends string = '',
->(
-  dest: LinkOptions<TRouteTree, TFrom, TTo>,
-) => LinkInfo
 
 export type NavigateFn<TRouteTree extends AnyRoute> = <
   TFrom extends RoutePaths<TRouteTree> = '/',

@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useMatch } from './Matches'
 import { useRouter, useRouterState } from './RouterProvider'
 import { Trim } from './fileRoute'
-import { LocationState, ParsedLocation } from './location'
+import { LocationState } from './location'
 import { AnyRoute, ReactNode } from './route'
 import {
   AllParams,
@@ -23,23 +23,6 @@ import {
   deepEqual,
   functionalUpdate,
 } from './utils'
-
-export type LinkInfo =
-  | {
-      type: 'external'
-      href: string
-    }
-  | {
-      type: 'internal'
-      next: ParsedLocation
-      handleFocus: (e: any) => void
-      handleClick: (e: any) => void
-      handleEnter: (e: any) => void
-      handleLeave: (e: any) => void
-      handleTouchStart: (e: any) => void
-      isActive: boolean
-      disabled?: boolean
-    }
 
 export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
   ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
@@ -177,7 +160,6 @@ export type ToSubOptions<
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
   from?: TFrom
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
-  // fromCurrent?: boolean
 } & CheckPath<TRouteTree, NoInfer<TResolved>, {}> &
   SearchParamOptions<TRouteTree, TFrom, TTo, TResolved> &
   PathParamOptions<TRouteTree, TFrom, TResolved>

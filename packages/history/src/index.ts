@@ -11,7 +11,7 @@ export interface RouterHistory {
   back: () => void
   forward: () => void
   createHref: (href: string) => string
-  block: (message: string) => () => void
+  block: (blocker: BlockerFn) => () => void
   flush: () => void
   destroy: () => void
   notify: () => void
@@ -32,9 +32,11 @@ export interface HistoryState {
   key: string
 }
 
-type Blocker = {
-  message: string
-}
+type ShouldAllowNavigation = any
+
+export type BlockerFn = () =>
+  | Promise<ShouldAllowNavigation>
+  | ShouldAllowNavigation
 
 const pushStateEvent = 'pushstate'
 const popStateEvent = 'popstate'
@@ -66,17 +68,18 @@ export function createHistory(opts: {
 }): RouterHistory {
   let location = opts.getLocation()
   let subscribers = new Set<() => void>()
-  let blockers: Blocker[] = []
+  let blockers: BlockerFn[] = []
 
   const onUpdate = () => {
     location = opts.getLocation()
     subscribers.forEach((subscriber) => subscriber())
   }
 
-  const tryNavigation = (task: () => void) => {
+  const tryNavigation = async (task: () => void) => {
     if (typeof document !== 'undefined' && blockers.length) {
       for (let blocker of blockers) {
-        if (!window.confirm(blocker.message)) {
+        const allowed = await blocker()
+        if (!allowed) {
           opts.onBlocked?.(onUpdate)
           return
         }
@@ -125,12 +128,8 @@ export function createHistory(opts: {
       })
     },
     createHref: (str) => opts.createHref(str),
-    block: (message) => {
-      const payload: Blocker = {
-        message,
-      }
-
-      blockers.push(payload)
+    block: (blocker) => {
+      blockers.push(blocker)
 
       if (blockers.length === 1) {
         addEventListener(beforeUnloadEvent, beforeUnloadListener, {
@@ -139,7 +138,7 @@ export function createHistory(opts: {
       }
 
       return () => {
-        blockers = blockers.filter((b) => b !== payload)
+        blockers = blockers.filter((b) => b !== blocker)
 
         if (!blockers.length) {
           stopBlocking()

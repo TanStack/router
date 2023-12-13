@@ -1,26 +1,27 @@
 import * as React from 'react'
 import { ReactNode } from './route'
 import { useRouter } from './RouterProvider'
+import { BlockerFn } from '@tanstack/history'
 
 export function useBlocker(
-  message: string,
+  blockerFn: BlockerFn,
   condition: boolean | any = true,
 ): void {
   const { history } = useRouter()
 
   React.useEffect(() => {
     if (!condition) return
-    return history.block(message)
+    return history.block(blockerFn)
   })
 }
 
-export function Block({ message, condition, children }: PromptProps) {
-  useBlocker(message, condition)
+export function Block({ blocker, condition, children }: PromptProps) {
+  useBlocker(blocker, condition)
   return (children ?? null) as ReactNode
 }
 
 export type PromptProps = {
-  message: string
+  blocker: BlockerFn
   condition?: boolean | any
   children?: ReactNode
 }
