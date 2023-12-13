@@ -179,7 +179,6 @@ function Transitioner() {
       })
 
       if ((document as any).querySelector) {
-        console.log('hello', routerState.location.hash)
         const el = document.getElementById(
           routerState.location.hash,
         ) as HTMLElement | null
