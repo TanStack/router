@@ -341,7 +341,6 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
     window: win,
     parseLocation: () => {
       const hashHref = win.location.hash.split('#').slice(1).join('#') ?? '/'
-      console.log(hashHref)
       return parseHref(hashHref, win.history.state)
     },
     createHref: (href) =>
