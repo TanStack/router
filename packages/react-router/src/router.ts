@@ -667,6 +667,7 @@ export class Router<
             error: undefined,
             paramsError: parseErrors[index],
             loadPromise: Promise.resolve(),
+            routeContext: undefined!,
             context: undefined!,
             abortController: new AbortController(),
             shouldReloadDeps: undefined,
@@ -997,8 +998,6 @@ export class Router<
       }))
     }
 
-    
-
     // Check each match middleware to see if the route can be accessed
     try {
       for (let [index, match] of matches.entries()) {
@@ -1071,6 +1070,10 @@ export class Router<
 
           matches[index] = match = {
             ...match,
+            routeContext: replaceEqualDeep(
+              match.routeContext,
+              beforeLoadContext,
+            ),
             context: replaceEqualDeep(match.context, context),
             abortController,
           }
