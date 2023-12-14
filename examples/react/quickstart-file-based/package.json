@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@tanstack/bling": "^0.5.0",
-    "@tanstack/react-router": "0.0.1-beta.271",
-    "@tanstack/router-devtools": "0.0.1-beta.271",
+    "@tanstack/react-router": "0.0.1-beta.272",
+    "@tanstack/router-devtools": "0.0.1-beta.272",
     "@vitejs/plugin-react": "^4.2.0",
     "axios": "^1.6.2",
     "concurrently": "^8.2.2",
