@@ -74,18 +74,26 @@ export function RouterProvider<
     },
   } as any)
 
-  const inner = (
-    <routerContext.Provider value={router}>
+  const matches = router.options.InnerWrap ? (
+    <router.options.InnerWrap>
       <Matches />
+    </router.options.InnerWrap>
+  ) : (
+    <Matches />
+  )
+
+  const provider = (
+    <routerContext.Provider value={router}>
+      {matches}
       <Transitioner />
     </routerContext.Provider>
   )
 
   if (router.options.Wrap) {
-    return <router.options.Wrap>{inner}</router.options.Wrap>
+    return <router.options.Wrap>{provider}</router.options.Wrap>
   }
 
-  return inner
+  return provider
 }
 
 function Transitioner() {

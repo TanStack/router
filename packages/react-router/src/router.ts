@@ -119,6 +119,7 @@ export interface RouterOptions<
   routeMasks?: RouteMask<TRouteTree>[]
   unmaskOnReload?: boolean
   Wrap?: (props: { children: any }) => JSX.Element
+  InnerWrap?: (props: { children: any }) => JSX.Element
   notFoundRoute?: AnyRoute
 }
 
