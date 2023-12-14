@@ -174,11 +174,13 @@ function Transitioner() {
       })
 
       if ((document as any).querySelector) {
-        const el = document.getElementById(
-          routerState.location.hash,
-        ) as HTMLElement | null
-        if (el) {
-          el.scrollIntoView()
+        if (routerState.location.hash !== '') {
+          const el = document.getElementById(
+            routerState.location.hash,
+          ) as HTMLElement | null
+          if (el) {
+            el.scrollIntoView()
+          }
         }
       }
       router.pendingMatches = []
