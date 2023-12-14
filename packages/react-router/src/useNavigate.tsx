@@ -35,19 +35,20 @@ export function useNavigate<
   )
 }
 
-export function typedNavigate<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TDefaultFrom extends RoutePaths<TRouteTree> = '/',
->(navigate: (opts: NavigateOptions<any>) => Promise<void>) {
-  return navigate as <
-    TFrom extends RoutePaths<TRouteTree> = TDefaultFrom,
-    TTo extends string = '',
-    TMaskFrom extends RoutePaths<TRouteTree> = '/',
-    TMaskTo extends string = '',
-  >(
-    opts?: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-  ) => Promise<void>
-} //
+// NOTE: I don't know of anyone using this. It's undocumented, so let's wait until someone needs it
+// export function typedNavigate<
+//   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+//   TDefaultFrom extends RoutePaths<TRouteTree> = '/',
+// >(navigate: (opts: NavigateOptions<any>) => Promise<void>) {
+//   return navigate as <
+//     TFrom extends RoutePaths<TRouteTree> = TDefaultFrom,
+//     TTo extends string = '',
+//     TMaskFrom extends RoutePaths<TRouteTree> = '/',
+//     TMaskTo extends string = '',
+//   >(
+//     opts?: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
+//   ) => Promise<void>
+// } //
 
 export function Navigate<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -69,22 +70,22 @@ export function Navigate<
   return null
 }
 
-export type MakeLinkPropsOptions<
+export type UseLinkPropsOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = '/',
   TMaskTo extends string = '',
-> = LinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
+> = ActiveLinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
   React.AnchorHTMLAttributes<HTMLAnchorElement>
 
-export type MakeLinkOptions<
+export type LinkProps<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = '/',
   TMaskTo extends string = '',
-> = LinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
+> = ActiveLinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
   Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
     children?:
@@ -92,7 +93,7 @@ export type MakeLinkOptions<
       | ((state: { isActive: boolean }) => React.ReactNode)
   }
 
-export type LinkPropsOptions<
+export type ActiveLinkOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',

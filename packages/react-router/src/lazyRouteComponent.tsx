@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { AsyncRouteComponent } from './route'
+import { RouteComponent } from './route'
 
 export function lazyRouteComponent<
   T extends Record<string, any>,
@@ -7,9 +7,7 @@ export function lazyRouteComponent<
 >(
   importer: () => Promise<T>,
   exportName?: TKey,
-): T[TKey] extends (props: infer TProps) => any
-  ? AsyncRouteComponent<TProps>
-  : never {
+): T[TKey] extends (props: any) => any ? RouteComponent : never {
   let loadPromise: Promise<any>
 
   const load = () => {

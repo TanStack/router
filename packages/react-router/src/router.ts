@@ -32,14 +32,9 @@ import {
   pick,
   Timeout,
 } from './utils'
-import {
-  ErrorRouteComponent,
-  PendingRouteComponent,
-  RouteComponent,
-} from './route'
+import { RouteComponent } from './route'
 import { AnyRouteMatch, RouteMatch } from './Matches'
 import { ParsedLocation } from './location'
-import { LocationState } from './location'
 import { SearchSerializer, SearchParser } from './searchParams'
 import {
   BuildLocationFn,
@@ -110,17 +105,9 @@ export interface RouterOptions<
   parseSearch?: SearchParser
   defaultPreload?: false | 'intent'
   defaultPreloadDelay?: number
-  defaultComponent?: RouteComponent<AnySearchSchema, AnyPathParams, AnyContext>
-  defaultErrorComponent?: ErrorRouteComponent<
-    AnySearchSchema,
-    AnyPathParams,
-    AnyContext
-  >
-  defaultPendingComponent?: PendingRouteComponent<
-    AnySearchSchema,
-    AnyPathParams,
-    AnyContext
-  >
+  defaultComponent?: RouteComponent
+  defaultErrorComponent?: RouteComponent
+  defaultPendingComponent?: RouteComponent
   defaultPendingMs?: number
   defaultPendingMinMs?: number
   caseSensitive?: boolean
@@ -153,13 +140,13 @@ export interface BuildNextOptions {
   params?: true | Updater<unknown>
   search?: true | Updater<unknown>
   hash?: true | Updater<string>
-  state?: true | NonNullableUpdater<LocationState>
+  state?: true | NonNullableUpdater<HistoryState>
   mask?: {
     to?: string | number | null
     params?: true | Updater<unknown>
     search?: true | Updater<unknown>
     hash?: true | Updater<string>
-    state?: true | NonNullableUpdater<LocationState>
+    state?: true | NonNullableUpdater<HistoryState>
     unmaskOnReload?: boolean
   }
   from?: string
@@ -171,7 +158,7 @@ export interface DehydratedRouterState {
 
 export type DehydratedRouteMatch = Pick<
   RouteMatch,
-  'fetchedAt' | 'invalid' | 'id' | 'status' | 'updatedAt'
+  'fetchedAt' | 'id' | 'status' | 'updatedAt'
 >
 
 export interface DehydratedRouter {
@@ -663,7 +650,6 @@ export class Router<
             status: hasLoaders ? 'pending' : 'success',
             showPending: false,
             isFetching: false,
-            invalid: false,
             error: undefined,
             paramsError: parseErrors[index],
             loadPromise: Promise.resolve(),
@@ -1115,7 +1101,6 @@ export class Router<
           matches[index] = match = {
             ...match,
             fetchedAt: Date.now(),
-            invalid: false,
             showPending: false,
           }
 
@@ -1385,7 +1370,7 @@ export class Router<
           [
             [exitingMatchIds, 'onLeave'],
             [enteringMatchIds, 'onEnter'],
-            [stayingMatchIds, 'onTransition'],
+            [stayingMatchIds, 'onStay'],
           ] as const
         ).forEach(([matches, hook]) => {
           matches.forEach((match) => {
@@ -1514,14 +1499,7 @@ export class Router<
     return {
       state: {
         dehydratedMatches: this.state.matches.map((d) =>
-          pick(d, [
-            'fetchedAt',
-            'invalid',
-            'id',
-            'status',
-            'updatedAt',
-            'loaderData',
-          ]),
+          pick(d, ['fetchedAt', 'id', 'status', 'updatedAt', 'loaderData']),
         ),
       },
     }

@@ -29,14 +29,12 @@ export interface RouteMatch<
   status: 'pending' | 'success' | 'error'
   isFetching: boolean
   showPending: boolean
-  invalid: boolean
   error: unknown
   paramsError: unknown
   searchError: unknown
   updatedAt: number
   loadPromise?: Promise<void>
   loaderData?: RouteById<TRouteTree, TRouteId>['types']['loaderData']
-  __resolveLoadPromise?: () => void
   routeContext: RouteById<TRouteTree, TRouteId>['types']['routeContext']
   context: RouteById<TRouteTree, TRouteId>['types']['allContext']
   search: FullSearchSchema<TRouteTree> &
@@ -56,26 +54,12 @@ export function Matches() {
       return getRenderedMatches(s)[0]?.id
     },
   })
-  const route = router.routesById[rootRouteId]!
-
-  const errorComponent = React.useCallback(
-    (props: any) => {
-      return React.createElement(ErrorComponent, {
-        ...props,
-        useMatch: route.useMatch,
-        useRouteContext: route.useRouteContext,
-        useSearch: route.useSearch,
-        useParams: route.useParams,
-      })
-    },
-    [route],
-  )
 
   return (
     <matchContext.Provider value={matchId}>
       <CatchBoundary
         getResetKey={() => router.state.resolvedLocation.state?.key}
-        errorComponent={errorComponent}
+        errorComponent={ErrorComponent}
         onCatch={() => {
           warning(
             false,
@@ -110,58 +94,41 @@ export function Match({ matchId }: { matchId: string }) {
   const PendingComponent = (route.options.pendingComponent ??
     router.options.defaultPendingComponent) as any
 
-  const pendingElement = PendingComponent
-    ? React.createElement(PendingComponent, {
-        useMatch: route.useMatch,
-        useRouteContext: route.useRouteContext,
-        useSearch: route.useSearch,
-        useParams: route.useParams,
-      })
-    : undefined
-
   const routeErrorComponent =
     route.options.errorComponent ??
     router.options.defaultErrorComponent ??
     ErrorComponent
 
   const ResolvedSuspenseBoundary =
-    route.options.wrapInSuspense ?? pendingElement
+    route.options.wrapInSuspense ??
+    PendingComponent ??
+    route.options.component?.preload ??
+    route.options.pendingComponent?.preload ??
+    (route.options.errorComponent as any)?.preload
       ? React.Suspense
       : SafeFragment
 
-  const errorComponent = routeErrorComponent
-    ? React.useCallback(
-        (props: any) => {
-          return React.createElement(routeErrorComponent, {
-            ...props,
-            useMatch: route.useMatch,
-            useRouteContext: route.useRouteContext,
-            useSearch: route.useSearch,
-            useParams: route.useParams,
-          })
-        },
-        [route],
-      )
-    : undefined
-
-  const ResolvedCatchBoundary = errorComponent ? CatchBoundary : SafeFragment
+  const ResolvedCatchBoundary = routeErrorComponent
+    ? CatchBoundary
+    : SafeFragment
 
   return (
     <matchContext.Provider value={matchId}>
-      <ResolvedSuspenseBoundary fallback={pendingElement}>
+      <ResolvedSuspenseBoundary fallback={PendingComponent}>
         <ResolvedCatchBoundary
           getResetKey={() => router.state.resolvedLocation.state?.key}
-          errorComponent={errorComponent}
+          errorComponent={routeErrorComponent}
           onCatch={() => {
             warning(false, `Error in route match: ${matchId}`)
           }}
         >
-          <MatchInner matchId={matchId!} pendingElement={pendingElement} />
+          <MatchInner matchId={matchId!} pendingElement={PendingComponent} />
         </ResolvedCatchBoundary>
       </ResolvedSuspenseBoundary>
     </matchContext.Provider>
   )
 }
+
 function MatchInner({
   matchId,
   pendingElement,
@@ -199,16 +166,10 @@ function MatchInner({
   }
 
   if (match.status === 'success') {
-    let comp = route.options.component ?? router.options.defaultComponent
+    let Comp = route.options.component ?? router.options.defaultComponent
 
-    if (comp) {
-      return React.createElement(comp, {
-        useMatch: route.useMatch,
-        useRouteContext: route.useRouteContext as any,
-        useSearch: route.useSearch,
-        useParams: route.useParams as any,
-        useLoaderData: route.useLoaderData,
-      })
+    if (Comp) {
+      return <Comp />
     }
 
     return <Outlet />
@@ -245,7 +206,7 @@ export interface MatchRouteOptions {
   fuzzy?: boolean
 }
 
-export type MakeUseMatchRouteOptions<
+export type UseMatchRouteOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> = '/',
   TTo extends string = '',
@@ -266,13 +227,7 @@ export function useMatchRoute<
       TMaskTo extends string = '',
       TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
     >(
-      opts: MakeUseMatchRouteOptions<
-        TRouteTree,
-        TFrom,
-        TTo,
-        TMaskFrom,
-        TMaskTo
-      >,
+      opts: UseMatchRouteOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
     ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
       const { pending, caseSensitive, ...rest } = opts
 
@@ -393,11 +348,21 @@ export function useMatch<
 export function useMatches<T = RouteMatch[]>(opts?: {
   select?: (matches: RouteMatch[]) => T
 }): T {
-  const contextMatchId = React.useContext(matchContext)
-
   return useRouterState({
     select: (state) => {
       let matches = getRenderedMatches(state)
+      return opts?.select ? opts.select(matches) : (matches as T)
+    },
+  })
+}
+
+export function useParentMatches<T = RouteMatch[]>(opts?: {
+  select?: (matches: RouteMatch[]) => T
+}): T {
+  const contextMatchId = React.useContext(matchContext)
+
+  return useMatches({
+    select: (matches) => {
       matches = matches.slice(matches.findIndex((d) => d.id === contextMatchId))
       return opts?.select ? opts.select(matches) : (matches as T)
     },

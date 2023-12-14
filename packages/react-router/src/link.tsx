@@ -2,7 +2,6 @@ import * as React from 'react'
 import { useMatch } from './Matches'
 import { useRouter, useRouterState } from './RouterProvider'
 import { Trim } from './fileRoute'
-import { LocationState } from './location'
 import { AnyRoute, ReactNode } from './route'
 import {
   AllParams,
@@ -12,7 +11,7 @@ import {
   RoutePaths,
 } from './routeInfo'
 import { RegisteredRouter } from './router'
-import { MakeLinkOptions, MakeLinkPropsOptions } from './useNavigate'
+import { LinkProps, UseLinkPropsOptions } from './useNavigate'
 import {
   Expand,
   NoInfer,
@@ -23,6 +22,7 @@ import {
   deepEqual,
   functionalUpdate,
 } from './utils'
+import { HistoryState } from '@tanstack/history'
 
 export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
   ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
@@ -156,7 +156,7 @@ export type ToSubOptions<
   // The new has string or a function to update it
   hash?: true | Updater<string>
   // State to pass to the history stack
-  state?: true | NonNullableUpdater<LocationState>
+  state?: true | NonNullableUpdater<HistoryState>
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
   from?: TFrom
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
@@ -348,7 +348,7 @@ export function useLinkProps<
   TMaskFrom extends RoutePaths<TRouteTree> = '/',
   TMaskTo extends string = '',
 >(
-  options: MakeLinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
+  options: UseLinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
   const router = useRouter()
   const matchPathname = useMatch({
@@ -568,7 +568,7 @@ export interface LinkComponent<TProps extends Record<string, any> = {}> {
     TMaskFrom extends RoutePaths<TRouteTree> = '/',
     TMaskTo extends string = '',
   >(
-    props: MakeLinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
+    props: LinkProps<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
       TProps &
       React.RefAttributes<HTMLAnchorElement>,
   ): ReactNode
