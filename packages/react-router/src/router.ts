@@ -30,6 +30,7 @@ import {
   functionalUpdate,
   last,
   pick,
+  Timeout,
 } from './utils'
 import {
   ErrorRouteComponent,
@@ -226,7 +227,7 @@ export class Router<
     Math.random() * 10000000,
   )}`
   resetNextScroll: boolean = true
-  navigateTimeout: NodeJS.Timeout | null = null
+  navigateTimeout: Timeout | null = null
   latestLoadPromise: Promise<void> = Promise.resolve()
   subscribers = new Set<RouterListener<RouterEvent>>()
   pendingMatches: AnyRouteMatch[] = []
