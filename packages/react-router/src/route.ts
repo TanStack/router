@@ -184,7 +184,7 @@ export type UpdatableRouteOptions<
   wrapInSuspense?: boolean
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
   component?: RouteComponent
-  errorComponent?: false | null | RouteComponent
+  errorComponent?: false | null | ErrorRouteComponent
   pendingComponent?: RouteComponent
   pendingMs?: number
   pendingMinMs?: number
@@ -773,11 +773,7 @@ export function createRouteMask<
   return opts as any
 }
 
-export type ErrorRouteProps<
-  TFullSearchSchema extends Record<string, any> = AnySearchSchema,
-  TAllParams extends AnyPathParams = AnyPathParams,
-  TAllContext extends Record<string, any> = AnyContext,
-> = {
+export type ErrorRouteProps = {
   error: unknown
   info: { componentStack: string }
 }
@@ -785,13 +781,18 @@ export type ErrorRouteProps<
 
 export type ReactNode = any
 
-export type SyncRouteComponent =
-  | (() => JSX.Element)
-  | React.LazyExoticComponent<() => JSX.Element>
+export type SyncRouteComponent<TProps> =
+  | ((props: TProps) => ReactNode)
+  | React.LazyExoticComponent<(props: TProps) => ReactNode>
 
-export type RouteComponent = SyncRouteComponent & {
+export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>
 }
+
+export type RouteComponent<TProps = any> = SyncRouteComponent<TProps> &
+  AsyncRouteComponent<TProps>
+
+export type ErrorRouteComponent = RouteComponent<ErrorRouteProps>
 
 export class NotFoundRoute<
   TParentRoute extends AnyRootRoute,
