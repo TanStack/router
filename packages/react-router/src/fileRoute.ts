@@ -105,6 +105,7 @@ export class FileRoute<
       Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
     >,
     TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+    TLoaderDeps extends Record<string, any> = {},
     TLoaderData extends any = unknown,
     TChildren extends RouteConstraints['TChildren'] = unknown,
     TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
@@ -120,6 +121,7 @@ export class FileRoute<
         TAllParams,
         TRouteContext,
         TContext,
+        TLoaderDeps,
         TLoaderData
       >,
       'getParentRoute' | 'path' | 'id'
@@ -138,6 +140,7 @@ export class FileRoute<
     TRouteContext,
     TContext,
     TRouterContext,
+    TLoaderDeps,
     TLoaderData,
     TChildren,
     TRouteTree

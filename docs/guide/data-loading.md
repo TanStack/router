@@ -103,27 +103,25 @@ const postsRoute = new Route({
 
 By passing `false` to the `shouldReload` option, we are telling the router to never reload the `/posts` route after the initial `enter` lifecycle. This means that if the user navigates to `/posts` from `/about`, the `loader` function will be called. If the user then navigates to `/posts/$postId`, the `loader` function will not be called.
 
-### Using a function that returns dependencies to opt-out of `loader` calls
+### Using `loaderDeps` and `shouldReload` together
 
-Imagine our `/posts` route supports some pagination via search params `offset` and `limit`. We may only want to reload the route when those search params change. We can do this by passing a function that returns an array of dependencies to the `shouldReload` option:
+Imagine our `/posts` route supports some pagination via search params `offset` and `limit`. To access these search params, we'll need to use the `loaderDeps` function and pass them to our `loader` to uniquely identify each route match by the offset and the limit. Once we have these deps in place we know our route will always reload when the deps change, so we can opt-out of subsequent reloads with `shouldReload: false`.
 
 ```tsx
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
-  loader: ({ search: { offset, limit } }) =>
+  loaderDeps: ({ search: { offset, limit } }) => ({ offset, limit }),
+  loader: ({ deps: { offset, limit } }) =>
     fetchPosts({
       offset,
       limit,
     }),
-  shouldReload: ({ search: { offset, limit } }) => [offset, limit],
+  shouldReload: false,
 })
 ```
 
-In this example, the `loader` function will be called:
-
-- On initial `enter` lifecycle
-- On navigations when the `offset` or `limit` search params change
+In this example, the `loader` function will **only** be called on the initial `enter` or `preload` actions for each unique offset and limit combination
 
 ### Achieving short-term Stale-While-Revalidate caching with `shouldReload`
 
@@ -227,11 +225,17 @@ const postsRoute = new Route({
 })
 ```
 
-## Using Search Params
+## Using Search Params in Loaders
 
-> ⚠️ Using search params in loaders is likely indication that you should also be uniquely identifying your routes with a unique `key` option. This is because search params are not used in the default matchID that is used to uniquely identify route matches . This means that if you have two routes with the same path but different search params, they will be considered the same route and will not be reloaded when the search params change. This is usually not the desired behavior.
+> ❓ But wait Tanner... where the heck are my search params?!
 
-Search parameters can be accessed via the `beforeLoad` and `loader` functions. The `search` property provided to these functions contains _all_ of the search params including parent search params. In this example, we'll use zod to validate and parse the search params for the `/posts` route that uses pagination, then use them in our `loader` function.
+You might be here wondering why `search` isn't directly available in the `loader` function's parameters. We've purposefully designed it this way to help you succeed. Let's take a look at why:
+
+- Search Parameters being used in a loader function are a very good indicator that these search params should also be used to uniquely identify the data being loaded. For instance, the route match for page 1 of a list of posts is uniquely different than the route match for page 2 of a list of posts.
+- Directly accessing search params in a loader function can lead to bugs where the data being loaded is not unique to the route match. For example, you might ask your `/posts` route to preload page 2's results, but because the route match is being stored under the `/posts` match ID, you would get page 2's data on your screen instead of it preloading in the background!
+- Placing a threshold between search parameters and the loader function allows the router to understand your dependencies and reactivity.
+
+### Accessing Search Params via `routeOptions.loaderDeps`
 
 ```tsx
 import { Route } from '@tanstack/react-router'
@@ -243,8 +247,10 @@ const postsRoute = new Route({
   validateSearch: z.object({
     offset: z.number().int().nonnegative().catch(0),
   }),
+  // Pass the offset to your loader deps via the loaderDeps functino
+  loaderDeps: ({ search: { offset } }) => ({ offset }),
   // Use the offset from context in the loader function
-  loader: async ({ search: { offset } }) =>
+  loader: async ({ deps: { offset } }) =>
     fetchPosts({
       offset,
     }),

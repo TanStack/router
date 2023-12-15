@@ -679,9 +679,12 @@ const userRoute = new Route({
   validateSearch: z.object({
     userId: z.number(),
   }),
+  loaderDeps: ({ search }) => ({
+    userId: search.userId,
+  }),
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(
-      userQueryOptions(opts.search.userId),
+      userQueryOptions(opts.deps.userId),
     ),
   component: UserComponent,
 })

@@ -43,9 +43,10 @@ export interface RouteMatch<
   shouldReloadDeps: any
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'
+  loaderDeps: RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
 }
 
-export type AnyRouteMatch = RouteMatch<any>
+export type AnyRouteMatch = RouteMatch<any, any>
 
 export function Matches() {
   const router = useRouter()

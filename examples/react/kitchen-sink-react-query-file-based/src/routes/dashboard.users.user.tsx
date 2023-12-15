@@ -8,10 +8,10 @@ export const Route = new FileRoute('/dashboard/users/user').createRoute({
   validateSearch: z.object({
     userId: z.number(),
   }),
-  key: ({ search }) => search.userId,
+  loaderDeps: ({ search: { userId } }) => ({ userId }),
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(
-      userQueryOptions(opts.search.userId),
+      userQueryOptions(opts.deps.userId),
     ),
   component: UserComponent,
 })

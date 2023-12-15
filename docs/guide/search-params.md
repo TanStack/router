@@ -172,28 +172,11 @@ The underlying mechanics why this works relies on the `validateSearch` function 
 
 Once your search params have been validated and typed, you're finally ready to start reading and writing to them. There are a few ways to do this in TanStack Router, so let's check them out.
 
-### Search Params in Route Options
+### Reading Search Params in Loaders
 
-Thanks to TypeScript, you can access your route's validated search params in all sibling route options except `beforeLoad`:
+Please read the [Search Params in Loaders](#search-params-in-loaders) section for more information about how to read search params in loaders with the `loaderDeps` option.
 
-```tsx
-const productSearchSchema = z.object({
-  page: z.number().catch(1),
-  filter: z.string().catch(''),
-  sort: z.enum(['newest', 'oldest', 'price']).catch('newest'),
-})
-
-type ProductSearch = z.infer<typeof productSearchSchema>
-
-const allProductsRoute = new Route({
-  getParentRoute: () => shopRoute,
-  path: 'products',
-  validateSearch: productSearchSchema,
-  loader: ({ search }) => {
-    //       ^? ProductSearch ✅
-  },
-})
-```
+### Search Params are inherited from Parent Routes
 
 The search parameters and types of parents are merged as you go down the route tree, so child routes also have access to their parent's search params:
 
@@ -215,7 +198,7 @@ const allProductsRoute = new Route({
 const productRoute = new Route({
   getParentRoute: () => allProductsRoute,
   path: ':productId',
-  loader: ({ search }) => {
+  beforeLoad: ({ search }) => {
     search
     // ^? ProductSearch ✅
   },

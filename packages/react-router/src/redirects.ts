@@ -5,7 +5,7 @@ import { RegisteredRouter } from './router'
 
 // Detect if we're in the DOM
 
-export type AnyRedirect = Redirect<any, any, any>
+export type AnyRedirect = Redirect<any, any, any, any, any>
 
 export type Redirect<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],

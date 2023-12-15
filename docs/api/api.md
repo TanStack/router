@@ -1164,12 +1164,13 @@ type shouldReload =
 - If a function is provided that returns a `boolean`, the above rules will be applied based on the return value of the function.
 - If a function is provided that returns an **object or array** of dependencies, the route will be reloaded when any of the dependencies change. Changes are tracked using deep equality checks.
 
-#### `key`
+#### `loaderDeps`
 
-- Type: `(opts: { search: TFullSearchSchema; location: ParsedLocation }) => any`
+- Type: `(opts: { search: TFullSearchSchema; location: ParsedLocation, context: TAllContext }) => Record<string, any>`
 - Optional
-- A function that will be called before this route is matched to provide additional unique identification to the route match. It should return any serializable value that can uniquely identify the route match from navigation to navigation.
-- If your route match relies on a search params for unique identification, it's recommended to use the `key` option to return a unique value based on the search params. This will ensure that the route match is not shared between locations that have different search params.
+- A function that will be called before this route is matched to provide additional unique identification to the route match and serve as a dependency tracker for when the match should be reloaded. It should return any serializable value that can uniquely identify the route match from navigation to navigation.
+- By default, path params are already used to uniquely identify a route match, so it's unnecessary to return these here.
+- If your route match relies on search params or context values for unique identification, it's required that you return them here so they can be made available in the `loader`'s `deps` argument.
 
 #### `caseSensitive`
 
@@ -1563,36 +1564,6 @@ export type ParseRoute<TRouteTree extends AnyRoute> =
 # `ParseRouteChildren` type
 
 This type recursively parses a route's children and grandchildren into a single union of all possible routes.
-
-```tsx
-export type ParseRouteChildren<TRouteTree extends AnyRoute> =
-  TRouteTree extends Route<
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    infer TChildren,
-    any
-  >
-    ? unknown extends TChildren
-      ? never
-      : TChildren extends AnyRoute[]
-        ? {
-            [TId in TChildren[number]['id'] as string]: ParseRoute<
-              TChildren[number]
-            >
-          }[string]
-        : never
-    : never
-```
 
 # `RoutesById` type
 

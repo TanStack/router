@@ -617,13 +617,21 @@ export class Router<
         }
       })()
 
+      // This is where we need to call route.options.loaderDeps() to get any additional
+      // deps that the route's loader function might need to run. We need to do this
+      // before we create the match so that we can pass the deps to the route's
+      // potential key function which is used to uniquely identify the route match in state
+
+      const loaderDeps =
+        route.options.loaderDeps?.({
+          search: preMatchSearch,
+        }) ?? ''
+
+      const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
+
       const interpolatedPath = interpolatePath(route.fullPath, routeParams)
       const matchId =
-        interpolatePath(route.id, routeParams, true) +
-        (route.options.key?.({
-          search: preMatchSearch,
-          location: this.state.location,
-        }) ?? '')
+        interpolatePath(route.id, routeParams, true) + loaderDepsHash
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
@@ -662,6 +670,7 @@ export class Router<
             shouldReloadDeps: undefined,
             fetchCount: 0,
             cause,
+            loaderDeps,
           }
 
       // Regardless of whether we're reusing an existing match or creating
@@ -1133,7 +1142,7 @@ export class Router<
             } else {
               const loaderContext: LoaderFnContext = {
                 params: match.params,
-                search: match.search,
+                deps: match.loaderDeps,
                 preload: !!preload,
                 parentMatchPromise,
                 abortController: match.abortController,

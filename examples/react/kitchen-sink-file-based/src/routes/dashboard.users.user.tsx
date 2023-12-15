@@ -7,7 +7,8 @@ export const Route = new FileRoute('/dashboard/users/user').createRoute({
   validateSearch: z.object({
     userId: z.number(),
   }),
-  loader: ({ search: { userId } }) => fetchUserById(userId),
+  loaderDeps: ({ search: { userId } }) => ({ userId }),
+  loader: ({ deps: { userId } }) => fetchUserById(userId),
   component: UserComponent,
 })
 

@@ -231,13 +231,20 @@ const router = new Router({
 
 ## Identifying Routes via Search Params
 
-Search Params by default are not used to identify matching paths mostly because they are extremely flexible, flat and can contain a lot of unrelated data to your actual route definition. However, in some cases you may need to use them to uniquely identify a route match. For example, you may have a route that uses a search param to "key" the markup that is rendered for a route. Imagine a `/users/user` route that uses the search param `userId` to identify a specific user in your application, you might model your url like this: `/users/user?userId=123`. This means that your `user` route would need some extra help to identify a specific user. You can do this by adding a `key` function to your route:
+Search Params by default are not used to identify matching paths mostly because they are extremely flexible, flat and can contain a lot of unrelated data to your actual route definition. However, in some cases you may need to use them to uniquely identify a route match. For example, you may have a route that uses a search param like `pageIndex` that uniquely identifies the data held inside of the route match. Or, imagine a `/users/user` route that uses the search param `userId` to identify a specific user in your application, you might model your url like this: `/users/user?userId=123`. This means that your `user` route would need some extra help to identify a specific user. Luckily, the only way to utilize search params in your route loaders is to provide them via a special `loaderDeps` route option. This option provides you all of the search params for the route match and allows you to return the ones you'll need inside of your loader.
 
 ```tsx
 const userRoute = new Route({
   getParentRoute: () => usersRoute,
+  validateSearch: (search) =>
+    search as {
+      userId: string
+    },
   path: 'user',
-  key: ({ search }) => [search.userId],
+  loaderDeps: ({ search: { userId } }) => ({
+    userId,
+  }),
+  loader: async ({ params: { userId } }) => getUser(userId),
 })
 ```
 

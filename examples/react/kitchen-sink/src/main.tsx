@@ -601,7 +601,10 @@ const userRoute = new Route({
   validateSearch: z.object({
     userId: z.number(),
   }),
-  loader: ({ search: { userId } }) => fetchUserById(userId),
+  loaderDeps: ({ search: { userId } }) => ({
+    userId,
+  }),
+  loader: ({ deps: { userId } }) => fetchUserById(userId),
   component: UserComponent,
 })
 
@@ -803,6 +806,7 @@ const router = new Router({
   context: {
     auth: undefined!, // We'll inject this when we render
   },
+  defaultPreload: 'intent',
 })
 
 declare module '@tanstack/react-router' {
