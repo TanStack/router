@@ -9,8 +9,8 @@
     "start": "waku start --with-ssr"
   },
   "dependencies": {
-    "@tanstack/react-router": "0.0.1-beta.274",
-    "@tanstack/router-devtools": "0.0.1-beta.274",
+    "@tanstack/react-router": "0.0.1-beta.275",
+    "@tanstack/router-devtools": "0.0.1-beta.275",
     "@vitejs/plugin-react": "^1.1.3",
     "express": "^4.18.2",
     "react": "18.3.0-canary-7118f5dd7-20230705",
