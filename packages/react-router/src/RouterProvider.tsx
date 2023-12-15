@@ -49,7 +49,7 @@ export type MatchRouteFn<TRouteTree extends AnyRoute> = <
 ) => false | RouteById<TRouteTree, TResolved>['types']['allParams']
 
 export type BuildLocationFn<TRouteTree extends AnyRoute> = (
-  opts: BuildNextOptions,
+  opts: ToOptions<TRouteTree>,
 ) => ParsedLocation
 
 export type InjectedHtmlEntry = string | (() => Promise<string> | string)

@@ -59,6 +59,7 @@ import {
 } from './path'
 import invariant from 'tiny-invariant'
 import { isRedirect } from './redirects'
+import { ToOptions } from './link'
 // import warning from 'tiny-warning'
 
 //
@@ -937,7 +938,7 @@ export class Router<
     startTransition,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
-    const location = this.buildLocation(rest)
+    const location = this.buildLocation(rest as any)
     return this.commitLocation({
       ...location,
       startTransition,
@@ -1461,9 +1462,9 @@ export class Router<
   }
 
   preloadRoute = async (
-    navigateOpts: BuildNextOptions = this.state.location,
+    navigateOpts: ToOptions<TRouteTree> = this.state.location as any,
   ) => {
-    let next = this.buildLocation(navigateOpts)
+    let next = this.buildLocation(navigateOpts as any)
 
     let matches = this.matchRoutes(next.pathname, next.search, {
       throwOnError: true,

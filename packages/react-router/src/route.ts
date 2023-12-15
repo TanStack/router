@@ -169,7 +169,7 @@ type BeforeLoadFn<
   context: TParentRoute['types']['allContext']
   location: ParsedLocation
   navigate: NavigateFn<AnyRoute>
-  buildLocation: BuildLocationFn<AnyRoute>
+  buildLocation: BuildLocationFn<TParentRoute>
   cause: 'preload' | 'enter' | 'stay'
 }) => Promise<TRouteContext> | TRouteContext | void
 
