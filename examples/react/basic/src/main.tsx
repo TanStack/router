@@ -145,7 +145,7 @@ const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
   errorComponent: PostErrorComponent,
-  shouldReload: ({ cause }) => cause === 'enter',
+  shouldReload: false, // Will only load on match for first preload or on 'enter'
   loader: ({ params }) => fetchPost(params.postId),
   component: PostComponent,
 })
@@ -191,6 +191,7 @@ const routeTree = rootRoute.addChildren([
 const router = new Router({
   routeTree,
   notFoundRoute,
+  defaultPreload: 'intent',
 })
 
 // Register things for typesafety

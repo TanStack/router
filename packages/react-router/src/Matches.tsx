@@ -39,10 +39,10 @@ export interface RouteMatch<
   context: RouteById<TRouteTree, TRouteId>['types']['allContext']
   search: FullSearchSchema<TRouteTree> &
     RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema']
-  fetchedAt: number
+  fetchCount: number
   shouldReloadDeps: any
   abortController: AbortController
-  cause: 'enter' | 'stay'
+  cause: 'preload' | 'enter' | 'stay'
 }
 
 export type AnyRouteMatch = RouteMatch<any>

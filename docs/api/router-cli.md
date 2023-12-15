@@ -67,7 +67,7 @@ tsr watch
 
 TSR CLI's generator is designed with an exceptional degree of flexibility, capable of accommodating both flat and nested file structures, or even a combination of the two without any additional configuration. In a flat structure, all files reside at the same level, with specific prefixes and suffixes denoting their relationships and behaviors. Conversely, a nested structure organizes related files into directories, using nesting to illustrate relationships. Both approaches are valuable, so the generator automatically supports mixed configurations where flat and nested structures coexist within the same route tree. This adaptability ensures that developers have complete control over their route organization, allowing for the customization of the routing structure to align seamlessly with various project needs and preferences.
 
-Both of the following configurations will result in a route path of `/posts/:postId/edit`:
+Both of the following configurations will result in a route path of `/posts/$postId/edit`:
 
 - Flat Syntax: `posts.$postId.edit.tsx`
 - Nested Syntax:

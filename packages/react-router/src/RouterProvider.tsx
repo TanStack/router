@@ -54,10 +54,14 @@ export type BuildLocationFn<TRouteTree extends AnyRoute> = (
 
 export type InjectedHtmlEntry = string | (() => Promise<string> | string)
 
-export const routerContext = React.createContext<Router<any>>(null!)
+export let routerContext = React.createContext<Router<any>>(null!)
 
 if (typeof document !== 'undefined') {
-  window.__TSR_ROUTER_CONTEXT__ = routerContext as any
+  if (window.__TSR_ROUTER_CONTEXT__) {
+    routerContext = window.__TSR_ROUTER_CONTEXT__
+  } else {
+    window.__TSR_ROUTER_CONTEXT__ = routerContext as any
+  }
 }
 
 export function RouterProvider<
@@ -212,9 +216,11 @@ export function getRouteMatch<TRouteTree extends AnyRoute>(
   state: RouterState<TRouteTree>,
   id: string,
 ): undefined | RouteMatch<TRouteTree> {
-  return [...(state.pendingMatches ?? []), ...state.matches].find(
-    (d) => d.id === id,
-  )
+  return [
+    ...state.preloadMatches,
+    ...(state.pendingMatches ?? []),
+    ...state.matches,
+  ].find((d) => d.id === id)
 }
 
 export function useRouterState<

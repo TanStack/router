@@ -171,7 +171,7 @@ type BeforeLoadFn<
   location: ParsedLocation
   navigate: NavigateFn<AnyRoute>
   buildLocation: BuildLocationFn<AnyRoute>
-  cause: 'enter' | 'stay'
+  cause: 'preload' | 'enter' | 'stay'
 }) => Promise<TRouteContext> | TRouteContext | void
 
 export type UpdatableRouteOptions<
@@ -268,7 +268,7 @@ export interface LoaderFnContext<
   location: ParsedLocation<TFullSearchSchema>
   navigate: (opts: NavigateOptions<AnyRoute>) => Promise<void>
   parentMatchPromise?: Promise<void>
-  cause: 'enter' | 'stay'
+  cause: 'preload' | 'enter' | 'stay'
 }
 
 export type SearchFilter<T, U = T> = (prev: T) => U
