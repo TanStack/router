@@ -22,10 +22,13 @@ export const invoiceQueryOptions = (invoiceId: number) =>
     queryFn: () => fetchInvoiceById(invoiceId),
   })
 
-export const usersQueryOptions = () =>
+export const usersQueryOptions = (opts: {
+  filterBy?: string
+  sortBy?: 'name' | 'id' | 'email'
+}) =>
   queryOptions({
-    queryKey: ['users'],
-    queryFn: () => fetchUsers(),
+    queryKey: ['users', opts],
+    queryFn: () => fetchUsers(opts),
   })
 
 export const userQueryOptions = (userId: number) =>

@@ -370,6 +370,30 @@ export function useParentMatches<T = RouteMatch[]>(opts?: {
   })
 }
 
+export function useLoaderDeps<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
+  TStrict extends boolean = true,
+  TRouteMatch extends RouteMatch<TRouteTree, TFrom> = RouteMatch<
+    TRouteTree,
+    TFrom
+  >,
+  TSelected = Required<TRouteMatch>['loaderDeps'],
+>(
+  opts: StrictOrFrom<TFrom> & {
+    select?: (match: TRouteMatch) => TSelected
+  },
+): TStrict extends true ? TSelected : TSelected | undefined {
+  return useMatch({
+    ...opts,
+    select: (s) => {
+      return typeof opts.select === 'function'
+        ? opts.select(s?.loaderDeps)
+        : s?.loaderDeps
+    },
+  })!
+}
+
 export function useLoaderData<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,

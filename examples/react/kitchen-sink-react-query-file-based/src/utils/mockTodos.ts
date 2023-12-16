@@ -1,4 +1,5 @@
-import { PickAsRequired } from '@tanstack/react-router'
+import { PickAsPartial, PickAsRequired } from '@tanstack/react-router'
+import { match } from 'assert'
 import axios from 'axios'
 import { produce } from 'immer'
 import { actionDelayFn, loaderDelayFn, shuffle } from './utils'
@@ -130,8 +131,31 @@ export async function patchInvoice({
   })
 }
 
-export async function fetchUsers() {
-  return loaderDelayFn(() => ensureUsers().then(() => users))
+export type UsersSortBy = 'name' | 'id' | 'email'
+
+export async function fetchUsers({
+  filterBy,
+  sortBy,
+}: { filterBy?: string; sortBy?: UsersSortBy } = {}) {
+  return loaderDelayFn(() =>
+    ensureUsers().then(() => {
+      let usersDraft = users
+
+      if (filterBy) {
+        usersDraft = usersDraft.filter((d) =>
+          d.name.toLowerCase().includes(filterBy.toLowerCase()),
+        )
+      }
+
+      if (sortBy) {
+        usersDraft = [...usersDraft].sort((a, b) => {
+          return a[sortBy] > b[sortBy] ? 1 : -1
+        })
+      }
+
+      return usersDraft
+    }),
+  )
 }
 
 export async function fetchUserById(id: number) {

@@ -31,7 +31,11 @@ export const Route = new FileRoute('/dashboard/users').createRoute({
       },
     }),
   ],
-  loader: () => fetchUsers(),
+  loaderDeps: ({ search }) => ({
+    filterBy: search.usersView?.filterBy,
+    sortBy: search.usersView?.sortBy,
+  }),
+  loader: ({ deps }) => fetchUsers(deps),
   shouldReload: false,
   component: UsersComponent,
 })
@@ -48,24 +52,6 @@ function UsersComponent() {
   React.useEffect(() => {
     setFilterDraft(filterBy ?? '')
   }, [filterBy])
-
-  const sortedUsers = React.useMemo(() => {
-    if (!users) return []
-
-    return !sortBy
-      ? users
-      : [...users].sort((a, b) => {
-          return a[sortBy] > b[sortBy] ? 1 : -1
-        })
-  }, [users, sortBy])
-
-  const filteredUsers = React.useMemo(() => {
-    if (!filterBy) return sortedUsers
-
-    return sortedUsers.filter((user) =>
-      user.name.toLowerCase().includes(filterBy.toLowerCase()),
-    )
-  }, [sortedUsers, filterBy])
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
@@ -120,7 +106,7 @@ function UsersComponent() {
             className="min-w-0 flex-1 border p-1 px-2 rounded"
           />
         </div>
-        {filteredUsers?.map((user) => {
+        {users?.map((user) => {
           return (
             <div key={user.id}>
               <Link

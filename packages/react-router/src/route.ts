@@ -1,6 +1,6 @@
 import * as React from 'react'
 import invariant from 'tiny-invariant'
-import { useLoaderData, useMatch } from './Matches'
+import { useLoaderData, useLoaderDeps, useMatch } from './Matches'
 import { AnyRouteMatch } from './Matches'
 import { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
 import { ParsedLocation } from './location'
@@ -345,6 +345,7 @@ export class RouteApi<
   > = TRoute['types']['fullSearchSchema'],
   TAllParams extends AnyPathParams = TRoute['types']['allParams'],
   TAllContext extends Record<string, any> = TRoute['types']['allContext'],
+  TLoaderDeps extends Record<string, any> = TRoute['types']['loaderDeps'],
   TLoaderData extends any = TRoute['types']['loaderData'],
 > {
   id: TId
@@ -354,13 +355,13 @@ export class RouteApi<
   }
 
   useMatch = <TSelected = TAllContext>(opts?: {
-    select?: (search: TAllContext) => TSelected
+    select?: (s: TAllContext) => TSelected
   }): TSelected => {
     return useMatch({ ...opts, from: this.id }) as any
   }
 
   useRouteContext = <TSelected = TAllContext>(opts?: {
-    select?: (search: TAllContext) => TSelected
+    select?: (s: TAllContext) => TSelected
   }): TSelected => {
     return useMatch({
       ...opts,
@@ -370,19 +371,25 @@ export class RouteApi<
   }
 
   useSearch = <TSelected = TFullSearchSchema>(opts?: {
-    select?: (search: TFullSearchSchema) => TSelected
+    select?: (s: TFullSearchSchema) => TSelected
   }): TSelected => {
     return useSearch({ ...opts, from: this.id } as any)
   }
 
   useParams = <TSelected = TAllParams>(opts?: {
-    select?: (search: TAllParams) => TSelected
+    select?: (s: TAllParams) => TSelected
   }): TSelected => {
     return useParams({ ...opts, from: this.id } as any)
   }
 
+  useLoaderDeps = <TSelected = TLoaderDeps>(opts?: {
+    select?: (s: TLoaderDeps) => TSelected
+  }): TSelected => {
+    return useLoaderDeps({ ...opts, from: this.id } as any) as any
+  }
+
   useLoaderData = <TSelected = TLoaderData>(opts?: {
-    select?: (search: TLoaderData) => TSelected
+    select?: (s: TLoaderData) => TSelected
   }): TSelected => {
     return useLoaderData({ ...opts, from: this.id } as any) as any
   }
@@ -626,6 +633,12 @@ export class Route<
     select?: (search: TAllParams) => TSelected
   }): TSelected => {
     return useParams({ ...opts, from: this.id } as any)
+  }
+
+  useLoaderDeps = <TSelected = TLoaderDeps>(opts?: {
+    select?: (s: TLoaderDeps) => TSelected
+  }): TSelected => {
+    return useLoaderDeps({ ...opts, from: this.id } as any) as any
   }
 
   useLoaderData = <TSelected = TLoaderData>(opts?: {

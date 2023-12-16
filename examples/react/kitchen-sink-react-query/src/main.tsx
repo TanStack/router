@@ -51,10 +51,20 @@ const invoiceQueryOptions = (invoiceId: number) =>
     queryFn: () => fetchInvoiceById(invoiceId),
   })
 
-const usersQueryOptions = () =>
+const usersQueryOptions = ({
+  filterBy,
+  sortBy,
+}: {
+  filterBy?: string
+  sortBy?: UsersViewSortBy
+}) =>
   queryOptions({
-    queryKey: ['users'],
-    queryFn: () => fetchUsers(),
+    queryKey: ['users', { filterBy, sortBy }],
+    queryFn: () =>
+      fetchUsers({
+        filterBy,
+        sortBy,
+      }),
   })
 
 const userQueryOptions = (userId: number) =>
@@ -516,15 +526,21 @@ const usersRoute = new Route({
       },
     }),
   ],
+  loaderDeps: ({ search }) => ({
+    filterBy: search.usersView?.filterBy,
+    sortBy: search.usersView?.sortBy,
+  }),
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(usersQueryOptions()),
+    opts.context.queryClient.ensureQueryData(usersQueryOptions(opts.deps)),
   component: UsersComponent,
 })
 
 function UsersComponent() {
   const navigate = useNavigate()
   const { usersView } = usersRoute.useSearch()
-  const usersQuery = useSuspenseQuery(usersQueryOptions())
+  const usersQuery = useSuspenseQuery(
+    usersQueryOptions(usersRoute.useLoaderDeps()),
+  )
   const users = usersQuery.data
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy

@@ -33,14 +33,14 @@ export const Route = new FileRoute('/dashboard/users').createRoute({
     }),
   ],
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(usersQueryOptions()),
+    opts.context.queryClient.ensureQueryData(usersQueryOptions(opts.deps)),
   component: UsersComponent,
 })
 
 function UsersComponent() {
   const navigate = useNavigate()
   const { usersView } = Route.useSearch()
-  const usersQuery = useSuspenseQuery(usersQueryOptions())
+  const usersQuery = useSuspenseQuery(usersQueryOptions(Route.useLoaderDeps()))
   const users = usersQuery.data
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy
