@@ -347,7 +347,7 @@ export class Router<
       trimmed: string
       parsed: ReturnType<typeof parsePathname>
       index: number
-      score: number[]
+      scores: number[]
     }[] = []
 
     ;(Object.values(this.routesById) as AnyRoute[]).forEach((d, i) => {
@@ -362,7 +362,11 @@ export class Router<
         parsed.shift()
       }
 
-      const score = parsed.map((d) => {
+      const scores = parsed.map((d) => {
+        if (d.value === '/') {
+          return 0.75
+        }
+
         if (d.type === 'param') {
           return 0.5
         }
@@ -374,39 +378,30 @@ export class Router<
         return 1
       })
 
-      scoredRoutes.push({ child: d, trimmed, parsed, index: i, score })
+      scoredRoutes.push({ child: d, trimmed, parsed, index: i, scores })
     })
 
     this.flatRoutes = scoredRoutes
       .sort((a, b) => {
-        let isIndex = a.trimmed === '/' ? 1 : b.trimmed === '/' ? -1 : 0
-
-        if (isIndex !== 0) return isIndex
-
-        const length = Math.min(a.score.length, b.score.length)
-
-        // Sort by length of score
-        if (a.score.length !== b.score.length) {
-          return b.score.length - a.score.length
-        }
+        const minLength = Math.min(a.scores.length, b.scores.length)
 
         // Sort by min available score
-        for (let i = 0; i < length; i++) {
-          if (a.score[i] !== b.score[i]) {
-            return b.score[i]! - a.score[i]!
+        for (let i = 0; i < minLength; i++) {
+          if (a.scores[i] !== b.scores[i]) {
+            return b.scores[i]! - a.scores[i]!
           }
+        }
+
+        // Sort by length of score
+        if (a.scores.length !== b.scores.length) {
+          return b.scores.length - a.scores.length
         }
 
         // Sort by min available parsed value
-        for (let i = 0; i < length; i++) {
+        for (let i = 0; i < minLength; i++) {
           if (a.parsed[i]!.value !== b.parsed[i]!.value) {
             return a.parsed[i]!.value! > b.parsed[i]!.value! ? 1 : -1
           }
-        }
-
-        // Sort by length of trimmed full path
-        if (a.trimmed !== b.trimmed) {
-          return a.trimmed > b.trimmed ? 1 : -1
         }
 
         // Sort by original index
