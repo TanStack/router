@@ -14,6 +14,7 @@ import {
   rootRouteWithContext,
   useRouter,
   MatchRoute,
+  useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import {
@@ -32,6 +33,11 @@ import { useMutation } from './useMutation'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
+function RouterSpinner() {
+  const isLoading = useRouterState({ select: (s) => s.status === 'pending' })
+  return <Spinner show={isLoading} />
+}
+
 const rootRoute = rootRouteWithContext<{
   auth: Auth
 }>()({
@@ -39,8 +45,6 @@ const rootRoute = rootRouteWithContext<{
 })
 
 function RootComponent() {
-  const { state } = useRouter()
-
   return (
     <>
       <div className={`min-h-screen flex flex-col`}>
@@ -48,7 +52,7 @@ function RootComponent() {
           <h1 className={`text-3xl p-2`}>Kitchen Sink</h1>
           {/* Show a global spinner when the router is transitioning */}
           <div className={`text-3xl`}>
-            <Spinner show={state.status === 'pending'} />
+            <RouterSpinner />
           </div>
         </div>
         <div className={`flex-1 flex`}>

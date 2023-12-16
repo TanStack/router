@@ -989,11 +989,11 @@ export class Router<
     let firstBadMatchIndex: number | undefined
 
     const updateMatch = (match: AnyRouteMatch) => {
-      const isPreload = this.state.preloadMatches.find((d) => d.id === match.id)
+      // const isPreload = this.state.preloadMatches.find((d) => d.id === match.id)
       const isPending = this.state.pendingMatches?.find(
         (d) => d.id === match.id,
       )
-      const matchesKey = isPreload
+      const matchesKey = preload
         ? 'preloadMatches'
         : isPending
           ? 'pendingMatches'

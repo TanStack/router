@@ -95,6 +95,8 @@ export function Match({ matchId }: { matchId: string }) {
   const PendingComponent = (route.options.pendingComponent ??
     router.options.defaultPendingComponent) as any
 
+  const pendingElement = PendingComponent ? <PendingComponent /> : null
+
   const routeErrorComponent =
     route.options.errorComponent ??
     router.options.defaultErrorComponent ??
@@ -115,7 +117,7 @@ export function Match({ matchId }: { matchId: string }) {
 
   return (
     <matchContext.Provider value={matchId}>
-      <ResolvedSuspenseBoundary fallback={PendingComponent}>
+      <ResolvedSuspenseBoundary fallback={pendingElement}>
         <ResolvedCatchBoundary
           getResetKey={() => router.state.resolvedLocation.state?.key}
           errorComponent={routeErrorComponent}
@@ -123,7 +125,7 @@ export function Match({ matchId }: { matchId: string }) {
             warning(false, `Error in route match: ${matchId}`)
           }}
         >
-          <MatchInner matchId={matchId!} pendingElement={PendingComponent} />
+          <MatchInner matchId={matchId!} pendingElement={pendingElement} />
         </ResolvedCatchBoundary>
       </ResolvedSuspenseBoundary>
     </matchContext.Provider>
@@ -161,7 +163,7 @@ function MatchInner({
 
   if (match.status === 'pending') {
     if (match.showPending) {
-      return pendingElement || null
+      return pendingElement
     }
     throw match.loadPromise
   }
@@ -218,6 +220,7 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
 >() {
+  useRouterState({ select: (s) => [s.location, s.resolvedLocation] })
   const { matchRoute } = useRouter()
 
   return React.useCallback(
