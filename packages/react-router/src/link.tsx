@@ -178,7 +178,7 @@ export type SearchParamOptions<
           >
         >
       >,
-  TFromSearchOptional = Omit<AllParams<TRouteTree>, keyof TFromSearchEnsured>,
+  TFromSearchOptional = Omit<FullSearchSchema<TRouteTree>, keyof TFromSearchEnsured>,
   TFromSearch = Expand<TFromSearchEnsured & TFromSearchOptional>,
   TToSearch = '' extends TTo
     ? FullSearchSchema<TRouteTree>
