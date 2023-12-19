@@ -110,6 +110,8 @@ To control router dependencies and "freshness", TanStack Router provides a pleth
 - `routeOptions.gcTime`
 - `routerOptions.defaultGcTime`
   - The number of milliseconds that a route's data should be kept in the cache before being garbage collected.
+- `routeOptions.shouldReload`
+  - A function that receives the same `beforeLoad` and `loaderContext` parameters and returns a boolean indicating if the route should reload. This offers one more level of control over when a route should reload beyond `staleTime` and `loaderDeps` and can be used to implement patterns similar to Remix's `shouldLoad` option.
 
 ### ⚠️ Some Important Defaults
 
@@ -174,6 +176,21 @@ You can even turn this off for all routes by setting the `defaultStaleTime` opti
 const router = new Router({
   routeTree,
   defaultStaleTime: Infinity,
+})
+```
+
+## Using `shouldReload` to opt-out of loader reloading
+
+Similar to Remix's defaulf functionality, you may want to configure a route to only load on entry or when critical loader deps change. You can do this by using the `shouldReload` option, which accepts either a `boolean` or a function that receives the same `beforeLoad` and `loaderContext` parameters and returns a boolean indicating if the route should reload.
+
+```tsx
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  loaderDeps: ({ search: { offset, limit } }) => ({ offset, limit }),
+  loader: ({ deps }) => fetchPosts(deps),
+  // Only reload the route when the user navigates to it or when deps change
+  shouldReload: false,
 })
 ```
 

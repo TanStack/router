@@ -1166,6 +1166,14 @@ type loader = (
 - Defaults to `routerOptions.defaultGcTime`, which defaults to 30 minutes.
 - The amount of time in milliseconds that a route match's loader data will be kept in memory after a preload or it is no longer in use.
 
+#### `shouldReload`
+
+- Type: `boolean | ((args: LoaderArgs) => boolean)`
+- Optional
+- If `false` or returns `false`, the route match's loader data will not be reloaded on subsequent matches.
+- If `true` or returns `true`, the route match's loader data will be reloaded on subsequent matches.
+- If `undefined` or returns `undefined`, the route match's loader data will adhere to the default stale-while-revalidate behavior.
+
 #### `caseSensitive`
 
 - Type: `boolean`

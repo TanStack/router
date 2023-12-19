@@ -668,6 +668,7 @@ export class Router<
             fetchCount: 0,
             cause,
             loaderDeps,
+            invalid: false,
           }
 
       // Regardless of whether we're reusing an existing match or creating
@@ -974,12 +975,10 @@ export class Router<
     checkLatest,
     matches,
     preload,
-    invalidate,
   }: {
     checkLatest: () => Promise<void> | undefined
     matches: AnyRouteMatch[]
     preload?: boolean
-    invalidate?: boolean
   }): Promise<RouteMatch[]> => {
     let latestPromise
     let firstBadMatchIndex: number | undefined
@@ -1136,22 +1135,25 @@ export class Router<
             (route.options.pendingComponent ??
               this.options.defaultPendingComponent)
 
+          const loaderContext: LoaderFnContext = {
+            params: match.params,
+            deps: match.loaderDeps,
+            preload: !!preload,
+            parentMatchPromise,
+            abortController: match.abortController,
+            context: match.context,
+            location: this.state.location,
+            navigate: (opts) =>
+              this.navigate({ ...opts, from: match.pathname } as any),
+            cause: preload ? 'preload' : match.cause,
+          }
+
           const fetch = async () => {
             if (match.isFetching) {
               loadPromise = getRouteMatch(this.state, match.id)?.loadPromise
             } else {
-              const loaderContext: LoaderFnContext = {
-                params: match.params,
-                deps: match.loaderDeps,
-                preload: !!preload,
-                parentMatchPromise,
-                abortController: match.abortController,
-                context: match.context,
-                location: this.state.location,
-                navigate: (opts) =>
-                  this.navigate({ ...opts, from: match.pathname } as any),
-                cause: preload ? 'preload' : match.cause,
-              }
+              // If the user doesn't want the route to reload, just
+              // resolve with the existing loader data
 
               if (match.fetchCount && match.status === 'success') {
                 resolve()
@@ -1243,14 +1245,19 @@ export class Router<
               30_000 // 30 seconds for preloads by default
             : route.options.staleTime ?? this.options.defaultStaleTime ?? 0
 
-          if (match.status === 'success') {
-            // Background Fetching, no need to wait
-            if (age > staleAge) {
-              fetch()
-            }
-          } else {
-            // Critical Fetching, we need to await
+          // Default to reloading the route all the time
+          let shouldReload
 
+          const shouldReloadOption = route.options.shouldReload
+
+          // Allow shouldReload to get the last say,
+          // if provided.
+          shouldReload =
+            typeof shouldReloadOption === 'function'
+              ? shouldReloadOption(loaderContext)
+              : shouldReloadOption
+
+          if (match.status !== 'success') {
             // If we need to potentially show the pending component,
             // start a timer to show it after the pendingMs
             if (shouldPending) {
@@ -1268,7 +1275,11 @@ export class Router<
               })
             }
 
+            // Critical Fetching, we need to await
             await fetch()
+          } else if (match.invalid || (shouldReload ?? age > staleAge)) {
+            // Background Fetching, no need to wait
+            fetch()
           }
 
           resolve()
@@ -1280,12 +1291,23 @@ export class Router<
     return matches
   }
 
-  invalidate = () =>
-    this.load({
-      invalidate: true,
+  invalidate = () => {
+    const invalidate = (d: any) => ({
+      ...d,
+      invalid: true,
     })
 
-  load = async (opts?: { invalidate?: boolean }): Promise<void> => {
+    this.__store.setState((s) => ({
+      ...s,
+      matches: s.matches.map(invalidate),
+      cachedMatches: s.cachedMatches.map(invalidate),
+      pendingMatches: s.pendingMatches?.map(invalidate),
+    }))
+
+    this.load()
+  }
+
+  load = async (): Promise<void> => {
     const promise = new Promise<void>(async (resolve, reject) => {
       const next = this.latestLocation
       const prevLocation = this.state.resolvedLocation
@@ -1348,7 +1370,6 @@ export class Router<
           await this.loadMatches({
             matches: pendingMatches,
             checkLatest: () => this.checkLatest(promise),
-            invalidate: opts?.invalidate,
           })
         } catch (err) {
           // swallow this error, since we'll display the

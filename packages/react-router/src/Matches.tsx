@@ -43,6 +43,7 @@ export interface RouteMatch<
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'
   loaderDeps: RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
+  invalid: boolean
 }
 
 export type AnyRouteMatch = RouteMatch<any, any>
