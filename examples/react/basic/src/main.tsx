@@ -62,18 +62,6 @@ function RootComponent() {
           Home
         </Link>{' '}
         <Link
-          to="/"
-          activeProps={{
-            className: 'font-bold',
-          }}
-          search={{
-            test: true,
-          }}
-          activeOptions={{ exact: true }}
-        >
-          Home
-        </Link>{' '}
-        <Link
           to={'/posts'}
           activeProps={{
             className: 'font-bold',
