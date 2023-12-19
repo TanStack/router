@@ -19,6 +19,7 @@ const router = new Router({
   context: {
     auth: undefined!, // We'll inject this when we render
   },
+  defaultPreload: 'intent',
 })
 
 declare module '@tanstack/react-router' {

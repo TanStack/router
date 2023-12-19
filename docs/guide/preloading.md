@@ -50,48 +50,52 @@ const router = new Router({
 
 You can also set the `preloadDelay` prop on individual `<Link>` components to override the default behavior on a per-link basis.
 
-## Preloading supports Data Loaders and External Libraries
+## Built-in Preloading & `preloadStaleTime`
 
-Preloading supports both built-in loaders and your favorite data loading libraries! To use the built-in loaders, simply return data from your route's loader function and optionally configure the `shouldReload` option to control when the route is preloaded.
+If you're using the built-in loaders, you can control how long preloaded data is considered fresh until another preload is triggered by setting either `routerOptions.defaultPreloadStaleTime` or `routeOptions.preloadStaleTime` to a number of milliseconds. **By default, preloaded data is considered fresh for 30 seconds.**.
 
-If you'd rather use your favorite data loading library, you'll likely want to keep the aggressive default behavior of triggering preload logic every time the a `<Linkuser hovers or touches>` component, then allow your external library to control the actual data loading and caching strategy.
-
-## Build-in Preloading & `shouldReload`
-
-If you're using the built-in loaders, you can control when a route is preloaded by setting the `shouldReload` option on the route.
-
-The `shouldReload` option on a route will be respected for preloading in the exact same way it is respected for normal route loading:
-
-- If `shouldReload` is `true` (the default), the route will always be preloaded when the user triggers the preload. This might be a bit aggressive, but it's a thorough default to ensure that the route is always up-to-date.
-- If `shouldReload` is `false`, the route will only be preloaded if the route is not already preloaded. This is useful for routes that are not likely to change often.
-- If `shouldReload` is a function and returns `true`/`false`, the route will be preloaded based on the return value of the function.
-- If `shouldReload` is a function and returns a dependency object/array, the route will be preloaded if the dependency object has changed since the last time the route was preloaded.
-
-### Example
+To change this, you can set the `defaultPreloadStaleTime` option on your router:
 
 ```tsx
 import { Router } from '@tanstack/react-router'
 
+const router = new Router({
+  // ...
+  defaultPreloadStaleTime: 10_000,
+})
+```
+
+Or, you can use the `routeOptions.preloadStaleTime` option on individual routes:
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
 const postRoute = new Route({
   path: '/posts/$id',
   loader: async ({ params }) => fetchPost(params.id),
-  // Preload the route if the cache is older than 10 seconds
-  shouldReload: ({ params }) => Math.floor(Date.now() / 10_000),
-})
-
-const router = new Router({
-  // ...
-  defaultPreload: 'intent',
+  // Preload the route again if the preload cache is older than 10 seconds
+  preloadStaleTime: 10_000,
 })
 ```
 
 ## Preloading with External Libraries
 
-It's common for external caching libraries to have their own tracking mechanisms for when data is stale. For example, [React Query](https://react-query.tanstack.com) has a `staleTime` option that controls how long data is considered fresh.
+When integrating external caching libraries like React Query, which have their own mechanisms for determining stale data, you may want to override the default preloading and stale-while-revalidate logic of TanStack Router. These libraries often use options like staleTime to control the freshness of data.
 
-Since this is the norm, the default behavior of preloading in TanStack Router is to always trigger the preload logic when the user hovers or touches a `<Link>` component, then allow your external library to control the actual data loading and caching strategy.
+To customize the preloading behavior in TanStack Router and fully leverage your external library's caching strategy, you can bypass the built-in caching by setting routerOptions.defaultPreloadStaleTime or routeOptions.preloadStaleTime to 0. This ensures that all preloads are marked as stale internally, and loaders are always invoked, allowing your external library, such as React Query, to manage data loading and caching.
 
-Simply put **if you're using an external data loading library, you probably don't need to configure the `shouldReload` option**.
+For example:
+
+```tsx
+import { Router } from '@tanstack/react-router'
+
+const router = new Router({
+  // ...
+  defaultPreloadStaleTime: 0,
+})
+```
+
+This would then allow you, for instance, to use an option like React Query's `staleTime` to control the freshness of your preloads.
 
 ## Preloading Manually
 

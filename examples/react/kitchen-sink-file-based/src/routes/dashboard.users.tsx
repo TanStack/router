@@ -36,7 +36,6 @@ export const Route = new FileRoute('/dashboard/users').createRoute({
     sortBy: search.usersView?.sortBy,
   }),
   loader: ({ deps }) => fetchUsers(deps),
-  shouldReload: false,
   component: UsersComponent,
 })
 

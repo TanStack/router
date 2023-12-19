@@ -314,6 +314,7 @@ const photoModalToPhotoMask = createRouteMask({
 const router = new Router({
   routeTree,
   routeMasks: [photoModalToPhotoMask],
+  defaultPreload: 'intent',
 })
 
 // Register things for typesafety

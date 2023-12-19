@@ -40,7 +40,6 @@ export interface RouteMatch<
   search: FullSearchSchema<TRouteTree> &
     RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema']
   fetchCount: number
-  shouldReloadDeps: any
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'
   loaderDeps: RouteById<TRouteTree, TRouteId>['types']['loaderDeps']

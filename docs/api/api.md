@@ -691,7 +691,6 @@ interface RouteMatch {
   context: Route['allContext']
   search: Route['fullSearchSchema']
   fetchedAt: number
-  shouldReloadDeps: any
   abortController: AbortController
   cause: 'enter' | 'stay'
 }
@@ -1138,32 +1137,6 @@ type loader = (
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this routes pendingMs threshold is reached, the `pendingComponent` will be shown until it resolved. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TLoaderData` object, that object will be stored on the route match until the route match is no longer active. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
 
-#### `shouldReload`
-
-```tsx
-type shouldReload =
-  | boolean
-  | ((
-      opts: RouteMatch & {
-        search: TFullSearchSchema
-        abortController: AbortController
-        preload: boolean
-        params: TAllParams
-        context: TAllContext
-        location: ParsedLocation
-        navigate: NavigateFn<AnyRoute>
-        buildLocation: BuildLocationFn<AnyRoute>
-        cause: 'enter' | 'stay'
-      },
-    ) => Promise<TDeps | boolean> | TDeps | boolean)
-```
-
-- Optional, defaults to `true`
-- If `true`, the route will be reloaded every time it is matched, including locations where the route is already matched and stays matched in the next location.
-- If `false`, the route will not reload after it is initially matched and loaded.
-- If a function is provided that returns a `boolean`, the above rules will be applied based on the return value of the function.
-- If a function is provided that returns an **object or array** of dependencies, the route will be reloaded when any of the dependencies change. Changes are tracked using deep equality checks.
-
 #### `loaderDeps`
 
 - Type: `(opts: { search: TFullSearchSchema; location: ParsedLocation, context: TAllContext }) => Record<string, any>`
@@ -1171,6 +1144,27 @@ type shouldReload =
 - A function that will be called before this route is matched to provide additional unique identification to the route match and serve as a dependency tracker for when the match should be reloaded. It should return any serializable value that can uniquely identify the route match from navigation to navigation.
 - By default, path params are already used to uniquely identify a route match, so it's unnecessary to return these here.
 - If your route match relies on search params or context values for unique identification, it's required that you return them here so they can be made available in the `loader`'s `deps` argument.
+
+#### `staleTime`
+
+- Type: `number`
+- Optional
+- Defaults to `routerOptions.defaultStaleTime`, which defaults to `0`
+- The amount of time in milliseconds that a route match's loader data will be considered fresh. If a route match is matched again within this time frame, its loader data will not be reloaded.
+
+#### `preloadStaleTime`
+
+- Type: `number`
+- Optional
+- Defaults to `routerOptions.defaultPreloadStaleTime`, which defaults to `30_000` ms (30 seconds)
+- The amount of time in milliseconds that a route match's loader data will be considered fresh when preloading. If a route match is preloaded again within this time frame, its loader data will not be reloaded. If a route match is loaded (for navigation) within this time frame, the normal `staleTime` is used instead.
+
+#### `gcTime`
+
+- Type: `number`
+- Optional
+- Defaults to `routerOptions.defaultGcTime`, which defaults to 30 minutes.
+- The amount of time in milliseconds that a route match's loader data will be kept in memory after a preload or it is no longer in use.
 
 #### `caseSensitive`
 
@@ -2142,7 +2136,7 @@ Invalidates all route matches by forcing their `beforeLoad` and `load` functions
 
 Loads all of the currently matched route matches and resolves when they are all loaded and ready to be rendered.
 
-> ⚠️⚠️⚠️ **`router.load()` respects `route.shouldReload` and will not forcefully reload a route match if it opts out via `shouldReload`. If you need to forcefully reload a route match, use `router.invalidate()` instead.**
+> ⚠️⚠️⚠️ **`router.load()` respects `route.staleTime` and will not forcefully reload a route match if it is still fresh. If you need to forcefully reload a route match, use `router.invalidate()` instead.**
 
 - Type: `() => Promise<void>`
 - The most common use case for this method is to call it when doing SSR to ensure that all of the critical data for the current route is loaded before attempting to stream or render the application to the client.

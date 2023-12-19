@@ -186,7 +186,7 @@ const routeTree = rootRoute.addChildren([
   byElementRoute,
 ])
 
-const router = new Router({ routeTree })
+const router = new Router({ routeTree, defaultPreload: 'intent' })
 
 declare module '@tanstack/react-router' {
   interface Register {

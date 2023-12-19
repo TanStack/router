@@ -5,7 +5,6 @@ import { Spinner } from '../components/Spinner'
 
 export const Route = new FileRoute('/dashboard/invoices').createRoute({
   loader: () => fetchInvoices(),
-  shouldReload: false,
   component: InvoicesComponent,
 })
 

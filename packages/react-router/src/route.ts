@@ -99,16 +99,6 @@ export type BaseRouteOptions<
 > = RoutePathOptions<TCustomId, TPath> & {
   getParentRoute: () => TParentRoute
   validateSearch?: SearchSchemaValidator<TSearchSchema>
-  shouldReload?:
-    | boolean
-    | ((
-        match: LoaderFnContext<
-          TAllParams,
-          TFullSearchSchema,
-          TAllContext,
-          TRouteContext
-        >,
-      ) => any)
 } & (keyof PickRequired<RouteContext> extends never
     ? // This async function is called before a route is loaded.
       // If an error is thrown here, the route's loader will not be called.
@@ -187,6 +177,10 @@ export type UpdatableRouteOptions<
   pendingComponent?: RouteComponent
   pendingMs?: number
   pendingMinMs?: number
+  staleTime?: number
+  gcTime?: number
+  preloadStaleTime?: number
+  preloadGcTime?: number
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
   // calls that match this route.
   preSearchFilters?: SearchFilter<TFullSearchSchema>[]

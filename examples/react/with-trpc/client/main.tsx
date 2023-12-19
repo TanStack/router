@@ -345,6 +345,7 @@ const router = new Router({
       <Spinner />
     </div>
   ),
+  defaultPreload: 'intent',
 })
 
 declare module '@tanstack/react-router' {

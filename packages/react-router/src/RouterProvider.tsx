@@ -187,7 +187,6 @@ function Transitioner() {
           }
         }
       }
-      router.pendingMatches = []
 
       router.__store.setState((s) => ({
         ...s,
@@ -217,7 +216,7 @@ export function getRouteMatch<TRouteTree extends AnyRoute>(
   id: string,
 ): undefined | RouteMatch<TRouteTree> {
   return [
-    ...state.preloadMatches,
+    ...state.cachedMatches,
     ...(state.pendingMatches ?? []),
     ...state.matches,
   ].find((d) => d.id === id)

@@ -181,7 +181,6 @@ const dashboardIndexRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: '/',
   loader: () => fetchInvoices(),
-  shouldReload: false,
   component: DashboardIndexComponent,
 })
 
@@ -202,7 +201,6 @@ const invoicesRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'invoices',
   loader: () => fetchInvoices(),
-  shouldReload: false,
   component: InvoicesComponent,
 })
 

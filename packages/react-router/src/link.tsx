@@ -433,7 +433,7 @@ export function useLinkProps<
         : true
       const searchTest =
         activeOptions?.includeSearch ?? true
-          ? deepEqual(s.location.search, next.search, true)
+          ? deepEqual(s.location.search, next.search, !activeOptions?.exact)
           : true
 
       // The final "active" test

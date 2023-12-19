@@ -111,7 +111,10 @@ export interface RouterOptions<
   defaultPendingComponent?: RouteComponent
   defaultPendingMs?: number
   defaultPendingMinMs?: number
-  defaultPreloadMaxAge?: number
+  defaultStaleTime?: number
+  defaultPreloadStaleTime?: number
+  defaultPreloadGcTime?: number
+  defaultGcTime?: number
   caseSensitive?: boolean
   routeTree?: TRouteTree
   basepath?: string
@@ -131,7 +134,7 @@ export interface RouterState<TRouteTree extends AnyRoute = AnyRoute> {
   isTransitioning: boolean
   matches: RouteMatch<TRouteTree>[]
   pendingMatches?: RouteMatch<TRouteTree>[]
-  preloadMatches: RouteMatch<TRouteTree>[]
+  cachedMatches: RouteMatch<TRouteTree>[]
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
   lastUpdated: number
@@ -221,7 +224,6 @@ export class Router<
   navigateTimeout: Timeout | null = null
   latestLoadPromise: Promise<void> = Promise.resolve()
   subscribers = new Set<RouterListener<RouterEvent>>()
-  pendingMatches: AnyRouteMatch[] = []
   injectedHtml: InjectedHtmlEntry[] = []
   dehydratedData?: TDehydrated
 
@@ -663,7 +665,6 @@ export class Router<
             routeContext: undefined!,
             context: undefined!,
             abortController: new AbortController(),
-            shouldReloadDeps: undefined,
             fetchCount: 0,
             cause,
             loaderDeps,
@@ -984,15 +985,18 @@ export class Router<
     let firstBadMatchIndex: number | undefined
 
     const updateMatch = (match: AnyRouteMatch) => {
-      // const isPreload = this.state.preloadMatches.find((d) => d.id === match.id)
+      // const isPreload = this.state.cachedMatches.find((d) => d.id === match.id)
       const isPending = this.state.pendingMatches?.find(
         (d) => d.id === match.id,
       )
-      const matchesKey = preload
-        ? 'preloadMatches'
-        : isPending
-          ? 'pendingMatches'
-          : 'matches'
+
+      const isMatched = this.state.matches.find((d) => d.id === match.id)
+
+      const matchesKey = isPending
+        ? 'pendingMatches'
+        : isMatched
+          ? 'matches'
+          : 'cachedMatches'
 
       this.__store.setState((s) => ({
         ...s,
@@ -1149,89 +1153,33 @@ export class Router<
                 cause: preload ? 'preload' : match.cause,
               }
 
-              // Default to reloading the route all the time
-              let shouldLoad = true
-
-              const shouldReloadFn = route.options.shouldReload
-
-              let shouldReloadDeps =
-                typeof shouldReloadFn === 'function'
-                  ? shouldReloadFn(loaderContext)
-                  : !!(shouldReloadFn ?? true)
-
-              const compareDeps = () => {
-                if (typeof shouldReloadDeps === 'object') {
-                  // compare the deps to see if they've changed
-                  shouldLoad = !deepEqual(
-                    shouldReloadDeps,
-                    match.shouldReloadDeps,
-                  )
-                } else {
-                  shouldLoad = !!shouldReloadDeps
-                }
+              if (match.fetchCount && match.status === 'success') {
+                resolve()
               }
 
-              // If it's the first preload, or the route is entering, or we're
-              // invalidating, we definitely need to load the route
-              if (invalidate) {
-                // Change nothing, we need to load the route
-              } else if (preload) {
-                if (!match.fetchCount) {
-                  // Change nothing, we need to preload the route
-                } else {
-                  compareDeps()
-                }
-              } else if (match.cause === 'enter') {
-                if (!match.fetchCount) {
-                  // Change nothing, we 100% need to load the route
-                } else {
-                  compareDeps()
-                }
-              } else {
-                compareDeps()
+              // Otherwise, load the route
+              matches[index] = match = {
+                ...match,
+                isFetching: true,
+                fetchCount: match.fetchCount + 1,
               }
 
-              if (typeof shouldReloadDeps === 'object') {
-                matches[index] = match = {
-                  ...match,
-                  shouldReloadDeps,
-                }
-              }
+              const componentsPromise = Promise.all(
+                componentTypes.map(async (type) => {
+                  const component = route.options[type]
 
-              // If the user doesn't want the route to reload, just
-              // resolve with the existing loader data
+                  if ((component as any)?.preload) {
+                    await (component as any).preload()
+                  }
+                }),
+              )
 
-              if (!shouldLoad) {
-                loadPromise = Promise.resolve(match.loaderData)
-              } else {
-                if (match.fetchCount && match.status === 'success') {
-                  resolve()
-                }
+              const loaderPromise = route.options.loader?.(loaderContext)
 
-                // Otherwise, load the route
-                matches[index] = match = {
-                  ...match,
-                  isFetching: true,
-                  fetchCount: match.fetchCount + 1,
-                }
-
-                const componentsPromise = Promise.all(
-                  componentTypes.map(async (type) => {
-                    const component = route.options[type]
-
-                    if ((component as any)?.preload) {
-                      await (component as any).preload()
-                    }
-                  }),
-                )
-
-                const loaderPromise = route.options.loader?.(loaderContext)
-
-                loadPromise = Promise.all([
-                  componentsPromise,
-                  loaderPromise,
-                ]).then((d) => d[1])
-              }
+              loadPromise = Promise.all([
+                componentsPromise,
+                loaderPromise,
+              ]).then((d) => d[1])
             }
 
             matches[index] = match = {
@@ -1280,25 +1228,28 @@ export class Router<
                 error,
                 status: 'error',
                 isFetching: false,
-                updatedAt: Date.now(),
-              }
-            } finally {
-              // If we showed the pending component, that means
-              // we already moved the pendingMatches to the matches
-              // state, so we need to update that specific match
-              if (didShowPending && pendingMinMs && match.showPending) {
-                updateMatch(match)
               }
             }
 
             updateMatch(match)
           }
 
-          if (match.fetchCount && match.status === 'success') {
-            // Background Fetching
-            fetch()
+          // This is where all of the stale-while-revalidate magic happens
+          const age = Date.now() - match.updatedAt
+
+          let staleAge = preload
+            ? route.options.preloadStaleTime ??
+              this.options.defaultPreloadStaleTime ??
+              30_000 // 30 seconds for preloads by default
+            : route.options.staleTime ?? this.options.defaultStaleTime ?? 0
+
+          if (match.status === 'success') {
+            // Background Fetching, no need to wait
+            if (age > staleAge) {
+              fetch()
+            }
           } else {
-            // Critical Fetching
+            // Critical Fetching, we need to await
 
             // If we need to potentially show the pending component,
             // start a timer to show it after the pendingMs
@@ -1319,9 +1270,6 @@ export class Router<
 
             await fetch()
           }
-
-          resolve()
-          // No Fetching
 
           resolve()
         }),
@@ -1358,15 +1306,23 @@ export class Router<
       const previousMatches = this.state.matches
 
       this.__store.batch(() => {
-        this.__store.setState((s) => ({
-          ...s,
-          preloadMatches: s.preloadMatches.filter((d) => {
-            return (
-              Date.now() - d.updatedAt <
-              (this.options.defaultPreloadMaxAge ?? 3000)
-            )
-          }),
-        }))
+        // This is where all of the garbage collection magic happens
+        this.__store.setState((s) => {
+          return {
+            ...s,
+            cachedMatches: s.cachedMatches.filter((d) => {
+              const route = this.looseRoutesById[d.routeId]!
+
+              return (
+                d.status !== 'error' &&
+                Date.now() - d.updatedAt <
+                  (route.options.gcTime ??
+                    this.options.defaultGcTime ??
+                    5 * 60 * 1000)
+              )
+            }),
+          }
+        })
 
         // Match the routes
         pendingMatches = this.matchRoutes(next.pathname, next.search, {
@@ -1374,12 +1330,13 @@ export class Router<
         })
 
         // Ingest the new matches
+        // If a cached moved to pendingMatches, remove it from cachedMatches
         this.__store.setState((s) => ({
           ...s,
           isLoading: true,
           location: next,
           pendingMatches,
-          preloadMatches: s.preloadMatches.filter((d) => {
+          cachedMatches: s.cachedMatches.filter((d) => {
             return !pendingMatches.find((e) => e.id === d.id)
           }),
         }))
@@ -1403,29 +1360,35 @@ export class Router<
           return latestPromise
         }
 
-        const exitingMatchIds = previousMatches.filter(
-          (id) => !this.pendingMatches.includes(id),
+        const exitingMatches = previousMatches.filter(
+          (match) => !pendingMatches.find((d) => d.id === match.id),
         )
-        const enteringMatchIds = this.pendingMatches.filter(
-          (id) => !previousMatches.includes(id),
+        const enteringMatches = pendingMatches.filter(
+          (match) => !previousMatches.find((d) => d.id === match.id),
         )
-        const stayingMatchIds = previousMatches.filter((id) =>
-          this.pendingMatches.includes(id),
+        const stayingMatches = previousMatches.filter((match) =>
+          pendingMatches.find((d) => d.id === match.id),
         )
 
+        // Commit the pending matches. If a previous match was
+        // removed, place it in the cachedMatches
         this.__store.setState((s) => ({
           ...s,
           isLoading: false,
           matches: pendingMatches,
           pendingMatches: undefined,
+          cachedMatches: [
+            ...s.cachedMatches,
+            ...exitingMatches.filter((d) => d.status !== 'error'),
+          ],
         }))
 
         //
         ;(
           [
-            [exitingMatchIds, 'onLeave'],
-            [enteringMatchIds, 'onEnter'],
-            [stayingMatchIds, 'onStay'],
+            [exitingMatches, 'onLeave'],
+            [enteringMatches, 'onEnter'],
+            [stayingMatches, 'onStay'],
           ] as const
         ).forEach(([matches, hook]) => {
           matches.forEach((match) => {
@@ -1469,7 +1432,7 @@ export class Router<
       [
         ...this.state.matches,
         ...(this.state.pendingMatches ?? []),
-        ...this.state.preloadMatches,
+        ...this.state.cachedMatches,
       ]?.map((d) => [d.id, true]),
     )
 
@@ -1478,7 +1441,7 @@ export class Router<
         if (!loadedMatchIds[match.id]) {
           this.__store.setState((s) => ({
             ...s,
-            preloadMatches: [...(s.preloadMatches as any), match],
+            cachedMatches: [...(s.cachedMatches as any), match],
           }))
         }
       })
@@ -1661,7 +1624,7 @@ export function getInitialRouterState(
     location,
     matches: [],
     pendingMatches: [],
-    preloadMatches: [],
+    cachedMatches: [],
     lastUpdated: Date.now(),
   }
 }

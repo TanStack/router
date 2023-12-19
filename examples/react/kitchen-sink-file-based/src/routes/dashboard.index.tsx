@@ -4,7 +4,6 @@ import { fetchInvoices } from '../utils/mockTodos'
 
 export const Route = new FileRoute('/dashboard/').createRoute({
   loader: () => fetchInvoices(),
-  shouldReload: false,
   component: DashboardIndexComponent,
 })
 

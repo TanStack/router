@@ -24,6 +24,7 @@ Feature/Capability Key:
 | Suspense-like Route Transitions                | ✅                                               | ✅                                                    | ✅                                                    |
 | Typesafe Routes                                | ✅                                               | 🛑                                                    | 🟡                                                    |
 | Router Loaders                                 | ✅                                               | ✅                                                    | ✅                                                    |
+| SWR Loader Caching                             | ✅                                               | 🛑                                                    | ✅                                                    |
 | Route Prefetching                              | ✅                                               | ✅                                                    | ✅                                                    |
 | Auto Route Prefetching                         | ✅                                               | 🛑                                                    | ✅                                                    |
 | Route Prefetching Delay                        | ✅                                               | 🔶                                                    | 🛑                                                    |

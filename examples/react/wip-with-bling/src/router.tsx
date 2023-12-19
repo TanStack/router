@@ -17,6 +17,7 @@ export function createRouter() {
     context: {
       head: '',
     },
+    defaultPreload: 'intent',
   })
 }
 

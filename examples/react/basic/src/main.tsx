@@ -62,6 +62,18 @@ function RootComponent() {
           Home
         </Link>{' '}
         <Link
+          to="/"
+          activeProps={{
+            className: 'font-bold',
+          }}
+          search={{
+            test: true,
+          }}
+          activeOptions={{ exact: true }}
+        >
+          Home
+        </Link>{' '}
+        <Link
           to={'/posts'}
           activeProps={{
             className: 'font-bold',
@@ -93,7 +105,6 @@ function IndexComponent() {
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  shouldReload: () => [Math.floor(Date.now() / 10000)],
   loader: () => fetchPosts(),
   component: PostsComponent,
 })
@@ -145,7 +156,6 @@ const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
   errorComponent: PostErrorComponent,
-  shouldReload: false, // Will only load on match for first preload or on 'enter'
   loader: ({ params }) => fetchPost(params.postId),
   component: PostComponent,
 })
@@ -192,6 +202,7 @@ const router = new Router({
   routeTree,
   notFoundRoute,
   defaultPreload: 'intent',
+  defaultStaleTime: 5000,
 })
 
 // Register things for typesafety

@@ -3,7 +3,7 @@ import * as React from 'react'
 import { Link, Outlet, rootRouteWithContext } from '@tanstack/react-router'
 import { DehydrateRouter } from '@tanstack/react-router-server/client'
 
-const rootRoute = rootRouteWithContext<{
+export const rootRoute = rootRouteWithContext<{
   head: string
 }>()({
   component: Root,

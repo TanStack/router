@@ -4,7 +4,6 @@ import { fetchPosts } from '../posts'
 
 export const Route = new FileRoute('/posts').createRoute({
   loader: fetchPosts,
-  shouldReload: () => [Math.floor(Date.now() / 10000)], // Only reload every 10 seconds
   component: PostsComponent,
 })
 

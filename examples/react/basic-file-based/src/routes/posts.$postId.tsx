@@ -9,7 +9,6 @@ import { fetchPost, PostNotFoundError } from '../posts'
 
 export const Route = new FileRoute('/posts/$postId').createRoute({
   loader: async ({ params: { postId } }) => fetchPost(postId),
-  shouldReload: false,
   errorComponent: PostErrorComponent as any,
   component: PostComponent,
 })
