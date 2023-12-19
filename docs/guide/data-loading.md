@@ -255,7 +255,7 @@ const postRoute = new Route({
 
 ## Using Route Context
 
-Passing down global context to your router is great, but what if you want to provide context that is specific to a route? This is where the `beforeLoad` option comes in. The `beforeLoad` option is a function that runs right before attempting to load a route and receives the same parameters as `loader`. Beyond its ability to redirect potential matches, block loader requests, etc, it can also return an object that will be merged into the route's context. Let's take a look at an example where we inject `fetchPosts` to our route context via the `beforeLoad` option:
+Passing down global context to your router is great, but what if you want to provide context that is specific to a route? This is where the `beforeLoad` option comes in. The `beforeLoad` option is a function that runs right before attempting to load a route and receives the same parameters as `loader`. Beyond its ability to redirect potential matches, block loader requests, etc, it can also return an object that will be merged into the route's context. Let's take a look at an example where we inject some data into our route context via the `beforeLoad` option:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
@@ -265,11 +265,13 @@ const postsRoute = new Route({
   path: 'posts',
   // Pass the fetchPosts function to the route context
   beforeLoad: () => ({
-    fetchPosts: () => {
-      // ...
-    },
+    foo: 'bar',
   }),
-  loader: ({ context: { fetchPosts } }) => fetchPosts(),
+  loader: ({ context: { foo } }) => {
+    console.log(foo) // 'bar'
+
+    // ...
+  },
 })
 ```
 
