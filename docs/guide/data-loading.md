@@ -122,7 +122,7 @@ To control router dependencies and "freshness", TanStack Router provides a pleth
 
 ### Using `loaderDeps` to access search params
 
-Imagine a `/posts` route supports some pagination via search params `offset` and `limit`. For the cache to uniquely store this data, we need to access these search params via the `loaderDeps` function. By explicityly identifying them, each route match for `/posts` with different offset and limit won't get mixed up!
+Imagine a `/posts` route supports some pagination via search params `offset` and `limit`. For the cache to uniquely store this data, we need to access these search params via the `loaderDeps` function. By explicitly identifying them, each route match for `/posts` with different offset and limit won't get mixed up!
 
 Once we have these deps in place, the route will always reload when the deps change.
 
@@ -179,9 +179,9 @@ const router = new Router({
 })
 ```
 
-## Using `shouldReload` to opt-out of loader reloading
+## Using `shouldReload` and `gcTime` to opt-out of caching
 
-Similar to Remix's defaulf functionality, you may want to configure a route to only load on entry or when critical loader deps change. You can do this by using the `shouldReload` option, which accepts either a `boolean` or a function that receives the same `beforeLoad` and `loaderContext` parameters and returns a boolean indicating if the route should reload.
+Similar to Remix's default functionality, you may want to configure a route to only load on entry or when critical loader deps change. You can do this by using the `gcTime` option combined with the `shouldReload` option, which accepts either a `boolean` or a function that receives the same `beforeLoad` and `loaderContext` parameters and returns a boolean indicating if the route should reload.
 
 ```tsx
 const postsRoute = new Route({
@@ -189,10 +189,18 @@ const postsRoute = new Route({
   path: 'posts',
   loaderDeps: ({ search: { offset, limit } }) => ({ offset, limit }),
   loader: ({ deps }) => fetchPosts(deps),
+  // Do not cache this route's data after it's unloaded
+  gcTime: 0,
   // Only reload the route when the user navigates to it or when deps change
   shouldReload: false,
 })
 ```
+
+### Opting out of caching while still preloading
+
+Even though you may opt-out of short-term caching for your route data, you can still get the benefits of preloading! With the above configuration, preloading will still "just work" with the default `preloadGcTime`. This means that if a route is preloaded, then navigated to, the route's data will be considered fresh and will not be reloaded.
+
+If you'd like to opt out of preloading as well, simply don't turn it on via the `routerOptions.defaultPreload` or `routeOptions.preload` options.
 
 ## Passing through all loader events to an external cache
 

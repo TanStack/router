@@ -669,6 +669,7 @@ export class Router<
             cause,
             loaderDeps,
             invalid: false,
+            preload: false,
           }
 
       // Regardless of whether we're reusing an existing match or creating
@@ -1257,6 +1258,12 @@ export class Router<
               ? shouldReloadOption(loaderContext)
               : shouldReloadOption
 
+          matches[index] = match = {
+            ...match,
+            preload:
+              !!preload && !this.state.matches.find((d) => d.id === match.id),
+          }
+
           if (match.status !== 'success') {
             // If we need to potentially show the pending component,
             // start a timer to show it after the pendingMs
@@ -1328,23 +1335,7 @@ export class Router<
       const previousMatches = this.state.matches
 
       this.__store.batch(() => {
-        // This is where all of the garbage collection magic happens
-        this.__store.setState((s) => {
-          return {
-            ...s,
-            cachedMatches: s.cachedMatches.filter((d) => {
-              const route = this.looseRoutesById[d.routeId]!
-
-              return (
-                d.status !== 'error' &&
-                Date.now() - d.updatedAt <
-                  (route.options.gcTime ??
-                    this.options.defaultGcTime ??
-                    5 * 60 * 1000)
-              )
-            }),
-          }
-        })
+        this.cleanCache()
 
         // Match the routes
         pendingMatches = this.matchRoutes(next.pathname, next.search, {
@@ -1393,16 +1384,19 @@ export class Router<
 
         // Commit the pending matches. If a previous match was
         // removed, place it in the cachedMatches
-        this.__store.setState((s) => ({
-          ...s,
-          isLoading: false,
-          matches: pendingMatches,
-          pendingMatches: undefined,
-          cachedMatches: [
-            ...s.cachedMatches,
-            ...exitingMatches.filter((d) => d.status !== 'error'),
-          ],
-        }))
+        this.__store.batch(() => {
+          this.__store.setState((s) => ({
+            ...s,
+            isLoading: false,
+            matches: s.pendingMatches!,
+            pendingMatches: undefined,
+            cachedMatches: [
+              ...s.cachedMatches,
+              ...exitingMatches.filter((d) => d.status !== 'error'),
+            ],
+          }))
+          this.cleanCache()
+        })
 
         //
         ;(
@@ -1438,6 +1432,32 @@ export class Router<
     this.latestLoadPromise = promise
 
     return this.latestLoadPromise
+  }
+
+  cleanCache = () => {
+    // This is where all of the garbage collection magic happens
+    this.__store.setState((s) => {
+      return {
+        ...s,
+        cachedMatches: s.cachedMatches.filter((d) => {
+          const route = this.looseRoutesById[d.routeId]!
+
+          if (!route.options.loader) {
+            return false
+          }
+
+          // If the route was preloaded, use the preloadGcTime
+          // otherwise, use the gcTime
+          const gcTime =
+            (d.preload
+              ? route.options.preloadGcTime ?? this.options.defaultPreloadGcTime
+              : route.options.gcTime ?? this.options.defaultGcTime) ??
+            5 * 60 * 1000
+
+          return d.status !== 'error' && Date.now() - d.updatedAt < gcTime
+        }),
+      }
+    })
   }
 
   preloadRoute = async (
