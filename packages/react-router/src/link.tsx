@@ -178,7 +178,10 @@ export type SearchParamOptions<
           >
         >
       >,
-  TFromSearchOptional = Omit<FullSearchSchema<TRouteTree>, keyof TFromSearchEnsured>,
+  TFromSearchOptional = Omit<
+    FullSearchSchema<TRouteTree>,
+    keyof TFromSearchEnsured
+  >,
   TFromSearch = Expand<TFromSearchEnsured & TFromSearchOptional>,
   TToSearch = '' extends TTo
     ? FullSearchSchema<TRouteTree>
@@ -207,15 +210,19 @@ export type PathParamOptions<
   TFromParamsOptional = Omit<AllParams<TRouteTree>, keyof TFromParamsEnsured>,
   TFromParams = Expand<TFromParamsOptional & TFromParamsEnsured>,
   TToParams = Expand<RouteByPath<TRouteTree, TTo>['types']['allParams']>,
-> = keyof PickRequired<TToParams> extends never
+> = never extends TToParams
   ? {
-      params?: true | ParamsReducer<TFromParams, TToParams>
+      params?: true | ParamsReducer<Partial<TFromParams>, Partial<TFromParams>>
     }
-  : {
-      params: TFromParamsEnsured extends PickRequired<TToParams>
-        ? true | ParamsReducer<TFromParams, TToParams>
-        : ParamsReducer<TFromParams, TToParams>
-    }
+  : keyof PickRequired<TToParams> extends never
+    ? {
+        params?: true | ParamsReducer<TFromParams, TToParams>
+      }
+    : {
+        params: TFromParamsEnsured extends PickRequired<TToParams>
+          ? true | ParamsReducer<TFromParams, TToParams>
+          : ParamsReducer<TFromParams, TToParams>
+      }
 
 type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
