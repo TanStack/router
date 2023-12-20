@@ -133,6 +133,16 @@ export type PickExclude<T, U> = {
   [K in keyof T as T[K] extends U ? never : K]: T[K]
 }
 
+// from https://github.com/type-challenges/type-challenges/issues/737
+type LastInUnion<U> = UnionToIntersection<
+  U extends unknown ? (x: U) => 0 : never
+> extends (x: infer L) => 0
+  ? L
+  : never
+export type UnionToTuple<U, Last = LastInUnion<U>> = [U] extends [never]
+  ? []
+  : [...UnionToTuple<Exclude<U, Last>>, Last]
+
 //
 
 export const isServer = typeof document === 'undefined'

@@ -1,5 +1,5 @@
 import { AnyRoute, Route } from './route'
-import { Expand, UnionToIntersection } from './utils'
+import { Expand, UnionToIntersection, UnionToTuple } from './utils'
 
 export type ParseRoute<TRouteTree extends AnyRoute> =
   | TRouteTree
@@ -59,9 +59,23 @@ export type RoutePaths<TRouteTree extends AnyRoute> =
   | ParseRoute<TRouteTree>['fullPath']
   | '/'
 
+type UnionizeCollisions<T, U> = {
+  [P in keyof T & keyof U]: T[P] extends U[P] ? T[P] : T[P] | U[P]
+}
+type Reducer<T, U, C = UnionizeCollisions<T, U>> = C &
+  Omit<T, keyof C> &
+  Omit<U, keyof C>
+
+type Reduce<T extends any[], Result = unknown> = T extends [
+  infer First,
+  ...infer Rest,
+]
+  ? Reduce<Rest, Reducer<Result, First>>
+  : Result
+
 export type FullSearchSchema<TRouteTree extends AnyRoute> = Partial<
   Expand<
-    UnionToIntersection<ParseRoute<TRouteTree>['types']['fullSearchSchema']>
+    Reduce<UnionToTuple<ParseRoute<TRouteTree>['types']['fullSearchSchema']>>
   >
 >
 
