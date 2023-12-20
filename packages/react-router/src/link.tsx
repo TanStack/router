@@ -172,11 +172,9 @@ export type SearchParamOptions<
   TFromSearchEnsured = '/' extends TFrom
     ? FullSearchSchema<TRouteTree>
     : Expand<
-        UnionToIntersection<
           PickRequired<
             RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']
           >
-        >
       >,
   TFromSearchOptional = Omit<
     FullSearchSchema<TRouteTree>,
