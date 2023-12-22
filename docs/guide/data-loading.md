@@ -48,7 +48,7 @@ TanStack Router Cache Cons:
 - No built-in mutation APIs (a basic `useMutation` hook is provided in many examples that may be sufficient for many use cases)
 - No built-in cache-level optimistic update APIs (you can still use ephemeral state from something like a `useMutation` hook to achieve this at the component level)
 
-> 🧠 If you know right away that you'd like to or need to use something more robust like TanStack Query, [skip to the External Data Loading page](./external-data-loading)
+> 🧠 If you know right away that you'd like to or need to use something more robust like TanStack Query, [skip to the External Data Loading page](./guide/external-data-loading)
 
 ## Using the Router Cache
 
