@@ -45,7 +45,7 @@
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-replace": "^5.0.5",
-    "@tanstack/react-router": "^0.0.1-beta.205",
+    "@tanstack/react-router": "^1.0.0",
     "@testing-library/react": "^14.1.2",
     "@testing-library/react-hooks": "^8.0.1",
     "@tsconfig/svelte": "^5.0.2",
