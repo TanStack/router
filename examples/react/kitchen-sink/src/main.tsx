@@ -33,30 +33,33 @@ import { useMutation } from './useMutation'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
-function RouterSpinner() {
-  const isLoading = useRouterState({ select: (s) => s.status === 'pending' })
-  return <Spinner show={isLoading} />
-}
-
 const rootRoute = rootRouteWithContext<{
   auth: Auth
 }>()({
   component: RootComponent,
 })
 
+function RouterSpinner() {
+  const isLoading = useRouterState({ select: (s) => s.status === 'pending' })
+  return <Spinner show={isLoading} />
+}
+
 function RootComponent() {
   return (
-    <>
+    <div className="bg-gradient-to-r from-lime-700 to-green-600 text-white">
       <div className={`min-h-screen flex flex-col`}>
-        <div className={`flex items-center border-b gap-2`}>
+        <div className={`flex items-center gap-2 bg-gray-800/70`}>
           <h1 className={`text-3xl p-2`}>Kitchen Sink</h1>
           {/* Show a global spinner when the router is transitioning */}
           <div className={`text-3xl`}>
             <RouterSpinner />
           </div>
         </div>
-        <div className={`flex-1 flex`}>
-          <div className={`divide-y w-56`}>
+
+        <div className={`flex-1 flex p-2 gap-2`}>
+          <div
+            className={`bg-gray-800/70 rounded-lg divide-y divide-gray-500/30 w-56`}
+          >
             {(
               [
                 ['/', 'Home'],
@@ -80,9 +83,8 @@ function RootComponent() {
                       }
                     }
                     preload="intent"
-                    className={`block py-2 px-3 text-blue-700`}
-                    // Make "active" links bold
-                    activeProps={{ className: `font-bold` }}
+                    className="block py-1 px-2 text-lime-300 hover:text-lime-200"
+                    activeProps={{ className: '!text-white font-bold' }}
                   >
                     {label}
                   </Link>
@@ -90,14 +92,14 @@ function RootComponent() {
               )
             })}
           </div>
-          <div className={`flex-1 border-l border-gray-200`}>
+          <div className={`flex-1`}>
             {/* Render our first route match */}
             <Outlet />
           </div>
         </div>
       </div>
       <TanStackRouterDevtools position="bottom-right" />
-    </>
+    </div>
   )
 }
 
@@ -109,32 +111,12 @@ const indexRoute = new Route({
 
 function IndexComponent() {
   return (
-    <div className={`p-2`}>
-      <div className={`text-lg`}>Welcome Home!</div>
-      <hr className={`my-2`} />
-      <Link
-        to={invoiceRoute.to}
-        params={{
-          invoiceId: 3,
-        }}
-        className={`py-1 px-2 text-xs bg-blue-500 text-white rounded-full`}
-      >
-        1 New Invoice
-      </Link>
-      <hr className={`my-2`} />
-      <div className={`max-w-xl`}>
-        As you navigate around take note of the UX. It should feel
-        suspense-like, where routes are only rendered once all of their data and
-        elements are ready.
-        <hr className={`my-2`} />
-        To exaggerate async effects, play with the artificial request delay
-        slider in the bottom-left corner.
-        <hr className={`my-2`} />
-        The last 2 sliders determine if link-hover preloading is enabled (and
-        how long those preloads stick around) and also whether to cache rendered
-        route data (and for how long). Both of these default to 0 (or off).
-      </div>
-    </div>
+    <Link
+      to="/dashboard/invoices/$invoiceId"
+      params={{
+        invoiceId: 2,
+      }}
+    />
   )
 }
 
@@ -146,11 +128,10 @@ const dashboardRoute = new Route({
 
 function DashboardComponent() {
   return (
-    <>
-      <div className="flex items-center border-b">
-        <h2 className="text-xl p-2">Dashboard</h2>
-      </div>
-      <div className="flex flex-wrap divide-x">
+    <div className="space-y-2">
+      <div
+        className={`flex flex-wrap bg-gray-800/70 rounded-lg divide-x divide-gray-300/20`}
+      >
         {(
           [
             ['/dashboard', 'Summary', true],
@@ -163,7 +144,7 @@ function DashboardComponent() {
               key={to}
               to={to}
               activeOptions={{ exact }}
-              activeProps={{ className: `font-bold` }}
+              activeProps={{ className: `font-bold ` }}
               className="p-2"
             >
               {label}
@@ -171,9 +152,8 @@ function DashboardComponent() {
           )
         })}
       </div>
-      <hr />
       <Outlet />
-    </>
+    </div>
   )
 }
 
@@ -188,11 +168,8 @@ function DashboardIndexComponent() {
   const invoices = dashboardIndexRoute.useLoaderData()
 
   return (
-    <div className="p-2">
-      <div className="p-2">
-        Welcome to the dashboard! You have{' '}
-        <strong>{invoices.length} total invoices</strong>.
-      </div>
+    <div className="p-2 bg-gray-800/70 rounded-lg min-h-[200px]">
+      Welcome! You have <strong>{invoices.length} total invoices</strong>.
     </div>
   )
 }
@@ -209,7 +186,7 @@ function InvoicesComponent() {
 
   return (
     <div className="flex-1 flex">
-      <div className="divide-y w-48">
+      <div className="divide-y w-48 bg-gray-800/70 rounded-lg divide-y divide-gray-300/20">
         {invoices?.map((invoice) => {
           return (
             <div key={invoice.id}>
@@ -219,8 +196,8 @@ function InvoicesComponent() {
                   invoiceId: invoice.id,
                 }}
                 preload="intent"
-                className="block py-2 px-3 text-blue-700"
-                activeProps={{ className: `font-bold` }}
+                className="block py-2 px-3 text-lime-300"
+                activeProps={{ className: `font-bold ` }}
               >
                 <pre className="text-sm">
                   #{invoice.id} - {invoice.title.slice(0, 10)}{' '}
@@ -243,7 +220,7 @@ function InvoicesComponent() {
           )
         })}
       </div>
-      <div className="flex-1 border-l border-gray-200">
+      <div className="flex-1">
         <Outlet />
       </div>
     </div>
@@ -281,7 +258,7 @@ function InvoicesIndexComponent() {
           <InvoiceFields invoice={{} as Invoice} />
           <div>
             <button
-              className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
+              className="bg-lime-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
               disabled={createInvoiceMutation?.status === 'pending'}
             >
               {createInvoiceMutation?.status === 'pending' ? (
@@ -372,7 +349,7 @@ function InvoiceComponent() {
             ...old,
             showNotes: old?.showNotes ? undefined : true,
           })}
-          className="text-blue-700"
+          className="text-lime-700"
         >
           {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
         </Link>
@@ -398,7 +375,7 @@ function InvoiceComponent() {
       </div>
       <div>
         <button
-          className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
+          className="bg-lime-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
           disabled={updateInvoiceMutation?.status === 'pending'}
         >
           Save
@@ -494,26 +471,26 @@ function UsersComponent() {
 
   return (
     <div className="flex-1 flex">
-      <div className="divide-y">
-        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100">
+      <div className="divide-y divide-gray-500/30 bg-gray-800/70 rounded-lg">
+        <div className="py-2 px-3 flex gap-2 items-center">
           <div>Sort By:</div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as UsersViewSortBy)}
-            className="flex-1 border p-1 px-2 rounded"
+            className="flex-1 p-1 px-2 rounded bg-gray-800/70"
           >
             {['name', 'id', 'email'].map((d) => {
               return <option key={d} value={d} children={d} />
             })}
           </select>
         </div>
-        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100">
+        <div className="py-2 px-3 flex gap-2 items-center">
           <div>Filter By:</div>
           <input
             value={filterDraft}
             onChange={(e) => setFilterDraft(e.target.value)}
             placeholder="Search Names..."
-            className="min-w-0 flex-1 border p-1 px-2 rounded"
+            className="min-w-0 flex-1 p-1 px-2 rounded bg-gray-800/70"
           />
         </div>
         {users?.map((user) => {
@@ -525,10 +502,10 @@ function UsersComponent() {
                   ...d,
                   userId: user.id,
                 })}
-                className="block py-2 px-3 text-blue-700"
-                activeProps={{ className: `font-bold` }}
+                className="block py-2 px-3 text-lime-300"
+                activeProps={{ className: `font-bold ` }}
               >
-                <pre className="text-sm">
+                <pre className="text-sm px-2">
                   {user.name}{' '}
                   <MatchRoute
                     to={userRoute.to}
@@ -546,7 +523,7 @@ function UsersComponent() {
           )
         })}
       </div>
-      <div className="flex-initial border-l border-gray-200">
+      <div className="flex-initial">
         <Outlet />
       </div>
     </div>
@@ -698,7 +675,7 @@ function LoginComponent() {
           auth.logout()
           router.invalidate()
         }}
-        className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
+        className="text-sm bg-lime-500 text-white border inline-block py-1 px-2 rounded"
       >
         Log out
       </button>
@@ -717,7 +694,7 @@ function LoginComponent() {
         />
         <button
           type="submit"
-          className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
+          className="text-sm bg-lime-500 text-white border inline-block py-1 px-2 rounded"
         >
           Login
         </button>
@@ -828,7 +805,7 @@ function App() {
         <div className="p-2 space-y-2">
           <div className="flex gap-2">
             <button
-              className="bg-blue-500 text-white rounded p-1 px-2"
+              className="bg-lime-500 text-white rounded p-1 px-2"
               onClick={() => {
                 setLoaderDelay(150)
               }}
@@ -836,7 +813,7 @@ function App() {
               Fast
             </button>
             <button
-              className="bg-blue-500 text-white rounded p-1 px-2"
+              className="bg-lime-500 text-white rounded p-1 px-2"
               onClick={() => {
                 setLoaderDelay(500)
               }}
@@ -844,7 +821,7 @@ function App() {
               Fast 3G
             </button>
             <button
-              className="bg-blue-500 text-white rounded p-1 px-2"
+              className="bg-lime-500 text-white rounded p-1 px-2"
               onClick={() => {
                 setLoaderDelay(2000)
               }}
@@ -868,7 +845,7 @@ function App() {
         <div className="p-2 space-y-2">
           <div className="flex gap-2">
             <button
-              className="bg-blue-500 text-white rounded p-1 px-2"
+              className="bg-lime-500 text-white rounded p-1 px-2"
               onClick={() => {
                 setPendingMs(1000)
                 setPendingMinMs(500)
@@ -930,7 +907,7 @@ function InvoiceFields({
           name="title"
           defaultValue={invoice?.title}
           placeholder="Invoice Title"
-          className="border border-opacity-50 rounded p-2 w-full"
+          className="bg-gray-800/70 rounded p-2 w-full"
           disabled={disabled}
         />
       </h2>
@@ -940,7 +917,7 @@ function InvoiceFields({
           defaultValue={invoice?.body}
           rows={6}
           placeholder="Invoice Body..."
-          className="border border-opacity-50 p-2 rounded w-full"
+          className="bg-gray-800/70 p-2 rounded w-full"
           disabled={disabled}
         />
       </div>

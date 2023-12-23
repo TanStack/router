@@ -50,8 +50,8 @@ const rootRoute = new RootRoute({
 
 function RootComponent() {
   return (
-    <>
-      <div className="p-2 flex gap-2 text-lg">
+    <div className="bg-gradient-to-r from-green-700 to-lime-600 text-white">
+      <div className="p-2 flex gap-2 text-lg bg-black/40 shadow-xl">
         <Link
           to="/"
           activeProps={{
@@ -70,10 +70,9 @@ function RootComponent() {
           Posts
         </Link>
       </div>
-      <hr />
       <Outlet />
       <TanStackRouterDevtools position="bottom-right" />
-    </>
+    </div>
   )
 }
 const indexRoute = new Route({
@@ -102,27 +101,26 @@ function PostsComponent() {
 
   return (
     <div className="p-2 flex gap-2">
-      <ul className="list-disc pl-4">
+      <div className="list-disc bg-gray-800/70 rounded-lg divide-y divide-green-500/30">
         {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }]?.map(
           (post) => {
             return (
-              <li key={post.id} className="whitespace-nowrap">
+              <div key={post.id} className="whitespace-nowrap">
                 <Link
                   to={postRoute.to}
                   params={{
                     postId: post.id,
                   }}
-                  className="block py-1 text-blue-800 hover:text-blue-600"
-                  activeProps={{ className: 'text-black font-bold' }}
+                  className="block py-1 px-2 text-green-300 hover:text-green-200"
+                  activeProps={{ className: '!text-white font-bold' }}
                 >
                   <div>{post.title.substring(0, 20)}</div>
                 </Link>
-              </li>
+              </div>
             )
           },
         )}
-      </ul>
-      <hr />
+      </div>
       <Outlet />
     </div>
   )
@@ -161,7 +159,8 @@ function PostComponent() {
 
   return (
     <div className="space-y-2">
-      <h4 className="text-xl font-bold underline">{post.title}</h4>
+      <h4 className="text-xl font-bold">{post.title}</h4>
+      <hr className="opacity-20" />
       <div className="text-sm">{post.body}</div>
     </div>
   )
