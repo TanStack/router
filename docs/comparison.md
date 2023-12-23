@@ -60,8 +60,8 @@ Feature/Capability Key:
 | `<Form>` API                                   | 🛑                                               | ✅                                                    | ✅                                                    |
 | Full-Stack APIs                                | 🛑                                               | ✅                                                    | ✅                                                    |
 
-[bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router@beta
-[bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/react-router@beta
+[bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router
+[bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/react-router
 [gh-tanstack-router]: https://github.com/tanstack/router
 [stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?label=%F0%9F%8C%9F
 [_]: _

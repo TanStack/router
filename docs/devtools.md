@@ -13,7 +13,7 @@ When you begin your TanStack Router journey, you'll want these devtools by your 
 ## Installation
 
 ```sh
-npm install @tanstack/router-devtools@beta --save
+npm install @tanstack/router-devtools --save
 ```
 
 ## Import the Devtools
