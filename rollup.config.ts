@@ -1,36 +1,29 @@
 import { RollupOptions } from 'rollup'
 import babel from '@rollup/plugin-babel'
 import { terser } from 'rollup-plugin-terser'
+// @ts-ignore
 import size from 'rollup-plugin-size'
 import visualizer from 'rollup-plugin-visualizer'
 import replace from '@rollup/plugin-replace'
 import nodeResolve from '@rollup/plugin-node-resolve'
+import commonjs from '@rollup/plugin-commonjs'
 import path from 'path'
+// import svelte from 'rollup-plugin-svelte'
+import dts from 'rollup-plugin-dts'
+//
+import { packages } from './scripts/config'
+import { readJsonSync } from 'fs-extra'
+import { Package } from './scripts/types'
 
 type Options = {
   input: string
   packageDir: string
-  external: RollupOptions['external']
+  umdExternal: RollupOptions['external']
+  external: RollupOptions['external'] | any[]
   banner: string
   jsName: string
-  outputFile: string
+  globals: Record<string, string>
 }
-
-const globals = {
-  react: 'React',
-  'react-dom': 'ReactDOM',
-  '@tanstack/react-location': 'ReactLocation',
-  '@tanstack/react-location-lite-experimental': 'ReactLocationLiteExperimental',
-  '@tanstack/react-location-devtools': 'ReactLocationDevtools',
-  '@tanstack/react-location-elements-to-routes':
-    'ReactLocationElementsToRoutes',
-  '@tanstack/react-location-simple-cache': 'ReactLocationSimpleCache',
-  '@tanstack/react-location-rank-routes': 'ReactLocationRankRoutes',
-  '@tanstack/react-location-jsurl': 'ReactLocationJsurl',
-  history: 'History',
-}
-
-const externals = [...Object.keys(globals), /@babel\/runtime/, 'history']
 
 const umdDevPlugin = (type: 'development' | 'production') =>
   replace({
@@ -46,82 +39,66 @@ const babelPlugin = babel({
 })
 
 export default function rollup(options: RollupOptions): RollupOptions[] {
-  return [
-    ...buildConfigs({
-      name: 'react-location',
-      packageDir: 'packages/react-location',
-      jsName: 'ReactLocation',
-      outputFile: 'react-location',
-      entryFile: 'src/index.tsx',
-    }),
-    ...buildConfigs({
-      name: 'react-location-lite-experimental',
-      packageDir: 'packages/react-location-lite-experimental',
-      jsName: 'ReactLocationLite',
-      outputFile: 'react-location-lite-experimental',
-      entryFile: 'src/index.tsx',
-    }),
-    ...buildConfigs({
-      name: 'react-location-devtools',
-      packageDir: 'packages/react-location-devtools',
-      jsName: 'ReactLocationDevtools',
-      outputFile: 'react-location-devtools',
-      entryFile: 'src/index.tsx',
-    }),
-    ...buildConfigs({
-      name: 'react-location-elements-to-routes',
-      packageDir: 'packages/react-location-elements-to-routes',
-      jsName: 'ReactLocationElementsToRoutes',
-      outputFile: 'react-location-elements-to-routes',
-      entryFile: 'src/index.tsx',
-    }),
-    ...buildConfigs({
-      name: 'react-location-simple-cache',
-      packageDir: 'packages/react-location-simple-cache',
-      jsName: 'ReactLocationSimpleCache',
-      outputFile: 'react-location-simple-cache',
-      entryFile: 'src/index.tsx',
-    }),
-    ...buildConfigs({
-      name: 'react-location-rank-routes',
-      packageDir: 'packages/react-location-rank-routes',
-      jsName: 'ReactLocationRankRoutes',
-      outputFile: 'react-location-rank-routes',
-      entryFile: 'src/index.tsx',
-    }),
-    ...buildConfigs({
-      name: 'react-location-jsurl',
-      packageDir: 'packages/react-location-jsurl',
-      jsName: 'ReactLocationJsurl',
-      outputFile: 'react-location-jsurl',
-      entryFile: 'src/index.tsx',
-    }),
-  ]
+  return packages.flatMap((pkg: Package) => {
+    return pkg.builds.flatMap((build) =>
+      buildConfigs({
+        name: [pkg.name, build.entryFile].join('/'),
+        packageDir: `packages/${pkg.packageDir}`,
+        jsName: build.jsName,
+        outputFile: pkg.packageDir,
+        entryFile: build.entryFile,
+        globals: build.globals ?? {},
+        esm: build.esm ?? true,
+        cjs: build.cjs ?? true,
+        umd: build.umd ?? true,
+        externals: build.externals || [],
+      }),
+    )
+  })
 }
 
 function buildConfigs(opts: {
+  esm: boolean
+  cjs: boolean
+  umd: boolean
   packageDir: string
   name: string
   jsName: string
   outputFile: string
   entryFile: string
+  globals: Record<string, string>
+  externals: string[]
 }): RollupOptions[] {
   const input = path.resolve(opts.packageDir, opts.entryFile)
-  const externalDeps = [...externals]
 
-  const external = (moduleName) => externalDeps.includes(moduleName)
+  const packageJson =
+    readJsonSync(
+      path.resolve(process.cwd(), opts.packageDir, 'package.json'),
+    ) ?? {}
+
   const banner = createBanner(opts.name)
 
   const options: Options = {
     input,
     jsName: opts.jsName,
-    outputFile: opts.outputFile,
     packageDir: opts.packageDir,
-    external,
+    external: [
+      ...Object.keys(packageJson.dependencies ?? {}),
+      ...Object.keys(packageJson.peerDependencies ?? {}),
+      ...opts.externals,
+    ],
+    umdExternal: Object.keys(packageJson.peerDependencies ?? {}),
     banner,
+    globals: opts.globals,
   }
 
-  return [esm(options), cjs(options), umdDev(options), umdProd(options)]
+  return [
+    opts.esm ? esm(options) : null,
+    opts.cjs ? cjs(options) : null,
+    opts.umd ? umdDev(options) : null,
+    opts.umd ? umdProd(options) : null,
+    types(options),
+  ].filter(Boolean) as any
 }
 
 function esm({ input, packageDir, external, banner }: Options): RollupOptions {
@@ -135,7 +112,16 @@ function esm({ input, packageDir, external, banner }: Options): RollupOptions {
       dir: `${packageDir}/build/esm`,
       banner,
     },
-    plugins: [babelPlugin, nodeResolve({ extensions: ['.ts', '.tsx'] })],
+
+    plugins: [
+      // svelte({
+      //   compilerOptions: {
+      //     hydratable: true,
+      //   },
+      // }),
+      babelPlugin,
+      nodeResolve({ extensions: ['.ts', '.tsx'] }),
+    ],
   }
 }
 
@@ -152,21 +138,26 @@ function cjs({ input, external, packageDir, banner }: Options): RollupOptions {
       exports: 'named',
       banner,
     },
-    plugins: [babelPlugin, nodeResolve({ extensions: ['.ts', '.tsx'] })],
+    plugins: [
+      // svelte(),
+      babelPlugin,
+      commonjs(),
+      nodeResolve({ extensions: ['.ts', '.tsx'] }),
+    ],
   }
 }
 
 function umdDev({
   input,
-  external,
+  umdExternal,
   packageDir,
-  outputFile,
+  globals,
   banner,
   jsName,
 }: Options): RollupOptions {
   return {
     // UMD (Dev)
-    external,
+    external: umdExternal,
     input,
     output: {
       format: 'umd',
@@ -177,7 +168,9 @@ function umdDev({
       banner,
     },
     plugins: [
+      // svelte(),
       babelPlugin,
+      commonjs(),
       nodeResolve({ extensions: ['.ts', '.tsx'] }),
       umdDevPlugin('development'),
     ],
@@ -186,32 +179,31 @@ function umdDev({
 
 function umdProd({
   input,
-  external,
+  umdExternal,
   packageDir,
-  outputFile,
+  globals,
   banner,
   jsName,
 }: Options): RollupOptions {
   return {
     // UMD (Prod)
-    external,
+    external: umdExternal,
     input,
     output: {
       format: 'umd',
       sourcemap: true,
-      file: `${packageDir}/build/umd/index.production.min.js`,
+      file: `${packageDir}/build/umd/index.production.js`,
       name: jsName,
       globals,
       banner,
     },
     plugins: [
+      // svelte(),
       babelPlugin,
+      commonjs(),
       nodeResolve({ extensions: ['.ts', '.tsx'] }),
       umdDevPlugin('production'),
-      terser({
-        mangle: true,
-        compress: true,
-      }),
+      terser(),
       size({}),
       visualizer({
         filename: `${packageDir}/build/stats-html.html`,
@@ -219,10 +211,32 @@ function umdProd({
       }),
       visualizer({
         filename: `${packageDir}/build/stats-react.json`,
-        json: true,
+        template: 'raw-data',
         gzipSize: true,
       }),
     ],
+  }
+}
+
+function types({
+  jsName,
+  input,
+  packageDir,
+  external,
+  banner,
+}: Options): RollupOptions {
+  return {
+    // TYPES
+    external,
+    input,
+    output: {
+      format: 'es',
+      file: `${packageDir}/build/types/${
+        path.basename(input).split('.')[0]
+      }.d.ts`,
+      banner,
+    },
+    plugins: [dts()],
   }
 }
 

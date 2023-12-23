@@ -1,13 +1,12 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/react-location" },
-    { "path": "packages/react-location-lite-experimental" },
-    { "path": "packages/react-location-devtools" },
-    { "path": "packages/react-location-elements-to-routes" },
-    { "path": "packages/react-location-jsurl" },
-    { "path": "packages/react-location-rank-routes" },
-    { "path": "packages/react-location-simple-cache" }
+    { "path": "packages/history" },
+    { "path": "packages/react-router" },
+    { "path": "packages/router-cli" },
+    { "path": "packages/router-devtools" },
+    { "path": "packages/react-router-server" }
   ]
+  // "include": ["examples/*"]
   // "exclude": ["node_modules"]
 }

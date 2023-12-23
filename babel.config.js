@@ -9,6 +9,7 @@ module.exports = {
       {
         loose,
         modules: false,
+        bugfixes: true,
         // useBuiltIns: false,
         // exclude: ['@babel/plugin-transform-regenerator'],
       },

@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "esModuleInterop": true,
+    "jsx": "react",
+    "target": "esnext",
+    "module": "esnext",
+    "types": ["vite/client"],
+    "moduleResolution": "node"
+  }
+}

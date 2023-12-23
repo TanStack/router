@@ -1,18 +1,27 @@
 name: pr
 on: [pull_request]
+env:
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 jobs:
   test:
-    name: "Test (node ${{ matrix.node }})"
+    name: 'Test'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [12, 14, 16]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - name: Checkout Repo
+        uses: actions/checkout@v3
         with:
-          node-version: ${{ matrix.node }}
-      - run: |
-          yarn install --frozen-lockfile
-          yarn build
-          yarn test
+          fetch-depth: '0'
+      - name: Setup Pnpm
+        uses: pnpm/action-setup@v2.2.4
+        with:
+          version: 7
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.19.0
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm --filter "./packages/**" --prefer-offline install --no-frozen-lockfile
+      - name: Build & Test
+        run: npx nx run-many --targets=test,build --projects=@tanstack/*

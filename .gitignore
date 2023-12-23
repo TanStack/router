@@ -1,4 +1,4 @@
-
+.vite
 # See https://help.github.com/ignore-files/ for more about ignoring files.
 
 # dependencies
@@ -40,3 +40,14 @@ stats.html
 node_modules
 .cache
 dist
+ts-perf
+
+/examples/*/*/yarn.lock
+/examples/*/*/package-lock.json
+
+.netlify
+
+nx-cloud.env
+.vscode
+
+gpt/db.json

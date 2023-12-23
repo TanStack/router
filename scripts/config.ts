@@ -1,37 +1,86 @@
 import path from 'path'
 import { BranchConfig, Package } from './types'
 
-// TODO: List your npm packages here. The first package will be used as the versioner.
 export const packages: Package[] = [
-  { name: '@tanstack/react-location', srcDir: 'packages/react-location/src' },
   {
-    name: '@tanstack/react-location-lite-experimental',
-    srcDir: 'packages/react-location-lite-experimental/src',
+    name: '@tanstack/history',
+    packageDir: 'history',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'TanStackHistory',
+        entryFile: 'src/index.ts',
+        globals: {},
+      },
+    ],
   },
   {
-    name: '@tanstack/react-location-devtools',
-    srcDir: 'packages/react-location-devtools/src',
-    peerDependencies: ['@tanstack/react-location'],
+    name: '@tanstack/react-router',
+    packageDir: 'react-router',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'ReactRouter',
+        entryFile: 'src/index.tsx',
+        globals: {
+          react: 'React',
+        },
+      },
+    ],
   },
   {
-    name: '@tanstack/react-location-elements-to-routes',
-    srcDir: 'packages/react-location-elements-to-routes/src',
-    peerDependencies: ['@tanstack/react-location'],
+    name: '@tanstack/router-devtools',
+    packageDir: 'router-devtools',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'TanStackRouterDevtools',
+        entryFile: 'src/index.tsx',
+        globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
+      },
+    ],
   },
   {
-    name: '@tanstack/react-location-simple-cache',
-    srcDir: 'packages/react-location-simple-cache/src',
-    peerDependencies: ['@tanstack/react-location'],
+    name: '@tanstack/router-cli',
+    packageDir: 'router-cli',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'TanStackRouterCli',
+        entryFile: 'src/index.ts',
+        // globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
+        // externals: ['stream', 'util', 'react-dom', 'react', 'react-dom/server'],
+        esm: false,
+        umd: false,
+        // externals: [(d) => console.log(d)],
+      },
+    ],
   },
   {
-    name: '@tanstack/react-location-rank-routes',
-    srcDir: 'packages/react-location-rank-routes/src',
-    peerDependencies: ['@tanstack/react-location'],
+    name: '@tanstack/react-cross-context',
+    packageDir: 'react-cross-context',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'ReactCrossContext',
+        entryFile: 'src/index.ts',
+      },
+    ],
   },
   {
-    name: '@tanstack/react-location-jsurl',
-    srcDir: 'packages/react-location-jsurl/src',
-    peerDependencies: [],
+    name: '@tanstack/react-router-server',
+    packageDir: 'react-router-server',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'TanStackRouterServer',
+        entryFile: 'src/server.tsx',
+      },
+      {
+        jsName: 'TanStackRouterServerClient',
+        entryFile: 'src/client.tsx',
+      },
+    ],
   },
 ]
 
@@ -57,4 +106,9 @@ export const branchConfigs: Record<string, BranchConfig> = {
 }
 
 export const rootDir = path.resolve(__dirname, '..')
-export const examplesDir = path.resolve(rootDir, 'examples')
+export const examplesDirs = [
+  'examples/react',
+  // 'examples/solid',
+  // 'examples/svelte',
+  // 'examples/vue',
+]
