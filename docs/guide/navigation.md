@@ -111,7 +111,7 @@ With relative navigation and all of the interfaces in mind now, let's talk about
 - The `Router.navigate()` method
   - This is the most powerful navigation API in TanStack Router. Similar to `useNavigate`, it imperatively navigates, but is available everywhere you have access to your router.
 
-⚠️ None of these APIs are a replacement for server-side redirects. If you are ever needing to redirect a user immediately from one route to another before mounting your application, you should use a server-side redirect instead of a client-side navigation.
+⚠️ None of these APIs are a replacement for server-side redirects. If you need to redirect a user immediately from one route to another before mounting your application, use a server-side redirect instead of a client-side navigation.
 
 ## `<Link>` Component
 
