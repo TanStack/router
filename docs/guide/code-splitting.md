@@ -18,7 +18,7 @@ const route = new Route({
 
 But with TanStack Router, a route component can have a static `preload` method attached to it which will get called and awaited when the route is preloaded and/or loaded.
 
-If we were to **set this up manually (don't do this)**, it would look something like this:
+If we were to set this up manually **(don't do this)**, it would look something like this:
 
 ```tsx
 const MyComponent = React.lazy(() => import('./MyComponent'))
@@ -32,7 +32,7 @@ const route = new Route({
 })
 ```
 
-This is a bit noisy and repetitive, so the TanStack Router exports a `lazyRouteComponent` wrapper that you can use to simplify this process:
+This is a bit noisy and repetitive, so TanStack Router exports a `lazyRouteComponent` wrapper that you can use to simplify this process:
 
 ```tsx
 import { lazyRouteComponent } from '@tanstack/react-router'
@@ -54,11 +54,11 @@ const route = new Route({
 })
 ```
 
-`lazyRouteComponent` is also type safe, so as to ensure that you are only able to provide valid named exports from the module, which helps to prevent runtime errors.
+`lazyRouteComponent` is also type safe, to ensure that you are only able to provide valid named exports from the module, which helps prevent runtime errors.
 
 ## Data Loader Splitting
 
-Regardless of which data loading library you decide to go with, you may end up with a lot of data loaders that could potentially contribute to a large bundle size. If this is the case, you can code split your data loading logic using the Route's `loader` option. While this process makes it difficult to maintain type-safety with the parameters passed to your loader, you can always use the generic `LoaderContext` type to get most of the way there:
+You may end up with a lot of data loaders that could potentially contribute to a large bundle size. If this is the case, you can code split your data loading logic using the Route's `loader` option. While this process makes it difficult to maintain type-safety with the parameters passed to your loader, you can always use the generic `LoaderContext` type to get most of the way there:
 
 ```tsx
 import { LoaderContext } from '@tanstack/react-router'
@@ -94,7 +94,7 @@ export const loader = async (context: LoaderContext) => {
 
 ## Accessing Route APIs in Code Split Files with the `RouteApi` class
 
-As you might have guessed, importing the very route that is already importing the code-split file your in is a circular dependency, both in types and at runtime. To avoid this, TanStack Router exports a handy `RouteApi` class that you can use to access a route's type-safe APIs:
+As you might have guessed, importing the very route that is already importing the code-split file you're in is a circular dependency, both in types and at runtime. To avoid this, TanStack Router exports a handy `RouteApi` class that you can use to access a route's type-safe APIs:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
