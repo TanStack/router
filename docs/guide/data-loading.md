@@ -3,15 +3,15 @@ id: data-loading
 title: Data Loading
 ---
 
-Data loading is a common concern for web applications and is extremely related to routing. When loading any page for your app, it's ideal if all of the async requirements for those routes are fetched and fulfilled as early as possible and in parallel. The router is the best place to coordinate all of these async dependencies as it's usually the only place in your app that knows about where users are headed before content is rendered.
+Data loading is a common concern for web applications and is related to routing. When loading a page for your app, it's ideal if all of the page's async requirements are fetched and fulfilled as early as possible, in parallel. The router is the best place to coordinate these async dependencies as it's usually the only place in your app that knows where users are headed before content is rendered.
 
-You may be familiar with `getServerSideProps` from Next.js or `loader`s from Remix/React-Router. TanStack Router is designed with similar functionality to preload/load assets on a per-route basis in parallel allowing React to render as quickly as possible as it fetches via suspense.
+You may be familiar with `getServerSideProps` from Next.js or `loader`s from Remix/React-Router. TanStack Router has similar functionality to preload/load assets on a per-route basis in parallel allowing React to render as quickly as possible as it fetches via suspense.
 
 Beyond these normal expectations of a router, TanStack Router goes above and beyond and provides **built-in SWR Caching**, a long-term in-memory caching layer for route loaders. This means that you can use TanStack Router to both preload data for your routes so they load instantaneously or temporarily cache route data for previously visited routes to use again later.
 
 ## The route loading lifecycle
 
-Every time a URL/history update is detected, the router the following sequence is executed:
+Every time a URL/history update is detected, the router executes the following sequence:
 
 - Route Matching (Top-Down)
   - `route.parseParams`
@@ -37,7 +37,7 @@ TanStack Router Cache Pros:
 - Built-in, easy to use, no extra dependencies
 - Handles deduping, preloading, loading, stale-while-revalidate, background refetching on a per-route basis
 - Coarse invalidation (invalidate all routes and cache at once)
-- automatic garbage collection
+- Automatic garbage collection
 - Works great for apps that share little data between routes
 - "Just works" for SSR
 
@@ -116,13 +116,14 @@ To control router dependencies and "freshness", TanStack Router provides a pleth
 ### ⚠️ Some Important Defaults
 
 - By default, the `staleTime` is set to `0`, meaning that the route's data will always be considered stale and will always be reloaded in the background when the route is rematched.
-- By default, when attempting to preload a previously preloaded, it will be considered fresh for **30 seconds**. This means that if a route is preloaded, then preloaded again within 30 seconds, the second preload will be ignored. This is to prevent unnecessary preloads from happening too frequently. **When a route is loaded normally, the standard `staleTime` is used.**
+- By default, a previously preloaded route is considered fresh for **30 seconds**. This means
+- if a route is preloaded, then preloaded again within 30 seconds, the second preload will be ignored. This prevents unnecessary preloads from happening too frequently. **When a route is loaded normally, the standard `staleTime` is used.**
 - By default, the `gcTime` is set to **30 minutes**, meaning that any route data that has not been accessed in 30 minutes will be garbage collected and removed from the cache.
 - `router.invalidate()` will force all active routes to reload their loaders immediately and mark every cached route's data as stale.
 
 ### Using `loaderDeps` to access search params
 
-Imagine a `/posts` route supports some pagination via search params `offset` and `limit`. For the cache to uniquely store this data, we need to access these search params via the `loaderDeps` function. By explicitly identifying them, each route match for `/posts` with different offset and limit won't get mixed up!
+Imagine a `/posts` route supports some pagination via search params `offset` and `limit`. For the cache to uniquely store this data, we need to access these search params via the `loaderDeps` function. By explicitly identifying them, each route match for `/posts` with different `offset` and `limit` won't get mixed up!
 
 Once we have these deps in place, the route will always reload when the deps change.
 
@@ -143,7 +144,7 @@ const postsRoute = new Route({
 
 By default, `staleTime` for navigations is set to `0`ms (and 30 seconds for preloads) which means that the route's data will always be considered stale and will always be reloaded in the background when the route is matched and navigated to.
 
-**This is a good default for most use cases, but you may find that some route data is mores static or potentially expensive to load.** In these cases, you can use the `staleTime` option to control how long the route's data is considered fresh for navigations. Let's take a look at an example:
+**This is a good default for most use cases, but you may find that some route data is more static or potentially expensive to load.** In these cases, you can use the `staleTime` option to control how long the route's data is considered fresh for navigations. Let's take a look at an example:
 
 ```tsx
 const postsRoute = new Route({
@@ -159,7 +160,7 @@ By passing `10_000` to the `staleTime` option, we are telling the router to cons
 
 ## Turning off stale-while-revalidate caching
 
-If you'd like to turn off stale-while-revalidate caching for a route, you can do so by setting the `staleTime` option to `Infinity`:
+To disable stale-while-revalidate caching for a route, set the `staleTime` option to `Infinity`:
 
 ```tsx
 const postsRoute = new Route({
@@ -200,11 +201,11 @@ const postsRoute = new Route({
 
 Even though you may opt-out of short-term caching for your route data, you can still get the benefits of preloading! With the above configuration, preloading will still "just work" with the default `preloadGcTime`. This means that if a route is preloaded, then navigated to, the route's data will be considered fresh and will not be reloaded.
 
-If you'd like to opt out of preloading as well, simply don't turn it on via the `routerOptions.defaultPreload` or `routeOptions.preload` options.
+To opt out of preloading, don't turn it on via the `routerOptions.defaultPreload` or `routeOptions.preload` options.
 
-## Passing through all loader events to an external cache
+## Passing all loader events to an external cache
 
-We break down this use case in the [External Data Loading](./external-data-loading) page, but if you'd like to use an external cache like TanStack Query, you can do so by passing through all loader events to your external cache. As long as you are using the defaults, the only change you'll need to make is to set the `defaultPreloadStaleTime` option on the router to `0`:
+We break down this use case in the [External Data Loading](./external-data-loading) page, but if you'd like to use an external cache like TanStack Query, you can do so by passing all loader events to your external cache. As long as you are using the defaults, the only change you'll need to make is to set the `defaultPreloadStaleTime` option on the router to `0`:
 
 ```tsx
 const router = new Router({
@@ -213,7 +214,7 @@ const router = new Router({
 })
 ```
 
-This will ensure that every preload, load and reload event will trigger your `loader` functions, which can then be handled and deduped by your external cache.
+This will ensure that every preload, load, and reload event will trigger your `loader` functions, which can then be handled and deduped by your external cache.
 
 ## Using Router Context
 
@@ -222,7 +223,7 @@ The `context` argument passed to the `loader` function is an object containing a
 - Parent route context
 - This route's context as provided by the `beforeLoad` option
 
-Starting at the very top of the router, you can pass an initial context to the router via the `context` option. This context will be available to all routes in the router and get copied and extended by each route as they are matched. This happens by passing a context to a route via the `beforeLoad` option. This context will be available to all child routes of the route. The resulting context will be available to the route's `loader` function.
+Starting at the very top of the router, you can pass an initial context to the router via the `context` option. This context will be available to all routes in the router and get copied and extended by each route as they are matched. This happens by passing a context to a route via the `beforeLoad` option. This context will be available to all the route's child routes. The resulting context will be available to the route's `loader` function.
 
 In this example, we'll create a function in our route context to fetch posts, then use it in our `loader` function.
 
@@ -290,10 +291,10 @@ const postsRoute = new Route({
   path: 'posts',
   // Pass the fetchPosts function to the route context
   beforeLoad: () => ({
-    foo: 'bar',
+    fetchPosts: () => console.log('foo'),
   }),
-  loader: ({ context: { foo } }) => {
-    console.log(foo) // 'bar'
+  loader: ({ context: { fetchPosts } }) => {
+    console.log(fetchPosts) // 'foo'
 
     // ...
   },
@@ -322,7 +323,7 @@ const postsRoute = new Route({
   validateSearch: z.object({
     offset: z.number().int().nonnegative().catch(0),
   }),
-  // Pass the offset to your loader deps via the loaderDeps functino
+  // Pass the offset to your loader deps via the loaderDeps function
   loaderDeps: ({ search: { offset } }) => ({ offset }),
   // Use the offset from context in the loader function
   loader: async ({ deps: { offset } }) =>
