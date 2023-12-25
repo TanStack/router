@@ -11,7 +11,7 @@ TanStack Router keeps this constant concept of relative navigation in mind for e
 - `from` - The origin route ID
 - `to` - The destination route ID
 
-> ⚠️ Not supplying a `from` route ID will assume you are navigation from the root `/` route and only auto-complete absolute paths. After all, you need to know where you are from in order to know where you're going 😉.
+> ⚠️ If a `from` route ID isn't provided the router will assume you are navigating from the root `/` route and only auto-complete absolute paths. After all, you need to know where you are from in order to know where you're going 😉.
 
 ## Shared Navigation API
 
