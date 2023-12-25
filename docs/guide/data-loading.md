@@ -294,7 +294,7 @@ const postsRoute = new Route({
     fetchPosts: () => console.log('foo'),
   }),
   loader: ({ context: { fetchPosts } }) => {
-    console.log(fetchPosts) // 'foo'
+    console.log(fetchPosts()) // 'foo'
 
     // ...
   },
