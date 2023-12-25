@@ -23,6 +23,8 @@ Feature/Capability Key:
 | Nested / Layout Routes                         | ✅                                               | ✅                                                    | ✅                                                    |
 | Suspense-like Route Transitions                | ✅                                               | ✅                                                    | ✅                                                    |
 | Typesafe Routes                                | ✅                                               | 🛑                                                    | 🟡                                                    |
+| Code-based Routes                              | ✅                                               | ✅                                                    | 🛑                                                    |
+| File-based routes                              | ✅                                               | 🛑                                                    | ✅                                                    |
 | Router Loaders                                 | ✅                                               | ✅                                                    | ✅                                                    |
 | SWR Loader Caching                             | ✅                                               | 🛑                                                    | ✅                                                    |
 | Route Prefetching                              | ✅                                               | ✅                                                    | ✅                                                    |
