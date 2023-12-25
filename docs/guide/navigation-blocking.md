@@ -24,7 +24,7 @@ Navigation blocking adds one or more layers of "blockers" to the entire underlyi
 
 ## What about the back button?
 
-The back button is a special case. When the user clicks the back button, we cannot intercept or control the browser's behavior in a reliable way, and there is no official way to block it that works across all browsers equally. If you encounter a situation where you need to block the back button, it's recommended to rethink your UI/UX to avoid the back button being destructive to any unsaved user data. Saving said data to session storage and restoring it if the user returns to the page is a safe and reliable pattern.
+The back button is a special case. When the user clicks the back button, we cannot intercept or control the browser's behavior in a reliable way, and there is no official way to block it that works across all browsers equally. If you encounter a situation where you need to block the back button, it's recommended to rethink your UI/UX to avoid the back button being destructive to any unsaved user data. Saving data to session storage and restoring it if the user returns to the page is a safe and reliable pattern.
 
 ## How do I use navigation blocking?
 
@@ -54,8 +54,8 @@ function MyComponent() {
 
 The `useBlocker` hook takes 2 arguments:
 
-- `message: string` **Required** - The message to show to the user when they attempt to navigate away
-- `condition?: boolean` Optional, defaults to `true` - Any expression or variable to be tested for truthiness to determines if navigation should be blocked
+- `message: () => string` **Required** - A function that returns a string to show to the user when they attempt to navigate away
+- `condition?: boolean` Optional, defaults to `true` - Any expression or variable to be tested for truthiness to determine if navigation should be blocked
 
 ## Component-based blocking
 
