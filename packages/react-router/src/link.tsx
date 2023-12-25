@@ -19,6 +19,7 @@ import {
   PickRequired,
   UnionToIntersection,
   Updater,
+  WithoutEmpty,
   deepEqual,
   functionalUpdate,
 } from './utils'
@@ -162,56 +163,51 @@ export type ToSubOptions<
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
 } & CheckPath<TRouteTree, NoInfer<TResolved>, {}> &
   SearchParamOptions<TRouteTree, TFrom, TTo, TResolved> &
-  PathParamOptions<TRouteTree, TFrom, TResolved>
+  PathParamOptions<TRouteTree, TFrom, TTo, TResolved>
+
+type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
+
+export type ParamOptions<
+  TRouteTree extends AnyRoute,
+  TFrom,
+  TTo,
+  TResolved,
+  TParamVariant extends 'allParams' | 'fullSearchSchema',
+  TFromParams = Expand<RouteByPath<TRouteTree, TFrom>['types'][TParamVariant]>,
+  TToParams = TTo extends undefined
+    ? TFromParams
+    : never extends TResolved
+      ? Expand<RouteByPath<TRouteTree, TTo>['types'][TParamVariant]>
+      : Expand<RouteByPath<TRouteTree, TResolved>['types'][TParamVariant]>,
+  TReducer = ParamsReducer<TFromParams, TToParams>,
+> = Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
+  ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
+  : TFromParams extends Expand<WithoutEmpty<PickRequired<TToParams>>>
+    ? MakeParamOption<TParamVariant, true | TReducer>
+    : MakeParamOption<TParamVariant, TReducer>
+
+type MakeParamOption<
+  TParamVariant extends 'allParams' | 'fullSearchSchema',
+  T,
+> = TParamVariant extends 'allParams'
+  ? MakePathParamOptions<T>
+  : MakeSearchParamOptions<T>
+type MakeSearchParamOptions<T> = { search: T }
+type MakePathParamOptions<T> = { params: T }
 
 export type SearchParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
   TTo,
-  TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
-  TFromSearch = RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema'],
-  TToSearch = undefined extends TTo
-    ? TFromSearch
-    : Expand<RouteByPath<TRouteTree, TResolved>['types']['fullSearchSchema']>,
-> = never extends keyof PickRequired<TToSearch>
-  ? {
-      search?: true | SearchReducer<TFromSearch, TToSearch>
-    }
-  : {
-      search: TFromSearch extends PickRequired<TToSearch>
-        ? true | SearchReducer<TFromSearch, TToSearch>
-        : SearchReducer<TFromSearch, TToSearch>
-    }
-
-type SearchReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
+  TResolved,
+> = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'fullSearchSchema'>
 
 export type PathParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
   TTo,
-  TFromParamsEnsured = Expand<
-    UnionToIntersection<
-      PickRequired<RouteByPath<TRouteTree, TFrom>['types']['allParams']>
-    >
-  >,
-  TFromParamsOptional = Omit<AllParams<TRouteTree>, keyof TFromParamsEnsured>,
-  TFromParams = Expand<TFromParamsOptional & TFromParamsEnsured>,
-  TToParams = Expand<RouteByPath<TRouteTree, TTo>['types']['allParams']>,
-> = never extends TToParams
-  ? {
-      params?: true | ParamsReducer<Partial<TFromParams>, Partial<TFromParams>>
-    }
-  : keyof PickRequired<TToParams> extends never
-    ? {
-        params?: true | ParamsReducer<TFromParams, TToParams>
-      }
-    : {
-        params: TFromParamsEnsured extends PickRequired<TToParams>
-          ? true | ParamsReducer<TFromParams, TToParams>
-          : ParamsReducer<TFromParams, TToParams>
-      }
-
-type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
+  TResolved,
+> = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'allParams'>
 
 export type ToPathOption<
   TRouteTree extends AnyRoute = AnyRoute,
