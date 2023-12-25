@@ -215,12 +215,13 @@ They do however still have the ability to:
 
 ```tsx
 const routeTree = rootRoute.addChildren([
-  indexRoute,
+  rootRoute,
   blogRoute.addChildren([blogIndexRoute]),
 ])
 
-const notFoundRoute = new Route({
-  component: NotFound,
+const notFoundRoute = new NotFoundRoute({
+  getParentRoute: () => rootRoute,
+  component: () => <h1>Page not found</h1>,
 })
 
 const router = new Router({
