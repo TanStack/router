@@ -72,7 +72,7 @@ const routeConfig = rootRoute.addChildren([
 ])
 ```
 
-If a route has any children, it is uncommon not to also have an index route. This is because the index route is the only way to render a component when the parent route is matched, but no child route is matched.
+If a route has any children, it's common to also have an index route. This is because the index route is the only way to render a component when the parent route is matched, but no child route is matched.
 
 ## Static Paths
 
