@@ -94,7 +94,7 @@ const router = new Router({
 })
 ```
 
-When creating a route masking, you'll need to pass 1 argument with at least:
+When creating a route mask, you'll need to pass 1 argument with at least:
 
 - `routeTree` - The route tree that the route mask will be applied to
 - `from` - The route ID that the route mask will be applied to
@@ -112,7 +112,7 @@ URLs are automatically unmasked when they are shared since as soon as a URL is d
 
 ## Unmasking on page reload
 
-**As stated above, URLs are not unmasked when the page is reloaded by default**. However, you may want to configure that URLs are automatically unmasked when the page is reloaded.
+**As stated above, URLs are not unmasked when the page is reloaded by default**. 
 
 If you want to unmask a URL locally when the page is reloaded, you have 3 options, each overriding the previous one in priority if passed:
 
