@@ -289,6 +289,12 @@ function getRenderedMatches(state: RouterState) {
     : state.matches
 }
 
+function removeUnderscores(s?: string) {
+  if (s === rootRouteId) return s
+
+  return s?.replace(/(^_|_$)/, '').replace(/(\/_|_\/)/, '/')
+}
+
 export function useMatch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
@@ -309,11 +315,18 @@ export function useMatch<
 
   const matchRouteId = (() => {
     const matches = getRenderedMatches(router.state)
-    const match = opts?.from
-      ? matches.find((d) => d.routeId === opts?.from)
-      : matches.find((d) => d.id === nearestMatchId)
-    return match!.routeId
-  })()
+
+    if (!opts.from) {
+      return matches.find((d) => d.id === nearestMatchId)
+    }
+
+    const from = removeUnderscores(opts.from)
+
+    return (
+      matches.find((d) => d.routeId === from) ??
+      matches.find((d) => d.routeId === from?.replace(/\/$/, ''))
+    )
+  })()?.routeId
 
   if (opts?.strict ?? true) {
     invariant(
