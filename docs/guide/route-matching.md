@@ -94,7 +94,7 @@ Using that route tree, let's follow the matching process for a few different URL
 
 ## Pathless Route Matching
 
-During matching, [pathless routes](../route-paths#pathless-routes) are treated as if they are flat. If a route is not found in a pathless route's children, matching will continue out of the pathless route's children and on through the rest of the parent subtree like normal.
+During matching, [pathless routes](./guide/route-paths#pathless-routes) are treated as if they are flat. If a route is not found in a pathless route's children, matching will continue out of the pathless route's children and on through the rest of the parent subtree like normal.
 
 ## `NotFoundRoute`s and Matching
 

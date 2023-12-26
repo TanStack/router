@@ -20,3 +20,6 @@
   - `pnpm dev`
 - Make changes to the code
   - If you ran `pnpm dev` the dev watcher will automatically rebuild the code that has changed
+- Changes to the docs
+  - Be sure that internal links are written always relative to `docs` folder.
+    E.g. `./guide/data-loading`

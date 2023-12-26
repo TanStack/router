@@ -16,7 +16,7 @@ import { RootRoute } from '@tanstack/react-router'
 const rootRoute = new RootRoute()
 ```
 
-> 🧠 You can also create a root route via the `rootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./router-context)
+> 🧠 You can also create a root route via the `rootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./guide/router-context)
 
 ## Outlets
 
