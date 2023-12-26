@@ -9,7 +9,7 @@ Route masking is a way to mask the actual URL of a route that gets persisted to 
 - Navigating to a route with the search param `?showLogin=true`, but masking the the URL to _not_ contain the search param
 - Navigating to a route with the search param `?modal=settings`, but masking the the URL as `/settings'
 
-Each of these scenarios can be achieved with route masking and even extended to support more advanced patterns like [parallel routes](./parallel-routes.md)
+Each of these scenarios can be achieved with route masking and even extended to support more advanced patterns like [parallel routes](./guide/parallel-routes.md)
 
 ## How does route masking work?
 

@@ -6,7 +6,7 @@ title: Custom Search Param Serialization
 
 By default, TanStack Router parses and serializes your search params automatically using `JSON.stringify/JSON.parse`. Depending on your needs though, you may want to customize the serialization process.
 
-To do so, [use `Router`'s `parseSearch` and `stringifySearch` options](../docs/api#search-param-parsing-and-serialization):
+To do so, [use `Router`'s `parseSearch` and `stringifySearch` options](./guide/custom-search-param-serialization):
 
 ```tsx
 import {
@@ -33,7 +33,7 @@ const router = new Router({
 })
 ```
 
-Additionally, you can [use the `parseSearchWith` and `stringifySearchWith` utilities](../docs/api#search-param-parsing-and-serialization) to parse and serialize the search values specifically.
+Additionally, you can [use the `parseSearchWith` and `stringifySearchWith` utilities](./guide/custom-search-param-serialization) to parse and serialize the search values specifically.
 
 For example, we can reimplement the default parser/serializer with the following code:
 

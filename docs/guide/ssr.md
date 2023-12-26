@@ -122,7 +122,7 @@ Resolved loader data fetched by routes is automatically dehydrated and rehydrate
 
 ⚠️ If you are using deferred data streaming, you will also need to ensure that you have implemented the [SSR Streaming & Stream Transform](#ssr-streaming) pattern near the end of this guide.
 
-For more information on how to utilize data loading and data streaming, see the [Data Loading](./data-loading) and [Data Streaming](./data-streaming) guides.
+For more information on how to utilize data loading and data streaming, see the [Data Loading](./guide/data-loading) and [Data Streaming](./guide/data-streaming) guides.
 
 ### Dehydrating the Router
 
