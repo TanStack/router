@@ -178,7 +178,7 @@ export async function generator(config: Config) {
         return
       }
 
-      // Ensure that new FileRoute(anything?) is replace with FileRoute(${node.routePath})
+      // Ensure that new FileRoute(anything?) is replaced with FileRoute(${node.routePath})
       // routePath can contain $ characters, which have special meaning when used in replace
       // so we have to escape it by turning all $ into $$. But since we do it through a replace call
       // we have to double escape it into $$$$. For more information, see
@@ -250,7 +250,7 @@ export async function generator(config: Config) {
       return `Object.assign(${routeNode.variableName ?? 'root'}Route.options, {
         ${[
           routeNode.isNonPath
-            ? `id: '${routeNode.cleanedPath}'`
+            ? `id: '${routeNode.path}'`
             : `path: '${routeNode.cleanedPath}'`,
           `getParentRoute: () => ${
             routeNode.parent?.variableName ?? 'root'
