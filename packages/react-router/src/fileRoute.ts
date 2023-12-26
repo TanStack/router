@@ -13,6 +13,8 @@ import {
   RootRouteId,
   TrimPathLeft,
   RouteConstraints,
+  ResolveFullSearchSchemaInput,
+  SearchSchemaInput,
 } from './route'
 import { Assign, Expand, IsAny } from './utils'
 
@@ -85,7 +87,19 @@ export class FileRoute<
   constructor(public path: TFilePath) {}
 
   createRoute = <
+    TSearchSchemaInput extends RouteConstraints['TSearchSchema'] = {},
     TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
+    TSearchSchemaUsed extends Record<
+      string,
+      any
+    > = TSearchSchemaInput extends SearchSchemaInput
+      ? TSearchSchemaInput
+      : TSearchSchema,
+    TFullSearchSchemaInput extends
+      RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchemaInput<
+      TParentRoute,
+      TSearchSchemaUsed
+    >,
     TFullSearchSchema extends
       RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
       TParentRoute,
@@ -115,7 +129,10 @@ export class FileRoute<
         TParentRoute,
         string,
         TPath,
+        TSearchSchemaInput,
         TSearchSchema,
+        TSearchSchemaUsed,
+        TFullSearchSchemaInput,
         TFullSearchSchema,
         TParams,
         TAllParams,
@@ -133,7 +150,10 @@ export class FileRoute<
     TFullPath,
     TFilePath,
     TId,
+    TSearchSchemaInput,
     TSearchSchema,
+    TSearchSchemaUsed,
+    TFullSearchSchemaInput,
     TFullSearchSchema,
     TParams,
     TAllParams,

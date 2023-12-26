@@ -172,7 +172,7 @@ export type ParamOptions<
   TFrom,
   TTo,
   TResolved,
-  TParamVariant extends 'allParams' | 'fullSearchSchema',
+  TParamVariant extends 'allParams' | 'fullSearchSchemaInput',
   TFromParams = Expand<RouteByPath<TRouteTree, TFrom>['types'][TParamVariant]>,
   TToParams = TTo extends ''
     ? TFromParams
@@ -187,7 +187,7 @@ export type ParamOptions<
     : MakeParamOption<TParamVariant, TReducer>
 
 type MakeParamOption<
-  TParamVariant extends 'allParams' | 'fullSearchSchema',
+  TParamVariant extends 'allParams' | 'fullSearchSchemaInput',
   T,
 > = TParamVariant extends 'allParams'
   ? MakePathParamOptions<T>
@@ -200,7 +200,7 @@ export type SearchParamOptions<
   TFrom,
   TTo,
   TResolved,
-> = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'fullSearchSchema'>
+> = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'fullSearchSchemaInput'>
 
 export type PathParamOptions<
   TRouteTree extends AnyRoute,
