@@ -5,7 +5,7 @@ title: SSR
 
 Server Side Rendering (SSR) is the process of rendering a component on the server and sending the HTML markup to the client. The client then hydrates the markup into a fully interactive component.
 
-Ther are usually two different flavors of SSR to be considered:
+There are usually two different flavors of SSR to be considered:
 
 - Non-streaming SSR
   - The entire page is rendered on the server and sent to the client in one single HTML request, including the serialized data the application needs to hydrate on the client.
@@ -19,7 +19,7 @@ This guide will explain how to implement both flavors of SSR with TanStack Route
 
 Non-Streaming server-side rendering is the classic process of rendering the markup for your entire application page on the server and sending the completed HTML markup (and data) to the client. The client then hydrates the markup into a fully interactive application again.
 
-To implement non-streaming SSR with TanStack Router, you will need to do the following utilities:
+To implement non-streaming SSR with TanStack Router, you will need the following utilities:
 
 - `StartServer` from `@tanstack/react-start/server`
   - e.g. `<StartServer router={router} />`
@@ -192,7 +192,7 @@ export async function render(url, response) {
 
 ## Rendering the Application on the Client
 
-On the client, things are much more simple.
+On the client, things are much simpler.
 
 - Create your router instance
 - Kick off the router hydration with `router.hydrate()`
@@ -225,8 +225,8 @@ To enable this streaming pattern with TanStack Router, you will need to use Reac
 
 - `transformStreamWithRouter` from `@tanstack/react-start/server`
   - e.g. `transformStreamWithRouter(router)`
-  - This function returns a stream Transform instance that cam be used to transform a stream of HTML markup from React DOM's `renderToPipeableStream` function as it is piped to the response.
-  - This transform automatically and incrementally embeds fine-grained HTML injections and dehydrated data chunks into the stream as.
+  - This function returns a stream Transform instance that can be used to transform a stream of HTML markup from React DOM's `renderToPipeableStream` function as it is piped to the response.
+  - This transform automatically and incrementally embeds fine-grained HTML injections and dehydrated data chunks into the stream.
 
 ### Transforming the Stream
 
