@@ -43,7 +43,7 @@ Object.assign(IndexRoute.options, {
 })
 
 Object.assign(LayoutRoute.options, {
-  id: "/layout",
+  id: "/_layout",
   getParentRoute: () => rootRoute,
 })
 
