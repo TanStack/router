@@ -172,9 +172,9 @@ export type SearchParamOptions<
   TFromSearchEnsured = '/' extends TFrom
     ? FullSearchSchema<TRouteTree>
     : Expand<
-          PickRequired<
-            RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']
-          >
+        PickRequired<
+          RouteByPath<TRouteTree, TFrom>['types']['fullSearchSchema']
+        >
       >,
   TFromSearchOptional = Omit<
     FullSearchSchema<TRouteTree>,
@@ -352,9 +352,16 @@ export function useLinkProps<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = '/',
   TMaskTo extends string = '',
->(
-  options: UseLinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-): React.AnchorHTMLAttributes<HTMLAnchorElement> {
+>({
+  from,
+  ...options
+}: UseLinkPropsOptions<
+  TRouteTree,
+  TFrom,
+  TTo,
+  TMaskFrom,
+  TMaskTo
+>): React.AnchorHTMLAttributes<HTMLAnchorElement> {
   const router = useRouter()
   const matchPathname = useMatch({
     strict: false,
@@ -416,7 +423,6 @@ export function useLinkProps<
   }
 
   const next = router.buildLocation(dest as any)
-
   const preload = userPreload ?? router.options.defaultPreload
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0

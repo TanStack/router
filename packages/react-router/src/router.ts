@@ -945,14 +945,14 @@ export class Router<
     })
   }
 
-  navigate: NavigateFn<TRouteTree> = ({ from, to = '', ...rest }) => {
+  navigate: NavigateFn<TRouteTree> = ({ from, to, ...rest }) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
     // If this `to` is a valid external URL, return
     // null for LinkUtils
     const toString = String(to)
-    const fromString = typeof from === 'undefined' ? from : String(from)
+    // const fromString = from !== undefined ? String(from) : from
     let isExternal
 
     try {
@@ -967,8 +967,9 @@ export class Router<
 
     return this.buildAndCommitLocation({
       ...rest,
-      from: fromString,
-      to: toString,
+      from,
+      to,
+      // to: toString,
     })
   }
 

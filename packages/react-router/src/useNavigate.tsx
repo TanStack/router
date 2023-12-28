@@ -10,25 +10,27 @@ import { useLayoutEffect } from './utils'
 export function useNavigate<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TDefaultFrom extends RoutePaths<TRouteTree> = '/',
->(defaultOpts?: { from?: TDefaultFrom }) {
-  const { navigate } = useRouter()
+>(_defaultOpts?: { from?: TDefaultFrom }) {
+  const { navigate, buildLocation } = useRouter()
+
   const matchPathname = useMatch({
     strict: false,
     select: (s) => s.pathname,
   })
+
   return React.useCallback(
     <
       TFrom extends RoutePaths<TRouteTree> = TDefaultFrom,
       TTo extends string = '',
       TMaskFrom extends RoutePaths<TRouteTree> = '/',
       TMaskTo extends string = '',
-    >(
-      opts?: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-    ) => {
+    >({
+      from,
+      ...rest
+    }: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>) => {
       return navigate({
-        from: opts?.to ? matchPathname : undefined,
-        ...defaultOpts,
-        ...(opts as any),
+        from: rest?.to ? matchPathname : undefined,
+        ...(rest as any),
       })
     },
     [],
