@@ -75,12 +75,12 @@ Object.assign(IndexRoute.options, {
 })
 
 Object.assign(AuthRoute.options, {
-  id: "/auth",
+  id: "/_auth",
   getParentRoute: () => rootRoute,
 })
 
 Object.assign(LayoutRoute.options, {
-  id: "/layout",
+  id: "/_layout",
   getParentRoute: () => rootRoute,
 })
 
