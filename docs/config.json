@@ -123,8 +123,8 @@
       "label": "API",
       "children": [
         {
-          "label": "Coming Soon",
-          "to": "#"
+          "label": "Reference",
+          "to": "api/api"
         },
         {
           "label": "Router CLI (Route-Gen)",
