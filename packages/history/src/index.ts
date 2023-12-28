@@ -56,8 +56,8 @@ const stopBlocking = () => {
 
 export function createHistory(opts: {
   getLocation: () => HistoryLocation
-  pushState: (path: string, state: any, onUpdate: () => void) => void
-  replaceState: (path: string, state: any, onUpdate: () => void) => void
+  pushState: (path: string, state: any) => void
+  replaceState: (path: string, state: any) => void
   go: (n: number) => void
   back: () => void
   forward: () => void
@@ -103,13 +103,15 @@ export function createHistory(opts: {
     push: (path: string, state: any) => {
       state = assignKey(state)
       tryNavigation(() => {
-        opts.pushState(path, state, onUpdate)
+        opts.pushState(path, state)
+        onUpdate()
       })
     },
     replace: (path: string, state: any) => {
       state = assignKey(state)
       tryNavigation(() => {
-        opts.replaceState(path, state, onUpdate)
+        opts.replaceState(path, state)
+        onUpdate()
       })
     },
     go: (index) => {
@@ -251,7 +253,6 @@ export function createBrowserHistory(opts?: {
     type: 'push' | 'replace',
     destHref: string,
     state: any,
-    onUpdate: () => void,
   ) => {
     const href = createHref(destHref)
 
@@ -269,9 +270,6 @@ export function createBrowserHistory(opts?: {
       isPush: next?.isPush || type === 'push',
     }
 
-    // Notify subscribers
-    onUpdate()
-
     if (!scheduled) {
       // Schedule an update to the browser history
       scheduled = Promise.resolve().then(() => flush())
@@ -288,10 +286,8 @@ export function createBrowserHistory(opts?: {
 
   const history = createHistory({
     getLocation,
-    pushState: (href, state, onUpdate) =>
-      queueHistoryAction('push', href, state, onUpdate),
-    replaceState: (href, state, onUpdate) =>
-      queueHistoryAction('replace', href, state, onUpdate),
+    pushState: (href, state) => queueHistoryAction('push', href, state),
+    replaceState: (href, state) => queueHistoryAction('replace', href, state),
     back: () => win.history.back(),
     forward: () => win.history.forward(),
     go: (n) => win.history.go(n),
@@ -365,6 +361,7 @@ export function createMemoryHistory(
 
   return createHistory({
     getLocation,
+
     pushState: (path, state) => {
       currentState = state
       entries.push(path)
