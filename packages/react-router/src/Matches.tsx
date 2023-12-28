@@ -283,7 +283,7 @@ export function MatchRoute<
   return !!params ? props.children : null
 }
 
-function getRenderedMatches(state: RouterState) {
+export function getRenderedMatches(state: RouterState) {
   return state.pendingMatches?.some((d) => d.showPending)
     ? state.pendingMatches
     : state.matches

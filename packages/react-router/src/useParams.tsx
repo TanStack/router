@@ -4,6 +4,7 @@ import { RegisteredRouter } from './router'
 import { last } from './utils'
 import { useRouterState } from './RouterProvider'
 import { StrictOrFrom } from './utils'
+import { getRenderedMatches } from './Matches'
 
 export function useParams<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -18,7 +19,7 @@ export function useParams<
 ): TSelected {
   return useRouterState({
     select: (state: any) => {
-      const params = (last(state.matches) as any)?.params
+      const params = (last(getRenderedMatches(state)) as any)?.params
       return opts?.select ? opts.select(params) : params
     },
   })
