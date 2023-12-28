@@ -101,6 +101,7 @@ export function RouterProvider<
 }
 
 function Transitioner() {
+  const mountLoadCount = React.useRef(0)
   const router = useRouter()
   const routerState = useRouterState({
     select: (s) =>
@@ -203,7 +204,8 @@ function Transitioner() {
   ])
 
   useLayoutEffect(() => {
-    if (!window.__TSR_DEHYDRATED__) {
+    if (!window.__TSR_DEHYDRATED__ && !mountLoadCount.current) {
+      mountLoadCount.current++
       tryLoad()
     }
   }, [])
