@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-cli",
   "author": "Tanner Linsley",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
