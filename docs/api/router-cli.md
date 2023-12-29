@@ -21,6 +21,7 @@ The CLI can be configured via a `tsr.config.json` file in the project's root dir
 - **`routeFileIgnorePrefix`**: (Optional, **Defaults to `-`**) Route files and directories that start with this string will be ignored. By default this is set to `-` to allow for the use of directories to house related files that do not contain any route files.
 - **`routesDirectory`**: (Required) The directory containing the routes relative to the cwd.
 - **`generatedRouteTree`**: (Required) The path to the file where the generated route tree will be saved, relative to the cwd.
+- **`quoteStyle`**: (Optional, **Defaults to `single`**) whether to use `single` or `double` quotes when writing the route ids in `new FileRoute()`
 
 ## Example
 

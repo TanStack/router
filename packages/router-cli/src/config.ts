@@ -7,6 +7,7 @@ const configSchema = z.object({
   routeFileIgnorePrefix: z.string().optional(),
   routesDirectory: z.string(),
   generatedRouteTree: z.string(),
+  quoteStyle: z.enum(['single', 'double']).optional().default('single'),
 })
 
 export type Config = z.infer<typeof configSchema>

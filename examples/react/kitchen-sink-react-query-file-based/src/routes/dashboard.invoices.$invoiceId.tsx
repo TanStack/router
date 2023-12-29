@@ -8,7 +8,7 @@ import {
 } from '../utils/queryOptions'
 import { useSuspenseQuery } from '@tanstack/react-query'
 
-export const Route = new FileRoute('/dashboard/invoices/$invoiceId').createRoute({
+export const Route = new FileRoute("/dashboard/invoices/$invoiceId").createRoute({
   parseParams: (params) => ({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),
   }),
