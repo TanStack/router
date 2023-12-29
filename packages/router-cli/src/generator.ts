@@ -184,9 +184,10 @@ export async function generator(config: Config) {
       // we have to double escape it into $$$$. For more information, see
       // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace#specifying_a_string_as_the_replacement
       const escapedRoutePath = node.routePath?.replaceAll('$', '$$$$') ?? ''
+      const quote = config.quoteStyle === 'single' ? `'` : `"`
       const replaced = routeCode.replace(
         fileRouteRegex,
-        `new FileRoute('${escapedRoutePath}')`,
+        `new FileRoute(${quote}${escapedRoutePath}${quote})`,
       )
 
       if (replaced !== routeCode) {
