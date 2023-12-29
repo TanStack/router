@@ -49,5 +49,6 @@ ts-perf
 
 nx-cloud.env
 .vscode
+.nx
 
 gpt/db.json
