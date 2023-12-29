@@ -2,7 +2,7 @@ import * as React from 'react'
 import { FileRoute, useRouter } from '@tanstack/react-router'
 import { z } from 'zod'
 
-export const Route = new FileRoute('/login')
+export const Route = new FileRoute("/login")
   .createRoute({
     validateSearch: z.object({
       redirect: z.string().optional(),

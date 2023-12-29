@@ -6,7 +6,7 @@ import { Spinner } from '../components/Spinner'
 import { useCreateInvoiceMutation } from '../utils/queryOptions'
 
 // @ts-ignore
-export const Route = new FileRoute('/dashboard/invoices/').createRoute({
+export const Route = new FileRoute("/dashboard/invoices/").createRoute({
   component: InvoicesIndexComponent,
 })
 
