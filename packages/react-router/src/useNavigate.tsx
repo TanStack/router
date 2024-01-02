@@ -5,11 +5,10 @@ import { LinkOptions, NavigateOptions } from './link'
 import { AnyRoute } from './route'
 import { RoutePaths } from './routeInfo'
 import { RegisteredRouter } from './router'
-import { useLayoutEffect } from './utils'
 
 export function useNavigate<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TDefaultFrom extends RoutePaths<TRouteTree> = '/',
+  TDefaultFrom extends RoutePaths<TRouteTree> | string = string,
 >(_defaultOpts?: { from?: TDefaultFrom }) {
   const { navigate, buildLocation } = useRouter()
 
@@ -20,10 +19,10 @@ export function useNavigate<
 
   return React.useCallback(
     <
-      TFrom extends RoutePaths<TRouteTree> = TDefaultFrom,
-      TTo extends string = '',
-      TMaskFrom extends RoutePaths<TRouteTree> = '/',
-      TMaskTo extends string = '',
+      TFrom extends RoutePaths<TRouteTree> | string = TDefaultFrom,
+      TTo extends string | undefined = undefined,
+      TMaskFrom extends RoutePaths<TRouteTree>| string = TFrom,
+      TMaskTo extends string | undefined = undefined,
     >({
       from,
       ...rest
@@ -54,10 +53,10 @@ export function useNavigate<
 
 export function Navigate<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = '/',
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = '/',
-  TMaskTo extends string = '',
+  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string | undefined = undefined,
 >(props: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const { navigate } = useRouter()
   const match = useMatch({ strict: false })
@@ -74,19 +73,19 @@ export function Navigate<
 
 export type UseLinkPropsOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = '/',
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = '/',
-  TMaskTo extends string = '',
+  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TTo extends string | undefined= undefined,
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string | undefined = undefined,
 > = ActiveLinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
   React.AnchorHTMLAttributes<HTMLAnchorElement>
 
 export type LinkProps<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = '/',
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = '/',
-  TMaskTo extends string = '',
+  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TTo extends string| undefined = undefined,
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string | undefined = undefined,
 > = ActiveLinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
   Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> & {
     // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
@@ -97,10 +96,10 @@ export type LinkProps<
 
 export type ActiveLinkOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = '/',
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = '/',
-  TMaskTo extends string = '',
+  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string | undefined = undefined,
 > = LinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   activeProps?:
