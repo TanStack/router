@@ -124,7 +124,7 @@
       "children": [
         {
           "label": "Reference",
-          "to": "api/api"
+          "to": "api/router"
         },
         {
           "label": "Router CLI (Route-Gen)",

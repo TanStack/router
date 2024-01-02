@@ -1,5 +1,5 @@
 ---
-id: router-cli
+id: Router CLI
 title: Router CLI (Route Generation)
 ---
 
