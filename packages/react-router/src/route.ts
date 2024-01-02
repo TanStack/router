@@ -23,9 +23,8 @@ export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
 export type AnyPathParams = {}
 
-export const SearchSchemaSymbol: unique symbol = Symbol('@tanstack/router')
 export type SearchSchemaInput = {
-  [SearchSchemaSymbol]: 'TSearchSchemaInput'
+  __TSearchSchemaInput__: 'TSearchSchemaInput'
 }
 
 export type AnySearchSchema = {}
@@ -446,7 +445,7 @@ export class Route<
     string,
     any
   > = TSearchSchemaInput extends SearchSchemaInput
-    ? Omit<TSearchSchemaInput, typeof SearchSchemaSymbol>
+    ? Omit<TSearchSchemaInput, '__TSearchSchemaInput__'>
     : TSearchSchema,
   TFullSearchSchemaInput extends Record<
     string,
