@@ -445,7 +445,7 @@ export class Route<
     string,
     any
   > = TSearchSchemaInput extends SearchSchemaInput
-    ? Omit<TSearchSchemaInput, '__TSearchSchemaInput__'>
+    ? Omit<TSearchSchemaInput, keyof SearchSchemaInput>
     : TSearchSchema,
   TFullSearchSchemaInput extends Record<
     string,
