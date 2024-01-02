@@ -51,7 +51,7 @@ const router = new Router({ routeConfig, history: hashHistory })
 Memory routing is useful in environments that are not a browser or when you do not want components to interact with the URL.
 
 ```ts
-import { createMemoryHistory, Router, route } from '@tanstack/react-router'
+import { createMemoryHistory, Router, Route } from '@tanstack/react-router'
 
 const rootRoute = new Route()
 
