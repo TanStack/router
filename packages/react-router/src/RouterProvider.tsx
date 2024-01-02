@@ -17,6 +17,15 @@ import { NoInfer, pick, useLayoutEffect } from './utils'
 import { MatchRouteOptions } from './Matches'
 import { RouteMatch } from './Matches'
 
+const useTransition =
+  React.useTransition ||
+  (() => [
+    false,
+    (cb) => {
+      cb()
+    },
+  ])
+
 export interface CommitLocationOptions {
   replace?: boolean
   resetScroll?: boolean
@@ -108,7 +117,7 @@ function Transitioner() {
       pick(s, ['isLoading', 'location', 'resolvedLocation', 'isTransitioning']),
   })
 
-  const [isTransitioning, startReactTransition] = React.useTransition()
+  const [isTransitioning, startReactTransition] = useTransition()
 
   router.startReactTransition = startReactTransition
 
@@ -165,10 +174,11 @@ function Transitioner() {
 
   useLayoutEffect(() => {
     if (
-      routerState.isTransitioning &&
-      !isTransitioning &&
-      !routerState.isLoading &&
-      routerState.resolvedLocation !== routerState.location
+      (React.useTransition as any)
+        ? routerState.isTransitioning && !isTransitioning
+        : true &&
+          !routerState.isLoading &&
+          routerState.resolvedLocation !== routerState.location
     ) {
       router.emit({
         type: 'onResolved',
