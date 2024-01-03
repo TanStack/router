@@ -118,9 +118,9 @@ export type RelativeToPathAutoComplete<
 export type NavigateOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> | string = string,
-  TTo extends string | undefined = undefined,
+  TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
-  TMaskTo extends string | undefined = undefined,
+  TMaskTo extends string = '',
 > = ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
@@ -132,9 +132,9 @@ export type NavigateOptions<
 export type ToOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> | string = string,
-  TTo extends string | undefined = undefined,
+  TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
-  TMaskTo extends string | undefined = undefined,
+  TMaskTo extends string = '',
 > = ToSubOptions<TRouteTree, TFrom, TTo> & {
   mask?: ToMaskOptions<TRouteTree, TMaskFrom, TMaskTo>
 }
@@ -142,7 +142,7 @@ export type ToOptions<
 export type ToMaskOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TMaskFrom extends RoutePaths<TRouteTree> | string = string,
-  TMaskTo extends string | undefined = undefined,
+  TMaskTo extends string = '',
 > = ToSubOptions<TRouteTree, TMaskFrom, TMaskTo> & {
   unmaskOnReload?: boolean
 }
@@ -150,7 +150,7 @@ export type ToMaskOptions<
 export type ToSubOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> | string = string,
-  TTo extends string | undefined = undefined,
+  TTo extends string = '',
   TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
 > = {
   to?: ToPathOption<TRouteTree, TFrom, TTo>
@@ -174,7 +174,7 @@ export type ParamOptions<
   TResolved,
   TParamVariant extends 'allParams' | 'fullSearchSchema',
   TFromParams = Expand<RouteByPath<TRouteTree, TFrom>['types'][TParamVariant]>,
-  TToParams = TTo extends undefined
+  TToParams = TTo extends ''
     ? TFromParams
     : never extends TResolved
       ? Expand<RouteByPath<TRouteTree, TTo>['types'][TParamVariant]>
@@ -212,7 +212,7 @@ export type PathParamOptions<
 export type ToPathOption<
   TRouteTree extends AnyRoute = AnyRoute,
   TFrom extends RoutePaths<TRouteTree> | string = string,
-  TTo extends string | undefined = undefined,
+  TTo extends string = '',
 > =
   | TTo
   | RelativeToPathAutoComplete<
@@ -224,7 +224,7 @@ export type ToPathOption<
 export type ToIdOption<
   TRouteTree extends AnyRoute = AnyRoute,
   TFrom extends RoutePaths<TRouteTree> | undefined = undefined,
-  TTo extends string | undefined = undefined,
+  TTo extends string = '',
 > =
   | TTo
   | RelativeToPathAutoComplete<
@@ -242,9 +242,9 @@ export interface ActiveOptions {
 export type LinkOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> | string = string,
-  TTo extends string | undefined = undefined,
+  TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
-  TMaskTo extends string | undefined = undefined,
+  TMaskTo extends string = '',
 > = NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // The standard anchor tag target attribute
   target?: HTMLAnchorElement['target']
@@ -334,9 +334,9 @@ const preloadWarning = 'Error preloading route! ☝️'
 export function useLinkProps<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> | string = string,
-  TTo extends string | undefined = undefined,
+  TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
-  TMaskTo extends string | undefined = undefined,
+  TMaskTo extends string = '',
 >(
   options: UseLinkPropsOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
@@ -553,9 +553,9 @@ export interface LinkComponent<TProps extends Record<string, any> = {}> {
   <
     TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
     TFrom extends RoutePaths<TRouteTree> | string = string,
-    TTo extends string | undefined = undefined,
+    TTo extends string = '',
     TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
-    TMaskTo extends string | undefined = undefined,
+    TMaskTo extends string = '',
   >(
     props: LinkProps<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
       TProps &
