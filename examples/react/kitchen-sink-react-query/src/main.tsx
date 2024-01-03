@@ -419,7 +419,7 @@ const invoiceRoute = new Route({
 function InvoiceComponent() {
   const params = invoiceRoute.useParams()
   const search = invoiceRoute.useSearch()
-  const navigate = useNavigate()
+  const navigate = useNavigate({from: invoiceRoute.id})
   const invoiceQuery = useSuspenseQuery(invoiceQueryOptions(params.invoiceId))
   const invoice = invoiceQuery.data
   const updateInvoiceMutation = useUpdateInvoiceMutation(params.invoiceId)
@@ -432,6 +432,7 @@ function InvoiceComponent() {
         notes: notes ? notes : undefined,
       }),
       replace: true,
+      params: true,
     })
   }, [notes])
 
@@ -461,6 +462,8 @@ function InvoiceComponent() {
             showNotes: old?.showNotes ? undefined : true,
           })}
           className="text-blue-700"
+          from={invoiceRoute.id}
+          params={true}
         >
           {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
         </Link>
@@ -540,7 +543,7 @@ const usersRoute = new Route({
 })
 
 function UsersComponent() {
-  const navigate = useNavigate()
+  const navigate = useNavigate({from: usersRoute.id})
   const { usersView } = usersRoute.useSearch()
   const usersQuery = useSuspenseQuery(
     usersQueryOptions(usersRoute.useLoaderDeps()),
