@@ -1,8 +1,7 @@
 ---
 id: FileRouteClass
-title: `FileRoute` class
+title: FileRoute class
 ---
-
 
 The `FileRoute` class is a factory that can be used to create a file-based route instance. This route instance can then be used to automatically generate a route tree with the `tsr generate` and `tsr build` commands.
 

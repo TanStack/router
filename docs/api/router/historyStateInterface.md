@@ -1,8 +1,7 @@
 ---
 id: historyStateInterface
-title: `HistoryState` interface
+title: HistoryState interface
 ---
-
 
 The `HistoryState` interface is an interface exported by the `history` package that describes the shape of the state object that can be used in conjunction with the `history` package and the `window.location` API.
 

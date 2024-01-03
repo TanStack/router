@@ -1,8 +1,7 @@
 ---
 id: catchBoundaryComponent
-title: `CatchBoundary` component
+title: CatchBoundary component
 ---
-
 
 The `CatchBoundary` component is a component that catches errors thrown by its children, renders an error component and optionally calls the `onCatch` callback. It also accepts a `getResetKey` function that can be used to declaratively reset the component's state when the key changes.
 

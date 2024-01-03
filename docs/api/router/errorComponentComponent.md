@@ -1,8 +1,7 @@
 ---
 id: errorComponentComponent
-title: `ErrorComponent` component
+title: ErrorComponent component
 ---
-
 
 The `ErrorComponent` component is a component that renders an error message and optionally the error's message.
 

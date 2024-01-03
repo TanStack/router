@@ -1,8 +1,7 @@
 ---
 id: RouteOptionsType
-title: `RouteOptions` type
+title: RouteOptions type
 ---
-
 
 The `RouteOptions` type is used to describe the options that can be used when creating a route.
 

@@ -1,8 +1,7 @@
 ---
 id: useAwaitedHook
-title: `useAwaited` hook
+title: useAwaited hook
 ---
-
 
 The `useAwaited` method is a hook that suspends until the provided promise is resolved or rejected.
 

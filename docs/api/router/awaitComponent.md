@@ -1,8 +1,7 @@
 ---
 id: awaitComponent
-title: `Await` component
+title: Await component
 ---
-
 
 The `Await` component is a component that suspends until the provided promise is resolved or rejected.
 

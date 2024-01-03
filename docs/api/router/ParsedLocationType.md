@@ -1,8 +1,7 @@
 ---
 id: ParsedLocationType
-title: `ParsedLocation` type
+title: ParsedLocation type
 ---
-
 
 The `ParsedLocation` type represents a parsed location in TanStack Router. It contains a lot of useful information about the current location, including the pathname, search params, hash, location state, and route masking information.
 

@@ -1,8 +1,7 @@
 ---
 id: MatchRouteOptionsType
-title: `MatchRouteOptions` type
+title: MatchRouteOptions type
 ---
-
 
 The `MatchRouteOptions` type is used to describe the options that can be used when matching a route.
 

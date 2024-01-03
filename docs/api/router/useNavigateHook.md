@@ -1,8 +1,7 @@
 ---
 id: useNavigateHook
-title: `useNavigate` hook
+title: useNavigate hook
 ---
-
 
 The `useNavigate` hook is a hook that returns a `navigate` function that can be used to navigate to a new location. This includes changes to the pathname, search params, hash, and location state.
 

@@ -1,8 +1,7 @@
 ---
 id: RouteApiClass
-title: `RouteApi` class
+title: RouteApi class
 ---
-
 
 The `RouteApi` class provides type-safe version of common hooks like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch` that are pre-bound to a specific route ID and corresponding registered route types.
 

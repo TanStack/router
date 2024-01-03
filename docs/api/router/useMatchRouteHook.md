@@ -1,8 +1,7 @@
 ---
 id: useMatchRouteHook
-title: `useMatchRoute` hook
+title: useMatchRoute hook
 ---
-
 
 The `useMatchRoute` hook is a hook that returns a `matchRoute` function that can be used to match a route against either the current or pending location.
 

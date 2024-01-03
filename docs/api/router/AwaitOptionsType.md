@@ -1,8 +1,7 @@
 ---
 id: AwaitOptionsType
-title: `AwaitOptions` type
+title: AwaitOptions type
 ---
-
 
 ```tsx
 type AwaitOptions<T> = {

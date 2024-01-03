@@ -1,8 +1,7 @@
 ---
 id: FullSearchSchemaType
-title: `FullSearchSchema` type
+title: FullSearchSchema type
 ---
-
 
 This type takes a route tree and returns an expanded, optional intersection of all search schemas in the tree.
 

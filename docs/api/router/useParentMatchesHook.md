@@ -1,8 +1,7 @@
 ---
 id: useParentMatchesHook
-title: `useParentMatches` hook
+title: useParentMatches hook
 ---
-
 
 The `useMatches` hook returns all of the parent `RouteMatch` objects from the router from the callers position in the React component tree.
 

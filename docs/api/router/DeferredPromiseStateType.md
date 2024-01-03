@@ -1,8 +1,7 @@
 ---
 id: DeferredPromiseStateType
-title: `DeferredPromiseState` type
+title: DeferredPromiseState type
 ---
-
 
 ```tsx
 type DeferredPromiseState<T> = { uid: string } & (

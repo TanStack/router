@@ -1,8 +1,7 @@
 ---
 id: useMatchesHook
-title: `useMatches` hook
+title: useMatches hook
 ---
-
 
 The `useMatches` hook returns all of the `RouteMatch` objects from the router **regardless of its callers position in the React component tree**.
 

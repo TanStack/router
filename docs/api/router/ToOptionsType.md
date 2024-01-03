@@ -1,8 +1,7 @@
 ---
 id: ToOptionsType
-title: `ToOptions` type
+title: ToOptions type
 ---
-
 
 The `ToOptions` type contains several properties that can be used to describe a router destination.
 

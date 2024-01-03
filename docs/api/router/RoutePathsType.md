@@ -1,8 +1,7 @@
 ---
 id: RoutePathsType
-title: `RoutePaths` type
+title: RoutePaths type
 ---
-
 
 This type takes a route tree and returns a union of all of the full paths in the tree.
 

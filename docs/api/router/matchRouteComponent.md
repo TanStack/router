@@ -1,8 +1,7 @@
 ---
 id: matchRouteComponent
-title: `MatchRoute` component
+title: MatchRoute component
 ---
-
 
 A component version of the `useMatchRoute` hook. It accepts the same options as the `useMatchRoute` with additional props to aid in conditional rendering.
 

@@ -1,8 +1,7 @@
 ---
 id: RouteClass
-title: `Route` class
+title: Route class
 ---
-
 
 The `Route` class implements the `RouteApi` class and can be used to create route instances. A route instance can then be used to create a route tree.
 

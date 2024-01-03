@@ -1,8 +1,7 @@
 ---
 id: lazyRouteComponentFunction
-title: `lazyRouteComponent` function
+title: lazyRouteComponent function
 ---
-
 
 The `lazyRouteComponent` function can be used to create a code-split route component that can be preloaded using a `component.preload()` method.
 

@@ -1,8 +1,7 @@
 ---
 id: RouteIdsType
-title: `RouteIds` type
+title: RouteIds type
 ---
-
 
 This type takes a route tree and returns a union of all of the route IDs in the tree.
 

@@ -1,8 +1,7 @@
 ---
 id: rootRouteWithContextFunction
-title: `rootRouteWithContext` function
+title: rootRouteWithContext function
 ---
-
 
 The `rootRouteWithContext` function is a helper function that can be used to create a root route instance that requires a context type to be fulfilled when the router is created.
 

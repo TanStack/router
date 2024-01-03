@@ -1,8 +1,7 @@
 ---
 id: createRouteMaskFunction
-title: `createRouteMask` function
+title: createRouteMask function
 ---
-
 
 The `createRouteMask` function is a helper function that can be used to create a route mask configuration that can be passed to the `routerOptions.routeMasks` option.
 

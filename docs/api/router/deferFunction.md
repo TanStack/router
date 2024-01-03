@@ -1,8 +1,7 @@
 ---
 id: deferFunction
-title: `defer` function
+title: defer function
 ---
-
 
 The `defer` function wraps a promise with a deferred state object that can be used to inspect the promise's state. This deferred promise can then be passed to the `useAwaited` hook or the `Await` component for suspending until the promise is resolved or rejected.
 
