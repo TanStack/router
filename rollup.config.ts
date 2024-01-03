@@ -38,7 +38,7 @@ const babelPlugin = babel({
   extensions: ['.ts', '.tsx'],
 })
 
-export default function rollup(options: RollupOptions): RollupOptions[] {
+export function createRollupConfig(options: RollupOptions): RollupOptions[] {
   return packages.flatMap((pkg: Package) => {
     return pkg.builds.flatMap((build) =>
       buildConfigs({
@@ -56,6 +56,8 @@ export default function rollup(options: RollupOptions): RollupOptions[] {
     )
   })
 }
+
+export default createRollupConfig
 
 function buildConfigs(opts: {
   esm: boolean
