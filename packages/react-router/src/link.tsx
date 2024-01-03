@@ -167,18 +167,21 @@ export type ToSubOptions<
 
 type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
+type ParamVariant = 'PATH' | 'SEARCH';
 export type ParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
   TTo,
   TResolved,
-  TParamVariant extends 'allParams' | 'fullSearchSchemaInput',
-  TFromParams = Expand<RouteByPath<TRouteTree, TFrom>['types'][TParamVariant]>,
+  TParamVariant extends ParamVariant,
+  TFromRouteType extends 'allParams' | 'fullSearchSchema' = TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchema',
+  TToRouteType extends 'allParams' | 'fullSearchSchemaInput' = TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchemaInput',
+  TFromParams = Expand<RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType]>,
   TToParams = TTo extends ''
     ? TFromParams
     : never extends TResolved
-      ? Expand<RouteByPath<TRouteTree, TTo>['types'][TParamVariant]>
-      : Expand<RouteByPath<TRouteTree, TResolved>['types'][TParamVariant]>,
+      ? Expand<RouteByPath<TRouteTree, TTo>['types'][TToRouteType]>
+      : Expand<RouteByPath<TRouteTree, TResolved>['types'][TToRouteType]>,
   TReducer = ParamsReducer<TFromParams, TToParams>,
 > = Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
   ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
@@ -187,9 +190,9 @@ export type ParamOptions<
     : MakeParamOption<TParamVariant, TReducer>
 
 type MakeParamOption<
-  TParamVariant extends 'allParams' | 'fullSearchSchemaInput',
+  TParamVariant extends ParamVariant,
   T,
-> = TParamVariant extends 'allParams'
+> = TParamVariant extends 'PATH'
   ? MakePathParamOptions<T>
   : MakeSearchParamOptions<T>
 type MakeSearchParamOptions<T> = { search: T }
@@ -200,14 +203,14 @@ export type SearchParamOptions<
   TFrom,
   TTo,
   TResolved,
-> = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'fullSearchSchemaInput'>
+> = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'SEARCH'>
 
 export type PathParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
   TTo,
   TResolved,
-> = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'allParams'>
+> = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'PATH'>
 
 export type ToPathOption<
   TRouteTree extends AnyRoute = AnyRoute,
