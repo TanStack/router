@@ -110,7 +110,7 @@ Tools that are able can integrate with TanStack Router's convenient Dehydration/
 
 ## Critical Dehydration/Hydration
 
-**For critical data needed for the first render/paint**, TanStack Router supports **`dehydrate` and `hydrate`** options when configuration the `Router`. These callbacks are functions that are automatically called on the server and client when the router dehydrates and hydrates normally and allow you to augment the dehydrated data with your own data.
+**For critical data needed for the first render/paint**, TanStack Router supports **`dehydrate` and `hydrate`** options when configuring the `Router`. These callbacks are functions that are automatically called on the server and client when the router dehydrates and hydrates normally and allow you to augment the dehydrated data with your own data.
 
 The `dehydrate` function can return any serializable JSON data which will get merged and injected into the dehydrated payload that is sent to the client. This payload is delivered via the `DehydrateRouter` component which, when rendered, provides the data back to you in the `hydrate` function on the client.
 
