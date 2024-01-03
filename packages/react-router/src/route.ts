@@ -705,7 +705,7 @@ export class Route<
   }
 }
 
-export type AnyRootRoute = RootRoute<any, any, any, any>
+export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any>
 
 export function rootRouteWithContext<TRouterContext extends {}>() {
   return <
@@ -740,7 +740,13 @@ export function rootRouteWithContext<TRouterContext extends {}>() {
       | 'parseParams'
       | 'stringifyParams'
     >,
-  ): RootRoute<TSearchSchema, TRouteContext, TRouterContext> => {
+  ): RootRoute<
+    TSearchSchemaInput,
+    TSearchSchema,
+    TSearchSchemaUsed,
+    TRouteContext,
+    TRouterContext
+  > => {
     return new RootRoute(options) as any
   }
 }
