@@ -784,7 +784,7 @@ export class Router<
           ? from.hash
           : dest.hash
             ? functionalUpdate(dest.hash!, from.hash)
-            : from.hash
+            : undefined
 
       const hashStr = hash ? `#${hash}` : ''
 
@@ -802,7 +802,7 @@ export class Router<
         search,
         searchStr,
         state: nextState as any,
-        hash,
+        hash: hash ?? '',
         href: `${pathname}${searchStr}${hashStr}`,
         unmaskOnReload: dest.unmaskOnReload,
       }
