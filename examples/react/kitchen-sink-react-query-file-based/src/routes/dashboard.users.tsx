@@ -38,7 +38,7 @@ export const Route = new FileRoute("/dashboard/users").createRoute({
 })
 
 function UsersComponent() {
-  const navigate = useNavigate()
+  const navigate = useNavigate({from: Route.id})
   const { usersView } = Route.useSearch()
   const usersQuery = useSuspenseQuery(usersQueryOptions(Route.useLoaderDeps()))
   const users = usersQuery.data
