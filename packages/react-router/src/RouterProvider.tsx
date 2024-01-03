@@ -40,9 +40,9 @@ export interface MatchLocation {
 }
 
 export type NavigateFn<TRouteTree extends AnyRoute> = <
-  TFrom extends RoutePaths<TRouteTree> = '/',
+  TFrom extends RoutePaths<TRouteTree> | string = string,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
 >(
   opts: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
