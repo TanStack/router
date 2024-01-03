@@ -10,7 +10,7 @@ The `SearchParamOptions` type is used to describe how search params can be provi
 type SearchParamOptions = {
   search?:
     | true
-    | Record<string, TSearchParam>
+    | TToSearch
     | ((prev: TFromSearch) => TToSearch)
 }
 ```

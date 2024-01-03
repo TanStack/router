@@ -23,6 +23,10 @@ export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
 export type AnyPathParams = {}
 
+export type SearchSchemaInput = {
+  __TSearchSchemaInput__: 'TSearchSchemaInput'
+}
+
 export type AnySearchSchema = {}
 
 export type AnyContext = {}
@@ -56,7 +60,10 @@ export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
   TPath extends string = string,
+  TSearchSchemaInput extends Record<string, any> = {},
   TSearchSchema extends Record<string, any> = {},
+  TSearchSchemaUsed extends Record<string, any> = {},
+  TFullSearchSchemaInput extends Record<string, any> = TSearchSchemaUsed,
   TFullSearchSchema extends Record<string, any> = TSearchSchema,
   TParams extends AnyPathParams = AnyPathParams,
   TAllParams extends AnyPathParams = TParams,
@@ -68,7 +75,10 @@ export type RouteOptions<
   TParentRoute,
   TCustomId,
   TPath,
+  TSearchSchemaInput,
   TSearchSchema,
+  TSearchSchemaUsed,
+  TFullSearchSchemaInput,
   TFullSearchSchema,
   TParams,
   TAllParams,
@@ -88,7 +98,10 @@ export type BaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
   TPath extends string = string,
+  TSearchSchemaInput extends Record<string, any> = {},
   TSearchSchema extends Record<string, any> = {},
+  TSearchSchemaUsed extends Record<string, any> = {},
+  TFullSearchSchemaInput extends Record<string, any> = TSearchSchemaUsed,
   TFullSearchSchema extends Record<string, any> = TSearchSchema,
   TParams extends AnyPathParams = {},
   TAllParams = ParamsFallback<TPath, TParams>,
@@ -98,7 +111,7 @@ export type BaseRouteOptions<
   TLoaderData extends any = unknown,
 > = RoutePathOptions<TCustomId, TPath> & {
   getParentRoute: () => TParentRoute
-  validateSearch?: SearchSchemaValidator<TSearchSchema>
+  validateSearch?: SearchSchemaValidator<TSearchSchemaInput, TSearchSchema>
   shouldReload?:
     | boolean
     | ((
@@ -221,16 +234,16 @@ export type ParseParamsObj<TPath extends string, TParams> = {
 }
 
 // The parse type here allows a zod schema to be passed directly to the validator
-export type SearchSchemaValidator<TReturn> =
-  | SearchSchemaValidatorObj<TReturn>
-  | SearchSchemaValidatorFn<TReturn>
+export type SearchSchemaValidator<TInput, TReturn> =
+  | SearchSchemaValidatorObj<TInput, TReturn>
+  | SearchSchemaValidatorFn<TInput, TReturn>
 
-export type SearchSchemaValidatorObj<TReturn> = {
-  parse?: SearchSchemaValidatorFn<TReturn>
+export type SearchSchemaValidatorObj<TInput, TReturn> = {
+  parse?: SearchSchemaValidatorFn<TInput, TReturn>
 }
 
-export type SearchSchemaValidatorFn<TReturn> = (
-  searchObj: Record<string, unknown>,
+export type SearchSchemaValidatorFn<TInput, TReturn> = (
+  searchObj: TInput,
 ) => TReturn
 
 export type DefinedPathParamWarning =
@@ -287,12 +300,26 @@ export type InferFullSearchSchema<TRoute> = TRoute extends {
   ? TFullSearchSchema
   : {}
 
+export type InferFullSearchSchemaInput<TRoute> = TRoute extends {
+  types: {
+    fullSearchSchemaInput: infer TFullSearchSchemaInput
+  }
+}
+  ? TFullSearchSchemaInput
+  : {}
+
 export type ResolveFullSearchSchema<TParentRoute, TSearchSchema> = Expand<
   Assign<InferFullSearchSchema<TParentRoute>, TSearchSchema>
 >
 
+export type ResolveFullSearchSchemaInput<TParentRoute, TSearchSchemaUsed> =
+  Expand<Assign<InferFullSearchSchemaInput<TParentRoute>, TSearchSchemaUsed>>
+
 export interface AnyRoute
   extends Route<
+    any,
+    any,
+    any,
     any,
     any,
     any,
@@ -412,7 +439,18 @@ export class Route<
     TCustomId,
     TPath
   >,
+  TSearchSchemaInput extends RouteConstraints['TSearchSchema'] = {},
   TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
+  TSearchSchemaUsed extends Record<
+    string,
+    any
+  > = TSearchSchemaInput extends SearchSchemaInput
+    ? Omit<TSearchSchemaInput, keyof SearchSchemaInput>
+    : TSearchSchema,
+  TFullSearchSchemaInput extends Record<
+    string,
+    any
+  > = ResolveFullSearchSchemaInput<TParentRoute, TSearchSchemaUsed>,
   TFullSearchSchema extends
     RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
     TParentRoute,
@@ -442,7 +480,10 @@ export class Route<
     TParentRoute,
     TCustomId,
     TPath,
+    TSearchSchemaInput,
     TSearchSchema,
+    TSearchSchemaUsed,
+    TFullSearchSchemaInput,
     TFullSearchSchema,
     TParams,
     TAllParams,
@@ -475,7 +516,10 @@ export class Route<
       TParentRoute,
       TCustomId,
       TPath,
+      TSearchSchemaInput,
       TSearchSchema,
+      TSearchSchemaUsed,
+      TFullSearchSchemaInput,
       TFullSearchSchema,
       TParams,
       TAllParams,
@@ -502,7 +546,10 @@ export class Route<
     customId: TCustomId
     id: TId
     searchSchema: TSearchSchema
+    searchSchemaInput: TSearchSchemaInput
+    searchSchemaUsed: TSearchSchemaUsed
     fullSearchSchema: TFullSearchSchema
+    fullSearchSchemaInput: TFullSearchSchemaInput
     params: TParams
     allParams: TAllParams
     routeContext: TRouteContext
@@ -521,7 +568,10 @@ export class Route<
       TParentRoute,
       TCustomId,
       TPath,
+      TSearchSchemaInput,
       TSearchSchema,
+      TSearchSchemaUsed,
+      TFullSearchSchemaInput,
       TFullSearchSchema,
       TParams,
       TAllParams,
@@ -590,7 +640,10 @@ export class Route<
     TFullPath,
     TCustomId,
     TId,
+    TSearchSchemaInput,
     TSearchSchema,
+    TSearchSchemaUsed,
+    TFullSearchSchemaInput,
     TFullSearchSchema,
     TParams,
     TAllParams,
@@ -652,11 +705,13 @@ export class Route<
   }
 }
 
-export type AnyRootRoute = RootRoute<any, any, any, any>
+export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any>
 
 export function rootRouteWithContext<TRouterContext extends {}>() {
   return <
+    TSearchSchemaInput extends Record<string, any> = {},
     TSearchSchema extends Record<string, any> = {},
+    TSearchSchemaUsed extends Record<string, any> = {},
     TRouteContext extends RouteContext = RouteContext,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderData extends any = unknown,
@@ -666,7 +721,10 @@ export function rootRouteWithContext<TRouterContext extends {}>() {
         AnyRoute, // TParentRoute
         RootRouteId, // TCustomId
         '', // TPath
+        TSearchSchemaInput, // TSearchSchemaInput
         TSearchSchema, // TSearchSchema
+        TSearchSchemaUsed,
+        TSearchSchemaUsed, //TFullSearchSchemaInput
         TSearchSchema, // TFullSearchSchema
         {}, // TParams
         {}, // TAllParams
@@ -682,13 +740,21 @@ export function rootRouteWithContext<TRouterContext extends {}>() {
       | 'parseParams'
       | 'stringifyParams'
     >,
-  ): RootRoute<TSearchSchema, TRouteContext, TRouterContext> => {
+  ): RootRoute<
+    TSearchSchemaInput,
+    TSearchSchema,
+    TSearchSchemaUsed,
+    TRouteContext,
+    TRouterContext
+  > => {
     return new RootRoute(options) as any
   }
 }
 
 export class RootRoute<
+  TSearchSchemaInput extends Record<string, any> = {},
   TSearchSchema extends Record<string, any> = {},
+  TSearchSchemaUsed extends Record<string, any> = {},
   TRouteContext extends RouteContext = RouteContext,
   TRouterContext extends {} = {},
   TLoaderDeps extends Record<string, any> = {},
@@ -699,7 +765,10 @@ export class RootRoute<
   '/', // TFullPath
   string, // TCustomId
   RootRouteId, // TId
+  TSearchSchemaInput, // TSearchSchemaInput
   TSearchSchema, // TSearchSchema
+  TSearchSchemaUsed,
+  TSearchSchemaUsed, // TFullSearchSchemaInput
   TSearchSchema, // TFullSearchSchema
   {}, // TParams
   {}, // TAllParams
@@ -717,7 +786,10 @@ export class RootRoute<
         AnyRoute, // TParentRoute
         RootRouteId, // TCustomId
         '', // TPath
+        TSearchSchemaInput, // TSearchSchemaInput
         TSearchSchema, // TSearchSchema
+        TSearchSchemaUsed,
+        TSearchSchemaUsed, // TFullSearchSchemaInput
         TSearchSchema, // TFullSearchSchema
         {}, // TParams
         {}, // TAllParams
@@ -821,7 +893,14 @@ export type ErrorRouteComponent = RouteComponent<ErrorRouteProps>
 
 export class NotFoundRoute<
   TParentRoute extends AnyRootRoute,
+  TSearchSchemaInput extends Record<string, any> = {},
   TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
+  TSearchSchemaUsed extends RouteConstraints['TSearchSchema'] = {},
+  TFullSearchSchemaInput extends
+    RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchemaInput<
+    TParentRoute,
+    TSearchSchemaUsed
+  >,
   TFullSearchSchema extends
     RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
     TParentRoute,
@@ -844,7 +923,10 @@ export class NotFoundRoute<
   '/404',
   '404',
   '404',
+  TSearchSchemaInput,
   TSearchSchema,
+  TSearchSchemaUsed,
+  TFullSearchSchemaInput,
   TFullSearchSchema,
   {},
   {},
@@ -862,7 +944,10 @@ export class NotFoundRoute<
         TParentRoute,
         string,
         string,
+        TSearchSchemaInput,
         TSearchSchema,
+        TSearchSchemaUsed,
+        TFullSearchSchemaInput,
         TFullSearchSchema,
         {},
         {},
