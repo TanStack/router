@@ -42,7 +42,7 @@ The easiest way to use integrate and external caching/data library into Router i
 > - No waterfall data fetching, caused by component based fetching
 > - Better for SEO. If you data is available at render time, it will be indexed by search engines.
 
-Here is a naive illustration (don't do this) of using a Route's `load` option to seed the cache for some data:
+Here is a naive illustration (don't do this) of using a Route's `loader` option to seed the cache for some data:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
