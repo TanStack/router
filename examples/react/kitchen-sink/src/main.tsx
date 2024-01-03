@@ -306,20 +306,20 @@ const invoiceRoute = new Route({
 
 function InvoiceComponent() {
   const search = invoiceRoute.useSearch()
-  const navigate = useNavigate()
+  const navigate = useNavigate({ from: invoiceRoute.id })
   const invoice = invoiceRoute.useLoaderData()
   const updateInvoiceMutation = useMutation({
     fn: patchInvoice,
     onSuccess: () => router.invalidate(),
   })
   const [notes, setNotes] = React.useState(search.notes ?? '')
-
   React.useEffect(() => {
     navigate({
       search: (old) => ({
         ...old,
         notes: notes ? notes : undefined,
       }),
+      params: true,
       replace: true,
     })
   }, [notes])
@@ -345,11 +345,14 @@ function InvoiceComponent() {
       />
       <div>
         <Link
+          from={invoiceRoute.id}
+          to={invoiceRoute.to}
           search={(old) => ({
             ...old,
             showNotes: old?.showNotes ? undefined : true,
           })}
           className="text-lime-700"
+          params={true}
         >
           {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
         </Link>
@@ -428,7 +431,7 @@ const usersRoute = new Route({
 })
 
 function UsersComponent() {
-  const navigate = useNavigate()
+  const navigate = useNavigate({from: usersRoute.id})
   const { usersView } = usersRoute.useSearch()
   const users = usersRoute.useLoaderData()
   const sortBy = usersView?.sortBy ?? 'name'
@@ -451,6 +454,7 @@ function UsersComponent() {
           },
         }
       },
+      params: true,
       replace: true,
     })
 
@@ -465,6 +469,7 @@ function UsersComponent() {
           },
         }
       },
+      params: true,
       replace: true,
     })
   }, [filterDraft])
