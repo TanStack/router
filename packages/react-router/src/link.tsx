@@ -4,9 +4,7 @@ import { useRouter, useRouterState } from './RouterProvider'
 import { Trim } from './fileRoute'
 import { AnyRoute, ReactNode } from './route'
 import {
-  AllParams,
-  FullSearchSchema,
-  RouteByPath,
+  RouteById,
   RouteIds,
   RoutePaths,
 } from './routeInfo'
@@ -176,12 +174,12 @@ export type ParamOptions<
   TParamVariant extends ParamVariant,
   TFromRouteType extends 'allParams' | 'fullSearchSchema' = TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchema',
   TToRouteType extends 'allParams' | 'fullSearchSchemaInput' = TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchemaInput',
-  TFromParams = Expand<RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType]>,
+  TFromParams = Expand<RouteById<TRouteTree, TFrom>['types'][TFromRouteType]>,
   TToParams = TTo extends ''
     ? TFromParams
     : never extends TResolved
-      ? Expand<RouteByPath<TRouteTree, TTo>['types'][TToRouteType]>
-      : Expand<RouteByPath<TRouteTree, TResolved>['types'][TToRouteType]>,
+      ? Expand<RouteById<TRouteTree, TTo>['types'][TToRouteType]>
+      : Expand<RouteById<TRouteTree, TResolved>['types'][TToRouteType]>,
   TReducer = ParamsReducer<TFromParams, TToParams>,
 > = Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
   ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
