@@ -45,6 +45,7 @@ title: Router API
   - [NavigateOptions Type](./api/router/NavigateOptionsType)
   - [ToOptions Type](./api/router/ToOptionsType)
   - [SearchParamOptions Type](./api/router/SearchParamOptionsType)
+  - [SearchSchemaInput Type](./api/router/SearchSchemaInputType)
   - [PathParamOptions Type](./api/router/PathParamOptionsType)
   - [ToMaskOptions Type](./api/router/ToMaskOptionsType)
   - [UseLinkPropsOptions Type](./api/router/UseLinkPropsOptionsType)
