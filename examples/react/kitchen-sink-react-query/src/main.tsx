@@ -419,7 +419,7 @@ const invoiceRoute = new Route({
 function InvoiceComponent() {
   const params = invoiceRoute.useParams()
   const search = invoiceRoute.useSearch()
-  const navigate = useNavigate({ from: invoiceRoute.id })
+  const navigate = useNavigate({ from: invoiceRoute.fullPath })
   const invoiceQuery = useSuspenseQuery(invoiceQueryOptions(params.invoiceId))
   const invoice = invoiceQuery.data
   const updateInvoiceMutation = useUpdateInvoiceMutation(params.invoiceId)
@@ -462,7 +462,7 @@ function InvoiceComponent() {
             showNotes: old?.showNotes ? undefined : true,
           })}
           className="text-blue-700"
-          from={invoiceRoute.id}
+          from={invoiceRoute.fullPath}
           params={true}
         >
           {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
@@ -543,7 +543,7 @@ const usersRoute = new Route({
 })
 
 function UsersComponent() {
-  const navigate = useNavigate({ from: usersRoute.id })
+  const navigate = useNavigate({ from: usersRoute.fullPath })
   const { usersView } = usersRoute.useSearch()
   const usersQuery = useSuspenseQuery(
     usersQueryOptions(usersRoute.useLoaderDeps()),
@@ -791,7 +791,7 @@ const loginRoute = new Route({
 function LoginComponent() {
   const router = useRouter()
   const { auth } = loginRoute.useRouteContext()
-  const search = useSearch({ from: loginRoute.id })
+  const search = useSearch({ from: loginRoute.fullPath })
   const [username, setUsername] = React.useState('')
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {

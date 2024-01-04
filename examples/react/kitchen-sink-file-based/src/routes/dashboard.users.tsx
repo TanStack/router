@@ -40,7 +40,7 @@ export const Route = new FileRoute('/dashboard/users').createRoute({
 })
 
 function UsersComponent() {
-  const navigate = useNavigate({from: Route.id})
+  const navigate = useNavigate({from: Route.fullPath})
   const { usersView } = Route.useSearch()
   const users = Route.useLoaderData()
   const sortBy = usersView?.sortBy ?? 'name'
