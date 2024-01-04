@@ -216,7 +216,7 @@ export type UseMatchRouteOptions<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = '/',
   TMaskTo extends string = '',
-> = ToOptions<AnyRoute, TFrom, TTo, TMaskFrom, TMaskTo> & MatchRouteOptions
+> = ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & MatchRouteOptions
 
 export function useMatchRoute<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
