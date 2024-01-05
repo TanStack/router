@@ -19,7 +19,6 @@ import {
   PickRequired,
   UnionToIntersection,
   Updater,
-  WithoutEmpty,
   deepEqual,
   functionalUpdate,
 } from './utils'
@@ -188,12 +187,12 @@ export type ParamOptions<
   TToParams = TTo extends ''
     ? TFromParams
     : never extends TResolved
-      ? Expand<RouteByPath<TRouteTree, TTo>['types'][TToRouteType]>
-      : Expand<RouteByPath<TRouteTree, TResolved>['types'][TToRouteType]>,
+      ? RouteByPath<TRouteTree, TTo>['types'][TToRouteType]
+      : RouteByPath<TRouteTree, TResolved>['types'][TToRouteType],
   TReducer = ParamsReducer<TFromParams, TToParams>,
 > = {} extends PickRequired<TToParams> 
   ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
-  : TFromParams extends Expand<WithoutEmpty<PickRequired<TToParams>>>
+  : TFromParams extends PickRequired<TToParams>
     ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
     : MakeParamOption<TParamVariant, TReducer>
 
