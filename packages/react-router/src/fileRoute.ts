@@ -1,3 +1,4 @@
+import { NoInfer } from '@tanstack/react-store'
 import { ParsePathParams } from './link'
 import {
   AnyRoute,
@@ -15,6 +16,8 @@ import {
   RouteConstraints,
   ResolveFullSearchSchemaInput,
   SearchSchemaInput,
+  LoaderFnContext,
+  RouteLoaderFn,
 } from './route'
 import { Assign, Expand, IsAny } from './utils'
 
@@ -169,4 +172,27 @@ export class FileRoute<
     ;(route as any).isRoot = false
     return route as any
   }
+}
+
+export function FileRouteLoader<
+  TFilePath extends keyof FileRoutesByPath,
+  TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
+>(
+  _path: TFilePath,
+): <TLoaderData extends any>(
+  loaderFn: RouteLoaderFn<
+    TRoute['types']['allParams'],
+    TRoute['types']['loaderDeps'],
+    TRoute['types']['allContext'],
+    TRoute['types']['routeContext'],
+    TLoaderData
+  >,
+) => RouteLoaderFn<
+  TRoute['types']['allParams'],
+  TRoute['types']['loaderDeps'],
+  TRoute['types']['allContext'],
+  TRoute['types']['routeContext'],
+  NoInfer<TLoaderData>
+> {
+  return (loaderFn) => loaderFn
 }

@@ -17,6 +17,9 @@ export type RouteNode = {
   path?: string
   isNonPath?: boolean
   isNonLayout?: boolean
+  isRoute?: boolean
+  isLoader?: boolean
+  isComponent?: boolean
   isRoot?: boolean
   children?: RouteNode[]
   parent?: RouteNode
@@ -92,6 +95,11 @@ async function getRouteNodes(config: Config) {
 let first = false
 let skipMessage = false
 
+type RouteSubNode = {
+  component?: RouteNode
+  loader?: RouteNode
+}
+
 export async function generator(config: Config) {
   console.log()
 
@@ -129,18 +137,24 @@ export async function generator(config: Config) {
   ]).filter((d) => d.routePath !== `/${routePathIdPrefix + rootPathId}`)
 
   const routeTree: RouteNode[] = []
+  const routePiecesByPath: Record<string, RouteSubNode> = {}
 
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
-  routeNodes.forEach((node) => {
-    // routeNodes.forEach((existingNode) => {
-    //   if (
-    //     node.routePath?.startsWith(`${existingNode?.routePath ?? ''}/`)
-    //     // node.routePath.length > existingNode.routePath!.length
-    //   ) {
-    //     node.parent = existingNode
-    //   }
-    // })
+  routeNodes = routeNodes.filter((node) => {
+    if (config.future?.unstable_codeSplitting) {
+      node.isRoute = node.routePath?.endsWith('/route')
+      node.isComponent = node.routePath?.endsWith('/component')
+      node.isLoader = node.routePath?.endsWith('/loader')
+
+      if (node.isComponent || node.isLoader || node.isRoute) {
+        node.routePath = node.routePath?.replace(
+          /\/(component|loader|route)$/,
+          '',
+        )
+      }
+    }
+
     const parentRoute = hasParentRoute(routeNodes, node.routePath)
     if (parentRoute) node.parent = parentRoute
 
@@ -158,12 +172,26 @@ export async function generator(config: Config) {
 
     node.cleanedPath = removeUnderscores(node.path) ?? ''
 
+    if (config.future?.unstable_codeSplitting) {
+      if (node.isLoader || node.isComponent) {
+        routePiecesByPath[node.routePath!] =
+          routePiecesByPath[node.routePath!] || {}
+
+        routePiecesByPath[node.routePath!]![
+          node.isLoader ? 'loader' : 'component'
+        ] = node
+        return false
+      }
+    }
+
     if (node.parent) {
       node.parent.children = node.parent.children ?? []
       node.parent.children.push(node)
     } else {
       routeTree.push(node)
     }
+
+    return true
   })
 
   async function buildRouteConfig(
@@ -209,21 +237,25 @@ export async function generator(config: Config) {
 
   const routeConfigChildrenText = await buildRouteConfig(routeTree)
 
+  const sortedRouteNodes = multiSortBy(routeNodes, [
+    (d) =>
+      d.routePath?.includes(`/${routePathIdPrefix + rootPathId}`) ? -1 : 1,
+    (d) => d.routePath?.split('/').length,
+    (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
+    (d) => d,
+  ])
+
   const routeImports = [
+    `import { lazyFn, lazyRouteComponent } from '@tanstack/react-router'`,
+    '\n',
     `import { Route as rootRoute } from './${sanitize(
       path.relative(
         path.dirname(config.generatedRouteTree),
         path.resolve(config.routesDirectory, routePathIdPrefix + rootPathId),
       ),
     )}'`,
-    ...multiSortBy(routeNodes, [
-      (d) =>
-        d.routePath?.includes(`/${routePathIdPrefix + rootPathId}`) ? -1 : 1,
-      (d) => d.routePath?.split('/').length,
-      (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
-      (d) => d,
-    ]).map((node) => {
-      return `import { Route as ${node.variableName}Route } from './${sanitize(
+    ...sortedRouteNodes.map((node) => {
+      return `import { Route as ${node.variableName}Import } from './${sanitize(
         removeExt(
           path.relative(
             path.dirname(config.generatedRouteTree),
@@ -232,6 +264,49 @@ export async function generator(config: Config) {
         ),
       )}'`
     }),
+    '\n',
+    sortedRouteNodes
+      .map((node) => {
+        const loaderNode = routePiecesByPath[node.routePath!]?.loader
+        const componentNode = routePiecesByPath[node.routePath!]?.component
+
+        return [
+          `const ${node.variableName}Route = ${node.variableName}Import.update({
+          ${[
+            node.isNonPath
+              ? `id: '${node.path}'`
+              : `path: '${node.cleanedPath}'`,
+            `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
+          ]
+            .filter(Boolean)
+            .join(',')}
+        } as any)`,
+          loaderNode
+            ? `.updateLoader({ loader: lazyFn(() => import('./${sanitize(
+                removeExt(
+                  path.relative(
+                    path.dirname(config.generatedRouteTree),
+                    path.resolve(config.routesDirectory, loaderNode.filePath),
+                  ),
+                ),
+              )}'), 'loader') })`
+            : '',
+          componentNode
+            ? `.update({ component: lazyRouteComponent(() => import('./${sanitize(
+                removeExt(
+                  path.relative(
+                    path.dirname(config.generatedRouteTree),
+                    path.resolve(
+                      config.routesDirectory,
+                      componentNode.filePath,
+                    ),
+                  ),
+                ),
+              )}'), 'component') })`
+            : '',
+        ].join('')
+      })
+      .join('\n\n'),
   ].join('\n')
 
   const routeTypes = `declare module '@tanstack/react-router' {
@@ -239,6 +314,7 @@ export async function generator(config: Config) {
     ${routeNodes
       .map((routeNode) => {
         return `'${routeNode.routePath}': {
+          preLoaderRoute: typeof ${routeNode.variableName}Import
           parentRoute: typeof ${routeNode.parent?.variableName ?? 'root'}Route
         }`
       })
@@ -246,40 +322,10 @@ export async function generator(config: Config) {
   }
 }`
 
-  const routeOptions = routeNodes
-    .map((routeNode) => {
-      return `Object.assign(${routeNode.variableName ?? 'root'}Route.options, {
-        ${[
-          routeNode.isNonPath
-            ? `id: '${routeNode.path}'`
-            : `path: '${routeNode.cleanedPath}'`,
-          `getParentRoute: () => ${
-            routeNode.parent?.variableName ?? 'root'
-          }Route`,
-          // `\n// ${JSON.stringify(
-          //   {
-          //     ...routeNode,
-          //     parent: undefined,
-          //     children: undefined,
-          //     fullPath: undefined,
-          //     variableName: undefined,
-          //   },
-          //   null,
-          //   2,
-          // )
-          //   .split('\n')
-          //   .join('\n// ')}`,
-        ]
-          .filter(Boolean)
-          .join(',')}
-      })`
-    })
-    .join('\n\n')
-
   const routeConfig = `export const routeTree = rootRoute.addChildren([${routeConfigChildrenText}])`
 
   const routeConfigFileContent = await prettier.format(
-    [routeImports, routeTypes, routeOptions, routeConfig].join('\n\n'),
+    [routeImports, routeTypes, routeConfig].join('\n\n'),
     {
       semi: false,
       parser: 'typescript',
@@ -381,9 +427,9 @@ function replaceBackslash(s?: string) {
 
 export function hasParentRoute(
   routes: RouteNode[],
-  routeToCheck: string | undefined,
+  routePathToCheck: string | undefined,
 ): RouteNode | null {
-  if (!routeToCheck || routeToCheck === '/') {
+  if (!routePathToCheck || routePathToCheck === '/') {
     return null
   }
 
@@ -396,13 +442,13 @@ export function hasParentRoute(
     if (route.routePath === '/') continue
 
     if (
-      routeToCheck.startsWith(`${route.routePath}/`) &&
-      route.routePath !== routeToCheck
+      routePathToCheck.startsWith(`${route.routePath}/`) &&
+      route.routePath !== routePathToCheck
     ) {
       return route
     }
   }
-  const segments = routeToCheck.split('/')
+  const segments = routePathToCheck.split('/')
   segments.pop() // Remove the last segment
   const parentRoute = segments.join('/')
 

@@ -8,6 +8,11 @@ const configSchema = z.object({
   routesDirectory: z.string(),
   generatedRouteTree: z.string(),
   quoteStyle: z.enum(['single', 'double']).optional().default('single'),
+  future: z
+    .object({
+      unstable_codeSplitting: z.boolean().optional(),
+    })
+    .optional(),
 })
 
 export type Config = z.infer<typeof configSchema>

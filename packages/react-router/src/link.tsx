@@ -167,15 +167,23 @@ export type ToSubOptions<
 
 type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
-type ParamVariant = 'PATH' | 'SEARCH';
+type ParamVariant = 'PATH' | 'SEARCH'
 export type ParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
   TTo,
   TResolved,
   TParamVariant extends ParamVariant,
-  TFromRouteType extends 'allParams' | 'fullSearchSchema' = TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchema',
-  TToRouteType extends 'allParams' | 'fullSearchSchemaInput' = TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchemaInput',
+  TFromRouteType extends
+    | 'allParams'
+    | 'fullSearchSchema' = TParamVariant extends 'PATH'
+    ? 'allParams'
+    : 'fullSearchSchema',
+  TToRouteType extends
+    | 'allParams'
+    | 'fullSearchSchemaInput' = TParamVariant extends 'PATH'
+    ? 'allParams'
+    : 'fullSearchSchemaInput',
   TFromParams = Expand<RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType]>,
   TToParams = TTo extends ''
     ? TFromParams

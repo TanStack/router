@@ -659,6 +659,39 @@ export class Route<
     return this as any
   }
 
+  updateLoader = <TNewLoaderData extends any = unknown>(options: {
+    loader: RouteLoaderFn<
+      TAllParams,
+      TLoaderDeps,
+      TAllContext,
+      TRouteContext,
+      TNewLoaderData
+    >
+  }) => {
+    Object.assign(this.options, options)
+    return this as unknown as Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchSchemaInput,
+      TSearchSchema,
+      TSearchSchemaUsed,
+      TFullSearchSchemaInput,
+      TFullSearchSchema,
+      TParams,
+      TAllParams,
+      TRouteContext,
+      TAllContext,
+      TRouterContext,
+      TLoaderDeps,
+      TNewLoaderData,
+      TChildren,
+      TRouteTree
+    >
+  }
+
   update = (options: UpdatableRouteOptions<TFullSearchSchema>) => {
     Object.assign(this.options, options)
     return this

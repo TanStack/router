@@ -1645,7 +1645,9 @@ export function lazyFn<
   T extends Record<string, (...args: any[]) => any>,
   TKey extends keyof T = 'default',
 >(fn: () => Promise<T>, key?: TKey) {
-  return async (...args: Parameters<T[TKey]>): Promise<ReturnType<T[TKey]>> => {
+  return async (
+    ...args: Parameters<T[TKey]>
+  ): Promise<Awaited<ReturnType<T[TKey]>>> => {
     const imported = await fn()
     return imported[key || 'default'](...args)
   }
