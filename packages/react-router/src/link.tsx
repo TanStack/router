@@ -194,7 +194,7 @@ export type ParamOptions<
 > = {} extends PickRequired<TToParams> 
   ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
   : TFromParams extends Expand<WithoutEmpty<PickRequired<TToParams>>>
-    ? MakeParamOption<TParamVariant, true | TReducer>
+    ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
     : MakeParamOption<TParamVariant, TReducer>
 
 type MakeParamOption<
