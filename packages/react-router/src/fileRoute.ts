@@ -93,7 +93,7 @@ export class FileRoute<
       string,
       any
     > = TSearchSchemaInput extends SearchSchemaInput
-      ? TSearchSchemaInput
+      ? Omit<TSearchSchemaInput, keyof SearchSchemaInput>
       : TSearchSchema,
     TFullSearchSchemaInput extends
       RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchemaInput<
