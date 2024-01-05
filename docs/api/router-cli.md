@@ -254,3 +254,126 @@ posts
 -utils
   Posts.tsx
 ```
+
+# Experimental Features
+
+## `unstable_codeSplitting`
+
+> ⚠️ **This feature is experimental and subject to change.**
+
+The `unstable_codeSplitting` option enables auto code splitting for routes and requires a bit more file-wrangling. To use it, add the `future.unstable_codeSplitting` option to your `tsr.config.json` file:
+
+```json
+{
+  ...
+  "future": {
+    "unstable_codeSplitting": true
+  }
+}
+```
+
+### Splitting a route's component
+
+To split a route's component, copy the component and it's dependencies into a new file with the same name as the route file, but with a `.component.tsx` suffix, then export your component from that file under the named export `component`.
+
+For example, if you have a route file named `posts.tsx`, you would create a new file named `posts.component.tsx` and move the component and it's dependencies into that file.
+
+#### Before
+
+```tsx
+// posts.$postId.tsx
+
+import { Route } from '@tanstack/react-router'
+import { fetchPosts } from './api'
+
+export const Route = new Route({
+  loader: fetchPosts,
+  component: Posts,
+})
+
+function MyComponent () {
+  ...
+}
+```
+
+#### After
+
+```tsx
+// posts.tsx
+
+import { Route } from '@tanstack/react-router'
+import { fetchPosts } from './api'
+
+export const Route = new Route({
+  loader: fetchPosts,
+})
+```
+
+```tsx
+// posts.component.tsx
+
+export const component = function MyComponent () {
+  ...
+}
+```
+
+### Splitting a route's loader
+
+To split a route's loader, copy the loader into a new file with the same name as the route file, but with a `.loader.ts` suffix, then export your loader from that file under the named export `loader`.
+
+For example, if you have a route file named `posts.tsx`, you would create a new file named `posts.loader.ts` and move the loader into that file.
+
+#### Before
+
+```tsx
+// posts.tsx
+
+import { Route } from '@tanstack/react-router'
+import { fetchPosts } from './api'
+
+export const Route = new Route({
+  loader: fetchPosts,
+  component: Posts,
+})
+
+function MyComponent () {
+  ...
+}
+```
+
+#### After
+
+```tsx
+// posts.tsx
+
+import { Route } from '@tanstack/react-router'
+
+export const Route = new Route({
+  component: Posts,
+})
+```
+
+```tsx
+// posts.loader.ts
+
+import { fetchPosts } from './api'
+
+export const loader = fetchPosts
+```
+
+### Encapsulating a route's files into a directory
+
+To encapsulate a route's files into a directory, you can move the route file itself into a `.route` file within a directory with the same name as the route file. For example, if you have a route file named `posts.tsx`, you would create a new directory named `posts` and move the `posts.tsx` file into that directory, renaming it to `index.route.tsx`.
+
+#### Before
+
+- `posts.tsx`
+- `posts.component.tsx`
+- `posts.loader.ts`
+
+#### After
+
+- `posts`
+  - `route.tsx`
+  - `component.tsx`
+  - `loader.ts`
