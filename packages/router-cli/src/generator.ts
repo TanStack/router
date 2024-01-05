@@ -6,7 +6,7 @@ import { cleanPath, trimPathLeft } from '@tanstack/react-router'
 
 let latestTask = 0
 export const rootPathId = '__root'
-export const fileRouteRegex = /new\s+FileRoute\(([^)]*)\)/g
+export const fileRouteRegex = /new\s+FileRoute\((\s*)(.*?)([\s,]*)\)/g
 
 export type RouteNode = {
   filePath: string
@@ -187,7 +187,7 @@ export async function generator(config: Config) {
       const quote = config.quoteStyle === 'single' ? `'` : `"`
       const replaced = routeCode.replace(
         fileRouteRegex,
-        `new FileRoute(${quote}${escapedRoutePath}${quote})`,
+        `new FileRoute($1${quote}${escapedRoutePath}${quote}$3)`,
       )
 
       if (replaced !== routeCode) {
