@@ -183,7 +183,7 @@ export type ParamOptions<
       ? Expand<RouteByPath<TRouteTree, TTo>['types'][TToRouteType]>
       : Expand<RouteByPath<TRouteTree, TResolved>['types'][TToRouteType]>,
   TReducer = ParamsReducer<TFromParams, TToParams>,
-> = Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
+> = {} extends PickRequired<TToParams> 
   ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
   : TFromParams extends Expand<WithoutEmpty<PickRequired<TToParams>>>
     ? MakeParamOption<TParamVariant, true | TReducer>
