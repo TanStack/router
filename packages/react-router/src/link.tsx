@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useMatch } from './Matches'
 import { useRouter, useRouterState } from './RouterProvider'
 import { Trim } from './fileRoute'
-import { AnyRoute, ReactNode } from './route'
+import { AnyRoute, ReactNode, RootSearchSchema } from './route'
 import {
   AllParams,
   FullSearchSchema,
@@ -184,12 +184,12 @@ export type ParamOptions<
     | 'fullSearchSchemaInput' = TParamVariant extends 'PATH'
     ? 'allParams'
     : 'fullSearchSchemaInput',
-  TFromParams = Expand<RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType]>,
+  TFromParams = Expand<Exclude<RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType], RootSearchSchema>>,
   TToParams = TTo extends ''
     ? TFromParams
     : never extends TResolved
-      ? Expand<RouteByPath<TRouteTree, TTo>['types'][TToRouteType]>
-      : Expand<RouteByPath<TRouteTree, TResolved>['types'][TToRouteType]>,
+      ? Expand<Exclude<RouteByPath<TRouteTree, TTo>['types'][TToRouteType], RootSearchSchema>>
+      : Expand<Exclude<RouteByPath<TRouteTree, TResolved>['types'][TToRouteType], RootSearchSchema>>,
   TReducer = ParamsReducer<TFromParams, TToParams>,
 > = Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
   ? Partial<MakeParamOption<TParamVariant, true | TReducer>>

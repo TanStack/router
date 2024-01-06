@@ -309,11 +309,19 @@ export type InferFullSearchSchemaInput<TRoute> = TRoute extends {
   : {}
 
 export type ResolveFullSearchSchema<TParentRoute, TSearchSchema> = Expand<
-  Assign<InferFullSearchSchema<TParentRoute>, TSearchSchema>
+  Assign<
+    Omit<InferFullSearchSchema<TParentRoute>, keyof RootSearchSchema>,
+    TSearchSchema
+  >
 >
 
 export type ResolveFullSearchSchemaInput<TParentRoute, TSearchSchemaUsed> =
-  Expand<Assign<InferFullSearchSchemaInput<TParentRoute>, TSearchSchemaUsed>>
+  Expand<
+    Assign<
+      Omit<InferFullSearchSchemaInput<TParentRoute>, keyof RootSearchSchema>,
+      TSearchSchemaUsed
+    >
+  >
 
 export interface AnyRoute
   extends Route<
@@ -742,9 +750,9 @@ export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any>
 
 export function rootRouteWithContext<TRouterContext extends {}>() {
   return <
-    TSearchSchemaInput extends Record<string, any> = {},
-    TSearchSchema extends Record<string, any> = {},
-    TSearchSchemaUsed extends Record<string, any> = {},
+    TSearchSchemaInput extends Record<string, any> = RootSearchSchema,
+    TSearchSchema extends Record<string, any> = RootSearchSchema,
+    TSearchSchemaUsed extends Record<string, any> = RootSearchSchema,
     TRouteContext extends RouteContext = RouteContext,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderData extends any = unknown,
@@ -784,10 +792,14 @@ export function rootRouteWithContext<TRouterContext extends {}>() {
   }
 }
 
+export type RootSearchSchema = {
+  __TRootSearchSchema__: '__TRootSearchSchema__'
+}
+
 export class RootRoute<
-  TSearchSchemaInput extends Record<string, any> = {},
-  TSearchSchema extends Record<string, any> = {},
-  TSearchSchemaUsed extends Record<string, any> = {},
+  TSearchSchemaInput extends Record<string, any> = RootSearchSchema,
+  TSearchSchema extends Record<string, any> = RootSearchSchema,
+  TSearchSchemaUsed extends Record<string, any> = RootSearchSchema,
   TRouteContext extends RouteContext = RouteContext,
   TRouterContext extends {} = {},
   TLoaderDeps extends Record<string, any> = {},
