@@ -377,3 +377,31 @@ To encapsulate a route's files into a directory, you can move the route file its
   - `route.tsx`
   - `component.tsx`
   - `loader.ts`
+
+### Virtual Routes
+
+You might run into a situation where you end up splitting out everything from a route file, leaving it empty! For example:
+
+#### Before
+
+- `posts.tsx`
+
+  ```tsx
+  import { Route } from '@tanstack/react-router'
+
+  export const Route = new Route({
+    // Hello?
+  })
+  ```
+
+- `posts.component.tsx`
+- `posts.loader.ts`
+
+In this case, you can actually **remove the route file entirely**! The CLI will automatically generate a virtual route for you to serve as an anchor for your code split files. This virtual route will live directly in the generated route tree file.
+
+#### After
+
+- `posts.component.tsx`
+- `posts.loader.ts`
+
+Tada! 🎉
