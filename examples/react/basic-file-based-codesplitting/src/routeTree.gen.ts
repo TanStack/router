@@ -1,24 +1,28 @@
-import { lazyFn, lazyRouteComponent } from "@tanstack/react-router"
+import { FileRoute, lazyFn, lazyRouteComponent } from "@tanstack/react-router"
 
 import { Route as rootRoute } from "./routes/__root"
-import { Route as PostsImport } from "./routes/posts"
 import { Route as LayoutImport } from "./routes/_layout"
 import { Route as IndexImport } from "./routes/index"
 import { Route as PostsPostIdRouteImport } from "./routes/posts.$postId/route"
 import { Route as LayoutLayoutBImport } from "./routes/_layout/layout-b"
 import { Route as LayoutLayoutAImport } from "./routes/_layout/layout-a"
-import { Route as PostsIndexImport } from "./routes/posts.index"
 import { Route as PostsPostIdDeepImport } from "./routes/posts_.$postId.deep"
 
-const PostsRoute = PostsImport.update({
+const PostsComponentImport = new FileRoute("/posts").createRoute()
+
+const PostsComponentRoute = PostsComponentImport.update({
   path: "/posts",
   getParentRoute: () => rootRoute,
-} as any).update({
-  component: lazyRouteComponent(
-    () => import("./routes/posts.component"),
-    "component",
-  ),
-})
+} as any)
+  .updateLoader({
+    loader: lazyFn(() => import("./routes/posts.loader"), "loader"),
+  })
+  .update({
+    component: lazyRouteComponent(
+      () => import("./routes/posts.component"),
+      "component",
+    ),
+  })
 
 const LayoutRoute = LayoutImport.update({
   id: "/_layout",
@@ -31,8 +35,8 @@ const IndexRoute = IndexImport.update({
 } as any)
 
 const PostsPostIdRouteRoute = PostsPostIdRouteImport.update({
-  path: "/$postId",
-  getParentRoute: () => PostsRoute,
+  path: "/posts/$postId",
+  getParentRoute: () => rootRoute,
 } as any)
   .updateLoader({
     loader: lazyFn(() => import("./routes/posts.$postId/loader"), "loader"),
@@ -54,11 +58,6 @@ const LayoutLayoutARoute = LayoutLayoutAImport.update({
   getParentRoute: () => LayoutRoute,
 } as any)
 
-const PostsIndexRoute = PostsIndexImport.update({
-  path: "/",
-  getParentRoute: () => PostsRoute,
-} as any)
-
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
   path: "/posts/$postId/deep",
   getParentRoute: () => rootRoute,
@@ -74,14 +73,6 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof LayoutImport
       parentRoute: typeof rootRoute
     }
-    "/posts": {
-      preLoaderRoute: typeof PostsImport
-      parentRoute: typeof rootRoute
-    }
-    "/posts/": {
-      preLoaderRoute: typeof PostsIndexImport
-      parentRoute: typeof PostsRoute
-    }
     "/_layout/layout-a": {
       preLoaderRoute: typeof LayoutLayoutAImport
       parentRoute: typeof LayoutRoute
@@ -92,10 +83,14 @@ declare module "@tanstack/react-router" {
     }
     "/posts/$postId": {
       preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof PostsRoute
+      parentRoute: typeof rootRoute
     }
     "/posts_/$postId/deep": {
       preLoaderRoute: typeof PostsPostIdDeepImport
+      parentRoute: typeof rootRoute
+    }
+    "/posts": {
+      preLoaderRoute: typeof PostsComponentImport
       parentRoute: typeof rootRoute
     }
   }
@@ -104,6 +99,7 @@ declare module "@tanstack/react-router" {
 export const routeTree = rootRoute.addChildren([
   IndexRoute,
   LayoutRoute.addChildren([LayoutLayoutARoute, LayoutLayoutBRoute]),
-  PostsRoute.addChildren([PostsIndexRoute, PostsPostIdRouteRoute]),
+  PostsPostIdRouteRoute,
   PostsPostIdDeepRoute,
+  PostsComponentRoute,
 ])
