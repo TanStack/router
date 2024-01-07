@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-devtools",
   "author": "Tanner Linsley",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router/",
