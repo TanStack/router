@@ -188,9 +188,6 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@vitejs/plugin-react':
-        specifier: ^4.2.1
-        version: 4.2.1(vite@5.0.11)
       axios:
         specifier: ^1.6.5
         version: 1.6.5
@@ -200,9 +197,6 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
-      vite:
-        specifier: ^5.0.11
-        version: 5.0.11(@types/node@20.10.7)
     devDependencies:
       '@types/react':
         specifier: ^18.2.47
@@ -210,6 +204,12 @@ importers:
       '@types/react-dom':
         specifier: ^18.2.18
         version: 18.2.18
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.2.1(vite@5.0.11)
+      vite:
+        specifier: ^5.0.11
+        version: 5.0.11(@types/node@20.10.7)
 
   examples/react/basic-default-search-params:
     dependencies:
@@ -222,9 +222,6 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@vitejs/plugin-react':
-        specifier: ^4.2.1
-        version: 4.2.1(vite@5.0.11)
       axios:
         specifier: ^1.6.5
         version: 1.6.5
@@ -234,9 +231,6 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
-      vite:
-        specifier: ^5.0.11
-        version: 5.0.11(@types/node@20.10.7)
     devDependencies:
       '@types/react':
         specifier: ^18.2.47
@@ -244,6 +238,12 @@ importers:
       '@types/react-dom':
         specifier: ^18.2.18
         version: 18.2.18
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.2.1(vite@5.0.11)
+      vite:
+        specifier: ^5.0.11
+        version: 5.0.11(@types/node@20.10.7)
 
   examples/react/basic-file-based:
     dependencies:
@@ -259,15 +259,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@vitejs/plugin-react':
-        specifier: ^4.2.1
-        version: 4.2.1(vite@5.0.11)
       axios:
         specifier: ^1.6.5
         version: 1.6.5
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
       immer:
         specifier: ^10.0.3
         version: 10.0.3
@@ -277,9 +271,6 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
-      vite:
-        specifier: ^5.0.11
-        version: 5.0.11(@types/node@20.10.7)
       zod:
         specifier: ^3.22.4
         version: 3.22.4
@@ -290,6 +281,15 @@ importers:
       '@types/react-dom':
         specifier: ^18.2.18
         version: 18.2.18
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.2.1(vite@5.0.11)
+      concurrently:
+        specifier: ^8.2.2
+        version: 8.2.2
+      vite:
+        specifier: ^5.0.11
+        version: 5.0.11(@types/node@20.10.7)
 
   examples/react/basic-file-based-codesplitting:
     dependencies:
@@ -305,15 +305,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@vitejs/plugin-react':
-        specifier: ^4.2.1
-        version: 4.2.1(vite@5.0.11)
       axios:
         specifier: ^1.6.5
         version: 1.6.5
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
       immer:
         specifier: ^10.0.3
         version: 10.0.3
@@ -323,9 +317,6 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
-      vite:
-        specifier: ^5.0.11
-        version: 5.0.11(@types/node@20.10.7)
       zod:
         specifier: ^3.22.4
         version: 3.22.4
@@ -336,6 +327,15 @@ importers:
       '@types/react-dom':
         specifier: ^18.2.18
         version: 18.2.18
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.2.1(vite@5.0.11)
+      concurrently:
+        specifier: ^8.2.2
+        version: 8.2.2
+      vite:
+        specifier: ^5.0.11
+        version: 5.0.11(@types/node@20.10.7)
 
   examples/react/basic-react-query:
     dependencies:
@@ -351,9 +351,6 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@vitejs/plugin-react':
-        specifier: ^4.2.1
-        version: 4.2.1(vite@5.0.11)
       axios:
         specifier: ^1.6.5
         version: 1.6.5
@@ -363,9 +360,6 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
-      vite:
-        specifier: ^5.0.11
-        version: 5.0.11(@types/node@20.10.7)
     devDependencies:
       '@types/react':
         specifier: ^18.2.47
@@ -373,6 +367,12 @@ importers:
       '@types/react-dom':
         specifier: ^18.2.18
         version: 18.2.18
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.2.1(vite@5.0.11)
+      vite:
+        specifier: ^5.0.11
+        version: 5.0.11(@types/node@20.10.7)
 
   examples/react/basic-react-query-file-based:
     dependencies:
@@ -394,15 +394,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@vitejs/plugin-react':
-        specifier: ^4.2.1
-        version: 4.2.1(vite@5.0.11)
       axios:
         specifier: ^1.6.5
         version: 1.6.5
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
       immer:
         specifier: ^10.0.3
         version: 10.0.3
@@ -412,9 +406,6 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
-      vite:
-        specifier: ^5.0.11
-        version: 5.0.11(@types/node@20.10.7)
       zod:
         specifier: ^3.22.4
         version: 3.22.4
@@ -425,6 +416,15 @@ importers:
       '@types/react-dom':
         specifier: ^18.2.18
         version: 18.2.18
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.2.1(vite@5.0.11)
+      concurrently:
+        specifier: ^8.2.2
+        version: 8.2.2
+      vite:
+        specifier: ^5.0.11
+        version: 5.0.11(@types/node@20.10.7)
 
   examples/react/basic-ssr-file-based:
     dependencies:
@@ -6314,6 +6314,7 @@ packages:
       vite: 5.0.11(@types/node@20.10.7)
     transitivePeerDependencies:
       - supports-color
+    dev: true
 
   /@vitest/expect@1.1.3:
     resolution: {integrity: sha512-MnJqsKc1Ko04lksF9XoRJza0bGGwTtqfbyrsYv5on4rcEkdo+QgUdITenBQBUltKzdxW7K3rWh+nXRULwsdaVg==}
