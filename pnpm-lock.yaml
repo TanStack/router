@@ -388,6 +388,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/router-cli':
+        specifier: workspace:*
+        version: link:../../../packages/router-cli
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
