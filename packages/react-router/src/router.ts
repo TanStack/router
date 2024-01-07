@@ -705,11 +705,9 @@ export class Router<
       const fromSearch =
         (this.state.pendingMatches || this.state.matches).at(-1)?.search ||
         from.search
-      const fromPathname = dest.from ?? from.pathname
+      let pathname = this.resolvePathWithBase(from.pathname, `${dest.to ?? ''}`)
 
-      let pathname = this.resolvePathWithBase(fromPathname, `${dest.to ?? ''}`)
-
-      const fromMatches = this.matchRoutes(fromPathname, fromSearch)
+      const fromMatches = this.matchRoutes(from.pathname, fromSearch)
       const stayingMatches = matches?.filter(
         (d) => fromMatches?.find((e) => e.routeId === d.routeId),
       )
