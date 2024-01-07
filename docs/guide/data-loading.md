@@ -26,7 +26,7 @@ Every time a URL/history update is detected, the router executes the following s
     - `route.pendingComponent` (Optional)
     - `route.component`
   - `route.onError`
-    - `route.errorComponent' / `parentRoute.errorComponent`/`router.defaultErrorComponent`
+    - `route.errorComponent` / `parentRoute.errorComponent`/`router.defaultErrorComponent`
 
 ## To Router Cache or not to Router Cache?
 
