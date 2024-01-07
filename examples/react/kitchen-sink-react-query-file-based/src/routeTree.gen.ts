@@ -1,153 +1,173 @@
+import { FileRoute, lazyFn, lazyRouteComponent } from "@tanstack/react-router"
+
 import { Route as rootRoute } from "./routes/__root"
-import { Route as LoginRoute } from "./routes/login"
-import { Route as DashboardRoute } from "./routes/dashboard"
-import { Route as LayoutRoute } from "./routes/_layout"
-import { Route as AuthRoute } from "./routes/_auth"
-import { Route as IndexRoute } from "./routes/index"
-import { Route as DashboardUsersRoute } from "./routes/dashboard.users"
-import { Route as DashboardInvoicesRoute } from "./routes/dashboard.invoices"
-import { Route as LayoutLayoutBRoute } from "./routes/_layout.layout-b"
-import { Route as LayoutLayoutARoute } from "./routes/_layout.layout-a"
-import { Route as AuthProfileRoute } from "./routes/_auth.profile"
-import { Route as ExpensiveIndexRoute } from "./routes/expensive/index"
-import { Route as DashboardIndexRoute } from "./routes/dashboard.index"
-import { Route as DashboardUsersUserRoute } from "./routes/dashboard.users.user"
-import { Route as DashboardInvoicesInvoiceIdRoute } from "./routes/dashboard.invoices.$invoiceId"
-import { Route as DashboardUsersIndexRoute } from "./routes/dashboard.users.index"
-import { Route as DashboardInvoicesIndexRoute } from "./routes/dashboard.invoices.index"
+import { Route as LoginImport } from "./routes/login"
+import { Route as DashboardImport } from "./routes/dashboard"
+import { Route as LayoutImport } from "./routes/_layout"
+import { Route as AuthImport } from "./routes/_auth"
+import { Route as IndexImport } from "./routes/index"
+import { Route as DashboardUsersImport } from "./routes/dashboard.users"
+import { Route as DashboardInvoicesImport } from "./routes/dashboard.invoices"
+import { Route as LayoutLayoutBImport } from "./routes/_layout.layout-b"
+import { Route as LayoutLayoutAImport } from "./routes/_layout.layout-a"
+import { Route as AuthProfileImport } from "./routes/_auth.profile"
+import { Route as ExpensiveIndexImport } from "./routes/expensive/index"
+import { Route as DashboardIndexImport } from "./routes/dashboard.index"
+import { Route as DashboardUsersUserImport } from "./routes/dashboard.users.user"
+import { Route as DashboardInvoicesInvoiceIdImport } from "./routes/dashboard.invoices.$invoiceId"
+import { Route as DashboardUsersIndexImport } from "./routes/dashboard.users.index"
+import { Route as DashboardInvoicesIndexImport } from "./routes/dashboard.invoices.index"
+
+const LoginRoute = LoginImport.update({
+  path: "/login",
+  getParentRoute: () => rootRoute,
+} as any)
+
+const DashboardRoute = DashboardImport.update({
+  path: "/dashboard",
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LayoutRoute = LayoutImport.update({
+  id: "/_layout",
+  getParentRoute: () => rootRoute,
+} as any)
+
+const AuthRoute = AuthImport.update({
+  id: "/_auth",
+  getParentRoute: () => rootRoute,
+} as any)
+
+const IndexRoute = IndexImport.update({
+  path: "/",
+  getParentRoute: () => rootRoute,
+} as any)
+
+const DashboardUsersRoute = DashboardUsersImport.update({
+  path: "/users",
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const DashboardInvoicesRoute = DashboardInvoicesImport.update({
+  path: "/invoices",
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const LayoutLayoutBRoute = LayoutLayoutBImport.update({
+  path: "/layout-b",
+  getParentRoute: () => LayoutRoute,
+} as any)
+
+const LayoutLayoutARoute = LayoutLayoutAImport.update({
+  path: "/layout-a",
+  getParentRoute: () => LayoutRoute,
+} as any)
+
+const AuthProfileRoute = AuthProfileImport.update({
+  path: "/profile",
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const ExpensiveIndexRoute = ExpensiveIndexImport.update({
+  path: "/expensive/",
+  getParentRoute: () => rootRoute,
+} as any)
+
+const DashboardIndexRoute = DashboardIndexImport.update({
+  path: "/",
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const DashboardUsersUserRoute = DashboardUsersUserImport.update({
+  path: "/user",
+  getParentRoute: () => DashboardUsersRoute,
+} as any)
+
+const DashboardInvoicesInvoiceIdRoute = DashboardInvoicesInvoiceIdImport.update(
+  {
+    path: "/$invoiceId",
+    getParentRoute: () => DashboardInvoicesRoute,
+  } as any,
+)
+
+const DashboardUsersIndexRoute = DashboardUsersIndexImport.update({
+  path: "/",
+  getParentRoute: () => DashboardUsersRoute,
+} as any)
+
+const DashboardInvoicesIndexRoute = DashboardInvoicesIndexImport.update({
+  path: "/",
+  getParentRoute: () => DashboardInvoicesRoute,
+} as any)
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
     "/": {
+      preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
     "/_auth": {
+      preLoaderRoute: typeof AuthImport
       parentRoute: typeof rootRoute
     }
     "/_layout": {
+      preLoaderRoute: typeof LayoutImport
       parentRoute: typeof rootRoute
     }
     "/dashboard": {
+      preLoaderRoute: typeof DashboardImport
       parentRoute: typeof rootRoute
     }
     "/login": {
+      preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
     }
     "/dashboard/": {
+      preLoaderRoute: typeof DashboardIndexImport
       parentRoute: typeof DashboardRoute
     }
     "/expensive/": {
+      preLoaderRoute: typeof ExpensiveIndexImport
       parentRoute: typeof rootRoute
     }
     "/_auth/profile": {
+      preLoaderRoute: typeof AuthProfileImport
       parentRoute: typeof AuthRoute
     }
     "/_layout/layout-a": {
+      preLoaderRoute: typeof LayoutLayoutAImport
       parentRoute: typeof LayoutRoute
     }
     "/_layout/layout-b": {
+      preLoaderRoute: typeof LayoutLayoutBImport
       parentRoute: typeof LayoutRoute
     }
     "/dashboard/invoices": {
+      preLoaderRoute: typeof DashboardInvoicesImport
       parentRoute: typeof DashboardRoute
     }
     "/dashboard/users": {
+      preLoaderRoute: typeof DashboardUsersImport
       parentRoute: typeof DashboardRoute
     }
     "/dashboard/invoices/": {
+      preLoaderRoute: typeof DashboardInvoicesIndexImport
       parentRoute: typeof DashboardInvoicesRoute
     }
     "/dashboard/users/": {
+      preLoaderRoute: typeof DashboardUsersIndexImport
       parentRoute: typeof DashboardUsersRoute
     }
     "/dashboard/invoices/$invoiceId": {
+      preLoaderRoute: typeof DashboardInvoicesInvoiceIdImport
       parentRoute: typeof DashboardInvoicesRoute
     }
     "/dashboard/users/user": {
+      preLoaderRoute: typeof DashboardUsersUserImport
       parentRoute: typeof DashboardUsersRoute
     }
   }
 }
-
-Object.assign(IndexRoute.options, {
-  path: "/",
-  getParentRoute: () => rootRoute,
-})
-
-Object.assign(AuthRoute.options, {
-  id: "/_auth",
-  getParentRoute: () => rootRoute,
-})
-
-Object.assign(LayoutRoute.options, {
-  id: "/_layout",
-  getParentRoute: () => rootRoute,
-})
-
-Object.assign(DashboardRoute.options, {
-  path: "/dashboard",
-  getParentRoute: () => rootRoute,
-})
-
-Object.assign(LoginRoute.options, {
-  path: "/login",
-  getParentRoute: () => rootRoute,
-})
-
-Object.assign(DashboardIndexRoute.options, {
-  path: "/",
-  getParentRoute: () => DashboardRoute,
-})
-
-Object.assign(ExpensiveIndexRoute.options, {
-  path: "/expensive/",
-  getParentRoute: () => rootRoute,
-})
-
-Object.assign(AuthProfileRoute.options, {
-  path: "/profile",
-  getParentRoute: () => AuthRoute,
-})
-
-Object.assign(LayoutLayoutARoute.options, {
-  path: "/layout-a",
-  getParentRoute: () => LayoutRoute,
-})
-
-Object.assign(LayoutLayoutBRoute.options, {
-  path: "/layout-b",
-  getParentRoute: () => LayoutRoute,
-})
-
-Object.assign(DashboardInvoicesRoute.options, {
-  path: "/invoices",
-  getParentRoute: () => DashboardRoute,
-})
-
-Object.assign(DashboardUsersRoute.options, {
-  path: "/users",
-  getParentRoute: () => DashboardRoute,
-})
-
-Object.assign(DashboardInvoicesIndexRoute.options, {
-  path: "/",
-  getParentRoute: () => DashboardInvoicesRoute,
-})
-
-Object.assign(DashboardUsersIndexRoute.options, {
-  path: "/",
-  getParentRoute: () => DashboardUsersRoute,
-})
-
-Object.assign(DashboardInvoicesInvoiceIdRoute.options, {
-  path: "/$invoiceId",
-  getParentRoute: () => DashboardInvoicesRoute,
-})
-
-Object.assign(DashboardUsersUserRoute.options, {
-  path: "/user",
-  getParentRoute: () => DashboardUsersRoute,
-})
 
 export const routeTree = rootRoute.addChildren([
   IndexRoute,
