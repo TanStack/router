@@ -123,7 +123,9 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  component: () => {
+  loader: () => fetchPosts(),
+  component: ({ useLoaderData }) => {
+    const posts = useLoaderData()
     return (
       <motion.div className="p-2 flex gap-2" {...mainTransitionProps}>
         <ul className="list-disc pl-4">
@@ -167,6 +169,7 @@ class NotFoundError extends Error {}
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
+  loader: ({ params: { postId } }) => fetchPost(postId),
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {
       return <div>{error.message}</div>
@@ -174,7 +177,8 @@ const postRoute = new Route({
 
     return <ErrorComponent error={error} />
   },
-  component: ({ useRouteContext }) => {
+  component: ({ useLoaderData }) => {
+    const post = useLoaderData()
     return (
       <motion.div className="space-y-2" {...postTransitionProps}>
         <h4 className="text-xl font-bold underline">{post.title}</h4>
@@ -194,7 +198,7 @@ const router = new Router({
   routeTree,
   defaultPreload: 'intent',
   context: {
-    loaderClient,
+    // loaderClient,
   },
 })
 
