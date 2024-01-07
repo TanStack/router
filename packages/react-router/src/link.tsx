@@ -171,7 +171,7 @@ type ParamVariant = 'PATH' | 'SEARCH'
 export type ParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
-  TTo,
+  TTo extends string,
   TResolved,
   TParamVariant extends ParamVariant,
   TFromRouteType extends
@@ -185,10 +185,11 @@ export type ParamOptions<
     ? 'allParams'
     : 'fullSearchSchemaInput',
   TFromParams = Expand<Exclude<RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType], RootSearchSchema>>,
-  TToParams = TTo extends ''
+  TToIndex = RouteByPath<TRouteTree, `${TTo}/`> extends never ? TTo : `${TTo}/`, 
+  TToParams = TToIndex extends ''
     ? TFromParams
     : never extends TResolved
-      ? Expand<Exclude<RouteByPath<TRouteTree, TTo>['types'][TToRouteType], RootSearchSchema>>
+      ? Expand<Exclude<RouteByPath<TRouteTree, TToIndex>['types'][TToRouteType], RootSearchSchema>>
       : Expand<Exclude<RouteByPath<TRouteTree, TResolved>['types'][TToRouteType], RootSearchSchema>>,
   TReducer = ParamsReducer<TFromParams, TToParams>,
 > = Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
@@ -209,14 +210,14 @@ type MakePathParamOptions<T> = { params: T }
 export type SearchParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
-  TTo,
+  TTo extends string,
   TResolved,
 > = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'SEARCH'>
 
 export type PathParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
-  TTo,
+  TTo extends string,
   TResolved,
 > = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'PATH'>
 
