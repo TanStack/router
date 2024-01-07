@@ -163,6 +163,10 @@ export interface DehydratedRouterState {
   dehydratedMatches: DehydratedRouteMatch[]
 }
 
+export interface LoaderContext extends LoaderFnContext{
+  parentMatchPromise: Promise<void> | undefined
+}
+
 export type DehydratedRouteMatch = Pick<
   RouteMatch,
   'id' | 'status' | 'updatedAt'
@@ -1135,7 +1139,7 @@ export class Router<
             (route.options.pendingComponent ??
               this.options.defaultPendingComponent)
 
-          const loaderContext: LoaderFnContext = {
+          const loaderContext: LoaderContext = {
             params: match.params,
             deps: match.loaderDeps,
             preload: !!preload,
