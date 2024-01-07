@@ -580,34 +580,34 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@vitejs/plugin-react':
-        specifier: ^1.1.3
-        version: 1.1.3
       axios:
-        specifier: ^1.1.3
-        version: 1.1.3
+        specifier: ^1.6.5
+        version: 1.6.5
       immer:
-        specifier: ^9.0.15
-        version: 9.0.15
+        specifier: ^10.0.3
+        version: 10.0.3
       react:
         specifier: ^18.2.0
         version: 18.2.0
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
-      vite:
-        specifier: ^2.8.6
-        version: 2.8.6
       zod:
-        specifier: ^3.19.1
-        version: 3.20.2
+        specifier: ^3.22.4
+        version: 3.22.4
     devDependencies:
       '@types/react':
-        specifier: ^18.2.41
-        version: 18.2.41
+        specifier: ^18.2.47
+        version: 18.2.47
       '@types/react-dom':
-        specifier: ^18.2.17
-        version: 18.2.17
+        specifier: ^18.2.18
+        version: 18.2.18
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.2.1(vite@5.0.11)
+      vite:
+        specifier: ^5.0.11
+        version: 5.0.11(@types/node@20.10.7)
 
   examples/react/kitchen-sink:
     dependencies:
@@ -6314,7 +6314,6 @@ packages:
       vite: 5.0.11(@types/node@20.10.7)
     transitivePeerDependencies:
       - supports-color
-    dev: false
 
   /@vitest/expect@1.1.3:
     resolution: {integrity: sha512-MnJqsKc1Ko04lksF9XoRJza0bGGwTtqfbyrsYv5on4rcEkdo+QgUdITenBQBUltKzdxW7K3rWh+nXRULwsdaVg==}
@@ -8768,10 +8767,6 @@ packages:
 
   /immer@10.0.3:
     resolution: {integrity: sha512-pwupu3eWfouuaowscykeckFmVTpqbzW+rXFCX8rQLkZzM9ftBmU/++Ra+o+L27mz03zJTlyV4UUr+fdKNffo4A==}
-    dev: false
-
-  /immer@9.0.15:
-    resolution: {integrity: sha512-2eB/sswms9AEUSkOm4SbV5Y7Vmt/bKRwByd52jfLkW4OLYeaTP3EEiJ9agqU0O/tq6Dk62Zfj+TJSqfm1rLVGQ==}
     dev: false
 
   /immer@9.0.16:
