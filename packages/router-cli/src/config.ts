@@ -2,9 +2,9 @@ import path from 'path'
 import fs from 'fs-extra'
 import { z } from 'zod'
 
-const configSchema = z.object({
+export const configSchema = z.object({
   routeFilePrefix: z.string().optional(),
-  routeFileIgnorePrefix: z.string().optional(),
+  routeFileIgnorePrefix: z.string().optional().default('-'),
   routesDirectory: z.string(),
   generatedRouteTree: z.string(),
   quoteStyle: z.enum(['single', 'double']).optional().default('single'),
@@ -22,5 +22,5 @@ const configFilePathJson = path.resolve(process.cwd(), 'tsr.config.json')
 export async function getConfig(): Promise<Config> {
   const config = (await fs.readJson(configFilePathJson)) as unknown as Config
 
-  return { routeFileIgnorePrefix: '-', ...configSchema.parse(config) }
+  return configSchema.parse(config)
 }
