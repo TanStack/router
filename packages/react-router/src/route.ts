@@ -9,6 +9,7 @@ import { RouteById, RouteIds, RoutePaths } from './routeInfo'
 import { AnyRouter, RegisteredRouter } from './router'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
+import { useSearchState } from './useSearchState'
 import {
   Assign,
   Expand,
@@ -410,6 +411,16 @@ export class RouteApi<
     return useSearch({ ...opts, from: this.id } as any)
   }
 
+  useSearchState = <TSearchKey extends keyof TFullSearchSchema>(opts: {
+    key: TSearchKey
+    navigate?: 'push' | 'replace'
+  }): [
+    TFullSearchSchema[TSearchKey],
+    (value: TFullSearchSchema[TSearchKey]) => void,
+  ] => {
+    return useSearchState({ ...opts, from: this.id } as any)
+  }
+
   useParams = <TSelected = TAllParams>(opts?: {
     select?: (s: TAllParams) => TSelected
   }): TSelected => {
@@ -730,6 +741,16 @@ export class Route<
     select?: (search: TFullSearchSchema) => TSelected
   }): TSelected => {
     return useSearch({ ...opts, from: this.id } as any)
+  }
+
+  useSearchState = <TSearchKey extends keyof TFullSearchSchema>(opts: {
+    key: TSearchKey
+    navigate?: 'push' | 'replace'
+  }): [
+    TFullSearchSchema[TSearchKey],
+    (value: TFullSearchSchema[TSearchKey]) => void,
+  ] => {
+    return useSearchState({ ...opts, from: this.id } as any)
   }
 
   useParams = <TSelected = TAllParams>(opts?: {
