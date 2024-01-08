@@ -1,26 +1,26 @@
-import { Route as rootRoute } from "./routes/__root"
-import { Route as AboutRoute } from "./routes/about"
-import { Route as IndexRoute } from "./routes/index"
+import { Route as rootRoute } from './routes/__root'
+import { Route as AboutImport } from './routes/about'
+import { Route as IndexImport } from './routes/index'
 
-declare module "@tanstack/react-router" {
+const AboutRoute = AboutImport.update({
+  path: '/about',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const IndexRoute = IndexImport.update({
+  path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/": {
+    '/': {
+      preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
-    "/about": {
+    '/about': {
+      preLoaderRoute: typeof AboutImport
       parentRoute: typeof rootRoute
     }
   }
 }
-
-Object.assign(IndexRoute.options, {
-  path: "/",
-  getParentRoute: () => rootRoute,
-})
-
-Object.assign(AboutRoute.options, {
-  path: "/about",
-  getParentRoute: () => rootRoute,
-})
-
 export const routeTree = rootRoute.addChildren([IndexRoute, AboutRoute])

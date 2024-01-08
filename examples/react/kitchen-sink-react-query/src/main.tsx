@@ -419,7 +419,7 @@ const invoiceRoute = new Route({
 function InvoiceComponent() {
   const params = invoiceRoute.useParams()
   const search = invoiceRoute.useSearch()
-  const navigate = useNavigate({from: invoiceRoute.id})
+  const navigate = useNavigate({ from: invoiceRoute.id })
   const invoiceQuery = useSuspenseQuery(invoiceQueryOptions(params.invoiceId))
   const invoice = invoiceQuery.data
   const updateInvoiceMutation = useUpdateInvoiceMutation(params.invoiceId)
@@ -543,7 +543,7 @@ const usersRoute = new Route({
 })
 
 function UsersComponent() {
-  const navigate = useNavigate({from: usersRoute.id})
+  const navigate = useNavigate({ from: usersRoute.id })
   const { usersView } = usersRoute.useSearch()
   const usersQuery = useSuspenseQuery(
     usersQueryOptions(usersRoute.useLoaderDeps()),
