@@ -125,7 +125,13 @@ export class FileRoute<
       TParentRoute['types']['allParams'],
       TParams
     >,
-    TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
+    TRouteContextReturn extends
+      RouteConstraints['TRouteContext'] = RouteContext,
+    TRouteContext extends RouteConstraints['TRouteContext'] = [
+      TRouteContextReturn,
+    ] extends [never]
+      ? RouteContext
+      : TRouteContextReturn,
     TContext extends Expand<
       Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
     > = Expand<
@@ -149,6 +155,7 @@ export class FileRoute<
         TFullSearchSchema,
         TParams,
         TAllParams,
+        TRouteContextReturn,
         TRouteContext,
         TContext,
         TLoaderDeps,
@@ -170,6 +177,7 @@ export class FileRoute<
     TFullSearchSchema,
     TParams,
     TAllParams,
+    TRouteContextReturn,
     TRouteContext,
     TContext,
     TRouterContext,
