@@ -112,6 +112,7 @@ function PostsComponent() {
     <div className="p-2 flex gap-2">
       <div className="list-disc bg-gray-800/70 rounded-lg divide-y divide-green-500/30">
         <select
+        className='bg-gray-800/70 rounded-lg w-full'
           value={sort}
           onChange={(e) => setSort(e.target.value as any)}
         >
