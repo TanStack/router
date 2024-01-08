@@ -17,7 +17,7 @@ export function useSearchState<
   from: TFrom
   key: TSearchKey
   navigate?: 'push' | 'replace'
-}): [TSearch[TSearchKey], (value: TSearch[TSearchKey]) => void] {
+}): [TSearch[TSearchKey], (value: TSearch[TSearchKey]) => Promise<void>] {
   const value = useSearch({
     from: opts.from,
     select: (search) => search[opts.key],
@@ -26,7 +26,7 @@ export function useSearchState<
   const navigate = useNavigate()
 
   const setValue = useStableCallback((value: TSearch[TSearchKey]) => {
-    navigate({
+    return navigate({
       search(current: object) {
         return {
           ...current,

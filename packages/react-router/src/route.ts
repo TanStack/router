@@ -416,7 +416,7 @@ export class RouteApi<
     navigate?: 'push' | 'replace'
   }): [
     TFullSearchSchema[TSearchKey],
-    (value: TFullSearchSchema[TSearchKey]) => void,
+    (value: TFullSearchSchema[TSearchKey]) => Promise<void>,
   ] => {
     return useSearchState({ ...opts, from: this.id } as any)
   }
@@ -748,7 +748,7 @@ export class Route<
     navigate?: 'push' | 'replace'
   }): [
     TFullSearchSchema[TSearchKey],
-    (value: TFullSearchSchema[TSearchKey]) => void,
+    (value: TFullSearchSchema[TSearchKey]) => Promise<void>,
   ] => {
     return useSearchState({ ...opts, from: this.id } as any)
   }
