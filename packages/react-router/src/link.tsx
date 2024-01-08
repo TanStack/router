@@ -184,13 +184,28 @@ export type ParamOptions<
     | 'fullSearchSchemaInput' = TParamVariant extends 'PATH'
     ? 'allParams'
     : 'fullSearchSchemaInput',
-  TFromParams = Expand<Exclude<RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType], RootSearchSchema>>,
-  TToIndex = RouteByPath<TRouteTree, `${TTo}/`> extends never ? TTo : `${TTo}/`, 
+  TFromParams = Expand<
+    Exclude<
+      RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType],
+      RootSearchSchema
+    >
+  >,
+  TToIndex = RouteByPath<TRouteTree, `${TTo}/`> extends never ? TTo : `${TTo}/`,
   TToParams = TToIndex extends ''
     ? TFromParams
     : never extends TResolved
-      ? Expand<Exclude<RouteByPath<TRouteTree, TToIndex>['types'][TToRouteType], RootSearchSchema>>
-      : Expand<Exclude<RouteByPath<TRouteTree, TResolved>['types'][TToRouteType], RootSearchSchema>>,
+      ? Expand<
+          Exclude<
+            RouteByPath<TRouteTree, TToIndex>['types'][TToRouteType],
+            RootSearchSchema
+          >
+        >
+      : Expand<
+          Exclude<
+            RouteByPath<TRouteTree, TResolved>['types'][TToRouteType],
+            RootSearchSchema
+          >
+        >,
   TReducer = ParamsReducer<TFromParams, TToParams>,
 > = Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
   ? Partial<MakeParamOption<TParamVariant, true | TReducer>>

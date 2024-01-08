@@ -21,7 +21,7 @@ export function useNavigate<
     <
       TFrom extends RoutePaths<TRouteTree> | string = TDefaultFrom,
       TTo extends string = '',
-      TMaskFrom extends RoutePaths<TRouteTree>| string = TFrom,
+      TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
       TMaskTo extends string = '',
     >({
       from,

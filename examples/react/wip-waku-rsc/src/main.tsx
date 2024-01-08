@@ -1,12 +1,17 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { serve } from "waku/client";
+import { StrictMode } from 'react'
+import { createRoot, hydrateRoot } from 'react-dom/client'
+import { Root, Slot } from 'waku/client'
 
-const App = serve<{ name: string }>("App");
 const rootElement = (
   <StrictMode>
-    <App name="Waku" />
+    <Root>
+      <Slot id="App" />
+    </Root>
   </StrictMode>
-);
+)
 
-createRoot(document.getElementById("root")!).render(rootElement);
+if ((globalThis as any).__WAKU_SSR_ENABLED__) {
+  hydrateRoot(document.getElementById('root')!, rootElement)
+} else {
+  createRoot(document.getElementById('root')!).render(rootElement)
+}

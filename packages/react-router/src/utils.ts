@@ -18,8 +18,8 @@ export type PickExtra<T, K> = {
   [TKey in keyof K as string extends TKey
     ? never
     : TKey extends keyof T
-    ? never
-    : TKey]: K[TKey]
+      ? never
+      : TKey]: K[TKey]
 }
 
 export type PickRequired<T> = {
@@ -108,15 +108,15 @@ export type ValueKeys<O> = Extract<keyof O, PropertyKey>
 export type DeepAwaited<T> = T extends Promise<infer A>
   ? DeepAwaited<A>
   : T extends Record<infer A, Promise<infer B>>
-  ? { [K in A]: DeepAwaited<B> }
-  : T
+    ? { [K in A]: DeepAwaited<B> }
+    : T
 
 export type PathParamMask<TRoutePath extends string> =
   TRoutePath extends `${infer L}/$${infer C}/${infer R}`
     ? PathParamMask<`${L}/${string}/${R}`>
     : TRoutePath extends `${infer L}/$${infer C}`
-    ? PathParamMask<`${L}/${string}`>
-    : TRoutePath
+      ? PathParamMask<`${L}/${string}`>
+      : TRoutePath
 
 export type Timeout = ReturnType<typeof setTimeout>
 
@@ -327,10 +327,10 @@ export type RouteFromIdOrRoute<
 > = T extends ParseRoute<TRouteTree>
   ? T
   : T extends RouteIds<TRouteTree>
-  ? RoutesById<TRouteTree>[T]
-  : T extends string
-  ? RouteIds<TRouteTree>
-  : never
+    ? RoutesById<TRouteTree>[T]
+    : T extends string
+      ? RouteIds<TRouteTree>
+      : never
 
 export function useRouteContext<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
