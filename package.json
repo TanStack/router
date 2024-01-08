@@ -11,7 +11,7 @@
     "build": "rollup --config rollup.config.js && pnpm typecheck",
     "watch": "concurrently --no-color --prefix \"watch\" --kill-others --raw \"rollup --config rollup.config.js -w\" \"tsc -b --watch --preserveWatchOutput\"",
     "dev": "pnpm watch",
-    "prettier": "prettier \"packages/*/{src/**,examples/**/src/**}.{md,js,jsx,ts,tsx,json}\" --write",
+    "prettier": "prettier \"{packages,examples}/**/src/**.{md,js,jsx,ts,tsx,json}\" --write",
     "visualize": "pnpm -rc --parallel exec open build/stats-html.html",
     "cipublish": "ts-node scripts/publish.ts",
     "cipublishforce": "CI=true pnpm cipublish",

@@ -431,7 +431,7 @@ const usersRoute = new Route({
 })
 
 function UsersComponent() {
-  const navigate = useNavigate({from: usersRoute.id})
+  const navigate = useNavigate({ from: usersRoute.id })
   const { usersView } = usersRoute.useSearch()
   const users = usersRoute.useLoaderData()
   const sortBy = usersView?.sortBy ?? 'name'

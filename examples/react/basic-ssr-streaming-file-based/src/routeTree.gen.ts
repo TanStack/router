@@ -1,46 +1,46 @@
-import { FileRoute, lazyFn, lazyRouteComponent } from "@tanstack/react-router"
+import { FileRoute, lazyFn, lazyRouteComponent } from '@tanstack/react-router'
 
-import { Route as rootRoute } from "./routes/__root"
-import { Route as PostsImport } from "./routes/posts"
-import { Route as IndexImport } from "./routes/index"
-import { Route as PostsPostIdImport } from "./routes/posts/$postId"
-import { Route as PostsIndexImport } from "./routes/posts/index"
+import { Route as rootRoute } from './routes/__root'
+import { Route as PostsImport } from './routes/posts'
+import { Route as IndexImport } from './routes/index'
+import { Route as PostsPostIdImport } from './routes/posts/$postId'
+import { Route as PostsIndexImport } from './routes/posts/index'
 
 const PostsRoute = PostsImport.update({
-  path: "/posts",
+  path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
 const IndexRoute = IndexImport.update({
-  path: "/",
+  path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const PostsPostIdRoute = PostsPostIdImport.update({
-  path: "/$postId",
+  path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
 
 const PostsIndexRoute = PostsIndexImport.update({
-  path: "/",
+  path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/": {
+    '/': {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
-    "/posts": {
+    '/posts': {
       preLoaderRoute: typeof PostsImport
       parentRoute: typeof rootRoute
     }
-    "/posts/": {
+    '/posts/': {
       preLoaderRoute: typeof PostsIndexImport
       parentRoute: typeof PostsRoute
     }
-    "/posts/$postId": {
+    '/posts/$postId': {
       preLoaderRoute: typeof PostsPostIdImport
       parentRoute: typeof PostsRoute
     }
