@@ -10,6 +10,7 @@ overrides:
   '@tanstack/react-router': workspace:*
   '@tanstack/router-devtools': workspace:*
   '@tanstack/router-cli': workspace:*
+  '@tanstack/router-vite-plugin': workspace:*
   '@tanstack/react-router-server': workspace:*
 
 importers:
@@ -259,6 +260,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      '@tanstack/router-vite-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
         version: 1.6.5
@@ -299,12 +303,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-cli':
-        specifier: workspace:*
-        version: link:../../../packages/router-cli
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      '@tanstack/router-vite-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
         version: 1.6.5
@@ -388,12 +392,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-cli':
-        specifier: workspace:*
-        version: link:../../../packages/router-cli
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      '@tanstack/router-vite-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
         version: 1.6.5
@@ -434,12 +438,12 @@ importers:
       '@tanstack/react-router-server':
         specifier: workspace:*
         version: link:../../../packages/react-router-server
-      '@tanstack/router-cli':
-        specifier: workspace:*
-        version: link:../../../packages/router-cli
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      '@tanstack/router-vite-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
         version: 1.6.5
@@ -474,9 +478,6 @@ importers:
       compression:
         specifier: ^1.7.4
         version: 1.7.4
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
       express:
         specifier: ^4.18.2
         version: 4.18.2
@@ -507,12 +508,12 @@ importers:
       '@tanstack/react-router-server':
         specifier: workspace:*
         version: link:../../../packages/react-router-server
-      '@tanstack/router-cli':
-        specifier: workspace:*
-        version: link:../../../packages/router-cli
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      '@tanstack/router-vite-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
         version: 1.6.5
@@ -651,12 +652,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-cli':
-        specifier: workspace:*
-        version: link:../../../packages/router-cli
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      '@tanstack/router-vite-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
         version: 1.6.5
@@ -682,9 +683,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
       vite:
         specifier: ^5.0.11
         version: 5.0.11(@types/node@20.10.7)
@@ -743,12 +741,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-cli':
-        specifier: workspace:*
-        version: link:../../../packages/router-cli
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      '@tanstack/router-vite-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
         version: 1.6.5
@@ -774,9 +772,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
       vite:
         specifier: ^5.0.11
         version: 5.0.11(@types/node@20.10.7)
@@ -888,12 +883,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-cli':
-        specifier: workspace:*
-        version: link:../../../packages/router-cli
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      '@tanstack/router-vite-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
         version: 1.6.5
@@ -919,9 +914,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
       vite:
         specifier: ^5.0.11
         version: 5.0.11(@types/node@20.10.7)
@@ -1389,6 +1381,15 @@ importers:
       date-fns:
         specifier: ^2.29.1
         version: 2.29.3
+
+  packages/router-vite-plugin:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      '@tanstack/router-cli':
+        specifier: workspace:*
+        version: link:../router-cli
 
 packages:
 

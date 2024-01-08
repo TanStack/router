@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"tsr watch\" \"node server\"",
+    "dev": "node server",
     "build": "npm run build:tsr && npm run build:client && npm run build:server",
     "build:tsr": "tsr generate",
     "build:client": "vite build src/entry-client.tsx --outDir dist/client",
@@ -13,10 +13,10 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/react-router": "1.1.11",
-    "@tanstack/react-router-server": "1.1.11",
-    "@tanstack/router-cli": "1.1.11",
-    "@tanstack/router-devtools": "1.1.11",
+    "@tanstack/react-router": "1.2.0",
+    "@tanstack/react-router-server": "1.2.0",
+    "@tanstack/router-devtools": "1.2.0",
+    "@tanstack/router-vite-plugin": "1.2.0",
     "axios": "^1.6.5",
     "get-port": "^7.0.0",
     "react": "^18.2.0",

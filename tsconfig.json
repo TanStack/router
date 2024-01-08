@@ -4,6 +4,7 @@
     { "path": "packages/history" },
     { "path": "packages/react-router" },
     { "path": "packages/router-cli" },
+    { "path": "packages/router-vite-plugin" },
     { "path": "packages/router-devtools" },
     { "path": "packages/react-router-server" }
   ]

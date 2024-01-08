@@ -1,5 +1,5 @@
 import path from 'path'
-import fs from 'fs-extra'
+import { readFileSync } from 'fs'
 import { z } from 'zod'
 
 export const configSchema = z.object({
@@ -20,7 +20,7 @@ export type Config = z.infer<typeof configSchema>
 const configFilePathJson = path.resolve(process.cwd(), 'tsr.config.json')
 
 export async function getConfig(): Promise<Config> {
-  const config = (await fs.readJson(configFilePathJson)) as unknown as Config
-
-  return configSchema.parse(config)
+  return configSchema.parse(
+    JSON.parse(readFileSync(configFilePathJson, 'utf-8')),
+  )
 }

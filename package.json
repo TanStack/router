@@ -30,7 +30,9 @@
       "@tanstack/react-router": "workspace:*",
       "@tanstack/router-devtools": "workspace:*",
       "@tanstack/router-cli": "workspace:*",
-      "@tanstack/react-router-server": "workspace:*"
+      "@tanstack/router-vite-plugin": "workspace:*",
+      "@tanstack/react-router-server": "workspace:*",
+      "use-sync-external-store": "1.2.0"
     }
   },
   "devDependencies": {

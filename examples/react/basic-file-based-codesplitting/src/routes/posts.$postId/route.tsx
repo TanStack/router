@@ -11,6 +11,7 @@ export const Route = new FileRoute('/posts/$postId').createRoute({
   loaderDeps: () => ({
     test: 'tanner' as const,
   }),
+  loader: () => 'tanner',
 })
 
 export function PostErrorComponent({ error }: ErrorRouteProps) {
