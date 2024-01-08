@@ -132,7 +132,7 @@ export class FileRoute<
     ] extends [never]
       ? RouteContext
       : TRouteContextReturn,
-    TContext extends Expand<
+    TAllContext extends Expand<
       Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
     > = Expand<
       Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
@@ -157,7 +157,8 @@ export class FileRoute<
         TAllParams,
         TRouteContextReturn,
         TRouteContext,
-        TContext,
+        TRouterContext,
+        TAllContext,
         TLoaderDeps,
         TLoaderData
       >,
@@ -179,7 +180,7 @@ export class FileRoute<
     TAllParams,
     TRouteContextReturn,
     TRouteContext,
-    TContext,
+    TAllContext,
     TRouterContext,
     TLoaderDeps,
     TLoaderData,

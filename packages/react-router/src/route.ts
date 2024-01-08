@@ -69,6 +69,7 @@ export type RouteOptions<
   TAllParams extends AnyPathParams = TParams,
   TRouteContextReturn extends RouteContext = RouteContext,
   TRouteContext extends RouteContext = RouteContext,
+  TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderData extends any = unknown,
@@ -85,6 +86,7 @@ export type RouteOptions<
   TAllParams,
   TRouteContextReturn,
   TRouteContext,
+  TRouterContext,
   TAllContext,
   TLoaderDeps,
   TLoaderData
@@ -109,6 +111,7 @@ export type BaseRouteOptions<
   TAllParams = ParamsFallback<TPath, TParams>,
   TRouteContextReturn extends RouteContext = RouteContext,
   TRouteContext extends RouteContext = RouteContext,
+  TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderData extends any = unknown,
@@ -134,7 +137,8 @@ export type BaseRouteOptions<
     TFullSearchSchema,
     TParentRoute,
     TAllParams,
-    TRouteContextReturn
+    TRouteContextReturn,
+    TRouterContext
   >
 } & {
   loaderDeps?: (opts: { search: TFullSearchSchema }) => TLoaderDeps
@@ -168,12 +172,14 @@ type BeforeLoadFn<
   TParentRoute extends AnyRoute,
   TAllParams,
   TRouteContextReturn extends RouteContext,
+  TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+  TContext = IsAny<TParentRoute['types']['allContext'], TRouterContext>,
 > = (opts: {
   search: TFullSearchSchema
   abortController: AbortController
   preload: boolean
   params: TAllParams
-  context: TParentRoute['types']['allContext']
+  context: TContext
   location: ParsedLocation
   navigate: NavigateFn<AnyRoute>
   buildLocation: BuildLocationFn<TParentRoute>
@@ -497,6 +503,7 @@ export class Route<
     TAllParams,
     TRouteContextReturn,
     TRouteContext,
+    TRouterContext,
     TAllContext,
     TLoaderDeps,
     TLoaderData
@@ -534,6 +541,7 @@ export class Route<
       TAllParams,
       TRouteContextReturn,
       TRouteContext,
+      TRouterContext,
       TAllContext,
       TLoaderDeps,
       TLoaderData
@@ -587,6 +595,7 @@ export class Route<
       TAllParams,
       TRouteContextReturn,
       TRouteContext,
+      TRouterContext,
       TAllContext,
       TLoaderDeps,
       TLoaderData
@@ -759,7 +768,9 @@ export function rootRouteWithContext<TRouterContext extends {}>() {
     TSearchSchema extends Record<string, any> = RootSearchSchema,
     TSearchSchemaUsed extends Record<string, any> = RootSearchSchema,
     TRouteContextReturn extends RouteContext = RouteContext,
-    TRouteContext extends RouteContext = RouteContext,
+    TRouteContext extends RouteContext = [TRouteContextReturn] extends [never]
+      ? RouteContext
+      : TRouteContextReturn,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderData extends any = unknown,
   >(
@@ -777,6 +788,7 @@ export function rootRouteWithContext<TRouterContext extends {}>() {
         {}, // TAllParams
         TRouteContextReturn, // TRouteContextReturn
         TRouteContext, // TRouteContext
+        TRouterContext,
         Assign<TRouterContext, TRouteContext>, // TAllContext
         TLoaderDeps,
         TLoaderData // TLoaderData,
@@ -809,7 +821,9 @@ export class RootRoute<
   TSearchSchema extends Record<string, any> = RootSearchSchema,
   TSearchSchemaUsed extends Record<string, any> = RootSearchSchema,
   TRouteContextReturn extends RouteContext = RouteContext,
-  TRouteContext extends RouteContext = RouteContext,
+  TRouteContext extends RouteContext = [TRouteContextReturn] extends [never]
+    ? RouteContext
+    : TRouteContextReturn,
   TRouterContext extends {} = {},
   TLoaderDeps extends Record<string, any> = {},
   TLoaderData extends any = unknown,
@@ -850,6 +864,7 @@ export class RootRoute<
         {}, // TAllParams
         TRouteContextReturn, // TRouteContextReturn
         TRouteContext, // TRouteContext
+        TRouterContext,
         Assign<TRouterContext, TRouteContext>, // TAllContext
         TLoaderDeps,
         TLoaderData
@@ -962,13 +977,13 @@ export class NotFoundRoute<
     TParentRoute,
     TSearchSchema
   >,
+  TRouteContextReturn extends RouteConstraints['TRouteContext'] = AnyContext,
   TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
   TAllContext extends Expand<
     Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
   > = Expand<
     Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
   >,
-  TRouteContextReturn extends RouteConstraints['TRouterContext'] = AnyContext,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderData extends any = unknown,
@@ -1011,6 +1026,7 @@ export class NotFoundRoute<
         {},
         TRouteContextReturn,
         TRouteContext,
+        TRouterContext,
         TAllContext,
         TLoaderDeps,
         TLoaderData
