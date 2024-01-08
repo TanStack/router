@@ -129,6 +129,10 @@
         {
           "label": "Router CLI (Route-Gen)",
           "to": "api/router-cli"
+        },
+        {
+          "label": "Router Vite Plugin (Route-Gen)",
+          "to": "api/router-vite-plugin"
         }
       ]
     },

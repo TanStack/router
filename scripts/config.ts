@@ -57,6 +57,23 @@ export const packages: Package[] = [
     ],
   },
   {
+    name: '@tanstack/router-vite-plugin',
+    packageDir: 'router-vite-plugin',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'TanStackRouterVitePlugin',
+        entryFile: 'src/index.ts',
+        // globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
+        externals: ['stream', 'util', 'react-dom', 'react', 'react-dom/server'],
+        // esm: false,
+        // cjs: false,
+        umd: false,
+        // externals: [(d) => console.log(d)],
+      },
+    ],
+  },
+  {
     name: '@tanstack/react-cross-context',
     packageDir: 'react-cross-context',
     srcDir: 'src',
