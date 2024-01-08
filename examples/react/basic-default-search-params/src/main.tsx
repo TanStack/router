@@ -22,12 +22,20 @@ type PostType = {
   body: string
 }
 
-const fetchPosts = async () => {
+const fetchPosts = async (sort?: 'asc' | 'desc') => {
   console.log('Fetching posts...')
   await new Promise((r) => setTimeout(r, 300))
   return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
-    .then((r) => r.data.slice(0, 10))
+    .then((r) =>
+      r.data
+        .sort((a, b) =>
+          sort === 'asc'
+            ? a.title.localeCompare(b.title)
+            : b.title.localeCompare(a.title),
+        )
+        .slice(0, 10),
+    )
 }
 
 const fetchPost = async (postId: number) => {
@@ -94,11 +102,16 @@ function IndexComponent() {
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  loader: () => fetchPosts(),
-  component: PostsComponent,
   validateSearch: z.object({
     sort: z.enum(['asc', 'desc']).optional(),
   }),
+  loaderDeps(opts) {
+    return {
+      sort: opts.search.sort,
+    }
+  },
+  loader: (match) => fetchPosts(match.deps.sort),
+  component: PostsComponent,
 })
 
 function PostsComponent() {
@@ -112,7 +125,7 @@ function PostsComponent() {
     <div className="p-2 flex gap-2">
       <div className="list-disc bg-gray-800/70 rounded-lg divide-y divide-green-500/30">
         <select
-        className='bg-gray-800/70 rounded-lg w-full'
+          className="bg-gray-800/70 rounded-lg w-full"
           value={sort}
           onChange={(e) => setSort(e.target.value as any)}
         >
@@ -120,30 +133,24 @@ function PostsComponent() {
           <option value="desc">Desc</option>
         </select>
 
-        {/* TODO: probably better to drive the loader with search but need to research how */}
-        {[...posts]
-          .sort((a, b) =>
-            sort === 'asc'
-              ? a.title.localeCompare(b.title)
-              : b.title.localeCompare(a.title),
+        {posts.map((post, index) => {
+          return (
+            <div key={post.id} className="whitespace-nowrap">
+              <Link
+                to={postRoute.to}
+                search={{
+                  postId: post.id,
+                  color: index % 2 ? 'red' : undefined,
+                  sort: sort
+                }}
+                className="block py-1 px-2 text-green-300 hover:text-green-200"
+                activeProps={{ className: '!text-white font-bold' }}
+              >
+                <div>{post.title.substring(0, 20)}</div>
+              </Link>
+            </div>
           )
-          .map((post, index) => {
-            return (
-              <div key={post.id} className="whitespace-nowrap">
-                <Link
-                  to={postRoute.to}
-                  search={{
-                    postId: post.id,
-                    color: index % 2 ? 'red' : undefined,
-                  }}
-                  className="block py-1 px-2 text-green-300 hover:text-green-200"
-                  activeProps={{ className: '!text-white font-bold' }}
-                >
-                  <div>{post.title.substring(0, 20)}</div>
-                </Link>
-              </div>
-            )
-          })}
+        })}
       </div>
       <Outlet />
     </div>
