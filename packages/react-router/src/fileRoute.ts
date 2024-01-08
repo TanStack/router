@@ -56,12 +56,20 @@ export type RemoveUnderScores<T extends string> = Replace<
   '/'
 >
 
+type ReplaceFirstOccurrence<
+  T extends string,
+  Search extends string,
+  Replacement extends string,
+> = T extends `${infer Prefix}${Search}${infer Suffix}`
+  ? `${Prefix}${Replacement}${Suffix}`
+  : T
+
 export type ResolveFilePath<
   TParentRoute extends AnyRoute,
   TFilePath extends string,
 > = TParentRoute['id'] extends RootRouteId
   ? TrimPathLeft<TFilePath>
-  : Replace<
+  : ReplaceFirstOccurrence<
       TrimPathLeft<TFilePath>,
       TrimPathLeft<TParentRoute['types']['customId']>,
       ''
@@ -72,7 +80,9 @@ export type FileRoutePath<
   TFilePath extends string,
 > = ResolveFilePath<TParentRoute, TFilePath> extends `_${infer _}`
   ? string
-  : ResolveFilePath<TParentRoute, TFilePath>
+  : ResolveFilePath<TParentRoute, TFilePath> extends `/_${infer _}`
+    ? string
+    : ResolveFilePath<TParentRoute, TFilePath>
 
 export class FileRoute<
   TFilePath extends keyof FileRoutesByPath,
@@ -115,7 +125,13 @@ export class FileRoute<
       TParentRoute['types']['allParams'],
       TParams
     >,
-    TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
+    TRouteContextReturn extends
+      RouteConstraints['TRouteContext'] = RouteContext,
+    TRouteContext extends RouteConstraints['TRouteContext'] = [
+      TRouteContextReturn,
+    ] extends [never]
+      ? RouteContext
+      : TRouteContextReturn,
     TContext extends Expand<
       Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
     > = Expand<
@@ -139,6 +155,7 @@ export class FileRoute<
         TFullSearchSchema,
         TParams,
         TAllParams,
+        TRouteContextReturn,
         TRouteContext,
         TContext,
         TLoaderDeps,
@@ -160,6 +177,7 @@ export class FileRoute<
     TFullSearchSchema,
     TParams,
     TAllParams,
+    TRouteContextReturn,
     TRouteContext,
     TContext,
     TRouterContext,

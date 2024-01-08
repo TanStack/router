@@ -270,9 +270,22 @@ export async function generator(config: Config) {
     (d) => d,
   ])
 
+  const imports = Object.entries({
+    FileRoute: sortedRouteNodes.some((d) => d.isVirtual),
+    lazyFn: sortedRouteNodes.some(
+      (node) => routePiecesByPath[node.routePath!]?.loader,
+    ),
+    lazyRouteComponent: sortedRouteNodes.some(
+      (node) => routePiecesByPath[node.routePath!]?.component,
+    ),
+  })
+    .filter((d) => d[1])
+    .map((d) => d[0])
+
   const routeImports = [
-    `import { FileRoute, lazyFn, lazyRouteComponent } from '@tanstack/react-router'`,
-    '\n',
+    imports.length
+      ? `import { ${imports.join(', ')} } from '@tanstack/react-router'\n`
+      : '',
     `import { Route as rootRoute } from './${sanitize(
       path.relative(
         path.dirname(config.generatedRouteTree),
