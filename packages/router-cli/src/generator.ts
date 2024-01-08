@@ -364,6 +364,7 @@ export async function generator(config: Config) {
     [routeImports, routeTypes, routeConfig].join('\n\n'),
     {
       semi: false,
+      singleQuote: config.quoteStyle === 'single',
       parser: 'typescript',
     },
   )
