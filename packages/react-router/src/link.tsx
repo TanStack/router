@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useMatch } from './Matches'
 import { useRouter, useRouterState } from './RouterProvider'
 import { Trim } from './fileRoute'
-import { AnyRoute, ReactNode } from './route'
+import { AnyRoute, ReactNode, RootSearchSchema } from './route'
 import {
   AllParams,
   FullSearchSchema,
@@ -171,7 +171,7 @@ type ParamVariant = 'PATH' | 'SEARCH'
 export type ParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
-  TTo,
+  TTo extends string,
   TResolved,
   TParamVariant extends ParamVariant,
   TFromRouteType extends
@@ -184,12 +184,13 @@ export type ParamOptions<
     | 'fullSearchSchemaInput' = TParamVariant extends 'PATH'
     ? 'allParams'
     : 'fullSearchSchemaInput',
-  TFromParams = Expand<RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType]>,
-  TToParams = TTo extends ''
+  TFromParams = Expand<Exclude<RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType], RootSearchSchema>>,
+  TToIndex = RouteByPath<TRouteTree, `${TTo}/`> extends never ? TTo : `${TTo}/`, 
+  TToParams = TToIndex extends ''
     ? TFromParams
     : never extends TResolved
-      ? Expand<RouteByPath<TRouteTree, TTo>['types'][TToRouteType]>
-      : Expand<RouteByPath<TRouteTree, TResolved>['types'][TToRouteType]>,
+      ? Expand<Exclude<RouteByPath<TRouteTree, TToIndex>['types'][TToRouteType], RootSearchSchema>>
+      : Expand<Exclude<RouteByPath<TRouteTree, TResolved>['types'][TToRouteType], RootSearchSchema>>,
   TReducer = ParamsReducer<TFromParams, TToParams>,
 > = Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
   ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
@@ -209,14 +210,14 @@ type MakePathParamOptions<T> = { params: T }
 export type SearchParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
-  TTo,
+  TTo extends string,
   TResolved,
 > = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'SEARCH'>
 
 export type PathParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
-  TTo,
+  TTo extends string,
   TResolved,
 > = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'PATH'>
 

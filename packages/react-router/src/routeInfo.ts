@@ -24,6 +24,7 @@ export type ParseRouteChildren<TRouteTree extends AnyRoute> =
     any,
     any,
     any,
+    any,
     infer TChildren,
     any
   >
