@@ -1,5 +1,5 @@
 import path from 'path'
-import fs from 'fs-extra'
+import * as fs from 'fs-extra'
 import * as prettier from 'prettier'
 import { Config } from './config'
 import { cleanPath, trimPathLeft } from '@tanstack/react-router'
@@ -134,6 +134,8 @@ export async function generator(config: Config) {
     return multiSortBy(nodes, [
       (d) => (d.routePath === '/' ? -1 : 1),
       (d) => d.routePath?.split('/').length,
+      (d) => (d.filePath?.match(/[./]index[.]/) ? 1 : -1),
+      (d) => (d.filePath?.match(/[./]route[.]/) ? -1 : 1),
       (d) => (d.routePath?.endsWith('/') ? -1 : 1),
       (d) => d.routePath,
     ]).filter((d) => d.routePath !== `/${routePathIdPrefix + rootPathId}`)
@@ -188,6 +190,20 @@ export async function generator(config: Config) {
           node.isLoader ? 'loader' : 'component'
         ] = node
 
+        const anchorRoute = routeNodes.find(
+          (d) => d.routePath === node.routePath,
+        )
+        if (!anchorRoute) {
+          handleNode({
+            ...node,
+            isVirtual: true,
+          })
+        }
+        // if (!node.parent) {
+        // }
+
+        // componentOrLoader.isVirtual = true
+        // handleNode(componentOrLoader)
         return
       }
     }
@@ -203,21 +219,6 @@ export async function generator(config: Config) {
   }
 
   preRouteNodes.forEach((node) => handleNode(node))
-
-  if (config.future?.unstable_codeSplitting) {
-    Object.keys(routePiecesByPath).forEach((routePath) => {
-      const found = routeNodes.find((d) => d.routePath === routePath)
-
-      if (!found) {
-        const pieces = routePiecesByPath[routePath]!
-        const componentOrLoader = pieces.component || pieces.loader
-        if (componentOrLoader) {
-          componentOrLoader.isVirtual = true
-          handleNode(componentOrLoader)
-        }
-      }
-    })
-  }
 
   async function buildRouteConfig(
     nodes: RouteNode[],
@@ -356,30 +357,29 @@ export async function generator(config: Config) {
         ].join('')
       })
       .join('\n\n'),
-  ].join('\n')
-
-  const routeTypes = `declare module '@tanstack/react-router' {
+    `declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
         return `'${routeNode.routePath}': {
           preLoaderRoute: typeof ${routeNode.variableName}Import
-          parentRoute: typeof ${routeNode.parent?.variableName ?? 'root'}Route
+          parentRoute: typeof ${
+            routeNode.parent?.variableName
+              ? `${routeNode.parent?.variableName}Import`
+              : 'rootRoute'
+          }
         }`
       })
       .join('\n')}
   }
-}`
+}`,
+    `export const routeTree = rootRoute.addChildren([${routeConfigChildrenText}])`,
+  ].join('\n')
 
-  const routeConfig = `export const routeTree = rootRoute.addChildren([${routeConfigChildrenText}])`
-
-  const routeConfigFileContent = await prettier.format(
-    [routeImports, routeTypes, routeConfig].join('\n\n'),
-    {
-      semi: false,
-      parser: 'typescript',
-    },
-  )
+  const routeConfigFileContent = await prettier.format(routeImports, {
+    semi: false,
+    parser: 'typescript',
+  })
 
   const routeTreeContent = await fs
     .readFile(path.resolve(config.generatedRouteTree), 'utf-8')

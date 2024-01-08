@@ -1,0 +1,44 @@
+{
+  "name": "@tanstack/router-vite-plugin",
+  "author": "Tanner Linsley",
+  "version": "1.1.9",
+  "license": "MIT",
+  "repository": "tanstack/router",
+  "homepage": "https://tanstack.com/router",
+  "description": "",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "rollup --config rollup.config.js"
+  },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "engines": {
+    "node": ">=12"
+  },
+  "files": [
+    "build/**",
+    "src/**"
+  ],
+  "sideEffects": false,
+  "module": "build/esm/index.js",
+  "main": "build/cjs/packages/router-vite-plugin/src/index.js",
+  "browser": "build/cjs/packages/router-vite-plugin/src/index.js",
+  "types": "build/types/index.d.ts",
+  "dependencies": {
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/router-cli": "workspace:*"
+  }
+}
