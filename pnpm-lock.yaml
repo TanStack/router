@@ -251,9 +251,6 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-cli':
-        specifier: workspace:*
-        version: link:../../../packages/router-cli
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
@@ -285,9 +282,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
       vite:
         specifier: ^5.0.11
         version: 5.0.11(@types/node@20.10.7)
@@ -328,9 +322,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
       vite:
         specifier: ^5.0.11
         version: 5.0.11(@types/node@20.10.7)
@@ -414,9 +405,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
       vite:
         specifier: ^5.0.11
         version: 5.0.11(@types/node@20.10.7)
@@ -539,9 +527,6 @@ importers:
       compression:
         specifier: ^1.7.4
         version: 1.7.4
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
       express:
         specifier: ^4.18.2
         version: 4.18.2
