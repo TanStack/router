@@ -33,8 +33,6 @@ export type AnyContext = {}
 
 export interface RouteContext {}
 
-export interface RouteMeta {}
-
 export type PreloadableObj = { preload?: () => Promise<void> }
 
 export type RoutePathOptions<TCustomId, TPath> =
@@ -47,14 +45,6 @@ export type RoutePathOptions<TCustomId, TPath> =
 
 export type RoutePathOptionsIntersection<TCustomId, TPath> =
   UnionToIntersection<RoutePathOptions<TCustomId, TPath>>
-
-export type MetaOptions = keyof PickRequired<RouteMeta> extends never
-  ? {
-      meta?: RouteMeta
-    }
-  : {
-      meta: RouteMeta
-    }
 
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
@@ -188,7 +178,7 @@ type BeforeLoadFn<
 
 export type UpdatableRouteOptions<
   TFullSearchSchema extends Record<string, any>,
-> = MetaOptions & {
+> = {
   // test?: (args: TAllContext) => void
   // If true, this route will be matched as case-sensitive
   caseSensitive?: boolean
