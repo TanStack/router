@@ -4,8 +4,6 @@ import { useRouter, useRouterState } from './RouterProvider'
 import { Trim } from './fileRoute'
 import { AnyRoute, ReactNode, RootSearchSchema } from './route'
 import {
-  AllParams,
-  FullSearchSchema,
   RouteByPath,
   RouteIds,
   RoutePaths,
@@ -17,7 +15,6 @@ import {
   NoInfer,
   NonNullableUpdater,
   PickRequired,
-  UnionToIntersection,
   Updater,
   WithoutEmpty,
   deepEqual,
@@ -248,18 +245,6 @@ export type ToPathOption<
       NoInfer<TTo> & string
     >
 
-export type ToIdOption<
-  TRouteTree extends AnyRoute = AnyRoute,
-  TFrom extends RoutePaths<TRouteTree> | undefined = undefined,
-  TTo extends string = '',
-> =
-  | TTo
-  | RelativeToPathAutoComplete<
-      RouteIds<TRouteTree>,
-      NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
-      NoInfer<TTo> & string
-    >
-
 export interface ActiveOptions {
   exact?: boolean
   includeHash?: boolean
@@ -285,24 +270,6 @@ export type LinkOptions<
   disabled?: boolean
 }
 
-export type CheckRelativePath<
-  TRouteTree extends AnyRoute,
-  TFrom,
-  TTo,
-> = TTo extends string
-  ? TFrom extends string
-    ? ResolveRelativePath<TFrom, TTo> extends RoutePaths<TRouteTree>
-      ? {}
-      : {
-          Error: `${TFrom} + ${TTo} resolves to ${ResolveRelativePath<
-            TFrom,
-            TTo
-          >}, which is not a valid route path.`
-          'Valid Route Paths': RoutePaths<TRouteTree>
-        }
-    : {}
-  : {}
-
 export type CheckPath<TRouteTree extends AnyRoute, TPath, TPass> = Exclude<
   TPath,
   RoutePaths<TRouteTree>
@@ -312,20 +279,6 @@ export type CheckPath<TRouteTree extends AnyRoute, TPath, TPass> = Exclude<
 
 export type CheckPathError<TRouteTree extends AnyRoute, TInvalids> = {
   to: RoutePaths<TRouteTree>
-}
-
-export type CheckId<TRouteTree extends AnyRoute, TPath, TPass> = Exclude<
-  TPath,
-  RouteIds<TRouteTree>
-> extends never
-  ? TPass
-  : CheckIdError<TRouteTree, Exclude<TPath, RouteIds<TRouteTree>>>
-
-export type CheckIdError<TRouteTree extends AnyRoute, TInvalids> = {
-  Error: `${TInvalids extends string
-    ? TInvalids
-    : never} is not a valid route ID.`
-  'Valid Route IDs': RouteIds<TRouteTree>
 }
 
 export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
