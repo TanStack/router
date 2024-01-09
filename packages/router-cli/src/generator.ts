@@ -1,5 +1,5 @@
 import path from 'path'
-import * as fs from 'fs-extra'
+import * as fs from 'fs/promises'
 import * as prettier from 'prettier'
 import { Config } from './config'
 import { cleanPath, trimPathLeft } from '@tanstack/react-router'
@@ -394,7 +394,9 @@ export async function generator(config: Config) {
   if (!checkLatest()) return
 
   if (routeTreeContent !== routeConfigFileContent) {
-    await fs.ensureDir(path.dirname(path.resolve(config.generatedRouteTree)))
+    await fs.mkdir(path.dirname(path.resolve(config.generatedRouteTree)), {
+      recursive: true,
+    })
     if (!checkLatest()) return
     await fs.writeFile(
       path.resolve(config.generatedRouteTree),
