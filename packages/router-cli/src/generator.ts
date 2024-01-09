@@ -378,6 +378,7 @@ export async function generator(config: Config) {
 
   const routeConfigFileContent = await prettier.format(routeImports, {
     semi: false,
+    singleQuote: config.quoteStyle === 'single',
     parser: 'typescript',
   })
 
