@@ -695,7 +695,7 @@ function LoginComponent() {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Username"
-          className="border p-1 px-2 rounded"
+          className="border p-1 px-2 rounded text-black"
         />
         <button
           type="submit"
