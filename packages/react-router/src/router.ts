@@ -51,7 +51,6 @@ import {
   joinPaths,
   matchPathname,
   parsePathname,
-  removeBasepath,
   resolvePath,
   trimPath,
   trimPathLeft,
