@@ -840,11 +840,11 @@ export class Router<
         })
 
         if (foundMask) {
-          foundMask = {
+          maskedDest = {
+            ...pick(opts, ['from']),
             ...foundMask,
-            from: interpolatePath(foundMask.from, params) as any,
+            params,
           }
-          maskedDest = foundMask
           maskedNext = build(maskedDest)
         }
       }
