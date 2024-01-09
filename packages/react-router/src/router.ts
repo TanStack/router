@@ -259,12 +259,18 @@ export class Router<
   startReactTransition: (fn: () => void) => void = (fn) => fn()
 
   update = (newOptions: RouterConstructorOptions<TRouteTree, TDehydrated>) => {
+    const previousOptions = this.options
     this.options = {
       ...this.options,
       ...newOptions,
     }
 
-    this.basepath = `/${trimPath(newOptions.basepath ?? '') ?? ''}`
+    if (
+      !this.basepath ||
+      (newOptions.basepath && newOptions.basepath !== previousOptions.basepath)
+    ) {
+      this.basepath = `/${trimPath(newOptions.basepath ?? '') ?? ''}`
+    }
 
     if (
       !this.history ||
@@ -274,7 +280,9 @@ export class Router<
         this.options.history ??
         (typeof document !== 'undefined'
           ? createBrowserHistory()
-          : createMemoryHistory())
+          : createMemoryHistory({
+              initialEntries: [this.options.basepath || '/'],
+            }))
       this.latestLocation = this.parseLocation()
     }
 
