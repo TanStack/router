@@ -35,4 +35,11 @@ describe('replaceEqualDeep', () => {
     const result = replaceEqualDeep(obj1, obj2);
     expect(result).toStrictEqual(obj2);
   })
+
+  it('should correctly handle non-existent keys with the same number of fields', () => {
+    const obj1 = { a: 2, c: 123 }
+    const obj2 = { a: 2, b: undefined };
+    const result = replaceEqualDeep(obj1, obj2);
+    expect(result).toStrictEqual(obj2);
+  })
 });
