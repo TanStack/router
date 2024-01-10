@@ -7,13 +7,13 @@ title: External Data Loading
 
 ## To **Store** or to **Coordinate**?
 
-While Router is very capable of storing and managing your data needs out of the box, sometimes you just might want something different!
+While Router is very capable of storing and managing most data needs out of the box, sometimes you just might want something more robust!
 
-Router is also designed to be a **coordinator** for external data fetching and caching libraries. This means that you can use any data fetching/caching library you want, and the router will coordinate the loading of your data in a way that aligns with your users' navigation.
+Router is designed to be a perfect **coordinator** for external data fetching and caching libraries. This means that you can use any data fetching/caching library you want, and the router will coordinate the loading of your data in a way that aligns with your users' navigation and expectations of freshness.
 
 ## What data fetching libraries are supported?
 
-Any data fetching library that supports asynchronous dependencies can be used with TanStack Router. This includes:
+Any data fetching library that supports asynchronous promises can be used with TanStack Router. This includes:
 
 - [TanStack Loaders](#tanstack-loaders)
 - [TanStack Query](https://tanstack.com/query/latest/docs/react/overview)
@@ -32,15 +32,7 @@ Or, even...
 
 Literally any library that **can return a promise and read/write data** can be integrated.
 
-## TanStack Loaders
-
-While you may jump for joy that your favorite cache manager is in the list above, you may want to check out our custom-built router-centric caching library called [TanStack Loaders](https://tanstack.com/loaders/latest/docs/overview), a powerful and flexible data caching library that is designed to work with TanStack Router.
-
-## External Data Loading Basics
-
-For the following examples, we'll show you the basics of using an external data loading library like **TanStack Loaders**, but as we've already mentioned, these same principles can be applied to any state management library worth it's salt. Let's get started!
-
-## Using Loaders to Ensure Data is Loaded
+## Using Loaders to ensure data is loaded
 
 The easiest way to use integrate and external caching/data library into Router is to use `route.loader`s to ensure that the data required inside of a route has been loaded and is ready to be displayed.
 
@@ -50,43 +42,67 @@ The easiest way to use integrate and external caching/data library into Router i
 > - No waterfall data fetching, caused by component based fetching
 > - Better for SEO. If you data is available at render time, it will be indexed by search engines.
 
-Here is a simple example of using a Route `loader` to seed the cache for TanStack Loaders:
+Here is a naive illustration (don't do this) of using a Route's `load` option to seed the cache for some data:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
-import { Loader, useLoader } from '@tanstack/react-loaders'
 
-// Create a new loader
-const postsLoader = new Loader({
-  key: 'posts',
-  fn: async (params) => {
-    const res = await fetch(`/api/posts`)
-    if (!res.ok) throw new Error('Failed to fetch posts')
-    return res.json()
-  },
-})
-
-// Create a new loader client
-const loaderClient = new LoaderClient({
-  loaders: [postsLoader],
-})
+let postsCache = []
 
 const postsRoute = new Route({
   getParentPath: () => rootRoute,
   path: 'posts',
   loader: async () => {
-    // Ensure our loader is loaded with an "await"
-    await loaderClient.load({ key: 'posts' })
+    postsCache = await fetchPosts()
   },
-  component: ({ useLoader }) => {
-    const { data: posts } = useLoaderInstance({ key: 'posts' })
-
-    return <div>...</div>
+  component: () => {
+    return (
+      <div>
+        {postsCache.map((post) => (
+          <Post key={post.id} post={post} />
+        ))}
+      </div>
+    )
   },
 })
 ```
 
-> 🧠 TanStack Loaders uses the `preload` flag to determine cache freshness vs non-preload calls and also to determine if the global `isLoading` or `isPrefetching` flags should be incremented or not.
+This example is **obviously flawed**, but illustrates the point that you can use a route's `loader` option to seed your cache with data. Let's take a look at a more realistic example using TanStack Query.
+
+- Replace `fetchPosts` with your preferred data fetching library's prefetching API
+- Replace `postsCache` with your preferred data fetching library's read-or-fetch API or hook
+
+## A more realistic example using TanStack Query
+
+Let's take a look at a more realistic example using TanStack Query.
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
+const postsQueryOptions = queryOptions({
+  queryKey: 'posts',
+  queryFn: () => fetchPosts,
+})
+
+const postsRoute = new Route({
+  getParentPath: () => rootRoute,
+  path: 'posts',
+  // Use the `loader` option to ensure that the data is loaded
+  loader: () => queryClient.ensureQueryData(postsQueryOptions),
+  component: () => {
+    // Read the data from the cache and subscribe to updates
+    const posts = useSuspenseQuery(postsQueryOptions)
+
+    return (
+      <div>
+        {posts.map((post) => (
+          <Post key={post.id} post={post} />
+        ))}
+      </div>
+    )
+  },
+})
+```
 
 ## SSR Dehydration/Hydration
 
@@ -98,7 +114,7 @@ Tools that are able can integrate with TanStack Router's convenient Dehydration/
 
 The `dehydrate` function can return any serializable JSON data which will get merged and injected into the dehydrated payload that is sent to the client. This payload is delivered via the `DehydrateRouter` component which, when rendered, provides the data back to you in the `hydrate` function on the client.
 
-For example, let's dehydrate and hydrate a `LoaderClient` instance from `@tanstack/react-loaders` so that our loader data we fetched on the server in our router loaders will be available for hydration on the client.
+For example, let's dehydrate and hydrate a TanStack Query `QueryClient` so that our data we fetched on the server will be available for hydration on the client.
 
 ```tsx
 // src/router.tsx
@@ -108,7 +124,7 @@ export function createRouter() {
   // stores inside of your `createRouter` function. This ensures
   // that your data stores are unique to each request and
   // always present on both server and client.
-  const loaderClient = createLoaderClient()
+  const queryClient = new QueryClient()
 
   return new Router({
     routeTree,
@@ -116,26 +132,26 @@ export function createRouter() {
     // convenience (you can provide anything you want to the router
     // context!)
     context: {
-      loaderClient,
+      queryClient,
     },
     // On the server, dehydrate the loader client and return it
     // to the router to get injected into `<DehydrateRouter />`
     dehydrate: () => {
       return {
-        loaderClient: loaderClient.dehydrate(),
+        queryClientState: dehydrate(queryClient),
       }
     },
     // On the client, hydrate the loader client with the data
     // we dehydrated on the server
     hydrate: (dehydrated) => {
-      loaderClient.hydrate(dehydrated.loaderClient)
+      hydrate(client, dehydrated.queryClientState)
     },
     // Optionally, we can use `Wrap` to wrap our router in the loader client provider
     Wrap: ({ children }) => {
       return (
-        <LoaderClientProvider client={loaderClient}>
+        <QueryClientProvider client={queryClient}>
           {children}
-        </LoaderClientProvider>
+        </QueryClientProvider>
       )
     },
   })
@@ -174,7 +190,7 @@ function Test() {
 }
 ```
 
-### Dehydrating and Hydrating Data
+### Dehydrating and Hydrating Deferred Data
 
 Injecting HTML is pretty low-level, so let's use the `router.dehydrateData` and `router.hydrateData` functions to inject and retrieve some JSON data instead.
 
@@ -217,58 +233,45 @@ function Test() {
 
 ### Providing Dehydration/Hydration utilities to external tools
 
-The `router.dehydrateData` and `router.hydrateData` functions are designed to be used by external tools to dehydrate and hydrate data. For example, the `@tanstack/react-loaders` package can use generic `dehydrate`/`hydrate` options to dehydrate and hydrate each loader as it is fetched on the server and rendered on the client:
+The `router.dehydrateData` and `router.hydrateData` functions are designed to be used by external tools to dehydrate and hydrate data. For example, imagine an external data fetching library called `cool-cache` (not real) that allows for custom hydration and dehydration functions to be provided. We could use the `router.dehydrateData` and `router.hydrateData` functions to provide hydration and dehydration capabilities to `cool-cache`:
 
 ```tsx
 // src/router.tsx
 
 export function createRouter() {
-  const loaderClient = createLoaderClient()
+  const coolCache = createCoolCache()
 
   const router = new Router({
     ...
   })
 
-  // Provide hydration and dehydration functions to loader instances
-  loaderClient.options = {
-    ...loaderClient.options,
-    hydrateLoaderInstanceFn: (instance) =>
-      router.hydrateData(instance.hashedKey),
-    dehydrateLoaderInstanceFn: (instance) =>
-      router.dehydrateData(instance.hashedKey, () => instance),
-  }
+  coolCache.setHydrationFn((coolCacheEntry) =>
+      router.hydrateData(coolCacheEntry.hashedKey))
+
+  coolCache.setDehydrationFn((coolCacheEntry) =>
+      router.dehydrateData(coolCacheEntry.hashedKey, () => coolCacheEntry))
 
   return router
 }
 ```
 
-This allows the loader client to automatically dehydrate and hydrate each loader instance as it is fetched on the server and rendered on the client, leaving your application code free of any boilerplate or knowledge of the hydration/dehydration process:
+This would allow `cool-cache` to be used with TanStack Router and have its data automatically hydrated and dehydrated with no extra work.
 
 ```tsx
 // src/components/MyComponent.tsx
 
 import * as React from 'react'
-import { Loader } from '@tanstack/react-loaders'
 
-const testLoader = new Loader({
-  key: 'test',
-  fn: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    return 'Hello World!'
-  },
+const coolCacheFetcher = createCoolCacheFetcher({
+  key: 'todos',
+  fetchFn: () => fetchTodos(),
 })
 
 export function Test() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <Inner />
-    </Suspense>
-  )
-}
+  // On the client, hydration would happen before `useCoolCacheFetcher` returns the data
+  const data = useCoolCacheFetcher(coolCacheFetcher)
+  // On the server, dehydration would happen after `useCoolCacheFetcher` is able to resolve the data
 
-export function Inner() {
-  const instance = useLoaderInstance({ key: 'test' })
-
-  return instance.data
+  return <>...</>
 }
 ```

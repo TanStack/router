@@ -1,16 +1,16 @@
 import React from 'react'
 
 export const defaultTheme = {
-  background: '#0b1521',
-  backgroundAlt: '#132337',
+  background: '#222222',
+  backgroundAlt: '#292929',
   foreground: 'white',
-  gray: '#3f4e60',
-  grayAlt: '#222e3e',
+  gray: '#444',
+  grayAlt: '#444',
   inputBackgroundColor: '#fff',
   inputTextColor: '#000',
-  success: '#00ab52',
+  success: '#80cb00',
   danger: '#ff0085',
-  active: '#006bff',
+  active: '#0099ff',
   warning: '#ffb200',
 } as const
 

@@ -18,7 +18,7 @@ The CLI can be configured via a `tsr.config.json` file in the project's root dir
 ### Options
 
 - **`routeFilePrefix`**: (Optional) If set, only route files and directories that start with this string will be considered for routing.
-- **`routeFileIgnorePrefix`**: (Optional) If set, route files and directories that start with this string will be ignored.
+- **`routeFileIgnorePrefix`**: (Optional, **Defaults to `-`**) Route files and directories that start with this string will be ignored. By default this is set to `-` to allow for the use of directories to house related files that do not contain any route files.
 - **`routesDirectory`**: (Required) The directory containing the routes relative to the cwd.
 - **`generatedRouteTree`**: (Required) The path to the file where the generated route tree will be saved, relative to the cwd.
 
@@ -67,7 +67,7 @@ tsr watch
 
 TSR CLI's generator is designed with an exceptional degree of flexibility, capable of accommodating both flat and nested file structures, or even a combination of the two without any additional configuration. In a flat structure, all files reside at the same level, with specific prefixes and suffixes denoting their relationships and behaviors. Conversely, a nested structure organizes related files into directories, using nesting to illustrate relationships. Both approaches are valuable, so the generator automatically supports mixed configurations where flat and nested structures coexist within the same route tree. This adaptability ensures that developers have complete control over their route organization, allowing for the customization of the routing structure to align seamlessly with various project needs and preferences.
 
-Both of the following configurations will result in a route path of `/posts/:postId/edit`:
+Both of the following configurations will result in a route path of `/posts/$postId/edit`:
 
 - Flat Syntax: `posts.$postId.edit.tsx`
 - Nested Syntax:

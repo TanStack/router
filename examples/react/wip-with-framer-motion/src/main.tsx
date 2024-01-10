@@ -8,21 +8,13 @@ import {
   Link,
   Route,
   ErrorComponent,
-  RouterContext,
   useMatch,
   useRouterState,
   useMatches,
+  rootRouteWithContext,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
-import {
-  LoaderClient,
-  Loader,
-  LoaderClientProvider,
-  typedClient,
-  useLoaderInstance,
-  createLoaderOptions,
-} from '@tanstack/react-loaders'
 
 type PostType = {
   id: string
@@ -52,29 +44,6 @@ const fetchPost = async (postId: string) => {
   return post
 }
 
-const postsLoader = new Loader({
-  key: 'posts',
-  fn: fetchPosts,
-})
-
-const postLoader = new Loader({
-  key: 'post',
-  fn: fetchPost,
-  onInvalidate: async ({ client }) => {
-    await typedClient(client).invalidateLoader({ key: 'posts' })
-  },
-})
-
-const loaderClient = new LoaderClient({
-  loaders: [postsLoader, postLoader],
-})
-
-declare module '@tanstack/react-loaders' {
-  interface Register {
-    loaderClient: typeof loaderClient
-  }
-}
-
 export const mainTransitionProps = {
   initial: { y: -20, opacity: 0, position: 'absolute' },
   animate: { y: 0, opacity: 1, damping: 5 },
@@ -97,11 +66,7 @@ export const postTransitionProps = {
   },
 } as const
 
-const routerContext = new RouterContext<{
-  loaderClient: typeof loaderClient
-}>()
-
-const rootRoute = routerContext.createRootRoute({
+const rootRoute = rootRouteWithContext()({
   component: () => {
     const matches = useMatches()
     const match = useMatch({ strict: false })
@@ -158,14 +123,7 @@ const indexRoute = new Route({
 const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'posts',
-  loader: async ({ context: { loaderClient } }) => {
-    await loaderClient.load({ key: 'posts' })
-  },
   component: () => {
-    const { data: posts } = useLoaderInstance({
-      key: 'posts',
-    })
-
     return (
       <motion.div className="p-2 flex gap-2" {...mainTransitionProps}>
         <ul className="list-disc pl-4">
@@ -209,23 +167,6 @@ class NotFoundError extends Error {}
 const postRoute = new Route({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  beforeLoad: ({ params: { postId } }) => {
-    const loaderOptions = createLoaderOptions({
-      key: 'post',
-      variables: postId,
-    })
-
-    return {
-      loaderOptions,
-    }
-  },
-  loader: async ({
-    context: { loaderClient },
-    routeContext: { loaderOptions },
-    preload,
-  }) => {
-    await loaderClient.load({ ...loaderOptions, preload })
-  },
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {
       return <div>{error.message}</div>
@@ -234,9 +175,6 @@ const postRoute = new Route({
     return <ErrorComponent error={error} />
   },
   component: ({ useRouteContext }) => {
-    const { loaderOptions } = useRouteContext()
-    const { data: post } = useLoaderInstance(loaderOptions)
-
     return (
       <motion.div className="space-y-2" {...postTransitionProps}>
         <h4 className="text-xl font-bold underline">{post.title}</h4>
@@ -272,11 +210,5 @@ const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
 
-  root.render(
-    // <React.StrictMode>
-    <LoaderClientProvider client={loaderClient}>
-      <RouterProvider router={router} />
-    </LoaderClientProvider>,
-    // </React.StrictMode>,
-  )
+  root.render(<RouterProvider router={router} />)
 }

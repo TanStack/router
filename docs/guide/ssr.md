@@ -50,7 +50,7 @@ export const routeTree = rootRoute.addChildren([
 ])
 
 export function createRouter() {
-  return new Router({ routeTree,})
+  return new Router({ routeTree })
 }
 
 declare module '@tanstack/react-router' {

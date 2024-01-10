@@ -2,58 +2,100 @@
 title: Preloading
 ---
 
-Preloading in TanStack Router is a way to load a route before the user actually navigates to it. This is useful for routes that are likely to be visited by the user, but not necessarily on the first page load.
+Preloading in TanStack Router is a way to load a route before the user actually navigates to it. This is useful for routes that are likely to be visited by the user next. For example, if you have a list of posts and the user is likely to click on one of them, you can preload the post route so that it's ready to go when the user clicks on it.
 
-**Preloading works by using hover and touch start events on `<Link>` components to preload the dependencies for the destination route.**
+## Supported Preloading Strategies
 
-The simplest way to preload routes for your application is to set the `preload` option to `intent` for your entire router:
+- Intent
+  - **Preloading by "intent" works by using hover and touch start events on `<Link>` components to preload the dependencies for the destination route.**
+- Render
+  - **Coming soon!**
+- Viewport Visiblity
+  - **Coming soon!**
+
+## How long does preloaded data stay in memory?
+
+Preloaded route matches are temporarily cached in memory with a few important caveats:
+
+- **Unused preloaded data is removed after 30 seconds by default.** This can be configured by setting the `defaultPreloadMaxAge` option on your router.
+- **Obviously, when a a route is loaded, its preloaded version is promoted to the router's normal pending matches state.**
+
+If you need more control over preloading, caching and/or garbage collection of preloaded data, you should use an external caching library like [TanStack Query](https://react-query.tanstack.com)
+
+The simplest way to preload routes for your application is to set the `defaultPreload` option to `intent` for your entire router:
 
 ```tsx
 import { Router } from '@tanstack/react-router'
 
 const router = new Router({
   // ...
-  preload: 'intent',
+  defaultPreload: 'intent',
 })
 ```
 
-This will turn on preloading by default for all `<Link>` components in your application. You can also set the `preload` prop on individual `<Link>` components to override the default behavior.
+This will turn on `intent` preloading by default for all `<Link>` components in your application. You can also set the `preload` prop on individual `<Link>` components to override the default behavior.
 
 ## Preload Delay
 
-By default, preloading will start after **50ms** of the user hovering or touching a `<Link>` component. You can change this delay by setting the `preloadDelay` option on your router:
+By default, preloading will start after **50ms** of the user hovering or touching a `<Link>` component. You can change this delay by setting the `defaultPreloadDelay` option on your router:
 
 ```tsx
 import { Router } from '@tanstack/react-router'
 
 const router = new Router({
   // ...
-  preloadDelay: 100,
+  defaultPreloadDelay: 100,
 })
 ```
 
 You can also set the `preloadDelay` prop on individual `<Link>` components to override the default behavior on a per-link basis.
 
-## Preloading with Data Loaders
+## Built-in Preloading & `preloadStaleTime`
 
-Preloading is most useful when combined with the built-in loaders (or your favorite data loading library). To make this easier, the `loader` route option function receives a `preload` boolean denoting whether the route is being preloaded or not. **If you're using the built-in loader state, preload states are already handled for you automatically**. If that's not the case, then the `preload` flag allows you to load data differently depending on whether the user is navigating to the route or preloading it.
+If you're using the built-in loaders, you can control how long preloaded data is considered fresh until another preload is triggered by setting either `routerOptions.defaultPreloadStaleTime` or `routeOptions.preloadStaleTime` to a number of milliseconds. **By default, preloaded data is considered fresh for 30 seconds.**.
 
-Here's an example using TanStack Loaders:
+To change this, you can set the `defaultPreloadStaleTime` option on your router:
+
+```tsx
+import { Router } from '@tanstack/react-router'
+
+const router = new Router({
+  // ...
+  defaultPreloadStaleTime: 10_000,
+})
+```
+
+Or, you can use the `routeOptions.preloadStaleTime` option on individual routes:
 
 ```tsx
 import { Route } from '@tanstack/react-router'
 
-const postsRoute = new Route({
-  getParentRoute: () => rootRoute,
-  path: 'posts',
-  component: PostsComponent,
-  loader: async ({ preload }) => {
-    await loaderClient.load({ key: 'posts', preload })
-  },
+const postRoute = new Route({
+  path: '/posts/$id',
+  loader: async ({ params }) => fetchPost(params.id),
+  // Preload the route again if the preload cache is older than 10 seconds
+  preloadStaleTime: 10_000,
 })
 ```
 
-Not all data loading libraries will differentiate between preloading or not, but usually a preload method or option is available and can control different aspects of the actual data fetching or caching strategy of the data. For example, when you pass `preload` to TanStack Loaders, the maxAge and maxGcAge are tracked separately from the normal load method (just as they are automatically if you use the built-in route loader state).
+## Preloading with External Libraries
+
+When integrating external caching libraries like React Query, which have their own mechanisms for determining stale data, you may want to override the default preloading and stale-while-revalidate logic of TanStack Router. These libraries often use options like staleTime to control the freshness of data.
+
+To customize the preloading behavior in TanStack Router and fully leverage your external library's caching strategy, you can bypass the built-in caching by setting routerOptions.defaultPreloadStaleTime or routeOptions.preloadStaleTime to 0. This ensures that all preloads are marked as stale internally, and loaders are always invoked, allowing your external library, such as React Query, to manage data loading and caching.
+
+For example:
+
+```tsx
+import { Router } from '@tanstack/react-router'
+
+const router = new Router({
+  // ...
+  defaultPreloadStaleTime: 0,
+})
+```
+
+This would then allow you, for instance, to use an option like React Query's `staleTime` to control the freshness of your preloads.
 
 ## Preloading Manually
 
@@ -65,7 +107,10 @@ function Component() {
 
   useEffect(() => {
     try {
-      router.preloadRoute({ to: postRoute, params: { id: 1 } })
+      const matches = await router.preloadRoute({
+        to: postRoute,
+        params: { id: 1 },
+      })
     } catch (err) {
       // Failed to preload route
     }

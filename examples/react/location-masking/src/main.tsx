@@ -11,6 +11,7 @@ import {
   useRouterState,
   useNavigate,
   createRouteMask,
+  ErrorRouteProps,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -70,39 +71,41 @@ const rootRoute = new RootRoute({
     search as {
       modal?: ModalObject
     },
-  component: () => {
-    const status = useRouterState({ select: (s) => s.status })
-
-    return (
-      <>
-        <div className="p-2 flex gap-2 text-lg">
-          <Link
-            to="/"
-            activeProps={{
-              className: 'font-bold',
-            }}
-            activeOptions={{ exact: true }}
-          >
-            Home
-          </Link>{' '}
-          <Link
-            to={'/photos'}
-            activeProps={{
-              className: 'font-bold',
-            }}
-          >
-            Photos
-          </Link>{' '}
-          {status === 'pending' ? <Spinner /> : null}
-        </div>
-        <hr />
-        <Outlet />
-        {/* Start rendering router matches */}
-        <TanStackRouterDevtools position="bottom-right" />
-      </>
-    )
-  },
+  component: RootComponent,
 })
+
+function RootComponent() {
+  const status = useRouterState({ select: (s) => s.status })
+
+  return (
+    <>
+      <div className="p-2 flex gap-2 text-lg">
+        <Link
+          to="/"
+          activeProps={{
+            className: 'font-bold',
+          }}
+          activeOptions={{ exact: true }}
+        >
+          Home
+        </Link>{' '}
+        <Link
+          to={'/photos'}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Photos
+        </Link>{' '}
+        {status === 'pending' ? <Spinner /> : null}
+      </div>
+      <hr />
+      <Outlet />
+      {/* Start rendering router matches */}
+      <TanStackRouterDevtools position="bottom-right" />
+    </>
+  )
+}
 
 function Modal(props: Dialog.DialogProps) {
   return (
@@ -128,63 +131,106 @@ const indexRoute = new Route({
     )
   },
 })
-
 const photosRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'photos',
-  key: false,
   loader: fetchPhotos,
-  component: ({ useLoader }) => {
-    const photos = useLoader()
-
-    return (
-      <div className="p-2 space-y-2">
-        <ul className="grid [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))] gap-2">
-          {[
-            ...photos,
-            { id: 'i-do-not-exist', title: 'Missing Photo Test', url: '' },
-          ]?.map((photo) => {
-            return (
-              <li key={photo.id} className="">
-                <Link
-                  to={photoModalRoute.to}
-                  params={{
-                    photoId: photo.id,
-                  }}
-                  // If you want to use a mask, you can do so like this, but
-                  // it's generally safer to set up a route mask instead.
-                  // mask={{
-                  //   to: photoRoute.to,
-                  //   params: {
-                  //     photoId: photo.id,
-                  //   },
-                  // }}
-                  className="whitespace-nowrap border rounded-lg shadow-sm flex items-center hover:shadow-lg text-blue-800 hover:scale-[1.1] overflow-hidden transition-all"
-                  activeProps={{ className: 'text-black font-bold' }}
-                >
-                  <img
-                    src={photo.url}
-                    alt={photo.title}
-                    className="max-w-full"
-                  />
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-        <Outlet />
-      </div>
-    )
-  },
+  component: PhotosRoute,
 })
+
+function PhotosRoute() {
+  const photos = photosRoute.useLoaderData()
+
+  return (
+    <div className="p-2 space-y-2">
+      <ul className="grid [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))] gap-2">
+        {[
+          ...photos,
+          { id: 'i-do-not-exist', title: 'Missing Photo Test', url: '' },
+        ]?.map((photo) => {
+          return (
+            <li key={photo.id} className="">
+              <Link
+                to={photoModalRoute.to}
+                params={{
+                  photoId: photo.id,
+                }}
+                // If you want to use a mask, you can do so like this, but
+                // it's generally safer to set up a route mask instead.
+                // mask={{
+                //   to: photoRoute.to,
+                //   params: {
+                //     photoId: photo.id,
+                //   },
+                // }}
+                className="whitespace-nowrap border rounded-lg shadow-sm flex items-center hover:shadow-lg text-blue-800 hover:scale-[1.1] overflow-hidden transition-all"
+                activeProps={{ className: 'text-black font-bold' }}
+              >
+                <img src={photo.url} alt={photo.title} className="max-w-full" />
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+      <Outlet />
+    </div>
+  )
+}
 
 const photoRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'photos/$photoId',
   loader: async ({ params: { photoId } }) => fetchPhoto(photoId),
-  errorComponent: ({ error }) => {
-    return (
-      <div className="p-4">
+  errorComponent: PhotoErrorComponent,
+  component: PhotoComponent,
+})
+
+function PhotoErrorComponent({ error }: ErrorRouteProps) {
+  return (
+    <div className="p-4">
+      {(() => {
+        if (error instanceof NotFoundError) {
+          return <div>{error.message}</div>
+        }
+        return <ErrorComponent error={error} />
+      })()}
+    </div>
+  )
+}
+
+function PhotoComponent() {
+  const photo = photoRoute.useLoaderData()
+
+  return (
+    <div className="p-4">
+      <Photo photo={photo} />
+    </div>
+  )
+}
+
+const photoModalRoute = new Route({
+  getParentRoute: () => photosRoute,
+  path: '$photoId/modal',
+  loader: async ({ params: { photoId } }) => fetchPhoto(photoId),
+  errorComponent: PhotoModalErrorComponent,
+  // pendingComponent: PhotoModalPendingComponent,
+  component: PhotoModalComponent,
+})
+
+function PhotoModalErrorComponent({ error }: ErrorRouteProps) {
+  const navigate = useNavigate()
+
+  return (
+    <Modal
+      onOpenChange={(open) => {
+        if (!open) {
+          navigate({
+            to: photosRoute.to,
+          })
+        }
+      }}
+    >
+      <div className="bg-white p-2 rounded-lg">
         {(() => {
           if (error instanceof NotFoundError) {
             return <div>{error.message}</div>
@@ -192,87 +238,53 @@ const photoRoute = new Route({
           return <ErrorComponent error={error} />
         })()}
       </div>
-    )
-  },
-  component: ({ useLoader }) => {
-    const photo = useLoader()
+    </Modal>
+  )
+}
 
-    return (
-      <div className="p-4">
+function PhotoModalPendingComponent() {
+  const navigate = useNavigate()
+
+  return (
+    <Modal
+      onOpenChange={(open) => {
+        if (!open) {
+          navigate({
+            to: photosRoute.to,
+          })
+        }
+      }}
+    >
+      <div className="bg-white p-2 rounded-lg">
+        <Spinner />
+      </div>
+    </Modal>
+  )
+}
+
+function PhotoModalComponent() {
+  const navigate = useNavigate()
+  const photo = photoModalRoute.useLoaderData()
+
+  return (
+    <Modal
+      onOpenChange={(open) => {
+        if (!open) {
+          navigate({
+            to: photosRoute.to,
+          })
+        }
+      }}
+    >
+      <div className="bg-white p-2 rounded-lg">
+        <Link target="_blank" className="underline text-blue-500">
+          Open in new tab (to test de-masking)
+        </Link>
         <Photo photo={photo} />
       </div>
-    )
-  },
-})
-
-const photoModalRoute = new Route({
-  getParentRoute: () => photosRoute,
-  path: '$photoId/modal',
-  loader: async ({ params: { photoId } }) => fetchPhoto(photoId),
-  errorComponent: ({ error }) => {
-    const navigate = useNavigate()
-
-    return (
-      <Modal
-        onOpenChange={(open) => {
-          if (!open) {
-            navigate({
-              to: photosRoute.to,
-            })
-          }
-        }}
-      >
-        <div className="bg-white p-2 rounded-lg">
-          {(() => {
-            if (error instanceof NotFoundError) {
-              return <div>{error.message}</div>
-            }
-            return <ErrorComponent error={error} />
-          })()}
-        </div>
-      </Modal>
-    )
-  },
-  pendingComponent: () => {
-    const navigate = useNavigate()
-
-    return (
-      <Modal
-        onOpenChange={(open) => {
-          if (!open) {
-            navigate({
-              to: photosRoute.to,
-            })
-          }
-        }}
-      >
-        <div className="bg-white p-2 rounded-lg">
-          <Spinner />
-        </div>
-      </Modal>
-    )
-  },
-  component: ({ useLoader }) => {
-    const navigate = useNavigate()
-    const photo = useLoader()
-
-    return (
-      <Modal
-        onOpenChange={(open) => {
-          if (!open) {
-            navigate({
-              to: photosRoute.to,
-            })
-          }
-        }}
-      >
-        <div className="bg-white p-2 rounded-lg">
-          <Photo photo={photo} />
-        </div>
-      </Modal>
-    )
-  },
-})
+    </Modal>
+  )
+}
 
 function Photo({ photo }: { photo: PhotoType }) {
   return (
@@ -301,8 +313,8 @@ const photoModalToPhotoMask = createRouteMask({
 // Set up a Router instance
 const router = new Router({
   routeTree,
-  reloadOnWindowFocus: true,
   routeMasks: [photoModalToPhotoMask],
+  defaultPreload: 'intent',
 })
 
 // Register things for typesafety

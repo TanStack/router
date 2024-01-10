@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/react-router",
   "author": "Tanner Linsley",
-  "version": "0.0.1-beta.191",
+  "version": "0.0.1-beta.286",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
@@ -43,10 +43,10 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.16.7",
+    "@tanstack/history": "workspace:*",
+    "@tanstack/react-store": "^0.2.1",
+    "@tanstack/store": "^0.1.3",
     "tiny-invariant": "^1.3.1",
-    "tiny-warning": "^1.0.3",
-    "@tanstack/router-core": "workspace:*",
-    "@tanstack/react-store": "^0.0.1",
-    "@gisatcz/cross-package-react-context": "^0.2.0"
+    "tiny-warning": "^1.0.3"
   }
 }

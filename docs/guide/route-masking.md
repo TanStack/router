@@ -108,7 +108,7 @@ URLs are automatically unmasked when they are shared since as soon as a URL is d
 
 ## Local Unmasking Defaults
 
-**By default, URLs are not unmasked when the page is reloaded**. Masking data is stored in the `location.state` property of the history location, so as long as the history location is still in memory in your history stack, the masking data will be available and the URL will continue to be masked.
+**By default, URLs are not unmasked when the page is reloaded locally**. Masking data is stored in the `location.state` property of the history location, so as long as the history location is still in memory in your history stack, the masking data will be available and the URL will continue to be masked.
 
 ## Unmasking on page reload
 

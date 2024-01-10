@@ -6,7 +6,7 @@ Route `path`s are used to match parts of a URL's pathname to a route. At their c
 
 ### Leading and Trailing Slashes
 
-To make things extremely simple, route paths ignore leading and trailing slashes. You can include them if you want, but they do nothing 😜. The following are all valid paths:
+To make things extremely simple, route paths ignore leading and trailing slashes. You can include them if you want, but they will be stripped internally by TanStack Router. The following are all valid paths:
 
 - `/`
 - `/about`
@@ -18,18 +18,27 @@ To make things extremely simple, route paths ignore leading and trailing slashes
 
 ### Inner Path Slashes
 
-Inner path slashes are 100% valid and can be used to target paths without creating additional component hierarchy or markup.
+Inner path slashes like `post/edit` are 100% valid and can be used to target specific and deep paths without creating additional routes, component hierarchy or markup.
 
-For example, a path of `blog/post/edit` could be used to render a blog post editor without nesting it inside of other components:
+For example, a path of `post/edit` could be used to render a blog post editor without nesting it inside of other components:
 
 ```tsx
 const rootConfig = new RootRoute()
-const editRoute = new Route({ path: `blog/post/edit`, component: PostEditor })
+const postRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: `post`,
+  component: Post,
+})
+const editRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: `post/edit`,
+  component: PostEditor,
+})
 
 const routeConfig = rootRoute.addChildren([editRoute])
 ```
 
-This router setup would only render a single `<PostEditor />` component for the `blog/post/edit` path.
+This router would only render the `<PostEditor />` component when the `post/edit` path is matched.
 
 ### Case-Sensitivity
 
@@ -37,7 +46,12 @@ Route paths are **not case-sensitive** by default. This means that `/about` and 
 
 ## Index Paths
 
-A route with a path of `/` is called an "index" path because it specifically targets the state of a parent route when no child route is matched. This is best understood through an example:
+A route with a path of `/` is called an "index" path because it specifically targets the state of a parent route when no child route is matched. This is best understood through an example. Let's build the following route tree structure:
+
+- `/` - Index Route
+- `/blog` - Blog Route
+  - `/` - Blog Index Route
+  - `/$slug` - Blog Post Route
 
 ```tsx
 let rootRoute = new RootRoute()
@@ -67,7 +81,7 @@ Static paths are the simplest type of route path. They are just a string that ma
 ```tsx
 let rootRoute = new RootRoute()
 
-// ✅ This route will match any path that starts with `/about`
+// ✅ This route will match any path that starts with the `/about` segment
 const aboutRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'about',
@@ -98,7 +112,7 @@ const userRoute = new Route({
 const routeConfig = rootRoute.addChildren([usersRoute.addChildren([userRoute])])
 ```
 
-Dynamic segments can be accessed via the `params` object using the label you provided as the property key. For example, a path of `/users/$userId` would produce a `userId` param of `123` for the path `/users/123/details`:
+Dynamic segments can be accessed via the `params` object in many places throughout the router using the label you provided as the property key. For example, a path of `/users/$userId` would produce a `userId` param of `123` for the path `/users/123/details`:
 
 ```tsx
 {
@@ -132,10 +146,6 @@ Splat routes capture their matched path in the `params` object under the `*` pro
 ```
 
 > 🧠 Why use both `*` and `$`? Thanks to tools like Remix, we know that while `*`s are the most common character to represent a wildcard/splat, they do not play nice with filenames or CLI tools. In those cases `$` can be a better choice.
-
-## 404 / Non-matching Routes
-
-A 404 / non-matching route is really just a fancy name for a [Splat / Catch-All](#splat-catch-all-matching) path. If no other routes match, the splat/catch-all route will always match
 
 ## Pathless Routes
 
@@ -177,18 +187,67 @@ In the above example, the pathless route will not add or match any path in the U
 
 > 🧠 An ID is required because every route must be uniquely identifiable, especially when using TypeScript so as to avoid type errors and accomplish autocomplete effectively.
 
+## 404 / `NotFoundRoute`s
+
+404 / non-matching routes are technically feasible by placing a [Splat / Catch-All](#splat-catch-all-matching) route under the root or another parent route. However, if you have a lot of route branches, this can be a bit cumbersome. Instead, you can create a `NotFoundRoute` and provide it to your router's `notFoundRoute` option.
+
+> ⚠️ Never include a `NotFoundRoute` in your route tree. Doing so will not allow it to work at every branch of your route tree.
+
+`NotFoundRoutes` are rendered when:
+
+- excess path segments are found in the URL beyond all possible route matches
+- there is no dynamic segment or splat route to capture the excess path segments
+- there is no index route to render when the parent route is matched
+- a `notFoundRoute` is provided to the router
+
+`NotFoundRoute`s are special versions of a `Route` that:
+
+- Have no `path`
+- Have no `id`
+- Cannot parse or validate path params
+
+They do however still have the ability to:
+
+- Render `component`, `pendingComponent` and `errorComponent`s
+- Validate and receive `search` params
+- Configure `loader`s and `beforeLoad` hooks
+- Receive `data` and search params from the root route
+
+```tsx
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  blogRoute.addChildren([blogIndexRoute]),
+])
+
+const notFoundRoute = new Route({
+  component: NotFound,
+})
+
+const router = new Router({
+  routeTree,
+  notFoundRoute,
+})
+```
+
 ## Identifying Routes via Search Params
 
-Search Params by default are not used to identify matching paths mostly because they are extremely flexible, flat and can contain a lot of unrelated data to your actual route definition. However, in some cases you may choose to use them to uniquely identify a route match. For example, you may want to use a search param to identify a specific user in your application, you might model your url like this: `/user?userId=123`. This means that your `user` route would need some extra help to identify a specific user. You can do this by adding a `key` function to your route:
+Search Params by default are not used to identify matching paths mostly because they are extremely flexible, flat and can contain a lot of unrelated data to your actual route definition. However, in some cases you may need to use them to uniquely identify a route match. For example, you may have a route that uses a search param like `pageIndex` that uniquely identifies the data held inside of the route match. Or, imagine a `/users/user` route that uses the search param `userId` to identify a specific user in your application, you might model your url like this: `/users/user?userId=123`. This means that your `user` route would need some extra help to identify a specific user. Luckily, the only way to utilize search params in your route loaders is to provide them via a special `loaderDeps` route option. This option provides you all of the search params for the route match and allows you to return the ones you'll need inside of your loader.
 
 ```tsx
 const userRoute = new Route({
   getParentRoute: () => usersRoute,
+  validateSearch: (search) =>
+    search as {
+      userId: string
+    },
   path: 'user',
-  key: ({ search }) => search.userId,
+  loaderDeps: ({ search: { userId } }) => ({
+    userId,
+  }),
+  loader: async ({ params: { userId } }) => getUser(userId),
 })
 ```
 
 ---
 
-Route paths are just the beginning of what you can do with route configuration. We'll explore more of those features later on.
+These are just the basics of configuring route paths and structure for your route tree and is just the beginning of what you can do with the rest of the available route configuration options. We'll explore more of those features later on.

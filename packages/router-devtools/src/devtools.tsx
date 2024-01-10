@@ -1,19 +1,21 @@
 import React from 'react'
 import {
-  routerContext,
   invariant,
   AnyRouter,
-  useStore,
   Route,
   AnyRoute,
   AnyRootRoute,
   trimPath,
+  useRouter,
+  useRouterState,
+  AnyRouteMatch,
 } from '@tanstack/react-router'
 
 import useLocalStorage from './useLocalStorage'
 import {
   getRouteStatusColor,
   getStatusColor,
+  multiSortBy,
   useIsMounted,
   useSafeState,
 } from './utils'
@@ -339,16 +341,16 @@ export function TanStackRouterDevtools({
                     right: '0',
                   }
                 : position === 'top-left'
-                ? {
-                    left: '0',
-                  }
-                : position === 'bottom-right'
-                ? {
-                    right: '0',
-                  }
-                : {
-                    left: '0',
-                  }),
+                  ? {
+                      left: '0',
+                    }
+                  : position === 'bottom-right'
+                    ? {
+                        right: '0',
+                      }
+                    : {
+                        left: '0',
+                      }),
               ...closeButtonStyle,
             }}
           >
@@ -383,19 +385,19 @@ export function TanStackRouterDevtools({
                   right: '0',
                 }
               : position === 'top-left'
-              ? {
-                  top: '0',
-                  left: '0',
-                }
-              : position === 'bottom-right'
-              ? {
-                  bottom: '0',
-                  right: '0',
-                }
-              : {
-                  bottom: '0',
-                  left: '0',
-                }),
+                ? {
+                    top: '0',
+                    left: '0',
+                  }
+                : position === 'bottom-right'
+                  ? {
+                      bottom: '0',
+                      right: '0',
+                    }
+                  : {
+                      bottom: '0',
+                      left: '0',
+                    }),
             ...toggleButtonStyle,
           }}
         >
@@ -409,22 +411,21 @@ export function TanStackRouterDevtools({
 function RouteComp({
   route,
   isRoot,
-  router,
-  activeRouteId,
-  activeMatchId,
-  setActiveRouteId,
-  setActiveMatchId,
+  activeId,
+  setActiveId,
 }: {
   route: AnyRootRoute | AnyRoute
   isRoot?: boolean
-  router: AnyRouter
-  activeRouteId: string | undefined
-  activeMatchId: string | undefined
-  setActiveRouteId: (id: string) => void
-  setActiveMatchId: (id: string) => void
+  activeId: string | undefined
+  setActiveId: (id: string) => void
 }) {
-  const matches = Object.values(router.state.matchesById)
-  const match = router.state.matches.find((d) => d.routeId === route.id)
+  const routerState = useRouterState()
+  const matches =
+    routerState.status === 'pending'
+      ? routerState.pendingMatches ?? []
+      : routerState.matches
+
+  const match = routerState.matches.find((d) => d.routeId === route.id)
 
   return (
     <div>
@@ -433,8 +434,7 @@ function RouteComp({
         aria-label={`Open match details for ${route.id}`}
         onClick={() => {
           if (match) {
-            setActiveRouteId(activeRouteId === route.id ? '' : route.id)
-            setActiveMatchId(match.id)
+            setActiveId(activeId === route.id ? '' : route.id)
           }
         }}
         style={{
@@ -443,7 +443,9 @@ function RouteComp({
           cursor: match ? 'pointer' : 'default',
           alignItems: 'center',
           background:
-            route.id === activeRouteId ? 'rgba(255,255,255,.1)' : undefined,
+            route.id === activeId ? 'rgba(255,255,255,.1)' : undefined,
+          padding: '.25rem .5rem',
+          gap: '.5rem',
         }}
       >
         {isRoot ? null : (
@@ -452,7 +454,6 @@ function RouteComp({
               flex: '0 0 auto',
               width: '.7rem',
               height: '.7rem',
-              margin: '.5rem .75rem',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 'bold',
@@ -463,20 +464,29 @@ function RouteComp({
             }}
           />
         )}
-        <Code
+        <div
           style={{
             flex: '1 0 auto',
             display: 'flex',
             justifyContent: 'space-between',
-            padding: '.25rem .5rem .25rem 0',
-            paddingLeft: isRoot ? '.5rem' : 0,
+            alignItems: 'center',
+            padding: isRoot ? '0 .25rem' : 0,
             opacity: match ? 1 : 0.7,
             fontSize: '0.7rem',
           }}
         >
-          <span>{route.path || trimPath(route.id)} </span>
-          {match ? <span style={{ opacity: 0.3 }}>{match.id}</span> : null}
-        </Code>
+          <Code>{route.path || trimPath(route.id)} </Code>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '.5rem',
+            }}
+          >
+            {match ? <Code style={{ opacity: 0.3 }}>{match.id}</Code> : null}
+            <AgeTicker match={match} />
+          </div>
+        </div>
       </div>
       {(route.children as Route[])?.length ? (
         <div
@@ -493,11 +503,8 @@ function RouteComp({
               <RouteComp
                 key={r.id}
                 route={r}
-                router={router}
-                activeRouteId={activeRouteId}
-                activeMatchId={activeMatchId}
-                setActiveRouteId={setActiveRouteId}
-                setActiveMatchId={setActiveMatchId}
+                activeId={activeId}
+                setActiveId={setActiveId}
               />
             ))}
         </div>
@@ -518,55 +525,43 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     ...panelProps
   } = props
 
-  const routerContextValue = React.useContext(routerContext)
-  const router = userRouter ?? routerContextValue
+  const router = useRouter()
+  const routerState = useRouterState()
+
+  const matches = [
+    ...(routerState.pendingMatches ?? []),
+    ...routerState.matches,
+    ...routerState.cachedMatches,
+  ]
 
   invariant(
     router,
     'No router was found for the TanStack Router Devtools. Please place the devtools in the <RouterProvider> component tree or pass the router instance to the devtools manually.',
   )
 
-  useStore(router.__store)
+  // useStore(router.__store)
 
   const [showMatches, setShowMatches] = useLocalStorage(
     'tanstackRouterDevtoolsShowMatches',
     true,
   )
 
-  const [activeRouteId, setActiveRouteId] = useLocalStorage(
+  const [activeId, setActiveId] = useLocalStorage(
     'tanstackRouterDevtoolsActiveRouteId',
-    '',
-  )
-  const [activeMatchId, setActiveMatchId] = useLocalStorage(
-    'tanstackRouterDevtoolsActiveMatchId',
     '',
   )
 
   const activeMatch = React.useMemo(
-    () =>
-      router.state.matchesById[activeRouteId as any] ||
-      router.state.matchesById[activeMatchId as any],
-    [activeRouteId, activeMatchId],
+    () => matches.find((d) => d.routeId === activeId || d.id === activeId),
+    [matches, activeId],
   )
 
-  const hasSearch = Object.keys(router.state.location.search || {}).length
+  const hasSearch = Object.keys(routerState.location.search || {}).length
 
-  const preloadMatches = Object.values(router.state.matchesById).filter(
-    (match) => {
-      return (
-        !router.state.matchIds.includes(match.id) &&
-        !router.state.pendingMatchIds.includes(match.id)
-      )
-    },
-  )
-
-  // React.useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     router.cleanMatches()
-  //   }, 1000)
-
-  //   return () => clearInterval(interval)
-  // }, [router])
+  const explorerState = {
+    ...router,
+    state: router.state,
+  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -681,8 +676,43 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             >
               <Explorer
                 label="Router"
-                value={router}
-                defaultExpanded={{ state: {} as any, context: {} as any }}
+                value={Object.fromEntries(
+                  multiSortBy(
+                    Object.keys(explorerState),
+                    (
+                      [
+                        'state',
+                        'routesById',
+                        'routesByPath',
+                        'flatRoutes',
+                        'options',
+                      ] as const
+                    ).map((d) => (dd) => dd !== d),
+                  )
+                    .map((key) => [key, (explorerState as any)[key]])
+                    .filter(
+                      (d) =>
+                        typeof d[1] !== 'function' &&
+                        ![
+                          '__store',
+                          'basepath',
+                          'injectedHtml',
+                          'subscribers',
+                          'latestLoadPromise',
+                          'navigateTimeout',
+                          'resetNextScroll',
+                          'tempLocationKey',
+                          'latestLocation',
+                          'routeTree',
+                          'history',
+                        ].includes(d[0]),
+                    ),
+                )}
+                defaultExpanded={{
+                  state: {} as any,
+                  context: {} as any,
+                  options: {} as any,
+                }}
                 filterSubEntries={(subEntries) => {
                   return subEntries.filter((d) => typeof d.value !== 'function')
                 }}
@@ -721,7 +751,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               }}
             >
               Pathname{' '}
-              {router.state.location.maskedLocation ? (
+              {routerState.location.maskedLocation ? (
                 <div
                   style={{
                     padding: '.1rem .5rem',
@@ -747,16 +777,16 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   opacity: 0.6,
                 }}
               >
-                {router.state.location.pathname}
+                {routerState.location.pathname}
               </code>
-              {router.state.location.maskedLocation ? (
+              {routerState.location.maskedLocation ? (
                 <code
                   style={{
                     color: theme.warning,
                     fontWeight: 'bold',
                   }}
                 >
-                  {router.state.location.maskedLocation.pathname}
+                  {routerState.location.maskedLocation.pathname}
                 </code>
               ) : null}
             </div>
@@ -769,68 +799,84 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 zIndex: 1,
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'space-between',
                 gap: '.5rem',
                 fontWeight: 'bold',
               }}
             >
-              <button
-                type="button"
-                onClick={() => {
-                  setShowMatches(false)
-                }}
-                disabled={!showMatches}
+              <div
                 style={{
-                  appearance: 'none',
-                  opacity: showMatches ? 0.5 : 1,
-                  border: 0,
-                  background: 'transparent',
-                  color: 'inherit',
-                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '.5rem',
                 }}
               >
-                Routes
-              </button>
-              /
-              <button
-                type="button"
-                onClick={() => {
-                  setShowMatches(true)
-                }}
-                disabled={showMatches}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMatches(false)
+                  }}
+                  disabled={!showMatches}
+                  style={{
+                    appearance: 'none',
+                    opacity: showMatches ? 0.5 : 1,
+                    border: 0,
+                    background: 'transparent',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Routes
+                </button>
+                /
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMatches(true)
+                  }}
+                  disabled={showMatches}
+                  style={{
+                    appearance: 'none',
+                    opacity: !showMatches ? 0.5 : 1,
+                    border: 0,
+                    background: 'transparent',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Matches
+                </button>
+              </div>
+              <div
                 style={{
-                  appearance: 'none',
-                  opacity: !showMatches ? 0.5 : 1,
-                  border: 0,
-                  background: 'transparent',
-                  color: 'inherit',
-                  cursor: 'pointer',
+                  opacity: 0.3,
+                  fontSize: '0.7rem',
+                  fontWeight: 'normal',
                 }}
               >
-                Matches
-              </button>
+                age / staleTime / gcTime
+              </div>
             </div>
             {!showMatches ? (
               <RouteComp
                 route={router.routeTree}
-                router={router}
                 isRoot
-                activeRouteId={activeRouteId}
-                activeMatchId={activeMatchId}
-                setActiveRouteId={setActiveRouteId}
-                setActiveMatchId={setActiveMatchId}
+                activeId={activeId}
+                setActiveId={setActiveId}
               />
             ) : (
               <div>
-                {router.state.matches.map((match, i) => {
+                {(routerState.status === 'pending'
+                  ? routerState.pendingMatches ?? []
+                  : routerState.matches
+                ).map((match, i) => {
                   return (
                     <div
-                      key={match.routeId || i}
+                      key={match.id || i}
                       role="button"
-                      aria-label={`Open match details for ${match.routeId}`}
+                      aria-label={`Open match details for ${match.id}`}
                       onClick={() =>
-                        setActiveRouteId(
-                          activeRouteId === match.routeId ? '' : match.routeId,
-                        )
+                        setActiveId(activeId === match.id ? '' : match.id)
                       }
                       style={{
                         display: 'flex',
@@ -866,13 +912,14 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                       >
                         {`${match.id}`}
                       </Code>
+                      <AgeTicker match={match} />
                     </div>
                   )
                 })}
               </div>
             )}
           </div>
-          {preloadMatches?.length ? (
+          {routerState.cachedMatches?.length ? (
             <div
               style={{
                 flex: '1 1 auto',
@@ -889,60 +936,74 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   zIndex: 1,
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: '.5rem',
                   fontWeight: 'bold',
                 }}
               >
-                Preloaded Matches
+                <div>Cached Matches</div>
+                <div
+                  style={{
+                    opacity: 0.3,
+                    fontSize: '0.7rem',
+                    fontWeight: 'normal',
+                  }}
+                >
+                  age / staleTime / gcTime
+                </div>
               </div>
-              {preloadMatches.map((match) => {
-                return (
-                  <div
-                    key={match.id}
-                    role="button"
-                    aria-label={`Open match details for ${match.routeId}`}
-                    onClick={() =>
-                      setActiveMatchId(
-                        activeMatchId === match.id ? '' : match.id,
-                      )
-                    }
-                    style={{
-                      display: 'flex',
-                      borderBottom: `solid 1px ${theme.grayAlt}`,
-                      cursor: 'pointer',
-                      alignItems: 'center',
-                      background:
-                        match === activeMatch
-                          ? 'rgba(255,255,255,.1)'
-                          : undefined,
-                    }}
-                  >
+              <div>
+                {routerState.cachedMatches.map((match) => {
+                  return (
                     <div
+                      key={match.id}
+                      role="button"
+                      aria-label={`Open match details for ${match.id}`}
+                      onClick={() =>
+                        setActiveId(activeId === match.id ? '' : match.id)
+                      }
                       style={{
-                        flex: '0 0 auto',
-                        width: '1.3rem',
-                        height: '1.3rem',
-                        marginLeft: '.25rem',
-                        background: getStatusColor(match, theme),
+                        display: 'flex',
+                        borderBottom: `solid 1px ${theme.grayAlt}`,
+                        cursor: 'pointer',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 'bold',
-                        borderRadius: '.25rem',
-                        transition: 'all .2s ease-out',
-                      }}
-                    />
-
-                    <Code
-                      style={{
-                        padding: '.5em',
+                        background:
+                          match === activeMatch
+                            ? 'rgba(255,255,255,.1)'
+                            : undefined,
                         fontSize: '0.7rem',
                       }}
                     >
-                      {`${match.id}`}
-                    </Code>
-                  </div>
-                )
-              })}
+                      <div
+                        style={{
+                          flex: '0 0 auto',
+                          width: '.75rem',
+                          height: '.75rem',
+                          marginLeft: '.25rem',
+                          background: getStatusColor(match, theme),
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 'bold',
+                          borderRadius: '100%',
+                          transition: 'all 1s ease-out',
+                        }}
+                      />
+
+                      <Code
+                        style={{
+                          padding: '.5em',
+                        }}
+                      >
+                        {`${match.id}`}
+                      </Code>
+
+                      <div style={{ marginLeft: 'auto' }}>
+                        <AgeTicker match={match} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           ) : null}
         </div>
@@ -961,7 +1022,11 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               Match Details
             </div>
             <div>
-              <table>
+              <table
+                style={{
+                  fontSize: '0.8rem',
+                }}
+              >
                 <tbody>
                   <tr>
                     <td style={{ opacity: '.5' }}>ID</td>
@@ -977,7 +1042,18 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                   </tr>
                   <tr>
                     <td style={{ opacity: '.5' }}>Status</td>
-                    <td>{activeMatch.status}</td>
+                    <td>
+                      {routerState.pendingMatches?.find(
+                        (d) => d.id === activeMatch.id,
+                      )
+                        ? 'Pending'
+                        : routerState.matches?.find(
+                              (d) => d.id === activeMatch.id,
+                            )
+                          ? 'Active'
+                          : 'Cached'}{' '}
+                      - {activeMatch.status}
+                    </td>
                   </tr>
                   {/* <tr>
                     <td style={{ opacity: '.5' }}>Invalid</td>
@@ -1023,6 +1099,33 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 Reload
               </Button>
             </div> */}
+            {activeMatch.loaderData ? (
+              <>
+                <div
+                  style={{
+                    background: theme.backgroundAlt,
+                    padding: '.5em',
+                    position: 'sticky',
+                    top: 0,
+                    bottom: 0,
+                    zIndex: 1,
+                  }}
+                >
+                  Loader Data
+                </div>
+                <div
+                  style={{
+                    padding: '.5em',
+                  }}
+                >
+                  <Explorer
+                    label="loaderData"
+                    value={activeMatch.loaderData}
+                    defaultExpanded={{}}
+                  />
+                </div>
+              </>
+            ) : null}
             <div
               style={{
                 background: theme.backgroundAlt,
@@ -1079,9 +1182,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               }}
             >
               <Explorer
-                value={router.state.location.search || {}}
+                value={routerState.location.search || {}}
                 defaultExpanded={Object.keys(
-                  (router.state.location.search as {}) || {},
+                  (routerState.location.search as {}) || {},
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj
@@ -1094,3 +1197,74 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     </ThemeProvider>
   )
 })
+
+function AgeTicker({ match }: { match?: AnyRouteMatch }) {
+  const router = useRouter()
+
+  const rerender = React.useReducer(
+    () => ({}),
+    () => ({}),
+  )[1]
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      rerender()
+    }, 1000)
+
+    return () => {
+      clearInterval(interval)
+    }
+  }, [])
+
+  if (!match) {
+    return null
+  }
+
+  const route = router.looseRoutesById[match?.routeId]!
+
+  if (!route.options.loader) {
+    return null
+  }
+
+  const age = Date.now() - match?.updatedAt
+  const staleTime =
+    route.options.staleTime ?? router.options.defaultStaleTime ?? 0
+  const gcTime =
+    route.options.gcTime ?? router.options.defaultGcTime ?? 30 * 60 * 1000
+
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '.25rem',
+        color: age > staleTime ? theme.warning : undefined,
+      }}
+    >
+      <div style={{}}>{formatTime(age)}</div>
+      <div>/</div>
+      <div>{formatTime(staleTime)}</div>
+      <div>/</div>
+      <div>{formatTime(gcTime)}</div>
+    </div>
+  )
+}
+
+function formatTime(ms: number) {
+  const units = ['s', 'min', 'h', 'd']
+  const values = [ms / 1000, ms / 60000, ms / 3600000, ms / 86400000]
+
+  let chosenUnitIndex = 0
+  for (let i = 1; i < values.length; i++) {
+    if (values[i]! < 1) break
+    chosenUnitIndex = i
+  }
+
+  const formatter = new Intl.NumberFormat(navigator.language, {
+    compactDisplay: 'short',
+    notation: 'compact',
+    maximumFractionDigits: 0,
+  })
+
+  return formatter.format(values[chosenUnitIndex]!) + units[chosenUnitIndex]
+}

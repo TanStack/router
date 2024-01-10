@@ -178,8 +178,8 @@ const dashboardIndexRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: '/',
   loader: () => trpc.posts.query(),
-  component: ({ useLoader }) => {
-    const posts = useLoader()
+  component: ({ useLoaderData }) => {
+    const posts = useLoaderData()
 
     return (
       <div className="p-2">
@@ -196,8 +196,8 @@ const postsRoute = new Route({
   getParentRoute: () => dashboardRoute,
   path: 'posts',
   loader: () => trpc.posts.query(),
-  component: ({ useLoader }) => {
-    const posts = useLoader()
+  component: ({ useLoaderData }) => {
+    const posts = useLoaderData()
 
     return (
       <div className="flex-1 flex">
@@ -263,8 +263,8 @@ const postRoute = new Route({
     notes: z.string().optional(),
   }),
   loader: async ({ params: { postId } }) => trpc.post.query(postId),
-  component: ({ useLoader }) => {
-    const post = useLoader()
+  component: ({ useLoaderData }) => {
+    const post = useLoaderData()
     const search = useSearch({ from: postRoute.id })
     const navigate = useNavigate({ from: postRoute.id })
 
@@ -345,6 +345,7 @@ const router = new Router({
       <Spinner />
     </div>
   ),
+  defaultPreload: 'intent',
 })
 
 declare module '@tanstack/react-router' {

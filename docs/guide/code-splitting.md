@@ -16,7 +16,7 @@ const route = new Route({
 })
 ```
 
-But with TanStack Router, a route component can have a static `preload` method attached to it which will get called and awaited when the route is matched and loaded.
+But with TanStack Router, a route component can have a static `preload` method attached to it which will get called and awaited when the route is preloaded and/or loaded.
 
 If we were to **set this up manually (don't do this)**, it would look something like this:
 
@@ -35,7 +35,7 @@ const route = new Route({
 This is a bit noisy and repetitive, so the TanStack Router exports a `lazyRouteComponent` wrapper that you can use to simplify this process:
 
 ```tsx
-import { lazyRouteComponent } from '@tanstack/router-react'
+import { lazyRouteComponent } from '@tanstack/react-router'
 
 const route = new Route({
   component: lazyRouteComponent(() => import('./MyComponent')),
@@ -54,7 +54,7 @@ const route = new Route({
 })
 ```
 
-Type safety ensures that you are only able to provide valid named exports from the module, which helps to prevent runtime errors.
+`lazyRouteComponent` is also type safe, so as to ensure that you are only able to provide valid named exports from the module, which helps to prevent runtime errors.
 
 ## Data Loader Splitting
 
@@ -86,8 +86,44 @@ const route = new Route({
   loader: lazyFn(() => import('./loader'), 'loader'),
 })
 
-// In another file...
+// In another file...a
 export const loader = async (context: LoaderContext) => {
   /// ...
 }
 ```
+
+## Accessing Route APIs in Code Split Files with the `RouteApi` class
+
+As you might have guessed, importing the very route that is already importing the code-split file your in is a circular dependency, both in types and at runtime. To avoid this, TanStack Router exports a handy `RouteApi` class that you can use to access a route's type-safe APIs:
+
+```tsx
+import { Route } from '@tanstack/react-router'
+
+const route = new Route({
+  path: '/my-route',
+  loader: () => ({
+    foo: 'bar',
+  }),
+  component: lazyRouteComponent(() => import('./my-component'), 'MyComponent'),
+})
+
+// In my-component.tsx
+import { RouteApi } from '@tanstack/react-router'
+
+const routeApi = new RouteApi({ id: '/my-route' })
+
+export function MyComponent() {
+  const loaderData = routeApi.useLoaderData()
+  //    ^? { foo: string }
+
+  return <div>...</div>
+}
+```
+
+The `RouteApi` class is also useful for accessing other type-safe APIs:
+
+- `useLoaderData`
+- `useMatch`
+- `useParams`
+- `useRouteContext`
+- `useSearch`
