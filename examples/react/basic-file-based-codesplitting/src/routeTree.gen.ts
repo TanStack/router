@@ -4,11 +4,17 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId/route'
+import { Route as PostsIndexImport } from './routes/posts.index'
 import { Route as LayoutLayoutBImport } from './routes/_layout/layout-b'
 import { Route as LayoutLayoutAImport } from './routes/_layout/layout-a'
-import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
 
 const PostsComponentImport = new FileRoute('/posts').createRoute()
+const PostsPostIdDeepComponentImport = new FileRoute(
+  '/posts/$postId/deep',
+).createRoute()
+const LayoutLayoutBTestComponentImport = new FileRoute(
+  '/_layout/layout-b/test',
+).createRoute()
 
 const PostsComponentRoute = PostsComponentImport.update({
   path: '/posts',
@@ -35,8 +41,8 @@ const IndexRoute = IndexImport.update({
 } as any)
 
 const PostsPostIdRouteRoute = PostsPostIdRouteImport.update({
-  path: '/posts/$postId',
-  getParentRoute: () => rootRoute,
+  path: '/$postId',
+  getParentRoute: () => PostsComponentRoute,
 } as any)
   .updateLoader({
     loader: lazyFn(() => import('./routes/posts.$postId/loader'), 'loader'),
@@ -46,7 +52,16 @@ const PostsPostIdRouteRoute = PostsPostIdRouteImport.update({
       () => import('./routes/posts.$postId/component'),
       'component',
     ),
+    errorComponent: lazyRouteComponent(
+      () => import('./routes/posts.$postId/errorComponent'),
+      'errorComponent',
+    ),
   })
+
+const PostsIndexRoute = PostsIndexImport.update({
+  path: '/',
+  getParentRoute: () => PostsComponentRoute,
+} as any)
 
 const LayoutLayoutBRoute = LayoutLayoutBImport.update({
   path: '/layout-b',
@@ -58,11 +73,38 @@ const LayoutLayoutARoute = LayoutLayoutAImport.update({
   getParentRoute: () => LayoutRoute,
 } as any)
 
-const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
+const PostsPostIdDeepComponentRoute = PostsPostIdDeepComponentImport.update({
   path: '/posts/$postId/deep',
   getParentRoute: () => rootRoute,
 } as any)
+  .updateLoader({
+    loader: lazyFn(
+      () => import('./routes/posts_.$postId.deep.loader'),
+      'loader',
+    ),
+  })
+  .update({
+    component: lazyRouteComponent(
+      () => import('./routes/posts_.$postId.deep.component'),
+      'component',
+    ),
+    errorComponent: lazyRouteComponent(
+      () => import('./routes/posts_.$postId.deep.errorComponent'),
+      'errorComponent',
+    ),
+  })
 
+const LayoutLayoutBTestComponentRoute = LayoutLayoutBTestComponentImport.update(
+  {
+    path: '/test',
+    getParentRoute: () => LayoutLayoutBRoute,
+  } as any,
+).update({
+  component: lazyRouteComponent(
+    () => import('./routes/_layout/layout-b.test.component'),
+    'component',
+  ),
+})
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
@@ -75,31 +117,40 @@ declare module '@tanstack/react-router' {
     }
     '/_layout/layout-a': {
       preLoaderRoute: typeof LayoutLayoutAImport
-      parentRoute: typeof LayoutRoute
+      parentRoute: typeof LayoutImport
     }
     '/_layout/layout-b': {
       preLoaderRoute: typeof LayoutLayoutBImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/posts/$postId': {
-      preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/posts_/$postId/deep': {
-      preLoaderRoute: typeof PostsPostIdDeepImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof LayoutImport
     }
     '/posts': {
       preLoaderRoute: typeof PostsComponentImport
       parentRoute: typeof rootRoute
     }
+    '/posts/': {
+      preLoaderRoute: typeof PostsIndexImport
+      parentRoute: typeof PostsComponentImport
+    }
+    '/posts/$postId': {
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsComponentImport
+    }
+    '/_layout/layout-b/test': {
+      preLoaderRoute: typeof LayoutLayoutBTestComponentImport
+      parentRoute: typeof LayoutLayoutBImport
+    }
+    '/posts/$postId/deep': {
+      preLoaderRoute: typeof PostsPostIdDeepComponentImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
-
 export const routeTree = rootRoute.addChildren([
   IndexRoute,
-  LayoutRoute.addChildren([LayoutLayoutARoute, LayoutLayoutBRoute]),
-  PostsPostIdRouteRoute,
-  PostsPostIdDeepRoute,
-  PostsComponentRoute,
+  LayoutRoute.addChildren([
+    LayoutLayoutARoute,
+    LayoutLayoutBRoute.addChildren([LayoutLayoutBTestComponentRoute]),
+  ]),
+  PostsComponentRoute.addChildren([PostsIndexRoute, PostsPostIdRouteRoute]),
+  PostsPostIdDeepComponentRoute,
 ])

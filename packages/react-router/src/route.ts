@@ -366,6 +366,104 @@ export type RouteConstraints = {
   TRouteTree: AnyRoute
 }
 
+// TODO: This is part of a future APi to move away from classes and
+// towards a more functional API. It's not ready yet.
+
+// type RouteApiInstance<
+//   TId extends RouteIds<RegisteredRouter['routeTree']>,
+//   TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
+//   TFullSearchSchema extends Record<
+//     string,
+//     any
+//   > = TRoute['types']['fullSearchSchema'],
+//   TAllParams extends AnyPathParams = TRoute['types']['allParams'],
+//   TAllContext extends Record<string, any> = TRoute['types']['allContext'],
+//   TLoaderDeps extends Record<string, any> = TRoute['types']['loaderDeps'],
+//   TLoaderData extends any = TRoute['types']['loaderData'],
+// > = {
+//   id: TId
+//   useMatch: <TSelected = TAllContext>(opts?: {
+//     select?: (s: TAllContext) => TSelected
+//   }) => TSelected
+
+//   useRouteContext: <TSelected = TAllContext>(opts?: {
+//     select?: (s: TAllContext) => TSelected
+//   }) => TSelected
+
+//   useSearch: <TSelected = TFullSearchSchema>(opts?: {
+//     select?: (s: TFullSearchSchema) => TSelected
+//   }) => TSelected
+
+//   useParams: <TSelected = TAllParams>(opts?: {
+//     select?: (s: TAllParams) => TSelected
+//   }) => TSelected
+
+//   useLoaderDeps: <TSelected = TLoaderDeps>(opts?: {
+//     select?: (s: TLoaderDeps) => TSelected
+//   }) => TSelected
+
+//   useLoaderData: <TSelected = TLoaderData>(opts?: {
+//     select?: (s: TLoaderData) => TSelected
+//   }) => TSelected
+// }
+
+// export function RouteApi_v2<
+//   TId extends RouteIds<RegisteredRouter['routeTree']>,
+//   TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
+//   TFullSearchSchema extends Record<
+//     string,
+//     any
+//   > = TRoute['types']['fullSearchSchema'],
+//   TAllParams extends AnyPathParams = TRoute['types']['allParams'],
+//   TAllContext extends Record<string, any> = TRoute['types']['allContext'],
+//   TLoaderDeps extends Record<string, any> = TRoute['types']['loaderDeps'],
+//   TLoaderData extends any = TRoute['types']['loaderData'],
+// >({
+//   id,
+// }: {
+//   id: TId
+// }): RouteApiInstance<
+//   TId,
+//   TRoute,
+//   TFullSearchSchema,
+//   TAllParams,
+//   TAllContext,
+//   TLoaderDeps,
+//   TLoaderData
+// > {
+//   return {
+//     id,
+
+//     useMatch: (opts) => {
+//       return useMatch({ ...opts, from: id })
+//     },
+
+//     useRouteContext: (opts) => {
+//       return useMatch({
+//         ...opts,
+//         from: id,
+//         select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
+//       } as any)
+//     },
+
+//     useSearch: (opts) => {
+//       return useSearch({ ...opts, from: id } as any)
+//     },
+
+//     useParams: (opts) => {
+//       return useParams({ ...opts, from: id } as any)
+//     },
+
+//     useLoaderDeps: (opts) => {
+//       return useLoaderDeps({ ...opts, from: id } as any) as any
+//     },
+
+//     useLoaderData: (opts) => {
+//       return useLoaderData({ ...opts, from: id } as any) as any
+//     },
+//   }
+// }
+
 export class RouteApi<
   TId extends RouteIds<RegisteredRouter['routeTree']>,
   TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,

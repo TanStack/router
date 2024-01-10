@@ -20,6 +20,8 @@ export type RouteNode = {
   isRoute?: boolean
   isLoader?: boolean
   isComponent?: boolean
+  isErrorComponent?: boolean
+  isPendingComponent?: boolean
   isVirtual?: boolean
   isRoot?: boolean
   children?: RouteNode[]
@@ -98,6 +100,8 @@ let skipMessage = false
 
 type RouteSubNode = {
   component?: RouteNode
+  errorComponent?: RouteNode
+  pendingComponent?: RouteNode
   loader?: RouteNode
 }
 
@@ -154,11 +158,19 @@ export async function generator(config: Config) {
     if (config.future?.unstable_codeSplitting) {
       node.isRoute = node.routePath?.endsWith('/route')
       node.isComponent = node.routePath?.endsWith('/component')
+      node.isErrorComponent = node.routePath?.endsWith('/errorComponent')
+      node.isPendingComponent = node.routePath?.endsWith('/pendingComponent')
       node.isLoader = node.routePath?.endsWith('/loader')
 
-      if (node.isComponent || node.isLoader || node.isRoute) {
+      if (
+        node.isComponent ||
+        node.isErrorComponent ||
+        node.isPendingComponent ||
+        node.isLoader ||
+        node.isRoute
+      ) {
         node.routePath = node.routePath?.replace(
-          /\/(component|loader|route)$/,
+          /\/(component|errorComponent|pendingComponent|loader|route)$/,
           '',
         )
       }
@@ -182,12 +194,23 @@ export async function generator(config: Config) {
     node.cleanedPath = removeUnderscores(node.path) ?? ''
 
     if (config.future?.unstable_codeSplitting) {
-      if (node.isLoader || node.isComponent) {
+      if (
+        node.isLoader ||
+        node.isComponent ||
+        node.isErrorComponent ||
+        node.isPendingComponent
+      ) {
         routePiecesByPath[node.routePath!] =
           routePiecesByPath[node.routePath!] || {}
 
         routePiecesByPath[node.routePath!]![
-          node.isLoader ? 'loader' : 'component'
+          node.isLoader
+            ? 'loader'
+            : node.isErrorComponent
+            ? 'errorComponent'
+            : node.isPendingComponent
+            ? 'pendingComponent'
+            : 'component'
         ] = node
 
         const anchorRoute = routeNodes.find(
@@ -199,11 +222,6 @@ export async function generator(config: Config) {
             isVirtual: true,
           })
         }
-        // if (!node.parent) {
-        // }
-
-        // componentOrLoader.isVirtual = true
-        // handleNode(componentOrLoader)
         return
       }
     }
@@ -237,7 +255,9 @@ export async function generator(config: Config) {
       // so we have to escape it by turning all $ into $$. But since we do it through a replace call
       // we have to double escape it into $$$$. For more information, see
       // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace#specifying_a_string_as_the_replacement
-      const escapedRoutePath = node.routePath?.replaceAll('$', '$$$$') ?? ''
+      const escapedRoutePath = removeTrailingUnderscores(
+        node.routePath?.replaceAll('$', '$$$$') ?? '',
+      )
       const quote = config.quoteStyle === 'single' ? `'` : `"`
       const replaced = routeCode.replace(
         fileRouteRegex,
@@ -277,7 +297,10 @@ export async function generator(config: Config) {
       (node) => routePiecesByPath[node.routePath!]?.loader,
     ),
     lazyRouteComponent: sortedRouteNodes.some(
-      (node) => routePiecesByPath[node.routePath!]?.component,
+      (node) =>
+        routePiecesByPath[node.routePath!]?.component ||
+        routePiecesByPath[node.routePath!]?.errorComponent ||
+        routePiecesByPath[node.routePath!]?.pendingComponent,
     ),
   })
     .filter((d) => d[1])
@@ -311,7 +334,11 @@ export async function generator(config: Config) {
     sortedRouteNodes
       .filter((d) => d.isVirtual)
       .map((node) => {
-        return `const ${node.variableName}Import = new FileRoute('${node.routePath}').createRoute()`
+        return `const ${
+          node.variableName
+        }Import = new FileRoute('${removeTrailingUnderscores(
+          node.routePath,
+        )}').createRoute()`
       })
       .join('\n'),
     '\n',
@@ -319,6 +346,10 @@ export async function generator(config: Config) {
       .map((node) => {
         const loaderNode = routePiecesByPath[node.routePath!]?.loader
         const componentNode = routePiecesByPath[node.routePath!]?.component
+        const errorComponentNode =
+          routePiecesByPath[node.routePath!]?.errorComponent
+        const pendingComponentNode =
+          routePiecesByPath[node.routePath!]?.pendingComponent
 
         return [
           `const ${node.variableName}Route = ${node.variableName}Import.update({
@@ -341,18 +372,30 @@ export async function generator(config: Config) {
                 ),
               )}'), 'loader') })`
             : '',
-          componentNode
-            ? `.update({ component: lazyRouteComponent(() => import('./${sanitize(
-                removeExt(
-                  path.relative(
-                    path.dirname(config.generatedRouteTree),
-                    path.resolve(
-                      config.routesDirectory,
-                      componentNode.filePath,
+          componentNode || errorComponentNode || pendingComponentNode
+            ? `.update({
+              ${(
+                [
+                  ['component', componentNode],
+                  ['errorComponent', errorComponentNode],
+                  ['pendingComponent', pendingComponentNode],
+                ] as const
+              )
+                .filter((d) => d[1])
+                .map((d) => {
+                  return `${
+                    d[0]
+                  }: lazyRouteComponent(() => import('./${sanitize(
+                    removeExt(
+                      path.relative(
+                        path.dirname(config.generatedRouteTree),
+                        path.resolve(config.routesDirectory, d[1]!.filePath),
+                      ),
                     ),
-                  ),
-                ),
-              )}'), 'component') })`
+                  )}'), '${d[0]}')`
+                })
+                .join('\n,')}
+            })`
             : '',
         ].join('')
       })
@@ -361,7 +404,7 @@ export async function generator(config: Config) {
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
-        return `'${routeNode.routePath}': {
+        return `'${removeTrailingUnderscores(routeNode.routePath)}': {
           preLoaderRoute: typeof ${routeNode.variableName}Import
           parentRoute: typeof ${
             routeNode.parent?.variableName
@@ -471,6 +514,10 @@ function sanitize(s?: string) {
 
 function removeUnderscores(s?: string) {
   return s?.replace(/(^_|_$)/, '').replace(/(\/_|_\/)/, '/')
+}
+
+function removeTrailingUnderscores(s?: string) {
+  return s?.replace(/(_$)/, '').replace(/(_\/)/, '/')
 }
 
 function replaceBackslash(s?: string) {
