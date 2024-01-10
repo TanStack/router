@@ -187,7 +187,7 @@ export type ParamOptions<
       RootSearchSchema
     >
   >,
-  TToIndex = RouteByPath<TRouteTree, `${TTo}/`> extends never ? TTo : `${TTo}/`,
+  TToIndex = TTo extends '' ? '' : RouteByPath<TRouteTree, `${TTo}/`> extends never ? TTo : `${TTo}/`,
   TToParams = TToIndex extends ''
     ? TFromParams
     : never extends TResolved
