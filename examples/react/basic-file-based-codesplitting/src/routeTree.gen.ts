@@ -1,19 +1,19 @@
 import { FileRoute, lazyFn, lazyRouteComponent } from '@tanstack/react-router'
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as LayoutImport } from './routes/_layout'
-import { Route as IndexImport } from './routes/index'
-import { Route as PostsPostIdRouteImport } from './routes/posts.$postId/route'
 import { Route as PostsIndexImport } from './routes/posts.index'
-import { Route as LayoutLayoutBImport } from './routes/_layout/layout-b'
-import { Route as LayoutLayoutAImport } from './routes/_layout/layout-a'
+import { Route as LayoutTestLayoutBImport } from './routes/_layout-test/layout-b'
+import { Route as LayoutTestLayoutAImport } from './routes/_layout-test/layout-a'
+import { Route as PostsPostIdRouteImport } from './routes/posts.$postId/route'
 
 const PostsComponentImport = new FileRoute('/posts').createRoute()
+const LayoutTestComponentImport = new FileRoute('/_layout-test').createRoute()
+const IndexComponentImport = new FileRoute('/').createRoute()
 const PostsPostIdDeepComponentImport = new FileRoute(
   '/posts/$postId/deep',
 ).createRoute()
-const LayoutLayoutBTestComponentImport = new FileRoute(
-  '/_layout/layout-b/test',
+const LayoutTestLayoutBTestComponentImport = new FileRoute(
+  '/_layout-test/layout-b/test',
 ).createRoute()
 
 const PostsComponentRoute = PostsComponentImport.update({
@@ -30,14 +30,39 @@ const PostsComponentRoute = PostsComponentImport.update({
     ),
   })
 
-const LayoutRoute = LayoutImport.update({
-  id: '/_layout',
+const LayoutTestComponentRoute = LayoutTestComponentImport.update({
+  id: '/_layout-test',
   getParentRoute: () => rootRoute,
-} as any)
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/_layout-test.component'),
+    'component',
+  ),
+})
 
-const IndexRoute = IndexImport.update({
+const IndexComponentRoute = IndexComponentImport.update({
   path: '/',
   getParentRoute: () => rootRoute,
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/index.component'),
+    'component',
+  ),
+})
+
+const PostsIndexRoute = PostsIndexImport.update({
+  path: '/',
+  getParentRoute: () => PostsComponentRoute,
+} as any)
+
+const LayoutTestLayoutBRoute = LayoutTestLayoutBImport.update({
+  path: '/layout-b',
+  getParentRoute: () => LayoutTestComponentRoute,
+} as any)
+
+const LayoutTestLayoutARoute = LayoutTestLayoutAImport.update({
+  path: '/layout-a',
+  getParentRoute: () => LayoutTestComponentRoute,
 } as any)
 
 const PostsPostIdRouteRoute = PostsPostIdRouteImport.update({
@@ -57,21 +82,6 @@ const PostsPostIdRouteRoute = PostsPostIdRouteImport.update({
       'errorComponent',
     ),
   })
-
-const PostsIndexRoute = PostsIndexImport.update({
-  path: '/',
-  getParentRoute: () => PostsComponentRoute,
-} as any)
-
-const LayoutLayoutBRoute = LayoutLayoutBImport.update({
-  path: '/layout-b',
-  getParentRoute: () => LayoutRoute,
-} as any)
-
-const LayoutLayoutARoute = LayoutLayoutAImport.update({
-  path: '/layout-a',
-  getParentRoute: () => LayoutRoute,
-} as any)
 
 const PostsPostIdDeepComponentRoute = PostsPostIdDeepComponentImport.update({
   path: '/posts/$postId/deep',
@@ -94,50 +104,49 @@ const PostsPostIdDeepComponentRoute = PostsPostIdDeepComponentImport.update({
     ),
   })
 
-const LayoutLayoutBTestComponentRoute = LayoutLayoutBTestComponentImport.update(
-  {
+const LayoutTestLayoutBTestComponentRoute =
+  LayoutTestLayoutBTestComponentImport.update({
     path: '/test',
-    getParentRoute: () => LayoutLayoutBRoute,
-  } as any,
-).update({
-  component: lazyRouteComponent(
-    () => import('./routes/_layout/layout-b.test.component'),
-    'component',
-  ),
-})
+    getParentRoute: () => LayoutTestLayoutBRoute,
+  } as any).update({
+    component: lazyRouteComponent(
+      () => import('./routes/_layout-test/layout-b.test.component'),
+      'component',
+    ),
+  })
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexComponentImport
       parentRoute: typeof rootRoute
     }
-    '/_layout': {
-      preLoaderRoute: typeof LayoutImport
+    '/_layout-test': {
+      preLoaderRoute: typeof LayoutTestComponentImport
       parentRoute: typeof rootRoute
-    }
-    '/_layout/layout-a': {
-      preLoaderRoute: typeof LayoutLayoutAImport
-      parentRoute: typeof LayoutImport
-    }
-    '/_layout/layout-b': {
-      preLoaderRoute: typeof LayoutLayoutBImport
-      parentRoute: typeof LayoutImport
     }
     '/posts': {
       preLoaderRoute: typeof PostsComponentImport
       parentRoute: typeof rootRoute
     }
-    '/posts/': {
-      preLoaderRoute: typeof PostsIndexImport
-      parentRoute: typeof PostsComponentImport
-    }
     '/posts/$postId': {
       preLoaderRoute: typeof PostsPostIdRouteImport
       parentRoute: typeof PostsComponentImport
     }
-    '/_layout/layout-b/test': {
-      preLoaderRoute: typeof LayoutLayoutBTestComponentImport
-      parentRoute: typeof LayoutLayoutBImport
+    '/_layout-test/layout-a': {
+      preLoaderRoute: typeof LayoutTestLayoutAImport
+      parentRoute: typeof LayoutTestComponentImport
+    }
+    '/_layout-test/layout-b': {
+      preLoaderRoute: typeof LayoutTestLayoutBImport
+      parentRoute: typeof LayoutTestComponentImport
+    }
+    '/posts/': {
+      preLoaderRoute: typeof PostsIndexImport
+      parentRoute: typeof PostsComponentImport
+    }
+    '/_layout-test/layout-b/test': {
+      preLoaderRoute: typeof LayoutTestLayoutBTestComponentImport
+      parentRoute: typeof LayoutTestLayoutBImport
     }
     '/posts/$postId/deep': {
       preLoaderRoute: typeof PostsPostIdDeepComponentImport
@@ -146,11 +155,11 @@ declare module '@tanstack/react-router' {
   }
 }
 export const routeTree = rootRoute.addChildren([
-  IndexRoute,
-  LayoutRoute.addChildren([
-    LayoutLayoutARoute,
-    LayoutLayoutBRoute.addChildren([LayoutLayoutBTestComponentRoute]),
+  IndexComponentRoute,
+  LayoutTestComponentRoute.addChildren([
+    LayoutTestLayoutARoute,
+    LayoutTestLayoutBRoute.addChildren([LayoutTestLayoutBTestComponentRoute]),
   ]),
-  PostsComponentRoute.addChildren([PostsIndexRoute, PostsPostIdRouteRoute]),
+  PostsComponentRoute.addChildren([PostsPostIdRouteRoute, PostsIndexRoute]),
   PostsPostIdDeepComponentRoute,
 ])

@@ -71,17 +71,34 @@ async function getRouteNodes(config: Config) {
 
           // Remove the index from the route path and
           // if the route path is empty, use `/'
+
+          let isRoute = routePath?.endsWith('/route')
+          let isComponent = routePath?.endsWith('/component')
+          let isErrorComponent = routePath?.endsWith('/errorComponent')
+          let isPendingComponent = routePath?.endsWith('/pendingComponent')
+          let isLoader = routePath?.endsWith('/loader')
+
+          routePath = routePath?.replace(
+            /\/(component|errorComponent|pendingComponent|loader|route)$/,
+            '',
+          )
+
           if (routePath === 'index') {
             routePath = '/'
-          } else if (routePath.endsWith('/index')) {
-            routePath = routePath.replace(/\/index$/, '/')
           }
+
+          routePath = routePath.replace(/\/index$/, '/') || '/'
 
           routeNodes.push({
             filePath,
             fullPath,
             routePath,
             variableName,
+            isRoute,
+            isComponent,
+            isErrorComponent,
+            isPendingComponent,
+            isLoader,
           })
         }
       }),
@@ -139,6 +156,12 @@ export async function generator(config: Config) {
       (d) => (d.routePath === '/' ? -1 : 1),
       (d) => d.routePath?.split('/').length,
       (d) => (d.filePath?.match(/[./]index[.]/) ? 1 : -1),
+      (d) =>
+        d.filePath?.match(
+          /[./](component|errorComponent|pendingComponent|loader)[.]/,
+        )
+          ? 1
+          : -1,
       (d) => (d.filePath?.match(/[./]route[.]/) ? -1 : 1),
       (d) => (d.routePath?.endsWith('/') ? -1 : 1),
       (d) => d.routePath,
@@ -155,27 +178,6 @@ export async function generator(config: Config) {
   let routeNodes: RouteNode[] = []
 
   const handleNode = (node: RouteNode) => {
-    if (config.future?.unstable_codeSplitting) {
-      node.isRoute = node.routePath?.endsWith('/route')
-      node.isComponent = node.routePath?.endsWith('/component')
-      node.isErrorComponent = node.routePath?.endsWith('/errorComponent')
-      node.isPendingComponent = node.routePath?.endsWith('/pendingComponent')
-      node.isLoader = node.routePath?.endsWith('/loader')
-
-      if (
-        node.isComponent ||
-        node.isErrorComponent ||
-        node.isPendingComponent ||
-        node.isLoader ||
-        node.isRoute
-      ) {
-        node.routePath = node.routePath?.replace(
-          /\/(component|errorComponent|pendingComponent|loader|route)$/,
-          '',
-        )
-      }
-    }
-
     const parentRoute = hasParentRoute(routeNodes, node.routePath)
     if (parentRoute) node.parent = parentRoute
 
@@ -195,10 +197,11 @@ export async function generator(config: Config) {
 
     if (config.future?.unstable_codeSplitting) {
       if (
-        node.isLoader ||
-        node.isComponent ||
-        node.isErrorComponent ||
-        node.isPendingComponent
+        !node.isVirtual &&
+        (node.isLoader ||
+          node.isComponent ||
+          node.isErrorComponent ||
+          node.isPendingComponent)
       ) {
         routePiecesByPath[node.routePath!] =
           routePiecesByPath[node.routePath!] || {}
@@ -216,10 +219,15 @@ export async function generator(config: Config) {
         const anchorRoute = routeNodes.find(
           (d) => d.routePath === node.routePath,
         )
+
         if (!anchorRoute) {
           handleNode({
             ...node,
             isVirtual: true,
+            isLoader: false,
+            isComponent: false,
+            isErrorComponent: false,
+            isPendingComponent: false,
           })
         }
         return
