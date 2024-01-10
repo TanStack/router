@@ -106,7 +106,7 @@ notifications.$notifId.tsx
 
 #### Flat Configuration
 
-If you prefer a totally flat structure, you can use only `.`s to denote path hierarchy.
+If you prefer a totally flat structure, use only `.`s to denote path hierarchy.
 
 ```
 posts.tsx
@@ -128,7 +128,7 @@ settings.notifications.tsx
 
 #### Nested Configuration
 
-If you prefer a totally nested structure, you can strictly use directories to denote path hierarchy.
+If you prefer a totally nested structure, strictly use directories to denote path hierarchy.
 
 ```
 __root.tsx
@@ -272,11 +272,20 @@ The `unstable_codeSplitting` option enables auto code splitting for routes and r
 }
 ```
 
-### Splitting a route's component
+### Usage
 
-To split a route's component, copy the component and it's dependencies into a new file with the same name as the route file, but with a `.component.tsx` suffix, then export your component from that file under the named export `component`.
+To use code splitting, remove a route's supported option from it's route file and instead place it in it's own file with the same name as the route file, but with the appropriate suffix. For example, if you want to extract the main `component` from a route file named `posts.tsx`, you would create a new file named `posts.component.tsx` and move the component and it's dependencies into that file.
 
-For example, if you have a route file named `posts.tsx`, you would create a new file named `posts.component.tsx` and move the component and it's dependencies into that file.
+Here is a list of the supported options and their corresponding suffixes:
+
+| Route Property     | Suffix                  | Named Export       |
+| ------------------ | ----------------------- | ------------------ |
+| `component`        | `.component.tsx`        | `component`        |
+| `errorComponent`   | `.errorComponent.tsx`   | `errorComponent`   |
+| `pendingComponent` | `.pendingComponent.tsx` | `pendingComponent` |
+| `loader`           | `.loader.ts`            | `loader`           |
+
+### Example: Splitting a route's component
 
 #### Before
 
@@ -317,11 +326,9 @@ export const component = function MyComponent () {
 }
 ```
 
-### Splitting a route's loader
+### Example: Splitting a route's loader
 
-To split a route's loader, copy the loader into a new file with the same name as the route file, but with a `.loader.ts` suffix, then export your loader from that file under the named export `loader`.
-
-For example, if you have a route file named `posts.tsx`, you would create a new file named `posts.loader.ts` and move the loader into that file.
+If you have a route file named `posts.tsx`, you would create a new file named `posts.loader.ts` and move the loader into that file.
 
 #### Before
 
@@ -363,12 +370,17 @@ export const loader = fetchPosts
 
 ### Encapsulating a route's files into a directory
 
-To encapsulate a route's files into a directory, you can move the route file itself into a `.route` file within a directory with the same name as the route file. For example, if you have a route file named `posts.tsx`, you would create a new directory named `posts` and move the `posts.tsx` file into that directory, renaming it to `index.route.tsx`.
+Since TanStack Router's file-based routing system is designed to support both flat and nested file structures, it's possible to encapsulate a route's files into a single directory without any additional configuration.
+
+To encapsulate a route's files into a directory, move the route file itself into a `.route` file within a directory with the same name as the route file.
+
+For example, if you have a route file named `posts.tsx`, you would create a new directory named `posts` and move the `posts.tsx` file into that directory, renaming it to `index.route.tsx`.
 
 #### Before
 
 - `posts.tsx`
 - `posts.component.tsx`
+- `posts.errorComponent.tsx`
 - `posts.loader.ts`
 
 #### After
@@ -376,6 +388,7 @@ To encapsulate a route's files into a directory, you can move the route file its
 - `posts`
   - `route.tsx`
   - `component.tsx`
+  - `errorComponent.tsx`
   - `loader.ts`
 
 ### Virtual Routes
@@ -397,7 +410,7 @@ You might run into a situation where you end up splitting out everything from a 
 - `posts.component.tsx`
 - `posts.loader.ts`
 
-In this case, you can actually **remove the route file entirely**! The CLI will automatically generate a virtual route for you to serve as an anchor for your code split files. This virtual route will live directly in the generated route tree file.
+In this case, actually **remove the route file entirely**! The CLI will automatically generate a virtual route for you to serve as an anchor for your code split files. This virtual route will live directly in the generated route tree file.
 
 #### After
 
