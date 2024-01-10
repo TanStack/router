@@ -10,9 +10,7 @@ To do so, [use `Router`'s `parseSearch` and `stringifySearch` options](./guide/c
 
 ```tsx
 import {
-  Router,
-  parseSearchWith,
-  stringifySearchWith,
+  Router
 } from '@tanstack/react-router'
 import qs from 'query-string'
 

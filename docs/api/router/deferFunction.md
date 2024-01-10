@@ -27,7 +27,7 @@ const route = new Route({
     const deferredPromise = defer(fetch('/api/data'))
     return { deferredPromise }
   },
-  compoennt: MyComponent,
+  component: MyComponent,
 })
 
 function MyComponent() {

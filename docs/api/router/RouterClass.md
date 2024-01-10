@@ -119,7 +119,7 @@ Commits a new location object to the browser history.
     - Type: `boolean`
     - Optional
     - Defaults to `true` so that the scroll position will be reset to 0,0 after the location is committed to the browser history.
-    - If `false`, the scroll position will not be reset to 0,0 after the location is commited to history.
+    - If `false`, the scroll position will not be reset to 0,0 after the location is committed to history.
   - `startTransition`
     - Type: `boolean`
     - Optional

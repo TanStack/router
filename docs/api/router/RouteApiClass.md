@@ -19,7 +19,7 @@ The `RouteApi` class provides type-safe version of common hooks like `useParams`
 
 ```tsx
   useMatch<TSelected = TAllContext>(opts?: {
-    select?: (search: TAllContext) => TSelected
+    select?: (match: TAllContext) => TSelected
   }): TSelected
 ```
 
@@ -73,7 +73,7 @@ The `RouteApi` class provides type-safe version of common hooks like `useParams`
 
 ```tsx
   useParams<TSelected = TAllParams>(opts?: {
-    select?: (search: TAllParams) => TSelected
+    select?: (params: TAllParams) => TSelected
   }): TSelected
 ```
 
