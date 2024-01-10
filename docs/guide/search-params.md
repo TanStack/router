@@ -238,7 +238,7 @@ const allProductsRoute = new Route({
 
 const ProductList = () => {
   const { page, filter, sort } = useSearch({
-    from: allProductsRoute.id,
+    from: allProductsRoute.fullPath,
   })
 
   return <div>...</div>
@@ -281,7 +281,7 @@ const ProductList = () => {
   return (
     <div>
       <Link
-        from={allProductsRoute.id}
+        from={allProductsRoute.fullPath}
         search={(prev) => ({ page: prev.page + 1 })}
       >
         Next Page
@@ -303,7 +303,7 @@ const allProductsRoute = new Route({
 })
 
 const ProductList = () => {
-  const navigate = useNavigate({ from: allProductsRoute.id })
+  const navigate = useNavigate({ from: allProductsRoute.fullPath })
 
   return (
     <div>

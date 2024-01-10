@@ -156,6 +156,7 @@ const dashboardRoute = new Route({
           ).map(([to, label]) => {
             return (
               <Link
+                from={dashboardRoute.fullPath}
                 key={to}
                 to={to}
                 activeOptions={{ exact: to === '.' }}
@@ -265,8 +266,8 @@ const postRoute = new Route({
   loader: async ({ params: { postId } }) => trpc.post.query(postId),
   component: ({ useLoaderData }) => {
     const post = useLoaderData()
-    const search = useSearch({ from: postRoute.id })
-    const navigate = useNavigate({ from: postRoute.id })
+    const search = useSearch({ from: postRoute.fullPath })
+    const navigate = useNavigate({ from: postRoute.fullPath })
 
     const [notes, setNotes] = React.useState(search.notes ?? ``)
 
@@ -274,6 +275,7 @@ const postRoute = new Route({
       navigate({
         search: (old) => ({ ...old, notes: notes ? notes : undefined }),
         replace: true,
+        params: true,
       })
     }, [notes])
 
@@ -298,10 +300,12 @@ const postRoute = new Route({
         </div>
         <div>
           <Link
+            from={postRoute.fullPath}
             search={(old) => ({
               ...old,
               showNotes: old?.showNotes ? undefined : true,
             })}
+            params={true}
             className="text-blue-700"
           >
             {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}

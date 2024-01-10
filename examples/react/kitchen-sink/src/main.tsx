@@ -306,7 +306,7 @@ const invoiceRoute = new Route({
 
 function InvoiceComponent() {
   const search = invoiceRoute.useSearch()
-  const navigate = useNavigate({ from: invoiceRoute.id })
+  const navigate = useNavigate({ from: invoiceRoute.fullPath })
   const invoice = invoiceRoute.useLoaderData()
   const updateInvoiceMutation = useMutation({
     fn: patchInvoice,
@@ -345,7 +345,7 @@ function InvoiceComponent() {
       />
       <div>
         <Link
-          from={invoiceRoute.id}
+          from={invoiceRoute.fullPath}
           to={invoiceRoute.to}
           search={(old) => ({
             ...old,
@@ -431,7 +431,7 @@ const usersRoute = new Route({
 })
 
 function UsersComponent() {
-  const navigate = useNavigate({ from: usersRoute.id })
+  const navigate = useNavigate({ from: usersRoute.fullPath })
   const { usersView } = usersRoute.useSearch()
   const users = usersRoute.useLoaderData()
   const sortBy = usersView?.sortBy ?? 'name'
@@ -655,7 +655,7 @@ const loginRoute = new Route({
 function LoginComponent() {
   const router = useRouter()
   const { auth } = loginRoute.useRouteContext()
-  const search = useSearch({ from: loginRoute.id })
+  const search = useSearch({ from: loginRoute.fullPath })
   const [username, setUsername] = React.useState('')
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {

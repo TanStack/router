@@ -52,7 +52,7 @@ function PostsComponent() {
 
   // Some hooks require context from the *entire* router, not just the current route. To achieve type-safety here,
   // we must pass the `from` param to tell the hook our relative position in the route hierarchy.
-  const navigate = useNavigate({ from: postsRoute.id })
+  const navigate = useNavigate({ from: postsRoute.fullPath })
   // ... etc
 }
 ```

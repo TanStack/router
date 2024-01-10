@@ -24,10 +24,10 @@ This is the core `ToOptions` interface that is used in every navigation and rout
 ```ts
 type ToOptions<
   TRouteTree extends AnyRoute = AnyRoute,
-  TFrom extends RoutePaths<TRouteTree> = '/',
+  TFrom extends RoutePaths<TRouteTree> | string = string,
   TTo extends string = '',
 > = {
-  // `from` is an optional route ID or path. If it is not supplied, only absolute paths will be auto-completed and type-safe. It's common to supply the route.id of the origin route you are rendering from for convenience. If you don't know the origin route, leave this empty and work with absolute paths or unsafe relative paths.
+  // `from` is an optional route ID or path. If it is not supplied, only absolute paths will be auto-completed and type-safe. It's common to supply the route.fullPath of the origin route you are rendering from for convenience. If you don't know the origin route, leave this empty and work with absolute paths or unsafe relative paths.
   from: string
   // `to` can be an absolute route path or a relative path from the `from` option to a valid route path. ⚠️ Do not interpolate path params, hash or search params into the `to` options. Use the `params`, `search`, and `hash` options instead.
   to: string
@@ -63,7 +63,7 @@ This is the core `NavigateOptions` interface that extends `ToOptions`. Any API t
 ```ts
 export type NavigateOptions<
   TRouteTree extends AnyRoute = AnyRoute,
-  TFrom extends RoutePaths<TRouteTree> = '/',
+  TFrom extends RoutePaths<TRouteTree> | string = string,
   TTo extends string = '',
 > = ToOptions<TRouteTree, TFrom, TTo> & {
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
@@ -78,7 +78,7 @@ Anywhere an actual `<a>` tag the `LinkOptions` interface which extends `Navigate
 ```tsx
 export type LinkOptions<
   TRouteTree extends AnyRoute = AnyRoute,
-  TFrom extends RoutePaths<TRouteTree> = '/',
+  TFrom extends RoutePaths<TRouteTree> | string = string,
   TTo extends string = '',
 > = NavigateOptions<TRouteTree, TFrom, TTo> & {
   // The standard anchor tag target attribute
@@ -120,8 +120,8 @@ The `Link` component is the most common way to navigate within an app. It render
 In addition to the [`LinkOptions`](#linkoptions-interface) interface, the `Link` component also supports the following props:
 
 ```tsx
-export type LinkPropsOptions<
-  TFrom extends RoutePaths<RegisteredRouter['routeTree']> = '/',
+export type LinkProps<
+  TFrom extends RoutePaths<RegisteredRouter['routeTree']> | string = string,
   TTo extends string = '',
 > = LinkOptions<RegisteredRouter['routeTree'], TFrom, TTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
@@ -178,13 +178,13 @@ const postIdRoute = new Route({
 })
 
 const link = (
-  <Link from={postIdRoute.id} to="../categories">
+  <Link from={postIdRoute.fullPath} to="../categories">
     Categories
   </Link>
 )
 ```
 
-As seen above, it's common to provide the `route.id` as the `from` route path. This is because the `route.id` is a reference that will update if you refactor your application. However, sometimes it's not possible to import the route directly, in which case it's fine to provide the route path directly as a string. It will still get type-checked as per usual!
+As seen above, it's common to provide the `route.fullPath` as the `from` route path. This is because the `route.fullPath` is a reference that will update if you refactor your application. However, sometimes it's not possible to import the route directly, in which case it's fine to provide the route path directly as a string. It will still get type-checked as per usual!
 
 ### Search Param Links
 

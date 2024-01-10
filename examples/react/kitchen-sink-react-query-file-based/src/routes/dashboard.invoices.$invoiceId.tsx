@@ -30,7 +30,7 @@ export const Route = new FileRoute("/dashboard/invoices/$invoiceId").createRoute
 function InvoiceComponent() {
   const search = Route.useSearch()
   const params = Route.useParams()
-  const navigate = useNavigate({from: Route.id})
+  const navigate = useNavigate({from: Route.fullPath})
   const invoiceQuery = useSuspenseQuery(invoiceQueryOptions(params.invoiceId))
   const invoice = invoiceQuery.data
   const updateInvoiceMutation = useUpdateInvoiceMutation(params.invoiceId)
@@ -68,7 +68,7 @@ function InvoiceComponent() {
       />
       <div>
         <Link
-          from={Route.id}
+          from={Route.fullPath}
           params={true}
           search={(old) => ({
             ...old,
