@@ -29,4 +29,4 @@ export default defineConfig({
 
 ## Configuration
 
-Configuration is done via the `tsr.config.json` file. Please see the [Router CLI](./router-cli) documentation for more information on the configuration options.
+Configuration is done via the `tsr.config.json` file. Please see the [Router CLI](./router-cli.md) documentation for more information on the configuration options.
