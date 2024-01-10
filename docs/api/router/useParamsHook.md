@@ -1,8 +1,7 @@
 ---
 id: useParams
-title: `useParams`
+title: useParams
 ---
-
 
 The `useParams` method returns all of the path parameters that were parsed for the closest match and all of its parent matches.
 

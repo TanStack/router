@@ -1,8 +1,7 @@
 ---
 id: RoutesByPathType
-title: `RoutesByPath` type
+title: RoutesByPath type
 ---
-
 
 This type takes a route tree and returns a Record of all routes in the tree keyed by their full path.
 

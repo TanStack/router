@@ -1,8 +1,7 @@
 ---
 id: redirectFunction
-title: `redirect` function
+title: redirect function
 ---
-
 
 The `redirect` function returns a new `Redirect` object that can be either returned or thrown from places like a route's `loader` or `beforeLoad` methods to redirect to a new location.
 

@@ -1,8 +1,7 @@
 ---
 id: AnyRouteMatchType
-title: `AnyRouteMatch` type
+title: AnyRouteMatch type
 ---
-
 
 The `AnyRouteMatch` type represents a route match in TanStack Router that is not specific to a particular route.
 

@@ -1,8 +1,7 @@
 ---
 id: RouteByIdType
-title: `RouteById` type
+title: RouteById type
 ---
-
 
 This type takes a route tree and a route ID and returns the route in the tree that matches the ID.
 

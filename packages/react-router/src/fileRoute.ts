@@ -1,3 +1,4 @@
+import { NoInfer } from '@tanstack/react-store'
 import { ParsePathParams } from './link'
 import {
   AnyRoute,
@@ -9,12 +10,13 @@ import {
   RouteOptions,
   UpdatableRouteOptions,
   Route,
-  AnyPathParams,
   RootRouteId,
   TrimPathLeft,
   RouteConstraints,
   ResolveFullSearchSchemaInput,
   SearchSchemaInput,
+  LoaderFnContext,
+  RouteLoaderFn,
 } from './route'
 import { Assign, Expand, IsAny } from './utils'
 
@@ -53,12 +55,20 @@ export type RemoveUnderScores<T extends string> = Replace<
   '/'
 >
 
+type ReplaceFirstOccurrence<
+  T extends string,
+  Search extends string,
+  Replacement extends string,
+> = T extends `${infer Prefix}${Search}${infer Suffix}`
+  ? `${Prefix}${Replacement}${Suffix}`
+  : T
+
 export type ResolveFilePath<
   TParentRoute extends AnyRoute,
   TFilePath extends string,
 > = TParentRoute['id'] extends RootRouteId
   ? TrimPathLeft<TFilePath>
-  : Replace<
+  : ReplaceFirstOccurrence<
       TrimPathLeft<TFilePath>,
       TrimPathLeft<TParentRoute['types']['customId']>,
       ''
@@ -69,7 +79,9 @@ export type FileRoutePath<
   TFilePath extends string,
 > = ResolveFilePath<TParentRoute, TFilePath> extends `_${infer _}`
   ? string
-  : ResolveFilePath<TParentRoute, TFilePath>
+  : ResolveFilePath<TParentRoute, TFilePath> extends `/_${infer _}`
+    ? string
+    : ResolveFilePath<TParentRoute, TFilePath>
 
 export class FileRoute<
   TFilePath extends keyof FileRoutesByPath,
@@ -93,7 +105,7 @@ export class FileRoute<
       string,
       any
     > = TSearchSchemaInput extends SearchSchemaInput
-      ? TSearchSchemaInput
+      ? Omit<TSearchSchemaInput, keyof SearchSchemaInput>
       : TSearchSchema,
     TFullSearchSchemaInput extends
       RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchemaInput<
@@ -112,8 +124,14 @@ export class FileRoute<
       TParentRoute['types']['allParams'],
       TParams
     >,
-    TRouteContext extends RouteConstraints['TRouteContext'] = RouteContext,
-    TContext extends Expand<
+    TRouteContextReturn extends
+      RouteConstraints['TRouteContext'] = RouteContext,
+    TRouteContext extends RouteConstraints['TRouteContext'] = [
+      TRouteContextReturn,
+    ] extends [never]
+      ? RouteContext
+      : TRouteContextReturn,
+    TAllContext extends Expand<
       Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
     > = Expand<
       Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
@@ -136,8 +154,10 @@ export class FileRoute<
         TFullSearchSchema,
         TParams,
         TAllParams,
+        TRouteContextReturn,
         TRouteContext,
-        TContext,
+        TRouterContext,
+        TAllContext,
         TLoaderDeps,
         TLoaderData
       >,
@@ -157,8 +177,9 @@ export class FileRoute<
     TFullSearchSchema,
     TParams,
     TAllParams,
+    TRouteContextReturn,
     TRouteContext,
-    TContext,
+    TAllContext,
     TRouterContext,
     TLoaderDeps,
     TLoaderData,
@@ -169,4 +190,27 @@ export class FileRoute<
     ;(route as any).isRoot = false
     return route as any
   }
+}
+
+export function FileRouteLoader<
+  TFilePath extends keyof FileRoutesByPath,
+  TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
+>(
+  _path: TFilePath,
+): <TLoaderData extends any>(
+  loaderFn: RouteLoaderFn<
+    TRoute['types']['allParams'],
+    TRoute['types']['loaderDeps'],
+    TRoute['types']['allContext'],
+    TRoute['types']['routeContext'],
+    TLoaderData
+  >,
+) => RouteLoaderFn<
+  TRoute['types']['allParams'],
+  TRoute['types']['loaderDeps'],
+  TRoute['types']['allContext'],
+  TRoute['types']['routeContext'],
+  NoInfer<TLoaderData>
+> {
+  return (loaderFn) => loaderFn
 }

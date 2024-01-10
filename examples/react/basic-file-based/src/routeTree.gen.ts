@@ -1,85 +1,106 @@
-import { Route as rootRoute } from "./routes/__root"
-import { Route as PostsRoute } from "./routes/posts"
-import { Route as LayoutRoute } from "./routes/_layout"
-import { Route as IndexRoute } from "./routes/index"
-import { Route as PostsPostIdRoute } from "./routes/posts.$postId"
-import { Route as LayoutLayoutBRoute } from "./routes/_layout/layout-b"
-import { Route as LayoutLayoutARoute } from "./routes/_layout/layout-a"
-import { Route as PostsIndexRoute } from "./routes/posts.index"
-import { Route as PostsPostIdDeepRoute } from "./routes/posts_.$postId.deep"
+import { Route as rootRoute } from './routes/__root'
+import { Route as PostsImport } from './routes/posts'
+import { Route as LayoutImport } from './routes/_layout'
+import { Route as IndexImport } from './routes/index'
+import { Route as PostsIndexImport } from './routes/posts.index'
+import { Route as PostsPostIdImport } from './routes/posts.$postId'
+import { Route as Layoutlayout2Import } from './routes/_layout/_layout-2'
+import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
+import { Route as Layoutlayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as Layoutlayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
 
-declare module "@tanstack/react-router" {
+const PostsRoute = PostsImport.update({
+  path: '/posts',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LayoutRoute = LayoutImport.update({
+  id: '/_layout',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const IndexRoute = IndexImport.update({
+  path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const PostsIndexRoute = PostsIndexImport.update({
+  path: '/',
+  getParentRoute: () => PostsRoute,
+} as any)
+
+const PostsPostIdRoute = PostsPostIdImport.update({
+  path: '/$postId',
+  getParentRoute: () => PostsRoute,
+} as any)
+
+const Layoutlayout2Route = Layoutlayout2Import.update({
+  id: '/_layout-2',
+  getParentRoute: () => LayoutRoute,
+} as any)
+
+const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
+  path: '/posts/$postId/deep',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const Layoutlayout2LayoutBRoute = Layoutlayout2LayoutBImport.update({
+  path: '/layout-b',
+  getParentRoute: () => Layoutlayout2Route,
+} as any)
+
+const Layoutlayout2LayoutARoute = Layoutlayout2LayoutAImport.update({
+  path: '/layout-a',
+  getParentRoute: () => Layoutlayout2Route,
+} as any)
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/": {
+    '/': {
+      preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
-    "/_layout": {
+    '/_layout': {
+      preLoaderRoute: typeof LayoutImport
       parentRoute: typeof rootRoute
     }
-    "/posts": {
+    '/posts': {
+      preLoaderRoute: typeof PostsImport
       parentRoute: typeof rootRoute
     }
-    "/posts/": {
-      parentRoute: typeof PostsRoute
+    '/_layout/_layout-2': {
+      preLoaderRoute: typeof Layoutlayout2Import
+      parentRoute: typeof LayoutImport
     }
-    "/_layout/layout-a": {
-      parentRoute: typeof LayoutRoute
+    '/posts/$postId': {
+      preLoaderRoute: typeof PostsPostIdImport
+      parentRoute: typeof PostsImport
     }
-    "/_layout/layout-b": {
-      parentRoute: typeof LayoutRoute
+    '/posts/': {
+      preLoaderRoute: typeof PostsIndexImport
+      parentRoute: typeof PostsImport
     }
-    "/posts/$postId": {
-      parentRoute: typeof PostsRoute
+    '/_layout/_layout-2/layout-a': {
+      preLoaderRoute: typeof Layoutlayout2LayoutAImport
+      parentRoute: typeof Layoutlayout2Import
     }
-    "/posts_/$postId/deep": {
+    '/_layout/_layout-2/layout-b': {
+      preLoaderRoute: typeof Layoutlayout2LayoutBImport
+      parentRoute: typeof Layoutlayout2Import
+    }
+    '/posts_/$postId/deep': {
+      preLoaderRoute: typeof PostsPostIdDeepImport
       parentRoute: typeof rootRoute
     }
   }
 }
-
-Object.assign(IndexRoute.options, {
-  path: "/",
-  getParentRoute: () => rootRoute,
-})
-
-Object.assign(LayoutRoute.options, {
-  id: "/_layout",
-  getParentRoute: () => rootRoute,
-})
-
-Object.assign(PostsRoute.options, {
-  path: "/posts",
-  getParentRoute: () => rootRoute,
-})
-
-Object.assign(PostsIndexRoute.options, {
-  path: "/",
-  getParentRoute: () => PostsRoute,
-})
-
-Object.assign(LayoutLayoutARoute.options, {
-  path: "/layout-a",
-  getParentRoute: () => LayoutRoute,
-})
-
-Object.assign(LayoutLayoutBRoute.options, {
-  path: "/layout-b",
-  getParentRoute: () => LayoutRoute,
-})
-
-Object.assign(PostsPostIdRoute.options, {
-  path: "/$postId",
-  getParentRoute: () => PostsRoute,
-})
-
-Object.assign(PostsPostIdDeepRoute.options, {
-  path: "/posts/$postId/deep",
-  getParentRoute: () => rootRoute,
-})
-
 export const routeTree = rootRoute.addChildren([
   IndexRoute,
-  LayoutRoute.addChildren([LayoutLayoutARoute, LayoutLayoutBRoute]),
-  PostsRoute.addChildren([PostsIndexRoute, PostsPostIdRoute]),
+  LayoutRoute.addChildren([
+    Layoutlayout2Route.addChildren([
+      Layoutlayout2LayoutARoute,
+      Layoutlayout2LayoutBRoute,
+    ]),
+  ]),
+  PostsRoute.addChildren([PostsPostIdRoute, PostsIndexRoute]),
   PostsPostIdDeepRoute,
 ])

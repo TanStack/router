@@ -1,8 +1,7 @@
 ---
 id: FileRoutesByPathType
-title: `FileRoutesByPath` type
+title: FileRoutesByPath type
 ---
-
 
 The `FileRoutesByPath` type is dynamically used with declaration merging to map file paths to their corresponding route and parent route types. These types are then used to create the generated route tree types.
 

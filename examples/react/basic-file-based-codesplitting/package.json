@@ -1,0 +1,27 @@
+{
+  "name": "tanstack-router-react-example-basic-file-based-codesplitting",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --port=3001",
+    "build": "vite build",
+    "serve": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "1.2.6",
+    "@tanstack/router-devtools": "1.2.6",
+    "@tanstack/router-vite-plugin": "1.2.6",
+    "axios": "^1.6.5",
+    "immer": "^10.0.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.11"
+  }
+}

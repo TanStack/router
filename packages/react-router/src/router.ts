@@ -51,7 +51,6 @@ import {
   joinPaths,
   matchPathname,
   parsePathname,
-  removeBasepath,
   resolvePath,
   trimPath,
   trimPathLeft,
@@ -259,12 +258,18 @@ export class Router<
   startReactTransition: (fn: () => void) => void = (fn) => fn()
 
   update = (newOptions: RouterConstructorOptions<TRouteTree, TDehydrated>) => {
+    const previousOptions = this.options
     this.options = {
       ...this.options,
       ...newOptions,
     }
 
-    this.basepath = `/${trimPath(newOptions.basepath ?? '') ?? ''}`
+    if (
+      !this.basepath ||
+      (newOptions.basepath && newOptions.basepath !== previousOptions.basepath)
+    ) {
+      this.basepath = `/${trimPath(newOptions.basepath ?? '') ?? ''}`
+    }
 
     if (
       !this.history ||
@@ -274,7 +279,9 @@ export class Router<
         this.options.history ??
         (typeof document !== 'undefined'
           ? createBrowserHistory()
-          : createMemoryHistory())
+          : createMemoryHistory({
+              initialEntries: [this.options.basepath || '/'],
+            }))
       this.latestLocation = this.parseLocation()
     }
 
@@ -705,11 +712,9 @@ export class Router<
       const fromSearch =
         (this.state.pendingMatches || this.state.matches).at(-1)?.search ||
         from.search
-      const fromPathname = dest.from ?? from.pathname
+      let pathname = this.resolvePathWithBase(from.pathname, `${dest.to ?? ''}`)
 
-      let pathname = this.resolvePathWithBase(fromPathname, `${dest.to ?? ''}`)
-
-      const fromMatches = this.matchRoutes(fromPathname, fromSearch)
+      const fromMatches = this.matchRoutes(from.pathname, fromSearch)
       const stayingMatches = matches?.filter(
         (d) => fromMatches?.find((e) => e.routeId === d.routeId),
       )
@@ -784,7 +789,7 @@ export class Router<
           ? from.hash
           : dest.hash
             ? functionalUpdate(dest.hash!, from.hash)
-            : from.hash
+            : undefined
 
       const hashStr = hash ? `#${hash}` : ''
 
@@ -802,7 +807,7 @@ export class Router<
         search,
         searchStr,
         state: nextState as any,
-        hash,
+        hash: hash ?? '',
         href: `${pathname}${searchStr}${hashStr}`,
         unmaskOnReload: dest.unmaskOnReload,
       }
@@ -834,11 +839,11 @@ export class Router<
         })
 
         if (foundMask) {
-          foundMask = {
+          maskedDest = {
+            ...pick(opts, ['from']),
             ...foundMask,
-            from: interpolatePath(foundMask.from, params) as any,
+            params,
           }
-          maskedDest = foundMask
           maskedNext = build(maskedDest)
         }
       }
@@ -1645,7 +1650,9 @@ export function lazyFn<
   T extends Record<string, (...args: any[]) => any>,
   TKey extends keyof T = 'default',
 >(fn: () => Promise<T>, key?: TKey) {
-  return async (...args: Parameters<T[TKey]>): Promise<ReturnType<T[TKey]>> => {
+  return async (
+    ...args: Parameters<T[TKey]>
+  ): Promise<Awaited<ReturnType<T[TKey]>>> => {
     const imported = await fn()
     return imported[key || 'default'](...args)
   }

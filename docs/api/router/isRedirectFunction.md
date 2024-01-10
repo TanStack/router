@@ -1,8 +1,7 @@
 ---
 id: isRedirectFunction
-title: `isRedirect` function
+title: isRedirect function
 ---
-
 
 The `isRedirect` function can be used to determine if an object is a redirect object.
 

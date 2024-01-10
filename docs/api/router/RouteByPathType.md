@@ -1,8 +1,7 @@
 ---
 id: RouteByPathType
-title: `RouteByPath` type
+title: RouteByPath type
 ---
-
 
 This type takes a route tree and a path and returns the route in the tree that matches the path.
 

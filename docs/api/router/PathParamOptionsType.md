@@ -1,8 +1,7 @@
 ---
 id: PathParamOptionsType
-title: `PathParamOptions` type
+title: PathParamOptions type
 ---
-
 
 The `PathParamOptions` type is used to describe how path params can be provided or transformed to various navigational APIs in TanStack Router.
 

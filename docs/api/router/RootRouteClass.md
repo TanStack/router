@@ -1,8 +1,7 @@
 ---
 id: RootRouteClass
-title: `RootRoute` class
+title: RootRoute class
 ---
-
 
 The `RootRoute` class extends the `Route` class and can be used to create a root route instance. A root route instance can then be used to create a route tree.
 

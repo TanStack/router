@@ -1,8 +1,7 @@
 ---
 id: ToOptionsType
-title: `ToOptions` type
+title: ToOptions type
 ---
-
 
 The `ToOptions` type contains several properties that can be used to describe a router destination.
 
@@ -10,8 +9,8 @@ The `ToOptions` type contains several properties that can be used to describe a 
 type ToOptions = {
   from?: ValidRoutePath | string
   to?: ValidRoutePath | string
-  hash?: true | ((prev: string) => string)
-  state?: true | ((prev: HistoryState) => HistoryState)
+  hash?: true | string | ((prev?: string) => string)
+  state?: true | HistoryState | ((prev: HistoryState) => HistoryState)
 } & SearchParamOptions &
   PathParamOptions
 ```

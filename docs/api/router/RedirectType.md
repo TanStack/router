@@ -1,8 +1,7 @@
 ---
 id: RedirectType
-title: `redirect` type
+title: redirect type
 ---
-
 
 The `redirect` type represents a redirect action in TanStack Router.
 

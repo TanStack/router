@@ -5,7 +5,7 @@ import {
   StartServer,
   transformStreamWithRouter,
 } from '@tanstack/react-router-server/server'
-import isbot from 'isbot'
+import { isbot } from 'isbot'
 import { ServerResponse } from 'http'
 import express from 'express'
 

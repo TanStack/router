@@ -1,8 +1,7 @@
 ---
 id: LinkPropsType
-title: `LinkProps` type
+title: LinkProps type
 ---
-
 
 The `LinkProps` type extends the `ActiveLinkOptions` and `React.AnchorHTMLAttributes<HTMLAnchorElement>` types and contains additional props specific to the `Link` component.
 

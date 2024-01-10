@@ -1,8 +1,7 @@
 ---
 id: LinkOptionsType
-title: `LinkOptions` type
+title: LinkOptions type
 ---
-
 
 The `LinkOptions` type extends the `NavigateOptions` type and contains additional options that can be used by TanStack Router when handling actual anchor element attributes.
 

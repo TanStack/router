@@ -12,27 +12,27 @@ type StyledComponent<T> = T extends 'button'
       HTMLButtonElement
     >
   : T extends 'input'
-  ? React.DetailedHTMLProps<
-      React.InputHTMLAttributes<HTMLInputElement>,
-      HTMLInputElement
-    >
-  : T extends 'select'
-  ? React.DetailedHTMLProps<
-      React.SelectHTMLAttributes<HTMLSelectElement>,
-      HTMLSelectElement
-    >
-  : T extends keyof HTMLElementTagNameMap
-  ? React.HTMLAttributes<HTMLElementTagNameMap[T]>
-  : never
+    ? React.DetailedHTMLProps<
+        React.InputHTMLAttributes<HTMLInputElement>,
+        HTMLInputElement
+      >
+    : T extends 'select'
+      ? React.DetailedHTMLProps<
+          React.SelectHTMLAttributes<HTMLSelectElement>,
+          HTMLSelectElement
+        >
+      : T extends keyof HTMLElementTagNameMap
+        ? React.HTMLAttributes<HTMLElementTagNameMap[T]>
+        : never
 
 export function getStatusColor(match: AnyRouteMatch, theme: Theme) {
   return match.status === 'pending' || match.isFetching
     ? theme.active
     : match.status === 'error'
-    ? theme.danger
-    : match.status === 'success'
-    ? theme.success
-    : theme.gray
+      ? theme.danger
+      : match.status === 'success'
+        ? theme.success
+        : theme.gray
 }
 
 export function getRouteStatusColor(
@@ -107,8 +107,11 @@ export function useIsMounted() {
 export const displayValue = (value: unknown) => {
   const name = Object.getOwnPropertyNames(Object(value))
   const newValue = typeof value === 'bigint' ? `${value.toString()}n` : value
-
-  return JSON.stringify(newValue, name)
+  try {
+    return JSON.stringify(newValue, name)
+  } catch (e) {
+    return `unable to stringify`
+  }
 }
 
 /**

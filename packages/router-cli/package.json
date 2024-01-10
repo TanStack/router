@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-cli",
   "author": "Tanner Linsley",
-  "version": "1.0.9",
+  "version": "1.2.6",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
@@ -56,7 +56,6 @@
     "@types/yargs": "^17.0.15",
     "chokidar": "^3.5.3",
     "dedent": "^0.7.0",
-    "fs-extra": "^10.1.0",
     "klaw": "^4.0.1",
     "nodemon": "^2.0.20",
     "prettier": "^3.0.2",

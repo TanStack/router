@@ -1,8 +1,7 @@
 ---
 id: useMatchHook
-title: `useMatch` hook
+title: useMatch hook
 ---
-
 
 The `useMatch` hook returns the closest `RouteMatch` in the component tree. The raw route match contains all of the information about a route match in the router and also powers many other hooks under the hood like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch`.
 

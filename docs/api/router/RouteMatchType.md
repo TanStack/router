@@ -1,8 +1,7 @@
 ---
 id: RouteMatchType
-title: `RouteMatch` type
+title: RouteMatch type
 ---
-
 
 The `RouteMatch` type represents a route match in TanStack Router.
 

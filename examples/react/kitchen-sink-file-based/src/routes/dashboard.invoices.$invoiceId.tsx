@@ -23,7 +23,7 @@ export const Route = new FileRoute('/dashboard/invoices/$invoiceId').createRoute
 
 function InvoiceComponent() {
   const search = Route.useSearch()
-  const navigate = useNavigate()
+  const navigate = useNavigate({from: Route.id})
   const invoice = Route.useLoaderData()
   const router = useRouter()
   const updateInvoiceMutation = useMutation({
@@ -39,6 +39,7 @@ function InvoiceComponent() {
         notes: notes ? notes : undefined,
       }),
       replace: true,
+      params: true,
     })
   }, [notes])
 
@@ -63,11 +64,13 @@ function InvoiceComponent() {
       />
       <div>
         <Link
+          from={Route.id}
           search={(old) => ({
             ...old,
             showNotes: old?.showNotes ? undefined : true,
           })}
           className="text-blue-700"
+          params={true}
         >
           {search.showNotes ? 'Close Notes' : 'Show Notes'}{' '}
         </Link>

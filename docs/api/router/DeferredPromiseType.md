@@ -1,8 +1,7 @@
 ---
 id: DeferredPromiseType
-title: `DeferredPromise` type
+title: DeferredPromise type
 ---
-
 
 ```tsx
 type DeferredPromise<T> = Promise<T> & {

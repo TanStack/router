@@ -2,25 +2,13 @@ import * as React from 'react'
 import { useMatch } from './Matches'
 import { RouteMatch } from './Matches'
 import { AnyRoute } from './route'
-import { ParseRoute, RouteIds, RoutesById, RouteById } from './routeInfo'
+import { RouteIds, RouteById } from './routeInfo'
 import { RegisteredRouter } from './router'
 
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<T, Y, N = T> = 1 extends 0 & T ? Y : N
-export type IsAnyBoolean<T> = 1 extends 0 & T ? true : false
-export type IsKnown<T, Y, N> = unknown extends T ? N : Y
 export type PickAsRequired<T, K extends keyof T> = Omit<T, K> &
   Required<Pick<T, K>>
-export type PickAsPartial<T, K extends keyof T> = Omit<T, K> &
-  Partial<Pick<T, K>>
-export type PickUnsafe<T, K> = K extends keyof T ? Pick<T, K> : never
-export type PickExtra<T, K> = {
-  [TKey in keyof K as string extends TKey
-    ? never
-    : TKey extends keyof T
-    ? never
-    : TKey]: K[TKey]
-}
 
 export type PickRequired<T> = {
   [K in keyof T as undefined extends T[K] ? never : K]: T[K]
@@ -102,22 +90,6 @@ export type AssignAll<T extends any[]> = T extends [infer Left, ...infer Right]
 // // Using DeepMerge to merge TypeA and TypeB
 // type MergedType = Expand<AssignAll<[TypeA, TypeB, TypeC]>>
 
-export type Values<O> = O[ValueKeys<O>]
-export type ValueKeys<O> = Extract<keyof O, PropertyKey>
-
-export type DeepAwaited<T> = T extends Promise<infer A>
-  ? DeepAwaited<A>
-  : T extends Record<infer A, Promise<infer B>>
-  ? { [K in A]: DeepAwaited<B> }
-  : T
-
-export type PathParamMask<TRoutePath extends string> =
-  TRoutePath extends `${infer L}/$${infer C}/${infer R}`
-    ? PathParamMask<`${L}/${string}/${R}`>
-    : TRoutePath extends `${infer L}/$${infer C}`
-    ? PathParamMask<`${L}/${string}`>
-    : TRoutePath
-
 export type Timeout = ReturnType<typeof setTimeout>
 
 export type Updater<TPrevious, TResult = TPrevious> =
@@ -127,14 +99,6 @@ export type Updater<TPrevious, TResult = TPrevious> =
 export type NonNullableUpdater<TPrevious, TResult = TPrevious> =
   | TResult
   | ((prev: TPrevious) => TResult)
-
-export type PickExtract<T, U> = {
-  [K in keyof T as T[K] extends U ? K : never]: T[K]
-}
-
-export type PickExclude<T, U> = {
-  [K in keyof T as T[K] extends U ? never : K]: T[K]
-}
 
 // from https://github.com/type-challenges/type-challenges/issues/737
 type LastInUnion<U> = UnionToIntersection<
@@ -320,17 +284,6 @@ export type StrictOrFrom<TFrom> =
       from?: never
       strict: false
     }
-
-export type RouteFromIdOrRoute<
-  T,
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-> = T extends ParseRoute<TRouteTree>
-  ? T
-  : T extends RouteIds<TRouteTree>
-  ? RoutesById<TRouteTree>[T]
-  : T extends string
-  ? RouteIds<TRouteTree>
-  : never
 
 export function useRouteContext<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],

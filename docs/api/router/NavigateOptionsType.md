@@ -1,8 +1,7 @@
 ---
 id: NavigateOptionsType
-title: `NavigateOptions` type
+title: NavigateOptions type
 ---
-
 
 The `NavigateOptions` type is used to describe the options that can be used when describing a navigation action in TanStack Router.
 

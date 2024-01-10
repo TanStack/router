@@ -431,7 +431,7 @@ const usersRoute = new Route({
 })
 
 function UsersComponent() {
-  const navigate = useNavigate({from: usersRoute.id})
+  const navigate = useNavigate({ from: usersRoute.id })
   const { usersView } = usersRoute.useSearch()
   const users = usersRoute.useLoaderData()
   const sortBy = usersView?.sortBy ?? 'name'
@@ -695,7 +695,7 @@ function LoginComponent() {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Username"
-          className="border p-1 px-2 rounded"
+          className="border p-1 px-2 rounded text-black"
         />
         <button
           type="submit"

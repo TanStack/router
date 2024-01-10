@@ -1,8 +1,7 @@
 ---
 id: ActiveLinkOptionsType
-title: `ActiveLinkOptions` type
+title: ActiveLinkOptions type
 ---
-
 
 The `ActiveLinkOptions` type extends the `LinkOptions` type and contains additional options that can be used to describe how a link should be styled when it is active.
 
