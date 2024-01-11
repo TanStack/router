@@ -300,7 +300,7 @@ export const Route = new Route({
   component: Posts,
 })
 
-function MyComponent () {
+function Posts () {
   ...
 }
 ```
@@ -321,7 +321,7 @@ export const Route = new Route({
 ```tsx
 // posts.component.tsx
 
-export const component = function MyComponent () {
+export const component = function Posts () {
   ...
 }
 ```
@@ -343,7 +343,7 @@ export const Route = new Route({
   component: Posts,
 })
 
-function MyComponent () {
+function Posts () {
   ...
 }
 ```
@@ -358,6 +358,10 @@ import { Route } from '@tanstack/react-router'
 export const Route = new Route({
   component: Posts,
 })
+
+function Posts () {
+  ...
+}
 ```
 
 ```tsx
