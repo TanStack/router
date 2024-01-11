@@ -61,12 +61,10 @@ async function getRouteNodes(config: Config) {
         if (stat.isDirectory()) {
           await recurse(relativePath)
         } else {
-          const filePath = path.join(dir, fileName)
+          const filePath = replaceBackslash(path.join(dir, fileName))
           const filePathNoExt = removeExt(filePath)
           let routePath =
-            replaceBackslash(
-              cleanPath(`/${filePathNoExt.split('.').join('/')}`),
-            ) ?? ''
+            cleanPath(`/${filePathNoExt.split('.').join('/')}`) || ''
           const variableName = routePathToVariable(routePath)
 
           // Remove the index from the route path and
@@ -149,26 +147,20 @@ export async function generator(config: Config) {
   const start = Date.now()
   const routePathIdPrefix = config.routeFilePrefix ?? ''
 
-  let preRouteNodes = await getRouteNodes(config)
-
-  const sortRouteNodes = (nodes: RouteNode[]): RouteNode[] => {
-    return multiSortBy(nodes, [
-      (d) => (d.routePath === '/' ? -1 : 1),
-      (d) => d.routePath?.split('/').length,
-      (d) => (d.filePath?.match(/[./]index[.]/) ? 1 : -1),
-      (d) =>
-        d.filePath?.match(
-          /[./](component|errorComponent|pendingComponent|loader)[.]/,
-        )
-          ? 1
-          : -1,
-      (d) => (d.filePath?.match(/[./]route[.]/) ? -1 : 1),
-      (d) => (d.routePath?.endsWith('/') ? -1 : 1),
-      (d) => d.routePath,
-    ]).filter((d) => d.routePath !== `/${routePathIdPrefix + rootPathId}`)
-  }
-
-  preRouteNodes = sortRouteNodes(preRouteNodes)
+  const preRouteNodes = multiSortBy(await getRouteNodes(config), [
+    (d) => (d.routePath === '/' ? -1 : 1),
+    (d) => d.routePath?.split('/').length,
+    (d) => (d.filePath?.match(/[./]index[.]/) ? 1 : -1),
+    (d) =>
+      d.filePath?.match(
+        /[./](component|errorComponent|pendingComponent|loader)[.]/,
+      )
+        ? 1
+        : -1,
+    (d) => (d.filePath?.match(/[./]route[.]/) ? -1 : 1),
+    (d) => (d.routePath?.endsWith('/') ? -1 : 1),
+    (d) => d.routePath,
+  ]).filter((d) => d.routePath !== `/${routePathIdPrefix + rootPathId}`)
 
   const routeTree: RouteNode[] = []
   const routePiecesByPath: Record<string, RouteSubNode> = {}
@@ -518,8 +510,8 @@ function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-function sanitize(s?: string) {
-  return replaceBackslash(s?.replace(/\\index/gi, ''))
+function sanitize(s: string) {
+  return replaceBackslash(s.replace(/\\index/gi, ''))
 }
 
 function removeUnderscores(s?: string) {
@@ -530,8 +522,8 @@ function removeTrailingUnderscores(s?: string) {
   return s?.replace(/(_$)/, '').replace(/(_\/)/, '/')
 }
 
-function replaceBackslash(s?: string) {
-  return s?.replace(/\\/gi, '/')
+function replaceBackslash(s: string) {
+  return s.replace(/\\/gi, '/')
 }
 
 export function hasParentRoute(
