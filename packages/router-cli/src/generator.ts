@@ -67,7 +67,7 @@ async function getRouteNodes(config: Config) {
             replaceBackslash(
               cleanPath(`/${filePathNoExt.split('.').join('/')}`),
             ) ?? ''
-          const variableName = fileToVariable(routePath)
+          const variableName = routePathToVariable(routePath)
 
           // Remove the index from the route path and
           // if the route path is empty, use `/'
@@ -460,9 +460,11 @@ export async function generator(config: Config) {
   )
 }
 
-function fileToVariable(d: string): string {
+function routePathToVariable(d: string): string {
   return (
     removeUnderscores(d)
+      ?.replace(/\/\$\//g, '/splat/')
+      ?.replace(/\$$/g, 'splat')
       ?.replace(/\$/g, '')
       ?.split(/[/-]/g)
       .map((d, i) => (i > 0 ? capitalize(d) : d))
