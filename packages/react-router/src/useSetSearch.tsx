@@ -13,7 +13,10 @@ export function useSetSearch<
     TRouteTree,
     TFrom
   >['types']['fullSearchSchema'],
->(opts: { from: TFrom }): (search: Partial<TSearch>) => void {
+>(opts: {
+  from: TFrom
+  replace: boolean | undefined
+}): (search: Partial<TSearch>) => void {
   const router = useRouter()
 
   const pathname = useMatch({
@@ -29,7 +32,7 @@ export function useSetSearch<
     const searchStr = router.options.stringifySearch(__tempSearch)
 
     router.commitLocation({
-      replace: true,
+      replace: opts.replace ?? true,
       pathname,
       hash,
       href: `${pathname}${searchStr}${hash}`,

@@ -173,7 +173,7 @@ function PostErrorComponent({ error }: ErrorRouteProps) {
 function PostComponent() {
   const post = postRoute.useLoaderData()
   const { color, postId } = postRoute.useSearch()
-  const setSearch = postRoute.useSetSearch()
+  const setSearch = postRoute.useSetSearch({ replace: false })
 
   return (
     <div className="space-y-2">

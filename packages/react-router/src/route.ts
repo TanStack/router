@@ -505,10 +505,10 @@ export class RouteApi<
     return useSearch({ ...opts, from: this.id } as any)
   }
 
-  useSetSearch = <TSelected = TFullSearchSchema>(): ((
-    search: Partial<TSelected>,
-  ) => void) => {
-    return useSetSearch({ from: this.id } as any) as any
+  useSetSearch = <TSelected = TFullSearchSchema>(opts?: {
+    replace?: boolean
+  }): ((search: Partial<TSelected>) => void) => {
+    return useSetSearch({ ...opts, from: this.id } as any) as any
   }
 
   useParams = <TSelected = TAllParams>(opts?: {
@@ -836,10 +836,10 @@ export class Route<
     return useSearch({ ...opts, from: this.id } as any)
   }
 
-  useSetSearch = <TSelected = TFullSearchSchema>(): ((
-    search: Partial<TSelected>,
-  ) => void) => {
-    return useSetSearch({ from: this.id } as any) as any
+  useSetSearch = <TSelected = TFullSearchSchema>(opts?: {
+    replace?: boolean
+  }): ((search: Partial<TSelected>) => void) => {
+    return useSetSearch({ ...opts, from: this.id } as any) as any
   }
 
   useParams = <TSelected = TAllParams>(opts?: {
