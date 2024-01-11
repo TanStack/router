@@ -310,7 +310,7 @@ export async function generator(config: Config) {
     imports.length
       ? `import { ${imports.join(', ')} } from '@tanstack/react-router'\n`
       : '',
-    `import { Route as rootRoute } from './${sanitize(
+    `import { Route as rootRoute } from './${replaceBackslash(
       path.relative(
         path.dirname(config.generatedRouteTree),
         path.resolve(config.routesDirectory, routePathIdPrefix + rootPathId),
@@ -321,7 +321,7 @@ export async function generator(config: Config) {
       .map((node) => {
         return `import { Route as ${
           node.variableName
-        }Import } from './${sanitize(
+        }Import } from './${replaceBackslash(
           removeExt(
             path.relative(
               path.dirname(config.generatedRouteTree),
@@ -363,7 +363,7 @@ export async function generator(config: Config) {
             .join(',')}
         } as any)`,
           loaderNode
-            ? `.updateLoader({ loader: lazyFn(() => import('./${sanitize(
+            ? `.updateLoader({ loader: lazyFn(() => import('./${replaceBackslash(
                 removeExt(
                   path.relative(
                     path.dirname(config.generatedRouteTree),
@@ -385,7 +385,7 @@ export async function generator(config: Config) {
                 .map((d) => {
                   return `${
                     d[0]
-                  }: lazyRouteComponent(() => import('./${sanitize(
+                  }: lazyRouteComponent(() => import('./${replaceBackslash(
                     removeExt(
                       path.relative(
                         path.dirname(config.generatedRouteTree),
@@ -508,10 +508,6 @@ export function multiSortBy<T>(
 function capitalize(s: string) {
   if (typeof s !== 'string') return ''
   return s.charAt(0).toUpperCase() + s.slice(1)
-}
-
-function sanitize(s: string) {
-  return replaceBackslash(s.replace(/\\index/gi, ''))
 }
 
 function removeUnderscores(s?: string) {
