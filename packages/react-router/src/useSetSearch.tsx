@@ -19,16 +19,16 @@ export function useSetSearch<
 }): (search: Partial<TSearch>) => void {
   const router = useRouter()
 
-  const pathname = useMatch({
+  const prevSearch = useMatch({
     from: opts.from,
     select: (match: RouteMatch) => {
-      return match.pathname
+      return match.search
     },
   })
 
   return React.useCallback((search: Partial<TSearch>) => {
-    const __tempSearch = { ...router.state.location.search, ...search }
-    const { hash, state } = router.state.location
+    const __tempSearch = { ...prevSearch, ...search }
+    const { hash, state, pathname } = router.state.location
     const searchStr = router.options.stringifySearch(__tempSearch)
 
     router.commitLocation({
