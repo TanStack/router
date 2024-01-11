@@ -605,7 +605,7 @@ const authRoute = new Route({
   // This will also happen during prefetching (e.g. hovering over links, etc)
   beforeLoad: ({ context, location }) => {
     // If the user is logged out, redirect them to the login page
-    if (context.auth.status === 'loggedOut') {
+    if (context.auth.state.status === 'loggedOut') {
       throw redirect({
         to: loginRoute.to,
         search: {
@@ -619,7 +619,7 @@ const authRoute = new Route({
 
     // Otherwise, return the user in context
     return {
-      username: auth.username,
+      username: auth.state.username,
     }
   },
 })
@@ -666,14 +666,14 @@ function LoginComponent() {
 
   // Ah, the subtle nuances of client side auth. 🙄
   React.useLayoutEffect(() => {
-    if (auth.status === 'loggedIn' && search.redirect) {
+    if (auth.state.status === 'loggedIn' && search.redirect) {
       router.history.push(search.redirect)
     }
-  }, [auth.status, search.redirect])
+  }, [auth.state.status, search.redirect])
 
-  return auth.status === 'loggedIn' ? (
+  return auth.state.status === 'loggedIn' ? (
     <div>
-      Logged in as <strong>{auth.username}</strong>
+      Logged in as <strong>{auth.state.username}</strong>
       <div className="h-2" />
       <button
         onClick={() => {
@@ -786,15 +786,21 @@ declare module '@tanstack/react-router' {
 }
 
 const auth: Auth = {
-  status: 'loggedOut',
-  username: undefined,
+  state: {
+    status: 'loggedOut',
+    username: undefined,
+  },
   login: (username: string) => {
-    auth.status = 'loggedIn'
-    auth.username = username
+    auth.state = {
+      username,
+      status: 'loggedIn',
+    }
   },
   logout: () => {
-    auth.status = 'loggedOut'
-    auth.username = undefined
+    auth.state = {
+      status: 'loggedOut',
+      username: undefined,
+    }
   },
 }
 
@@ -931,10 +937,12 @@ function InvoiceFields({
 }
 
 type Auth = {
+  state: {
+    status: 'loggedOut' | 'loggedIn'
+    username?: string
+  }
   login: (username: string) => void
   logout: () => void
-  status: 'loggedOut' | 'loggedIn'
-  username?: string
 }
 
 function Spinner({ show, wait }: { show?: boolean; wait?: `delay-${number}` }) {
