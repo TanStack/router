@@ -4,7 +4,7 @@ export function CatchBoundary(props: {
   getResetKey: () => string
   children: any
   errorComponent?: any
-  onCatch: (error: any) => void
+  onCatch?: (error: any) => void
 }) {
   const errorComponent = props.errorComponent ?? ErrorComponent
 
