@@ -245,7 +245,7 @@ const userRoute = new Route({
   loaderDeps: ({ search: { userId } }) => ({
     userId,
   }),
-  loader: async ({ params: { userId } }) => getUser(userId),
+  loader: async ({ deps: { userId } }) => getUser(userId),
 })
 ```
 
