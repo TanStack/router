@@ -790,24 +790,24 @@ const loginRoute = new Route({
 
 function LoginComponent() {
   const router = useRouter()
-  const { auth } = loginRoute.useRouteContext()
+  const { auth, status } = loginRoute.useRouteContext({select:({auth}) => ({auth, status: auth.status})})
   const search = useSearch({ from: loginRoute.fullPath })
   const [username, setUsername] = React.useState('')
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     auth.login(username)
-    router.load()
+    router.invalidate()
   }
 
   // Ah, the subtle nuances of client side auth. 🙄
   React.useLayoutEffect(() => {
-    if (auth.status === 'loggedIn' && search.redirect) {
+    if (status === 'loggedIn' && search.redirect) {
       router.history.push(search.redirect)
     }
-  }, [auth.status, search.redirect])
+  }, [status, search.redirect])
 
-  return auth.status === 'loggedIn' ? (
+  return status === 'loggedIn' ? (
     <div>
       Logged in as <strong>{auth.username}</strong>
       <div className="h-2" />

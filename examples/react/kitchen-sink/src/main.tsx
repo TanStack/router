@@ -605,7 +605,7 @@ const authRoute = new Route({
   // This will also happen during prefetching (e.g. hovering over links, etc)
   beforeLoad: ({ context, location }) => {
     // If the user is logged out, redirect them to the login page
-    if (context.auth.state.status === 'loggedOut') {
+    if (context.auth.status === 'loggedOut') {
       throw redirect({
         to: loginRoute.to,
         search: {
@@ -619,7 +619,7 @@ const authRoute = new Route({
 
     // Otherwise, return the user in context
     return {
-      username: auth.state.username,
+      username: auth.username,
     }
   },
 })
@@ -654,7 +654,7 @@ const loginRoute = new Route({
 
 function LoginComponent() {
   const router = useRouter()
-  const { auth } = loginRoute.useRouteContext()
+  const { auth, status } = loginRoute.useRouteContext({select:({auth}) => ({auth, status: auth.status})})
   const search = useSearch({ from: loginRoute.fullPath })
   const [username, setUsername] = React.useState('')
 
@@ -666,14 +666,14 @@ function LoginComponent() {
 
   // Ah, the subtle nuances of client side auth. 🙄
   React.useLayoutEffect(() => {
-    if (auth.state.status === 'loggedIn' && search.redirect) {
+    if (status === 'loggedIn' && search.redirect) {
       router.history.push(search.redirect)
     }
-  }, [auth.state.status, search.redirect])
+  }, [status, search.redirect])
 
-  return auth.state.status === 'loggedIn' ? (
+  return status === 'loggedIn' ? (
     <div>
-      Logged in as <strong>{auth.state.username}</strong>
+      Logged in as <strong>{auth.username}</strong>
       <div className="h-2" />
       <button
         onClick={() => {
@@ -786,21 +786,15 @@ declare module '@tanstack/react-router' {
 }
 
 const auth: Auth = {
-  state: {
-    status: 'loggedOut',
-    username: undefined,
-  },
+  status: 'loggedOut',
+  username: undefined,
   login: (username: string) => {
-    auth.state = {
-      username,
-      status: 'loggedIn',
-    }
+    auth.username = username
+    auth.status = 'loggedIn'
   },
   logout: () => {
-    auth.state = {
-      status: 'loggedOut',
-      username: undefined,
-    }
+    auth.status ='loggedOut'
+    auth.username = undefined
   },
 }
 
@@ -937,12 +931,10 @@ function InvoiceFields({
 }
 
 type Auth = {
-  state: {
-    status: 'loggedOut' | 'loggedIn'
-    username?: string
-  }
   login: (username: string) => void
   logout: () => void
+  status: 'loggedOut' | 'loggedIn'
+  username?: string
 }
 
 function Spinner({ show, wait }: { show?: boolean; wait?: `delay-${number}` }) {
