@@ -172,12 +172,18 @@ function PostErrorComponent({ error }: ErrorRouteProps) {
 
 function PostComponent() {
   const post = postRoute.useLoaderData()
-  const { color } = postRoute.useSearch()
+  const { color, postId } = postRoute.useSearch()
+  const setSearch = postRoute.useSetSearch()
+
   return (
     <div className="space-y-2">
       <h4 className="text-xl font-bold">{post.title}</h4>
       <hr className="opacity-20" />
       <div className={`text-sm  text-${color}-300`}>{post.body}</div>
+
+      <button onClick={() => setSearch({ postId: postId + 1 })}>
+        Next Page
+      </button>
     </div>
   )
 }

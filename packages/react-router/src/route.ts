@@ -9,6 +9,7 @@ import { RouteById, RouteIds, RoutePaths } from './routeInfo'
 import { AnyRouter, RegisteredRouter } from './router'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
+import { useSetSearch } from './useSetSearch'
 import {
   Assign,
   Expand,
@@ -504,6 +505,12 @@ export class RouteApi<
     return useSearch({ ...opts, from: this.id } as any)
   }
 
+  useSetSearch = <TSelected = TFullSearchSchema>(): ((
+    search: Partial<TSelected>,
+  ) => void) => {
+    return useSetSearch({ from: this.id } as any) as any
+  }
+
   useParams = <TSelected = TAllParams>(opts?: {
     select?: (s: TAllParams) => TSelected
   }): TSelected => {
@@ -827,6 +834,12 @@ export class Route<
     select?: (search: TFullSearchSchema) => TSelected
   }): TSelected => {
     return useSearch({ ...opts, from: this.id } as any)
+  }
+
+  useSetSearch = <TSelected = TFullSearchSchema>(): ((
+    search: Partial<TSelected>,
+  ) => void) => {
+    return useSetSearch({ from: this.id } as any) as any
   }
 
   useParams = <TSelected = TAllParams>(opts?: {
