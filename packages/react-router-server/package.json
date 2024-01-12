@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/react-router-server",
   "author": "Tanner Linsley",
-  "version": "1.3.5",
+  "version": "1.4.0",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
