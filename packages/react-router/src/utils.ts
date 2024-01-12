@@ -141,7 +141,7 @@ export function pick<T, K extends keyof T>(parent: T, keys: K[]): Pick<T, K> {
 }
 
 /**
- * This function returns `a` if `b` is deeply equal.
+ * This function returns `prev` if `_next` is deeply equal.
  * If not, it will replace any deeply equal children of `b` with those of `a`.
  * This can be used for structural sharing between immutable JSON values for example.
  * Do not use this with signals
@@ -153,7 +153,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
 
   const next = _next as any
 
-  const array = Array.isArray(prev) && Array.isArray(next)
+  const array = isPlainArray(prev) && isPlainArray(next)
 
   if (array || (isPlainObject(prev) && isPlainObject(next))) {
     const prevSize = array ? prev.length : Object.keys(prev).length
@@ -206,6 +206,10 @@ export function isPlainObject(o: any) {
 
 function hasObjectPrototype(o: any) {
   return Object.prototype.toString.call(o) === '[object Object]'
+}
+
+export function isPlainArray(value: unknown) {
+  return Array.isArray(value) && value.length === Object.keys(value).length
 }
 
 export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
