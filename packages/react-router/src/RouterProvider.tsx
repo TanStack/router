@@ -235,12 +235,16 @@ export function getRouteMatch<TRouteTree extends AnyRoute>(
 }
 
 export function useRouterState<
-  TSelected = RouterState<RegisteredRouter['routeTree']>,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TSelected = RouterState<TRouteTree>,
 >(opts?: {
+  router?: Router<TRouteTree>
   select: (state: RouterState<RegisteredRouter['routeTree']>) => TSelected
 }): TSelected {
-  const router = useRouter()
-  return useStore(router.__store, opts?.select as any)
+  const contextRouter = useRouter<TRouteTree>({
+    warn: opts?.router === undefined,
+  })
+  return useStore((opts?.router || contextRouter).__store, opts?.select as any)
 }
 
 export type RouterProps<
@@ -253,12 +257,15 @@ export type RouterProps<
 
 export function useRouter<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
->(): Router<TRouteTree> {
+>(opts?: { warn?: boolean }): Router<TRouteTree> {
   const resolvedContext =
     typeof document !== 'undefined'
       ? window.__TSR_ROUTER_CONTEXT__ || routerContext
       : routerContext
   const value = React.useContext(resolvedContext)
-  warning(value, 'useRouter must be used inside a <RouterProvider> component!')
+  warning(
+    opts?.warn && value,
+    'useRouter must be used inside a <RouterProvider> component!',
+  )
   return value as any
 }
