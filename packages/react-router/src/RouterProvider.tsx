@@ -264,7 +264,7 @@ export function useRouter<
       : routerContext
   const value = React.useContext(resolvedContext)
   warning(
-    opts?.warn && value,
+    !((opts?.warn ?? true) && !value),
     'useRouter must be used inside a <RouterProvider> component!',
   )
   return value as any
