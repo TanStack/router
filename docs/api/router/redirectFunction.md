@@ -23,15 +23,7 @@ The `redirect` function returns a new `Redirect` object that can be either retur
 import { redirect } from '@tanstack/react-router'
 
 const route = new Route({
-  // Returning a redirect object
-  loader: () => {
-    if (!user) {
-      return redirect({
-        to: '/login',
-      })
-    }
-  },
-  // or throwing a redirect object
+  // throwing a redirect object
   loader: () => {
     if (!user) {
       throw redirect({
