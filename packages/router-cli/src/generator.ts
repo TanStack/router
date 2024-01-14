@@ -3,6 +3,7 @@ import * as fs from 'fs/promises'
 import * as prettier from 'prettier'
 import { Config } from './config'
 import { cleanPath, trimPathLeft } from '@tanstack/react-router'
+import { existsSync } from 'fs'
 
 let latestTask = 0
 export const rootPathId = '__root'
@@ -60,7 +61,7 @@ async function getRouteNodes(config: Config) {
 
         if (stat.isDirectory()) {
           await recurse(relativePath)
-        } else {
+        } else if (fullPath.match(/\.(tsx|ts|jsx|js)$/)) {
           const filePath = replaceBackslash(path.join(dir, fileName))
           const filePathNoExt = removeExt(filePath)
           let routePath =
@@ -160,7 +161,9 @@ export async function generator(config: Config) {
     (d) => (d.filePath?.match(/[./]route[.]/) ? -1 : 1),
     (d) => (d.routePath?.endsWith('/') ? -1 : 1),
     (d) => d.routePath,
-  ]).filter((d) => d.routePath !== `/${routePathIdPrefix + rootPathId}`)
+  ]).filter(
+    (d) => ![`/${routePathIdPrefix + rootPathId}`].includes(d.routePath || ''),
+  )
 
   const routeTree: RouteNode[] = []
   const routePiecesByPath: Record<string, RouteSubNode> = {}
@@ -187,43 +190,39 @@ export async function generator(config: Config) {
 
     node.cleanedPath = removeUnderscores(node.path) ?? ''
 
-    if (config.future?.unstable_codeSplitting) {
-      if (
-        !node.isVirtual &&
-        (node.isLoader ||
-          node.isComponent ||
-          node.isErrorComponent ||
-          node.isPendingComponent)
-      ) {
-        routePiecesByPath[node.routePath!] =
-          routePiecesByPath[node.routePath!] || {}
+    if (
+      !node.isVirtual &&
+      (node.isLoader ||
+        node.isComponent ||
+        node.isErrorComponent ||
+        node.isPendingComponent)
+    ) {
+      routePiecesByPath[node.routePath!] =
+        routePiecesByPath[node.routePath!] || {}
 
-        routePiecesByPath[node.routePath!]![
-          node.isLoader
-            ? 'loader'
-            : node.isErrorComponent
-            ? 'errorComponent'
-            : node.isPendingComponent
-            ? 'pendingComponent'
-            : 'component'
-        ] = node
+      routePiecesByPath[node.routePath!]![
+        node.isLoader
+          ? 'loader'
+          : node.isErrorComponent
+          ? 'errorComponent'
+          : node.isPendingComponent
+          ? 'pendingComponent'
+          : 'component'
+      ] = node
 
-        const anchorRoute = routeNodes.find(
-          (d) => d.routePath === node.routePath,
-        )
+      const anchorRoute = routeNodes.find((d) => d.routePath === node.routePath)
 
-        if (!anchorRoute) {
-          handleNode({
-            ...node,
-            isVirtual: true,
-            isLoader: false,
-            isComponent: false,
-            isErrorComponent: false,
-            isPendingComponent: false,
-          })
-        }
-        return
+      if (!anchorRoute) {
+        handleNode({
+          ...node,
+          isVirtual: true,
+          isLoader: false,
+          isComponent: false,
+          isErrorComponent: false,
+          isPendingComponent: false,
+        })
       }
+      return
     }
 
     if (node.parent) {
@@ -417,7 +416,9 @@ export async function generator(config: Config) {
   }
 }`,
     `export const routeTree = rootRoute.addChildren([${routeConfigChildrenText}])`,
-  ].join('\n')
+  ]
+    .filter(Boolean)
+    .join('\n')
 
   const routeConfigFileContent = await prettier.format(routeImports, {
     semi: false,

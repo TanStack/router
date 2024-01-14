@@ -209,7 +209,10 @@ export function matchByPath(
       if (routeSegment) {
         if (routeSegment.type === 'wildcard') {
           if (baseSegment?.value) {
-            params['*'] = joinPaths(baseSegments.slice(i).map((d) => d.value))
+            const _splat = joinPaths(baseSegments.slice(i).map((d) => d.value))
+            // TODO: Deprecate *
+            params['*'] = _splat
+            params['_splat'] = _splat
             return true
           }
           return false
