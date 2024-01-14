@@ -710,8 +710,8 @@ export class Router<
     ): ParsedLocation => {
       const from = this.latestLocation
       const fromSearch =
-        (this.state.pendingMatches || this.state.matches).at(-1)?.search ||
-        from.search
+        (this.state.pendingMatches || this.state.matches).reverse()[0]
+          ?.search || from.search
       let pathname = this.resolvePathWithBase(from.pathname, `${dest.to ?? ''}`)
 
       const fromMatches = this.matchRoutes(from.pathname, fromSearch)
