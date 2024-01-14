@@ -45,6 +45,7 @@ export interface RouteMatch<
   loaderDeps: RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
   preload: boolean
   invalid: boolean
+  pendingPromise?: Promise<void>
 }
 
 export type AnyRouteMatch = RouteMatch<any, any>

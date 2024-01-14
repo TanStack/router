@@ -1058,6 +1058,12 @@ export class Router<
           const parentContext =
             parentMatch?.context ?? this.options.context ?? {}
 
+          const pendingMs =
+            route.options.pendingMs ?? this.options.defaultPendingMs
+          const pendingPromise = new Promise<void>((r) =>
+            setTimeout(r, pendingMs),
+          )
+
           const beforeLoadContext =
             (await route.options.beforeLoad?.({
               search: match.search,
@@ -1090,6 +1096,7 @@ export class Router<
             ),
             context: replaceEqualDeep(match.context, context),
             abortController,
+            pendingPromise,
           }
         } catch (err) {
           handleErrorAndRedirect(err, 'BEFORE_LOAD')
@@ -1274,7 +1281,7 @@ export class Router<
             // If we need to potentially show the pending component,
             // start a timer to show it after the pendingMs
             if (shouldPending) {
-              new Promise((r) => setTimeout(r, pendingMs)).then(async () => {
+              match.pendingPromise?.then(async () => {
                 if ((latestPromise = checkLatest())) return latestPromise
 
                 didShowPending = true
