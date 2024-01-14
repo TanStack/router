@@ -234,11 +234,13 @@ export function useMatchRoute<
     >(
       opts: UseMatchRouteOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
     ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
-      const { pending, caseSensitive, ...rest } = opts
+      const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
       return matchRoute(rest as any, {
         pending,
         caseSensitive,
+        fuzzy,
+        includeSearch,
       })
     },
     [],
