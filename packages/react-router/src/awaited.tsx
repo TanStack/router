@@ -7,7 +7,6 @@ export type AwaitOptions<T> = {
 
 export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
   const router = useRouter()
-  console.log('useAwaited')
 
   let state = promise.__deferredState
   const key = `__TSR__DEFERRED__${state.uid}`
@@ -26,7 +25,6 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
     throw state.error
   }
 
-  console.log('dehydrating', key)
   router.dehydrateData(key, state)
 
   return [state.data]
@@ -37,7 +35,6 @@ export function Await<T>(
     children: (result: T) => JSX.Element
   },
 ) {
-  console.log('Await')
   const awaited = useAwaited(props)
   return props.children(...awaited)
 }
