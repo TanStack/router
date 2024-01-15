@@ -61,6 +61,9 @@ export async function render(opts: {
           opts.res.setHeader('Content-Type', 'text/html')
           resolve()
         },
+        onShellError(error) {
+          console.log('onShellError', error)
+        },
         onError: (err) => {
           didError = true
           console.log('renderToPipeableStream error:\n', err)

@@ -266,7 +266,7 @@ export function useRouter<
     typeof document !== 'undefined'
       ? window.__TSR_ROUTER_CONTEXT__ || routerContext
       : routerContext
-  console.log('useRouter!')
+  // console.log('useRouter!')
   const value = React.useContext(resolvedContext)
   warning(
     !((opts?.warn ?? true) && !value),

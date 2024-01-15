@@ -14,7 +14,7 @@ import {
   RoutePaths,
 } from './routeInfo'
 import { RegisteredRouter, RouterState } from './router'
-import { NoInfer, StrictOrFrom, pick } from './utils'
+import { NoInfer, StrictOrFrom, isServer, pick } from './utils'
 
 export const matchContext = React.createContext<string | undefined>(undefined)
 
@@ -51,7 +51,6 @@ export interface RouteMatch<
 export type AnyRouteMatch = RouteMatch<any, any>
 
 export function Matches() {
-  console.log('Matches')
   const router = useRouter()
   const matchId = useRouterState({
     select: (s) => {
@@ -59,15 +58,12 @@ export function Matches() {
     },
   })
 
-  console.log('Matches 2')
-
   return (
     <matchContext.Provider value={matchId}>
       <CatchBoundary
         getResetKey={() => router.state.resolvedLocation.state?.key}
         errorComponent={ErrorComponent}
         onCatch={() => {
-          console.log('onCatch')
           warning(
             false,
             `Error in router! Consider setting an 'errorComponent' in your RootRoute! 👍`,
@@ -96,8 +92,6 @@ export function Match({ matchId }: { matchId: string }) {
     `Could not find routeId for matchId "${matchId}". Please file an issue!`,
   )
 
-  console.log('Match')
-
   const route = router.routesById[routeId]!
 
   const PendingComponent = (route.options.pendingComponent ??
@@ -123,7 +117,6 @@ export function Match({ matchId }: { matchId: string }) {
     ? CatchBoundary
     : SafeFragment
 
-  console.log('Match 2')
   return (
     <matchContext.Provider value={matchId}>
       <ResolvedSuspenseBoundary fallback={pendingElement}>
@@ -131,7 +124,6 @@ export function Match({ matchId }: { matchId: string }) {
           getResetKey={() => router.state.resolvedLocation.state?.key}
           errorComponent={routeErrorComponent}
           onCatch={() => {
-            console.log('onCatch')
             warning(false, `Error in route match: ${matchId}`)
           }}
         >
@@ -155,8 +147,6 @@ function MatchInner({
       getRenderedMatches(s).find((d) => d.id === matchId)?.routeId as string,
   })
 
-  console.log('MatchInner')
-
   const route = router.routesById[routeId]!
 
   const match = useRouterState({
@@ -172,7 +162,15 @@ function MatchInner({
   if (match.status === 'error') {
     // THROWING ERROR HERE!!!
     console.log('throwing error')
-    throw match.error
+    if (match.error instanceof Error) {
+      throw match.error
+    } else if (isServerSideError(match.error)) {
+      const deserializeError =
+        router.options.deserializeError ?? defaultDeserializeError
+      throw deserializeError(match.error.data)
+    } else {
+      invariant(false, 'Unknown error type encountered!')
+    }
   }
 
   if (match.status === 'pending') {
@@ -435,4 +433,28 @@ export function useLoaderData<
         : s?.loaderData
     },
   })!
+}
+
+function isServerSideError(error: unknown): error is {
+  __isServerError: true
+  data: Record<string, any>
+} {
+  if (!(typeof error === 'object' && error && 'data' in error)) return false
+  if (
+    !(
+      '__isServerError' in error &&
+      typeof error.__isServerError !== 'object' &&
+      error.__isServerError
+    )
+  )
+    return false
+  if (!(typeof error.data === 'object' && error.data)) return false
+
+  return error.__isServerError === true
+}
+
+function defaultDeserializeError(serializedData: Record<string, any>) {
+  const error = new Error(serializedData.message)
+  error.name = serializedData.name
+  return error
 }

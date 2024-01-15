@@ -125,6 +125,8 @@ export interface RouterOptions<
   Wrap?: (props: { children: any }) => JSX.Element
   InnerWrap?: (props: { children: any }) => JSX.Element
   notFoundRoute?: AnyRoute
+  serializeError?: (err: unknown) => Record<string, any>
+  deserializeError?: (err: Record<string, any>) => Error
 }
 
 export interface RouterState<TRouteTree extends AnyRoute = AnyRoute> {
@@ -165,7 +167,12 @@ export interface DehydratedRouterState {
 export type DehydratedRouteMatch = Pick<
   RouteMatch,
   'id' | 'status' | 'updatedAt'
->
+> & {
+  error?: {
+    data: unknown
+    __isServerError: true
+  }
+}
 
 export interface DehydratedRouter {
   state: DehydratedRouterState
@@ -1419,7 +1426,7 @@ export class Router<
         // removed, place it in the cachedMatches
         this.__store.batch(() => {
           this.__store.setState((s) => {
-            console.log('committing', s)
+            // console.log('committing', s)
             return {
               ...s,
               isLoading: false,
@@ -1580,7 +1587,6 @@ export class Router<
   }
 
   dehydrateData = <T>(key: any, getData: T | (() => Promise<T> | T)) => {
-    console.log('dehydrateData')
     if (typeof document === 'undefined') {
       const strKey = typeof key === 'string' ? key : JSON.stringify(key)
 
@@ -1615,11 +1621,21 @@ export class Router<
   }
 
   dehydrate = (): DehydratedRouter => {
+    const pickError = this.options.serializeError ?? defaultSerializeError
+
     return {
       state: {
-        dehydratedMatches: this.state.matches.map((d) =>
-          pick(d, ['id', 'status', 'updatedAt', 'loaderData']),
-        ),
+        dehydratedMatches: this.state.matches.map((d) => ({
+          ...pick(d, ['id', 'status', 'updatedAt', 'loaderData']),
+          // If an error occurs server-side during SSRing,
+          // send a small subset of the error to the client
+          error: d.error
+            ? {
+                data: pickError(d.error),
+                __isServerError: true,
+              }
+            : undefined,
+        })),
       },
     }
   }
@@ -1711,5 +1727,17 @@ export function getInitialRouterState(
     pendingMatches: [],
     cachedMatches: [],
     lastUpdated: Date.now(),
+  }
+}
+
+function defaultSerializeError(err: unknown) {
+  if (err instanceof Error)
+    return {
+      name: err.name,
+      message: err.message,
+    }
+
+  return {
+    data: err,
   }
 }

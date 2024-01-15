@@ -3,13 +3,10 @@ import * as React from 'react'
 import { Link, Outlet, rootRouteWithContext } from '@tanstack/react-router'
 import { DehydrateRouter } from '@tanstack/react-router-server/client'
 import { RouterContext } from '../routerContext'
+import { ErrorBoundary, FallbackProps } from 'react-error-boundary'
 
 export const Route = rootRouteWithContext<RouterContext>()({
   component: RootComponent,
-  loader: async () => {
-    throw new Error('Asd')
-  },
-  errorComponent: () => <div>error</div>,
 })
 
 function RootComponent() {
