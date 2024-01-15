@@ -1060,7 +1060,7 @@ export class Router<
 
           const pendingMs =
             route.options.pendingMs ?? this.options.defaultPendingMs
-          const pendingPromise = pendingMs <= 0
+          const pendingPromise = typeof pendingMs === 'number' && pendingMs <= 0
             ? Promise.resolve()
             : new Promise<void>((r) => setTimeout(r, pendingMs))
 
