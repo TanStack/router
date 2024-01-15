@@ -160,8 +160,6 @@ function MatchInner({
   })
 
   if (match.status === 'error') {
-    // THROWING ERROR HERE!!!
-    console.log('throwing error')
     if (match.error instanceof Error) {
       throw match.error
     } else if (isServerSideError(match.error)) {

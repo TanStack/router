@@ -87,7 +87,6 @@ export function RouterProvider<
     },
   } as any)
 
-  console.log('RouterProvider after update')
   const matches = router.options.InnerWrap ? (
     <router.options.InnerWrap>
       <Matches />
@@ -96,7 +95,6 @@ export function RouterProvider<
     <Matches />
   )
 
-  console.log('RouterProvider 2')
   const provider = (
     <routerContext.Provider value={router}>
       {matches}
@@ -104,12 +102,10 @@ export function RouterProvider<
     </routerContext.Provider>
   )
 
-  console.log('RouterProvider 3')
   if (router.options.Wrap) {
     return <router.options.Wrap>{provider}</router.options.Wrap>
   }
 
-  console.log('RouterProvider 4')
   return provider
 }
 
@@ -266,7 +262,6 @@ export function useRouter<
     typeof document !== 'undefined'
       ? window.__TSR_ROUTER_CONTEXT__ || routerContext
       : routerContext
-  // console.log('useRouter!')
   const value = React.useContext(resolvedContext)
   warning(
     !((opts?.warn ?? true) && !value),
