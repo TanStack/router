@@ -1060,9 +1060,9 @@ export class Router<
 
           const pendingMs =
             route.options.pendingMs ?? this.options.defaultPendingMs
-          const pendingPromise = new Promise<void>((r) =>
-            setTimeout(r, pendingMs),
-          )
+          const pendingPromise = pendingMs <= 0
+            ? Promise.resolve()
+            : new Promise<void>((r) => setTimeout(r, pendingMs))
 
           const beforeLoadContext =
             (await route.options.beforeLoad?.({
