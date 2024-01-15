@@ -20,7 +20,6 @@ export type DeferredPromise<T> = Promise<T> & {
 }
 
 export function defer<T>(_promise: Promise<T>) {
-  console.log('defer')
   const promise = _promise as DeferredPromise<T>
 
   if (!promise.__deferredState) {
@@ -46,7 +45,6 @@ export function defer<T>(_promise: Promise<T>) {
 }
 
 export function isDehydratedDeferred(obj: any): boolean {
-  console.log('isDehydratedDeferred')
   return (
     typeof obj === 'object' &&
     obj !== null &&
