@@ -1145,7 +1145,7 @@ export class Router<
             route.options.pendingMinMs ?? this.options.defaultPendingMinMs
           const shouldPending =
             !preload &&
-            pendingMs &&
+            typeof pendingMs === 'number' &&
             (route.options.pendingComponent ??
               this.options.defaultPendingComponent)
 
