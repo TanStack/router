@@ -14,7 +14,7 @@ import {
   RoutePaths,
 } from './routeInfo'
 import { RegisteredRouter, RouterState } from './router'
-import { NoInfer, StrictOrFrom, isServer, pick } from './utils'
+import { NoInfer, StrictOrFrom, pick } from './utils'
 
 export const matchContext = React.createContext<string | undefined>(undefined)
 

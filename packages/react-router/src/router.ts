@@ -1405,18 +1405,16 @@ export class Router<
         // Commit the pending matches. If a previous match was
         // removed, place it in the cachedMatches
         this.__store.batch(() => {
-          this.__store.setState((s) => {
-            return {
-              ...s,
-              isLoading: false,
-              matches: s.pendingMatches!,
-              pendingMatches: undefined,
-              cachedMatches: [
-                ...s.cachedMatches,
-                ...exitingMatches.filter((d) => d.status !== 'error'),
-              ],
-            }
-          })
+          this.__store.setState((s) => ({
+            ...s,
+            isLoading: false,
+            matches: s.pendingMatches!,
+            pendingMatches: undefined,
+            cachedMatches: [
+              ...s.cachedMatches,
+              ...exitingMatches.filter((d) => d.status !== 'error'),
+            ],
+          }))
           this.cleanCache()
         })
 
