@@ -51,6 +51,7 @@ export interface RouteMatch<
 export type AnyRouteMatch = RouteMatch<any, any>
 
 export function Matches() {
+  console.log('Matches')
   const router = useRouter()
   const matchId = useRouterState({
     select: (s) => {
@@ -58,12 +59,15 @@ export function Matches() {
     },
   })
 
+  console.log('Matches 2')
+
   return (
     <matchContext.Provider value={matchId}>
       <CatchBoundary
         getResetKey={() => router.state.resolvedLocation.state?.key}
         errorComponent={ErrorComponent}
         onCatch={() => {
+          console.log('onCatch')
           warning(
             false,
             `Error in router! Consider setting an 'errorComponent' in your RootRoute! 👍`,
@@ -92,6 +96,8 @@ export function Match({ matchId }: { matchId: string }) {
     `Could not find routeId for matchId "${matchId}". Please file an issue!`,
   )
 
+  console.log('Match')
+
   const route = router.routesById[routeId]!
 
   const PendingComponent = (route.options.pendingComponent ??
@@ -117,6 +123,7 @@ export function Match({ matchId }: { matchId: string }) {
     ? CatchBoundary
     : SafeFragment
 
+  console.log('Match 2')
   return (
     <matchContext.Provider value={matchId}>
       <ResolvedSuspenseBoundary fallback={pendingElement}>
@@ -124,6 +131,7 @@ export function Match({ matchId }: { matchId: string }) {
           getResetKey={() => router.state.resolvedLocation.state?.key}
           errorComponent={routeErrorComponent}
           onCatch={() => {
+            console.log('onCatch')
             warning(false, `Error in route match: ${matchId}`)
           }}
         >
@@ -147,6 +155,8 @@ function MatchInner({
       getRenderedMatches(s).find((d) => d.id === matchId)?.routeId as string,
   })
 
+  console.log('MatchInner')
+
   const route = router.routesById[routeId]!
 
   const match = useRouterState({
@@ -160,6 +170,8 @@ function MatchInner({
   })
 
   if (match.status === 'error') {
+    // THROWING ERROR HERE!!!
+    console.log('throwing error')
     throw match.error
   }
 

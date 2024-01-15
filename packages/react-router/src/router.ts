@@ -258,6 +258,8 @@ export class Router<
   startReactTransition: (fn: () => void) => void = (fn) => fn()
 
   update = (newOptions: RouterConstructorOptions<TRouteTree, TDehydrated>) => {
+    console.log('update')
+
     const previousOptions = this.options
     this.options = {
       ...this.options,
@@ -285,11 +287,13 @@ export class Router<
       this.latestLocation = this.parseLocation()
     }
 
+    console.log('update 2')
     if (this.options.routeTree !== this.routeTree) {
       this.routeTree = this.options.routeTree as TRouteTree
       this.buildRouteTree()
     }
 
+    console.log('update 3')
     if (!this.__store) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
         onUpdate: () => {
@@ -303,6 +307,8 @@ export class Router<
         },
       })
     }
+
+    console.log('update 4')
   }
 
   get state() {
@@ -310,6 +316,8 @@ export class Router<
   }
 
   buildRouteTree = () => {
+    console.log('buildRouteTree')
+
     this.routesById = {} as RoutesById<TRouteTree>
     this.routesByPath = {} as RoutesByPath<TRouteTree>
 
@@ -1004,6 +1012,7 @@ export class Router<
           ? 'matches'
           : 'cachedMatches'
 
+      console.log('5')
       this.__store.setState((s) => ({
         ...s,
         [matchesKey]: s[matchesKey]?.map((d) =>
@@ -1128,6 +1137,7 @@ export class Router<
               }
               return true
             }
+            console.log('1')
             return false
           }
 
@@ -1206,7 +1216,9 @@ export class Router<
             updateMatch(match)
 
             try {
+              console.log('7')
               const loaderData = await loadPromise
+              console.log('8')
               if ((latestPromise = checkLatest())) return await latestPromise
 
               if (isRedirect(loaderData)) {
@@ -1229,8 +1241,10 @@ export class Router<
                 loadPromise: undefined,
               }
             } catch (error) {
+              console.log('9')
               if ((latestPromise = checkLatest())) return await latestPromise
               if (handleErrorAndRedirect(error)) return
+              console.log('2')
 
               try {
                 route.options.onError?.(error)
@@ -1238,6 +1252,8 @@ export class Router<
                 error = onErrorError
                 if (handleErrorAndRedirect(onErrorError)) return
               }
+
+              console.log('3')
 
               matches[index] = match = {
                 ...match,
@@ -1247,6 +1263,7 @@ export class Router<
               }
             }
 
+            console.log('4')
             updateMatch(match)
           }
 
@@ -1277,6 +1294,7 @@ export class Router<
               !!preload && !this.state.matches.find((d) => d.id === match.id),
           }
 
+          console.log('6')
           if (match.status !== 'success') {
             // If we need to potentially show the pending component,
             // start a timer to show it after the pendingMs
@@ -1350,6 +1368,8 @@ export class Router<
       this.__store.batch(() => {
         this.cleanCache()
 
+        console.log('loading?')
+
         // Match the routes
         pendingMatches = this.matchRoutes(next.pathname, next.search, {
           debug: true,
@@ -1398,16 +1418,19 @@ export class Router<
         // Commit the pending matches. If a previous match was
         // removed, place it in the cachedMatches
         this.__store.batch(() => {
-          this.__store.setState((s) => ({
-            ...s,
-            isLoading: false,
-            matches: s.pendingMatches!,
-            pendingMatches: undefined,
-            cachedMatches: [
-              ...s.cachedMatches,
-              ...exitingMatches.filter((d) => d.status !== 'error'),
-            ],
-          }))
+          this.__store.setState((s) => {
+            console.log('committing', s)
+            return {
+              ...s,
+              isLoading: false,
+              matches: s.pendingMatches!,
+              pendingMatches: undefined,
+              cachedMatches: [
+                ...s.cachedMatches,
+                ...exitingMatches.filter((d) => d.status !== 'error'),
+              ],
+            }
+          })
           this.cleanCache()
         })
 
@@ -1476,6 +1499,8 @@ export class Router<
   preloadRoute = async (
     navigateOpts: ToOptions<TRouteTree> = this.state.location as any,
   ) => {
+    console.log('preloadRoutes')
+
     let next = this.buildLocation(navigateOpts as any)
 
     let matches = this.matchRoutes(next.pathname, next.search, {
@@ -1511,6 +1536,7 @@ export class Router<
   }
 
   matchRoute: MatchRouteFn<TRouteTree> = (location, opts) => {
+    console.log('matchRoute')
     location = {
       ...location,
       to: location.to
@@ -1549,10 +1575,12 @@ export class Router<
   }
 
   injectHtml = async (html: string | (() => Promise<string> | string)) => {
+    console.log('injectHtml')
     this.injectedHtml.push(html)
   }
 
   dehydrateData = <T>(key: any, getData: T | (() => Promise<T> | T)) => {
+    console.log('dehydrateData')
     if (typeof document === 'undefined') {
       const strKey = typeof key === 'string' ? key : JSON.stringify(key)
 
@@ -1672,6 +1700,7 @@ export class PathParamError extends Error {}
 export function getInitialRouterState(
   location: ParsedLocation,
 ): RouterState<any> {
+  console.log('getInitialRouterState')
   return {
     isLoading: false,
     isTransitioning: false,

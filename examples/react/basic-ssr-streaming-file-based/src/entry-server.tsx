@@ -63,7 +63,7 @@ export async function render(opts: {
         },
         onError: (err) => {
           didError = true
-          console.log(err)
+          console.log('renderToPipeableStream error:\n', err)
         },
       },
     )

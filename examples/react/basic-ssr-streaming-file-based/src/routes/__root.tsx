@@ -6,6 +6,10 @@ import { RouterContext } from '../routerContext'
 
 export const Route = rootRouteWithContext<RouterContext>()({
   component: RootComponent,
+  loader: async () => {
+    throw new Error('Asd')
+  },
+  errorComponent: () => <div>error</div>,
 })
 
 function RootComponent() {
