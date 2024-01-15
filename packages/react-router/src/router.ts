@@ -167,12 +167,7 @@ export interface DehydratedRouterState {
 export type DehydratedRouteMatch = Pick<
   RouteMatch,
   'id' | 'status' | 'updatedAt'
-> & {
-  error?: {
-    data: unknown
-    __isServerError: true
-  }
-}
+>
 
 export interface DehydratedRouter {
   state: DehydratedRouterState

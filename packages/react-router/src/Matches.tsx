@@ -160,14 +160,12 @@ function MatchInner({
   })
 
   if (match.status === 'error') {
-    if (match.error instanceof Error) {
-      throw match.error
-    } else if (isServerSideError(match.error)) {
+    if (isServerSideError(match.error)) {
       const deserializeError =
         router.options.deserializeError ?? defaultDeserializeError
       throw deserializeError(match.error.data)
     } else {
-      invariant(false, 'Unknown error type encountered!')
+      throw match.error
     }
   }
 
@@ -438,14 +436,7 @@ function isServerSideError(error: unknown): error is {
   data: Record<string, any>
 } {
   if (!(typeof error === 'object' && error && 'data' in error)) return false
-  if (
-    !(
-      '__isServerError' in error &&
-      typeof error.__isServerError !== 'object' &&
-      error.__isServerError
-    )
-  )
-    return false
+  if (!('__isServerError' in error && error.__isServerError)) return false
   if (!(typeof error.data === 'object' && error.data)) return false
 
   return error.__isServerError === true
