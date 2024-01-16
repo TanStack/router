@@ -21,7 +21,12 @@ export type DeferredPromise<T> = Promise<T> & {
   __deferredState: DeferredPromiseState<T>
 }
 
-export function defer<T>(_promise: Promise<T>) {
+export function defer<T>(
+  _promise: Promise<T>,
+  options?: {
+    serializeError?: typeof defaultSerializeError
+  },
+) {
   const promise = _promise as DeferredPromise<T>
 
   if (!promise.__deferredState) {
@@ -39,8 +44,7 @@ export function defer<T>(_promise: Promise<T>) {
       })
       .catch((error) => {
         state.status = 'error' as any
-        // TODO: add way to customize error serialization
-        state.error = defaultSerializeError(error)
+        state.error = (options?.serializeError ?? defaultSerializeError)(error)
       })
   }
 
