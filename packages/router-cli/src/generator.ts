@@ -36,33 +36,32 @@ async function getRouteNodes(config: Config) {
 
   async function recurse(dir: string) {
     const fullDir = path.resolve(config.routesDirectory, dir)
-    let dirList = await fs.readdir(fullDir)
+    let dirList = await fs.readdir(fullDir, {withFileTypes: true})
 
     dirList = dirList.filter((d) => {
       if (
-        d.startsWith('.') ||
-        (routeFileIgnorePrefix && d.startsWith(routeFileIgnorePrefix))
+        d.name.startsWith('.') ||
+        (routeFileIgnorePrefix && d.name.startsWith(routeFileIgnorePrefix))
       ) {
         return false
       }
 
       if (routeFilePrefix) {
-        return d.startsWith(routeFilePrefix)
+        return d.name.startsWith(routeFilePrefix)
       }
 
       return true
     })
 
     await Promise.all(
-      dirList.map(async (fileName) => {
-        const fullPath = path.join(fullDir, fileName)
-        const relativePath = path.join(dir, fileName)
-        const stat = await fs.stat(fullPath)
+      dirList.map(async (dirent) => {
+        const fullPath = path.join(fullDir, dirent.name)
+        const relativePath = path.join(dir, dirent.name)
 
-        if (stat.isDirectory()) {
+        if (dirent.isDirectory()) {
           await recurse(relativePath)
         } else if (fullPath.match(/\.(tsx|ts|jsx|js)$/)) {
-          const filePath = replaceBackslash(path.join(dir, fileName))
+          const filePath = replaceBackslash(path.join(dir, dirent.name))
           const filePathNoExt = removeExt(filePath)
           let routePath =
             cleanPath(`/${filePathNoExt.split('.').join('/')}`) || ''
