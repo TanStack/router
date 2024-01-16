@@ -290,7 +290,7 @@ export function shallow<T>(objA: T, objB: T) {
   return true
 }
 
-type StringLiteral<T> = T extends string
+export type StringLiteral<T> = T extends string
   ? string extends T
     ? string
     : T

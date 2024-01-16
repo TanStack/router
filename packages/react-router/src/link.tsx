@@ -15,6 +15,7 @@ import {
   NoInfer,
   NonNullableUpdater,
   PickRequired,
+  StringLiteral,
   Updater,
   WithoutEmpty,
   deepEqual,
@@ -114,7 +115,7 @@ export type RelativeToPathAutoComplete<
 
 export type NavigateOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
@@ -128,7 +129,7 @@ export type NavigateOptions<
 
 export type ToOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
@@ -138,7 +139,7 @@ export type ToOptions<
 
 export type ToMaskOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TMaskFrom extends RoutePaths<TRouteTree> | string = string,
+  TMaskFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
   TMaskTo extends string = '',
 > = ToSubOptions<TRouteTree, TMaskFrom, TMaskTo> & {
   unmaskOnReload?: boolean
@@ -146,7 +147,7 @@ export type ToMaskOptions<
 
 export type ToSubOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
   TTo extends string = '',
   TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
 > = {
@@ -156,7 +157,7 @@ export type ToSubOptions<
   // State to pass to the history stack
   state?: true | NonNullableUpdater<HistoryState>
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
-  from?: TFrom
+  from?: StringLiteral<TFrom>
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
 } & CheckPath<TRouteTree, NoInfer<TResolved>, {}> &
   SearchParamOptions<TRouteTree, TFrom, TTo, TResolved> &
