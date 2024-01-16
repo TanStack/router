@@ -11,7 +11,7 @@ export const Route = new FileRoute('/error').createRoute({
     return (
       <div className="p-2">
         <h3>Caught: {(error as Error).message}</h3>
-        <p>(This page has a 50/50 change of throwing an error)</p>
+        <p>(This page has a 50% chance of throwing an error)</p>
       </div>
     )
   },
@@ -20,9 +20,7 @@ export const Route = new FileRoute('/error').createRoute({
 function ErrorComponent() {
   return (
     <div className="p-2">
-      <h3>
-        The loader of this page will have a 50/50 change of throwing an error!
-      </h3>
+      <h3>The loader of this page has a 50% chance of throwing an error!</h3>
     </div>
   )
 }
