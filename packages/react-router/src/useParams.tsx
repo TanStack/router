@@ -3,18 +3,19 @@ import { RouteIds, RouteById, AllParams } from './routeInfo'
 import { RegisteredRouter } from './router'
 import { last } from './utils'
 import { useRouterState } from './RouterProvider'
-import { StrictOrFrom } from './utils'
+import { StrictOrFrom, GetTFrom } from './utils'
 import { getRenderedMatches } from './Matches'
 
 export function useParams<
+  TOpts extends StrictOrFrom<TFrom>,
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TDefaultSelected = AllParams<TRouteTree> &
-    RouteById<TRouteTree, TFrom>['types']['allParams'],
-  TSelected = TDefaultSelected,
+  TFromInferred = GetTFrom<TOpts, TRouteTree>,
+  TParams = RouteById<TRouteTree, TFromInferred>['types']['allParams'],
+  TSelected = TParams,
 >(
-  opts: StrictOrFrom<TFrom> & {
-    select?: (search: TDefaultSelected) => TSelected
+  opts: TOpts & {
+    select?: (params: TParams) => TSelected
   },
 ): TSelected {
   return useRouterState({

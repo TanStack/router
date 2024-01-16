@@ -3,21 +3,22 @@ import { RouteIds, RouteById } from './routeInfo'
 import { RegisteredRouter } from './router'
 import { RouteMatch } from './Matches'
 import { useMatch } from './Matches'
-import { StrictOrFrom } from './utils'
+import { StrictOrFrom, GetTFrom } from './utils'
 
 export function useSearch<
+  TOpts extends StrictOrFrom<TFrom>,
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TStrict extends boolean = true,
-  TSearch = RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'],
+  TFromInferred = GetTFrom<TOpts, TRouteTree>,
+  TSearch = RouteById<TRouteTree, TFromInferred>['types']['fullSearchSchema'],
   TSelected = TSearch,
 >(
-  opts: StrictOrFrom<TFrom> & {
+  opts: TOpts & {
     select?: (search: TSearch) => TSelected
   },
-): TStrict extends true ? TSelected : TSelected | undefined {
+) : TSelected {
   return useMatch({
-    ...(opts as any),
+    ...opts,
     select: (match: RouteMatch) => {
       return opts?.select ? opts.select(match.search as TSearch) : match.search
     },
