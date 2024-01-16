@@ -34,16 +34,32 @@
       "label": "Guide",
       "children": [
         {
-          "label": "Routes",
-          "to": "guide/routes"
+          "label": "Route Trees & Nesting",
+          "to": "guide/route-trees"
         },
         {
-          "label": "Route Paths",
-          "to": "guide/route-paths"
+          "label": "Code Splitting",
+          "to": "guide/code-splitting"
+        },
+        {
+          "label": "File-Based Routing",
+          "to": "guide/file-based-routing"
+        },
+        {
+          "label": "Code Based Routing",
+          "to": "guide/code-based-routing"
+        },
+        {
+          "label": "Creating a Router",
+          "to": "guide/creating-a-router"
         },
         {
           "label": "Route Matching",
           "to": "guide/route-matching"
+        },
+        {
+          "label": "Outlets",
+          "to": "guide/outlets"
         },
         {
           "label": "Navigation",
@@ -80,10 +96,6 @@
         {
           "label": "Preloading",
           "to": "guide/preloading"
-        },
-        {
-          "label": "Code-Splitting",
-          "to": "guide/code-splitting"
         },
         {
           "label": "Route Masking",
@@ -125,14 +137,6 @@
         {
           "label": "Reference",
           "to": "api/router"
-        },
-        {
-          "label": "Router CLI (Route-Gen)",
-          "to": "api/router-cli"
-        },
-        {
-          "label": "Router Vite Plugin (Route-Gen)",
-          "to": "api/router-vite-plugin"
         }
       ]
     },
@@ -140,28 +144,28 @@
       "label": "Examples",
       "children": [
         {
-          "label": "Quickstart",
-          "to": "examples/react/quickstart"
-        },
-        {
           "label": "Quickstart (file-based)",
           "to": "examples/react/quickstart-file-based"
         },
         {
-          "label": "Basic",
-          "to": "examples/react/basic"
+          "label": "Quickstart (code-based)",
+          "to": "examples/react/quickstart"
         },
         {
           "label": "Basic (file-based)",
           "to": "examples/react/basic-file-based"
         },
         {
-          "label": "Basic + React Query",
-          "to": "examples/react/basic-react-query"
+          "label": "Basic (code-based)",
+          "to": "examples/react/basic"
         },
         {
           "label": "Basic + React Query (file-based)",
           "to": "examples/react/basic-react-query-file-based"
+        },
+        {
+          "label": "Basic + React Query (code-based)",
+          "to": "examples/react/basic-react-query"
         },
         {
           "label": "Basic + SSR (file-based)",
@@ -172,20 +176,20 @@
           "to": "examples/react/basic-ssr-streaming-file-based"
         },
         {
-          "label": "Kitchen Sink",
-          "to": "examples/react/kitchen-sink"
-        },
-        {
           "label": "Kitchen Sink (file-based)",
           "to": "examples/react/kitchen-sink-file-based"
         },
         {
-          "label": "Kitchen Sink + React Query",
-          "to": "examples/react/kitchen-sink-react-query"
+          "label": "Kitchen Sink (code-based)",
+          "to": "examples/react/kitchen-sink"
         },
         {
           "label": "Kitchen Sink + React Query (file-based)",
           "to": "examples/react/kitchen-sink-react-query-file-based"
+        },
+        {
+          "label": "Kitchen Sink + React Query (code-based)",
+          "to": "examples/react/kitchen-sink-react-query"
         },
         {
           "label": "Location Masking",

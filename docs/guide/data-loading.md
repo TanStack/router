@@ -59,11 +59,8 @@ The router cache is built-in and is as easy as returning data from any route's `
 Route `loader` functions are called when a route match is loaded. They are called with a single parameter which is an object containing many helpful properties. We'll go over those in a bit, but first, let's look at an example of a route `loader` function:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+// routes/posts.tsx
+export const Route = new FileRoute('/posts').createRoute({
   loader: () => fetchPosts(),
 })
 ```
@@ -128,9 +125,8 @@ Imagine a `/posts` route supports some pagination via search params `offset` and
 Once we have these deps in place, the route will always reload when the deps change.
 
 ```tsx
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+// /routes/posts.tsx
+export const Route = new FileRoute('/posts').createRoute({
   loaderDeps: ({ search: { offset, limit } }) => ({ offset, limit }),
   loader: ({ deps: { offset, limit } }) =>
     fetchPosts({
@@ -147,9 +143,8 @@ By default, `staleTime` for navigations is set to `0`ms (and 30 seconds for prel
 **This is a good default for most use cases, but you may find that some route data is more static or potentially expensive to load.** In these cases, you can use the `staleTime` option to control how long the route's data is considered fresh for navigations. Let's take a look at an example:
 
 ```tsx
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+// /routes/posts.tsx
+export const Route = new FileRoute('/posts').createRoute({
   loader: () => fetchPosts(),
   // Consider the route's data fresh for 10 seconds
   staleTime: 10_000,
@@ -163,9 +158,8 @@ By passing `10_000` to the `staleTime` option, we are telling the router to cons
 To disable stale-while-revalidate caching for a route, set the `staleTime` option to `Infinity`:
 
 ```tsx
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+// /routes/posts.tsx
+export const Route = new FileRoute('/posts').createRoute({
   loader: () => fetchPosts(),
   staleTime: Infinity,
 })
@@ -185,9 +179,8 @@ const router = new Router({
 Similar to Remix's default functionality, you may want to configure a route to only load on entry or when critical loader deps change. You can do this by using the `gcTime` option combined with the `shouldReload` option, which accepts either a `boolean` or a function that receives the same `beforeLoad` and `loaderContext` parameters and returns a boolean indicating if the route should reload.
 
 ```tsx
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+// /routes/posts.tsx
+export const Route = new FileRoute('/posts').createRoute({
   loaderDeps: ({ search: { offset, limit } }) => ({ offset, limit }),
   loader: ({ deps }) => fetchPosts(deps),
   // Do not cache this route's data after it's unloaded
@@ -229,30 +222,44 @@ In this example, we'll create a function in our route context to fetch posts, th
 
 > 🧠 Context is a powerful tool for dependency injection. You can use it to inject services, hooks, and other objects into your router and routes. You can also additively pass data down the route tree at every route using a route's `beforeLoad` option.
 
-```tsx
-import { Route } from '@tanstack/react-router'
+- `/utils/fetchPosts.tsx`
 
-const fetchPosts = async () => {
+```tsx
+export const fetchPosts = async () => {
   const res = await fetch(`/api/posts?page=${pageIndex}`)
   if (!res.ok) throw new Error('Failed to fetch posts')
   return res.json()
 }
+```
+
+- `/routes/__root.tsx`
+
+```tsx
+import { rootRouteWithContext } from '@tanstack/react-router'
 
 // Create a new routerContext using new rootRouteWithContext<{...}>() function and pass it whatever types you would like to be available in your router context.
-const rootRoute = rootRouteWithContext<{
+export const Route = rootRouteWithContext<{
   fetchPosts: typeof fetchPosts
 }>()() // NOTE: the double call is on purpose, since rootRouteWithContext is a factory ;)
+```
+
+- `/routes/posts.tsx`
+
+```tsx
+import { FileRoute } from '@tanstack/react-router'
 
 // Notice how our postsRoute references context to get our fetchPosts function
 // This can be a powerful tool for dependency injection across your router
 // and routes.
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+export const Route = new FileRoute('/posts').createRoute({
   loader: ({ context: { fetchPosts } }) => fetchPosts(),
 })
+```
 
-const routeTree = rootRoute.addChildren([postsRoute])
+- `/router.tsx`
+
+```tsx
+import { routeTree } from './routeTree.gen'
 
 // Use your routerContext to create a new router
 // This will require that you fullfil the type requirements of the routerContext
@@ -270,11 +277,8 @@ const router = new Router({
 To use path params in your `loader` function, access them via the `params` property on the function's parameters. Here's an example:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const postRoute = new Route({
-  getParentPath: () => postsRoute,
-  path: '$postId',
+// routes/posts.$postId.tsx
+export const Route = new FileRoute('/posts/$postId').createRoute({
   loader: ({ params: { postId } }) => fetchPostById(postId),
 })
 ```
@@ -284,11 +288,10 @@ const postRoute = new Route({
 Passing down global context to your router is great, but what if you want to provide context that is specific to a route? This is where the `beforeLoad` option comes in. The `beforeLoad` option is a function that runs right before attempting to load a route and receives the same parameters as `loader`. Beyond its ability to redirect potential matches, block loader requests, etc, it can also return an object that will be merged into the route's context. Let's take a look at an example where we inject some data into our route context via the `beforeLoad` option:
 
 ```tsx
+// /routes/posts.tsx
 import { Route } from '@tanstack/react-router'
 
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+export const Route = new FileRoute('/posts').createRoute({
   // Pass the fetchPosts function to the route context
   beforeLoad: () => ({
     fetchPosts: () => console.log('foo'),
@@ -307,18 +310,29 @@ const postsRoute = new Route({
 
 You might be here wondering why `search` isn't directly available in the `loader` function's parameters. We've purposefully designed it this way to help you succeed. Let's take a look at why:
 
-- Search Parameters being used in a loader function are a very good indicator that these search params should also be used to uniquely identify the data being loaded. For instance, the route match for page 1 of a list of posts is uniquely different than the route match for page 2 of a list of posts.
-- Directly accessing search params in a loader function can lead to bugs where the data being loaded is not unique to the route match. For example, you might ask your `/posts` route to preload page 2's results, but because the route match is being stored under the `/posts` match ID, you would get page 2's data on your screen instead of it preloading in the background!
+- Search Parameters being used in a loader function are a very good indicator that those search params should also be used to uniquely identify the data being loaded. For example, you may have a route that uses a search param like `pageIndex` that uniquely identifies the data held inside of the route match. Or, imagine a `/users/user` route that uses the search param `userId` to identify a specific user in your application, you might model your url like this: `/users/user?userId=123`. This means that your `user` route would need some extra help to identify a specific user.
+- Directly accessing search params in a loader function can lead to bugs in caching and preloading where the data being loaded is not unique to the current URL pathname and search params. For example, you might ask your `/posts` route to preload page 2's results, but without the distinction of pages in your route configuration, you will end up fetching, storing and displaying page 2's data on your `/posts` or `?page=1` screen instead of it preloading in the background!
 - Placing a threshold between search parameters and the loader function allows the router to understand your dependencies and reactivity.
+
+```tsx
+// /routes/users.user.tsx
+export const Route = new FileRoute('/users/user').createRoute({
+  validateSearch: (search) =>
+    search as {
+      userId: string
+    },
+  loaderDeps: ({ search: { userId } }) => ({
+    userId,
+  }),
+  loader: async ({ deps: { userId } }) => getUser(userId),
+})
+```
 
 ### Accessing Search Params via `routeOptions.loaderDeps`
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+// /routes/posts.tsx
+export const Route = new FileRoute('/posts').createRoute({
   // Use zod to validate and parse the search params
   validateSearch: z.object({
     offset: z.number().int().nonnegative().catch(0),
@@ -338,11 +352,8 @@ const postsRoute = new Route({
 The `abortController` property of the `loader` function is an [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController). Its signal is cancelled when the route is unloaded or when the `loader` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change. Here is an example using it with a fetch call:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+// routes/posts.tsx
+export const Route = new FileRoute('/posts').createRoute({
   loader: ({ abortController }) =>
     fetchPosts({
       // Pass this to an underlying fetch call or anything that supports signals
@@ -356,11 +367,8 @@ const postsRoute = new Route({
 The `preload` property of the `loader` function is a boolean which is `true` when the route is being preloaded instead of loaded. Some data loading libraries may handle preloading differently than a standard fetch, so you may want to pass `preload` to your data loading library, or use it to execute the appropriate data loading logic:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+// routes/posts.tsx
+export const Route = new FileRoute('/posts').createRoute({
   loader: async ({ preload }) =>
     fetchPosts({
       maxAge: preload ? 10_000 : 0, // Preloads should hang around a bit longer
@@ -400,11 +408,8 @@ TanStack Router provides a few ways to handle errors that occur during the route
 The `routeOptions.onError` option is a function that is called when an error occurs during the route loading or rendering lifecycle.
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+// routes/posts.tsx
+export const Route = new FileRoute('/posts').createRoute({
   loader: () => fetchPosts(),
   onError: ({ error }) => {
     // Log the error
@@ -420,11 +425,8 @@ The `routeOptions.errorComponent` option is a component that is rendered when an
 - `error` - The error that occurred
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+// routes/posts.tsx
+export const Route = new FileRoute('/posts').createRoute({
   loader: () => fetchPosts(),
   errorComponent: ({ error }) => {
     // Render an error message
@@ -438,11 +440,10 @@ const postsRoute = new Route({
 TanStack Router provides a default `ErrorComponent` that is rendered when an error occurs during the route loading or rendering lifecycle. If you choose to override your routes' error components, it's still wise to always fallback to rendering any uncaught errors with the default `ErrorComponent`:
 
 ```tsx
-import { Route, ErrorComponent } from '@tanstack/react-router'
+// routes/posts.tsx
+import { FileRoute, ErrorComponent } from '@tanstack/react-router'
 
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+export const Route = new FileRoute('/posts').createRoute({
   loader: () => fetchPosts(),
   errorComponent: ({ error }) => {
     if (error instanceof MyCustomError) {

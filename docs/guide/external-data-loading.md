@@ -45,13 +45,11 @@ The easiest way to use integrate and external caching/data library into Router i
 Here is a naive illustration (don't do this) of using a Route's `loader` option to seed the cache for some data:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
+// src/routes/posts.tsx
 
 let postsCache = []
 
-const postsRoute = new Route({
-  getParentPath: () => rootRoute,
-  path: 'posts',
+export const Route = new FileRoute('/posts').createRoute({
   loader: async () => {
     postsCache = await fetchPosts()
   },
@@ -77,14 +75,14 @@ This example is **obviously flawed**, but illustrates the point that you can use
 Let's take a look at a more realistic example using TanStack Query.
 
 ```tsx
-import { Route } from '@tanstack/react-router'
+// src/routes/posts.tsx
 
 const postsQueryOptions = queryOptions({
   queryKey: 'posts',
   queryFn: () => fetchPosts,
 })
 
-const postsRoute = new Route({
+export const Route = new FileRoute('/posts').createRoute({
   getParentPath: () => rootRoute,
   path: 'posts',
   // Use the `loader` option to ensure that the data is loaded

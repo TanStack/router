@@ -12,13 +12,12 @@ Deferred data loading is a pattern that allows the router to render the next loc
 To defer slow or non-critical data, wrap an **unawaited/unresolved** promise in the `defer` function and return it anywhere in your loader response:
 
 ```tsx
-// src/routes/posts/$postId.tsx
+// src/routes/posts.$postId.tsx
 
 import * as React from 'react'
-import { defer } from '@tanstack/react-router'
+import { FileRoute, defer } from '@tanstack/react-router'
 
-export const postIdRoute = new Route('post', {
-  // ...
+export const Route = new FileRoute('/posts/$postId').createRoute({
   loader: () => {
     // Fetch some slower data, but do not await it
     const slowDataPromise = fetchSlowData()
@@ -40,12 +39,12 @@ As soon as any awaited promises are resolved, the next next route will begin ren
 In the component, deferred promises can be resolved and utilized using the `Await` component:
 
 ```tsx
-// src/routes/posts/$postId.tsx
+// src/routes/posts.$postId.tsx
 
 import * as React from 'react'
-import { Await } from '@tanstack/react-router'
+import { FileRoute, Await } from '@tanstack/react-router'
 
-export const postIdRoute = new Route('post', {
+export const Route = new FileRoute('/posts/$postId').createRoute({
   // ...
   component: PostIdComponent,
 })
