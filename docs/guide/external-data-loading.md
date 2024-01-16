@@ -83,8 +83,6 @@ const postsQueryOptions = queryOptions({
 })
 
 export const Route = new FileRoute('/posts').createRoute({
-  getParentPath: () => rootRoute,
-  path: 'posts',
   // Use the `loader` option to ensure that the data is loaded
   loader: () => queryClient.ensureQueryData(postsQueryOptions),
   component: () => {

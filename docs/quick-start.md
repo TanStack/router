@@ -4,22 +4,40 @@ title: Quick Start
 
 If you're feeling impatient and prefer to skip all of our wonderful documentation, here is the bare minimum to get going with TanStack Router using both file-based route generation and code-based route configuration:
 
-## Using File-Based Route Generation
+## Using File-Based Route Generation + Vite
 
-File based route generation is the recommended way to use TanStack Router as it provides the best experience, performance, and ergonomics for the least amount of effort.
+File based route generation (via Vite) is the recommended way to use TanStack Router as it provides the best experience, performance, and ergonomics for the least amount of effort.
 
-Start by creating these files:
+> 🧠 You can also use the Router CLI (the `tsr` binary) to generate routes if you are unable to use Vite. See [File-Based Routing](./guide/file-based-routing) for more info.
+
+### Install the Vite Plugin
+
+```bash
+npm install --save-dev @tanstack/router-vite-plugin
+```
+
+### Configure the Vite Plugin
+
+```tsx
+// vite.config.ts
+import { defineConfig } from 'vite'
+import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [
+    // ...,
+    TanStackRouterVite(),
+  ],
+})
+```
+
+Create the following files:
 
 - `src/routes/__root.tsx`
 - `src/routes/index.component.tsx`
 - `src/routes/about.component.tsx`
 - `src/app.tsx`
-
-Regardless if you are using the `@tanstack/router-vite-plugin` or manually run `tsr watch`/`tsr generate` from your package scripts, the following file will be generated for you:
-
-- `src/routeTree.gen.ts`
-
-Let's create our files!
 
 ### `src/routes/__root.tsx`
 
@@ -66,6 +84,12 @@ export const component = function About() {
 ```
 
 ### `src/app.tsx`
+
+Regardless if you are using the `@tanstack/router-vite-plugin` or manually run `tsr watch`/`tsr generate` from your package scripts, the following file will be generated for you:
+
+- `src/routeTree.gen.ts`
+
+Import the generated route tree and create a new router instance:
 
 ```tsx
 import React, { StrictMode } from 'react'
