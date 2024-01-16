@@ -1,3 +1,5 @@
+import { defaultSerializeError } from './router'
+
 export type DeferredPromiseState<T> = { uid: string } & (
   | {
       status: 'pending'
@@ -37,7 +39,8 @@ export function defer<T>(_promise: Promise<T>) {
       })
       .catch((error) => {
         state.status = 'error' as any
-        state.error = error
+        // TODO: add way to customize error serialization
+        state.error = defaultSerializeError(error)
       })
   }
 

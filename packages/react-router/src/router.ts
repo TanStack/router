@@ -1697,7 +1697,7 @@ export function getInitialRouterState(
   }
 }
 
-function defaultSerializeError(err: unknown) {
+export function defaultSerializeError(err: unknown) {
   if (err instanceof Error)
     return {
       name: err.name,

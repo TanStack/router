@@ -442,7 +442,7 @@ function isServerSideError(error: unknown): error is {
   return error.__isServerError === true
 }
 
-function defaultDeserializeError(serializedData: Record<string, any>) {
+export function defaultDeserializeError(serializedData: Record<string, any>) {
   const error = new Error(serializedData.message)
   error.name = serializedData.name
   return error

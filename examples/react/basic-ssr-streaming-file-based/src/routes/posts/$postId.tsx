@@ -1,4 +1,4 @@
-import { FileRoute } from '@tanstack/react-router'
+import { CatchBoundary, FileRoute } from '@tanstack/react-router'
 import { Await, defer } from '@tanstack/react-router'
 import * as React from 'react'
 import { PostType } from '../posts'
@@ -24,6 +24,8 @@ export type CommentType = {
 async function fetchComments(postId: string) {
   await new Promise((r) => setTimeout(r, 1000))
 
+  throw new Error('test')
+
   return fetch(
     `https://jsonplaceholder.typicode.com/comments?postId=${postId}`,
   ).then((r) => r.json() as Promise<CommentType[]>)
@@ -38,6 +40,10 @@ export const Route = new FileRoute('/posts/$postId').createRoute({
       post,
       commentsPromise: defer(commentsPromise),
     }
+  },
+  wrapInSuspense: true,
+  errorComponent: ({ error }) => {
+    return <div>Failed to load post: {(error as any).message}</div>
   },
   component: PostComponent,
 })

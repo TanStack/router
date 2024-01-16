@@ -1,3 +1,4 @@
+import { defaultDeserializeError } from './Matches'
 import { useRouter } from './RouterProvider'
 import { DeferredPromise, isDehydratedDeferred } from './defer'
 
@@ -13,6 +14,7 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
 
   if (isDehydratedDeferred(promise)) {
     state = router.hydrateData(key)!
+    if (!state) throw new Error('Could not find dehydrated data')
     promise = Promise.resolve(state.data) as DeferredPromise<any>
     promise.__deferredState = state
   }
@@ -22,7 +24,14 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
   }
 
   if (state.status === 'error') {
-    throw state.error
+    if (typeof document !== 'undefined') {
+      throw (router.options.deserializeError ?? defaultDeserializeError)(
+        state.error as any,
+      )
+    } else {
+      router.dehydrateData(key, state)
+      throw state.error
+    }
   }
 
   router.dehydrateData(key, state)
