@@ -24,10 +24,10 @@ To implement non-streaming SSR with TanStack Router, you will need the following
 - `StartServer` from `@tanstack/react-router-server`
   - e.g. `<StartServer router={router} />`
   - Rendering this component in your server entry will render your application and also automatically handle application-level hydration/dehydration and implement the `Wrap` component option on `Router`
-- `StartClient` from `@tanstack/react-router-client`
+- `StartClient` from `@tanstack/react-router-server/client`
   - e.g. `<StartClient router={router} />`
   - Rendering this component in your client entry will render your application and also automatically implement the `Wrap` component option on `Router`
-- `DehydrateRouter` from `@tanstack/react-router-client`
+- `DehydrateRouter` from `@tanstack/react-router-server/client`
   - e.g. `<DehydrateRouter />`
   - Render this component **inside your application** to embed the router's dehydrated data into the application.
 
@@ -127,7 +127,7 @@ To do this, render the `<DehydrateRouter />` component somewhere inside your Roo
 // src/root.tsx
 
 import * as React from 'react'
-import { DehydrateRouter } from '@tanstack/react-router-client'
+import { DehydrateRouter } from '@tanstack/react-router-server/client'
 
 export function Root() {
   return (
@@ -197,7 +197,7 @@ On the client, things are much simpler.
 import * as React from 'react'
 import ReactDOM from 'react-dom/client'
 
-import { StartClient } from '@tanstack/react-router-client'
+import { StartClient } from '@tanstack/react-router-server/client'
 import { createRouter } from './router'
 
 const router = createRouter()
