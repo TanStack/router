@@ -24,8 +24,6 @@ export type CommentType = {
 async function fetchComments(postId: string) {
   await new Promise((r) => setTimeout(r, 1000))
 
-  throw new Error('test')
-
   return fetch(
     `https://jsonplaceholder.typicode.com/comments?postId=${postId}`,
   ).then((r) => r.json() as Promise<CommentType[]>)
