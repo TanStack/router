@@ -2,6 +2,7 @@ import warning from 'tiny-warning'
 import { defaultDeserializeError, isServerSideError } from './Matches'
 import { useRouter } from './RouterProvider'
 import { DeferredPromise, isDehydratedDeferred } from './defer'
+import { defaultSerializeError } from './router'
 
 export type AwaitOptions<T> = {
   promise: DeferredPromise<T>
@@ -39,7 +40,12 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
       }
     } else {
       router.dehydrateData(key, state)
-      throw state.error
+      throw {
+        data: (router.options.serializeError ?? defaultSerializeError)(
+          state.error,
+        ),
+        __isServerError: true,
+      }
     }
   }
 
