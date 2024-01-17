@@ -11,6 +11,7 @@ TanStack Router is a router for building React applications. Some of its feature
 - Designed for client-side data caches (TanStack Query, SWR, etc.)
 - Automatic route prefetching
 - Asynchronous route elements and error boundaries
+- File-based Route Generation
 - Typesafe JSON-first Search Params state management APIs
 - Path and Search Parameter Schema Validation
 - Search Param Navigation APIs

@@ -156,7 +156,8 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
   const array = isPlainArray(prev) && isPlainArray(next)
 
   if (array || (isPlainObject(prev) && isPlainObject(next))) {
-    const prevSize = array ? prev.length : Object.keys(prev).length
+    const prevItems = array ? prev : Object.keys(prev)
+    const prevSize = prevItems.length
     const nextItems = array ? next : Object.keys(next)
     const nextSize = nextItems.length
     const copy: any = array ? [] : {}
@@ -165,9 +166,19 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
 
     for (let i = 0; i < nextSize; i++) {
       const key = array ? i : nextItems[i]
-      copy[key] = replaceEqualDeep(prev[key], next[key])
-      if (copy[key] === prev[key] && prev[key] !== undefined) {
+      if (
+        !array &&
+        prev[key] === undefined &&
+        next[key] === undefined &&
+        prevItems.includes(key)
+      ) {
+        copy[key] = undefined
         equalItems++
+      } else {
+        copy[key] = replaceEqualDeep(prev[key], next[key])
+        if (copy[key] === prev[key] && prev[key] !== undefined) {
+          equalItems++
+        }
       }
     }
 
@@ -279,9 +290,15 @@ export function shallow<T>(objA: T, objB: T) {
   return true
 }
 
+export type StringLiteral<T> = T extends string
+  ? string extends T
+    ? string
+    : T
+  : never
+
 export type StrictOrFrom<TFrom> =
   | {
-      from: TFrom
+      from: StringLiteral<TFrom> | TFrom
       strict?: true
     }
   | {
@@ -292,14 +309,13 @@ export type StrictOrFrom<TFrom> =
 export function useRouteContext<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TStrict extends boolean = true,
   TRouteContext = RouteById<TRouteTree, TFrom>['types']['allContext'],
   TSelected = TRouteContext,
 >(
   opts: StrictOrFrom<TFrom> & {
     select?: (search: TRouteContext) => TSelected
   },
-): TStrict extends true ? TSelected : TSelected | undefined {
+): TSelected {
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) =>

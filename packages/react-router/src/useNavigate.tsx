@@ -5,12 +5,13 @@ import { LinkOptions, NavigateOptions } from './link'
 import { AnyRoute } from './route'
 import { RoutePaths } from './routeInfo'
 import { RegisteredRouter } from './router'
+import { StringLiteral } from './utils'
 
 export function useNavigate<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TDefaultFrom extends RoutePaths<TRouteTree> | string = string,
->(_defaultOpts?: { from?: TDefaultFrom }) {
-  const { navigate, buildLocation } = useRouter()
+  TDefaultFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
+>(_defaultOpts?: { from?: StringLiteral<TDefaultFrom> }) {
+  const { navigate } = useRouter()
 
   const matchPathname = useMatch({
     strict: false,

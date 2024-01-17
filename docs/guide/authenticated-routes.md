@@ -30,8 +30,8 @@ The `beforeLoad` function runs in relative order to these other route loading fu
 While not required, some authentication flows require redirecting to a login page. To do this, you can **throw a `redirect()`** from `beforeLoad`:
 
 ```tsx
-const authenticatedRoute = new Route({
-  id: 'authenticated',
+// src/routes/_authenticated.tsx
+export const Route = new FileRoute('/_authenticated').createRoute({
   beforeLoad: async ({ location }) => {
     if (!isAuthenticated()) {
       throw redirect({
@@ -61,8 +61,8 @@ router.history.push(search.redirect)
 Some applications choose to not redirect users to a login page, and instead keep the user on the same page and show a login form that either replaces the main content or hides it via a modal. This is also possible with TanStack Router by simply short circuiting rendering the `<Outlet />` that would normally render the child routes:
 
 ```tsx
-const authenticatedRoute = new Route({
-  id: 'authenticated',
+// src/routes/authenticated.tsx
+export const Route = new FileRoute('/_authenticated').createRoute({
   component: () => {
     if (!isAuthenticated()) {
       return <Login />

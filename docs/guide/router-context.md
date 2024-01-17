@@ -65,11 +65,8 @@ const router = new Router({
 Once you have defined the router context type, you can use it in your route definitions:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const userRoute = new Route({
-  getRootRoute: () => rootRoute,
-  path: 'todos',
+// src/routes/todos.tsx
+export const Route = new FileRoute('/todos').createRoute({
   component: Todos,
   loader: ({ context }) => fetchTodosByUserId(context.user.id),
 })
@@ -80,8 +77,6 @@ You can even inject data fetching and mutation implementations themselves! In fa
 Let's try this with a simple function to fetch some todos:
 
 ```tsx
-import { RootRoute } from '@tanstack/react-router'
-
 const fetchTodosByUserId = async ({ userId }) => {
   const response = await fetch(`/api/todos?userId=${userId}`)
   const data = await response.json()
@@ -100,11 +95,8 @@ const router = new Router({
 Then, in your route:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const userRoute = new Route({
-  getRootRoute: () => rootRoute,
-  path: 'todos',
+// src/routes/todos.tsx
+export const Route = new FileRoute('/todos').createRoute({
   component: Todos,
   loader: ({ context }) => context.fetchTodosByUserId(context.userId),
 })
@@ -136,11 +128,8 @@ const router = new Router({
 Then, in your route:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const userRoute = new Route({
-  getRootRoute: () => rootRoute,
-  path: 'todos',
+// src/routes/todos.tsx
+export const Route = new FileRoute('/todos').createRoute({
   component: Todos,
   loader: ({ context }) => {
     await context.queryClient.ensureQueryData({
@@ -155,27 +144,37 @@ const userRoute = new Route({
 
 The router context is passed down the route tree and is merged at each route. This means that you can modify the context at each route and the modifications will be available to all child routes. Here's an example:
 
+- `src/routes/__root.tsx`
+
 ```tsx
-import { RootRoute, Route } from '@tanstack/react-router'
+import { rootRouteWithContext } from '@tanstack/react-router'
 
 interface MyRouterContext {
   foo: boolean
 }
 
-const rootRoute = rootRouteWithContext<MyRouterContext>()({
+export const Route = rootRouteWithContext<MyRouterContext>()({
   component: App,
 })
+```
+
+- `src/router.tsx`
+
+```tsx
+import { routeTree } from './routeTree.gen'
 
 const router = new Router({
-  routeTree: rootRoute,
+  routeTree,
   context: {
     foo: true,
   },
 })
+```
 
-const userRoute = new Route({
-  getRootRoute: () => rootRoute,
-  path: 'admin',
+- `src/routes/todos.tsx`
+
+```tsx
+export const Route = new FileRoute('/todos').createRoute({
   component: Todos,
   beforeLoad: () => {
     return {
@@ -194,7 +193,8 @@ const userRoute = new Route({
 Context, especially the isolated `routeContext` objects, make it trivial to accumulate and process the route context objects for all matched routes. Here's an example where we use all of the matched route contexts to generate a breadcrumb trail:
 
 ```tsx
-const rootRoute = RootRoute({
+// src/routes/__root.tsx
+export const Route = new RootRoute({
   component: () => {
     const router = useRouter()
 
@@ -214,7 +214,8 @@ const rootRoute = RootRoute({
 Using that same route context, we could also generate a title tag for our page's `<head>`:
 
 ```tsx
-const rootRoute = RootRoute({
+// src/routes/__root.tsx
+export const Route = new RootRoute({
   component: () => {
     const router = useRouter()
 

@@ -1,0 +1,27 @@
+{
+  "name": "tanstack-router-react-example-vinxi-ssr-streaming",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "1.4.10",
+    "@tanstack/react-router-server": "1.4.10",
+    "@vinxi/react": "0.1.1",
+    "@vinxi/server-functions": "^0.1.1",
+    "autoprefixer": "^10.4.15",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "vinxi": "0.1.2"
+  },
+  "devDependencies": {
+    "@tanstack/router-devtools": "1.4.2",
+    "@tanstack/router-vite-plugin": "1.4.2",
+    "@types/react": "^18.2.21",
+    "@types/react-dom": "^18.2.7",
+    "@vitejs/plugin-react": "^4"
+  }
+}
