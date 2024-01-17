@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-react-example-vinxi-basic",
+  "name": "tanstack-router-react-example-vinxi-ssr-streaming",
   "type": "module",
   "private": true,
   "scripts": {
