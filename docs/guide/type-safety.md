@@ -67,7 +67,7 @@ Every hook and component that requires a context hint will have a `from` param w
 
 ### What if I don't know the route? What if it's a shared component?
 
-The `from` property is optional, which means if you don't pass it, you'll get the router's best guess on what types will be available. Usually, that means you'll get a nullable intersection of all of the types of all of the routes in the router.
+The `from` property is optional, which means if you don't pass it, you'll get the router's best guess on what types will be available. Usually, that means you'll get a union of all of the types of all of the routes in the router.
 
 ### What if I pass the wrong `from` path?
 
@@ -83,7 +83,7 @@ function MyComponent() {
 }
 ```
 
-In this case, the `search` variable will be typed as a flattened intersection of all possible search params, potentially undefined, from all routes in the router.
+In this case, the `search` variable will be typed as a union of all possible search params from all routes in the router.
 
 ## Router Context
 
