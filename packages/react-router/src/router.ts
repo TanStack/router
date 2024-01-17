@@ -708,13 +708,19 @@ export class Router<
       } = {},
       matches?: AnyRouteMatch[],
     ): ParsedLocation => {
-      const from = this.latestLocation
       const fromSearch =
         (this.state.pendingMatches || this.state.matches).reverse()[0]
-          ?.search || from.search
-      let pathname = this.resolvePathWithBase(from.pathname, `${dest.to ?? ''}`)
+          ?.search || this.latestLocation.search
 
-      const fromMatches = this.matchRoutes(from.pathname, fromSearch)
+      let pathname = this.resolvePathWithBase(
+        dest.from ?? this.latestLocation.pathname,
+        `${dest.to ?? ''}`,
+      )
+
+      const fromMatches = this.matchRoutes(
+        this.latestLocation.pathname,
+        fromSearch,
+      )
       const stayingMatches = matches?.filter(
         (d) => fromMatches?.find((e) => e.routeId === d.routeId),
       )
