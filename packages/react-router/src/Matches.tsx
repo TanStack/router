@@ -4,7 +4,7 @@ import warning from 'tiny-warning'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter, useRouterState } from './RouterProvider'
 import { ResolveRelativePath, ToOptions } from './link'
-import { AnyRoute, ReactNode } from './route'
+import { AnyRoute, ReactNode, RootSearchSchema } from './route'
 import {
   ParseRoute,
   RouteById,
@@ -36,7 +36,7 @@ export interface RouteMatch<
   loaderData?: RouteById<TRouteTree, TRouteId>['types']['loaderData']
   routeContext: RouteById<TRouteTree, TRouteId>['types']['routeContext']
   context: RouteById<TRouteTree, TRouteId>['types']['allContext']
-  search: RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema']
+  search: Exclude<RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'], RootSearchSchema>
   fetchCount: number
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'

@@ -1,4 +1,4 @@
-import { AnyRoute } from './route'
+import { AnyRoute, RootSearchSchema } from './route'
 import { RouteIds, RouteById } from './routeInfo'
 import { RegisteredRouter } from './router'
 import { RouteMatch } from './Matches'
@@ -10,7 +10,7 @@ export function useSearch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
   TFromInferred = GetTFrom<TOpts, TRouteTree>,
-  TSearch = RouteById<TRouteTree, TFromInferred>['types']['fullSearchSchema'],
+  TSearch = Exclude<RouteById<TRouteTree, TFromInferred>['types']['fullSearchSchema'], RootSearchSchema>,
   TSelected = TSearch,
 >(
   opts: TOpts & {
