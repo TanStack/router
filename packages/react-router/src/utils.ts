@@ -290,9 +290,15 @@ export function shallow<T>(objA: T, objB: T) {
   return true
 }
 
+export type StringLiteral<T> = T extends string
+  ? string extends T
+    ? string
+    : T
+  : never
+
 export type StrictOrFrom<TFrom> =
   | {
-      from: TFrom
+      from: StringLiteral<TFrom> | TFrom
       strict?: true
     }
   | {
@@ -303,14 +309,13 @@ export type StrictOrFrom<TFrom> =
 export function useRouteContext<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TStrict extends boolean = true,
   TRouteContext = RouteById<TRouteTree, TFrom>['types']['allContext'],
   TSelected = TRouteContext,
 >(
   opts: StrictOrFrom<TFrom> & {
     select?: (search: TRouteContext) => TSelected
   },
-): TStrict extends true ? TSelected : TSelected | undefined {
+): TSelected {
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) =>

@@ -4,9 +4,8 @@ import warning from 'tiny-warning'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter, useRouterState } from './RouterProvider'
 import { ResolveRelativePath, ToOptions } from './link'
-import { AnyRoute, ReactNode, rootRouteId } from './route'
+import { AnyRoute, ReactNode, RootSearchSchema } from './route'
 import {
-  FullSearchSchema,
   ParseRoute,
   RouteById,
   RouteByPath,
@@ -37,8 +36,10 @@ export interface RouteMatch<
   loaderData?: RouteById<TRouteTree, TRouteId>['types']['loaderData']
   routeContext: RouteById<TRouteTree, TRouteId>['types']['routeContext']
   context: RouteById<TRouteTree, TRouteId>['types']['allContext']
-  search: FullSearchSchema<TRouteTree> &
-    RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema']
+  search: Exclude<
+    RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
+    RootSearchSchema
+  >
   fetchCount: number
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'
@@ -295,14 +296,13 @@ export function getRenderedMatches(state: RouterState) {
 export function useMatch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TStrict extends boolean = true,
   TRouteMatchState = RouteMatch<TRouteTree, TFrom>,
   TSelected = TRouteMatchState,
 >(
   opts: StrictOrFrom<TFrom> & {
     select?: (match: TRouteMatchState) => TSelected
   },
-): TStrict extends true ? TSelected : TSelected | undefined {
+): TSelected {
   const router = useRouter()
   const nearestMatchId = React.useContext(matchContext)
 
@@ -380,7 +380,6 @@ export function useParentMatches<T = RouteMatch[]>(opts?: {
 export function useLoaderDeps<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TStrict extends boolean = true,
   TRouteMatch extends RouteMatch<TRouteTree, TFrom> = RouteMatch<
     TRouteTree,
     TFrom
@@ -390,7 +389,7 @@ export function useLoaderDeps<
   opts: StrictOrFrom<TFrom> & {
     select?: (match: TRouteMatch) => TSelected
   },
-): TStrict extends true ? TSelected : TSelected | undefined {
+): TSelected {
   return useMatch({
     ...opts,
     select: (s) => {
@@ -398,13 +397,12 @@ export function useLoaderDeps<
         ? opts.select(s?.loaderDeps)
         : s?.loaderDeps
     },
-  })!
+  })
 }
 
 export function useLoaderData<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TStrict extends boolean = true,
   TRouteMatch extends RouteMatch<TRouteTree, TFrom> = RouteMatch<
     TRouteTree,
     TFrom
@@ -414,7 +412,7 @@ export function useLoaderData<
   opts: StrictOrFrom<TFrom> & {
     select?: (match: TRouteMatch) => TSelected
   },
-): TStrict extends true ? TSelected : TSelected | undefined {
+): TSelected {
   return useMatch({
     ...opts,
     select: (s) => {
@@ -422,5 +420,5 @@ export function useLoaderData<
         ? opts.select(s?.loaderData)
         : s?.loaderData
     },
-  })!
+  })
 }

@@ -59,30 +59,30 @@ The `useBlocker` hook takes 2 arguments:
 
 ## Component-based blocking
 
-In addition to logical/hook based blocking, can use the `Blocker` component to achieve similar results:
+In addition to logical/hook based blocking, can use the `Block` component to achieve similar results:
 
 ```tsx
-import { Blocker } from '@tanstack/react-router'
+import { Block } from '@tanstack/react-router'
 
 function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   return (
-    <Blocker
+    <Block
       blocker={() => window.confirm('Are you sure you want to leave?')}
-      when={formIsDirty}
+      condition={formIsDirty}
     />
   )
 
   // OR
 
   return (
-    <Blocker
+    <Block
       blocker={() => window.confirm('Are you sure you want to leave?')}
-      when={formIsDirty}
+      condition={formIsDirty}
     >
       {/* ... */}
-    </Blocker>
+    </Block>
   )
 }
 ```
