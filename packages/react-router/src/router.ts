@@ -133,6 +133,7 @@ export interface RouterOptions<
   InnerWrap?: (props: { children: any }) => JSX.Element
   notFoundRoute?: AnyRoute
   errorSerializer?: RouterErrorSerializer<TSerializedError>
+  globalNotFound?: RouteComponent
 }
 export interface RouterErrorSerializer<TSerializedError> {
   serialize: (err: unknown) => TSerializedError
