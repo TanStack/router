@@ -306,12 +306,6 @@ export type StrictOrFrom<TFrom> =
       strict: false
     }
 
-export type GetTFrom<T, TRouteTree extends AnyRoute> = T extends StrictOrFrom<
-  infer TFrom extends RouteIds<TRouteTree>
->
-  ? TFrom
-  : never
-
 export function useRouteContext<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
