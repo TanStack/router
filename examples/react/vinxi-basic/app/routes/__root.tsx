@@ -11,15 +11,6 @@ function RootComponent() {
     <>
       <div className="p-2 flex gap-2 text-lg">
         <Link
-          to="/hello"
-          activeProps={{
-            className: 'font-bold',
-          }}
-          activeOptions={{ exact: true }}
-        >
-          Hello
-        </Link>{' '}
-        <Link
           to="/"
           activeProps={{
             className: 'font-bold',
@@ -27,11 +18,19 @@ function RootComponent() {
           activeOptions={{ exact: true }}
         >
           Home
+        </Link>{' '}
+        <Link
+          to="/hello"
+          activeProps={{
+            className: 'font-bold',
+          }}
+          activeOptions={{ exact: true }}
+        >
+          Hello
         </Link>
       </div>
       <hr />
       <Outlet />
-      {/* Start rendering router matches */}
       <TanStackRouterDevtools position="bottom-right" />
     </>
   )

@@ -1,19 +1,18 @@
 /// <reference types="vinxi/types/client" />
 import * as React from 'react'
+import * as ReactDOM from 'react-dom/client'
 import 'vinxi/client'
 
 import App from './app'
-import { createRoot } from 'react-dom/client'
-import { StrictMode } from 'react'
 
 const rootElement = document.getElementById('root')!
 
 if (!rootElement.innerHTML) {
-  const root = createRoot(rootElement)
+  const root = ReactDOM.createRoot(rootElement)
 
   root.render(
-    <StrictMode>
+    <React.StrictMode>
       <App />
-    </StrictMode>,
+    </React.StrictMode>,
   )
 }

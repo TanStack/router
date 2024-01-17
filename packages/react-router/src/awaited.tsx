@@ -18,7 +18,7 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
   }
 
   if (state.status === 'pending') {
-    throw new Promise((r) => setTimeout(r, 1)).then(() => promise)
+    throw promise
   }
 
   if (state.status === 'error') {
