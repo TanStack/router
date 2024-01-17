@@ -41,6 +41,20 @@ export const packages: Package[] = [
     ],
   },
   {
+    name: '@tanstack/router-generator',
+    packageDir: 'router-generator',
+    srcDir: 'src',
+    builds: [
+      {
+        jsName: 'TanStackRouterGenerator',
+        entryFile: 'src/index.ts',
+        // esm: false,
+        // cjs: false,
+        umd: false,
+      },
+    ],
+  },
+  {
     name: '@tanstack/router-cli',
     packageDir: 'router-cli',
     srcDir: 'src',
@@ -48,11 +62,8 @@ export const packages: Package[] = [
       {
         jsName: 'TanStackRouterCli',
         entryFile: 'src/index.ts',
-        // globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
-        // externals: ['stream', 'util', 'react-dom', 'react', 'react-dom/server'],
         esm: false,
         umd: false,
-        // externals: [(d) => console.log(d)],
       },
     ],
   },
@@ -64,12 +75,9 @@ export const packages: Package[] = [
       {
         jsName: 'TanStackRouterVitePlugin',
         entryFile: 'src/index.ts',
-        // globals: { react: 'React', '@tanstack/react-router': 'ReactRouter' },
-        externals: ['stream', 'util', 'react-dom', 'react', 'react-dom/server'],
         // esm: false,
         // cjs: false,
         umd: false,
-        // externals: [(d) => console.log(d)],
       },
     ],
   },
