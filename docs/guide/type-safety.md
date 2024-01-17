@@ -8,9 +8,15 @@ Ultimately, this means that you write **less types as a developer** and have **m
 
 ## Route Definitions
 
-Routes are hierarchical, and so are their definitions. The reason you see a `getParentRoute` in your route definitions is because child routes need to be aware of **all** of their parent routes types. Without this, those precious search params you parsed out of your layout route 3 levels up would be lost to the JS void.
+### File-based Routing
 
-Don't forget to pass the parent route to your child routes!
+Routes are hierarchical, and so are their definitions. If you're using file-based routing, much of the type-safety is already taken care of for you.
+
+### Code-based Routing
+
+If you're using the `Route` class directly, you'll need to be aware of how to ensure your routes are typed properly using the `Route`'s `getParentRoute` option. This is because child routes need to be aware of **all** of their parent routes types. Without this, those precious search params you parsed out of your layout route 3 levels up would be lost to the JS void.
+
+So, don't forget to pass the parent route to your child routes!
 
 ```tsx
 const parentRoute = new Route({
@@ -41,18 +47,18 @@ By registering your router with the module, you can now use the exported hooks, 
 Component context is a wonderful tool in React and other frameworks for providing dependencies to components. However, if that context is changing types as it moves throughout your component hierarchy, it becomes impossible for TypeScript to know how to infer those changes. To get around this, context-based hooks and components require that you give them a hint on how and where they are being used.
 
 ```tsx
-const postsRoute = new Route({
+export const Route = new FileRoute('/posts').createRoute({
   component: PostsComponent,
 })
 
 function PostsComponent() {
   // Each route has type-safe versions of most of the built-in hooks from TanStack Router
-  const params = postsRoute.useParams()
-  const search = postsRoute.useSearch()
+  const params = Route.useParams()
+  const search = Route.useSearch()
 
   // Some hooks require context from the *entire* router, not just the current route. To achieve type-safety here,
   // we must pass the `from` param to tell the hook our relative position in the route hierarchy.
-  const navigate = useNavigate({ from: postsRoute.fullPath })
+  const navigate = useNavigate({ from: Route.fullPath })
   // ... etc
 }
 ```
@@ -61,7 +67,7 @@ Every hook and component that requires a context hint will have a `from` param w
 
 ### What if I don't know the route? What if it's a shared component?
 
-The `from` property is optional, which means if you don't pass it, you'll get the router's best guess on what types will be available. Usually, that means you'll get a nullable intersection of all of the types of all of the routes in the router.
+The `from` property is optional, which means if you don't pass it, you'll get the router's best guess on what types will be available. Usually, that means you'll get a union of all of the types of all of the routes in the router.
 
 ### What if I pass the wrong `from` path?
 
@@ -77,13 +83,13 @@ function MyComponent() {
 }
 ```
 
-In this case, the `search` variable will be typed as a flattened intersection of all possible search params, potentially undefined, from all routes in the router.
+In this case, the `search` variable will be typed as a union of all possible search params from all routes in the router.
 
 ## Router Context
 
 Router context is so extremely useful as it's the ultimate hierarchical dependency injection. You can supply context to the router and to each and every route it renders. As you build up this context, TanStack Router will merge it down with the hierarchy of routes, so that each route has access to the context of all of its parents.
 
-The `new RouteContext()` utility creates a new router context that when instantiated with a type, creates a requirement for you to fulfill the same type contract to your router, and will also ensure that your context is properly typed throughout the entire route tree.
+The `rootRouteWithContext` factory creates a new router with the instantiated type, which then creates a requirement for you to fulfill the same type contract to your router, and will also ensure that your context is properly typed throughout the entire route tree.
 
 ```tsx
 const rootRoute = rootRouteWithContext<{ whateverYouWant: true }>()({

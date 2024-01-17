@@ -89,7 +89,9 @@ Despite TanStack Router being able to parse search params into reliable JSON, th
 TanStack Router provides convenient APIs for validating and typing search params. This all starts with the `Route`'s `validateSearch` option:
 
 ```tsx
-type ProductSearchSortOptions = 'newest' | 'oldest' | 'price';
+// /routes/shop.products.tsx
+
+type ProductSearchSortOptions = 'newest' | 'oldest' | 'price'
 
 type ProductSearch = {
   page: number
@@ -97,15 +99,13 @@ type ProductSearch = {
   sort: ProductSearchSortOptions
 }
 
-const allProductsRoute = new Route({
-  getParentRoute: () => shopRoute,
-  path: 'products',
+export const Route = new FileRoute('/shop/products').createRoute({
   validateSearch: (search: Record<string, unknown>): ProductSearch => {
     // validate and parse the search params into a typed state
     return {
       page: Number(search?.page ?? 1),
-      filter: search.filter as string || '',
-      sort: search.sort as ProductSearchSortOptions || 'newest',
+      filter: (search.filter as string) || '',
+      sort: (search.sort as ProductSearchSortOptions) || 'newest',
     }
   },
 })
@@ -120,7 +120,9 @@ The `validateSearch` option is a function that is provided the JSON parsed (but 
 Here's an example:
 
 ```tsx
-type ProductSearchSortOptions = 'newest' | 'oldest' | 'price';
+// /routes/shop.products.tsx
+
+type ProductSearchSortOptions = 'newest' | 'oldest' | 'price'
 
 type ProductSearch = {
   page: number
@@ -128,15 +130,13 @@ type ProductSearch = {
   sort: ProductSearchSortOptions
 }
 
-const allProductsRoute = new Route({
-  getParentRoute: () => shopRoute,
-  path: 'products',
+export const Route = new FileRoute('/shop/products').createRoute({
   validateSearch: (search: Record<string, unknown>): ProductSearch => {
     // validate and parse the search params into a typed state
     return {
       page: Number(search?.page ?? 1),
-      filter: search.filter as string || '',
-      sort: search.sort as ProductSearchSortOptions || 'newest',
+      filter: (search.filter as string) || '',
+      sort: (search.sort as ProductSearchSortOptions) || 'newest',
     }
   },
 })
@@ -145,6 +145,8 @@ const allProductsRoute = new Route({
 Here's an example using the [Zod](https://zod.dev/) library (but feel free to use any validation library you want) to both validate and type the search params in a single step:
 
 ```tsx
+// /routes/shop.products.tsx
+
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
@@ -155,9 +157,7 @@ const productSearchSchema = z.object({
 
 type ProductSearch = z.infer<typeof productSearchSchema>
 
-const allProductsRoute = new Route({
-  getParentRoute: () => shopRoute,
-  path: 'products',
+export const Route = new FileRoute('/shop/products').createRoute({
   validateSearch: (search) => productSearchSchema.parse(search),
 })
 ```
@@ -176,13 +176,15 @@ The underlying mechanics why this works relies on the `validateSearch` function 
 
 Once your search params have been validated and typed, you're finally ready to start reading and writing to them. There are a few ways to do this in TanStack Router, so let's check them out.
 
-### Reading Search Params in Loaders
+### Using Search Params in Loaders
 
 Please read the [Search Params in Loaders](#search-params-in-loaders) section for more information about how to read search params in loaders with the `loaderDeps` option.
 
 ### Search Params are inherited from Parent Routes
 
 The search parameters and types of parents are merged as you go down the route tree, so child routes also have access to their parent's search params:
+
+- `shop.products.tsx`
 
 ```tsx
 const productSearchSchema = z.object({
@@ -193,15 +195,15 @@ const productSearchSchema = z.object({
 
 type ProductSearch = z.infer<typeof productSearchSchema>
 
-const allProductsRoute = new Route({
-  getParentRoute: () => shopRoute,
-  path: 'products',
+export const Route = new FileRoute('/shop/products').createRoute({
   validateSearch: productSearchSchema,
 })
+```
 
-const productRoute = new Route({
-  getParentRoute: () => allProductsRoute,
-  path: ':productId',
+- `shop.products.$productId.tsx`
+
+```tsx
+export const Route = new FileRoute('/shop/products/$productId').createRoute({
   beforeLoad: ({ search }) => {
     search
     // ^? ProductSearch ✅
@@ -214,14 +216,14 @@ const productRoute = new Route({
 You can access your route's validated search params in your route's `component` via the `useSearch` hook.
 
 ```tsx
-const allProductsRoute = new Route({
-  getParentRoute: () => shopRoute,
-  path: 'products',
+// /routes/shop.products.tsx
+
+export const Route = new FileRoute('/shop/products').createRoute({
   validateSearch: productSearchSchema,
 })
 
 const ProductList = () => {
-  const { page, filter, sort } = allProductsRoute.useSearch()
+  const { page, filter, sort } = Route.useSearch()
 
   return <div>...</div>
 }
@@ -275,9 +277,8 @@ Now that you've learned how to read your route's search params, you'll be happy 
 The best way to update search params is to use the `search` prop on the `<Link />` component. Remember, if a `to` prop is omitted, will update the search for the current page. Here's an example:
 
 ```tsx
-const allProductsRoute = new Route({
-  getParentRoute: () => shopRoute,
-  path: 'products',
+// /routes/shop.products.tsx
+export const Route = new FileRoute('/shop/products').createRoute({
   validateSearch: productSearchSchema,
 })
 
@@ -300,14 +301,13 @@ const ProductList = () => {
 The `navigate` function also accepts a `search` option that works the same way as the `search` prop on `<Link />`:
 
 ```tsx
-const allProductsRoute = new Route({
-  getParentRoute: () => shopRoute,
-  path: 'products',
+// /routes/shop.products.tsx
+export const Route = new FileRoute('/shop/products/$productId').createRoute({
   validateSearch: productSearchSchema,
 })
 
 const ProductList = () => {
-  const navigate = useNavigate({ from: allProductsRoute.fullPath })
+  const navigate = useNavigate({ from: Route.fullPath })
 
   return (
     <div>

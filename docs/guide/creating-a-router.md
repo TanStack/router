@@ -1,0 +1,105 @@
+---
+title: Creating a Router
+---
+
+## The `Router` Class
+
+When you're ready to start using your router, you'll need to create a new `Router` instance. The router instance is the core brains of TanStack Router and is responsible for managing the route tree, matching routes, and coordinating navigations and route transitions. It also serves as a place to configure router-wide settings.
+
+```tsx
+import { Router } from '@tanstack/react-router'
+
+const router = new Router({
+  // ...
+})
+```
+
+## Route Tree
+
+You'll probably notice quickly that the `Router` constructor requires a `routeTree` option. This is the route tree that the router will use to match routes and render components.
+
+Whether you used [file-based routing](./guide/route-trees) or [code-based routing](./guide/code-based-routing), you'll need to pass your route tree to the `Router` constructor:
+
+### Filesystem Route Tree
+
+If you used our recommended file-based routing, then it's likely your generated route tree file was created at the default `src/routeTree.gen.ts` location. If you used a custom location, then you'll need to import your route tree from that location.
+
+```tsx
+import { routeTree } from './routeTree.gen'
+```
+
+### Code-Based Route Tree
+
+If you used code-based routing, then you likely created your route tree manually using the root route's `addChildren` method:
+
+```tsx
+const routeTree = rootRoute.addChildren([
+  // ...
+])
+```
+
+## Router Type Safety
+
+> ⚠️ DO NOT SKIP THIS SECTION! ⚠️
+
+TanStack Router provides amazing support for TypeScript, even for things you wouldn't expect like bare imports straight from the library! To make this possible, you must register your router's types using TypeScripts' [Declaration Merging](https://www.typescriptlang.org/docs/handbook/declaration-merging.html) feature. This is done by extending the `Register` interface on `@tanstack/react-router` with a `router` property that has the type of your `router` instance:
+
+```tsx
+declare module '@tanstack/react-router' {
+  interface Register {
+    // This infers the type of our router and registers it across your entire project
+    router: typeof router
+  }
+}
+```
+
+With your router registered, you'll now get type-safety across your entire project for anything related to routing.
+
+## Not-Found Route
+
+As promised in earlier guides, we'll now cover the `notFoundRoute` option. This option is used to configure a route that will render when no other suitable match is found. This is useful for rendering a 404 page or redirecting to a default route.
+
+### File-Based Routing
+
+If you used file-based routing, then you'll need to import your root route from it's location and then use the `notFoundRoute` method to create a `NotFoundRoute` instance:
+
+```tsx
+import { NotFoundRoute } from '@tanstack/react-router'
+import { Route as rootRoute } from './routes/__root.tsx'
+
+const notFoundRoute = new NotFoundRoute({
+  getParentRoute: () => rootRoute,
+  component: () => '404 Not Found',
+})
+
+const router = new Router({
+  routeTree,
+  notFoundRoute,
+})
+```
+
+### Code-Based Routing
+
+If You used code-based routing, then you'll need to create a `NotFoundRoute` with a reference to your root route, then pass it to your router's `notFoundRoute` option:
+
+```tsx
+import { NotFoundRoute } from '@tanstack/react-router'
+
+const rootRoute = new RootRoute()
+
+// ...
+
+const notFoundRoute = new NotFoundRoute({
+  getParentRoute: () => rootRoute,
+  component: () => '404 Not Found',
+})
+
+const router = new Router({
+  routeTree,
+  notFoundRoute,
+})
+```
+
+## Other Options
+
+There are many other options that can be passed to the `Router` constructor. You can find a full list of them in the [API Reference](../api/router/RouterOptionsType).

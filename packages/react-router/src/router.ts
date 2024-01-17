@@ -1062,9 +1062,9 @@ export class Router<
 
           const pendingMs =
             route.options.pendingMs ?? this.options.defaultPendingMs
-          const pendingPromise = new Promise<void>((r) =>
-            setTimeout(r, pendingMs),
-          )
+          const pendingPromise = typeof pendingMs === 'number' && pendingMs <= 0
+            ? Promise.resolve()
+            : new Promise<void>((r) => setTimeout(r, pendingMs))
 
           const beforeLoadContext =
             (await route.options.beforeLoad?.({
@@ -1147,7 +1147,7 @@ export class Router<
             route.options.pendingMinMs ?? this.options.defaultPendingMinMs
           const shouldPending =
             !preload &&
-            pendingMs &&
+            typeof pendingMs === 'number' &&
             (route.options.pendingComponent ??
               this.options.defaultPendingComponent)
 

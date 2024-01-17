@@ -485,41 +485,40 @@ export class RouteApi<
   useMatch = <TSelected = TAllContext>(opts?: {
     select?: (s: TAllContext) => TSelected
   }): TSelected => {
-    return useMatch({ ...opts, from: this.id }) as any
+    return useMatch({ select: opts?.select, from: this.id })
   }
 
   useRouteContext = <TSelected = TAllContext>(opts?: {
     select?: (s: TAllContext) => TSelected
   }): TSelected => {
     return useMatch({
-      ...opts,
       from: this.id,
       select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-    } as any)
+    })
   }
 
   useSearch = <TSelected = TFullSearchSchema>(opts?: {
     select?: (s: TFullSearchSchema) => TSelected
   }): TSelected => {
-    return useSearch({ ...opts, from: this.id } as any)
+    return useSearch({ ...opts, from: this.id })
   }
 
   useParams = <TSelected = TAllParams>(opts?: {
     select?: (s: TAllParams) => TSelected
   }): TSelected => {
-    return useParams({ ...opts, from: this.id } as any)
+    return useParams({ ...opts, from: this.id })
   }
 
   useLoaderDeps = <TSelected = TLoaderDeps>(opts?: {
     select?: (s: TLoaderDeps) => TSelected
   }): TSelected => {
-    return useLoaderDeps({ ...opts, from: this.id } as any) as any
+    return useLoaderDeps({ ...opts, from: this.id } as any)
   }
 
   useLoaderData = <TSelected = TLoaderData>(opts?: {
     select?: (s: TLoaderData) => TSelected
   }): TSelected => {
-    return useLoaderData({ ...opts, from: this.id } as any) as any
+    return useLoaderData({ ...opts, from: this.id } as any)
   }
 }
 
@@ -810,7 +809,7 @@ export class Route<
   useMatch = <TSelected = TAllContext>(opts?: {
     select?: (search: TAllContext) => TSelected
   }): TSelected => {
-    return useMatch({ ...opts, from: this.id }) as any
+    return useMatch({ ...opts, from: this.id })
   }
 
   useRouteContext = <TSelected = TAllContext>(opts?: {
@@ -820,31 +819,31 @@ export class Route<
       ...opts,
       from: this.id,
       select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-    } as any)
+    })
   }
 
   useSearch = <TSelected = TFullSearchSchema>(opts?: {
     select?: (search: TFullSearchSchema) => TSelected
   }): TSelected => {
-    return useSearch({ ...opts, from: this.id } as any)
+    return useSearch({ ...opts, from: this.id })
   }
 
   useParams = <TSelected = TAllParams>(opts?: {
     select?: (search: TAllParams) => TSelected
   }): TSelected => {
-    return useParams({ ...opts, from: this.id } as any)
+    return useParams({ ...opts, from: this.id })
   }
 
   useLoaderDeps = <TSelected = TLoaderDeps>(opts?: {
     select?: (s: TLoaderDeps) => TSelected
   }): TSelected => {
-    return useLoaderDeps({ ...opts, from: this.id } as any) as any
+    return useLoaderDeps({ ...opts, from: this.id } as any)
   }
 
   useLoaderData = <TSelected = TLoaderData>(opts?: {
     select?: (search: TLoaderData) => TSelected
   }): TSelected => {
-    return useLoaderData({ ...opts, from: this.id } as any) as any
+    return useLoaderData({ ...opts, from: this.id } as any)
   }
 }
 

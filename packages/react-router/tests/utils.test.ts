@@ -256,6 +256,24 @@ describe('replaceEqualDeep', () => {
     expect(result.todos[0]?.state.done).toBe(next.todos[0]?.state.done)
     expect(result.todos[1]).toBe(prev.todos[1])
   })
+
+  it('should be able to share values that contain undefined', () => {
+    const current = [
+      {
+        data: undefined,
+        foo: true,
+      },
+    ]
+
+    const next = replaceEqualDeep(current, [
+      {
+        data: undefined,
+        foo: true,
+      },
+    ])
+
+    expect(current).toBe(next)
+  })
 })
 
 describe('isPlainArray', () => {

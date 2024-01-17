@@ -68,11 +68,9 @@ const router = new Router({
 Or, you can use the `routeOptions.preloadStaleTime` option on individual routes:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const postRoute = new Route({
-  path: '/posts/$id',
-  loader: async ({ params }) => fetchPost(params.id),
+// src/routes/posts.$postId.tsx
+export const Route = new FileRoute('/posts/$postId').createRoute({
+  loader: async ({ params }) => fetchPost(params.postId),
   // Preload the route again if the preload cache is older than 10 seconds
   preloadStaleTime: 10_000,
 })

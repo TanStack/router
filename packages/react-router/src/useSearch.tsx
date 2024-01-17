@@ -1,4 +1,4 @@
-import { AnyRoute } from './route'
+import { AnyRoute, RootSearchSchema } from './route'
 import { RouteIds, RouteById } from './routeInfo'
 import { RegisteredRouter } from './router'
 import { RouteMatch } from './Matches'
@@ -8,16 +8,15 @@ import { StrictOrFrom } from './utils'
 export function useSearch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TStrict extends boolean = true,
-  TSearch = RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'],
+  TSearch = Exclude<RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'], RootSearchSchema>,
   TSelected = TSearch,
 >(
   opts: StrictOrFrom<TFrom> & {
     select?: (search: TSearch) => TSelected
   },
-): TStrict extends true ? TSelected : TSelected | undefined {
+) : TSelected {
   return useMatch({
-    ...(opts as any),
+    ...opts,
     select: (match: RouteMatch) => {
       return opts?.select ? opts.select(match.search as TSearch) : match.search
     },

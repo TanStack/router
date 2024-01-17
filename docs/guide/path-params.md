@@ -13,12 +13,17 @@ Path params are used to match a single segment (the text until the next `/`) and
 
 Because path param routes only match to the next `/`, child routes can be created to continue expressing hierarchy:
 
-Let's define a post route that uses a path param to match the post ID:
+Let's create a post route file that uses a path param to match the post ID:
+
+- `posts.$postId.tsx`
 
 ```tsx
-const postRoute = new Route({
-  getParentRoute: () => blogRoute,
-  path: '$postId',
+import { FileRoute } from '@tanstack/react-router'
+
+export const Route = new FileRoute('/posts/$postId').createRoute({
+  loader: async ({ params }) => {
+    return fetchPost(params.postId)
+  },
 })
 ```
 
@@ -31,9 +36,7 @@ Once a path param has been parsed, it is available to all child routes. This mea
 Path params are passed to the loader as a `params` object. The keys of this object are the names of the path params, and the values are the values that were parsed out of the actual URL path. For example, if we were to visit the `/blog/123` URL, the `params` object would be `{ postId: '123' }`:
 
 ```tsx
-const postRoute = new Route({
-  getParentRoute: () => blogRoute,
-  path: '$postId',
+export const Route = new FileRoute('/posts/$postId').createRoute({
   loader: async ({ params }) => {
     return fetchPost(params.postId)
   },
@@ -43,9 +46,7 @@ const postRoute = new Route({
 The `params` object is also passed to the `beforeLoad` option:
 
 ```tsx
-const postRoute = new Route({
-  getParentRoute: () => blogRoute,
-  path: '$postId',
+export const Route = new FileRoute('/posts/$postId').createRoute({
   beforeLoad: async ({ params }) => {
     // do something with params.postId
   },
@@ -57,9 +58,7 @@ const postRoute = new Route({
 If we add a component to our `postRoute`, we can access the `postId` variable from the URL by using the route's `useParams` hook:
 
 ```tsx
-const postRoute = new Route({
-  getParentRoute: () => blogRoute,
-  path: '$postId',
+export const Route = new FileRoute('/posts/$postId').createRoute({
   component: PostComponent,
 })
 

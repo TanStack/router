@@ -24,10 +24,10 @@ To implement non-streaming SSR with TanStack Router, you will need the following
 - `StartServer` from `@tanstack/react-router-server`
   - e.g. `<StartServer router={router} />`
   - Rendering this component in your server entry will render your application and also automatically handle application-level hydration/dehydration and implement the `Wrap` component option on `Router`
-- `StartClient` from `@tanstack/react-router-client`
+- `StartClient` from `@tanstack/react-router-server/client`
   - e.g. `<StartClient router={router} />`
   - Rendering this component in your client entry will render your application and also automatically implement the `Wrap` component option on `Router`
-- `DehydrateRouter` from `@tanstack/react-router-client`
+- `DehydrateRouter` from `@tanstack/react-router-server/client`
   - e.g. `<DehydrateRouter />`
   - Render this component **inside your application** to embed the router's dehydrated data into the application.
 
@@ -35,19 +35,12 @@ To implement non-streaming SSR with TanStack Router, you will need the following
 
 Since your router will exist both on the server and the client, it's important that you create your router in a way that is consistent between both of these environments. The easiest way to do this is to expose a `createRouter` function in a shared file that can be imported and called by both your server and client entry files.
 
-```js
+- `src/router.tsx`
+
+```tsx
 import * as React from 'react'
 import { Router } from '@tanstack/react-router'
-import { rootRoute } from './routes/root'
-import { indexRoute } from './routes/index'
-import { postsRoute } from './routes/posts'
-import { postsIndexRoute } from './routes/posts/index'
-import { postIdRoute } from './routes/posts/$postId'
-
-export const routeTree = rootRoute.addChildren([
-  indexRoute,
-  postsRoute.addChildren([postsIndexRoute, postIdRoute]),
-])
+import { routeTree } from 'routeTree.gen'
 
 export function createRouter() {
   return new Router({ routeTree })
@@ -62,9 +55,9 @@ declare module '@tanstack/react-router' {
 
 Now you can import this function in both your server and client entry files and create your router.
 
-```js
-// src/entry-server.tsx
+- `src/entry-server.tsx`
 
+```tsx
 import { createRouter } from './router'
 
 export async function render(req, res) {
@@ -72,9 +65,9 @@ export async function render(req, res) {
 }
 ```
 
-```js
-// src/entry-client.tsx
+- `src/entry-client.tsx`
 
+```tsx
 import { createRouter } from './router'
 
 const router = createRouter()
@@ -86,9 +79,9 @@ On the client, Router defaults to using an instance of `createBrowserHistory`, w
 
 > 🧠 Make sure you initialize your memory history with the server URL that is being rendered.
 
-```tsx
-// src/entry-server.tsx
+- `src/entry-server.tsx`
 
+```tsx
 const router = createRouter()
 
 const memoryHistory = createMemoryHistory({
@@ -98,9 +91,9 @@ const memoryHistory = createMemoryHistory({
 
 After creating the memory history instance, you can update the router to use it.
 
-```tsx
-// src/entry-server.tsx
+- `src/entry-server.tsx`
 
+```tsx
 router.update({
   history: memoryHistory,
 })
@@ -110,9 +103,9 @@ router.update({
 
 In order to render your application on the server, you will need to ensure that the router has loaded any critical data via it's route loaders. To do this, you can `await router.load()` before rendering your application. This will quite literally wait for each of the matching route matches found for this url to run their route's `loader` functions in parallel.
 
-```tsx
-// src/entry-server.tsx
+- `src/entry-server.tsx`
 
+```tsx
 await router.load()
 ```
 
@@ -134,7 +127,7 @@ To do this, render the `<DehydrateRouter />` component somewhere inside your Roo
 // src/root.tsx
 
 import * as React from 'react'
-import { DehydrateRouter } from '@tanstack/react-router-client'
+import { DehydrateRouter } from '@tanstack/react-router-server/client'
 
 export function Root() {
   return (
@@ -204,7 +197,7 @@ On the client, things are much simpler.
 import * as React from 'react'
 import ReactDOM from 'react-dom/client'
 
-import { StartClient } from '@tanstack/react-router-client'
+import { StartClient } from '@tanstack/react-router-server/client'
 import { createRouter } from './router'
 
 const router = createRouter()
