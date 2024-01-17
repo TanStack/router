@@ -431,7 +431,7 @@ export function useLoaderData<
   })!
 }
 
-function isServerSideError(error: unknown): error is {
+export function isServerSideError(error: unknown): error is {
   __isServerError: true
   data: Record<string, any>
 } {

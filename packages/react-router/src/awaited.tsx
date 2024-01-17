@@ -1,4 +1,5 @@
-import { defaultDeserializeError } from './Matches'
+import warning from 'tiny-warning'
+import { defaultDeserializeError, isServerSideError } from './Matches'
 import { useRouter } from './RouterProvider'
 import { DeferredPromise, isDehydratedDeferred } from './defer'
 
@@ -25,9 +26,17 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
 
   if (state.status === 'error') {
     if (typeof document !== 'undefined') {
-      throw (router.options.deserializeError ?? defaultDeserializeError)(
-        state.error as any,
-      )
+      if (isServerSideError(state.error)) {
+        throw (router.options.deserializeError ?? defaultDeserializeError)(
+          state.error.data as any,
+        )
+      } else {
+        warning(
+          false,
+          "Encountered a server-side error that doesn't fit the expected shape",
+        )
+        throw state.error
+      }
     } else {
       router.dehydrateData(key, state)
       throw state.error

@@ -44,7 +44,10 @@ export function defer<T>(
       })
       .catch((error) => {
         state.status = 'error' as any
-        state.error = (options?.serializeError ?? defaultSerializeError)(error)
+        state.error = {
+          data: (options?.serializeError ?? defaultSerializeError)(error),
+          __isServerError: true,
+        }
       })
   }
 
