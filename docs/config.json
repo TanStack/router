@@ -193,7 +193,7 @@
         },
         {
           "label": "Vinxi + SSR Streaming (file-based)",
-          "to": "examples/react/vinxi-basic-ssr-streaming"
+          "to": "examples/react/vinxi-ssr-streaming"
         },
         {
           "label": "Location Masking",
