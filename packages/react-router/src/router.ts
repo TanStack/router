@@ -792,21 +792,21 @@ export class Router<
 
       const hash =
         dest.hash === true
-          ? from.hash
+          ? this.latestLocation.hash
           : dest.hash
-            ? functionalUpdate(dest.hash!, from.hash)
+            ? functionalUpdate(dest.hash!, this.latestLocation.hash)
             : undefined
 
       const hashStr = hash ? `#${hash}` : ''
 
       let nextState =
         dest.state === true
-          ? from.state
+          ? this.latestLocation.state
           : dest.state
-            ? functionalUpdate(dest.state, from.state)
-            : from.state
+            ? functionalUpdate(dest.state, this.latestLocation.state)
+            : this.latestLocation.state
 
-      nextState = replaceEqualDeep(from.state, nextState)
+      nextState = replaceEqualDeep(this.latestLocation.state, nextState)
 
       return {
         pathname,
