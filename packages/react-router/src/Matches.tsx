@@ -163,7 +163,7 @@ function MatchInner({
   if (match.status === 'error') {
     if (isServerSideError(match.error)) {
       const deserializeError =
-        router.options.deserializeError ?? defaultDeserializeError
+        router.options.errorSerializer?.deserialize ?? defaultDeserializeError
       throw deserializeError(match.error.data)
     } else {
       throw match.error
@@ -441,7 +441,11 @@ export function isServerSideError(error: unknown): error is {
 }
 
 export function defaultDeserializeError(serializedData: Record<string, any>) {
-  const error = new Error(serializedData.message)
-  error.name = serializedData.name
-  return error
+  if ('name' in serializedData && 'message' in serializedData) {
+    const error = new Error(serializedData.message)
+    error.name = serializedData.name
+    return error
+  }
+
+  return serializedData.data
 }

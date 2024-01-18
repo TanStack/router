@@ -28,9 +28,9 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
   if (state.status === 'error') {
     if (typeof document !== 'undefined') {
       if (isServerSideError(state.error)) {
-        throw (router.options.deserializeError ?? defaultDeserializeError)(
-          state.error.data as any,
-        )
+        throw (
+          router.options.errorSerializer?.deserialize ?? defaultDeserializeError
+        )(state.error.data as any)
       } else {
         warning(
           false,
@@ -41,9 +41,9 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
     } else {
       router.dehydrateData(key, state)
       throw {
-        data: (router.options.serializeError ?? defaultSerializeError)(
-          state.error,
-        ),
+        data: (
+          router.options.errorSerializer?.serialize ?? defaultSerializeError
+        )(state.error),
         __isServerError: true,
       }
     }
