@@ -1,4 +1,4 @@
-import { useRouter } from './RouterProvider'
+import { useRouter } from './useRouter'
 import { DeferredPromise, isDehydratedDeferred } from './defer'
 
 export type AwaitOptions<T> = {

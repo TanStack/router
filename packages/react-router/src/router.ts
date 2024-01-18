@@ -18,7 +18,13 @@ import {
   Route,
   LoaderFnContext,
 } from './route'
-import { FullSearchSchema, RoutesById, RoutesByPath } from './routeInfo'
+import {
+  FullSearchSchema,
+  RouteById,
+  RoutePaths,
+  RoutesById,
+  RoutesByPath,
+} from './routeInfo'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
   PickAsRequired,
@@ -33,14 +39,13 @@ import {
   Timeout,
 } from './utils'
 import { RouteComponent } from './route'
-import { AnyRouteMatch, RouteMatch } from './Matches'
+import { AnyRouteMatch, MatchRouteOptions, RouteMatch } from './Matches'
 import { ParsedLocation } from './location'
 import { SearchSerializer, SearchParser } from './searchParams'
 import {
   BuildLocationFn,
   CommitLocationOptions,
   InjectedHtmlEntry,
-  MatchRouteFn,
   NavigateFn,
   getRouteMatch,
 } from './RouterProvider'
@@ -58,7 +63,8 @@ import {
 } from './path'
 import invariant from 'tiny-invariant'
 import { isRedirect } from './redirects'
-import { ToOptions } from './link'
+import { ResolveRelativePath, ToOptions } from './link'
+import { NoInfer } from '@tanstack/react-store'
 // import warning from 'tiny-warning'
 
 //
@@ -1517,7 +1523,14 @@ export class Router<
     return matches
   }
 
-  matchRoute: MatchRouteFn<TRouteTree> = (location, opts) => {
+  matchRoute = <
+    TFrom extends RoutePaths<TRouteTree> = '/',
+    TTo extends string = '',
+    TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+  >(
+    location: ToOptions<TRouteTree, TFrom, TTo>,
+    opts?: MatchRouteOptions,
+  ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
     location = {
       ...location,
       to: location.to

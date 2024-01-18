@@ -4,7 +4,7 @@ const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
 import { ParsedLocation } from './location'
-import { useRouter } from './RouterProvider'
+import { useRouter } from './useRouter'
 import { NonNullableUpdater, functionalUpdate } from './utils'
 
 const windowKey = 'window'

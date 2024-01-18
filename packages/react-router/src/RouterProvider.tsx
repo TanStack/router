@@ -1,21 +1,16 @@
 import * as React from 'react'
-import warning from 'tiny-warning'
-import { useStore } from '@tanstack/react-store'
 import { Matches } from './Matches'
-import { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
+import { NavigateOptions, ToOptions } from './link'
 import { ParsedLocation } from './location'
 import { AnyRoute } from './route'
-import { RouteById, RoutePaths } from './routeInfo'
-import {
-  BuildNextOptions,
-  RegisteredRouter,
-  Router,
-  RouterOptions,
-  RouterState,
-} from './router'
-import { NoInfer, pick, useLayoutEffect } from './utils'
-import { MatchRouteOptions } from './Matches'
+import { RoutePaths } from './routeInfo'
+import { RegisteredRouter, Router, RouterOptions, RouterState } from './router'
+import { pick, useLayoutEffect } from './utils'
+
 import { RouteMatch } from './Matches'
+import { useRouter } from './useRouter'
+import { useRouterState } from './useRouterState'
+import { routerContext } from './routerContext'
 
 const useTransition =
   React.useTransition ||
@@ -48,30 +43,11 @@ export type NavigateFn<TRouteTree extends AnyRoute> = <
   opts: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => Promise<void>
 
-export type MatchRouteFn<TRouteTree extends AnyRoute> = <
-  TFrom extends RoutePaths<TRouteTree> = '/',
-  TTo extends string = '',
-  TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
->(
-  location: ToOptions<TRouteTree, TFrom, TTo>,
-  opts?: MatchRouteOptions,
-) => false | RouteById<TRouteTree, TResolved>['types']['allParams']
-
 export type BuildLocationFn<TRouteTree extends AnyRoute> = (
   opts: ToOptions<TRouteTree>,
 ) => ParsedLocation
 
 export type InjectedHtmlEntry = string | (() => Promise<string> | string)
-
-export let routerContext = React.createContext<Router<any>>(null!)
-
-if (typeof document !== 'undefined') {
-  if (window.__TSR_ROUTER_CONTEXT__) {
-    routerContext = window.__TSR_ROUTER_CONTEXT__
-  } else {
-    window.__TSR_ROUTER_CONTEXT__ = routerContext as any
-  }
-}
 
 export function RouterProvider<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -234,38 +210,10 @@ export function getRouteMatch<TRouteTree extends AnyRoute>(
   ].find((d) => d.id === id)
 }
 
-export function useRouterState<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TSelected = RouterState<TRouteTree>,
->(opts?: {
-  router?: Router<TRouteTree>
-  select: (state: RouterState<RegisteredRouter['routeTree']>) => TSelected
-}): TSelected {
-  const contextRouter = useRouter<TRouteTree>({
-    warn: opts?.router === undefined,
-  })
-  return useStore((opts?.router || contextRouter).__store, opts?.select as any)
-}
-
 export type RouterProps<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TDehydrated extends Record<string, any> = Record<string, any>,
 > = Omit<RouterOptions<TRouteTree, TDehydrated>, 'context'> & {
   router: Router<TRouteTree>
   context?: Partial<RouterOptions<TRouteTree, TDehydrated>['context']>
-}
-
-export function useRouter<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
->(opts?: { warn?: boolean }): Router<TRouteTree> {
-  const resolvedContext =
-    typeof document !== 'undefined'
-      ? window.__TSR_ROUTER_CONTEXT__ || routerContext
-      : routerContext
-  const value = React.useContext(resolvedContext)
-  warning(
-    !((opts?.warn ?? true) && !value),
-    'useRouter must be used inside a <RouterProvider> component!',
-  )
-  return value as any
 }

@@ -1,13 +1,10 @@
 import * as React from 'react'
 import { useMatch } from './Matches'
-import { useRouter, useRouterState } from './RouterProvider'
+import { useRouterState } from './useRouterState'
+import { useRouter } from './useRouter'
 import { Trim } from './fileRoute'
 import { AnyRoute, ReactNode, RootSearchSchema } from './route'
-import {
-  RouteByPath,
-  RouteIds,
-  RoutePaths,
-} from './routeInfo'
+import { RouteByPath, RouteIds, RoutePaths } from './routeInfo'
 import { RegisteredRouter } from './router'
 import { LinkProps, UseLinkPropsOptions } from './useNavigate'
 import {
@@ -188,7 +185,11 @@ export type ParamOptions<
       RootSearchSchema
     >
   >,
-  TToIndex = TTo extends '' ? '' : RouteByPath<TRouteTree, `${TTo}/`> extends never ? TTo : `${TTo}/`,
+  TToIndex = TTo extends ''
+    ? ''
+    : RouteByPath<TRouteTree, `${TTo}/`> extends never
+      ? TTo
+      : `${TTo}/`,
   TToParams = TToIndex extends ''
     ? TFromParams
     : never extends TResolved

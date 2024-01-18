@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { ReactNode } from './route'
-import { useRouter } from './RouterProvider'
+import { useRouter } from './useRouter'
 import { BlockerFn } from '@tanstack/history'
 
 export function useBlocker(
