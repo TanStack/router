@@ -1,5 +1,5 @@
 import { Plugin } from 'vite'
-import { join } from 'path'
+import { join, normalize } from 'path'
 import { readFile } from 'fs/promises'
 import {
   type Config,
@@ -49,11 +49,12 @@ export function TanStackRouterVite(inlineConfig: UserConfig = {}): Plugin {
       await generate()
     },
     handleHotUpdate: async ({ file }) => {
-      if (file === join(ROOT, CONFIG_FILE_NAME)) {
+      const filePath = normalize(file)
+      if (filePath === join(ROOT, CONFIG_FILE_NAME)) {
         userConfig = await buildConfig(inlineConfig, ROOT)
         return
       }
-      if (file.startsWith(join(ROOT, userConfig.routesDirectory))) {
+      if (filePath.startsWith(join(ROOT, userConfig.routesDirectory))) {
         await generate()
       }
     },
