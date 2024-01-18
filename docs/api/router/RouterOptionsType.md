@@ -186,7 +186,9 @@ const router = new Router({
 - A function that is called to define how errors are serialized when they are stored in the router's dehydrated state.
 
 #### `deserializeError`
+
 - Type: `(err: Record<string, any>) => Error`
+- Optional
 - A function that is called to define how errors are deserialized from the router's dehydrated state.
 
 # `RouterState` type
