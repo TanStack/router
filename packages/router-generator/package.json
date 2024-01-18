@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-generator",
   "author": "Tanner Linsley",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
