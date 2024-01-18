@@ -1,5 +1,4 @@
-import { CatchBoundary, FileRoute } from '@tanstack/react-router'
-import { Await, defer } from '@tanstack/react-router'
+import { Await, FileRoute, defer } from '@tanstack/react-router'
 import * as React from 'react'
 import { PostType } from '../posts'
 
