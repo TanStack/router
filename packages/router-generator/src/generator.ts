@@ -202,10 +202,10 @@ export async function generator(config: Config) {
         node.isLoader
           ? 'loader'
           : node.isErrorComponent
-          ? 'errorComponent'
-          : node.isPendingComponent
-          ? 'pendingComponent'
-          : 'component'
+            ? 'errorComponent'
+            : node.isPendingComponent
+              ? 'pendingComponent'
+              : 'component'
       ] = node
 
       const anchorRoute = routeNodes.find((d) => d.routePath === node.routePath)
@@ -363,7 +363,7 @@ export async function generator(config: Config) {
           ]
             .filter(Boolean)
             .join(',')}
-        } as any)`,
+        }${config.disableTypes ? '' : 'as any'})`,
           loaderNode
             ? `.updateLoader({ loader: lazyFn(() => import('./${replaceBackslash(
                 removeExt(
@@ -402,8 +402,11 @@ export async function generator(config: Config) {
         ].join('')
       })
       .join('\n\n'),
-    '// Populate the FileRoutesByPath interface',
-    `declare module '@tanstack/react-router' {
+    ...(config.disableTypes
+      ? []
+      : [
+          '// Populate the FileRoutesByPath interface',
+          `declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
@@ -419,6 +422,7 @@ export async function generator(config: Config) {
       .join('\n')}
   }
 }`,
+        ]),
     '// Create and export the route tree',
     `export const routeTree = rootRoute.addChildren([${routeConfigChildrenText}])`,
   ]
