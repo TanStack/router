@@ -179,17 +179,25 @@ const router = new Router({
 - Optional
 - A route that will be used as the default not found route for every branch of the route tree. This can be overridden on a per-branch basis by providing a not found route to the `NotFoundRoute` option on the root route of the branch.
 
-#### `serializeError`
+#### `errorSerializer`
 
-- Type: `(err: unknown) => Record<string, any>`
+- Type: `RouterErrorSerializer`
 - Optional
-- A function that is called to define how errors are serialized when they are stored in the router's dehydrated state.
+- The serializer object that will be used to determine how errors are serialized and deserialized between the server and the client.
 
-#### `deserializeError`
+# `RouterErrorSerializer` type
 
-- Type: `(err: Record<string, any>) => Error`
-- Optional
-- A function that is called to define how errors are deserialized from the router's dehydrated state.
+The `RouterErrorSerializer` type contains methods for serializing and deserializing errors.
+
+### Properties
+
+#### `serialize`
+- Type: `(err: unknown) => TSerializedError`
+- This method is called to define how errors are serialized when they are stored in the router's dehydrated state.
+
+#### `deserialize`
+- Type: `(err: TSerializedError) => unknown`
+- This method is called to define how errors are deserialized from the router's dehydrated state.
 
 # `RouterState` type
 
