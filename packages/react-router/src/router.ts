@@ -274,7 +274,15 @@ export class Router<
       !this.basepath ||
       (newOptions.basepath && newOptions.basepath !== previousOptions.basepath)
     ) {
-      this.basepath = `/${trimPath(newOptions.basepath ?? '') ?? ''}`
+      if (
+        newOptions.basepath === undefined ||
+        newOptions.basepath === '' ||
+        newOptions.basepath === '/'
+      ) {
+        this.basepath = '/'
+      } else {
+        this.basepath = `/${trimPath(newOptions.basepath)}`
+      }
     }
 
     if (
