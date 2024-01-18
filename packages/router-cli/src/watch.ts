@@ -1,7 +1,6 @@
 import chokidar from 'chokidar'
 import path from 'path'
-import { getConfig } from './config'
-import { generator } from './generator'
+import { getConfig, generator } from '@tanstack/router-generator'
 
 export async function watch() {
   const configWatcher = chokidar.watch(

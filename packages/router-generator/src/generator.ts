@@ -2,8 +2,7 @@ import path from 'path'
 import * as fs from 'fs/promises'
 import * as prettier from 'prettier'
 import { Config } from './config'
-import { cleanPath, trimPathLeft } from '@tanstack/react-router'
-import { existsSync } from 'fs'
+import { cleanPath, trimPathLeft } from './utils'
 
 let latestTask = 0
 export const rootPathId = '__root'

@@ -1,7 +1,7 @@
 {
-  "name": "@tanstack/router-vite-plugin",
+  "name": "@tanstack/router-generator",
   "author": "Tanner Linsley",
-  "version": "1.5.3",
+  "version": "1.4.10",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
@@ -30,13 +30,14 @@
   },
   "files": [
     "build/**",
-    "src/**"
+    "src"
   ],
   "sideEffects": false,
   "module": "build/esm/index.js",
   "main": "build/cjs/index.js",
   "types": "build/types/index.d.ts",
   "dependencies": {
-    "@tanstack/router-generator": "workspace:*"
+    "prettier": "^3.0.2",
+    "zod": "^3.19.1"
   }
 }
