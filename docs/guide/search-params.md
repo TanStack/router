@@ -17,9 +17,9 @@ Traditional Search Param APIs usually assume a few things:
 
 Reality is very different from these assumptions though.
 
-- Search params represent application state, so inevitably, we will expect them to have the same DX associated with other state managers. This means having the capable of distinguishing between primitive value types and efficiently storing and manipulating complex data structures like nested arrays and objects.
+- Search params represent application state, so inevitably, we will expect them to have the same DX associated with other state managers. This means having the capability of distinguishing between primitive value types and efficiently storing and manipulating complex data structures like nested arrays and objects.
 - There are many ways to serialize and deserialize state with different tradeoffs. You should be able to choose the best one for your application or at the very least get a better default than `URLSearchParams`.
-- Immutability & Structural Sharing. Every time you stringify and parse urls search params, referential integrity and object identity is lost because each new parse creates a brand new data structure with a unique memory reference. If not properly managed over its lifetime, this constant serialization and parsing can result in unexpected and undesirable performance issues, especially in frameworks like React that choose to track reactivity via immutability or in Solid that normally relies on reconciliation to detect changes from deserialized data sources.
+- Immutability & Structural Sharing. Every time you stringify and parse url search params, referential integrity and object identity is lost because each new parse creates a brand new data structure with a unique memory reference. If not properly managed over its lifetime, this constant serialization and parsing can result in unexpected and undesirable performance issues, especially in frameworks like React that choose to track reactivity via immutability or in Solid that normally relies on reconciliation to detect changes from deserialized data sources.
 - Search params, while an important part of the URL, do frequently change independently of the URL's pathname. For example, a user may want to change the page number of a paginated list without touching the URL's pathname.
 
 ## Search Params, the "OG" State Manager
@@ -32,7 +32,7 @@ You've probably seen search params like `?page=3` or `?filter-name=tanner` in th
   - Refresh your app or navigate back and forth between pages without losing their state
 - Developers should be able to easily:
   - Add, remove or modify state in the URL with the same great DX as other state managers
-  - Easily validate search params coming from the URL a format and type that is safe for their application to consume
+  - Easily validate search params coming from the URL in a format and type that is safe for their application to consume
   - Read and write to search params without having to worry about the underlying serialization format
 
 ## JSON-first Search Params
