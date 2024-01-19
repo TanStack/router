@@ -1,11 +1,16 @@
-import path from 'path'
-import { BranchConfig, Package } from './types'
+// @ts-check
 
-export const packages: Package[] = [
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+/**
+ * List your npm packages here. The first package will be used as the versioner.
+ * @type {import('./types').Package[]}
+ */
+export const packages = [
   {
     name: '@tanstack/history',
-    packageDir: 'history',
-    srcDir: 'src',
+    packageDir: 'packages/history',
     builds: [
       {
         jsName: 'TanStackHistory',
@@ -16,8 +21,7 @@ export const packages: Package[] = [
   },
   {
     name: '@tanstack/react-router',
-    packageDir: 'react-router',
-    srcDir: 'src',
+    packageDir: 'packages/react-router',
     builds: [
       {
         jsName: 'ReactRouter',
@@ -30,8 +34,7 @@ export const packages: Package[] = [
   },
   {
     name: '@tanstack/router-devtools',
-    packageDir: 'router-devtools',
-    srcDir: 'src',
+    packageDir: 'packages/router-devtools',
     builds: [
       {
         jsName: 'TanStackRouterDevtools',
@@ -42,8 +45,7 @@ export const packages: Package[] = [
   },
   {
     name: '@tanstack/router-generator',
-    packageDir: 'router-generator',
-    srcDir: 'src',
+    packageDir: 'packages/router-generator',
     builds: [
       {
         jsName: 'TanStackRouterGenerator',
@@ -56,8 +58,7 @@ export const packages: Package[] = [
   },
   {
     name: '@tanstack/router-cli',
-    packageDir: 'router-cli',
-    srcDir: 'src',
+    packageDir: 'packages/router-cli',
     builds: [
       {
         jsName: 'TanStackRouterCli',
@@ -69,8 +70,7 @@ export const packages: Package[] = [
   },
   {
     name: '@tanstack/router-vite-plugin',
-    packageDir: 'router-vite-plugin',
-    srcDir: 'src',
+    packageDir: 'packages/router-vite-plugin',
     builds: [
       {
         jsName: 'TanStackRouterVitePlugin',
@@ -83,8 +83,7 @@ export const packages: Package[] = [
   },
   {
     name: '@tanstack/react-cross-context',
-    packageDir: 'react-cross-context',
-    srcDir: 'src',
+    packageDir: 'packages/react-cross-context',
     builds: [
       {
         jsName: 'ReactCrossContext',
@@ -94,8 +93,7 @@ export const packages: Package[] = [
   },
   {
     name: '@tanstack/react-router-server',
-    packageDir: 'react-router-server',
-    srcDir: 'src',
+    packageDir: 'packages/react-router-server',
     builds: [
       {
         jsName: 'TanStackRouterServer',
@@ -109,31 +107,24 @@ export const packages: Package[] = [
   },
 ]
 
-export const latestBranch = 'main'
-
-export const branchConfigs: Record<string, BranchConfig> = {
+/**
+ * Contains config for publishable branches.
+ * @type {Record<string, import('./types').BranchConfig>}
+ */
+export const branchConfigs = {
   main: {
     prerelease: false,
-    ghRelease: true,
   },
   next: {
     prerelease: true,
-    ghRelease: true,
   },
   beta: {
     prerelease: true,
-    ghRelease: true,
   },
   alpha: {
     prerelease: true,
-    ghRelease: true,
   },
 }
 
-export const rootDir = path.resolve(__dirname, '..')
-export const examplesDirs = [
-  'examples/react',
-  // 'examples/solid',
-  // 'examples/svelte',
-  // 'examples/vue',
-]
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
+export const rootDir = resolve(__dirname, '..')
