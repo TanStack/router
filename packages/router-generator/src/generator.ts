@@ -6,7 +6,6 @@ import { cleanPath, trimPathLeft } from './utils'
 
 let latestTask = 0
 export const rootPathId = '__root'
-export const fileRouteRegex = /new\s+FileRoute\(([^)]*)\)/g
 
 export type RouteNode = {
   filePath: string
@@ -253,12 +252,12 @@ export async function generator(config: Config) {
       // we have to double escape it into $$$$. For more information, see
       // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace#specifying_a_string_as_the_replacement
       const escapedRoutePath = removeTrailingUnderscores(
-        node.routePath?.replaceAll('$', '$$$$') ?? '',
+        node.routePath?.replaceAll('$', '$$') ?? '',
       )
       const quote = config.quoteStyle === 'single' ? `'` : `"`
       const replaced = routeCode.replace(
-        fileRouteRegex,
-        `new FileRoute(${quote}${escapedRoutePath}${quote})`,
+        /(FileRoute\(\s*['"])([^\s]+)(['"](?:,?)\s*\))/g,
+        (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
       )
 
       if (replaced !== routeCode) {
