@@ -167,10 +167,11 @@ export type ToSubOptions<
 type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
 type ParamVariant = 'PATH' | 'SEARCH'
-type ExcludeRootSearchSchema<
-  T,
-  Excluded = Exclude<T, RootSearchSchema>,
-> = [Excluded] extends [never] ? {} : Excluded
+type ExcludeRootSearchSchema<T, Excluded = Exclude<T, RootSearchSchema>> = [
+  Excluded,
+] extends [never]
+  ? {}
+  : Excluded
 
 type PostProcessParams<
   T,

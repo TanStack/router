@@ -8,7 +8,9 @@ import {
 } from '../utils/queryOptions'
 import { useSuspenseQuery } from '@tanstack/react-query'
 
-export const Route = new FileRoute("/dashboard/invoices/$invoiceId").createRoute({
+export const Route = new FileRoute(
+  '/dashboard/invoices/$invoiceId',
+).createRoute({
   parseParams: (params) => ({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),
   }),
@@ -30,7 +32,7 @@ export const Route = new FileRoute("/dashboard/invoices/$invoiceId").createRoute
 function InvoiceComponent() {
   const search = Route.useSearch()
   const params = Route.useParams()
-  const navigate = useNavigate({from: Route.fullPath})
+  const navigate = useNavigate({ from: Route.fullPath })
   const invoiceQuery = useSuspenseQuery(invoiceQueryOptions(params.invoiceId))
   const invoice = invoiceQuery.data
   const updateInvoiceMutation = useUpdateInvoiceMutation(params.invoiceId)

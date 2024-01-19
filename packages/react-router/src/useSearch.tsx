@@ -8,13 +8,16 @@ import { StrictOrFrom } from './utils'
 export function useSearch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TSearch = Exclude<RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'], RootSearchSchema>,
+  TSearch = Exclude<
+    RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'],
+    RootSearchSchema
+  >,
   TSelected = TSearch,
 >(
   opts: StrictOrFrom<TFrom> & {
     select?: (search: TSearch) => TSelected
   },
-) : TSelected {
+): TSelected {
   return useMatch({
     ...opts,
     select: (match: RouteMatch) => {

@@ -13,7 +13,7 @@ import { usersQueryOptions } from '../utils/queryOptions'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
-export const Route = new FileRoute("/dashboard/users").createRoute({
+export const Route = new FileRoute('/dashboard/users').createRoute({
   validateSearch: z.object({
     usersView: z
       .object({
@@ -38,7 +38,7 @@ export const Route = new FileRoute("/dashboard/users").createRoute({
 })
 
 function UsersComponent() {
-  const navigate = useNavigate({from: Route.fullPath})
+  const navigate = useNavigate({ from: Route.fullPath })
   const { usersView } = Route.useSearch()
   const usersQuery = useSuspenseQuery(usersQueryOptions(Route.useLoaderDeps()))
   const users = usersQuery.data

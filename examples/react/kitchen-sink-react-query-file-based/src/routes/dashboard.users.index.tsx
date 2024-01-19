@@ -2,7 +2,7 @@ import * as React from 'react'
 import { FileRoute } from '@tanstack/react-router'
 
 // @ts-ignore
-export const Route = new FileRoute("/dashboard/users/").createRoute({
+export const Route = new FileRoute('/dashboard/users/').createRoute({
   component: UsersIndexComponent,
 })
 

@@ -5,7 +5,9 @@ import { fetchInvoiceById, patchInvoice } from '../utils/mockTodos'
 import { useMutation } from '../hooks/useMutation'
 import { InvoiceFields } from '../components/InvoiceFields'
 
-export const Route = new FileRoute('/dashboard/invoices/$invoiceId').createRoute({
+export const Route = new FileRoute(
+  '/dashboard/invoices/$invoiceId',
+).createRoute({
   parseParams: (params) => ({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),
   }),
@@ -23,7 +25,7 @@ export const Route = new FileRoute('/dashboard/invoices/$invoiceId').createRoute
 
 function InvoiceComponent() {
   const search = Route.useSearch()
-  const navigate = useNavigate({from: Route.fullPath})
+  const navigate = useNavigate({ from: Route.fullPath })
   const invoice = Route.useLoaderData()
   const router = useRouter()
   const updateInvoiceMutation = useMutation({

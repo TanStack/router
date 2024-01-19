@@ -2,7 +2,7 @@ import * as React from 'react'
 import { FileRoute, Link, redirect } from '@tanstack/react-router'
 import { auth } from '../utils/auth'
 
-export const Route = new FileRoute("/_auth").createRoute({
+export const Route = new FileRoute('/_auth').createRoute({
   // Before loading, authenticate the user via our auth context
   // This will also happen during prefetching (e.g. hovering over links, etc)
   beforeLoad: ({ context, location }) => {

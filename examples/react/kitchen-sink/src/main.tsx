@@ -654,7 +654,9 @@ const loginRoute = new Route({
 
 function LoginComponent() {
   const router = useRouter()
-  const { auth, status } = loginRoute.useRouteContext({select:({auth}) => ({auth, status: auth.status})})
+  const { auth, status } = loginRoute.useRouteContext({
+    select: ({ auth }) => ({ auth, status: auth.status }),
+  })
   const search = useSearch({ from: loginRoute.fullPath })
   const [username, setUsername] = React.useState('')
 
@@ -793,7 +795,7 @@ const auth: Auth = {
     auth.status = 'loggedIn'
   },
   logout: () => {
-    auth.status ='loggedOut'
+    auth.status = 'loggedOut'
     auth.username = undefined
   },
 }

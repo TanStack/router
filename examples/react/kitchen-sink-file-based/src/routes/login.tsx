@@ -14,7 +14,9 @@ export const Route = new FileRoute('/login')
 
 function LoginComponent() {
   const router = useRouter()
-  const { auth, status } = Route.useRouteContext({select:({auth}) => ({auth, status: auth.status})})
+  const { auth, status } = Route.useRouteContext({
+    select: ({ auth }) => ({ auth, status: auth.status }),
+  })
   const search = Route.useSearch()
   const [username, setUsername] = React.useState('')
 
