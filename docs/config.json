@@ -218,6 +218,10 @@
         {
           "label": "Navigation Blocking",
           "to": "examples/react/navigation-blocking"
+        },
+        {
+          "label": "tRPC + React Query (file-based)",
+          "to": "examples/react/trpc-react-query"
         }
       ]
     }
