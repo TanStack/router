@@ -8,8 +8,8 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/react-router": "1.6.0",
-    "@tanstack/react-router-server": "1.6.0",
+    "@tanstack/react-router": "1.6.1",
+    "@tanstack/react-router-server": "1.6.1",
     "@vinxi/react": "0.1.1",
     "@vinxi/server-functions": "^0.1.1",
     "autoprefixer": "^10.4.15",

@@ -9,5 +9,5 @@
     "react": ">=18",
     "react-dom": ">=18"
   },
-  "version": "1.6.0"
+  "version": "1.6.1"
 }
