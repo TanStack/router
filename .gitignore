@@ -9,6 +9,7 @@ types
 build
 */build
 dist
+.output
 lib
 es
 artifacts

@@ -57,7 +57,6 @@
     "src"
   ],
   "dependencies": {
-    "@babel/runtime": "^7.16.7",
     "@tanstack/history": "workspace:*",
     "@tanstack/react-store": "^0.2.1",
     "@tanstack/store": "^0.1.3",

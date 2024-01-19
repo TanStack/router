@@ -62,7 +62,6 @@
     "src"
   ],
   "dependencies": {
-    "@babel/runtime": "^7.21.0",
     "@tanstack/react-cross-context": "workspace:^",
     "@tanstack/react-router": "workspace:*",
     "isbot": "^3.6.6",
