@@ -1,0 +1,36 @@
+{
+  "name": "tanstack-router-react-example-with-trpc-react-query",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently 'npm:dev:*'",
+    "dev:client": "wait-port 4000 && vite --port=3001",
+    "dev:server": "tsx server/server.ts",
+    "build": "vite build",
+    "serve": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.17.15",
+    "@tanstack/react-query-devtools": "^5.17.18",
+    "@tanstack/react-router": "1.7.1",
+    "@tanstack/router-devtools": "1.7.1",
+    "@tanstack/router-vite-plugin": "^1.7.1",
+    "@trpc/client": "next",
+    "@trpc/react-query": "next",
+    "@trpc/server": "next",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^8.2.2",
+    "tsx": "^4.7.0",
+    "vite": "^5.0.12",
+    "wait-port": "^1.1.0",
+    "typescript": "^5.3.3"
+  }
+}
