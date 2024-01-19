@@ -51,7 +51,11 @@ export type Split<S, TIncludeTrailingSlash = true> = S extends unknown
   : never
 
 export type ParsePathParams<T extends string> = keyof {
-  [K in Trim<Split<T>[number], '_'> as K extends `$${infer L}` ? L  extends '' ? '_splat' : L: never]: K
+  [K in Trim<Split<T>[number], '_'> as K extends `$${infer L}`
+    ? L extends ''
+      ? '_splat'
+      : L
+    : never]: K
 }
 
 export type Join<T, Delimiter extends string = '/'> = T extends []
@@ -163,6 +167,16 @@ export type ToSubOptions<
 type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
 type ParamVariant = 'PATH' | 'SEARCH'
+type ExcludeRootSearchSchema<
+  T,
+  Excluded = Exclude<T, RootSearchSchema>,
+> = [Excluded] extends [never] ? {} : Excluded
+
+type PostProcessParams<
+  T,
+  TParamVariant extends ParamVariant,
+> = TParamVariant extends 'SEARCH' ? ExcludeRootSearchSchema<T> : T
+
 export type ParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
@@ -179,11 +193,9 @@ export type ParamOptions<
     | 'fullSearchSchemaInput' = TParamVariant extends 'PATH'
     ? 'allParams'
     : 'fullSearchSchemaInput',
-  TFromParams = Expand<
-    Exclude<
-      RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType],
-      RootSearchSchema
-    >
+  TFromParams = PostProcessParams<
+    RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType],
+    TParamVariant
   >,
   TToIndex = TTo extends ''
     ? ''
@@ -193,17 +205,13 @@ export type ParamOptions<
   TToParams = TToIndex extends ''
     ? TFromParams
     : never extends TResolved
-      ? Expand<
-          Exclude<
-            RouteByPath<TRouteTree, TToIndex>['types'][TToRouteType],
-            RootSearchSchema
-          >
+      ? PostProcessParams<
+          RouteByPath<TRouteTree, TToIndex>['types'][TToRouteType],
+          TParamVariant
         >
-      : Expand<
-          Exclude<
-            RouteByPath<TRouteTree, TResolved>['types'][TToRouteType],
-            RootSearchSchema
-          >
+      : PostProcessParams<
+          RouteByPath<TRouteTree, TResolved>['types'][TToRouteType],
+          TParamVariant
         >,
   TReducer = ParamsReducer<TFromParams, TToParams>,
 > = Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
