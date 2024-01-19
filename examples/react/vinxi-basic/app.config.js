@@ -22,6 +22,8 @@ export default createApp({
         TanStackRouterVite(),
       ],
     },
-    serverFunctions.router(),
+    serverFunctions.router({
+      middleware: './app/middleware.tsx',
+    }),
   ],
 })

@@ -21,6 +21,10 @@ Here is a list of the supported route options that can be code-split with their 
 | `pendingComponent` | `.pendingComponent.tsx` | `pendingComponent` |
 | `loader`           | `.loader.ts`            | `loader`           |
 
+### Exceptions
+
+- The `__root.tsx` route file does not support code splitting, since it's always rendered regardless of the current route.
+
 > ❓ Why can't I keep all of my route code in a single file? Can't you just code split that file?
 >
 > It's true, most popular frameworks support automatic code-extraction, but for now, TanStack Router is going to keep things simple.

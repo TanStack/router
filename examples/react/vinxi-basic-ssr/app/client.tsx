@@ -4,47 +4,48 @@ import React, { Suspense } from 'react'
 import { Root, hydrateRoot } from 'react-dom/client'
 import 'vinxi/client'
 
-import App from './app'
+import { createRouter } from './router'
+import { StartClient } from '@tanstack/react-router-server/client'
 
-const Assets = createAssets(
-  import.meta.env.MANIFEST['client'].handler,
-  import.meta.env.MANIFEST['client'],
-)
+render()
 
-window.$root =
-  window.$root ||
-  hydrateRoot(
-    document,
-    <App
-      assets={
+function render(mod?: any) {
+  const Assets = createAssets(
+    import.meta.env.MANIFEST['client'].handler,
+    import.meta.env.MANIFEST['client'],
+  )
+
+  const router = createRouter()
+
+  router.update({
+    context: {
+      assets: (
         <Suspense>
           <Assets />
         </Suspense>
-      }
-    ></App>,
-  )
+      ),
+    },
+  })
+
+  const app = <StartClient router={router} />
+
+  if (!mod) {
+    // Initial
+    router.hydrate()
+    window.$root = hydrateRoot(document, app)
+  } else {
+    // Hot
+    window.$root?.render(app)
+  }
+}
 
 if (import.meta.hot) {
   import.meta.hot.accept((mod) => {
     if (mod) {
-      const Assets = createAssets(
-        import.meta.env.MANIFEST['client'].handler,
-        import.meta.env.MANIFEST['client'],
-      )
-      window.$root?.render(
-        <mod.App
-          assets={
-            <Suspense>
-              <Assets />
-            </Suspense>
-          }
-        />,
-      )
+      render(mod)
     }
   })
 }
-
-export { App }
 
 declare global {
   interface Window {

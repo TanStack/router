@@ -1,13 +1,10 @@
 import * as React from 'react'
 import { useMatch } from './Matches'
-import { useRouter, useRouterState } from './RouterProvider'
+import { useRouterState } from './useRouterState'
+import { useRouter } from './useRouter'
 import { Trim } from './fileRoute'
 import { AnyRoute, ReactNode, RootSearchSchema } from './route'
-import {
-  RouteByPath,
-  RouteIds,
-  RoutePaths,
-} from './routeInfo'
+import { RouteByPath, RouteIds, RoutePaths } from './routeInfo'
 import { RegisteredRouter } from './router'
 import { LinkProps, UseLinkPropsOptions } from './useNavigate'
 import {
@@ -54,7 +51,7 @@ export type Split<S, TIncludeTrailingSlash = true> = S extends unknown
   : never
 
 export type ParsePathParams<T extends string> = keyof {
-  [K in Trim<Split<T>[number], '_'> as K extends `$${infer L}` ? L : never]: K
+  [K in Trim<Split<T>[number], '_'> as K extends `$${infer L}` ? L  extends '' ? '_splat' : L: never]: K
 }
 
 export type Join<T, Delimiter extends string = '/'> = T extends []
@@ -188,7 +185,11 @@ export type ParamOptions<
       RootSearchSchema
     >
   >,
-  TToIndex = TTo extends '' ? '' : RouteByPath<TRouteTree, `${TTo}/`> extends never ? TTo : `${TTo}/`,
+  TToIndex = TTo extends ''
+    ? ''
+    : RouteByPath<TRouteTree, `${TTo}/`> extends never
+      ? TTo
+      : `${TTo}/`,
   TToParams = TToIndex extends ''
     ? TFromParams
     : never extends TResolved

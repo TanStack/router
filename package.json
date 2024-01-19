@@ -29,6 +29,7 @@
       "@tanstack/history": "workspace:*",
       "@tanstack/react-router": "workspace:*",
       "@tanstack/router-devtools": "workspace:*",
+      "@tanstack/router-generator": "workspace:*",
       "@tanstack/router-cli": "workspace:*",
       "@tanstack/router-vite-plugin": "workspace:*",
       "@tanstack/react-router-server": "workspace:*",

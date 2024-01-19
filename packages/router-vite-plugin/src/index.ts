@@ -1,8 +1,11 @@
 import { Plugin } from 'vite'
-import { join } from 'path'
+import { join, normalize } from 'path'
 import { readFile } from 'fs/promises'
-import { Config, configSchema } from '@tanstack/router-cli/src/config'
-import { generator } from '@tanstack/router-cli/src/generator'
+import {
+  type Config,
+  configSchema,
+  generator,
+} from '@tanstack/router-generator'
 
 const CONFIG_FILE_NAME = 'tsr.config.json'
 
@@ -46,11 +49,12 @@ export function TanStackRouterVite(inlineConfig: UserConfig = {}): Plugin {
       await generate()
     },
     handleHotUpdate: async ({ file }) => {
-      if (file === join(ROOT, CONFIG_FILE_NAME)) {
+      const filePath = normalize(file)
+      if (filePath === join(ROOT, CONFIG_FILE_NAME)) {
         userConfig = await buildConfig(inlineConfig, ROOT)
         return
       }
-      if (file.startsWith(join(ROOT, userConfig.routesDirectory))) {
+      if (filePath.startsWith(join(ROOT, userConfig.routesDirectory))) {
         await generate()
       }
     },

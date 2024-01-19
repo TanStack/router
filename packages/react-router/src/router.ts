@@ -18,7 +18,13 @@ import {
   Route,
   LoaderFnContext,
 } from './route'
-import { FullSearchSchema, RoutesById, RoutesByPath } from './routeInfo'
+import {
+  FullSearchSchema,
+  RouteById,
+  RoutePaths,
+  RoutesById,
+  RoutesByPath,
+} from './routeInfo'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
   PickAsRequired,
@@ -33,14 +39,13 @@ import {
   Timeout,
 } from './utils'
 import { RouteComponent } from './route'
-import { AnyRouteMatch, RouteMatch } from './Matches'
+import { AnyRouteMatch, MatchRouteOptions, RouteMatch } from './Matches'
 import { ParsedLocation } from './location'
 import { SearchSerializer, SearchParser } from './searchParams'
 import {
   BuildLocationFn,
   CommitLocationOptions,
   InjectedHtmlEntry,
-  MatchRouteFn,
   NavigateFn,
   getRouteMatch,
 } from './RouterProvider'
@@ -58,7 +63,8 @@ import {
 } from './path'
 import invariant from 'tiny-invariant'
 import { isRedirect } from './redirects'
-import { ToOptions } from './link'
+import { ResolveRelativePath, ToOptions } from './link'
+import { NoInfer } from '@tanstack/react-store'
 // import warning from 'tiny-warning'
 
 //
@@ -288,7 +294,15 @@ export class Router<
       !this.basepath ||
       (newOptions.basepath && newOptions.basepath !== previousOptions.basepath)
     ) {
-      this.basepath = `/${trimPath(newOptions.basepath ?? '') ?? ''}`
+      if (
+        newOptions.basepath === undefined ||
+        newOptions.basepath === '' ||
+        newOptions.basepath === '/'
+      ) {
+        this.basepath = '/'
+      } else {
+        this.basepath = `/${trimPath(newOptions.basepath)}`
+      }
     }
 
     if (
@@ -728,13 +742,20 @@ export class Router<
       } = {},
       matches?: AnyRouteMatch[],
     ): ParsedLocation => {
-      const from = this.latestLocation
+      const relevantMatches = this.state.pendingMatches || this.state.matches
       const fromSearch =
-        (this.state.pendingMatches || this.state.matches).reverse()[0]
-          ?.search || from.search
-      let pathname = this.resolvePathWithBase(from.pathname, `${dest.to ?? ''}`)
+        relevantMatches[relevantMatches.length - 1]?.search ||
+        this.latestLocation.search
 
-      const fromMatches = this.matchRoutes(from.pathname, fromSearch)
+      let pathname = this.resolvePathWithBase(
+        dest.from ?? this.latestLocation.pathname,
+        `${dest.to ?? ''}`,
+      )
+
+      const fromMatches = this.matchRoutes(
+        this.latestLocation.pathname,
+        fromSearch,
+      )
       const stayingMatches = matches?.filter(
         (d) => fromMatches?.find((e) => e.routeId === d.routeId),
       )
@@ -806,21 +827,21 @@ export class Router<
 
       const hash =
         dest.hash === true
-          ? from.hash
+          ? this.latestLocation.hash
           : dest.hash
-            ? functionalUpdate(dest.hash!, from.hash)
+            ? functionalUpdate(dest.hash!, this.latestLocation.hash)
             : undefined
 
       const hashStr = hash ? `#${hash}` : ''
 
       let nextState =
         dest.state === true
-          ? from.state
+          ? this.latestLocation.state
           : dest.state
-            ? functionalUpdate(dest.state, from.state)
-            : from.state
+            ? functionalUpdate(dest.state, this.latestLocation.state)
+            : this.latestLocation.state
 
-      nextState = replaceEqualDeep(from.state, nextState)
+      nextState = replaceEqualDeep(this.latestLocation.state, nextState)
 
       return {
         pathname,
@@ -1531,7 +1552,14 @@ export class Router<
     return matches
   }
 
-  matchRoute: MatchRouteFn<TRouteTree> = (location, opts) => {
+  matchRoute = <
+    TFrom extends RoutePaths<TRouteTree> = '/',
+    TTo extends string = '',
+    TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+  >(
+    location: ToOptions<TRouteTree, TFrom, TTo>,
+    opts?: MatchRouteOptions,
+  ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
     location = {
       ...location,
       to: location.to

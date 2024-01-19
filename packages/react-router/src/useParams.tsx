@@ -2,7 +2,7 @@ import { AnyRoute } from './route'
 import { RouteIds, RouteById } from './routeInfo'
 import { RegisteredRouter } from './router'
 import { last } from './utils'
-import { useRouterState } from './RouterProvider'
+import { useRouterState } from './useRouterState'
 import { StrictOrFrom } from './utils'
 import { getRenderedMatches } from './Matches'
 

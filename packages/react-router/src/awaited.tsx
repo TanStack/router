@@ -1,6 +1,6 @@
 import warning from 'tiny-warning'
 import { defaultDeserializeError, isServerSideError } from './Matches'
-import { useRouter } from './RouterProvider'
+import { useRouter } from './useRouter'
 import { DeferredPromise, isDehydratedDeferred } from './defer'
 import { defaultSerializeError } from './router'
 
@@ -22,7 +22,7 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
   }
 
   if (state.status === 'pending') {
-    throw new Promise((r) => setTimeout(r, 1)).then(() => promise)
+    throw promise
   }
 
   if (state.status === 'error') {

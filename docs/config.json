@@ -192,8 +192,16 @@
           "to": "examples/react/kitchen-sink-react-query"
         },
         {
+          "label": "Vinxi (file-based)",
+          "to": "examples/react/vinxi-basic"
+        },
+        {
+          "label": "Vinxi + SSR (file-based)",
+          "to": "examples/react/vinxi-basic-ssr"
+        },
+        {
           "label": "Vinxi + SSR Streaming (file-based)",
-          "to": "examples/react/vinxi-ssr-streaming"
+          "to": "examples/react/vinxi-basic-ssr-streaming"
         },
         {
           "label": "Location Masking",

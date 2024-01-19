@@ -97,10 +97,14 @@ The following options are available for configuration via the `tsr.config.json` 
   - (Required) The path to the file where the generated route tree will be saved, relative to the cwd.
 - **`quoteStyle`**
   - (Optional, **Defaults to `single`**) whether to use `single` or `double` quotes when writing the route ids in `new FileRoute()`
+- **`disableTypes`**
+  - (Optional, **Defaults to `false`**) whether to disable generating types for the route tree
+  - If set to `true`, the generated route tree will not include any types.
+  - If set to `true` and the `generatedRouteTree` file ends with `.ts` or `.tsx`, the generated route tree will be written as a `.js` file instead.
 
 ## File Naming Conventions
 
-File-based routing requires that you follow a few simple file naming conventions to ensure that your routes are generated correctly. The concepts these conventions enable are covered in detail in the [Route Trees & Nesting](/guide/route-trees.md) guide.
+File-based routing requires that you follow a few simple file naming conventions to ensure that your routes are generated correctly. The concepts these conventions enable are covered in detail in the [Route Trees & Nesting](./guide/route-trees.md) guide.
 
 - **`__root.tsx`**
   - The root route file must be named `__root.tsx` and must be placed in the root of the configured `routesDirectory`.

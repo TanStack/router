@@ -20,6 +20,7 @@
       "@tanstack/history": ["packages/history"],
       "@tanstack/react-router": ["packages/react-router"],
       "@tanstack/router-devtools": ["packages/router-devtools"],
+      "@tanstack/router-generator": ["packages/router-generator"],
       "@tanstack/router-cli": ["packages/router-cli"],
       "@tanstack/router-vite-plugin": ["packages/router-vite-plugin"],
       "@tanstack/react-router-server": ["packages/react-router-server"]

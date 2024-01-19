@@ -1,8 +1,0 @@
-{
-  "rootDirectory": ".",
-  "routesDirectory": "./src/routes",
-  "generatedRouteTree": "./src/routeTree.gen.ts",
-  "future": {
-    "unstable_codeSplitting": true
-  }
-}
