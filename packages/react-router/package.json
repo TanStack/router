@@ -31,6 +31,7 @@
     },
     "./package.json": "./package.json"
   },
+  "sideEffects": false,
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:types": "tsc",
@@ -38,9 +39,6 @@
     "test:lib:dev": "pnpm run test:lib --watch",
     "test:build": "publint --strict",
     "build": "vite build"
-  },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
   },
   "keywords": [
     "react",
@@ -58,11 +56,6 @@
     "dist",
     "src"
   ],
-  "sideEffects": false,
-  "peerDependencies": {
-    "react": ">=16",
-    "react-dom": ">=16"
-  },
   "dependencies": {
     "@babel/runtime": "^7.16.7",
     "@tanstack/history": "workspace:*",
@@ -73,5 +66,9 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1"
+  },
+  "peerDependencies": {
+    "react": ">=16",
+    "react-dom": ">=16"
   }
 }

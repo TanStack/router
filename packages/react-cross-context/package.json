@@ -31,6 +31,7 @@
     },
     "./package.json": "./package.json"
   },
+  "sideEffects": false,
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:types": "tsc",
@@ -41,7 +42,6 @@
     "dist",
     "src"
   ],
-  "sideEffects": false,
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"

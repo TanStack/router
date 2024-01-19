@@ -37,9 +37,7 @@
     "test:build": "publint --strict",
     "build": "vite build"
   },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
-  },
+  "sideEffects": false,
   "keywords": [
     "react",
     "location",
@@ -56,7 +54,6 @@
     "dist",
     "src"
   ],
-  "sideEffects": false,
   "dependencies": {
     "prettier": "^3.0.2",
     "zod": "^3.19.1"

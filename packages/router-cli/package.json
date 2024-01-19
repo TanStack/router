@@ -33,14 +33,12 @@
     },
     "./package.json": "./package.json"
   },
+  "sideEffects": false,
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:types": "tsc",
     "test:build": "publint --strict",
     "build": "vite build"
-  },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
   },
   "keywords": [
     "react",
@@ -59,7 +57,6 @@
     "src/**",
     "bin/**"
   ],
-  "sideEffects": false,
   "dependencies": {
     "@tanstack/router-generator": "workspace:*",
     "chokidar": "^3.5.3",

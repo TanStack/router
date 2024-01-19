@@ -31,14 +31,12 @@
     },
     "./package.json": "./package.json"
   },
+  "sideEffects": false,
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:types": "tsc",
     "test:build": "publint --strict",
     "build": "vite build"
-  },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
   },
   "keywords": [
     "history",
@@ -50,6 +48,5 @@
   "files": [
     "dist",
     "src"
-  ],
-  "sideEffects": false
+  ]
 }
