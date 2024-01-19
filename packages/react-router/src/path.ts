@@ -122,11 +122,18 @@ export function parsePathname(pathname?: string): Segment[] {
   return segments
 }
 
-export function interpolatePath(
-  path: string | undefined,
-  params: any,
-  leaveWildcards: boolean = false,
-) {
+interface InterpolatePathOptions {
+  path?: string
+  params: any
+  leaveWildcards?: boolean
+  leaveParams?: boolean
+}
+export function interpolatePath({
+  path,
+  params,
+  leaveWildcards,
+  leaveParams,
+}: InterpolatePathOptions) {
   const interpolatedPathSegments = parsePathname(path)
 
   return joinPaths(
@@ -138,6 +145,10 @@ export function interpolatePath(
       }
 
       if (segment.type === 'param') {
+        if (leaveParams) {
+          const value = params[segment.value]
+          return `${segment.value}${value ?? ''}`
+        }
         return params![segment.value.substring(1)] ?? 'undefined'
       }
 

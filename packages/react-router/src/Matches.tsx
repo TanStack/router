@@ -14,7 +14,7 @@ import {
   RoutePaths,
 } from './routeInfo'
 import { RegisteredRouter, RouterState } from './router'
-import { NoInfer, StrictOrFrom, pick } from './utils'
+import { DeepOptional, NoInfer, StrictOrFrom, pick } from './utils'
 
 export const matchContext = React.createContext<string | undefined>(undefined)
 
@@ -221,11 +221,11 @@ export interface MatchRouteOptions {
 
 export type UseMatchRouteOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = '/',
+  TFrom extends RoutePaths<TRouteTree> = RoutePaths<TRouteTree>,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
   TMaskTo extends string = '',
-> = ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & MatchRouteOptions
+> = DeepOptional<ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>, 'search' | 'params'> & MatchRouteOptions
 
 export function useMatchRoute<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -235,13 +235,13 @@ export function useMatchRoute<
 
   return React.useCallback(
     <
-      TFrom extends RoutePaths<TRouteTree> = '/',
-      TTo extends string = '',
-      TMaskFrom extends RoutePaths<TRouteTree> = '/',
-      TMaskTo extends string = '',
-      TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+    TFrom extends RoutePaths<TRouteTree> = RoutePaths<TRouteTree>,
+    TTo extends string = '',
+    TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+    TMaskTo extends string = '',
+    TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
     >(
-      opts: UseMatchRouteOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
+      opts: UseMatchRouteOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>
     ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 

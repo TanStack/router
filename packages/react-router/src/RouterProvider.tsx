@@ -44,7 +44,9 @@ export type NavigateFn<TRouteTree extends AnyRoute> = <
 ) => Promise<void>
 
 export type BuildLocationFn<TRouteTree extends AnyRoute> = (
-  opts: ToOptions<TRouteTree>,
+  opts: ToOptions<TRouteTree> & {
+    leaveParams?: boolean
+  },
 ) => ParsedLocation
 
 export type InjectedHtmlEntry = string | (() => Promise<string> | string)
