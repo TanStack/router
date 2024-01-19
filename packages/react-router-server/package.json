@@ -4,8 +4,12 @@
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
-  "repository": "tanstack/router",
-  "homepage": "https://tanstack.com/router",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/router.git",
+    "directory": "packages/history"
+  },
+  "homepage": "https://tanstack.com/react-router-server",
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
