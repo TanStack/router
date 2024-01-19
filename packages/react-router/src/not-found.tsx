@@ -1,10 +1,14 @@
 import * as React from 'react'
 import { CatchBoundary } from './CatchBoundary'
 
-export function notFound(userData?: any) {
-  const data = userData ?? {}
-  data.isNotFound = true
-  throw data
+export type NotFoundOptions = {
+  global?: boolean
+  data?: any
+}
+
+export function notFound(options: NotFoundOptions = {}) {
+  ;(options as any).isNotFound = true
+  throw options
 }
 
 export function isNotFound(obj: any) {
@@ -12,7 +16,7 @@ export function isNotFound(obj: any) {
 }
 
 export function CatchNotFound(props: {
-  fallback?: any
+  fallback?: (error: NotFoundOptions) => React.ReactElement
   onCatch?: (error: any) => void
   children: React.ReactNode
 }) {

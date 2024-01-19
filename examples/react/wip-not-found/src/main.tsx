@@ -16,8 +16,13 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 const rootRoute = new RootRoute({
   component: RootComponent,
-  // TODO: this doesnt work during path matching yet
-  notFoundComponent: GlobalNotFound,
+  notFoundComponent: () => {
+    return (
+      <p>
+        You&apos;re using the new notFoundComponent api to handle not founds!
+      </p>
+    )
+  },
 })
 
 function RootComponent() {
@@ -80,7 +85,7 @@ const demoRouteOne = new Route({
     }
     return 'wee'
   },
-  notFoundComponent: () => {
+  notFoundComponent: (a) => {
     return <p>404 - Not Found (local to this route)</p>
   },
 })
@@ -101,7 +106,7 @@ const notFoundRoute = new NotFoundRoute({
 function GlobalNotFound() {
   return (
     <div className="p-2">
-      <h3>404 - Not Found (global)</h3>
+      <h3>404 - Not Found (GlobalNotFound component)</h3>
     </div>
   )
 }
@@ -111,8 +116,7 @@ const routeTree = rootRoute.addChildren([indexRoute, demoRouteOne])
 // Set up a Router instance
 const router = new Router({
   routeTree,
-  // TODO: not founds when path matching doesnt work yet
-  notFoundRoute,
+  // notFoundRoute,
   defaultPreload: 'intent',
   defaultStaleTime: 5000,
 })
