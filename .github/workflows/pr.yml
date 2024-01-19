@@ -1,11 +1,23 @@
 name: pr
-on: [pull_request]
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'media/**'
+      - '**/*.md'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
+
 env:
-  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+  NX_CLOUD_AUTH_TOKEN: ${{ secrets.NX_CLOUD_AUTH_TOKEN }}
+
 jobs:
   test:
-    name: 'Test'
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,9 +31,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
+          node-version-file: .nvmrc
+          cache: pnpm
       - name: Install dependencies
-        run: pnpm --filter "./packages/**" --prefer-offline install --no-frozen-lockfile
-      - name: Build & Test
-        run: npx nx run-many --targets=test,build --projects=@tanstack/*
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Get base and head commits for `nx affected`
+        uses: nrwl/nx-set-shas@v3
+        with:
+          main-branch-name: 'main'
+      - name: Run Checks
+        run: pnpm run test:pr
