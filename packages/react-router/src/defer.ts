@@ -1,3 +1,5 @@
+import { defaultSerializeError } from './router'
+
 export type DeferredPromiseState<T> = { uid: string } & (
   | {
       status: 'pending'
@@ -19,7 +21,12 @@ export type DeferredPromise<T> = Promise<T> & {
   __deferredState: DeferredPromiseState<T>
 }
 
-export function defer<T>(_promise: Promise<T>) {
+export function defer<T>(
+  _promise: Promise<T>,
+  options?: {
+    serializeError?: typeof defaultSerializeError
+  },
+) {
   const promise = _promise as DeferredPromise<T>
 
   if (!promise.__deferredState) {
@@ -37,7 +44,10 @@ export function defer<T>(_promise: Promise<T>) {
       })
       .catch((error) => {
         state.status = 'error' as any
-        state.error = error
+        state.error = {
+          data: (options?.serializeError ?? defaultSerializeError)(error),
+          __isServerError: true,
+        }
       })
   }
 

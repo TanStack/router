@@ -105,6 +105,7 @@ export type RouterContextOptions<TRouteTree extends AnyRoute> =
 export interface RouterOptions<
   TRouteTree extends AnyRoute,
   TDehydrated extends Record<string, any> = Record<string, any>,
+  TSerializedError extends Record<string, any> = Record<string, any>,
 > {
   history?: RouterHistory
   stringifySearch?: SearchSerializer
@@ -131,6 +132,11 @@ export interface RouterOptions<
   Wrap?: (props: { children: any }) => JSX.Element
   InnerWrap?: (props: { children: any }) => JSX.Element
   notFoundRoute?: AnyRoute
+  errorSerializer?: RouterErrorSerializer<TSerializedError>
+}
+export interface RouterErrorSerializer<TSerializedError> {
+  serialize: (err: unknown) => TSerializedError
+  deserialize: (err: TSerializedError) => unknown
 }
 
 export interface RouterState<TRouteTree extends AnyRoute = AnyRoute> {
@@ -180,7 +186,8 @@ export interface DehydratedRouter {
 export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
   TDehydrated extends Record<string, any>,
-> = Omit<RouterOptions<TRouteTree, TDehydrated>, 'context'> &
+  TSerializedError extends Record<string, any>,
+> = Omit<RouterOptions<TRouteTree, TDehydrated, TSerializedError>, 'context'> &
   RouterContextOptions<TRouteTree>
 
 export const componentTypes = [
@@ -220,6 +227,7 @@ export type RouterListener<TRouterEvent extends RouterEvent> = {
 export class Router<
   TRouteTree extends AnyRoute = AnyRoute,
   TDehydrated extends Record<string, any> = Record<string, any>,
+  TSerializedError extends Record<string, any> = Record<string, any>,
 > {
   // Option-independent properties
   tempLocationKey: string | undefined = `${Math.round(
@@ -235,7 +243,7 @@ export class Router<
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
   options!: PickAsRequired<
-    RouterOptions<TRouteTree, TDehydrated>,
+    RouterOptions<TRouteTree, TDehydrated, TSerializedError>,
     'stringifySearch' | 'parseSearch' | 'context'
   >
   history!: RouterHistory
@@ -246,7 +254,13 @@ export class Router<
   routesByPath!: RoutesByPath<TRouteTree>
   flatRoutes!: AnyRoute[]
 
-  constructor(options: RouterConstructorOptions<TRouteTree, TDehydrated>) {
+  constructor(
+    options: RouterConstructorOptions<
+      TRouteTree,
+      TDehydrated,
+      TSerializedError
+    >,
+  ) {
     this.update({
       defaultPreloadDelay: 50,
       defaultPendingMs: 1000,
@@ -263,7 +277,13 @@ export class Router<
   // router can be used in a non-react environment if necessary
   startReactTransition: (fn: () => void) => void = (fn) => fn()
 
-  update = (newOptions: RouterConstructorOptions<TRouteTree, TDehydrated>) => {
+  update = (
+    newOptions: RouterConstructorOptions<
+      TRouteTree,
+      TDehydrated,
+      TSerializedError
+    >,
+  ) => {
     const previousOptions = this.options
     this.options = {
       ...this.options,
@@ -1616,11 +1636,22 @@ export class Router<
   }
 
   dehydrate = (): DehydratedRouter => {
+    const pickError =
+      this.options.errorSerializer?.serialize ?? defaultSerializeError
+
     return {
       state: {
-        dehydratedMatches: this.state.matches.map((d) =>
-          pick(d, ['id', 'status', 'updatedAt', 'loaderData']),
-        ),
+        dehydratedMatches: this.state.matches.map((d) => ({
+          ...pick(d, ['id', 'status', 'updatedAt', 'loaderData']),
+          // If an error occurs server-side during SSRing,
+          // send a small subset of the error to the client
+          error: d.error
+            ? {
+                data: pickError(d.error),
+                __isServerError: true,
+              }
+            : undefined,
+        })),
       },
     }
   }
@@ -1711,5 +1742,17 @@ export function getInitialRouterState(
     pendingMatches: [],
     cachedMatches: [],
     lastUpdated: Date.now(),
+  }
+}
+
+export function defaultSerializeError(err: unknown) {
+  if (err instanceof Error)
+    return {
+      name: err.name,
+      message: err.message,
+    }
+
+  return {
+    data: err,
   }
 }

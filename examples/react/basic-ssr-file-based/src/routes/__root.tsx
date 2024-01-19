@@ -50,6 +50,14 @@ function RootComponent() {
             }}
           >
             Posts
+          </Link>{' '}
+          <Link
+            to="/error"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Error
           </Link>
         </div>
         <hr />

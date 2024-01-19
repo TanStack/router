@@ -37,6 +37,9 @@ export function transformStreamWithRouter(router: AnyRouter) {
 
 function transformStreamHtmlCallback(injector: () => Promise<string>) {
   let leftover = ''
+  // If a closing tag is split across chunks, store the HTML to add after it
+  // This expects that all the HTML that's added is closed properly
+  let leftoverHtml = ''
 
   return new Transform({
     transform(chunk, encoding, callback) {
@@ -77,12 +80,14 @@ function transformStreamHtmlCallback(injector: () => Promise<string>) {
 
             // If a closing tag was found, add the arbitrary HTML and send it through
             if (lastIndex > 0) {
-              const processed = chunkString.slice(0, lastIndex) + html
+              const processed =
+                chunkString.slice(0, lastIndex) + html + leftoverHtml
               this.push(processed)
               leftover = chunkString.slice(lastIndex)
             } else {
               // If no closing tag was found, store the chunk to process with the next one
               leftover = chunkString
+              leftoverHtml += html
             }
           }
 
