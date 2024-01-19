@@ -1,12 +1,7 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackBuildConfig } from '@tanstack/config/build'
 
-const config = defineConfig({
-  test: {
-    name: 'router-cli',
-    watch: false,
-  },
-})
+const config = defineConfig({})
 
 export default mergeConfig(
   config,

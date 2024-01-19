@@ -10,14 +10,28 @@
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
   },
+  "bin": {
+    "tsr": "bin/tsr.cjs"
+  },
   "type": "module",
-  "main": "bin/tsr.cjs",
-  "module": "bin/tsr.cjs",
+  "main": "dist/cjs/index.cjs",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:types": "tsc",
-    "test:lib": "vitest",
-    "test:lib:dev": "pnpm run test:lib --watch",
     "test:build": "publint --strict",
     "build": "vite build"
   },
@@ -33,9 +47,6 @@
     "async router",
     "typescript"
   ],
-  "bin": {
-    "tsr": "bin/tsr.js"
-  },
   "engines": {
     "node": ">=12"
   },
