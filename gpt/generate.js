@@ -1,3 +1,5 @@
+// @ts-check
+
 import fs from 'node:fs'
 import { glob } from 'glob'
 
