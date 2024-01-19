@@ -42,6 +42,9 @@
     "dist",
     "src"
   ],
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1"
+  },
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"
