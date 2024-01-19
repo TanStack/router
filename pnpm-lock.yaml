@@ -847,10 +847,10 @@ importers:
         version: 0.1.2(@types/node@20.10.7)(preact@10.19.3)(rollup@4.6.1)
     devDependencies:
       '@tanstack/router-devtools':
-        specifier: ^1.4.2
+        specifier: ^1.7.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.4.2
+        specifier: ^1.7.1
         version: link:../../../packages/router-vite-plugin
       '@types/react':
         specifier: ^18.2.21
@@ -890,10 +890,10 @@ importers:
         version: 0.1.2(@types/node@20.10.7)(preact@10.19.3)(rollup@4.6.1)
     devDependencies:
       '@tanstack/router-devtools':
-        specifier: ^1.4.2
+        specifier: ^1.7.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.4.2
+        specifier: ^1.7.1
         version: link:../../../packages/router-vite-plugin
       '@types/react':
         specifier: ^18.2.21
@@ -933,10 +933,10 @@ importers:
         version: 0.1.2(@types/node@20.10.7)(preact@10.19.3)(rollup@4.6.1)
     devDependencies:
       '@tanstack/router-devtools':
-        specifier: ^1.4.2
+        specifier: ^1.7.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.4.2
+        specifier: ^1.7.1
         version: link:../../../packages/router-vite-plugin
       '@types/react':
         specifier: ^18.2.21
