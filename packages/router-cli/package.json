@@ -1,16 +1,28 @@
 {
   "name": "@tanstack/router-cli",
-  "author": "Tanner Linsley",
   "version": "1.7.1",
+  "description": "",
+  "author": "Tanner Linsley",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
-  "description": "",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "type": "module",
+  "main": "bin/tsr.cjs",
+  "module": "bin/tsr.cjs",
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:types": "tsc",
+    "test:lib": "vitest",
+    "test:lib:dev": "pnpm run test:lib --watch",
+    "test:build": "publint --strict",
+    "build": "vite build"
+  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
-  },
-  "scripts": {
-    "build": "rollup --config rollup.config.js"
   },
   "keywords": [
     "react",
@@ -21,11 +33,6 @@
     "async router",
     "typescript"
   ],
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/tannerlinsley"
-  },
-  "type": "commonjs",
   "bin": {
     "tsr": "bin/tsr.js"
   },
@@ -33,14 +40,11 @@
     "node": ">=12"
   },
   "files": [
-    "build/**",
+    "dist",
     "src/**",
     "bin/**"
   ],
   "sideEffects": false,
-  "module": "bin/tsr.js",
-  "main": "bin/tsr.js",
-  "browser": "bin/tsr.js",
   "dependencies": {
     "@tanstack/router-generator": "workspace:*",
     "chokidar": "^3.5.3",

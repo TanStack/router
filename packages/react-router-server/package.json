@@ -1,11 +1,45 @@
 {
   "name": "@tanstack/react-router-server",
-  "author": "Tanner Linsley",
   "version": "1.7.1",
+  "description": "",
+  "author": "Tanner Linsley",
   "license": "MIT",
   "repository": "tanstack/router",
   "homepage": "https://tanstack.com/router",
-  "description": "",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "type": "module",
+  "exports": {
+    "./client": {
+      "import": {
+        "types": "./dist/esm/client.d.ts",
+        "default": "./dist/esm/client.js"
+      },
+      "require": {
+        "types": "./dist/cjs/client.d.cts",
+        "default": "./dist/cjs/client.cjs"
+      }
+    },
+    "./server": {
+      "import": {
+        "types": "./dist/esm/server.d.ts",
+        "default": "./dist/esm/server.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server.d.cts",
+        "default": "./dist/cjs/server.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:types": "tsc",
+    "test:build": "publint --strict",
+    "build": "vite build"
+  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
@@ -18,41 +52,13 @@
     "async router",
     "typescript"
   ],
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/tannerlinsley"
-  },
-  "type": "module",
   "engines": {
     "node": ">=12"
   },
   "files": [
-    "build/**",
+    "dist",
     "src"
   ],
-  "exports": {
-    "./client": {
-      "require": "./build/cjs/client.js",
-      "types": "./build/types/client.d.ts",
-      "default": "./build/esm/client.js"
-    },
-    "./server": {
-      "require": "./build/cjs/server.js",
-      "types": "./build/types/server.d.ts",
-      "default": "./build/esm/server.js"
-    },
-    "./package.json": "./package.json"
-  },
-  "typesVersions": {
-    "*": {
-      "client": [
-        "./build/types/client.d.ts"
-      ],
-      "server": [
-        "./build/types/server.d.ts"
-      ]
-    }
-  },
   "sideEffects": false,
   "dependencies": {
     "@babel/runtime": "^7.21.0",
@@ -68,6 +74,6 @@
     "react-dom": ">=18"
   },
   "devDependencies": {
-    "esbuild": "^0.17.10"
+    "@vitejs/plugin-react": "^4.2.1"
   }
 }

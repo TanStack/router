@@ -7,16 +7,17 @@ main()
 
 export function main() {
   yargs
+    // @ts-expect-error
     .scriptName('tsr')
     .usage('$0 <cmd> [args]')
-    .command('generate', 'Generate the routes for a project', async (argv) => {
+    .command('generate', 'Generate the routes for a project', async () => {
       const config = await getConfig()
       await generate(config)
     })
     .command(
       'watch',
       'Continuously watch and generate the routes for a project',
-      async (argv) => {
+      async () => {
         watch()
       },
     )

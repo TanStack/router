@@ -1,12 +1,7 @@
 {
-  "composite": true,
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "./build/types"
+    "jsx": "react"
   },
-  "files": ["src/index.tsx"],
-  "include": [
-    "src"
-    //  "__tests__/**/*.test.*"
-  ]
+  "include": ["src", "vite.config.ts"]
 }
