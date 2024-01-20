@@ -11,15 +11,6 @@ importers:
 
   .:
     devDependencies:
-      '@commitlint/parse':
-        specifier: ^18.4.4
-        version: 18.4.4
-      '@faker-js/faker':
-        specifier: ^8.3.1
-        version: 8.3.1
-      '@nrwl/nx-cloud':
-        specifier: latest
-        version: 16.5.2
       '@tanstack/config':
         specifier: ^0.2.1
         version: 0.2.1(@types/node@20.10.7)(esbuild@0.19.11)(rollup@4.6.1)(typescript@5.3.3)(vite@5.0.11)
@@ -35,9 +26,6 @@ importers:
       axios:
         specifier: ^1.6.5
         version: 1.6.5
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
       glob:
         specifier: ^10.3.10
         version: 10.3.10
@@ -56,9 +44,6 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
-      react-virtual:
-        specifier: ^2.10.4
-        version: 2.10.4(react@18.2.0)
       rimraf:
         specifier: ^5.0.5
         version: 5.0.5
@@ -71,9 +56,6 @@ importers:
       vitest:
         specifier: ^1.1.3
         version: 1.1.3(@types/node@20.10.7)
-      zod:
-        specifier: ^3.22.4
-        version: 3.22.4
 
   examples/react/basic:
     dependencies:
@@ -349,8 +331,8 @@ importers:
         specifier: ^3.0.3
         version: 3.0.3
       '@vitejs/plugin-react':
-        specifier: ^4
-        version: 4.2.0(vite@5.0.11)
+        specifier: ^4.2.1
+        version: 4.2.1(vite@5.0.11)
       compression:
         specifier: ^1.7.4
         version: 1.7.4
@@ -419,8 +401,8 @@ importers:
         specifier: ^3.0.3
         version: 3.0.3
       '@vitejs/plugin-react':
-        specifier: ^4
-        version: 4.2.0(vite@5.0.11)
+        specifier: ^4.2.1
+        version: 4.2.1(vite@5.0.11)
       compression:
         specifier: ^1.7.4
         version: 1.7.4
@@ -853,13 +835,13 @@ importers:
         specifier: ^1.7.1
         version: link:../../../packages/router-vite-plugin
       '@types/react':
-        specifier: ^18.2.21
+        specifier: ^18.2.47
         version: 18.2.47
       '@types/react-dom':
-        specifier: ^18.2.7
+        specifier: ^18.2.18
         version: 18.2.18
       '@vitejs/plugin-react':
-        specifier: ^4
+        specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
 
   examples/react/vinxi-basic-ssr:
@@ -896,13 +878,13 @@ importers:
         specifier: ^1.7.1
         version: link:../../../packages/router-vite-plugin
       '@types/react':
-        specifier: ^18.2.21
+        specifier: ^18.2.47
         version: 18.2.47
       '@types/react-dom':
-        specifier: ^18.2.7
+        specifier: ^18.2.18
         version: 18.2.18
       '@vitejs/plugin-react':
-        specifier: ^4
+        specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
 
   examples/react/vinxi-basic-ssr-streaming:
@@ -939,13 +921,13 @@ importers:
         specifier: ^1.7.1
         version: link:../../../packages/router-vite-plugin
       '@types/react':
-        specifier: ^18.2.21
+        specifier: ^18.2.47
         version: 18.2.47
       '@types/react-dom':
-        specifier: ^18.2.7
+        specifier: ^18.2.18
         version: 18.2.18
       '@vitejs/plugin-react':
-        specifier: ^4
+        specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
 
   examples/react/wip-trpc-react-query:
@@ -1075,9 +1057,6 @@ importers:
       '@tanstack/router-devtools':
         specifier: ^1.7.1
         version: link:../../../packages/router-devtools
-      '@tanstack/store':
-        specifier: ^0.1.3
-        version: 0.1.3
       axios:
         specifier: ^1.6.5
         version: 1.6.5
@@ -1256,17 +1235,16 @@ importers:
   packages/history: {}
 
   packages/react-cross-context:
-    dependencies:
-      react:
-        specifier: '>=18'
-        version: 18.2.0
-      react-dom:
-        specifier: '>=18'
-        version: 18.2.0(react@18.2.0)
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
 
   packages/react-router:
     dependencies:
@@ -1276,15 +1254,6 @@ importers:
       '@tanstack/react-store':
         specifier: ^0.2.1
         version: 0.2.1(react-dom@18.2.0)(react@18.2.0)
-      '@tanstack/store':
-        specifier: ^0.1.3
-        version: 0.1.3
-      react:
-        specifier: '>=16'
-        version: 18.2.0
-      react-dom:
-        specifier: '>=16'
-        version: 18.2.0(react@18.2.0)
       tiny-invariant:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1295,6 +1264,12 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
 
   packages/react-router-server:
     dependencies:
@@ -1304,28 +1279,16 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
-      isbot:
-        specifier: ^3.6.6
-        version: 3.6.6
-      jsesc:
-        specifier: ^3.0.2
-        version: 3.0.2
-      react:
-        specifier: '>=18'
-        version: 18.2.0
-      react-dom:
-        specifier: '>=18'
-        version: 18.2.0(react@18.2.0)
-      tiny-invariant:
-        specifier: ^1.3.1
-        version: 1.3.1
-      tiny-warning:
-        specifier: ^1.0.3
-        version: 1.0.3
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
 
   packages/router-cli:
     dependencies:
@@ -1351,24 +1314,24 @@ importers:
       date-fns:
         specifier: ^2.29.1
         version: 2.29.3
-      react:
-        specifier: '>=16'
-        version: 18.2.0
-      react-dom:
-        specifier: '>=16'
-        version: 18.2.0(react@18.2.0)
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
         version: 4.2.1(vite@5.0.11)
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
 
   packages/router-generator:
     dependencies:
       prettier:
-        specifier: ^3.0.2
+        specifier: ^3.1.1
         version: 3.1.1
       zod:
-        specifier: ^3.19.1
+        specifier: ^3.22.4
         version: 3.22.4
 
   packages/router-vite-plugin:
@@ -2579,11 +2542,6 @@ packages:
     requiresBuild: true
     optional: true
 
-  /@faker-js/faker@8.3.1:
-    resolution: {integrity: sha512-FdgpFxY6V6rLZE9mmIBb9hM0xpfvQOSNOLnzolzKwsE1DH+gC7lEKV1p1IbR0lAYyvYd5a4u3qWJzowUkw1bIw==}
-    engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0, npm: '>=6.14.13'}
-    dev: true
-
   /@fastify/ajv-compiler@3.5.0:
     resolution: {integrity: sha512-ebbEtlI7dxXF5ziNdr05mOY8NnDiPB1XvAlLHctRt/Rc+C3LCOVW5imUVX+mhvUhnNzmPBHewUkOFgGlCxgdAA==}
     dependencies:
@@ -2773,14 +2731,6 @@ packages:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.15.0
     dev: false
-
-  /@nrwl/nx-cloud@16.5.2:
-    resolution: {integrity: sha512-oHO5T1HRJsR9mbRd8eUqMBPCgqVZLSbAh3zJoPFmhEmjbM4YB9ePRpgYFT8dRNeZUOUd/8Yt7Pb6EVWOHvpD/w==}
-    dependencies:
-      nx-cloud: 16.5.2
-    transitivePeerDependencies:
-      - debug
-    dev: true
 
   /@nrwl/tao@17.2.8:
     resolution: {integrity: sha512-Qpk5YKeJ+LppPL/wtoDyNGbJs2MsTi6qyX/RdRrEc8lc4bk6Cw3Oul1qTXCI6jT0KzTz+dZtd0zYD/G7okkzvg==}
@@ -3374,10 +3324,6 @@ packages:
       '@types/react': 18.2.47
       react: 18.2.0
     dev: false
-
-  /@reach/observe-rect@1.2.0:
-    resolution: {integrity: sha512-Ba7HmkFgfQxZqqaeIWWkNK0rEhpxVQHIoVyW1YDSkGsGIXzcaW4deC8B0pZrNSSyLTdIk7y+5olKt5+g0GmFIQ==}
-    dev: true
 
   /@rollup/plugin-alias@5.1.0(rollup@4.6.1):
     resolution: {integrity: sha512-lpA3RZ9PdIG7qqhEfv79tBffNaoDuukFDrmhLqg9ifv99u/ehn+lOg30x2zmhf8AQqQUZaMk/B9fZraQ6/acDQ==}
@@ -4266,22 +4212,6 @@ packages:
       - supports-color
     dev: false
 
-  /@vitejs/plugin-react@4.2.0(vite@5.0.11):
-    resolution: {integrity: sha512-+MHTH/e6H12kRp5HUkzOGqPMksezRMmW+TNzlh/QXfI8rRf6l2Z2yH/v12no1UvTwhZgEDMuQ7g7rrfMseU6FQ==}
-    engines: {node: ^14.18.0 || >=16.0.0}
-    peerDependencies:
-      vite: ^4.2.0 || ^5.0.0
-    dependencies:
-      '@babel/core': 7.23.7
-      '@babel/plugin-transform-react-jsx-self': 7.23.3(@babel/core@7.23.7)
-      '@babel/plugin-transform-react-jsx-source': 7.23.3(@babel/core@7.23.7)
-      '@types/babel__core': 7.20.5
-      react-refresh: 0.14.0
-      vite: 5.0.11(@types/node@20.10.7)
-    transitivePeerDependencies:
-      - supports-color
-    dev: true
-
   /@vitejs/plugin-react@4.2.1(vite@5.0.11):
     resolution: {integrity: sha512-oojO9IDc4nCUUi8qIR11KoQm0XFFLIwsRBwHRR4d/88IWghn1y6ckz/bJ8GHDCsYEJee8mDzqtJxh15/cisJNQ==}
     engines: {node: ^14.18.0 || >=16.0.0}
@@ -4853,16 +4783,6 @@ packages:
       - supports-color
     dev: false
 
-  /axios@1.1.3:
-    resolution: {integrity: sha512-00tXVRwKx/FZr/IDVFt4C+f9FYairX517WoGCL6dpOntqLkZofjhu43F/Xl44UOpqa+9sLFDrG/XAnFsUYgkDA==}
-    dependencies:
-      follow-redirects: 1.15.3
-      form-data: 4.0.0
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-    dev: true
-
   /axios@1.6.5:
     resolution: {integrity: sha512-Ii012v05KEVuUoFWmMW/UQv9aRIc3ZwkWDcM+h5Il8izZCtRVpDUfwpoFf7eOtajT3QiGR4yDUx7lPqHJULgbg==}
     dependencies:
@@ -5158,6 +5078,7 @@ packages:
   /chownr@2.0.0:
     resolution: {integrity: sha512-bIomtDF5KGpdogkLd9VspvFzk9KfpyyGlS8YFVZl7TGPBHL5snIOnxeshwVgPteQ9b4Eydl+pVbIyE1DcvCWgQ==}
     engines: {node: '>=10'}
+    dev: false
 
   /chrome-trace-event@1.0.3:
     resolution: {integrity: sha512-p3KULyQg4S7NIHixdwbGX+nFHkoBiA4YQmyWtjb8XngSKV124nJmRysgAeujbUVb15vh+RvFUfCPqU7rXk+hZg==}
@@ -5636,11 +5557,6 @@ packages:
   /dotenv-expand@10.0.0:
     resolution: {integrity: sha512-GopVGCpVS1UKH75VKHGuQFqS1Gusej0z4FyQkPdwjil2gNIv+LNsqBlboOzpJFZKVT95GkCyWJbBSdFEFUWI2A==}
     engines: {node: '>=12'}
-    dev: true
-
-  /dotenv@10.0.0:
-    resolution: {integrity: sha512-rlBi9d8jpv9Sf1klPjNfFAuWDjKLwTIJJ/VxtoTwIR6hnZxcEOQCZg2oIL3MWBYw5GpUDKOEnND7LXTbIpQ03Q==}
-    engines: {node: '>=10'}
     dev: true
 
   /dotenv@16.3.1:
@@ -6200,16 +6116,6 @@ packages:
     resolution: {integrity: sha512-b6suED+5/3rTpUBdG1gupIl8MPFCAMA0QXwmljLhvCUKcUvdE4gWky9zpuGCcXHOsz4J9wPGNWq6OKpmIzz3hQ==}
     hasBin: true
 
-  /follow-redirects@1.15.3:
-    resolution: {integrity: sha512-1VzOtuEM8pC9SFU1E+8KfTjZyMztRsgEfwQl44z8A25uy13jSzTj6dyK2Df52iV0vgHCfBwLhDWevLn95w5v6Q==}
-    engines: {node: '>=4.0'}
-    peerDependencies:
-      debug: '*'
-    peerDependenciesMeta:
-      debug:
-        optional: true
-    dev: true
-
   /follow-redirects@1.15.4:
     resolution: {integrity: sha512-Cr4D/5wlrb0z9dgERpUL3LrmPKVDsETIJhaCMeDfuFYcqa5bldGV6wBsAN6X/vxlXQtFBMrXdXxdL8CbDTGniw==}
     engines: {node: '>=4.0'}
@@ -6316,6 +6222,7 @@ packages:
     engines: {node: '>= 8'}
     dependencies:
       minipass: 3.3.6
+    dev: false
 
   /fs.realpath@1.0.0:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
@@ -6982,11 +6889,6 @@ packages:
   /isarray@1.0.0:
     resolution: {integrity: sha512-VLghIWNM6ELQzo7zwmcg0NmTVyWKYjvIeM83yjp0wRDTmUnrM678fQbcKBo6n2CJEF0szoG//ytg+TKla89ALQ==}
 
-  /isbot@3.6.6:
-    resolution: {integrity: sha512-98aGl1Spbx1led422YFrusDJ4ZutSNOymb2avZ2V4BCCjF3MqAF2k+J2zoaLYahubaFkb+3UyvbVDVlk/Ngrew==}
-    engines: {node: '>=12'}
-    dev: false
-
   /isbot@4.3.0:
     resolution: {integrity: sha512-cohu4X66cXP120xwF+UubL+BQzOQLN1O0DOPOmkci6elgZ7o6XIn8B3FARk59RL0aX3cGTq8Ta7MVOWpay3rbw==}
     engines: {node: '>=18'}
@@ -7068,6 +6970,7 @@ packages:
     resolution: {integrity: sha512-xKqzzWXDttJuOcawBt4KnKHHIf5oQ/Cxax+0PWFG+DFDgHNAdi+TXECADI+RYiFUMmx8792xsMbbgXj4CwnP4g==}
     engines: {node: '>=6'}
     hasBin: true
+    dev: true
 
   /json-parse-even-better-errors@2.3.1:
     resolution: {integrity: sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==}
@@ -7405,6 +7308,7 @@ packages:
     engines: {node: '>=8'}
     dependencies:
       yallist: 4.0.0
+    dev: false
 
   /minipass@5.0.0:
     resolution: {integrity: sha512-3FnjYuehv9k6ovOEbyOswadCDPX1piCfhV8ncmYtHOjuPwylVWsghTLo7rabjC3Rx5xD4HDx8Wm1xnMF7S5qFQ==}
@@ -7422,11 +7326,13 @@ packages:
     dependencies:
       minipass: 3.3.6
       yallist: 4.0.0
+    dev: false
 
   /mkdirp@1.0.4:
     resolution: {integrity: sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==}
     engines: {node: '>=10'}
     hasBin: true
+    dev: false
 
   /mlly@1.4.2:
     resolution: {integrity: sha512-i/Ykufi2t1EZ6NaPLdfnZk2AX8cs0d+mTzVKuPfqPKPatxLApaBoxJQ9x1/uckXtrS/U5oisPMDkNs0yQTaBRg==}
@@ -7707,24 +7613,6 @@ packages:
     dependencies:
       boolbase: 1.0.0
     dev: false
-
-  /nx-cloud@16.5.2:
-    resolution: {integrity: sha512-1t1Ii9gojl8r/8hFGaZ/ZyYR0Cb0hzvXLCsaFuvg+EJEFdvua3P4cfNya/0bdRrm+7Eb/ITUOskbvYq4TSlyGg==}
-    hasBin: true
-    dependencies:
-      '@nrwl/nx-cloud': 16.5.2
-      axios: 1.1.3
-      chalk: 4.1.2
-      dotenv: 10.0.0
-      fs-extra: 11.2.0
-      node-machine-id: 1.1.12
-      open: 8.4.2
-      strip-json-comments: 3.1.1
-      tar: 6.1.11
-      yargs-parser: 21.1.1
-    transitivePeerDependencies:
-      - debug
-    dev: true
 
   /nx@17.2.8:
     resolution: {integrity: sha512-rM5zXbuXLEuqQqcjVjClyvHwRJwt+NVImR2A6KFNG40Z60HP6X12wAxxeLHF5kXXTDRU0PFhf/yACibrpbPrAw==}
@@ -8309,15 +8197,6 @@ packages:
       react: 18.2.0
       tslib: 2.6.2
     dev: false
-
-  /react-virtual@2.10.4(react@18.2.0):
-    resolution: {integrity: sha512-Ir6+oPQZTVHfa6+JL9M7cvMILstFZH/H3jqeYeKI4MSUX+rIruVwFC6nGVXw9wqAw8L0Kg2KvfXxI85OvYQdpQ==}
-    peerDependencies:
-      react: ^16.6.3 || ^17.0.0
-    dependencies:
-      '@reach/observe-rect': 1.2.0
-      react: 18.2.0
-    dev: true
 
   /react@18.2.0:
     resolution: {integrity: sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==}
@@ -9056,18 +8935,6 @@ packages:
       fast-fifo: 1.3.2
       streamx: 2.15.6
     dev: false
-
-  /tar@6.1.11:
-    resolution: {integrity: sha512-an/KZQzQUkZCkuoAA64hM92X0Urb6VpRhAFllDzz44U2mcD5scmT3zBc4VgVpkugF580+DQn8eAFSyoQt0tznA==}
-    engines: {node: '>= 10'}
-    dependencies:
-      chownr: 2.0.0
-      fs-minipass: 2.1.0
-      minipass: 3.3.6
-      minizlib: 2.1.2
-      mkdirp: 1.0.4
-      yallist: 4.0.0
-    dev: true
 
   /tar@6.2.0:
     resolution: {integrity: sha512-/Wo7DcT0u5HUV486xg675HtjNd3BXZ6xDbzsCUZPt5iw8bTQ63bP0Raut3mvro9u+CUyq7YQd8Cx55fsZXxqLQ==}
@@ -10176,3 +10043,4 @@ packages:
 
   /zod@3.22.4:
     resolution: {integrity: sha512-iC+8Io04lddc+mVqQ9AZ7OQ2MrUKGN+oIQyq1vemgt46jwCwLfhq7/pwnBnNXXXZb8VTVLKwp9EDkx+ryxIWmg==}
+    dev: false

@@ -34,27 +34,21 @@
   },
   "namespace": "@tanstack",
   "devDependencies": {
-    "@commitlint/parse": "^18.4.4",
-    "@faker-js/faker": "^8.3.1",
-    "@nrwl/nx-cloud": "latest",
     "@tanstack/config": "^0.2.1",
     "@types/node": "^20.10.7",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "axios": "^1.6.5",
-    "concurrently": "^8.2.2",
     "glob": "^10.3.10",
     "nx": "17.2.8",
     "prettier": "^3.1.1",
     "publint": "^0.2.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-virtual": "^2.10.4",
     "rimraf": "^5.0.5",
     "typescript": "^5.3.3",
     "vite": "^5.0.11",
-    "vitest": "^1.1.3",
-    "zod": "^3.22.4"
+    "vitest": "^1.1.3"
   },
   "resolutions": {
     "use-sync-external-store": "1.2.0"

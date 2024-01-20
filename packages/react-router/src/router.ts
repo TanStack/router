@@ -5,7 +5,7 @@ import {
   createBrowserHistory,
   createMemoryHistory,
 } from '@tanstack/history'
-import { Store } from '@tanstack/store'
+import { Store } from '@tanstack/react-store'
 
 //
 
