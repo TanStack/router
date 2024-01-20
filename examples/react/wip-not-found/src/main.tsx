@@ -18,9 +18,12 @@ const rootRoute = new RootRoute({
   component: RootComponent,
   notFoundComponent: () => {
     return (
-      <p>
-        You&apos;re using the new notFoundComponent api to handle not founds!
-      </p>
+      <>
+        <p>
+          You&apos;re using the new notFoundComponent api to handle not founds!
+        </p>
+        <TanStackRouterDevtools />
+      </>
     )
   },
 })

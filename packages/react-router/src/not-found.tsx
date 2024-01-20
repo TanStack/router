@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { CatchBoundary } from './CatchBoundary'
+import { useRouter, useRouterState } from './RouterProvider'
 
 export type NotFoundOptions = {
   global?: boolean
@@ -20,12 +21,14 @@ export function CatchNotFound(props: {
   onCatch?: (error: any) => void
   children: React.ReactNode
 }) {
+  // TODO: Some way for the user to programmatically reset the not-found boundary?
+  const resetKey = useRouterState({
+    select: (s) => `not-found-${s.location.pathname}-${s.status}`,
+  })
+
   return (
     <CatchBoundary
-      getResetKey={() => {
-        // TODO:
-        return 'TODO'
-      }}
+      getResetKey={() => resetKey}
       onCatch={(error) => {
         if (isNotFound(error)) {
           props.onCatch?.(error)
