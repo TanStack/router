@@ -236,15 +236,6 @@ export type SearchSchemaValidatorFn<TInput, TReturn> = (
   searchObj: TInput,
 ) => TReturn
 
-export type DefinedPathParamWarning =
-  'Path params cannot be redefined by child routes!'
-
-export type ParentParams<TParentParams> = AnyPathParams extends TParentParams
-  ? {}
-  : {
-      [Key in keyof TParentParams]?: DefinedPathParamWarning
-    }
-
 export type RouteLoaderFn<
   TAllParams = {},
   TLoaderDeps extends Record<string, any> = {},
