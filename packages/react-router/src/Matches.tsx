@@ -15,7 +15,11 @@ import {
   RouteIds,
   RoutePaths,
 } from './routeInfo'
-import { RegisteredRouter, RouterState, throwNotFoundRouteId } from './router'
+import {
+  RegisteredRouter,
+  RouterState,
+  throwGlobalNotFoundRouteId,
+} from './router'
 import { DeepOptional, Expand, NoInfer, StrictOrFrom, pick } from './utils'
 import { CatchNotFound, isNotFound, notFound } from './not-found'
 
@@ -97,12 +101,12 @@ function SafeFragment(props: any) {
 
 export function Match({ matchId }: { matchId: string }) {
   const router = useRouter()
-  const { routeId, hasNotFound } = useRouterState({
+  const { routeId, hasNotFound: hasGlobalNotFound } = useRouterState({
     select: (s) => ({
       routeId: getRenderedMatches(s).find((d) => d.id === matchId)
         ?.routeId as string,
       hasNotFound: getRenderedMatches(s).some(
-        (m) => m.routeId === throwNotFoundRouteId,
+        (m) => m.routeId === throwGlobalNotFoundRouteId,
       ),
     }),
   })
@@ -114,7 +118,9 @@ export function Match({ matchId }: { matchId: string }) {
 
   const route = router.routesById[routeId]!
 
-  if (hasNotFound && routeId !== rootRouteId) {
+  // If a global not-found (a not found match that happens during path matching) is found,
+  // throw it up the tree to be handled by the root route.
+  if (hasGlobalNotFound && routeId !== rootRouteId) {
     throw notFound({ global: true })
   }
 
