@@ -1,9 +1,4 @@
 {
-  "composite": true,
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "./build/types"
-  },
-  "files": ["src/index.ts"],
-  "include": ["src"]
+  "extends": "../../tsconfig.json",
+  "include": ["src", "vite.config.ts"]
 }

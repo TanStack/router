@@ -1,13 +1,27 @@
 {
-  "files": [],
-  "references": [
-    { "path": "packages/history" },
-    { "path": "packages/react-router" },
-    { "path": "packages/router-cli" },
-    { "path": "packages/router-vite-plugin" },
-    { "path": "packages/router-devtools" },
-    { "path": "packages/react-router-server" }
-  ]
-  // "include": ["examples/*"]
-  // "exclude": ["node_modules"]
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "checkJs": true,
+    "declaration": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2020"
+  },
+  "include": [".eslintrc.cjs", "prettier.config.js", "scripts"]
 }

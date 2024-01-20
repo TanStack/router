@@ -9,6 +9,7 @@ types
 build
 */build
 dist
+.output
 lib
 es
 artifacts
@@ -52,3 +53,6 @@ nx-cloud.env
 .nx
 
 gpt/db.json
+
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*

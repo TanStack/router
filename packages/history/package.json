@@ -1,35 +1,52 @@
 {
   "name": "@tanstack/history",
-  "author": "Tanner Linsley",
   "version": "1.7.1",
-  "license": "MIT",
-  "repository": "tanstack/history",
-  "homepage": "https://tanstack.com",
   "description": "",
-  "scripts": {
-    "build": "rollup --config rollup.config.js"
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/router.git",
+    "directory": "packages/history"
   },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+  "homepage": "https://tanstack.com",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "main": "dist/cjs/index.cjs",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:types": "tsc",
+    "test:build": "publint --strict",
+    "build": "vite build"
   },
   "keywords": [
     "history",
     "typescript"
   ],
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/tannerlinsley"
-  },
-  "module": "build/esm/index.js",
-  "main": "build/cjs/index.js",
-  "browser": "build/umd/index.production.js",
-  "types": "build/types/index.d.ts",
   "engines": {
     "node": ">=12"
   },
   "files": [
-    "build/**",
+    "dist",
     "src"
-  ],
-  "sideEffects": false
+  ]
 }

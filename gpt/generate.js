@@ -1,5 +1,7 @@
-const fs = require('fs')
-const { glob } = require('glob')
+// @ts-check
+
+import fs from 'node:fs'
+import { glob } from 'glob'
 
 const outputPath = './gpt/db.json'
 const packages = []

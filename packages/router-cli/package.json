@@ -1,16 +1,44 @@
 {
   "name": "@tanstack/router-cli",
-  "author": "Tanner Linsley",
   "version": "1.7.1",
-  "license": "MIT",
-  "repository": "tanstack/router",
-  "homepage": "https://tanstack.com/router",
   "description": "",
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/router.git",
+    "directory": "packages/router-cli"
   },
+  "homepage": "https://tanstack.com/router",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "bin": {
+    "tsr": "bin/tsr.cjs"
+  },
+  "type": "module",
+  "main": "dist/cjs/index.cjs",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
   "scripts": {
-    "build": "rollup --config rollup.config.js"
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:types": "tsc",
+    "test:build": "publint --strict",
+    "build": "vite build"
   },
   "keywords": [
     "react",
@@ -21,26 +49,14 @@
     "async router",
     "typescript"
   ],
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/tannerlinsley"
-  },
-  "type": "commonjs",
-  "bin": {
-    "tsr": "bin/tsr.js"
-  },
   "engines": {
     "node": ">=12"
   },
   "files": [
-    "build/**",
+    "dist",
     "src/**",
     "bin/**"
   ],
-  "sideEffects": false,
-  "module": "bin/tsr.js",
-  "main": "bin/tsr.js",
-  "browser": "bin/tsr.js",
   "dependencies": {
     "@tanstack/router-generator": "workspace:*",
     "chokidar": "^3.5.3",

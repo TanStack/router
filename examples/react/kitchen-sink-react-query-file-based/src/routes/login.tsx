@@ -2,7 +2,7 @@ import * as React from 'react'
 import { FileRoute, useRouter } from '@tanstack/react-router'
 import { z } from 'zod'
 
-export const Route = new FileRoute("/login")
+export const Route = new FileRoute('/login')
   .createRoute({
     validateSearch: z.object({
       redirect: z.string().optional(),
@@ -14,7 +14,9 @@ export const Route = new FileRoute("/login")
 
 function LoginComponent() {
   const router = useRouter()
-  const { auth, status } = Route.useRouteContext({select:({auth}) => ({auth, status: auth.status})})
+  const { auth, status } = Route.useRouteContext({
+    select: ({ auth }) => ({ auth, status: auth.status }),
+  })
   const search = Route.useSearch()
   const [username, setUsername] = React.useState('')
 

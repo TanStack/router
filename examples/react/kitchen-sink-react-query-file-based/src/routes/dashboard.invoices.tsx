@@ -4,7 +4,7 @@ import { Spinner } from '../components/Spinner'
 import { invoicesQueryOptions } from '../utils/queryOptions'
 import { useSuspenseQuery } from '@tanstack/react-query'
 
-export const Route = new FileRoute("/dashboard/invoices").createRoute({
+export const Route = new FileRoute('/dashboard/invoices').createRoute({
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
   component: InvoicesComponent,

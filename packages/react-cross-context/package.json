@@ -1,13 +1,52 @@
 {
   "name": "@tanstack/react-cross-context",
+  "version": "1.7.1",
+  "description": "",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/router.git",
+    "directory": "packages/react-cross-context"
+  },
+  "homepage": "https://tanstack.com",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "main": "dist/cjs/index.cjs",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "sideEffects": false,
-  "module": "build/esm/index.js",
-  "main": "build/cjs/index.js",
-  "browser": "build/umd/index.production.js",
-  "types": "build/types/index.d.ts",
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:types": "tsc",
+    "test:build": "publint --strict",
+    "build": "vite build"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1"
+  },
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"
-  },
-  "version": "1.7.1"
+  }
 }
