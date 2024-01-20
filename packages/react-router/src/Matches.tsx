@@ -7,6 +7,8 @@ import { useRouter } from './useRouter'
 import { ResolveRelativePath, ToOptions } from './link'
 import { AnyRoute, ReactNode, RootSearchSchema } from './route'
 import {
+  AllParams,
+  FullSearchSchema,
   ParseRoute,
   RouteById,
   RouteByPath,
@@ -14,18 +16,21 @@ import {
   RoutePaths,
 } from './routeInfo'
 import { RegisteredRouter, RouterState } from './router'
-import { DeepOptional, NoInfer, StrictOrFrom, pick } from './utils'
+import { DeepOptional, Expand, NoInfer, StrictOrFrom, pick } from './utils'
 
 export const matchContext = React.createContext<string | undefined>(undefined)
 
 export interface RouteMatch<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
+  TReturnIntersection extends boolean = false,
 > {
   id: string
   routeId: TRouteId
   pathname: string
-  params: RouteById<TRouteTree, TRouteId>['types']['allParams']
+  params: TReturnIntersection extends false
+    ? RouteById<TRouteTree, TRouteId>['types']['allParams']
+    : Expand<Partial<AllParams<TRouteTree>>>
   status: 'pending' | 'success' | 'error'
   isFetching: boolean
   showPending: boolean
@@ -37,10 +42,14 @@ export interface RouteMatch<
   loaderData?: RouteById<TRouteTree, TRouteId>['types']['loaderData']
   routeContext: RouteById<TRouteTree, TRouteId>['types']['routeContext']
   context: RouteById<TRouteTree, TRouteId>['types']['allContext']
-  search: Exclude<
-    RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
-    RootSearchSchema
-  >
+  search: TReturnIntersection extends false
+    ? Exclude<
+        RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
+        RootSearchSchema
+      >
+    : Expand<
+        Partial<Omit<FullSearchSchema<TRouteTree>, keyof RootSearchSchema>>
+      >
   fetchCount: number
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'
@@ -298,7 +307,9 @@ export function MatchRoute<
   return !!params ? props.children : null
 }
 
-export function getRenderedMatches(state: RouterState) {
+export function getRenderedMatches<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+>(state: RouterState<TRouteTree>) {
   return state.pendingMatches?.some((d) => d.showPending)
     ? state.pendingMatches
     : state.matches
@@ -307,10 +318,11 @@ export function getRenderedMatches(state: RouterState) {
 export function useMatch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TRouteMatchState = RouteMatch<TRouteTree, TFrom>,
+  TReturnIntersection extends boolean = false,
+  TRouteMatchState = RouteMatch<TRouteTree, TFrom, TReturnIntersection>,
   TSelected = TRouteMatchState,
 >(
-  opts: StrictOrFrom<TFrom> & {
+  opts: StrictOrFrom<TFrom, TReturnIntersection> & {
     select?: (match: TRouteMatchState) => TSelected
   },
 ): TSelected {
@@ -364,26 +376,44 @@ export function useMatch<
   return matchSelection as any
 }
 
-export function useMatches<T = RouteMatch[]>(opts?: {
-  select?: (matches: RouteMatch[]) => T
+export function useMatches<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
+  TReturnIntersection extends boolean = false,
+  TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
+  T = TRouteMatch[],
+>(opts?: {
+  select?: (matches: TRouteMatch[]) => T
+  experimental_returnIntersection?: TReturnIntersection
 }): T {
   return useRouterState({
     select: (state) => {
-      let matches = getRenderedMatches(state)
-      return opts?.select ? opts.select(matches) : (matches as T)
+      const matches = getRenderedMatches(state)
+      return opts?.select
+        ? opts.select(matches as TRouteMatch[])
+        : (matches as T)
     },
   })
 }
 
-export function useParentMatches<T = RouteMatch[]>(opts?: {
-  select?: (matches: RouteMatch[]) => T
+export function useParentMatches<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
+  TReturnIntersection extends boolean = false,
+  TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
+  T = TRouteMatch[],
+>(opts?: {
+  select?: (matches: TRouteMatch[]) => T
+  experimental_returnIntersection?: TReturnIntersection
 }): T {
   const contextMatchId = React.useContext(matchContext)
 
   return useMatches({
     select: (matches) => {
       matches = matches.slice(matches.findIndex((d) => d.id === contextMatchId))
-      return opts?.select ? opts.select(matches) : (matches as T)
+      return opts?.select
+        ? opts.select(matches as TRouteMatch[])
+        : (matches as T)
     },
   })
 }
