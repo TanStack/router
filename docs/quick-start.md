@@ -83,11 +83,9 @@ export const component = function About() {
 }
 ```
 
-### `src/app.tsx`
+### `src/main.tsx`
 
-Regardless if you are using the `@tanstack/router-vite-plugin` or manually run `tsr watch`/`tsr generate` from your package scripts, the following file will be generated for you:
-
-- `src/routeTree.gen.ts`
+Regardless if you are using the `@tanstack/router-vite-plugin` use `npm run dev` or manually run `tsr watch`/`tsr generate` to generate `src/routeTree.gen.ts` file  and then update `main.tsx` file with the code below :
 
 Import the generated route tree and create a new router instance:
 
