@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { CatchBoundary } from './CatchBoundary'
-import { useRouter, useRouterState } from './RouterProvider'
+import { useRouterState } from './useRouterState'
 
 export type NotFoundOptions = {
   global?: boolean
