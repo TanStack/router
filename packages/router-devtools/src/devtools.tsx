@@ -288,6 +288,7 @@ export function TanStackRouterDevtools({
           {...otherPanelProps}
           router={router}
           style={{
+            direction: 'ltr',
             position: 'fixed',
             bottom: '0',
             right: '0',
