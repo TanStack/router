@@ -25,6 +25,15 @@ export type UnionToIntersection<U> = (
   ? I
   : never
 
+export type DeepOptional<T, K extends keyof T> = Pick<DeepPartial<T>, K> &
+  Omit<T, K>
+
+export type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>
+    }
+  : T
+
 // type Compute<T> = { [K in keyof T]: T[K] } | never
 
 // type AllKeys<T> = T extends any ? keyof T : never

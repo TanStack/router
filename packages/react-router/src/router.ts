@@ -668,9 +668,16 @@ export class Router<
 
       const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
 
-      const interpolatedPath = interpolatePath(route.fullPath, routeParams)
+      const interpolatedPath = interpolatePath({
+        path: route.fullPath,
+        params: routeParams,
+      })
       const matchId =
-        interpolatePath(route.id, routeParams, true) + loaderDepsHash
+        interpolatePath({
+          path: route.id,
+          params: routeParams,
+          leaveWildcards: true,
+        }) + loaderDepsHash
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
@@ -776,7 +783,12 @@ export class Router<
           })
       }
 
-      pathname = interpolatePath(pathname, nextParams ?? {})
+      pathname = interpolatePath({
+        path: pathname,
+        params: nextParams ?? {},
+        leaveWildcards: false,
+        leaveParams: opts.leaveParams,
+      })
 
       const preSearchFilters =
         stayingMatches
@@ -1560,14 +1572,15 @@ export class Router<
     location: ToOptions<TRouteTree, TFrom, TTo>,
     opts?: MatchRouteOptions,
   ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
-    location = {
+    const matchLocation = {
       ...location,
       to: location.to
         ? this.resolvePathWithBase((location.from || '') as string, location.to)
         : undefined,
-    } as any
-
-    const next = this.buildLocation(location as any)
+      params: location.params || {},
+      leaveParams: true,
+    }
+    const next = this.buildLocation(matchLocation as any)
 
     if (opts?.pending && this.state.status !== 'pending') {
       return false
@@ -1580,7 +1593,6 @@ export class Router<
     if (!baseLocation) {
       return false
     }
-
     const match = matchPathname(this.basepath, baseLocation.pathname, {
       ...opts,
       to: next.pathname,
@@ -1588,6 +1600,11 @@ export class Router<
 
     if (!match) {
       return false
+    }
+    if (location.params) {
+      if (!deepEqual(match, location.params, true)) {
+        return false
+      }
     }
 
     if (match && (opts?.includeSearch ?? true)) {
