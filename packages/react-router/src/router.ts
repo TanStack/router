@@ -17,6 +17,7 @@ import {
   RouteMask,
   Route,
   LoaderFnContext,
+  rootRouteId,
 } from './route'
 import {
   FullSearchSchema,
@@ -65,7 +66,7 @@ import invariant from 'tiny-invariant'
 import { isRedirect } from './redirects'
 import { ResolveRelativePath, ToOptions } from './link'
 import { NoInfer } from '@tanstack/react-store'
-import { notFound, warning } from '.'
+import { DefaultGlobalNotFound, notFound, warning } from '.'
 // import warning from 'tiny-warning'
 
 //
@@ -1803,6 +1804,16 @@ export class Router<
         lastUpdated: Date.now(),
       }
     })
+  }
+
+  getNotFoundComponent = () => {
+    console.log(this.routesById)
+    const rootNotFoundComponent = (this.routesById as any)[rootRouteId].options
+      .notFoundComponent
+
+    if (!rootNotFoundComponent) return DefaultGlobalNotFound
+
+    return rootNotFoundComponent
   }
 
   // resolveMatchPromise = (matchId: string, key: string, value: any) => {

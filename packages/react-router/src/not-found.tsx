@@ -42,3 +42,7 @@ export function CatchNotFound(props: {
     </CatchBoundary>
   )
 }
+
+export function DefaultGlobalNotFound() {
+  return <p>Not Found</p>
+}

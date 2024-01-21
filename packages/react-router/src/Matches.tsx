@@ -21,7 +21,12 @@ import {
   throwGlobalNotFoundRouteId,
 } from './router'
 import { DeepOptional, Expand, NoInfer, StrictOrFrom, pick } from './utils'
-import { CatchNotFound, isNotFound, notFound } from './not-found'
+import {
+  CatchNotFound,
+  DefaultGlobalNotFound,
+  isNotFound,
+  notFound,
+} from './not-found'
 
 export const matchContext = React.createContext<string | undefined>(undefined)
 
@@ -101,14 +106,9 @@ function SafeFragment(props: any) {
 
 export function Match({ matchId }: { matchId: string }) {
   const router = useRouter()
-  const { routeId, hasNotFound: hasGlobalNotFound } = useRouterState({
-    select: (s) => ({
-      routeId: getRenderedMatches(s).find((d) => d.id === matchId)
-        ?.routeId as string,
-      hasNotFound: getRenderedMatches(s).some(
-        (m) => m.routeId === throwGlobalNotFoundRouteId,
-      ),
-    }),
+  const routeId = useRouterState({
+    select: (s) =>
+      getRenderedMatches(s).find((d) => d.id === matchId)?.routeId as string,
   })
 
   invariant(
@@ -117,12 +117,6 @@ export function Match({ matchId }: { matchId: string }) {
   )
 
   const route = router.routesById[routeId]!
-
-  // If a global not-found (a not found match that happens during path matching) is found,
-  // throw it up the tree to be handled by the root route.
-  if (hasGlobalNotFound && routeId !== rootRouteId) {
-    throw notFound({ global: true })
-  }
 
   const PendingComponent = (route.options.pendingComponent ??
     router.options.defaultPendingComponent) as any
@@ -156,7 +150,6 @@ export function Match({ matchId }: { matchId: string }) {
   const ResolvedNotFoundBoundary = routeNotFoundComponent
     ? CatchNotFound
     : SafeFragment
-
   return (
     <matchContext.Provider value={matchId}>
       <ResolvedSuspenseBoundary fallback={pendingElement}>
@@ -203,15 +196,26 @@ function MatchInner({
 
   const route = router.routesById[routeId]!
 
-  const match = useRouterState({
-    select: (s) =>
-      pick(getRenderedMatches(s).find((d) => d.id === matchId)!, [
+  const { match, hasGlobalNotFound } = useRouterState({
+    select: (s) => ({
+      match: pick(getRenderedMatches(s).find((d) => d.id === matchId)!, [
         'status',
         'error',
         'showPending',
         'loadPromise',
       ]),
+      hasGlobalNotFound: getRenderedMatches(s).some(
+        (m) => m.routeId === throwGlobalNotFoundRouteId,
+      ),
+    }),
   })
+
+  // If a global not-found is found, and it's the root route, render the global not-found component.
+  if (hasGlobalNotFound && routeId === rootRouteId) {
+    if (!route.options.notFoundComponent) return <DefaultGlobalNotFound />
+    // TODO: Support existing notFoundRoute?
+    return <route.options.notFoundComponent data={{ global: true }} />
+  }
 
   if (match.status === 'error') {
     if (isServerSideError(match.error)) {
