@@ -36,7 +36,9 @@ export function CatchNotFound(props: {
           throw error
         }
       }}
-      errorComponent={props.fallback}
+      errorComponent={({ error }: { error: NotFoundOptions }) =>
+        props.fallback?.(error)
+      }
     >
       {props.children}
     </CatchBoundary>
