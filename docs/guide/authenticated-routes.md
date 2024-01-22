@@ -155,4 +155,4 @@ export const Route = new FileRoute('/dashboard').createRoute({
 
 You can *optionally*, also use the [Non-Redirected Authentication](./guide/authenticated-routes#non-redirected-authentication) approach to show a login form instead of calling a **redirect**.
 
-This approach can also be used in conjunction with Layout Routes to protect all routes under a specific layout.
+This approach can also be used in conjunction with Layout or Parent Routes to protect all routes under a specific layout.
