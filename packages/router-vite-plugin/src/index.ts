@@ -11,10 +11,6 @@ const CONFIG_FILE_NAME = 'tsr.config.json'
 
 type UserConfig = Partial<Config>
 
-async function buildConfig(inlineConfig: UserConfig): Promise<Config> {
-  return getConfig(inlineConfig);
-}
-
 export function TanStackRouterVite(inlineConfig: UserConfig = {}): Plugin {
   let ROOT: string
   let userConfig: Config
@@ -32,13 +28,13 @@ export function TanStackRouterVite(inlineConfig: UserConfig = {}): Plugin {
     name: 'vite-plugin-tanstack-router',
     configResolved: async (vite) => {
       ROOT = vite.root
-      userConfig = await buildConfig(inlineConfig)
+      userConfig = await getConfig(inlineConfig)
       await generate()
     },
     handleHotUpdate: async ({ file }) => {
       const filePath = normalize(file)
       if (filePath === join(ROOT, CONFIG_FILE_NAME)) {
-        userConfig = await buildConfig(inlineConfig)
+        userConfig = await getConfig(inlineConfig)
         return
       }
       if (filePath.startsWith(join(ROOT, userConfig.routesDirectory))) {
