@@ -88,8 +88,8 @@ export function RouterProvider<
 }
 
 function Transitioner() {
-  const mountLoadCount = React.useRef(0)
   const router = useRouter()
+  const mountLoadForRouter = React.useRef({ router, mounted: false })
   const routerState = useRouterState({
     select: (s) =>
       pick(s, ['isLoading', 'location', 'resolvedLocation', 'isTransitioning']),
@@ -192,11 +192,16 @@ function Transitioner() {
   ])
 
   useLayoutEffect(() => {
-    if (!window.__TSR_DEHYDRATED__ && !mountLoadCount.current) {
-      mountLoadCount.current++
-      tryLoad()
+    if (window.__TSR_DEHYDRATED__) return
+    if (
+      mountLoadForRouter.current.router === router &&
+      mountLoadForRouter.current.mounted
+    ) {
+      return
     }
-  }, [])
+    mountLoadForRouter.current = { router, mounted: true }
+    tryLoad()
+  }, [router])
 
   return null
 }
