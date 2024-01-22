@@ -74,3 +74,82 @@ export const Route = new FileRoute('/_authenticated').createRoute({
 ```
 
 This keeps the user on the same page, but still allows you to render a login form. Once the user is authenticated, you can simply render the `<Outlet />` and the child routes will be rendered.
+
+## Authentication using React context/hooks
+
+If your authentication flow relies on interactions with React context and/or hooks, you'll need to pass down your authentication state to Tanstack Router using `router.context` option.
+
+> 🧠 React hooks are not meant to be consumed outside of React components. If you need to use a hook outside of a React component, you need extract the returned state from the hook in a component that wraps your `<RouterProvider />` and then pass the returned value down to Tanstack Router.
+
+We'll cover the `router.context` options in-detail in the [Router Context](./guide/router-context) section.
+
+Here's an example that uses React context and hooks for protecting authenticated routes in Tanstack Router.
+
+- `src/routes/__root.tsx`
+
+```tsx
+interface MyRouterContext {
+  // The ReturnType of your useAuth hook or the value of your AuthContext
+  auth: AuthState
+}
+
+export const Route = rootRouteWithContext<MyRouterContext>()({
+  component: () => <Outlet />
+});
+```
+
+- `src/router.tsx`
+
+```tsx
+import { routeTree } from './routeTree.gen';
+
+export const router = new Router({
+  routeTree,
+  context: {
+    // auth will initially be undefined
+    // We'll be passing down the auth state from within a React component
+    auth: undefined!,
+  },
+});
+```
+
+- `src/App.tsx`
+
+```tsx
+import { router } from './router';
+
+function InnerApp() {
+  const auth = useAuth();
+  return <RouterProvider router={router} context={{ auth }} />
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <InnerApp />
+    </AuthProvider>
+  )
+}
+```
+
+Then in the authenticated route, you can check the auth state using the `beforeLoad` function, and **throw a `redirect()`** to your **Login route** if the user is not signed-in.
+
+- `src/routes/dashboard.route.tsx`
+
+```tsx
+import { FileRoute, redirect } from '@tanstack/react-router';
+
+export const Route = new FileRoute('/dashboard').createRoute({
+  beforeLoad: ({ context, location }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({
+        to: '/login',
+        search: {
+          redirect: location.href,
+        },
+      })
+    }
+  }
+});
+```
+You can *optionally*, also use the [Non-Redirected Authentication](./guide/authenticated-routes#non-redirected-authentication) approach to show a login form instead of calling a **redirect**.
