@@ -208,6 +208,10 @@
           "to": "examples/react/location-masking"
         },
         {
+          "label": "Authenticated Routes with Context",
+          "to": "examples/react/authenticated-routes-context"
+        },
+        {
           "label": "Scroll Restoration",
           "to": "examples/react/scroll-restoration"
         },
