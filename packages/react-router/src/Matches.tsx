@@ -211,10 +211,17 @@ function MatchInner({
   })
 
   // If a global not-found is found, and it's the root route, render the global not-found component.
-  if (hasGlobalNotFound && routeId === rootRouteId) {
+  if (
+    (hasGlobalNotFound && routeId === rootRouteId) ||
+    router.currentGlobalNotFoundError
+  ) {
     if (!route.options.notFoundComponent) return <DefaultGlobalNotFound />
     // TODO: Support existing notFoundRoute?
-    return <route.options.notFoundComponent data={{ global: true }} />
+    return (
+      <route.options.notFoundComponent
+        data={router.currentGlobalNotFoundError ?? { global: true }}
+      />
+    )
   }
 
   if (match.status === 'error') {

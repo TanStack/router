@@ -5,6 +5,8 @@ import { PostType } from '../posts'
 async function fetchPostById(postId: string) {
   console.log(`Fetching post with id ${postId}...`)
 
+  throw notFound()
+
   await new Promise((r) => setTimeout(r, 100 + Math.round(Math.random() * 100)))
 
   return fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`).then(

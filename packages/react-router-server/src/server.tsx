@@ -1,5 +1,9 @@
 import { Context } from '@tanstack/react-cross-context'
-import { AnyRouter, RouterProvider } from '@tanstack/react-router'
+import {
+  AnyRouter,
+  NotFoundOptions,
+  RouterProvider,
+} from '@tanstack/react-router'
 import * as React from 'react'
 import { Transform } from 'stream'
 
@@ -105,4 +109,17 @@ function transformStreamHtmlCallback(injector: () => Promise<string>) {
       callback()
     },
   })
+}
+
+// In cases where a not-found error can be thrown synchronously (not deferred) during SSR,
+// we can render a static not-found page instead of the app and avoid the flicker.
+export function RenderGlobalNotFound({
+  router,
+  globalNotFoundError,
+}: {
+  router: AnyRouter
+  globalNotFoundError: NotFoundOptions
+}) {
+  router.currentNotFoundError = globalNotFoundError
+  return <StartServer router={router} />
 }

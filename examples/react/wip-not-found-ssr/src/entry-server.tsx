@@ -1,9 +1,14 @@
 import * as React from 'react'
 import ReactDOMServer, { PipeableStream } from 'react-dom/server'
-import { createMemoryHistory } from '@tanstack/react-router'
+import {
+  NotFoundOptions,
+  createMemoryHistory,
+  isNotFound,
+} from '@tanstack/react-router'
 import {
   StartServer,
   transformStreamWithRouter,
+  GlobalNotFound,
 } from '@tanstack/react-router-server/server'
 import { isbot } from 'isbot'
 import { ServerResponse } from 'http'
@@ -42,7 +47,8 @@ export async function render(opts: {
   await router.load()
 
   // Track errors
-  let didError = false
+  let statusCode = 200
+  let globalNotFoundError: NotFoundOptions | undefined = undefined
 
   // Clever way to get the right callback. Thanks Remix!
   const callbackName = isbot(opts.req.headers['user-agent'])
@@ -53,21 +59,51 @@ export async function render(opts: {
   let stream!: PipeableStream
 
   await new Promise<void>((resolve) => {
-    stream = ReactDOMServer.renderToPipeableStream(
+    const results = ReactDOMServer.renderToPipeableStream(
       <StartServer router={router} />,
       {
         [callbackName]: () => {
-          opts.res.statusCode = didError ? 500 : 200
-          opts.res.setHeader('Content-Type', 'text/html')
           resolve()
         },
         onError: (err) => {
-          didError = true
-          console.log(err)
+          if (isNotFound(err)) {
+            statusCode = 404
+            // TODO: type
+            if ((err as { global: boolean }).global) {
+              // Abort the rendering of the current page in order to render the 404 page
+              results.abort()
+              globalNotFoundError = err as NotFoundOptions
+            }
+          } else {
+            statusCode = 500
+            console.log(err)
+          }
         },
       },
     )
+    stream = results
   })
+
+  opts.res.setHeader('Content-Type', 'text/html')
+  opts.res.statusCode = statusCode
+
+  if (globalNotFoundError) {
+    await new Promise<void>((resolve) => {
+      stream = ReactDOMServer.renderToPipeableStream(
+        <GlobalNotFound
+          router={router}
+          globalNotFoundError={globalNotFoundError}
+        />,
+        {
+          onAllReady: resolve,
+          onError(err) {
+            statusCode = 500
+            console.log(err)
+          },
+        },
+      )
+    })
+  }
 
   // Add our Router transform to the stream
   const transforms = [transformStreamWithRouter(router)]
