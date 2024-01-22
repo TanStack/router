@@ -3,7 +3,6 @@ import { join, normalize } from 'path'
 import { readFile } from 'fs/promises'
 import {
   type Config,
-  configSchema,
   getConfig,
   generator,
 } from '@tanstack/router-generator'
@@ -13,7 +12,7 @@ const CONFIG_FILE_NAME = 'tsr.config.json'
 type UserConfig = Partial<Config>
 
 async function buildConfig(config: UserConfig): Promise<Config> {
-  return await getConfig(config);
+  return getConfig(config);
 }
 
 export function TanStackRouterVite(inlineConfig: UserConfig = {}): Plugin {
