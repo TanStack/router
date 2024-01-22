@@ -283,8 +283,7 @@ export async function generator(config: Config) {
   const routeConfigChildrenText = await buildRouteConfig(routeTree)
 
   const sortedRouteNodes = multiSortBy(routeNodes, [
-    (d) =>
-      d.routePath?.includes(`/${routePathIdPrefix + rootPathId}`) ? -1 : 1,
+    (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
     (d) => d.routePath?.split('/').length,
     (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
     (d) => d,
