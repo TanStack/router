@@ -13,11 +13,7 @@ const CONFIG_FILE_NAME = 'tsr.config.json'
 type UserConfig = Partial<Config>
 
 async function buildConfig(config: UserConfig): Promise<Config> {
-  const tsrConfig = await getConfig();
-  return {
-    ...tsrConfig,
-    ...config
-  };
+  return await getConfig(config);
 }
 
 export function TanStackRouterVite(inlineConfig: UserConfig = {}): Plugin {

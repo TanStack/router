@@ -15,7 +15,7 @@ export type Config = z.infer<typeof configSchema>
 
 const configFilePathJson = path.resolve(process.cwd(), 'tsr.config.json')
 
-export async function getConfig(): Promise<Config> {
+export async function getConfig(inlineConfig: Partial<Config> = {}): Promise<Config> {
   const exists = existsSync(configFilePathJson)
 
   let config: Config
@@ -23,9 +23,10 @@ export async function getConfig(): Promise<Config> {
   if (exists) {
     config = configSchema.parse(
       JSON.parse(readFileSync(configFilePathJson, 'utf-8')),
+      ...inlineConfig
     )
   } else {
-    config = configSchema.parse({})
+    config = configSchema.parse(inlineConfig)
   }
 
   // If typescript is disabled, make sure the generated route tree is a .js file
