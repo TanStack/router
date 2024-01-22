@@ -63,6 +63,11 @@ async function getRouteNodes(config: Config) {
           const filePathNoExt = removeExt(filePath)
           let routePath =
             cleanPath(`/${filePathNoExt.split('.').join('/')}`) || ''
+
+          if (routeFileIgnorePrefix) {
+            routePath.replaceAll(routeFileIgnorePrefix, '')
+          }
+
           const variableName = routePathToVariable(routePath)
 
           // Remove the index from the route path and
@@ -158,9 +163,7 @@ export async function generator(config: Config) {
     (d) => (d.filePath?.match(/[./]route[.]/) ? -1 : 1),
     (d) => (d.routePath?.endsWith('/') ? -1 : 1),
     (d) => d.routePath,
-  ]).filter(
-    (d) => ![`/${routePathIdPrefix + rootPathId}`].includes(d.routePath || ''),
-  )
+  ]).filter((d) => ![`/${rootPathId}`].includes(d.routePath || ''))
 
   const routeTree: RouteNode[] = []
   const routePiecesByPath: Record<string, RouteSubNode> = {}
