@@ -26,13 +26,13 @@ export function TanStackRouterVite(inlineConfig: Partial<Config> = {}): Plugin {
     name: 'vite-plugin-tanstack-router',
     configResolved: async (vite) => {
       ROOT = vite.root
-      userConfig = await getConfig(inlineConfig)
+      userConfig = await getConfig(inlineConfig, ROOT)
       await generate()
     },
     handleHotUpdate: async ({ file }) => {
       const filePath = normalize(file)
       if (filePath === join(ROOT, CONFIG_FILE_NAME)) {
-        userConfig = await getConfig(inlineConfig)
+        userConfig = await getConfig(inlineConfig, ROOT)
         return
       }
       if (filePath.startsWith(join(ROOT, userConfig.routesDirectory))) {
