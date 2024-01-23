@@ -1,20 +1,25 @@
 import { AnyRoute, RootSearchSchema } from './route'
-import { RouteIds, RouteById } from './routeInfo'
+import { RouteIds, RouteById, FullSearchSchema } from './routeInfo'
 import { RegisteredRouter } from './router'
 import { RouteMatch } from './Matches'
 import { useMatch } from './Matches'
-import { StrictOrFrom } from './utils'
+import { Expand, StrictOrFrom } from './utils'
 
 export function useSearch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TSearch = Exclude<
-    RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'],
-    RootSearchSchema
-  >,
+  TReturnIntersection extends boolean = false,
+  TSearch = TReturnIntersection extends false
+    ? Exclude<
+        RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'],
+        RootSearchSchema
+      >
+    : Expand<
+        Partial<Omit<FullSearchSchema<TRouteTree>, keyof RootSearchSchema>>
+      >,
   TSelected = TSearch,
 >(
-  opts: StrictOrFrom<TFrom> & {
+  opts: StrictOrFrom<TFrom, TReturnIntersection> & {
     select?: (search: TSearch) => TSelected
   },
 ): TSelected {

@@ -15,7 +15,7 @@ These are just suggested uses of the router context. You can use it for whatever
 
 ## Typed Router Context
 
-Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `new RouteContext<YourContextTypeHere>()` class to create a new `routerContext` and then use the `routerContext.rootRouteWithContext()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
+Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context you must use the `rootRouteWithContext()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
 
 ```tsx
 import { RootRoute } from '@tanstack/react-router'
@@ -41,7 +41,7 @@ const router = new Router({
 
 ## Passing the initial Router Context
 
-The router context is passed to the router at instantiation time. You can pass the initial router context to the router via the `initialRouterContext` option:
+The router context is passed to the router at instantiation time. You can pass the initial router context to the router via the `context` option:
 
 > 🧠 If your context has any required properties, you will see a TypeScript error if you don't pass them in the initial router context. If all of your context properties are optional, you will not see a TypeScript error and passing the context will be optional. If you don't pass a router context, it defaults to `{}`.
 

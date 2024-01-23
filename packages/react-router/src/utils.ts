@@ -300,7 +300,7 @@ export type StringLiteral<T> = T extends string
     : T
   : never
 
-export type StrictOrFrom<TFrom> =
+export type StrictOrFrom<TFrom, TReturnIntersection extends boolean = false> =
   | {
       from: StringLiteral<TFrom> | TFrom
       strict?: true
@@ -308,6 +308,7 @@ export type StrictOrFrom<TFrom> =
   | {
       from?: never
       strict: false
+      experimental_returnIntersection?: TReturnIntersection
     }
 
 export const useLayoutEffect =
