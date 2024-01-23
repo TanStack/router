@@ -9,9 +9,7 @@ import {
 
 const CONFIG_FILE_NAME = 'tsr.config.json'
 
-type UserConfig = Partial<Config>
-
-export function TanStackRouterVite(inlineConfig: UserConfig = {}): Plugin {
+export function TanStackRouterVite(inlineConfig: Partial<Config> = {}): Plugin {
   let ROOT: string
   let userConfig: Config
 
