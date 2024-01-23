@@ -12,7 +12,7 @@ export function notFound(options: NotFoundOptions = {}) {
   throw options
 }
 
-export function isNotFound(obj: any) {
+export function isNotFound(obj: any): obj is NotFoundOptions {
   return !!obj?.isNotFound
 }
 

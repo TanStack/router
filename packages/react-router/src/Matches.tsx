@@ -24,6 +24,7 @@ import { DeepOptional, Expand, NoInfer, StrictOrFrom, pick } from './utils'
 import {
   CatchNotFound,
   DefaultGlobalNotFound,
+  NotFoundOptions,
   isNotFound,
   notFound,
 } from './not-found'
@@ -70,6 +71,7 @@ export interface RouteMatch<
   meta?: JSX.IntrinsicElements['meta'][]
   links?: JSX.IntrinsicElements['link'][]
   scripts?: JSX.IntrinsicElements['script'][]
+  notFoundError?: NotFoundOptions
 }
 
 export type AnyRouteMatch = RouteMatch<any, any>
@@ -196,26 +198,28 @@ function MatchInner({
 
   const route = router.routesById[routeId]!
 
-  const { match, hasGlobalNotFound } = useRouterState({
+  const { match } = useRouterState({
     select: (s) => ({
       match: pick(getRenderedMatches(s).find((d) => d.id === matchId)!, [
         'status',
         'error',
         'showPending',
         'loadPromise',
+        'notFoundError',
       ]),
-      hasGlobalNotFound: getRenderedMatches(s).some(
-        (m) => m.routeId === throwGlobalNotFoundRouteId,
-      ),
     }),
   })
 
   // If a global not-found is found, and it's the root route, render the global not-found component.
-  if (
-    (hasGlobalNotFound && routeId === rootRouteId) ||
-    router.currentGlobalNotFoundError
-  ) {
-    if (!route.options.notFoundComponent) return <DefaultGlobalNotFound />
+  if (match.notFoundError) {
+    if (routeId === rootRouteId && !route.options.notFoundComponent)
+      return <DefaultGlobalNotFound />
+
+    invariant(
+      route.options.notFoundComponent,
+      'Route matched with notFoundError should have a notFoundComponent',
+    )
+
     // TODO: Support existing notFoundRoute?
     return (
       <route.options.notFoundComponent
