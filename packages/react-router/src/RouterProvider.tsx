@@ -43,8 +43,13 @@ export type NavigateFn<TRouteTree extends AnyRoute> = <
   opts: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => Promise<void>
 
-export type BuildLocationFn<TRouteTree extends AnyRoute> = (
-  opts: ToOptions<TRouteTree> & {
+export type BuildLocationFn<TRouteTree extends AnyRoute> = <
+  TFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string = '',
+>(
+  opts: ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
     leaveParams?: boolean
   },
 ) => ParsedLocation
