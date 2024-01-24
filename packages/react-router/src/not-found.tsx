@@ -5,11 +5,14 @@ import { useRouterState } from './useRouterState'
 export type NotFoundOptions = {
   global?: boolean
   data?: any
+  throw?: boolean
+  routeId?: string
 }
 
 export function notFound(options: NotFoundOptions = {}) {
   ;(options as any).isNotFound = true
-  throw options
+  if (options.throw) throw options
+  return options
 }
 
 export function isNotFound(obj: any): obj is NotFoundOptions {

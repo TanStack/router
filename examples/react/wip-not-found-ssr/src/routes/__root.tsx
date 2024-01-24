@@ -10,7 +10,7 @@ export const Route = rootRouteWithContext<RouterContext>()({
   notFoundComponent: () => {
     return (
       <>
-        <p>Global not found</p>
+        <p>Not found on root route</p>
       </>
     )
   },

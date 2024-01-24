@@ -1824,8 +1824,9 @@ export class Router<
     if (err.global) {
       matchesByRouteId[rootRouteId]!.notFoundError = err
     } else {
+      // If the err contains a routeId, start searching up from that route
       let currentRoute = (this.routesById as any)[
-        currentMatch.routeId
+        err.routeId ?? currentMatch.routeId
       ] as AnyRoute
 
       // Go up the tree until we find a route with a notFoundComponent

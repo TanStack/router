@@ -1,5 +1,6 @@
 import { Await, FileRoute, defer, notFound } from '@tanstack/react-router'
 import * as React from 'react'
+import { Route as RootRoute } from '../__root'
 import { PostType } from '../posts'
 
 async function fetchPostById(postId: string) {
@@ -12,6 +13,8 @@ async function fetchPostById(postId: string) {
   )
 
   if (res.status === 404) throw notFound()
+  // Trigger a not-found on a specific route
+  // if (res.status === 404) throw RootRoute.notFound()
 
   return res.json()
 }
