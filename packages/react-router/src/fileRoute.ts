@@ -10,6 +10,7 @@ import {
   RouteOptions,
   UpdatableRouteOptions,
   Route,
+  createRoute,
   RootRouteId,
   TrimPathLeft,
   RouteConstraints,
