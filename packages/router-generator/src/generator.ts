@@ -77,6 +77,21 @@ async function getRouteNodes(config: Config) {
           let isLoader = routePath?.endsWith('/loader')
           let isLazy = routePath?.endsWith('/lazy')
 
+          ;(
+            [
+              [isComponent, 'component'],
+              [isErrorComponent, 'errorComponent'],
+              [isPendingComponent, 'pendingComponent'],
+              [isLoader, 'loader'],
+            ] as const
+          ).forEach(([isType, type]) => {
+            if (isType) {
+              console.warn(
+                `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
+              )
+            }
+          })
+
           routePath = routePath?.replace(
             /\/(component|errorComponent|pendingComponent|loader|route|lazy)$/,
             '',
@@ -106,10 +121,6 @@ async function getRouteNodes(config: Config) {
 
     return routeNodes
   }
-
-  await recurse('./')
-
-  return routeNodes
 }
 
 let first = false

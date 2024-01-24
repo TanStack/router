@@ -2,7 +2,7 @@ import * as React from 'react'
 import { flushSync } from 'react-dom'
 import {
   createFileRoute,
-  createRouteApi,
+  getRouteApi,
   useNavigate,
 } from '@tanstack/react-router'
 import { z } from 'zod'
@@ -16,7 +16,7 @@ export const Route = createFileRoute('/login')({
   component: LoginComponent,
 })
 
-const routeApi = createRouteApi('/login')
+const routeApi = getRouteApi('/login')
 
 function LoginComponent() {
   const auth = useAuth()

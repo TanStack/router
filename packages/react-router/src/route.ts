@@ -474,7 +474,7 @@ export type RouteConstraints = {
 //   }
 // }
 
-export function createRouteApi<
+export function getRouteApi<
   TId extends RouteIds<RegisteredRouter['routeTree']>,
   TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
   TFullSearchSchema extends Record<
@@ -498,7 +498,7 @@ export function createRouteApi<
 }
 
 /**
- * @deprecated Use the `createRouteApi` function instead.
+ * @deprecated Use the `getRouteApi` function instead.
  */
 export class RouteApi<
   TId extends RouteIds<RegisteredRouter['routeTree']>,

@@ -5,7 +5,7 @@ title: RouteApi class
 
 ## ⚠️ Deprecated
 
-The `RouteApi` class has been deprecated in favor of the `createRouteApi` function
+The `RouteApi` class has been deprecated in favor of the `getRouteApi` function
 
 The `RouteApi` class provides type-safe version of common hooks like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch` that are pre-bound to a specific route ID and corresponding registered route types.
 

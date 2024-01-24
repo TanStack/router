@@ -384,12 +384,12 @@ const route = createRoute({
 })
 
 // In my-component.tsx
-import { createRouteApi } from '@tanstack/react-router'
+import { getRouteApi } from '@tanstack/react-router'
 
-const routeApi = createRouteApi('/my-route')
+const route = getRouteApi('/my-route')
 
 export function MyComponent() {
-  const loaderData = routeApi.useLoaderData()
+  const loaderData = route.useLoaderData()
   //    ^? { foo: string }
 
   return <div>...</div>

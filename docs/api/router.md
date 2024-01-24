@@ -4,11 +4,11 @@ title: Router API
 ---
 
 - Functions
-  - [createRootRoute Function](./api/router/RootRouteClass)
-  - [createRoute Function](./api/router/RouteClass)
-  - [createRouter Function](./api/router/RouterClass)
-  - [createFileRoute Function](./api/router/FileRouteClass)
-  - [createRouteApi Function](./api/router/RouteApiClass)
+  - [createRootRoute Function](./api/router/createRootRouteFunction)
+  - [createRoute Function](./api/router/createRouteFunction)
+  - [createRouter Function](./api/router/createRouterFunction)
+  - [createFileRoute Function](./api/router/createFileRouteFunction)
+  - [getRouteApi Function](./api/router/getRouteApiFunction)
   - [lazyRouteComponent Function](./api/router/lazyRouteComponentFunction)
   - [Defer Function](./api/router/deferFunction)
   - [Redirect Function](./api/router/redirectFunction)
