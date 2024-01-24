@@ -152,6 +152,7 @@ export function Match({ matchId }: { matchId: string }) {
   const ResolvedNotFoundBoundary = routeNotFoundComponent
     ? CatchNotFound
     : SafeFragment
+
   return (
     <matchContext.Provider value={matchId}>
       <ResolvedSuspenseBoundary fallback={pendingElement}>
@@ -220,7 +221,6 @@ function MatchInner({
       'Route matched with notFoundError should have a notFoundComponent',
     )
 
-    // TODO: Support existing notFoundRoute?
     return <route.options.notFoundComponent data={match.notFoundError} />
   }
 

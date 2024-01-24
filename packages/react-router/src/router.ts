@@ -133,6 +133,11 @@ export interface RouterOptions<
   unmaskOnReload?: boolean
   Wrap?: (props: { children: any }) => JSX.Element
   InnerWrap?: (props: { children: any }) => JSX.Element
+  /**
+   * @deprecated
+   * Use `notFoundComponent` instead.
+   * See https://tanstack.com/router/v1/docs/guide/not-found-errors#migrating-from-notfoundroute for more info.
+   */
   notFoundRoute?: AnyRoute
   errorSerializer?: RouterErrorSerializer<TSerializedError>
   globalNotFound?: RouteComponent
@@ -309,6 +314,12 @@ export class Router<
       TSerializedError
     >,
   ) => {
+    if (newOptions.notFoundRoute) {
+      console.warn(
+        'The notFoundRoute API is deprecated and will be removed in the next major version. See https://tanstack.com/router/v1/docs/guide/not-found-errors#migrating-from-notfoundroute for more info.',
+      )
+    }
+
     const previousOptions = this.options
     this.options = {
       ...this.options,
@@ -602,8 +613,7 @@ export class Router<
         : // Or if we didn't find a route and we have left over path
           trimPathRight(pathname)
     ) {
-      // TODO: Deprecate notFoundRoute in favor of notFoundComponent in route __root__
-      // If the user has defined a 404 route, use it
+      // If the user has defined an (old) 404 route, use it
       if (this.options.notFoundRoute) {
         matchedRoutes.push(this.options.notFoundRoute)
       } else {
