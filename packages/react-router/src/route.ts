@@ -558,6 +558,10 @@ export class RouteApi<
   }): TSelected => {
     return useLoaderData({ ...opts, from: this.id } as any)
   }
+
+  notFound = (opts?: NotFoundError) => {
+    return notFound({ routeId: this.id as string, ...opts })
+  }
 }
 
 /**
