@@ -42,7 +42,8 @@ Create the following files:
 ### `src/routes/__root.tsx`
 
 ```tsx
-import { RootRoute } from '@tanstack/react-router'
+import { RootRoute, Link, Outlet } from '@tanstack/react-router'
+import { TanStackRouterDevtools } from "@tanstack/router-devtools"
 
 export const Route = new RootRoute({
   component: () => (
