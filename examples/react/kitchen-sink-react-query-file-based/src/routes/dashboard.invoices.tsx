@@ -1,10 +1,15 @@
 import * as React from 'react'
-import { FileRoute, Link, MatchRoute, Outlet } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  MatchRoute,
+  Outlet,
+} from '@tanstack/react-router'
 import { Spinner } from '../components/Spinner'
 import { invoicesQueryOptions } from '../utils/queryOptions'
 import { useSuspenseQuery } from '@tanstack/react-query'
 
-export const Route = new FileRoute('/dashboard/invoices').createRoute({
+export const Route = createFileRoute('/dashboard/invoices')({
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
   component: InvoicesComponent,

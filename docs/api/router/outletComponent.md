@@ -3,7 +3,7 @@ id: outletComponent
 title: Outlet component
 ---
 
-The `Outlet` component is a component that can be used to render the child routes of a parent route. It is used to create nested route trees.
+The `Outlet` component is a component that can be used to render the next child route of a parent route.
 
 ### Props
 

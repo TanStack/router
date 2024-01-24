@@ -22,7 +22,7 @@ The `rootRouteWithContext` function is a helper function that can be used to cre
 ### Examples
 
 ```tsx
-import { rootRouteWithContext } from '@tanstack/react-router'
+import { rootRouteWithContext, createRouter } from '@tanstack/react-router'
 import { QueryClient } from '@tanstack/react-query'
 
 const rootRoute = rootRouteWithContext<{ queryClient: QueryClient }>()({

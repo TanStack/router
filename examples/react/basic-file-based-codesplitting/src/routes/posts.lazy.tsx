@@ -1,10 +1,12 @@
 import * as React from 'react'
-import { Link, Outlet, RouteApi } from '@tanstack/react-router'
+import { Link, Outlet, createLazyFileRoute } from '@tanstack/react-router'
 
-const api = new RouteApi({ id: '/posts' })
+export const Route = createLazyFileRoute('/posts')({
+  component: PostsComponent,
+})
 
-export const component = function PostsComponent() {
-  const posts = api.useLoaderData()
+function PostsComponent() {
+  const posts = Route.useLoaderData()
 
   return (
     <div className="p-2 flex gap-2">

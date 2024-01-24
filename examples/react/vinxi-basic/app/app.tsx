@@ -1,10 +1,8 @@
-import React from 'react'
-
 import './style.css'
-import { Router, RouterProvider } from '@tanstack/react-router'
+import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
-const router = new Router({
+const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
 })

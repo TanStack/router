@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { FileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = new FileRoute('/about').createRoute({
+export const Route = createFileRoute('/about')({
   component: AboutComponent,
 })
 

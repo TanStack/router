@@ -7,9 +7,9 @@ title: Creating a Router
 When you're ready to start using your router, you'll need to create a new `Router` instance. The router instance is the core brains of TanStack Router and is responsible for managing the route tree, matching routes, and coordinating navigations and route transitions. It also serves as a place to configure router-wide settings.
 
 ```tsx
-import { Router } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 
-const router = new Router({
+const router = createRouter({
   // ...
 })
 ```
@@ -72,7 +72,7 @@ const notFoundRoute = new NotFoundRoute({
   component: () => '404 Not Found',
 })
 
-const router = new Router({
+const router = createRouter({
   routeTree,
   notFoundRoute,
 })
@@ -85,7 +85,7 @@ If You used code-based routing, then you'll need to create a `NotFoundRoute` wit
 ```tsx
 import { NotFoundRoute } from '@tanstack/react-router'
 
-const rootRoute = new RootRoute()
+const rootRoute = createRootRoute()
 
 // ...
 
@@ -94,7 +94,7 @@ const notFoundRoute = new NotFoundRoute({
   component: () => '404 Not Found',
 })
 
-const router = new Router({
+const router = createRouter({
   routeTree,
   notFoundRoute,
 })

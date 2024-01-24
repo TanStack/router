@@ -1,10 +1,14 @@
 import * as React from 'react'
-import { Link, RouteApi } from '@tanstack/react-router'
+import { Link, createLazyFileRoute } from '@tanstack/react-router'
+import { PostErrorComponent } from './posts.$postId/lazy'
 
-const api = new RouteApi({ id: '/posts/$postId/deep' })
+export const Route = createLazyFileRoute('/posts/$postId/deep')({
+  component: PostDeepComponent,
+  errorComponent: PostErrorComponent,
+})
 
-export const component = function PostDeepComponent() {
-  const post = api.useLoaderData()
+function PostDeepComponent() {
+  const post = Route.useLoaderData()
 
   return (
     <div className="p-2 space-y-2">

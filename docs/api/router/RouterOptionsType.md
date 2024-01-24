@@ -138,9 +138,9 @@ The `RouterOptions` type contains all of the options that can be used to configu
 **Example**
 
 ```tsx
-import { Router } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 
-const router = new Router({
+const router = createRouter({
   // ...
   Wrap: ({ children }) => {
     return <MyContext.Provider value={myContext}>{children}</MyContext>
@@ -157,9 +157,9 @@ const router = new Router({
 **Example**
 
 ```tsx
-import { Router } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 
-const router = new Router({
+const router = createRouter({
   // ...
   InnerWrap: ({ children }) => {
     const routerState = useRouterState()
@@ -192,10 +192,12 @@ The `RouterErrorSerializer` type contains methods for serializing and deserializ
 ### Properties
 
 #### `serialize`
+
 - Type: `(err: unknown) => TSerializedError`
 - This method is called to define how errors are serialized when they are stored in the router's dehydrated state.
 
 #### `deserialize`
+
 - Type: `(err: TSerializedError) => unknown`
 - This method is called to define how errors are deserialized from the router's dehydrated state.
 

@@ -1,16 +1,14 @@
 import * as React from 'react'
-import { FileRoute, useRouter } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { z } from 'zod'
 
-export const Route = new FileRoute('/login')
-  .createRoute({
-    validateSearch: z.object({
-      redirect: z.string().optional(),
-    }),
-  })
-  .update({
-    component: LoginComponent,
-  })
+export const Route = createFileRoute('/login')({
+  validateSearch: z.object({
+    redirect: z.string().optional(),
+  }),
+}).update({
+  component: LoginComponent,
+})
 
 function LoginComponent() {
   const router = useRouter()

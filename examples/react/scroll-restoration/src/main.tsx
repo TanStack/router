@@ -1,19 +1,19 @@
-import React, { StrictMode, useId } from 'react'
+import React, { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
   Link,
-  Router,
-  Route,
-  RootRoute,
+  createRouter,
   ScrollRestoration,
   useElementScrollRestoration,
+  createRootRoute,
+  createRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { useVirtualizer } from '@tanstack/react-virtual'
 
-const rootRoute = new RootRoute({
+const rootRoute = createRootRoute({
   component: RootComponent,
 })
 
@@ -41,7 +41,7 @@ function RootComponent() {
   )
 }
 
-const indexRoute = new Route({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   loader: () => new Promise((r) => setTimeout(r, 500)),
@@ -63,7 +63,7 @@ function IndexComponent() {
   )
 }
 
-const aboutRoute = new Route({
+const aboutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/about',
   loader: () => new Promise((r) => setTimeout(r, 500)),
@@ -85,7 +85,7 @@ function AboutComponent() {
   )
 }
 
-const byElementRoute = new Route({
+const byElementRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/by-element',
   loader: () => new Promise((r) => setTimeout(r, 500)),
@@ -186,7 +186,7 @@ const routeTree = rootRoute.addChildren([
   byElementRoute,
 ])
 
-const router = new Router({ routeTree, defaultPreload: 'intent' })
+const router = createRouter({ routeTree, defaultPreload: 'intent' })
 
 declare module '@tanstack/react-router' {
   interface Register {

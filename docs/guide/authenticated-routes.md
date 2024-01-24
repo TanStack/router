@@ -31,7 +31,7 @@ While not required, some authentication flows require redirecting to a login pag
 
 ```tsx
 // src/routes/_authenticated.tsx
-export const Route = new FileRoute('/_authenticated').createRoute({
+export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ location }) => {
     if (!isAuthenticated()) {
       throw redirect({
@@ -62,7 +62,7 @@ Some applications choose to not redirect users to a login page, and instead keep
 
 ```tsx
 // src/routes/authenticated.tsx
-export const Route = new FileRoute('/_authenticated').createRoute({
+export const Route = createFileRoute('/_authenticated')({
   component: () => {
     if (!isAuthenticated()) {
       return <Login />
@@ -94,32 +94,32 @@ interface MyRouterContext {
 }
 
 export const Route = rootRouteWithContext<MyRouterContext>()({
-  component: () => <Outlet />
-});
+  component: () => <Outlet />,
+})
 ```
 
 - `src/router.tsx`
 
 ```tsx
-import { routeTree } from './routeTree.gen';
+import { routeTree } from './routeTree.gen'
 
-export const router = new Router({
+export const router = createRouter({
   routeTree,
   context: {
     // auth will initially be undefined
     // We'll be passing down the auth state from within a React component
     auth: undefined!,
   },
-});
+})
 ```
 
 - `src/App.tsx`
 
 ```tsx
-import { router } from './router';
+import { router } from './router'
 
 function InnerApp() {
-  const auth = useAuth();
+  const auth = useAuth()
   return <RouterProvider router={router} context={{ auth }} />
 }
 
@@ -137,9 +137,9 @@ Then in the authenticated route, you can check the auth state using the `beforeL
 - `src/routes/dashboard.route.tsx`
 
 ```tsx
-import { FileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-export const Route = new FileRoute('/dashboard').createRoute({
+export const Route = createFileRoute('/dashboard')({
   beforeLoad: ({ context, location }) => {
     if (!context.auth.isAuthenticated) {
       throw redirect({
@@ -149,10 +149,10 @@ export const Route = new FileRoute('/dashboard').createRoute({
         },
       })
     }
-  }
-});
+  },
+})
 ```
 
-You can *optionally*, also use the [Non-Redirected Authentication](./guide/authenticated-routes#non-redirected-authentication) approach to show a login form instead of calling a **redirect**.
+You can _optionally_, also use the [Non-Redirected Authentication](./guide/authenticated-routes#non-redirected-authentication) approach to show a login form instead of calling a **redirect**.
 
 This approach can also be used in conjunction with Layout or Parent Routes to protect all routes under a specific layout.

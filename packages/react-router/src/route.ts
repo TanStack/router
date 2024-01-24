@@ -9,15 +9,9 @@ import { RouteById, RouteIds, RoutePaths } from './routeInfo'
 import { AnyRouter, RegisteredRouter } from './router'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
-import {
-  Assign,
-  Expand,
-  IsAny,
-  NoInfer,
-  PickRequired,
-  UnionToIntersection,
-} from './utils'
+import { Assign, Expand, IsAny, NoInfer, UnionToIntersection } from './utils'
 import { BuildLocationFn, NavigateFn } from './RouterProvider'
+import { LazyRoute } from '.'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -81,7 +75,7 @@ export type RouteOptions<
   TLoaderDeps,
   TLoaderData
 > &
-  UpdatableRouteOptions<NoInfer<TFullSearchSchema>>
+  UpdatableRouteOptions<NoInfer<TFullSearchSchema>, NoInfer<TLoaderData>>
 
 export type ParamsFallback<
   TPath extends string,
@@ -178,6 +172,7 @@ type BeforeLoadFn<
 
 export type UpdatableRouteOptions<
   TFullSearchSchema extends Record<string, any>,
+  TLoaderData extends any,
 > = {
   // test?: (args: TAllContext) => void
   // If true, this route will be matched as case-sensitive
@@ -188,6 +183,7 @@ export type UpdatableRouteOptions<
   component?: RouteComponent
   errorComponent?: false | null | ErrorRouteComponent
   pendingComponent?: RouteComponent
+  lazy?: () => Promise<LazyRoute<any>>
   pendingMs?: number
   pendingMinMs?: number
   staleTime?: number
@@ -206,7 +202,29 @@ export type UpdatableRouteOptions<
   onEnter?: (match: AnyRouteMatch) => void
   onStay?: (match: AnyRouteMatch) => void
   onLeave?: (match: AnyRouteMatch) => void
+  meta?: (ctx: { loaderData: TLoaderData }) => JSX.IntrinsicElements['meta'][]
+  links?: () => JSX.IntrinsicElements['link'][]
+  scripts?: () => JSX.IntrinsicElements['script'][]
 }
+
+export type MetaDescriptor =
+  | { charSet: 'utf-8' }
+  | { title: string }
+  | { name: string; content: string }
+  | { property: string; content: string }
+  | { httpEquiv: string; content: string }
+  | { 'script:ld+json': LdJsonObject }
+  | { tagName: 'meta' | 'link'; [name: string]: string }
+  | { [name: string]: unknown }
+
+type LdJsonObject = { [Key in string]: LdJsonValue } & {
+  [Key in string]?: LdJsonValue | undefined
+}
+type LdJsonArray = LdJsonValue[] | readonly LdJsonValue[]
+type LdJsonPrimitive = string | number | boolean | null
+type LdJsonValue = LdJsonPrimitive | LdJsonObject | LdJsonArray
+
+export type RouteLinkEntry = {}
 
 export type ParseParamsOption<TPath extends string, TParams> = ParseParamsFn<
   TPath,
@@ -333,11 +351,12 @@ export type MergeFromFromParent<T, U> = IsAny<T, U, T & U>
 export type ResolveAllParams<
   TParentRoute extends AnyRoute,
   TParams extends AnyPathParams,
-> = Record<never, string> extends TParentRoute['types']['allParams']
-  ? TParams
-  : Expand<
-      UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
-    >
+> =
+  Record<never, string> extends TParentRoute['types']['allParams']
+    ? TParams
+    : Expand<
+        UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
+      >
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute
@@ -455,6 +474,32 @@ export type RouteConstraints = {
 //   }
 // }
 
+export function createRouteApi<
+  TId extends RouteIds<RegisteredRouter['routeTree']>,
+  TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
+  TFullSearchSchema extends Record<
+    string,
+    any
+  > = TRoute['types']['fullSearchSchema'],
+  TAllParams extends AnyPathParams = TRoute['types']['allParams'],
+  TAllContext extends Record<string, any> = TRoute['types']['allContext'],
+  TLoaderDeps extends Record<string, any> = TRoute['types']['loaderDeps'],
+  TLoaderData extends any = TRoute['types']['loaderData'],
+>(id: TId) {
+  return new RouteApi<
+    TId,
+    TRoute,
+    TFullSearchSchema,
+    TAllParams,
+    TAllContext,
+    TLoaderDeps,
+    TLoaderData
+  >({ id })
+}
+
+/**
+ * @deprecated Use the `createRouteApi` function instead.
+ */
 export class RouteApi<
   TId extends RouteIds<RegisteredRouter['routeTree']>,
   TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
@@ -513,6 +558,9 @@ export class RouteApi<
   }
 }
 
+/**
+ * @deprecated Use the `createRoute` function instead.
+ */
 export class Route<
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
   TPath extends RouteConstraints['TPath'] = '/',
@@ -792,7 +840,7 @@ export class Route<
     >
   }
 
-  update = (options: UpdatableRouteOptions<TFullSearchSchema>) => {
+  update = (options: UpdatableRouteOptions<TFullSearchSchema, TLoaderData>) => {
     Object.assign(this.options, options)
     return this
   }
@@ -838,6 +886,103 @@ export class Route<
   }
 }
 
+export function createRoute<
+  TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
+  TPath extends RouteConstraints['TPath'] = '/',
+  TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
+    TParentRoute,
+    TPath
+  >,
+  TCustomId extends RouteConstraints['TCustomId'] = string,
+  TId extends RouteConstraints['TId'] = ResolveId<
+    TParentRoute,
+    TCustomId,
+    TPath
+  >,
+  TSearchSchemaInput extends RouteConstraints['TSearchSchema'] = {},
+  TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
+  TSearchSchemaUsed extends Record<
+    string,
+    any
+  > = TSearchSchemaInput extends SearchSchemaInput
+    ? Omit<TSearchSchemaInput, keyof SearchSchemaInput>
+    : TSearchSchema,
+  TFullSearchSchemaInput extends Record<
+    string,
+    any
+  > = ResolveFullSearchSchemaInput<TParentRoute, TSearchSchemaUsed>,
+  TFullSearchSchema extends
+    RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
+    TParentRoute,
+    TSearchSchema
+  >,
+  TParams extends RouteConstraints['TParams'] = Expand<
+    Record<ParsePathParams<TPath>, string>
+  >,
+  TAllParams extends RouteConstraints['TAllParams'] = ResolveAllParams<
+    TParentRoute,
+    TParams
+  >,
+  TRouteContextReturn extends RouteConstraints['TRouteContext'] = RouteContext,
+  TRouteContext extends RouteConstraints['TRouteContext'] = [
+    TRouteContextReturn,
+  ] extends [never]
+    ? RouteContext
+    : TRouteContextReturn,
+  TAllContext extends Expand<
+    Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
+  > = Expand<
+    Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
+  >,
+  TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+  TLoaderDeps extends Record<string, any> = {},
+  TLoaderData extends any = unknown,
+  TChildren extends RouteConstraints['TChildren'] = unknown,
+  TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
+>(
+  options: RouteOptions<
+    TParentRoute,
+    TCustomId,
+    TPath,
+    TSearchSchemaInput,
+    TSearchSchema,
+    TSearchSchemaUsed,
+    TFullSearchSchemaInput,
+    TFullSearchSchema,
+    TParams,
+    TAllParams,
+    TRouteContextReturn,
+    TRouteContext,
+    TRouterContext,
+    TAllContext,
+    TLoaderDeps,
+    TLoaderData
+  >,
+) {
+  return new Route<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchSchemaInput,
+    TSearchSchema,
+    TSearchSchemaUsed,
+    TFullSearchSchemaInput,
+    TFullSearchSchema,
+    TParams,
+    TAllParams,
+    TRouteContextReturn,
+    TRouteContext,
+    TAllContext,
+    TRouterContext,
+    TLoaderDeps,
+    TLoaderData,
+    TChildren,
+    TRouteTree
+  >(options)
+}
+
 export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any, any>
 
 export function rootRouteWithContext<TRouterContext extends {}>() {
@@ -878,15 +1023,15 @@ export function rootRouteWithContext<TRouterContext extends {}>() {
       | 'parseParams'
       | 'stringifyParams'
     >,
-  ): RootRoute<
-    TSearchSchemaInput,
-    TSearchSchema,
-    TSearchSchemaUsed,
-    TRouteContextReturn,
-    TRouteContext,
-    TRouterContext
-  > => {
-    return new RootRoute(options) as any
+  ) => {
+    return createRootRoute<
+      TSearchSchemaInput,
+      TSearchSchema,
+      TSearchSchemaUsed,
+      TRouteContextReturn,
+      TRouteContext,
+      TRouterContext
+    >(options as any)
   }
 }
 
@@ -894,6 +1039,9 @@ export type RootSearchSchema = {
   __TRootSearchSchema__: '__TRootSearchSchema__'
 }
 
+/**
+ * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
+ */
 export class RootRoute<
   TSearchSchemaInput extends Record<string, any> = RootSearchSchema,
   TSearchSchema extends Record<string, any> = RootSearchSchema,
@@ -959,6 +1107,57 @@ export class RootRoute<
   }
 }
 
+export function createRootRoute<
+  TSearchSchemaInput extends Record<string, any> = RootSearchSchema,
+  TSearchSchema extends Record<string, any> = RootSearchSchema,
+  TSearchSchemaUsed extends Record<string, any> = RootSearchSchema,
+  TRouteContextReturn extends RouteContext = RouteContext,
+  TRouteContext extends RouteContext = [TRouteContextReturn] extends [never]
+    ? RouteContext
+    : TRouteContextReturn,
+  TRouterContext extends {} = {},
+  TLoaderDeps extends Record<string, any> = {},
+  TLoaderData extends any = unknown,
+>(
+  options?: Omit<
+    RouteOptions<
+      AnyRoute, // TParentRoute
+      RootRouteId, // TCustomId
+      '', // TPath
+      TSearchSchemaInput, // TSearchSchemaInput
+      TSearchSchema, // TSearchSchema
+      TSearchSchemaUsed,
+      TSearchSchemaUsed, // TFullSearchSchemaInput
+      TSearchSchema, // TFullSearchSchema
+      {}, // TParams
+      {}, // TAllParams
+      TRouteContextReturn, // TRouteContextReturn
+      TRouteContext, // TRouteContext
+      TRouterContext,
+      Assign<TRouterContext, TRouteContext>, // TAllContext
+      TLoaderDeps,
+      TLoaderData
+    >,
+    | 'path'
+    | 'id'
+    | 'getParentRoute'
+    | 'caseSensitive'
+    | 'parseParams'
+    | 'stringifyParams'
+  >,
+) {
+  return new RootRoute<
+    TSearchSchemaInput,
+    TSearchSchema,
+    TSearchSchemaUsed,
+    TRouteContextReturn,
+    TRouteContext,
+    TRouterContext,
+    TLoaderDeps,
+    TLoaderData
+  >(options)
+}
+
 export type ResolveFullPath<
   TParentRoute extends AnyRoute,
   TPath extends string,
@@ -1019,7 +1218,15 @@ export function createRouteMask<
   return opts as any
 }
 
+/**
+ * @deprecated Use `ErrorComponentProps` instead.
+ */
 export type ErrorRouteProps = {
+  error: unknown
+  info: { componentStack: string }
+}
+
+export type ErrorComponentProps = {
   error: unknown
   info: { componentStack: string }
 }
@@ -1038,7 +1245,7 @@ export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
 export type RouteComponent<TProps = any> = SyncRouteComponent<TProps> &
   AsyncRouteComponent<TProps>
 
-export type ErrorRouteComponent = RouteComponent<ErrorRouteProps>
+export type ErrorRouteComponent = RouteComponent<ErrorComponentProps>
 
 export class NotFoundRoute<
   TParentRoute extends AnyRootRoute,

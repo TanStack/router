@@ -2,24 +2,50 @@
 title: Code Splitting
 ---
 
-Code splitting is a powerful technique for improving the bundle size and load performance of an application.
+Code splitting and lazy loading is a powerful technique for improving the bundle size and load performance of an application.
 
 - Reduces the amount of code that needs to be loaded on initial page load
 - Code is loaded on-demand when it is needed
 - Results in more chunks that are smaller in size that can be cached more easily by the browser.
 
-## Easier Code Splitting with File-based Routing
+## How does TanStack Router split code?
 
-If you're using the recommended [File-Based Routing](../guide/route-trees.md) approach, code splitting is **as easy as moving your code into a separate file with a specific suffix and corresponding export**.
+TanStack Router separates code into two categories:
 
-Here is a list of the supported route options that can be code-split with their corresponding file-extension and export name:
+- **Critical Route Configuration** - The code that is required to render the current route and kick off the data loading process as early as possible.
 
-| Route Property     | Suffix                  | Named Export       |
-| ------------------ | ----------------------- | ------------------ |
-| `component`        | `.component.tsx`        | `component`        |
-| `errorComponent`   | `.errorComponent.tsx`   | `errorComponent`   |
-| `pendingComponent` | `.pendingComponent.tsx` | `pendingComponent` |
-| `loader`           | `.loader.ts`            | `loader`           |
+  - Path Parsing/Serialization
+  - Search Param Validation
+  - Loaders, Before Load
+  - Route Context
+  - Meta
+  - Links
+  - Scripts
+  - Styles
+  - All other route configuration not listed below
+
+- **Non-Critical/Lazy Route Configuration** - The code that is not required to match the route, and can be loaded on-demand.
+  - Route Component
+  - Error Component
+  - Pending Component
+
+> 🧠 **Why is the loader not split?**
+>
+> - The loader is already an asynchronous boundary, so you pay double to both get the chunk _and_ wait for the loader to execute.
+> - Categorically, it is less likely to contribute to a large bundle size than a component.
+> - The loader is one of the most important preloadable assets for a route, especially if you're using a default preload intent, like hovering over a link, so it's important for the loader to be available without any additional async overhead.
+
+## Using the `.lazy.tsx` suffix
+
+If you're using the recommended [File-Based Routing](../guide/route-trees.md) approach, code splitting is **as easy as moving your code into a separate file with a `.lazy.tsx` suffix** and use the `createLazyFileRoute` function instead of the `FileRoute` class or `createFileRoute` function.
+
+Here are the options currently supported by the `createLazyFileRoute` function:
+
+| Export Name        | Description                                                           |
+| ------------------ | --------------------------------------------------------------------- |
+| `component`        | The component to render for the route.                                |
+| `errorComponent`   | The component to render when an error occurs while loading the route. |
+| `pendingComponent` | The component to render while the route is loading.                   |
 
 ### Exceptions
 
@@ -27,98 +53,59 @@ Here is a list of the supported route options that can be code-split with their 
 
 > ❓ Why can't I keep all of my route code in a single file? Can't you just code split that file?
 >
-> It's true, most popular frameworks support automatic code-extraction, but for now, TanStack Router is going to keep things simple.
+> It's true, most popular frameworks support automatic code-extraction, but for now, TanStack Router is going to keep things simple by not getting into the business of parsing and extracting code from files. This also allows you to use any bundler you want, via the CLI, without having to worry about whether or not it supports our code extraction approach.
 >
-> In practice, we've found that **_splitting_ a file into multiple files is the easy part**. The **harder part by far is wiring it all back together properly using lower-level lazy-loading APIs (not to mention doing that in a type-safe way)**.
+> In practice, we've found that **_splitting_ a file into 2 parts (critical and lazy) is the easy part**. The **harder part by far is wiring it all back together properly using lower-level lazy-loading APIs (not to mention doing that in a type-safe way)**.
 >
 > By keeping the splitting process manual and adhering to a simple set of conventions, there's less room for error and less cognitive overhead when working with code splitting.
 
-### Example: Splitting a route's component
+### Example
 
 #### Before
 
-```tsx
-// posts.$postId.tsx
+- posts.tsx
 
-import { Route } from '@tanstack/react-router'
-import { fetchPosts } from './api'
+  ```tsx
+  import { createFileRoute } from '@tanstack/react-router'
+  import { fetchPosts } from './api'
 
-export const Route = new Route({
-  loader: fetchPosts,
-  component: Posts,
-})
+  export const Route = createFileRoute('/posts')({
+    loader: fetchPosts,
+    component: Posts,
+  })
 
-function Posts () {
-  ...
-}
-```
-
-#### After
-
-```tsx
-// posts.tsx
-
-import { Route } from '@tanstack/react-router'
-import { fetchPosts } from './api'
-
-export const Route = new Route({
-  loader: fetchPosts,
-})
-```
-
-```tsx
-// posts.component.tsx
-
-export const component = function Posts () {
-  ...
-}
-```
-
-### Example: Splitting a route's loader
-
-If you have a route file named `posts.tsx`, you would create a new file named `posts.loader.ts` and move the loader into that file.
-
-#### Before
-
-```tsx
-// posts.tsx
-
-import { Route } from '@tanstack/react-router'
-import { fetchPosts } from './api'
-
-export const Route = new Route({
-  loader: fetchPosts,
-  component: Posts,
-})
-
-function Posts () {
-  ...
-}
-```
+  function Posts () {
+    ...
+  }
+  ```
 
 #### After
 
-```tsx
-// posts.tsx
+- posts.tsx
 
-import { Route } from '@tanstack/react-router'
+  ```tsx
+  import { createFileRoute } from '@tanstack/react-router'
+  import { fetchPosts } from './api'
 
-export const Route = new Route({
-  component: Posts,
-})
+  export const Route = createFileRoute('/posts')({
+    loader: fetchPosts,
+  })
+  ```
 
-function Posts () {
-  ...
-}
-```
+- posts.lazy.tsx
 
-```tsx
-// posts.loader.ts
+  ```tsx
 
-import { fetchPosts } from './api'
+  import { createLazyFileRoute } from '@tanstack/react-router'
 
-export const loader = fetchPosts
-```
+  export const Route = createLazyFileRoute('/posts')({
+    component: Posts,
+  })
+
+  function Posts () {
+    ...
+  }
+  ```
 
 ### Encapsulating a route's files into a directory
 
@@ -131,17 +118,13 @@ For example, if you have a route file named `posts.tsx`, you would create a new 
 #### Before
 
 - `posts.tsx`
-- `posts.component.tsx`
-- `posts.errorComponent.tsx`
-- `posts.loader.ts`
+- `posts.lazy.tsx`
 
 #### After
 
 - `posts`
   - `route.tsx`
-  - `component.tsx`
-  - `errorComponent.tsx`
-  - `loader.ts`
+  - `route.lazy.tsx`
 
 ### Virtual Routes
 
@@ -152,22 +135,44 @@ You might run into a situation where you end up splitting out everything from a 
 - `posts.tsx`
 
   ```tsx
-  import { Route } from '@tanstack/react-router'
+  import { createFileRoute } from '@tanstack/react-router'
 
-  export const Route = new Route({
+  export const Route = createFileRoute('/posts')({
     // Hello?
   })
   ```
 
-- `posts.component.tsx`
-- `posts.loader.ts`
+- `posts.lazy.tsx`
+
+  ```tsx
+  import { createLazyFileRoute } from '@tanstack/react-router'
+
+  export const Route = createLazyFileRoute('/posts')({
+    component: Posts,
+  })
+
+  function Posts() {
+    // ...
+  }
+  ```
 
 In this case, actually **remove the route file entirely**! The CLI will automatically generate a virtual route for you to serve as an anchor for your code split files. This virtual route will live directly in the generated route tree file.
 
 #### After
 
-- `posts.component.tsx`
-- `posts.loader.ts`
+- `posts.lazy.tsx`
+
+  ```tsx
+  import { createLazyFileRoute } from '@tanstack/react-router'
+
+  export const Route = createLazyFileRoute('/posts')({
+    component: Posts,
+  })
+
+  function Posts() {
+    // ...
+  }
+  ```
 
 Tada! 🎉
 
@@ -273,7 +278,7 @@ posts
   Posts.tsx
 ```
 
-## Using `lazyRouteComponent`
+## Manually Splitting Using `lazyRouteComponent`
 
 Synchronous components are usually defined as functions and passed to the `route.component` option:
 
@@ -282,7 +287,7 @@ function MyComponent() {
   return <div>My Component</div>
 }
 
-const route = new Route({
+const route = createRoute({
   component: MyComponent,
 })
 ```
@@ -298,7 +303,7 @@ MyComponent.preload = async () => {
   await import('./MyComponent')
 }
 
-const route = new Route({
+const route = createRoute({
   component: MyComponent,
 })
 ```
@@ -308,7 +313,7 @@ This is a bit noisy and repetitive, so TanStack Router exports a `lazyRouteCompo
 ```tsx
 import { lazyRouteComponent } from '@tanstack/react-router'
 
-const route = new Route({
+const route = createRoute({
   component: lazyRouteComponent(() => import('./MyComponent')),
 })
 ```
@@ -320,7 +325,7 @@ The `lazyRouteComponent` wrapper not only implements `React.lazy()` under the ho
 The `lazyRouteComponent` wrapper also allows you to easily load components that are named exports from a module. To use this functionality, provide the name of the exported component as a second argument to the function:
 
 ```tsx
-const route = new Route({
+const route = createRoute({
   component: lazyRouteComponent(() => import('./MyComponent'), 'NamedExport'),
 })
 ```
@@ -329,12 +334,12 @@ const route = new Route({
 
 ## Data Loader Splitting
 
-You may end up with a lot of data loaders that could potentially contribute to a large bundle size. If this is the case, you can code split your data loading logic using the Route's `loader` option. While this process makes it difficult to maintain type-safety with the parameters passed to your loader, you can always use the generic `LoaderContext` type to get most of the way there:
+While data loaders rarely contribute to large bundle sizes themselves, you can code split your data loading logic using the Route's `loader` option. While this process makes it difficult to maintain type-safety with the parameters passed to your loader, you can always use the generic `LoaderContext` type to get most of the way there:
 
 ```tsx
 import { LoaderContext } from '@tanstack/react-router'
 
-const route = new Route({
+const route = createRoute({
   path: '/my-route',
   component: MyComponent,
   loader: (...args) => import('./loader').then((d) => d.loader(...args)),
@@ -351,7 +356,7 @@ Again, this process can feel heavy-handed, so TanStack Router exports another ut
 ```tsx
 import { lazyFn } from '@tanstack/react-router'
 
-const route = new Route({
+const route = createRoute({
   path: '/my-route',
   component: MyComponent,
   loader: lazyFn(() => import('./loader'), 'loader'),
@@ -363,14 +368,14 @@ export const loader = async (context: LoaderContext) => {
 }
 ```
 
-## Accessing Route APIs in Code Split Files with the `RouteApi` class
+## Manually accessing Route APIs in Code Split Files with the `RouteApi` class
 
 As you might have guessed, importing the very route that is already importing the code-split file you're in is a circular dependency, both in types and at runtime. To avoid this, TanStack Router exports a handy `RouteApi` class that you can use to access a route's type-safe APIs:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
+import { createRoute } from '@tanstack/react-router'
 
-const route = new Route({
+const route = createRoute({
   path: '/my-route',
   loader: () => ({
     foo: 'bar',
@@ -379,9 +384,9 @@ const route = new Route({
 })
 
 // In my-component.tsx
-import { RouteApi } from '@tanstack/react-router'
+import { createRouteApi } from '@tanstack/react-router'
 
-const routeApi = new RouteApi({ id: '/my-route' })
+const routeApi = createRouteApi('/my-route')
 
 export function MyComponent() {
   const loaderData = routeApi.useLoaderData()

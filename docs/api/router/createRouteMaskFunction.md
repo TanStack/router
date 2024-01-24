@@ -20,7 +20,7 @@ The `createRouteMask` function is a helper function that can be used to create a
 ### Examples
 
 ```tsx
-import { createRouteMask, Router } from '@tanstack/react-router'
+import { createRouteMask, createRouter } from '@tanstack/react-router'
 
 const photoModalToPhotoMask = createRouteMask({
   routeTree,
@@ -30,7 +30,7 @@ const photoModalToPhotoMask = createRouteMask({
 })
 
 // Set up a Router instance
-const router = new Router({
+const router = createRouter({
   routeTree,
   routeMasks: [photoModalToPhotoMask],
 })

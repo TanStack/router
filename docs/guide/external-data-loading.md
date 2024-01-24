@@ -49,7 +49,7 @@ Here is a naive illustration (don't do this) of using a Route's `loader` option 
 
 let postsCache = []
 
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loader: async () => {
     postsCache = await fetchPosts()
   },
@@ -82,7 +82,7 @@ const postsQueryOptions = queryOptions({
   queryFn: () => fetchPosts,
 })
 
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   // Use the `loader` option to ensure that the data is loaded
   loader: () => queryClient.ensureQueryData(postsQueryOptions),
   component: () => {
@@ -122,7 +122,7 @@ export function createRouter() {
   // always present on both server and client.
   const queryClient = new QueryClient()
 
-  return new Router({
+  return createRouter({
     routeTree,
     // Optionally provide your loaderClient to the router context for
     // convenience (you can provide anything you want to the router
@@ -237,7 +237,7 @@ The `router.dehydrateData` and `router.hydrateData` functions are designed to be
 export function createRouter() {
   const coolCache = createCoolCache()
 
-  const router = new Router({
+  const router = createRouter({
     ...
   })
 

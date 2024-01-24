@@ -3,6 +3,10 @@ id: RootRouteClass
 title: RootRoute class
 ---
 
+## ⚠️ Deprecated
+
+The `RootRoute` class has been deprecated in favor of the `createRoute` function.
+
 The `RootRoute` class extends the `Route` class and can be used to create a root route instance. A root route instance can then be used to create a route tree.
 
 ### `RootRoute` constructor

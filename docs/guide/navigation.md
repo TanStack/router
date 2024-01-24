@@ -173,7 +173,7 @@ By default, all links are absolute unless a `from` route path is provided. This 
 If you want to make a link that is relative to the current route, you can provide a `from` route path:
 
 ```tsx
-const postIdRoute = new Route({
+const postIdRoute = createRoute({
   path: '/blog/post/$postId',
 })
 

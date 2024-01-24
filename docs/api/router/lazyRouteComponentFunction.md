@@ -3,7 +3,9 @@ id: lazyRouteComponentFunction
 title: lazyRouteComponent function
 ---
 
-The `lazyRouteComponent` function can be used to create a code-split route component that can be preloaded using a `component.preload()` method.
+> 🧠 **If you are using file-based routing, it's recommended to use the `createLazyFileRoute` function instead.**
+
+The `lazyRouteComponent` function can be used to create a one-off code-split route component that can be preloaded using a `component.preload()` method.
 
 ### Options
 
@@ -28,7 +30,7 @@ The `lazyRouteComponent` function can be used to create a code-split route compo
 ```tsx
 import { lazyRouteComponent } from '@tanstack/react-router'
 
-const route = new Route({
+const route = createRoute({
   path: '/posts/$postId',
   component: lazyRouteComponent(() => import('./Post')),
 })

@@ -1,15 +1,12 @@
-import React, { StrictMode } from 'react'
+import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  Router,
+  createRouter,
   Link,
-  useParams,
-  RootRoute,
-  Route,
-  RouterContext,
   rootRouteWithContext,
+  createRoute,
 } from '@tanstack/react-router'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -78,7 +75,7 @@ const rootRoute = rootRouteWithContext<{
   },
 })
 
-const indexRoute = new Route({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   loader: () => {
@@ -91,7 +88,7 @@ const indexRoute = new Route({
   },
 })
 
-const postsRoute = new Route({
+const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   errorComponent: () => 'Oh crap!',
@@ -132,7 +129,7 @@ const postsRoute = new Route({
   },
 })
 
-const postsIndexRoute = new Route({
+const postsIndexRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '/',
   component: () => {
@@ -144,7 +141,7 @@ const postsIndexRoute = new Route({
   },
 })
 
-const postRoute = new Route({
+const postRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
   loader: async ({ params: { postId } }) => {
@@ -172,7 +169,7 @@ const routeTree = rootRoute.addChildren([
 ])
 
 // Set up a Router instance
-const router = new Router({
+const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   context: {

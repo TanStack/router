@@ -35,16 +35,18 @@ export default defineConfig({
 Create the following files:
 
 - `src/routes/__root.tsx`
-- `src/routes/index.component.tsx`
-- `src/routes/about.component.tsx`
+- `src/routes/index.lazy.tsx`
+- `src/routes/about.lazy.tsx`
 - `src/app.tsx`
+
+> 🧠 **Route files with the `.lazy.tsx` extension are lazy loaded via separate bundles to keep the main bundle size as lean as possible.**
 
 ### `src/routes/__root.tsx`
 
 ```tsx
-import { RootRoute } from '@tanstack/react-router'
+import { createRootRoute } from '@tanstack/react-router'
 
-export const Route = new RootRoute({
+export const Route = createRootRoute({
   component: () => (
     <>
       <div className="p-2 flex gap-2">
@@ -63,10 +65,14 @@ export const Route = new RootRoute({
 })
 ```
 
-### `src/routes/index.component.tsx`
+### `src/routes/index.lazy.tsx`
 
 ```tsx
-export const component = function Index() {
+export const Route = createLazyFileRoute('/')({
+  component: Index,
+})
+
+function Index() {
   return (
     <div className="p-2">
       <h3>Welcome Home!</h3>
@@ -75,10 +81,14 @@ export const component = function Index() {
 }
 ```
 
-### `src/routes/about.component.tsx`
+### `src/routes/about.lazy.tsx`
 
 ```tsx
-export const component = function About() {
+export const Route = createLazyFileRoute('/about')({
+  component: About,
+})
+
+function About() {
   return <div className="p-2">Hello from About!</div>
 }
 ```
@@ -94,13 +104,13 @@ Import the generated route tree and create a new router instance:
 ```tsx
 import React, { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
-import { RouterProvider, Router } from '@tanstack/react-router'
+import { RouterProvider, createRouter } from '@tanstack/react-router'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
 
 // Create a new router instance
-const router = new Router({ routeTree })
+const router = createRouter({ routeTree })
 
 // Register the router instance for type safety
 declare module '@tanstack/react-router' {
@@ -132,13 +142,13 @@ import {
   Outlet,
   RouterProvider,
   Link,
-  Router,
-  Route,
-  RootRoute,
+  createRouter,
+  createRoute,
+  createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
-const rootRoute = new RootRoute({
+const rootRoute = createRootRoute({
   component: () => (
     <>
       <div className="p-2 flex gap-2">
@@ -156,7 +166,7 @@ const rootRoute = new RootRoute({
   ),
 })
 
-const indexRoute = new Route({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: function Index() {
@@ -168,7 +178,7 @@ const indexRoute = new Route({
   },
 })
 
-const aboutRoute = new Route({
+const aboutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/about',
   component: function About() {
@@ -178,7 +188,7 @@ const aboutRoute = new Route({
 
 const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
 
-const router = new Router({ routeTree })
+const router = createRouter({ routeTree })
 
 declare module '@tanstack/react-router' {
   interface Register {

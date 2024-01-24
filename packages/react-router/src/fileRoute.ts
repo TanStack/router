@@ -17,8 +17,14 @@ import {
   SearchSchemaInput,
   LoaderFnContext,
   RouteLoaderFn,
+  AnyPathParams,
+  AnySearchSchema,
 } from './route'
 import { Assign, Expand, IsAny } from './utils'
+import { useMatch, useLoaderDeps, useLoaderData } from './Matches'
+import { useSearch } from './useSearch'
+import { useParams } from './useParams'
+import warning from 'tiny-warning'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -77,12 +83,34 @@ export type ResolveFilePath<
 export type FileRoutePath<
   TParentRoute extends AnyRoute,
   TFilePath extends string,
-> = ResolveFilePath<TParentRoute, TFilePath> extends `_${infer _}`
-  ? ''
-  : ResolveFilePath<TParentRoute, TFilePath> extends `/_${infer _}`
+> =
+  ResolveFilePath<TParentRoute, TFilePath> extends `_${infer _}`
     ? ''
-    : ResolveFilePath<TParentRoute, TFilePath>
+    : ResolveFilePath<TParentRoute, TFilePath> extends `/_${infer _}`
+      ? ''
+      : ResolveFilePath<TParentRoute, TFilePath>
 
+export function createFileRoute<
+  TFilePath extends keyof FileRoutesByPath,
+  TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
+  TId extends RouteConstraints['TId'] = TFilePath,
+  TPath extends RouteConstraints['TPath'] = FileRoutePath<
+    TParentRoute,
+    TFilePath
+  >,
+  TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
+    TParentRoute,
+    RemoveUnderScores<TPath>
+  >,
+>(path: TFilePath) {
+  return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path)
+    .createRoute
+}
+
+/** 
+  @deprecated It's no longer recommended to use the `FileRoute` class directly.
+  Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
+*/
 export class FileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
@@ -163,7 +191,7 @@ export class FileRoute<
       >,
       'getParentRoute' | 'path' | 'id'
     > &
-      UpdatableRouteOptions<TFullSearchSchema>,
+      UpdatableRouteOptions<TFullSearchSchema, TLoaderData>,
   ): Route<
     TParentRoute,
     TPath,
@@ -186,12 +214,21 @@ export class FileRoute<
     TChildren,
     TRouteTree
   > => {
-    const route = new Route(options as any)
+    warning(
+      false,
+      'FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.',
+    )
+    const route = createRoute(options as any)
     ;(route as any).isRoot = false
     return route as any
   }
 }
 
+/** 
+  @deprecated It's recommended not to split loaders into separate files.
+  Instead, place the loader function in the the main route file, inside the
+  `createFileRoute('/path/to/file)(options)` options.
+*/
 export function FileRouteLoader<
   TFilePath extends keyof FileRoutesByPath,
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
@@ -212,5 +249,74 @@ export function FileRouteLoader<
   TRoute['types']['routeContext'],
   NoInfer<TLoaderData>
 > {
+  warning(
+    false,
+    `FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
+  )
   return (loaderFn) => loaderFn
+}
+
+export type LazyRouteOptions = Pick<
+  UpdatableRouteOptions<AnySearchSchema, any>,
+  'component' | 'errorComponent' | 'pendingComponent'
+>
+
+export class LazyRoute<TRoute extends AnyRoute> {
+  options: {
+    id: string
+  } & LazyRouteOptions
+
+  constructor(
+    opts: {
+      id: string
+    } & LazyRouteOptions,
+  ) {
+    this.options = opts
+  }
+
+  useMatch = <TSelected = TRoute['types']['allContext']>(opts?: {
+    select?: (s: TRoute['types']['allContext']) => TSelected
+  }): TSelected => {
+    return useMatch({ select: opts?.select, from: this.options.id })
+  }
+
+  useRouteContext = <TSelected = TRoute['types']['allContext']>(opts?: {
+    select?: (s: TRoute['types']['allContext']) => TSelected
+  }): TSelected => {
+    return useMatch({
+      from: this.options.id,
+      select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
+    })
+  }
+
+  useSearch = <TSelected = TRoute['types']['fullSearchSchema']>(opts?: {
+    select?: (s: TRoute['types']['fullSearchSchema']) => TSelected
+  }): TSelected => {
+    return useSearch({ ...opts, from: this.options.id })
+  }
+
+  useParams = <TSelected = TRoute['types']['allParams']>(opts?: {
+    select?: (s: TRoute['types']['allParams']) => TSelected
+  }): TSelected => {
+    return useParams({ ...opts, from: this.options.id })
+  }
+
+  useLoaderDeps = <TSelected = TRoute['types']['loaderDeps']>(opts?: {
+    select?: (s: TRoute['types']['loaderDeps']) => TSelected
+  }): TSelected => {
+    return useLoaderDeps({ ...opts, from: this.options.id } as any)
+  }
+
+  useLoaderData = <TSelected = TRoute['types']['loaderData']>(opts?: {
+    select?: (s: TRoute['types']['loaderData']) => TSelected
+  }): TSelected => {
+    return useLoaderData({ ...opts, from: this.options.id } as any)
+  }
+}
+
+export function createLazyFileRoute<
+  TFilePath extends keyof FileRoutesByPath,
+  TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
+>(id: TFilePath) {
+  return (opts: LazyRouteOptions) => new LazyRoute<TRoute>({ id, ...opts })
 }

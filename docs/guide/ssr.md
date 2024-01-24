@@ -39,11 +39,11 @@ Since your router will exist both on the server and the client, it's important t
 
 ```tsx
 import * as React from 'react'
-import { Router } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 import { routeTree } from 'routeTree.gen'
 
 export function createRouter() {
-  return new Router({ routeTree })
+  return createRouter({ routeTree })
 }
 
 declare module '@tanstack/react-router' {
@@ -188,7 +188,6 @@ export async function render(url, response) {
 On the client, things are much simpler.
 
 - Create your router instance
-- Kick off the router hydration with `router.hydrate()`
 - Render your application using the `<StartClient />` component
 
 ```tsx
@@ -201,7 +200,6 @@ import { StartClient } from '@tanstack/react-router-server/client'
 import { createRouter } from './router'
 
 const router = createRouter()
-router.hydrate()
 
 ReactDOM.hydrateRoot(document, <StartClient router={router} />)
 ```

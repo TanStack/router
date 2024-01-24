@@ -4,14 +4,14 @@ import {
   Outlet,
   RouterProvider,
   Link,
-  Route,
-  Router,
-  RootRoute,
+  createRouter,
   useBlocker,
+  createRoute,
+  createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
-const rootRoute = new RootRoute({
+const rootRoute = createRootRoute({
   component: RootComponent,
 })
 
@@ -44,7 +44,7 @@ function RootComponent() {
   )
 }
 
-const indexRoute = new Route({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: IndexComponent,
@@ -58,7 +58,7 @@ function IndexComponent() {
   )
 }
 
-const editor1Route = new Route({
+const editor1Route = createRoute({
   getParentRoute: () => rootRoute,
   path: 'editor-1',
   component: Editor1Component,
@@ -87,7 +87,7 @@ function Editor1Component() {
   )
 }
 
-const editor2Route = new Route({
+const editor2Route = createRoute({
   getParentRoute: () => editor1Route,
   path: 'editor-2',
   component: Editor2Component,
@@ -119,7 +119,7 @@ const routeTree = rootRoute.addChildren([
 ])
 
 // Set up a Router instance
-const router = new Router({
+const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
 })

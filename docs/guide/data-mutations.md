@@ -38,7 +38,7 @@ TanStack Router comes with short-term caching built-in. So even though we're not
 When mutations related to loader data are made, we can use `router.invalidate` to force the router to reload all of the current route matches:
 
 ```tsx
-const router = new Router()
+const router = createRouter()
 
 const addTodo = async (todo: Todo) => {
   try {
@@ -111,7 +111,7 @@ The `router.subscribe` method is a function that subscribes a callback to variou
 This is a great place to reset your old mutation states. Here's an example:
 
 ```tsx
-const router = new Router()
+const router = createRouter()
 const coolMutationCache = createCoolMutationCache()
 
 const unsubscribeFn = router.subscribe('onResolved', () => {

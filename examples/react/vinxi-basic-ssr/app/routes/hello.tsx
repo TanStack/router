@@ -1,6 +1,6 @@
-import { FileRouteLoader } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-async function getData() {
+async function getServerData() {
   'use server'
 
   return new Promise<string>((r) => {
@@ -14,4 +14,6 @@ async function getData() {
   })
 }
 
-export const loader = FileRouteLoader('/hello')(() => getData())
+export const Route = createFileRoute('/hello')({
+  loader: () => getServerData(),
+})

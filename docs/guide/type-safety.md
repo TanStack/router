@@ -19,7 +19,7 @@ If you're using the `Route` class directly, you'll need to be aware of how to en
 So, don't forget to pass the parent route to your child routes!
 
 ```tsx
-const parentRoute = new Route({
+const parentRoute = createRoute({
   getParentRoute: () => parentRoute,
 })
 ```
@@ -29,7 +29,7 @@ const parentRoute = new Route({
 For the types of your router to work with top-level exports like `Link`, `useNavigate`, `useParams`, etc. they must permeate the type-script module boundary and be registered right into the library. To do this, we use declaration merging on the exported `Register` interface.
 
 ```ts
-const router = new Router({
+const router = createRouter({
   // ...
 })
 
@@ -47,7 +47,7 @@ By registering your router with the module, you can now use the exported hooks, 
 Component context is a wonderful tool in React and other frameworks for providing dependencies to components. However, if that context is changing types as it moves throughout your component hierarchy, it becomes impossible for TypeScript to know how to infer those changes. To get around this, context-based hooks and components require that you give them a hint on how and where they are being used.
 
 ```tsx
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   component: PostsComponent,
 })
 
@@ -100,7 +100,7 @@ const routeTree = rootRoute.addChildren([
   // ... all child routes will have access to `whateverYouWant` in their context
 ])
 
-const router = new Router({
+const router = createRouter({
   routeTree,
   context: {
     // This will be required to be passed now

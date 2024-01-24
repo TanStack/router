@@ -1,10 +1,10 @@
 import * as React from 'react'
-import { FileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { PostErrorComponent } from './posts.$postId'
 import { postQueryOptions } from '../postQueryOptions'
 import { fetchPost } from '../posts'
 
-export const Route = new FileRoute('/posts_/$postId/deep').createRoute({
+export const Route = createFileRoute('/posts/$postId/deep')({
   loader: ({ context: { queryClient }, params: { postId } }) =>
     queryClient.ensureQueryData(postQueryOptions(postId)),
   errorComponent: PostErrorComponent as any,

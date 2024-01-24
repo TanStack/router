@@ -3,6 +3,10 @@ id: Router
 title: Router
 ---
 
+## ⚠️ Deprecated
+
+The `Router` class has been deprecated in favor of the `createRouter` function.
+
 # `Router` class
 
 The `Router` class is used to create a router instance.

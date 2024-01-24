@@ -1,14 +1,14 @@
 import * as React from 'react'
 import {
   ErrorComponent,
-  FileRoute,
-  Link,
   ErrorRouteProps,
+  Link,
+  createFileRoute,
 } from '@tanstack/react-router'
 import { PostNotFoundError } from '../posts'
 import { postQueryOptions } from '../postQueryOptions'
 
-export const Route = new FileRoute('/posts/$postId').createRoute({
+export const Route = createFileRoute('/posts/$postId')({
   loader: ({ context: { queryClient }, params: { postId } }) =>
     queryClient.ensureQueryData(postQueryOptions(postId)),
   errorComponent: PostErrorComponent as any,

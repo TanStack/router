@@ -3,12 +3,19 @@ id: router
 title: Router API
 ---
 
+- Functions
+  - [createRootRoute Function](./api/router/RootRouteClass)
+  - [createRoute Function](./api/router/RouteClass)
+  - [createRouter Function](./api/router/RouterClass)
+  - [createFileRoute Function](./api/router/FileRouteClass)
+  - [createRouteApi Function](./api/router/RouteApiClass)
+  - [lazyRouteComponent Function](./api/router/lazyRouteComponentFunction)
+  - [Defer Function](./api/router/deferFunction)
+  - [Redirect Function](./api/router/redirectFunction)
+  - [isRedirect Function](./api/router/isRedirectFunction)
+  - [rootRouteWithContext Function](./api/router/rootRouteWithContextFunction)
+  - [createRouteMask Function](./api/router/createRouteMaskFunction)
 - Classes
-  - [FileRoute Class](./api/router/FileRouteClass)
-  - [Route Class](./api/router/RouteClass)
-  - [Router Class](./api/router/RouterClass)
-  - [RouteApi Class](./api/router/RouteApiClass)
-  - [RootRoute Class](./api/router/RootRouteClass)
   - [NotFoundRoute Class](./api/router/NotFoundRouteClass)
 - Components
   - [Await Component](./api/router/awaitComponent)
@@ -27,13 +34,6 @@ title: Router API
   - [useParentMatches Hook](./api/router/useParentMatchesHook)
   - [useLoaderData Hook](./api/router/useLoaderDataHook)
   - [useParams Hook](./api/router/useParamsHook)
-- Functions
-  - [lazyRouteComponent Function](./api/router/lazyRouteComponentFunction)
-  - [Defer Function](./api/router/deferFunction)
-  - [Redirect Function](./api/router/redirectFunction)
-  - [isRedirect Function](./api/router/isRedirectFunction)
-  - [rootRouteWithContext Function](./api/router/rootRouteWithContextFunction)
-  - [createRouteMask Function](./api/router/createRouteMaskFunction)
 - Types
   - [RouterOptions Type](./api/router/RouterOptionsType)
   - [RegisteredRouter Type](./api/router/RegisteredRouterType)
@@ -71,3 +71,9 @@ title: Router API
   - [RoutePaths Type](./api/router/RoutePathsType)
   - [FullSearchSchema Type](./api/router/FullSearchSchemaType)
   - [HistoryState Interface](./api/router/historyStateInterface)
+- Deprecated
+  - [FileRoute Class](./api/router/FileRouteClass)
+  - [Route Class](./api/router/RouteClass)
+  - [Router Class](./api/router/RouterClass)
+  - [RouteApi Class](./api/router/RouteApiClass)
+  - [RootRoute Class](./api/router/RootRouteClass)

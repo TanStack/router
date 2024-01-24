@@ -176,7 +176,7 @@ export interface DehydratedRouterState {
 
 export type DehydratedRouteMatch = Pick<
   RouteMatch,
-  'id' | 'status' | 'updatedAt'
+  'id' | 'status' | 'updatedAt' | 'loaderData'
 >
 
 export interface DehydratedRouter {
@@ -224,6 +224,19 @@ export type RouterListener<TRouterEvent extends RouterEvent> = {
   fn: ListenerFn<TRouterEvent>
 }
 
+export function createRouter<
+  TRouteTree extends AnyRoute = AnyRoute,
+  TDehydrated extends Record<string, any> = Record<string, any>,
+  TSerializedError extends Record<string, any> = Record<string, any>,
+>(
+  options: RouterConstructorOptions<TRouteTree, TDehydrated, TSerializedError>,
+) {
+  return new Router<TRouteTree, TDehydrated, TSerializedError>(options)
+}
+
+/**
+ * @deprecated Use the `createRouter` function instead
+ */
 export class Router<
   TRouteTree extends AnyRoute = AnyRoute,
   TDehydrated extends Record<string, any> = Record<string, any>,
@@ -691,6 +704,7 @@ export class Router<
       // Create a fresh route match
       const hasLoaders = !!(
         route.options.loader ||
+        route.options.lazy ||
         componentTypes.some((d) => (route.options[d] as any)?.preload)
       )
 
@@ -763,8 +777,8 @@ export class Router<
         this.latestLocation.pathname,
         fromSearch,
       )
-      const stayingMatches = matches?.filter(
-        (d) => fromMatches?.find((e) => e.routeId === d.routeId),
+      const stayingMatches = matches?.filter((d) =>
+        fromMatches?.find((e) => e.routeId === d.routeId),
       )
 
       const prevParams = { ...last(fromMatches)?.params }
@@ -1142,6 +1156,9 @@ export class Router<
             ...beforeLoadContext,
           }
 
+          const links = route.options.links?.()
+          const scripts = route.options.scripts?.()
+
           matches[index] = match = {
             ...match,
             routeContext: replaceEqualDeep(
@@ -1151,6 +1168,8 @@ export class Router<
             context: replaceEqualDeep(match.context, context),
             abortController,
             pendingPromise,
+            links,
+            scripts,
           }
         } catch (err) {
           handleErrorAndRedirect(err, 'BEFORE_LOAD')
@@ -1234,21 +1253,33 @@ export class Router<
                 fetchCount: match.fetchCount + 1,
               }
 
-              const componentsPromise = Promise.all(
-                componentTypes.map(async (type) => {
-                  const component = route.options[type]
+              const lazyPromise =
+                route.options.lazy?.().then((lazyRoute) => {
+                  Object.assign(route.options, lazyRoute.options)
+                }) || Promise.resolve()
 
-                  if ((component as any)?.preload) {
-                    await (component as any).preload()
-                  }
-                }),
+              // If for some reason lazy resolves more lazy components...
+              // We'll wait for that before pre attempt to preload any
+              // components themselves.
+              const componentsPromise = lazyPromise.then(() =>
+                Promise.all(
+                  componentTypes.map(async (type) => {
+                    const component = route.options[type]
+
+                    if ((component as any)?.preload) {
+                      await (component as any).preload()
+                    }
+                  }),
+                ),
               )
 
+              // Kick off the loader!
               const loaderPromise = route.options.loader?.(loaderContext)
 
               loadPromise = Promise.all([
                 componentsPromise,
                 loaderPromise,
+                lazyPromise,
               ]).then((d) => d[1])
             }
 
@@ -1273,6 +1304,10 @@ export class Router<
 
               if ((latestPromise = checkLatest())) return await latestPromise
 
+              const meta = route.options.meta?.({
+                loaderData,
+              })
+
               matches[index] = match = {
                 ...match,
                 error: undefined,
@@ -1281,6 +1316,7 @@ export class Router<
                 updatedAt: Date.now(),
                 loaderData,
                 loadPromise: undefined,
+                meta,
               }
             } catch (error) {
               if ((latestPromise = checkLatest())) return await latestPromise
@@ -1704,9 +1740,16 @@ export class Router<
       )
 
       if (dehydratedMatch) {
+        const route = this.looseRoutesById[match.routeId]!
+
         return {
           ...match,
           ...dehydratedMatch,
+          meta: route.options.meta?.({
+            loaderData: dehydratedMatch.loaderData,
+          }),
+          links: route.options.links?.(),
+          scripts: route.options.scripts?.(),
         }
       }
       return match
@@ -1716,6 +1759,7 @@ export class Router<
       return {
         ...s,
         matches: matches as any,
+        lastUpdated: Date.now(),
       }
     })
   }
@@ -1758,7 +1802,7 @@ export function getInitialRouterState(
     matches: [],
     pendingMatches: [],
     cachedMatches: [],
-    lastUpdated: Date.now(),
+    lastUpdated: 0,
   }
 }
 

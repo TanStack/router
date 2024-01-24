@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { FileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
 function getData() {
   'use server'
@@ -9,9 +9,14 @@ function getData() {
   })
 }
 
-export const Route = new FileRoute('/').createRoute({
+export const Route = createFileRoute('/')({
   component: Home,
   loader: () => getData(),
+  meta: () => [
+    {
+      title: 'Home',
+    },
+  ],
 })
 
 function Home() {

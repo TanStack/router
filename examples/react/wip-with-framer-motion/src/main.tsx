@@ -4,14 +4,13 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   Outlet,
   RouterProvider,
-  Router,
+  createRouter,
   Link,
-  Route,
   ErrorComponent,
   useMatch,
-  useRouterState,
   useMatches,
   rootRouteWithContext,
+  createRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -108,7 +107,7 @@ const rootRoute = rootRouteWithContext()({
   },
 })
 
-const indexRoute = new Route({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: () => {
@@ -120,7 +119,7 @@ const indexRoute = new Route({
   },
 })
 
-const postsRoute = new Route({
+const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: () => fetchPosts(),
@@ -158,7 +157,7 @@ const postsRoute = new Route({
   },
 })
 
-const postsIndexRoute = new Route({
+const postsIndexRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '/',
   component: () => <div>Select a post.</div>,
@@ -166,7 +165,7 @@ const postsIndexRoute = new Route({
 
 class NotFoundError extends Error {}
 
-const postRoute = new Route({
+const postRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
   loader: ({ params: { postId } }) => fetchPost(postId),
@@ -194,7 +193,7 @@ const routeTree = rootRoute.addChildren([
 ])
 
 // Set up a Router instance
-const router = new Router({
+const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   context: {

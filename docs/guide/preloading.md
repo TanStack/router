@@ -25,9 +25,9 @@ If you need more control over preloading, caching and/or garbage collection of p
 The simplest way to preload routes for your application is to set the `defaultPreload` option to `intent` for your entire router:
 
 ```tsx
-import { Router } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 
-const router = new Router({
+const router = createRouter({
   // ...
   defaultPreload: 'intent',
 })
@@ -40,9 +40,9 @@ This will turn on `intent` preloading by default for all `<Link>` components in 
 By default, preloading will start after **50ms** of the user hovering or touching a `<Link>` component. You can change this delay by setting the `defaultPreloadDelay` option on your router:
 
 ```tsx
-import { Router } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 
-const router = new Router({
+const router = createRouter({
   // ...
   defaultPreloadDelay: 100,
 })
@@ -57,9 +57,9 @@ If you're using the built-in loaders, you can control how long preloaded data is
 To change this, you can set the `defaultPreloadStaleTime` option on your router:
 
 ```tsx
-import { Router } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 
-const router = new Router({
+const router = createRouter({
   // ...
   defaultPreloadStaleTime: 10_000,
 })
@@ -69,7 +69,7 @@ Or, you can use the `routeOptions.preloadStaleTime` option on individual routes:
 
 ```tsx
 // src/routes/posts.$postId.tsx
-export const Route = new FileRoute('/posts/$postId').createRoute({
+export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params }) => fetchPost(params.postId),
   // Preload the route again if the preload cache is older than 10 seconds
   preloadStaleTime: 10_000,
@@ -85,9 +85,9 @@ To customize the preloading behavior in TanStack Router and fully leverage your 
 For example:
 
 ```tsx
-import { Router } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 
-const router = new Router({
+const router = createRouter({
   // ...
   defaultPreloadStaleTime: 0,
 })

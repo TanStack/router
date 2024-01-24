@@ -4,14 +4,14 @@ import {
   Outlet,
   RouterProvider,
   Link,
-  Route,
   ErrorComponent,
-  Router,
-  RootRoute,
+  createRouter,
   useRouterState,
   useNavigate,
   createRouteMask,
-  ErrorRouteProps,
+  ErrorComponentProps,
+  createRoute,
+  createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -66,7 +66,7 @@ export function Spinner() {
   )
 }
 
-const rootRoute = new RootRoute({
+const rootRoute = createRootRoute({
   validateSearch: (search) =>
     search as {
       modal?: ModalObject
@@ -120,7 +120,7 @@ function Modal(props: Dialog.DialogProps) {
   )
 }
 
-const indexRoute = new Route({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: () => {
@@ -131,7 +131,7 @@ const indexRoute = new Route({
     )
   },
 })
-const photosRoute = new Route({
+const photosRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'photos',
   loader: fetchPhotos,
@@ -177,7 +177,7 @@ function PhotosRoute() {
   )
 }
 
-const photoRoute = new Route({
+const photoRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'photos/$photoId',
   loader: async ({ params: { photoId } }) => fetchPhoto(photoId),
@@ -185,7 +185,7 @@ const photoRoute = new Route({
   component: PhotoComponent,
 })
 
-function PhotoErrorComponent({ error }: ErrorRouteProps) {
+function PhotoErrorComponent({ error }: ErrorComponentProps) {
   return (
     <div className="p-4">
       {(() => {
@@ -208,7 +208,7 @@ function PhotoComponent() {
   )
 }
 
-const photoModalRoute = new Route({
+const photoModalRoute = createRoute({
   getParentRoute: () => photosRoute,
   path: '$photoId/modal',
   loader: async ({ params: { photoId } }) => fetchPhoto(photoId),
@@ -217,7 +217,7 @@ const photoModalRoute = new Route({
   component: PhotoModalComponent,
 })
 
-function PhotoModalErrorComponent({ error }: ErrorRouteProps) {
+function PhotoModalErrorComponent({ error }: ErrorComponentProps) {
   const navigate = useNavigate()
 
   return (
@@ -277,7 +277,7 @@ function PhotoModalComponent() {
       }}
     >
       <div className="bg-white p-2 rounded-lg">
-        <Link target="_blank" className="underline text-blue-500">
+        <Link target="_blank" className="underline text-blue-500" params={{}}>
           Open in new tab (to test de-masking)
         </Link>
         <Photo photo={photo} />
@@ -311,7 +311,7 @@ const photoModalToPhotoMask = createRouteMask({
 })
 
 // Set up a Router instance
-const router = new Router({
+const router = createRouter({
   routeTree,
   routeMasks: [photoModalToPhotoMask],
   defaultPreload: 'intent',

@@ -1,10 +1,12 @@
 import * as React from 'react'
-import { Await, RouteApi } from '@tanstack/react-router'
+import { Await, createLazyFileRoute } from '@tanstack/react-router'
 
-const api = new RouteApi({ id: '/hello' })
+export const Route = createLazyFileRoute('/hello')({
+  component: Hello,
+})
 
-export const component = function Hello() {
-  const { data, slowData } = api.useLoaderData()
+function Hello() {
+  const { data, slowData } = Route.useLoaderData()
 
   return (
     <div className="p-2">

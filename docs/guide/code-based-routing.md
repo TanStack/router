@@ -50,26 +50,24 @@ We're going to assume you've read the [File-Based Routing](./guide/file-based-ro
 
 ## The Root Route
 
-Creating a root route in code-based routing is thankfully, the same as doing so in file-based routing. Call the `new RootRoute()` constructor.
+Creating a root route in code-based routing is thankfully, the same as doing so in file-based routing. Call the `createRootRoute()` constructor.
 
 Unlike file-based routing however, you do not need to export the root route if you don't want to. It's certainly not recommended to build an entire route tree and application in a single file (although you can and we do this in the examples to demonstrate routing concepts in brevity).
 
 ```tsx
-import { RootRoute } from '@tanstack/react-router'
+import { createRootRoute } from '@tanstack/react-router'
 
-const rootRoute = new RootRoute()
+const rootRoute = createRootRoute()
 ```
 
 > 🧠 You can also create a root route via the `rootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./guide/router-context) -->
 
 ## Anatomy of a Route
 
-All other routes other than the root route are configured using the `Route` class:
+All other routes other than the root route are configured using the `createRoute` function:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const route = new Route({
+const route = createRoute({
   getParentRoute: () => rootRoute,
   path: '/posts',
   component: PostsComponent,
@@ -133,12 +131,10 @@ const routeTree = rootRoute.addChildren([
 
 ## Static Routes
 
-To create a static route, simply provide a normal `path` string to the `Route` constructor:
+To create a static route, simply provide a normal `path` string to the `createRoute` constructor:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const aboutRoute = new Route({
+const aboutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'about',
 })
@@ -149,14 +145,12 @@ const aboutRoute = new Route({
 Unlike file-based routing, which uses the `index` filename to denote an index route, code-based routing uses a single slash `/` to denote an index route. For example, the `posts.index.tsx` file from our example route tree above would be represented in code-based routing like this:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const postsRoute = new Route({
+const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
 })
 
-const postsIndexRoute = new Route({
+const postsIndexRoute = createRoute({
   getParentRoute: () => postsRoute,
   // Notice the single slash `/` here
   path: '/',
@@ -168,9 +162,7 @@ const postsIndexRoute = new Route({
 Dynamic route segments work exactly the same in code-based routing as they do in file-based routing. Simply prefix a segment of the path with a `$` and it will be captured into the `params` object of the route's `loader` or `component`:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const route = new Route({
+const route = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
   // In a loader
@@ -190,14 +182,12 @@ function PostComponent() {
 As expected, splat/catch-all routes also work the same in code-based routing as they do in file-based routing. Simply prefix a segment of the path with a `$` and it will be captured into the `params` object under the `_splat` key:
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const filesRoute = new Route({
+const filesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'files',
 })
 
-const fileRoute = new Route({
+const fileRoute = createRoute({
   getParentRoute: () => filesRoute,
   path: '$',
 })
@@ -216,20 +206,18 @@ For the URL `/documents/hello-world`, the `params` object will look like this:
 In file-based routing a pathless route is prefixed with a `_`, but in code-based routing, a pathless route is simply a route with an `id` instead of a `path` option. This is because code-based routing does not use the filesystem to organize routes, so there is no need to prefix a route with a `_` to denote that it has no path.
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
-const layoutRoute = new Route({
+const layoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'layout',
   component: LayoutComponent,
 })
 
-const layoutARoute = new Route({
+const layoutARoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: 'layout-a',
 })
 
-const layoutBRoute = new Route({
+const layoutBRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: 'layout-b',
 })
@@ -260,21 +248,19 @@ Building non-nested routes in code-based routing does not require using a traili
 To do this we need to build a separate route for the post editor an include the entire path in the `path` option from the root of where we want the route to be nested (in this case, the root):
 
 ```tsx
-import { Route } from '@tanstack/react-router'
-
 // The posts editor route is nested under the root route
-const postEditorRoute = new Route({
+const postEditorRoute = createRoute({
   getParentRoute: () => rootRoute,
   // The path includes the entire path we need to match
   path: 'posts/$postId/edit',
 })
 
-const postsRoute = new Route({
+const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
 })
 
-const postRoute = new Route({
+const postRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
 })

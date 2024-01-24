@@ -1,6 +1,7 @@
 import { import$, server$ } from '@tanstack/bling'
 import {
   Await,
+  createRoute,
   defer,
   lazyRouteComponent,
   Route,
@@ -31,7 +32,7 @@ const test = server$(() => {
   console.log('test')
 })
 
-export const postIdRoute = new Route({
+export const postIdRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
   loader: async ({ params: { postId } }) => {

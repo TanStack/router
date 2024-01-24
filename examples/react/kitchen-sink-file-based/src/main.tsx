@@ -1,6 +1,10 @@
 import * as React from 'react'
 import ReactDOM from 'react-dom/client'
-import { RouterProvider, Router, ErrorComponent } from '@tanstack/react-router'
+import {
+  RouterProvider,
+  ErrorComponent,
+  createRouter,
+} from '@tanstack/react-router'
 import { auth } from './utils/auth'
 import { Spinner } from './components/Spinner'
 import { routeTree } from './routeTree.gen'
@@ -8,7 +12,7 @@ import { useSessionStorage } from './hooks/useSessionStorage'
 
 //
 
-const router = new Router({
+const router = createRouter({
   routeTree,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>

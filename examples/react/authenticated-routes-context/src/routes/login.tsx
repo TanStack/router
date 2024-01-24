@@ -1,18 +1,22 @@
 import * as React from 'react'
 import { flushSync } from 'react-dom'
-import { FileRoute, RouteApi, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  createRouteApi,
+  useNavigate,
+} from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { useAuth } from '../auth'
 
-export const Route = new FileRoute('/login').createRoute({
+export const Route = createFileRoute('/login')({
   validateSearch: z.object({
     redirect: z.string().catch('/'),
   }),
   component: LoginComponent,
 })
 
-const routeApi = new RouteApi({ id: '/login' })
+const routeApi = createRouteApi('/login')
 
 function LoginComponent() {
   const auth = useAuth()

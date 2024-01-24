@@ -22,7 +22,7 @@ The `defer` function wraps a promise with a deferred state object that can be us
 ```tsx
 import { defer } from '@tanstack/react-router'
 
-const route = new Route({
+const route = createRoute({
   loader: () => {
     const deferredPromise = defer(fetch('/api/data'))
     return { deferredPromise }
