@@ -23,10 +23,10 @@ export async function getConfig(inlineConfig: Partial<Config> = {}, configDirect
   let config: Config
 
   if (exists) {
-    config = configSchema.parse(
-      JSON.parse(readFileSync(configFilePathJson, 'utf-8')),
+    config = configSchema.parse({
+      ...JSON.parse(readFileSync(configFilePathJson, 'utf-8')),
       ...inlineConfig
-    )
+    })
   } else {
     config = configSchema.parse(inlineConfig)
   }
