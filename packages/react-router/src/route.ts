@@ -13,7 +13,7 @@ import { Assign, Expand, IsAny, NoInfer, UnionToIntersection } from './utils'
 import { BuildLocationFn, NavigateFn } from './RouterProvider'
 import { LazyRoute } from '.'
 import warning from 'tiny-warning'
-import { NotFoundOptions, notFound } from '.'
+import { NotFoundError, notFound } from '.'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -887,7 +887,7 @@ export class Route<
     return useLoaderData({ ...opts, from: this.id } as any)
   }
 
-  notFound = (opts?: NotFoundOptions) => {
+  notFound = (opts?: NotFoundError) => {
     return notFound({ routeId: this.id, ...opts })
   }
 }

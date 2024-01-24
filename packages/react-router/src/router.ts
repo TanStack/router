@@ -64,7 +64,7 @@ import {
 } from './path'
 import invariant from 'tiny-invariant'
 import { isRedirect } from './redirects'
-import { DefaultGlobalNotFound, NotFoundOptions, isNotFound, warning } from '.'
+import { DefaultGlobalNotFound, NotFoundError, isNotFound, warning } from '.'
 import { ResolveRelativePath, ToOptions } from './link'
 import { NoInfer } from '@tanstack/react-store'
 // import warning from 'tiny-warning'
@@ -1815,7 +1815,7 @@ export class Router<
   updateMatchesWithNotFound = (
     matches: AnyRouteMatch[],
     currentMatch: AnyRouteMatch,
-    err: NotFoundOptions,
+    err: NotFoundError,
   ) => {
     const matchesByRouteId = Object.fromEntries(
       matches.map((match) => [match.routeId, match]),

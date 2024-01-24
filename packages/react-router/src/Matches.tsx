@@ -24,7 +24,7 @@ import { DeepOptional, Expand, NoInfer, StrictOrFrom, pick } from './utils'
 import {
   CatchNotFound,
   DefaultGlobalNotFound,
-  NotFoundOptions,
+  NotFoundError,
   isNotFound,
   notFound,
 } from './not-found'
@@ -71,7 +71,7 @@ export interface RouteMatch<
   meta?: JSX.IntrinsicElements['meta'][]
   links?: JSX.IntrinsicElements['link'][]
   scripts?: JSX.IntrinsicElements['script'][]
-  notFoundError?: NotFoundOptions
+  notFoundError?: NotFoundError
 }
 
 export type AnyRouteMatch = RouteMatch<any, any>

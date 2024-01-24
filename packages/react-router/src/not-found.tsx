@@ -2,25 +2,25 @@ import * as React from 'react'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 
-export type NotFoundOptions = {
+export type NotFoundError = {
   global?: boolean
   data?: any
   throw?: boolean
   routeId?: string
 }
 
-export function notFound(options: NotFoundOptions = {}) {
+export function notFound(options: NotFoundError = {}) {
   ;(options as any).isNotFound = true
   if (options.throw) throw options
   return options
 }
 
-export function isNotFound(obj: any): obj is NotFoundOptions {
+export function isNotFound(obj: any): obj is NotFoundError {
   return !!obj?.isNotFound
 }
 
 export function CatchNotFound(props: {
-  fallback?: (error: NotFoundOptions) => React.ReactElement
+  fallback?: (error: NotFoundError) => React.ReactElement
   onCatch?: (error: any) => void
   children: React.ReactNode
 }) {
@@ -39,7 +39,7 @@ export function CatchNotFound(props: {
           throw error
         }
       }}
-      errorComponent={({ error }: { error: NotFoundOptions }) =>
+      errorComponent={({ error }: { error: NotFoundError }) =>
         props.fallback?.(error)
       }
     >
