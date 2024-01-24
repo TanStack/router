@@ -5,13 +5,15 @@ import { PostType } from '../posts'
 async function fetchPostById(postId: string) {
   console.log(`Fetching post with id ${postId}...`)
 
-  throw notFound()
-
   await new Promise((r) => setTimeout(r, 100 + Math.round(Math.random() * 100)))
 
-  return fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`).then(
-    (r) => r.json() as Promise<PostType>,
+  const res = await fetch(
+    `https://jsonplaceholder.typicode.com/posts/${postId}`,
   )
+
+  if (res.status === 404) throw notFound()
+
+  return res.json()
 }
 
 export type CommentType = {
@@ -43,9 +45,6 @@ export const Route = new FileRoute('/posts/$postId').createRoute({
   wrapInSuspense: true,
   errorComponent: ({ error }) => {
     return <div>Failed to load post: {(error as any).message}</div>
-  },
-  notFoundComponent: () => {
-    return <div>Post not found!</div>
   },
   component: PostComponent,
 })
