@@ -174,7 +174,6 @@ export interface BuildNextOptions {
 }
 
 export interface DehydratedRouterState {
-  currentGlobalNotFoundError?: NotFoundOptions
   dehydratedMatches: DehydratedRouteMatch[]
 }
 
@@ -258,7 +257,6 @@ export class Router<
   subscribers = new Set<RouterListener<RouterEvent>>()
   injectedHtml: InjectedHtmlEntry[] = []
   dehydratedData?: TDehydrated
-  currentGlobalNotFoundError?: NotFoundOptions
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -1735,7 +1733,6 @@ export class Router<
 
     return {
       state: {
-        currentGlobalNotFoundError: this.currentGlobalNotFoundError,
         dehydratedMatches: this.state.matches.map((d) => ({
           ...pick(d, [
             'id',
@@ -1775,8 +1772,6 @@ export class Router<
     this.dehydratedData = ctx.payload as any
     this.options.hydrate?.(ctx.payload as any)
     const dehydratedState = ctx.router.state
-
-    this.currentGlobalNotFoundError = dehydratedState.currentGlobalNotFoundError
 
     let matches = this.matchRoutes(
       this.state.location.pathname,
@@ -1849,6 +1844,10 @@ export class Router<
       invariant(match, 'Could not find match for route: ' + currentRoute.id)
       match.notFoundError = err
     }
+  }
+
+  hasNotFoundMatch = () => {
+    return this.__store.state.matches.some((d) => d.notFoundError)
   }
 
   // resolveMatchPromise = (matchId: string, key: string, value: any) => {

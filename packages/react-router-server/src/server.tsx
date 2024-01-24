@@ -110,16 +110,3 @@ function transformStreamHtmlCallback(injector: () => Promise<string>) {
     },
   })
 }
-
-// In cases where a not-found error can be thrown synchronously (not deferred) during SSR,
-// we can render a static not-found page instead of the app and avoid the flicker.
-export function RenderGlobalNotFound({
-  router,
-  globalNotFoundError,
-}: {
-  router: AnyRouter
-  globalNotFoundError: NotFoundOptions
-}) {
-  router.currentNotFoundError = globalNotFoundError
-  return <StartServer router={router} />
-}

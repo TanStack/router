@@ -48,7 +48,6 @@ export async function render(opts: {
 
   // Track errors
   let statusCode = 200
-  let globalNotFoundError: NotFoundOptions | undefined = undefined
 
   // Clever way to get the right callback. Thanks Remix!
   const callbackName = isbot(opts.req.headers['user-agent'])
@@ -66,44 +65,18 @@ export async function render(opts: {
           resolve()
         },
         onError: (err) => {
-          if (isNotFound(err)) {
-            statusCode = 404
-            // TODO: type
-            if ((err as { global: boolean }).global) {
-              // Abort the rendering of the current page in order to render the 404 page
-              results.abort()
-              globalNotFoundError = err as NotFoundOptions
-            }
-          } else {
-            statusCode = 500
-            console.log(err)
-          }
+          statusCode = 500
+          console.log(err)
         },
       },
     )
     stream = results
   })
 
+  if (router.hasNotFoundMatch() && statusCode !== 500) statusCode = 404
+
   opts.res.setHeader('Content-Type', 'text/html')
   opts.res.statusCode = statusCode
-
-  if (globalNotFoundError) {
-    await new Promise<void>((resolve) => {
-      stream = ReactDOMServer.renderToPipeableStream(
-        <GlobalNotFound
-          router={router}
-          globalNotFoundError={globalNotFoundError}
-        />,
-        {
-          onAllReady: resolve,
-          onError(err) {
-            statusCode = 500
-            console.log(err)
-          },
-        },
-      )
-    })
-  }
 
   // Add our Router transform to the stream
   const transforms = [transformStreamWithRouter(router)]
