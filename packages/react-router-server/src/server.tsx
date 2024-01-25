@@ -1,9 +1,5 @@
 import { Context } from '@tanstack/react-cross-context'
-import {
-  AnyRouter,
-  NotFoundOptions,
-  RouterProvider,
-} from '@tanstack/react-router'
+import { AnyRouter, RouterProvider } from '@tanstack/react-router'
 import * as React from 'react'
 import { Transform } from 'stream'
 
