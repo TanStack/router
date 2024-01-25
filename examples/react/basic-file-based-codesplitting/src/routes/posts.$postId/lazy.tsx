@@ -5,11 +5,11 @@ import {
   Link,
   createLazyFileRoute,
 } from '@tanstack/react-router'
-import { PostNotFoundError } from '../../posts'
 
 export const Route = createLazyFileRoute('/posts/$postId')({
   component: PostComponent,
   errorComponent: PostErrorComponent,
+  notFoundComponent: PostNotFoundComponent,
 })
 
 function PostComponent() {
@@ -35,9 +35,9 @@ function PostComponent() {
 }
 
 export function PostErrorComponent({ error }: ErrorComponentProps) {
-  if (error instanceof PostNotFoundError) {
-    return <div>{error.message}</div>
-  }
-
   return <ErrorComponent error={error} />
+}
+
+export function PostNotFoundComponent() {
+  return <div>Post not found</div>
 }

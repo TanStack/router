@@ -202,6 +202,7 @@ export const componentTypes = [
   'component',
   'errorComponent',
   'pendingComponent',
+  'notFoundComponent',
 ] as const
 
 export type RouterEvents = {

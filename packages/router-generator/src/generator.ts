@@ -84,6 +84,7 @@ async function getRouteNodes(config: Config) {
               [isComponent, 'component'],
               [isErrorComponent, 'errorComponent'],
               [isPendingComponent, 'pendingComponent'],
+              [isErrorComponent, 'notFoundComponent'],
               [isLoader, 'loader'],
             ] as const
           ).forEach(([isType, type]) => {
