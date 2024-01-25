@@ -428,49 +428,43 @@ export async function generator(config: Config) {
                 ),
               )}'), 'loader') })`
             : '',
-          componentNode ||
-          errorComponentNode ||
-          pendingComponentNode ||
-          lazyComponentNode
+          componentNode || errorComponentNode || pendingComponentNode
             ? `.update({
-              ${[
-                ...(
-                  [
-                    ['component', componentNode],
-                    ['errorComponent', errorComponentNode],
-                    ['pendingComponent', pendingComponentNode],
-                  ] as const
-                )
-                  .filter((d) => d[1])
-                  .map((d) => {
-                    return `${
-                      d[0]
-                    }: lazyRouteComponent(() => import('./${replaceBackslash(
-                      removeExt(
-                        path.relative(
-                          path.dirname(config.generatedRouteTree),
-                          path.resolve(config.routesDirectory, d[1]!.filePath),
-                        ),
+              ${(
+                [
+                  ['component', componentNode],
+                  ['errorComponent', errorComponentNode],
+                  ['pendingComponent', pendingComponentNode],
+                ] as const
+              )
+                .filter((d) => d[1])
+                .map((d) => {
+                  return `${
+                    d[0]
+                  }: lazyRouteComponent(() => import('./${replaceBackslash(
+                    removeExt(
+                      path.relative(
+                        path.dirname(config.generatedRouteTree),
+                        path.resolve(config.routesDirectory, d[1]!.filePath),
                       ),
-                    )}'), '${d[0]}')`
-                  }),
-                lazyComponentNode
-                  ? `lazy: () => import('./${replaceBackslash(
-                      removeExt(
-                        path.relative(
-                          path.dirname(config.generatedRouteTree),
-                          path.resolve(
-                            config.routesDirectory,
-                            lazyComponentNode!.filePath,
-                          ),
-                        ),
-                      ),
-                    )}').then((d) => d.Route)`
-                  : '',
-              ]
-                .filter(Boolean)
+                    ),
+                  )}'), '${d[0]}')`
+                })
                 .join('\n,')}
             })`
+            : '',
+          lazyComponentNode
+            ? `.lazy(() => import('./${replaceBackslash(
+                removeExt(
+                  path.relative(
+                    path.dirname(config.generatedRouteTree),
+                    path.resolve(
+                      config.routesDirectory,
+                      lazyComponentNode!.filePath,
+                    ),
+                  ),
+                ),
+              )}').then((d) => d.Route))`
             : '',
         ].join('')
       })

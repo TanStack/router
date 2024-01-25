@@ -183,7 +183,6 @@ export type UpdatableRouteOptions<
   component?: RouteComponent
   errorComponent?: false | null | ErrorRouteComponent
   pendingComponent?: RouteComponent
-  lazy?: () => Promise<LazyRoute<any>>
   pendingMs?: number
   pendingMinMs?: number
   staleTime?: number
@@ -351,11 +350,12 @@ export type MergeFromFromParent<T, U> = IsAny<T, U, T & U>
 export type ResolveAllParams<
   TParentRoute extends AnyRoute,
   TParams extends AnyPathParams,
-> = Record<never, string> extends TParentRoute['types']['allParams']
-  ? TParams
-  : Expand<
-      UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
-    >
+> =
+  Record<never, string> extends TParentRoute['types']['allParams']
+    ? TParams
+    : Expand<
+        UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
+      >
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute
@@ -634,10 +634,6 @@ export class Route<
     TLoaderData
   >
 
-  test!: Expand<
-    Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
-  >
-
   // Set up in this.init()
   parentRoute!: TParentRoute
   id!: TId
@@ -651,6 +647,7 @@ export class Route<
   originalIndex?: number
   router?: AnyRouter
   rank!: number
+  lazyFn?: () => Promise<LazyRoute<any>>
 
   constructor(
     options: RouteOptions<
@@ -841,6 +838,11 @@ export class Route<
 
   update = (options: UpdatableRouteOptions<TFullSearchSchema, TLoaderData>) => {
     Object.assign(this.options, options)
+    return this
+  }
+
+  lazy = (lazyFn: () => Promise<LazyRoute<any>>) => {
+    this.lazyFn = lazyFn
     return this
   }
 

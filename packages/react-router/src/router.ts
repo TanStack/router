@@ -704,7 +704,7 @@ export class Router<
       // Create a fresh route match
       const hasLoaders = !!(
         route.options.loader ||
-        route.options.lazy ||
+        route.lazyFn ||
         componentTypes.some((d) => (route.options[d] as any)?.preload)
       )
 
@@ -777,8 +777,8 @@ export class Router<
         this.latestLocation.pathname,
         fromSearch,
       )
-      const stayingMatches = matches?.filter(
-        (d) => fromMatches?.find((e) => e.routeId === d.routeId),
+      const stayingMatches = matches?.filter((d) =>
+        fromMatches?.find((e) => e.routeId === d.routeId),
       )
 
       const prevParams = { ...last(fromMatches)?.params }
@@ -1254,7 +1254,7 @@ export class Router<
               }
 
               const lazyPromise =
-                route.options.lazy?.().then((lazyRoute) => {
+                route.lazyFn?.().then((lazyRoute) => {
                   Object.assign(route.options, lazyRoute.options)
                 }) || Promise.resolve()
 

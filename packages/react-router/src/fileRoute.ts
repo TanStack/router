@@ -26,6 +26,7 @@ import { useMatch, useLoaderDeps, useLoaderData } from './Matches'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import warning from 'tiny-warning'
+import { RegisteredRouter, RouteById, RouteIds } from '.'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -312,6 +313,15 @@ export class LazyRoute<TRoute extends AnyRoute> {
     select?: (s: TRoute['types']['loaderData']) => TSelected
   }): TSelected => {
     return useLoaderData({ ...opts, from: this.options.id } as any)
+  }
+}
+
+export function createLazyRoute<
+  TId extends RouteIds<RegisteredRouter['routeTree']>,
+  TRoute extends RouteById<RegisteredRouter['routeTree'], TId> = AnyRoute,
+>(id: TId) {
+  return (opts: LazyRouteOptions) => {
+    return new LazyRoute<TRoute>({ id: id as any, ...opts })
   }
 }
 
