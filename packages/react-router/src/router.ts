@@ -64,7 +64,7 @@ import {
 } from './path'
 import invariant from 'tiny-invariant'
 import { isRedirect } from './redirects'
-import { DefaultGlobalNotFound, NotFoundError, isNotFound, warning } from '.'
+import { NotFoundError, isNotFound } from './not-found'
 import { ResolveRelativePath, ToOptions } from './link'
 import { NoInfer } from '@tanstack/react-store'
 // import warning from 'tiny-warning'
@@ -242,8 +242,6 @@ export function createRouter<
   return new Router<TRouteTree, TDehydrated, TSerializedError>(options)
 }
 
-export const throwGlobalNotFoundRouteId = '/__throwGlobalNotFound__/' as const
-
 /**
  * @deprecated Use the `createRouter` function instead
  */
@@ -284,13 +282,6 @@ export class Router<
       TSerializedError
     >,
   ) {
-    if (options.notFoundRoute) {
-      warning(
-        false,
-        'The notFoundRoute API is being deprecated and will be removed in the next major version in favor of [TODO]. See ..',
-      )
-    }
-
     this.update({
       defaultPreloadDelay: 50,
       defaultPendingMs: 1000,

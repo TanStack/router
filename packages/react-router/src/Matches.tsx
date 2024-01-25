@@ -15,18 +15,13 @@ import {
   RouteIds,
   RoutePaths,
 } from './routeInfo'
-import {
-  RegisteredRouter,
-  RouterState,
-  throwGlobalNotFoundRouteId,
-} from './router'
+import { RegisteredRouter, RouterState } from './router'
 import { DeepOptional, Expand, NoInfer, StrictOrFrom, pick } from './utils'
 import {
   CatchNotFound,
   DefaultGlobalNotFound,
   NotFoundError,
   isNotFound,
-  notFound,
 } from './not-found'
 
 export const matchContext = React.createContext<string | undefined>(undefined)
