@@ -130,6 +130,10 @@
           "to": "guide/scroll-restoration"
         },
         {
+          "label": "Static Route Data",
+          "to": "guide/static-route-data"
+        },
+        {
           "label": "SSR",
           "to": "guide/ssr"
         }

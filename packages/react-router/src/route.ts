@@ -9,7 +9,14 @@ import { RouteById, RouteIds, RoutePaths } from './routeInfo'
 import { AnyRouter, RegisteredRouter } from './router'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
-import { Assign, Expand, IsAny, NoInfer, UnionToIntersection } from './utils'
+import {
+  Assign,
+  Expand,
+  IsAny,
+  NoInfer,
+  PickRequired,
+  UnionToIntersection,
+} from './utils'
 import { BuildLocationFn, NavigateFn } from './RouterProvider'
 import { LazyRoute } from '.'
 import warning from 'tiny-warning'
@@ -38,6 +45,8 @@ export type RoutePathOptions<TCustomId, TPath> =
   | {
       id: TCustomId
     }
+
+export interface StaticDataRouteOption {}
 
 export type RoutePathOptionsIntersection<TCustomId, TPath> =
   UnionToIntersection<RoutePathOptions<TCustomId, TPath>>
@@ -186,7 +195,6 @@ export type UpdatableRouteOptions<
   errorComponent?: false | null | ErrorRouteComponent
   notFoundComponent?: NotFoundRouteComponent
   pendingComponent?: RouteComponent
-  lazy?: () => Promise<LazyRoute<any>>
   pendingMs?: number
   pendingMinMs?: number
   staleTime?: number
@@ -208,7 +216,16 @@ export type UpdatableRouteOptions<
   meta?: (ctx: { loaderData: TLoaderData }) => JSX.IntrinsicElements['meta'][]
   links?: () => JSX.IntrinsicElements['link'][]
   scripts?: () => JSX.IntrinsicElements['script'][]
-}
+} & UpdatableStaticRouteOption
+
+export type UpdatableStaticRouteOption =
+  {} extends PickRequired<StaticDataRouteOption>
+    ? {
+        staticData?: StaticDataRouteOption
+      }
+    : {
+        staticData: StaticDataRouteOption
+      }
 
 export type MetaDescriptor =
   | { charSet: 'utf-8' }
@@ -354,11 +371,12 @@ export type MergeFromFromParent<T, U> = IsAny<T, U, T & U>
 export type ResolveAllParams<
   TParentRoute extends AnyRoute,
   TParams extends AnyPathParams,
-> = Record<never, string> extends TParentRoute['types']['allParams']
-  ? TParams
-  : Expand<
-      UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
-    >
+> =
+  Record<never, string> extends TParentRoute['types']['allParams']
+    ? TParams
+    : Expand<
+        UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
+      >
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute
@@ -641,10 +659,6 @@ export class Route<
     TLoaderData
   >
 
-  test!: Expand<
-    Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
-  >
-
   // Set up in this.init()
   parentRoute!: TParentRoute
   id!: TId
@@ -658,6 +672,7 @@ export class Route<
   originalIndex?: number
   router?: AnyRouter
   rank!: number
+  lazyFn?: () => Promise<LazyRoute<any>>
 
   constructor(
     options: RouteOptions<
@@ -848,6 +863,11 @@ export class Route<
 
   update = (options: UpdatableRouteOptions<TFullSearchSchema, TLoaderData>) => {
     Object.assign(this.options, options)
+    return this
+  }
+
+  lazy = (lazyFn: () => Promise<LazyRoute<any>>) => {
+    this.lazyFn = lazyFn
     return this
   }
 

@@ -725,7 +725,7 @@ export class Router<
       // Create a fresh route match
       const hasLoaders = !!(
         route.options.loader ||
-        route.options.lazy ||
+        route.lazyFn ||
         componentTypes.some((d) => (route.options[d] as any)?.preload)
       )
 
@@ -764,6 +764,9 @@ export class Router<
               isGlobalNotFound && route.id === rootRouteId
                 ? { global: true }
                 : undefined,
+            links: route.options.links?.(),
+            scripts: route.options.scripts?.(),
+            staticData: route.options.staticData || {},
           }
 
       // Regardless of whether we're reusing an existing match or creating
@@ -1192,9 +1195,6 @@ export class Router<
             ...beforeLoadContext,
           }
 
-          const links = route.options.links?.()
-          const scripts = route.options.scripts?.()
-
           matches[index] = match = {
             ...match,
             routeContext: replaceEqualDeep(
@@ -1204,8 +1204,6 @@ export class Router<
             context: replaceEqualDeep(match.context, context),
             abortController,
             pendingPromise,
-            links,
-            scripts,
           }
         } catch (err) {
           handleErrorAndRedirect(err, 'BEFORE_LOAD')
@@ -1295,7 +1293,7 @@ export class Router<
               }
 
               const lazyPromise =
-                route.options.lazy?.().then((lazyRoute) => {
+                route.lazyFn?.().then((lazyRoute) => {
                   Object.assign(route.options, lazyRoute.options)
                 }) || Promise.resolve()
 

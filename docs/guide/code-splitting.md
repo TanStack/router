@@ -129,7 +129,7 @@ For example, if you have a route file named `posts.tsx`, you would create a new 
 
 ### Virtual Routes
 
-You might run into a situation where you end up splitting out everything from a route file, leaving it empty! For example:
+You might run into a situation where you end up splitting out everything from a route file, leaving it empty! In this case, simply **delete the route file entirely**! A virtual route will automatically be generated for you to serve as an anchor for your code split files. This virtual route will live directly in the generated route tree file.
 
 #### Before
 
@@ -156,8 +156,6 @@ You might run into a situation where you end up splitting out everything from a 
     // ...
   }
   ```
-
-In this case, actually **remove the route file entirely**! The CLI will automatically generate a virtual route for you to serve as an anchor for your code split files. This virtual route will live directly in the generated route tree file.
 
 #### After
 
@@ -279,63 +277,38 @@ posts
   Posts.tsx
 ```
 
-## Manually Splitting Using `lazyRouteComponent`
+## Code-Based Splitting
 
-Synchronous components are usually defined as functions and passed to the `route.component` option:
+### Manually Splitting Using `route.lazy()` and `createLazyRoute`
 
-```tsx
-function MyComponent() {
-  return <div>My Component</div>
-}
+If you're not using the file-based routing system, you can still manually split your code using the `route.lazy()` method and the `createLazyRoute` function.
 
-const route = createRoute({
-  component: MyComponent,
-})
-```
+- `posts.tsx`
 
-But with TanStack Router, a route component can have a static `preload` method attached to it which will get called and awaited when the route is preloaded and/or loaded.
+  ```tsx
+  const route = createRoute({
+    getParent: () => routeTree,
+    path: '/posts',
+  }).lazy(() => import('./posts.lazy').then((d) => d.Route))
+  ```
 
-If we were to set this up manually **(don't do this)**, it would look something like this:
+- `posts.lazy.tsx`
 
-```tsx
-const MyComponent = React.lazy(() => import('./MyComponent'))
+  ```tsx
+  export const Route = createLazyRoute({
+    component: MyComponent,
+  })
 
-MyComponent.preload = async () => {
-  await import('./MyComponent')
-}
-
-const route = createRoute({
-  component: MyComponent,
-})
-```
-
-This is a bit noisy and repetitive, so TanStack Router exports a `lazyRouteComponent` wrapper that you can use to simplify this process:
-
-```tsx
-import { lazyRouteComponent } from '@tanstack/react-router'
-
-const route = createRoute({
-  component: lazyRouteComponent(() => import('./MyComponent')),
-})
-```
-
-The `lazyRouteComponent` wrapper not only implements `React.lazy()` under the hood, but automatically sets up the component with a preload method and promise management for you.
-
-### Handling Named exports with `lazyRouteComponent`
-
-The `lazyRouteComponent` wrapper also allows you to easily load components that are named exports from a module. To use this functionality, provide the name of the exported component as a second argument to the function:
-
-```tsx
-const route = createRoute({
-  component: lazyRouteComponent(() => import('./MyComponent'), 'NamedExport'),
-})
-```
-
-`lazyRouteComponent` is also type safe, to ensure that you are only able to provide valid named exports from the module, which helps prevent runtime errors.
+  function MyComponent() {
+    return <div>My Component</div>
+  }
+  ```
 
 ## Data Loader Splitting
 
-While data loaders rarely contribute to large bundle sizes themselves, you can code split your data loading logic using the Route's `loader` option. While this process makes it difficult to maintain type-safety with the parameters passed to your loader, you can always use the generic `LoaderContext` type to get most of the way there:
+> ⚠️ Splitting a data loader will incur 2 round trips to the server to retrieve the loader data. One round trip to load the loader code bundle itself and another to execute the loader code and retrieve the data. Do not proceed unless you are VERY sure that your loader is contributing the the bundle size enough to warrant these round trips.
+
+You can code split your data loading logic using the Route's `loader` option. While this process makes it difficult to maintain type-safety with the parameters passed to your loader, you can always use the generic `LoaderContext` type to get most of the way there:
 
 ```tsx
 import { LoaderContext } from '@tanstack/react-router'
@@ -352,7 +325,7 @@ export const loader = async (context: LoaderContext) => {
 }
 ```
 
-Again, this process can feel heavy-handed, so TanStack Router exports another utility called `lazyFn` which is very similar to `lazyRouteComponent` that can help simplify this process:
+This process can feel heavy-handed, so TanStack Router exports a utility called `lazyFn` which is very similar to `lazyRouteComponent` that can help simplify this process:
 
 ```tsx
 import { lazyFn } from '@tanstack/react-router'
@@ -369,22 +342,28 @@ export const loader = async (context: LoaderContext) => {
 }
 ```
 
-## Manually accessing Route APIs in Code Split Files with the `RouteApi` class
+## Manually accessing Route APIs in other files with the `RouteApi` class
 
-As you might have guessed, importing the very route that is already importing the code-split file you're in is a circular dependency, both in types and at runtime. To avoid this, TanStack Router exports a handy `RouteApi` class that you can use to access a route's type-safe APIs:
+As you might have guessed, placing your component code in a separate file than your route can make it difficult to consume the route itself. To help with this, TanStack Router exports a handy `getRouteApi` function that you can use to access a route's type-safe APIs in a file without importing the route itself.
+
+- `my-route.tsx`
 
 ```tsx
 import { createRoute } from '@tanstack/react-router'
+import { MyComponent } from './MyComponent'
 
 const route = createRoute({
   path: '/my-route',
   loader: () => ({
     foo: 'bar',
   }),
-  component: lazyRouteComponent(() => import('./my-component'), 'MyComponent'),
+  component: MyComponent,
 })
+```
 
-// In my-component.tsx
+- `MyComponent.tsx`
+
+```tsx
 import { getRouteApi } from '@tanstack/react-router'
 
 const route = getRouteApi('/my-route')
@@ -397,7 +376,7 @@ export function MyComponent() {
 }
 ```
 
-The `RouteApi` class is also useful for accessing other type-safe APIs:
+The `RouteApi` class is useful for accessing other type-safe APIs:
 
 - `useLoaderData`
 - `useMatch`

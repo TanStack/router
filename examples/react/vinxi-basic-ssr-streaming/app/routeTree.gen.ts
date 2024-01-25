@@ -18,9 +18,7 @@ const NoTitleLazyImport = createFileRoute('/no-title')()
 const NoTitleLazyRoute = NoTitleLazyImport.update({
   path: '/no-title',
   getParentRoute: () => rootRoute,
-} as any).update({
-  lazy: () => import('./routes/no-title.lazy').then((d) => d.Route),
-})
+} as any).lazy(() => import('./routes/no-title.lazy').then((d) => d.Route))
 
 const TestRoute = TestImport.update({
   path: '/test',
@@ -30,9 +28,7 @@ const TestRoute = TestImport.update({
 const HelloRoute = HelloImport.update({
   path: '/hello',
   getParentRoute: () => rootRoute,
-} as any).update({
-  lazy: () => import('./routes/hello.lazy').then((d) => d.Route),
-})
+} as any).lazy(() => import('./routes/hello.lazy').then((d) => d.Route))
 
 const IndexRoute = IndexImport.update({
   path: '/',

@@ -25,23 +25,17 @@ const LayoutTestLayoutBTestLazyImport = createFileRoute(
 const LayoutTestLazyRoute = LayoutTestLazyImport.update({
   id: '/_layout-test',
   getParentRoute: () => rootRoute,
-} as any).update({
-  lazy: () => import('./routes/_layout-test.lazy').then((d) => d.Route),
-})
+} as any).lazy(() => import('./routes/_layout-test.lazy').then((d) => d.Route))
 
 const PostsRoute = PostsImport.update({
   path: '/posts',
   getParentRoute: () => rootRoute,
-} as any).update({
-  lazy: () => import('./routes/posts.lazy').then((d) => d.Route),
-})
+} as any).lazy(() => import('./routes/posts.lazy').then((d) => d.Route))
 
 const IndexLazyRoute = IndexLazyImport.update({
   path: '/',
   getParentRoute: () => rootRoute,
-} as any).update({
-  lazy: () => import('./routes/index.lazy').then((d) => d.Route),
-})
+} as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
 
 const PostsIndexRoute = PostsIndexImport.update({
   path: '/',
@@ -61,24 +55,21 @@ const LayoutTestLayoutARoute = LayoutTestLayoutAImport.update({
 const PostsPostIdRouteRoute = PostsPostIdRouteImport.update({
   path: '/$postId',
   getParentRoute: () => PostsRoute,
-} as any).update({
-  lazy: () => import('./routes/posts.$postId/lazy').then((d) => d.Route),
-})
+} as any).lazy(() => import('./routes/posts.$postId/lazy').then((d) => d.Route))
 
 const LayoutTestLayoutBTestLazyRoute = LayoutTestLayoutBTestLazyImport.update({
   path: '/test',
   getParentRoute: () => LayoutTestLayoutBRoute,
-} as any).update({
-  lazy: () =>
-    import('./routes/_layout-test/layout-b.test.lazy').then((d) => d.Route),
-})
+} as any).lazy(() =>
+  import('./routes/_layout-test/layout-b.test.lazy').then((d) => d.Route),
+)
 
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
   path: '/posts/$postId/deep',
   getParentRoute: () => rootRoute,
-} as any).update({
-  lazy: () => import('./routes/posts_.$postId.deep.lazy').then((d) => d.Route),
-})
+} as any).lazy(() =>
+  import('./routes/posts_.$postId.deep.lazy').then((d) => d.Route),
+)
 
 // Populate the FileRoutesByPath interface
 
