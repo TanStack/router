@@ -13,9 +13,12 @@ export const configSchema = z.object({
 
 export type Config = z.infer<typeof configSchema>
 
-export async function getConfig(inlineConfig: Partial<Config> = {}, configDirectory?: string): Promise<Config> {
+export async function getConfig(
+  inlineConfig: Partial<Config> = {},
+  configDirectory?: string,
+): Promise<Config> {
   if (configDirectory === undefined) {
-    configDirectory = process.cwd();
+    configDirectory = process.cwd()
   }
   const configFilePathJson = path.resolve(configDirectory, 'tsr.config.json')
   const exists = existsSync(configFilePathJson)
@@ -25,7 +28,7 @@ export async function getConfig(inlineConfig: Partial<Config> = {}, configDirect
   if (exists) {
     config = configSchema.parse({
       ...JSON.parse(readFileSync(configFilePathJson, 'utf-8')),
-      ...inlineConfig
+      ...inlineConfig,
     })
   } else {
     config = configSchema.parse(inlineConfig)

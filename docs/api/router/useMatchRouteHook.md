@@ -63,35 +63,50 @@ function Component() {
 // Current location: /posts/123/foo/456
 function Component() {
   const matchRoute = useMatchRoute()
-  const params = matchRoute({ to: '/posts/$postId/foo/$fooId', params: { postId: '123'} })
+  const params = matchRoute({
+    to: '/posts/$postId/foo/$fooId',
+    params: { postId: '123' },
+  })
   //    ^ { postId: '123', fooId: '456' }
 }
 
 // Current location: /posts/123/foo/456
 function Component() {
   const matchRoute = useMatchRoute()
-  const params = matchRoute({ to: '/posts/$postId/foo/$fooId', params: { postId: '789'} })
+  const params = matchRoute({
+    to: '/posts/$postId/foo/$fooId',
+    params: { postId: '789' },
+  })
   //    ^ false
 }
 
 // Current location: /posts/123/foo/456
 function Component() {
   const matchRoute = useMatchRoute()
-  const params = matchRoute({ to: '/posts/$postId/foo/$fooId', params: { fooId: '456'} })
+  const params = matchRoute({
+    to: '/posts/$postId/foo/$fooId',
+    params: { fooId: '456' },
+  })
   //    ^ { postId: '123', fooId: '456' }
 }
 
 // Current location: /posts/123/foo/456
 function Component() {
   const matchRoute = useMatchRoute()
-  const params = matchRoute({ to: '/posts/$postId/foo/$fooId', params: { postId: '123', fooId: '456'} })
+  const params = matchRoute({
+    to: '/posts/$postId/foo/$fooId',
+    params: { postId: '123', fooId: '456' },
+  })
   //    ^ { postId: '123', fooId: '456' }
 }
 
 // Current location: /posts/123/foo/456
 function Component() {
   const matchRoute = useMatchRoute()
-  const params = matchRoute({ to: '/posts/$postId/foo/$fooId', params: { postId: '789', fooId: '456'} })
+  const params = matchRoute({
+    to: '/posts/$postId/foo/$fooId',
+    params: { postId: '789', fooId: '456' },
+  })
   //    ^ false
 }
 ```

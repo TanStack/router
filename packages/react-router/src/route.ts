@@ -351,12 +351,11 @@ export type MergeFromFromParent<T, U> = IsAny<T, U, T & U>
 export type ResolveAllParams<
   TParentRoute extends AnyRoute,
   TParams extends AnyPathParams,
-> =
-  Record<never, string> extends TParentRoute['types']['allParams']
-    ? TParams
-    : Expand<
-        UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
-      >
+> = Record<never, string> extends TParentRoute['types']['allParams']
+  ? TParams
+  : Expand<
+      UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
+    >
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute

@@ -1,11 +1,7 @@
 import { Plugin } from 'vite'
 import { join, normalize } from 'path'
 import { readFile } from 'fs/promises'
-import {
-  type Config,
-  getConfig,
-  generator,
-} from '@tanstack/router-generator'
+import { type Config, getConfig, generator } from '@tanstack/router-generator'
 
 const CONFIG_FILE_NAME = 'tsr.config.json'
 

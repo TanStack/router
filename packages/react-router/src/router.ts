@@ -777,8 +777,8 @@ export class Router<
         this.latestLocation.pathname,
         fromSearch,
       )
-      const stayingMatches = matches?.filter((d) =>
-        fromMatches?.find((e) => e.routeId === d.routeId),
+      const stayingMatches = matches?.filter(
+        (d) => fromMatches?.find((e) => e.routeId === d.routeId),
       )
 
       const prevParams = { ...last(fromMatches)?.params }

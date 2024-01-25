@@ -121,6 +121,10 @@ async function getRouteNodes(config: Config) {
 
     return routeNodes
   }
+
+  await recurse('./')
+
+  return routeNodes
 }
 
 let first = false
