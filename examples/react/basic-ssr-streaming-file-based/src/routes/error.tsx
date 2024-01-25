@@ -1,4 +1,4 @@
-import { Await, FileRoute, defer } from '@tanstack/react-router'
+import { Await, createFileRoute, defer } from '@tanstack/react-router'
 import * as React from 'react'
 
 async function loadData() {
