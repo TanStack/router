@@ -9,7 +9,7 @@ import {
   AnyRoute,
   ReactNode,
   RootSearchSchema,
-  staticDataRouteOption,
+  StaticDataRouteOption,
   UpdatableStaticRouteOption,
 } from './route'
 import {
@@ -66,7 +66,7 @@ export interface RouteMatch<
   meta?: JSX.IntrinsicElements['meta'][]
   links?: JSX.IntrinsicElements['link'][]
   scripts?: JSX.IntrinsicElements['script'][]
-  staticData: staticDataRouteOption
+  staticData: StaticDataRouteOption
 }
 
 export type AnyRouteMatch = RouteMatch<any, any>

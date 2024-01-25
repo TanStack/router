@@ -44,7 +44,7 @@ export type RoutePathOptions<TCustomId, TPath> =
       id: TCustomId
     }
 
-export interface staticDataRouteOption {}
+export interface StaticDataRouteOption {}
 
 export type RoutePathOptionsIntersection<TCustomId, TPath> =
   UnionToIntersection<RoutePathOptions<TCustomId, TPath>>
@@ -216,12 +216,12 @@ export type UpdatableRouteOptions<
 } & UpdatableStaticRouteOption
 
 export type UpdatableStaticRouteOption =
-  {} extends PickRequired<staticDataRouteOption>
+  {} extends PickRequired<StaticDataRouteOption>
     ? {
-        staticData?: staticDataRouteOption
+        staticData?: StaticDataRouteOption
       }
     : {
-        staticData: staticDataRouteOption
+        staticData: StaticDataRouteOption
       }
 
 export type MetaDescriptor =
