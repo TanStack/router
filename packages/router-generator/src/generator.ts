@@ -262,7 +262,6 @@ export async function generator(config: Config) {
       await fsp.writeFile(node.fullPath, replaced)
     }
 
-    console.log(node)
     if (
       !node.isVirtual &&
       (node.isLoader ||
