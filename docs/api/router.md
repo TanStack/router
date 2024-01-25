@@ -15,8 +15,8 @@ title: Router API
   - [isRedirect Function](./api/router/isRedirectFunction)
   - [rootRouteWithContext Function](./api/router/rootRouteWithContextFunction)
   - [createRouteMask Function](./api/router/createRouteMaskFunction)
-- Classes
-  - [NotFoundRoute Class](./api/router/NotFoundRouteClass)
+  - [isNotFound Function](./api/router/isNotFoundFunction)
+  - [notFound Function](./api/router/notFoundFunction)
 - Components
   - [Await Component](./api/router/awaitComponent)
   - [CatchBoundary Component](./api/router/catchBoundaryComponent)
@@ -25,6 +25,8 @@ title: Router API
   - [Link Component](./api/router/linkComponent)
   - [Outlet Component](./api/router/outletComponent)
   - [MatchRoute Component](./api/router/matchRouteComponent)
+  - [CatchNotFound Component](./api/router/catchNotFoundComponent)
+  - [DefaultGlobalNotFound Component](./api/router/defaultGlobalNotFoundComponent)
 - Hooks
   - [useAwaited Hook](./api/router/useAwaitedHook)
   - [useNavigate Hook](./api/router/useNavigateHook)
@@ -71,9 +73,11 @@ title: Router API
   - [RoutePaths Type](./api/router/RoutePathsType)
   - [FullSearchSchema Type](./api/router/FullSearchSchemaType)
   - [HistoryState Interface](./api/router/historyStateInterface)
+  - [NotFoundError Type](./api/router/NotFoundErrorType)
 - Deprecated
   - [FileRoute Class](./api/router/FileRouteClass)
   - [Route Class](./api/router/RouteClass)
   - [Router Class](./api/router/RouterClass)
   - [RouteApi Class](./api/router/RouteApiClass)
   - [RootRoute Class](./api/router/RootRouteClass)
+  - [NotFoundRoute Class](./api/router/NotFoundRouteClass)
