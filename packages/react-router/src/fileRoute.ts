@@ -105,8 +105,9 @@ export function createFileRoute<
     RemoveUnderScores<TPath>
   >,
 >(path: TFilePath) {
-  return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path)
-    .createRoute
+  return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
+    silent: true,
+  }).createRoute
 }
 
 /** 
@@ -126,7 +127,14 @@ export class FileRoute<
     RemoveUnderScores<TPath>
   >,
 > {
-  constructor(public path: TFilePath) {}
+  silent?: boolean
+
+  constructor(
+    public path: TFilePath,
+    _opts?: { silent: boolean },
+  ) {
+    this.silent = _opts?.silent
+  }
 
   createRoute = <
     TSearchSchemaInput extends RouteConstraints['TSearchSchema'] = {},
@@ -217,7 +225,7 @@ export class FileRoute<
     TRouteTree
   > => {
     warning(
-      false,
+      this.silent,
       'FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.',
     )
     const route = createRoute(options as any)
