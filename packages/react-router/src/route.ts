@@ -9,7 +9,14 @@ import { RouteById, RouteIds, RoutePaths } from './routeInfo'
 import { AnyRouter, RegisteredRouter } from './router'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
-import { Assign, Expand, IsAny, NoInfer, UnionToIntersection } from './utils'
+import {
+  Assign,
+  Expand,
+  IsAny,
+  NoInfer,
+  PickRequired,
+  UnionToIntersection,
+} from './utils'
 import { BuildLocationFn, NavigateFn } from './RouterProvider'
 import { LazyRoute } from '.'
 
@@ -36,6 +43,8 @@ export type RoutePathOptions<TCustomId, TPath> =
   | {
       id: TCustomId
     }
+
+export interface StaticRouteOption {}
 
 export type RoutePathOptionsIntersection<TCustomId, TPath> =
   UnionToIntersection<RoutePathOptions<TCustomId, TPath>>
@@ -204,7 +213,16 @@ export type UpdatableRouteOptions<
   meta?: (ctx: { loaderData: TLoaderData }) => JSX.IntrinsicElements['meta'][]
   links?: () => JSX.IntrinsicElements['link'][]
   scripts?: () => JSX.IntrinsicElements['script'][]
-}
+} & UpdatableStaticRouteOption
+
+export type UpdatableStaticRouteOption =
+  {} extends PickRequired<StaticRouteOption>
+    ? {
+        static?: StaticRouteOption
+      }
+    : {
+        static: StaticRouteOption
+      }
 
 export type MetaDescriptor =
   | { charSet: 'utf-8' }
