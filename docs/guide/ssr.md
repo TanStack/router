@@ -150,6 +150,15 @@ Now that you have a router instance that has loaded all of the critical data for
 const html = ReactDOMServer.renderToString(<StartServer router={router} />)
 ```
 
+### Handling Not Found Errors
+
+`router` has a method `hasNotFoundMatch` to check if a not-found error has occurred during the rendering process. Use this method to check if a not-found error has occurred and set the response status code accordingly:
+
+```tsx
+// src/entry-server.tsx
+if (router.hasNotFoundMatch()) statusCode = 404
+```
+
 ### All Together Now!
 
 Here is a complete example of a server entry file that uses all of the concepts discussed above.
@@ -177,7 +186,7 @@ export async function render(url, response) {
 
   const appHtml = ReactDOMServer.renderToString(<StartServer router={router} />)
 
-  response.statusCode = 200
+  response.statusCode = router.hasNotFoundMatch() ? 404 : 200
   response.setHeader('Content-Type', 'text/html')
   response.end(`<!DOCTYPE html>${appHtml}`)
 }
@@ -243,6 +252,10 @@ await new Promise<void>((resolve) => {
     },
   )
 })
+
+if (router.hasNotFoundMatch() && res.statusCode !== 500) {
+  res.statusCode = 404
+}
 
 // Add our Router transform to the stream
 const transforms = [transformStreamWithRouter(router)]
