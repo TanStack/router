@@ -732,6 +732,9 @@ export class Router<
             loaderDeps,
             invalid: false,
             preload: false,
+            links: route.options.links?.(),
+            scripts: route.options.scripts?.(),
+            staticData: route.options.staticData || {},
           }
 
       // Regardless of whether we're reusing an existing match or creating
@@ -1156,9 +1159,6 @@ export class Router<
             ...beforeLoadContext,
           }
 
-          const links = route.options.links?.()
-          const scripts = route.options.scripts?.()
-
           matches[index] = match = {
             ...match,
             routeContext: replaceEqualDeep(
@@ -1168,8 +1168,6 @@ export class Router<
             context: replaceEqualDeep(match.context, context),
             abortController,
             pendingPromise,
-            links,
-            scripts,
           }
         } catch (err) {
           handleErrorAndRedirect(err, 'BEFORE_LOAD')
