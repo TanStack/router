@@ -1,6 +1,6 @@
 /// <reference types="vinxi/types/server" />
 import { renderAsset } from '@vinxi/react'
-import React, { Suspense } from 'react'
+import { Suspense } from 'react'
 import { PipeableStream, renderToPipeableStream } from 'react-dom/server'
 import { eventHandler, setHeader, toWebRequest } from 'vinxi/server'
 import {
@@ -10,7 +10,6 @@ import {
 
 import { createRouter } from './router'
 import { createMemoryHistory } from '@tanstack/react-router'
-import { Stream } from 'stream'
 
 export default eventHandler(async (event) => {
   const req = toWebRequest(event)
@@ -23,6 +22,7 @@ export default eventHandler(async (event) => {
 
   // Create a router
   const router = createRouter()
+  console.log(router.state)
   // Create a history for the router
   const history = createMemoryHistory({
     initialEntries: [href],

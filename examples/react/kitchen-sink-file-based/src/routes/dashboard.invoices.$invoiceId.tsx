@@ -1,13 +1,16 @@
 import * as React from 'react'
-import { FileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  useNavigate,
+  useRouter,
+} from '@tanstack/react-router'
 import { z } from 'zod'
 import { fetchInvoiceById, patchInvoice } from '../utils/mockTodos'
 import { useMutation } from '../hooks/useMutation'
 import { InvoiceFields } from '../components/InvoiceFields'
 
-export const Route = new FileRoute(
-  '/dashboard/invoices/$invoiceId',
-).createRoute({
+export const Route = createFileRoute('/dashboard/invoices/$invoiceId')({
   parseParams: (params) => ({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),
   }),

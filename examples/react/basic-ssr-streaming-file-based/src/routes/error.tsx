@@ -7,7 +7,7 @@ async function loadData() {
   return 'Hello!'
 }
 
-export const Route = new FileRoute('/error').createRoute({
+export const Route = createFileRoute('/error')({
   component: ErrorComponent,
   loader: async () => {
     if (Math.random() > 0.5) throw new Error('Random error!')

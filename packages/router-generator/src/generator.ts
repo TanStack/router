@@ -1,5 +1,6 @@
 import path from 'path'
-import * as fs from 'fs/promises'
+import * as fs from 'fs'
+import * as fsp from 'fs/promises'
 import * as prettier from 'prettier'
 import { Config } from './config'
 import { cleanPath, trimPathLeft } from './utils'
@@ -22,6 +23,7 @@ export type RouteNode = {
   isErrorComponent?: boolean
   isPendingComponent?: boolean
   isVirtual?: boolean
+  isLazy?: boolean
   isRoot?: boolean
   children?: RouteNode[]
   parent?: RouteNode
@@ -34,7 +36,7 @@ async function getRouteNodes(config: Config) {
 
   async function recurse(dir: string) {
     const fullDir = path.resolve(config.routesDirectory, dir)
-    let dirList = await fs.readdir(fullDir, { withFileTypes: true })
+    let dirList = await fsp.readdir(fullDir, { withFileTypes: true })
 
     dirList = dirList.filter((d) => {
       if (
@@ -73,9 +75,25 @@ async function getRouteNodes(config: Config) {
           let isErrorComponent = routePath?.endsWith('/errorComponent')
           let isPendingComponent = routePath?.endsWith('/pendingComponent')
           let isLoader = routePath?.endsWith('/loader')
+          let isLazy = routePath?.endsWith('/lazy')
+
+          ;(
+            [
+              [isComponent, 'component'],
+              [isErrorComponent, 'errorComponent'],
+              [isPendingComponent, 'pendingComponent'],
+              [isLoader, 'loader'],
+            ] as const
+          ).forEach(([isType, type]) => {
+            if (isType) {
+              console.warn(
+                `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
+              )
+            }
+          })
 
           routePath = routePath?.replace(
-            /\/(component|errorComponent|pendingComponent|loader|route)$/,
+            /\/(component|errorComponent|pendingComponent|loader|route|lazy)$/,
             '',
           )
 
@@ -95,6 +113,7 @@ async function getRouteNodes(config: Config) {
             isErrorComponent,
             isPendingComponent,
             isLoader,
+            isLazy,
           })
         }
       }),
@@ -116,6 +135,7 @@ type RouteSubNode = {
   errorComponent?: RouteNode
   pendingComponent?: RouteNode
   loader?: RouteNode
+  lazy?: RouteNode
 }
 
 export async function generator(config: Config) {
@@ -151,7 +171,7 @@ export async function generator(config: Config) {
     (d) => (d.filePath?.match(/[./]index[.]/) ? 1 : -1),
     (d) =>
       d.filePath?.match(
-        /[./](component|errorComponent|pendingComponent|loader)[.]/,
+        /[./](component|errorComponent|pendingComponent|loader|lazy)[.]/,
       )
         ? 1
         : -1,
@@ -169,7 +189,7 @@ export async function generator(config: Config) {
   // build up a tree based on the routeNodes' routePath
   let routeNodes: RouteNode[] = []
 
-  const handleNode = (node: RouteNode) => {
+  const handleNode = async (node: RouteNode) => {
     const parentRoute = hasParentRoute(routeNodes, node.routePath)
     if (parentRoute) node.parent = parentRoute
 
@@ -184,27 +204,81 @@ export async function generator(config: Config) {
 
     node.isNonPath = first.startsWith('_')
     node.isNonLayout = first.endsWith('_')
-
     node.cleanedPath = removeUnderscores(node.path) ?? ''
+
+    // Ensure the boilerplate for the route exists
+    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
+
+    const escapedRoutePath = removeTrailingUnderscores(
+      node.routePath?.replaceAll('$', '$$') ?? '',
+    )
+
+    let replaced = routeCode
+
+    if (!routeCode) {
+      if (node.isLazy) {
+        replaced = [
+          `import { createLazyFileRoute } from '@tanstack/react-router'`,
+          `export const Route = createLazyFileRoute('${escapedRoutePath}')({
+  component: () => <div>Hello ${escapedRoutePath}!</div>
+})`,
+        ].join('\n\n')
+      } else if (
+        node.isRoute ||
+        (!node.isComponent &&
+          !node.isErrorComponent &&
+          !node.isPendingComponent &&
+          !node.isLoader)
+      ) {
+        replaced = [
+          `import { createFileRoute } from '@tanstack/react-router'`,
+          `export const Route = createFileRoute('${escapedRoutePath}')({
+  component: () => <div>Hello ${escapedRoutePath}!</div>
+})`,
+        ].join('\n\n')
+      }
+    } else {
+      replaced = routeCode
+        .replace(
+          /(FileRoute\(\s*['"])([^\s]+)(['"](?:,?)\s*\))/g,
+          (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+        )
+        .replace(
+          /(createFileRoute\(\s*['"])([^\s]+)(['"](?:,?)\s*\))/g,
+          (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+        )
+        .replace(
+          /(createLazyFileRoute\(\s*['"])([^\s]+)(['"](?:,?)\s*\))/g,
+          (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+        )
+    }
+
+    if (replaced !== routeCode) {
+      console.log(`🌲 Updating ${node.fullPath}`)
+      await fsp.writeFile(node.fullPath, replaced)
+    }
 
     if (
       !node.isVirtual &&
       (node.isLoader ||
         node.isComponent ||
         node.isErrorComponent ||
-        node.isPendingComponent)
+        node.isPendingComponent ||
+        node.isLazy)
     ) {
       routePiecesByPath[node.routePath!] =
         routePiecesByPath[node.routePath!] || {}
 
       routePiecesByPath[node.routePath!]![
-        node.isLoader
-          ? 'loader'
-          : node.isErrorComponent
-            ? 'errorComponent'
-            : node.isPendingComponent
-              ? 'pendingComponent'
-              : 'component'
+        node.isLazy
+          ? 'lazy'
+          : node.isLoader
+            ? 'loader'
+            : node.isErrorComponent
+              ? 'errorComponent'
+              : node.isPendingComponent
+                ? 'pendingComponent'
+                : 'component'
       ] = node
 
       const anchorRoute = routeNodes.find((d) => d.routePath === node.routePath)
@@ -213,6 +287,7 @@ export async function generator(config: Config) {
         handleNode({
           ...node,
           isVirtual: true,
+          isLazy: false,
           isLoader: false,
           isComponent: false,
           isErrorComponent: false,
@@ -239,29 +314,8 @@ export async function generator(config: Config) {
     depth = 1,
   ): Promise<string> {
     const children = nodes.map(async (node) => {
-      const routeCode = await fs.readFile(node.fullPath, 'utf-8')
-
-      // Ensure the boilerplate for the route exists
       if (node.isRoot) {
         return
-      }
-
-      // Ensure that new FileRoute(anything?) is replaced with FileRoute(${node.routePath})
-      // routePath can contain $ characters, which have special meaning when used in replace
-      // so we have to escape it by turning all $ into $$. But since we do it through a replace call
-      // we have to double escape it into $$$$. For more information, see
-      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace#specifying_a_string_as_the_replacement
-      const escapedRoutePath = removeTrailingUnderscores(
-        node.routePath?.replaceAll('$', '$$') ?? '',
-      )
-      const quote = config.quoteStyle === 'single' ? `'` : `"`
-      const replaced = routeCode.replace(
-        /(FileRoute\(\s*['"])([^\s]+)(['"](?:,?)\s*\))/g,
-        (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
-      )
-
-      if (replaced !== routeCode) {
-        await fs.writeFile(node.fullPath, replaced)
       }
 
       const route = `${node.variableName}Route`
@@ -288,7 +342,7 @@ export async function generator(config: Config) {
   ])
 
   const imports = Object.entries({
-    FileRoute: sortedRouteNodes.some((d) => d.isVirtual),
+    createFileRoute: sortedRouteNodes.some((d) => d.isVirtual),
     lazyFn: sortedRouteNodes.some(
       (node) => routePiecesByPath[node.routePath!]?.loader,
     ),
@@ -337,9 +391,9 @@ export async function generator(config: Config) {
       .map((node) => {
         return `const ${
           node.variableName
-        }Import = new FileRoute('${removeTrailingUnderscores(
+        }Import = createFileRoute('${removeTrailingUnderscores(
           node.routePath,
-        )}').createRoute()`
+        )}')()`
       })
       .join('\n'),
     '// Create/Update Routes',
@@ -351,6 +405,7 @@ export async function generator(config: Config) {
           routePiecesByPath[node.routePath!]?.errorComponent
         const pendingComponentNode =
           routePiecesByPath[node.routePath!]?.pendingComponent
+        const lazyComponentNode = routePiecesByPath[node.routePath!]?.lazy
 
         return [
           `const ${node.variableName}Route = ${node.variableName}Import.update({
@@ -373,28 +428,47 @@ export async function generator(config: Config) {
                 ),
               )}'), 'loader') })`
             : '',
-          componentNode || errorComponentNode || pendingComponentNode
+          componentNode ||
+          errorComponentNode ||
+          pendingComponentNode ||
+          lazyComponentNode
             ? `.update({
-              ${(
-                [
-                  ['component', componentNode],
-                  ['errorComponent', errorComponentNode],
-                  ['pendingComponent', pendingComponentNode],
-                ] as const
-              )
-                .filter((d) => d[1])
-                .map((d) => {
-                  return `${
-                    d[0]
-                  }: lazyRouteComponent(() => import('./${replaceBackslash(
-                    removeExt(
-                      path.relative(
-                        path.dirname(config.generatedRouteTree),
-                        path.resolve(config.routesDirectory, d[1]!.filePath),
+              ${[
+                ...(
+                  [
+                    ['component', componentNode],
+                    ['errorComponent', errorComponentNode],
+                    ['pendingComponent', pendingComponentNode],
+                  ] as const
+                )
+                  .filter((d) => d[1])
+                  .map((d) => {
+                    return `${
+                      d[0]
+                    }: lazyRouteComponent(() => import('./${replaceBackslash(
+                      removeExt(
+                        path.relative(
+                          path.dirname(config.generatedRouteTree),
+                          path.resolve(config.routesDirectory, d[1]!.filePath),
+                        ),
                       ),
-                    ),
-                  )}'), '${d[0]}')`
-                })
+                    )}'), '${d[0]}')`
+                  }),
+                lazyComponentNode
+                  ? `lazy: () => import('./${replaceBackslash(
+                      removeExt(
+                        path.relative(
+                          path.dirname(config.generatedRouteTree),
+                          path.resolve(
+                            config.routesDirectory,
+                            lazyComponentNode!.filePath,
+                          ),
+                        ),
+                      ),
+                    )}').then((d) => d.Route)`
+                  : '',
+              ]
+                .filter(Boolean)
                 .join('\n,')}
             })`
             : '',
@@ -434,7 +508,7 @@ export async function generator(config: Config) {
     parser: 'typescript',
   })
 
-  const routeTreeContent = await fs
+  const routeTreeContent = await fsp
     .readFile(path.resolve(config.generatedRouteTree), 'utf-8')
     .catch((err: any) => {
       if (err.code === 'ENOENT') {
@@ -446,11 +520,11 @@ export async function generator(config: Config) {
   if (!checkLatest()) return
 
   if (routeTreeContent !== routeConfigFileContent) {
-    await fs.mkdir(path.dirname(path.resolve(config.generatedRouteTree)), {
+    await fsp.mkdir(path.dirname(path.resolve(config.generatedRouteTree)), {
       recursive: true,
     })
     if (!checkLatest()) return
-    await fs.writeFile(
+    await fsp.writeFile(
       path.resolve(config.generatedRouteTree),
       routeConfigFileContent,
     )

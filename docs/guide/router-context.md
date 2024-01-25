@@ -15,10 +15,10 @@ These are just suggested uses of the router context. You can use it for whatever
 
 ## Typed Router Context
 
-Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context you must use the `rootRouteWithContext()` method instead of the `new RootRoute()` class to create your root route. Here's an example:
+Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `new RouteContext<YourContextTypeHere>()` class to create a new `routerContext` and then use the `routerContext.rootRouteWithContext()` method instead of the `createRootRoute()` class to create your root route. Here's an example:
 
 ```tsx
-import { RootRoute } from '@tanstack/react-router'
+import { createRootRoute } from '@tanstack/react-router'
 
 interface MyRouterContext {
   user: User
@@ -34,7 +34,7 @@ const routeTree = rootRoute.addChildren([
 ])
 
 // Use the routerContext to create your router
-const router = new Router({
+const router = createRouter({
   routeTree,
 })
 ```
@@ -46,10 +46,10 @@ The router context is passed to the router at instantiation time. You can pass t
 > 🧠 If your context has any required properties, you will see a TypeScript error if you don't pass them in the initial router context. If all of your context properties are optional, you will not see a TypeScript error and passing the context will be optional. If you don't pass a router context, it defaults to `{}`.
 
 ```tsx
-import { Router } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 
 // Use the routerContext you created to create your router
-const router = new Router({
+const router = createRouter({
   routeTree,
   context: {
     user: {
@@ -66,7 +66,7 @@ Once you have defined the router context type, you can use it in your route defi
 
 ```tsx
 // src/routes/todos.tsx
-export const Route = new FileRoute('/todos').createRoute({
+export const Route = createFileRoute('/todos')({
   component: Todos,
   loader: ({ context }) => fetchTodosByUserId(context.user.id),
 })
@@ -83,7 +83,7 @@ const fetchTodosByUserId = async ({ userId }) => {
   return data
 }
 
-const router = new Router({
+const router = createRouter({
   routeTree: rootRoute,
   context: {
     userId: '123',
@@ -96,7 +96,7 @@ Then, in your route:
 
 ```tsx
 // src/routes/todos.tsx
-export const Route = new FileRoute('/todos').createRoute({
+export const Route = createFileRoute('/todos')({
   component: Todos,
   loader: ({ context }) => context.fetchTodosByUserId(context.userId),
 })
@@ -105,7 +105,7 @@ export const Route = new FileRoute('/todos').createRoute({
 ### How about an external data fetching library?
 
 ```tsx
-import { RootRoute } from '@tanstack/react-router'
+import { createRootRoute } from '@tanstack/react-router'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -117,7 +117,7 @@ const rootRoute = rootRouteWithContext<MyRouterContext>()({
 
 const queryClient = new QueryClient()
 
-const router = new Router({
+const router = createRouter({
   routeTree: rootRoute,
   context: {
     queryClient,
@@ -129,7 +129,7 @@ Then, in your route:
 
 ```tsx
 // src/routes/todos.tsx
-export const Route = new FileRoute('/todos').createRoute({
+export const Route = createFileRoute('/todos')({
   component: Todos,
   loader: ({ context }) => {
     await context.queryClient.ensureQueryData({
@@ -163,7 +163,7 @@ export const Route = rootRouteWithContext<MyRouterContext>()({
 ```tsx
 import { routeTree } from './routeTree.gen'
 
-const router = new Router({
+const router = createRouter({
   routeTree,
   context: {
     foo: true,
@@ -174,7 +174,7 @@ const router = new Router({
 - `src/routes/todos.tsx`
 
 ```tsx
-export const Route = new FileRoute('/todos').createRoute({
+export const Route = createFileRoute('/todos')({
   component: Todos,
   beforeLoad: () => {
     return {
@@ -194,7 +194,7 @@ Context, especially the isolated `routeContext` objects, make it trivial to accu
 
 ```tsx
 // src/routes/__root.tsx
-export const Route = new RootRoute({
+export const Route = createRootRoute({
   component: () => {
     const router = useRouter()
 
@@ -215,7 +215,7 @@ Using that same route context, we could also generate a title tag for our page's
 
 ```tsx
 // src/routes/__root.tsx
-export const Route = new RootRoute({
+export const Route = createRootRoute({
   component: () => {
     const router = useRouter()
 

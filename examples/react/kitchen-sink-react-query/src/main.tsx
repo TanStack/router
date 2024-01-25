@@ -7,14 +7,14 @@ import {
   Link,
   useNavigate,
   useSearch,
-  Router,
-  Route,
+  createRouter,
   redirect,
   ErrorComponent,
   rootRouteWithContext,
   useRouter,
   MatchRoute,
   useRouterState,
+  createRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import {
@@ -164,7 +164,7 @@ function RootComponent() {
   )
 }
 
-const indexRoute = new Route({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: IndexComponent,
@@ -201,7 +201,7 @@ function IndexComponent() {
   )
 }
 
-const dashboardRoute = new Route({
+const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
   component: DashboardComponent,
@@ -240,7 +240,7 @@ function DashboardComponent() {
   )
 }
 
-const dashboardIndexRoute = new Route({
+const dashboardIndexRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/',
   loader: (opts) =>
@@ -262,7 +262,7 @@ function DashboardIndexComponent() {
   )
 }
 
-const invoicesRoute = new Route({
+const invoicesRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: 'invoices',
   loader: (opts) =>
@@ -340,7 +340,7 @@ function InvoicesComponent() {
   )
 }
 
-const invoicesIndexRoute = new Route({
+const invoicesIndexRoute = createRoute({
   getParentRoute: () => invoicesRoute,
   path: '/',
   component: InvoicesIndexComponent,
@@ -395,7 +395,7 @@ function InvoicesIndexComponent() {
   )
 }
 
-const invoiceRoute = new Route({
+const invoiceRoute = createRoute({
   getParentRoute: () => invoicesRoute,
   path: '$invoiceId',
   parseParams: (params) => ({
@@ -512,7 +512,7 @@ function InvoiceComponent() {
   )
 }
 
-const usersRoute = new Route({
+const usersRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: 'users',
   validateSearch: z.object({
@@ -666,7 +666,7 @@ function UsersComponent() {
   )
 }
 
-const usersIndexRoute = new Route({
+const usersIndexRoute = createRoute({
   getParentRoute: () => usersRoute,
   path: '/',
   component: UsersIndexComponent,
@@ -696,7 +696,7 @@ function UsersIndexComponent() {
   )
 }
 
-const userRoute = new Route({
+const userRoute = createRoute({
   getParentRoute: () => usersRoute,
   path: 'user',
   validateSearch: z.object({
@@ -727,14 +727,14 @@ function UserComponent() {
   )
 }
 
-const expensiveRoute = new Route({
+const expensiveRoute = createRoute({
   getParentRoute: () => rootRoute,
   // Your elements can be asynchronous, which means you can code-split!
   path: 'expensive',
   component: lazyRouteComponent(() => import('./Expensive')),
 })
 
-const authRoute = new Route({
+const authRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'auth',
   // Before loading, authenticate the user via our auth context
@@ -760,7 +760,7 @@ const authRoute = new Route({
   },
 })
 
-const profileRoute = new Route({
+const profileRoute = createRoute({
   getParentRoute: () => authRoute,
   path: 'profile',
   component: ProfileComponent,
@@ -778,7 +778,7 @@ function ProfileComponent() {
   )
 }
 
-const loginRoute = new Route({
+const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'login',
   validateSearch: z.object({
@@ -843,7 +843,7 @@ function LoginComponent() {
   )
 }
 
-const layoutRoute = new Route({
+const layoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'layout',
   component: LayoutComponent,
@@ -859,7 +859,7 @@ function LayoutComponent() {
   )
 }
 
-const layoutARoute = new Route({
+const layoutARoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: 'layout-a',
   component: LayoutAComponent,
@@ -873,7 +873,7 @@ function LayoutAComponent() {
   )
 }
 
-const layoutBRoute = new Route({
+const layoutBRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: 'layout-b',
   component: LayoutBComponent,
@@ -902,7 +902,7 @@ const routeTree = rootRoute.addChildren([
 
 const queryClient = new QueryClient()
 
-const router = new Router({
+const router = createRouter({
   routeTree,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>

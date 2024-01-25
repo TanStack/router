@@ -41,7 +41,7 @@ type ToOptions<
     | ((prevSearch: Record<string, unknown>) => Record<string, unknown>)
   // `hash` is either a string or a function that supplies the previous hash and allows you to return a new one.
   hash?: string | ((prevHash: string) => string)
-  // `state` is either an object of state or a function that supplies the previous state and allows you to return a new one. State is stored in the history API and can be useful for passing data between routes that you do not with to permanently store in URL search params.
+  // `state` is either an object of state or a function that supplies the previous state and allows you to return a new one. State is stored in the history API and can be useful for passing data between routes that you do not want to permanently store in URL search params.
   state?:
     | Record<string, any>
     | ((prevState: Record<string, unknown>) => Record<string, unknown>)
@@ -173,7 +173,7 @@ By default, all links are absolute unless a `from` route path is provided. This 
 If you want to make a link that is relative to the current route, you can provide a `from` route path:
 
 ```tsx
-const postIdRoute = new Route({
+const postIdRoute = createRoute({
   path: '/blog/post/$postId',
 })
 

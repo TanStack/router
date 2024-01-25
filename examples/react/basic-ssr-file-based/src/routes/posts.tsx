@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { FileRoute, Link, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
 
 export type PostType = {
   id: string
@@ -7,7 +7,7 @@ export type PostType = {
   body: string
 }
 
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loader: async () => {
     console.log('Fetching posts...')
     await new Promise((r) =>

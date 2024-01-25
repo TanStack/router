@@ -1,7 +1,11 @@
 import * as React from 'react'
-import { Link, Outlet } from '@tanstack/react-router'
+import { Link, Outlet, createLazyFileRoute } from '@tanstack/react-router'
 
-export const component = function LayoutComponent() {
+export const Route = createLazyFileRoute('/_layout-test')({
+  component: LayoutComponent,
+})
+
+function LayoutComponent() {
   return (
     <div>
       <div>I'm a layout</div>

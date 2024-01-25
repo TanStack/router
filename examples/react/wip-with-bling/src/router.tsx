@@ -1,4 +1,4 @@
-import { Router } from '@tanstack/react-router'
+import { createRouter as createReactRouter } from '@tanstack/react-router'
 
 import { rootRoute } from './routes/root'
 import { indexRoute } from './routes/index'
@@ -12,7 +12,7 @@ export const routeTree = rootRoute.addChildren([
 ])
 
 export function createRouter() {
-  return new Router({
+  return createReactRouter({
     routeTree,
     context: {
       head: '',

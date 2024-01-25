@@ -99,7 +99,7 @@ type ProductSearch = {
   sort: ProductSearchSortOptions
 }
 
-export const Route = new FileRoute('/shop/products').createRoute({
+export const Route = createFileRoute('/shop/products')({
   validateSearch: (search: Record<string, unknown>): ProductSearch => {
     // validate and parse the search params into a typed state
     return {
@@ -130,7 +130,7 @@ type ProductSearch = {
   sort: ProductSearchSortOptions
 }
 
-export const Route = new FileRoute('/shop/products').createRoute({
+export const Route = createFileRoute('/shop/products')({
   validateSearch: (search: Record<string, unknown>): ProductSearch => {
     // validate and parse the search params into a typed state
     return {
@@ -157,7 +157,7 @@ const productSearchSchema = z.object({
 
 type ProductSearch = z.infer<typeof productSearchSchema>
 
-export const Route = new FileRoute('/shop/products').createRoute({
+export const Route = createFileRoute('/shop/products')({
   validateSearch: (search) => productSearchSchema.parse(search),
 })
 ```
@@ -195,7 +195,7 @@ const productSearchSchema = z.object({
 
 type ProductSearch = z.infer<typeof productSearchSchema>
 
-export const Route = new FileRoute('/shop/products').createRoute({
+export const Route = createFileRoute('/shop/products')({
   validateSearch: productSearchSchema,
 })
 ```
@@ -203,7 +203,7 @@ export const Route = new FileRoute('/shop/products').createRoute({
 - `shop.products.$productId.tsx`
 
 ```tsx
-export const Route = new FileRoute('/shop/products/$productId').createRoute({
+export const Route = createFileRoute('/shop/products/$productId')({
   beforeLoad: ({ search }) => {
     search
     // ^? ProductSearch ✅
@@ -218,7 +218,7 @@ You can access your route's validated search params in your route's `component` 
 ```tsx
 // /routes/shop.products.tsx
 
-export const Route = new FileRoute('/shop/products').createRoute({
+export const Route = createFileRoute('/shop/products')({
   validateSearch: productSearchSchema,
 })
 
@@ -234,7 +234,7 @@ const ProductList = () => {
 You can access your route's validated search params anywhere in your app using the `useSearch` hook. By passing the `from` id/path of your origin route, you'll get even better type safety:
 
 ```tsx
-const allProductsRoute = new Route({
+const allProductsRoute = createRoute({
   getParentRoute: () => shopRoute,
   path: 'products',
   validateSearch: productSearchSchema,
@@ -278,7 +278,7 @@ The best way to update search params is to use the `search` prop on the `<Link /
 
 ```tsx
 // /routes/shop.products.tsx
-export const Route = new FileRoute('/shop/products').createRoute({
+export const Route = createFileRoute('/shop/products')({
   validateSearch: productSearchSchema,
 })
 
@@ -302,7 +302,7 @@ The `navigate` function also accepts a `search` option that works the same way a
 
 ```tsx
 // /routes/shop.products.tsx
-export const Route = new FileRoute('/shop/products/$productId').createRoute({
+export const Route = createFileRoute('/shop/products/$productId')({
   validateSearch: productSearchSchema,
 })
 

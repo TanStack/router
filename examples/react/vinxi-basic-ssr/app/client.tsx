@@ -30,11 +30,8 @@ function render(mod?: any) {
   const app = <StartClient router={router} />
 
   if (!mod) {
-    // Initial
-    router.hydrate()
     window.$root = hydrateRoot(document, app)
   } else {
-    // Hot
     window.$root?.render(app)
   }
 }

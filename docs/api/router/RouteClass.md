@@ -3,6 +3,10 @@ id: RouteClass
 title: Route class
 ---
 
+## ⚠️ Deprecated
+
+The `Route` class has been deprecated in favor of the `createRoute` function.
+
 The `Route` class implements the `RouteApi` class and can be used to create route instances. A route instance can then be used to create a route tree.
 
 ### `Route` constructor

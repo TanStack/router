@@ -22,7 +22,7 @@ The `redirect` function returns a new `Redirect` object that can be either retur
 ```tsx
 import { redirect } from '@tanstack/react-router'
 
-const route = new Route({
+const route = createRoute({
   // throwing a redirect object
   loader: () => {
     if (!user) {

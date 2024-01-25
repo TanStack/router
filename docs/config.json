@@ -27,6 +27,10 @@
         {
           "label": "Comparison",
           "to": "comparison"
+        },
+        {
+          "label": "Migrate from React Router",
+          "to": "migrate-from-react-router"
         }
       ]
     },

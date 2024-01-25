@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { Link, Outlet, FileRoute } from '@tanstack/react-router'
+import { Outlet, createFileRoute } from '@tanstack/react-router'
 
-export const Route = new FileRoute('/_layout').createRoute({
+export const Route = createFileRoute('/_layout')({
   component: LayoutComponent,
 })
 

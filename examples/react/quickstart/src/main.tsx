@@ -4,13 +4,13 @@ import {
   Outlet,
   RouterProvider,
   Link,
-  Router,
-  Route,
-  RootRoute,
+  createRouter,
+  createRoute,
+  createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
-const rootRoute = new RootRoute({
+const rootRoute = createRootRoute({
   component: () => (
     <>
       <div className="p-2 flex gap-2">
@@ -28,7 +28,7 @@ const rootRoute = new RootRoute({
   ),
 })
 
-const indexRoute = new Route({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: function Index() {
@@ -40,7 +40,7 @@ const indexRoute = new Route({
   },
 })
 
-const aboutRoute = new Route({
+const aboutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/about',
   component: function About() {
@@ -50,7 +50,7 @@ const aboutRoute = new Route({
 
 const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
 
-const router = new Router({ routeTree, defaultPreload: 'intent' })
+const router = createRouter({ routeTree, defaultPreload: 'intent' })
 
 declare module '@tanstack/react-router' {
   interface Register {

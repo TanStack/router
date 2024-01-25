@@ -4,11 +4,11 @@ import {
   Outlet,
   RouterProvider,
   Link,
-  Route,
   ErrorComponent,
-  Router,
+  createRouter,
   rootRouteWithContext,
-  ErrorRouteProps,
+  ErrorComponentProps,
+  createRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
@@ -84,7 +84,7 @@ function RootComponent() {
   )
 }
 
-const indexRoute = new Route({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: IndexRouteComponent,
@@ -103,7 +103,7 @@ const postsQueryOptions = queryOptions({
   queryFn: () => fetchPosts(),
 })
 
-const postsRoute = new Route({
+const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: ({ context: { queryClient } }) =>
@@ -144,7 +144,7 @@ function PostsRouteComponent() {
   )
 }
 
-const postsIndexRoute = new Route({
+const postsIndexRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '/',
   component: PostsIndexRouteComponent,
@@ -162,7 +162,7 @@ const postQueryOptions = (postId: string) =>
     queryFn: () => fetchPost(postId),
   })
 
-const postRoute = new Route({
+const postRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
   errorComponent: PostErrorComponent,
@@ -171,7 +171,7 @@ const postRoute = new Route({
   component: PostRouteComponent,
 })
 
-function PostErrorComponent({ error }: ErrorRouteProps) {
+function PostErrorComponent({ error }: ErrorComponentProps) {
   if (error instanceof NotFoundError) {
     return <div>{error.message}</div>
   }
@@ -200,7 +200,7 @@ const routeTree = rootRoute.addChildren([
 const queryClient = new QueryClient()
 
 // Set up a Router instance
-const router = new Router({
+const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   // Since we're using React Query, we don't want loader calls to ever be stale

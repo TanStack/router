@@ -1,9 +1,9 @@
 import * as React from 'react'
 import {
+  createRoute,
   lazyRouteComponent,
   Link,
   Outlet,
-  Route,
   useLoaderData,
 } from '@tanstack/react-router'
 import { rootRoute } from './root'
@@ -32,11 +32,11 @@ const fetchPosts = server$(async () => {
     .then((d) => d.slice(0, 10))
 })
 
-export const postsRoute = new Route({
+export const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: () => fetchPosts(),
-  gcMaxAge: 0,
+  gcTime: 0,
   component: lazyRouteComponent(() =>
     import$({
       default: function Posts() {

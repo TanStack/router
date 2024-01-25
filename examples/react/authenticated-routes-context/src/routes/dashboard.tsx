@@ -1,9 +1,9 @@
 import * as React from 'react'
-import { FileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 
 import { useAuth } from '../auth'
 
-export const Route = new FileRoute('/dashboard').createRoute({
+export const Route = createFileRoute('/dashboard')({
   beforeLoad: ({ context, location }) => {
     if (!context.auth.isAuthenticated) {
       throw redirect({

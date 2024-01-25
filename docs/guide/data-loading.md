@@ -60,7 +60,7 @@ Route `loader` functions are called when a route match is loaded. They are calle
 
 ```tsx
 // routes/posts.tsx
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
 })
 ```
@@ -126,7 +126,7 @@ Once we have these deps in place, the route will always reload when the deps cha
 
 ```tsx
 // /routes/posts.tsx
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loaderDeps: ({ search: { offset, limit } }) => ({ offset, limit }),
   loader: ({ deps: { offset, limit } }) =>
     fetchPosts({
@@ -144,7 +144,7 @@ By default, `staleTime` for navigations is set to `0`ms (and 30 seconds for prel
 
 ```tsx
 // /routes/posts.tsx
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
   // Consider the route's data fresh for 10 seconds
   staleTime: 10_000,
@@ -159,7 +159,7 @@ To disable stale-while-revalidate caching for a route, set the `staleTime` optio
 
 ```tsx
 // /routes/posts.tsx
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
   staleTime: Infinity,
 })
@@ -168,7 +168,7 @@ export const Route = new FileRoute('/posts').createRoute({
 You can even turn this off for all routes by setting the `defaultStaleTime` option on the router:
 
 ```tsx
-const router = new Router({
+const router = createRouter({
   routeTree,
   defaultStaleTime: Infinity,
 })
@@ -180,7 +180,7 @@ Similar to Remix's default functionality, you may want to configure a route to o
 
 ```tsx
 // /routes/posts.tsx
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loaderDeps: ({ search: { offset, limit } }) => ({ offset, limit }),
   loader: ({ deps }) => fetchPosts(deps),
   // Do not cache this route's data after it's unloaded
@@ -201,7 +201,7 @@ To opt out of preloading, don't turn it on via the `routerOptions.defaultPreload
 We break down this use case in the [External Data Loading](../guide/external-data-loading) page, but if you'd like to use an external cache like TanStack Query, you can do so by passing all loader events to your external cache. As long as you are using the defaults, the only change you'll need to make is to set the `defaultPreloadStaleTime` option on the router to `0`:
 
 ```tsx
-const router = new Router({
+const router = createRouter({
   routeTree,
   defaultPreloadStaleTime: 0,
 })
@@ -246,12 +246,12 @@ export const Route = rootRouteWithContext<{
 - `/routes/posts.tsx`
 
 ```tsx
-import { FileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
 // Notice how our postsRoute references context to get our fetchPosts function
 // This can be a powerful tool for dependency injection across your router
 // and routes.
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loader: ({ context: { fetchPosts } }) => fetchPosts(),
 })
 ```
@@ -263,7 +263,7 @@ import { routeTree } from './routeTree.gen'
 
 // Use your routerContext to create a new router
 // This will require that you fullfil the type requirements of the routerContext
-const router = new Router({
+const router = createRouter({
   routeTree,
   context: {
     // Supply the fetchPosts function to the router context
@@ -278,7 +278,7 @@ To use path params in your `loader` function, access them via the `params` prope
 
 ```tsx
 // routes/posts.$postId.tsx
-export const Route = new FileRoute('/posts/$postId').createRoute({
+export const Route = createFileRoute('/posts/$postId')({
   loader: ({ params: { postId } }) => fetchPostById(postId),
 })
 ```
@@ -289,9 +289,9 @@ Passing down global context to your router is great, but what if you want to pro
 
 ```tsx
 // /routes/posts.tsx
-import { Route } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   // Pass the fetchPosts function to the route context
   beforeLoad: () => ({
     fetchPosts: () => console.log('foo'),
@@ -316,7 +316,7 @@ You might be here wondering why `search` isn't directly available in the `loader
 
 ```tsx
 // /routes/users.user.tsx
-export const Route = new FileRoute('/users/user').createRoute({
+export const Route = createFileRoute('/users/user')({
   validateSearch: (search) =>
     search as {
       userId: string
@@ -332,7 +332,7 @@ export const Route = new FileRoute('/users/user').createRoute({
 
 ```tsx
 // /routes/posts.tsx
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   // Use zod to validate and parse the search params
   validateSearch: z.object({
     offset: z.number().int().nonnegative().catch(0),
@@ -353,7 +353,7 @@ The `abortController` property of the `loader` function is an [AbortController](
 
 ```tsx
 // routes/posts.tsx
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loader: ({ abortController }) =>
     fetchPosts({
       // Pass this to an underlying fetch call or anything that supports signals
@@ -368,7 +368,7 @@ The `preload` property of the `loader` function is a boolean which is `true` whe
 
 ```tsx
 // routes/posts.tsx
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loader: async ({ preload }) =>
     fetchPosts({
       maxAge: preload ? 10_000 : 0, // Preloads should hang around a bit longer
@@ -409,7 +409,7 @@ The `routeOptions.onError` option is a function that is called when an error occ
 
 ```tsx
 // routes/posts.tsx
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
   onError: ({ error }) => {
     // Log the error
@@ -426,7 +426,7 @@ The `routeOptions.errorComponent` option is a component that is rendered when an
 
 ```tsx
 // routes/posts.tsx
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
   errorComponent: ({ error }) => {
     // Render an error message
@@ -441,9 +441,9 @@ TanStack Router provides a default `ErrorComponent` that is rendered when an err
 
 ```tsx
 // routes/posts.tsx
-import { FileRoute, ErrorComponent } from '@tanstack/react-router'
+import { createFileRoute, ErrorComponent } from '@tanstack/react-router'
 
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
   errorComponent: ({ error }) => {
     if (error instanceof MyCustomError) {

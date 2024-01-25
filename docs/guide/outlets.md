@@ -6,14 +6,14 @@ Nested routing means that routes can be nested within other routes, including th
 
 ## The `Outlet` Component
 
-The `Outlet` component is used to render any potentially matching child routes. `<Outlet />` doesn't take any props and can be rendered anywhere within a route's component tree. If there are no matching child routes, `<Outlet />` will render `null`.
+The `Outlet` component is used to render the next potentially matching child route. `<Outlet />` doesn't take any props and can be rendered anywhere within a route's component tree. If there is no matching child route, `<Outlet />` will render `null`.
 
 A great example is configuring the root route of your application. Let's give our root route a component that renders a title, then an `<Outlet />` for our top-level routes to render.
 
 ```tsx
-import { RootRoute } from '@tanstack/react-router'
+import { createRootRoute } from '@tanstack/react-router'
 
-export const Route = new RootRoute({
+export const Route = createRootRoute({
   component: RootComponent,
 })
 

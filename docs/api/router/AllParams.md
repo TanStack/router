@@ -34,7 +34,7 @@ export type Register = {
 To register a route tree with a router instance, use declaration merging to add the type of your router instance to the Register interface under the `router` property:
 
 ```tsx
-const router = new Router({
+const router = createRouter({
   // ...
 })
 

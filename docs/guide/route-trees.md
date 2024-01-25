@@ -152,12 +152,12 @@ Even though it doesn't have a path, the root route has access to all of the same
 - search param validation
 - etc.
 
-To create a root route, call the `new RootRoute()` constructor and export it as the `Route` variable in your route file:
+To create a root route, call the `createRootRoute()` constructor and export it as the `Route` variable in your route file:
 
 ```tsx
-import { RootRoute } from '@tanstack/react-router'
+import { createRootRoute } from '@tanstack/react-router'
 
-export const Route = new RootRoute()
+export const Route = createRootRoute()
 ```
 
 > 🧠 You can also create a root route via the `rootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./guide/router-context) -->
@@ -167,9 +167,9 @@ export const Route = new RootRoute()
 All other routes other than the root route are configured using the `FileRoute` class. The `FileRoute` class is a wrapper around the `Route` class that provides type safety when using file-based routing:
 
 ```tsx
-import { FileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = new FileRoute('/posts').createRoute({
+export const Route = createFileRoute('/posts')({
   component: PostsComponent,
 })
 ```
@@ -191,9 +191,9 @@ Static routes simply match a specific path. In our example route tree above, the
 Let's take a look at the `/about` route:
 
 ```tsx
-import { FileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = new FileRoute('/about').createRoute({
+export const Route = createFileRoute('/about')({
   component: AboutComponent,
 })
 
@@ -211,9 +211,9 @@ Index routes specifically target the their parent route when it is matched exact
 Let's take a look at the posts index route (`posts.index.tsx`):
 
 ```tsx
-import { FileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = new FileRoute('/posts/').createRoute({
+export const Route = createFileRoute('/posts/')({
   component: PostsIndexComponent,
 })
 
@@ -231,9 +231,9 @@ Route path segments that start with a `$` followed by a label are dynamic and ca
 These params are then usable in your route's configuration and components! Let's look at the `posts.$postId.tsx` route from our example route tree above:
 
 ```tsx
-import { FileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = new FileRoute('/posts/$postId').createRoute({
+export const Route = createFileRoute('/posts/$postId')({
   // In a loader
   loader: ({ params }) => fetchPost(params.postId),
   // Or in a component
@@ -287,9 +287,9 @@ In our example route tree above, the `_layout` route is a pathless route that wr
 Let's take a look at the `_layout.tsx` route:
 
 ```tsx
-import { FileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = new FileRoute('/_layout').createRoute({
+export const Route = createFileRoute('/_layout')({
   component: LayoutComponent,
 })
 

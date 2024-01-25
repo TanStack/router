@@ -28,7 +28,7 @@ async function fetchComments(postId: string) {
   ).then((r) => r.json() as Promise<CommentType[]>)
 }
 
-export const Route = new FileRoute('/posts/$postId').createRoute({
+export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId } }) => {
     const commentsPromise = fetchComments(postId)
     const post = await fetchPostById(postId)

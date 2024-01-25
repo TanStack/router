@@ -1,9 +1,14 @@
 import * as React from 'react'
-import { FileRoute, Link, MatchRoute, Outlet } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  MatchRoute,
+  Outlet,
+} from '@tanstack/react-router'
 import { fetchInvoices } from '../utils/mockTodos'
 import { Spinner } from '../components/Spinner'
 
-export const Route = new FileRoute('/dashboard/invoices').createRoute({
+export const Route = createFileRoute('/dashboard/invoices')({
   loader: () => fetchInvoices(),
   component: InvoicesComponent,
 })

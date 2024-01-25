@@ -42,10 +42,10 @@ const TanStackRouterDevtools =
 
 ## Using inside of the `RouterProvider`
 
-The easiest way for the devtools to work is to render them inside of your `RootRoute` (or any other route). This will automatically connect the devtools to the router instance.
+The easiest way for the devtools to work is to render them inside of your root route (or any other route). This will automatically connect the devtools to the router instance.
 
 ```tsx
-const rootRoute = new RootRoute({
+const rootRoute = createRootRoute({
   component: () => (
     <>
       <Outlet />
@@ -54,7 +54,7 @@ const rootRoute = new RootRoute({
   ),
 })
 
-const router = new Router({
+const router = createRouter({
   routes: [rootRoute],
 })
 

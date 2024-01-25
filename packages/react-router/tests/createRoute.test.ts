@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest'
 import { z } from 'zod'
-import { createMemoryHistory, RootRoute, Route, Router } from '../src'
+import { createMemoryHistory, RootRoute, Route, createRouter } from '../src'
 
 const lazyTest = (comp: any, key: any) => {
   comp.preload = () => {}
@@ -11,8 +11,8 @@ const lazyTest = (comp: any, key: any) => {
 describe('everything', () => {
   it('should work', () => {
     // // Build our routes. We could do this in our component, too.
-    // const rootRoute = new RootRoute()
-    // const indexRoute = new Route({
+    // const rootRoute = createRootRoute()
+    // const indexRoute = createRoute({
     //   getParentRoute: () => rootRoute,
     //   path: '/',
     //   validateSearch: (search) =>
@@ -22,7 +22,7 @@ describe('everything', () => {
     //       })
     //       .parse(search),
     // })
-    // const testRoute = new Route({
+    // const testRoute = createRoute({
     //   getParentRoute: () => rootRoute,
     //   component: lazyTest(() => import('./TestComponent'), 'NamedComponent'),
     //   path: 'test',
@@ -34,7 +34,7 @@ describe('everything', () => {
     //       })
     //       .parse(search),
     // })
-    // const dashboardRoute = new Route({
+    // const dashboardRoute = createRoute({
     //   getParentRoute: () => rootRoute,
     //   path: 'dashboard',
     //   loader: async () => {
@@ -44,19 +44,19 @@ describe('everything', () => {
     //     }
     //   },
     // })
-    // const dashboardIndexRoute = new Route({
+    // const dashboardIndexRoute = createRoute({
     //   getParentRoute: () => dashboardRoute,
     //   path: '/',
     // })
-    // const invoicesRoute = new Route({
+    // const invoicesRoute = createRoute({
     //   getParentRoute: () => dashboardRoute,
     //   path: 'invoices',
     // })
-    // const invoicesIndexRoute = new Route({
+    // const invoicesIndexRoute = createRoute({
     //   getParentRoute: () => invoicesRoute,
     //   path: '/',
     // })
-    // const invoiceRoute = new Route({
+    // const invoiceRoute = createRoute({
     //   getParentRoute: () => invoicesRoute,
     //   path: '$invoiceId',
     //   parseParams: ({ invoiceId }) => ({ invoiceId: Number(invoiceId) }),
@@ -70,7 +70,7 @@ describe('everything', () => {
     //     }
     //   },
     // })
-    // const usersRoute = new Route({
+    // const usersRoute = createRoute({
     //   getParentRoute: () => dashboardRoute,
     //   path: 'users',
     //   loader: async () => {
@@ -100,7 +100,7 @@ describe('everything', () => {
     //     }),
     //   ],
     // })
-    // const userRoute = new Route({
+    // const userRoute = createRoute({
     //   getParentRoute: () => usersRoute,
     //   path: '$userId',
     //   loader: async ({ params: { userId }, search }) => {
@@ -109,15 +109,15 @@ describe('everything', () => {
     //     }
     //   },
     // })
-    // const authenticatedRoute = new Route({
+    // const authenticatedRoute = createRoute({
     //   getParentRoute: () => rootRoute,
     //   path: 'authenticated/', // Trailing slash doesn't mean anything
     // })
-    // const authenticatedIndexRoute = new Route({
+    // const authenticatedIndexRoute = createRoute({
     //   getParentRoute: () => authenticatedRoute,
     //   path: '/',
     // })
-    // const layoutRoute = new Route({
+    // const layoutRoute = createRoute({
     //   getParentRoute: () => rootRoute,
     //   id: 'layout',
     //   component: () => 'layout-wrapper',
@@ -128,12 +128,12 @@ describe('everything', () => {
     //       })
     //       .parse(search),
     // })
-    // const layoutARoute = new Route({
+    // const layoutARoute = createRoute({
     //   getParentRoute: () => layoutRoute,
     //   path: 'layout-a',
     //   component: () => 'layout-a',
     // })
-    // const layoutBRoute = new Route({
+    // const layoutBRoute = createRoute({
     //   getParentRoute: () => layoutRoute,
     //   path: 'layout-b',
     //   component: () => 'layout-b',
@@ -149,7 +149,7 @@ describe('everything', () => {
     //   authenticatedRoute.addChildren([authenticatedIndexRoute]),
     //   layoutRoute.addChildren([layoutARoute, layoutBRoute]),
     // ])
-    // const router = new Router({
+    // const router = createRouter({
     //   routeTree,
     //   history: createMemoryHistory({
     //     initialEntries: ['/?version=1'],

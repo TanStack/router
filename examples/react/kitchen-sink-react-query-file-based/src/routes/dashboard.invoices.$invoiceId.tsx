@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { FileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 import { InvoiceFields } from '../components/InvoiceFields'
 import {
@@ -8,9 +8,7 @@ import {
 } from '../utils/queryOptions'
 import { useSuspenseQuery } from '@tanstack/react-query'
 
-export const Route = new FileRoute(
-  '/dashboard/invoices/$invoiceId',
-).createRoute({
+export const Route = createFileRoute('/dashboard/invoices/$invoiceId')({
   parseParams: (params) => ({
     invoiceId: z.number().int().parse(Number(params.invoiceId)),
   }),

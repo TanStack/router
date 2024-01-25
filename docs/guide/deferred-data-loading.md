@@ -15,9 +15,9 @@ To defer slow or non-critical data, wrap an **unawaited/unresolved** promise in 
 // src/routes/posts.$postId.tsx
 
 import * as React from 'react'
-import { FileRoute, defer } from '@tanstack/react-router'
+import { createFileRoute, defer } from '@tanstack/react-router'
 
-export const Route = new FileRoute('/posts/$postId').createRoute({
+export const Route = createFileRoute('/posts/$postId')({
   loader: () => {
     // Fetch some slower data, but do not await it
     const slowDataPromise = fetchSlowData()
@@ -42,9 +42,9 @@ In the component, deferred promises can be resolved and utilized using the `Awai
 // src/routes/posts.$postId.tsx
 
 import * as React from 'react'
-import { FileRoute, Await } from '@tanstack/react-router'
+import { createFileRoute, Await } from '@tanstack/react-router'
 
-export const Route = new FileRoute('/posts/$postId').createRoute({
+export const Route = createFileRoute('/posts/$postId')({
   // ...
   component: PostIdComponent,
 })

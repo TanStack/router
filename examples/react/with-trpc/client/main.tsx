@@ -3,17 +3,14 @@ import ReactDOM from 'react-dom/client'
 import {
   Outlet,
   RouterProvider,
-  Router,
+  createRouter,
   Link,
   MatchRoute,
   useSearch,
   useNavigate,
-  RootRoute,
-  Route,
-  useParams,
-  useRouter,
-  RouterContext,
   useRouterState,
+  createRoute,
+  createRootRoute,
 } from '@tanstack/react-router'
 import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -33,9 +30,9 @@ function Spinner() {
   return <div className="inline-block animate-spin px-3">⍥</div>
 }
 
-const rootRoute = new RootRoute({
+const rootRoute = createRootRoute({
   component: () => {
-    const isFetching = useRouterState({ select: (s) => s.isFetching })
+    const isFetching = useRouterState({ select: (s) => s.isLoading })
 
     return (
       <>
@@ -93,7 +90,7 @@ const rootRoute = new RootRoute({
   },
 })
 
-const indexRoute = new Route({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: () => {
@@ -129,7 +126,7 @@ const indexRoute = new Route({
   },
 })
 
-const dashboardRoute = new Route({
+const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
   component: () => {
@@ -175,7 +172,7 @@ const dashboardRoute = new Route({
   },
 })
 
-const dashboardIndexRoute = new Route({
+const dashboardIndexRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/',
   loader: () => trpc.posts.query(),
@@ -193,12 +190,12 @@ const dashboardIndexRoute = new Route({
   },
 })
 
-const postsRoute = new Route({
+const postsRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: 'posts',
   loader: () => trpc.posts.query(),
-  component: ({ useLoaderData }) => {
-    const posts = useLoaderData()
+  component: () => {
+    const posts = postsRoute.useLoaderData()
 
     return (
       <div className="flex-1 flex">
@@ -240,7 +237,7 @@ const postsRoute = new Route({
   },
 })
 
-const postsIndexRoute = new Route({
+const postsIndexRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '/',
   component: () => {
@@ -252,7 +249,7 @@ const postsIndexRoute = new Route({
   },
 })
 
-const postRoute = new Route({
+const postRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
   parseParams: (params) => ({
@@ -342,7 +339,7 @@ const routeTree = rootRoute.addChildren([
   ]),
 ])
 
-const router = new Router({
+const router = createRouter({
   routeTree,
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>

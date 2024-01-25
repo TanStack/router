@@ -9,9 +9,7 @@ By default, TanStack Router parses and serializes your search params automatical
 To do so, [use `Router`'s `parseSearch` and `stringifySearch` options](./guide/custom-search-param-serialization):
 
 ```tsx
-import {
-  Router
-} from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 import qs from 'query-string'
 
 // For example, we use `query-string` to render arrays in bracket notation:
@@ -25,7 +23,7 @@ function customParser(searchString) {
   return qs.parse(searchString, { arrayFormat: 'bracket' })
 }
 
-const router = new Router({
+const router = createRouter({
   stringifySearch: customStringifier,
   parseSearch: customParser,
 })
@@ -42,7 +40,7 @@ import {
   stringifySearchWith,
 } from '@tanstack/react-router'
 
-const router = new Router({
+const router = createRouter({
   parseSearch: parseSearchWith(JSON.parse),
   stringifySearch: stringifySearchWith(JSON.stringify),
 })
@@ -59,7 +57,7 @@ import {
   stringifySearchWith,
 } from '@tanstack/react-router'
 
-const router = new Router({
+const router = createRouter({
   parseSearch: parseSearchWith((value) => JSON.parse(decodeFromBinary(value))),
   stringifySearch: stringifySearchWith((value) =>
     encodeToBinary(JSON.stringify(value)),
@@ -99,7 +97,7 @@ import {
 } from '@tanstack/react-router'
 import { stringify, parse } from 'zipson'
 
-const router = new Router({
+const router = createRouter({
   parseSearch: parseSearchWith((value) =>
     parse(decodeURIComponent(decodeFromBinary(value))),
   ),
@@ -141,7 +139,7 @@ import {
 } from '@tanstack/react-router'
 import jsurl from 'jsurl2'
 
-const router = new Router({
+const router = createRouter({
   parseSearch: parseSearchWith(jsurl.parse),
   stringifySearch: stringifySearchWith(jsurl.stringify),
 })

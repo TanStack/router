@@ -6,7 +6,7 @@ import {
   useRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { DehydrateRouter } from '@tanstack/react-router-server/client'
+import { DehydrateRouter, Assets } from '@tanstack/react-router-server/client'
 
 import '../style.css'
 
@@ -14,6 +14,23 @@ export const Route = rootRouteWithContext<{
   assets: React.ReactNode
 }>()({
   component: RootComponent,
+  meta: () => [
+    {
+      title: 'Root',
+    },
+  ],
+  links: () => [
+    {
+      rel: 'apple-touch-icon',
+      sizes: '180x180',
+      href: '/favicons/apple-touch-icon.png',
+    },
+  ],
+  scripts: () => [
+    {
+      src: 'https://cdn.tailwindcss.com',
+    },
+  ],
 })
 
 function RootComponent() {
@@ -24,12 +41,10 @@ function RootComponent() {
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Vite App</title>
-        <script src="https://cdn.tailwindcss.com" />
-        {router.options.context.assets}
+        <Assets />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
+        <div className="p-2 flex items-center gap-2 text-lg">
           <Link
             to="/"
             activeProps={{
@@ -38,7 +53,7 @@ function RootComponent() {
             activeOptions={{ exact: true }}
           >
             Home
-          </Link>{' '}
+          </Link>
           <Link
             to="/hello"
             activeProps={{
@@ -47,6 +62,15 @@ function RootComponent() {
             activeOptions={{ exact: true }}
           >
             Hello
+          </Link>
+          <Link
+            to="/no-title"
+            activeProps={{
+              className: 'font-bold',
+            }}
+            activeOptions={{ exact: true }}
+          >
+            No-Title
           </Link>
         </div>
         <hr />

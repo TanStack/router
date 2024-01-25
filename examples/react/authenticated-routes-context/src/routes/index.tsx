@@ -1,9 +1,9 @@
 import * as React from 'react'
-import { FileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { useAuth } from '../auth'
 
-export const Route = new FileRoute('/').createRoute({
+export const Route = createFileRoute('/')({
   component: HomeComponent,
 })
 

@@ -4,12 +4,12 @@ import {
   Outlet,
   RouterProvider,
   Link,
-  Route,
   ErrorComponent,
-  Router,
-  RootRoute,
-  ErrorRouteProps,
+  createRouter,
   NotFoundRoute,
+  createRootRoute,
+  ErrorComponentProps,
+  createRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -44,7 +44,7 @@ const fetchPost = async (postId: string) => {
   return post
 }
 
-const rootRoute = new RootRoute({
+const rootRoute = createRootRoute({
   component: RootComponent,
 })
 
@@ -75,7 +75,7 @@ function RootComponent() {
     </div>
   )
 }
-const indexRoute = new Route({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: IndexComponent,
@@ -89,7 +89,7 @@ function IndexComponent() {
   )
 }
 
-const postsRoute = new Route({
+const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: () => fetchPosts(),
@@ -126,7 +126,7 @@ function PostsComponent() {
   )
 }
 
-const postsIndexRoute = new Route({
+const postsIndexRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '/',
   component: PostsIndexComponent,
@@ -138,7 +138,7 @@ function PostsIndexComponent() {
 
 class NotFoundError extends Error {}
 
-const postRoute = new Route({
+const postRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
   errorComponent: PostErrorComponent,
@@ -146,7 +146,7 @@ const postRoute = new Route({
   component: PostComponent,
 })
 
-function PostErrorComponent({ error }: ErrorRouteProps) {
+function PostErrorComponent({ error }: ErrorComponentProps) {
   if (error instanceof NotFoundError) {
     return <div>{error.message}</div>
   }
@@ -185,7 +185,7 @@ const routeTree = rootRoute.addChildren([
 ])
 
 // Set up a Router instance
-const router = new Router({
+const router = createRouter({
   routeTree,
   notFoundRoute,
   defaultPreload: 'intent',

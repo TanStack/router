@@ -88,7 +88,7 @@ const photoModalToPhotoMask = createRouteMask({
   }),
 })
 
-const router = new Router({
+const router = createRouter({
   routeTree,
   routeMasks: [photoModalToPhotoMask],
 })
@@ -112,7 +112,7 @@ URLs are automatically unmasked when they are shared since as soon as a URL is d
 
 ## Unmasking on page reload
 
-**As stated above, URLs are not unmasked when the page is reloaded by default**. 
+**As stated above, URLs are not unmasked when the page is reloaded by default**.
 
 If you want to unmask a URL locally when the page is reloaded, you have 3 options, each overriding the previous one in priority if passed:
 

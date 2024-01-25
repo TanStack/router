@@ -13,7 +13,7 @@ import { usersQueryOptions } from '../utils/queryOptions'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
-export const Route = new FileRoute('/dashboard/users').createRoute({
+export const Route = createFileRoute('/dashboard/users')({
   validateSearch: z.object({
     usersView: z
       .object({

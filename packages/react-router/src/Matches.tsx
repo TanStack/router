@@ -57,6 +57,9 @@ export interface RouteMatch<
   preload: boolean
   invalid: boolean
   pendingPromise?: Promise<void>
+  meta?: JSX.IntrinsicElements['meta'][]
+  links?: JSX.IntrinsicElements['link'][]
+  scripts?: JSX.IntrinsicElements['script'][]
 }
 
 export type AnyRouteMatch = RouteMatch<any, any>
