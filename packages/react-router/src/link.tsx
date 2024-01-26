@@ -387,6 +387,7 @@ export function useLinkProps<
   if (type === 'external') {
     return {
       ...rest,
+      type,
       href: to,
       children,
       target,
@@ -565,29 +566,28 @@ export interface LinkComponent<TProps extends Record<string, any> = {}> {
 }
 
 export const Link: LinkComponent = React.forwardRef((props: any, ref) => {
-  const linkProps = useLinkProps(props)
+  const { type, ...linkProps } = useLinkProps(props)
 
-  if (linkProps.href) {
-    return <a {...linkProps} ref={ref} />
+  const children =
+    typeof props.children === 'function'
+      ? props.children({
+          isActive: (props as any)['data-status'] === 'active',
+        })
+      : props.children
+
+  if (type === 'external') {
+    return <a {...linkProps} ref={ref} children={children} />
   }
 
-  return <InternalLink {...props} ref={ref} />
+  return <InternalLink {...linkProps} ref={ref} children={children} />
 })
 
 const InternalLink: LinkComponent = React.forwardRef((props: any, ref) => {
-  const linkProps = useLinkProps(props)
-
   return (
     <a
       {...{
         ref: ref as any,
-        ...linkProps,
-        children:
-          typeof props.children === 'function'
-            ? props.children({
-                isActive: (linkProps as any)['data-status'] === 'active',
-              })
-            : props.children,
+        ...props,
       }}
     />
   )
