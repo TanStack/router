@@ -4,6 +4,7 @@ import {
   Link,
   MatchRoute,
   Outlet,
+  createFileRoute,
   useNavigate,
 } from '@tanstack/react-router'
 import { Spinner } from '../components/Spinner'
