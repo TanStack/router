@@ -185,6 +185,12 @@ const router = createRouter({
 - Optional
 - The serializer object that will be used to determine how errors are serialized and deserialized between the server and the client.
 
+#### `transformer`
+
+- Type: `RouterTransformer`
+- Optional
+- The transformer that will be used when sending data between the server and the client during SSR.
+
 # `RouterErrorSerializer` type
 
 The `RouterErrorSerializer` type contains methods for serializing and deserializing errors.
@@ -200,6 +206,20 @@ The `RouterErrorSerializer` type contains methods for serializing and deserializ
 
 - Type: `(err: TSerializedError) => unknown`
 - This method is called to define how errors are deserialized from the router's dehydrated state.
+
+# `RouterTransformer` type
+
+The `RouterTransformer` type contains methods for stringifying and parsing data across network boundaries.
+
+#### `stringify`
+
+- Type: `(obj: unknown) => string`
+- This method is called when stringifying data to be sent to the client
+
+#### `parse`
+
+- Type: `(str: string) => unknown`
+- This method is called when parsing the string encoded by the server
 
 # `RouterState` type
 

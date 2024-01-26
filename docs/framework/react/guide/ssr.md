@@ -258,3 +258,19 @@ transformedStream.pipe(res)
 ```
 
 With `renderToPipeableStream` and `transformStreamWithRouter`, TanStack Router is now configured to stream data to the client as it is rendered on the server!
+
+## Data Transformers
+
+When using SSR, data passed between the server and the client must be serialized before it is sent accross network-boundaries. By default, Tanstack Router will serialize data using the default `JSON.parse` and `JSON.stringify` implementations. This, however, can lead to incorrect type-definitions when using objects such as `Date`/`Map`/`Set` etc. The Data Transformer API allows the usage of a custom serializer that can allow us to transparently use these data types when communicating across the network.
+
+The following example shows usage with [SuperJSON](https://github.com/blitz-js/superjson), however, anything that implements [`Router Transformer`](../api/router/RouterOptionsType.md#routertransformer-type) can be used.
+
+```tsx
+import { SuperJSON } from 'superjson'
+
+const router = createRouter({
+  transformer: SuperJSON,
+})
+```
+
+Just like that, TanStack Router will now appropriately use SuperJSON to serialize data across the network.
