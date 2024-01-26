@@ -16,18 +16,13 @@ Once you have a history instance, you can pass it to the `Router` constructor:
 import {
   createMemoryHistory,
   createRouter,
-  createRootRoute,
-  createRoute,
 } from '@tanstack/react-router'
-
-const rootRoute = createRootRoute()
-const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
 
 const memoryHistory = createMemoryHistory({
   initialEntries: ['/'], // Pass your initial url
 })
 
-const router = createRouter({ routeConfig, history: memoryHistory })
+const router = createRouter({ routeTree, history: memoryHistory })
 ```
 
 ## Browser Routing
@@ -42,16 +37,11 @@ Hash routing can be helpful if your server doesn't support rewrites to index.htm
 import {
   createHashHistory,
   createRouter,
-  createRootRoute,
-  createRoute,
 } from '@tanstack/react-router'
-
-const rootRoute = createRootRoute()
-const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
 
 const hashHistory = createHashHistory()
 
-const router = createRouter({ routeConfig, history: hashHistory })
+const router = createRouter({ routeTree, history: hashHistory })
 ```
 
 ## Memory Routing
@@ -62,17 +52,13 @@ Memory routing is useful in environments that are not a browser or when you do n
 import {
   createMemoryHistory,
   createRouter,
-  createRootRoute,
-  createRoute,
 } from '@tanstack/react-router'
-
-const rootRoute = createRootRoute()
-
-const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
 
 const memoryHistory = createMemoryHistory({
   initialEntries: ['/'], // Pass your initial url
 })
 
-const router = createRouter({ routeConfig, history: memoryHistory })
+const router = createRouter({ routeTree, history: memoryHistory })
 ```
+
+Refer to the [SSR Guide](./ssr.md#server-history) for usage on the server for server-side rendering.
