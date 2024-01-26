@@ -219,9 +219,3 @@ type loader = (
 - Type: `RouteComponent` or `LazyRouteComponent`
 - Optional - Defaults to `routerOptions.defaultPendingComponent`
 - The content to be rendered if and when the route is pending and has reached its pendingMs threshold.
-
-### `notFoundComponent`
-
-- Type: `RouteComponent` or `LazyRouteComponent`
-- Optional - Defaults to `routerOptions.defaultNotFoundComponent`
-- The content to be rendered if a not-found error is thrown and not handled in the route or any of its children.

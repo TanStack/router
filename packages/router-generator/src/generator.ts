@@ -22,7 +22,6 @@ export type RouteNode = {
   isComponent?: boolean
   isErrorComponent?: boolean
   isPendingComponent?: boolean
-  isNotFoundComponent?: boolean
   isVirtual?: boolean
   isLazy?: boolean
   isRoot?: boolean
@@ -81,7 +80,6 @@ async function getRouteNodes(config: Config) {
           let isComponent = routePath?.endsWith('/component')
           let isErrorComponent = routePath?.endsWith('/errorComponent')
           let isPendingComponent = routePath?.endsWith('/pendingComponent')
-          let isNotFoundComponent = routePath?.endsWith('/notFoundComponent')
           let isLoader = routePath?.endsWith('/loader')
 
           ;(
@@ -89,7 +87,6 @@ async function getRouteNodes(config: Config) {
               [isComponent, 'component'],
               [isErrorComponent, 'errorComponent'],
               [isPendingComponent, 'pendingComponent'],
-              [isErrorComponent, 'notFoundComponent'],
               [isLoader, 'loader'],
             ] as const
           ).forEach(([isType, type]) => {
@@ -101,7 +98,7 @@ async function getRouteNodes(config: Config) {
           })
 
           routePath = routePath?.replace(
-            /\/(component|errorComponent|pendingComponent|notFoundComponent|loader|route|lazy)$/,
+            /\/(component|errorComponent|pendingComponent|loader|route|lazy)$/,
             '',
           )
 
@@ -120,7 +117,6 @@ async function getRouteNodes(config: Config) {
             isComponent,
             isErrorComponent,
             isPendingComponent,
-            isNotFoundComponent,
             isLoader,
             isLazy,
           })
@@ -143,7 +139,6 @@ type RouteSubNode = {
   component?: RouteNode
   errorComponent?: RouteNode
   pendingComponent?: RouteNode
-  notFoundComponent?: RouteNode
   loader?: RouteNode
   lazy?: RouteNode
 }
@@ -181,7 +176,7 @@ export async function generator(config: Config) {
     (d) => (d.filePath?.match(/[./]index[.]/) ? 1 : -1),
     (d) =>
       d.filePath?.match(
-        /[./](component|errorComponent|pendingComponent|notFoundComponent|loader|lazy)[.]/,
+        /[./](component|errorComponent|pendingComponent|loader|lazy)[.]/,
       )
         ? 1
         : -1,
@@ -274,7 +269,6 @@ export async function generator(config: Config) {
         node.isComponent ||
         node.isErrorComponent ||
         node.isPendingComponent ||
-        node.isNotFoundComponent ||
         node.isLazy)
     ) {
       routePiecesByPath[node.routePath!] =
@@ -289,9 +283,7 @@ export async function generator(config: Config) {
               ? 'errorComponent'
               : node.isPendingComponent
                 ? 'pendingComponent'
-                : node.isNotFoundComponent
-                  ? 'notFoundComponent'
-                  : 'component'
+                : 'component'
       ] = node
 
       const anchorRoute = routeNodes.find((d) => d.routePath === node.routePath)
@@ -305,7 +297,6 @@ export async function generator(config: Config) {
           isComponent: false,
           isErrorComponent: false,
           isPendingComponent: false,
-          isNotFoundComponent: false,
         })
       }
       return
@@ -364,8 +355,7 @@ export async function generator(config: Config) {
       (node) =>
         routePiecesByPath[node.routePath!]?.component ||
         routePiecesByPath[node.routePath!]?.errorComponent ||
-        routePiecesByPath[node.routePath!]?.pendingComponent ||
-        routePiecesByPath[node.routePath!]?.notFoundComponent,
+        routePiecesByPath[node.routePath!]?.pendingComponent,
     ),
   })
     .filter((d) => d[1])
@@ -420,8 +410,6 @@ export async function generator(config: Config) {
           routePiecesByPath[node.routePath!]?.errorComponent
         const pendingComponentNode =
           routePiecesByPath[node.routePath!]?.pendingComponent
-        const notFoundComponentNode =
-          routePiecesByPath[node.routePath!]?.notFoundComponent
         const lazyComponentNode = routePiecesByPath[node.routePath!]?.lazy
 
         return [
@@ -452,7 +440,6 @@ export async function generator(config: Config) {
                   ['component', componentNode],
                   ['errorComponent', errorComponentNode],
                   ['pendingComponent', pendingComponentNode],
-                  ['notFoundComponent', notFoundComponentNode],
                 ] as const
               )
                 .filter((d) => d[1])

@@ -28,6 +28,7 @@ TanStack Router separates code into two categories:
   - Route Component
   - Error Component
   - Pending Component
+  - Not-found Component
 
 > 🧠 **Why is the loader not split?**
 >
