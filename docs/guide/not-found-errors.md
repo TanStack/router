@@ -45,7 +45,7 @@ export const Route = createFileRoute('/posts/$postId')({
 
 ### Specifying Which Routes Handle Not Found Errors
 
-With just calling the `notFound` function, TanStack Router will try resolving a `notFoundComponent` starting from the route which threw it. If you need to trigger a not-found on a specific parent route, you can import the parent route and call `Route.notFound`:
+With just calling the `notFound` function, TanStack Router will try resolving a `notFoundComponent` starting from the route which threw it. If you need to trigger a not-found on a specific parent route, you can pass in a route id to the `route` option in the `notFound` function.
 
 ```tsx
 // _layout.tsx
@@ -65,12 +65,11 @@ export const Route = createFileRoute('/_layout')({
 })
 
 // _layout/a.tsx
-import { Route as LayoutRoute } from '../_layout'
-
 export const Route = createFileRoute('/_layout/a')({
   loader: async () => {
     // This will make LayoutRoute handle the not-found error
-    throw LayoutRoute.notFound()
+    throw notFound({ route: '/_layout' })
+    //                      ^^^^^^^^^ This will autocomplete from the registered router
   },
   // This WILL NOT render
   notFoundComponent: () => {

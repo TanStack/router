@@ -19,7 +19,7 @@ The `NotFoundError` type represents a not-found error in TanStack Router.
 - Optional - `default: false`
 - If true, the not-found error will be handled by the `notFoundComponent` of the root route instead of bubbling up from the route that threw it. This has the same behavior as importing the root route and calling `RootRoute.notFound()`.
 
-#### `routeId`
+#### `route`
 
 - Type: `string`
 - Optional

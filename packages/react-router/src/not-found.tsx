@@ -1,12 +1,13 @@
 import * as React from 'react'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
+import { RegisteredRouter, RouteIds } from '.'
 
 export type NotFoundError = {
   global?: boolean
   data?: any
   throw?: boolean
-  routeId?: string
+  route?: RouteIds<RegisteredRouter['routeTree']>
 }
 
 export function notFound(options: NotFoundError = {}) {

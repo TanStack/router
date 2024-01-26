@@ -371,12 +371,11 @@ export type MergeFromFromParent<T, U> = IsAny<T, U, T & U>
 export type ResolveAllParams<
   TParentRoute extends AnyRoute,
   TParams extends AnyPathParams,
-> =
-  Record<never, string> extends TParentRoute['types']['allParams']
-    ? TParams
-    : Expand<
-        UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
-      >
+> = Record<never, string> extends TParentRoute['types']['allParams']
+  ? TParams
+  : Expand<
+      UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
+    >
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute
@@ -578,7 +577,7 @@ export class RouteApi<
   }
 
   notFound = (opts?: NotFoundError) => {
-    return notFound({ routeId: this.id as string, ...opts })
+    return notFound({ route: this.id as string, ...opts })
   }
 }
 
@@ -909,10 +908,6 @@ export class Route<
     select?: (search: TLoaderData) => TSelected
   }): TSelected => {
     return useLoaderData({ ...opts, from: this.id } as any)
-  }
-
-  notFound = (opts?: NotFoundError) => {
-    return notFound({ routeId: this.id, ...opts })
   }
 }
 
