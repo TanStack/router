@@ -71,7 +71,7 @@ import { NoInfer } from '@tanstack/react-store'
 
 declare global {
   interface Window {
-    __TSR_DEHYDRATED__?: HydrationCtx
+    __TSR_DEHYDRATED__?: { data: string }
     __TSR_ROUTER_CONTEXT__?: React.Context<Router<any>>
   }
 }
@@ -132,7 +132,13 @@ export interface RouterOptions<
   Wrap?: (props: { children: any }) => JSX.Element
   InnerWrap?: (props: { children: any }) => JSX.Element
   notFoundRoute?: AnyRoute
+  transformer?: RouterTransformer
   errorSerializer?: RouterErrorSerializer<TSerializedError>
+}
+
+export interface RouterTransformer {
+  stringify: (obj: unknown) => string
+  parse: (str: string) => unknown
 }
 export interface RouterErrorSerializer<TSerializedError> {
   serialize: (err: unknown) => TSerializedError
@@ -256,7 +262,12 @@ export class Router<
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
   options!: PickAsRequired<
-    RouterOptions<TRouteTree, TDehydrated, TSerializedError>,
+    Omit<
+      RouterOptions<TRouteTree, TDehydrated, TSerializedError>,
+      'transformer'
+    > & {
+      transformer: RouterTransformer
+    },
     'stringifySearch' | 'parseSearch' | 'context'
   >
   history!: RouterHistory
@@ -282,6 +293,7 @@ export class Router<
       ...options,
       stringifySearch: options?.stringifySearch ?? defaultStringifySearch,
       parseSearch: options?.parseSearch ?? defaultParseSearch,
+      transformer: options?.transformer ?? JSON,
     })
   }
 
@@ -1663,7 +1675,7 @@ export class Router<
           typeof getData === 'function' ? await (getData as any)() : getData
         return `<script id='${id}' suppressHydrationWarning>window["__TSR_DEHYDRATED__${escapeJSON(
           strKey,
-        )}"] = ${JSON.stringify(data)}
+        )}"] = ${JSON.stringify(this.options.transformer.stringify(data))}
           ;(() => {
             var el = document.getElementById('${id}')
             el.parentElement.removeChild(el)
@@ -1681,7 +1693,9 @@ export class Router<
     if (typeof document !== 'undefined') {
       const strKey = typeof key === 'string' ? key : JSON.stringify(key)
 
-      return window[`__TSR_DEHYDRATED__${strKey}` as any] as T
+      return this.options.transformer.parse(
+        window[`__TSR_DEHYDRATED__${strKey}` as any] as unknown as string,
+      ) as T
     }
 
     return undefined
@@ -1708,11 +1722,11 @@ export class Router<
     }
   }
 
-  hydrate = async (__do_not_use_server_ctx?: HydrationCtx) => {
+  hydrate = async (__do_not_use_server_ctx?: string) => {
     let _ctx = __do_not_use_server_ctx
     // Client hydrates from window
     if (typeof document !== 'undefined') {
-      _ctx = window.__TSR_DEHYDRATED__
+      _ctx = window.__TSR_DEHYDRATED__?.data
     }
 
     invariant(
@@ -1720,7 +1734,7 @@ export class Router<
       'Expected to find a __TSR_DEHYDRATED__ property on window... but we did not. Did you forget to render <DehydrateRouter /> in your app?',
     )
 
-    const ctx = _ctx
+    const ctx = this.options.transformer.parse(_ctx) as HydrationCtx
     this.dehydratedData = ctx.payload as any
     this.options.hydrate?.(ctx.payload as any)
     const dehydratedState = ctx.router.state

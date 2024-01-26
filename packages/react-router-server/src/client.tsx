@@ -31,7 +31,11 @@ export function DehydrateRouter() {
       suppressHydrationWarning
       dangerouslySetInnerHTML={{
         __html: `
-          window.__TSR_DEHYDRATED__ = ${JSON.stringify(dehydrated)}
+          window.__TSR_DEHYDRATED__ = {
+            data: ${JSON.stringify(
+              router.options.transformer.stringify(dehydrated),
+            )}
+          }
         `,
       }}
     />
