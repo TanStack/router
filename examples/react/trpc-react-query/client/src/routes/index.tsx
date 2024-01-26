@@ -1,9 +1,9 @@
 import * as React from 'react'
-import { FileRoute, Link, RouteApi } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { apiUtils, trpc } from '../utils/trpc'
 import Spinner from '../components/Spinner'
 
-export const Route = new FileRoute('/').createRoute({
+export const Route = createFileRoute('/')({
   component: HomeComponent,
   loader: async () => {
     const helloData = await apiUtils.hello.ensureData()
@@ -12,10 +12,9 @@ export const Route = new FileRoute('/').createRoute({
     }
   },
 })
-const api = new RouteApi({ id: '/' })
 
 function HomeComponent() {
-  const { helloData } = api.useLoaderData()
+  const { helloData } = Route.useLoaderData()
   const { data } = trpc.hello.useQuery(undefined, {
     initialData: helloData,
   })

@@ -1,13 +1,13 @@
-import React from 'react'
-
-import { Outlet, RouteApi, Link } from '@tanstack/react-router'
+import { Outlet, Link, createLazyFileRoute } from '@tanstack/react-router'
 import { trpc } from '../../utils/trpc'
-import { Route } from './route'
+import { Route as NotLazyRoute } from './route'
 
-const api = new RouteApi({ id: '/posts' })
+export const Route = createLazyFileRoute('/posts')({
+  component: PostsComponent,
+})
 
-export const component = function PostsComponent() {
-  const { postsData } = api.useLoaderData()
+function PostsComponent() {
+  const { postsData } = Route.useLoaderData()
 
   const { data } = trpc.posts.useQuery(undefined, {
     initialData: postsData,
@@ -20,7 +20,7 @@ export const component = function PostsComponent() {
           return (
             <li key={post.id} className="whitespace-nowrap">
               <Link
-                to={Route.fullPath + '/$postId'}
+                to={NotLazyRoute.fullPath + '/$postId'}
                 params={{
                   postId: post.id,
                 }}

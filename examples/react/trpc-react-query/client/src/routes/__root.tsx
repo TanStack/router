@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react'
-import { Link, Outlet, RootRoute } from '@tanstack/react-router'
+import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
 
 const TanStackRouterDevtools =
   process.env.NODE_ENV === 'production'
@@ -14,7 +14,7 @@ const TanStackRouterDevtools =
       )
 
 // Set up a Router instance
-export const Route = new RootRoute({
+export const Route = createRootRoute({
   component: RootComponent,
 })
 

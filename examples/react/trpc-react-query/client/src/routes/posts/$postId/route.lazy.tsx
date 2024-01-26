@@ -1,13 +1,15 @@
 import React from 'react'
 
-import { RouteApi } from '@tanstack/react-router'
+import { createLazyFileRoute } from '@tanstack/react-router'
 import { trpc } from '../../../utils/trpc'
 import Spinner from '../../../components/Spinner'
 
-const api = new RouteApi({ id: '/posts/$postId' })
+export const Route = createLazyFileRoute('/posts/$postId')({
+  component: PostsComponent,
+})
 
-export const component = function PostsComponent() {
-  const { postData, postId } = api.useLoaderData()
+function PostsComponent() {
+  const { postData, postId } = Route.useLoaderData()
 
   const { data, isPending } = trpc.post.useQuery(postId, {
     initialData: postData,
