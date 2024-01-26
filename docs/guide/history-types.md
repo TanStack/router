@@ -61,4 +61,4 @@ const memoryHistory = createMemoryHistory({
 const router = createRouter({ routeTree, history: memoryHistory })
 ```
 
-Refer to the [SSR guide](./ssr.md#server-history) for usage on the server for server-side rendering.
+Refer to the [SSR Guide](./ssr.md#server-history) for usage on the server for server-side rendering.
