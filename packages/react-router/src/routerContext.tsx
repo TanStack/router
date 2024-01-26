@@ -1,11 +1,18 @@
 import * as React from 'react'
 import { Router } from './router'
 
-export let routerContext = React.createContext<Router<any>>(null!)
-if (typeof document !== 'undefined') {
-  if (window.__TSR_ROUTER_CONTEXT__) {
-    routerContext = window.__TSR_ROUTER_CONTEXT__
-  } else {
-    window.__TSR_ROUTER_CONTEXT__ = routerContext as any
+let routerContext = React.createContext<Router<any>>(null!)
+
+export function getRouterContext() {
+  if (typeof document === 'undefined') {
+    return routerContext
   }
+
+  if (window.__TSR_ROUTER_CONTEXT__) {
+    return window.__TSR_ROUTER_CONTEXT__
+  }
+
+  window.__TSR_ROUTER_CONTEXT__ = routerContext as any
+
+  return routerContext
 }

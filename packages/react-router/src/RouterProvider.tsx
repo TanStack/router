@@ -10,7 +10,7 @@ import { pick, useLayoutEffect } from './utils'
 import { RouteMatch } from './Matches'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
-import { routerContext } from './routerContext'
+import { getRouterContext } from './routerContext'
 
 const useTransition =
   React.useTransition ||
@@ -77,6 +77,8 @@ export function RouterProvider<
   ) : (
     <Matches />
   )
+
+  const routerContext = getRouterContext()
 
   const provider = (
     <routerContext.Provider value={router}>
@@ -197,10 +199,10 @@ function Transitioner() {
   ])
 
   useLayoutEffect(() => {
-    if (window.__TSR_DEHYDRATED__) return
     if (
-      mountLoadForRouter.current.router === router &&
-      mountLoadForRouter.current.mounted
+      window.__TSR_DEHYDRATED__ ||
+      (mountLoadForRouter.current.router === router &&
+        mountLoadForRouter.current.mounted)
     ) {
       return
     }

@@ -509,13 +509,14 @@ export class Router<
       state,
     }: HistoryLocation): ParsedLocation<FullSearchSchema<TRouteTree>> => {
       const parsedSearch = this.options.parseSearch(search)
+      const searchStr = this.options.stringifySearch(parsedSearch)
 
       return {
         pathname: pathname,
-        searchStr: search,
+        searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
         hash: hash.split('#').reverse()[0] ?? '',
-        href: `${pathname}${search}${hash}`,
+        href: `${pathname}${searchStr}${hash}`,
         state: replaceEqualDeep(previousLocation?.state, state) as HistoryState,
       }
     }
