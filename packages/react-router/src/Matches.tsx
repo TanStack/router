@@ -5,7 +5,13 @@ import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { ResolveRelativePath, ToOptions } from './link'
-import { AnyRoute, ReactNode, RootSearchSchema } from './route'
+import {
+  AnyRoute,
+  ReactNode,
+  RootSearchSchema,
+  StaticDataRouteOption,
+  UpdatableStaticRouteOption,
+} from './route'
 import {
   AllParams,
   FullSearchSchema,
@@ -60,6 +66,7 @@ export interface RouteMatch<
   meta?: JSX.IntrinsicElements['meta'][]
   links?: JSX.IntrinsicElements['link'][]
   scripts?: JSX.IntrinsicElements['script'][]
+  staticData: StaticDataRouteOption
 }
 
 export type AnyRouteMatch = RouteMatch<any, any>

@@ -11,9 +11,7 @@ import { Route as IndexImport } from './routes/index'
 const HelloRoute = HelloImport.update({
   path: '/hello',
   getParentRoute: () => rootRoute,
-} as any).update({
-  lazy: () => import('./routes/hello.lazy').then((d) => d.Route),
-})
+} as any).lazy(() => import('./routes/hello.lazy').then((d) => d.Route))
 
 const IndexRoute = IndexImport.update({
   path: '/',

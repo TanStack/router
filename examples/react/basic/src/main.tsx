@@ -89,42 +89,11 @@ function IndexComponent() {
   )
 }
 
-const postsRoute = createRoute({
+export const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: () => fetchPosts(),
-  component: PostsComponent,
-})
-
-function PostsComponent() {
-  const posts = postsRoute.useLoaderData()
-
-  return (
-    <div className="p-2 flex gap-2">
-      <div className="list-disc bg-gray-800/70 rounded-lg divide-y divide-green-500/30">
-        {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }]?.map(
-          (post) => {
-            return (
-              <div key={post.id} className="whitespace-nowrap">
-                <Link
-                  to={postRoute.to}
-                  params={{
-                    postId: post.id,
-                  }}
-                  className="block py-1 px-2 text-green-300 hover:text-green-200"
-                  activeProps={{ className: '!text-white font-bold' }}
-                >
-                  <div>{post.title.substring(0, 20)}</div>
-                </Link>
-              </div>
-            )
-          },
-        )}
-      </div>
-      <Outlet />
-    </div>
-  )
-}
+}).lazy(() => import('./posts.lazy').then((d) => d.Route))
 
 const postsIndexRoute = createRoute({
   getParentRoute: () => postsRoute,

@@ -70,12 +70,17 @@ async function getRouteNodes(config: Config) {
           // Remove the index from the route path and
           // if the route path is empty, use `/'
 
+          let isLazy = routePath?.endsWith('/lazy')
+
+          if (isLazy) {
+            routePath = routePath?.replace(/\/lazy$/, '')
+          }
+
           let isRoute = routePath?.endsWith('/route')
           let isComponent = routePath?.endsWith('/component')
           let isErrorComponent = routePath?.endsWith('/errorComponent')
           let isPendingComponent = routePath?.endsWith('/pendingComponent')
           let isLoader = routePath?.endsWith('/loader')
-          let isLazy = routePath?.endsWith('/lazy')
 
           ;(
             [
@@ -428,49 +433,43 @@ export async function generator(config: Config) {
                 ),
               )}'), 'loader') })`
             : '',
-          componentNode ||
-          errorComponentNode ||
-          pendingComponentNode ||
-          lazyComponentNode
+          componentNode || errorComponentNode || pendingComponentNode
             ? `.update({
-              ${[
-                ...(
-                  [
-                    ['component', componentNode],
-                    ['errorComponent', errorComponentNode],
-                    ['pendingComponent', pendingComponentNode],
-                  ] as const
-                )
-                  .filter((d) => d[1])
-                  .map((d) => {
-                    return `${
-                      d[0]
-                    }: lazyRouteComponent(() => import('./${replaceBackslash(
-                      removeExt(
-                        path.relative(
-                          path.dirname(config.generatedRouteTree),
-                          path.resolve(config.routesDirectory, d[1]!.filePath),
-                        ),
+              ${(
+                [
+                  ['component', componentNode],
+                  ['errorComponent', errorComponentNode],
+                  ['pendingComponent', pendingComponentNode],
+                ] as const
+              )
+                .filter((d) => d[1])
+                .map((d) => {
+                  return `${
+                    d[0]
+                  }: lazyRouteComponent(() => import('./${replaceBackslash(
+                    removeExt(
+                      path.relative(
+                        path.dirname(config.generatedRouteTree),
+                        path.resolve(config.routesDirectory, d[1]!.filePath),
                       ),
-                    )}'), '${d[0]}')`
-                  }),
-                lazyComponentNode
-                  ? `lazy: () => import('./${replaceBackslash(
-                      removeExt(
-                        path.relative(
-                          path.dirname(config.generatedRouteTree),
-                          path.resolve(
-                            config.routesDirectory,
-                            lazyComponentNode!.filePath,
-                          ),
-                        ),
-                      ),
-                    )}').then((d) => d.Route)`
-                  : '',
-              ]
-                .filter(Boolean)
+                    ),
+                  )}'), '${d[0]}')`
+                })
                 .join('\n,')}
             })`
+            : '',
+          lazyComponentNode
+            ? `.lazy(() => import('./${replaceBackslash(
+                removeExt(
+                  path.relative(
+                    path.dirname(config.generatedRouteTree),
+                    path.resolve(
+                      config.routesDirectory,
+                      lazyComponentNode!.filePath,
+                    ),
+                  ),
+                ),
+              )}').then((d) => d.Route))`
             : '',
         ].join('')
       })

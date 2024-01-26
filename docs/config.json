@@ -1,231 +1,242 @@
 {
+  "$schema": "https://raw.githubusercontent.com/TanStack/tanstack.com/main/tanstack-docs-config.schema.json",
   "docSearch": {
     "appId": "FQ0DQ6MA3C",
     "apiKey": "8264730bab8a9b7fa6a0c85761d7a3fe",
     "indexName": "tanstack"
   },
-  "menu": [
+  "menu": [],
+  "frameworkMenus": [
     {
-      "label": "Getting Started",
-      "children": [
+      "framework": "react",
+      "menuItems": [
         {
-          "label": "Overview",
-          "to": "overview"
+          "label": "Getting Started",
+          "children": [
+            {
+              "label": "Overview",
+              "to": "framework/react/overview"
+            },
+            {
+              "label": "Installation",
+              "to": "framework/react/installation"
+            },
+            {
+              "label": "Quick Start",
+              "to": "framework/react/quick-start"
+            },
+            {
+              "label": "Devtools",
+              "to": "framework/react/devtools"
+            },
+            {
+              "label": "Comparison",
+              "to": "framework/react/comparison"
+            },
+            {
+              "label": "Migrate from React Router",
+              "to": "framework/react/migrate-from-react-router"
+            }
+          ]
         },
         {
-          "label": "Installation",
-          "to": "installation"
+          "label": "Guide",
+          "children": [
+            {
+              "label": "Route Trees & Nesting",
+              "to": "framework/react/guide/route-trees"
+            },
+            {
+              "label": "Code Splitting",
+              "to": "framework/react/guide/code-splitting"
+            },
+            {
+              "label": "File-Based Routing",
+              "to": "framework/react/guide/file-based-routing"
+            },
+            {
+              "label": "Code Based Routing",
+              "to": "framework/react/guide/code-based-routing"
+            },
+            {
+              "label": "Creating a Router",
+              "to": "framework/react/guide/creating-a-router"
+            },
+            {
+              "label": "Route Matching",
+              "to": "framework/react/guide/route-matching"
+            },
+            {
+              "label": "Outlets",
+              "to": "framework/react/guide/outlets"
+            },
+            {
+              "label": "Navigation",
+              "to": "framework/react/guide/navigation"
+            },
+            {
+              "label": "Path Params",
+              "to": "framework/react/guide/path-params"
+            },
+            {
+              "label": "Search Params",
+              "to": "framework/react/guide/search-params"
+            },
+            {
+              "label": "Data Loading",
+              "to": "framework/react/guide/data-loading"
+            },
+            {
+              "label": "Deferred Data Loading",
+              "to": "framework/react/guide/deferred-data-loading"
+            },
+            {
+              "label": "External Data Loading",
+              "to": "framework/react/guide/external-data-loading"
+            },
+            {
+              "label": "Data Mutations",
+              "to": "framework/react/guide/data-mutations"
+            },
+            {
+              "label": "Type Safety",
+              "to": "framework/react/guide/type-safety"
+            },
+            {
+              "label": "Preloading",
+              "to": "framework/react/guide/preloading"
+            },
+            {
+              "label": "Route Masking",
+              "to": "framework/react/guide/route-masking"
+            },
+            {
+              "label": "Navigation Blocking",
+              "to": "framework/react/guide/navigation-blocking"
+            },
+            {
+              "label": "Custom Search Param Serialization",
+              "to": "framework/react/guide/custom-search-param-serialization"
+            },
+            {
+              "label": "History Types",
+              "to": "framework/react/guide/history-types"
+            },
+            {
+              "label": "Router Context",
+              "to": "framework/react/guide/router-context"
+            },
+            {
+              "label": "Authenticated Routes",
+              "to": "framework/react/guide/authenticated-routes"
+            },
+            {
+              "label": "Scroll Restoration",
+              "to": "framework/react/guide/scroll-restoration"
+            },
+            {
+              "label": "Static Route Data",
+              "to": "framework/react/guide/static-route-data"
+            },
+            {
+              "label": "SSR",
+              "to": "framework/react/guide/ssr"
+            }
+          ]
         },
         {
-          "label": "Quick Start",
-          "to": "quick-start"
+          "label": "API",
+          "children": [
+            {
+              "label": "Reference",
+              "to": "framework/react/api/router"
+            }
+          ]
         },
         {
-          "label": "Devtools",
-          "to": "devtools"
-        },
-        {
-          "label": "Comparison",
-          "to": "comparison"
-        },
-        {
-          "label": "Migrate from React Router",
-          "to": "migrate-from-react-router"
-        }
-      ]
-    },
-    {
-      "label": "Guide",
-      "children": [
-        {
-          "label": "Route Trees & Nesting",
-          "to": "guide/route-trees"
-        },
-        {
-          "label": "Code Splitting",
-          "to": "guide/code-splitting"
-        },
-        {
-          "label": "File-Based Routing",
-          "to": "guide/file-based-routing"
-        },
-        {
-          "label": "Code Based Routing",
-          "to": "guide/code-based-routing"
-        },
-        {
-          "label": "Creating a Router",
-          "to": "guide/creating-a-router"
-        },
-        {
-          "label": "Route Matching",
-          "to": "guide/route-matching"
-        },
-        {
-          "label": "Outlets",
-          "to": "guide/outlets"
-        },
-        {
-          "label": "Navigation",
-          "to": "guide/navigation"
-        },
-        {
-          "label": "Path Params",
-          "to": "guide/path-params"
-        },
-        {
-          "label": "Search Params",
-          "to": "guide/search-params"
-        },
-        {
-          "label": "Data Loading",
-          "to": "guide/data-loading"
-        },
-        {
-          "label": "Deferred Data Loading",
-          "to": "guide/deferred-data-loading"
-        },
-        {
-          "label": "External Data Loading",
-          "to": "guide/external-data-loading"
-        },
-        {
-          "label": "Data Mutations",
-          "to": "guide/data-mutations"
-        },
-        {
-          "label": "Type Safety",
-          "to": "guide/type-safety"
-        },
-        {
-          "label": "Preloading",
-          "to": "guide/preloading"
-        },
-        {
-          "label": "Route Masking",
-          "to": "guide/route-masking"
-        },
-        {
-          "label": "Navigation Blocking",
-          "to": "guide/navigation-blocking"
-        },
-        {
-          "label": "Custom Search Param Serialization",
-          "to": "guide/custom-search-param-serialization"
-        },
-        {
-          "label": "History Types",
-          "to": "guide/history-types"
-        },
-        {
-          "label": "Router Context",
-          "to": "guide/router-context"
-        },
-        {
-          "label": "Authenticated Routes",
-          "to": "guide/authenticated-routes"
-        },
-        {
-          "label": "Scroll Restoration",
-          "to": "guide/scroll-restoration"
-        },
-        {
-          "label": "SSR",
-          "to": "guide/ssr"
-        }
-      ]
-    },
-    {
-      "label": "API",
-      "children": [
-        {
-          "label": "Reference",
-          "to": "api/router"
-        }
-      ]
-    },
-    {
-      "label": "Examples",
-      "children": [
-        {
-          "label": "Quickstart (file-based)",
-          "to": "examples/react/quickstart-file-based"
-        },
-        {
-          "label": "Quickstart (code-based)",
-          "to": "examples/react/quickstart"
-        },
-        {
-          "label": "Basic (file-based)",
-          "to": "examples/react/basic-file-based"
-        },
-        {
-          "label": "Basic (code-based)",
-          "to": "examples/react/basic"
-        },
-        {
-          "label": "Basic + React Query (file-based)",
-          "to": "examples/react/basic-react-query-file-based"
-        },
-        {
-          "label": "Basic + React Query (code-based)",
-          "to": "examples/react/basic-react-query"
-        },
-        {
-          "label": "Basic + SSR (file-based)",
-          "to": "examples/react/basic-ssr-file-based"
-        },
-        {
-          "label": "Basic + SSR Streaming (file-based)",
-          "to": "examples/react/basic-ssr-streaming-file-based"
-        },
-        {
-          "label": "Kitchen Sink (file-based)",
-          "to": "examples/react/kitchen-sink-file-based"
-        },
-        {
-          "label": "Kitchen Sink (code-based)",
-          "to": "examples/react/kitchen-sink"
-        },
-        {
-          "label": "Kitchen Sink + React Query (file-based)",
-          "to": "examples/react/kitchen-sink-react-query-file-based"
-        },
-        {
-          "label": "Kitchen Sink + React Query (code-based)",
-          "to": "examples/react/kitchen-sink-react-query"
-        },
-        {
-          "label": "Vinxi (file-based)",
-          "to": "examples/react/vinxi-basic"
-        },
-        {
-          "label": "Vinxi + SSR (file-based)",
-          "to": "examples/react/vinxi-basic-ssr"
-        },
-        {
-          "label": "Vinxi + SSR Streaming (file-based)",
-          "to": "examples/react/vinxi-basic-ssr-streaming"
-        },
-        {
-          "label": "Location Masking",
-          "to": "examples/react/location-masking"
-        },
-        {
-          "label": "Authenticated Routes with Context",
-          "to": "examples/react/authenticated-routes-context"
-        },
-        {
-          "label": "Scroll Restoration",
-          "to": "examples/react/scroll-restoration"
-        },
-        {
-          "label": "Deferred Data",
-          "to": "examples/react/deferred-data"
-        },
-        {
-          "label": "Navigation Blocking",
-          "to": "examples/react/navigation-blocking"
+          "label": "Examples",
+          "children": [
+            {
+              "label": "Quickstart (file-based)",
+              "to": "framework/react/examples/quickstart-file-based"
+            },
+            {
+              "label": "Quickstart (code-based)",
+              "to": "framework/react/examples/quickstart"
+            },
+            {
+              "label": "Basic (file-based)",
+              "to": "framework/react/examples/basic-file-based"
+            },
+            {
+              "label": "Basic (code-based)",
+              "to": "framework/react/examples/basic"
+            },
+            {
+              "label": "Basic + React Query (file-based)",
+              "to": "framework/react/examples/basic-react-query-file-based"
+            },
+            {
+              "label": "Basic + React Query (code-based)",
+              "to": "framework/react/examples/basic-react-query"
+            },
+            {
+              "label": "Basic + SSR (file-based)",
+              "to": "framework/react/examples/basic-ssr-file-based"
+            },
+            {
+              "label": "Basic + SSR Streaming (file-based)",
+              "to": "framework/react/examples/basic-ssr-streaming-file-based"
+            },
+            {
+              "label": "Kitchen Sink (file-based)",
+              "to": "framework/react/examples/kitchen-sink-file-based"
+            },
+            {
+              "label": "Kitchen Sink (code-based)",
+              "to": "framework/react/examples/kitchen-sink"
+            },
+            {
+              "label": "Kitchen Sink + React Query (file-based)",
+              "to": "framework/react/examples/kitchen-sink-react-query-file-based"
+            },
+            {
+              "label": "Kitchen Sink + React Query (code-based)",
+              "to": "framework/react/examples/kitchen-sink-react-query"
+            },
+            {
+              "label": "Vinxi (file-based)",
+              "to": "framework/react/examples/vinxi-basic"
+            },
+            {
+              "label": "Vinxi + SSR (file-based)",
+              "to": "framework/react/examples/vinxi-basic-ssr"
+            },
+            {
+              "label": "Vinxi + SSR Streaming (file-based)",
+              "to": "framework/react/examples/vinxi-basic-ssr-streaming"
+            },
+            {
+              "label": "Location Masking",
+              "to": "framework/react/examples/location-masking"
+            },
+            {
+              "label": "Authenticated Routes with Context",
+              "to": "framework/react/examples/authenticated-routes-context"
+            },
+            {
+              "label": "Scroll Restoration",
+              "to": "framework/react/examples/scroll-restoration"
+            },
+            {
+              "label": "Deferred Data",
+              "to": "framework/react/examples/deferred-data"
+            },
+            {
+              "label": "Navigation Blocking",
+              "to": "framework/react/examples/navigation-blocking"
+            }
+          ]
         }
       ]
     }
