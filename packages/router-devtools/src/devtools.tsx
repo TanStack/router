@@ -526,8 +526,11 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     ...panelProps
   } = props
 
-  const router = useRouter()
-  const routerState = useRouterState()
+  const contextRouter = useRouter({ warn: false })
+  const router = userRouter ?? contextRouter
+  const routerState = useRouterState({
+    router,
+  } as any)
 
   const matches = [
     ...(routerState.pendingMatches ?? []),
