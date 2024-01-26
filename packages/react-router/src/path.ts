@@ -220,7 +220,9 @@ export function matchByPath(
       if (routeSegment) {
         if (routeSegment.type === 'wildcard') {
           if (baseSegment?.value) {
-            const _splat = joinPaths(baseSegments.slice(i).map((d) => d.value))
+            const _splat = decodeURI(
+              joinPaths(baseSegments.slice(i).map((d) => d.value)),
+            )
             // TODO: Deprecate *
             params['*'] = _splat
             params['_splat'] = _splat
@@ -257,7 +259,9 @@ export function matchByPath(
             return false
           }
           if (baseSegment.value.charAt(0) !== '$') {
-            params[routeSegment.value.substring(1)] = baseSegment.value
+            params[routeSegment.value.substring(1)] = decodeURI(
+              baseSegment.value,
+            )
           }
         }
       }
