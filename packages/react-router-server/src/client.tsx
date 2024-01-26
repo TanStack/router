@@ -80,30 +80,53 @@ export type RouterManagedTag =
     }
 
 export function useMatchedMeta() {
-  let meta = useRouterState({
-    select: (state) =>
-      getRenderedMatches(state)
+  let routeMeta = useRouterState({
+    select: (state) => {
+      return getRenderedMatches(state)
         .map((match) => match.meta!)
         .filter(Boolean)
-        .flat(1)
-        .map(({ title, ...meta }) => ({
-          tag: title ? 'title' : 'meta',
-          attrs: {
-            ...meta,
-            key: `meta-${title}-${meta.content}`,
-          },
-          children: title,
-        })),
+    },
   })
 
-  // Only use the last title
-  const reversed = [...meta].reverse()
-  const lastTitle = reversed.findIndex((m) => m.tag === 'title')
-  meta = reversed
-    .filter((m, i) => i === lastTitle || m.tag !== 'title')
-    .reverse()
+  let meta: RouterManagedTag[] = []
+  const metaByName: Record<string, true> = {}
+  let title: RouterManagedTag | undefined
 
-  return meta as RouterManagedTag[]
+    //
+  ;[...routeMeta].reverse().forEach((metas) => {
+    ;[...metas].reverse().forEach((m) => {
+      if (m.title) {
+        if (!title) {
+          title = {
+            tag: 'title',
+            children: m.title,
+          }
+        }
+      } else {
+        if (m.name) {
+          if (metaByName[m.name]) {
+            return
+          } else {
+            metaByName[m.name] = true
+          }
+        }
+
+        meta.push({
+          tag: 'meta',
+          attrs: {
+            ...m,
+            key: `meta-${m.content}`,
+          },
+        })
+      }
+    })
+  })
+
+  if (title) {
+    meta.push(title)
+  }
+
+  return meta.reverse() as RouterManagedTag[]
 }
 
 export function useMatchedLinks() {
@@ -144,26 +167,55 @@ export function useMatchedScripts() {
   return scripts as RouterManagedTag[]
 }
 
-export const Assets = React.lazy(async () => {
+export async function getManifestAssets(): Promise<RouterManagedTag[]> {
   const manifest = globalThis.MANIFEST?.['client']
-  let manifestAssets: RouterManagedTag[] = []
 
   if (manifest) {
-    manifestAssets = (await manifest.inputs[
-      manifest.handler!
-    ]?.assets()) as RouterManagedTag[]
+    return (
+      ((await manifest.inputs[
+        manifest.handler!
+      ]?.assets()) as RouterManagedTag[]) || []
+    )
   }
+
+  return []
+}
+
+export const Meta = React.lazy(async () => {
+  const manifestMeta = (await getManifestAssets()).filter(
+    (d) => d.tag !== 'script',
+  ) as RouterManagedTag[]
 
   return {
     default: function Assets() {
       const meta = useMatchedMeta()
       const links = useMatchedLinks()
+
+      return (
+        <>
+          {[...meta, ...links, ...manifestMeta].map((asset, i) =>
+            renderAsset(asset as any, i),
+          )}
+        </>
+      )
+    },
+  }
+})
+
+export const Scripts = React.lazy(async () => {
+  const manifestScripts = (await getManifestAssets()).filter(
+    (d) => d.tag === 'script',
+  ) as RouterManagedTag[]
+
+  return {
+    default: function Assets() {
       const scripts = useMatchedScripts()
 
       return (
         <>
-          {[...meta, ...links, ...scripts, ...(manifestAssets || [])].map(
-            (asset, i) => renderAsset(asset as any, i),
+          <DehydrateRouter />
+          {[...scripts, ...manifestScripts].map((asset, i) =>
+            renderAsset(asset as any, i),
           )}
         </>
       )
@@ -177,22 +229,39 @@ export function renderAsset(
 ): any {
   switch (tag) {
     case 'title':
-      return <title {...attrs}>{children}</title>
+      return (
+        <title {...attrs} suppressHydrationWarning>
+          {children}
+        </title>
+      )
     case 'meta':
-      return <meta {...attrs} key={attrs.key || `meta-${index}`} />
+      return (
+        <meta
+          {...attrs}
+          key={attrs.key || `meta-${index}`}
+          suppressHydrationWarning
+        />
+      )
     case 'link':
-      return <link {...attrs} key={attrs.key || `link-${index}`} />
+      return (
+        <link
+          {...attrs}
+          key={attrs.key || `link-${index}`}
+          suppressHydrationWarning
+        />
+      )
     case 'style':
       return (
         <style
           {...attrs}
           key={attrs.key || `style-${index}`}
           dangerouslySetInnerHTML={{ __html: children }}
+          suppressHydrationWarning
         />
       )
     case 'script':
       if (attrs.src) {
-        return <script {...attrs} key={attrs.src} />
+        return <script {...attrs} key={attrs.src} suppressHydrationWarning />
       } else {
         return (
           <script
@@ -201,6 +270,7 @@ export function renderAsset(
             dangerouslySetInnerHTML={{
               __html: children,
             }}
+            suppressHydrationWarning
           />
         )
       }
