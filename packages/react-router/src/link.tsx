@@ -215,11 +215,12 @@ export type ParamOptions<
           TParamVariant
         >,
   TReducer = ParamsReducer<TFromParams, TToParams>,
-> = Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
-  ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
-  : TFromParams extends Expand<WithoutEmpty<PickRequired<TToParams>>>
-    ? MakeParamOption<TParamVariant, true | TReducer>
-    : MakeParamOption<TParamVariant, TReducer>
+> =
+  Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
+    ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
+    : TFromParams extends Expand<WithoutEmpty<PickRequired<TToParams>>>
+      ? MakeParamOption<TParamVariant, true | TReducer>
+      : MakeParamOption<TParamVariant, TReducer>
 
 type MakeParamOption<
   TParamVariant extends ParamVariant,
@@ -281,12 +282,10 @@ export type LinkOptions<
   disabled?: boolean
 }
 
-export type CheckPath<TRouteTree extends AnyRoute, TPath, TPass> = Exclude<
-  TPath,
-  RoutePaths<TRouteTree>
-> extends never
-  ? TPass
-  : CheckPathError<TRouteTree, Exclude<TPath, RoutePaths<TRouteTree>>>
+export type CheckPath<TRouteTree extends AnyRoute, TPath, TPass> =
+  Exclude<TPath, RoutePaths<TRouteTree>> extends never
+    ? TPass
+    : CheckPathError<TRouteTree, Exclude<TPath, RoutePaths<TRouteTree>>>
 
 export type CheckPathError<TRouteTree extends AnyRoute, TInvalids> = {
   to: RoutePaths<TRouteTree>
@@ -555,6 +554,14 @@ export interface LinkComponent<TProps extends Record<string, any> = {}> {
 }
 
 export const Link: LinkComponent = React.forwardRef((props: any, ref) => {
+  if (props.href) {
+    return <a {...props} ref={ref} />
+  }
+
+  return <InternalLink {...props} ref={ref} />
+})
+
+const InternalLink: LinkComponent = React.forwardRef((props: any, ref) => {
   const linkProps = useLinkProps(props)
 
   return (
