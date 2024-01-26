@@ -595,15 +595,15 @@ function capitalize(s: string) {
 }
 
 function removeUnderscores(s?: string) {
-  return s?.replace(/(^_|_$)/, '').replace(/(\/_|_\/)/, '/')
+  return s?.replaceAll(/(^_|_$)/gi, '').replaceAll(/(\/_|_\/)/gi, '/')
 }
 
 function removeTrailingUnderscores(s?: string) {
-  return s?.replace(/(_$)/, '').replace(/(_\/)/, '/')
+  return s?.replaceAll(/(_$)/gi, '').replaceAll(/(_\/)/gi, '/')
 }
 
 function replaceBackslash(s: string) {
-  return s.replace(/\\/gi, '/')
+  return s.replaceAll(/\\/gi, '/')
 }
 
 export function hasParentRoute(
