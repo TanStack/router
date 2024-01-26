@@ -338,12 +338,9 @@ export function useLinkProps<
 
   const {
     // custom props
-    children,
-    target,
     activeProps = () => ({ className: 'active' }),
     inactiveProps = () => ({}),
     activeOptions,
-    disabled,
     hash,
     search,
     params,
@@ -356,6 +353,9 @@ export function useLinkProps<
     startTransition,
     resetScroll,
     // element props
+    children,
+    target,
+    disabled,
     style,
     className,
     onClick,
@@ -386,7 +386,18 @@ export function useLinkProps<
 
   if (type === 'external') {
     return {
+      ...rest,
       href: to,
+      children,
+      target,
+      disabled,
+      style,
+      className,
+      onClick,
+      onFocus,
+      onMouseEnter,
+      onMouseLeave,
+      onTouchStart,
     }
   }
 
@@ -554,8 +565,10 @@ export interface LinkComponent<TProps extends Record<string, any> = {}> {
 }
 
 export const Link: LinkComponent = React.forwardRef((props: any, ref) => {
-  if (props.href) {
-    return <a {...props} ref={ref} />
+  const linkProps = useLinkProps(props)
+
+  if (linkProps.href) {
+    return <a {...linkProps} ref={ref} />
   }
 
   return <InternalLink {...props} ref={ref} />
