@@ -1678,7 +1678,7 @@ export class Router<
         )}"] = ${JSON.stringify(this.options.transformer.stringify(data))}
           ;(() => {
             var el = document.getElementById('${id}')
-            el.parentElement.removeChild(el)  
+            el.parentElement.removeChild(el)
           })()
           </script>`
       })
