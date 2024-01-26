@@ -4,7 +4,7 @@ import { useLoaderData, useLoaderDeps, useMatch } from './Matches'
 import { AnyRouteMatch } from './Matches'
 import { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
 import { ParsedLocation } from './location'
-import { joinPaths, trimPath } from './path'
+import { joinPaths, trimPathLeft } from './path'
 import { RouteById, RouteIds, RoutePaths } from './routeInfo'
 import { AnyRouter, RegisteredRouter } from './router'
 import { useParams } from './useParams'
@@ -765,7 +765,7 @@ export class Route<
 
     // If the path is anything other than an index path, trim it up
     if (path && path !== '/') {
-      path = trimPath(path)
+      path = trimPathLeft(path)
     }
 
     const customId = options?.id || path

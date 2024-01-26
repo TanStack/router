@@ -9,7 +9,7 @@
     "start": "waku start --with-ssr"
   },
   "dependencies": {
-    "@hono/node-server": "^1.4.0",
+    "@hono/node-server": "^1.4.1",
     "@tanstack/react-router": "^1.7.1",
     "@tanstack/router-devtools": "^1.7.1",
     "hono": "^3.12.0",

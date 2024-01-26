@@ -65,6 +65,11 @@ async function getRouteNodes(config: Config) {
           const filePathNoExt = removeExt(filePath)
           let routePath =
             cleanPath(`/${filePathNoExt.split('.').join('/')}`) || ''
+
+          if (routeFileIgnorePrefix) {
+            routePath.replaceAll(routeFileIgnorePrefix, '')
+          }
+
           const variableName = routePathToVariable(routePath)
 
           // Remove the index from the route path and
@@ -183,9 +188,7 @@ export async function generator(config: Config) {
     (d) => (d.filePath?.match(/[./]route[.]/) ? -1 : 1),
     (d) => (d.routePath?.endsWith('/') ? -1 : 1),
     (d) => d.routePath,
-  ]).filter(
-    (d) => ![`/${routePathIdPrefix + rootPathId}`].includes(d.routePath || ''),
-  )
+  ]).filter((d) => ![`/${rootPathId}`].includes(d.routePath || ''))
 
   const routeTree: RouteNode[] = []
   const routePiecesByPath: Record<string, RouteSubNode> = {}
@@ -339,8 +342,7 @@ export async function generator(config: Config) {
   const routeConfigChildrenText = await buildRouteConfig(routeTree)
 
   const sortedRouteNodes = multiSortBy(routeNodes, [
-    (d) =>
-      d.routePath?.includes(`/${routePathIdPrefix + rootPathId}`) ? -1 : 1,
+    (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
     (d) => d.routePath?.split('/').length,
     (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
     (d) => d,
@@ -593,15 +595,15 @@ function capitalize(s: string) {
 }
 
 function removeUnderscores(s?: string) {
-  return s?.replace(/(^_|_$)/, '').replace(/(\/_|_\/)/, '/')
+  return s?.replaceAll(/(^_|_$)/gi, '').replaceAll(/(\/_|_\/)/gi, '/')
 }
 
 function removeTrailingUnderscores(s?: string) {
-  return s?.replace(/(_$)/, '').replace(/(_\/)/, '/')
+  return s?.replaceAll(/(_$)/gi, '').replaceAll(/(_\/)/gi, '/')
 }
 
 function replaceBackslash(s: string) {
-  return s.replace(/\\/gi, '/')
+  return s.replaceAll(/\\/gi, '/')
 }
 
 export function hasParentRoute(

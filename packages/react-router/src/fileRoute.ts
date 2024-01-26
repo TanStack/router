@@ -281,6 +281,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
     } & LazyRouteOptions,
   ) {
     this.options = opts
+    ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
   useMatch = <TSelected = TRoute['types']['allContext']>(opts?: {
