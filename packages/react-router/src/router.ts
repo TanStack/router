@@ -869,7 +869,7 @@ export class Router<
           ? this.latestLocation.state
           : dest.state
             ? functionalUpdate(dest.state, this.latestLocation.state)
-            : this.latestLocation.state
+            : {}
 
       nextState = replaceEqualDeep(this.latestLocation.state, nextState)
 
