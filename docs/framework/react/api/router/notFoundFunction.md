@@ -22,7 +22,7 @@ The `notFound` function returns a new `NotFoundError` object that can be either 
 ```tsx
 import { notFound } from '@tanstack/react-router'
 
-const route = new Route({
+const route = new createRoute({
   // throwing a not-found object
   loader: () => {
     if (!post) {

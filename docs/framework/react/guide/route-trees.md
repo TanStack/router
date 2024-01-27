@@ -174,11 +174,11 @@ export const Route = createFileRoute('/posts')({
 })
 ```
 
-### The `FileRoute` Path Argument
+### The `createFileRoute` Path Argument
 
-The `FileRoute` constructor takes a single argument, the file-route's path as a string.
+The `createFileRoute` function takes a single argument, the file-route's path as a string.
 
-**❓❓❓ "Wait, you're making me pass the path of the route file to the route constructor?"**
+**❓❓❓ "Wait, you're making me pass the path of the route file to `createFileRoute`?"**
 
 Yes! But don't worry, this path is **automatically written and managed by the router for you via the Vite plugin or Router CLI.** So, as you create new routes, move routes around or rename routes, the path will be updated for you automatically.
 
