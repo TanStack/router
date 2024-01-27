@@ -42,7 +42,7 @@ export async function render(opts: {
   await router.load()
 
   // Track errors
-  let didError = false
+  let statusCode = 200
 
   // Clever way to get the right callback. Thanks Remix!
   const callbackName = isbot(opts.req.headers['user-agent'])
@@ -57,17 +57,20 @@ export async function render(opts: {
       <StartServer router={router} />,
       {
         [callbackName]: () => {
-          opts.res.statusCode = didError ? 500 : 200
-          opts.res.setHeader('Content-Type', 'text/html')
           resolve()
         },
         onError: (err) => {
-          didError = true
+          statusCode = 500
           console.log(err)
         },
       },
     )
   })
+
+  if (router.hasNotFoundMatch() && statusCode !== 500) statusCode = 404
+
+  opts.res.statusCode = statusCode
+  opts.res.setHeader('Content-Type', 'text/html')
 
   // Add our Router transform to the stream
   const transforms = [transformStreamWithRouter(router)]

@@ -42,6 +42,18 @@ function PostsComponent() {
             </li>
           )
         })}
+        <li className="whitespace-nowrap">
+          <Link
+            to="/posts/$postId"
+            params={{
+              postId: 'does-not-exist',
+            }}
+            className="block py-1 text-blue-800 hover:text-blue-600"
+            activeProps={{ className: 'text-black font-bold' }}
+          >
+            <div>This post does not exist</div>
+          </Link>
+        </li>
       </ul>
       <hr />
       <Outlet />

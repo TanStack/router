@@ -1,4 +1,4 @@
-import { Await, FileRoute, defer } from '@tanstack/react-router'
+import { Await, createFileRoute, defer, notFound } from '@tanstack/react-router'
 import * as React from 'react'
 import { PostType } from '../posts'
 
@@ -7,9 +7,13 @@ async function fetchPostById(postId: string) {
 
   await new Promise((r) => setTimeout(r, 100 + Math.round(Math.random() * 100)))
 
-  return fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`).then(
-    (r) => r.json() as Promise<PostType>,
+  const res = await fetch(
+    `https://jsonplaceholder.typicode.com/posts/${postId}`,
   )
+
+  if (res.status === 404) throw notFound()
+
+  return res.json() as Promise<PostType>
 }
 
 export type CommentType = {
@@ -41,6 +45,9 @@ export const Route = createFileRoute('/posts/$postId')({
   wrapInSuspense: true,
   errorComponent: ({ error }) => {
     return <div>Failed to load post: {(error as any).message}</div>
+  },
+  notFoundComponent: () => {
+    return <div>Post not found</div>
   },
   component: PostComponent,
 })

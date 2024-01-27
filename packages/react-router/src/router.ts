@@ -17,6 +17,7 @@ import {
   RouteMask,
   Route,
   LoaderFnContext,
+  rootRouteId,
 } from './route'
 import {
   FullSearchSchema,
@@ -63,6 +64,7 @@ import {
 } from './path'
 import invariant from 'tiny-invariant'
 import { isRedirect } from './redirects'
+import { NotFoundError, isNotFound } from './not-found'
 import { ResolveRelativePath, ToOptions } from './link'
 import { NoInfer } from '@tanstack/react-store'
 // import warning from 'tiny-warning'
@@ -131,9 +133,15 @@ export interface RouterOptions<
   unmaskOnReload?: boolean
   Wrap?: (props: { children: any }) => JSX.Element
   InnerWrap?: (props: { children: any }) => JSX.Element
+  /**
+   * @deprecated
+   * Use `notFoundComponent` instead.
+   * See https://tanstack.com/router/v1/docs/guide/not-found-errors#migrating-from-notfoundroute for more info.
+   */
   notFoundRoute?: AnyRoute
   transformer?: RouterTransformer
   errorSerializer?: RouterErrorSerializer<TSerializedError>
+  globalNotFound?: RouteComponent
 }
 
 export interface RouterTransformer {
@@ -182,7 +190,7 @@ export interface DehydratedRouterState {
 
 export type DehydratedRouteMatch = Pick<
   RouteMatch,
-  'id' | 'status' | 'updatedAt' | 'loaderData'
+  'id' | 'status' | 'updatedAt' | 'notFoundError' | 'loaderData'
 >
 
 export interface DehydratedRouter {
@@ -200,6 +208,7 @@ export const componentTypes = [
   'component',
   'errorComponent',
   'pendingComponent',
+  'notFoundComponent',
 ] as const
 
 export type RouterEvents = {
@@ -309,6 +318,12 @@ export class Router<
       TSerializedError
     >,
   ) => {
+    if (newOptions.notFoundRoute) {
+      console.warn(
+        'The notFoundRoute API is deprecated and will be removed in the next major version. See https://tanstack.com/router/v1/docs/guide/not-found-errors#migrating-from-notfoundroute for more info.',
+      )
+    }
+
     const previousOptions = this.options
     this.options = {
       ...this.options,
@@ -593,17 +608,23 @@ export class Router<
 
     let matchedRoutes: AnyRoute[] = [routeCursor]
 
+    let isGlobalNotFound = false
+
     // Check to see if the route needs a 404 entry
     if (
       // If we found a route, and it's not an index route and we have left over path
-      (foundRoute
+      foundRoute
         ? foundRoute.path !== '/' && routeParams['**']
         : // Or if we didn't find a route and we have left over path
-          trimPathRight(pathname)) &&
-      // And we have a 404 route configured
-      this.options.notFoundRoute
+          trimPathRight(pathname)
     ) {
-      matchedRoutes.push(this.options.notFoundRoute)
+      // If the user has defined an (old) 404 route, use it
+      if (this.options.notFoundRoute) {
+        matchedRoutes.push(this.options.notFoundRoute)
+      } else {
+        // If there is no routes found during path matching
+        isGlobalNotFound = true
+      }
     }
 
     while (routeCursor?.parentRoute) {
@@ -722,7 +743,14 @@ export class Router<
       )
 
       const match: AnyRouteMatch = existingMatch
-        ? { ...existingMatch, cause }
+        ? {
+            ...existingMatch,
+            cause,
+            notFoundError:
+              isGlobalNotFound && route.id === rootRouteId
+                ? { global: true }
+                : undefined,
+          }
         : {
             id: matchId,
             routeId: route.id,
@@ -745,6 +773,10 @@ export class Router<
             loaderDeps,
             invalid: false,
             preload: false,
+            notFoundError:
+              isGlobalNotFound && route.id === rootRouteId
+                ? { global: true }
+                : undefined,
             links: route.options.links?.(),
             scripts: route.options.scripts?.(),
             staticData: route.options.staticData || {},
@@ -793,8 +825,8 @@ export class Router<
         this.latestLocation.pathname,
         fromSearch,
       )
-      const stayingMatches = matches?.filter((d) =>
-        fromMatches?.find((e) => e.routeId === d.routeId),
+      const stayingMatches = matches?.filter(
+        (d) => fromMatches?.find((e) => e.routeId === d.routeId),
       )
 
       const prevParams = { ...last(fromMatches)?.params }
@@ -1110,6 +1142,10 @@ export class Router<
             throw err
           }
 
+          if (isNotFound(err)) {
+            this.updateMatchesWithNotFound(matches, match, err)
+          }
+
           try {
             route.options.onError?.(err)
           } catch (errorHandlerErr) {
@@ -1212,6 +1248,11 @@ export class Router<
               }
               return true
             }
+
+            if (isNotFound(err)) {
+              this.updateMatchesWithNotFound(matches, match, err)
+            }
+
             return false
           }
 
@@ -1708,7 +1749,15 @@ export class Router<
     return {
       state: {
         dehydratedMatches: this.state.matches.map((d) => ({
-          ...pick(d, ['id', 'status', 'updatedAt', 'loaderData']),
+          ...pick(d, [
+            'id',
+            'status',
+            'updatedAt',
+            'loaderData',
+            // Not-founds that occur during SSR don't require the client to load data before
+            // triggering in order to prevent the flicker of the loading component
+            'notFoundError',
+          ]),
           // If an error occurs server-side during SSRing,
           // send a small subset of the error to the client
           error: d.error
@@ -1775,6 +1824,46 @@ export class Router<
         lastUpdated: Date.now(),
       }
     })
+  }
+
+  // Finds a match that has a notFoundComponent
+  updateMatchesWithNotFound = (
+    matches: AnyRouteMatch[],
+    currentMatch: AnyRouteMatch,
+    err: NotFoundError,
+  ) => {
+    const matchesByRouteId = Object.fromEntries(
+      matches.map((match) => [match.routeId, match]),
+    ) as Record<string, AnyRouteMatch>
+
+    if (err.global) {
+      matchesByRouteId[rootRouteId]!.notFoundError = err
+    } else {
+      // If the err contains a routeId, start searching up from that route
+      let currentRoute = (this.routesById as any)[
+        err.route ?? currentMatch.routeId
+      ] as AnyRoute
+
+      // Go up the tree until we find a route with a notFoundComponent
+      while (!currentRoute.options.notFoundComponent) {
+        currentRoute = currentRoute?.parentRoute
+
+        invariant(
+          currentRoute,
+          'Found invalid route tree while trying to find not-found handler.',
+        )
+
+        if (currentRoute.id === rootRouteId) break
+      }
+
+      const match = matchesByRouteId[currentRoute.id]
+      invariant(match, 'Could not find match for route: ' + currentRoute.id)
+      match.notFoundError = err
+    }
+  }
+
+  hasNotFoundMatch = () => {
+    return this.__store.state.matches.some((d) => d.notFoundError)
   }
 
   // resolveMatchPromise = (matchId: string, key: string, value: any) => {

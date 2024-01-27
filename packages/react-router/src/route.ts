@@ -19,6 +19,8 @@ import {
 } from './utils'
 import { BuildLocationFn, NavigateFn } from './RouterProvider'
 import { LazyRoute } from '.'
+import warning from 'tiny-warning'
+import { NotFoundError, notFound } from '.'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -191,6 +193,7 @@ export type UpdatableRouteOptions<
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
   component?: RouteComponent
   errorComponent?: false | null | ErrorRouteComponent
+  notFoundComponent?: NotFoundRouteComponent
   pendingComponent?: RouteComponent
   pendingMs?: number
   pendingMinMs?: number
@@ -368,12 +371,11 @@ export type MergeFromFromParent<T, U> = IsAny<T, U, T & U>
 export type ResolveAllParams<
   TParentRoute extends AnyRoute,
   TParams extends AnyPathParams,
-> =
-  Record<never, string> extends TParentRoute['types']['allParams']
-    ? TParams
-    : Expand<
-        UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
-      >
+> = Record<never, string> extends TParentRoute['types']['allParams']
+  ? TParams
+  : Expand<
+      UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
+    >
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute
@@ -572,6 +574,10 @@ export class RouteApi<
     select?: (s: TLoaderData) => TSelected
   }): TSelected => {
     return useLoaderData({ ...opts, from: this.id } as any)
+  }
+
+  notFound = (opts?: NotFoundError) => {
+    return notFound({ route: this.id as string, ...opts })
   }
 }
 
@@ -1249,6 +1255,10 @@ export type ErrorComponentProps = {
   error: unknown
   info: { componentStack: string }
 }
+export type NotFoundRouteProps = {
+  // TODO: Make sure this is `| null | undefined` (this is for global not-founds)
+  data: unknown
+}
 //
 
 export type ReactNode = any
@@ -1265,6 +1275,8 @@ export type RouteComponent<TProps = any> = SyncRouteComponent<TProps> &
   AsyncRouteComponent<TProps>
 
 export type ErrorRouteComponent = RouteComponent<ErrorComponentProps>
+
+export type NotFoundRouteComponent = SyncRouteComponent<NotFoundRouteProps>
 
 export class NotFoundRoute<
   TParentRoute extends AnyRootRoute,

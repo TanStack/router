@@ -11,6 +11,7 @@ import {
   RootSearchSchema,
   StaticDataRouteOption,
   UpdatableStaticRouteOption,
+  rootRouteId,
 } from './route'
 import {
   AllParams,
@@ -23,6 +24,12 @@ import {
 } from './routeInfo'
 import { RegisteredRouter, RouterState } from './router'
 import { DeepOptional, Expand, NoInfer, StrictOrFrom, pick } from './utils'
+import {
+  CatchNotFound,
+  DefaultGlobalNotFound,
+  NotFoundError,
+  isNotFound,
+} from './not-found'
 
 export const matchContext = React.createContext<string | undefined>(undefined)
 
@@ -66,6 +73,7 @@ export interface RouteMatch<
   meta?: JSX.IntrinsicElements['meta'][]
   links?: JSX.IntrinsicElements['link'][]
   scripts?: JSX.IntrinsicElements['script'][]
+  notFoundError?: NotFoundError
   staticData: StaticDataRouteOption
 }
 
@@ -125,6 +133,12 @@ export function Match({ matchId }: { matchId: string }) {
     router.options.defaultErrorComponent ??
     ErrorComponent
 
+  const routeNotFoundComponent = route.isRoot
+    ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
+      route.options.notFoundComponent ??
+      router.options.notFoundRoute?.options.component
+    : route.options.notFoundComponent
+
   const ResolvedSuspenseBoundary =
     route.options.wrapInSuspense ??
     PendingComponent ??
@@ -138,17 +152,35 @@ export function Match({ matchId }: { matchId: string }) {
     ? CatchBoundary
     : SafeFragment
 
+  const ResolvedNotFoundBoundary = routeNotFoundComponent
+    ? CatchNotFound
+    : SafeFragment
+
   return (
     <matchContext.Provider value={matchId}>
       <ResolvedSuspenseBoundary fallback={pendingElement}>
         <ResolvedCatchBoundary
           getResetKey={() => router.state.resolvedLocation.state?.key}
           errorComponent={routeErrorComponent}
-          onCatch={() => {
+          onCatch={(error) => {
+            // Forward not found errors (we don't want to show the error component for these)
+            if (isNotFound(error)) throw error
             warning(false, `Error in route match: ${matchId}`)
           }}
         >
-          <MatchInner matchId={matchId!} pendingElement={pendingElement} />
+          <ResolvedNotFoundBoundary
+            fallback={(error) => {
+              // If the current not found handler doesn't exist or doesn't handle global not founds, forward it up the tree
+              if (!routeNotFoundComponent || (error.global && !route.isRoot))
+                throw error
+
+              return React.createElement(routeNotFoundComponent, {
+                data: error.data,
+              })
+            }}
+          >
+            <MatchInner matchId={matchId!} pendingElement={pendingElement} />
+          </ResolvedNotFoundBoundary>
         </ResolvedCatchBoundary>
       </ResolvedSuspenseBoundary>
     </matchContext.Provider>
@@ -170,15 +202,30 @@ function MatchInner({
 
   const route = router.routesById[routeId]!
 
-  const match = useRouterState({
-    select: (s) =>
-      pick(getRenderedMatches(s).find((d) => d.id === matchId)!, [
+  const { match } = useRouterState({
+    select: (s) => ({
+      match: pick(getRenderedMatches(s).find((d) => d.id === matchId)!, [
         'status',
         'error',
         'showPending',
         'loadPromise',
+        'notFoundError',
       ]),
+    }),
   })
+
+  // If a global not-found is found, and it's the root route, render the global not-found component.
+  if (match.notFoundError) {
+    if (routeId === rootRouteId && !route.options.notFoundComponent)
+      return <DefaultGlobalNotFound />
+
+    invariant(
+      route.options.notFoundComponent,
+      'Route matched with notFoundError should have a notFoundComponent',
+    )
+
+    return <route.options.notFoundComponent data={match.notFoundError} />
+  }
 
   if (match.status === 'error') {
     if (isServerSideError(match.error)) {

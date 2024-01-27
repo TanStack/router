@@ -1,3 +1,4 @@
+import { notFound } from '@tanstack/react-router'
 import axios from 'axios'
 
 export type PostType = {
@@ -5,8 +6,6 @@ export type PostType = {
   title: string
   body: string
 }
-
-export class PostNotFoundError extends Error {}
 
 export const fetchPost = async (postId: string) => {
   console.log(`Fetching post with id ${postId}...`)
@@ -16,7 +15,7 @@ export const fetchPost = async (postId: string) => {
     .then((r) => r.data)
     .catch((err) => {
       if (err.response.status === 404) {
-        throw new PostNotFoundError(`Post with id "${postId}" not found!`)
+        throw notFound()
       }
       throw err
     })

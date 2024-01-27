@@ -28,6 +28,7 @@ TanStack Router separates code into two categories:
   - Route Component
   - Error Component
   - Pending Component
+  - Not-found Component
 
 > 🧠 **Why is the loader not split?**
 >
@@ -41,11 +42,12 @@ If you're using the recommended [File-Based Routing](../guide/route-trees.md) ap
 
 Here are the options currently supported by the `createLazyFileRoute` function:
 
-| Export Name        | Description                                                           |
-| ------------------ | --------------------------------------------------------------------- |
-| `component`        | The component to render for the route.                                |
-| `errorComponent`   | The component to render when an error occurs while loading the route. |
-| `pendingComponent` | The component to render while the route is loading.                   |
+| Export Name         | Description                                                           |
+| ------------------- | --------------------------------------------------------------------- |
+| `component`         | The component to render for the route.                                |
+| `errorComponent`    | The component to render when an error occurs while loading the route. |
+| `pendingComponent`  | The component to render while the route is loading.                   |
+| `notFoundComponent` | The component to render if a not-found error gets thrown.             |
 
 ### Exceptions
 
