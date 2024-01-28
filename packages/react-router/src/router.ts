@@ -249,9 +249,6 @@ export function createRouter<
   return new Router<TRouteTree, TDehydrated, TSerializedError>(options)
 }
 
-/**
- * @deprecated Use the `createRouter` function instead
- */
 export class Router<
   TRouteTree extends AnyRoute = AnyRoute,
   TDehydrated extends Record<string, any> = Record<string, any>,
@@ -287,6 +284,9 @@ export class Router<
   routesByPath!: RoutesByPath<TRouteTree>
   flatRoutes!: AnyRoute[]
 
+  /**
+   * @deprecated Use the `createRouter` function instead
+   */
   constructor(
     options: RouterConstructorOptions<
       TRouteTree,
