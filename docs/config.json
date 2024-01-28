@@ -127,6 +127,10 @@
               "to": "framework/react/guide/router-context"
             },
             {
+              "label": "Not Found Errors",
+              "to": "framework/react/guide/not-found-errors"
+            },
+            {
               "label": "Authenticated Routes",
               "to": "framework/react/guide/authenticated-routes"
             },
