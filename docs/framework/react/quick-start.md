@@ -69,6 +69,8 @@ export const Route = createRootRoute({
 ### `src/routes/index.lazy.tsx`
 
 ```tsx
+import { createLazyFileRoute } from '@tanstack/react-router';
+
 export const Route = createLazyFileRoute('/')({
   component: Index,
 })
@@ -85,6 +87,8 @@ function Index() {
 ### `src/routes/about.lazy.tsx`
 
 ```tsx
+import { createLazyFileRoute } from '@tanstack/react-router';
+
 export const Route = createLazyFileRoute('/about')({
   component: About,
 })
