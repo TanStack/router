@@ -217,6 +217,10 @@
               "to": "framework/react/examples/vinxi-basic-ssr-streaming"
             },
             {
+              "label": "tRPC + React Query (file-based)",
+              "to": "framework/react/examples/trpc-react-query"
+            },
+            {
               "label": "Location Masking",
               "to": "framework/react/examples/location-masking"
             },
