@@ -8,10 +8,10 @@ import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
-import { Route as Layoutlayout2Import } from './routes/_layout/_layout-2'
+import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
 import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
-import { Route as Layoutlayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
-import { Route as Layoutlayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
 
 // Create/Update Routes
 
@@ -40,7 +40,7 @@ const PostsPostIdRoute = PostsPostIdImport.update({
   getParentRoute: () => PostsRoute,
 } as any)
 
-const Layoutlayout2Route = Layoutlayout2Import.update({
+const LayoutLayout2Route = LayoutLayout2Import.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
@@ -50,14 +50,14 @@ const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const Layoutlayout2LayoutBRoute = Layoutlayout2LayoutBImport.update({
+const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
   path: '/layout-b',
-  getParentRoute: () => Layoutlayout2Route,
+  getParentRoute: () => LayoutLayout2Route,
 } as any)
 
-const Layoutlayout2LayoutARoute = Layoutlayout2LayoutAImport.update({
+const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
   path: '/layout-a',
-  getParentRoute: () => Layoutlayout2Route,
+  getParentRoute: () => LayoutLayout2Route,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -77,7 +77,7 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof rootRoute
     }
     '/_layout/_layout-2': {
-      preLoaderRoute: typeof Layoutlayout2Import
+      preLoaderRoute: typeof LayoutLayout2Import
       parentRoute: typeof LayoutImport
     }
     '/posts/$postId': {
@@ -89,12 +89,12 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof PostsImport
     }
     '/_layout/_layout-2/layout-a': {
-      preLoaderRoute: typeof Layoutlayout2LayoutAImport
-      parentRoute: typeof Layoutlayout2Import
+      preLoaderRoute: typeof LayoutLayout2LayoutAImport
+      parentRoute: typeof LayoutLayout2Import
     }
     '/_layout/_layout-2/layout-b': {
-      preLoaderRoute: typeof Layoutlayout2LayoutBImport
-      parentRoute: typeof Layoutlayout2Import
+      preLoaderRoute: typeof LayoutLayout2LayoutBImport
+      parentRoute: typeof LayoutLayout2Import
     }
     '/posts/$postId/deep': {
       preLoaderRoute: typeof PostsPostIdDeepImport
@@ -108,9 +108,9 @@ declare module '@tanstack/react-router' {
 export const routeTree = rootRoute.addChildren([
   IndexRoute,
   LayoutRoute.addChildren([
-    Layoutlayout2Route.addChildren([
-      Layoutlayout2LayoutARoute,
-      Layoutlayout2LayoutBRoute,
+    LayoutLayout2Route.addChildren([
+      LayoutLayout2LayoutARoute,
+      LayoutLayout2LayoutBRoute,
     ]),
   ]),
   PostsRoute.addChildren([PostsPostIdRoute, PostsIndexRoute]),

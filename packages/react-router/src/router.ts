@@ -735,13 +735,6 @@ export class Router<
         ? 'stay'
         : 'enter'
 
-      // Create a fresh route match
-      const hasLoaders = !!(
-        route.options.loader ||
-        route.lazyFn ||
-        componentTypes.some((d) => (route.options[d] as any)?.preload)
-      )
-
       const match: AnyRouteMatch = existingMatch
         ? {
             ...existingMatch,
@@ -759,7 +752,7 @@ export class Router<
             updatedAt: Date.now(),
             search: {} as any,
             searchError: undefined,
-            status: hasLoaders ? 'pending' : 'success',
+            status: 'pending',
             showPending: false,
             isFetching: false,
             error: undefined,
@@ -825,8 +818,8 @@ export class Router<
         this.latestLocation.pathname,
         fromSearch,
       )
-      const stayingMatches = matches?.filter(
-        (d) => fromMatches?.find((e) => e.routeId === d.routeId),
+      const stayingMatches = matches?.filter((d) =>
+        fromMatches?.find((e) => e.routeId === d.routeId),
       )
 
       const prevParams = { ...last(fromMatches)?.params }

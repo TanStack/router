@@ -1,6 +1,4 @@
 /// <reference types="vinxi/types/client" />
-import { createAssets } from '@vinxi/react'
-import React, { Suspense } from 'react'
 import { Root, hydrateRoot } from 'react-dom/client'
 import 'vinxi/client'
 
@@ -10,22 +8,7 @@ import { StartClient } from '@tanstack/react-router-server/client'
 render()
 
 function render(mod?: any) {
-  const Assets = createAssets(
-    import.meta.env.MANIFEST['client'].handler,
-    import.meta.env.MANIFEST['client'],
-  )
-
   const router = createRouter()
-
-  router.update({
-    context: {
-      assets: (
-        <Suspense>
-          <Assets />
-        </Suspense>
-      ),
-    },
-  })
 
   const app = <StartClient router={router} />
 

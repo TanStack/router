@@ -6,7 +6,7 @@ import {
   useRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { DehydrateRouter } from '@tanstack/react-router-server/client'
+import { Meta, Scripts } from '@tanstack/react-router-server/client'
 
 import '../style.css'
 
@@ -26,7 +26,7 @@ function RootComponent() {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Vite App</title>
         <script src="https://cdn.tailwindcss.com" />
-        {router.options.context.assets}
+        <Meta />
       </head>
       <body>
         <div className="p-2 flex gap-2 text-lg">
@@ -52,7 +52,7 @@ function RootComponent() {
         <hr />
         <Outlet />
         <TanStackRouterDevtools position="bottom-right" />
-        <DehydrateRouter />
+        <Scripts />
       </body>
     </html>
   )

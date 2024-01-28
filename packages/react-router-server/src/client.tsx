@@ -195,6 +195,8 @@ export const Meta = React.lazy(async () => {
       const meta = useMatchedMeta()
       const links = useMatchedLinks()
 
+      console.log(meta)
+
       return (
         <>
           {[...meta, ...links, ...manifestMeta].map((asset, i) => (
@@ -230,11 +232,7 @@ export const Scripts = React.lazy(async () => {
 export function Asset({ tag, attrs, children }: RouterManagedTag): any {
   switch (tag) {
     case 'title':
-      return (
-        <title {...attrs} key="title">
-          {children}
-        </title>
-      )
+      return <title {...attrs}>{children}</title>
     case 'meta':
       return <meta {...attrs} />
     case 'link':
@@ -243,16 +241,15 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
       return <style {...attrs} dangerouslySetInnerHTML={{ __html: children }} />
     case 'script':
       if (attrs.src) {
-        return <script {...attrs} key={`script-${attrs.src}`} />
-      } else {
-        return (
-          <script
-            {...attrs}
-            dangerouslySetInnerHTML={{
-              __html: children,
-            }}
-          />
-        )
+        return <script {...attrs} />
       }
+      return (
+        <script
+          {...attrs}
+          dangerouslySetInnerHTML={{
+            __html: children,
+          }}
+        />
+      )
   }
 }
