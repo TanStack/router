@@ -160,7 +160,7 @@ import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 ```
 
-> 🧠 You can also create a root route via the `rootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./guide/router-context) -->
+> 🧠 You can also create a root route via the `createRootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./guide/router-context) -->
 
 ## Anatomy of a Route
 
@@ -309,7 +309,7 @@ Non-nested routes can be created by suffixing a parent file route segment with a
 
 During path matching, the trailing `_` is ignored, so `/posts` and `/posts_` are considered the same path. However, when constructing the component tree, the `_` is used to denote a non-nested route, so `/posts` and `/posts_` are considered different routes.
 
-In our example route tree above, `/posts` and `/posts_/$postId/edit` routes are siblings, not parent/child. To make this easier to understand, here's their section of the route tree and a psuedo-code component representation comparison between `/posts/$postId` and `/posts/$postId/edit`:
+In our example route tree above, `/posts` and `/posts_/$postId/edit` routes are siblings, not parent/child. To make this easier to understand, here's their section of the route tree and a pseudo-code component representation comparison between `/posts/$postId` and `/posts/$postId/edit`:
 
 - `/posts_/$postId/edit`
 - `/posts`

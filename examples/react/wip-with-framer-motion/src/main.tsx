@@ -9,7 +9,7 @@ import {
   ErrorComponent,
   useMatch,
   useMatches,
-  rootRouteWithContext,
+  createRootRouteWithContext,
   createRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -65,7 +65,7 @@ export const postTransitionProps = {
   },
 } as const
 
-const rootRoute = rootRouteWithContext()({
+const rootRoute = createRootRouteWithContext()({
   component: () => {
     const matches = useMatches()
     const match = useMatch({ strict: false })

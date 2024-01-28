@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, Outlet, rootRouteWithContext } from '@tanstack/react-router'
+import { Link, Outlet, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 import { useAuth, type AuthContext } from '../auth'
@@ -8,7 +8,7 @@ interface MyRouterContext {
   auth: AuthContext
 }
 
-export const Route = rootRouteWithContext<MyRouterContext>()({
+export const Route = createRootRouteWithContext<MyRouterContext>()({
   component: RootComponent,
 })
 

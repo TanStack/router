@@ -89,10 +89,10 @@ In this case, the `search` variable will be typed as a union of all possible sea
 
 Router context is so extremely useful as it's the ultimate hierarchical dependency injection. You can supply context to the router and to each and every route it renders. As you build up this context, TanStack Router will merge it down with the hierarchy of routes, so that each route has access to the context of all of its parents.
 
-The `rootRouteWithContext` factory creates a new router with the instantiated type, which then creates a requirement for you to fulfill the same type contract to your router, and will also ensure that your context is properly typed throughout the entire route tree.
+The `createRootRouteWithContext` factory creates a new router with the instantiated type, which then creates a requirement for you to fulfill the same type contract to your router, and will also ensure that your context is properly typed throughout the entire route tree.
 
 ```tsx
-const rootRoute = rootRouteWithContext<{ whateverYouWant: true }>()({
+const rootRoute = createRootRouteWithContext<{ whateverYouWant: true }>()({
   component: App,
 })
 

@@ -1010,7 +1010,7 @@ export function createRoute<
 
 export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any, any>
 
-export function rootRouteWithContext<TRouterContext extends {}>() {
+export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
     TSearchSchemaInput extends Record<string, any> = RootSearchSchema,
     TSearchSchema extends Record<string, any> = RootSearchSchema,
@@ -1059,6 +1059,11 @@ export function rootRouteWithContext<TRouterContext extends {}>() {
     >(options as any)
   }
 }
+
+/**
+ * @deprecated Use the `createRootRouteWithContext` function instead.
+ */
+export const rootRouteWithContext = createRootRouteWithContext;
 
 export type RootSearchSchema = {
   __TRootSearchSchema__: '__TRootSearchSchema__'

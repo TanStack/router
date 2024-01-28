@@ -235,12 +235,12 @@ export const fetchPosts = async () => {
 - `/routes/__root.tsx`
 
 ```tsx
-import { rootRouteWithContext } from '@tanstack/react-router'
+import { createRootRouteWithContext } from '@tanstack/react-router'
 
-// Create a new routerContext using new rootRouteWithContext<{...}>() function and pass it whatever types you would like to be available in your router context.
-export const Route = rootRouteWithContext<{
+// Create a root route using the createRootRouteWithContext<{...}>() function and pass it whatever types you would like to be available in your router context.
+export const Route = createRootRouteWithContext<{
   fetchPosts: typeof fetchPosts
-}>()() // NOTE: the double call is on purpose, since rootRouteWithContext is a factory ;)
+}>()() // NOTE: the double call is on purpose, since createRootRouteWithContext is a factory ;)
 ```
 
 - `/routes/posts.tsx`
