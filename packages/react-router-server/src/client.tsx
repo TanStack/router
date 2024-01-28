@@ -119,7 +119,7 @@ export function useMatchedMeta() {
           tag: 'meta',
           attrs: {
             ...m,
-            key: `meta-${m.content}`,
+            key: `meta-${[m.name, m.content, m.httpEquiv, m.charSet].join('')}`,
           },
         })
       }
@@ -144,7 +144,7 @@ export function useMatchedLinks() {
           tag: 'link',
           attrs: {
             ...link,
-            key: `link-rel=${link.rel}-href=${link.href}`,
+            key: `link-${[link.rel, link.href].join('')}`,
           },
         })),
   })
@@ -163,7 +163,7 @@ export function useMatchedScripts() {
           tag: 'script',
           attrs: {
             ...script,
-            key: `script-href=${script.src}`,
+            key: `script-${script.src}`,
           },
         })),
   })
@@ -191,15 +191,15 @@ export const Meta = React.lazy(async () => {
   ) as RouterManagedTag[]
 
   return {
-    default: function Assets() {
+    default: function Meta() {
       const meta = useMatchedMeta()
       const links = useMatchedLinks()
 
       return (
         <>
-          {[...meta, ...links, ...manifestMeta].map((asset, i) =>
-            renderAsset(asset as any, i),
-          )}
+          {[...meta, ...links, ...manifestMeta].map((asset, i) => (
+            <Asset {...asset} key={i} />
+          ))}
         </>
       )
     },
@@ -212,69 +212,45 @@ export const Scripts = React.lazy(async () => {
   ) as RouterManagedTag[]
 
   return {
-    default: function Assets() {
+    default: function Scripts() {
       const scripts = useMatchedScripts()
 
       return (
         <>
           <DehydrateRouter />
-          {[...scripts, ...manifestScripts].map((asset, i) =>
-            renderAsset(asset as any, i),
-          )}
+          {[...scripts, ...manifestScripts].map((asset, i) => (
+            <Asset {...asset} key={i} />
+          ))}
         </>
       )
     },
   }
 })
 
-export function renderAsset(
-  { tag, attrs, children }: RouterManagedTag,
-  index: number,
-): any {
+export function Asset({ tag, attrs, children }: RouterManagedTag): any {
   switch (tag) {
     case 'title':
       return (
-        <title {...attrs} suppressHydrationWarning>
+        <title {...attrs} key="title">
           {children}
         </title>
       )
     case 'meta':
-      return (
-        <meta
-          {...attrs}
-          key={attrs.key || `meta-${index}`}
-          suppressHydrationWarning
-        />
-      )
+      return <meta {...attrs} />
     case 'link':
-      return (
-        <link
-          {...attrs}
-          key={attrs.key || `link-${index}`}
-          suppressHydrationWarning
-        />
-      )
+      return <link {...attrs} />
     case 'style':
-      return (
-        <style
-          {...attrs}
-          key={attrs.key || `style-${index}`}
-          dangerouslySetInnerHTML={{ __html: children }}
-          suppressHydrationWarning
-        />
-      )
+      return <style {...attrs} dangerouslySetInnerHTML={{ __html: children }} />
     case 'script':
       if (attrs.src) {
-        return <script {...attrs} key={attrs.src} suppressHydrationWarning />
+        return <script {...attrs} key={`script-${attrs.src}`} />
       } else {
         return (
           <script
             {...attrs}
-            key={attrs.key || `script-${index}`}
             dangerouslySetInnerHTML={{
               __html: children,
             }}
-            suppressHydrationWarning
           />
         )
       }

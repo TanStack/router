@@ -149,10 +149,10 @@ type RouteSubNode = {
 }
 
 export async function generator(config: Config) {
-  console.log()
+  console.log('')
 
   if (!first) {
-    console.log('🔄 Generating routes...')
+    console.log('♻️  Generating routes...')
     first = true
   } else if (skipMessage) {
     skipMessage = false
@@ -262,7 +262,7 @@ export async function generator(config: Config) {
     }
 
     if (replaced !== routeCode) {
-      console.log(`🌲 Updating ${node.fullPath}`)
+      console.log(`🟡 Updating ${node.fullPath}`)
       await fsp.writeFile(node.fullPath, replaced)
     }
 
@@ -292,7 +292,7 @@ export async function generator(config: Config) {
       const anchorRoute = routeNodes.find((d) => d.routePath === node.routePath)
 
       if (!anchorRoute) {
-        handleNode({
+        await handleNode({
           ...node,
           isVirtual: true,
           isLazy: false,
@@ -315,7 +315,7 @@ export async function generator(config: Config) {
     routeNodes.push(node)
   }
 
-  preRouteNodes.forEach((node) => handleNode(node))
+  await Promise.all(preRouteNodes.map((node) => handleNode(node)))
 
   async function buildRouteConfig(
     nodes: RouteNode[],
@@ -532,7 +532,7 @@ export async function generator(config: Config) {
   }
 
   console.log(
-    `🌲 Processed ${routeNodes.length} routes in ${Date.now() - start}ms`,
+    `✅ Processed ${routeNodes.length} routes in ${Date.now() - start}ms`,
   )
 }
 
