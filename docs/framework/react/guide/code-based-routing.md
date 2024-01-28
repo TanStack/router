@@ -50,7 +50,7 @@ We're going to assume you've read the [File-Based Routing](./guide/file-based-ro
 
 ## The Root Route
 
-Creating a root route in code-based routing is thankfully, the same as doing so in file-based routing. Call the `createRootRoute()` constructor.
+Creating a root route in code-based routing is thankfully the same as doing so in file-based routing. Call the `createRootRoute()` function.
 
 Unlike file-based routing however, you do not need to export the root route if you don't want to. It's certainly not recommended to build an entire route tree and application in a single file (although you can and we do this in the examples to demonstrate routing concepts in brevity).
 
@@ -60,7 +60,7 @@ import { createRootRoute } from '@tanstack/react-router'
 const rootRoute = createRootRoute()
 ```
 
-> 🧠 You can also create a root route via the `rootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./guide/router-context) -->
+> 🧠 You can also create a root route via the `createRootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./guide/router-context) -->
 
 ## Anatomy of a Route
 
@@ -131,7 +131,7 @@ const routeTree = rootRoute.addChildren([
 
 ## Static Routes
 
-To create a static route, simply provide a normal `path` string to the `createRoute` constructor:
+To create a static route, simply provide a normal `path` string to the `createRoute` function:
 
 ```tsx
 const aboutRoute = createRoute({

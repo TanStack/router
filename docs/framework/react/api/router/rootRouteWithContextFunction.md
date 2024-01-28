@@ -3,6 +3,10 @@ id: rootRouteWithContextFunction
 title: rootRouteWithContext function
 ---
 
+## ⚠️ Deprecated
+
+The `rootRouteWithContext` class is deprecated and will be removed in the next major version of TanStack Router. Please use the `createRootRouteWithContext` function instead.
+
 The `rootRouteWithContext` function is a helper function that can be used to create a root route instance that requires a context type to be fulfilled when the router is created.
 
 ### Generics

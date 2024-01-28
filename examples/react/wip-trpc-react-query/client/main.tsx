@@ -5,7 +5,7 @@ import {
   RouterProvider,
   createRouter,
   Link,
-  rootRouteWithContext,
+  createRootRouteWithContext,
   createRoute,
 } from '@tanstack/react-router'
 import { AppRouter } from '../server/server'
@@ -41,7 +41,7 @@ export function Spinner() {
   )
 }
 
-const rootRoute = rootRouteWithContext<{
+const rootRoute = createRootRouteWithContext<{
   trpc: typeof trpc
   queryClient: typeof queryClient
 }>()({

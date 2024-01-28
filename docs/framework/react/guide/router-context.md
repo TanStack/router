@@ -15,17 +15,17 @@ These are just suggested uses of the router context. You can use it for whatever
 
 ## Typed Router Context
 
-Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `rootRouteWithContext<YourContextTypeHere>()(routeOptions)` function to create a new router context instead of the `createRootRoute()` function to create your root route. Here's an example:
+Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `createRootRouteWithContext<YourContextTypeHere>()(routeOptions)` function to create a new router context instead of the `createRootRoute()` function to create your root route. Here's an example:
 
 ```tsx
-import { createRootRoute } from '@tanstack/react-router'
+import { createRootRouteWithContext, createRouter } from '@tanstack/react-router'
 
 interface MyRouterContext {
   user: User
 }
 
 // Use the routerContext to create your root route
-const rootRoute = rootRouteWithContext<MyRouterContext>()({
+const rootRoute = createRootRouteWithContext<MyRouterContext>()({
   component: App,
 })
 
@@ -105,13 +105,13 @@ export const Route = createFileRoute('/todos')({
 ### How about an external data fetching library?
 
 ```tsx
-import { createRootRoute } from '@tanstack/react-router'
+import { createRootRouteWithContext, createRouter } from '@tanstack/react-router'
 
 interface MyRouterContext {
   queryClient: QueryClient
 }
 
-const rootRoute = rootRouteWithContext<MyRouterContext>()({
+const rootRoute = createRootRouteWithContext<MyRouterContext>()({
   component: App,
 })
 
@@ -147,13 +147,13 @@ The router context is passed down the route tree and is merged at each route. Th
 - `src/routes/__root.tsx`
 
 ```tsx
-import { rootRouteWithContext } from '@tanstack/react-router'
+import { createRootRouteWithContext } from '@tanstack/react-router'
 
 interface MyRouterContext {
   foo: boolean
 }
 
-export const Route = rootRouteWithContext<MyRouterContext>()({
+export const Route = createRootRouteWithContext<MyRouterContext>()({
   component: App,
 })
 ```
@@ -161,6 +161,8 @@ export const Route = rootRouteWithContext<MyRouterContext>()({
 - `src/router.tsx`
 
 ```tsx
+import { createRouter } from '@tanstack/react-router'
+
 import { routeTree } from './routeTree.gen'
 
 const router = createRouter({
@@ -174,6 +176,8 @@ const router = createRouter({
 - `src/routes/todos.tsx`
 
 ```tsx
+import { createFileRoute } from '@tanstack/react-router'
+
 export const Route = createFileRoute('/todos')({
   component: Todos,
   beforeLoad: () => {

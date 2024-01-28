@@ -10,7 +10,7 @@ import {
   createRouter,
   redirect,
   ErrorComponent,
-  rootRouteWithContext,
+  createRootRouteWithContext,
   useRouter,
   MatchRoute,
   useRouterState,
@@ -99,7 +99,7 @@ function RouterSpinner() {
 // Routes
 
 // Build our routes. We could do this in our component, too.
-const rootRoute = rootRouteWithContext<{
+const rootRoute = createRootRouteWithContext<{
   auth: Auth
   queryClient: QueryClient
 }>()({

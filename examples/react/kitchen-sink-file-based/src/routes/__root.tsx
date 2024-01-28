@@ -2,8 +2,7 @@ import * as React from 'react'
 import {
   Link,
   Outlet,
-  rootRouteWithContext,
-  useRouter,
+  createRootRouteWithContext,
   useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -15,7 +14,7 @@ function RouterSpinner() {
   return <Spinner show={isLoading} />
 }
 
-export const Route = rootRouteWithContext<{
+export const Route = createRootRouteWithContext<{
   auth: Auth
 }>()({
   component: RootComponent,

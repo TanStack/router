@@ -10,7 +10,7 @@ import {
   createRouter,
   redirect,
   ErrorComponent,
-  rootRouteWithContext,
+  createRootRouteWithContext,
   MatchRoute,
   useRouterState,
   createRoute,
@@ -33,7 +33,7 @@ import { useMutation } from './useMutation'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
-const rootRoute = rootRouteWithContext<{
+const rootRoute = createRootRouteWithContext<{
   auth: Auth
 }>()({
   component: RootComponent,

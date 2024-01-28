@@ -6,7 +6,7 @@ import {
   Link,
   ErrorComponent,
   createRouter,
-  rootRouteWithContext,
+  createRootRouteWithContext,
   ErrorComponentProps,
   createRoute,
 } from '@tanstack/react-router'
@@ -48,7 +48,7 @@ const fetchPost = async (postId: string) => {
   return post
 }
 
-const rootRoute = rootRouteWithContext<{
+const rootRoute = createRootRouteWithContext<{
   queryClient: QueryClient
 }>()({
   component: RootComponent,
