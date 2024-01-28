@@ -328,28 +328,27 @@ export function useMatchRoute<
 
 export type MakeMatchRouteOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = '/',
+  TFrom extends RoutePaths<TRouteTree> = RoutePaths<TRouteTree>,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
   TMaskTo extends string = '',
-> = ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
-  MatchRouteOptions & {
-    // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-    children?:
-      | ((
-          params?: RouteByPath<
-            TRouteTree,
-            ResolveRelativePath<TFrom, NoInfer<TTo>>
-          >['types']['allParams'],
-        ) => ReactNode)
-      | React.ReactNode
-  }
+> = UseMatchRouteOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
+  // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+  children?:
+    | ((
+        params?: RouteByPath<
+          TRouteTree,
+          ResolveRelativePath<TFrom, NoInfer<TTo>>
+        >['types']['allParams'],
+      ) => ReactNode)
+    | React.ReactNode
+}
 
 export function MatchRoute<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = '/',
+  TFrom extends RoutePaths<TRouteTree> = RoutePaths<TRouteTree>,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = '/',
+  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
   TMaskTo extends string = '',
 >(
   props: MakeMatchRouteOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
