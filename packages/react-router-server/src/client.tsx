@@ -195,8 +195,6 @@ export const Meta = React.lazy(async () => {
       const meta = useMatchedMeta()
       const links = useMatchedLinks()
 
-      console.log(meta)
-
       return (
         <>
           {[...meta, ...links, ...manifestMeta].map((asset, i) => (
