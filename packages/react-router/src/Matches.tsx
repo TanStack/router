@@ -477,6 +477,30 @@ export function useParentMatches<
   })
 }
 
+export function useChildMatches<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
+  TReturnIntersection extends boolean = false,
+  TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
+  T = TRouteMatch[],
+>(opts?: {
+  select?: (matches: TRouteMatch[]) => T
+  experimental_returnIntersection?: TReturnIntersection
+}): T {
+  const contextMatchId = React.useContext(matchContext)
+
+  return useMatches({
+    select: (matches) => {
+      matches = matches.slice(
+        matches.findIndex((d) => d.id === contextMatchId) + 1,
+      )
+      return opts?.select
+        ? opts.select(matches as TRouteMatch[])
+        : (matches as T)
+    },
+  })
+}
+
 export function useLoaderDeps<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
