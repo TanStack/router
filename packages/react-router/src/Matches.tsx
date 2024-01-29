@@ -466,7 +466,10 @@ export function useParentMatches<
 
   return useMatches({
     select: (matches) => {
-      matches = matches.slice(matches.findIndex((d) => d.id === contextMatchId))
+      matches = matches.slice(
+        0,
+        matches.findIndex((d) => d.id === contextMatchId),
+      )
       return opts?.select
         ? opts.select(matches as TRouteMatch[])
         : (matches as T)
