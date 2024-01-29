@@ -571,7 +571,7 @@ export const Link: LinkComponent = React.forwardRef((props: any, ref) => {
   const children =
     typeof props.children === 'function'
       ? props.children({
-          isActive: (props as any)['data-status'] === 'active',
+          isActive: (linkProps as any)['data-status'] === 'active',
         })
       : props.children
 
