@@ -34,6 +34,7 @@ title: Router API
   - [useMatch Hook](./api/router/useMatchHook)
   - [useMatches Hook](./api/router/useMatchesHook)
   - [useParentMatches Hook](./api/router/useParentMatchesHook)
+  - [useChildMatches Hook](./api/router/useChildMatchesHook)
   - [useLoaderData Hook](./api/router/useLoaderDataHook)
   - [useParams Hook](./api/router/useParamsHook)
 - Types
