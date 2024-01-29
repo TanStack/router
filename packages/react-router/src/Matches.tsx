@@ -92,11 +92,12 @@ export function Matches() {
       <CatchBoundary
         getResetKey={() => router.state.resolvedLocation.state?.key}
         errorComponent={ErrorComponent}
-        onCatch={() => {
+        onCatch={(error) => {
           warning(
             false,
-            `Error in router! Consider setting an 'errorComponent' in your RootRoute! 👍`,
+            `The following error wasn't caught by any route! 👇 At the very least, consider setting an 'errorComponent' in your RootRoute!`,
           )
+          console.error(error)
         }}
       >
         {matchId ? <Match matchId={matchId} /> : null}
@@ -166,6 +167,7 @@ export function Match({ matchId }: { matchId: string }) {
             // Forward not found errors (we don't want to show the error component for these)
             if (isNotFound(error)) throw error
             warning(false, `Error in route match: ${matchId}`)
+            console.error(error)
           }}
         >
           <ResolvedNotFoundBoundary
