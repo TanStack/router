@@ -1,6 +1,6 @@
 import * as React from 'react'
 import {
-  FileRoute,
+  createFileRoute,
   Link,
   MatchRoute,
   Outlet,
