@@ -173,7 +173,7 @@ function Transitioner() {
           routerState.location!.href !== routerState.resolvedLocation?.href,
       })
 
-      if ((document as any).querySelector) {
+      if (router.options.scrollOnHashChange && (document as any).querySelector) {
         if (routerState.location.hash !== '') {
           const el = document.getElementById(
             routerState.location.hash,

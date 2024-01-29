@@ -129,6 +129,13 @@ The `RouterOptions` type contains all of the options that can be used to configu
 - Defaults to `false`
 - If `true`, route masks will, by default, be removed when the page is reloaded. This can be overridden on a per-mask basis by setting the `unmaskOnReload` option on the mask, or on a per-navigation basis by setting the `unmaskOnReload` option in the `Navigate` options.
 
+### `scrollOnHashChange`
+
+- Type: `boolean`
+- Optional
+- Defaults to `true`
+- If `false`, the document will no longer automatically scroll in response to changes to the location's hash property.
+
 #### `Wrap`
 
 - Type: `React.Component`
