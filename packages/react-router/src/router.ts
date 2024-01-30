@@ -1323,7 +1323,7 @@ export class Router<
 
               // wrap loader into an async function to be able to catch synchronous exceptions
               async function loader() {
-                await route.options.loader?.(loaderContext)
+                return await route.options.loader?.(loaderContext)
               }
               // Kick off the loader!
               const loaderPromise = loader()
