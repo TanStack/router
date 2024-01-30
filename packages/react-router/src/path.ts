@@ -225,6 +225,7 @@ export function matchByPath(
             )
             // TODO: Deprecate *
             params['*'] = _splat
+            params['$'] = _splat
             params['_splat'] = _splat
             return true
           }
