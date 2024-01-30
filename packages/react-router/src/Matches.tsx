@@ -23,7 +23,13 @@ import {
   RoutePaths,
 } from './routeInfo'
 import { RegisteredRouter, RouterState } from './router'
-import { DeepOptional, Expand, NoInfer, StrictOrFrom, pick } from './utils'
+import {
+  DeepPartial,
+  Expand,
+  NoInfer,
+  StrictOrFrom,
+  pick,
+} from './utils'
 import {
   CatchNotFound,
   DefaultGlobalNotFound,
@@ -293,11 +299,16 @@ export type UseMatchRouteOptions<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
   TMaskTo extends string = '',
-> = DeepOptional<
-  ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-  'search' | 'params'
-> &
-  MatchRouteOptions
+  Options extends ToOptions<
+    TRouteTree,
+    TFrom,
+    TTo,
+    TMaskFrom,
+    TMaskTo
+  > = ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
+  RelaxedOptions = Omit<Options, 'search' | 'params'> &
+    DeepPartial<Pick<Options, 'search' | 'params'>>,
+> = RelaxedOptions & MatchRouteOptions
 
 export function useMatchRoute<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
