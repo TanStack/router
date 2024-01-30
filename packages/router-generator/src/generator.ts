@@ -539,6 +539,7 @@ export async function generator(config: Config) {
 function routePathToVariable(d: string): string {
   return (
     removeUnderscores(d)
+      ?.replace(/^(\d)/g, '_$1')
       ?.replace(/\/\$\//g, '/splat/')
       ?.replace(/\$$/g, 'splat')
       ?.replace(/\$/g, '')
