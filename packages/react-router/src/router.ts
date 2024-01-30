@@ -1243,7 +1243,10 @@ export class Router<
             }
 
             if (isNotFound(err)) {
-              this.updateMatchesWithNotFound(matches, match, err)
+              if (!preload) {
+                this.updateMatchesWithNotFound(matches, match, err)
+              }
+              return true
             }
 
             return false
@@ -1339,7 +1342,7 @@ export class Router<
               const loaderData = await loadPromise
               if ((latestPromise = checkLatest())) return await latestPromise
 
-              if (isRedirect(loaderData)) {
+              if (isRedirect(loaderData) || isNotFound(loaderData)) {
                 if (handleErrorAndRedirect(loaderData)) return
               }
 

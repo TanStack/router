@@ -2,7 +2,7 @@
 import { renderAsset } from '@vinxi/react'
 import { Suspense } from 'react'
 import { PipeableStream, renderToPipeableStream } from 'react-dom/server'
-import { eventHandler, setHeader, toWebRequest } from 'vinxi/server'
+import { eventHandler, setHeader, toWebRequest } from 'vinxi/http'
 import {
   StartServer,
   transformStreamWithRouter,
