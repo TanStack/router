@@ -4,7 +4,7 @@ import { eventHandler, toWebRequest } from 'vinxi/http'
 import invariant from 'vinxi/lib/invariant'
 import { getManifest } from 'vinxi/manifest'
 
-export default eventHandler(handleServerAction)
+export default eventHandler(handleServerAction) as any
 
 export async function handleServerAction(event: any) {
   const request = toWebRequest(event) as Request
@@ -25,8 +25,8 @@ export async function handleServerRequest(request: Request) {
     const [filepath, name] = serverId.split('#')
 
     const action = (
-      await getManifest(import.meta.env.ROUTER_NAME).chunks[filepath].import()
-    )[name] as Function
+      await getManifest(import.meta.env.ROUTER_NAME).chunks[filepath!]!.import()
+    )[name!] as Function
 
     // If the request is a
 
