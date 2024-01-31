@@ -539,14 +539,14 @@ export async function generator(config: Config) {
 function routePathToVariable(d: string): string {
   return (
     removeUnderscores(d)
-      ?.replace(/^(\d)/g, '_$1')
       ?.replace(/\/\$\//g, '/splat/')
       ?.replace(/\$$/g, 'splat')
       ?.replace(/\$/g, '')
       ?.split(/[/-]/g)
       .map((d, i) => (i > 0 ? capitalize(d) : d))
       .join('')
-      .replace(/([^a-zA-Z0-9]|[\.])/gm, '') ?? ''
+      .replace(/([^a-zA-Z0-9]|[\.])/gm, '')
+      .replace(/^(\d)/g, 'R$1') ?? ''
   )
 }
 
