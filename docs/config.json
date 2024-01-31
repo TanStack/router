@@ -209,6 +209,10 @@
               "to": "framework/react/examples/kitchen-sink-react-query"
             },
             {
+              "label": "SSRx + SSR Streaming (file-based)",
+              "to": "framework/react/examples/ssrx-basic-ssr-streaming"
+            },
+            {
               "label": "Vinxi (file-based)",
               "to": "framework/react/examples/vinxi-basic"
             },
