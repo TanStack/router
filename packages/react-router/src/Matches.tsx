@@ -23,13 +23,7 @@ import {
   RoutePaths,
 } from './routeInfo'
 import { RegisteredRouter, RouterState } from './router'
-import {
-  DeepPartial,
-  Expand,
-  NoInfer,
-  StrictOrFrom,
-  pick,
-} from './utils'
+import { DeepPartial, Expand, NoInfer, StrictOrFrom, pick } from './utils'
 import {
   CatchNotFound,
   DefaultGlobalNotFound,
@@ -96,7 +90,7 @@ export function Matches() {
   return (
     <matchContext.Provider value={matchId}>
       <CatchBoundary
-        getResetKey={() => router.state.resolvedLocation.state?.key}
+        getResetKey={() => router.state.resolvedLocation.state?.key!}
         errorComponent={ErrorComponent}
         onCatch={(error) => {
           warning(
@@ -167,7 +161,7 @@ export function Match({ matchId }: { matchId: string }) {
     <matchContext.Provider value={matchId}>
       <ResolvedSuspenseBoundary fallback={pendingElement}>
         <ResolvedCatchBoundary
-          getResetKey={() => router.state.resolvedLocation.state?.key}
+          getResetKey={() => router.state.resolvedLocation.state?.key!}
           errorComponent={routeErrorComponent}
           onCatch={(error) => {
             // Forward not found errors (we don't want to show the error component for these)
