@@ -1,4 +1,4 @@
-import { defineConfig, mergeConfig } from 'vite'
+import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackBuildConfig } from '@tanstack/config/build'
 import replace from '@rollup/plugin-replace'
 import react from '@vitejs/plugin-react'
