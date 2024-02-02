@@ -34,6 +34,7 @@
   },
   "namespace": "@tanstack",
   "devDependencies": {
+    "@rollup/plugin-replace": "^5.0.5",
     "@tanstack/config": "^0.4.2",
     "@types/node": "^20.11.9",
     "@types/react": "^18.2.48",
@@ -57,8 +58,5 @@
     "overrides": {
       "use-sync-external-store": "1.2.0"
     }
-  },
-  "dependencies": {
-    "vite-plugin-replace": "^0.1.1"
   }
 }
