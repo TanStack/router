@@ -1,6 +1,5 @@
 import { Plugin } from 'vite'
-import { join, normalize } from 'path'
-import { readFile } from 'fs/promises'
+import { join, normalize, isAbsolute } from 'path'
 import { type Config, getConfig, generator } from '@tanstack/router-generator'
 
 const CONFIG_FILE_NAME = 'tsr.config.json'
@@ -31,7 +30,10 @@ export function TanStackRouterVite(inlineConfig: Partial<Config> = {}): Plugin {
         userConfig = await getConfig(inlineConfig, ROOT)
         return
       }
-      if (filePath.startsWith(join(ROOT, userConfig.routesDirectory))) {
+      const routesDirectoryPath = isAbsolute(userConfig.routesDirectory)
+        ? userConfig.routesDirectory
+        : join(ROOT, userConfig.routesDirectory)
+      if (filePath.startsWith(routesDirectoryPath)) {
         await generate()
       }
     },
