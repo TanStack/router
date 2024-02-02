@@ -220,6 +220,9 @@ export type UpdatableRouteOptions<
     | Promise<JSX.IntrinsicElements['meta'][]>
   links?: () => JSX.IntrinsicElements['link'][]
   scripts?: () => JSX.IntrinsicElements['script'][]
+  headers?: (ctx: {
+    loaderData: TLoaderData
+  }) => Promise<Record<string, string>> | Record<string, string>
 } & UpdatableStaticRouteOption
 
 export type UpdatableStaticRouteOption =

@@ -448,24 +448,23 @@ export function useLinkProps<
     }
   }
 
+  const doPreload = () => {
+    React.startTransition(() => {
+      router.preloadRoute(dest as any).catch((err) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
+    })
+  }
+
   // The click handler
   const handleFocus = (e: MouseEvent) => {
     if (preload) {
-      router.preloadRoute(dest as any).catch((err) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
+      doPreload()
     }
   }
 
-  const handleTouchStart = (e: TouchEvent) => {
-    if (preload) {
-      router.preloadRoute(dest as any).catch((err) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
-    }
-  }
+  const handleTouchStart = handleFocus
 
   const handleEnter = (e: MouseEvent) => {
     const target = (e.target || {}) as LinkCurrentTargetElement
@@ -477,10 +476,7 @@ export function useLinkProps<
 
       target.preloadTimeout = setTimeout(() => {
         target.preloadTimeout = null
-        router.preloadRoute(dest as any).catch((err) => {
-          console.warn(err)
-          console.warn(preloadWarning)
-        })
+        doPreload()
       }, preloadDelay)
     }
   }

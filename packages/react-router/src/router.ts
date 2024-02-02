@@ -67,6 +67,14 @@ import { isRedirect } from './redirects'
 import { NotFoundError, isNotFound } from './not-found'
 import { ResolveRelativePath, ToOptions } from './link'
 import { NoInfer } from '@tanstack/react-store'
+import warning from 'tiny-warning'
+import {
+  DeferredPromise,
+  DeferredPromiseState,
+  defaultDeserializeError,
+  isDehydratedDeferred,
+  isServerSideError,
+} from '.'
 // import warning from 'tiny-warning'
 
 //
@@ -304,6 +312,10 @@ export class Router<
       parseSearch: options?.parseSearch ?? defaultParseSearch,
       transformer: options?.transformer ?? JSON,
     })
+
+    if (typeof document !== 'undefined') {
+      ;(window as any).__TSR__ROUTER__ = this
+    }
   }
 
   // These are default implementations that can optionally be overridden
@@ -719,6 +731,7 @@ export class Router<
         path: route.fullPath,
         params: routeParams,
       })
+
       const matchId =
         interpolatePath({
           path: route.id,
@@ -743,7 +756,7 @@ export class Router<
               isGlobalNotFound && route.id === rootRouteId
                 ? { global: true }
                 : undefined,
-            params: replaceEqualDeep(existingMatch.params, routeParams),
+            params: routeParams,
           }
         : {
             id: matchId,
@@ -1707,7 +1720,30 @@ export class Router<
     this.injectedHtml.push(html)
   }
 
+  // We use a token -> weak map to keep track of deferred promises
+  // that are registered on the server and need to be resolved
+  registeredDeferredsIds = new Map<string, {}>()
+  registeredDeferreds = new WeakMap<{}, DeferredPromiseState<any>>()
+
+  getDeferred = (uid: string) => {
+    const token = this.registeredDeferredsIds.get(uid)
+
+    if (!token) {
+      return undefined
+    }
+
+    return this.registeredDeferreds.get(token)
+  }
+
+  /**
+   * @deprecated Please inject your own html using the `injectHtml` method
+   */
   dehydrateData = <T>(key: any, getData: T | (() => Promise<T> | T)) => {
+    warning(
+      false,
+      `The dehydrateData method is deprecated. Please use the injectHtml method to inject your own data.`,
+    )
+
     if (typeof document === 'undefined') {
       const strKey = typeof key === 'string' ? key : JSON.stringify(key)
 
@@ -1728,7 +1764,15 @@ export class Router<
     return () => undefined
   }
 
+  /**
+   * @deprecated Please extract your own data from scripts injected using the `injectHtml` method
+   */
   hydrateData = <T extends any = unknown>(key: any) => {
+    warning(
+      false,
+      `The hydrateData method is deprecated. Please use the extractHtml method to extract your own data.`,
+    )
+
     if (typeof document !== 'undefined') {
       const strKey = typeof key === 'string' ? key : JSON.stringify(key)
 

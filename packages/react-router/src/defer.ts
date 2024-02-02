@@ -1,6 +1,11 @@
 import { defaultSerializeError } from './router'
 
-export type DeferredPromiseState<T> = { uid: string } & (
+export type DeferredPromiseState<T> = {
+  uid: string
+  resolve?: () => void
+  promise?: Promise<void>
+  __resolvePromise?: () => void
+} & (
   | {
       status: 'pending'
       data?: T

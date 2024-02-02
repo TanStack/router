@@ -1,6 +1,7 @@
 import invariant from 'tiny-invariant'
 
-export const XTSROrigin = 'x-tsr-origin'
+export const serverFnReturnTypeHeader = 'server-fn-return-type'
+export const serverFnPayloadTypeHeader = 'server-fn-payload-type'
 
 export interface JsonResponse<TData> extends Response {
   json(): Promise<TData>
@@ -40,13 +41,22 @@ type IsPayloadOptional<T> = [T] extends [undefined] ? true : false
 export type Fetcher<TPayload, TResponse> =
   (IsPayloadOptional<TPayload> extends true
     ? {
-        (payload?: TPayload, opts?: FetcherOptions): Promise<TResponse>
+        (
+          payload?: TPayload,
+          opts?: FetcherOptions,
+        ): Promise<JsonResponseOrPayload<TResponse>>
       }
     : {
-        (payload: TPayload, opts?: FetcherOptions): Promise<TResponse>
+        (
+          payload: TPayload,
+          opts?: FetcherOptions,
+        ): Promise<JsonResponseOrPayload<TResponse>>
       }) & {
     url: string
   }
+
+export type JsonResponseOrPayload<TResponse> =
+  TResponse extends JsonResponse<infer TData> ? TData : TResponse
 
 export function createServerFn<
   TPayload extends any = undefined,
@@ -75,4 +85,23 @@ export function createServerFn<
       url: fn.url!,
     },
   ) as Fetcher<TPayload, TResponse>
+}
+
+export function json<TData>(
+  payload: TData,
+  opts?: {
+    status?: number
+    statusText?: string
+    headers?: HeadersInit
+  },
+): JsonResponse<TData> {
+  return new Response(JSON.stringify(payload), {
+    status: opts?.status || 200,
+    statusText: opts?.statusText || opts?.status === 200 ? 'OK' : 'Error',
+    headers: {
+      'Content-Type': 'application/json',
+      [serverFnReturnTypeHeader]: 'json',
+      ...opts?.headers,
+    },
+  })
 }

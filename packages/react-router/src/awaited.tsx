@@ -1,10 +1,12 @@
 import * as React from 'react'
-import warning from 'tiny-warning'
-import { defaultDeserializeError, isServerSideError } from './Matches'
 import { useRouter } from './useRouter'
 import { DeferredPromise, isDehydratedDeferred } from './defer'
-import { defaultSerializeError } from './router'
-import invariant from 'tiny-invariant'
+import warning from 'tiny-warning'
+import {
+  isServerSideError,
+  defaultDeserializeError,
+  defaultSerializeError,
+} from '.'
 
 export type AwaitOptions<T> = {
   promise: DeferredPromise<T>
@@ -12,25 +14,62 @@ export type AwaitOptions<T> = {
 
 export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
   const router = useRouter()
+  // const rerender = React.useReducer((x) => x + 1, 0)[1]
 
-  let state = promise.__deferredState
-  const key = `__TSR__DEFERRED__${state.uid}`
+  const state = promise.__deferredState
 
-  // There's a chance that the promise was resolved before rendering
-  // on the server which means that it was be dehydrated in the critical
-  // JSON with the rest of the router state. If that's the case
-  // it's status will be 'success' and we can just use the data as is
-  // and skip streamed hydration.
-
+  // Dehydrated promises only
+  // Successful or errored deferred promises mean they
+  // were resolved on the server and no further action is needed
   if (isDehydratedDeferred(promise) && state.status === 'pending') {
-    const dehydratedState = router.hydrateData(key)
-    if (!state) throw new Error('Could not find dehydrated data')
-    Object.assign(state, dehydratedState)
-    promise = Promise.resolve(state.data) as DeferredPromise<any>
-    promise.__deferredState = state
+    const streamedData = (window as any)[`__TSR__DEFERRED__${state.uid}`]
+
+    if (streamedData) {
+      Object.assign(state, streamedData)
+    } else {
+      let token = router.registeredDeferredsIds.get(state.uid)
+
+      // If we haven't yet, create a promise and resolver that our streamed HTML can use
+      // when the client-side data is streamed in and ready.
+      if (!token) {
+        token = {}
+        router.registeredDeferredsIds.set(state.uid, token)
+        router.registeredDeferreds.set(token, state)
+
+        Object.assign(state, {
+          resolve: () => {
+            state.__resolvePromise?.()
+            // rerender()
+          },
+          promise: new Promise((r) => {
+            state.__resolvePromise = r as any
+          }),
+          __resolvePromise: () => {},
+        })
+      }
+    }
   }
 
-  if (state.status === 'pending') throw promise
+  // If the promise is pending, always throw the state.promise
+  // For originating promises, this will be the original promise
+  // For dehydrated promises, this will be the placeholder promise
+  // that will be resolved when the server sends the real data
+  if (state.status === 'pending') {
+    throw isDehydratedDeferred(promise) ? state.promise : promise
+  }
+
+  // If we are the originator of the promise,
+  // inject the state into the HTML stream
+  if (!isDehydratedDeferred(promise)) {
+    router.injectHtml(`<script class='tsr_deferred_data'>window.__TSR__DEFERRED__${state.uid} = ${router.options.transformer.stringify(state)}</script>
+<script class='tsr_deferred_handler'>
+  if (window.__TSR__ROUTER__) {
+    let deferred = window.__TSR__ROUTER__.getDeferred('${state.uid}')
+    if (deferred) deferred.resolve(window.__TSR__DEFERRED__${state.uid})
+  }
+  document.querySelectorAll('.tsr_deferred_handler').forEach((el) => el.parentElement.removeChild(el))
+</script>`)
+  }
 
   if (state.status === 'error') {
     if (typeof document !== 'undefined') {
@@ -46,7 +85,6 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
         throw state.error
       }
     } else {
-      router.dehydrateData(key, state)
       throw {
         data: (
           router.options.errorSerializer?.serialize ?? defaultSerializeError
@@ -56,12 +94,7 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
     }
   }
 
-  // TODO: This should only happen on the server
-  if (!isDehydratedDeferred(promise)) {
-    router.dehydrateData(key, state)
-  }
-
-  return [state.data as any]
+  return [promise.__deferredState.data as any]
 }
 
 export function Await<T>(

@@ -1,7 +1,12 @@
-import { decode, isNotFound, isRedirect } from '@tanstack/react-router'
+import {
+  decode,
+  isNotFound,
+  isRedirect,
+  serverFnPayloadTypeHeader,
+  serverFnReturnTypeHeader,
+} from '@tanstack/react-router'
 import invariant from 'vinxi/lib/invariant'
 import { getManifest } from 'vinxi/manifest'
-import { serverFnReturnTypeHeader } from './fetcher'
 
 export async function handleRequest(request: Request) {
   const method = request.method
@@ -25,7 +30,7 @@ export async function handleRequest(request: Request) {
 
     try {
       const args = await (async () => {
-        if (request.headers.get('server-action-type') === 'payload') {
+        if (request.headers.get(serverFnPayloadTypeHeader) === 'payload') {
           return [
             method.toLowerCase() === 'get'
               ? (() => {
@@ -37,13 +42,12 @@ export async function handleRequest(request: Request) {
           ] as const
         }
 
-        if (request.headers.get('server-action-type') === 'request') {
+        if (request.headers.get(serverFnPayloadTypeHeader) === 'request') {
           return [request, { method, request }] as const
         }
 
-        // if (request.headers.get('server-action-type') === 'args') {
+        // payload type === 'args'
         return (await request.json()) as any[]
-        // }
       })()
 
       console.info(`  Payload: ${JSON.stringify(args, null, 2)}`)

@@ -4,9 +4,9 @@ import {
   isNotFound,
   isPlainObject,
   isRedirect,
+  serverFnPayloadTypeHeader,
+  serverFnReturnTypeHeader,
 } from '@tanstack/react-router'
-
-export const serverFnReturnTypeHeader = 'server-fn-return-type'
 
 export async function fetcher<TPayload>(
   base: string,
@@ -23,7 +23,7 @@ export async function fetcher<TPayload>(
 
     // Arrange the headers
     const headers = new Headers({
-      'server-action-type': type,
+      [serverFnPayloadTypeHeader]: type,
       ...(type === 'payload'
         ? {
             'content-type': 'application/json',
@@ -76,7 +76,7 @@ export async function fetcher<TPayload>(
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      'server-action-type': 'args',
+      [serverFnPayloadTypeHeader]: 'args',
     },
     body: JSON.stringify(args),
   })
