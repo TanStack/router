@@ -1,6 +1,6 @@
-import { defineConfig, mergeConfig } from 'vitest/config'
+import { defineConfig, mergeConfig } from 'vite'
 import { tanstackBuildConfig } from '@tanstack/config/build'
-import { replaceCodePlugin } from 'vite-plugin-replace'
+import replace from '@rollup/plugin-replace'
 import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
@@ -8,13 +8,8 @@ import path from 'path'
 const config = defineConfig({
   plugins: [
     react(),
-    replaceCodePlugin({
-      replacements: [
-        {
-          from: /import.meta.env/g,
-          to: '__import__meta__env__',
-        },
-      ],
+    replace({
+      'import.meta.env': '__import__meta__env__',
     }),
     (() => {
       return {
