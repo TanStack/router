@@ -29,7 +29,7 @@ export interface ParsedPath {
 }
 
 export interface HistoryState {
-  key: string
+  key?: string
 }
 
 type ShouldAllowNavigation = any
