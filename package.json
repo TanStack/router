@@ -57,5 +57,8 @@
     "overrides": {
       "use-sync-external-store": "1.2.0"
     }
+  },
+  "dependencies": {
+    "vite-plugin-replace": "^0.1.1"
   }
 }

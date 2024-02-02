@@ -33,11 +33,11 @@ function toValue(mix) {
   return +str * 0 === 0 && +str + '' === str ? +str : str
 }
 
-export function decode(str) {
+export function decode(str, pfx?: string) {
   var tmp,
     k,
     out = {},
-    arr = str.split('&')
+    arr = (pfx ? str.substr(pfx.length) : str).split('&')
 
   while ((tmp = arr.shift())) {
     tmp = tmp.split('=')

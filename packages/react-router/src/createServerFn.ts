@@ -20,39 +20,13 @@ export type FetchFnCtx = {
 }
 
 export type FetchFn<TPayload, TResponse> = {
-  (payload: TPayload, ctx: FetchFnCtx): TResponse
+  (payload: TPayload, ctx: FetchFnCtx): Promise<TResponse> | TResponse
   url?: string
 }
 
-// export type AnyFetchFn = FetchFn<any, any>
-
-// export type FetchFnReturn<T extends AnyFetchFn> =
-// Awaited<ReturnType<T>> extends JsonResponse<infer R> ? R : ReturnType<T>
-
-// export type FetcherFn<T extends AnyFetchFn> = Parameters<T>[0] extends undefined
-//   ? (
-//       payload?: Parameters<T>['0'],
-//       opts?: FetchFnCtx,
-//     ) => Promise<Awaited<FetchFnReturn<T>>>
-//   : (
-//       payload: Parameters<T>['0'],
-//       opts?: FetchFnCtx,
-//     ) => Promise<Awaited<FetchFnReturn<T>>>
-
-// export type FetcherMethods<T extends AnyFetchFn> = {
-//   url: string
-//   fetch: (
-//     init: RequestInit,
-//     opts?: FetcherOptions,
-//   ) => Promise<Awaited<FetchFnReturn<T>>>
-// }
-
-// export type Fetcher<T extends AnyFetchFn> = FetcherFn<T> & FetcherMethods<T>
-
 export type CompiledFetcherFnOptions<TPayload> = {
   method: 'GET' | 'POST'
-  type: 'request' | 'payload'
-  payload: TPayload
+  payload: TPayload | undefined
   requestInit?: RequestInit
 }
 
@@ -61,28 +35,28 @@ export type CompiledFetcherFn<TPayload, TResponse> = {
   url: string
 }
 
-export type Fetcher<TPayload, TResponse> = (TPayload extends undefined
-  ? {
-      (payload?: TPayload, opts?: FetcherOptions): Promise<TResponse>
-    }
-  : {
-      (payload: TPayload, opts?: FetcherOptions): Promise<TResponse>
-    }) & {
-  url: string
-}
+type IsPayloadOptional<T> = [T] extends [undefined] ? true : false
 
-export function createServerFn<TPayload, TResponse>(
+export type Fetcher<TPayload, TResponse> =
+  (IsPayloadOptional<TPayload> extends true
+    ? {
+        (payload?: TPayload, opts?: FetcherOptions): Promise<TResponse>
+      }
+    : {
+        (payload: TPayload, opts?: FetcherOptions): Promise<TResponse>
+      }) & {
+    url: string
+  }
+
+export function createServerFn<
+  TPayload extends any = undefined,
+  TResponse = unknown,
+>(
   method: 'GET' | 'POST',
   fn: FetchFn<TPayload, TResponse>,
 ): Fetcher<TPayload, TResponse> {
   // Cast the compiled function that will be injected by vinxi
   const compiledFn = fn as unknown as CompiledFetcherFn<TPayload, TResponse>
-
-  console.log(
-    compiledFn,
-    compiledFn.toString(),
-    JSON.stringify(compiledFn, null, 2),
-  )
 
   invariant(
     compiledFn.url,
@@ -93,8 +67,7 @@ export function createServerFn<TPayload, TResponse>(
     async (payload: TPayload, opts?: FetcherOptions) => {
       return compiledFn({
         method,
-        type: payload instanceof Request ? 'request' : 'payload',
-        payload,
+        payload: payload || undefined,
         requestInit: opts?.requestInit,
       })
     },

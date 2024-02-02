@@ -1356,7 +1356,7 @@ export class Router<
 
               if ((latestPromise = checkLatest())) return await latestPromise
 
-              const meta = route.options.meta?.({
+              const meta = await route.options.meta?.({
                 loaderData,
               })
 
@@ -1714,14 +1714,11 @@ export class Router<
         const id = `__TSR_DEHYDRATED__${strKey}`
         const data =
           typeof getData === 'function' ? await (getData as any)() : getData
-        return `<script id='${id}' suppressHydrationWarning>window["__TSR_DEHYDRATED__${escapeJSON(
-          strKey,
-        )}"] = ${JSON.stringify(this.options.transformer.stringify(data))}
-          ;(() => {
-            var el = document.getElementById('${id}')
-            el.parentElement.removeChild(el)
-          })()
-          </script>`
+        return `<script id='${id}' suppressHydrationWarning>
+  window["__TSR_DEHYDRATED__${escapeJSON(
+    strKey,
+  )}"] = ${JSON.stringify(this.options.transformer.stringify(data))}
+</script>`
       })
 
       return () => this.hydrateData<T>(key)

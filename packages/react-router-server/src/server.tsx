@@ -69,26 +69,26 @@ function transformStreamHtmlCallback(injector: () => Promise<string>) {
             this.push(processed)
             leftover = ''
           } else {
-            // For all other closing tags, add the arbitrary HTML after them
-            const pattern = /(<\/[a-zA-Z][\w:.-]*?>)/g
-            let result
-            let lastIndex = 0
+          // For all other closing tags, add the arbitrary HTML after them
+          const pattern = /(<\/[a-zA-Z][\w:.-]*?>)/g
+          let result
+          let lastIndex = 0
 
-            while ((result = pattern.exec(chunkString)) !== null) {
+          while ((result = pattern.exec(chunkString)) !== null) {
               lastIndex = result.index + result[0].length
-            }
+          }
 
-            // If a closing tag was found, add the arbitrary HTML and send it through
-            if (lastIndex > 0) {
-              const processed =
-                chunkString.slice(0, lastIndex) + html + leftoverHtml
-              this.push(processed)
-              leftover = chunkString.slice(lastIndex)
-            } else {
-              // If no closing tag was found, store the chunk to process with the next one
-              leftover = chunkString
-              leftoverHtml += html
-            }
+          // If a closing tag was found, add the arbitrary HTML and send it through
+          if (lastIndex > 0) {
+            const processed =
+              chunkString.slice(0, lastIndex) + html + leftoverHtml
+            this.push(processed)
+            leftover = chunkString.slice(lastIndex)
+          } else {
+            // If no closing tag was found, store the chunk to process with the next one
+            leftover = chunkString
+            leftoverHtml += html
+          }
           }
 
           callback()

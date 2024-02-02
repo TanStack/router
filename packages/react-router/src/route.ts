@@ -521,9 +521,6 @@ export function getRouteApi<
   >({ id })
 }
 
-/**
- * @deprecated Use the `getRouteApi` function instead.
- */
 export class RouteApi<
   TId extends RouteIds<RegisteredRouter['routeTree']>,
   TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
@@ -538,6 +535,9 @@ export class RouteApi<
 > {
   id: TId
 
+  /**
+   * @deprecated Use the `getRouteApi` function instead.
+   */
   constructor({ id }: { id: TId }) {
     this.id = id as any
   }
@@ -1074,9 +1074,6 @@ export type RootSearchSchema = {
   __TRootSearchSchema__: '__TRootSearchSchema__'
 }
 
-/**
- * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
- */
 export class RootRoute<
   TSearchSchemaInput extends Record<string, any> = RootSearchSchema,
   TSearchSchema extends Record<string, any> = RootSearchSchema,
@@ -1110,6 +1107,9 @@ export class RootRoute<
   any, // TChildren
   any // TRouteTree
 > {
+  /**
+   * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
+   */
   constructor(
     options?: Omit<
       RouteOptions<

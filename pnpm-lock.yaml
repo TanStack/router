@@ -10,6 +10,10 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      vite-plugin-replace:
+        specifier: ^0.1.1
+        version: 0.1.1(vite@5.0.12)
     devDependencies:
       '@tanstack/config':
         specifier: ^0.3.3
@@ -10529,6 +10533,14 @@ packages:
     transitivePeerDependencies:
       - rollup
       - supports-color
+    dev: false
+
+  /vite-plugin-replace@0.1.1(vite@5.0.12):
+    resolution: {integrity: sha512-v+okl3JNt2pf1jDYijw+WPVt6h9FWa/atTi+qnSFBqmKThLTDhlesx0r3bh+oFPmxRJmis5tNx9HtN6lGFoqWg==}
+    peerDependencies:
+      vite: ^2
+    dependencies:
+      vite: 5.0.12(@types/node@20.11.9)
     dev: false
 
   /vite-plugin-solid@2.8.0(solid-js@1.8.8)(vite@4.5.0):
