@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.root-nav {
+  @apply border-b flex p-5 gap-5;
+}
+
+.root-content {
+  @apply p-5;
+}
+
+h2 {
+  @apply font-bold text-2xl;
+}
+
+p {
+  @apply pt-5;
+}

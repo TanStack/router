@@ -1,0 +1,36 @@
+{
+  "name": "tanstack-router-react-example-ssrx-ssr-streaming",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 3000",
+    "build": "pnpm run build.client && pnpm run build.server",
+    "build.client": "NODE_ENV=production vite build",
+    "build.server": "NODE_ENV=production vite build --ssr",
+    "start": "node dist/server.js --port 3000"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.7.0",
+    "@ssrx/plugin-tanstack-router": "~0.3.0",
+    "@ssrx/react": "~0.3.0",
+    "@ssrx/vite": "~0.6.0",
+    "@tanstack/react-router": "^1.15.7",
+    "@tanstack/react-router-server": "^1.15.7",
+    "@tanstack/router-devtools": "^1.15.7",
+    "hono": "^3.12.9",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "devDependencies": {
+    "@tanstack/router-vite-plugin": "^1.15.4",
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "10.4.17",
+    "postcss": "8.4.33",
+    "tailwindcss": "3.3.5",
+    "vite": "5.0.12",
+    "vite-tsconfig-paths": "4.3.1"
+  }
+}
