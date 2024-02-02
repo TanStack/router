@@ -743,6 +743,7 @@ export class Router<
               isGlobalNotFound && route.id === rootRouteId
                 ? { global: true }
                 : undefined,
+            params: replaceEqualDeep(existingMatch.params, routeParams),
           }
         : {
             id: matchId,
