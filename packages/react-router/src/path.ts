@@ -139,7 +139,7 @@ export function interpolatePath({
   return joinPaths(
     interpolatedPathSegments.map((segment) => {
       if (segment.type === 'wildcard') {
-        const value = params[segment.value]
+        const value = params._splat
         if (leaveWildcards) return `${segment.value}${value ?? ''}`
         return value
       }
