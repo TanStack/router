@@ -16,8 +16,8 @@ importers:
         version: 0.1.1(vite@5.0.12)
     devDependencies:
       '@tanstack/config':
-        specifier: ^0.4.0
-        version: 0.4.0(@types/node@20.11.9)(esbuild@0.20.0)(rollup@4.9.6)(typescript@5.3.3)(vite@5.0.12)
+        specifier: ^0.4.1
+        version: 0.4.1(@types/node@20.11.9)(esbuild@0.20.0)(rollup@4.9.6)(typescript@5.3.3)(vite@5.0.12)
       '@types/node':
         specifier: ^20.11.9
         version: 20.11.9
@@ -4272,8 +4272,8 @@ packages:
       - vite
     dev: false
 
-  /@tanstack/config@0.4.0(@types/node@20.11.9)(esbuild@0.20.0)(rollup@4.9.6)(typescript@5.3.3)(vite@5.0.12):
-    resolution: {integrity: sha512-M5vcPgbWSmbk19RzkHgJhb9vR6vIlSbGTxry9iRu30lN8YSO3PdfCvq55Ba6rHx8PWTRup5hsKsQ5GkF7RnG9A==}
+  /@tanstack/config@0.4.1(@types/node@20.11.9)(esbuild@0.20.0)(rollup@4.9.6)(typescript@5.3.3)(vite@5.0.12):
+    resolution: {integrity: sha512-qTFZHY/c9I+9gIfNU03faxDKwLVeRS4UbMO264aZ/QY0j+fYTmRpuHbVlT083a7jT94rKJJjW9oYRhqc5pr6jg==}
     engines: {node: '>=18'}
     hasBin: true
     dependencies:
