@@ -213,7 +213,11 @@ export type UpdatableRouteOptions<
   onEnter?: (match: AnyRouteMatch) => void
   onStay?: (match: AnyRouteMatch) => void
   onLeave?: (match: AnyRouteMatch) => void
-  meta?: (ctx: { loaderData: TLoaderData }) => JSX.IntrinsicElements['meta'][]
+  meta?: (ctx: {
+    loaderData: TLoaderData
+  }) =>
+    | JSX.IntrinsicElements['meta'][]
+    | Promise<JSX.IntrinsicElements['meta'][]>
   links?: () => JSX.IntrinsicElements['link'][]
   scripts?: () => JSX.IntrinsicElements['script'][]
 } & UpdatableStaticRouteOption
@@ -371,11 +375,12 @@ export type MergeFromFromParent<T, U> = IsAny<T, U, T & U>
 export type ResolveAllParams<
   TParentRoute extends AnyRoute,
   TParams extends AnyPathParams,
-> = Record<never, string> extends TParentRoute['types']['allParams']
-  ? TParams
-  : Expand<
-      UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
-    >
+> =
+  Record<never, string> extends TParentRoute['types']['allParams']
+    ? TParams
+    : Expand<
+        UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
+      >
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute
@@ -1063,7 +1068,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 /**
  * @deprecated Use the `createRootRouteWithContext` function instead.
  */
-export const rootRouteWithContext = createRootRouteWithContext;
+export const rootRouteWithContext = createRootRouteWithContext
 
 export type RootSearchSchema = {
   __TRootSearchSchema__: '__TRootSearchSchema__'
