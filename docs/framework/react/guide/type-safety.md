@@ -51,10 +51,12 @@ export const Route = createFileRoute('/posts')({
   component: PostsComponent,
 })
 
+const routeApi = getRouteApi('/posts')
+
 function PostsComponent() {
   // Each route has type-safe versions of most of the built-in hooks from TanStack Router
-  const params = Route.useParams()
-  const search = Route.useSearch()
+  const params = routeApi.useParams()
+  const search = routeApi.useSearch()
 
   // Some hooks require context from the *entire* router, not just the current route. To achieve type-safety here,
   // we must pass the `from` param to tell the hook our relative position in the route hierarchy.
