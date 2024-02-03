@@ -28,18 +28,24 @@ The `useParams` method returns all of the path parameters that were parsed for t
 ```tsx
 import { useParams } from '@tanstack/react-router'
 
+const routeApi = getRouteApi('/posts/$postId')
+
 function Component() {
-  const params = myRoute.useParams({ from: '/posts/$postId' })
+  const params = useParams({ from: '/posts/$postId' })
 
   // OR
 
-  const postId = myRoute.useParams({
+  const routeParams = routeApi.useParams();
+
+  // OR
+
+  const postId = useParams({
     from: '/posts/$postId',
     select: (params) => params.postId,
   })
 
   // OR
 
-  const looseParams = myRoute.useParams({ strict: false })
+  const looseParams = useParams({ strict: false })
 }
 ```
