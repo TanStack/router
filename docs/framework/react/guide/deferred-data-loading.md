@@ -49,8 +49,10 @@ export const Route = createFileRoute('/posts/$postId')({
   component: PostIdComponent,
 })
 
+const routeApi = getRouteApi('/posts/$postId')
+
 function PostIdComponent() {
-  const { deferredSlowData } = postIdRoute.useLoaderData()
+  const { deferredSlowData } = routeApi.useLoaderData()
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
