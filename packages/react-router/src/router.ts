@@ -1370,9 +1370,14 @@ export class Router<
 
               if ((latestPromise = checkLatest())) return await latestPromise
 
-              const meta = await route.options.meta?.({
-                loaderData,
-              })
+              const [meta, headers] = await Promise.all([
+                route.options.meta?.({
+                  loaderData,
+                }),
+                route.options.headers?.({
+                  loaderData,
+                }),
+              ])
 
               matches[index] = match = {
                 ...match,
@@ -1383,6 +1388,7 @@ export class Router<
                 loaderData,
                 loadPromise: undefined,
                 meta,
+                headers,
               }
             } catch (error) {
               if ((latestPromise = checkLatest())) return await latestPromise

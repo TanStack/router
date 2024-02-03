@@ -73,6 +73,7 @@ export interface RouteMatch<
   meta?: JSX.IntrinsicElements['meta'][]
   links?: JSX.IntrinsicElements['link'][]
   scripts?: JSX.IntrinsicElements['script'][]
+  headers?: Record<string, string>
   notFoundError?: NotFoundError
   staticData: StaticDataRouteOption
 }
