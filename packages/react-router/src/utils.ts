@@ -105,11 +105,12 @@ export type NonNullableUpdater<TPrevious, TResult = TPrevious> =
   | ((prev: TPrevious) => TResult)
 
 // from https://github.com/type-challenges/type-challenges/issues/737
-type LastInUnion<U> = UnionToIntersection<
-  U extends unknown ? (x: U) => 0 : never
-> extends (x: infer L) => 0
-  ? L
-  : never
+type LastInUnion<U> =
+  UnionToIntersection<U extends unknown ? (x: U) => 0 : never> extends (
+    x: infer L,
+  ) => 0
+    ? L
+    : never
 export type UnionToTuple<U, Last = LastInUnion<U>> = [U] extends [never]
   ? []
   : [...UnionToTuple<Exclude<U, Last>>, Last]
