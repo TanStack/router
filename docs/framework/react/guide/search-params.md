@@ -222,8 +222,10 @@ export const Route = createFileRoute('/shop/products')({
   validateSearch: productSearchSchema,
 })
 
+const routeApi = getRouteApi('/shop/products')
+
 const ProductList = () => {
-  const { page, filter, sort } = Route.useSearch()
+  const { page, filter, sort } = routeApi.useSearch()
 
   return <div>...</div>
 }
