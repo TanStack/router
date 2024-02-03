@@ -40,6 +40,14 @@ const TanStackRouterDevtools =
       )
 ```
 
+Then wrap the `TanStackRouterDevtools` component in suspense. 
+
+```tsx
+<Suspense>
+    <TanStackRouterDevtools />
+</Suspense>
+```
+
 ## Using inside of the `RouterProvider`
 
 The easiest way for the devtools to work is to render them inside of your root route (or any other route). This will automatically connect the devtools to the router instance.
