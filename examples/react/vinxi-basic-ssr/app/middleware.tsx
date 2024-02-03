@@ -1,4 +1,4 @@
-import { defineMiddleware, getContext, setContext } from 'vinxi/http'
+import { defineMiddleware, getContext, setContext } from 'vinxi/server'
 
 export default defineMiddleware({
   onRequest: (event) => {
