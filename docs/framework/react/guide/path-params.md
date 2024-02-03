@@ -62,8 +62,10 @@ export const Route = createFileRoute('/posts/$postId')({
   component: PostComponent,
 })
 
+const routeApi = getRouteApi('/posts/$postId')
+
 function PostComponent() {
-  const { postId } = Route.useParams()
+  const { postId } = routeApi.useParams()
   return <div>Post {postId}</div>
 }
 ```
