@@ -244,7 +244,13 @@ const allProductsRoute = createRoute({
 
 // Somewhere else...
 
+const routeApi = getRouteApi('/shop/products')
+
 const ProductList = () => {
+  const routeSearch = routeApi.useSearch();
+  
+  // OR
+
   const { page, filter, sort } = useSearch({
     from: allProductsRoute.fullPath,
   })
