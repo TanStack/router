@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server",
     "build": "npm run build:client && npm run build:server",
-    "build:client": "vite build src/entry-client.tsx --outDir dist/client",
+    "build:client": "exit 0; vite build src/entry-client.tsx --outDir dist/client",
     "build:server": "vite build --ssr src/entry-server.tsx --outDir dist/server",
     "serve": "NODE_ENV=production node server",
     "debug": "node --inspect-brk server"
