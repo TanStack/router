@@ -240,13 +240,14 @@ export const Route = createFileRoute('/posts/$postId')({
   component: PostComponent,
 })
 
-const routeApi = getRouteApi('/posts/$postId')
-
 function PostComponent() {
-  const { postId } = routeApi.useParams()
+  const { postId } = Route.useParams()
   return <div>Post ID: {postId}</div>
 }
 ```
+/**
+  * TODO: @SeanCassiere
+  */
 
 > 🧠 Dynamic segments work at **each** segment of the path. For example, you could have a route with the path of `/posts/$postId/$revisionId` and each `$` segment would be captured into the `params` object.
 

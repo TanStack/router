@@ -49,10 +49,8 @@ export const Route = createFileRoute('/posts/$postId')({
   component: PostIdComponent,
 })
 
-const routeApi = getRouteApi('/posts/$postId')
-
 function PostIdComponent() {
-  const { deferredSlowData } = routeApi.useLoaderData()
+  const { deferredSlowData } = Route.useLoaderData()
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
@@ -65,6 +63,9 @@ function PostIdComponent() {
   )
 }
 ```
+/**
+  * TODO: @SeanCassiere
+  */
 
 The `Await` component resolves the promise by triggering the nearest suspense boundary until it is resolved, after which it renders the component's `children` as a function with the resolved data.
 

@@ -222,15 +222,16 @@ export const Route = createFileRoute('/shop/products')({
   validateSearch: productSearchSchema,
 })
 
-const routeApi = getRouteApi('/shop/products')
-
 const ProductList = () => {
-  const { page, filter, sort } = routeApi.useSearch()
+  const { page, filter, sort } = Route.useSearch()
 
   return <div>...</div>
 }
 ```
-
+/**
+  * TODO: @SeanCassiere
+  */
+  
 ### Search Params outside of Route Components
 
 You can access your route's validated search params anywhere in your app using the `useSearch` hook. By passing the `from` id/path of your origin route, you'll get even better type safety:
