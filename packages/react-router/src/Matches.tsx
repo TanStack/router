@@ -205,16 +205,15 @@ function MatchInner({
 
   const route = router.routesById[routeId]!
 
-  const { match } = useRouterState({
-    select: (s) => ({
-      match: pick(getRenderedMatches(s).find((d) => d.id === matchId)!, [
+  const match = useRouterState({
+    select: (s) =>
+      pick(getRenderedMatches(s).find((d) => d.id === matchId)!, [
         'status',
         'error',
         'showPending',
         'loadPromise',
         'notFoundError',
       ]),
-    }),
   })
 
   // If a global not-found is found, and it's the root route, render the global not-found component.
