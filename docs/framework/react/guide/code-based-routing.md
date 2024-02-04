@@ -176,9 +176,7 @@ function PostComponent() {
   return <div>Post ID: {postId}</div>
 }
 ```
-/**
-  * TODO: @SeanCassiere
-  */
+> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](./guide/code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `postIdRoute` configuration to get access to the typed `useParams()` hook.
 
 ## Splat / Catch-All Routes
 

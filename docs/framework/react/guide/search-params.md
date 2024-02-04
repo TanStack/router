@@ -228,10 +228,9 @@ const ProductList = () => {
   return <div>...</div>
 }
 ```
-/**
-  * TODO: @SeanCassiere
-  */
-  
+
+> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](./guide/code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `Route` configuration to get access to the typed `useSearch()` hook.
+
 ### Search Params outside of Route Components
 
 You can access your route's validated search params anywhere in your app using the `useSearch` hook. By passing the `from` id/path of your origin route, you'll get even better type safety:
