@@ -245,9 +245,6 @@ function PostComponent() {
   return <div>Post ID: {postId}</div>
 }
 ```
-/**
-  * TODO: @SeanCassiere
-  */
 
 > 🧠 Dynamic segments work at **each** segment of the path. For example, you could have a route with the path of `/posts/$postId/$revisionId` and each `$` segment would be captured into the `params` object.
 
