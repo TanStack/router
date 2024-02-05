@@ -1063,7 +1063,9 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TSearchSchemaUsed,
       TRouteContextReturn,
       TRouteContext,
-      TRouterContext
+      TRouterContext,
+      TLoaderDeps,
+      TLoaderData
     >(options as any)
   }
 }
