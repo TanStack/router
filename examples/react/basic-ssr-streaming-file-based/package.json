@@ -15,7 +15,7 @@
     "@tanstack/react-router": "^1.15.17",
     "@tanstack/react-router-server": "^1.15.17",
     "@tanstack/router-devtools": "^1.15.17",
-    "@tanstack/router-vite-plugin": "^1.15.11",
+    "@tanstack/router-vite-plugin": "^1.15.18",
     "axios": "^1.6.5",
     "get-port": "^7.0.0",
     "react": "^18.2.0",
