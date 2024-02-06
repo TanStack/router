@@ -1,6 +1,6 @@
-/* eslint-disable */
+/* prettier-ignore-start */
 
-/* prettier-ignore */
+/* eslint-disable */
 
 // @ts-nocheck
 
@@ -109,3 +109,5 @@ export const routeTree = rootRoute.addChildren([
   PostsRoute.addChildren([PostsPostIdRoute, PostsIndexRoute]),
   PostsPostIdDeepRoute,
 ])
+
+/* prettier-ignore-end */
