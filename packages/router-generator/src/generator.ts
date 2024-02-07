@@ -537,7 +537,9 @@ export async function generator(config: Config) {
   }
 
   console.log(
-    `✅ Processed ${routeNodes.length} routes in ${Date.now() - start}ms`,
+    `✅ Processed ${routeNodes.length === 1 ? 'route' : 'routes'} in ${
+      Date.now() - start
+    }ms`,
   )
 }
 
