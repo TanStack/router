@@ -204,7 +204,10 @@ export type ParamOptions<
       ? TTo
       : `${TTo}/`,
   TToParams = TToIndex extends ''
-    ? TFromParams
+    ? PostProcessParams<
+    RouteByPath<TRouteTree, TFrom>['types'][TToRouteType],
+    TParamVariant
+  >
     : never extends TResolved
       ? PostProcessParams<
           RouteByPath<TRouteTree, TToIndex>['types'][TToRouteType],
