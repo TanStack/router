@@ -365,6 +365,12 @@ export async function generator(config: Config) {
 
   const virtualRouteNodes = sortedRouteNodes.filter((d) => d.isVirtual)
 
+  const rootPathIdExtension = config.addExtensions && !config.disableTypes
+    ? '.tsx'
+    : config.addExtensions && config.disableTypes
+      ? '.jsx'
+      : ''
+
   const routeImports = [
     '/* prettier-ignore-start */',
     '/* eslint-disable */',
@@ -379,10 +385,11 @@ export async function generator(config: Config) {
       `import { Route as rootRoute } from './${replaceBackslash(
         path.relative(
           path.dirname(config.generatedRouteTree),
-          path.resolve(config.routesDirectory, routePathIdPrefix + rootPathId),
-        ) + config.addExtensions
-          ? '.tsx'
-          : '',
+          path.resolve(
+            config.routesDirectory,
+            `${routePathIdPrefix}${rootPathId}${rootPathIdExtension}`,
+          ),
+        ),
       )}'`,
       ...sortedRouteNodes
         .filter((d) => !d.isVirtual)
@@ -390,17 +397,13 @@ export async function generator(config: Config) {
           return `import { Route as ${
             node.variableName
           }Import } from './${replaceBackslash(
-            config.addExtensions
-              ? path.relative(
-                  path.dirname(config.generatedRouteTree),
-                  path.resolve(config.routesDirectory, node.filePath),
-                )
-              : removeExt(
-                  path.relative(
-                    path.dirname(config.generatedRouteTree),
-                    path.resolve(config.routesDirectory, node.filePath),
-                  ),
-                ),
+            removeExt(
+              path.relative(
+                path.dirname(config.generatedRouteTree),
+                path.resolve(config.routesDirectory, node.filePath),
+              ),
+              config.addExtensions,
+            ),
           )}'`
         }),
     ].join('\n'),
@@ -438,20 +441,13 @@ export async function generator(config: Config) {
         }${config.disableTypes ? '' : 'as any'})`,
           loaderNode
             ? `.updateLoader({ loader: lazyFn(() => import('./${replaceBackslash(
-                config.addExtensions
-                  ? path.relative(
-                      path.dirname(config.generatedRouteTree),
-                      path.resolve(config.routesDirectory, loaderNode.filePath),
-                    )
-                  : removeExt(
-                      path.relative(
-                        path.dirname(config.generatedRouteTree),
-                        path.resolve(
-                          config.routesDirectory,
-                          loaderNode.filePath,
-                        ),
-                      ),
-                    ),
+                removeExt(
+                  path.relative(
+                    path.dirname(config.generatedRouteTree),
+                    path.resolve(config.routesDirectory, loaderNode.filePath),
+                  ),
+                  config.addExtensions,
+                ),
               )}'), 'loader') })`
             : '',
           componentNode || errorComponentNode || pendingComponentNode
@@ -468,20 +464,13 @@ export async function generator(config: Config) {
                   return `${
                     d[0]
                   }: lazyRouteComponent(() => import('./${replaceBackslash(
-                    config.addExtensions
-                      ? path.relative(
-                          path.dirname(config.generatedRouteTree),
-                          path.resolve(config.routesDirectory, d[1]!.filePath),
-                        )
-                      : removeExt(
-                          path.relative(
-                            path.dirname(config.generatedRouteTree),
-                            path.resolve(
-                              config.routesDirectory,
-                              d[1]!.filePath,
-                            ),
-                          ),
-                        ),
+                    removeExt(
+                      path.relative(
+                        path.dirname(config.generatedRouteTree),
+                        path.resolve(config.routesDirectory, d[1]!.filePath),
+                      ),
+                      config.addExtensions,
+                    ),
                   )}'), '${d[0]}')`
                 })
                 .join('\n,')}
@@ -489,23 +478,16 @@ export async function generator(config: Config) {
             : '',
           lazyComponentNode
             ? `.lazy(() => import('./${replaceBackslash(
-                config.addExtensions
-                  ? path.relative(
-                      path.dirname(config.generatedRouteTree),
-                      path.resolve(
-                        config.routesDirectory,
-                        lazyComponentNode!.filePath,
-                      ),
-                    )
-                  : removeExt(
-                      path.relative(
-                        path.dirname(config.generatedRouteTree),
-                        path.resolve(
-                          config.routesDirectory,
-                          lazyComponentNode!.filePath,
-                        ),
-                      ),
+                removeExt(
+                  path.relative(
+                    path.dirname(config.generatedRouteTree),
+                    path.resolve(
+                      config.routesDirectory,
+                      lazyComponentNode!.filePath,
                     ),
+                  ),
+                  config.addExtensions,
+                ),
               )}').then((d) => d.Route))`
             : '',
         ].join('')
@@ -588,8 +570,8 @@ function routePathToVariable(d: string): string {
   )
 }
 
-export function removeExt(d: string) {
-  return d.substring(0, d.lastIndexOf('.')) || d
+export function removeExt(d: string, enabled: boolean = true) {
+  return enabled ? d.substring(0, d.lastIndexOf('.')) || d : d
 }
 
 function spaces(d: number): string {
