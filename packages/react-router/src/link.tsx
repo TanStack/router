@@ -215,12 +215,11 @@ export type ParamOptions<
           TParamVariant
         >,
   TReducer = ParamsReducer<TFromParams, TToParams>,
-> =
-  Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
-    ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
-    : TFromParams extends Expand<WithoutEmpty<PickRequired<TToParams>>>
-      ? MakeParamOption<TParamVariant, true | TReducer>
-      : MakeParamOption<TParamVariant, TReducer>
+> = Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
+  ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
+  : TFromParams extends Expand<WithoutEmpty<PickRequired<TToParams>>>
+    ? MakeParamOption<TParamVariant, true | TReducer>
+    : MakeParamOption<TParamVariant, TReducer>
 
 type MakeParamOption<
   TParamVariant extends ParamVariant,
@@ -282,10 +281,12 @@ export type LinkOptions<
   disabled?: boolean
 }
 
-export type CheckPath<TRouteTree extends AnyRoute, TPath, TPass> =
-  Exclude<TPath, RoutePaths<TRouteTree>> extends never
-    ? TPass
-    : CheckPathError<TRouteTree, Exclude<TPath, RoutePaths<TRouteTree>>>
+export type CheckPath<TRouteTree extends AnyRoute, TPath, TPass> = Exclude<
+  TPath,
+  RoutePaths<TRouteTree>
+> extends never
+  ? TPass
+  : CheckPathError<TRouteTree, Exclude<TPath, RoutePaths<TRouteTree>>>
 
 export type CheckPathError<TRouteTree extends AnyRoute, TInvalids> = {
   to: RoutePaths<TRouteTree>
@@ -459,6 +460,7 @@ export function useLinkProps<
 
   // The click handler
   const handleFocus = (e: MouseEvent) => {
+    if (disabled) return
     if (preload) {
       doPreload()
     }
@@ -467,6 +469,7 @@ export function useLinkProps<
   const handleTouchStart = handleFocus
 
   const handleEnter = (e: MouseEvent) => {
+    if (disabled) return
     const target = (e.target || {}) as LinkCurrentTargetElement
 
     if (preload) {
@@ -482,6 +485,7 @@ export function useLinkProps<
   }
 
   const handleLeave = (e: MouseEvent) => {
+    if (disabled) return
     const target = (e.target || {}) as LinkCurrentTargetElement
 
     if (target.preloadTimeout) {
