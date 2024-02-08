@@ -365,11 +365,13 @@ export async function generator(config: Config) {
 
   const virtualRouteNodes = sortedRouteNodes.filter((d) => d.isVirtual)
 
-  const rootPathIdExtension = config.addExtensions && !config.disableTypes
-    ? '.tsx'
-    : config.addExtensions && config.disableTypes
-      ? '.jsx'
-      : ''
+  const rootPath = routeNodes.find((d) =>
+    d.routePath?.includes(`/${rootPathId}`),
+  )
+
+  const rootPathIdExtension = config.addExtensions
+    ? rootPath?.filePath.substring(rootPath?.filePath.lastIndexOf('.'))
+    : ''
 
   const routeImports = [
     '/* prettier-ignore-start */',
