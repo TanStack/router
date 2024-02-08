@@ -9,6 +9,8 @@ import { RegisteredRouter } from './router'
 import { LinkProps, UseLinkPropsOptions } from './useNavigate'
 import {
   Expand,
+  IsUnion,
+  MakeDifferenceOptional,
   NoInfer,
   NonNullableUpdater,
   PickRequired,
@@ -208,7 +210,7 @@ export type ParamOptions<
     RouteByPath<TRouteTree, TFrom>['types'][TToRouteType],
     TParamVariant
   >
-    : never extends TResolved
+    : [TResolved] extends [never]
       ? PostProcessParams<
           RouteByPath<TRouteTree, TToIndex>['types'][TToRouteType],
           TParamVariant
@@ -217,12 +219,14 @@ export type ParamOptions<
           RouteByPath<TRouteTree, TResolved>['types'][TToRouteType],
           TParamVariant
         >,
-  TReducer = ParamsReducer<TFromParams, TToParams>,
-> = Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
-  ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
-  : TFromParams extends Expand<WithoutEmpty<PickRequired<TToParams>>>
-    ? MakeParamOption<TParamVariant, true | TReducer>
-    : MakeParamOption<TParamVariant, TReducer>
+  TRelativeToParams = TParamVariant extends 'SEARCH' ?  TToParams : true extends IsUnion<TFromParams> ? TToParams : MakeDifferenceOptional<TFromParams, TToParams>,
+  TReducer = ParamsReducer<TFromParams, TRelativeToParams>,
+> =
+  Expand<WithoutEmpty<PickRequired<TRelativeToParams>>> extends never
+    ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
+    : TFromParams extends Expand<WithoutEmpty<PickRequired<TRelativeToParams>>>
+      ? MakeParamOption<TParamVariant, true | TReducer>
+      : MakeParamOption<TParamVariant, TReducer>
 
 type MakeParamOption<
   TParamVariant extends ParamVariant,
