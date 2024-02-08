@@ -34,13 +34,16 @@ export type DeepPartial<T> = T extends object
     }
   : T
 
-export type MakeDifferenceOptional<T, U> = Omit<U, keyof T> & Partial<Pick<U, keyof T & keyof U>> & PickRequired<Omit<U, keyof PickRequired<T>>>
+export type MakeDifferenceOptional<T, U> = Omit<U, keyof T> &
+  Partial<Pick<U, keyof T & keyof U>> &
+  PickRequired<Omit<U, keyof PickRequired<T>>>
 
 // from https://stackoverflow.com/a/53955431
-export type IsUnion<T, U extends T = T> =
-(T extends any ?
-(U extends T ? false : true)
-    : never) extends false ? false : true
+export type IsUnion<T, U extends T = T> = (
+  T extends any ? (U extends T ? false : true) : never
+) extends false
+  ? false
+  : true
 
 // type Compute<T> = { [K in keyof T]: T[K] } | never
 

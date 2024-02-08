@@ -207,9 +207,9 @@ export type ParamOptions<
       : `${TTo}/`,
   TToParams = TToIndex extends ''
     ? PostProcessParams<
-    RouteByPath<TRouteTree, TFrom>['types'][TToRouteType],
-    TParamVariant
-  >
+        RouteByPath<TRouteTree, TFrom>['types'][TToRouteType],
+        TParamVariant
+      >
     : [TResolved] extends [never]
       ? PostProcessParams<
           RouteByPath<TRouteTree, TToIndex>['types'][TToRouteType],
@@ -219,7 +219,11 @@ export type ParamOptions<
           RouteByPath<TRouteTree, TResolved>['types'][TToRouteType],
           TParamVariant
         >,
-  TRelativeToParams = TParamVariant extends 'SEARCH' ?  TToParams : true extends IsUnion<TFromParams> ? TToParams : MakeDifferenceOptional<TFromParams, TToParams>,
+  TRelativeToParams = TParamVariant extends 'SEARCH'
+    ? TToParams
+    : true extends IsUnion<TFromParams>
+      ? TToParams
+      : MakeDifferenceOptional<TFromParams, TToParams>,
   TReducer = ParamsReducer<TFromParams, TRelativeToParams>,
 > =
   Expand<WithoutEmpty<PickRequired<TRelativeToParams>>> extends never
@@ -288,12 +292,10 @@ export type LinkOptions<
   disabled?: boolean
 }
 
-export type CheckPath<TRouteTree extends AnyRoute, TPath, TPass> = Exclude<
-  TPath,
-  RoutePaths<TRouteTree>
-> extends never
-  ? TPass
-  : CheckPathError<TRouteTree, Exclude<TPath, RoutePaths<TRouteTree>>>
+export type CheckPath<TRouteTree extends AnyRoute, TPath, TPass> =
+  Exclude<TPath, RoutePaths<TRouteTree>> extends never
+    ? TPass
+    : CheckPathError<TRouteTree, Exclude<TPath, RoutePaths<TRouteTree>>>
 
 export type CheckPathError<TRouteTree extends AnyRoute, TInvalids> = {
   to: RoutePaths<TRouteTree>

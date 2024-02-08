@@ -841,7 +841,7 @@ export class Router<
       let nextParams =
         (dest.params ?? true) === true
           ? prevParams
-          : {...prevParams, ...functionalUpdate(dest.params!, prevParams)}
+          : { ...prevParams, ...functionalUpdate(dest.params!, prevParams) }
 
       if (nextParams) {
         matches
