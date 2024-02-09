@@ -101,6 +101,8 @@ The following options are available for configuration via the `tsr.config.json` 
   - (Optional, **Defaults to `false`**) whether to disable generating types for the route tree
   - If set to `true`, the generated route tree will not include any types.
   - If set to `true` and the `generatedRouteTree` file ends with `.ts` or `.tsx`, the generated route tree will be written as a `.js` file instead.
+- **`addExtensions`**
+  - (Optional, **Defaults to `false`**) add file extensions to the route names in the generated route tree
 
 ## File Naming Conventions
 
