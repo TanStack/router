@@ -174,8 +174,10 @@ export async function generator(config: Config) {
 
   const start = Date.now()
   const routePathIdPrefix = config.routeFilePrefix ?? ''
+  const beforeRouteNodes = await getRouteNodes(config)
+  const rootRouteNode = beforeRouteNodes.find((d) => d.routePath === `/${rootPathId}`)
 
-  const preRouteNodes = multiSortBy(await getRouteNodes(config), [
+  const preRouteNodes = multiSortBy(beforeRouteNodes, [
     (d) => (d.routePath === '/' ? -1 : 1),
     (d) => d.routePath?.split('/').length,
     (d) => (d.filePath?.match(/[./]index[.]/) ? 1 : -1),
@@ -365,13 +367,10 @@ export async function generator(config: Config) {
 
   const virtualRouteNodes = sortedRouteNodes.filter((d) => d.isVirtual)
 
-  const rootPath = routeNodes.find((d) =>
-    d.routePath?.includes(`/${rootPathId}`),
-  )
-
-  const rootPathIdExtension = config.addExtensions
-    ? rootPath?.filePath.substring(rootPath?.filePath.lastIndexOf('.'))
-    : ''
+  const rootPathIdExtension =
+    config.addExtensions && rootRouteNode
+      ? path.extname(rootRouteNode.filePath)
+      : ''
 
   const routeImports = [
     '/* prettier-ignore-start */',
@@ -572,8 +571,8 @@ function routePathToVariable(d: string): string {
   )
 }
 
-export function removeExt(d: string, enabled: boolean = true) {
-  return enabled ? d.substring(0, d.lastIndexOf('.')) || d : d
+export function removeExt(d: string, keepExtension: boolean = false) {
+  return keepExtension ? d : d.substring(0, d.lastIndexOf('.')) || d
 }
 
 function spaces(d: number): string {
