@@ -11,9 +11,9 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as LoginImport } from './routes/login'
-import { Route as DashboardImport } from './routes/dashboard'
-import { Route as IndexImport } from './routes/index'
+import { Route as LoginImport } from './routes/login.tsx'
+import { Route as DashboardImport } from './routes/dashboard.tsx'
+import { Route as IndexImport } from './routes/index.tsx'
 
 // Create/Update Routes
 

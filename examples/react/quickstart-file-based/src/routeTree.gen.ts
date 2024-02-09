@@ -11,8 +11,8 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as AboutImport } from './routes/about'
-import { Route as IndexImport } from './routes/index'
+import { Route as AboutImport } from './routes/about.tsx'
+import { Route as IndexImport } from './routes/index.tsx'
 
 // Create/Update Routes
 

@@ -11,15 +11,15 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as PostsImport } from './routes/posts'
-import { Route as LayoutImport } from './routes/_layout'
-import { Route as IndexImport } from './routes/index'
-import { Route as PostsIndexImport } from './routes/posts.index'
-import { Route as PostsPostIdImport } from './routes/posts.$postId'
-import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
-import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
-import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
-import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as PostsImport } from './routes/posts.tsx'
+import { Route as LayoutImport } from './routes/_layout.tsx'
+import { Route as IndexImport } from './routes/index.tsx'
+import { Route as PostsIndexImport } from './routes/posts.index.tsx'
+import { Route as PostsPostIdImport } from './routes/posts.$postId.tsx'
+import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2.tsx'
+import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep.tsx'
+import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b.tsx'
+import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a.tsx'
 
 // Create/Update Routes
 

@@ -11,11 +11,11 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as PostsImport } from './routes/posts'
-import { Route as ErrorImport } from './routes/error'
-import { Route as IndexImport } from './routes/index'
-import { Route as PostsIndexImport } from './routes/posts/index'
-import { Route as PostsPostIdImport } from './routes/posts/$postId'
+import { Route as PostsImport } from './routes/posts.tsx'
+import { Route as ErrorImport } from './routes/error.tsx'
+import { Route as IndexImport } from './routes/index.tsx'
+import { Route as PostsIndexImport } from './routes/posts/index.tsx'
+import { Route as PostsPostIdImport } from './routes/posts/$postId.tsx'
 
 // Create/Update Routes
 

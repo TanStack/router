@@ -13,12 +13,12 @@ import { createFileRoute } from '@tanstack/react-router'
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as PostsImport } from './routes/posts'
-import { Route as PostsIndexImport } from './routes/posts.index'
-import { Route as LayoutTestLayoutBImport } from './routes/_layout-test/layout-b'
-import { Route as LayoutTestLayoutAImport } from './routes/_layout-test/layout-a'
-import { Route as PostsPostIdRouteImport } from './routes/posts.$postId/route'
-import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
+import { Route as PostsImport } from './routes/posts.tsx'
+import { Route as PostsIndexImport } from './routes/posts.index.tsx'
+import { Route as LayoutTestLayoutBImport } from './routes/_layout-test/layout-b.tsx'
+import { Route as LayoutTestLayoutAImport } from './routes/_layout-test/layout-a.tsx'
+import { Route as PostsPostIdRouteImport } from './routes/posts.$postId/route.tsx'
+import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep.tsx'
 
 // Create Virtual Routes
 
@@ -33,17 +33,19 @@ const LayoutTestLayoutBTestLazyImport = createFileRoute(
 const LayoutTestLazyRoute = LayoutTestLazyImport.update({
   id: '/_layout-test',
   getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/_layout-test.lazy').then((d) => d.Route))
+} as any).lazy(() =>
+  import('./routes/_layout-test.lazy.tsx').then((d) => d.Route),
+)
 
 const PostsRoute = PostsImport.update({
   path: '/posts',
   getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/posts.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/posts.lazy.tsx').then((d) => d.Route))
 
 const IndexLazyRoute = IndexLazyImport.update({
   path: '/',
   getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/index.lazy.tsx').then((d) => d.Route))
 
 const PostsIndexRoute = PostsIndexImport.update({
   path: '/',
@@ -63,20 +65,22 @@ const LayoutTestLayoutARoute = LayoutTestLayoutAImport.update({
 const PostsPostIdRouteRoute = PostsPostIdRouteImport.update({
   path: '/$postId',
   getParentRoute: () => PostsRoute,
-} as any).lazy(() => import('./routes/posts.$postId/lazy').then((d) => d.Route))
+} as any).lazy(() =>
+  import('./routes/posts.$postId/lazy.tsx').then((d) => d.Route),
+)
 
 const LayoutTestLayoutBTestLazyRoute = LayoutTestLayoutBTestLazyImport.update({
   path: '/test',
   getParentRoute: () => LayoutTestLayoutBRoute,
 } as any).lazy(() =>
-  import('./routes/_layout-test/layout-b.test.lazy').then((d) => d.Route),
+  import('./routes/_layout-test/layout-b.test.lazy.tsx').then((d) => d.Route),
 )
 
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
   path: '/posts/$postId/deep',
   getParentRoute: () => rootRoute,
 } as any).lazy(() =>
-  import('./routes/posts_.$postId.deep.lazy').then((d) => d.Route),
+  import('./routes/posts_.$postId.deep.lazy.tsx').then((d) => d.Route),
 )
 
 // Populate the FileRoutesByPath interface
