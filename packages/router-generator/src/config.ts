@@ -9,6 +9,7 @@ export const configSchema = z.object({
   generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
   quoteStyle: z.enum(['single', 'double']).optional().default('single'),
   disableTypes: z.boolean().optional().default(false),
+  addExtensions: z.boolean().optional().default(false),
 })
 
 export type Config = z.infer<typeof configSchema>

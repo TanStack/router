@@ -365,6 +365,14 @@ export async function generator(config: Config) {
 
   const virtualRouteNodes = sortedRouteNodes.filter((d) => d.isVirtual)
 
+  const rootPath = routeNodes.find((d) =>
+    d.routePath?.includes(`/${rootPathId}`),
+  )
+
+  const rootPathIdExtension = config.addExtensions
+    ? rootPath?.filePath.substring(rootPath?.filePath.lastIndexOf('.'))
+    : ''
+
   const routeImports = [
     '/* prettier-ignore-start */',
     '/* eslint-disable */',
@@ -379,7 +387,10 @@ export async function generator(config: Config) {
       `import { Route as rootRoute } from './${replaceBackslash(
         path.relative(
           path.dirname(config.generatedRouteTree),
-          path.resolve(config.routesDirectory, routePathIdPrefix + rootPathId),
+          path.resolve(
+            config.routesDirectory,
+            `${routePathIdPrefix}${rootPathId}${rootPathIdExtension}`,
+          ),
         ),
       )}'`,
       ...sortedRouteNodes
@@ -393,6 +404,7 @@ export async function generator(config: Config) {
                 path.dirname(config.generatedRouteTree),
                 path.resolve(config.routesDirectory, node.filePath),
               ),
+              config.addExtensions,
             ),
           )}'`
         }),
@@ -436,6 +448,7 @@ export async function generator(config: Config) {
                     path.dirname(config.generatedRouteTree),
                     path.resolve(config.routesDirectory, loaderNode.filePath),
                   ),
+                  config.addExtensions,
                 ),
               )}'), 'loader') })`
             : '',
@@ -458,6 +471,7 @@ export async function generator(config: Config) {
                         path.dirname(config.generatedRouteTree),
                         path.resolve(config.routesDirectory, d[1]!.filePath),
                       ),
+                      config.addExtensions,
                     ),
                   )}'), '${d[0]}')`
                 })
@@ -474,6 +488,7 @@ export async function generator(config: Config) {
                       lazyComponentNode!.filePath,
                     ),
                   ),
+                  config.addExtensions,
                 ),
               )}').then((d) => d.Route))`
             : '',
@@ -557,8 +572,8 @@ function routePathToVariable(d: string): string {
   )
 }
 
-export function removeExt(d: string) {
-  return d.substring(0, d.lastIndexOf('.')) || d
+export function removeExt(d: string, enabled: boolean = true) {
+  return enabled ? d.substring(0, d.lastIndexOf('.')) || d : d
 }
 
 function spaces(d: number): string {
