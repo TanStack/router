@@ -13,9 +13,9 @@ import { createFileRoute } from '@tanstack/react-router'
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as TestImport } from './routes/test.tsx'
-import { Route as HelloImport } from './routes/hello.tsx'
-import { Route as IndexImport } from './routes/index.tsx'
+import { Route as TestImport } from './routes/test'
+import { Route as HelloImport } from './routes/hello'
+import { Route as IndexImport } from './routes/index'
 
 // Create Virtual Routes
 
@@ -26,7 +26,7 @@ const NoTitleLazyImport = createFileRoute('/no-title')()
 const NoTitleLazyRoute = NoTitleLazyImport.update({
   path: '/no-title',
   getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/no-title.lazy.tsx').then((d) => d.Route))
+} as any).lazy(() => import('./routes/no-title.lazy').then((d) => d.Route))
 
 const TestRoute = TestImport.update({
   path: '/test',
@@ -36,7 +36,7 @@ const TestRoute = TestImport.update({
 const HelloRoute = HelloImport.update({
   path: '/hello',
   getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/hello.lazy.tsx').then((d) => d.Route))
+} as any).lazy(() => import('./routes/hello.lazy').then((d) => d.Route))
 
 const IndexRoute = IndexImport.update({
   path: '/',

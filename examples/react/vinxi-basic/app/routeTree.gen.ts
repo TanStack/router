@@ -11,15 +11,15 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as HelloImport } from './routes/hello.tsx'
-import { Route as IndexImport } from './routes/index.tsx'
+import { Route as HelloImport } from './routes/hello'
+import { Route as IndexImport } from './routes/index'
 
 // Create/Update Routes
 
 const HelloRoute = HelloImport.update({
   path: '/hello',
   getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/hello.lazy.tsx').then((d) => d.Route))
+} as any).lazy(() => import('./routes/hello.lazy').then((d) => d.Route))
 
 const IndexRoute = IndexImport.update({
   path: '/',
