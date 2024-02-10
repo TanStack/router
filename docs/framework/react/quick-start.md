@@ -125,7 +125,7 @@ declare module '@tanstack/react-router' {
 }
 
 // Render the app
-const rootElement = document.getElementById('app')!
+const rootElement = document.getElementById('app')
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
@@ -216,7 +216,6 @@ if (!rootElement.innerHTML) {
 If you are working with this pattern you should change the `id` of the root `<div>` on you `index.html` file to ```<div id='app'></div>```
 
 
-a
 
 
 If you glossed over these examples or didn't understand something, we don't blame you, because there's so much more to learn to really take advantage of TanStack Router! Let's move on.
