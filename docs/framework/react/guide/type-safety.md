@@ -65,6 +65,8 @@ function PostsComponent() {
 
 Every hook and component that requires a context hint will have a `from` param where you can pass the ID or path of the route you are rendering within.
 
+> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](./guide/code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to pass in the `Route.fullPath` to get access to the typed `useParams()` and `useSearch()` hooks.
+
 ### What if I don't know the route? What if it's a shared component?
 
 The `from` property is optional, which means if you don't pass it, you'll get the router's best guess on what types will be available. Usually, that means you'll get a union of all of the types of all of the routes in the router.

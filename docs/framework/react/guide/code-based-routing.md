@@ -162,7 +162,7 @@ const postsIndexRoute = createRoute({
 Dynamic route segments work exactly the same in code-based routing as they do in file-based routing. Simply prefix a segment of the path with a `$` and it will be captured into the `params` object of the route's `loader` or `component`:
 
 ```tsx
-const route = createRoute({
+const postIdRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
   // In a loader
@@ -172,10 +172,11 @@ const route = createRoute({
 })
 
 function PostComponent() {
-  const { postId } = route.useParams()
+  const { postId } = postIdRoute.useParams()
   return <div>Post ID: {postId}</div>
 }
 ```
+> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](./guide/code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `postIdRoute` configuration to get access to the typed `useParams()` hook.
 
 ## Splat / Catch-All Routes
 
