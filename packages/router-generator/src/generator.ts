@@ -66,8 +66,8 @@ async function getRouteNodes(config: Config) {
           let routePath =
             cleanPath(`/${filePathNoExt.split('.').join('/')}`) || ''
 
-          if (routeFileIgnorePrefix) {
-            routePath.replaceAll(routeFileIgnorePrefix, '')
+          if (routeFilePrefix) {
+            routePath = routePath.replace(routeFilePrefix, '')
           }
 
           const variableName = routePathToVariable(routePath)
