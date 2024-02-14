@@ -175,7 +175,9 @@ export async function generator(config: Config) {
   const start = Date.now()
   const routePathIdPrefix = config.routeFilePrefix ?? ''
   const beforeRouteNodes = await getRouteNodes(config)
-  const rootRouteNode = beforeRouteNodes.find((d) => d.routePath === `/${rootPathId}`)
+  const rootRouteNode = beforeRouteNodes.find(
+    (d) => d.routePath === `/${rootPathId}`,
+  )
 
   const preRouteNodes = multiSortBy(beforeRouteNodes, [
     (d) => (d.routePath === '/' ? -1 : 1),
