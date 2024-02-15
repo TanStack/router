@@ -18,7 +18,7 @@
     "vinxi": "0.1.2"
   },
   "devDependencies": {
-    "@tanstack/router-devtools": "^1.16.2",
+    "@tanstack/router-devtools": "^1.16.4",
     "@tanstack/router-vite-plugin": "^1.16.3",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",

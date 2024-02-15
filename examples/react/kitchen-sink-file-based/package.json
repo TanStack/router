@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.16.2",
-    "@tanstack/router-devtools": "^1.16.2",
+    "@tanstack/router-devtools": "^1.16.4",
     "@tanstack/router-vite-plugin": "^1.16.3",
     "axios": "^1.6.5",
     "immer": "^10.0.3",
