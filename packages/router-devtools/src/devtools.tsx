@@ -89,7 +89,7 @@ interface DevtoolsPanelOptions {
   /**
    * Handles the opening and closing the devtools panel
    */
-  handleDragStart: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+  handleDragStart?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
@@ -617,19 +617,21 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           `,
           }}
         />
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            width: '100%',
-            height: '4px',
-            marginBottom: '-4px',
-            cursor: 'row-resize',
-            zIndex: 100000,
-          }}
-          onMouseDown={handleDragStart}
-        ></div>
+        {handleDragStart ? (
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: '100%',
+              height: '4px',
+              marginBottom: '-4px',
+              cursor: 'row-resize',
+              zIndex: 100000,
+            }}
+            onMouseDown={handleDragStart}
+          ></div>
+        ) : null}
         <div
           style={{
             flex: '1 1 500px',
