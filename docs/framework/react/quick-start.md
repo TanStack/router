@@ -213,7 +213,7 @@ if (!rootElement.innerHTML) {
 ```
 ## Using File-Based Route Configuration
 
-If you are working with this pattern you should change the `id` of the root `<div>` on you `index.html` file to ```<div id='app'></div>```
+If you are working with this pattern you should change the `id` of the root `<div>` on your `index.html` file to ```<div id='app'></div>```
 
 
 
