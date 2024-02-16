@@ -394,24 +394,6 @@ export function useLinkProps<
     type = 'external'
   } catch {}
 
-  if (type === 'external') {
-    return {
-      ...rest,
-      type,
-      href: to,
-      children,
-      target,
-      disabled,
-      style,
-      className,
-      onClick,
-      onFocus,
-      onMouseEnter,
-      onMouseLeave,
-      onTouchStart,
-    }
-  }
-
   const next = router.buildLocation(dest as any)
   const preload = userPreload ?? router.options.defaultPreload
   const preloadDelay =
@@ -441,6 +423,24 @@ export function useLinkProps<
       return pathTest && hashTest && searchTest
     },
   })
+
+  if (type === 'external') {
+    return {
+      ...rest,
+      type,
+      href: to,
+      children,
+      target,
+      disabled,
+      style,
+      className,
+      onClick,
+      onFocus,
+      onMouseEnter,
+      onMouseLeave,
+      onTouchStart,
+    }
+  }
 
   // The click handler
   const handleClick = (e: MouseEvent) => {
