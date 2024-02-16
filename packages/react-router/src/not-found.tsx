@@ -7,7 +7,7 @@ export type NotFoundError = {
   global?: boolean
   data?: any
   throw?: boolean
-  route?: RouteIds<RegisteredRouter['routeTree']>
+  routeId?: RouteIds<RegisteredRouter['routeTree']>
 }
 
 export function notFound(options: NotFoundError = {}) {

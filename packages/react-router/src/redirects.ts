@@ -16,6 +16,7 @@ export type Redirect<
 > = {
   code?: number
   throw?: any
+  href?: string
 } & NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export function redirect<

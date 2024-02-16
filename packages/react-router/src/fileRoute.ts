@@ -201,7 +201,7 @@ export class FileRoute<
       >,
       'getParentRoute' | 'path' | 'id'
     > &
-      UpdatableRouteOptions<TFullSearchSchema, TLoaderData>,
+      UpdatableRouteOptions<TAllParams, TFullSearchSchema, TLoaderData>,
   ): Route<
     TParentRoute,
     TPath,
@@ -267,7 +267,7 @@ export function FileRouteLoader<
 }
 
 export type LazyRouteOptions = Pick<
-  UpdatableRouteOptions<AnySearchSchema, any>,
+  UpdatableRouteOptions<AnyPathParams, AnySearchSchema, any>,
   'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
 >
 

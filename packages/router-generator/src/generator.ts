@@ -252,15 +252,15 @@ export async function generator(config: Config) {
     } else {
       replaced = routeCode
         .replace(
-          /(FileRoute\(\s*['"])([^\s]+)(['"](?:,?)\s*\))/g,
+          /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
           (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
         )
         .replace(
-          /(createFileRoute\(\s*['"])([^\s]+)(['"](?:,?)\s*\))/g,
+          /(createFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
           (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
         )
         .replace(
-          /(createLazyFileRoute\(\s*['"])([^\s]+)(['"](?:,?)\s*\))/g,
+          /(createLazyFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
           (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
         )
     }

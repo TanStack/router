@@ -86,7 +86,11 @@ export type RouteOptions<
   TLoaderDeps,
   TLoaderData
 > &
-  UpdatableRouteOptions<NoInfer<TFullSearchSchema>, NoInfer<TLoaderData>>
+  UpdatableRouteOptions<
+    NoInfer<TAllParams>,
+    NoInfer<TFullSearchSchema>,
+    NoInfer<TLoaderData>
+  >
 
 export type ParamsFallback<
   TPath extends string,
@@ -182,6 +186,7 @@ type BeforeLoadFn<
 }) => Promise<TRouteContextReturn> | TRouteContextReturn | void
 
 export type UpdatableRouteOptions<
+  TAllParams extends Record<string, any>,
   TFullSearchSchema extends Record<string, any>,
   TLoaderData extends any,
 > = {
@@ -214,6 +219,7 @@ export type UpdatableRouteOptions<
   onStay?: (match: AnyRouteMatch) => void
   onLeave?: (match: AnyRouteMatch) => void
   meta?: (ctx: {
+    params: TAllParams
     loaderData: TLoaderData
   }) =>
     | JSX.IntrinsicElements['meta'][]
@@ -585,7 +591,7 @@ export class RouteApi<
   }
 
   notFound = (opts?: NotFoundError) => {
-    return notFound({ route: this.id as string, ...opts })
+    return notFound({ routeId: this.id as string, ...opts })
   }
 }
 
@@ -868,7 +874,9 @@ export class Route<
     >
   }
 
-  update = (options: UpdatableRouteOptions<TFullSearchSchema, TLoaderData>) => {
+  update = (
+    options: UpdatableRouteOptions<TAllParams, TFullSearchSchema, TLoaderData>,
+  ) => {
     Object.assign(this.options, options)
     return this
   }
