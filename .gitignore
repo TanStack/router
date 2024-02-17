@@ -3,6 +3,8 @@
 
 # dependencies
 node_modules
+package-lock.json
+yarn.lock
 
 # builds
 types
@@ -38,9 +40,8 @@ stats.html
 
 *.log
 .DS_Store
-node_modules
 .cache
-dist
+.pnpm-store
 ts-perf
 
 /examples/*/*/yarn.lock
@@ -50,7 +51,7 @@ ts-perf
 
 nx-cloud.env
 .vscode
-.nx
+.nx/cache
 
 gpt/db.json
 
