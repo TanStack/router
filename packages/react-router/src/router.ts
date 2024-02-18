@@ -1452,7 +1452,21 @@ export class Router<
     return matches
   }
 
-  invalidate = () => {}
+  invalidate = () => {
+    const invalidate = (d: any) => ({
+      ...d,
+      invalid: true,
+    })
+
+    this.__store.setState((s) => ({
+      ...s,
+      matches: s.matches.map(invalidate),
+      cachedMatches: s.cachedMatches.map(invalidate),
+      pendingMatches: s.pendingMatches?.map(invalidate),
+    }))
+
+    this.load()
+  }
 
   load = async (): Promise<void> => {
     const promise = new Promise<void>(async (resolve, reject) => {
