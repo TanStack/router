@@ -5,12 +5,26 @@ import { LinkOptions, NavigateOptions } from './link'
 import { AnyRoute } from './route'
 import { RoutePaths } from './routeInfo'
 import { RegisteredRouter } from './router'
-import { StringLiteral } from './utils'
+
+export type UseNavigateResult<TDefaultFrom extends string> = <
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> | string = TDefaultFrom,
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string = '',
+>({
+  from,
+  ...rest
+}: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>) => Promise<void>
 
 export function useNavigate<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TDefaultFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
->(_defaultOpts?: { from?: StringLiteral<TDefaultFrom> }) {
+  TDefaultFrom extends string = string,
+>(_defaultOpts?: {
+  from?:
+    | TDefaultFrom
+    | RoutePaths<RegisteredRouter['routeTree']>
+    | (string & {})
+}) {
   const { navigate } = useRouter()
 
   const matchPathname = useMatch({
@@ -18,23 +32,14 @@ export function useNavigate<
     select: (s) => s.pathname,
   })
 
-  return React.useCallback(
-    <
-      TFrom extends RoutePaths<TRouteTree> | string = TDefaultFrom,
-      TTo extends string = '',
-      TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
-      TMaskTo extends string = '',
-    >({
-      from,
-      ...rest
-    }: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>) => {
-      return navigate({
-        from: rest?.to ? matchPathname : undefined,
-        ...(rest as any),
-      })
-    },
-    [],
-  )
+  const result: UseNavigateResult<TDefaultFrom> = ({ from, ...rest }) => {
+    return navigate({
+      from: rest?.to ? matchPathname : undefined,
+      ...(rest as any),
+    })
+  }
+
+  return React.useCallback(result, [])
 }
 
 // NOTE: I don't know of anyone using this. It's undocumented, so let's wait until someone needs it
