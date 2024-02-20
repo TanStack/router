@@ -6,16 +6,16 @@
   "scripts": {
     "dev": "node server",
     "build": "npm run build:client && npm run build:server",
-    "build:client": "vite build src/entry-client.tsx --outDir dist/client",
+    "build:client": "exit 0; vite build src/entry-client.tsx --outDir dist/client",
     "build:server": "vite build --ssr src/entry-server.tsx --outDir dist/server",
     "serve": "NODE_ENV=production node server",
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.7.1",
-    "@tanstack/react-router-server": "^1.7.1",
-    "@tanstack/router-devtools": "^1.7.1",
-    "@tanstack/router-vite-plugin": "^1.7.1",
+    "@tanstack/react-router": "^1.16.6",
+    "@tanstack/react-router-server": "^1.16.6",
+    "@tanstack/router-devtools": "^1.16.6",
+    "@tanstack/router-vite-plugin": "^1.16.5",
     "axios": "^1.6.5",
     "get-port": "^7.0.0",
     "react": "^18.2.0",

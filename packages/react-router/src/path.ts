@@ -139,7 +139,7 @@ export function interpolatePath({
   return joinPaths(
     interpolatedPathSegments.map((segment) => {
       if (segment.type === 'wildcard') {
-        const value = params[segment.value]
+        const value = params._splat
         if (leaveWildcards) return `${segment.value}${value ?? ''}`
         return value
       }
@@ -173,7 +173,7 @@ export function matchPathname(
 }
 
 export function removeBasepath(basepath: string, pathname: string) {
-  return basepath != '/' ? pathname.substring(basepath.length) : pathname
+  return basepath != '/' ? pathname.replace(basepath, '') : pathname
 }
 
 export function matchByPath(
@@ -184,7 +184,8 @@ export function matchByPath(
   // Remove the base path from the pathname
   from = removeBasepath(basepath, from)
   // Default to to $ (wildcard)
-  const to = `${matchLocation.to ?? '$'}`
+  const to = removeBasepath(basepath, `${matchLocation.to ?? '$'}`)
+
   // Parse the from and to
   const baseSegments = parsePathname(from)
   const routeSegments = parsePathname(to)

@@ -86,7 +86,11 @@ export type RouteOptions<
   TLoaderDeps,
   TLoaderData
 > &
-  UpdatableRouteOptions<NoInfer<TFullSearchSchema>, NoInfer<TLoaderData>>
+  UpdatableRouteOptions<
+    NoInfer<TAllParams>,
+    NoInfer<TFullSearchSchema>,
+    NoInfer<TLoaderData>
+  >
 
 export type ParamsFallback<
   TPath extends string,
@@ -182,6 +186,7 @@ type BeforeLoadFn<
 }) => Promise<TRouteContextReturn> | TRouteContextReturn | void
 
 export type UpdatableRouteOptions<
+  TAllParams extends Record<string, any>,
   TFullSearchSchema extends Record<string, any>,
   TLoaderData extends any,
 > = {
@@ -213,9 +218,17 @@ export type UpdatableRouteOptions<
   onEnter?: (match: AnyRouteMatch) => void
   onStay?: (match: AnyRouteMatch) => void
   onLeave?: (match: AnyRouteMatch) => void
-  meta?: (ctx: { loaderData: TLoaderData }) => JSX.IntrinsicElements['meta'][]
+  meta?: (ctx: {
+    params: TAllParams
+    loaderData: TLoaderData
+  }) =>
+    | JSX.IntrinsicElements['meta'][]
+    | Promise<JSX.IntrinsicElements['meta'][]>
   links?: () => JSX.IntrinsicElements['link'][]
   scripts?: () => JSX.IntrinsicElements['script'][]
+  headers?: (ctx: {
+    loaderData: TLoaderData
+  }) => Promise<Record<string, string>> | Record<string, string>
 } & UpdatableStaticRouteOption
 
 export type UpdatableStaticRouteOption =
@@ -371,11 +384,12 @@ export type MergeFromFromParent<T, U> = IsAny<T, U, T & U>
 export type ResolveAllParams<
   TParentRoute extends AnyRoute,
   TParams extends AnyPathParams,
-> = Record<never, string> extends TParentRoute['types']['allParams']
-  ? TParams
-  : Expand<
-      UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
-    >
+> =
+  Record<never, string> extends TParentRoute['types']['allParams']
+    ? TParams
+    : Expand<
+        UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
+      >
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute
@@ -516,9 +530,6 @@ export function getRouteApi<
   >({ id })
 }
 
-/**
- * @deprecated Use the `getRouteApi` function instead.
- */
 export class RouteApi<
   TId extends RouteIds<RegisteredRouter['routeTree']>,
   TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
@@ -533,6 +544,9 @@ export class RouteApi<
 > {
   id: TId
 
+  /**
+   * @deprecated Use the `getRouteApi` function instead.
+   */
   constructor({ id }: { id: TId }) {
     this.id = id as any
   }
@@ -577,7 +591,7 @@ export class RouteApi<
   }
 
   notFound = (opts?: NotFoundError) => {
-    return notFound({ route: this.id as string, ...opts })
+    return notFound({ routeId: this.id as string, ...opts })
   }
 }
 
@@ -860,7 +874,9 @@ export class Route<
     >
   }
 
-  update = (options: UpdatableRouteOptions<TFullSearchSchema, TLoaderData>) => {
+  update = (
+    options: UpdatableRouteOptions<TAllParams, TFullSearchSchema, TLoaderData>,
+  ) => {
     Object.assign(this.options, options)
     return this
   }
@@ -1055,7 +1071,9 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TSearchSchemaUsed,
       TRouteContextReturn,
       TRouteContext,
-      TRouterContext
+      TRouterContext,
+      TLoaderDeps,
+      TLoaderData
     >(options as any)
   }
 }
@@ -1063,15 +1081,12 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 /**
  * @deprecated Use the `createRootRouteWithContext` function instead.
  */
-export const rootRouteWithContext = createRootRouteWithContext;
+export const rootRouteWithContext = createRootRouteWithContext
 
 export type RootSearchSchema = {
   __TRootSearchSchema__: '__TRootSearchSchema__'
 }
 
-/**
- * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
- */
 export class RootRoute<
   TSearchSchemaInput extends Record<string, any> = RootSearchSchema,
   TSearchSchema extends Record<string, any> = RootSearchSchema,
@@ -1105,6 +1120,9 @@ export class RootRoute<
   any, // TChildren
   any // TRouteTree
 > {
+  /**
+   * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
+   */
   constructor(
     options?: Omit<
       RouteOptions<

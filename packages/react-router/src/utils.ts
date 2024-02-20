@@ -34,6 +34,17 @@ export type DeepPartial<T> = T extends object
     }
   : T
 
+export type MakeDifferenceOptional<T, U> = Omit<U, keyof T> &
+  Partial<Pick<U, keyof T & keyof U>> &
+  PickRequired<Omit<U, keyof PickRequired<T>>>
+
+// from https://stackoverflow.com/a/53955431
+export type IsUnion<T, U extends T = T> = (
+  T extends any ? (U extends T ? false : true) : never
+) extends false
+  ? false
+  : true
+
 // type Compute<T> = { [K in keyof T]: T[K] } | never
 
 // type AllKeys<T> = T extends any ? keyof T : never
@@ -105,11 +116,12 @@ export type NonNullableUpdater<TPrevious, TResult = TPrevious> =
   | ((prev: TPrevious) => TResult)
 
 // from https://github.com/type-challenges/type-challenges/issues/737
-type LastInUnion<U> = UnionToIntersection<
-  U extends unknown ? (x: U) => 0 : never
-> extends (x: infer L) => 0
-  ? L
-  : never
+type LastInUnion<U> =
+  UnionToIntersection<U extends unknown ? (x: U) => 0 : never> extends (
+    x: infer L,
+  ) => 0
+    ? L
+    : never
 export type UnionToTuple<U, Last = LastInUnion<U>> = [U] extends [never]
   ? []
   : [...UnionToTuple<Exclude<U, Last>>, Last]

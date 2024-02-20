@@ -63,10 +63,11 @@ export const Route = createFileRoute('/posts/$postId')({
 })
 
 function PostComponent() {
-  const { postId } = postRoute.useParams()
+  const { postId } = Route.useParams()
   return <div>Post {postId}</div>
 }
 ```
+> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](./guide/code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `Route` configuration to get access to the typed `useParams()` hook.
 
 ## Path Params outside of Routes
 

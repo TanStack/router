@@ -85,11 +85,12 @@ export type ResolveFilePath<
 export type FileRoutePath<
   TParentRoute extends AnyRoute,
   TFilePath extends string,
-> = ResolveFilePath<TParentRoute, TFilePath> extends `_${infer _}`
-  ? ''
-  : ResolveFilePath<TParentRoute, TFilePath> extends `/_${infer _}`
+> =
+  ResolveFilePath<TParentRoute, TFilePath> extends `_${infer _}`
     ? ''
-    : ResolveFilePath<TParentRoute, TFilePath>
+    : ResolveFilePath<TParentRoute, TFilePath> extends `/_${infer _}`
+      ? ''
+      : ResolveFilePath<TParentRoute, TFilePath>
 
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
@@ -200,7 +201,7 @@ export class FileRoute<
       >,
       'getParentRoute' | 'path' | 'id'
     > &
-      UpdatableRouteOptions<TFullSearchSchema, TLoaderData>,
+      UpdatableRouteOptions<TAllParams, TFullSearchSchema, TLoaderData>,
   ): Route<
     TParentRoute,
     TPath,
@@ -266,7 +267,7 @@ export function FileRouteLoader<
 }
 
 export type LazyRouteOptions = Pick<
-  UpdatableRouteOptions<AnySearchSchema, any>,
+  UpdatableRouteOptions<AnyPathParams, AnySearchSchema, any>,
   'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
 >
 

@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router-server",
-  "version": "1.14.5",
+  "version": "1.16.6",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -36,6 +36,36 @@
         "default": "./dist/cjs/server.cjs"
       }
     },
+    "./client-runtime": {
+      "import": {
+        "types": "./dist/esm/client-runtime.d.ts",
+        "default": "./dist/esm/client-runtime.js"
+      },
+      "require": {
+        "types": "./dist/cjs/client-runtime.d.cts",
+        "default": "./dist/cjs/client-runtime.cjs"
+      }
+    },
+    "./server-runtime": {
+      "import": {
+        "types": "./dist/esm/server-runtime.d.ts",
+        "default": "./dist/esm/server-runtime.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server-runtime.d.cts",
+        "default": "./dist/cjs/server-runtime.cjs"
+      }
+    },
+    "./server-handler": {
+      "import": {
+        "types": "./dist/esm/server-handler.d.ts",
+        "default": "./dist/esm/server-handler.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server-handler.d.cts",
+        "default": "./dist/cjs/server-handler.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -63,7 +93,8 @@
   ],
   "dependencies": {
     "@tanstack/react-cross-context": "workspace:^",
-    "@tanstack/react-router": "workspace:*"
+    "@tanstack/react-router": "workspace:*",
+    "vinxi": "0.2.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",

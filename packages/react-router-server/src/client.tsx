@@ -83,94 +83,6 @@ export type RouterManagedTag =
       children: string
     }
 
-export function useMatchedMeta() {
-  let routeMeta = useRouterState({
-    select: (state) => {
-      return getRenderedMatches(state)
-        .map((match) => match.meta!)
-        .filter(Boolean)
-    },
-  })
-
-  let meta: RouterManagedTag[] = []
-  const metaByName: Record<string, true> = {}
-  let title: RouterManagedTag | undefined
-
-    //
-  ;[...routeMeta].reverse().forEach((metas) => {
-    ;[...metas].reverse().forEach((m) => {
-      if (m.title) {
-        if (!title) {
-          title = {
-            tag: 'title',
-            children: m.title,
-          }
-        }
-      } else {
-        if (m.name) {
-          if (metaByName[m.name]) {
-            return
-          } else {
-            metaByName[m.name] = true
-          }
-        }
-
-        meta.push({
-          tag: 'meta',
-          attrs: {
-            ...m,
-            key: `meta-${[m.name, m.content, m.httpEquiv, m.charSet].join('')}`,
-          },
-        })
-      }
-    })
-  })
-
-  if (title) {
-    meta.push(title)
-  }
-
-  return meta.reverse() as RouterManagedTag[]
-}
-
-export function useMatchedLinks() {
-  const links = useRouterState({
-    select: (state) =>
-      getRenderedMatches(state)
-        .map((match) => match.links!)
-        .filter(Boolean)
-        .flat(1)
-        .map((link) => ({
-          tag: 'link',
-          attrs: {
-            ...link,
-            key: `link-${[link.rel, link.href].join('')}`,
-          },
-        })),
-  })
-
-  return links as RouterManagedTag[]
-}
-
-export function useMatchedScripts() {
-  const scripts = useRouterState({
-    select: (state) =>
-      getRenderedMatches(state)
-        .map((match) => match.scripts!)
-        .filter(Boolean)
-        .flat(1)
-        .map((script) => ({
-          tag: 'script',
-          attrs: {
-            ...script,
-            key: `script-${script.src}`,
-          },
-        })),
-  })
-
-  return scripts as RouterManagedTag[]
-}
-
 export async function getManifestAssets(): Promise<RouterManagedTag[]> {
   const manifest = globalThis.MANIFEST?.['client']
 
@@ -185,47 +97,125 @@ export async function getManifestAssets(): Promise<RouterManagedTag[]> {
   return []
 }
 
-export const Meta = React.lazy(async () => {
-  const manifestMeta = (await getManifestAssets()).filter(
-    (d) => d.tag !== 'script',
+export const Meta = () => {
+  const router = useRouter()
+
+  let routeMeta = useRouterState({
+    select: (state) => {
+      return getRenderedMatches(state)
+        .map((match) => match.meta!)
+        .filter(Boolean)
+    },
+  })
+
+  const meta: RouterManagedTag[] = React.useMemo(() => {
+    let meta: RouterManagedTag[] = []
+    const metaByName: Record<string, true> = {}
+    let title: RouterManagedTag | undefined
+
+      //
+    ;[...routeMeta].reverse().forEach((metas) => {
+      ;[...metas].reverse().forEach((m) => {
+        if (m.title) {
+          if (!title) {
+            title = {
+              tag: 'title',
+              children: m.title,
+            }
+          }
+        } else {
+          if (m.name) {
+            if (metaByName[m.name]) {
+              return
+            } else {
+              metaByName[m.name] = true
+            }
+          }
+
+          meta.push({
+            tag: 'meta',
+            attrs: {
+              ...m,
+              key: `meta-${[m.name, m.content, m.httpEquiv, m.charSet].join('')}`,
+            },
+          })
+        }
+      })
+    })
+
+    if (title) {
+      meta.push(title)
+    }
+
+    meta.reverse()
+
+    return meta as RouterManagedTag[]
+  }, [routeMeta])
+
+  const links = useRouterState({
+    select: (state) =>
+      getRenderedMatches(state)
+        .map((match) => match.links!)
+        .filter(Boolean)
+        .flat(1)
+        .map((link) => ({
+          tag: 'link',
+          attrs: {
+            ...link,
+            key: `link-${[link.rel, link.href].join('')}`,
+          },
+        })) as RouterManagedTag[],
+  })
+
+  const manifestMeta = router.options.context?.assets.filter(
+    (d: any) => d.tag !== 'script',
   ) as RouterManagedTag[]
 
-  return {
-    default: function Meta() {
-      const meta = useMatchedMeta()
-      const links = useMatchedLinks()
+  return (
+    <>
+      {[...meta, ...links, ...manifestMeta].map((asset, i) => (
+        <Asset {...asset} key={i} />
+      ))}
+    </>
+  )
+}
 
-      return (
-        <>
-          {[...meta, ...links, ...manifestMeta].map((asset, i) => (
-            <Asset {...asset} key={i} />
-          ))}
-        </>
-      )
-    },
-  }
-})
+export const Scripts = () => {
+  const router = useRouter()
 
-export const Scripts = React.lazy(async () => {
-  const manifestScripts = (await getManifestAssets()).filter(
-    (d) => d.tag === 'script',
-  ) as RouterManagedTag[]
+  const manifestScripts =
+    (router.options.context?.assets.filter(
+      (d: any) => d.tag === 'script',
+    ) as RouterManagedTag[]) ?? []
 
-  return {
-    default: function Scripts() {
-      const scripts = useMatchedScripts()
+  const { scripts } = useRouterState({
+    select: (state) => ({
+      scripts: getRenderedMatches(state)
+        .map((match) => match.scripts!)
+        .filter(Boolean)
+        .flat(1)
+        .map(({ children, ...script }) => ({
+          tag: 'script',
+          attrs: {
+            ...script,
+            key: `script-${script.src}`,
+          },
+          children,
+        })),
+    }),
+  })
 
-      return (
-        <>
-          <DehydrateRouter />
-          {[...scripts, ...manifestScripts].map((asset, i) => (
-            <Asset {...asset} key={i} />
-          ))}
-        </>
-      )
-    },
-  }
-})
+  const allScripts = [...scripts, ...manifestScripts] as RouterManagedTag[]
+
+  return (
+    <>
+      <DehydrateRouter />
+      {allScripts.map((asset, i) => (
+        <Asset {...asset} key={i} />
+      ))}
+    </>
+  )
+}
 
 export function Asset({ tag, attrs, children }: RouterManagedTag): any {
   switch (tag) {
@@ -238,16 +228,21 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
     case 'style':
       return <style {...attrs} dangerouslySetInnerHTML={{ __html: children }} />
     case 'script':
-      if (attrs.src) {
-        return <script {...attrs} />
+      if (attrs?.src) {
+        return <script {...attrs} suppressHydrationWarning />
       }
-      return (
-        <script
-          {...attrs}
-          dangerouslySetInnerHTML={{
-            __html: children,
-          }}
-        />
-      )
+      if (typeof children === 'string')
+        return (
+          <script
+            {...attrs}
+            dangerouslySetInnerHTML={{
+              __html: children,
+            }}
+            suppressHydrationWarning
+          />
+        )
+      return null
+    default:
+      return null
   }
 }

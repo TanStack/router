@@ -23,7 +23,7 @@ import {
   RoutePaths,
 } from './routeInfo'
 import { RegisteredRouter, RouterState } from './router'
-import { DeepOptional, Expand, NoInfer, StrictOrFrom, pick } from './utils'
+import { DeepPartial, Expand, NoInfer, StrictOrFrom, pick } from './utils'
 import {
   CatchNotFound,
   DefaultGlobalNotFound,
@@ -73,6 +73,7 @@ export interface RouteMatch<
   meta?: JSX.IntrinsicElements['meta'][]
   links?: JSX.IntrinsicElements['link'][]
   scripts?: JSX.IntrinsicElements['script'][]
+  headers?: Record<string, string>
   notFoundError?: NotFoundError
   staticData: StaticDataRouteOption
 }
@@ -90,13 +91,14 @@ export function Matches() {
   return (
     <matchContext.Provider value={matchId}>
       <CatchBoundary
-        getResetKey={() => router.state.resolvedLocation.state?.key}
+        getResetKey={() => router.state.resolvedLocation.state?.key!}
         errorComponent={ErrorComponent}
-        onCatch={() => {
+        onCatch={(error) => {
           warning(
             false,
-            `Error in router! Consider setting an 'errorComponent' in your RootRoute! 👍`,
+            `The following error wasn't caught by any route! 👇 At the very least, consider setting an 'errorComponent' in your RootRoute!`,
           )
+          console.error(error)
         }}
       >
         {matchId ? <Match matchId={matchId} /> : null}
@@ -160,12 +162,13 @@ export function Match({ matchId }: { matchId: string }) {
     <matchContext.Provider value={matchId}>
       <ResolvedSuspenseBoundary fallback={pendingElement}>
         <ResolvedCatchBoundary
-          getResetKey={() => router.state.resolvedLocation.state?.key}
+          getResetKey={() => router.state.resolvedLocation.state?.key!}
           errorComponent={routeErrorComponent}
           onCatch={(error) => {
             // Forward not found errors (we don't want to show the error component for these)
             if (isNotFound(error)) throw error
             warning(false, `Error in route match: ${matchId}`)
+            console.error(error)
           }}
         >
           <ResolvedNotFoundBoundary
@@ -202,16 +205,15 @@ function MatchInner({
 
   const route = router.routesById[routeId]!
 
-  const { match } = useRouterState({
-    select: (s) => ({
-      match: pick(getRenderedMatches(s).find((d) => d.id === matchId)!, [
+  const match = useRouterState({
+    select: (s) =>
+      pick(getRenderedMatches(s).find((d) => d.id === matchId)!, [
         'status',
         'error',
         'showPending',
         'loadPromise',
         'notFoundError',
       ]),
-    }),
   })
 
   // If a global not-found is found, and it's the root route, render the global not-found component.
@@ -291,11 +293,16 @@ export type UseMatchRouteOptions<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
   TMaskTo extends string = '',
-> = DeepOptional<
-  ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-  'search' | 'params'
-> &
-  MatchRouteOptions
+  Options extends ToOptions<
+    TRouteTree,
+    TFrom,
+    TTo,
+    TMaskFrom,
+    TMaskTo
+  > = ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
+  RelaxedOptions = Omit<Options, 'search' | 'params'> &
+    DeepPartial<Pick<Options, 'search' | 'params'>>,
+> = RelaxedOptions & MatchRouteOptions
 
 export function useMatchRoute<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -466,7 +473,34 @@ export function useParentMatches<
 
   return useMatches({
     select: (matches) => {
-      matches = matches.slice(matches.findIndex((d) => d.id === contextMatchId))
+      matches = matches.slice(
+        0,
+        matches.findIndex((d) => d.id === contextMatchId),
+      )
+      return opts?.select
+        ? opts.select(matches as TRouteMatch[])
+        : (matches as T)
+    },
+  })
+}
+
+export function useChildMatches<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
+  TReturnIntersection extends boolean = false,
+  TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
+  T = TRouteMatch[],
+>(opts?: {
+  select?: (matches: TRouteMatch[]) => T
+  experimental_returnIntersection?: TReturnIntersection
+}): T {
+  const contextMatchId = React.useContext(matchContext)
+
+  return useMatches({
+    select: (matches) => {
+      matches = matches.slice(
+        matches.findIndex((d) => d.id === contextMatchId) + 1,
+      )
       return opts?.select
         ? opts.select(matches as TRouteMatch[])
         : (matches as T)

@@ -121,7 +121,7 @@ export const Route = createFileRoute('/posts/$postId')({
 
 ## Usage With SSR
 
-See [SSR guide](./guide/ssr.md) for more information.
+See [SSR guide](./guide/ssr) for more information.
 
 ## Migrating from `NotFoundRoute`
 

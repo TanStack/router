@@ -9,6 +9,8 @@ import { RegisteredRouter } from './router'
 import { LinkProps, UseLinkPropsOptions } from './useNavigate'
 import {
   Expand,
+  IsUnion,
+  MakeDifferenceOptional,
   NoInfer,
   NonNullableUpdater,
   PickRequired,
@@ -204,8 +206,11 @@ export type ParamOptions<
       ? TTo
       : `${TTo}/`,
   TToParams = TToIndex extends ''
-    ? TFromParams
-    : never extends TResolved
+    ? PostProcessParams<
+        RouteByPath<TRouteTree, TFrom>['types'][TToRouteType],
+        TParamVariant
+      >
+    : [TResolved] extends [never]
       ? PostProcessParams<
           RouteByPath<TRouteTree, TToIndex>['types'][TToRouteType],
           TParamVariant
@@ -214,11 +219,16 @@ export type ParamOptions<
           RouteByPath<TRouteTree, TResolved>['types'][TToRouteType],
           TParamVariant
         >,
-  TReducer = ParamsReducer<TFromParams, TToParams>,
+  TRelativeToParams = TParamVariant extends 'SEARCH'
+    ? TToParams
+    : true extends IsUnion<TFromParams>
+      ? TToParams
+      : MakeDifferenceOptional<TFromParams, TToParams>,
+  TReducer = ParamsReducer<TFromParams, TRelativeToParams>,
 > =
-  Expand<WithoutEmpty<PickRequired<TToParams>>> extends never
+  Expand<WithoutEmpty<PickRequired<TRelativeToParams>>> extends never
     ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
-    : TFromParams extends Expand<WithoutEmpty<PickRequired<TToParams>>>
+    : TFromParams extends Expand<WithoutEmpty<PickRequired<TRelativeToParams>>>
       ? MakeParamOption<TParamVariant, true | TReducer>
       : MakeParamOption<TParamVariant, TReducer>
 
@@ -384,24 +394,6 @@ export function useLinkProps<
     type = 'external'
   } catch {}
 
-  if (type === 'external') {
-    return {
-      ...rest,
-      type,
-      href: to,
-      children,
-      target,
-      disabled,
-      style,
-      className,
-      onClick,
-      onFocus,
-      onMouseEnter,
-      onMouseLeave,
-      onTouchStart,
-    }
-  }
-
   const next = router.buildLocation(dest as any)
   const preload = userPreload ?? router.options.defaultPreload
   const preloadDelay =
@@ -432,6 +424,24 @@ export function useLinkProps<
     },
   })
 
+  if (type === 'external') {
+    return {
+      ...rest,
+      type,
+      href: to,
+      children,
+      target,
+      disabled,
+      style,
+      className,
+      onClick,
+      onFocus,
+      onMouseEnter,
+      onMouseLeave,
+      onTouchStart,
+    }
+  }
+
   // The click handler
   const handleClick = (e: MouseEvent) => {
     if (
@@ -448,26 +458,27 @@ export function useLinkProps<
     }
   }
 
+  const doPreload = () => {
+    React.startTransition(() => {
+      router.preloadRoute(dest as any).catch((err) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
+    })
+  }
+
   // The click handler
   const handleFocus = (e: MouseEvent) => {
+    if (disabled) return
     if (preload) {
-      router.preloadRoute(dest as any).catch((err) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
+      doPreload()
     }
   }
 
-  const handleTouchStart = (e: TouchEvent) => {
-    if (preload) {
-      router.preloadRoute(dest as any).catch((err) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
-    }
-  }
+  const handleTouchStart = handleFocus
 
   const handleEnter = (e: MouseEvent) => {
+    if (disabled) return
     const target = (e.target || {}) as LinkCurrentTargetElement
 
     if (preload) {
@@ -477,15 +488,13 @@ export function useLinkProps<
 
       target.preloadTimeout = setTimeout(() => {
         target.preloadTimeout = null
-        router.preloadRoute(dest as any).catch((err) => {
-          console.warn(err)
-          console.warn(preloadWarning)
-        })
+        doPreload()
       }, preloadDelay)
     }
   }
 
   const handleLeave = (e: MouseEvent) => {
+    if (disabled) return
     const target = (e.target || {}) as LinkCurrentTargetElement
 
     if (target.preloadTimeout) {
@@ -571,7 +580,7 @@ export const Link: LinkComponent = React.forwardRef((props: any, ref) => {
   const children =
     typeof props.children === 'function'
       ? props.children({
-          isActive: (props as any)['data-status'] === 'active',
+          isActive: (linkProps as any)['data-status'] === 'active',
         })
       : props.children
 

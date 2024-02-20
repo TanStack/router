@@ -1,8 +1,12 @@
-import warning from 'tiny-warning'
-import { defaultDeserializeError, isServerSideError } from './Matches'
+import * as React from 'react'
 import { useRouter } from './useRouter'
 import { DeferredPromise, isDehydratedDeferred } from './defer'
-import { defaultSerializeError } from './router'
+import warning from 'tiny-warning'
+import {
+  isServerSideError,
+  defaultDeserializeError,
+  defaultSerializeError,
+} from '.'
 
 export type AwaitOptions<T> = {
   promise: DeferredPromise<T>
@@ -10,19 +14,61 @@ export type AwaitOptions<T> = {
 
 export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
   const router = useRouter()
+  // const rerender = React.useReducer((x) => x + 1, 0)[1]
 
-  let state = promise.__deferredState
-  const key = `__TSR__DEFERRED__${state.uid}`
+  const state = promise.__deferredState
 
-  if (isDehydratedDeferred(promise)) {
-    state = router.hydrateData(key)!
-    if (!state) throw new Error('Could not find dehydrated data')
-    promise = Promise.resolve(state.data) as DeferredPromise<any>
-    promise.__deferredState = state
+  // Dehydrated promises only
+  // Successful or errored deferred promises mean they
+  // were resolved on the server and no further action is needed
+  if (isDehydratedDeferred(promise) && state.status === 'pending') {
+    const streamedData = (window as any)[`__TSR__DEFERRED__${state.uid}`]
+
+    if (streamedData) {
+      Object.assign(state, streamedData)
+    } else {
+      let token = router.registeredDeferredsIds.get(state.uid)
+
+      // If we haven't yet, create a promise and resolver that our streamed HTML can use
+      // when the client-side data is streamed in and ready.
+      if (!token) {
+        token = {}
+        router.registeredDeferredsIds.set(state.uid, token)
+        router.registeredDeferreds.set(token, state)
+
+        Object.assign(state, {
+          resolve: () => {
+            state.__resolvePromise?.()
+            // rerender()
+          },
+          promise: new Promise((r) => {
+            state.__resolvePromise = r as any
+          }),
+          __resolvePromise: () => {},
+        })
+      }
+    }
   }
 
+  // If the promise is pending, always throw the state.promise
+  // For originating promises, this will be the original promise
+  // For dehydrated promises, this will be the placeholder promise
+  // that will be resolved when the server sends the real data
   if (state.status === 'pending') {
-    throw promise
+    throw isDehydratedDeferred(promise) ? state.promise : promise
+  }
+
+  // If we are the originator of the promise,
+  // inject the state into the HTML stream
+  if (!isDehydratedDeferred(promise)) {
+    router.injectHtml(`<script class='tsr_deferred_data'>window.__TSR__DEFERRED__${state.uid} = ${router.options.transformer.stringify(state)}</script>
+<script class='tsr_deferred_handler'>
+  if (window.__TSR__ROUTER__) {
+    let deferred = window.__TSR__ROUTER__.getDeferred('${state.uid}')
+    if (deferred) deferred.resolve(window.__TSR__DEFERRED__${state.uid})
+  }
+  document.querySelectorAll('.tsr_deferred_handler').forEach((el) => el.parentElement.removeChild(el))
+</script>`)
   }
 
   if (state.status === 'error') {
@@ -39,7 +85,6 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
         throw state.error
       }
     } else {
-      router.dehydrateData(key, state)
       throw {
         data: (
           router.options.errorSerializer?.serialize ?? defaultSerializeError
@@ -49,13 +94,25 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
     }
   }
 
-  router.dehydrateData(key, state)
-
-  return [state.data]
+  return [promise.__deferredState.data as any]
 }
 
 export function Await<T>(
   props: AwaitOptions<T> & {
+    fallback?: JSX.Element
+    children: (result: T) => JSX.Element
+  },
+) {
+  const inner = <AwaitInner {...props} />
+  if (props.fallback) {
+    return <React.Suspense fallback={props.fallback}>{inner}</React.Suspense>
+  }
+  return inner
+}
+
+function AwaitInner<T>(
+  props: AwaitOptions<T> & {
+    fallback?: JSX.Element
     children: (result: T) => JSX.Element
   },
 ) {

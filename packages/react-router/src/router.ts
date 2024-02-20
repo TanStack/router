@@ -38,6 +38,7 @@ import {
   last,
   pick,
   Timeout,
+  isServer,
 } from './utils'
 import { RouteComponent } from './route'
 import { AnyRouteMatch, MatchRouteOptions, RouteMatch } from './Matches'
@@ -63,11 +64,12 @@ import {
   trimPathRight,
 } from './path'
 import invariant from 'tiny-invariant'
-import { isRedirect } from './redirects'
+import { AnyRedirect, isRedirect } from './redirects'
 import { NotFoundError, isNotFound } from './not-found'
 import { ResolveRelativePath, ToOptions } from './link'
 import { NoInfer } from '@tanstack/react-store'
-// import warning from 'tiny-warning'
+import warning from 'tiny-warning'
+import { DeferredPromiseState } from '.'
 
 //
 
@@ -306,6 +308,10 @@ export class Router<
       transformer: options?.transformer ?? JSON,
       scrollOnHashChange: options?.scrollOnHashChange ?? true
     })
+
+    if (typeof document !== 'undefined') {
+      ;(window as any).__TSR__ROUTER__ = this
+    }
   }
 
   // These are default implementations that can optionally be overridden
@@ -721,6 +727,7 @@ export class Router<
         path: route.fullPath,
         params: routeParams,
       })
+
       const matchId =
         interpolatePath({
           path: route.id,
@@ -745,6 +752,7 @@ export class Router<
               isGlobalNotFound && route.id === rootRouteId
                 ? { global: true }
                 : undefined,
+            params: routeParams,
           }
         : {
             id: matchId,
@@ -829,7 +837,7 @@ export class Router<
       let nextParams =
         (dest.params ?? true) === true
           ? prevParams
-          : functionalUpdate(dest.params!, prevParams)
+          : { ...prevParams, ...functionalUpdate(dest.params!, prevParams) }
 
       if (nextParams) {
         matches
@@ -1123,108 +1131,96 @@ export class Router<
     }
 
     // Check each match middleware to see if the route can be accessed
-    try {
-      for (let [index, match] of matches.entries()) {
-        const parentMatch = matches[index - 1]
-        const route = this.looseRoutesById[match.routeId]!
-        const abortController = new AbortController()
+    for (let [index, match] of matches.entries()) {
+      const parentMatch = matches[index - 1]
+      const route = this.looseRoutesById[match.routeId]!
+      const abortController = new AbortController()
 
-        const handleErrorAndRedirect = (err: any, code: string) => {
-          err.routerCode = code
-          firstBadMatchIndex = firstBadMatchIndex ?? index
+      const handleError = (err: any, code: string) => {
+        err.routerCode = code
+        firstBadMatchIndex = firstBadMatchIndex ?? index
 
-          if (isRedirect(err)) {
-            throw err
-          }
+        if (isRedirect(err)) {
+          throw err
+        }
 
-          if (isNotFound(err)) {
-            this.updateMatchesWithNotFound(matches, match, err)
-          }
-
-          try {
-            route.options.onError?.(err)
-          } catch (errorHandlerErr) {
-            err = errorHandlerErr
-
-            if (isRedirect(errorHandlerErr)) {
-              throw errorHandlerErr
-            }
-          }
-
-          matches[index] = match = {
-            ...match,
-            error: err,
-            status: 'error',
-            updatedAt: Date.now(),
-            abortController: new AbortController(),
-          }
+        if (isNotFound(err)) {
+          err.routeId = match.routeId
+          throw err
         }
 
         try {
-          if (match.paramsError) {
-            handleErrorAndRedirect(match.paramsError, 'PARSE_PARAMS')
+          route.options.onError?.(err)
+        } catch (errorHandlerErr) {
+          err = errorHandlerErr
+
+          if (isRedirect(errorHandlerErr)) {
+            throw errorHandlerErr
           }
+        }
 
-          if (match.searchError) {
-            handleErrorAndRedirect(match.searchError, 'VALIDATE_SEARCH')
-          }
-
-          const parentContext =
-            parentMatch?.context ?? this.options.context ?? {}
-
-          const pendingMs =
-            route.options.pendingMs ?? this.options.defaultPendingMs
-          const pendingPromise =
-            typeof pendingMs === 'number' && pendingMs <= 0
-              ? Promise.resolve()
-              : new Promise<void>((r) => setTimeout(r, pendingMs))
-
-          const beforeLoadContext =
-            (await route.options.beforeLoad?.({
-              search: match.search,
-              abortController,
-              params: match.params,
-              preload: !!preload,
-              context: parentContext,
-              location: this.state.location,
-              // TOOD: just expose state and router, etc
-              navigate: (opts) =>
-                this.navigate({ ...opts, from: match.pathname } as any),
-              buildLocation: this.buildLocation,
-              cause: preload ? 'preload' : match.cause,
-            })) ?? ({} as any)
-
-          if (isRedirect(beforeLoadContext)) {
-            throw beforeLoadContext
-          }
-
-          const context = {
-            ...parentContext,
-            ...beforeLoadContext,
-          }
-
-          matches[index] = match = {
-            ...match,
-            routeContext: replaceEqualDeep(
-              match.routeContext,
-              beforeLoadContext,
-            ),
-            context: replaceEqualDeep(match.context, context),
-            abortController,
-            pendingPromise,
-          }
-        } catch (err) {
-          handleErrorAndRedirect(err, 'BEFORE_LOAD')
-          break
+        matches[index] = match = {
+          ...match,
+          error: err,
+          status: 'error',
+          updatedAt: Date.now(),
+          abortController: new AbortController(),
         }
       }
-    } catch (err) {
-      if (isRedirect(err)) {
-        if (!preload) this.navigate(err as any)
-        return matches
-      }
 
-      throw err
+      try {
+        if (match.paramsError) {
+          handleError(match.paramsError, 'PARSE_PARAMS')
+        }
+
+        if (match.searchError) {
+          handleError(match.searchError, 'VALIDATE_SEARCH')
+        }
+
+        const parentContext = parentMatch?.context ?? this.options.context ?? {}
+
+        const pendingMs =
+          route.options.pendingMs ?? this.options.defaultPendingMs
+        const pendingPromise =
+          typeof pendingMs === 'number' && pendingMs <= 0
+            ? Promise.resolve()
+            : new Promise<void>((r) => setTimeout(r, pendingMs))
+
+        const beforeLoadContext =
+          (await route.options.beforeLoad?.({
+            search: match.search,
+            abortController,
+            params: match.params,
+            preload: !!preload,
+            context: parentContext,
+            location: this.state.location,
+            // TOOD: just expose state and router, etc
+            navigate: (opts) =>
+              this.navigate({ ...opts, from: match.pathname } as any),
+            buildLocation: this.buildLocation,
+            cause: preload ? 'preload' : match.cause,
+          })) ?? ({} as any)
+
+        if (isRedirect(beforeLoadContext)) {
+          throw beforeLoadContext
+        }
+
+        const context = {
+          ...parentContext,
+          ...beforeLoadContext,
+        }
+
+        matches[index] = match = {
+          ...match,
+          routeContext: replaceEqualDeep(match.routeContext, beforeLoadContext),
+          context: replaceEqualDeep(match.context, context),
+          abortController,
+          pendingPromise,
+        }
+      } catch (err) {
+        handleError(err, 'BEFORE_LOAD')
+        break
+      }
     }
 
     const validResolvedMatches = matches.slice(0, firstBadMatchIndex)
@@ -1232,23 +1228,19 @@ export class Router<
 
     validResolvedMatches.forEach((match, index) => {
       matchPromises.push(
-        new Promise<void>(async (resolve) => {
+        new Promise<void>(async (resolve, reject) => {
           const parentMatchPromise = matchPromises[index - 1]
           const route = this.looseRoutesById[match.routeId]!
 
-          const handleErrorAndRedirect = (err: any) => {
+          const handleError = (err: any) => {
             if (isRedirect(err)) {
-              if (!preload) {
-                this.navigate(err as any)
-              }
-              return true
+              throw err
             }
 
             if (isNotFound(err)) {
-              this.updateMatchesWithNotFound(matches, match, err)
+              err.routeId = match.routeId
+              throw err
             }
-
-            return false
           }
 
           let loadPromise: Promise<void> | undefined
@@ -1320,8 +1312,12 @@ export class Router<
                 ),
               )
 
+              // wrap loader into an async function to be able to catch synchronous exceptions
+              async function loader() {
+                return await route.options.loader?.(loaderContext)
+              }
               // Kick off the loader!
-              const loaderPromise = route.options.loader?.(loaderContext)
+              const loaderPromise = loader()
 
               loadPromise = Promise.all([
                 componentsPromise,
@@ -1341,9 +1337,7 @@ export class Router<
               const loaderData = await loadPromise
               if ((latestPromise = checkLatest())) return await latestPromise
 
-              if (isRedirect(loaderData)) {
-                if (handleErrorAndRedirect(loaderData)) return
-              }
+              handleError(loaderData)
 
               if (didShowPending && pendingMinMs) {
                 await new Promise((r) => setTimeout(r, pendingMinMs))
@@ -1351,9 +1345,15 @@ export class Router<
 
               if ((latestPromise = checkLatest())) return await latestPromise
 
-              const meta = route.options.meta?.({
-                loaderData,
-              })
+              const [meta, headers] = await Promise.all([
+                route.options.meta?.({
+                  params: match.params,
+                  loaderData,
+                }),
+                route.options.headers?.({
+                  loaderData,
+                }),
+              ])
 
               matches[index] = match = {
                 ...match,
@@ -1364,16 +1364,17 @@ export class Router<
                 loaderData,
                 loadPromise: undefined,
                 meta,
+                headers,
               }
             } catch (error) {
               if ((latestPromise = checkLatest())) return await latestPromise
-              if (handleErrorAndRedirect(error)) return
+              handleError(error)
 
               try {
                 route.options.onError?.(error)
               } catch (onErrorError) {
                 error = onErrorError
-                if (handleErrorAndRedirect(onErrorError)) return
+                handleError(onErrorError)
               }
 
               matches[index] = match = {
@@ -1414,29 +1415,33 @@ export class Router<
               !!preload && !this.state.matches.find((d) => d.id === match.id),
           }
 
-          if (match.status !== 'success') {
-            // If we need to potentially show the pending component,
-            // start a timer to show it after the pendingMs
-            if (shouldPending) {
-              match.pendingPromise?.then(async () => {
-                if ((latestPromise = checkLatest())) return latestPromise
+          try {
+            if (match.status !== 'success') {
+              // If we need to potentially show the pending component,
+              // start a timer to show it after the pendingMs
+              if (shouldPending) {
+                match.pendingPromise?.then(async () => {
+                  if ((latestPromise = checkLatest())) return latestPromise
 
-                didShowPending = true
-                matches[index] = match = {
-                  ...match,
-                  showPending: true,
-                }
+                  didShowPending = true
+                  matches[index] = match = {
+                    ...match,
+                    showPending: true,
+                  }
 
-                updateMatch(match)
-                resolve()
-              })
+                  updateMatch(match)
+                  resolve()
+                })
+              }
+
+              // Critical Fetching, we need to await
+              await fetch()
+            } else if (match.invalid || (shouldReload ?? age > staleAge)) {
+              // Background Fetching, no need to wait
+              fetch()
             }
-
-            // Critical Fetching, we need to await
-            await fetch()
-          } else if (match.invalid || (shouldReload ?? age > staleAge)) {
-            // Background Fetching, no need to wait
-            fetch()
+          } catch (err) {
+            reject(err)
           }
 
           resolve()
@@ -1445,6 +1450,7 @@ export class Router<
     })
 
     await Promise.all(matchPromises)
+
     return matches
   }
 
@@ -1513,8 +1519,11 @@ export class Router<
             checkLatest: () => this.checkLatest(promise),
           })
         } catch (err) {
-          // swallow this error, since we'll display the
-          // errors on the route components
+          if (isRedirect(err)) {
+            this.handleRedirect(err)
+          } else if (isNotFound(err)) {
+            this.handleNotFound(pendingMatches, err)
+          }
         }
 
         // Only apply the latest transition
@@ -1584,6 +1593,18 @@ export class Router<
     return this.latestLoadPromise
   }
 
+  handleRedirect = (err: AnyRedirect) => {
+    if (!err.href) {
+      err.href = this.buildLocation(err as any).href
+    }
+
+    if (isServer) {
+      throw err
+    }
+
+    this.navigate(err as any)
+  }
+
   cleanCache = () => {
     // This is where all of the garbage collection magic happens
     this.__store.setState((s) => {
@@ -1638,13 +1659,22 @@ export class Router<
       })
     })
 
-    matches = await this.loadMatches({
-      matches,
-      preload: true,
-      checkLatest: () => undefined,
-    })
+    try {
+      matches = await this.loadMatches({
+        matches,
+        preload: true,
+        checkLatest: () => undefined,
+      })
 
-    return matches
+      return matches
+    } catch (err) {
+      // Preload errors are not fatal, but we should still log them
+      if (!isRedirect(err) && !isNotFound(err)) {
+        console.error(err)
+      }
+
+      return undefined
+    }
   }
 
   matchRoute = <
@@ -1701,7 +1731,30 @@ export class Router<
     this.injectedHtml.push(html)
   }
 
+  // We use a token -> weak map to keep track of deferred promises
+  // that are registered on the server and need to be resolved
+  registeredDeferredsIds = new Map<string, {}>()
+  registeredDeferreds = new WeakMap<{}, DeferredPromiseState<any>>()
+
+  getDeferred = (uid: string) => {
+    const token = this.registeredDeferredsIds.get(uid)
+
+    if (!token) {
+      return undefined
+    }
+
+    return this.registeredDeferreds.get(token)
+  }
+
+  /**
+   * @deprecated Please inject your own html using the `injectHtml` method
+   */
   dehydrateData = <T>(key: any, getData: T | (() => Promise<T> | T)) => {
+    warning(
+      false,
+      `The dehydrateData method is deprecated. Please use the injectHtml method to inject your own data.`,
+    )
+
     if (typeof document === 'undefined') {
       const strKey = typeof key === 'string' ? key : JSON.stringify(key)
 
@@ -1709,14 +1762,11 @@ export class Router<
         const id = `__TSR_DEHYDRATED__${strKey}`
         const data =
           typeof getData === 'function' ? await (getData as any)() : getData
-        return `<script id='${id}' suppressHydrationWarning>window["__TSR_DEHYDRATED__${escapeJSON(
-          strKey,
-        )}"] = ${JSON.stringify(this.options.transformer.stringify(data))}
-          ;(() => {
-            var el = document.getElementById('${id}')
-            el.parentElement.removeChild(el)
-          })()
-          </script>`
+        return `<script id='${id}' suppressHydrationWarning>
+  window["__TSR_DEHYDRATED__${escapeJSON(
+    strKey,
+  )}"] = ${JSON.stringify(this.options.transformer.stringify(data))}
+</script>`
       })
 
       return () => this.hydrateData<T>(key)
@@ -1725,7 +1775,15 @@ export class Router<
     return () => undefined
   }
 
+  /**
+   * @deprecated Please extract your own data from scripts injected using the `injectHtml` method
+   */
   hydrateData = <T extends any = unknown>(key: any) => {
+    warning(
+      false,
+      `The hydrateData method is deprecated. Please use the extractHtml method to extract your own data.`,
+    )
+
     if (typeof document !== 'undefined') {
       const strKey = typeof key === 'string' ? key : JSON.stringify(key)
 
@@ -1803,6 +1861,7 @@ export class Router<
           ...match,
           ...dehydratedMatch,
           meta: route.options.meta?.({
+            params: match.params,
             loaderData: dehydratedMatch.loaderData,
           }),
           links: route.options.links?.(),
@@ -1822,39 +1881,38 @@ export class Router<
   }
 
   // Finds a match that has a notFoundComponent
-  updateMatchesWithNotFound = (
-    matches: AnyRouteMatch[],
-    currentMatch: AnyRouteMatch,
-    err: NotFoundError,
-  ) => {
+  handleNotFound = (matches: AnyRouteMatch[], err: NotFoundError) => {
     const matchesByRouteId = Object.fromEntries(
       matches.map((match) => [match.routeId, match]),
     ) as Record<string, AnyRouteMatch>
 
-    if (err.global) {
-      matchesByRouteId[rootRouteId]!.notFoundError = err
-    } else {
+    if (!err.global && err.routeId) {
       // If the err contains a routeId, start searching up from that route
-      let currentRoute = (this.routesById as any)[
-        err.route ?? currentMatch.routeId
-      ] as AnyRoute
+      let currentRoute = this.looseRoutesById[err.routeId]
 
-      // Go up the tree until we find a route with a notFoundComponent
-      while (!currentRoute.options.notFoundComponent) {
-        currentRoute = currentRoute?.parentRoute
+      if (currentRoute) {
+        // Go up the tree until we find a route with a notFoundComponent
+        while (!currentRoute.options.notFoundComponent) {
+          currentRoute = currentRoute?.parentRoute
 
-        invariant(
-          currentRoute,
-          'Found invalid route tree while trying to find not-found handler.',
-        )
+          invariant(
+            currentRoute,
+            'Found invalid route tree while trying to find not-found handler.',
+          )
 
-        if (currentRoute.id === rootRouteId) break
+          if (currentRoute.id === rootRouteId) break
+        }
+
+        const match = matchesByRouteId[currentRoute.id]
+        invariant(match, 'Could not find match for route: ' + currentRoute.id)
+        match.notFoundError = err
+
+        return
       }
-
-      const match = matchesByRouteId[currentRoute.id]
-      invariant(match, 'Could not find match for route: ' + currentRoute.id)
-      match.notFoundError = err
     }
+
+    // Otherwise, just set the notFoundError on the root route
+    matchesByRouteId[rootRouteId]!.notFoundError = err
   }
 
   hasNotFoundMatch = () => {

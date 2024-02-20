@@ -4,6 +4,7 @@
     "defaultBase": "main"
   },
   "defaultBase": "main",
+  "nxCloudAccessToken": "ZWJiNDliYTgtNzFiMi00NDg2LWFkZGMtYjIxOWY0MDU1ZGYxfHJlYWQtb25seQ==",
   "parallel": 5,
   "namedInputs": {
     "sharedGlobals": [
@@ -52,6 +53,10 @@
       "inputs": ["default", "^public"],
       "outputs": ["{projectRoot}/build", "{projectRoot}/dist"],
       "cache": true
+    },
+    "test:format": {
+      "cache": true,
+      "inputs": ["{workspaceRoot}/**/*"]
     }
   }
 }
