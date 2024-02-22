@@ -296,7 +296,7 @@ If you're not using the file-based routing system, you can still manually split 
 - `posts.lazy.tsx`
 
   ```tsx
-  export const Route = createLazyRoute({
+  export const Route = createLazyRoute('/posts')({
     component: MyComponent,
   })
 
