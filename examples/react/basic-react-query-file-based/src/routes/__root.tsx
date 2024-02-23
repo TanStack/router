@@ -34,7 +34,7 @@ function RootComponent() {
           }}
         >
           Posts
-        </Link>
+        </Link>{' '}
         <Link
           to="/layout-a"
           activeProps={{
