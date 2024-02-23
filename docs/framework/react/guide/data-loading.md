@@ -19,7 +19,7 @@ Every time a URL/history update is detected, the router executes the following s
 - Route Pre-Loading (Serial)
   - `route.beforeLoad`
   - `route.onError`
-    - `route.errorComponent' / `parentRoute.errorComponent`/`router.defaultErrorComponent`
+    - `route.errorComponent` / `parentRoute.errorComponent`/`router.defaultErrorComponent`
 - Route Loading (Parallel)
   - `route.component.preload?`
   - `route.loader`
