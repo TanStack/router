@@ -177,6 +177,8 @@ export const tokens = {
       '9xl': 'calc(var(--tsrd-font-size) * 8)',
     },
     lineHeight: {
+      '3xs': 'calc(var(--tsrd-font-size) * 0.75)',
+      '2xs': 'calc(var(--tsrd-font-size) * 0.875)',
       xs: 'calc(var(--tsrd-font-size) * 1)',
       sm: 'calc(var(--tsrd-font-size) * 1.25)',
       md: 'calc(var(--tsrd-font-size) * 1.5)',

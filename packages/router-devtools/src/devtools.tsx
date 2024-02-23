@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   invariant,
   AnyRouter,
@@ -403,6 +403,24 @@ function RouteComp({
 
   const match = routerState.matches.find((d) => d.routeId === route.id)
 
+  const param = useMemo(() => {
+    try {
+      if (match?.params) {
+        const p = match.params
+        const r: string = route.path || trimPath(route.id)
+        if (r.startsWith('$')) {
+          const trimmed = r.slice(1)
+          if (p[trimmed]) {
+            return `(${p[trimmed]})`
+          }
+        }
+      }
+      return ''
+    } catch (error) {
+      return ''
+    }
+  }, [match, route])
+
   return (
     <div>
       <div
@@ -413,63 +431,32 @@ function RouteComp({
             setActiveId(activeId === route.id ? '' : route.id)
           }
         }}
-        style={{
-          display: 'flex',
-          borderBottom: `solid 1px ${theme.grayAlt}`,
-          cursor: match ? 'pointer' : 'default',
-          alignItems: 'center',
-          background:
-            route.id === activeId ? 'rgba(255,255,255,.1)' : undefined,
-          padding: '.25rem .5rem',
-          gap: '.5rem',
-        }}
-      >
-        {isRoot ? null : (
-          <div
-            style={{
-              flex: '0 0 auto',
-              width: '.7rem',
-              height: '.7rem',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              borderRadius: '100%',
-              transition: 'all .2s ease-out',
-              background: getRouteStatusColor(matches, route, theme),
-              opacity: match ? 1 : 0.3,
-            }}
-          />
+        className={cx(
+          styles.routesRowContainer(route.id === activeId, !!match),
         )}
+      >
         <div
-          style={{
-            flex: '1 0 auto',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: isRoot ? '0 .25rem' : 0,
-            opacity: match ? 1 : 0.7,
-            fontSize: '0.7rem',
-          }}
-        >
-          <code>{route.path || trimPath(route.id)} </code>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '.5rem',
-            }}
-          >
-            {match ? <code style={{ opacity: 0.3 }}>{match.id}</code> : null}
-            <AgeTicker match={match} />
+          className={cx(
+            styles.matchIndicator(getRouteStatusColor(matches, route)),
+          )}
+        />
+        <div className={cx(styles.routesRow(!!match))}>
+          <div>
+            <code className={styles.code}>
+              {route.path || trimPath(route.id)}{' '}
+            </code>
+            <code className={styles.routeParamInfo}>{param}</code>
           </div>
+          <AgeTicker match={match} />
         </div>
       </div>
       {(route.children as Route[])?.length ? (
         <div
-          style={{
-            marginLeft: isRoot ? 0 : '1rem',
-            borderLeft: isRoot ? '' : `solid 1px ${theme.grayAlt}`,
-          }}
+          // style={{
+          //   marginLeft: isRoot ? 0 : '1rem',
+          //   borderLeft: isRoot ? '' : `solid 1px ${theme.grayAlt}`,
+          // }}
+          className={styles.nestedRouteRow(!!isRoot)}
         >
           {[...(route.children as Route[])]
             .sort((a, b) => {
@@ -852,33 +839,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               </tbody>
             </table>
           </div>
-          {/* <div
-              style={{
-                background: theme.backgroundAlt,
-                padding: '.5em',
-                position: 'sticky',
-                top: 0,
-                bottom: 0,
-                zIndex: 1,
-              }}
-            >
-              Actions
-            </div>
-            <div
-              style={{
-                padding: '0.5em',
-              }}
-            >
-              <Button
-                type="button"
-                onClick={() => activeMatch.__store.setState(d => ({...d, status: 'pending'}))}
-                style={{
-                  background: theme.gray,
-                }}
-              >
-                Reload
-              </Button>
-            </div> */}
           {activeMatch.loaderData ? (
             <>
               <div className={styles.detailsHeader}>Loader Data</div>
@@ -1116,6 +1076,7 @@ const stylesFactory = () => {
         padding: 4px 8px;
         background: transparent;
         cursor: pointer;
+        font-family: ${fontFamily.sans};
         font-weight: ${font.weight.medium};
       `
       const classes = [base]
@@ -1157,7 +1118,7 @@ const stylesFactory = () => {
         border-bottom: 1px solid ${colors.darkGray[400]};
         cursor: pointer;
         align-items: center;
-        padding: ${size[1.5]} ${size[2]};
+        padding: ${size[1]} ${size[2]};
         gap: ${size[2]};
         font-size: ${fontSize.xs};
         color: ${colors.gray[300]};
@@ -1166,7 +1127,7 @@ const stylesFactory = () => {
 
       if (active) {
         const activeStyles = css`
-          background: ${colors.darkGray[600]};
+          background: ${colors.darkGray[500]};
         `
         classes.push(activeStyles)
       }
@@ -1198,6 +1159,7 @@ const stylesFactory = () => {
     },
     matchID: css`
       flex: 1;
+      line-height: ${lineHeight['xs']};
     `,
     ageTicker: (showWarning: boolean) => {
       const base = css`
@@ -1206,6 +1168,7 @@ const stylesFactory = () => {
         font-size: ${fontSize.xs};
         color: ${colors.gray[400]};
         font-variant-numeric: tabular-nums;
+        line-height: ${lineHeight['xs']};
       `
 
       const classes = [base]
@@ -1247,6 +1210,66 @@ const stylesFactory = () => {
       overflow: auto;
       display: flex;
       flex-direction: column;
+    `,
+    routesRowContainer: (active: boolean, isMatch: boolean) => {
+      const base = css`
+        display: flex;
+        border-bottom: 1px solid ${colors.darkGray[400]};
+        align-items: center;
+        padding: ${size[1]} ${size[2]};
+        gap: ${size[2]};
+        font-size: ${fontSize.xs};
+        color: ${colors.gray[300]};
+        cursor: ${isMatch ? 'pointer' : 'default'};
+        line-height: ${lineHeight['xs']};
+      `
+      const classes = [base]
+
+      if (active) {
+        const activeStyles = css`
+          background: ${colors.darkGray[500]};
+        `
+        classes.push(activeStyles)
+      }
+
+      return classes
+    },
+    routesRow: (isMatch: boolean) => {
+      const base = css`
+        flex: 1 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: ${fontSize.xs};
+        line-height: ${lineHeight['xs']};
+      `
+
+      const classes = [base]
+
+      if (!isMatch) {
+        const matchStyles = css`
+          color: ${colors.gray[400]};
+        `
+        classes.push(matchStyles)
+      }
+
+      return classes
+    },
+    routeParamInfo: css`
+      color: ${colors.gray[400]};
+      font-size: ${fontSize.xs};
+      line-height: ${lineHeight['xs']};
+    `,
+    nestedRouteRow: (isRoot: boolean) => {
+      const base = css`
+        margin-left: ${isRoot ? 0 : size[3.5]};
+        border-left: ${isRoot ? '' : `solid 1px ${colors.gray[700]}`};
+      `
+      return base
+    },
+    code: css`
+      font-size: ${fontSize.xs};
+      line-height: ${lineHeight['xs']};
     `,
   }
 }

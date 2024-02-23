@@ -38,10 +38,9 @@ export function getStatusColor(match: AnyRouteMatch) {
 export function getRouteStatusColor(
   matches: AnyRouteMatch[],
   route: AnyRoute | AnyRootRoute,
-  theme: Theme,
 ) {
   const found = matches.find((d) => d.routeId === route.id)
-  if (!found) return theme.gray
+  if (!found) return 'gray'
   return getStatusColor(found)
 }
 
