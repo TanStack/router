@@ -51,7 +51,14 @@ const ensureInvoices = async () => {
       const { data } = await axios.get(
         'https://jsonplaceholder.typicode.com/posts',
       )
-      invoices = data.slice(0, 10)
+      console.log('data', data)
+      data.push({
+        userId: 1,
+        id: 101,
+        title: 'error',
+        body: 'error',
+      })
+      invoices = data
     })
   }
 

@@ -56,7 +56,9 @@
   ],
   "dependencies": {
     "@tanstack/react-router": "workspace:*",
-    "date-fns": "^2.29.1"
+    "clsx": "^2.1.0",
+    "date-fns": "^2.29.1",
+    "goober": "^2.1.14"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",

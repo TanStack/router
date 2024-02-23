@@ -19,10 +19,12 @@ import {
   useIsMounted,
   useSafeState,
 } from './utils'
-import { Panel, Button, Code, ActivePanel } from './styledComponents'
-import { ThemeProvider, defaultTheme as theme } from './theme'
+import { css } from 'goober'
+import { clsx as cx } from 'clsx'
+import { defaultTheme as theme } from './theme'
 // import { getQueryStatusLabel, getQueryStatusColor } from './utils'
 import Explorer from './Explorer'
+import { tokens } from './tokens'
 
 export type PartialKeys<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
 
@@ -98,45 +100,13 @@ interface DevtoolsPanelOptions {
 
 const isServer = typeof window === 'undefined'
 
-function Logo(props: React.HTMLProps<HTMLDivElement>) {
+function Logo(props: React.HTMLAttributes<HTMLButtonElement>) {
+  const { className, ...rest } = props
   return (
-    <div
-      {...props}
-      style={{
-        ...(props.style ?? {}),
-        display: 'flex',
-        alignItems: 'center',
-        flexDirection: 'column',
-        fontSize: '0.8rem',
-        fontWeight: 'bolder',
-        lineHeight: '1',
-      }}
-    >
-      <div
-        style={{
-          letterSpacing: '-0.05rem',
-        }}
-      >
-        TANSTACK
-      </div>
-      <div
-        style={{
-          backgroundImage:
-            'linear-gradient(to right, var(--tw-gradient-stops))',
-          // @ts-ignore
-          '--tw-gradient-from': '#84cc16',
-          '--tw-gradient-stops':
-            'var(--tw-gradient-from), var(--tw-gradient-to)',
-          '--tw-gradient-to': '#10b981',
-          WebkitBackgroundClip: 'text',
-          color: 'transparent',
-          letterSpacing: '0.1rem',
-          marginRight: '-0.2rem',
-        }}
-      >
-        ROUTER
-      </div>
-    </div>
+    <button {...rest} className={cx(styles.logo, className)}>
+      <div className={styles.tanstackLogo}>TANSTACK</div>
+      <div className={styles.routerLogo}>React Router v1</div>
+    </button>
   )
 }
 
@@ -281,49 +251,54 @@ export function TanStackRouterDevtools({
   if (!isMounted()) return null
 
   return (
-    <Container ref={rootRef} className="TanStackRouterDevtools">
-      <ThemeProvider theme={theme}>
-        <TanStackRouterDevtoolsPanel
-          ref={panelRef as any}
-          {...otherPanelProps}
-          router={router}
-          style={{
-            direction: 'ltr',
-            position: 'fixed',
-            bottom: '0',
-            right: '0',
-            zIndex: 99999,
-            width: '100%',
-            height: devtoolsHeight ?? 500,
-            maxHeight: '90%',
-            boxShadow: '0 0 20px rgba(0,0,0,.3)',
-            borderTop: `1px solid ${theme.gray}`,
-            transformOrigin: 'top',
-            // visibility will be toggled after transitions, but set initial state here
-            visibility: isOpen ? 'visible' : 'hidden',
-            ...panelStyle,
-            ...(isResizing
-              ? {
-                  transition: `none`,
-                }
-              : { transition: `all .2s ease` }),
-            ...(isResolvedOpen
-              ? {
-                  opacity: 1,
-                  pointerEvents: 'all',
-                  transform: `translateY(0) scale(1)`,
-                }
-              : {
-                  opacity: 0,
-                  pointerEvents: 'none',
-                  transform: `translateY(15px) scale(1.02)`,
-                }),
-          }}
-          isOpen={isResolvedOpen}
-          setIsOpen={setIsOpen}
-          handleDragStart={(e) => handleDragStart(panelRef.current, e)}
-        />
-        {isResolvedOpen ? (
+    <Container
+      ref={rootRef}
+      className="TanStackRouterDevtools"
+      style={{
+        '--tsrd-font-size': '16px',
+      }}
+    >
+      <TanStackRouterDevtoolsPanel
+        ref={panelRef as any}
+        {...otherPanelProps}
+        router={router}
+        style={{
+          direction: 'ltr',
+          position: 'fixed',
+          bottom: '0',
+          right: '0',
+          zIndex: 99999,
+          width: '100%',
+          height: devtoolsHeight ?? 500,
+          maxHeight: '90%',
+          boxShadow: '0 0 20px rgba(0,0,0,.3)',
+          borderTop: `1px solid ${theme.gray}`,
+          transformOrigin: 'top',
+          // visibility will be toggled after transitions, but set initial state here
+          visibility: isOpen ? 'visible' : 'hidden',
+          ...panelStyle,
+          ...(isResizing
+            ? {
+                transition: `none`,
+              }
+            : { transition: `all .2s ease` }),
+          ...(isResolvedOpen
+            ? {
+                opacity: 1,
+                pointerEvents: 'all',
+                transform: `translateY(0) scale(1)`,
+              }
+            : {
+                opacity: 0,
+                pointerEvents: 'none',
+                transform: `translateY(15px) scale(1.02)`,
+              }),
+        }}
+        isOpen={isResolvedOpen}
+        setIsOpen={setIsOpen}
+        handleDragStart={(e) => handleDragStart(panelRef.current, e)}
+      />
+      {/* {isResolvedOpen ? (
           <Button
             type="button"
             aria-label="Close TanStack Router Devtools"
@@ -357,9 +332,9 @@ export function TanStackRouterDevtools({
           >
             Close
           </Button>
-        ) : null}
-      </ThemeProvider>
-      {!isResolvedOpen ? (
+        ) : null} */}
+
+      {/* {!isResolvedOpen ? (
         <button
           type="button"
           {...otherToggleButtonProps}
@@ -404,7 +379,7 @@ export function TanStackRouterDevtools({
         >
           <Logo aria-hidden />
         </button>
-      ) : null}
+      ) : null} */}
     </Container>
   )
 }
@@ -476,7 +451,7 @@ function RouteComp({
             fontSize: '0.7rem',
           }}
         >
-          <Code>{route.path || trimPath(route.id)} </Code>
+          <code>{route.path || trimPath(route.id)} </code>
           <div
             style={{
               display: 'flex',
@@ -484,7 +459,7 @@ function RouteComp({
               gap: '.5rem',
             }}
           >
-            {match ? <Code style={{ opacity: 0.3 }}>{match.id}</Code> : null}
+            {match ? <code style={{ opacity: 0.3 }}>{match.id}</code> : null}
             <AgeTicker match={match} />
           </div>
         </div>
@@ -525,6 +500,8 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     router: userRouter,
     ...panelProps
   } = props
+
+  const { className, ...otherPanelProps } = panelProps
 
   const contextRouter = useRouter({ warn: false })
   const router = userRouter ?? contextRouter
@@ -568,11 +545,18 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   }
 
   return (
-    <ThemeProvider theme={theme}>
-      <Panel ref={ref} className="TanStackRouterDevtoolsPanel" {...panelProps}>
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
+    <div
+      ref={ref}
+      className={cx(
+        styles.devtoolsPanel,
+        'TanStackRouterDevtoolsPanel',
+        className,
+      )}
+      {...otherPanelProps}
+    >
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
 
             .TanStackRouterDevtoolsPanel * {
               scrollbar-color: ${theme.backgroundAlt} ${theme.gray};
@@ -615,470 +599,260 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             }
 
           `,
-          }}
-        />
-        {handleDragStart ? (
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              width: '100%',
-              height: '4px',
-              marginBottom: '-4px',
-              cursor: 'row-resize',
-              zIndex: 100000,
-            }}
-            onMouseDown={handleDragStart}
-          ></div>
-        ) : null}
-        <div
-          style={{
-            flex: '1 1 500px',
-            minHeight: '40%',
-            maxHeight: '100%',
-            overflow: 'auto',
-            borderRight: `1px solid ${theme.grayAlt}`,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'start',
-              gap: '1rem',
-              padding: '1rem',
-              alignItems: 'center',
-              background: theme.backgroundAlt,
-            }}
-          >
-            <Logo aria-hidden />
-            <div
-              style={{
-                fontSize: 'clamp(.8rem, 2vw, 1.3rem)',
-                fontWeight: 'bold',
-              }}
-            >
-              <span
-                style={{
-                  fontWeight: 100,
-                }}
-              >
-                Devtools
-              </span>
-            </div>
-          </div>
-          <div
-            style={{
-              overflowY: 'auto',
-              flex: '1',
-            }}
-          >
-            <div
-              style={{
-                padding: '.5em',
-              }}
-            >
-              <Explorer
-                label="Router"
-                value={Object.fromEntries(
-                  multiSortBy(
-                    Object.keys(explorerState),
-                    (
-                      [
-                        'state',
-                        'routesById',
-                        'routesByPath',
-                        'flatRoutes',
-                        'options',
-                      ] as const
-                    ).map((d) => (dd) => dd !== d),
-                  )
-                    .map((key) => [key, (explorerState as any)[key]])
-                    .filter(
-                      (d) =>
-                        typeof d[1] !== 'function' &&
-                        ![
-                          '__store',
-                          'basepath',
-                          'injectedHtml',
-                          'subscribers',
-                          'latestLoadPromise',
-                          'navigateTimeout',
-                          'resetNextScroll',
-                          'tempLocationKey',
-                          'latestLocation',
-                          'routeTree',
-                          'history',
-                        ].includes(d[0]),
-                    ),
-                )}
-                defaultExpanded={{
-                  state: {} as any,
-                  context: {} as any,
-                  options: {} as any,
-                }}
-                filterSubEntries={(subEntries) => {
-                  return subEntries.filter((d) => typeof d.value !== 'function')
-                }}
-              />
-            </div>
-          </div>
+        }}
+      />
+      {handleDragStart ? (
+        <div className={styles.dragHandle} onMouseDown={handleDragStart}></div>
+      ) : null}
+      <div className={styles.firstContainer}>
+        <div className={styles.row}>
+          <Logo aria-hidden />
         </div>
         <div
           style={{
-            flex: '1 1 500px',
-            minHeight: '40%',
-            maxHeight: '100%',
-            overflow: 'auto',
-            borderRight: `1px solid ${theme.grayAlt}`,
-            display: 'flex',
-            flexDirection: 'column',
+            overflowY: 'auto',
+            flex: '1',
           }}
         >
+          <div className={styles.routerExplorer}>
+            <Explorer
+              label="Router"
+              value={Object.fromEntries(
+                multiSortBy(
+                  Object.keys(explorerState),
+                  (
+                    [
+                      'state',
+                      'routesById',
+                      'routesByPath',
+                      'flatRoutes',
+                      'options',
+                    ] as const
+                  ).map((d) => (dd) => dd !== d),
+                )
+                  .map((key) => [key, (explorerState as any)[key]])
+                  .filter(
+                    (d) =>
+                      typeof d[1] !== 'function' &&
+                      ![
+                        '__store',
+                        'basepath',
+                        'injectedHtml',
+                        'subscribers',
+                        'latestLoadPromise',
+                        'navigateTimeout',
+                        'resetNextScroll',
+                        'tempLocationKey',
+                        'latestLocation',
+                        'routeTree',
+                        'history',
+                      ].includes(d[0]),
+                  ),
+              )}
+              defaultExpanded={{
+                state: {} as any,
+                context: {} as any,
+                options: {} as any,
+              }}
+              filterSubEntries={(subEntries) => {
+                return subEntries.filter((d) => typeof d.value !== 'function')
+              }}
+            />
+          </div>
+        </div>
+      </div>
+      <div className={styles.secondContainer}>
+        <div
+          style={{
+            flex: '1 1 auto',
+            overflowY: 'auto',
+          }}
+        >
+          <div className={styles.detailsHeader}>
+            <span>Pathname</span>
+            {routerState.location.maskedLocation ? (
+              <div
+                style={{
+                  flex: 1,
+                  justifyContent: 'flex-end',
+                  display: 'flex',
+                }}
+              >
+                <span className={styles.maskedBadge}>masked</span>
+              </div>
+            ) : null}
+          </div>
+          <div className={styles.detailsContent}>
+            <code>{routerState.location.pathname}</code>
+            {routerState.location.maskedLocation ? (
+              <code className={styles.maskedLocation}>
+                {routerState.location.maskedLocation.pathname}
+              </code>
+            ) : null}
+          </div>
+          <div className={styles.detailsHeader}>
+            <div className={styles.routeMatchesToggle}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMatches(false)
+                }}
+                disabled={!showMatches}
+                className={cx(styles.routeMatchesToggleBtn(!showMatches, true))}
+              >
+                Routes
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMatches(true)
+                }}
+                disabled={showMatches}
+                className={cx(
+                  styles.routeMatchesToggleBtn(!!showMatches, false),
+                )}
+              >
+                Matches
+              </button>
+            </div>
+            <div className={styles.detailsHeaderInfo}>
+              <div>age / staleTime / gcTime</div>
+            </div>
+          </div>
+          {!showMatches ? (
+            <RouteComp
+              route={router.routeTree}
+              isRoot
+              activeId={activeId}
+              setActiveId={setActiveId}
+            />
+          ) : (
+            <div>
+              {(routerState.status === 'pending'
+                ? routerState.pendingMatches ?? []
+                : routerState.matches
+              ).map((match, i) => {
+                return (
+                  <div
+                    key={match.id || i}
+                    role="button"
+                    aria-label={`Open match details for ${match.id}`}
+                    onClick={() =>
+                      setActiveId(activeId === match.id ? '' : match.id)
+                    }
+                    className={cx(styles.matchRow(match === activeMatch))}
+                  >
+                    <div
+                      className={cx(
+                        styles.matchIndicator(getStatusColor(match)),
+                      )}
+                    />
+
+                    <code className={styles.matchID}>{`${match.id}`}</code>
+                    <AgeTicker match={match} />
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+        {routerState.cachedMatches?.length ? (
           <div
             style={{
               flex: '1 1 auto',
               overflowY: 'auto',
+              maxHeight: '50%',
             }}
           >
-            <div
-              style={{
-                padding: '.5em',
-                background: theme.backgroundAlt,
-                position: 'sticky',
-                top: 0,
-                zIndex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '.5rem',
-                fontWeight: 'bold',
-              }}
-            >
-              Pathname{' '}
-              {routerState.location.maskedLocation ? (
-                <div
-                  style={{
-                    padding: '.1rem .5rem',
-                    background: theme.warning,
-                    color: 'black',
-                    borderRadius: '.5rem',
-                  }}
-                >
-                  Masked
-                </div>
-              ) : null}
-            </div>
-            <div
-              style={{
-                padding: '.5rem',
-                display: 'flex',
-                gap: '.5rem',
-                alignItems: 'center',
-              }}
-            >
-              <code
-                style={{
-                  opacity: 0.6,
-                }}
-              >
-                {routerState.location.pathname}
-              </code>
-              {routerState.location.maskedLocation ? (
-                <code
-                  style={{
-                    color: theme.warning,
-                    fontWeight: 'bold',
-                  }}
-                >
-                  {routerState.location.maskedLocation.pathname}
-                </code>
-              ) : null}
-            </div>
-            <div
-              style={{
-                padding: '.5em',
-                background: theme.backgroundAlt,
-                position: 'sticky',
-                top: 0,
-                zIndex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '.5rem',
-                fontWeight: 'bold',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '.5rem',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMatches(false)
-                  }}
-                  disabled={!showMatches}
-                  style={{
-                    appearance: 'none',
-                    opacity: showMatches ? 0.5 : 1,
-                    border: 0,
-                    background: 'transparent',
-                    color: 'inherit',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Routes
-                </button>
-                /
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMatches(true)
-                  }}
-                  disabled={showMatches}
-                  style={{
-                    appearance: 'none',
-                    opacity: !showMatches ? 0.5 : 1,
-                    border: 0,
-                    background: 'transparent',
-                    color: 'inherit',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Matches
-                </button>
-              </div>
-              <div
-                style={{
-                  opacity: 0.3,
-                  fontSize: '0.7rem',
-                  fontWeight: 'normal',
-                }}
-              >
+            <div className={styles.detailsHeader}>
+              <div>Cached Matches</div>
+              <div className={styles.detailsHeaderInfo}>
                 age / staleTime / gcTime
               </div>
             </div>
-            {!showMatches ? (
-              <RouteComp
-                route={router.routeTree}
-                isRoot
-                activeId={activeId}
-                setActiveId={setActiveId}
-              />
-            ) : (
-              <div>
-                {(routerState.status === 'pending'
-                  ? routerState.pendingMatches ?? []
-                  : routerState.matches
-                ).map((match, i) => {
-                  return (
-                    <div
-                      key={match.id || i}
-                      role="button"
-                      aria-label={`Open match details for ${match.id}`}
-                      onClick={() =>
-                        setActiveId(activeId === match.id ? '' : match.id)
-                      }
-                      style={{
-                        display: 'flex',
-                        borderBottom: `solid 1px ${theme.grayAlt}`,
-                        cursor: 'pointer',
-                        alignItems: 'center',
-                        background:
-                          match === activeMatch
-                            ? 'rgba(255,255,255,.1)'
-                            : undefined,
-                      }}
-                    >
-                      <div
-                        style={{
-                          flex: '0 0 auto',
-                          width: '1.3rem',
-                          height: '1.3rem',
-                          marginLeft: '.25rem',
-                          background: getStatusColor(match, theme),
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 'bold',
-                          borderRadius: '.25rem',
-                          transition: 'all .2s ease-out',
-                        }}
-                      />
-
-                      <Code
-                        style={{
-                          padding: '.5em',
-                          fontSize: '0.7rem',
-                        }}
-                      >
-                        {`${match.id}`}
-                      </Code>
-                      <AgeTicker match={match} />
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-          {routerState.cachedMatches?.length ? (
-            <div
-              style={{
-                flex: '1 1 auto',
-                overflowY: 'auto',
-                maxHeight: '50%',
-              }}
-            >
-              <div
-                style={{
-                  padding: '.5em',
-                  background: theme.backgroundAlt,
-                  position: 'sticky',
-                  top: 0,
-                  zIndex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '.5rem',
-                  fontWeight: 'bold',
-                }}
-              >
-                <div>Cached Matches</div>
-                <div
-                  style={{
-                    opacity: 0.3,
-                    fontSize: '0.7rem',
-                    fontWeight: 'normal',
-                  }}
-                >
-                  age / staleTime / gcTime
-                </div>
-              </div>
-              <div>
-                {routerState.cachedMatches.map((match) => {
-                  return (
-                    <div
-                      key={match.id}
-                      role="button"
-                      aria-label={`Open match details for ${match.id}`}
-                      onClick={() =>
-                        setActiveId(activeId === match.id ? '' : match.id)
-                      }
-                      style={{
-                        display: 'flex',
-                        borderBottom: `solid 1px ${theme.grayAlt}`,
-                        cursor: 'pointer',
-                        alignItems: 'center',
-                        background:
-                          match === activeMatch
-                            ? 'rgba(255,255,255,.1)'
-                            : undefined,
-                        fontSize: '0.7rem',
-                      }}
-                    >
-                      <div
-                        style={{
-                          flex: '0 0 auto',
-                          width: '.75rem',
-                          height: '.75rem',
-                          marginLeft: '.25rem',
-                          background: getStatusColor(match, theme),
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 'bold',
-                          borderRadius: '100%',
-                          transition: 'all 1s ease-out',
-                        }}
-                      />
-
-                      <Code
-                        style={{
-                          padding: '.5em',
-                        }}
-                      >
-                        {`${match.id}`}
-                      </Code>
-
-                      <div style={{ marginLeft: 'auto' }}>
-                        <AgeTicker match={match} />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
-        </div>
-        {activeMatch ? (
-          <ActivePanel>
-            <div
-              style={{
-                padding: '.5em',
-                background: theme.backgroundAlt,
-                position: 'sticky',
-                top: 0,
-                bottom: 0,
-                zIndex: 1,
-              }}
-            >
-              Match Details
-            </div>
             <div>
-              <table
-                style={{
-                  fontSize: '0.8rem',
-                }}
-              >
-                <tbody>
-                  <tr>
-                    <td style={{ opacity: '.5' }}>ID</td>
-                    <td>
-                      <Code
-                        style={{
-                          lineHeight: '1.8em',
-                        }}
-                      >
-                        {JSON.stringify(activeMatch.id, null, 2)}
-                      </Code>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ opacity: '.5' }}>Status</td>
-                    <td>
-                      {routerState.pendingMatches?.find(
-                        (d) => d.id === activeMatch.id,
-                      )
-                        ? 'Pending'
-                        : routerState.matches?.find(
-                              (d) => d.id === activeMatch.id,
-                            )
-                          ? 'Active'
-                          : 'Cached'}{' '}
-                      - {activeMatch.status}
-                    </td>
-                  </tr>
-                  {/* <tr>
+              {routerState.cachedMatches.map((match) => {
+                return (
+                  <div
+                    key={match.id}
+                    role="button"
+                    aria-label={`Open match details for ${match.id}`}
+                    onClick={() =>
+                      setActiveId(activeId === match.id ? '' : match.id)
+                    }
+                    className={cx(styles.matchRow(match === activeMatch))}
+                  >
+                    <div
+                      className={cx(
+                        styles.matchIndicator(getStatusColor(match)),
+                      )}
+                    />
+
+                    <code className={styles.matchID}>{`${match.id}`}</code>
+
+                    <AgeTicker match={match} />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+      {activeMatch ? (
+        <div className={styles.thirdContainer}>
+          <div className={styles.detailsHeader}>Match Details</div>
+          <div>
+            <table
+              style={{
+                fontSize: '0.8rem',
+              }}
+            >
+              <tbody>
+                <tr>
+                  <td style={{ opacity: '.5' }}>ID</td>
+                  <td>
+                    <code
+                      style={{
+                        lineHeight: '1.8em',
+                      }}
+                    >
+                      {JSON.stringify(activeMatch.id, null, 2)}
+                    </code>
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ opacity: '.5' }}>Status</td>
+                  <td>
+                    {routerState.pendingMatches?.find(
+                      (d) => d.id === activeMatch.id,
+                    )
+                      ? 'Pending'
+                      : routerState.matches?.find(
+                            (d) => d.id === activeMatch.id,
+                          )
+                        ? 'Active'
+                        : 'Cached'}{' '}
+                    - {activeMatch.status}
+                  </td>
+                </tr>
+                {/* <tr>
                     <td style={{ opacity: '.5' }}>Invalid</td>
                     <td>{activeMatch.getIsInvalid().toString()}</td>
                   </tr> */}
-                  <tr>
-                    <td style={{ opacity: '.5' }}>Last Updated</td>
-                    <td>
-                      {activeMatch.updatedAt
-                        ? new Date(
-                            activeMatch.updatedAt as number,
-                          ).toLocaleTimeString()
-                        : 'N/A'}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            {/* <div
+                <tr>
+                  <td style={{ opacity: '.5' }}>Last Updated</td>
+                  <td>
+                    {activeMatch.updatedAt
+                      ? new Date(
+                          activeMatch.updatedAt as number,
+                        ).toLocaleTimeString()
+                      : 'N/A'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          {/* <div
               style={{
                 background: theme.backgroundAlt,
                 padding: '.5em',
@@ -1105,102 +879,41 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 Reload
               </Button>
             </div> */}
-            {activeMatch.loaderData ? (
-              <>
-                <div
-                  style={{
-                    background: theme.backgroundAlt,
-                    padding: '.5em',
-                    position: 'sticky',
-                    top: 0,
-                    bottom: 0,
-                    zIndex: 1,
-                  }}
-                >
-                  Loader Data
-                </div>
-                <div
-                  style={{
-                    padding: '.5em',
-                  }}
-                >
-                  <Explorer
-                    label="loaderData"
-                    value={activeMatch.loaderData}
-                    defaultExpanded={{}}
-                  />
-                </div>
-              </>
-            ) : null}
-            <div
-              style={{
-                background: theme.backgroundAlt,
-                padding: '.5em',
-                position: 'sticky',
-                top: 0,
-                bottom: 0,
-                zIndex: 1,
-              }}
-            >
-              Explorer
-            </div>
-            <div
-              style={{
-                padding: '.5em',
-              }}
-            >
-              <Explorer
-                label="Match"
-                value={activeMatch}
-                defaultExpanded={{}}
-              />
-            </div>
-          </ActivePanel>
-        ) : null}
-        {hasSearch ? (
-          <div
-            style={{
-              flex: '1 1 500px',
-              minHeight: '40%',
-              maxHeight: '100%',
-              overflow: 'auto',
-              borderRight: `1px solid ${theme.grayAlt}`,
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            <div
-              style={{
-                padding: '.5em',
-                background: theme.backgroundAlt,
-                position: 'sticky',
-                top: 0,
-                bottom: 0,
-                zIndex: 1,
-                fontWeight: 'bold',
-              }}
-            >
-              Search Params
-            </div>
-            <div
-              style={{
-                padding: '.5em',
-              }}
-            >
-              <Explorer
-                value={routerState.location.search || {}}
-                defaultExpanded={Object.keys(
-                  (routerState.location.search as {}) || {},
-                ).reduce((obj: any, next) => {
-                  obj[next] = {}
-                  return obj
-                }, {})}
-              />
-            </div>
+          {activeMatch.loaderData ? (
+            <>
+              <div className={styles.detailsHeader}>Loader Data</div>
+              <div className={styles.detailsContent}>
+                <Explorer
+                  label="loaderData"
+                  value={activeMatch.loaderData}
+                  defaultExpanded={{}}
+                />
+              </div>
+            </>
+          ) : null}
+          <div className={styles.detailsHeader}>Explorer</div>
+          <div className={styles.detailsContent}>
+            <Explorer label="Match" value={activeMatch} defaultExpanded={{}} />
           </div>
-        ) : null}
-      </Panel>
-    </ThemeProvider>
+        </div>
+      ) : null}
+      {hasSearch ? (
+        <div className={styles.fourthContainer}>
+          <div className={styles.detailsHeader}>Search Params</div>
+          <div className={styles.detailsContent}>
+            <Explorer
+              value={routerState.location.search || {}}
+              defaultExpanded={Object.keys(
+                (routerState.location.search as {}) || {},
+              ).reduce((obj: any, next) => {
+                obj[next] = {}
+                return obj
+              }, {})}
+            />
+          </div>
+        </div>
+      ) : null}
+    </div>
   )
 })
 
@@ -1239,15 +952,8 @@ function AgeTicker({ match }: { match?: AnyRouteMatch }) {
     route.options.gcTime ?? router.options.defaultGcTime ?? 30 * 60 * 1000
 
   return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '.25rem',
-        color: age > staleTime ? theme.warning : undefined,
-      }}
-    >
-      <div style={{}}>{formatTime(age)}</div>
+    <div className={cx(styles.ageTicker(age > staleTime))}>
+      <div>{formatTime(age)}</div>
       <div>/</div>
       <div>{formatTime(staleTime)}</div>
       <div>/</div>
@@ -1274,3 +980,275 @@ function formatTime(ms: number) {
 
   return formatter.format(values[chosenUnitIndex]!) + units[chosenUnitIndex]
 }
+
+const stylesFactory = () => {
+  const { colors, font, size, alpha, shadow, border } = tokens
+  const { fontFamily, lineHeight, size: fontSize } = font
+
+  return {
+    logo: css`
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      background-color: transparent;
+      border: none;
+      font-family: ${fontFamily.sans};
+      gap: ${tokens.size[0.5]};
+      padding: 0px;
+      &:hover {
+        opacity: 0.7;
+      }
+      &:focus-visible {
+        outline-offset: 4px;
+        border-radius: ${border.radius.xs};
+        outline: 2px solid ${colors.blue[800]};
+      }
+    `,
+    tanstackLogo: css`
+      font-size: ${font.size.md};
+      font-weight: ${font.weight.bold};
+      line-height: ${font.lineHeight.xs};
+      white-space: nowrap;
+      color: ${colors.gray[300]};
+    `,
+    routerLogo: css`
+      font-weight: ${font.weight.semibold};
+      font-size: ${font.size.xs};
+      background: linear-gradient(to right, #84cc16, #10b981);
+      background-clip: text;
+      -webkit-background-clip: text;
+      line-height: 1;
+      -webkit-text-fill-color: transparent;
+      white-space: nowrap;
+    `,
+    devtoolsPanel: css`
+      display: flex;
+      font-size: ${fontSize.sm};
+      font-family: ${fontFamily.sans};
+      background-color: ${colors.darkGray[700]};
+      color: ${colors.gray[300]};
+
+      @media (max-width: 700px) {
+        flex-direction: column;
+      }
+      @media (max-width: 600px) {
+        font-size: ${fontSize.xs};
+      }
+    `,
+    dragHandle: css`
+      position: absolute;
+      left: 0;
+      top: -2px;
+      width: 100%;
+      height: 4px;
+      cursor: row-resize;
+      z-index: 100000;
+      &:hover {
+        background-color: ${colors.purple[400]}${alpha[90]};
+      }
+    `,
+    firstContainer: css`
+      flex: 1 1 500px;
+      min-height: 40%;
+      max-height: 100%;
+      overflow: auto;
+      border-right: 1px solid ${colors.gray[700]};
+      display: flex;
+      flex-direction: column;
+    `,
+    routerExplorer: css`
+      padding: ${tokens.size[2]};
+    `,
+    row: css`
+      display: flex;
+      align-items: center;
+      padding: ${tokens.size[2]} ${tokens.size[2.5]};
+      gap: ${tokens.size[2.5]};
+      border-bottom: ${colors.darkGray[500]} 1px solid;
+      align-items: center;
+    `,
+    detailsHeader: css`
+      font-family: ui-sans-serif, Inter, system-ui, sans-serif, sans-serif;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background-color: ${colors.darkGray[600]};
+      padding: 0px ${tokens.size[2]};
+      font-weight: ${font.weight.medium};
+      font-size: ${font.size.xs};
+      min-height: ${tokens.size[8]};
+      line-height: ${font.lineHeight.xs};
+      text-align: left;
+      display: flex;
+      align-items: center;
+    `,
+    maskedBadge: css`
+      background: ${colors.yellow[900]}${alpha[70]};
+      color: ${colors.yellow[300]};
+      display: inline-block;
+      padding: ${tokens.size[0]} ${tokens.size[2.5]};
+      border-radius: ${border.radius.full};
+      font-size: ${font.size.xs};
+      font-weight: ${font.weight.normal};
+      border: 1px solid ${colors.yellow[300]};
+    `,
+    maskedLocation: css`
+      color: ${colors.yellow[300]};
+    `,
+    detailsContent: css`
+      padding: ${tokens.size[1.5]} ${tokens.size[2]};
+      display: flex;
+      align-items: center;
+      font-size: ${font.size.xs};
+    `,
+    routeMatchesToggle: css`
+      display: flex;
+      align-items: center;
+      border: 1px solid ${colors.gray[500]};
+      border-radius: ${border.radius.sm};
+      overflow: hidden;
+    `,
+    routeMatchesToggleBtn: (active: boolean, showBorder: boolean) => {
+      const base = css`
+        appearance: none;
+        border: none;
+        font-size: 12px;
+        padding: 4px 8px;
+        background: transparent;
+        cursor: pointer;
+        font-weight: ${font.weight.medium};
+      `
+      const classes = [base]
+
+      if (active) {
+        const activeStyles = css`
+          background: ${colors.darkGray[400]};
+          color: ${colors.gray[300]};
+        `
+        classes.push(activeStyles)
+      } else {
+        const inactiveStyles = css`
+          color: ${colors.gray[500]};
+          background: ${colors.darkGray[800]}${alpha[20]};
+        `
+        classes.push(inactiveStyles)
+      }
+
+      if (showBorder) {
+        const border = css`
+          border-right: 1px solid ${tokens.colors.gray[500]};
+        `
+        classes.push(border)
+      }
+
+      return classes
+    },
+    detailsHeaderInfo: css`
+      flex: 1;
+      justify-content: flex-end;
+      display: flex;
+      align-items: center;
+      font-weight: ${font.weight.normal};
+      color: ${colors.gray[400]};
+    `,
+    matchRow: (active: boolean) => {
+      const base = css`
+        display: flex;
+        border-bottom: 1px solid ${colors.darkGray[400]};
+        cursor: pointer;
+        align-items: center;
+        padding: ${size[1.5]} ${size[2]};
+        gap: ${size[2]};
+        font-size: ${fontSize.xs};
+        color: ${colors.gray[300]};
+      `
+      const classes = [base]
+
+      if (active) {
+        const activeStyles = css`
+          background: ${colors.darkGray[600]};
+        `
+        classes.push(activeStyles)
+      }
+
+      return classes
+    },
+    matchIndicator: (color: 'green' | 'red' | 'yellow' | 'gray') => {
+      const base = css`
+        flex: 0 0 auto;
+        width: ${size[3]};
+        height: ${size[3]};
+        background: ${colors[color][900]};
+        border: 1px solid ${colors[color][500]};
+        border-radius: ${border.radius.full};
+        transition: all 0.2s ease-out;
+        box-sizing: border-box;
+      `
+      const classes = [base]
+
+      if (color === 'gray') {
+        const grayStyles = css`
+          background: ${colors.gray[700]};
+          border-color: ${colors.gray[400]};
+        `
+        classes.push(grayStyles)
+      }
+
+      return classes
+    },
+    matchID: css`
+      flex: 1;
+    `,
+    ageTicker: (showWarning: boolean) => {
+      const base = css`
+        display: flex;
+        gap: ${size[1]};
+        font-size: ${fontSize.xs};
+        color: ${colors.gray[400]};
+        font-variant-numeric: tabular-nums;
+      `
+
+      const classes = [base]
+
+      if (showWarning) {
+        const warningStyles = css`
+          color: ${colors.yellow[400]};
+        `
+        classes.push(warningStyles)
+      }
+
+      return classes
+    },
+    secondContainer: css`
+      flex: 1 1 500px;
+      min-height: 40%;
+      max-height: 100%;
+      overflow: auto;
+      border-right: 1px solid ${colors.gray[700]};
+      display: flex;
+      flex-direction: column;
+    `,
+    thirdContainer: css`
+      flex: 1 1 500px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      border-right: 1px solid ${colors.gray[700]};
+
+      @media (max-width: 700px) {
+        border-top: 2px solid ${colors.gray[700]};
+      }
+    `,
+    fourthContainer: css`
+      flex: 1 1 500px;
+      min-height: 40%;
+      max-height: 100%;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+    `,
+  }
+}
+
+const styles = stylesFactory()
