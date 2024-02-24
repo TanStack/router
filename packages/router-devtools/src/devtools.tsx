@@ -451,13 +451,7 @@ function RouteComp({
         </div>
       </div>
       {(route.children as Route[])?.length ? (
-        <div
-          // style={{
-          //   marginLeft: isRoot ? 0 : '1rem',
-          //   borderLeft: isRoot ? '' : `solid 1px ${theme.grayAlt}`,
-          // }}
-          className={styles.nestedRouteRow(!!isRoot)}
-        >
+        <div className={styles.nestedRouteRow(!!isRoot)}>
           {[...(route.children as Route[])]
             .sort((a, b) => {
               return a.rank - b.rank
@@ -541,53 +535,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
       )}
       {...otherPanelProps}
     >
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-
-            .TanStackRouterDevtoolsPanel * {
-              scrollbar-color: ${theme.backgroundAlt} ${theme.gray};
-            }
-
-            .TanStackRouterDevtoolsPanel *::-webkit-scrollbar, .TanStackRouterDevtoolsPanel scrollbar {
-              width: 1em;
-              height: 1em;
-            }
-
-            .TanStackRouterDevtoolsPanel *::-webkit-scrollbar-track, .TanStackRouterDevtoolsPanel scrollbar-track {
-              background: ${theme.backgroundAlt};
-            }
-
-            .TanStackRouterDevtoolsPanel *::-webkit-scrollbar-thumb, .TanStackRouterDevtoolsPanel scrollbar-thumb {
-              background: ${theme.gray};
-              border-radius: .5em;
-              border: 3px solid ${theme.backgroundAlt};
-            }
-
-            .TanStackRouterDevtoolsPanel table {
-              width: 100%;
-            }
-
-            .TanStackRouterDevtoolsPanel table tr {
-              border-bottom: 2px dotted rgba(255, 255, 255, .2);
-            }
-
-            .TanStackRouterDevtoolsPanel table tr:last-child {
-              border-bottom: none
-            }
-
-            .TanStackRouterDevtoolsPanel table td {
-              padding: .25rem .5rem;
-              border-right: 2px dotted rgba(255, 255, 255, .05);
-            }
-
-            .TanStackRouterDevtoolsPanel table td:last-child {
-              border-right: none
-            }
-
-          `,
-        }}
-      />
       {handleDragStart ? (
         <div className={styles.dragHandle} onMouseDown={handleDragStart}></div>
       ) : null}
@@ -595,12 +542,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
         <div className={styles.row}>
           <Logo aria-hidden />
         </div>
-        <div
-          style={{
-            overflowY: 'auto',
-            flex: '1',
-          }}
-        >
+        <div className={styles.routerExplorerContainer}>
           <div className={styles.routerExplorer}>
             <Explorer
               label="Router"
@@ -649,22 +591,11 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
         </div>
       </div>
       <div className={styles.secondContainer}>
-        <div
-          style={{
-            flex: '1 1 auto',
-            overflowY: 'auto',
-          }}
-        >
+        <div className={styles.matchesContainer}>
           <div className={styles.detailsHeader}>
             <span>Pathname</span>
             {routerState.location.maskedLocation ? (
-              <div
-                style={{
-                  flex: 1,
-                  justifyContent: 'flex-end',
-                  display: 'flex',
-                }}
-              >
+              <div className={styles.maskedBadgeContainer}>
                 <span className={styles.maskedBadge}>masked</span>
               </div>
             ) : null}
@@ -735,7 +666,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                       )}
                     />
 
-                    <code className={styles.matchID}>{`${match.id}`}</code>
+                    <code
+                      className={styles.matchID}
+                    >{`${match.pathname}`}</code>
                     <AgeTicker match={match} />
                   </div>
                 )
@@ -744,13 +677,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           )}
         </div>
         {routerState.cachedMatches?.length ? (
-          <div
-            style={{
-              flex: '1 1 auto',
-              overflowY: 'auto',
-              maxHeight: '50%',
-            }}
-          >
+          <div className={styles.cachedMatchesContainer}>
             <div className={styles.detailsHeader}>
               <div>Cached Matches</div>
               <div className={styles.detailsHeaderInfo}>
@@ -789,55 +716,39 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
         <div className={styles.thirdContainer}>
           <div className={styles.detailsHeader}>Match Details</div>
           <div>
-            <table
-              style={{
-                fontSize: '0.8rem',
-              }}
-            >
-              <tbody>
-                <tr>
-                  <td style={{ opacity: '.5' }}>ID</td>
-                  <td>
-                    <code
-                      style={{
-                        lineHeight: '1.8em',
-                      }}
-                    >
-                      {JSON.stringify(activeMatch.id, null, 2)}
-                    </code>
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ opacity: '.5' }}>Status</td>
-                  <td>
-                    {routerState.pendingMatches?.find(
-                      (d) => d.id === activeMatch.id,
-                    )
-                      ? 'Pending'
-                      : routerState.matches?.find(
-                            (d) => d.id === activeMatch.id,
-                          )
-                        ? 'Active'
-                        : 'Cached'}{' '}
-                    - {activeMatch.status}
-                  </td>
-                </tr>
-                {/* <tr>
-                    <td style={{ opacity: '.5' }}>Invalid</td>
-                    <td>{activeMatch.getIsInvalid().toString()}</td>
-                  </tr> */}
-                <tr>
-                  <td style={{ opacity: '.5' }}>Last Updated</td>
-                  <td>
-                    {activeMatch.updatedAt
-                      ? new Date(
-                          activeMatch.updatedAt as number,
-                        ).toLocaleTimeString()
-                      : 'N/A'}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div className={styles.matchDetails}>
+              <div className={styles.matchStatus(activeMatch.status)}>
+                <div>{activeMatch.status}</div>
+              </div>
+              <div className={styles.matchDetailsInfoLabel}>
+                <div>ID:</div>
+                <div className={styles.matchDetailsInfo}>
+                  <code>{activeMatch.id}</code>
+                </div>
+              </div>
+              <div className={styles.matchDetailsInfoLabel}>
+                <div>Status:</div>
+                <div className={styles.matchDetailsInfo}>
+                  {routerState.pendingMatches?.find(
+                    (d) => d.id === activeMatch.id,
+                  )
+                    ? 'Pending'
+                    : routerState.matches?.find((d) => d.id === activeMatch.id)
+                      ? 'Active'
+                      : 'Cached'}
+                </div>
+              </div>
+              <div className={styles.matchDetailsInfoLabel}>
+                <div>Last Updated:</div>
+                <div className={styles.matchDetailsInfo}>
+                  {activeMatch.updatedAt
+                    ? new Date(
+                        activeMatch.updatedAt as number,
+                      ).toLocaleTimeString()
+                    : 'N/A'}
+                </div>
+              </div>
+            </div>
           </div>
           {activeMatch.loaderData ? (
             <>
@@ -1015,6 +926,10 @@ const stylesFactory = () => {
       border-right: 1px solid ${colors.gray[700]};
       display: flex;
       flex-direction: column;
+    `,
+    routerExplorerContainer: css`
+      overflow-y: auto;
+      flex: 1;
     `,
     routerExplorer: css`
       padding: ${tokens.size[2]};
@@ -1270,6 +1185,59 @@ const stylesFactory = () => {
     code: css`
       font-size: ${fontSize.xs};
       line-height: ${lineHeight['xs']};
+    `,
+    matchesContainer: css`
+      flex: 1 1 auto;
+      overflow-y: auto;
+    `,
+    cachedMatchesContainer: css`
+      flex: 1 1 auto;
+      overflow-y: auto;
+      max-height: 50%;
+    `,
+    maskedBadgeContainer: css`
+      flex: 1;
+      justify-content: flex-end;
+      display: flex;
+    `,
+    matchDetails: css`
+      display: flex;
+      flex-direction: column;
+      padding: ${tokens.size[2]};
+      font-size: ${tokens.font.size.xs};
+      color: ${tokens.colors.gray[300]};
+      line-height: ${tokens.font.lineHeight.sm};
+    `,
+    matchStatus: (status: 'pending' | 'success' | 'error') => {
+      const colorMap = {
+        pending: 'yellow',
+        success: 'green',
+        error: 'red',
+      } as const
+
+      const color = colorMap[status]
+
+      return css`
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 40px;
+        border-radius: ${tokens.border.radius.sm};
+        font-weight: ${tokens.font.weight.normal};
+        background-color: ${tokens.colors[color][900]}${tokens.alpha[90]};
+        color: ${tokens.colors[color][300]};
+        border: 1px solid ${tokens.colors[color][600]};
+        margin-bottom: ${tokens.size[2]};
+        transition: all 0.2s ease-out;
+      `
+    },
+    matchDetailsInfo: css`
+      display: flex;
+      justify-content: flex-end;
+      flex: 1;
+    `,
+    matchDetailsInfoLabel: css`
+      display: flex;
     `,
   }
 }
