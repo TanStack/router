@@ -107,14 +107,14 @@ There were two approaches we considered for this:
 ```tsx
 import { router } from '@/src/app'
 export const PostsIdLink = () => {
- return (
+  return (
     <Link<typeof router>
       to='/posts/$postId'
       params={{ postId: '123' }}
     >
       Go to post 123
     </Link>
- )
+  )
 }
 ```
 
@@ -137,7 +137,7 @@ And then you can benefit from its auto-complete anywhere in your app without hav
 
 ```tsx
 export const PostsIdLink = () => {
- return (
+  return (
     <Link
       to='/posts/$postId'
       // ^? Typescript will auto-complete this for you
@@ -145,7 +145,7 @@ export const PostsIdLink = () => {
     >
       Go to post 123
     </Link>
- )
+  )
 }
 ```
 
