@@ -15,13 +15,13 @@ The `CatchBoundary` component is a component that catches errors thrown by its c
 
 #### `props.children`
 
-- Type: `JSX.Element`
+- Type: `React.ReactNode`
 - Required
 - The component's children to render when there is no error
 
 #### `props.errorComponent`
 
-- Type: `JSX.Element`
+- Type: `React.ReactNode`
 - Optional - `default: ErrorComponent`
 - The component to render when there is an error
 

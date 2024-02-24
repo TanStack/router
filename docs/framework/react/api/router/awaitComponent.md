@@ -15,7 +15,7 @@ The `Await` component is a component that suspends until the provided promise is
 
 #### `props.children`
 
-- Type: `(result: T) => JSX.Element`
+- Type: `(result: T) => React.ReactNode`
 - Required
 - A function that will be called with the resolved value of the promise
 

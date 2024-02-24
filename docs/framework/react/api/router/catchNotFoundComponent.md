@@ -9,7 +9,7 @@ The `CatchNotFound` component is a component that catches not-found errors throw
 
 #### `props.children`
 
-- Type: `JSX.Element`
+- Type: `React.ReactNode`
 - Required
 - The component's children to render when there is no error
 
