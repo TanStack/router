@@ -28,9 +28,72 @@ Every aspect of Tanstack Router is designed to be as type-safe as possible, and 
 
 But to achieve this, we had to make some decisions that deviate from the norms in the routing world.
 
-## Why is the Route configuration done this way?
+1. [**Route configuration boilerplate?**](#1-why-is-the-routers-configuration-done-this-way): You have to define your routes in a way that allows Typescript to infer the types of your routes as much as possible.
+2. [**Typescript module declaration for the router?**](#2-declaring-the-router-instance-for-type-inference): You have to pass the `Router` instance to the rest of your application using Typescript's module declaration.
+3. [**Why push for file-based routing over code-based?**](#3-why-is-file-based-routing-the-preferred-way-to-define-routes): We push for file-based routing as the preferred way to define your routes.
+
+## 1. Why is the Router's configuration done this way?
 
 When you want to leverage the Typescript's inference features to its fullest, you'll quickly realize that *Generics* are your best friend. And so, Tanstack Router uses Generics everywhere to ensure that the types of your routes are inferred as much as possible.
+
+This means that you have to define your routes in a way that allows Typescript to infer the types of your routes as much as possible.
+
+> Can I use JSX to define my routes?
+
+Using JSX for defining your routes is **out of the question**, as Typescript will not be able infer the route configuration types of your router.
+
+```tsx
+// ⛔️ This is not possible
+function App() {
+  return (
+    <Router>
+      <Route path="/posts" component={PostsPage} />
+      <Route path="/posts/$postId" component={PostIdPage} />
+    </Router>
+    // ^? Typescript cannot infer the routes in this configuration
+  );
+}
+```
+And since this would mean that you'd have to manually type the `to` prop of the `<Link>` component and wouldn't catch any errors until runtime, it's not a viable option.
+
+> Maybe I could define my routes as a tree of nested objects?
+
+```tsx
+const router = createRouter({
+  routes: {
+    posts: {
+      component: PostsPage,     // /posts
+      children: {
+        "$postId": {
+          component: PostIdPage // /posts/$postId
+        }
+      }
+    }
+  }
+})
+```
+
+At first glance, this seems like a good idea. It's easy to visualize the entire route hierarchy in one go. But this approach has a couple big downsides that make it not ideal for large applications:
+
+* **It's not very scalable**: As your application grows, the tree will grow and become harder to manage. And since its all defined in one file, it can become very hard to maintain.
+* **It's not great for code-splitting**: You'd have to manually code-split each component and then pass it into the `component` property of the route, further complicating the route configuration with an ever-growing route configuration file.
+
+This only get worse as your begin to use more features of the router, such as nested context, loaders, search param validation, etc.
+
+> So, what's the best way to define my routes?
+
+What we found to be the best way to define your routes is to abstract the definition of the route configuration into a separate file which is then added into a route-tree that is then passed into the `createRouter` function.
+
+You can read more about [code-based routing](/docs/framework/react/guide/code-based-routing) to see how to define your routes in this way.
+
+> 🙋🏼 Finding Code-based routing to be a bit too cumbersome? See why [file-based routing](#3-why-is-file-based-routing-the-preferred-way-to-define-routes) is the preferred way to define your routes.
+
+
+## 2. Declaring the Router instance for type inference
+
+> Why do I have to declare the `Router`?
+
+> This declaration stuff is way too complicated for me...
 
 Once you've constructed your routes into a tree and passed it into your Router instance (using `createRouter`) with all the generics working correctly, you then need to somehow pass this information to the rest of your application.
 
@@ -64,7 +127,7 @@ declare module '@tanstack/react-router' {
   }
 }
 ```
-And then you can use it anywhere in your application without having to import it.
+And then you can benefit from its auto-complete anywhere in your app without having to import it.
 ```tsx
 export const PostsIdLink = () => {
  return (
@@ -78,40 +141,8 @@ export const PostsIdLink = () => {
 }
 ```
 
-**Module declaration** is what we went with, as it allows you to easily access the `Router` instance from anywhere in your application without having to import it.
+We went with **module declaration**, as it is what we found to be the most scalable and maintainable approach with the least amount of overhead and boilerplate.
 
+## 3. Why is file-based routing the preferred way to define routes?
 
-
-### Why can't I use JSX to define my routes?
-
-> Why not? I'm used to defining my routes like this:
-
-```tsx
-function App() {
-  return (
-    <Router>
-      <Route path="/posts" component={PostsPage} />
-      <Route path="/posts/$postId" component={PostIdPage} />
-    </Router>
-  );
-}
-```
-
-Something like this is very common in the routing world. But it has no way of being type-safe, because Typescript will not be able to infer the types of the `/posts` and `/posts/$postId` routes since they are just lone React components. So, when you are creating a `<Link>` to these routes, you'll have to manually type the `to/href` prop.
-
-### Ok then, why can't I define my routes as a tree of nested objects?
-
-> This seems way easier to me, and lets me easily view the entire route hierarchy in one go.
-
-```tsx
-const router = createRouter({
-  posts: {
-    component: PostsPage,     // /posts
-    children: {
-      "$postId": {
-        component: PostIdPage // /posts/$postId
-      }
-    }
-  }
-})
-```
+foo
