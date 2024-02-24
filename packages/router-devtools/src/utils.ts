@@ -26,13 +26,15 @@ type StyledComponent<T> = T extends 'button'
         : never
 
 export function getStatusColor(match: AnyRouteMatch) {
-  return match.status === 'pending' || match.isFetching
-    ? 'yellow'
-    : match.status === 'error'
-      ? 'red'
-      : match.status === 'success'
-        ? 'green'
-        : 'gray'
+  return match.status === 'success' && match.isFetching
+    ? 'blue'
+    : match.status === 'pending'
+      ? 'yellow'
+      : match.status === 'error'
+        ? 'red'
+        : match.status === 'success'
+          ? 'green'
+          : 'gray'
 }
 
 export function getRouteStatusColor(

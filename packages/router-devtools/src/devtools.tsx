@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import {
   invariant,
   AnyRouter,
@@ -21,10 +21,9 @@ import {
 } from './utils'
 import { css } from 'goober'
 import { clsx as cx } from 'clsx'
-import { defaultTheme as theme } from './theme'
-// import { getQueryStatusLabel, getQueryStatusColor } from './utils'
 import Explorer from './Explorer'
 import { tokens } from './tokens'
+import { TanStackLogo } from './logo'
 
 export type PartialKeys<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
 
@@ -110,6 +109,23 @@ function Logo(props: React.HTMLAttributes<HTMLButtonElement>) {
   )
 }
 
+const DevtoolsOnCloseContext = React.createContext<
+  | {
+      onCloseClick: (e: React.MouseEvent<HTMLButtonElement>) => void
+    }
+  | undefined
+>(undefined)
+
+const useDevtoolsOnClose = () => {
+  const context = React.useContext(DevtoolsOnCloseContext)
+  if (!context) {
+    throw new Error(
+      'useDevtoolsOnClose must be used within a TanStackRouterDevtools component',
+    )
+  }
+  return context
+}
+
 export function TanStackRouterDevtools({
   initialIsOpen,
   panelProps = {},
@@ -173,36 +189,6 @@ export function TanStackRouterDevtools({
     setIsResolvedOpen(isOpen ?? false)
   }, [isOpen, isResolvedOpen, setIsResolvedOpen])
 
-  // Toggle panel visibility before/after transition (depending on direction).
-  // Prevents focusing in a closed panel.
-  React.useEffect(() => {
-    const ref = panelRef.current
-
-    if (ref) {
-      const handlePanelTransitionStart = () => {
-        if (ref && isResolvedOpen) {
-          ref.style.visibility = 'visible'
-        }
-      }
-
-      const handlePanelTransitionEnd = () => {
-        if (ref && !isResolvedOpen) {
-          ref.style.visibility = 'hidden'
-        }
-      }
-
-      ref.addEventListener('transitionstart', handlePanelTransitionStart)
-      ref.addEventListener('transitionend', handlePanelTransitionEnd)
-
-      return () => {
-        ref.removeEventListener('transitionstart', handlePanelTransitionStart)
-        ref.removeEventListener('transitionend', handlePanelTransitionEnd)
-      }
-    }
-
-    return
-  }, [isResolvedOpen])
-
   React[isServer ? 'useEffect' : 'useLayoutEffect'](() => {
     if (isResolvedOpen) {
       const previousValue = rootRef.current?.parentElement?.style.paddingBottom
@@ -250,6 +236,8 @@ export function TanStackRouterDevtools({
   // Do not render on the server
   if (!isMounted()) return null
 
+  const resolvedHeight = devtoolsHeight ?? 500
+
   return (
     <Container
       ref={rootRef}
@@ -258,83 +246,35 @@ export function TanStackRouterDevtools({
         '--tsrd-font-size': '16px',
       }}
     >
-      <TanStackRouterDevtoolsPanel
-        ref={panelRef as any}
-        {...otherPanelProps}
-        router={router}
-        style={{
-          direction: 'ltr',
-          position: 'fixed',
-          bottom: '0',
-          right: '0',
-          zIndex: 99999,
-          width: '100%',
-          height: devtoolsHeight ?? 500,
-          maxHeight: '90%',
-          boxShadow: '0 0 20px rgba(0,0,0,.3)',
-          borderTop: `1px solid ${theme.gray}`,
-          transformOrigin: 'top',
-          // visibility will be toggled after transitions, but set initial state here
-          visibility: isOpen ? 'visible' : 'hidden',
-          ...panelStyle,
-          ...(isResizing
-            ? {
-                transition: `none`,
-              }
-            : { transition: `all .2s ease` }),
-          ...(isResolvedOpen
-            ? {
-                opacity: 1,
-                pointerEvents: 'all',
-                transform: `translateY(0) scale(1)`,
-              }
-            : {
-                opacity: 0,
-                pointerEvents: 'none',
-                transform: `translateY(15px) scale(1.02)`,
-              }),
+      <DevtoolsOnCloseContext.Provider
+        value={{
+          onCloseClick: onCloseClick ?? (() => {}),
         }}
-        isOpen={isResolvedOpen}
-        setIsOpen={setIsOpen}
-        handleDragStart={(e) => handleDragStart(panelRef.current, e)}
-      />
-      {/* {isResolvedOpen ? (
-          <Button
-            type="button"
-            aria-label="Close TanStack Router Devtools"
-            {...(otherCloseButtonProps as any)}
-            onClick={(e) => {
-              setIsOpen(false)
-              onCloseClick && onCloseClick(e)
-            }}
-            style={{
-              position: 'fixed',
-              zIndex: 99999,
-              margin: '.5em',
-              bottom: 0,
-              ...(position === 'top-right'
-                ? {
-                    right: '0',
-                  }
-                : position === 'top-left'
-                  ? {
-                      left: '0',
-                    }
-                  : position === 'bottom-right'
-                    ? {
-                        right: '0',
-                      }
-                    : {
-                        left: '0',
-                      }),
-              ...closeButtonStyle,
-            }}
-          >
-            Close
-          </Button>
-        ) : null} */}
+      >
+        <TanStackRouterDevtoolsPanel
+          ref={panelRef as any}
+          {...otherPanelProps}
+          router={router}
+          className={cx(
+            styles.devtoolsPanelContainer,
+            styles.devtoolsPanelContainerVisibility(!!isOpen),
+            styles.devtoolsPanelContainerResizing(isResizing),
+            styles.devtoolsPanelContainerAnimation(
+              isResolvedOpen,
+              resolvedHeight + 16,
+            ),
+          )}
+          style={{
+            height: resolvedHeight,
+            ...panelStyle,
+          }}
+          isOpen={isResolvedOpen}
+          setIsOpen={setIsOpen}
+          handleDragStart={(e) => handleDragStart(panelRef.current, e)}
+        />
+      </DevtoolsOnCloseContext.Provider>
 
-      {/* {!isResolvedOpen ? (
+      {!isResolvedOpen && (
         <button
           type="button"
           {...otherToggleButtonProps}
@@ -343,43 +283,23 @@ export function TanStackRouterDevtools({
             setIsOpen(true)
             onToggleClick && onToggleClick(e)
           }}
-          style={{
-            appearance: 'none',
-            background: 'none',
-            border: 0,
-            padding: 0,
-            position: 'fixed',
-            zIndex: 99999,
-            display: 'inline-flex',
-            fontSize: '1.5em',
-            margin: '.5em',
-            cursor: 'pointer',
-            width: 'fit-content',
-            ...(position === 'top-right'
-              ? {
-                  top: '0',
-                  right: '0',
-                }
-              : position === 'top-left'
-                ? {
-                    top: '0',
-                    left: '0',
-                  }
-                : position === 'bottom-right'
-                  ? {
-                      bottom: '0',
-                      right: '0',
-                    }
-                  : {
-                      bottom: '0',
-                      left: '0',
-                    }),
-            ...toggleButtonStyle,
-          }}
+          className={cx(
+            styles.mainCloseBtn,
+            styles.mainCloseBtnPosition(position),
+          )}
         >
-          <Logo aria-hidden />
+          <div className={styles.mainCloseBtnIconContainer}>
+            <div className={styles.mainCloseBtnIconOuter}>
+              <TanStackLogo />
+            </div>
+            <div className={styles.mainCloseBtnIconInner}>
+              <TanStackLogo />
+            </div>
+          </div>
+          <div className={styles.mainCloseBtnDivider}>-</div>
+          <div className={styles.routerLogoCloseButton}>React Router</div>
         </button>
-      ) : null} */}
+      )}
     </Container>
   )
 }
@@ -403,7 +323,7 @@ function RouteComp({
 
   const match = routerState.matches.find((d) => d.routeId === route.id)
 
-  const param = useMemo(() => {
+  const param = React.useMemo(() => {
     try {
       if (match?.params) {
         const p = match.params
@@ -443,7 +363,7 @@ function RouteComp({
         <div className={cx(styles.routesRow(!!match))}>
           <div>
             <code className={styles.code}>
-              {route.path || trimPath(route.id)}{' '}
+              {isRoot ? '__root__' : route.path || trimPath(route.id)}{' '}
             </code>
             <code className={styles.routeParamInfo}>{param}</code>
           </div>
@@ -482,6 +402,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     ...panelProps
   } = props
 
+  const { onCloseClick } = useDevtoolsOnClose()
   const { className, ...otherPanelProps } = panelProps
 
   const contextRouter = useRouter({ warn: false })
@@ -538,9 +459,39 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
       {handleDragStart ? (
         <div className={styles.dragHandle} onMouseDown={handleDragStart}></div>
       ) : null}
+      <button
+        className={styles.panelCloseBtn}
+        onClick={(e) => {
+          setIsOpen(false)
+          onCloseClick(e)
+        }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="10"
+          height="6"
+          fill="none"
+          viewBox="0 0 10 6"
+          className={styles.panelCloseBtnIcon}
+        >
+          <path
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.667"
+            d="M1 1l4 4 4-4"
+          ></path>
+        </svg>
+      </button>
       <div className={styles.firstContainer}>
         <div className={styles.row}>
-          <Logo aria-hidden />
+          <Logo
+            aria-hidden
+            onClick={(e) => {
+              setIsOpen(false)
+              onCloseClick(e)
+            }}
+          />
         </div>
         <div className={styles.routerExplorerContainer}>
           <div className={styles.routerExplorer}>
@@ -668,7 +619,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
                     <code
                       className={styles.matchID}
-                    >{`${match.pathname}`}</code>
+                    >{`${match.routeId === '__root__' ? '__root__' : match.pathname}`}</code>
                     <AgeTicker match={match} />
                   </div>
                 )
@@ -717,8 +668,17 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           <div className={styles.detailsHeader}>Match Details</div>
           <div>
             <div className={styles.matchDetails}>
-              <div className={styles.matchStatus(activeMatch.status)}>
-                <div>{activeMatch.status}</div>
+              <div
+                className={styles.matchStatus(
+                  activeMatch.status,
+                  activeMatch.isFetching,
+                )}
+              >
+                <div>
+                  {activeMatch.status === 'success' && activeMatch.isFetching
+                    ? 'fetching'
+                    : activeMatch.status}
+                </div>
               </div>
               <div className={styles.matchDetailsInfoLabel}>
                 <div>ID:</div>
@@ -727,7 +687,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 </div>
               </div>
               <div className={styles.matchDetailsInfoLabel}>
-                <div>Status:</div>
+                <div>State:</div>
                 <div className={styles.matchDetailsInfo}>
                   {routerState.pendingMatches?.find(
                     (d) => d.id === activeMatch.id,
@@ -857,6 +817,45 @@ const stylesFactory = () => {
   const { fontFamily, lineHeight, size: fontSize } = font
 
   return {
+    devtoolsPanelContainer: css`
+      direction: ltr;
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      z-index: 99999;
+      width: 100%;
+      max-height: 90%;
+      border-top: 1px solid ${colors.gray[700]};
+      transform-origin: top;
+    `,
+    devtoolsPanelContainerVisibility: (isOpen: boolean) => {
+      return css`
+        visibility: ${isOpen ? 'visible' : 'hidden'};
+      `
+    },
+    devtoolsPanelContainerResizing: (isResizing: boolean) => {
+      if (isResizing) {
+        return css`
+          transition: none;
+        `
+      }
+
+      return css`
+        transition: all 0.4s ease;
+      `
+    },
+    devtoolsPanelContainerAnimation: (isOpen: boolean, height: number) => {
+      if (isOpen) {
+        return css`
+          pointer-events: auto;
+          transform: translateY(0);
+        `
+      }
+      return css`
+        pointer-events: none;
+        transform: translateY(${height}px);
+      `
+    },
     logo: css`
       cursor: pointer;
       display: flex;
@@ -909,7 +908,7 @@ const stylesFactory = () => {
     dragHandle: css`
       position: absolute;
       left: 0;
-      top: -2px;
+      top: 0;
       width: 100%;
       height: 4px;
       cursor: row-resize;
@@ -1049,7 +1048,7 @@ const stylesFactory = () => {
 
       return classes
     },
-    matchIndicator: (color: 'green' | 'red' | 'yellow' | 'gray') => {
+    matchIndicator: (color: 'green' | 'red' | 'yellow' | 'gray' | 'blue') => {
       const base = css`
         flex: 0 0 auto;
         width: ${size[3]};
@@ -1057,7 +1056,7 @@ const stylesFactory = () => {
         background: ${colors[color][900]};
         border: 1px solid ${colors[color][500]};
         border-radius: ${border.radius.full};
-        transition: all 0.2s ease-out;
+        transition: all 0.25s ease-out;
         box-sizing: border-box;
       `
       const classes = [base]
@@ -1208,14 +1207,18 @@ const stylesFactory = () => {
       color: ${tokens.colors.gray[300]};
       line-height: ${tokens.font.lineHeight.sm};
     `,
-    matchStatus: (status: 'pending' | 'success' | 'error') => {
+    matchStatus: (
+      status: 'pending' | 'success' | 'error',
+      isFetching: boolean,
+    ) => {
       const colorMap = {
         pending: 'yellow',
         success: 'green',
         error: 'red',
       } as const
 
-      const color = colorMap[status]
+      const color =
+        isFetching && status === 'success' ? 'blue' : colorMap[status]
 
       return css`
         display: flex;
@@ -1228,7 +1231,7 @@ const stylesFactory = () => {
         color: ${tokens.colors[color][300]};
         border: 1px solid ${tokens.colors[color][600]};
         margin-bottom: ${tokens.size[2]};
-        transition: all 0.2s ease-out;
+        transition: all 0.25s ease-out;
       `
     },
     matchDetailsInfo: css`
@@ -1238,6 +1241,121 @@ const stylesFactory = () => {
     `,
     matchDetailsInfoLabel: css`
       display: flex;
+    `,
+    mainCloseBtn: css`
+      background: ${colors.darkGray[700]};
+      padding: ${size[1]} ${size[2]} ${size[1]} ${size[1.5]};
+      border-radius: ${border.radius.md};
+      position: fixed;
+      z-index: 99999;
+      display: inline-flex;
+      width: fit-content;
+      cursor: pointer;
+      appearance: none;
+      border: 0;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid ${colors.gray[500]};
+      font-size: ${font.size.xs};
+      cursor: pointer;
+
+      &:hover {
+        background: ${colors.darkGray[500]};
+      }
+    `,
+    mainCloseBtnPosition: (
+      position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right',
+    ) => {
+      const base = css`
+        ${position === 'top-left' ? `top: ${size[2]}; left: ${size[2]};` : ''}
+        ${position === 'top-right' ? `top: ${size[2]}; right: ${size[2]};` : ''}
+        ${position === 'bottom-left'
+          ? `bottom: ${size[2]}; left: ${size[2]};`
+          : ''}
+        ${position === 'bottom-right'
+          ? `bottom: ${size[2]}; right: ${size[2]};`
+          : ''}
+      `
+      return base
+    },
+    routerLogoCloseButton: css`
+      font-weight: ${font.weight.semibold};
+      font-size: ${font.size.xs};
+      background: linear-gradient(to right, #98f30c, #00f4a3);
+      background-clip: text;
+      -webkit-background-clip: text;
+      line-height: 1;
+      -webkit-text-fill-color: transparent;
+      white-space: nowrap;
+    `,
+    mainCloseBtnDivider: css`
+      width: 1px;
+      background: ${tokens.colors.gray[600]};
+      height: 100%;
+      border-radius: 999999px;
+      color: transparent;
+    `,
+    mainCloseBtnIconContainer: css`
+      position: relative;
+      width: ${size[5]};
+      height: ${size[5]};
+      background: pink;
+      border-radius: 999999px;
+      overflow: hidden;
+    `,
+    mainCloseBtnIconOuter: css`
+      width: ${size[5]};
+      height: ${size[5]};
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      filter: blur(3px) saturate(1.8) contrast(2);
+    `,
+    mainCloseBtnIconInner: css`
+      width: ${size[4]};
+      height: ${size[4]};
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    `,
+    panelCloseBtn: css`
+      position: absolute;
+      cursor: pointer;
+      z-index: 100001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      outline: none;
+      background-color: ${colors.darkGray[700]};
+      &:hover {
+        background-color: ${colors.darkGray[500]};
+      }
+
+      top: 0;
+      right: ${size[2]};
+      transform: translate(0, -100%);
+      border-right: ${colors.darkGray[300]} 1px solid;
+      border-left: ${colors.darkGray[300]} 1px solid;
+      border-top: ${colors.darkGray[300]} 1px solid;
+      border-bottom: none;
+      border-radius: ${border.radius.sm} ${border.radius.sm} 0px 0px;
+      padding: ${size[1]} ${size[1.5]} ${size[0.5]} ${size[1.5]};
+
+      &::after {
+        content: ' ';
+        position: absolute;
+        top: 100%;
+        left: -${size[2.5]};
+        height: ${size[1.5]};
+        width: calc(100% + ${size[5]});
+      }
+    `,
+    panelCloseBtnIcon: css`
+      color: ${colors.gray[400]};
+      width: ${size[2]};
+      height: ${size[2]};
     `,
   }
 }
