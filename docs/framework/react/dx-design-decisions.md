@@ -49,6 +49,7 @@ function App() {
     <Router>
       <Route path="/posts" component={PostsPage} />
       <Route path="/posts/$postId" component={PostIdPage} />
+      {/* ... */}
     </Router>
     // ^? Typescript cannot infer the routes in this configuration
   );
@@ -59,6 +60,7 @@ And since this would mean that you'd have to manually type the `to` prop of the 
 > Maybe I could define my routes as a tree of nested objects?
 
 ```tsx
+// ⛔️ This file will just keep growing and growing...
 const router = createRouter({
   routes: {
     posts: {
@@ -68,7 +70,8 @@ const router = createRouter({
           component: PostIdPage // /posts/$postId
         }
       }
-    }
+    },
+    // ...
   }
 })
 ```
@@ -82,7 +85,7 @@ This only get worse as your begin to use more features of the router, such as ne
 
 > So, what's the best way to define my routes?
 
-What we found to be the best way to define your routes is to abstract the definition of the route configuration into a separate file which is then added into a route-tree that is then passed into the `createRouter` function.
+What we found to be the best way to define your routes is to abstract the definition of the route configuration outside of the route-tree. Then stitch together your route configurations into a single cohesive route-tree that is then passed into the `createRouter` function.
 
 You can read more about [code-based routing](/docs/framework/react/guide/code-based-routing) to see how to define your routes in this way.
 
