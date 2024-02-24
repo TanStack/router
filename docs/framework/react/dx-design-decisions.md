@@ -55,6 +55,7 @@ function App() {
   );
 }
 ```
+
 And since this would mean that you'd have to manually type the `to` prop of the `<Link>` component and wouldn't catch any errors until runtime, it's not a viable option.
 
 > Maybe I could define my routes as a tree of nested objects?
@@ -91,7 +92,6 @@ You can read more about [code-based routing](/docs/framework/react/guide/code-ba
 
 > 🙋🏼 Finding Code-based routing to be a bit too cumbersome? See why [file-based routing](#3-why-is-file-based-routing-the-preferred-way-to-define-routes) is the preferred way to define your routes.
 
-
 ## 2. Declaring the Router instance for type inference
 
 > Why do I have to declare the `Router`?
@@ -105,7 +105,7 @@ There were two approaches we considered for this:
 1. **Imports**: You could import the `Router` instance from the file where you created it and use it directly in your components.
 
 ```tsx
-import { router } from '@/config/router';
+import { router } from '@/src/app'
 export const PostsIdLink = () => {
  return (
    <Link<typeof router>
@@ -117,13 +117,15 @@ export const PostsIdLink = () => {
  )
 }
 ```
+
 A downside to this approach is that you'd have to import the entire `Router` instance into every file where you want to use it. This can lead to increased bundle sizes and can be cumbersome to manage, and only get worse as your application grows and you use more features of the router.
 
 2. **Module declaration**: You can use Typescript's module declaration to declare the `Router` instance as a module that can be used for type inference anywhere in your application without having to import it.
 
 You'll do this once in your application.
+
 ```tsx
-// src/config/router
+// src/app.tsx
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
@@ -131,6 +133,7 @@ declare module '@tanstack/react-router' {
 }
 ```
 And then you can benefit from its auto-complete anywhere in your app without having to import it.
+
 ```tsx
 export const PostsIdLink = () => {
  return (
