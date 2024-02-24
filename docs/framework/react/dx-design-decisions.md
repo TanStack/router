@@ -108,12 +108,12 @@ There were two approaches we considered for this:
 import { router } from '@/src/app'
 export const PostsIdLink = () => {
  return (
-   <Link<typeof router>
-     to='/posts/$postId'
-     params={{ postId: '123' }}
-   >
-     Go to post 123
-   </Link>
+    <Link<typeof router>
+      to='/posts/$postId'
+      params={{ postId: '123' }}
+    >
+      Go to post 123
+    </Link>
  )
 }
 ```
@@ -132,17 +132,19 @@ declare module '@tanstack/react-router' {
   }
 }
 ```
+
 And then you can benefit from its auto-complete anywhere in your app without having to import it.
 
 ```tsx
 export const PostsIdLink = () => {
  return (
-   <Link
-     to='/posts/$postId'
-     params={{ postId: '123' }}
-   >
-     Go to post 123
-   </Link>
+    <Link
+      to='/posts/$postId'
+      // ^? Typescript will auto-complete this for you
+      params={{ postId: '123' }} // and this too!
+    >
+      Go to post 123
+    </Link>
  )
 }
 ```
