@@ -25,24 +25,25 @@ type StyledComponent<T> = T extends 'button'
         ? React.HTMLAttributes<HTMLElementTagNameMap[T]>
         : never
 
-export function getStatusColor(match: AnyRouteMatch, theme: Theme) {
-  return match.status === 'pending' || match.isFetching
-    ? theme.active
-    : match.status === 'error'
-      ? theme.danger
-      : match.status === 'success'
-        ? theme.success
-        : theme.gray
+export function getStatusColor(match: AnyRouteMatch) {
+  return match.status === 'success' && match.isFetching
+    ? 'blue'
+    : match.status === 'pending'
+      ? 'yellow'
+      : match.status === 'error'
+        ? 'red'
+        : match.status === 'success'
+          ? 'green'
+          : 'gray'
 }
 
 export function getRouteStatusColor(
   matches: AnyRouteMatch[],
   route: AnyRoute | AnyRootRoute,
-  theme: Theme,
 ) {
   const found = matches.find((d) => d.routeId === route.id)
-  if (!found) return theme.gray
-  return getStatusColor(found, theme)
+  if (!found) return 'gray'
+  return getStatusColor(found)
 }
 
 type Styles =

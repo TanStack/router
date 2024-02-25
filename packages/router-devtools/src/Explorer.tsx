@@ -1,48 +1,8 @@
 import * as React from 'react'
-
+import { css } from 'goober'
+import { clsx as cx } from 'clsx'
+import { tokens } from './tokens'
 import { displayValue, styled } from './utils'
-
-export const Entry = styled('div', {
-  fontFamily: 'Menlo, monospace',
-  fontSize: '.7rem',
-  lineHeight: '1.7',
-  outline: 'none',
-  wordBreak: 'break-word',
-})
-
-export const Label = styled('span', {
-  color: 'white',
-})
-
-export const LabelButton = styled('button', {
-  cursor: 'pointer',
-  color: 'white',
-})
-
-export const ExpandButton = styled('button', {
-  cursor: 'pointer',
-  color: 'inherit',
-  font: 'inherit',
-  outline: 'inherit',
-  background: 'transparent',
-  border: 'none',
-  padding: 0,
-})
-
-export const Value = styled('span', (_props, theme) => ({
-  color: theme.danger,
-}))
-
-export const SubEntries = styled('div', {
-  marginLeft: '.1em',
-  paddingLeft: '1em',
-  borderLeft: '2px solid rgba(0,0,0,.15)',
-})
-
-export const Info = styled('span', {
-  color: 'grey',
-  fontSize: '.7em',
-})
 
 type ExpanderProps = {
   expanded: boolean
@@ -50,15 +10,23 @@ type ExpanderProps = {
 }
 
 export const Expander = ({ expanded, style = {} }: ExpanderProps) => (
-  <span
-    style={{
-      display: 'inline-block',
-      transition: 'all .1s ease',
-      transform: `rotate(${expanded ? 90 : 0}deg) ${style.transform || ''}`,
-      ...style,
-    }}
-  >
-    ▶
+  <span className={styles.expander}>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="12"
+      height="12"
+      fill="none"
+      viewBox="0 0 24 24"
+      className={cx(styles.expanderIcon(expanded))}
+    >
+      <path
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M9 18l6-6-6-6"
+      ></path>
+    </svg>
   </span>
 )
 
@@ -122,47 +90,55 @@ export const DefaultRenderer: Renderer = ({
   }
 
   return (
-    <Entry>
+    <div className={styles.entry}>
       {subEntryPages.length ? (
         <>
-          <ExpandButton onClick={() => toggleExpanded()}>
-            <Expander expanded={expanded} /> {label}{' '}
-            <Info>
+          <button
+            className={styles.expandButton}
+            onClick={() => toggleExpanded()}
+          >
+            <Expander expanded={expanded} />
+            {label}
+            <span className={styles.info}>
               {String(type).toLowerCase() === 'iterable' ? '(Iterable) ' : ''}
               {subEntries.length} {subEntries.length > 1 ? `items` : `item`}
-            </Info>
-          </ExpandButton>
+            </span>
+          </button>
           {expanded ? (
             subEntryPages.length === 1 ? (
-              <SubEntries>
+              <div className={styles.subEntries}>
                 {subEntries.map((entry, index) => handleEntry(entry))}
-              </SubEntries>
+              </div>
             ) : (
-              <SubEntries>
-                {subEntryPages.map((entries, index) => (
-                  <div key={index}>
-                    <Entry>
-                      <LabelButton
-                        onClick={() =>
-                          setExpandedPages((old) =>
-                            old.includes(index)
-                              ? old.filter((d) => d !== index)
-                              : [...old, index],
-                          )
-                        }
-                      >
-                        <Expander expanded={expanded} /> [{index * pageSize} ...{' '}
-                        {index * pageSize + pageSize - 1}]
-                      </LabelButton>
-                      {expandedPages.includes(index) ? (
-                        <SubEntries>
-                          {entries.map((entry) => handleEntry(entry))}
-                        </SubEntries>
-                      ) : null}
-                    </Entry>
-                  </div>
-                ))}
-              </SubEntries>
+              <div className={styles.subEntries}>
+                {subEntryPages.map((entries, index) => {
+                  return (
+                    <div key={index}>
+                      <div className={styles.entry}>
+                        <button
+                          className={cx(styles.labelButton, 'labelButton')}
+                          onClick={() =>
+                            setExpandedPages((old) =>
+                              old.includes(index)
+                                ? old.filter((d) => d !== index)
+                                : [...old, index],
+                            )
+                          }
+                        >
+                          <Expander expanded={expandedPages.includes(index)} />{' '}
+                          [{index * pageSize} ...{' '}
+                          {index * pageSize + pageSize - 1}]
+                        </button>
+                        {expandedPages.includes(index) ? (
+                          <div className={styles.subEntries}>
+                            {entries.map((entry) => handleEntry(entry))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             )
           ) : null}
         </>
@@ -173,13 +149,9 @@ export const DefaultRenderer: Renderer = ({
             label={
               <button
                 onClick={refreshValueSnapshot}
-                style={{
-                  appearance: 'none',
-                  border: '0',
-                  background: 'transparent',
-                }}
+                className={styles.refreshValueBtn}
               >
-                <Label>{label}</Label> 🔄{' '}
+                <span>{label}</span> 🔄{' '}
               </button>
             }
             value={valueSnapshot}
@@ -188,10 +160,11 @@ export const DefaultRenderer: Renderer = ({
         </>
       ) : (
         <>
-          <Label>{label}:</Label> <Value>{displayValue(value)}</Value>
+          <span>{label}:</span>{' '}
+          <span className={styles.value}>{displayValue(value)}</span>
         </>
       )}
-    </Entry>
+    </div>
   )
 }
 
@@ -293,3 +266,85 @@ export default function Explorer({
     ...rest,
   })
 }
+
+const stylesFactory = () => {
+  const { colors, font, size, alpha, shadow, border } = tokens
+  const { fontFamily, lineHeight, size: fontSize } = font
+
+  return {
+    entry: css`
+      font-family: ${fontFamily.mono};
+      font-size: ${fontSize.xs};
+      line-height: ${lineHeight.sm};
+      outline: none;
+      word-break: break-word;
+    `,
+    labelButton: css`
+      cursor: pointer;
+      color: inherit;
+      font: inherit;
+      outline: inherit;
+      background: transparent;
+      border: none;
+      padding: 0;
+    `,
+    expander: css`
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: ${size[3]};
+      height: ${size[3]};
+      padding-left: 3px;
+      box-sizing: content-box;
+    `,
+    expanderIcon: (expanded: boolean) => {
+      if (expanded) {
+        return css`
+          transform: rotate(90deg);
+          transition: transform 0.1s ease;
+        `
+      }
+      return css`
+        transform: rotate(0deg);
+        transition: transform 0.1s ease;
+      `
+    },
+    expandButton: css`
+      display: flex;
+      gap: ${size[1]};
+      align-items: center;
+      cursor: pointer;
+      color: inherit;
+      font: inherit;
+      outline: inherit;
+      background: transparent;
+      border: none;
+      padding: 0;
+    `,
+    value: css`
+      color: ${colors.purple[400]};
+    `,
+    subEntries: css`
+      margin-left: ${size[2]};
+      padding-left: ${size[2]};
+      border-left: 2px solid ${colors.darkGray[400]};
+    `,
+    info: css`
+      color: ${colors.gray[500]};
+      font-size: ${fontSize['2xs']};
+      padding-left: ${size[1]};
+    `,
+    refreshValueBtn: css`
+      appearance: none;
+      border: 0;
+      cursor: pointer;
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      font-family: ${fontFamily.mono};
+      font-size: ${fontSize.xs};
+    `,
+  }
+}
+
+const styles = stylesFactory()
