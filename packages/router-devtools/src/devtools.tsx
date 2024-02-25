@@ -102,9 +102,9 @@ const isServer = typeof window === 'undefined'
 function Logo(props: React.HTMLAttributes<HTMLButtonElement>) {
   const { className, ...rest } = props
   return (
-    <button {...rest} className={cx(styles.logo, className)}>
-      <div className={styles.tanstackLogo}>TANSTACK</div>
-      <div className={styles.routerLogo}>React Router v1</div>
+    <button {...rest} className={cx(getStyles().logo, className)}>
+      <div className={getStyles().tanstackLogo}>TANSTACK</div>
+      <div className={getStyles().routerLogo}>React Router v1</div>
     </button>
   )
 }
@@ -135,7 +135,7 @@ export function TanStackRouterDevtools({
   containerElement: Container = 'footer',
   router,
 }: DevtoolsOptions): React.ReactElement | null {
-  const rootRef = React.useRef<HTMLDivElement>(null)
+  const [rootEl, setRootEl] = React.useState<HTMLDivElement>(null!)
   const panelRef = React.useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useLocalStorage(
     'tanstackRouterDevtoolsOpen',
@@ -191,14 +191,14 @@ export function TanStackRouterDevtools({
     setIsResolvedOpen(isOpen ?? false)
   }, [isOpen, isResolvedOpen, setIsResolvedOpen])
 
-  React[isServer ? 'useEffect' : 'useLayoutEffect'](() => {
+  React.useEffect(() => {
     if (isResolvedOpen) {
-      const previousValue = rootRef.current?.parentElement?.style.paddingBottom
+      const previousValue = rootEl?.parentElement?.style.paddingBottom
 
       const run = () => {
         const containerHeight = panelRef.current?.getBoundingClientRect().height
-        if (rootRef.current?.parentElement) {
-          rootRef.current.parentElement.style.paddingBottom = `${containerHeight}px`
+        if (rootEl?.parentElement) {
+          rootEl.parentElement.style.paddingBottom = `${containerHeight}px`
         }
       }
 
@@ -209,11 +209,8 @@ export function TanStackRouterDevtools({
 
         return () => {
           window.removeEventListener('resize', run)
-          if (
-            rootRef.current?.parentElement &&
-            typeof previousValue === 'string'
-          ) {
-            rootRef.current.parentElement.style.paddingBottom = previousValue
+          if (rootEl?.parentElement && typeof previousValue === 'string') {
+            rootEl.parentElement.style.paddingBottom = previousValue
           }
         }
       }
@@ -221,13 +218,13 @@ export function TanStackRouterDevtools({
     return
   }, [isResolvedOpen])
 
-  React[isServer ? 'useEffect' : 'useLayoutEffect'](() => {
-    if (rootRef.current) {
-      const el = rootRef.current
+  React.useEffect(() => {
+    if (rootEl) {
+      const el = rootEl
       const fontSize = getComputedStyle(el).fontSize
       el.style.setProperty('--tsrd-font-size', fontSize)
     }
-  }, [rootRef.current])
+  }, [rootEl])
 
   const { style: panelStyle = {}, ...otherPanelProps } = panelProps
 
@@ -249,7 +246,7 @@ export function TanStackRouterDevtools({
   const resolvedHeight = devtoolsHeight ?? 500
 
   return (
-    <Container ref={rootRef} className="TanStackRouterDevtools">
+    <Container ref={setRootEl} className="TanStackRouterDevtools">
       <DevtoolsOnCloseContext.Provider
         value={{
           onCloseClick: onCloseClick ?? (() => {}),
@@ -260,10 +257,10 @@ export function TanStackRouterDevtools({
           {...otherPanelProps}
           router={router}
           className={cx(
-            styles.devtoolsPanelContainer,
-            styles.devtoolsPanelContainerVisibility(!!isOpen),
-            styles.devtoolsPanelContainerResizing(isResizing),
-            styles.devtoolsPanelContainerAnimation(
+            getStyles().devtoolsPanelContainer,
+            getStyles().devtoolsPanelContainerVisibility(!!isOpen),
+            getStyles().devtoolsPanelContainerResizing(isResizing),
+            getStyles().devtoolsPanelContainerAnimation(
               isResolvedOpen,
               resolvedHeight + 16,
             ),
@@ -287,21 +284,21 @@ export function TanStackRouterDevtools({
           onToggleClick && onToggleClick(e)
         }}
         className={cx(
-          styles.mainCloseBtn,
-          styles.mainCloseBtnPosition(position),
-          styles.mainCloseBtnAnimation(!isButtonClosed),
+          getStyles().mainCloseBtn,
+          getStyles().mainCloseBtnPosition(position),
+          getStyles().mainCloseBtnAnimation(!isButtonClosed),
         )}
       >
-        <div className={styles.mainCloseBtnIconContainer}>
-          <div className={styles.mainCloseBtnIconOuter}>
+        <div className={getStyles().mainCloseBtnIconContainer}>
+          <div className={getStyles().mainCloseBtnIconOuter}>
             <TanStackLogo />
           </div>
-          <div className={styles.mainCloseBtnIconInner}>
+          <div className={getStyles().mainCloseBtnIconInner}>
             <TanStackLogo />
           </div>
         </div>
-        <div className={styles.mainCloseBtnDivider}>-</div>
-        <div className={styles.routerLogoCloseButton}>React Router</div>
+        <div className={getStyles().mainCloseBtnDivider}>-</div>
+        <div className={getStyles().routerLogoCloseButton}>React Router</div>
       </button>
     </Container>
   )
@@ -355,26 +352,26 @@ function RouteComp({
           }
         }}
         className={cx(
-          styles.routesRowContainer(route.id === activeId, !!match),
+          getStyles().routesRowContainer(route.id === activeId, !!match),
         )}
       >
         <div
           className={cx(
-            styles.matchIndicator(getRouteStatusColor(matches, route)),
+            getStyles().matchIndicator(getRouteStatusColor(matches, route)),
           )}
         />
-        <div className={cx(styles.routesRow(!!match))}>
+        <div className={cx(getStyles().routesRow(!!match))}>
           <div>
-            <code className={styles.code}>
+            <code className={getStyles().code}>
               {isRoot ? '__root__' : route.path || trimPath(route.id)}{' '}
             </code>
-            <code className={styles.routeParamInfo}>{param}</code>
+            <code className={getStyles().routeParamInfo}>{param}</code>
           </div>
           <AgeTicker match={match} />
         </div>
       </div>
       {(route.children as Route[])?.length ? (
-        <div className={styles.nestedRouteRow(!!isRoot)}>
+        <div className={getStyles().nestedRouteRow(!!isRoot)}>
           {[...(route.children as Route[])]
             .sort((a, b) => {
               return a.rank - b.rank
@@ -453,17 +450,20 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     <div
       ref={ref}
       className={cx(
-        styles.devtoolsPanel,
+        getStyles().devtoolsPanel,
         'TanStackRouterDevtoolsPanel',
         className,
       )}
       {...otherPanelProps}
     >
       {handleDragStart ? (
-        <div className={styles.dragHandle} onMouseDown={handleDragStart}></div>
+        <div
+          className={getStyles().dragHandle}
+          onMouseDown={handleDragStart}
+        ></div>
       ) : null}
       <button
-        className={styles.panelCloseBtn}
+        className={getStyles().panelCloseBtn}
         onClick={(e) => {
           setIsOpen(false)
           onCloseClick(e)
@@ -475,7 +475,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           height="6"
           fill="none"
           viewBox="0 0 10 6"
-          className={styles.panelCloseBtnIcon}
+          className={getStyles().panelCloseBtnIcon}
         >
           <path
             stroke="currentColor"
@@ -486,8 +486,8 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           ></path>
         </svg>
       </button>
-      <div className={styles.firstContainer}>
-        <div className={styles.row}>
+      <div className={getStyles().firstContainer}>
+        <div className={getStyles().row}>
           <Logo
             aria-hidden
             onClick={(e) => {
@@ -496,8 +496,8 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             }}
           />
         </div>
-        <div className={styles.routerExplorerContainer}>
-          <div className={styles.routerExplorer}>
+        <div className={getStyles().routerExplorerContainer}>
+          <div className={getStyles().routerExplorer}>
             <Explorer
               label="Router"
               value={Object.fromEntries(
@@ -544,33 +544,35 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           </div>
         </div>
       </div>
-      <div className={styles.secondContainer}>
-        <div className={styles.matchesContainer}>
-          <div className={styles.detailsHeader}>
+      <div className={getStyles().secondContainer}>
+        <div className={getStyles().matchesContainer}>
+          <div className={getStyles().detailsHeader}>
             <span>Pathname</span>
             {routerState.location.maskedLocation ? (
-              <div className={styles.maskedBadgeContainer}>
-                <span className={styles.maskedBadge}>masked</span>
+              <div className={getStyles().maskedBadgeContainer}>
+                <span className={getStyles().maskedBadge}>masked</span>
               </div>
             ) : null}
           </div>
-          <div className={styles.detailsContent}>
+          <div className={getStyles().detailsContent}>
             <code>{routerState.location.pathname}</code>
             {routerState.location.maskedLocation ? (
-              <code className={styles.maskedLocation}>
+              <code className={getStyles().maskedLocation}>
                 {routerState.location.maskedLocation.pathname}
               </code>
             ) : null}
           </div>
-          <div className={styles.detailsHeader}>
-            <div className={styles.routeMatchesToggle}>
+          <div className={getStyles().detailsHeader}>
+            <div className={getStyles().routeMatchesToggle}>
               <button
                 type="button"
                 onClick={() => {
                   setShowMatches(false)
                 }}
                 disabled={!showMatches}
-                className={cx(styles.routeMatchesToggleBtn(!showMatches, true))}
+                className={cx(
+                  getStyles().routeMatchesToggleBtn(!showMatches, true),
+                )}
               >
                 Routes
               </button>
@@ -581,13 +583,13 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 }}
                 disabled={showMatches}
                 className={cx(
-                  styles.routeMatchesToggleBtn(!!showMatches, false),
+                  getStyles().routeMatchesToggleBtn(!!showMatches, false),
                 )}
               >
                 Matches
               </button>
             </div>
-            <div className={styles.detailsHeaderInfo}>
+            <div className={getStyles().detailsHeaderInfo}>
               <div>age / staleTime / gcTime</div>
             </div>
           </div>
@@ -612,16 +614,16 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                     onClick={() =>
                       setActiveId(activeId === match.id ? '' : match.id)
                     }
-                    className={cx(styles.matchRow(match === activeMatch))}
+                    className={cx(getStyles().matchRow(match === activeMatch))}
                   >
                     <div
                       className={cx(
-                        styles.matchIndicator(getStatusColor(match)),
+                        getStyles().matchIndicator(getStatusColor(match)),
                       )}
                     />
 
                     <code
-                      className={styles.matchID}
+                      className={getStyles().matchID}
                     >{`${match.routeId === '__root__' ? '__root__' : match.pathname}`}</code>
                     <AgeTicker match={match} />
                   </div>
@@ -631,10 +633,10 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           )}
         </div>
         {routerState.cachedMatches?.length ? (
-          <div className={styles.cachedMatchesContainer}>
-            <div className={styles.detailsHeader}>
+          <div className={getStyles().cachedMatchesContainer}>
+            <div className={getStyles().detailsHeader}>
               <div>Cached Matches</div>
-              <div className={styles.detailsHeaderInfo}>
+              <div className={getStyles().detailsHeaderInfo}>
                 age / staleTime / gcTime
               </div>
             </div>
@@ -648,15 +650,15 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                     onClick={() =>
                       setActiveId(activeId === match.id ? '' : match.id)
                     }
-                    className={cx(styles.matchRow(match === activeMatch))}
+                    className={cx(getStyles().matchRow(match === activeMatch))}
                   >
                     <div
                       className={cx(
-                        styles.matchIndicator(getStatusColor(match)),
+                        getStyles().matchIndicator(getStatusColor(match)),
                       )}
                     />
 
-                    <code className={styles.matchID}>{`${match.id}`}</code>
+                    <code className={getStyles().matchID}>{`${match.id}`}</code>
 
                     <AgeTicker match={match} />
                   </div>
@@ -667,12 +669,12 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
         ) : null}
       </div>
       {activeMatch ? (
-        <div className={styles.thirdContainer}>
-          <div className={styles.detailsHeader}>Match Details</div>
+        <div className={getStyles().thirdContainer}>
+          <div className={getStyles().detailsHeader}>Match Details</div>
           <div>
-            <div className={styles.matchDetails}>
+            <div className={getStyles().matchDetails}>
               <div
-                className={styles.matchStatus(
+                className={getStyles().matchStatus(
                   activeMatch.status,
                   activeMatch.isFetching,
                 )}
@@ -683,15 +685,15 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                     : activeMatch.status}
                 </div>
               </div>
-              <div className={styles.matchDetailsInfoLabel}>
+              <div className={getStyles().matchDetailsInfoLabel}>
                 <div>ID:</div>
-                <div className={styles.matchDetailsInfo}>
+                <div className={getStyles().matchDetailsInfo}>
                   <code>{activeMatch.id}</code>
                 </div>
               </div>
-              <div className={styles.matchDetailsInfoLabel}>
+              <div className={getStyles().matchDetailsInfoLabel}>
                 <div>State:</div>
-                <div className={styles.matchDetailsInfo}>
+                <div className={getStyles().matchDetailsInfo}>
                   {routerState.pendingMatches?.find(
                     (d) => d.id === activeMatch.id,
                   )
@@ -701,9 +703,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                       : 'Cached'}
                 </div>
               </div>
-              <div className={styles.matchDetailsInfoLabel}>
+              <div className={getStyles().matchDetailsInfoLabel}>
                 <div>Last Updated:</div>
-                <div className={styles.matchDetailsInfo}>
+                <div className={getStyles().matchDetailsInfo}>
                   {activeMatch.updatedAt
                     ? new Date(
                         activeMatch.updatedAt as number,
@@ -715,8 +717,8 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           </div>
           {activeMatch.loaderData ? (
             <>
-              <div className={styles.detailsHeader}>Loader Data</div>
-              <div className={styles.detailsContent}>
+              <div className={getStyles().detailsHeader}>Loader Data</div>
+              <div className={getStyles().detailsContent}>
                 <Explorer
                   label="loaderData"
                   value={activeMatch.loaderData}
@@ -725,16 +727,16 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               </div>
             </>
           ) : null}
-          <div className={styles.detailsHeader}>Explorer</div>
-          <div className={styles.detailsContent}>
+          <div className={getStyles().detailsHeader}>Explorer</div>
+          <div className={getStyles().detailsContent}>
             <Explorer label="Match" value={activeMatch} defaultExpanded={{}} />
           </div>
         </div>
       ) : null}
       {hasSearch ? (
-        <div className={styles.fourthContainer}>
-          <div className={styles.detailsHeader}>Search Params</div>
-          <div className={styles.detailsContent}>
+        <div className={getStyles().fourthContainer}>
+          <div className={getStyles().detailsHeader}>Search Params</div>
+          <div className={getStyles().detailsContent}>
             <Explorer
               value={routerState.location.search || {}}
               defaultExpanded={Object.keys(
@@ -786,7 +788,7 @@ function AgeTicker({ match }: { match?: AnyRouteMatch }) {
     route.options.gcTime ?? router.options.defaultGcTime ?? 30 * 60 * 1000
 
   return (
-    <div className={cx(styles.ageTicker(age > staleTime))}>
+    <div className={cx(getStyles().ageTicker(age > staleTime))}>
       <div>{formatTime(age)}</div>
       <div>/</div>
       <div>{formatTime(staleTime)}</div>
@@ -1378,4 +1380,11 @@ const stylesFactory = () => {
   }
 }
 
-const styles = stylesFactory()
+let _styles: ReturnType<typeof stylesFactory> | null = null
+
+function getStyles() {
+  if (_styles) return _styles
+  _styles = stylesFactory()
+
+  return _styles
+}

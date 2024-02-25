@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { css } from 'goober'
 import { clsx as cx } from 'clsx'
 import { tokens } from './tokens'
 import { displayValue, styled } from './utils'
+import { css } from 'goober'
 
 type ExpanderProps = {
   expanded: boolean
@@ -10,14 +10,14 @@ type ExpanderProps = {
 }
 
 export const Expander = ({ expanded, style = {} }: ExpanderProps) => (
-  <span className={styles.expander}>
+  <span className={getStyles().expander}>
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width="12"
       height="12"
       fill="none"
       viewBox="0 0 24 24"
-      className={cx(styles.expanderIcon(expanded))}
+      className={cx(getStyles().expanderIcon(expanded))}
     >
       <path
         stroke="currentColor"
@@ -90,33 +90,33 @@ export const DefaultRenderer: Renderer = ({
   }
 
   return (
-    <div className={styles.entry}>
+    <div className={getStyles().entry}>
       {subEntryPages.length ? (
         <>
           <button
-            className={styles.expandButton}
+            className={getStyles().expandButton}
             onClick={() => toggleExpanded()}
           >
             <Expander expanded={expanded} />
             {label}
-            <span className={styles.info}>
+            <span className={getStyles().info}>
               {String(type).toLowerCase() === 'iterable' ? '(Iterable) ' : ''}
               {subEntries.length} {subEntries.length > 1 ? `items` : `item`}
             </span>
           </button>
           {expanded ? (
             subEntryPages.length === 1 ? (
-              <div className={styles.subEntries}>
+              <div className={getStyles().subEntries}>
                 {subEntries.map((entry, index) => handleEntry(entry))}
               </div>
             ) : (
-              <div className={styles.subEntries}>
+              <div className={getStyles().subEntries}>
                 {subEntryPages.map((entries, index) => {
                   return (
                     <div key={index}>
-                      <div className={styles.entry}>
+                      <div className={getStyles().entry}>
                         <button
-                          className={cx(styles.labelButton, 'labelButton')}
+                          className={cx(getStyles().labelButton, 'labelButton')}
                           onClick={() =>
                             setExpandedPages((old) =>
                               old.includes(index)
@@ -130,7 +130,7 @@ export const DefaultRenderer: Renderer = ({
                           {index * pageSize + pageSize - 1}]
                         </button>
                         {expandedPages.includes(index) ? (
-                          <div className={styles.subEntries}>
+                          <div className={getStyles().subEntries}>
                             {entries.map((entry) => handleEntry(entry))}
                           </div>
                         ) : null}
@@ -149,7 +149,7 @@ export const DefaultRenderer: Renderer = ({
             label={
               <button
                 onClick={refreshValueSnapshot}
-                className={styles.refreshValueBtn}
+                className={getStyles().refreshValueBtn}
               >
                 <span>{label}</span> 🔄{' '}
               </button>
@@ -161,7 +161,7 @@ export const DefaultRenderer: Renderer = ({
       ) : (
         <>
           <span>{label}:</span>{' '}
-          <span className={styles.value}>{displayValue(value)}</span>
+          <span className={getStyles().value}>{displayValue(value)}</span>
         </>
       )}
     </div>
@@ -347,4 +347,11 @@ const stylesFactory = () => {
   }
 }
 
-const styles = stylesFactory()
+let _styles: ReturnType<typeof stylesFactory> | null = null
+
+function getStyles() {
+  if (_styles) return _styles
+  _styles = stylesFactory()
+
+  return _styles
+}
