@@ -185,6 +185,8 @@ export function TanStackRouterDevtools({
     document.addEventListener('mouseup', unsub)
   }
 
+  const isButtonClosed = isOpen ?? false
+
   React.useEffect(() => {
     setIsResolvedOpen(isOpen ?? false)
   }, [isOpen, isResolvedOpen, setIsResolvedOpen])
@@ -219,6 +221,14 @@ export function TanStackRouterDevtools({
     return
   }, [isResolvedOpen])
 
+  React[isServer ? 'useEffect' : 'useLayoutEffect'](() => {
+    if (rootRef.current) {
+      const el = rootRef.current
+      const fontSize = getComputedStyle(el).fontSize
+      el.style.setProperty('--tsrd-font-size', fontSize)
+    }
+  }, [rootRef.current])
+
   const { style: panelStyle = {}, ...otherPanelProps } = panelProps
 
   const {
@@ -239,13 +249,7 @@ export function TanStackRouterDevtools({
   const resolvedHeight = devtoolsHeight ?? 500
 
   return (
-    <Container
-      ref={rootRef}
-      className="TanStackRouterDevtools"
-      style={{
-        '--tsrd-font-size': '16px',
-      }}
-    >
+    <Container ref={rootRef} className="TanStackRouterDevtools">
       <DevtoolsOnCloseContext.Provider
         value={{
           onCloseClick: onCloseClick ?? (() => {}),
@@ -274,32 +278,31 @@ export function TanStackRouterDevtools({
         />
       </DevtoolsOnCloseContext.Provider>
 
-      {!isResolvedOpen && (
-        <button
-          type="button"
-          {...otherToggleButtonProps}
-          aria-label="Open TanStack Router Devtools"
-          onClick={(e) => {
-            setIsOpen(true)
-            onToggleClick && onToggleClick(e)
-          }}
-          className={cx(
-            styles.mainCloseBtn,
-            styles.mainCloseBtnPosition(position),
-          )}
-        >
-          <div className={styles.mainCloseBtnIconContainer}>
-            <div className={styles.mainCloseBtnIconOuter}>
-              <TanStackLogo />
-            </div>
-            <div className={styles.mainCloseBtnIconInner}>
-              <TanStackLogo />
-            </div>
+      <button
+        type="button"
+        {...otherToggleButtonProps}
+        aria-label="Open TanStack Router Devtools"
+        onClick={(e) => {
+          setIsOpen(true)
+          onToggleClick && onToggleClick(e)
+        }}
+        className={cx(
+          styles.mainCloseBtn,
+          styles.mainCloseBtnPosition(position),
+          styles.mainCloseBtnAnimation(!isButtonClosed),
+        )}
+      >
+        <div className={styles.mainCloseBtnIconContainer}>
+          <div className={styles.mainCloseBtnIconOuter}>
+            <TanStackLogo />
           </div>
-          <div className={styles.mainCloseBtnDivider}>-</div>
-          <div className={styles.routerLogoCloseButton}>React Router</div>
-        </button>
-      )}
+          <div className={styles.mainCloseBtnIconInner}>
+            <TanStackLogo />
+          </div>
+        </div>
+        <div className={styles.mainCloseBtnDivider}>-</div>
+        <div className={styles.routerLogoCloseButton}>React Router</div>
+      </button>
     </Container>
   )
 }
@@ -1258,6 +1261,7 @@ const stylesFactory = () => {
       border: 1px solid ${colors.gray[500]};
       font-size: ${font.size.xs};
       cursor: pointer;
+      transition: all 0.25s ease-out;
 
       &:hover {
         background: ${colors.darkGray[500]};
@@ -1277,6 +1281,20 @@ const stylesFactory = () => {
           : ''}
       `
       return base
+    },
+    mainCloseBtnAnimation: (isOpen: boolean) => {
+      if (isOpen) {
+        return css`
+          opacity: 1;
+          pointer-events: auto;
+          visibility: visible;
+        `
+      }
+      return css`
+        opacity: 0;
+        pointer-events: none;
+        visibility: hidden;
+      `
     },
     routerLogoCloseButton: css`
       font-weight: ${font.weight.semibold};

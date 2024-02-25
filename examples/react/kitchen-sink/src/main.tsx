@@ -98,7 +98,7 @@ function RootComponent() {
           </div>
         </div>
       </div>
-      <TanStackRouterDevtools position="bottom-right" />
+      <TanStackRouterDevtools position="top-right" />
     </div>
   )
 }
