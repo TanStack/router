@@ -14,9 +14,7 @@ export function useSearch<
         RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'],
         RootSearchSchema
       >
-    : Expand<
-        Partial<Omit<FullSearchSchema<TRouteTree>, keyof RootSearchSchema>>
-      >,
+    : Partial<Omit<FullSearchSchema<TRouteTree>, keyof RootSearchSchema>>,
   TSelected = TSearch,
 >(
   opts: StrictOrFrom<TFrom, TReturnIntersection> & {
