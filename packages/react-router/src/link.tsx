@@ -74,46 +74,53 @@ export type RelativeToPathAutoComplete<
   AllPaths extends string,
   TFrom extends string,
   TTo extends string,
-  SplitPaths extends string[] = Split<AllPaths, false>,
 > = TTo extends `..${infer _}`
-  ? SplitPaths extends [
-      ...Split<ResolveRelativePath<TFrom, TTo>, false>,
-      ...infer TToRest,
-    ]
-    ? `${CleanPath<
-        Join<
-          [
-            ...Split<TTo, false>,
-            ...(
-              | TToRest
-              | (Split<
-                  ResolveRelativePath<TFrom, TTo>,
-                  false
-                >['length'] extends 1
-                  ? never
-                  : ['../'])
-            ),
-          ]
-        >
-      >}`
+  ? Split<AllPaths, false> extends infer SplitPaths
+    ? SplitPaths extends [
+        ...Split<ResolveRelativePath<TFrom, TTo>, false>,
+        ...infer TToRest,
+      ]
+      ? `${CleanPath<
+          Join<
+            [
+              ...Split<TTo, false>,
+              ...(
+                | TToRest
+                | (Split<
+                    ResolveRelativePath<TFrom, TTo>,
+                    false
+                  >['length'] extends 1
+                    ? never
+                    : ['../'])
+              ),
+            ]
+          >
+        >}`
+      : never
     : never
   : TTo extends `./${infer RestTTo}`
-    ? SplitPaths extends [
-        ...Split<TFrom, false>,
-        ...Split<RestTTo, false>,
-        ...infer RestPath,
-      ]
-      ? `${TTo}${Join<RestPath>}`
+    ? Split<AllPaths, false> extends infer SplitPaths
+      ? SplitPaths extends [
+          ...Split<TFrom, false>,
+          ...Split<RestTTo, false>,
+          ...infer RestPath,
+        ]
+        ? `${TTo}${Join<RestPath>}`
+        : never
       : never
     :
-        | (TFrom extends `/`
-            ? never
-            : SplitPaths extends [...Split<TFrom, false>, ...infer RestPath]
-              ? Join<RestPath> extends { length: 0 }
-                ? never
-                : './'
-              : never)
-        | (TFrom extends `/` ? never : '../')
+        | (string extends TFrom
+            ? '/'
+            : TFrom extends `/`
+              ? never
+              : Split<AllPaths, false> extends infer SplitPaths
+                ? SplitPaths extends [...Split<TFrom, false>, ...infer RestPath]
+                  ? Join<RestPath> extends { length: 0 }
+                    ? never
+                    : './'
+                  : never
+                : never)
+        | (string extends TFrom ? '../' : TFrom extends `/` ? never : '../')
         | AllPaths
 
 export type NavigateOptions<
