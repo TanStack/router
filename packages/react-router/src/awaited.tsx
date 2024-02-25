@@ -99,8 +99,8 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
 
 export function Await<T>(
   props: AwaitOptions<T> & {
-    fallback?: JSX.Element
-    children: (result: T) => JSX.Element
+    fallback?: React.ReactNode
+    children: (result: T) => React.ReactNode
   },
 ) {
   const inner = <AwaitInner {...props} />
@@ -112,8 +112,8 @@ export function Await<T>(
 
 function AwaitInner<T>(
   props: AwaitOptions<T> & {
-    fallback?: JSX.Element
-    children: (result: T) => JSX.Element
+    fallback?: React.ReactNode
+    children: (result: T) => React.ReactNode
   },
 ) {
   const awaited = useAwaited(props)

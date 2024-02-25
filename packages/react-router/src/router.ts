@@ -1,3 +1,4 @@
+import * as React from 'react'
 import {
   HistoryLocation,
   HistoryState,
@@ -133,8 +134,8 @@ export interface RouterOptions<
   hydrate?: (dehydrated: TDehydrated) => void
   routeMasks?: RouteMask<TRouteTree>[]
   unmaskOnReload?: boolean
-  Wrap?: (props: { children: any }) => JSX.Element
-  InnerWrap?: (props: { children: any }) => JSX.Element
+  Wrap?: (props: { children: any }) => React.ReactNode
+  InnerWrap?: (props: { children: any }) => React.ReactNode
   /**
    * @deprecated
    * Use `notFoundComponent` instead.

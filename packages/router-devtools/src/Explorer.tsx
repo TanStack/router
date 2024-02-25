@@ -68,7 +68,7 @@ export function chunkArray<T>(array: T[], size: number): T[][] {
   return result
 }
 
-type Renderer = (props: RendererProps) => JSX.Element
+type Renderer = (props: RendererProps) => React.ReactNode
 
 export const DefaultRenderer: Renderer = ({
   handleEntry,
@@ -168,7 +168,7 @@ export const DefaultRenderer: Renderer = ({
   )
 }
 
-type HandleEntryFn = (entry: Entry) => JSX.Element
+type HandleEntryFn = (entry: Entry) => React.ReactNode
 
 type ExplorerProps = Partial<RendererProps> & {
   renderer?: Renderer
