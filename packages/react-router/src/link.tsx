@@ -320,7 +320,7 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
             : Split<TTo> extends ['..', ...infer ToRest]
               ? Split<TFrom> extends [...infer FromRest, infer FromTail]
                 ? ToRest extends ['/']
-                  ? Join<[...FromRest, '/']>
+                  ? Join<['/', ...FromRest, '/']>
                   : ResolveRelativePath<Join<FromRest>, Join<ToRest>>
                 : never
               : Split<TTo> extends ['.', ...infer ToRest]
