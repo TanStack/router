@@ -180,7 +180,7 @@ type BeforeLoadFn<
   params: TAllParams
   context: TContext
   location: ParsedLocation
-  navigate: NavigateFn<AnyRoute>
+  navigate: NavigateFn
   buildLocation: BuildLocationFn<TParentRoute>
   cause: 'preload' | 'enter' | 'stay'
 }) => Promise<TRouteContextReturn> | TRouteContextReturn | void

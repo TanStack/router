@@ -1067,7 +1067,7 @@ export class Router<
     })
   }
 
-  navigate: NavigateFn<TRouteTree> = ({ from, to, ...rest }) => {
+  navigate: NavigateFn = ({ from, to, ...rest }) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 

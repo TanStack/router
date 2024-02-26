@@ -7,9 +7,9 @@ import { RoutePaths, RoutePathsAutoComplete } from './routeInfo'
 import { RegisteredRouter } from './router'
 
 export type UseNavigateResult<TDefaultFrom extends string> = <
+  TTo extends string,
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> | string = TDefaultFrom,
-  TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
 >({
