@@ -4,7 +4,7 @@ import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { Trim } from './fileRoute'
 import { AnyRoute, ReactNode, RootSearchSchema } from './route'
-import { RouteByPath, RouteIds, RoutePaths } from './routeInfo'
+import { RouteByPath, RoutePaths, RoutePathsAutoComplete } from './routeInfo'
 import { RegisteredRouter } from './router'
 import { LinkProps, UseLinkPropsOptions } from './useNavigate'
 import {
@@ -14,7 +14,6 @@ import {
   NoInfer,
   NonNullableUpdater,
   PickRequired,
-  StringLiteral,
   Updater,
   WithoutEmpty,
   deepEqual,
@@ -167,7 +166,7 @@ export type ToSubOptions<
   // State to pass to the history stack
   state?: true | NonNullableUpdater<HistoryState>
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
-  from?: StringLiteral<TFrom>
+  from?: RoutePathsAutoComplete<TRouteTree, TFrom>
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
 } & CheckPath<TRouteTree, NoInfer<TResolved>, {}> &
   SearchParamOptions<TRouteTree, TFrom, TTo, TResolved> &

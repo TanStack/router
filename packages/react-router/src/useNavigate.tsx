@@ -3,7 +3,7 @@ import { useMatch } from './Matches'
 import { useRouter } from './useRouter'
 import { LinkOptions, NavigateOptions } from './link'
 import { AnyRoute } from './route'
-import { RoutePaths } from './routeInfo'
+import { RoutePaths, RoutePathsAutoComplete } from './routeInfo'
 import { RegisteredRouter } from './router'
 
 export type UseNavigateResult<TDefaultFrom extends string> = <
@@ -20,10 +20,7 @@ export type UseNavigateResult<TDefaultFrom extends string> = <
 export function useNavigate<
   TDefaultFrom extends string = string,
 >(_defaultOpts?: {
-  from?:
-    | TDefaultFrom
-    | RoutePaths<RegisteredRouter['routeTree']>
-    | (string & {})
+  from?: RoutePathsAutoComplete<RegisteredRouter['routeTree'], TDefaultFrom>
 }) {
   const { navigate } = useRouter()
 
