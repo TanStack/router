@@ -38,8 +38,8 @@
               "to": "framework/react/migrate-from-react-router"
             },
             {
-              "label": "DX Design Decisions",
-              "to": "framework/react/dx-design-decisions"
+              "label": "Decisions on DX",
+              "to": "framework/react/decisions-on-dx"
             }
           ]
         },

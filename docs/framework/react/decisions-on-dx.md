@@ -1,5 +1,5 @@
 ---
-title: DX Design Decisions
+title: Decisions on Developer Experience
 ---
 
 When people first start using Tanstack Router, they often have a lot of questions that revolve around the following themes:
