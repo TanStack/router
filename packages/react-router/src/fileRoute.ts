@@ -327,7 +327,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
 
 export function createLazyRoute<
   TId extends RouteIds<RegisteredRouter['routeTree']>,
-  TRoute extends RouteById<RegisteredRouter['routeTree'], TId> = AnyRoute,
+  TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
 >(id: TId) {
   return (opts: LazyRouteOptions) => {
     return new LazyRoute<TRoute>({ id: id as any, ...opts })

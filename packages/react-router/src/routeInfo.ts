@@ -1,51 +1,21 @@
-import { AnyRoute, Route } from './route'
+import { AnyRoute } from './route'
 import { Expand, UnionToIntersection, UnionToTuple } from './utils'
 
-export type ParseRoute<TRouteTree extends AnyRoute> =
-  | TRouteTree
-  | ParseRouteChildren<TRouteTree>
-
-export type ParseRouteChildren<TRouteTree extends AnyRoute> =
-  TRouteTree extends Route<
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    infer TChildren,
-    any
-  >
-    ? unknown extends TChildren
-      ? never
-      : TChildren extends AnyRoute[]
-        ? {
-            [TId in TChildren[number]['id'] as string]: ParseRoute<
-              TChildren[number]
-            >
-          }[string]
-        : never
-    : never
+export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
+  types: { children: infer TChildren }
+}
+  ? TChildren extends unknown[]
+    ? ParseRoute<TChildren[number], TAcc | TChildren[number]>
+    : TAcc
+  : TAcc
 
 export type RoutesById<TRouteTree extends AnyRoute> = {
   [K in ParseRoute<TRouteTree> as K['id']]: K
 }
 
 export type RouteById<TRouteTree extends AnyRoute, TId> = Extract<
-  ParseRoute<TRouteTree>,
-  { id: TId }
+  Extract<ParseRoute<TRouteTree>, { id: TId }>,
+  AnyRoute
 >
 
 export type RouteIds<TRouteTree extends AnyRoute> = ParseRoute<TRouteTree>['id']
@@ -55,10 +25,9 @@ export type RoutesByPath<TRouteTree extends AnyRoute> = {
 }
 
 export type RouteByPath<TRouteTree extends AnyRoute, TPath> = Extract<
-  ParseRoute<TRouteTree>,
-  { fullPath: TPath }
+  Extract<ParseRoute<TRouteTree>, { fullPath: TPath }>,
+  AnyRoute
 >
-
 export type RoutePaths<TRouteTree extends AnyRoute> =
   | ParseRoute<TRouteTree>['fullPath']
   | '/'
