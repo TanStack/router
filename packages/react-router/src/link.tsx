@@ -69,58 +69,65 @@ export type Join<T, Delimiter extends string = '/'> = T extends []
 
 export type Last<T extends any[]> = T extends [...infer _, infer L] ? L : never
 
-export type RelativeToPathAutoComplete<
-  AllPaths extends string,
+export type RemoveTrailingSlashes<T> = T extends `${infer R}/`
+  ? RemoveTrailingSlashes<R>
+  : T
+
+export type RemoveLeadingSlashes<T> = T extends `/${infer R}`
+  ? RemoveLeadingSlashes<R>
+  : T
+
+export type SearchRelativePathAutoComplete<
+  TTo extends string,
+  TSearchPath,
+  TPaths,
+> = TPaths extends `${TSearchPath & string}/${infer TRest}`
+  ? `${TTo}/${RemoveLeadingSlashes<TRest>}`
+  : never
+
+export type RelativeToParentPathAutoComplete<
   TFrom extends string,
   TTo extends string,
-> = TTo extends `..${infer _}`
-  ? Split<AllPaths, false> extends infer SplitPaths
-    ? SplitPaths extends [
-        ...Split<ResolveRelativePath<TFrom, TTo>, false>,
-        ...infer TToRest,
-      ]
-      ? `${CleanPath<
-          Join<
-            [
-              ...Split<TTo, false>,
-              ...(
-                | TToRest
-                | (Split<
-                    ResolveRelativePath<TFrom, TTo>,
-                    false
-                  >['length'] extends 1
-                    ? never
-                    : ['../'])
-              ),
-            ]
-          >
-        >}`
-      : never
-    : never
-  : TTo extends `./${infer RestTTo}`
-    ? Split<AllPaths, false> extends infer SplitPaths
-      ? SplitPaths extends [
-          ...Split<TFrom, false>,
-          ...Split<RestTTo, false>,
-          ...infer RestPath,
-        ]
-        ? `${TTo}${Join<RestPath>}`
-        : never
-      : never
-    :
-        | (string extends TFrom
-            ? '/'
-            : TFrom extends `/`
-              ? never
-              : Split<AllPaths, false> extends infer SplitPaths
-                ? SplitPaths extends [...Split<TFrom, false>, ...infer RestPath]
-                  ? Join<RestPath> extends { length: 0 }
-                    ? never
-                    : './'
-                  : never
-                : never)
-        | (string extends TFrom ? '../' : TFrom extends `/` ? never : '../')
-        | AllPaths
+  TPaths,
+  TResolvedPath = RemoveTrailingSlashes<ResolveRelativePath<TFrom, TTo>>,
+> =
+  | SearchRelativePathAutoComplete<TTo, TResolvedPath, TPaths>
+  | (TResolvedPath extends '' ? never : `${TTo}/../`)
+
+export type RelativeToCurrentPathAutoComplete<
+  TFrom extends string,
+  TTo extends string,
+  TRestTo extends string,
+  TPaths,
+  TResolvedPath = RemoveTrailingSlashes<`${RemoveTrailingSlashes<TFrom>}/${RemoveLeadingSlashes<TRestTo>}`>,
+> = SearchRelativePathAutoComplete<TTo, TResolvedPath, TPaths>
+
+export type AbsolutePathAutoComplete<TFrom extends string, TPaths> =
+  | (TFrom extends `/`
+      ? never
+      : TPaths extends `${RemoveTrailingSlashes<TFrom>}/${infer TRest}`
+        ? RemoveLeadingSlashes<TRest> extends ''
+          ? never
+          : './'
+        : never)
+  | (TFrom extends `/` ? never : '../')
+  | TPaths
+
+export type RelativeToPathAutoComplete<
+  TRouteTree extends AnyRoute,
+  TFrom extends string,
+  TTo extends string,
+  TPaths = RoutePaths<TRouteTree>,
+> = TTo extends `..${string}`
+  ? RelativeToParentPathAutoComplete<TFrom, RemoveTrailingSlashes<TTo>, TPaths>
+  : TTo extends `./${infer TRestTTo}`
+    ? RelativeToCurrentPathAutoComplete<
+        TFrom,
+        RemoveTrailingSlashes<TTo>,
+        TRestTTo,
+        TPaths
+      >
+    : AbsolutePathAutoComplete<TFrom, TPaths>
 
 export type NavigateOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -268,7 +275,7 @@ export type ToPathOption<
 > =
   | TTo
   | RelativeToPathAutoComplete<
-      RoutePaths<TRouteTree>,
+      TRouteTree,
       NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
       NoInfer<TTo> & string
     >
