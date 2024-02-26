@@ -37,6 +37,7 @@ export interface MatchLocation {
 export type NavigateFn = <
   TTo extends string,
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> | string = string,
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
 >(
@@ -45,7 +46,7 @@ export type NavigateFn = <
 
 export type BuildLocationFn<TRouteTree extends AnyRoute> = <
   TTo extends string,
-  TFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
+  TFrom extends RoutePaths<TRouteTree> | string = string,
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
 >(

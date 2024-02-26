@@ -124,7 +124,7 @@ export type RelativeToPathAutoComplete<
 
 export type NavigateOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
+  TFrom extends RoutePaths<TRouteTree> | string = string,
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
@@ -138,7 +138,7 @@ export type NavigateOptions<
 
 export type ToOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
+  TFrom extends RoutePaths<TRouteTree> | string = string,
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
@@ -148,7 +148,7 @@ export type ToOptions<
 
 export type ToMaskOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TMaskFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
+  TMaskFrom extends RoutePaths<TRouteTree> | string = string,
   TMaskTo extends string = '',
 > = ToSubOptions<TRouteTree, TMaskFrom, TMaskTo> & {
   unmaskOnReload?: boolean
@@ -156,7 +156,7 @@ export type ToMaskOptions<
 
 export type ToSubOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
+  TFrom extends RoutePaths<TRouteTree> | string = string,
   TTo extends string = '',
   TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
 > = {
