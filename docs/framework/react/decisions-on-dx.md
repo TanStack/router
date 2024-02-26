@@ -32,6 +32,8 @@ But to achieve this, we had to make some decisions that deviate from the norms i
 2. [**Typescript module declaration for the router?**](#2-declaring-the-router-instance-for-type-inference): You have to pass the `Router` instance to the rest of your application using Typescript's module declaration.
 3. [**Why push for file-based routing over code-based?**](#3-why-is-file-based-routing-the-preferred-way-to-define-routes): We push for file-based routing as the preferred way to define your routes.
 
+> TLDR; All the design decisions in the developer experience of using Tanstack Router are made so that you can have a best-in-class type-safety experience without compromising on the control, flexibility, and maintainability of your route configurations.
+
 ## 1. Why is the Router's configuration done this way?
 
 When you want to leverage the Typescript's inference features to its fullest, you'll quickly realize that *Generics* are your best friend. And so, Tanstack Router uses Generics everywhere to ensure that the types of your routes are inferred as much as possible.
