@@ -153,4 +153,69 @@ We went with **module declaration**, as it is what we found to be the most scala
 
 ## 3. Why is file-based routing the preferred way to define routes?
 
-foo
+> Why are the docs pushing for file-based routing?
+
+> I'm used to defining my routes in a single file, why should I change?
+
+Something you'll notice (quite soon) in the Tanstack Router documentation is that we push for **file-based routing** as the preferred method for defining your routes. This is because we've found that file-based routing is the most scalable and maintainable way to define your routes.
+
+> ⚠️ Before you continue, it's important you have a good understanding of [code-based routing](./guide/code-based-routing.md) and [file-based routing](./guide/file-based-routing.md).
+
+As mentioned in the beginning, Tanstack Router was designed for complex applications that require a high degree of type-safety and maintainability. And to achieve this, the configuration of the router has be done in an precise way that allows Typescript to infer the types of your routes as much as possible.
+
+A key difference in the set-up of a *basic* application with Tanstack Router, is that your route configurations require a function to be provided to `getParentRoute`, that returns the parent route of the current route.
+
+```tsx
+import { createRoute } from '@tanstack/react-router';
+import { postsRoute } from './postsRoute';
+
+export const postsIndexRoute = createRoute({
+  getParentRoute: () => postsRoute,
+  path: '/',
+})
+```
+
+At this stage, this is done so the definition of `postsIndexRoute` can be aware of its location in the route tree and so that it can correctly infer the types of the `context`, `path params`, `search params` returned by the parent route. Incorrectly defining the `getParentRoute` function means that the properties of the parent route will not be correctly inferred by the child route.
+
+As such, this is a critical part of the route configuration and a point of failure if not done correctly.
+
+But this is only one part of setting up a basic application. Tanstack Router requires the all the routes (including the root route) to be stitched into a ***route-tree*** so that it may be passed into the `createRouter` function before declaring the `Router` instance on the module for type inference. This is another critical part of the route configuration and a point of failure if not done correctly.
+
+> 🤯 If this route-tree were in its own file for an application with ~40-50 routes, it can easily grow up to 700+ lines.
+
+```tsx
+const routeTree = rootRoute.addChildren([
+  postsRoute.addChildren([
+    postsIndexRoute,
+    postsIdRoute
+  ])
+])
+```
+
+This complexity only increases as you begin to use more features of the router, such as nested context, loaders, search param validation, etc. As such, it no longer becomes feasible to define your routes in a single file. And so, users end up building their own *semi consistent* way of defining their routes across multiple files. This can lead to inconsistencies and errors in the route configuration.
+
+Finally, comes the issue of code-splitting. As your application grows, you'll want to code-split your components to reduce the initial bundle size of your application. This can be a bit of a headache to manage when you're defining your routes in a single file or even across multiple files.
+
+```tsx
+import {
+  createRoute,
+  lazyRouteComponent
+} from '@tanstack/react-router';
+import { postsRoute } from './postsRoute';
+
+export const postsIndexRoute = createRoute({
+  getParentRoute: () => postsRoute,
+  path: '/',
+  component: lazyRouteComponent(
+    () => import('../page-components/posts/index')
+  )
+})
+```
+
+All of this boilerplate, no matter how essential for providing a best-in-class type-inference experience, can be a bit overwhelming and can lead to inconsistencies and errors in the route configuration.
+
+... and this example configuration is just for a single route. Imagine having to do this for 40-50 routes. Now remember that you still haven't touched the `context`, `loaders`, `search param validation`, and other features of the router 🤕.
+
+> So, why's file-based routing the preferred way?
+
+m
