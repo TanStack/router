@@ -600,7 +600,7 @@ export class RouteApi<
  */
 export class Route<
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
-  TPath extends RouteConstraints['TPath'] = '/',
+  in out TPath extends RouteConstraints['TPath'] = '/',
   TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
     TParentRoute,
     TPath
@@ -636,12 +636,12 @@ export class Route<
     TParams
   >,
   TRouteContextReturn extends RouteConstraints['TRouteContext'] = RouteContext,
-  TRouteContext extends RouteConstraints['TRouteContext'] = [
+  in out TRouteContext extends RouteConstraints['TRouteContext'] = [
     TRouteContextReturn,
   ] extends [never]
     ? RouteContext
     : TRouteContextReturn,
-  TAllContext extends Expand<
+  in out TAllContext extends Expand<
     Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
   > = Expand<
     Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
