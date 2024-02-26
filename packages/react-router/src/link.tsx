@@ -165,7 +165,7 @@ export type ToSubOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> | string = string,
   TTo extends string = '',
-  TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+  TResolved = RemoveTrailingSlashes<ResolveRelativePath<TFrom, NoInfer<TTo>>>,
 > = {
   to?: ToPathOption<TRouteTree, TFrom, TTo>
   // The new has string or a function to update it
