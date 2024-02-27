@@ -1,13 +1,12 @@
 import * as React from 'react'
 import { Link, Outlet, createLazyRoute } from '@tanstack/react-router'
-import { postsRoute } from './main'
 
-export const Route = createLazyRoute('/')({
+export const Route = createLazyRoute('/posts')({
   component: PostsComponent,
 })
 
 function PostsComponent() {
-  const posts = postsRoute.useLoaderData()
+  const posts = Route.useLoaderData()
 
   return (
     <div className="p-2 flex gap-2">
