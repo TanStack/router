@@ -28,13 +28,13 @@ title: Router API
   - [`<Outlet>`](./api/router/outletComponent)
 - Hooks
   - [`useAwaited()`](./api/router/useAwaitedHook)
-  - [`useNavigate()`](./api/router/useNavigateHook)
-  - [`useMatchRoute()`](./api/router/useMatchRouteHook)
-  - [`useMatch()`](./api/router/useMatchHook)
-  - [`useMatches()`](./api/router/useMatchesHook)
-  - [`useParentMatches()`](./api/router/useParentMatchesHook)
   - [`useChildMatches()`](./api/router/useChildMatchesHook)
   - [`useLoaderData()`](./api/router/useLoaderDataHook)
+  - [`useMatch()`](./api/router/useMatchHook)
+  - [`useMatchRoute()`](./api/router/useMatchRouteHook)
+  - [`useMatches()`](./api/router/useMatchesHook)
+  - [`useNavigate()`](./api/router/useNavigateHook)
+  - [`useParentMatches()`](./api/router/useParentMatchesHook)
   - [`useParams()`](./api/router/useParamsHook)
 - Types
   - [`RouterOptions Type`](./api/router/RouterOptionsType)
