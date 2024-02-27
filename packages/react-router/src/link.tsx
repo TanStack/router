@@ -103,14 +103,16 @@ export type RelativeToCurrentPathAutoComplete<
 > = SearchRelativePathAutoComplete<TTo, TResolvedPath, TPaths>
 
 export type AbsolutePathAutoComplete<TFrom extends string, TPaths> =
-  | (TFrom extends `/`
+  | (string extends TFrom
       ? never
-      : TPaths extends `${RemoveTrailingSlashes<TFrom>}/${infer TRest}`
-        ? RemoveLeadingSlashes<TRest> extends ''
-          ? never
-          : './'
-        : never)
-  | (TFrom extends `/` ? never : '../')
+      : TFrom extends `/`
+        ? never
+        : TPaths extends `${RemoveTrailingSlashes<TFrom>}/${infer TRest}`
+          ? RemoveLeadingSlashes<TRest> extends ''
+            ? never
+            : './'
+          : never)
+  | (string extends TFrom ? never : TFrom extends `/` ? never : '../')
   | TPaths
 
 export type RelativeToPathAutoComplete<
