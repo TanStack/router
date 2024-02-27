@@ -79,7 +79,7 @@ Let's take a look at a more realistic example using TanStack Query.
 
 const postsQueryOptions = queryOptions({
   queryKey: ['posts'],
-  queryFn: () => fetchPosts,
+  queryFn: () => fetchPosts(),
 })
 
 export const Route = createFileRoute('/posts')({
