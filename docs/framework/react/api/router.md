@@ -16,7 +16,6 @@ title: Router API
   - [lazyRouteComponent](./api/router/lazyRouteComponentFunction)
   - [notFound](./api/router/notFoundFunction)
   - [redirect](./api/router/redirectFunction)
-  - [rootRouteWithContext](./api/router/rootRouteWithContextFunction)
 - Components
   - [Await Component](./api/router/awaitComponent)
   - [CatchBoundary Component](./api/router/catchBoundaryComponent)
@@ -75,10 +74,11 @@ title: Router API
   - [FullSearchSchema Type](./api/router/FullSearchSchemaType)
   - [HistoryState Interface](./api/router/historyStateInterface)
   - [NotFoundError Type](./api/router/NotFoundErrorType)
-- Deprecated
+- ⚠️ Deprecated
   - [FileRoute Class](./api/router/FileRouteClass)
   - [Route Class](./api/router/RouteClass)
   - [Router Class](./api/router/RouterClass)
   - [RouteApi Class](./api/router/RouteApiClass)
   - [RootRoute Class](./api/router/RootRouteClass)
   - [NotFoundRoute Class](./api/router/NotFoundRouteClass)
+  - [rootRouteWithContext Function](./api/router/rootRouteWithContextFunction)
