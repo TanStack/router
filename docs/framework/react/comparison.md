@@ -52,7 +52,7 @@ Feature/Capability Key:
 | Suspense Route Elements                        | ✅                                               | ✅                                                    | ✅                                                    |
 | Route Error Elements                           | ✅                                               | ✅                                                    | ✅                                                    |
 | Route Pending Elements                         | ✅                                               | ✅                                                    | ✅                                                    |
-| `<Prompt>`/`usePrompt`                         | ✅                                               | 🔶                                                    | ❓                                                    |
+| `<Block>`/`useBlocker`                         | ✅                                               | 🔶                                                    | ❓                                                    |
 | SSR                                            | ✅                                               | ✅                                                    | ✅                                                    |
 | Streaming SSR                                  | ✅                                               | ✅                                                    | ✅                                                    |
 | Deferred Primitives                            | ✅                                               | ✅                                                    | ✅                                                    |

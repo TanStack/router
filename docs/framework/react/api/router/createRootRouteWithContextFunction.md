@@ -29,10 +29,14 @@ const rootRoute = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   // ... Route Options
 })
 
+const routeTree = rootRoute.addChildren([
+  // ... Other routes
+])
+
 const queryClient = new QueryClient()
 
 const router = createRouter({
-  routes: [rootRoute],
+  routeTree,
   context: {
     queryClient,
   },
