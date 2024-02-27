@@ -122,8 +122,10 @@ File-based routing requires that you follow a few simple file naming conventions
   - Routes segments ending with the `index` token (but before any file types) will be used to match the parent route when the URL pathname matches the parent route exactly.
 - **`.route.tsx` File Type**
   - When using directories to organize your routes, the `route` suffix can be used to create a route file at the directory's path. For example, `blog/post/route.tsx` will be used at the route file for the `/blog/post` route.
-- **`.component.tsx` File Type**
-- **`.errorComponent.tsx` File Type**
-- **`.pendingComponent.tsx` File Type**
-- **`.loader.tsx` File Type**
+- **`.lazy.tsx` File Type**
+  - The `lazy` suffix can be used to code-split components for a route. For example, `blog.post.lazy.tsx` will be used as the component for the `blog.post` route.  
+- **`.component.tsx` File Type (⚠️ deprecated)**
+- **`.errorComponent.tsx` File Type (⚠️ deprecated)**
+- **`.pendingComponent.tsx` File Type (⚠️ deprecated)**
+- **`.loader.tsx` File Type (⚠️ deprecated)**
   - Each of these suffixes can be used to code-split components or loaders for a route. For example, `blog.post.component.tsx` will be used as the component for the `blog.post` route.
