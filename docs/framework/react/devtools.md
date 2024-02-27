@@ -62,8 +62,12 @@ const rootRoute = createRootRoute({
   ),
 })
 
+const routeTree = rootRoute.addChildren([
+  // ... other routes
+])
+
 const router = createRouter({
-  routes: [rootRoute],
+  routeTree,
 })
 
 function App() {
