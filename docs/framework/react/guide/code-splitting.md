@@ -377,9 +377,10 @@ export function MyComponent() {
 }
 ```
 
-The `RouteApi` class is useful for accessing other type-safe APIs:
+The `getRouteApi` function is useful for accessing other type-safe APIs:
 
 - `useLoaderData`
+- `useLoaderDeps`
 - `useMatch`
 - `useParams`
 - `useRouteContext`
