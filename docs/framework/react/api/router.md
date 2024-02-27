@@ -4,19 +4,19 @@ title: Router API
 ---
 
 - Functions
+  - [createFileRoute](./api/router/createFileRouteFunction)
   - [createRootRoute](./api/router/createRootRouteFunction)
   - [createRoute](./api/router/createRouteFunction)
-  - [createRouter](./api/router/createRouterFunction)
-  - [createFileRoute](./api/router/createFileRouteFunction)
-  - [getRouteApi](./api/router/getRouteApiFunction)
-  - [lazyRouteComponent](./api/router/lazyRouteComponentFunction)
-  - [defer](./api/router/deferFunction)
-  - [redirect](./api/router/redirectFunction)
-  - [isRedirect](./api/router/isRedirectFunction)
-  - [rootRouteWithContext](./api/router/rootRouteWithContextFunction)
   - [createRouteMask](./api/router/createRouteMaskFunction)
+  - [createRouter](./api/router/createRouterFunction)
+  - [defer](./api/router/deferFunction)
+  - [getRouteApi](./api/router/getRouteApiFunction)
   - [isNotFound](./api/router/isNotFoundFunction)
+  - [isRedirect](./api/router/isRedirectFunction)
+  - [lazyRouteComponent](./api/router/lazyRouteComponentFunction)
   - [notFound](./api/router/notFoundFunction)
+  - [redirect](./api/router/redirectFunction)
+  - [rootRouteWithContext](./api/router/rootRouteWithContextFunction)
 - Components
   - [Await Component](./api/router/awaitComponent)
   - [CatchBoundary Component](./api/router/catchBoundaryComponent)
