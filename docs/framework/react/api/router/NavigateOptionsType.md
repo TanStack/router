@@ -12,3 +12,5 @@ type NavigateOptions = ToOptions & {
   startTransition?: boolean
 }
 ```
+
+- [`ToOptions`](./api/router/ToOptionsType)
