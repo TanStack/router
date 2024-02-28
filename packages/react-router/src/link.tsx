@@ -77,11 +77,17 @@ export type RemoveLeadingSlashes<T> = T extends `/${infer R}`
   ? RemoveLeadingSlashes<R>
   : T
 
+export type SearchPaths<
+  TPaths,
+  TSearchPath extends string,
+> = TPaths extends `${TSearchPath}/${infer TRest}` ? TRest : never
+
 export type SearchRelativePathAutoComplete<
   TTo extends string,
   TSearchPath extends string,
   TPaths,
-> = TPaths extends `${TSearchPath}/${infer TRest}` ? `${TTo}/${TRest}` : never
+  SearchedPaths = SearchPaths<TPaths, TSearchPath>,
+> = SearchedPaths extends string ? `${TTo}/${SearchedPaths}` : never
 
 export type RelativeToParentPathAutoComplete<
   TFrom extends string,
@@ -108,8 +114,11 @@ export type AbsolutePathAutoComplete<TFrom extends string, TPaths> =
       ? never
       : TFrom extends `/`
         ? never
-        : TPaths extends `${RemoveTrailingSlashes<TFrom>}/${infer TRest}`
-          ? RemoveLeadingSlashes<TRest> extends ''
+        : SearchPaths<
+              TPaths,
+              RemoveTrailingSlashes<TFrom>
+            > extends infer SearchedPaths
+          ? SearchedPaths extends ''
             ? never
             : './'
           : never)
@@ -168,7 +177,6 @@ export type ToSubOptions<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> | string = string,
   TTo extends string = '',
-  TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
 > = {
   to?: ToPathOption<TRouteTree, TFrom, TTo>
   // The new has string or a function to update it
@@ -178,9 +186,9 @@ export type ToSubOptions<
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
   from?: RoutePathsAutoComplete<TRouteTree, TFrom>
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
-} & CheckPath<TRouteTree, NoInfer<TResolved>, {}> &
-  SearchParamOptions<TRouteTree, TFrom, TTo, TResolved> &
-  PathParamOptions<TRouteTree, TFrom, TTo, TResolved>
+} & CheckPath<TRouteTree, {}, TFrom, TTo> &
+  SearchParamOptions<TRouteTree, TFrom, TTo> &
+  PathParamOptions<TRouteTree, TFrom, TTo>
 
 type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
@@ -191,6 +199,18 @@ type ExcludeRootSearchSchema<T, Excluded = Exclude<T, RootSearchSchema>> = [
   ? {}
   : Excluded
 
+export type ResolveRoute<
+  TRouteTree extends AnyRoute,
+  TFrom,
+  TTo,
+  TPath = RemoveTrailingSlashes<
+    string extends TTo ? TFrom : ResolveRelativePath<TFrom, TTo>
+  >,
+> =
+  RouteByPath<TRouteTree, `${TPath & string}/`> extends never
+    ? RouteByPath<TRouteTree, TPath>
+    : RouteByPath<TRouteTree, `${TPath & string}/`>
+
 type PostProcessParams<
   T,
   TParamVariant extends ParamVariant,
@@ -200,7 +220,6 @@ export type ParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
   TTo extends string,
-  TResolved,
   TParamVariant extends ParamVariant,
   TFromRouteType extends
     | 'allParams'
@@ -216,25 +235,10 @@ export type ParamOptions<
     RouteByPath<TRouteTree, TFrom>['types'][TFromRouteType],
     TParamVariant
   >,
-  TToIndex = TTo extends ''
-    ? ''
-    : RouteByPath<TRouteTree, `${TTo}/`> extends never
-      ? TTo
-      : `${TTo}/`,
-  TToParams = TToIndex extends ''
-    ? PostProcessParams<
-        RouteByPath<TRouteTree, TFrom>['types'][TToRouteType],
-        TParamVariant
-      >
-    : [TResolved] extends [never]
-      ? PostProcessParams<
-          RouteByPath<TRouteTree, TToIndex>['types'][TToRouteType],
-          TParamVariant
-        >
-      : PostProcessParams<
-          RouteByPath<TRouteTree, TResolved>['types'][TToRouteType],
-          TParamVariant
-        >,
+  TToParams = PostProcessParams<
+    ResolveRoute<TRouteTree, TFrom, TTo>['types'][TToRouteType],
+    TParamVariant
+  >,
   TRelativeToParams = TParamVariant extends 'SEARCH'
     ? TToParams
     : true extends IsUnion<TFromParams>
@@ -261,15 +265,13 @@ export type SearchParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
   TTo extends string,
-  TResolved,
-> = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'SEARCH'>
+> = ParamOptions<TRouteTree, TFrom, TTo, 'SEARCH'>
 
 export type PathParamOptions<
   TRouteTree extends AnyRoute,
   TFrom,
   TTo extends string,
-  TResolved,
-> = ParamOptions<TRouteTree, TFrom, TTo, TResolved, 'PATH'>
+> = ParamOptions<TRouteTree, TFrom, TTo, 'PATH'>
 
 export type ToPathOption<
   TRouteTree extends AnyRoute = AnyRoute,
@@ -308,19 +310,12 @@ export type LinkOptions<
   disabled?: boolean
 }
 
-export type CheckPath<
-  TRouteTree extends AnyRoute,
-  TPath,
-  TPass,
-  TNormalisedPath = RemoveTrailingSlashes<TPath>,
-> =
-  Exclude<`${TNormalisedPath & string}/`, RoutePaths<TRouteTree>> extends never
-    ? TPass
-    : Exclude<TNormalisedPath, RoutePaths<TRouteTree>> extends never
-      ? TPass
-      : CheckPathError<TRouteTree, Exclude<TPath, RoutePaths<TRouteTree>>>
+export type CheckPath<TRouteTree extends AnyRoute, TPass, TFrom, TTo> =
+  ResolveRoute<TRouteTree, TFrom, TTo> extends never
+    ? CheckPathError<TRouteTree>
+    : TPass
 
-export type CheckPathError<TRouteTree extends AnyRoute, TInvalids> = {
+export type CheckPathError<TRouteTree extends AnyRoute> = {
   to: RoutePaths<TRouteTree>
 }
 
