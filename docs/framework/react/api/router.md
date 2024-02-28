@@ -30,6 +30,7 @@ title: Router API
 - Hooks
   - [`useAwaited()`](./api/router/useAwaitedHook)
   - [`useChildMatches()`](./api/router/useChildMatchesHook)
+  - [`useLinkProps()`](./api/router/useLinkPropsHook)
   - [`useLoaderData()`](./api/router/useLoaderDataHook)
   - [`useMatch()`](./api/router/useMatchHook)
   - [`useMatchRoute()`](./api/router/useMatchRouteHook)
