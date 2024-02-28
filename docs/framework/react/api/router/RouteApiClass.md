@@ -3,23 +3,29 @@ id: RouteApiClass
 title: RouteApi class
 ---
 
-## ⚠️ Deprecated
-
-The `RouteApi` class has been deprecated in favor of the `getRouteApi` function
+> 🚧 The `RouteApiClass` class is deprecated and will be removed in the next major version of TanStack Router. Please use the [`getRouteApi`](./api/router/getRouteApiFunction) function instead. The constructor and methods associated with this class will be implemented on its functional counterpart in the next major release.
 
 The `RouteApi` class provides type-safe version of common hooks like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch` that are pre-bound to a specific route ID and corresponding registered route types.
 
-### `RouteApi` constructor
+## Constructor `options`
 
-#### `opts.routeId`
+The `RouteApi` constructor accepts a single argument: the `options` that will be used to configure the `RouteApi` instance.
+
+### `opts.routeId` option
 
 - Type: `string`
 - Required
 - The route ID to which the `RouteApi` instance will be bound
 
-### `RouteApi` methods
+## Constructor `returns`
 
-#### `useMatch`
+- A `RouteApi` instance that is pre-bound to the route ID that the `RouteApi` constructor was called with that provides type-safe versions of common hooks like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch`.
+
+## `RouteApi` properties and methods
+
+The `RouteApi` class implements the following properties and methods:
+
+### `useMatch` method
 
 ```tsx
   useMatch<TSelected = TAllContext>(opts?: {
@@ -37,7 +43,7 @@ The `RouteApi` class provides type-safe version of common hooks like `useParams`
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `RouteMatch` object or a loosened version of the `RouteMatch` object if `opts.strict` is `false`.
 
-#### `useRouteContext`
+### `useRouteContext` method
 
 ```tsx
   useRouteContext<TSelected = TAllContext>(opts?: {
@@ -55,7 +61,7 @@ The `RouteApi` class provides type-safe version of common hooks like `useParams`
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `RouteContext` object or a loosened version of the `RouteContext` object if `opts.strict` is `false`.
 
-#### `useSearch`
+### `useSearch` method
 
 ```tsx
   useSearch<TSelected = TFullSearchSchema>(opts?: {
@@ -73,7 +79,7 @@ The `RouteApi` class provides type-safe version of common hooks like `useParams`
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TFullSearchSchema` object or a loosened version of the `TFullSearchSchema` object if `opts.strict` is `false`.
 
-#### `useParams`
+### `useParams` method
 
 ```tsx
   useParams<TSelected = TAllParams>(opts?: {
@@ -91,7 +97,7 @@ The `RouteApi` class provides type-safe version of common hooks like `useParams`
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TAllParams` object or a loosened version of the `TAllParams` object if `opts.strict` is `false`.
 
-#### `useLoaderData`
+### `useLoaderData` method
 
 ```tsx
   useLoaderData<TSelected = TLoaderData>(opts?: {
@@ -108,3 +114,16 @@ The `RouteApi` class provides type-safe version of common hooks like `useParams`
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TLoaderData` object or a loosened version of the `TLoaderData` object if `opts.strict` is `false`.
+
+## Examples
+
+```tsx
+import { RouteApi } from '@tanstack/react-router'
+
+const routeApi = new RouteApi({ id: '/posts' })
+
+export function PostsPage() {
+  const posts = routeApi.useLoaderData()
+  // ...
+}
+```
