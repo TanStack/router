@@ -3,37 +3,38 @@ id: notFoundFunction
 title: notFound function
 ---
 
-The `notFound` function returns a new `NotFoundError` object that can be either returned or thrown from places like a route's `loader` or `beforeLoad` methods to cause a route to render its `notFoundComponent`.
+The `notFound` function returns a new `NotFoundError` object that can be either returned or thrown from places like a Route's `beforeLoad` or `loader` callbacks to trigger the `notFoundComponent`.
 
-### Options
+## notFound `options`
 
-#### `notFoundError`
+The `notFound` function accepts a single optional argument, the `options` to create the not-found error object.
 
-- The `NotFoundError` options to create the not-found error object
+- Type: [`Partial<NotFoundError>`](./api/router/NotFoundErrorType)
 - Optional
 
-### Returns
+## notFound `returns`
 
-- If `notFoundError.throw` is `true`, the `NotFoundError` object will be thrown instead of returned.
-- Otherwise, the `NotFoundError` object will be returned.
+- If the `throw` property is `true` in the `options` object, the `NotFoundError` object will be thrown from within the function call.
+- If the `throw` property is `false | undefined` in the `options` object, the `NotFoundError` object will be returned.
 
-### Examples
+## Examples
 
 ```tsx
-import { notFound } from '@tanstack/react-router'
+import { notFound, createFileRoute } from '@tanstack/react-router'
 
-const route = new createRoute({
+const Route = new createFileRoute('/posts/$postId')({
   // throwing a not-found object
-  loader: () => {
+  loader: ({ context: { post } }) => {
     if (!post) {
       throw notFound()
     }
   },
-  // if you want to show a not-found on the whole page
-  loader: () => {
+  // or if you want to show a not-found on the whole page
+  loader: ({ context: { team } }) => {
     if (!team) {
       throw notFound({ global: true })
     }
   },
+  // ... other route options
 })
 ```
