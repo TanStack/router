@@ -3,21 +3,21 @@ id: redirectFunction
 title: redirect function
 ---
 
-The `redirect` function returns a new `Redirect` object that can be either returned or thrown from places like a route's `loader` or `beforeLoad` methods to redirect to a new location.
+The `redirect` function returns a new `Redirect` object that can be either returned or thrown from places like a Route's `beforeLoad` or `loader` callbacks to trigger *redirect* to a new location.
 
-### Options
+## redirect `options`
 
-#### `redirect`
+The `redirect` function accepts a single argument, the `options` to determine the redirect behavior.
 
-- The `Redirect` options to create the redirect object
+- Type: [`Redirect`](./api/router/RedirectType)
 - Required
 
-### Returns
+## redirect `returns`
 
-- If `redirect.throw` is `true`, the `Redirect` object will be thrown instead of returned.
-- Otherwise, the `Redirect` object will be returned.
+- If the `throw` property is `true` in the `options` object, the `Redirect` object will be thrown from within the function call.
+- If the `throw` property is `false | undefined` in the `options` object, the `Redirect` object will be returned.
 
-### Examples
+## Examples
 
 ```tsx
 import { redirect } from '@tanstack/react-router'
@@ -40,5 +40,6 @@ const route = createRoute({
       })
     }
   },
+  // ... other route options
 })
 ```
