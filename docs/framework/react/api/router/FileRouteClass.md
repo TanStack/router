@@ -32,6 +32,7 @@ The `createRoute` method is a method that can be used to configure the file rout
 #### .createRoute `options`
 
 - Type: `Omit<RouteOptions, 'getParentRoute' | 'path' | 'id'>`
+- [`RouteOptions`](./api/router/RouteOptionsType)
 - Optional
 - The same options that are available to the `Route` class, but with the `getParentRoute`, `path`, and `id` options omitted since they are unnecessary for file-based routing.
 
