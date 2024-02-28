@@ -5,20 +5,23 @@ title: isNotFound function
 
 The `isNotFound` function can be used to determine if an object is a `NotFoundError` object.
 
-### Options
+## isNotFound `options`
 
-#### `obj`
+The `isNotFound` function accepts a single argument, an `input`.
 
-- The object to check
+### `input` option
+
+- Type: `unknown`
 - Required
+- An object to check if it is a `NotFoundError`
 
-### Returns
+## isNotFound `returns`
 
-#### `true` if the object is a `NotFoundError`
+- Type: `boolean`
+- `true` if the object is a `NotFoundError`
+- `false` if the object is not a `NotFoundError`
 
-#### `false` if the object is not a `NotFoundError`
-
-### Examples
+## Examples
 
 ```tsx
 import { isNotFound } from '@tanstack/react-router'
