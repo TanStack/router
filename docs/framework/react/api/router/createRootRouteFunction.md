@@ -27,3 +27,22 @@ Omit<
 ## createRootRoute `returns`
 
 - A new [`RootRoute`](./api/router/RootRouteClass) instance.
+
+## Examples
+
+```tsx
+import { createRootRoute, createRouter, Outlet } from '@tanstack/react-router'
+
+const rootRoute = createRootRoute({
+  component: () => <Outlet />
+  // ... root route options
+})
+
+const routeTree = rootRoute.addChildren([
+  // ... other routes
+])
+
+const router = createRouter({
+  routeTree
+})
+```
