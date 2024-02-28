@@ -79,17 +79,17 @@ export type RemoveLeadingSlashes<T> = T extends `/${infer R}`
 
 export type SearchRelativePathAutoComplete<
   TTo extends string,
-  TSearchPath,
+  TSearchPath extends string,
   TPaths,
-> = TPaths extends `${TSearchPath & string}/${infer TRest}`
-  ? `${TTo}/${RemoveLeadingSlashes<TRest>}`
-  : never
+> = TPaths extends `${TSearchPath}/${infer TRest}` ? `${TTo}/${TRest}` : never
 
 export type RelativeToParentPathAutoComplete<
   TFrom extends string,
   TTo extends string,
   TPaths,
-  TResolvedPath = RemoveTrailingSlashes<ResolveRelativePath<TFrom, TTo>>,
+  TResolvedPath extends string = RemoveTrailingSlashes<
+    ResolveRelativePath<TFrom, TTo>
+  >,
 > =
   | SearchRelativePathAutoComplete<TTo, TResolvedPath, TPaths>
   | (TResolvedPath extends '' ? never : `${TTo}/../`)
@@ -99,7 +99,8 @@ export type RelativeToCurrentPathAutoComplete<
   TTo extends string,
   TRestTo extends string,
   TPaths,
-  TResolvedPath = RemoveTrailingSlashes<`${RemoveTrailingSlashes<TFrom>}/${RemoveLeadingSlashes<TRestTo>}`>,
+  TResolvedPath extends
+    string = RemoveTrailingSlashes<`${RemoveTrailingSlashes<TFrom>}/${RemoveLeadingSlashes<TRestTo>}`>,
 > = SearchRelativePathAutoComplete<TTo, TResolvedPath, TPaths>
 
 export type AbsolutePathAutoComplete<TFrom extends string, TPaths> =
@@ -307,10 +308,17 @@ export type LinkOptions<
   disabled?: boolean
 }
 
-export type CheckPath<TRouteTree extends AnyRoute, TPath, TPass> =
-  Exclude<TPath, RoutePaths<TRouteTree>> extends never
+export type CheckPath<
+  TRouteTree extends AnyRoute,
+  TPath,
+  TPass,
+  TNormalisedPath = RemoveTrailingSlashes<TPath>,
+> =
+  Exclude<`${TNormalisedPath & string}/`, RoutePaths<TRouteTree>> extends never
     ? TPass
-    : CheckPathError<TRouteTree, Exclude<TPath, RoutePaths<TRouteTree>>>
+    : Exclude<TNormalisedPath, RoutePaths<TRouteTree>> extends never
+      ? TPass
+      : CheckPathError<TRouteTree, Exclude<TPath, RoutePaths<TRouteTree>>>
 
 export type CheckPathError<TRouteTree extends AnyRoute, TInvalids> = {
   to: RoutePaths<TRouteTree>
