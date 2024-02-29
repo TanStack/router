@@ -39,6 +39,8 @@ title: Router API
   - [`useParentMatches()`](./api/router/useParentMatchesHook)
   - [`useParams()`](./api/router/useParamsHook)
 - Types
+  - [`AllParams Type`](./api/router/AllParamsType)
+  - [`Register Type`](./api/router/RegisterType)
   - [`RouterOptions Type`](./api/router/RouterOptionsType)
   - [`RegisteredRouter Type`](./api/router/RegisteredRouterType)
   - [`AsyncRouteComponent Type`](./api/router/AsyncRouteComponentType)
