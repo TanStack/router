@@ -17,12 +17,12 @@ Each property on this type is an event that the router can emit. The value of ea
 
 ### `fromLocation` property
 
-- Type: `ParsedLocation`
+- Type: [`ParsedLocation`](./api/router/ParsedLocationType)
 - The location that the router is transitioning from.
 
 ### `toLocation` property
 
-- Type: `ParsedLocation`
+- Type: [`ParsedLocation`](./api/router/ParsedLocationType)
 - The location that the router is transitioning to.
 
 ### `pathChanged` property

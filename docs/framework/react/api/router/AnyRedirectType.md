@@ -8,3 +8,4 @@ The `AnyRedirect` type represents a redirect action in TanStack Router that is n
 ```tsx
 export type AnyRedirect = Redirect<any, any, any>
 ```
+- [`Redirect`](./api/router/RedirectType)

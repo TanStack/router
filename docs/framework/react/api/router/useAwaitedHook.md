@@ -11,7 +11,7 @@ The `useAwaited` hook accepts a single argument, an `options` object.
 
 ### `options.promise` option
 
-- Type: `DeferredPromise<T>`
+- Type: [`DeferredPromise<T>`](./api/router/DeferredPromiseType)
 - Required
 - The deferred promise to await.
 

@@ -3,7 +3,7 @@ id: isNotFoundFunction
 title: isNotFound function
 ---
 
-The `isNotFound` function can be used to determine if an object is a `NotFoundError` object.
+The `isNotFound` function can be used to determine if an object is a [`NotFoundError`](./api/router/NotFoundErrorType) object.
 
 ## isNotFound `options`
 
@@ -13,13 +13,13 @@ The `isNotFound` function accepts a single argument, an `input`.
 
 - Type: `unknown`
 - Required
-- An object to check if it is a `NotFoundError`
+- An object to check if it is a [`NotFoundError`](./api/router/NotFoundErrorType).
 
 ## isNotFound `returns`
 
 - Type: `boolean`
-- `true` if the object is a `NotFoundError`
-- `false` if the object is not a `NotFoundError`
+- `true` if the object is a [`NotFoundError`](./api/router/NotFoundErrorType).
+- `false` if the object is not a [`NotFoundError`](./api/router/NotFoundErrorType).
 
 ## Examples
 

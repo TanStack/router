@@ -15,7 +15,7 @@ The `defer` function accepts a single argument, the `promise` to wrap with a def
 
 ## defer `returns`
 
-- A `DeferredPromise<T>` that can be passed to the [`useAwaited`](./api/router/useAwaitedHook) hook or the [`<Await>`](./api/router/awaitComponent) component.
+- A [`DeferredPromise<T>`](./api/router/DeferredPromiseType) that can be passed to the [`useAwaited`](./api/router/useAwaitedHook) hook or the [`<Await>`](./api/router/awaitComponent) component.
 
 ## Examples
 

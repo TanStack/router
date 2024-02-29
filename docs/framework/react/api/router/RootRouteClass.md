@@ -27,7 +27,7 @@ Omit<
 >
 ```
 
-- [RouteOptions Type](./api/router/RouteOptionsType)
+- [RouteOptions](./api/router/RouteOptionsType)
 - Required
 - The options that will be used to configure the root route instance.
 

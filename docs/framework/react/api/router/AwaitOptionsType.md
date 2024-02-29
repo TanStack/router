@@ -11,4 +11,4 @@ type AwaitOptions<T> = {
 }
 ```
 
-- [`DeferredPromise Type`](./api/router/DeferredPromiseType)
+- [`DeferredPromise`](./api/router/DeferredPromiseType)
