@@ -131,7 +131,7 @@ Then, in your route:
 // src/routes/todos.tsx
 export const Route = createFileRoute('/todos')({
   component: Todos,
-  loader: ({ context }) => {
+  loader: async ({ context }) => {
     await context.queryClient.ensureQueryData({
       queryKey: ['todos', { userId: user.id }],
       queryFn: fetchTodos,
