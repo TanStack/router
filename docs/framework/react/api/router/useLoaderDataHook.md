@@ -3,7 +3,7 @@ id: useLoaderDataHook
 title: useLoaderData hook
 ---
 
-The `useLoaderData` hook returns the loader data from the closest `RouteMatch` in the component tree.
+The `useLoaderData` hook returns the loader data from the closest [`RouteMatch`](./api/router/RouteMatchType) in the component tree.
 
 ## useLoaderData `options`
 
