@@ -12,7 +12,7 @@ export type RouteByPath<TRouteTree extends AnyRoute, TPath> = Extract<
 >
 ```
 
-### Example
+## Examples
 
 ```tsx
 import { RouteByPath } from '@tanstack/react-router'
