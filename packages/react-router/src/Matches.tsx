@@ -257,15 +257,6 @@ function MatchInner({
           }}
         />
       )
-
-      // const SuspendedError = () => {
-      //   throw match.error
-      // }
-      // return (
-      //   <React.Suspense fallback="">
-      //     <SuspendedError />
-      //   </React.Suspense>
-      // )
     }
 
     if (isServerSideError(match.error)) {
