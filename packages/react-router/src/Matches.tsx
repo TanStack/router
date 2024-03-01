@@ -166,7 +166,6 @@ export function Match({ matchId }: { matchId: string }) {
           getResetKey={() => router.state.resolvedLocation.state?.key!}
           errorComponent={routeErrorComponent}
           onCatch={(error) => {
-            console.log('Tanner')
             // Forward not found errors (we don't want to show the error component for these)
             if (isNotFound(error)) throw error
             warning(false, `Error in route match: ${matchId}`)
