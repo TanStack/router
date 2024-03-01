@@ -12,7 +12,8 @@
   - This installs dependencies for all of the packages in the monorepo, even examples!
   - Dependencies inside of the packages and examples are automatically linked together as local/dynamic dependencies.
 - Run the build or dev watcher
-  - `pnpm build` or
+  - `pnpm build:all` (build all packages) or
+  - `pnpm build` (cached build with [nx affected](https://nx.dev/nx-api/nx/documents/affected)) or
   - `pnpm dev`
 - Navigate to an example
   - `cd examples/react/basic`
