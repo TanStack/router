@@ -227,14 +227,14 @@ export type UpdatableRouteOptions<
   onLeave?: (match: AnyRouteMatch) => void
   meta?: (ctx: {
     params: TAllParams
-    loaderData: TLoaderData extends never ? undefined : TLoaderData
+    loaderData: TLoaderData
   }) =>
     | JSX.IntrinsicElements['meta'][]
     | Promise<JSX.IntrinsicElements['meta'][]>
   links?: () => JSX.IntrinsicElements['link'][]
   scripts?: () => JSX.IntrinsicElements['script'][]
   headers?: (ctx: {
-    loaderData: TLoaderData extends never ? undefined : TLoaderData
+    loaderData: TLoaderData
   }) => Promise<Record<string, string>> | Record<string, string>
 } & UpdatableStaticRouteOption
 
