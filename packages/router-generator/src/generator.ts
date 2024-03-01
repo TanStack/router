@@ -201,6 +201,8 @@ export async function generator(config: Config) {
   // build up a tree based on the routeNodes' routePath
   let routeNodes: RouteNode[] = []
 
+  const routeGroupPatternRegex = new RegExp(config.routeGroupPattern, 'g')
+
   const handleNode = async (node: RouteNode) => {
     const parentRoute = hasParentRoute(routeNodes, node.routePath)
     if (parentRoute) node.parent = parentRoute
@@ -216,7 +218,10 @@ export async function generator(config: Config) {
 
     node.isNonPath = first.startsWith('_')
     node.isNonLayout = first.endsWith('_')
-    node.cleanedPath = removeUnderscores(node.path) ?? ''
+    node.cleanedPath = removeGroups(
+      removeUnderscores(node.path) ?? '',
+      routeGroupPatternRegex,
+    )
 
     // Ensure the boilerplate for the route exists
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
@@ -628,6 +633,10 @@ function removeTrailingUnderscores(s?: string) {
 
 function replaceBackslash(s: string) {
   return s.replaceAll(/\\/gi, '/')
+}
+
+function removeGroups(s: string, rx: RegExp) {
+  return s.replaceAll(rx, '').replaceAll('//', '/')
 }
 
 export function hasParentRoute(

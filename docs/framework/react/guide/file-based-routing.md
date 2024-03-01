@@ -103,6 +103,8 @@ The following options are available for configuration via the `tsr.config.json` 
   - If set to `true` and the `generatedRouteTree` file ends with `.ts` or `.tsx`, the generated route tree will be written as a `.js` file instead.
 - **`addExtensions`**
   - (Optional, **Defaults to `false`**) add file extensions to the route names in the generated route tree
+- **`routeGroupPattern`**
+  - (Optional, **Defaults to `'\\(.+\\)'`**) A folder that matches this pattern is treated as a **route group** which prevents this folder to be included in the route's URL path.
 
 ## File Naming Conventions
 
