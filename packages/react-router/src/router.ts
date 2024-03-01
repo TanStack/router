@@ -765,13 +765,6 @@ export class Router<
       // reuse it. This is important for layout routes, which might stick
       // around between navigation actions that only change leaf routes.
       let existingMatch = getRouteMatch(this.state, matchId)
-      // if (
-      //   existingMatch &&
-      //   existingMatch.status === 'error' &&
-      //   isRedirect(existingMatch.error)
-      // ) {
-      //   existingMatch = undefined
-      // }
 
       const cause = this.state.matches.find((d) => d.id === matchId)
         ? 'stay'
