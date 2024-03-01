@@ -1,6 +1,6 @@
 import * as React from 'react'
 import invariant from 'tiny-invariant'
-import { useLoaderData, useLoaderDeps, useMatch } from './Matches'
+import { useLoaderData, useLoaderDeps, useMatch, RouteMatch } from './Matches'
 import { AnyRouteMatch } from './Matches'
 import { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
 import { ParsedLocation } from './location'
@@ -551,8 +551,12 @@ export class RouteApi<
     this.id = id as any
   }
 
-  useMatch = <TSelected = TAllContext>(opts?: {
-    select?: (s: TAllContext) => TSelected
+  useMatch = <
+    TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+    TRouteMatchState = RouteMatch<TRouteTree, TId>,
+    TSelected = TRouteMatchState,
+  >(opts?: {
+    select?: (match: TRouteMatchState) => TSelected
   }): TSelected => {
     return useMatch({ select: opts?.select, from: this.id })
   }
@@ -886,8 +890,12 @@ export class Route<
     return this
   }
 
-  useMatch = <TSelected = TAllContext>(opts?: {
-    select?: (search: TAllContext) => TSelected
+  useMatch = <
+    TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+    TRouteMatchState = RouteMatch<TRouteTree, TId>,
+    TSelected = TRouteMatchState,
+  >(opts?: {
+    select?: (match: TRouteMatchState) => TSelected
   }): TSelected => {
     return useMatch({ ...opts, from: this.id })
   }

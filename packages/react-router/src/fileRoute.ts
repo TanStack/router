@@ -22,7 +22,7 @@ import {
   AnySearchSchema,
 } from './route'
 import { Assign, Expand, IsAny } from './utils'
-import { useMatch, useLoaderDeps, useLoaderData } from './Matches'
+import { useMatch, useLoaderDeps, useLoaderData, RouteMatch } from './Matches'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import warning from 'tiny-warning'
@@ -285,8 +285,14 @@ export class LazyRoute<TRoute extends AnyRoute> {
     ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
-  useMatch = <TSelected = TRoute['types']['allContext']>(opts?: {
-    select?: (s: TRoute['types']['allContext']) => TSelected
+  useMatch = <
+    TRouteMatchState = RouteMatch<
+      TRoute['types']['routeTree'],
+      TRoute['types']['id']
+    >,
+    TSelected = TRouteMatchState,
+  >(opts?: {
+    select?: (match: TRouteMatchState) => TSelected
   }): TSelected => {
     return useMatch({ select: opts?.select, from: this.options.id })
   }
