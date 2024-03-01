@@ -169,7 +169,7 @@ export function Match({ matchId }: { matchId: string }) {
             // Forward not found errors (we don't want to show the error component for these)
             if (isNotFound(error)) throw error
             warning(false, `Error in route match: ${matchId}`)
-            console.error('Caught!!!', error)
+            console.error(error)
           }}
         >
           <ResolvedNotFoundBoundary
