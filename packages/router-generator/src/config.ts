@@ -6,6 +6,7 @@ export const configSchema = z.object({
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
   routesDirectory: z.string().optional().default('./src/routes'),
+  routeGroupPattern: z.string().optional().default('\\(.+\\)'),
   generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
   quoteStyle: z.enum(['single', 'double']).optional().default('single'),
   disableTypes: z.boolean().optional().default(false),
