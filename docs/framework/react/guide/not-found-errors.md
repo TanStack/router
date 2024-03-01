@@ -203,13 +203,15 @@ export const Route = createFileRoute('/_layout/a')({
 
 ### Manually targeting the root route
 
-You can also target the root route by passing `route: '__root__'` to the `notFound` function.
+You can also target the root route by passing the exported `rootRouteId` variable to the `notFound` function's `route` property:
 
 ```tsx
+import { rootRouteId } from '@tanstack/react-router'
+
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId } }) => {
     const post = await getPost(postId)
-    if (!post) throw notFound({ route: '__root__' })
+    if (!post) throw notFound({ route: rootRouteId })
     return { post }
   },
 })
