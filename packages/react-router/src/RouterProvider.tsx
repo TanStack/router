@@ -137,21 +137,21 @@ function Transitioner() {
   useLayoutEffect(() => {
     const unsub = router.history.subscribe(() => {
       router.latestLocation = router.parseLocation(router.latestLocation)
-      if (routerState.location !== router.latestLocation) {
+      if (router.state.location !== router.latestLocation) {
         tryLoad()
       }
     })
 
-    const nextLocation = router.buildLocation({
-      search: true,
-      params: true,
-      hash: true,
-      state: true,
-    })
+    // const nextLocation = router.buildLocation({
+    //   search: true,
+    //   params: true,
+    //   hash: true,
+    //   state: true,
+    // })
 
-    if (routerState.location.href !== nextLocation.href) {
-      router.commitLocation({ ...nextLocation, replace: true })
-    }
+    // if (routerState.location.href !== nextLocation.href) {
+    //   router.commitLocation({ ...nextLocation, replace: true })
+    // }
 
     return () => {
       unsub()

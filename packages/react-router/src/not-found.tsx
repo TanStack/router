@@ -4,7 +4,7 @@ import { useRouterState } from './useRouterState'
 import { RegisteredRouter, RouteIds } from '.'
 
 export type NotFoundError = {
-  global?: boolean
+  _global?: boolean
   data?: any
   throw?: boolean
   routeId?: RouteIds<RegisteredRouter['routeTree']>

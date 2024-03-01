@@ -55,7 +55,8 @@ export async function fetcher<TPayload>(
     let response = await handleResponseErrors(handlerResponse)
 
     if (['json'].includes(response.headers.get(serverFnReturnTypeHeader)!)) {
-      const json = await response.json()
+      const text = await response.text()
+      const json = text ? JSON.parse(text) : undefined
 
       // If the response is a redirect or not found, throw it
       // for the router to handle
@@ -85,13 +86,14 @@ export async function fetcher<TPayload>(
 
   // If the response is JSON, return it parsed
   const contentType = response.headers.get('content-type')
+  const text = await response.text()
   if (contentType && contentType.includes('application/json')) {
-    return response.json()
+    return text ? JSON.parse(text) : undefined
   } else {
     // Otherwise, return the text as a fallback
     // If the user wants more than this, they can pass a
     // request instead
-    return response.text()
+    return text
   }
 }
 async function handleResponseErrors(response: Response) {

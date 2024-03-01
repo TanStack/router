@@ -198,6 +198,7 @@ export const Scripts = () => {
           tag: 'script',
           attrs: {
             ...script,
+            suppressHydrationWarning: true,
             key: `script-${script.src}`,
           },
           children,

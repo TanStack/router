@@ -298,7 +298,7 @@ export function TanStackRouterDevtools({
           </div>
         </div>
         <div className={getStyles().mainCloseBtnDivider}>-</div>
-        <div className={getStyles().routerLogoCloseButton}>React Router</div>
+        <div className={getStyles().routerLogoCloseButton}>TanStack Router</div>
       </button>
     </Container>
   )
@@ -593,44 +593,48 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               <div>age / staleTime / gcTime</div>
             </div>
           </div>
-          {!showMatches ? (
-            <RouteComp
-              route={router.routeTree}
-              isRoot
-              activeId={activeId}
-              setActiveId={setActiveId}
-            />
-          ) : (
-            <div>
-              {(routerState.status === 'pending'
-                ? routerState.pendingMatches ?? []
-                : routerState.matches
-              ).map((match, i) => {
-                return (
-                  <div
-                    key={match.id || i}
-                    role="button"
-                    aria-label={`Open match details for ${match.id}`}
-                    onClick={() =>
-                      setActiveId(activeId === match.id ? '' : match.id)
-                    }
-                    className={cx(getStyles().matchRow(match === activeMatch))}
-                  >
+          <div className={cx(getStyles().routesContainer)}>
+            {!showMatches ? (
+              <RouteComp
+                route={router.routeTree}
+                isRoot
+                activeId={activeId}
+                setActiveId={setActiveId}
+              />
+            ) : (
+              <div>
+                {(routerState.status === 'pending'
+                  ? routerState.pendingMatches ?? []
+                  : routerState.matches
+                ).map((match, i) => {
+                  return (
                     <div
+                      key={match.id || i}
+                      role="button"
+                      aria-label={`Open match details for ${match.id}`}
+                      onClick={() =>
+                        setActiveId(activeId === match.id ? '' : match.id)
+                      }
                       className={cx(
-                        getStyles().matchIndicator(getStatusColor(match)),
+                        getStyles().matchRow(match === activeMatch),
                       )}
-                    />
+                    >
+                      <div
+                        className={cx(
+                          getStyles().matchIndicator(getStatusColor(match)),
+                        )}
+                      />
 
-                    <code
-                      className={getStyles().matchID}
-                    >{`${match.routeId === '__root__' ? '__root__' : match.pathname}`}</code>
-                    <AgeTicker match={match} />
-                  </div>
-                )
-              })}
-            </div>
-          )}
+                      <code
+                        className={getStyles().matchID}
+                      >{`${match.routeId === '__root__' ? '__root__' : match.pathname}`}</code>
+                      <AgeTicker match={match} />
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
         {routerState.cachedMatches?.length ? (
           <div className={getStyles().cachedMatchesContainer}>
@@ -1130,6 +1134,10 @@ const stylesFactory = () => {
       display: flex;
       flex-direction: column;
     `,
+    routesContainer: css`
+      overflow-x: auto;
+      overflow-y: visible;
+    `,
     routesRowContainer: (active: boolean, isMatch: boolean) => {
       const base = css`
         display: flex;
@@ -1213,13 +1221,15 @@ const stylesFactory = () => {
       line-height: ${tokens.font.lineHeight.sm};
     `,
     matchStatus: (
-      status: 'pending' | 'success' | 'error',
+      status: 'pending' | 'success' | 'error' | 'notFound' | 'redirected',
       isFetching: boolean,
     ) => {
       const colorMap = {
         pending: 'yellow',
         success: 'green',
         error: 'red',
+        notFound: 'purple',
+        redirected: 'gray',
       } as const
 
       const color =
