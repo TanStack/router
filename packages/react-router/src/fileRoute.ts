@@ -63,6 +63,16 @@ export type RemoveUnderScores<T extends string> = Replace<
   '/'
 >
 
+type RemoveRouteGroups<S extends string> =
+  S extends `${infer Before}(${infer RouteGroup})${infer After}`
+    ? RemoveRouteGroups<`${Before}${After}`>
+    : S
+
+type NormalizeSlashes<S extends string> =
+  S extends `${infer Before}//${infer After}`
+    ? NormalizeSlashes<`${Before}/${After}`>
+    : S
+
 type ReplaceFirstOccurrence<
   T extends string,
   Search extends string,
@@ -102,7 +112,7 @@ export function createFileRoute<
   >,
   TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
     TParentRoute,
-    RemoveUnderScores<TPath>
+    NormalizeSlashes<RemoveRouteGroups<RemoveUnderScores<TPath>>>
   >,
 >(path: TFilePath) {
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
