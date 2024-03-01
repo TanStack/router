@@ -5,7 +5,7 @@ title: RouterEvents type
 
 The `RouterEvents` type contains all of the events that the router can emit.
 
-## RouterEvents `properties`
+## RouterEvents properties
 
 Each property on this type is an event that the router can emit. The value of each property is an object that contains the following properties:
 

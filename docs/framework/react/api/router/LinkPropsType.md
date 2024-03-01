@@ -14,7 +14,7 @@ type LinkProps = ActiveLinkOptions &
   }
 ```
 
-### LinkProps `properties`
+## LinkProps properties
 
 - All of the props from [`ActiveLinkOptions`](./api/router/ActiveLinkOptionsType)
 - All of the props from `React.AnchorHTMLAttributes<HTMLAnchorElement>`

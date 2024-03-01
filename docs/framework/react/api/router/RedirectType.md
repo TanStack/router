@@ -12,7 +12,7 @@ export type Redirect = {
 } & NavigateOptions
 ```
 
-## Redirect `properties`
+## Redirect properties
 
 The `Redirect` object accepts/contains the following properties:
 

@@ -5,7 +5,7 @@ title: RouterState type
 
 The `RouterState` type represents the state of the router at any given time.
 
-## RouterState `properties`
+## RouterState properties
 
 The `RouterState` type contains all of the properties that are available on the router state.
 

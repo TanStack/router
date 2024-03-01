@@ -11,13 +11,13 @@ The `FileRoute` class is a factory that can be used to create a file-based route
 
 The `FileRoute` constructor accepts a single argument: the `path` of the file that the route will be generated for.
 
-### Constructor `options`
+### Constructor options
 
 - Type: `string` literal
 - Required, but **automatically inserted and updated by the `tsr generate` and `tsr watch` commands**.
 - The full path of the file that the route will be generated from.
 
-### Constructor `returns`
+### Constructor returns
 
 - An instance of the `FileRoute` class that can be used to create a route.
 
@@ -29,14 +29,14 @@ The `FileRoute` class implements the following method(s):
 
 The `createRoute` method is a method that can be used to configure the file route instance. It accepts a single argument: the `options` that will be used to configure the file route instance.
 
-#### .createRoute `options`
+#### .createRoute options
 
 - Type: `Omit<RouteOptions, 'getParentRoute' | 'path' | 'id'>`
 - [`RouteOptions`](./api/router/RouteOptionsType)
 - Optional
 - The same options that are available to the `Route` class, but with the `getParentRoute`, `path`, and `id` options omitted since they are unnecessary for file-based routing.
 
-#### .createRoute `returns`
+#### .createRoute returns
 
 - A `Route` instance that can be used to create a route tree.
 

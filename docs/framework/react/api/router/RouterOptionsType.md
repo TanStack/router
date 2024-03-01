@@ -5,7 +5,7 @@ title: RouterOptions
 
 The `RouterOptions` type contains all of the options that can be used to configure a router instance.
 
-## RouterOptions `properties`
+## RouterOptions properties
 
 The `RouterOptions` type accepts an object with the following properties and methods:
 

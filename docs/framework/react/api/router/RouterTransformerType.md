@@ -5,7 +5,7 @@ title: RouterTransformer type
 
 The `RouterTransformer` type represents the interface the router uses to transform data across network boundaries.
 
-## RouterTransformer `properties`
+## RouterTransformer properties
 
 The `RouterTransformer` type contains methods for stringifying and parsing data across network boundaries.
 

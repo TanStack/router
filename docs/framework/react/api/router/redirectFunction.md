@@ -5,14 +5,14 @@ title: redirect function
 
 The `redirect` function returns a new `Redirect` object that can be either returned or thrown from places like a Route's `beforeLoad` or `loader` callbacks to trigger *redirect* to a new location.
 
-## redirect `options`
+## redirect options
 
 The `redirect` function accepts a single argument, the `options` to determine the redirect behavior.
 
 - Type: [`Redirect`](./api/router/RedirectType)
 - Required
 
-## redirect `returns`
+## redirect returns
 
 - If the `throw` property is `true` in the `options` object, the `Redirect` object will be thrown from within the function call.
 - If the `throw` property is `false | undefined` in the `options` object, the `Redirect` object will be returned.

@@ -5,21 +5,21 @@ title: useMatchRoute hook
 
 The `useMatchRoute` hook is a hook that returns a `matchRoute` function that can be used to match a route against either the current or pending location.
 
-## useMatchRoute `returns`
+## useMatchRoute returns
 
 - A `matchRoute` function that can be used to match a route against either the current or pending location.
 
-## matchRoute `function`
+## matchRoute function
 
 The `matchRoute` function is a function that can be used to match a route against either the current or pending location.
 
-### matchRoute `options`
+### matchRoute function options
 
 The `matchRoute` function accepts a single argument, an `options` object.
 
 - Type: [`UseMatchRouteOptions`](./api/router/UseMatchRouteOptionsType)
 
-### matchRoute `returns`
+### matchRoute function returns
 
 - The matched route's params or `false` if no route was matched
 

@@ -14,7 +14,7 @@ interface MatchRouteOptions {
 }
 ```
 
-## MatchRouteOptions `properties`
+## MatchRouteOptions properties
 
 The `MatchRouteOptions` type has the following properties:
 

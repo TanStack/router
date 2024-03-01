@@ -5,7 +5,7 @@ title: RouteOptions type
 
 The `RouteOptions` type is used to describe the options that can be used when creating a route.
 
-## RouteOptions `properties`
+## RouteOptions properties
 
 The `RouteOptions` type accepts an object with the following properties:
 

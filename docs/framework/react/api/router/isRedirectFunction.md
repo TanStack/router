@@ -5,7 +5,7 @@ title: isRedirect function
 
 The `isRedirect` function can be used to determine if an object is a redirect object.
 
-## isRedirect `options`
+## isRedirect options
 
 The `isRedirect` function accepts a single argument, an `input`.
 
@@ -15,7 +15,7 @@ The `isRedirect` function accepts a single argument, an `input`.
 - Required
 - An object to check if it is a redirect object
 
-## isRedirect `returns`
+## isRedirect returns
 
 - Type: `boolean`
 - `true` if the object is a redirect object

@@ -5,13 +5,13 @@ title: createRouteMask function
 
 The `createRouteMask` function is a helper function that can be used to create a route mask configuration that can be passed to the `RouterOptions.routeMasks` option.
 
-## createRouteMask `options`
+## createRouteMask options
 
 - Type: [`RouteMask`](./api/router/RouteMaskType)
 - Required
 - The options that will be used to configure the route mask
 
-## createRouteMask `returns`
+## createRouteMask returns
 
 - A object with the type signature of [`RouteMask`](./api/router/RouteMaskType) that can be passed to the `RouterOptions.routeMasks` option.
 

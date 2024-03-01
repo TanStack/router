@@ -5,7 +5,7 @@ title: useAwaited hook
 
 The `useAwaited` method is a hook that suspends until the provided promise is resolved or rejected.
 
-## useAwaited `options`
+## useAwaited options
 
 The `useAwaited` hook accepts a single argument, an `options` object.
 
@@ -15,7 +15,7 @@ The `useAwaited` hook accepts a single argument, an `options` object.
 - Required
 - The deferred promise to await.
 
-## useAwaited `returns`
+## useAwaited returns
 
 - Throws an error if the promise is rejected.
 - Suspends (throws a promise) if the promise is pending.

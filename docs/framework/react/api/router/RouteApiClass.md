@@ -7,7 +7,7 @@ title: RouteApi class
 
 The `RouteApi` class provides type-safe version of common hooks like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch` that are pre-bound to a specific route ID and corresponding registered route types.
 
-## Constructor `options`
+## Constructor options
 
 The `RouteApi` constructor accepts a single argument: the `options` that will be used to configure the `RouteApi` instance.
 
@@ -17,7 +17,7 @@ The `RouteApi` constructor accepts a single argument: the `options` that will be
 - Required
 - The route ID to which the `RouteApi` instance will be bound
 
-## Constructor `returns`
+## Constructor returns
 
 - A `RouteApi` instance that is pre-bound to the route ID that the `RouteApi` constructor was called with that provides type-safe versions of common hooks like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch`.
 

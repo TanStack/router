@@ -5,7 +5,7 @@ title: useParams
 
 The `useParams` method returns all of the path parameters that were parsed for the closest match and all of its parent matches.
 
-## useParams `options`
+## useParams options
 
 The `useParams` hook accepts an optional `options` object.
 
@@ -21,7 +21,7 @@ The `useParams` hook accepts an optional `options` object.
 - `(params: AllParams) => TSelected`
 - If supplied, this function will be called with the params object and the return value will be returned from `useParams`. This value will also be used to determine if the hook should re-render its parent component using shallow equality checks.
 
-## useParams `returns`
+## useParams returns
 
 - An object of of the match's and parent match path params or `TSelected` if a `select` function is provided.
 

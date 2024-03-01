@@ -7,7 +7,7 @@ title: lazyRouteComponent function
 
 The `lazyRouteComponent` function can be used to create a one-off code-split route component that can be preloaded using a `component.preload()` method.
 
-## lazyRouteComponent `options`
+## lazyRouteComponent options
 
 The `lazyRouteComponent` function accepts two arguments:
 
@@ -23,7 +23,7 @@ The `lazyRouteComponent` function accepts two arguments:
 - Optional
 - The name of the component to be loaded from the imported object. Defaults to `'default'`.
 
-## lazyRouteComponent `returns`
+## lazyRouteComponent returns
 
 - A `React.lazy` component that can be preloaded using a `component.preload()` method.
 

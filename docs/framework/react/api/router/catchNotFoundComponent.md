@@ -5,7 +5,7 @@ title: CatchNotFound Component
 
 The `CatchNotFound` component is a component that catches not-found errors thrown by its children, renders an fallback component and optionally calls the `onCatch` callback. It resets when the pathname changes.
 
-## CatchNotFound `props`
+## CatchNotFound props
 
 The `CatchNotFound` component accepts the following props:
 
@@ -27,7 +27,7 @@ The `CatchNotFound` component accepts the following props:
 - Optional
 - A callback that will be called with the error that was thrown by the component's children
 
-## CatchNotFound `returns`
+## CatchNotFound returns
 
 - Returns the component's children if there is no error.
 - Returns the `fallback` if there is an error.

@@ -11,7 +11,7 @@ The `Route` class implements the `RouteApi` class and can be used to create rout
 
 The `Route` constructor accepts an object as its only argument.
 
-### Constructor `options`
+### Constructor options
 
 - Type: [`RouteOptions`](./api/router/RouteOptionsType)
 - Required

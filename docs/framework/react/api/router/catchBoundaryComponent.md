@@ -5,7 +5,7 @@ title: CatchBoundary component
 
 The `CatchBoundary` component is a component that catches errors thrown by its children, renders an error component and optionally calls the `onCatch` callback. It also accepts a `getResetKey` function that can be used to declaratively reset the component's state when the key changes.
 
-## CatchBoundary `props`
+## CatchBoundary props
 
 The `CatchBoundary` component accepts the following props:
 
@@ -33,7 +33,7 @@ The `CatchBoundary` component accepts the following props:
 - Optional
 - A callback that will be called with the error that was thrown by the component's children.
 
-## CatchBoundary `returns`
+## CatchBoundary returns
 
 - Returns the component's children if there is no error.
 - Returns the `errorComponent` if there is an error.

@@ -5,7 +5,7 @@ title: RouterErrorSerializer type
 
 The `RouterErrorSerializer` type represents the interface the router uses to serialize and deserialize errors.
 
-## RouterErrorSerializer `properties`
+## RouterErrorSerializer properties
 
 The `RouterErrorSerializer` type contains methods for serializing and deserializing errors.
 

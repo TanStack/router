@@ -5,7 +5,7 @@ title: createFileRoute function
 
 The `createFileRoute` function is a factory that can be used to create a file-based route instance. This route instance can then be used to automatically generate a route tree with the `tsr generate` and `tsr watch` commands.
 
-## createFileRoute `options`
+## createFileRoute options
 
 The `createFileRoute` function accepts a single argument of type `string` that represents the `path` of the file that the route will be generated from.
 
@@ -15,7 +15,7 @@ The `createFileRoute` function accepts a single argument of type `string` that r
 - Required, but **automatically inserted and updated by the `tsr generate` and `tsr watch` commands**
 - The full path of the file that the route will be generated from
 
-## createFileRoute `returns`
+## createFileRoute returns
 
 - A new [`FileRoute`](./api/router/FileRouteClass) instance.
 

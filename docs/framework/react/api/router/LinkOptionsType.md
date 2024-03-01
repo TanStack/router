@@ -15,7 +15,7 @@ type LinkOptions = NavigateOptions & {
 }
 ```
 
-## LinkOptions `properties`
+## LinkOptions properties
 
 The `LinkOptions` object accepts/contains the following properties:
 

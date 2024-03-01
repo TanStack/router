@@ -11,13 +11,13 @@ The `Router` class is used to instantiate a new router instance.
 
 The `Router` constructor accepts a single argument: the `options` that will be used to configure the router instance.
 
-### Constructor `options`
+### Constructor options
 
 - Type: [`RouterOptions`](./api/router/RouterOptionsType)
 - Required
 - The options that will be used to configure the router instance.
 
-### Constructor `returns`
+### Constructor returns
 
 The instantiation of the `Router` class returns a new instance of the router.
 

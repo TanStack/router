@@ -5,14 +5,14 @@ title: notFound function
 
 The `notFound` function returns a new `NotFoundError` object that can be either returned or thrown from places like a Route's `beforeLoad` or `loader` callbacks to trigger the `notFoundComponent`.
 
-## notFound `options`
+## notFound options
 
 The `notFound` function accepts a single optional argument, the `options` to create the not-found error object.
 
 - Type: [`Partial<NotFoundError>`](./api/router/NotFoundErrorType)
 - Optional
 
-## notFound `returns`
+## notFound returns
 
 - If the `throw` property is `true` in the `options` object, the `NotFoundError` object will be thrown from within the function call.
 - If the `throw` property is `false | undefined` in the `options` object, the `NotFoundError` object will be returned.

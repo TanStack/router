@@ -5,7 +5,7 @@ title: useNavigate hook
 
 The `useNavigate` hook is a hook that returns a `navigate` function that can be used to navigate to a new location. This includes changes to the pathname, search params, hash, and location state.
 
-## useNavigate `options`
+## useNavigate options
 
 The `useNavigate` hook accepts a single argument, an `options` object.
 
@@ -15,21 +15,21 @@ The `useNavigate` hook accepts a single argument, an `options` object.
 - Optional
 - Description: The location to navigate from. This is useful when you want to navigate to a new location from a specific location, rather than the current location.
 
-## useNavigate `returns`
+## useNavigate returns
 
 - A `navigate` function that can be used to navigate to a new location.
 
-## navigate `function`
+## navigate function
 
 The `navigate` function is a function that can be used to navigate to a new location.
 
-### navigate `options`
+### navigate function options
 
 The `navigate` function accepts a single argument, an `options` object.
 
 - Type: [`NavigateOptions`](./api/router/NavigateOptionsType)
 
-### navigate `returns`
+### navigate function returns
 
 - A `Promise` that resolves when the navigation is complete
 

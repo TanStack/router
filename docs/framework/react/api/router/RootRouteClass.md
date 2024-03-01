@@ -11,7 +11,7 @@ The `RootRoute` class extends the `Route` class and can be used to create a root
 
 The `RootRoute` constructor accepts an object as its only argument.
 
-### Constructor `options`
+### Constructor options
 
 - Type:
 

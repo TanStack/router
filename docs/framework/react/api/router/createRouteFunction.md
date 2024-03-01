@@ -5,13 +5,13 @@ title: createRoute function
 
 The `createRoute` function implements returns a new [`Route`](./api/router/RouteClass) instance. A route instance can then be passed to a root route's children to create a route tree, which is then passed to the router.
 
-## createRoute `options`
+## createRoute options
 
 - Type: `RouteOptions`
 - Required
 - The options that will be used to configure the route instance
 
-## createRoute `returns`
+## createRoute returns
 
 - A new [`Route`](./api/router/RouteClass) instance.
 

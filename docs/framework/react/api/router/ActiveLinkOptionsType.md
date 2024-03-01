@@ -16,7 +16,7 @@ type ActiveLinkOptions = LinkOptions & {
 }
 ```
 
-## ActiveLinkOptions `properties`
+## ActiveLinkOptions properties
 
 The `ActiveLinkOptions` object accepts/contains the following properties:
 

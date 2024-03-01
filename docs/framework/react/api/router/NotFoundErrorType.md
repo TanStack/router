@@ -14,7 +14,7 @@ export type NotFoundError = {
 }
 ```
 
-## NotFoundError `properties`
+## NotFoundError properties
 
 The `NotFoundError` object accepts/contains the following properties:
 

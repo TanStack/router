@@ -5,7 +5,7 @@ title: Await component
 
 The `Await` component is a component that suspends until the provided promise is resolved or rejected.
 
-## Await `props`
+## Await props
 
 The `Await` component accepts the following props:
 
@@ -21,7 +21,7 @@ The `Await` component accepts the following props:
 - Required
 - A function that will be called with the resolved value of the promise.
 
-## Await `returns`
+## Await returns
 
 - Throws an error if the promise is rejected.
 - Suspends (throws a promise) if the promise is pending.

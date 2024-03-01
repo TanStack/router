@@ -5,7 +5,7 @@ title: getRouteApi function
 
 The `getRouteApi` function provides type-safe version of common hooks like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch` that are pre-bound to a specific route ID and corresponding registered route types.
 
-## getRouteApi `options`
+## getRouteApi options
 
 The `getRouteApi` function accepts a single argument, a `routeId` string literal.
 
@@ -15,7 +15,7 @@ The `getRouteApi` function accepts a single argument, a `routeId` string literal
 - Required
 - The route ID to which the [`RouteApi`](./api/router/RouteApiClass) instance will be bound
 
-## getRouteApi `returns`
+## getRouteApi returns
 
 - A [`RouteApi`](./api/router/RouteApiClass) instance that is pre-bound to the route ID that the `getRouteApi` function was called with.
 
