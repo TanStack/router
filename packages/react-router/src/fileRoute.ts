@@ -105,7 +105,9 @@ export type FileRoutePath<
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
-  TId extends RouteConstraints['TId'] = TFilePath,
+  TId extends RouteConstraints['TId'] = NormalizeSlashes<
+    RemoveRouteGroups<TFilePath>
+  >,
   TPath extends RouteConstraints['TPath'] = FileRoutePath<
     TParentRoute,
     TFilePath
