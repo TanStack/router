@@ -150,15 +150,17 @@ type RouteSubNode = {
 }
 
 export async function generator(config: Config) {
-  console.log('')
+  if (!config.disableLogging) {
+    console.log('')
 
-  if (!first) {
-    console.log('♻️  Generating routes...')
-    first = true
-  } else if (skipMessage) {
-    skipMessage = false
-  } else {
-    console.log('♻️  Regenerating routes...')
+    if (!first) {
+      console.log('♻️  Generating routes...')
+      first = true
+    } else if (skipMessage) {
+      skipMessage = false
+    } else {
+      console.log('♻️  Regenerating routes...')
+    }
   }
 
   const taskId = latestTask + 1
@@ -267,7 +269,7 @@ export async function generator(config: Config) {
     }
 
     if (replaced !== routeCode) {
-      console.log(`🟡 Updating ${node.fullPath}`)
+      if (!config.disableLogging) console.log(`🟡 Updating ${node.fullPath}`)
       await fsp.writeFile(node.fullPath, replaced)
     }
 
@@ -553,11 +555,12 @@ export async function generator(config: Config) {
     )
   }
 
-  console.log(
-    `✅ Processed ${routeNodes.length === 1 ? 'route' : 'routes'} in ${
-      Date.now() - start
-    }ms`,
-  )
+  if (!config.disableLogging)
+    console.log(
+      `✅ Processed ${routeNodes.length === 1 ? 'route' : 'routes'} in ${
+        Date.now() - start
+      }ms`,
+    )
 }
 
 function routePathToVariable(d: string): string {

@@ -103,6 +103,8 @@ The following options are available for configuration via the `tsr.config.json` 
   - If set to `true` and the `generatedRouteTree` file ends with `.ts` or `.tsx`, the generated route tree will be written as a `.js` file instead.
 - **`addExtensions`**
   - (Optional, **Defaults to `false`**) add file extensions to the route names in the generated route tree
+- **`disableLogging`**
+  - (Optional, **Defaults to `false`**) disables logging for the route generation process
 
 ## File Naming Conventions
 
