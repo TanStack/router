@@ -18,7 +18,7 @@ import * as React from 'react'
 import { createFileRoute, defer } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/posts/$postId')({
-  loader: () => {
+  loader: async () => {
     // Fetch some slower data, but do not await it
     const slowDataPromise = fetchSlowData()
 
