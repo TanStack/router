@@ -269,7 +269,7 @@ For example, our route tree above has a `files/$` splat route. If the URL pathna
 File routes that are prefixed with an underscore (`_`) are considered "pathless". Pathless routes can be used wrap child routes with additional components and logic, without requiring a matching `path` in the URL
 
 - Wrap child routes with a layout component
-- Enforce an `loader` requirement before displaying any child routes
+- Enforce a `loader` requirement before displaying any child routes
 - Validate and provide search params to child routes
 - Provide fallbacks for error components or pending elements to child routes
 - Provide shared context to all child routes
