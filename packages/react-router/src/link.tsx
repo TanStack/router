@@ -604,23 +604,8 @@ export const Link: LinkComponent = React.forwardRef((props: any, ref) => {
         })
       : props.children
 
-  if (type === 'external') {
-    return <a {...linkProps} ref={ref} children={children} />
-  }
-
-  return <InternalLink {...linkProps} ref={ref} children={children} />
+  return <a {...linkProps} ref={ref} children={children} />
 })
-
-const InternalLink: LinkComponent = React.forwardRef((props: any, ref) => {
-  return (
-    <a
-      {...{
-        ref: ref as any,
-        ...props,
-      }}
-    />
-  )
-}) as any
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
