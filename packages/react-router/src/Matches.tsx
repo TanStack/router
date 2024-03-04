@@ -10,8 +10,6 @@ import {
   ReactNode,
   RootSearchSchema,
   StaticDataRouteOption,
-  UpdatableStaticRouteOption,
-  rootRouteId,
 } from './route'
 import {
   AllParams,
@@ -22,14 +20,17 @@ import {
   RouteIds,
   RoutePaths,
 } from './routeInfo'
-import { RegisteredRouter, RouterState } from './router'
-import { DeepPartial, Expand, NoInfer, StrictOrFrom, pick } from './utils'
+import { AnyRouter, RegisteredRouter, RouterState } from './router'
 import {
-  CatchNotFound,
-  DefaultGlobalNotFound,
-  NotFoundError,
-  isNotFound,
-} from './not-found'
+  DeepPartial,
+  Expand,
+  NoInfer,
+  StrictOrFrom,
+  isServer,
+  pick,
+} from './utils'
+import { CatchNotFound, DefaultGlobalNotFound, isNotFound } from './not-found'
+import { isRedirect } from './redirects'
 
 export const matchContext = React.createContext<string | undefined>(undefined)
 
@@ -44,7 +45,7 @@ export interface RouteMatch<
   params: TReturnIntersection extends false
     ? RouteById<TRouteTree, TRouteId>['types']['allParams']
     : Expand<Partial<AllParams<TRouteTree>>>
-  status: 'pending' | 'success' | 'error'
+  status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
   isFetching: boolean
   showPending: boolean
   error: unknown
@@ -74,7 +75,7 @@ export interface RouteMatch<
   links?: JSX.IntrinsicElements['link'][]
   scripts?: JSX.IntrinsicElements['script'][]
   headers?: Record<string, string>
-  notFoundError?: NotFoundError
+  globalNotFound?: boolean
   staticData: StaticDataRouteOption
 }
 
@@ -173,13 +174,16 @@ export function Match({ matchId }: { matchId: string }) {
         >
           <ResolvedNotFoundBoundary
             fallback={(error) => {
-              // If the current not found handler doesn't exist or doesn't handle global not founds, forward it up the tree
-              if (!routeNotFoundComponent || (error.global && !route.isRoot))
+              // If the current not found handler doesn't exist or it has a
+              // route ID which doesn't match the current route, rethrow the error
+              if (
+                !routeNotFoundComponent ||
+                (error.routeId && error.routeId !== routeId) ||
+                (!error.routeId && !route.isRoot)
+              )
                 throw error
 
-              return React.createElement(routeNotFoundComponent, {
-                data: error.data,
-              })
+              return React.createElement(routeNotFoundComponent, error as any)
             }}
           >
             <MatchInner matchId={matchId!} pendingElement={pendingElement} />
@@ -212,24 +216,49 @@ function MatchInner({
         'error',
         'showPending',
         'loadPromise',
-        'notFoundError',
       ]),
   })
 
-  // If a global not-found is found, and it's the root route, render the global not-found component.
-  if (match.notFoundError) {
-    if (routeId === rootRouteId && !route.options.notFoundComponent)
-      return <DefaultGlobalNotFound />
+  const RouteErrorComponent =
+    (route.options.errorComponent ?? router.options.defaultErrorComponent) ||
+    ErrorComponent
 
-    invariant(
-      route.options.notFoundComponent,
-      'Route matched with notFoundError should have a notFoundComponent',
+  if (match.status === 'notFound') {
+    invariant(isNotFound(match.error), 'Expected a notFound error')
+
+    return renderRouteNotFound(router, route, match.error.data)
+  }
+
+  if (match.status === 'redirected') {
+    // Redirects should be handled by the router transition. If we happen to
+    // encounter a redirect here, it's a bug. Let's warn, but render nothing.
+    invariant(isRedirect(match.error), 'Expected a redirect error')
+
+    warning(
+      false,
+      'Tried to render a redirected route match! This is a weird circumstance, please file an issue!',
     )
 
-    return <route.options.notFoundComponent data={match.notFoundError} />
+    return null
   }
 
   if (match.status === 'error') {
+    // If we're on the server, we need to use React's new and super
+    // wonky api for throwing errors from a server side render inside
+    // of a suspense boundary. This is the only way to get
+    // renderToPipeableStream to not hang indefinitely.
+    // We'll serialize the error and rethrow it on the client.
+    if (isServer) {
+      return (
+        <RouteErrorComponent
+          error={match.error}
+          info={{
+            componentStack: '',
+          }}
+        />
+      )
+    }
+
     if (isServerSideError(match.error)) {
       const deserializeError =
         router.options.errorSerializer?.deserialize ?? defaultDeserializeError
@@ -263,7 +292,28 @@ function MatchInner({
 }
 
 export const Outlet = React.memo(function Outlet() {
+  const router = useRouter()
   const matchId = React.useContext(matchContext)
+  const routeId = useRouterState({
+    select: (s) =>
+      getRenderedMatches(s).find((d) => d.id === matchId)?.routeId as string,
+  })
+
+  const route = router.routesById[routeId]!
+
+  const { parentGlobalNotFound } = useRouterState({
+    select: (s) => {
+      const matches = getRenderedMatches(s)
+      const parentMatch = matches.find((d) => d.id === matchId)
+      invariant(
+        parentMatch,
+        `Could not find parent match for matchId "${matchId}"`,
+      )
+      return {
+        parentGlobalNotFound: parentMatch.globalNotFound,
+      }
+    },
+  })
 
   const childMatchId = useRouterState({
     select: (s) => {
@@ -273,12 +323,35 @@ export const Outlet = React.memo(function Outlet() {
     },
   })
 
+  if (parentGlobalNotFound) {
+    return renderRouteNotFound(router, route, undefined)
+  }
+
   if (!childMatchId) {
     return null
   }
 
   return <Match matchId={childMatchId} />
 })
+
+function renderRouteNotFound(router: AnyRouter, route: AnyRoute, data: any) {
+  if (!route.options.notFoundComponent) {
+    if (router.options.defaultNotFoundComponent) {
+      return <router.options.defaultNotFoundComponent data={data} />
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      warning(
+        route.options.notFoundComponent,
+        `A notFoundError was encountered on the route with ID "${route.id}", but a notFoundComponent option was not configured, nor was a router level defaultNotFoundComponent configured. Consider configuring at least one of these to avoid TanStack Router's overly generic defaultNotFoundComponent (<div>Not Found<div>)`,
+      )
+    }
+
+    return <DefaultGlobalNotFound />
+  }
+
+  return <route.options.notFoundComponent data={data} />
+}
 
 export interface MatchRouteOptions {
   pending?: boolean
@@ -419,8 +492,8 @@ export function useMatch<
 
   const matchSelection = useRouterState({
     select: (state) => {
-      const match = getRenderedMatches(state).find(
-        (d) => d.id === nearestMatchId,
+      const match = getRenderedMatches(state).find((d) =>
+        opts?.from ? opts?.from === d.routeId : d.id === nearestMatchId,
       )
 
       invariant(

@@ -16,7 +16,6 @@ import {
   RouteConstraints,
   ResolveFullSearchSchemaInput,
   SearchSchemaInput,
-  LoaderFnContext,
   RouteLoaderFn,
   AnyPathParams,
   AnySearchSchema,
@@ -26,7 +25,8 @@ import { useMatch, useLoaderDeps, useLoaderData, RouteMatch } from './Matches'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import warning from 'tiny-warning'
-import { RegisteredRouter, RouteById, RouteIds } from '.'
+import { RegisteredRouter } from './router'
+import { RouteById, RouteIds } from './routeInfo'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -188,7 +188,10 @@ export class FileRoute<
     >,
     TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
-    TLoaderData extends any = unknown,
+    TLoaderDataReturn extends any = unknown,
+    TLoaderData extends any = [TLoaderDataReturn] extends [never]
+      ? undefined
+      : TLoaderDataReturn,
     TChildren extends RouteConstraints['TChildren'] = unknown,
     TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
   >(
@@ -209,6 +212,7 @@ export class FileRoute<
         TRouterContext,
         TAllContext,
         TLoaderDeps,
+        TLoaderDataReturn,
         TLoaderData
       >,
       'getParentRoute' | 'path' | 'id'
@@ -232,6 +236,7 @@ export class FileRoute<
     TAllContext,
     TRouterContext,
     TLoaderDeps,
+    TLoaderDataReturn,
     TLoaderData,
     TChildren,
     TRouteTree

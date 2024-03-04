@@ -40,11 +40,11 @@ const TanStackRouterDevtools =
       )
 ```
 
-Then wrap the `TanStackRouterDevtools` component in suspense. 
+Then wrap the `TanStackRouterDevtools` component in suspense.
 
 ```tsx
 <Suspense>
-    <TanStackRouterDevtools />
+  <TanStackRouterDevtools />
 </Suspense>
 ```
 

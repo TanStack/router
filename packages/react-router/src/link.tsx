@@ -179,9 +179,7 @@ export type ToSubOptions<
   TTo extends string = '',
 > = {
   to?: ToPathOption<TRouteTree, TFrom, TTo>
-  // The new has string or a function to update it
   hash?: true | Updater<string>
-  // State to pass to the history stack
   state?: true | NonNullableUpdater<HistoryState>
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
   from?: RoutePathsAutoComplete<TRouteTree, TFrom>

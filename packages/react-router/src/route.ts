@@ -18,9 +18,8 @@ import {
   UnionToIntersection,
 } from './utils'
 import { BuildLocationFn, NavigateFn } from './RouterProvider'
-import { LazyRoute } from '.'
-import warning from 'tiny-warning'
-import { NotFoundError, notFound } from '.'
+import { NotFoundError, notFound } from './not-found'
+import { LazyRoute } from './fileRoute'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -67,7 +66,10 @@ export type RouteOptions<
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderData extends any = unknown,
+  TLoaderDataReturn extends any = unknown,
+  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+    ? undefined
+    : TLoaderDataReturn,
 > = BaseRouteOptions<
   TParentRoute,
   TCustomId,
@@ -84,6 +86,7 @@ export type RouteOptions<
   TRouterContext,
   TAllContext,
   TLoaderDeps,
+  TLoaderDataReturn,
   TLoaderData
 > &
   UpdatableRouteOptions<
@@ -113,7 +116,10 @@ export type BaseRouteOptions<
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderData extends any = unknown,
+  TLoaderDataReturn extends any = unknown,
+  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+    ? undefined
+    : TLoaderDataReturn,
 > = RoutePathOptions<TCustomId, TPath> & {
   getParentRoute: () => TParentRoute
   validateSearch?: SearchSchemaValidator<TSearchSchemaInput, TSearchSchema>
@@ -146,7 +152,7 @@ export type BaseRouteOptions<
     NoInfer<TLoaderDeps>,
     NoInfer<TAllContext>,
     NoInfer<TRouteContext>,
-    TLoaderData
+    TLoaderDataReturn
   >
 } & (
     | {
@@ -295,7 +301,7 @@ export type RouteLoaderFn<
   TLoaderData extends any = unknown,
 > = (
   match: LoaderFnContext<TAllParams, TLoaderDeps, TAllContext, TRouteContext>,
-) => Promise<TLoaderData> | TLoaderData
+) => Promise<TLoaderData> | TLoaderData | void
 
 export interface LoaderFnContext<
   TAllParams = {},
@@ -312,6 +318,7 @@ export interface LoaderFnContext<
   navigate: (opts: NavigateOptions<AnyRoute>) => Promise<void>
   parentMatchPromise?: Promise<void>
   cause: 'preload' | 'enter' | 'stay'
+  route: Route
 }
 
 export type SearchFilter<T, U = T> = (prev: T) => U
@@ -376,6 +383,7 @@ export interface AnyRoute
     any,
     any,
     any,
+    any,
     any
   > {}
 
@@ -408,104 +416,6 @@ export type RouteConstraints = {
   TChildren: unknown
   TRouteTree: AnyRoute
 }
-
-// TODO: This is part of a future APi to move away from classes and
-// towards a more functional API. It's not ready yet.
-
-// type RouteApiInstance<
-//   TId extends RouteIds<RegisteredRouter['routeTree']>,
-//   TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
-//   TFullSearchSchema extends Record<
-//     string,
-//     any
-//   > = TRoute['types']['fullSearchSchema'],
-//   TAllParams extends AnyPathParams = TRoute['types']['allParams'],
-//   TAllContext extends Record<string, any> = TRoute['types']['allContext'],
-//   TLoaderDeps extends Record<string, any> = TRoute['types']['loaderDeps'],
-//   TLoaderData extends any = TRoute['types']['loaderData'],
-// > = {
-//   id: TId
-//   useMatch: <TSelected = TAllContext>(opts?: {
-//     select?: (s: TAllContext) => TSelected
-//   }) => TSelected
-
-//   useRouteContext: <TSelected = TAllContext>(opts?: {
-//     select?: (s: TAllContext) => TSelected
-//   }) => TSelected
-
-//   useSearch: <TSelected = TFullSearchSchema>(opts?: {
-//     select?: (s: TFullSearchSchema) => TSelected
-//   }) => TSelected
-
-//   useParams: <TSelected = TAllParams>(opts?: {
-//     select?: (s: TAllParams) => TSelected
-//   }) => TSelected
-
-//   useLoaderDeps: <TSelected = TLoaderDeps>(opts?: {
-//     select?: (s: TLoaderDeps) => TSelected
-//   }) => TSelected
-
-//   useLoaderData: <TSelected = TLoaderData>(opts?: {
-//     select?: (s: TLoaderData) => TSelected
-//   }) => TSelected
-// }
-
-// export function RouteApi_v2<
-//   TId extends RouteIds<RegisteredRouter['routeTree']>,
-//   TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
-//   TFullSearchSchema extends Record<
-//     string,
-//     any
-//   > = TRoute['types']['fullSearchSchema'],
-//   TAllParams extends AnyPathParams = TRoute['types']['allParams'],
-//   TAllContext extends Record<string, any> = TRoute['types']['allContext'],
-//   TLoaderDeps extends Record<string, any> = TRoute['types']['loaderDeps'],
-//   TLoaderData extends any = TRoute['types']['loaderData'],
-// >({
-//   id,
-// }: {
-//   id: TId
-// }): RouteApiInstance<
-//   TId,
-//   TRoute,
-//   TFullSearchSchema,
-//   TAllParams,
-//   TAllContext,
-//   TLoaderDeps,
-//   TLoaderData
-// > {
-//   return {
-//     id,
-
-//     useMatch: (opts) => {
-//       return useMatch({ ...opts, from: id })
-//     },
-
-//     useRouteContext: (opts) => {
-//       return useMatch({
-//         ...opts,
-//         from: id,
-//         select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-//       } as any)
-//     },
-
-//     useSearch: (opts) => {
-//       return useSearch({ ...opts, from: id } as any)
-//     },
-
-//     useParams: (opts) => {
-//       return useParams({ ...opts, from: id } as any)
-//     },
-
-//     useLoaderDeps: (opts) => {
-//       return useLoaderDeps({ ...opts, from: id } as any) as any
-//     },
-
-//     useLoaderData: (opts) => {
-//       return useLoaderData({ ...opts, from: id } as any) as any
-//     },
-//   }
-// }
 
 export function getRouteApi<
   TId extends RouteIds<RegisteredRouter['routeTree']>,
@@ -599,9 +509,6 @@ export class RouteApi<
   }
 }
 
-/**
- * @deprecated Use the `createRoute` function instead.
- */
 export class Route<
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
   in out TPath extends RouteConstraints['TPath'] = '/',
@@ -652,7 +559,10 @@ export class Route<
   >,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderData extends any = unknown,
+  TLoaderDataReturn extends any = unknown,
+  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+    ? undefined
+    : TLoaderDataReturn,
   TChildren extends RouteConstraints['TChildren'] = unknown,
   TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
 > {
@@ -673,6 +583,7 @@ export class Route<
     TRouterContext,
     TAllContext,
     TLoaderDeps,
+    TLoaderDataReturn,
     TLoaderData
   >
 
@@ -691,6 +602,9 @@ export class Route<
   rank!: number
   lazyFn?: () => Promise<LazyRoute<any>>
 
+  /**
+   * @deprecated Use the `createRoute` function instead.
+   */
   constructor(
     options: RouteOptions<
       TParentRoute,
@@ -708,6 +622,7 @@ export class Route<
       TRouterContext,
       TAllContext,
       TLoaderDeps,
+      TLoaderDataReturn,
       TLoaderData
     >,
   ) {
@@ -762,6 +677,7 @@ export class Route<
       TRouterContext,
       TAllContext,
       TLoaderDeps,
+      TLoaderDataReturn,
       TLoaderData
     > &
       RoutePathOptionsIntersection<TCustomId, TPath>
@@ -836,6 +752,7 @@ export class Route<
     TAllContext,
     TRouterContext,
     TLoaderDeps,
+    TLoaderDataReturn,
     TLoaderData,
     TNewChildren,
     TRouteTree
@@ -985,7 +902,10 @@ export function createRoute<
   >,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderData extends any = unknown,
+  TLoaderDataReturn extends any = unknown,
+  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+    ? undefined
+    : TLoaderDataReturn,
   TChildren extends RouteConstraints['TChildren'] = unknown,
   TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
 >(
@@ -1005,6 +925,7 @@ export function createRoute<
     TRouterContext,
     TAllContext,
     TLoaderDeps,
+    TLoaderDataReturn,
     TLoaderData
   >,
 ) {
@@ -1026,6 +947,7 @@ export function createRoute<
     TAllContext,
     TRouterContext,
     TLoaderDeps,
+    TLoaderDataReturn,
     TLoaderData,
     TChildren,
     TRouteTree
@@ -1044,7 +966,10 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       ? RouteContext
       : TRouteContextReturn,
     TLoaderDeps extends Record<string, any> = {},
-    TLoaderData extends any = unknown,
+    TLoaderDataReturn extends any = unknown,
+    TLoaderData extends any = [TLoaderDataReturn] extends [never]
+      ? undefined
+      : TLoaderDataReturn,
   >(
     options?: Omit<
       RouteOptions<
@@ -1063,6 +988,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
         TRouterContext,
         Assign<TRouterContext, TRouteContext>, // TAllContext
         TLoaderDeps,
+        TLoaderDataReturn, // TLoaderDataReturn,
         TLoaderData // TLoaderData,
       >,
       | 'path'
@@ -1105,7 +1031,10 @@ export class RootRoute<
     : TRouteContextReturn,
   TRouterContext extends {} = {},
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderData extends any = unknown,
+  TLoaderDataReturn extends any = unknown,
+  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+    ? undefined
+    : TLoaderDataReturn,
 > extends Route<
   any, // TParentRoute
   '/', // TPath
@@ -1124,6 +1053,7 @@ export class RootRoute<
   Expand<Assign<TRouterContext, TRouteContext>>, // TAllContext
   TRouterContext, // TRouterContext
   TLoaderDeps,
+  TLoaderDataReturn,
   TLoaderData,
   any, // TChildren
   any // TRouteTree
@@ -1149,6 +1079,7 @@ export class RootRoute<
         TRouterContext,
         Assign<TRouterContext, TRouteContext>, // TAllContext
         TLoaderDeps,
+        TLoaderDataReturn,
         TLoaderData
       >,
       | 'path'
@@ -1173,7 +1104,10 @@ export function createRootRoute<
     : TRouteContextReturn,
   TRouterContext extends {} = {},
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderData extends any = unknown,
+  TLoaderDataReturn extends any = unknown,
+  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+    ? undefined
+    : TLoaderDataReturn,
 >(
   options?: Omit<
     RouteOptions<
@@ -1192,6 +1126,7 @@ export function createRootRoute<
       TRouterContext,
       Assign<TRouterContext, TRouteContext>, // TAllContext
       TLoaderDeps,
+      TLoaderDataReturn,
       TLoaderData
     >,
     | 'path'
@@ -1210,6 +1145,7 @@ export function createRootRoute<
     TRouteContext,
     TRouterContext,
     TLoaderDeps,
+    TLoaderDataReturn,
     TLoaderData
   >(options)
 }
@@ -1333,7 +1269,10 @@ export class NotFoundRoute<
   >,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderData extends any = unknown,
+  TLoaderDataReturn extends any = unknown,
+  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+    ? undefined
+    : TLoaderDataReturn,
   TChildren extends RouteConstraints['TChildren'] = unknown,
   TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
 > extends Route<
@@ -1354,6 +1293,7 @@ export class NotFoundRoute<
   TAllContext,
   TRouterContext,
   TLoaderDeps,
+  TLoaderDataReturn,
   TLoaderData,
   TChildren,
   TRouteTree
@@ -1376,6 +1316,7 @@ export class NotFoundRoute<
         TRouterContext,
         TAllContext,
         TLoaderDeps,
+        TLoaderDataReturn,
         TLoaderData
       >,
       'caseSensitive' | 'parseParams' | 'stringifyParams' | 'path' | 'id'

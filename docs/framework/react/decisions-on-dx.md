@@ -16,7 +16,7 @@ But Tanstack Router is different. It's not your average routing library. It's no
 
 ## Tanstack Router's origin story
 
-It's important remember that Tanstack Router's origins stem from [Nozzle.io](https://nozzle.io)'s need for a client-side routing solution that offered a first-in-class *URL Search Parameters* experience without compromising on the ***type-safety*** that was required to power its complex dashboards.
+It's important remember that Tanstack Router's origins stem from [Nozzle.io](https://nozzle.io)'s need for a client-side routing solution that offered a first-in-class _URL Search Parameters_ experience without compromising on the **_type-safety_** that was required to power its complex dashboards.
 
 And so, from Tanstack Router's very inception, every facet of it's design was meticulously thought out to ensure that its type-safety and developer experience were second to none.
 
@@ -36,7 +36,7 @@ But to achieve this, we had to make some decisions that deviate from the norms i
 
 ## 1. Why is the Router's configuration done this way?
 
-When you want to leverage the Typescript's inference features to its fullest, you'll quickly realize that *Generics* are your best friend. And so, Tanstack Router uses Generics everywhere to ensure that the types of your routes are inferred as much as possible.
+When you want to leverage the Typescript's inference features to its fullest, you'll quickly realize that _Generics_ are your best friend. And so, Tanstack Router uses Generics everywhere to ensure that the types of your routes are inferred as much as possible.
 
 This means that you have to define your routes in a way that allows Typescript to infer the types of your routes as much as possible.
 
@@ -54,7 +54,7 @@ function App() {
       {/* ... */}
     </Router>
     // ^? Typescript cannot infer the routes in this configuration
-  );
+  )
 }
 ```
 
@@ -67,22 +67,22 @@ And since this would mean that you'd have to manually type the `to` prop of the 
 const router = createRouter({
   routes: {
     posts: {
-      component: PostsPage,     // /posts
+      component: PostsPage, // /posts
       children: {
-        "$postId": {
-          component: PostIdPage // /posts/$postId
-        }
-      }
+        $postId: {
+          component: PostIdPage, // /posts/$postId
+        },
+      },
     },
     // ...
-  }
+  },
 })
 ```
 
 At first glance, this seems like a good idea. It's easy to visualize the entire route hierarchy in one go. But this approach has a couple big downsides that make it not ideal for large applications:
 
-* **It's not very scalable**: As your application grows, the tree will grow and become harder to manage. And since its all defined in one file, it can become very hard to maintain.
-* **It's not great for code-splitting**: You'd have to manually code-split each component and then pass it into the `component` property of the route, further complicating the route configuration with an ever-growing route configuration file.
+- **It's not very scalable**: As your application grows, the tree will grow and become harder to manage. And since its all defined in one file, it can become very hard to maintain.
+- **It's not great for code-splitting**: You'd have to manually code-split each component and then pass it into the `component` property of the route, further complicating the route configuration with an ever-growing route configuration file.
 
 This only get worse as your begin to use more features of the router, such as nested context, loaders, search param validation, etc.
 
@@ -110,10 +110,7 @@ There were two approaches we considered for this:
 import { router } from '@/src/app'
 export const PostsIdLink = () => {
   return (
-    <Link<typeof router>
-      to='/posts/$postId'
-      params={{ postId: '123' }}
-    >
+    <Link<typeof router> to="/posts/$postId" params={{ postId: '123' }}>
       Go to post 123
     </Link>
   )
@@ -141,7 +138,7 @@ And then you can benefit from its auto-complete anywhere in your app without hav
 export const PostsIdLink = () => {
   return (
     <Link
-      to='/posts/$postId'
+      to="/posts/$postId"
       // ^? Typescript will auto-complete this for you
       params={{ postId: '123' }} // and this too!
     >
@@ -165,11 +162,11 @@ Something you'll notice (quite soon) in the Tanstack Router documentation is tha
 
 As mentioned in the beginning, Tanstack Router was designed for complex applications that require a high degree of type-safety and maintainability. And to achieve this, the configuration of the router has be done in an precise way that allows Typescript to infer the types of your routes as much as possible.
 
-A key difference in the set-up of a *basic* application with Tanstack Router, is that your route configurations require a function to be provided to `getParentRoute`, that returns the parent route of the current route.
+A key difference in the set-up of a _basic_ application with Tanstack Router, is that your route configurations require a function to be provided to `getParentRoute`, that returns the parent route of the current route.
 
 ```tsx
-import { createRoute } from '@tanstack/react-router';
-import { postsRoute } from './postsRoute';
+import { createRoute } from '@tanstack/react-router'
+import { postsRoute } from './postsRoute'
 
 export const postsIndexRoute = createRoute({
   getParentRoute: () => postsRoute,
@@ -181,36 +178,28 @@ At this stage, this is done so the definition of `postsIndexRoute` can be aware 
 
 As such, this is a critical part of the route configuration and a point of failure if not done correctly.
 
-But this is only one part of setting up a basic application. Tanstack Router requires the all the routes (including the root route) to be stitched into a ***route-tree*** so that it may be passed into the `createRouter` function before declaring the `Router` instance on the module for type inference. This is another critical part of the route configuration and a point of failure if not done correctly.
+But this is only one part of setting up a basic application. Tanstack Router requires the all the routes (including the root route) to be stitched into a **_route-tree_** so that it may be passed into the `createRouter` function before declaring the `Router` instance on the module for type inference. This is another critical part of the route configuration and a point of failure if not done correctly.
 
 > 🤯 If this route-tree were in its own file for an application with ~40-50 routes, it can easily grow up to 700+ lines.
 
 ```tsx
 const routeTree = rootRoute.addChildren([
-  postsRoute.addChildren([
-    postsIndexRoute,
-    postsIdRoute
-  ])
+  postsRoute.addChildren([postsIndexRoute, postsIdRoute]),
 ])
 ```
 
-This complexity only increases as you begin to use more features of the router, such as nested context, loaders, search param validation, etc. As such, it no longer becomes feasible to define your routes in a single file. And so, users end up building their own *semi consistent* way of defining their routes across multiple files. This can lead to inconsistencies and errors in the route configuration.
+This complexity only increases as you begin to use more features of the router, such as nested context, loaders, search param validation, etc. As such, it no longer becomes feasible to define your routes in a single file. And so, users end up building their own _semi consistent_ way of defining their routes across multiple files. This can lead to inconsistencies and errors in the route configuration.
 
 Finally, comes the issue of code-splitting. As your application grows, you'll want to code-split your components to reduce the initial bundle size of your application. This can be a bit of a headache to manage when you're defining your routes in a single file or even across multiple files.
 
 ```tsx
-import {
-  createRoute,
-  lazyRouteComponent
-} from '@tanstack/react-router';
-import { postsRoute } from './postsRoute';
+import { createRoute, lazyRouteComponent } from '@tanstack/react-router'
+import { postsRoute } from './postsRoute'
 
 export const postsIndexRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '/',
-  component: lazyRouteComponent(
-    () => import('../page-components/posts/index')
-  )
+  component: lazyRouteComponent(() => import('../page-components/posts/index')),
 })
 ```
 
@@ -225,17 +214,17 @@ Tanstack Router's file-based routing is designed to solve all of these issues. I
 The file-based routing approach is powered by the Tanstack Router CLI. It performs 3 essential tasks that solve the pain points in route configuration when using code-based routing:
 
 1. **Route configuration boilerplate**: It generates the boilerplate for your route configurations.
-2. **Route tree stitching**: It stitches together your route configurations into a single cohesive route-tree. Also in the background, it correctly updates the route configurations to define the `getParentRoute` function match the routes with their parent routes. 
+2. **Route tree stitching**: It stitches together your route configurations into a single cohesive route-tree. Also in the background, it correctly updates the route configurations to define the `getParentRoute` function match the routes with their parent routes.
 3. **Code-splitting**: It automatically code-splits your components and handles updating your route configurations with the correct lazy imports.
 
 Let's take a look at how the route configuration for the previous example would look like with file-based routing.
 
 ```tsx
 // src/routes/posts/index.lazy.ts
-import { createLazyFileRoute } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router'
 
 export const Route = createLazyFileRoute('/posts/')({
-  component: () => "Posts index component goes here!!!"
+  component: () => 'Posts index component goes here!!!',
 })
 ```
 

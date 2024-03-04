@@ -1,12 +1,10 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
+import { defaultSerializeError } from './router'
 import { DeferredPromise, isDehydratedDeferred } from './defer'
+import { defaultDeserializeError, isServerSideError } from './Matches'
+
 import warning from 'tiny-warning'
-import {
-  isServerSideError,
-  defaultDeserializeError,
-  defaultSerializeError,
-} from '.'
 
 export type AwaitOptions<T> = {
   promise: DeferredPromise<T>
