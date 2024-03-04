@@ -616,7 +616,7 @@ export class Router<
     })
 
     let routeCursor: AnyRoute =
-      foundRoute || (this.routesById as any)['__root__']
+      foundRoute || (this.routesById as any)[rootRouteId]
 
     let matchedRoutes: AnyRoute[] = [routeCursor]
 
@@ -1972,7 +1972,10 @@ export class Router<
 
     // Start at the route that errored or default to the root route
     let routeCursor =
-      this.looseRoutesById[err.routeId] || this.looseRoutesById[rootRouteId]!
+      (err.global
+        ? this.looseRoutesById[rootRouteId]
+        : this.looseRoutesById[err.routeId]) ||
+      this.looseRoutesById[rootRouteId]!
 
     // Go up the tree until we find a route with a notFoundComponent or we hit the root
     while (

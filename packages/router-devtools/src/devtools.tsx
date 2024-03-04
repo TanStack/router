@@ -9,6 +9,7 @@ import {
   useRouter,
   useRouterState,
   AnyRouteMatch,
+  rootRouteId,
 } from '@tanstack/react-router'
 
 import useLocalStorage from './useLocalStorage'
@@ -363,7 +364,7 @@ function RouteComp({
         <div className={cx(getStyles().routesRow(!!match))}>
           <div>
             <code className={getStyles().code}>
-              {isRoot ? '__root__' : route.path || trimPath(route.id)}{' '}
+              {isRoot ? rootRouteId : route.path || trimPath(route.id)}{' '}
             </code>
             <code className={getStyles().routeParamInfo}>{param}</code>
           </div>
@@ -627,7 +628,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
                       <code
                         className={getStyles().matchID}
-                      >{`${match.routeId === '__root__' ? '__root__' : match.pathname}`}</code>
+                      >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
                       <AgeTicker match={match} />
                     </div>
                   )
