@@ -18,9 +18,8 @@ import {
   UnionToIntersection,
 } from './utils'
 import { BuildLocationFn, NavigateFn } from './RouterProvider'
-import { LazyRoute } from '.'
-import warning from 'tiny-warning'
-import { NotFoundError, notFound } from '.'
+import { NotFoundError, notFound } from './not-found'
+import { LazyRoute } from './fileRoute'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId

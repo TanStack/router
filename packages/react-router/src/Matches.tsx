@@ -20,7 +20,7 @@ import {
   RouteIds,
   RoutePaths,
 } from './routeInfo'
-import { RegisteredRouter, RouterState } from './router'
+import { AnyRouter, RegisteredRouter, RouterState } from './router'
 import {
   DeepPartial,
   Expand,
@@ -30,7 +30,7 @@ import {
   pick,
 } from './utils'
 import { CatchNotFound, DefaultGlobalNotFound, isNotFound } from './not-found'
-import { AnyRouter, isRedirect } from '.'
+import { isRedirect } from './redirects'
 
 export const matchContext = React.createContext<string | undefined>(undefined)
 

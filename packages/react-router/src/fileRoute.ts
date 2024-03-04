@@ -25,7 +25,8 @@ import { useMatch, useLoaderDeps, useLoaderData, RouteMatch } from './Matches'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import warning from 'tiny-warning'
-import { RegisteredRouter, RouteById, RouteIds } from '.'
+import { RegisteredRouter } from './router'
+import { RouteById, RouteIds } from './routeInfo'
 
 export interface FileRoutesByPath {
   // '/': {

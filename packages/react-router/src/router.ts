@@ -18,6 +18,7 @@ import {
   Route,
   LoaderFnContext,
   rootRouteId,
+  NotFoundRouteComponent,
 } from './route'
 import {
   FullSearchSchema,
@@ -66,15 +67,10 @@ import {
 import invariant from 'tiny-invariant'
 import { AnyRedirect, isRedirect } from './redirects'
 import { NotFoundError, isNotFound } from './not-found'
-import { ResolveRelativePath, ToOptions } from './link'
+import { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import { NoInfer } from '@tanstack/react-store'
 import warning from 'tiny-warning'
-import {
-  DeferredPromiseState,
-  NavigateOptions,
-  NotFoundRouteComponent,
-  notFound,
-} from '.'
+import { DeferredPromiseState } from './defer'
 
 //
 

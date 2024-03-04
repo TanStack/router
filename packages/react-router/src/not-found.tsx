@@ -1,7 +1,8 @@
 import * as React from 'react'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
-import { RegisteredRouter, RouteIds } from '.'
+import { RegisteredRouter } from './router'
+import { RouteIds } from './routeInfo'
 
 export type NotFoundError = {
   _global?: boolean
