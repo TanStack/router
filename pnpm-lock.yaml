@@ -1308,7 +1308,7 @@ importers:
   packages/react-router-server:
     dependencies:
       '@tanstack/react-cross-context':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../react-cross-context
       '@tanstack/react-router':
         specifier: workspace:*

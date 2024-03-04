@@ -92,7 +92,7 @@
     "src"
   ],
   "dependencies": {
-    "@tanstack/react-cross-context": "workspace:^",
+    "@tanstack/react-cross-context": "workspace:*",
     "@tanstack/react-router": "workspace:*",
     "vinxi": "0.2.1"
   },
