@@ -9,8 +9,8 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.17.4",
-    "@tanstack/router-devtools": "^1.17.4",
+    "@tanstack/react-router": "^1.18.4",
+    "@tanstack/router-devtools": "^1.18.4",
     "axios": "^1.6.5",
     "immer": "^10.0.3",
     "react": "^18.2.0",

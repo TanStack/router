@@ -57,4 +57,8 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 - Layout Routes
 - Easy Integration w/ external caches and storage (eg. React Query, Apollo, SWR, RTKQuery)
 
+## Example Usage
+
+To run example React projects with Tanstack Router, see [CONTRIBUTING.md](./CONTRIBUTING.md)
+
 <!-- Use the force, Luke! -->

@@ -7,6 +7,7 @@ import { cleanPath, trimPathLeft } from './utils'
 
 let latestTask = 0
 export const rootPathId = '__root'
+const routeGroupPatternRegex = /\(.+\)/g
 
 export type RouteNode = {
   filePath: string
@@ -216,7 +217,7 @@ export async function generator(config: Config) {
 
     node.isNonPath = first.startsWith('_')
     node.isNonLayout = first.endsWith('_')
-    node.cleanedPath = removeUnderscores(node.path) ?? ''
+    node.cleanedPath = removeGroups(removeUnderscores(node.path) ?? '')
 
     // Ensure the boilerplate for the route exists
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
@@ -628,6 +629,10 @@ function removeTrailingUnderscores(s?: string) {
 
 function replaceBackslash(s: string) {
   return s.replaceAll(/\\/gi, '/')
+}
+
+function removeGroups(s: string) {
+  return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
 }
 
 export function hasParentRoute(

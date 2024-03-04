@@ -1,10 +1,20 @@
 import * as React from 'react'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
-import { RegisteredRouter, RouteIds } from '.'
+import { RegisteredRouter } from './router'
+import { RouteIds } from './routeInfo'
 
 export type NotFoundError = {
+  /**
+    @deprecated
+    Use `routeId: rootRouteId` instead
+  */
   global?: boolean
+  /**
+    @private
+    Do not use this. It's used internally to indicate a path matching error
+  */
+  _global?: boolean
   data?: any
   throw?: boolean
   routeId?: RouteIds<RegisteredRouter['routeTree']>

@@ -34,9 +34,10 @@ export interface MatchLocation {
   from?: string
 }
 
-export type NavigateFn<TRouteTree extends AnyRoute> = <
+export type NavigateFn = <
+  TTo extends string,
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> | string = string,
-  TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
 >(
@@ -44,8 +45,8 @@ export type NavigateFn<TRouteTree extends AnyRoute> = <
 ) => Promise<void>
 
 export type BuildLocationFn<TRouteTree extends AnyRoute> = <
-  TFrom extends RoutePaths<TRouteTree> | string = RoutePaths<TRouteTree>,
-  TTo extends string = '',
+  TTo extends string,
+  TFrom extends RoutePaths<TRouteTree> | string = string,
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
 >(
@@ -136,21 +137,10 @@ function Transitioner() {
   useLayoutEffect(() => {
     const unsub = router.history.subscribe(() => {
       router.latestLocation = router.parseLocation(router.latestLocation)
-      if (routerState.location !== router.latestLocation) {
+      if (router.state.location !== router.latestLocation) {
         tryLoad()
       }
     })
-
-    const nextLocation = router.buildLocation({
-      search: true,
-      params: true,
-      hash: true,
-      state: true,
-    })
-
-    if (routerState.location.href !== nextLocation.href) {
-      router.commitLocation({ ...nextLocation, replace: true })
-    }
 
     return () => {
       unsub()

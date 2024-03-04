@@ -24,6 +24,7 @@ import { Route as DashboardInvoicesImport } from './routes/dashboard.invoices'
 import { Route as LayoutLayoutBImport } from './routes/_layout.layout-b'
 import { Route as LayoutLayoutAImport } from './routes/_layout.layout-a'
 import { Route as AuthProfileImport } from './routes/_auth.profile'
+import { Route as thisFolderIsNotInTheUrlRouteGroupImport } from './routes/(this-folder-is-not-in-the-url)/route-group'
 import { Route as DashboardUsersIndexImport } from './routes/dashboard.users.index'
 import { Route as DashboardInvoicesIndexImport } from './routes/dashboard.invoices.index'
 import { Route as DashboardUsersUserImport } from './routes/dashboard.users.user'
@@ -97,6 +98,12 @@ const AuthProfileRoute = AuthProfileImport.update({
   getParentRoute: () => AuthRoute,
 } as any)
 
+const thisFolderIsNotInTheUrlRouteGroupRoute =
+  thisFolderIsNotInTheUrlRouteGroupImport.update({
+    path: '/route-group',
+    getParentRoute: () => rootRoute,
+  } as any)
+
 const DashboardUsersIndexRoute = DashboardUsersIndexImport.update({
   path: '/',
   getParentRoute: () => DashboardUsersRoute,
@@ -141,6 +148,10 @@ declare module '@tanstack/react-router' {
     }
     '/login': {
       preLoaderRoute: typeof LoginImport
+      parentRoute: typeof rootRoute
+    }
+    '/(this-folder-is-not-in-the-url)/route-group': {
+      preLoaderRoute: typeof thisFolderIsNotInTheUrlRouteGroupImport
       parentRoute: typeof rootRoute
     }
     '/_auth/profile': {
@@ -208,6 +219,7 @@ export const routeTree = rootRoute.addChildren([
     DashboardIndexRoute,
   ]),
   LoginRoute,
+  thisFolderIsNotInTheUrlRouteGroupRoute,
   ExpensiveIndexLazyRoute,
 ])
 

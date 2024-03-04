@@ -18,7 +18,7 @@ import * as React from 'react'
 import { createFileRoute, defer } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/posts/$postId')({
-  loader: () => {
+  loader: async () => {
     // Fetch some slower data, but do not await it
     const slowDataPromise = fetchSlowData()
 
@@ -63,6 +63,7 @@ function PostIdComponent() {
   )
 }
 ```
+
 > 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](./guide/code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `Route` configuration to get access to the typed `useLoaderData()` hook.
 
 The `Await` component resolves the promise by triggering the nearest suspense boundary until it is resolved, after which it renders the component's `children` as a function with the resolved data.

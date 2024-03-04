@@ -64,23 +64,23 @@ Route trees be represented using a number of different ways:
 
 Flat routing uses same level of nesting. They make it easy to see and find routes in your project:
 
-| Filename                      | Route Path                | Component Output                  |
-| ----------------------------- | ------------------------- | --------------------------------- |
-| `__root.tsx`                  |                           | `<Root>`                          |
-| `index.tsx`                   | `/` (exact)               | `<Root><RootIndex>`               |
-| `about.tsx`                   | `/about`                  | `<Root><About>`                   |
-| `posts.tsx`                   | `/posts`                  | `<Root><Posts>`                   |
-| `posts.index.tsx`             | `/posts` (exact)          | `<Root><Posts><PostsIndex>`       |
-| `posts.$postId.tsx`           | `/posts/$postId`          | `<Root><Posts><Post>`             |
-| `posts_.$postId.edit.tsx`     | `/posts/$postId/edit`     | `<Root><EditPost>`                |
-| `settings.tsx`                | `/settings`               | `<Root><Settings>`                |
-| `settings.profile.tsx`        | `/settings/profile`       | `<Root><Settings><Profile>`       |
-| `settings.notifications.tsx`  | `/settings/notifications` | `<Root><Settings><Notifications>` |
-| `_layout.tsx`                 |                           | `<Root><Layout>`                  |
-| `_layout.layout-a.tsx`        | `/layout-a`               | `<Root><Layout><LayoutA>`         |
-| `_layout.layout-b.tsx`        | `/layout-b`               | `<Root><Layout><LayoutB>`         |
-| `files.$.tsx`                 | `/files/$`                | `<Root><Files>`                   |
-| `__404.tsx`                   | (Not Found)               | `<Root><NotFound>`                |
+| Filename                     | Route Path                | Component Output                  |
+| ---------------------------- | ------------------------- | --------------------------------- |
+| `__root.tsx`                 |                           | `<Root>`                          |
+| `index.tsx`                  | `/` (exact)               | `<Root><RootIndex>`               |
+| `about.tsx`                  | `/about`                  | `<Root><About>`                   |
+| `posts.tsx`                  | `/posts`                  | `<Root><Posts>`                   |
+| `posts.index.tsx`            | `/posts` (exact)          | `<Root><Posts><PostsIndex>`       |
+| `posts.$postId.tsx`          | `/posts/$postId`          | `<Root><Posts><Post>`             |
+| `posts_.$postId.edit.tsx`    | `/posts/$postId/edit`     | `<Root><EditPost>`                |
+| `settings.tsx`               | `/settings`               | `<Root><Settings>`                |
+| `settings.profile.tsx`       | `/settings/profile`       | `<Root><Settings><Profile>`       |
+| `settings.notifications.tsx` | `/settings/notifications` | `<Root><Settings><Notifications>` |
+| `_layout.tsx`                |                           | `<Root><Layout>`                  |
+| `_layout.layout-a.tsx`       | `/layout-a`               | `<Root><Layout><LayoutA>`         |
+| `_layout.layout-b.tsx`       | `/layout-b`               | `<Root><Layout><LayoutB>`         |
+| `files.$.tsx`                | `/files/$`                | `<Root><Files>`                   |
+| `__404.tsx`                  | (Not Found)               | `<Root><NotFound>`                |
 
 ## Directory Routes
 
@@ -269,7 +269,7 @@ For example, our route tree above has a `files/$` splat route. If the URL pathna
 File routes that are prefixed with an underscore (`_`) are considered "pathless". Pathless routes can be used wrap child routes with additional components and logic, without requiring a matching `path` in the URL
 
 - Wrap child routes with a layout component
-- Enforce an `loader` requirement before displaying any child routes
+- Enforce a `loader` requirement before displaying any child routes
 - Validate and provide search params to child routes
 - Provide fallbacks for error components or pending elements to child routes
 - Provide shared context to all child routes

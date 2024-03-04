@@ -37,7 +37,7 @@ function Component() {
 
   // OR
 
-  const routeParams = routeApi.useParams();
+  const routeParams = routeApi.useParams()
 
   // OR
 

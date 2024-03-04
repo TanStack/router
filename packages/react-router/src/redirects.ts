@@ -29,9 +29,10 @@ export function redirect<
   opts: Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> {
   ;(opts as any).isRedirect = true
-  if (opts.throw) {
+  if (opts.throw ?? true) {
     throw opts
   }
+
   return opts
 }
 

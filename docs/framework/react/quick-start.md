@@ -69,7 +69,7 @@ export const Route = createRootRoute({
 ### `src/routes/index.lazy.tsx`
 
 ```tsx
-import { createLazyFileRoute } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router'
 
 export const Route = createLazyFileRoute('/')({
   component: Index,
@@ -87,7 +87,7 @@ function Index() {
 ### `src/routes/about.lazy.tsx`
 
 ```tsx
-import { createLazyFileRoute } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router'
 
 export const Route = createLazyFileRoute('/about')({
   component: About,
@@ -211,12 +211,9 @@ if (!rootElement.innerHTML) {
   )
 }
 ```
+
 ## Using File-Based Route Configuration
 
-If you are working with this pattern you should change the `id` of the root `<div>` on your `index.html` file to ```<div id='app'></div>```
-
-
-
-
+If you are working with this pattern you should change the `id` of the root `<div>` on your `index.html` file to `<div id='app'></div>`
 
 If you glossed over these examples or didn't understand something, we don't blame you, because there's so much more to learn to really take advantage of TanStack Router! Let's move on.
