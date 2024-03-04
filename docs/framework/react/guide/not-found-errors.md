@@ -21,7 +21,7 @@ There are 2 uses for not-found errors in TanStack Router:
     - Attempting to access `/posts/1` when the post with ID 1 does not exist
     - Attempting to access `/docs/path/to/document` when the document does not exist
 
-Under the hood, both of these cases is implemented using the same `notFound` function and `notFoundComponent` API.
+Under the hood, both of these cases are implemented using the same `notFound` function and `notFoundComponent` API.
 
 ## The `notFoundMode` option
 
@@ -53,7 +53,7 @@ If provided the path of `/posts/1/edit`, the following component structure will 
 
 - `<Root>`
   - `<Posts>`
-    - `<postRoute.notFoundComponent>`
+    - `<Posts.notFoundComponent>`
 
 The `notFoundComponent` of the `posts` route will be rendered because it is the **nearest suitable parent route with children (and therefore an outlet) and a `notFoundComponent` configured**.
 

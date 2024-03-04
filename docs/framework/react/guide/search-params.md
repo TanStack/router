@@ -247,8 +247,8 @@ const allProductsRoute = createRoute({
 const routeApi = getRouteApi('/shop/products')
 
 const ProductList = () => {
-  const routeSearch = routeApi.useSearch();
-  
+  const routeSearch = routeApi.useSearch()
+
   // OR
 
   const { page, filter, sort } = useSearch({
