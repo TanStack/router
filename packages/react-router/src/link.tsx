@@ -111,7 +111,7 @@ export type RelativeToCurrentPathAutoComplete<
 
 export type AbsolutePathAutoComplete<TFrom extends string, TPaths> =
   | (string extends TFrom
-      ? never
+      ? './'
       : TFrom extends `/`
         ? never
         : SearchPaths<
@@ -122,7 +122,7 @@ export type AbsolutePathAutoComplete<TFrom extends string, TPaths> =
             ? never
             : './'
           : never)
-  | (string extends TFrom ? never : TFrom extends `/` ? never : '../')
+  | (string extends TFrom ? '../' : TFrom extends `/` ? never : '../')
   | TPaths
 
 export type RelativeToPathAutoComplete<
@@ -310,7 +310,11 @@ export type LinkOptions<
 
 export type CheckPath<TRouteTree extends AnyRoute, TPass, TFrom, TTo> =
   ResolveRoute<TRouteTree, TFrom, TTo> extends never
-    ? CheckPathError<TRouteTree>
+    ? string extends TFrom
+      ? RemoveTrailingSlashes<TTo> extends '.' | '..'
+        ? TPass
+        : CheckPathError<TRouteTree>
+      : CheckPathError<TRouteTree>
     : TPass
 
 export type CheckPathError<TRouteTree extends AnyRoute> = {
