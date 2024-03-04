@@ -340,7 +340,7 @@ importers:
         specifier: ^1.18.4
         version: link:../../../packages/react-router
       '@tanstack/react-router-server':
-        specifier: ^1.18.4
+        specifier: ^1.18.5
         version: link:../../../packages/react-router-server
       '@tanstack/router-devtools':
         specifier: ^1.18.4
@@ -404,7 +404,7 @@ importers:
         specifier: ^1.18.4
         version: link:../../../packages/react-router
       '@tanstack/react-router-server':
-        specifier: ^1.18.4
+        specifier: ^1.18.5
         version: link:../../../packages/react-router-server
       '@tanstack/router-devtools':
         specifier: ^1.18.4
@@ -844,7 +844,7 @@ importers:
         specifier: ^1.18.4
         version: link:../../../packages/react-router
       '@tanstack/react-router-server':
-        specifier: ^1.18.4
+        specifier: ^1.18.5
         version: link:../../../packages/react-router-server
       '@vinxi/react':
         specifier: 0.1.1
@@ -887,7 +887,7 @@ importers:
         specifier: ^1.18.4
         version: link:../../../packages/react-router
       '@tanstack/react-router-server':
-        specifier: ^1.18.4
+        specifier: ^1.18.5
         version: link:../../../packages/react-router-server
       '@vinxi/react':
         specifier: 0.1.1
@@ -930,7 +930,7 @@ importers:
         specifier: ^1.18.4
         version: link:../../../packages/react-router
       '@tanstack/react-router-server':
-        specifier: ^1.18.4
+        specifier: ^1.18.5
         version: link:../../../packages/react-router-server
       '@vinxi/react':
         specifier: 0.1.1
@@ -1086,7 +1086,7 @@ importers:
         specifier: ^1.18.4
         version: link:../../../packages/react-router
       '@tanstack/react-router-server':
-        specifier: ^1.18.4
+        specifier: ^1.18.5
         version: link:../../../packages/react-router-server
       '@tanstack/react-store':
         specifier: ^0.2.1
