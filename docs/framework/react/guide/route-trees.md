@@ -53,7 +53,7 @@ Consider the following route tree:
     - `$`
 - _Not-Found Route_
 
-Route trees be represented using a number of different ways:
+Route trees are represented using a number of different ways:
 
 - Flat Routes
 - Directory Routes
