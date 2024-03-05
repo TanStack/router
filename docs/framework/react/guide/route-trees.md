@@ -32,7 +32,7 @@ And render a component tree that looks like this:
 </Blog>
 ```
 
-To configured nested routing TanStack Router uses a route hierarchy called a **route tree** to organize, match and compose matching routes into a component tree.
+To configure nested routing TanStack Router uses a route hierarchy called a **route tree** to organize, match and compose matching routes into a component tree.
 
 Consider the following route tree:
 
