@@ -32,7 +32,7 @@ And render a component tree that looks like this:
 </Blog>
 ```
 
-To configured nested routing TanStack Router uses a route hierarchy called a **route tree** to organize, match and compose matching routes into a component tree.
+To configure nested routing TanStack Router uses a route hierarchy called a **route tree** to organize, match and compose matching routes into a component tree.
 
 Consider the following route tree:
 
@@ -53,7 +53,7 @@ Consider the following route tree:
     - `$`
 - _Not-Found Route_
 
-Route trees be represented using a number of different ways:
+Route trees are represented using a number of different ways:
 
 - Flat Routes
 - Directory Routes
@@ -206,7 +206,7 @@ Static routes are simple and straightforward. They match the path exactly and re
 
 ## Index Routes
 
-Index routes specifically target the their parent route when it is matched exactly and no child route is matched. We can see this in the above route tree with both the root index route (`index.tsx`) and the posts index route (`posts.index.tsx`).
+Index routes specifically target their parent route when it is matched exactly and no child route is matched. We can see this in the above route tree with both the root index route (`index.tsx`) and the posts index route (`posts.index.tsx`).
 
 Let's take a look at the posts index route (`posts.index.tsx`):
 
@@ -266,7 +266,7 @@ For example, our route tree above has a `files/$` splat route. If the URL pathna
 
 ## Pathless Routes
 
-File routes that are prefixed with an underscore (`_`) are considered "pathless". Pathless routes can be used wrap child routes with additional components and logic, without requiring a matching `path` in the URL
+File routes that are prefixed with an underscore (`_`) are considered "pathless". Pathless routes can be used to wrap child routes with additional components and logic, without requiring a matching `path` in the URL
 
 - Wrap child routes with a layout component
 - Enforce a `loader` requirement before displaying any child routes
