@@ -1,5 +1,4 @@
 /// <reference types="vinxi/types/client" />
-import React from 'react'
 import { Root, hydrateRoot } from 'react-dom/client'
 import 'vinxi/client'
 
@@ -14,8 +13,11 @@ function render(mod?: any) {
   const app = <StartClient router={router} />
 
   if (!mod) {
+    // Initial
+    router.hydrate()
     window.$root = hydrateRoot(document, app)
   } else {
+    // Hot
     window.$root?.render(app)
   }
 }

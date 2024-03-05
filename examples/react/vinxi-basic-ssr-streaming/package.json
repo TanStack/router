@@ -15,7 +15,7 @@
     "autoprefixer": "^10.4.15",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "vinxi": "0.1.2"
+    "vinxi": "^0.3.8"
   },
   "devDependencies": {
     "@tanstack/router-devtools": "^1.28.1",
