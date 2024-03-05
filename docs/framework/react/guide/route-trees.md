@@ -206,7 +206,7 @@ Static routes are simple and straightforward. They match the path exactly and re
 
 ## Index Routes
 
-Index routes specifically target the their parent route when it is matched exactly and no child route is matched. We can see this in the above route tree with both the root index route (`index.tsx`) and the posts index route (`posts.index.tsx`).
+Index routes specifically target their parent route when it is matched exactly and no child route is matched. We can see this in the above route tree with both the root index route (`index.tsx`) and the posts index route (`posts.index.tsx`).
 
 Let's take a look at the posts index route (`posts.index.tsx`):
 
