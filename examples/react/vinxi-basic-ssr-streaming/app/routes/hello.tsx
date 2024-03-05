@@ -1,7 +1,8 @@
-import { createFileRoute, defer } from '@tanstack/react-router'
+import {createFileRoute, defer} from '@tanstack/react-router'
 
 async function getData() {
   'use server'
+
 
   return new Promise<string>((r) => {
     setTimeout(() => r('Server says hello, too!'), 500)

@@ -13,7 +13,7 @@ export default createApp({
     },
     {
       name: 'ssr',
-      mode: 'handler',
+      mode: 'http',
       middleware: './app/middleware.tsx',
       handler: './app/server.tsx',
       target: 'server',
@@ -21,7 +21,7 @@ export default createApp({
     },
     {
       name: 'client',
-      mode: 'build',
+      mode: 'client',
       handler: './app/client.tsx',
       target: 'browser',
       plugins: () => [

@@ -1,12 +1,12 @@
 import * as React from 'react'
 import { Await, createLazyFileRoute } from '@tanstack/react-router'
 
-export const Route = createLazyFileRoute('/hello')({
+export const Route = createLazyFileRoute("/hello")({
   component: Hello,
-})
+});
 
 function Hello() {
-  const { data, slowData } = Route.useLoaderData()
+  const { data, slowData } = Route.useLoaderData();
 
   return (
     <div className="p-2">
@@ -16,5 +16,5 @@ function Hello() {
         <Await promise={slowData}>{(slowData) => <p>{slowData}</p>}</Await>
       </React.Suspense>
     </div>
-  )
+  );
 }
