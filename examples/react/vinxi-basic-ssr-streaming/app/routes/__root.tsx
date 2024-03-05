@@ -1,14 +1,7 @@
-import * as React from "react";
-import {
-  Link,
-  Outlet,
-  createRootRouteWithContext,
-  useRouter,
-} from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/router-devtools";
-import { Meta, Scripts, Asset } from "@tanstack/react-router-server/client";
-
-// import '../style.css'
+import * as React from 'react'
+import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { Meta, Scripts } from '@tanstack/react-router-server/client'
 
 export const Route = createRootRouteWithContext<{
   assets: React.ReactNode;
@@ -34,7 +27,6 @@ export const Route = createRootRouteWithContext<{
 });
 
 function RootComponent() {
-  const router = useRouter();
 
   return (
     <html lang="en">
