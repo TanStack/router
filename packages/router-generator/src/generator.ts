@@ -207,7 +207,6 @@ export async function generator(config: Config) {
   const handleNode = async (node: RouteNode) => {
     const parentRoute = hasParentRoute(routeNodes, node.routePath)
     if (parentRoute) node.parent = parentRoute
-
     node.path = node.parent
       ? node.routePath?.replace(node.parent.routePath!, '') || '/'
       : node.routePath
@@ -216,10 +215,22 @@ export async function generator(config: Config) {
 
     const split = trimmedPath?.split('/') ?? []
     let first = split[0] ?? trimmedPath ?? ''
+    const layoutSegment = split[split.length - 1] ?? trimmedPath ?? ''
 
-    node.isNonPath = first.startsWith('_')
+    node.isNonPath = layoutSegment.startsWith('_')
     node.isNonLayout = first.endsWith('_')
-    node.cleanedPath = removeGroups(removeUnderscores(node.path) ?? '')
+
+    // given a route like `/sz/_goob/foo` or `/hj/_jokm/bar`, each segment is separated by a `/`, we want to remove all segments that start with a `_`
+    // to get `/sz/foo` or `/hj/bar`
+    function removeLayoutSegments(path: string = '/'): string {
+      const segments = path.split('/')
+      const newSegments = segments.filter((segment) => !segment.startsWith('_'))
+      return newSegments.join('/')
+    }
+    node.cleanedPath = removeGroups(
+      removeUnderscores(removeLayoutSegments(node.path)) ?? '',
+    )
+    // node.cleanedPath = removeGroups(removeUnderscores(node.path) ?? '')
 
     // Ensure the boilerplate for the route exists
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
@@ -438,7 +449,7 @@ export async function generator(config: Config) {
           `const ${node.variableName}Route = ${node.variableName}Import.update({
           ${[
             node.isNonPath
-              ? `id: '${node.path}'`
+              ? `id: '${node.path}'${!node.isNonLayout && node.cleanedPath ? `, path: '${node.cleanedPath}'` : ''}`
               : `path: '${node.cleanedPath}'`,
             `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
           ]
