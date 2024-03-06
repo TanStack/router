@@ -7,13 +7,13 @@ export default createApp({
   routers: [
     {
       name: 'public',
-      mode: 'static',
+      type: 'static',
       dir: './public',
       base: '/',
     },
     {
       name: 'ssr',
-      mode: 'http',
+      type: 'http',
       middleware: './app/middleware.tsx',
       handler: './app/server.tsx',
       target: 'server',
@@ -21,7 +21,7 @@ export default createApp({
     },
     {
       name: 'client',
-      mode: 'client',
+      type: 'client',
       handler: './app/client.tsx',
       target: 'browser',
       plugins: () => [
