@@ -449,7 +449,8 @@ export async function generator(config: Config) {
           `const ${node.variableName}Route = ${node.variableName}Import.update({
           ${[
             node.isNonPath
-              ? `id: '${node.path}'${!node.isNonLayout && node.cleanedPath ? `, path: '${node.cleanedPath}'` : ''}`
+              ? // this is still not satisfied on the ts-side of react-router with the paths.
+                `id: '${node.path}'${!node.isNonLayout && node.cleanedPath ? `, path: '${node.cleanedPath}'` : ''}`
               : `path: '${node.cleanedPath}'`,
             `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
           ]
