@@ -1,40 +1,32 @@
 import * as React from 'react'
-import {
-  Link,
-  Outlet,
-  createRootRouteWithContext,
-  useRouter,
-} from '@tanstack/react-router'
+import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Meta, Scripts } from '@tanstack/react-router-server/client'
 
-import '../style.css'
-
 export const Route = createRootRouteWithContext<{
-  assets: React.ReactNode
+  assets: React.ReactNode;
 }>()({
   component: RootComponent,
   meta: () => [
     {
-      title: 'Root',
+      title: "Root",
     },
   ],
   links: () => [
     {
-      rel: 'apple-touch-icon',
-      sizes: '180x180',
-      href: '/favicons/apple-touch-icon.png',
+      rel: "apple-touch-icon",
+      sizes: "180x180",
+      href: "/favicons/apple-touch-icon.png",
     },
   ],
   scripts: () => [
     {
-      src: 'https://cdn.tailwindcss.com',
+      src: "https://cdn.tailwindcss.com",
     },
   ],
-})
+});
 
 function RootComponent() {
-  const router = useRouter()
 
   return (
     <html lang="en">
@@ -48,7 +40,7 @@ function RootComponent() {
           <Link
             to="/"
             activeProps={{
-              className: 'font-bold',
+              className: "font-bold",
             }}
             activeOptions={{ exact: true }}
           >
@@ -57,7 +49,7 @@ function RootComponent() {
           <Link
             to="/hello"
             activeProps={{
-              className: 'font-bold',
+              className: "font-bold",
             }}
             activeOptions={{ exact: true }}
           >
@@ -66,7 +58,7 @@ function RootComponent() {
           <Link
             to="/no-title"
             activeProps={{
-              className: 'font-bold',
+              className: "font-bold",
             }}
             activeOptions={{ exact: true }}
           >
@@ -79,5 +71,5 @@ function RootComponent() {
         <Scripts />
       </body>
     </html>
-  )
+  );
 }
