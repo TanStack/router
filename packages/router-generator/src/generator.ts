@@ -16,8 +16,8 @@ export type RouteNode = {
   routePath?: string
   cleanedPath?: string
   path?: string
-  isNonPath?: boolean // the route definition uses an `id` field instead of the `path` field
-  isNonLayout?: boolean // the route definition shouldn't be nested under an existing route grouping
+  isNonPath?: boolean
+  isNonLayout?: boolean
   isParentRoot?: boolean
   isLayout?: boolean
   isVirtualParentRequired?: boolean
@@ -237,7 +237,6 @@ export async function generator(config: Config) {
     node.cleanedPath = removeGroups(
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',
     )
-    // node.cleanedPath = removeGroups(removeUnderscores(node.path) ?? '')
 
     // Ensure the boilerplate for the route exists, which can be skipped for virtual parent routes
     if (!node.isVirtualParentRoute) {
@@ -340,13 +339,14 @@ export async function generator(config: Config) {
       node.isLayout
 
     if (!node.isVirtual && node.isVirtualParentRequired) {
+      const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
       const parentNode = {
         ...node,
         path: removeLastSegmentFromPath(node.path) || '/',
         filePath: removeLastSegmentFromPath(node.filePath) || '/',
         fullPath: removeLastSegmentFromPath(node.fullPath) || '/',
-        routePath: removeLastSegmentFromPath(node.routePath) || '/',
-        variableName: removeLastSegmentFromVariableName(node.variableName),
+        routePath: parentRoutePath,
+        variableName: routePathToVariable(parentRoutePath),
         isVirtual: true,
         isLayout: false,
         isVirtualParentRoute: true,
@@ -491,7 +491,7 @@ export async function generator(config: Config) {
             node.isNonPath
               ? `id: '${node.path}'`
               : `path: '${node.cleanedPath}'`,
-            `getParentRoute: () => ${node.isVirtualParentRequired ? removeLastSegmentFromVariableName(node.variableName) : node.parent?.variableName ?? 'root'}Route`,
+            `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
           ]
             .filter(Boolean)
             .join(',')}
@@ -702,23 +702,6 @@ export function removeLastSegmentFromPath(path: string = '/'): string {
   const segments = path.split('/')
   segments.pop() // Remove the last segment
   return segments.join('/')
-}
-
-/**
- * Removes the last segment from a given variable name. Segments are separated by capital letters.
- *
- * @param {string} variableName - The variable name from which to remove the last segment. Defaults to an empty string.
- * @returns {string} The variable name with the last segment removed.
- * @example
- * removeLastSegmentFromVariableName('RouteBBarTanRoute') // 'RouteBBarTan'
- * removeLastSegmentFromVariableName('RouteAFoo') // 'RouteA'
- */
-export function removeLastSegmentFromVariableName(
-  variableName: string = '',
-): string {
-  const segments = variableName.split(/(?=[A-Z])/)
-  segments.pop() // Remove the last segment
-  return segments.join('')
 }
 
 /**
