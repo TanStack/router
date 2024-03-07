@@ -156,7 +156,6 @@ type RouteSubNode = {
   pendingComponent?: RouteNode
   loader?: RouteNode
   lazy?: RouteNode
-  virtualParent?: RouteNode
 }
 
 export async function generator(config: Config) {
@@ -294,6 +293,45 @@ export async function generator(config: Config) {
       }
     }
 
+    if (
+      !node.isVirtual &&
+      (node.isLoader ||
+        node.isComponent ||
+        node.isErrorComponent ||
+        node.isPendingComponent ||
+        node.isLazy)
+    ) {
+      routePiecesByPath[node.routePath!] =
+        routePiecesByPath[node.routePath!] || {}
+
+      routePiecesByPath[node.routePath!]![
+        node.isLazy
+          ? 'lazy'
+          : node.isLoader
+            ? 'loader'
+            : node.isErrorComponent
+              ? 'errorComponent'
+              : node.isPendingComponent
+                ? 'pendingComponent'
+                : 'component'
+      ] = node
+
+      const anchorRoute = routeNodes.find((d) => d.routePath === node.routePath)
+
+      if (!anchorRoute) {
+        await handleNode({
+          ...node,
+          isVirtual: true,
+          isLazy: false,
+          isLoader: false,
+          isComponent: false,
+          isErrorComponent: false,
+          isPendingComponent: false,
+        })
+      }
+      return
+    }
+
     node.isVirtualParentRequired =
       removeGroups(node.path ?? '')
         .split('')
@@ -301,77 +339,26 @@ export async function generator(config: Config) {
       !node.parent &&
       node.isLayout
 
-    if (
-      !node.isVirtual &&
-      (node.isLoader ||
-        node.isComponent ||
-        node.isErrorComponent ||
-        node.isPendingComponent ||
-        node.isLazy ||
-        node.isVirtualParentRequired)
-    ) {
-      let skipEarlyReturn = false
-
-      routePiecesByPath[node.routePath!] =
-        routePiecesByPath[node.routePath!] || {}
-
-      routePiecesByPath[node.routePath!]![
-        node.isVirtualParentRequired
-          ? 'virtualParent'
-          : node.isLazy
-            ? 'lazy'
-            : node.isLoader
-              ? 'loader'
-              : node.isErrorComponent
-                ? 'errorComponent'
-                : node.isPendingComponent
-                  ? 'pendingComponent'
-                  : 'component'
-      ] = node
-
-      const anchorRoute = routeNodes.find((d) => d.routePath === node.routePath)
-
-      if (!anchorRoute) {
-        if (node.isVirtualParentRequired) {
-          // instances where nested routes require a virtual 'critical' parent route to be created
-          skipEarlyReturn = true
-
-          const parentNode = {
-            ...node,
-            path: removeLastSegmentFromPath(node.path) || '/',
-            filePath: removeLastSegmentFromPath(node.filePath) || '/',
-            fullPath: removeLastSegmentFromPath(node.fullPath) || '/',
-            routePath: removeLastSegmentFromPath(node.routePath) || '/',
-            variableName: removeLastSegmentFromVariableName(node.variableName),
-            isVirtual: true,
-            isVirtualParentRoute: true,
-            isLayout: false,
-            isVirtualParentRequired: false,
-          }
-
-          parentNode.children = parentNode.children ?? []
-          parentNode.children.push(node)
-
-          node.parent = parentNode
-
-          await handleNode(parentNode)
-        } else {
-          // instances where an equivalent virtual 'critical' route is to be created
-          await handleNode({
-            ...node,
-            isVirtual: true,
-            isLazy: false,
-            isLoader: false,
-            isComponent: false,
-            isErrorComponent: false,
-            isPendingComponent: false,
-          })
-        }
+    if (!node.isVirtual && node.isVirtualParentRequired) {
+      const parentNode = {
+        ...node,
+        path: removeLastSegmentFromPath(node.path) || '/',
+        filePath: removeLastSegmentFromPath(node.filePath) || '/',
+        fullPath: removeLastSegmentFromPath(node.fullPath) || '/',
+        routePath: removeLastSegmentFromPath(node.routePath) || '/',
+        variableName: removeLastSegmentFromVariableName(node.variableName),
+        isVirtual: true,
+        isLayout: false,
+        isVirtualParentRoute: true,
+        isVirtualParentRequired: false,
       }
 
-      if (!skipEarlyReturn) {
-        return
-      }
+      parentNode.children = parentNode.children ?? []
+      parentNode.children.push(node)
+
+      node.parent = parentNode
+
+      await handleNode(parentNode)
     }
 
     if (node.parent) {
