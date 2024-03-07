@@ -696,7 +696,7 @@ function removeGroups(s: string) {
  * @param {string} path - The path from which to remove the last segment. Defaults to '/'.
  * @returns {string} The path with the last segment removed.
  * @example
- * removeLastSegment('/workspace/_auth/foo') // '/workspace/_auth'
+ * removeLastSegmentFromPath('/workspace/_auth/foo') // '/workspace/_auth'
  */
 export function removeLastSegmentFromPath(path: string = '/'): string {
   const segments = path.split('/')
@@ -710,8 +710,8 @@ export function removeLastSegmentFromPath(path: string = '/'): string {
  * @param {string} variableName - The variable name from which to remove the last segment. Defaults to an empty string.
  * @returns {string} The variable name with the last segment removed.
  * @example
- * removeLastVariableSegment('RouteBBarTanRoute') // 'RouteBBarTan'
- * removeLastVariableSegment('RouteAFoo') // 'RouteA'
+ * removeLastSegmentFromVariableName('RouteBBarTanRoute') // 'RouteBBarTan'
+ * removeLastSegmentFromVariableName('RouteAFoo') // 'RouteA'
  */
 export function removeLastSegmentFromVariableName(
   variableName: string = '',
