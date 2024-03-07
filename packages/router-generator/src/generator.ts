@@ -303,7 +303,8 @@ export async function generator(config: Config) {
         node.isLazy ||
         node.isVirtualParentRequired)
     ) {
-      let skipReturn = false
+      let skipEarlyReturn = false
+
       routePiecesByPath[node.routePath!] =
         routePiecesByPath[node.routePath!] || {}
 
@@ -326,9 +327,9 @@ export async function generator(config: Config) {
       if (!anchorRoute) {
         if (node.isVirtualParentRequired) {
           // instances where nested routes require a virtual 'critical' parent route to be created
-          skipReturn = true
+          skipEarlyReturn = true
 
-          await handleNode({
+          const parentNode = {
             ...node,
             path: removeLastSegment(node.path) || '/',
             filePath: removeLastSegment(node.filePath) || '/',
@@ -338,7 +339,14 @@ export async function generator(config: Config) {
             isLayout: false,
             isVirtual: true,
             isVirtualParentRequired: false,
-          })
+          }
+
+          parentNode.children = parentNode.children ?? []
+          parentNode.children.push(node)
+
+          node.parent = parentNode
+
+          await handleNode(parentNode)
         } else {
           // instances where an equivalent virtual 'critical' route is to be created
           await handleNode({
@@ -353,14 +361,16 @@ export async function generator(config: Config) {
         }
       }
 
-      if (!skipReturn) {
+      if (!skipEarlyReturn) {
         return
       }
     }
 
     if (node.parent) {
-      node.parent.children = node.parent.children ?? []
-      node.parent.children.push(node)
+      if (!node.isVirtualParentRequired) {
+        node.parent.children = node.parent.children ?? []
+        node.parent.children.push(node)
+      }
     } else {
       routeTree.push(node)
     }
