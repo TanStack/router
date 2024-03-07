@@ -44,7 +44,7 @@ Falling in behind Remix's own Scroll Restoration APIs, you can also customize th
 
 The `getKey` option receives the relevant `Location` state from TanStack Router and expects you to return a string to uniquely identify the scrollable measurements for that state.
 
-The default `getKey` is `(location) => location.key`, where `key` is the unique key generated for each entry in the history.
+The default `getKey` is `(location) => location.state.key!`, where `key` is the unique key generated for each entry in the history.
 
 ## Examples
 
@@ -76,7 +76,7 @@ function Root() {
           const paths = ['/', '/chat']
           return paths.includes(location.pathname)
             ? location.pathname
-            : location.key
+            : location.state.key!
         }}
       />
       <Outlet />
