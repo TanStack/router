@@ -296,7 +296,7 @@ If you're not using the file-based routing system, you can still manually split 
 - `posts.lazy.tsx`
 
   ```tsx
-  export const Route = createLazyRoute({
+  export const Route = createLazyRoute('/posts')({
     component: MyComponent,
   })
 
@@ -377,9 +377,10 @@ export function MyComponent() {
 }
 ```
 
-The `RouteApi` class is useful for accessing other type-safe APIs:
+The `getRouteApi` function is useful for accessing other type-safe APIs:
 
 - `useLoaderData`
+- `useLoaderDeps`
 - `useMatch`
 - `useParams`
 - `useRouteContext`

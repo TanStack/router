@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-devtools",
-  "version": "1.16.6",
+  "version": "1.19.1",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -56,12 +56,15 @@
   ],
   "dependencies": {
     "@tanstack/react-router": "workspace:*",
-    "date-fns": "^2.29.1"
+    "clsx": "^2.1.0",
+    "date-fns": "^2.29.1",
+    "goober": "^2.1.14"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "vite": "^5.0.12"
   },
   "peerDependencies": {
     "react": ">=16",

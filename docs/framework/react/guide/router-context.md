@@ -18,7 +18,10 @@ These are just suggested uses of the router context. You can use it for whatever
 Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `createRootRouteWithContext<YourContextTypeHere>()(routeOptions)` function to create a new router context instead of the `createRootRoute()` function to create your root route. Here's an example:
 
 ```tsx
-import { createRootRouteWithContext, createRouter } from '@tanstack/react-router'
+import {
+  createRootRouteWithContext,
+  createRouter,
+} from '@tanstack/react-router'
 
 interface MyRouterContext {
   user: User
@@ -105,7 +108,10 @@ export const Route = createFileRoute('/todos')({
 ### How about an external data fetching library?
 
 ```tsx
-import { createRootRouteWithContext, createRouter } from '@tanstack/react-router'
+import {
+  createRootRouteWithContext,
+  createRouter,
+} from '@tanstack/react-router'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -131,7 +137,7 @@ Then, in your route:
 // src/routes/todos.tsx
 export const Route = createFileRoute('/todos')({
   component: Todos,
-  loader: ({ context }) => {
+  loader: async ({ context }) => {
     await context.queryClient.ensureQueryData({
       queryKey: ['todos', { userId: user.id }],
       queryFn: fetchTodos,

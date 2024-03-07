@@ -22,17 +22,24 @@ The `createRootRouteWithContext` function is a helper function that can be used 
 ### Examples
 
 ```tsx
-import { createRootRouteWithContext, createRouter } from '@tanstack/react-router'
+import {
+  createRootRouteWithContext,
+  createRouter,
+} from '@tanstack/react-router'
 import { QueryClient } from '@tanstack/react-query'
 
 const rootRoute = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   // ... Route Options
 })
 
+const routeTree = rootRoute.addChildren([
+  // ... Other routes
+])
+
 const queryClient = new QueryClient()
 
 const router = createRouter({
-  routes: [rootRoute],
+  routeTree,
   context: {
     queryClient,
   },

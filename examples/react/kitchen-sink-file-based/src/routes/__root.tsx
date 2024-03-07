@@ -42,6 +42,7 @@ function RootComponent() {
                 ['/layout-b', 'Layout B'],
                 ['/profile', 'Profile'],
                 ['/login', 'Login'],
+                ['/route-group', 'Route Group'],
               ] as const
             ).map(([to, label]) => {
               return (

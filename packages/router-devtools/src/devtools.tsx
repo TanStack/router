@@ -9,6 +9,7 @@ import {
   useRouter,
   useRouterState,
   AnyRouteMatch,
+  rootRouteId,
 } from '@tanstack/react-router'
 
 import useLocalStorage from './useLocalStorage'
@@ -19,10 +20,11 @@ import {
   useIsMounted,
   useSafeState,
 } from './utils'
-import { Panel, Button, Code, ActivePanel } from './styledComponents'
-import { ThemeProvider, defaultTheme as theme } from './theme'
-// import { getQueryStatusLabel, getQueryStatusColor } from './utils'
+import { css } from 'goober'
+import { clsx as cx } from 'clsx'
 import Explorer from './Explorer'
+import { tokens } from './tokens'
+import { TanStackLogo } from './logo'
 
 export type PartialKeys<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
 
@@ -98,46 +100,31 @@ interface DevtoolsPanelOptions {
 
 const isServer = typeof window === 'undefined'
 
-function Logo(props: React.HTMLProps<HTMLDivElement>) {
+function Logo(props: React.HTMLAttributes<HTMLButtonElement>) {
+  const { className, ...rest } = props
   return (
-    <div
-      {...props}
-      style={{
-        ...(props.style ?? {}),
-        display: 'flex',
-        alignItems: 'center',
-        flexDirection: 'column',
-        fontSize: '0.8rem',
-        fontWeight: 'bolder',
-        lineHeight: '1',
-      }}
-    >
-      <div
-        style={{
-          letterSpacing: '-0.05rem',
-        }}
-      >
-        TANSTACK
-      </div>
-      <div
-        style={{
-          backgroundImage:
-            'linear-gradient(to right, var(--tw-gradient-stops))',
-          // @ts-ignore
-          '--tw-gradient-from': '#84cc16',
-          '--tw-gradient-stops':
-            'var(--tw-gradient-from), var(--tw-gradient-to)',
-          '--tw-gradient-to': '#10b981',
-          WebkitBackgroundClip: 'text',
-          color: 'transparent',
-          letterSpacing: '0.1rem',
-          marginRight: '-0.2rem',
-        }}
-      >
-        ROUTER
-      </div>
-    </div>
+    <button {...rest} className={cx(getStyles().logo, className)}>
+      <div className={getStyles().tanstackLogo}>TANSTACK</div>
+      <div className={getStyles().routerLogo}>React Router v1</div>
+    </button>
   )
+}
+
+const DevtoolsOnCloseContext = React.createContext<
+  | {
+      onCloseClick: (e: React.MouseEvent<HTMLButtonElement>) => void
+    }
+  | undefined
+>(undefined)
+
+const useDevtoolsOnClose = () => {
+  const context = React.useContext(DevtoolsOnCloseContext)
+  if (!context) {
+    throw new Error(
+      'useDevtoolsOnClose must be used within a TanStackRouterDevtools component',
+    )
+  }
+  return context
 }
 
 export function TanStackRouterDevtools({
@@ -149,7 +136,7 @@ export function TanStackRouterDevtools({
   containerElement: Container = 'footer',
   router,
 }: DevtoolsOptions): React.ReactElement | null {
-  const rootRef = React.useRef<HTMLDivElement>(null)
+  const [rootEl, setRootEl] = React.useState<HTMLDivElement>(null!)
   const panelRef = React.useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useLocalStorage(
     'tanstackRouterDevtoolsOpen',
@@ -199,48 +186,20 @@ export function TanStackRouterDevtools({
     document.addEventListener('mouseup', unsub)
   }
 
+  const isButtonClosed = isOpen ?? false
+
   React.useEffect(() => {
     setIsResolvedOpen(isOpen ?? false)
   }, [isOpen, isResolvedOpen, setIsResolvedOpen])
 
-  // Toggle panel visibility before/after transition (depending on direction).
-  // Prevents focusing in a closed panel.
   React.useEffect(() => {
-    const ref = panelRef.current
-
-    if (ref) {
-      const handlePanelTransitionStart = () => {
-        if (ref && isResolvedOpen) {
-          ref.style.visibility = 'visible'
-        }
-      }
-
-      const handlePanelTransitionEnd = () => {
-        if (ref && !isResolvedOpen) {
-          ref.style.visibility = 'hidden'
-        }
-      }
-
-      ref.addEventListener('transitionstart', handlePanelTransitionStart)
-      ref.addEventListener('transitionend', handlePanelTransitionEnd)
-
-      return () => {
-        ref.removeEventListener('transitionstart', handlePanelTransitionStart)
-        ref.removeEventListener('transitionend', handlePanelTransitionEnd)
-      }
-    }
-
-    return
-  }, [isResolvedOpen])
-
-  React[isServer ? 'useEffect' : 'useLayoutEffect'](() => {
     if (isResolvedOpen) {
-      const previousValue = rootRef.current?.parentElement?.style.paddingBottom
+      const previousValue = rootEl?.parentElement?.style.paddingBottom
 
       const run = () => {
         const containerHeight = panelRef.current?.getBoundingClientRect().height
-        if (rootRef.current?.parentElement) {
-          rootRef.current.parentElement.style.paddingBottom = `${containerHeight}px`
+        if (rootEl?.parentElement) {
+          rootEl.parentElement.style.paddingBottom = `${containerHeight}px`
         }
       }
 
@@ -251,17 +210,22 @@ export function TanStackRouterDevtools({
 
         return () => {
           window.removeEventListener('resize', run)
-          if (
-            rootRef.current?.parentElement &&
-            typeof previousValue === 'string'
-          ) {
-            rootRef.current.parentElement.style.paddingBottom = previousValue
+          if (rootEl?.parentElement && typeof previousValue === 'string') {
+            rootEl.parentElement.style.paddingBottom = previousValue
           }
         }
       }
     }
     return
   }, [isResolvedOpen])
+
+  React.useEffect(() => {
+    if (rootEl) {
+      const el = rootEl
+      const fontSize = getComputedStyle(el).fontSize
+      el.style.setProperty('--tsrd-font-size', fontSize)
+    }
+  }, [rootEl])
 
   const { style: panelStyle = {}, ...otherPanelProps } = panelProps
 
@@ -280,131 +244,63 @@ export function TanStackRouterDevtools({
   // Do not render on the server
   if (!isMounted()) return null
 
+  const resolvedHeight = devtoolsHeight ?? 500
+
   return (
-    <Container ref={rootRef} className="TanStackRouterDevtools">
-      <ThemeProvider theme={theme}>
+    <Container ref={setRootEl} className="TanStackRouterDevtools">
+      <DevtoolsOnCloseContext.Provider
+        value={{
+          onCloseClick: onCloseClick ?? (() => {}),
+        }}
+      >
         <TanStackRouterDevtoolsPanel
           ref={panelRef as any}
           {...otherPanelProps}
           router={router}
+          className={cx(
+            getStyles().devtoolsPanelContainer,
+            getStyles().devtoolsPanelContainerVisibility(!!isOpen),
+            getStyles().devtoolsPanelContainerResizing(isResizing),
+            getStyles().devtoolsPanelContainerAnimation(
+              isResolvedOpen,
+              resolvedHeight + 16,
+            ),
+          )}
           style={{
-            direction: 'ltr',
-            position: 'fixed',
-            bottom: '0',
-            right: '0',
-            zIndex: 99999,
-            width: '100%',
-            height: devtoolsHeight ?? 500,
-            maxHeight: '90%',
-            boxShadow: '0 0 20px rgba(0,0,0,.3)',
-            borderTop: `1px solid ${theme.gray}`,
-            transformOrigin: 'top',
-            // visibility will be toggled after transitions, but set initial state here
-            visibility: isOpen ? 'visible' : 'hidden',
+            height: resolvedHeight,
             ...panelStyle,
-            ...(isResizing
-              ? {
-                  transition: `none`,
-                }
-              : { transition: `all .2s ease` }),
-            ...(isResolvedOpen
-              ? {
-                  opacity: 1,
-                  pointerEvents: 'all',
-                  transform: `translateY(0) scale(1)`,
-                }
-              : {
-                  opacity: 0,
-                  pointerEvents: 'none',
-                  transform: `translateY(15px) scale(1.02)`,
-                }),
           }}
           isOpen={isResolvedOpen}
           setIsOpen={setIsOpen}
           handleDragStart={(e) => handleDragStart(panelRef.current, e)}
         />
-        {isResolvedOpen ? (
-          <Button
-            type="button"
-            aria-label="Close TanStack Router Devtools"
-            {...(otherCloseButtonProps as any)}
-            onClick={(e) => {
-              setIsOpen(false)
-              onCloseClick && onCloseClick(e)
-            }}
-            style={{
-              position: 'fixed',
-              zIndex: 99999,
-              margin: '.5em',
-              bottom: 0,
-              ...(position === 'top-right'
-                ? {
-                    right: '0',
-                  }
-                : position === 'top-left'
-                  ? {
-                      left: '0',
-                    }
-                  : position === 'bottom-right'
-                    ? {
-                        right: '0',
-                      }
-                    : {
-                        left: '0',
-                      }),
-              ...closeButtonStyle,
-            }}
-          >
-            Close
-          </Button>
-        ) : null}
-      </ThemeProvider>
-      {!isResolvedOpen ? (
-        <button
-          type="button"
-          {...otherToggleButtonProps}
-          aria-label="Open TanStack Router Devtools"
-          onClick={(e) => {
-            setIsOpen(true)
-            onToggleClick && onToggleClick(e)
-          }}
-          style={{
-            appearance: 'none',
-            background: 'none',
-            border: 0,
-            padding: 0,
-            position: 'fixed',
-            zIndex: 99999,
-            display: 'inline-flex',
-            fontSize: '1.5em',
-            margin: '.5em',
-            cursor: 'pointer',
-            width: 'fit-content',
-            ...(position === 'top-right'
-              ? {
-                  top: '0',
-                  right: '0',
-                }
-              : position === 'top-left'
-                ? {
-                    top: '0',
-                    left: '0',
-                  }
-                : position === 'bottom-right'
-                  ? {
-                      bottom: '0',
-                      right: '0',
-                    }
-                  : {
-                      bottom: '0',
-                      left: '0',
-                    }),
-            ...toggleButtonStyle,
-          }}
-        >
-          <Logo aria-hidden />
-        </button>
-      ) : null}
+      </DevtoolsOnCloseContext.Provider>
+
+      <button
+        type="button"
+        {...otherToggleButtonProps}
+        aria-label="Open TanStack Router Devtools"
+        onClick={(e) => {
+          setIsOpen(true)
+          onToggleClick && onToggleClick(e)
+        }}
+        className={cx(
+          getStyles().mainCloseBtn,
+          getStyles().mainCloseBtnPosition(position),
+          getStyles().mainCloseBtnAnimation(!isButtonClosed),
+        )}
+      >
+        <div className={getStyles().mainCloseBtnIconContainer}>
+          <div className={getStyles().mainCloseBtnIconOuter}>
+            <TanStackLogo />
+          </div>
+          <div className={getStyles().mainCloseBtnIconInner}>
+            <TanStackLogo />
+          </div>
+        </div>
+        <div className={getStyles().mainCloseBtnDivider}>-</div>
+        <div className={getStyles().routerLogoCloseButton}>TanStack Router</div>
+      </button>
     </Container>
   )
 }
@@ -428,6 +324,24 @@ function RouteComp({
 
   const match = routerState.matches.find((d) => d.routeId === route.id)
 
+  const param = React.useMemo(() => {
+    try {
+      if (match?.params) {
+        const p = match.params
+        const r: string = route.path || trimPath(route.id)
+        if (r.startsWith('$')) {
+          const trimmed = r.slice(1)
+          if (p[trimmed]) {
+            return `(${p[trimmed]})`
+          }
+        }
+      }
+      return ''
+    } catch (error) {
+      return ''
+    }
+  }, [match, route])
+
   return (
     <div>
       <div
@@ -438,64 +352,27 @@ function RouteComp({
             setActiveId(activeId === route.id ? '' : route.id)
           }
         }}
-        style={{
-          display: 'flex',
-          borderBottom: `solid 1px ${theme.grayAlt}`,
-          cursor: match ? 'pointer' : 'default',
-          alignItems: 'center',
-          background:
-            route.id === activeId ? 'rgba(255,255,255,.1)' : undefined,
-          padding: '.25rem .5rem',
-          gap: '.5rem',
-        }}
-      >
-        {isRoot ? null : (
-          <div
-            style={{
-              flex: '0 0 auto',
-              width: '.7rem',
-              height: '.7rem',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              borderRadius: '100%',
-              transition: 'all .2s ease-out',
-              background: getRouteStatusColor(matches, route, theme),
-              opacity: match ? 1 : 0.3,
-            }}
-          />
+        className={cx(
+          getStyles().routesRowContainer(route.id === activeId, !!match),
         )}
+      >
         <div
-          style={{
-            flex: '1 0 auto',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: isRoot ? '0 .25rem' : 0,
-            opacity: match ? 1 : 0.7,
-            fontSize: '0.7rem',
-          }}
-        >
-          <Code>{route.path || trimPath(route.id)} </Code>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '.5rem',
-            }}
-          >
-            {match ? <Code style={{ opacity: 0.3 }}>{match.id}</Code> : null}
-            <AgeTicker match={match} />
+          className={cx(
+            getStyles().matchIndicator(getRouteStatusColor(matches, route)),
+          )}
+        />
+        <div className={cx(getStyles().routesRow(!!match))}>
+          <div>
+            <code className={getStyles().code}>
+              {isRoot ? rootRouteId : route.path || trimPath(route.id)}{' '}
+            </code>
+            <code className={getStyles().routeParamInfo}>{param}</code>
           </div>
+          <AgeTicker match={match} />
         </div>
       </div>
       {(route.children as Route[])?.length ? (
-        <div
-          style={{
-            marginLeft: isRoot ? 0 : '1rem',
-            borderLeft: isRoot ? '' : `solid 1px ${theme.grayAlt}`,
-          }}
-        >
+        <div className={getStyles().nestedRouteRow(!!isRoot)}>
           {[...(route.children as Route[])]
             .sort((a, b) => {
               return a.rank - b.rank
@@ -525,6 +402,9 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     router: userRouter,
     ...panelProps
   } = props
+
+  const { onCloseClick } = useDevtoolsOnClose()
+  const { className, ...otherPanelProps } = panelProps
 
   const contextRouter = useRouter({ warn: false })
   const router = userRouter ?? contextRouter
@@ -568,301 +448,153 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   }
 
   return (
-    <ThemeProvider theme={theme}>
-      <Panel ref={ref} className="TanStackRouterDevtoolsPanel" {...panelProps}>
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-
-            .TanStackRouterDevtoolsPanel * {
-              scrollbar-color: ${theme.backgroundAlt} ${theme.gray};
-            }
-
-            .TanStackRouterDevtoolsPanel *::-webkit-scrollbar, .TanStackRouterDevtoolsPanel scrollbar {
-              width: 1em;
-              height: 1em;
-            }
-
-            .TanStackRouterDevtoolsPanel *::-webkit-scrollbar-track, .TanStackRouterDevtoolsPanel scrollbar-track {
-              background: ${theme.backgroundAlt};
-            }
-
-            .TanStackRouterDevtoolsPanel *::-webkit-scrollbar-thumb, .TanStackRouterDevtoolsPanel scrollbar-thumb {
-              background: ${theme.gray};
-              border-radius: .5em;
-              border: 3px solid ${theme.backgroundAlt};
-            }
-
-            .TanStackRouterDevtoolsPanel table {
-              width: 100%;
-            }
-
-            .TanStackRouterDevtoolsPanel table tr {
-              border-bottom: 2px dotted rgba(255, 255, 255, .2);
-            }
-
-            .TanStackRouterDevtoolsPanel table tr:last-child {
-              border-bottom: none
-            }
-
-            .TanStackRouterDevtoolsPanel table td {
-              padding: .25rem .5rem;
-              border-right: 2px dotted rgba(255, 255, 255, .05);
-            }
-
-            .TanStackRouterDevtoolsPanel table td:last-child {
-              border-right: none
-            }
-
-          `,
-          }}
-        />
-        {handleDragStart ? (
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              width: '100%',
-              height: '4px',
-              marginBottom: '-4px',
-              cursor: 'row-resize',
-              zIndex: 100000,
-            }}
-            onMouseDown={handleDragStart}
-          ></div>
-        ) : null}
+    <div
+      ref={ref}
+      className={cx(
+        getStyles().devtoolsPanel,
+        'TanStackRouterDevtoolsPanel',
+        className,
+      )}
+      {...otherPanelProps}
+    >
+      {handleDragStart ? (
         <div
-          style={{
-            flex: '1 1 500px',
-            minHeight: '40%',
-            maxHeight: '100%',
-            overflow: 'auto',
-            borderRight: `1px solid ${theme.grayAlt}`,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
+          className={getStyles().dragHandle}
+          onMouseDown={handleDragStart}
+        ></div>
+      ) : null}
+      <button
+        className={getStyles().panelCloseBtn}
+        onClick={(e) => {
+          setIsOpen(false)
+          onCloseClick(e)
+        }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="10"
+          height="6"
+          fill="none"
+          viewBox="0 0 10 6"
+          className={getStyles().panelCloseBtnIcon}
         >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'start',
-              gap: '1rem',
-              padding: '1rem',
-              alignItems: 'center',
-              background: theme.backgroundAlt,
+          <path
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.667"
+            d="M1 1l4 4 4-4"
+          ></path>
+        </svg>
+      </button>
+      <div className={getStyles().firstContainer}>
+        <div className={getStyles().row}>
+          <Logo
+            aria-hidden
+            onClick={(e) => {
+              setIsOpen(false)
+              onCloseClick(e)
             }}
-          >
-            <Logo aria-hidden />
-            <div
-              style={{
-                fontSize: 'clamp(.8rem, 2vw, 1.3rem)',
-                fontWeight: 'bold',
+          />
+        </div>
+        <div className={getStyles().routerExplorerContainer}>
+          <div className={getStyles().routerExplorer}>
+            <Explorer
+              label="Router"
+              value={Object.fromEntries(
+                multiSortBy(
+                  Object.keys(explorerState),
+                  (
+                    [
+                      'state',
+                      'routesById',
+                      'routesByPath',
+                      'flatRoutes',
+                      'options',
+                    ] as const
+                  ).map((d) => (dd) => dd !== d),
+                )
+                  .map((key) => [key, (explorerState as any)[key]])
+                  .filter(
+                    (d) =>
+                      typeof d[1] !== 'function' &&
+                      ![
+                        '__store',
+                        'basepath',
+                        'injectedHtml',
+                        'subscribers',
+                        'latestLoadPromise',
+                        'navigateTimeout',
+                        'resetNextScroll',
+                        'tempLocationKey',
+                        'latestLocation',
+                        'routeTree',
+                        'history',
+                      ].includes(d[0]),
+                  ),
+              )}
+              defaultExpanded={{
+                state: {} as any,
+                context: {} as any,
+                options: {} as any,
               }}
-            >
-              <span
-                style={{
-                  fontWeight: 100,
-                }}
-              >
-                Devtools
-              </span>
-            </div>
-          </div>
-          <div
-            style={{
-              overflowY: 'auto',
-              flex: '1',
-            }}
-          >
-            <div
-              style={{
-                padding: '.5em',
+              filterSubEntries={(subEntries) => {
+                return subEntries.filter((d) => typeof d.value !== 'function')
               }}
-            >
-              <Explorer
-                label="Router"
-                value={Object.fromEntries(
-                  multiSortBy(
-                    Object.keys(explorerState),
-                    (
-                      [
-                        'state',
-                        'routesById',
-                        'routesByPath',
-                        'flatRoutes',
-                        'options',
-                      ] as const
-                    ).map((d) => (dd) => dd !== d),
-                  )
-                    .map((key) => [key, (explorerState as any)[key]])
-                    .filter(
-                      (d) =>
-                        typeof d[1] !== 'function' &&
-                        ![
-                          '__store',
-                          'basepath',
-                          'injectedHtml',
-                          'subscribers',
-                          'latestLoadPromise',
-                          'navigateTimeout',
-                          'resetNextScroll',
-                          'tempLocationKey',
-                          'latestLocation',
-                          'routeTree',
-                          'history',
-                        ].includes(d[0]),
-                    ),
-                )}
-                defaultExpanded={{
-                  state: {} as any,
-                  context: {} as any,
-                  options: {} as any,
-                }}
-                filterSubEntries={(subEntries) => {
-                  return subEntries.filter((d) => typeof d.value !== 'function')
-                }}
-              />
-            </div>
+            />
           </div>
         </div>
-        <div
-          style={{
-            flex: '1 1 500px',
-            minHeight: '40%',
-            maxHeight: '100%',
-            overflow: 'auto',
-            borderRight: `1px solid ${theme.grayAlt}`,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div
-            style={{
-              flex: '1 1 auto',
-              overflowY: 'auto',
-            }}
-          >
-            <div
-              style={{
-                padding: '.5em',
-                background: theme.backgroundAlt,
-                position: 'sticky',
-                top: 0,
-                zIndex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '.5rem',
-                fontWeight: 'bold',
-              }}
-            >
-              Pathname{' '}
-              {routerState.location.maskedLocation ? (
-                <div
-                  style={{
-                    padding: '.1rem .5rem',
-                    background: theme.warning,
-                    color: 'black',
-                    borderRadius: '.5rem',
-                  }}
-                >
-                  Masked
-                </div>
-              ) : null}
-            </div>
-            <div
-              style={{
-                padding: '.5rem',
-                display: 'flex',
-                gap: '.5rem',
-                alignItems: 'center',
-              }}
-            >
-              <code
-                style={{
-                  opacity: 0.6,
-                }}
-              >
-                {routerState.location.pathname}
+      </div>
+      <div className={getStyles().secondContainer}>
+        <div className={getStyles().matchesContainer}>
+          <div className={getStyles().detailsHeader}>
+            <span>Pathname</span>
+            {routerState.location.maskedLocation ? (
+              <div className={getStyles().maskedBadgeContainer}>
+                <span className={getStyles().maskedBadge}>masked</span>
+              </div>
+            ) : null}
+          </div>
+          <div className={getStyles().detailsContent}>
+            <code>{routerState.location.pathname}</code>
+            {routerState.location.maskedLocation ? (
+              <code className={getStyles().maskedLocation}>
+                {routerState.location.maskedLocation.pathname}
               </code>
-              {routerState.location.maskedLocation ? (
-                <code
-                  style={{
-                    color: theme.warning,
-                    fontWeight: 'bold',
-                  }}
-                >
-                  {routerState.location.maskedLocation.pathname}
-                </code>
-              ) : null}
-            </div>
-            <div
-              style={{
-                padding: '.5em',
-                background: theme.backgroundAlt,
-                position: 'sticky',
-                top: 0,
-                zIndex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '.5rem',
-                fontWeight: 'bold',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '.5rem',
+            ) : null}
+          </div>
+          <div className={getStyles().detailsHeader}>
+            <div className={getStyles().routeMatchesToggle}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMatches(false)
                 }}
+                disabled={!showMatches}
+                className={cx(
+                  getStyles().routeMatchesToggleBtn(!showMatches, true),
+                )}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMatches(false)
-                  }}
-                  disabled={!showMatches}
-                  style={{
-                    appearance: 'none',
-                    opacity: showMatches ? 0.5 : 1,
-                    border: 0,
-                    background: 'transparent',
-                    color: 'inherit',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Routes
-                </button>
-                /
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMatches(true)
-                  }}
-                  disabled={showMatches}
-                  style={{
-                    appearance: 'none',
-                    opacity: !showMatches ? 0.5 : 1,
-                    border: 0,
-                    background: 'transparent',
-                    color: 'inherit',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Matches
-                </button>
-              </div>
-              <div
-                style={{
-                  opacity: 0.3,
-                  fontSize: '0.7rem',
-                  fontWeight: 'normal',
+                Routes
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMatches(true)
                 }}
+                disabled={showMatches}
+                className={cx(
+                  getStyles().routeMatchesToggleBtn(!!showMatches, false),
+                )}
               >
-                age / staleTime / gcTime
-              </div>
+                Matches
+              </button>
             </div>
+            <div className={getStyles().detailsHeaderInfo}>
+              <div>age / staleTime / gcTime</div>
+            </div>
+          </div>
+          <div className={cx(getStyles().routesContainer)}>
             {!showMatches ? (
               <RouteComp
                 route={router.routeTree}
@@ -884,40 +616,19 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                       onClick={() =>
                         setActiveId(activeId === match.id ? '' : match.id)
                       }
-                      style={{
-                        display: 'flex',
-                        borderBottom: `solid 1px ${theme.grayAlt}`,
-                        cursor: 'pointer',
-                        alignItems: 'center',
-                        background:
-                          match === activeMatch
-                            ? 'rgba(255,255,255,.1)'
-                            : undefined,
-                      }}
+                      className={cx(
+                        getStyles().matchRow(match === activeMatch),
+                      )}
                     >
                       <div
-                        style={{
-                          flex: '0 0 auto',
-                          width: '1.3rem',
-                          height: '1.3rem',
-                          marginLeft: '.25rem',
-                          background: getStatusColor(match, theme),
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 'bold',
-                          borderRadius: '.25rem',
-                          transition: 'all .2s ease-out',
-                        }}
+                        className={cx(
+                          getStyles().matchIndicator(getStatusColor(match)),
+                        )}
                       />
 
-                      <Code
-                        style={{
-                          padding: '.5em',
-                          fontSize: '0.7rem',
-                        }}
-                      >
-                        {`${match.id}`}
-                      </Code>
+                      <code
+                        className={getStyles().matchID}
+                      >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
                       <AgeTicker match={match} />
                     </div>
                   )
@@ -925,282 +636,125 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
               </div>
             )}
           </div>
-          {routerState.cachedMatches?.length ? (
-            <div
-              style={{
-                flex: '1 1 auto',
-                overflowY: 'auto',
-                maxHeight: '50%',
-              }}
-            >
-              <div
-                style={{
-                  padding: '.5em',
-                  background: theme.backgroundAlt,
-                  position: 'sticky',
-                  top: 0,
-                  zIndex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '.5rem',
-                  fontWeight: 'bold',
-                }}
-              >
-                <div>Cached Matches</div>
-                <div
-                  style={{
-                    opacity: 0.3,
-                    fontSize: '0.7rem',
-                    fontWeight: 'normal',
-                  }}
-                >
-                  age / staleTime / gcTime
-                </div>
-              </div>
-              <div>
-                {routerState.cachedMatches.map((match) => {
-                  return (
-                    <div
-                      key={match.id}
-                      role="button"
-                      aria-label={`Open match details for ${match.id}`}
-                      onClick={() =>
-                        setActiveId(activeId === match.id ? '' : match.id)
-                      }
-                      style={{
-                        display: 'flex',
-                        borderBottom: `solid 1px ${theme.grayAlt}`,
-                        cursor: 'pointer',
-                        alignItems: 'center',
-                        background:
-                          match === activeMatch
-                            ? 'rgba(255,255,255,.1)'
-                            : undefined,
-                        fontSize: '0.7rem',
-                      }}
-                    >
-                      <div
-                        style={{
-                          flex: '0 0 auto',
-                          width: '.75rem',
-                          height: '.75rem',
-                          marginLeft: '.25rem',
-                          background: getStatusColor(match, theme),
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 'bold',
-                          borderRadius: '100%',
-                          transition: 'all 1s ease-out',
-                        }}
-                      />
-
-                      <Code
-                        style={{
-                          padding: '.5em',
-                        }}
-                      >
-                        {`${match.id}`}
-                      </Code>
-
-                      <div style={{ marginLeft: 'auto' }}>
-                        <AgeTicker match={match} />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
         </div>
-        {activeMatch ? (
-          <ActivePanel>
-            <div
-              style={{
-                padding: '.5em',
-                background: theme.backgroundAlt,
-                position: 'sticky',
-                top: 0,
-                bottom: 0,
-                zIndex: 1,
-              }}
-            >
-              Match Details
+        {routerState.cachedMatches?.length ? (
+          <div className={getStyles().cachedMatchesContainer}>
+            <div className={getStyles().detailsHeader}>
+              <div>Cached Matches</div>
+              <div className={getStyles().detailsHeaderInfo}>
+                age / staleTime / gcTime
+              </div>
             </div>
             <div>
-              <table
-                style={{
-                  fontSize: '0.8rem',
-                }}
-              >
-                <tbody>
-                  <tr>
-                    <td style={{ opacity: '.5' }}>ID</td>
-                    <td>
-                      <Code
-                        style={{
-                          lineHeight: '1.8em',
-                        }}
-                      >
-                        {JSON.stringify(activeMatch.id, null, 2)}
-                      </Code>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ opacity: '.5' }}>Status</td>
-                    <td>
-                      {routerState.pendingMatches?.find(
-                        (d) => d.id === activeMatch.id,
-                      )
-                        ? 'Pending'
-                        : routerState.matches?.find(
-                              (d) => d.id === activeMatch.id,
-                            )
-                          ? 'Active'
-                          : 'Cached'}{' '}
-                      - {activeMatch.status}
-                    </td>
-                  </tr>
-                  {/* <tr>
-                    <td style={{ opacity: '.5' }}>Invalid</td>
-                    <td>{activeMatch.getIsInvalid().toString()}</td>
-                  </tr> */}
-                  <tr>
-                    <td style={{ opacity: '.5' }}>Last Updated</td>
-                    <td>
-                      {activeMatch.updatedAt
-                        ? new Date(
-                            activeMatch.updatedAt as number,
-                          ).toLocaleTimeString()
-                        : 'N/A'}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            {/* <div
-              style={{
-                background: theme.backgroundAlt,
-                padding: '.5em',
-                position: 'sticky',
-                top: 0,
-                bottom: 0,
-                zIndex: 1,
-              }}
-            >
-              Actions
-            </div>
-            <div
-              style={{
-                padding: '0.5em',
-              }}
-            >
-              <Button
-                type="button"
-                onClick={() => activeMatch.__store.setState(d => ({...d, status: 'pending'}))}
-                style={{
-                  background: theme.gray,
-                }}
-              >
-                Reload
-              </Button>
-            </div> */}
-            {activeMatch.loaderData ? (
-              <>
-                <div
-                  style={{
-                    background: theme.backgroundAlt,
-                    padding: '.5em',
-                    position: 'sticky',
-                    top: 0,
-                    bottom: 0,
-                    zIndex: 1,
-                  }}
-                >
-                  Loader Data
-                </div>
-                <div
-                  style={{
-                    padding: '.5em',
-                  }}
-                >
-                  <Explorer
-                    label="loaderData"
-                    value={activeMatch.loaderData}
-                    defaultExpanded={{}}
-                  />
-                </div>
-              </>
-            ) : null}
-            <div
-              style={{
-                background: theme.backgroundAlt,
-                padding: '.5em',
-                position: 'sticky',
-                top: 0,
-                bottom: 0,
-                zIndex: 1,
-              }}
-            >
-              Explorer
-            </div>
-            <div
-              style={{
-                padding: '.5em',
-              }}
-            >
-              <Explorer
-                label="Match"
-                value={activeMatch}
-                defaultExpanded={{}}
-              />
-            </div>
-          </ActivePanel>
-        ) : null}
-        {hasSearch ? (
-          <div
-            style={{
-              flex: '1 1 500px',
-              minHeight: '40%',
-              maxHeight: '100%',
-              overflow: 'auto',
-              borderRight: `1px solid ${theme.grayAlt}`,
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            <div
-              style={{
-                padding: '.5em',
-                background: theme.backgroundAlt,
-                position: 'sticky',
-                top: 0,
-                bottom: 0,
-                zIndex: 1,
-                fontWeight: 'bold',
-              }}
-            >
-              Search Params
-            </div>
-            <div
-              style={{
-                padding: '.5em',
-              }}
-            >
-              <Explorer
-                value={routerState.location.search || {}}
-                defaultExpanded={Object.keys(
-                  (routerState.location.search as {}) || {},
-                ).reduce((obj: any, next) => {
-                  obj[next] = {}
-                  return obj
-                }, {})}
-              />
+              {routerState.cachedMatches.map((match) => {
+                return (
+                  <div
+                    key={match.id}
+                    role="button"
+                    aria-label={`Open match details for ${match.id}`}
+                    onClick={() =>
+                      setActiveId(activeId === match.id ? '' : match.id)
+                    }
+                    className={cx(getStyles().matchRow(match === activeMatch))}
+                  >
+                    <div
+                      className={cx(
+                        getStyles().matchIndicator(getStatusColor(match)),
+                      )}
+                    />
+
+                    <code className={getStyles().matchID}>{`${match.id}`}</code>
+
+                    <AgeTicker match={match} />
+                  </div>
+                )
+              })}
             </div>
           </div>
         ) : null}
-      </Panel>
-    </ThemeProvider>
+      </div>
+      {activeMatch ? (
+        <div className={getStyles().thirdContainer}>
+          <div className={getStyles().detailsHeader}>Match Details</div>
+          <div>
+            <div className={getStyles().matchDetails}>
+              <div
+                className={getStyles().matchStatus(
+                  activeMatch.status,
+                  activeMatch.isFetching,
+                )}
+              >
+                <div>
+                  {activeMatch.status === 'success' && activeMatch.isFetching
+                    ? 'fetching'
+                    : activeMatch.status}
+                </div>
+              </div>
+              <div className={getStyles().matchDetailsInfoLabel}>
+                <div>ID:</div>
+                <div className={getStyles().matchDetailsInfo}>
+                  <code>{activeMatch.id}</code>
+                </div>
+              </div>
+              <div className={getStyles().matchDetailsInfoLabel}>
+                <div>State:</div>
+                <div className={getStyles().matchDetailsInfo}>
+                  {routerState.pendingMatches?.find(
+                    (d) => d.id === activeMatch.id,
+                  )
+                    ? 'Pending'
+                    : routerState.matches?.find((d) => d.id === activeMatch.id)
+                      ? 'Active'
+                      : 'Cached'}
+                </div>
+              </div>
+              <div className={getStyles().matchDetailsInfoLabel}>
+                <div>Last Updated:</div>
+                <div className={getStyles().matchDetailsInfo}>
+                  {activeMatch.updatedAt
+                    ? new Date(
+                        activeMatch.updatedAt as number,
+                      ).toLocaleTimeString()
+                    : 'N/A'}
+                </div>
+              </div>
+            </div>
+          </div>
+          {activeMatch.loaderData ? (
+            <>
+              <div className={getStyles().detailsHeader}>Loader Data</div>
+              <div className={getStyles().detailsContent}>
+                <Explorer
+                  label="loaderData"
+                  value={activeMatch.loaderData}
+                  defaultExpanded={{}}
+                />
+              </div>
+            </>
+          ) : null}
+          <div className={getStyles().detailsHeader}>Explorer</div>
+          <div className={getStyles().detailsContent}>
+            <Explorer label="Match" value={activeMatch} defaultExpanded={{}} />
+          </div>
+        </div>
+      ) : null}
+      {hasSearch ? (
+        <div className={getStyles().fourthContainer}>
+          <div className={getStyles().detailsHeader}>Search Params</div>
+          <div className={getStyles().detailsContent}>
+            <Explorer
+              value={routerState.location.search || {}}
+              defaultExpanded={Object.keys(
+                (routerState.location.search as {}) || {},
+              ).reduce((obj: any, next) => {
+                obj[next] = {}
+                return obj
+              }, {})}
+            />
+          </div>
+        </div>
+      ) : null}
+    </div>
   )
 })
 
@@ -1239,15 +793,8 @@ function AgeTicker({ match }: { match?: AnyRouteMatch }) {
     route.options.gcTime ?? router.options.defaultGcTime ?? 30 * 60 * 1000
 
   return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '.25rem',
-        color: age > staleTime ? theme.warning : undefined,
-      }}
-    >
-      <div style={{}}>{formatTime(age)}</div>
+    <div className={cx(getStyles().ageTicker(age > staleTime))}>
+      <div>{formatTime(age)}</div>
       <div>/</div>
       <div>{formatTime(staleTime)}</div>
       <div>/</div>
@@ -1273,4 +820,582 @@ function formatTime(ms: number) {
   })
 
   return formatter.format(values[chosenUnitIndex]!) + units[chosenUnitIndex]
+}
+
+const stylesFactory = () => {
+  const { colors, font, size, alpha, shadow, border } = tokens
+  const { fontFamily, lineHeight, size: fontSize } = font
+
+  return {
+    devtoolsPanelContainer: css`
+      direction: ltr;
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      z-index: 99999;
+      width: 100%;
+      max-height: 90%;
+      border-top: 1px solid ${colors.gray[700]};
+      transform-origin: top;
+    `,
+    devtoolsPanelContainerVisibility: (isOpen: boolean) => {
+      return css`
+        visibility: ${isOpen ? 'visible' : 'hidden'};
+      `
+    },
+    devtoolsPanelContainerResizing: (isResizing: boolean) => {
+      if (isResizing) {
+        return css`
+          transition: none;
+        `
+      }
+
+      return css`
+        transition: all 0.4s ease;
+      `
+    },
+    devtoolsPanelContainerAnimation: (isOpen: boolean, height: number) => {
+      if (isOpen) {
+        return css`
+          pointer-events: auto;
+          transform: translateY(0);
+        `
+      }
+      return css`
+        pointer-events: none;
+        transform: translateY(${height}px);
+      `
+    },
+    logo: css`
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      background-color: transparent;
+      border: none;
+      font-family: ${fontFamily.sans};
+      gap: ${tokens.size[0.5]};
+      padding: 0px;
+      &:hover {
+        opacity: 0.7;
+      }
+      &:focus-visible {
+        outline-offset: 4px;
+        border-radius: ${border.radius.xs};
+        outline: 2px solid ${colors.blue[800]};
+      }
+    `,
+    tanstackLogo: css`
+      font-size: ${font.size.md};
+      font-weight: ${font.weight.bold};
+      line-height: ${font.lineHeight.xs};
+      white-space: nowrap;
+      color: ${colors.gray[300]};
+    `,
+    routerLogo: css`
+      font-weight: ${font.weight.semibold};
+      font-size: ${font.size.xs};
+      background: linear-gradient(to right, #84cc16, #10b981);
+      background-clip: text;
+      -webkit-background-clip: text;
+      line-height: 1;
+      -webkit-text-fill-color: transparent;
+      white-space: nowrap;
+    `,
+    devtoolsPanel: css`
+      display: flex;
+      font-size: ${fontSize.sm};
+      font-family: ${fontFamily.sans};
+      background-color: ${colors.darkGray[700]};
+      color: ${colors.gray[300]};
+
+      @media (max-width: 700px) {
+        flex-direction: column;
+      }
+      @media (max-width: 600px) {
+        font-size: ${fontSize.xs};
+      }
+    `,
+    dragHandle: css`
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 4px;
+      cursor: row-resize;
+      z-index: 100000;
+      &:hover {
+        background-color: ${colors.purple[400]}${alpha[90]};
+      }
+    `,
+    firstContainer: css`
+      flex: 1 1 500px;
+      min-height: 40%;
+      max-height: 100%;
+      overflow: auto;
+      border-right: 1px solid ${colors.gray[700]};
+      display: flex;
+      flex-direction: column;
+    `,
+    routerExplorerContainer: css`
+      overflow-y: auto;
+      flex: 1;
+    `,
+    routerExplorer: css`
+      padding: ${tokens.size[2]};
+    `,
+    row: css`
+      display: flex;
+      align-items: center;
+      padding: ${tokens.size[2]} ${tokens.size[2.5]};
+      gap: ${tokens.size[2.5]};
+      border-bottom: ${colors.darkGray[500]} 1px solid;
+      align-items: center;
+    `,
+    detailsHeader: css`
+      font-family: ui-sans-serif, Inter, system-ui, sans-serif, sans-serif;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background-color: ${colors.darkGray[600]};
+      padding: 0px ${tokens.size[2]};
+      font-weight: ${font.weight.medium};
+      font-size: ${font.size.xs};
+      min-height: ${tokens.size[8]};
+      line-height: ${font.lineHeight.xs};
+      text-align: left;
+      display: flex;
+      align-items: center;
+    `,
+    maskedBadge: css`
+      background: ${colors.yellow[900]}${alpha[70]};
+      color: ${colors.yellow[300]};
+      display: inline-block;
+      padding: ${tokens.size[0]} ${tokens.size[2.5]};
+      border-radius: ${border.radius.full};
+      font-size: ${font.size.xs};
+      font-weight: ${font.weight.normal};
+      border: 1px solid ${colors.yellow[300]};
+    `,
+    maskedLocation: css`
+      color: ${colors.yellow[300]};
+    `,
+    detailsContent: css`
+      padding: ${tokens.size[1.5]} ${tokens.size[2]};
+      display: flex;
+      align-items: center;
+      font-size: ${font.size.xs};
+    `,
+    routeMatchesToggle: css`
+      display: flex;
+      align-items: center;
+      border: 1px solid ${colors.gray[500]};
+      border-radius: ${border.radius.sm};
+      overflow: hidden;
+    `,
+    routeMatchesToggleBtn: (active: boolean, showBorder: boolean) => {
+      const base = css`
+        appearance: none;
+        border: none;
+        font-size: 12px;
+        padding: 4px 8px;
+        background: transparent;
+        cursor: pointer;
+        font-family: ${fontFamily.sans};
+        font-weight: ${font.weight.medium};
+      `
+      const classes = [base]
+
+      if (active) {
+        const activeStyles = css`
+          background: ${colors.darkGray[400]};
+          color: ${colors.gray[300]};
+        `
+        classes.push(activeStyles)
+      } else {
+        const inactiveStyles = css`
+          color: ${colors.gray[500]};
+          background: ${colors.darkGray[800]}${alpha[20]};
+        `
+        classes.push(inactiveStyles)
+      }
+
+      if (showBorder) {
+        const border = css`
+          border-right: 1px solid ${tokens.colors.gray[500]};
+        `
+        classes.push(border)
+      }
+
+      return classes
+    },
+    detailsHeaderInfo: css`
+      flex: 1;
+      justify-content: flex-end;
+      display: flex;
+      align-items: center;
+      font-weight: ${font.weight.normal};
+      color: ${colors.gray[400]};
+    `,
+    matchRow: (active: boolean) => {
+      const base = css`
+        display: flex;
+        border-bottom: 1px solid ${colors.darkGray[400]};
+        cursor: pointer;
+        align-items: center;
+        padding: ${size[1]} ${size[2]};
+        gap: ${size[2]};
+        font-size: ${fontSize.xs};
+        color: ${colors.gray[300]};
+      `
+      const classes = [base]
+
+      if (active) {
+        const activeStyles = css`
+          background: ${colors.darkGray[500]};
+        `
+        classes.push(activeStyles)
+      }
+
+      return classes
+    },
+    matchIndicator: (color: 'green' | 'red' | 'yellow' | 'gray' | 'blue') => {
+      const base = css`
+        flex: 0 0 auto;
+        width: ${size[3]};
+        height: ${size[3]};
+        background: ${colors[color][900]};
+        border: 1px solid ${colors[color][500]};
+        border-radius: ${border.radius.full};
+        transition: all 0.25s ease-out;
+        box-sizing: border-box;
+      `
+      const classes = [base]
+
+      if (color === 'gray') {
+        const grayStyles = css`
+          background: ${colors.gray[700]};
+          border-color: ${colors.gray[400]};
+        `
+        classes.push(grayStyles)
+      }
+
+      return classes
+    },
+    matchID: css`
+      flex: 1;
+      line-height: ${lineHeight['xs']};
+    `,
+    ageTicker: (showWarning: boolean) => {
+      const base = css`
+        display: flex;
+        gap: ${size[1]};
+        font-size: ${fontSize.xs};
+        color: ${colors.gray[400]};
+        font-variant-numeric: tabular-nums;
+        line-height: ${lineHeight['xs']};
+      `
+
+      const classes = [base]
+
+      if (showWarning) {
+        const warningStyles = css`
+          color: ${colors.yellow[400]};
+        `
+        classes.push(warningStyles)
+      }
+
+      return classes
+    },
+    secondContainer: css`
+      flex: 1 1 500px;
+      min-height: 40%;
+      max-height: 100%;
+      overflow: auto;
+      border-right: 1px solid ${colors.gray[700]};
+      display: flex;
+      flex-direction: column;
+    `,
+    thirdContainer: css`
+      flex: 1 1 500px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      border-right: 1px solid ${colors.gray[700]};
+
+      @media (max-width: 700px) {
+        border-top: 2px solid ${colors.gray[700]};
+      }
+    `,
+    fourthContainer: css`
+      flex: 1 1 500px;
+      min-height: 40%;
+      max-height: 100%;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+    `,
+    routesContainer: css`
+      overflow-x: auto;
+      overflow-y: visible;
+    `,
+    routesRowContainer: (active: boolean, isMatch: boolean) => {
+      const base = css`
+        display: flex;
+        border-bottom: 1px solid ${colors.darkGray[400]};
+        align-items: center;
+        padding: ${size[1]} ${size[2]};
+        gap: ${size[2]};
+        font-size: ${fontSize.xs};
+        color: ${colors.gray[300]};
+        cursor: ${isMatch ? 'pointer' : 'default'};
+        line-height: ${lineHeight['xs']};
+      `
+      const classes = [base]
+
+      if (active) {
+        const activeStyles = css`
+          background: ${colors.darkGray[500]};
+        `
+        classes.push(activeStyles)
+      }
+
+      return classes
+    },
+    routesRow: (isMatch: boolean) => {
+      const base = css`
+        flex: 1 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: ${fontSize.xs};
+        line-height: ${lineHeight['xs']};
+      `
+
+      const classes = [base]
+
+      if (!isMatch) {
+        const matchStyles = css`
+          color: ${colors.gray[400]};
+        `
+        classes.push(matchStyles)
+      }
+
+      return classes
+    },
+    routeParamInfo: css`
+      color: ${colors.gray[400]};
+      font-size: ${fontSize.xs};
+      line-height: ${lineHeight['xs']};
+    `,
+    nestedRouteRow: (isRoot: boolean) => {
+      const base = css`
+        margin-left: ${isRoot ? 0 : size[3.5]};
+        border-left: ${isRoot ? '' : `solid 1px ${colors.gray[700]}`};
+      `
+      return base
+    },
+    code: css`
+      font-size: ${fontSize.xs};
+      line-height: ${lineHeight['xs']};
+    `,
+    matchesContainer: css`
+      flex: 1 1 auto;
+      overflow-y: auto;
+    `,
+    cachedMatchesContainer: css`
+      flex: 1 1 auto;
+      overflow-y: auto;
+      max-height: 50%;
+    `,
+    maskedBadgeContainer: css`
+      flex: 1;
+      justify-content: flex-end;
+      display: flex;
+    `,
+    matchDetails: css`
+      display: flex;
+      flex-direction: column;
+      padding: ${tokens.size[2]};
+      font-size: ${tokens.font.size.xs};
+      color: ${tokens.colors.gray[300]};
+      line-height: ${tokens.font.lineHeight.sm};
+    `,
+    matchStatus: (
+      status: 'pending' | 'success' | 'error' | 'notFound' | 'redirected',
+      isFetching: boolean,
+    ) => {
+      const colorMap = {
+        pending: 'yellow',
+        success: 'green',
+        error: 'red',
+        notFound: 'purple',
+        redirected: 'gray',
+      } as const
+
+      const color =
+        isFetching && status === 'success' ? 'blue' : colorMap[status]
+
+      return css`
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 40px;
+        border-radius: ${tokens.border.radius.sm};
+        font-weight: ${tokens.font.weight.normal};
+        background-color: ${tokens.colors[color][900]}${tokens.alpha[90]};
+        color: ${tokens.colors[color][300]};
+        border: 1px solid ${tokens.colors[color][600]};
+        margin-bottom: ${tokens.size[2]};
+        transition: all 0.25s ease-out;
+      `
+    },
+    matchDetailsInfo: css`
+      display: flex;
+      justify-content: flex-end;
+      flex: 1;
+    `,
+    matchDetailsInfoLabel: css`
+      display: flex;
+    `,
+    mainCloseBtn: css`
+      background: ${colors.darkGray[700]};
+      padding: ${size[1]} ${size[2]} ${size[1]} ${size[1.5]};
+      border-radius: ${border.radius.md};
+      position: fixed;
+      z-index: 99999;
+      display: inline-flex;
+      width: fit-content;
+      cursor: pointer;
+      appearance: none;
+      border: 0;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid ${colors.gray[500]};
+      font-size: ${font.size.xs};
+      cursor: pointer;
+      transition: all 0.25s ease-out;
+
+      &:hover {
+        background: ${colors.darkGray[500]};
+      }
+    `,
+    mainCloseBtnPosition: (
+      position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right',
+    ) => {
+      const base = css`
+        ${position === 'top-left' ? `top: ${size[2]}; left: ${size[2]};` : ''}
+        ${position === 'top-right' ? `top: ${size[2]}; right: ${size[2]};` : ''}
+        ${position === 'bottom-left'
+          ? `bottom: ${size[2]}; left: ${size[2]};`
+          : ''}
+        ${position === 'bottom-right'
+          ? `bottom: ${size[2]}; right: ${size[2]};`
+          : ''}
+      `
+      return base
+    },
+    mainCloseBtnAnimation: (isOpen: boolean) => {
+      if (isOpen) {
+        return css`
+          opacity: 1;
+          pointer-events: auto;
+          visibility: visible;
+        `
+      }
+      return css`
+        opacity: 0;
+        pointer-events: none;
+        visibility: hidden;
+      `
+    },
+    routerLogoCloseButton: css`
+      font-weight: ${font.weight.semibold};
+      font-size: ${font.size.xs};
+      background: linear-gradient(to right, #98f30c, #00f4a3);
+      background-clip: text;
+      -webkit-background-clip: text;
+      line-height: 1;
+      -webkit-text-fill-color: transparent;
+      white-space: nowrap;
+    `,
+    mainCloseBtnDivider: css`
+      width: 1px;
+      background: ${tokens.colors.gray[600]};
+      height: 100%;
+      border-radius: 999999px;
+      color: transparent;
+    `,
+    mainCloseBtnIconContainer: css`
+      position: relative;
+      width: ${size[5]};
+      height: ${size[5]};
+      background: pink;
+      border-radius: 999999px;
+      overflow: hidden;
+    `,
+    mainCloseBtnIconOuter: css`
+      width: ${size[5]};
+      height: ${size[5]};
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      filter: blur(3px) saturate(1.8) contrast(2);
+    `,
+    mainCloseBtnIconInner: css`
+      width: ${size[4]};
+      height: ${size[4]};
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    `,
+    panelCloseBtn: css`
+      position: absolute;
+      cursor: pointer;
+      z-index: 100001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      outline: none;
+      background-color: ${colors.darkGray[700]};
+      &:hover {
+        background-color: ${colors.darkGray[500]};
+      }
+
+      top: 0;
+      right: ${size[2]};
+      transform: translate(0, -100%);
+      border-right: ${colors.darkGray[300]} 1px solid;
+      border-left: ${colors.darkGray[300]} 1px solid;
+      border-top: ${colors.darkGray[300]} 1px solid;
+      border-bottom: none;
+      border-radius: ${border.radius.sm} ${border.radius.sm} 0px 0px;
+      padding: ${size[1]} ${size[1.5]} ${size[0.5]} ${size[1.5]};
+
+      &::after {
+        content: ' ';
+        position: absolute;
+        top: 100%;
+        left: -${size[2.5]};
+        height: ${size[1.5]};
+        width: calc(100% + ${size[5]});
+      }
+    `,
+    panelCloseBtnIcon: css`
+      color: ${colors.gray[400]};
+      width: ${size[2]};
+      height: ${size[2]};
+    `,
+  }
+}
+
+let _styles: ReturnType<typeof stylesFactory> | null = null
+
+function getStyles() {
+  if (_styles) return _styles
+  _styles = stylesFactory()
+
+  return _styles
 }

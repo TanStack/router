@@ -16,17 +16,17 @@ import {
   RouteConstraints,
   ResolveFullSearchSchemaInput,
   SearchSchemaInput,
-  LoaderFnContext,
   RouteLoaderFn,
   AnyPathParams,
   AnySearchSchema,
 } from './route'
 import { Assign, Expand, IsAny } from './utils'
-import { useMatch, useLoaderDeps, useLoaderData } from './Matches'
+import { useMatch, useLoaderDeps, useLoaderData, RouteMatch } from './Matches'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import warning from 'tiny-warning'
-import { RegisteredRouter, RouteById, RouteIds } from '.'
+import { RegisteredRouter } from './router'
+import { RouteById, RouteIds } from './routeInfo'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -63,6 +63,16 @@ export type RemoveUnderScores<T extends string> = Replace<
   '/'
 >
 
+type RemoveRouteGroups<S extends string> =
+  S extends `${infer Before}(${infer RouteGroup})${infer After}`
+    ? RemoveRouteGroups<`${Before}${After}`>
+    : S
+
+type NormalizeSlashes<S extends string> =
+  S extends `${infer Before}//${infer After}`
+    ? NormalizeSlashes<`${Before}/${After}`>
+    : S
+
 type ReplaceFirstOccurrence<
   T extends string,
   Search extends string,
@@ -95,14 +105,16 @@ export type FileRoutePath<
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
-  TId extends RouteConstraints['TId'] = TFilePath,
+  TId extends RouteConstraints['TId'] = NormalizeSlashes<
+    RemoveRouteGroups<TFilePath>
+  >,
   TPath extends RouteConstraints['TPath'] = FileRoutePath<
     TParentRoute,
     TFilePath
   >,
   TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
     TParentRoute,
-    RemoveUnderScores<TPath>
+    NormalizeSlashes<RemoveRouteGroups<RemoveUnderScores<TPath>>>
   >,
 >(path: TFilePath) {
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
@@ -176,7 +188,10 @@ export class FileRoute<
     >,
     TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
-    TLoaderData extends any = unknown,
+    TLoaderDataReturn extends any = unknown,
+    TLoaderData extends any = [TLoaderDataReturn] extends [never]
+      ? undefined
+      : TLoaderDataReturn,
     TChildren extends RouteConstraints['TChildren'] = unknown,
     TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
   >(
@@ -197,6 +212,7 @@ export class FileRoute<
         TRouterContext,
         TAllContext,
         TLoaderDeps,
+        TLoaderDataReturn,
         TLoaderData
       >,
       'getParentRoute' | 'path' | 'id'
@@ -220,6 +236,7 @@ export class FileRoute<
     TAllContext,
     TRouterContext,
     TLoaderDeps,
+    TLoaderDataReturn,
     TLoaderData,
     TChildren,
     TRouteTree
@@ -285,8 +302,14 @@ export class LazyRoute<TRoute extends AnyRoute> {
     ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
-  useMatch = <TSelected = TRoute['types']['allContext']>(opts?: {
-    select?: (s: TRoute['types']['allContext']) => TSelected
+  useMatch = <
+    TRouteMatchState = RouteMatch<
+      TRoute['types']['routeTree'],
+      TRoute['types']['id']
+    >,
+    TSelected = TRouteMatchState,
+  >(opts?: {
+    select?: (match: TRouteMatchState) => TSelected
   }): TSelected => {
     return useMatch({ select: opts?.select, from: this.options.id })
   }
@@ -327,7 +350,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
 
 export function createLazyRoute<
   TId extends RouteIds<RegisteredRouter['routeTree']>,
-  TRoute extends RouteById<RegisteredRouter['routeTree'], TId> = AnyRoute,
+  TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
 >(id: TId) {
   return (opts: LazyRouteOptions) => {
     return new LazyRoute<TRoute>({ id: id as any, ...opts })
@@ -337,6 +360,13 @@ export function createLazyRoute<
 export function createLazyFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
->(id: TFilePath) {
+>(path: TFilePath) {
+  const id = removeGroups(path)
   return (opts: LazyRouteOptions) => new LazyRoute<TRoute>({ id, ...opts })
+}
+
+const routeGroupPatternRegex = /\(.+\)/g
+
+function removeGroups(s: string) {
+  return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
 }

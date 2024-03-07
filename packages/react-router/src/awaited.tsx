@@ -1,12 +1,10 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
+import { defaultSerializeError } from './router'
 import { DeferredPromise, isDehydratedDeferred } from './defer'
+import { defaultDeserializeError, isServerSideError } from './Matches'
+
 import warning from 'tiny-warning'
-import {
-  isServerSideError,
-  defaultDeserializeError,
-  defaultSerializeError,
-} from '.'
 
 export type AwaitOptions<T> = {
   promise: DeferredPromise<T>
@@ -99,8 +97,8 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
 
 export function Await<T>(
   props: AwaitOptions<T> & {
-    fallback?: JSX.Element
-    children: (result: T) => JSX.Element
+    fallback?: React.ReactNode
+    children: (result: T) => React.ReactNode
   },
 ) {
   const inner = <AwaitInner {...props} />
@@ -112,8 +110,8 @@ export function Await<T>(
 
 function AwaitInner<T>(
   props: AwaitOptions<T> & {
-    fallback?: JSX.Element
-    children: (result: T) => JSX.Element
+    fallback?: React.ReactNode
+    children: (result: T) => React.ReactNode
   },
 ) {
   const awaited = useAwaited(props)

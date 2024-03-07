@@ -115,7 +115,7 @@ With relative navigation and all of the interfaces in mind now, let's talk about
 
 ## `<Link>` Component
 
-The `Link` component is the most common way to navigate within an app. It renders an actual `<a>` tag with a valid `href` attribute which can be clicked or even cmd/ctrl + clicked to open in a new tab. It also supports any normal `<a`> attributes including `target` to open links in new windows, etc.
+The `Link` component is the most common way to navigate within an app. It renders an actual `<a>` tag with a valid `href` attribute which can be clicked or even cmd/ctrl + clicked to open in a new tab. It also supports any normal `<a>` attributes including `target` to open links in new windows, etc.
 
 In addition to the [`LinkOptions`](#linkoptions-interface) interface, the `Link` component also supports the following props:
 

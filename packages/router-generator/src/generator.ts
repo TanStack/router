@@ -3,10 +3,11 @@ import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import * as prettier from 'prettier'
 import { Config } from './config'
-import { cleanPath, trimPathLeft } from './utils'
+import { cleanPath, logging, trimPathLeft } from './utils'
 
 let latestTask = 0
 export const rootPathId = '__root'
+const routeGroupPatternRegex = /\(.+\)/g
 
 export type RouteNode = {
   filePath: string
@@ -31,6 +32,7 @@ export type RouteNode = {
 
 async function getRouteNodes(config: Config) {
   const { routeFilePrefix, routeFileIgnorePrefix } = config
+  const logger = logging({ disabled: config.disableLogging })
 
   let routeNodes: RouteNode[] = []
 
@@ -96,7 +98,7 @@ async function getRouteNodes(config: Config) {
             ] as const
           ).forEach(([isType, type]) => {
             if (isType) {
-              console.warn(
+              logger.warn(
                 `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
               )
             }
@@ -149,15 +151,16 @@ type RouteSubNode = {
 }
 
 export async function generator(config: Config) {
-  console.log('')
+  const logger = logging({ disabled: config.disableLogging })
+  logger.log('')
 
   if (!first) {
-    console.log('♻️  Generating routes...')
+    logger.log('♻️  Generating routes...')
     first = true
   } else if (skipMessage) {
     skipMessage = false
   } else {
-    console.log('♻️  Regenerating routes...')
+    logger.log('♻️  Regenerating routes...')
   }
 
   const taskId = latestTask + 1
@@ -216,7 +219,7 @@ export async function generator(config: Config) {
 
     node.isNonPath = first.startsWith('_')
     node.isNonLayout = first.endsWith('_')
-    node.cleanedPath = removeUnderscores(node.path) ?? ''
+    node.cleanedPath = removeGroups(removeUnderscores(node.path) ?? '')
 
     // Ensure the boilerplate for the route exists
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
@@ -266,7 +269,7 @@ export async function generator(config: Config) {
     }
 
     if (replaced !== routeCode) {
-      console.log(`🟡 Updating ${node.fullPath}`)
+      logger.log(`🟡 Updating ${node.fullPath}`)
       await fsp.writeFile(node.fullPath, replaced)
     }
 
@@ -552,7 +555,7 @@ export async function generator(config: Config) {
     )
   }
 
-  console.log(
+  logger.log(
     `✅ Processed ${routeNodes.length === 1 ? 'route' : 'routes'} in ${
       Date.now() - start
     }ms`,
@@ -628,6 +631,10 @@ function removeTrailingUnderscores(s?: string) {
 
 function replaceBackslash(s: string) {
   return s.replaceAll(/\\/gi, '/')
+}
+
+function removeGroups(s: string) {
+  return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
 }
 
 export function hasParentRoute(

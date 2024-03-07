@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router-server",
-  "version": "1.16.6",
+  "version": "1.19.1",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -92,7 +92,7 @@
     "src"
   ],
   "dependencies": {
-    "@tanstack/react-cross-context": "workspace:^",
+    "@tanstack/react-cross-context": "workspace:*",
     "@tanstack/react-router": "workspace:*",
     "vinxi": "0.2.1"
   },

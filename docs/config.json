@@ -36,6 +36,10 @@
             {
               "label": "Migrate from React Router",
               "to": "framework/react/migrate-from-react-router"
+            },
+            {
+              "label": "Decisions on DX",
+              "to": "framework/react/decisions-on-dx"
             }
           ]
         },
