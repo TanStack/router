@@ -21,6 +21,7 @@ export type RouteNode = {
   isParentRoot?: boolean
   isLayout?: boolean
   isVirtualParentRequired?: boolean
+  isVirtualParentRoute?: boolean
   isRoute?: boolean
   isLoader?: boolean
   isComponent?: boolean
@@ -213,8 +214,14 @@ export async function generator(config: Config) {
   let routeNodes: RouteNode[] = []
 
   const handleNode = async (node: RouteNode) => {
-    const parentRoute = hasParentRoute(routeNodes, node.routePath)
+    let parentRoute = hasParentRoute(routeNodes, node.routePath)
+
+    if (parentRoute?.isVirtualParentRoute && parentRoute.children?.length) {
+      parentRoute = hasParentRoute(parentRoute.children, node.routePath)
+    }
+
     if (parentRoute) node.parent = parentRoute
+
     node.path = node.parent
       ? node.routePath?.replace(node.parent.routePath!, '') || '/'
       : node.routePath
@@ -288,9 +295,9 @@ export async function generator(config: Config) {
     }
 
     node.isVirtualParentRequired =
-      removeGroups(removeUnderscores(node.path) ?? '')
+      removeGroups(node.path ?? '')
         .split('')
-        .filter((char) => char === '/').length >= 2 &&
+        .filter((char) => char === '/').length >= 2 && // check that the parent route wouldn't be the root route
       !node.parent &&
       node.isLayout
 
@@ -336,8 +343,9 @@ export async function generator(config: Config) {
             fullPath: removeLastSegment(node.fullPath) || '/',
             routePath: removeLastSegment(node.routePath) || '/',
             variableName: removeLastVariableSegment(node.variableName),
-            isLayout: false,
             isVirtual: true,
+            isVirtualParentRoute: true,
+            isLayout: false,
             isVirtualParentRequired: false,
           }
 
@@ -494,8 +502,7 @@ export async function generator(config: Config) {
           `const ${node.variableName}Route = ${node.variableName}Import.update({
           ${[
             node.isNonPath
-              ? // this is still not satisfied on the ts-side of react-router with the paths.
-                `id: '${node.path}'`
+              ? `id: '${node.path}'`
               : `path: '${node.cleanedPath}'`,
             `getParentRoute: () => ${node.isVirtualParentRequired ? removeLastVariableSegment(node.variableName) : node.parent?.variableName ?? 'root'}Route`,
           ]
@@ -567,9 +574,11 @@ export async function generator(config: Config) {
         return `'${removeTrailingUnderscores(routeNode.routePath)}': {
           preLoaderRoute: typeof ${routeNode.variableName}Import
           parentRoute: typeof ${
-            routeNode.parent?.variableName
-              ? `${routeNode.parent?.variableName}Import`
-              : 'rootRoute'
+            routeNode.isVirtualParentRequired
+              ? `${routeNode.parent?.variableName}Route`
+              : routeNode.parent?.variableName
+                ? `${routeNode.parent?.variableName}Import`
+                : 'rootRoute'
           }
         }`
       })
