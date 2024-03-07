@@ -16,8 +16,11 @@ export type RouteNode = {
   routePath?: string
   cleanedPath?: string
   path?: string
-  isNonPath?: boolean
-  isNonLayout?: boolean
+  isNonPath?: boolean // the route definition uses an `id` field instead of the `path` field
+  isNonLayout?: boolean // the route definition shouldn't be nested under an existing route grouping
+  isParentRoot?: boolean
+  isLayout?: boolean
+  isVirtualParentRequired?: boolean
   isRoute?: boolean
   isLoader?: boolean
   isComponent?: boolean
@@ -89,6 +92,9 @@ async function getRouteNodes(config: Config) {
           let isPendingComponent = routePath?.endsWith('/pendingComponent')
           let isLoader = routePath?.endsWith('/loader')
 
+          const segments = (routePath ?? '').split('/')
+          let isLayout = segments[segments.length - 1]?.startsWith('_') || false
+
           ;(
             [
               [isComponent, 'component'],
@@ -126,6 +132,7 @@ async function getRouteNodes(config: Config) {
             isPendingComponent,
             isLoader,
             isLazy,
+            isLayout,
           })
         }
       }),
@@ -148,6 +155,7 @@ type RouteSubNode = {
   pendingComponent?: RouteNode
   loader?: RouteNode
   lazy?: RouteNode
+  virtualParent?: RouteNode
 }
 
 export async function generator(config: Config) {
@@ -215,74 +223,76 @@ export async function generator(config: Config) {
 
     const split = trimmedPath?.split('/') ?? []
     let first = split[0] ?? trimmedPath ?? ''
-    const layoutSegment = split[split.length - 1] ?? trimmedPath ?? ''
+    const lastRouteSegment = split[split.length - 1] ?? trimmedPath ?? ''
 
-    node.isNonPath = layoutSegment.startsWith('_')
+    node.isNonPath = lastRouteSegment.startsWith('_')
     node.isNonLayout = first.endsWith('_')
 
-    // given a route like `/sz/_goob/foo` or `/hj/_jokm/bar`, each segment is separated by a `/`, we want to remove all segments that start with a `_`
-    // to get `/sz/foo` or `/hj/bar`
-    function removeLayoutSegments(path: string = '/'): string {
-      const segments = path.split('/')
-      const newSegments = segments.filter((segment) => !segment.startsWith('_'))
-      return newSegments.join('/')
-    }
     node.cleanedPath = removeGroups(
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',
     )
     // node.cleanedPath = removeGroups(removeUnderscores(node.path) ?? '')
 
     // Ensure the boilerplate for the route exists
-    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
+    if (!node.isVirtual) {
+      const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
-    const escapedRoutePath = removeTrailingUnderscores(
-      node.routePath?.replaceAll('$', '$$') ?? '',
-    )
+      const escapedRoutePath = removeTrailingUnderscores(
+        node.routePath?.replaceAll('$', '$$') ?? '',
+      )
 
-    let replaced = routeCode
+      let replaced = routeCode
 
-    if (!routeCode) {
-      if (node.isLazy) {
-        replaced = [
-          `import { createLazyFileRoute } from '@tanstack/react-router'`,
-          `export const Route = createLazyFileRoute('${escapedRoutePath}')({
-  component: () => <div>Hello ${escapedRoutePath}!</div>
-})`,
-        ].join('\n\n')
-      } else if (
-        node.isRoute ||
-        (!node.isComponent &&
-          !node.isErrorComponent &&
-          !node.isPendingComponent &&
-          !node.isLoader)
-      ) {
-        replaced = [
-          `import { createFileRoute } from '@tanstack/react-router'`,
-          `export const Route = createFileRoute('${escapedRoutePath}')({
-  component: () => <div>Hello ${escapedRoutePath}!</div>
-})`,
-        ].join('\n\n')
+      if (!routeCode) {
+        if (node.isLazy) {
+          replaced = [
+            `import { createLazyFileRoute } from '@tanstack/react-router'`,
+            `export const Route = createLazyFileRoute('${escapedRoutePath}')({
+    component: () => <div>Hello ${escapedRoutePath}!</div>
+  })`,
+          ].join('\n\n')
+        } else if (
+          node.isRoute ||
+          (!node.isComponent &&
+            !node.isErrorComponent &&
+            !node.isPendingComponent &&
+            !node.isLoader)
+        ) {
+          replaced = [
+            `import { createFileRoute } from '@tanstack/react-router'`,
+            `export const Route = createFileRoute('${escapedRoutePath}')({
+    component: () => <div>Hello ${escapedRoutePath}!</div>
+  })`,
+          ].join('\n\n')
+        }
+      } else {
+        replaced = routeCode
+          .replace(
+            /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+          )
+          .replace(
+            /(createFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+          )
+          .replace(
+            /(createLazyFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+          )
       }
-    } else {
-      replaced = routeCode
-        .replace(
-          /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-          (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
-        )
-        .replace(
-          /(createFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-          (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
-        )
-        .replace(
-          /(createLazyFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-          (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
-        )
+
+      if (replaced !== routeCode) {
+        logger.log(`🟡 Updating ${node.fullPath}`)
+        await fsp.writeFile(node.fullPath, replaced)
+      }
     }
 
-    if (replaced !== routeCode) {
-      logger.log(`🟡 Updating ${node.fullPath}`)
-      await fsp.writeFile(node.fullPath, replaced)
-    }
+    node.isVirtualParentRequired =
+      removeGroups(removeUnderscores(node.path) ?? '')
+        .split('')
+        .filter((char) => char === '/').length >= 2 &&
+      !node.parent &&
+      node.isLayout
 
     if (
       !node.isVirtual &&
@@ -290,37 +300,62 @@ export async function generator(config: Config) {
         node.isComponent ||
         node.isErrorComponent ||
         node.isPendingComponent ||
-        node.isLazy)
+        node.isLazy ||
+        node.isVirtualParentRequired)
     ) {
+      let skipReturn = false
       routePiecesByPath[node.routePath!] =
         routePiecesByPath[node.routePath!] || {}
 
       routePiecesByPath[node.routePath!]![
-        node.isLazy
-          ? 'lazy'
-          : node.isLoader
-            ? 'loader'
-            : node.isErrorComponent
-              ? 'errorComponent'
-              : node.isPendingComponent
-                ? 'pendingComponent'
-                : 'component'
+        node.isVirtualParentRequired
+          ? 'virtualParent'
+          : node.isLazy
+            ? 'lazy'
+            : node.isLoader
+              ? 'loader'
+              : node.isErrorComponent
+                ? 'errorComponent'
+                : node.isPendingComponent
+                  ? 'pendingComponent'
+                  : 'component'
       ] = node
 
       const anchorRoute = routeNodes.find((d) => d.routePath === node.routePath)
 
       if (!anchorRoute) {
-        await handleNode({
-          ...node,
-          isVirtual: true,
-          isLazy: false,
-          isLoader: false,
-          isComponent: false,
-          isErrorComponent: false,
-          isPendingComponent: false,
-        })
+        if (node.isVirtualParentRequired) {
+          // instances where nested routes require a virtual 'critical' parent route to be created
+          skipReturn = true
+
+          await handleNode({
+            ...node,
+            path: removeLastSegment(node.path) || '/',
+            filePath: removeLastSegment(node.filePath) || '/',
+            fullPath: removeLastSegment(node.fullPath) || '/',
+            routePath: removeLastSegment(node.routePath) || '/',
+            variableName: removeLastVariableSegment(node.variableName),
+            isLayout: false,
+            isVirtual: true,
+            isVirtualParentRequired: false,
+          })
+        } else {
+          // instances where an equivalent virtual 'critical' route is to be created
+          await handleNode({
+            ...node,
+            isVirtual: true,
+            isLazy: false,
+            isLoader: false,
+            isComponent: false,
+            isErrorComponent: false,
+            isPendingComponent: false,
+          })
+        }
       }
-      return
+
+      if (!skipReturn) {
+        return
+      }
     }
 
     if (node.parent) {
@@ -450,9 +485,9 @@ export async function generator(config: Config) {
           ${[
             node.isNonPath
               ? // this is still not satisfied on the ts-side of react-router with the paths.
-                `id: '${node.path}'${!node.isNonLayout && node.cleanedPath ? `, path: '${node.cleanedPath}'` : ''}`
+                `id: '${node.path}'`
               : `path: '${node.cleanedPath}'`,
-            `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
+            `getParentRoute: () => ${node.isVirtualParentRequired ? removeLastVariableSegment(node.variableName) : node.parent?.variableName ?? 'root'}Route`,
           ]
             .filter(Boolean)
             .join(',')}
@@ -647,6 +682,30 @@ function replaceBackslash(s: string) {
 
 function removeGroups(s: string) {
   return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
+}
+
+// given a string like `/sz/_goob/foo` or '/hj/bar/ikoi', consider the each segment to be separated by a `/`, we want to remove the last segment.
+// to get `/sz/_goob` or `/hj/bar`
+export function removeLastSegment(path: string = '/'): string {
+  const segments = path.split('/')
+  segments.pop() // Remove the last segment
+  return segments.join('/')
+}
+
+// give a variable name like `RouteBBarTanRoute` or 'RouteAFoo', each segment is separated by a capital letter, we want to remove the last segment
+// to get `RouteBBarTan` or `RouteA`
+export function removeLastVariableSegment(variableName: string = ''): string {
+  const segments = variableName.split(/(?=[A-Z])/)
+  segments.pop() // Remove the last segment
+  return segments.join('')
+}
+
+// given a route like `/sz/_goob/foo` or `/hj/_jokm/bar`, each segment is separated by a `/`, we want to remove all segments that start with a `_`
+// to get `/sz/foo` or `/hj/bar`
+function removeLayoutSegments(path: string = '/'): string {
+  const segments = path.split('/')
+  const newSegments = segments.filter((segment) => !segment.startsWith('_'))
+  return newSegments.join('/')
 }
 
 export function hasParentRoute(
