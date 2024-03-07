@@ -339,25 +339,37 @@ export async function generator(config: Config) {
 
     if (!node.isVirtual && node.isVirtualParentRequired) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
-      const parentNode = {
-        ...node,
-        path: removeLastSegmentFromPath(node.path) || '/',
-        filePath: removeLastSegmentFromPath(node.filePath) || '/',
-        fullPath: removeLastSegmentFromPath(node.fullPath) || '/',
-        routePath: parentRoutePath,
-        variableName: routePathToVariable(parentRoutePath),
-        isVirtual: true,
-        isLayout: false,
-        isVirtualParentRoute: true,
-        isVirtualParentRequired: false,
+
+      const anchorRoute = routeNodes.find(
+        (d) => d.routePath === parentRoutePath,
+      )
+
+      if (!anchorRoute) {
+        const parentNode = {
+          ...node,
+          path: removeLastSegmentFromPath(node.path) || '/',
+          filePath: removeLastSegmentFromPath(node.filePath) || '/',
+          fullPath: removeLastSegmentFromPath(node.fullPath) || '/',
+          routePath: parentRoutePath,
+          variableName: routePathToVariable(parentRoutePath),
+          isVirtual: true,
+          isLayout: false,
+          isVirtualParentRoute: true,
+          isVirtualParentRequired: false,
+        }
+
+        parentNode.children = parentNode.children ?? []
+        parentNode.children.push(node)
+
+        node.parent = parentNode
+
+        await handleNode(parentNode)
+      } else {
+        anchorRoute.children = anchorRoute.children ?? []
+        anchorRoute.children.push(node)
+
+        node.parent = anchorRoute
       }
-
-      parentNode.children = parentNode.children ?? []
-      parentNode.children.push(node)
-
-      node.parent = parentNode
-
-      await handleNode(parentNode)
     }
 
     if (node.parent) {
