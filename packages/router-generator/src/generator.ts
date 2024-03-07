@@ -240,8 +240,8 @@ export async function generator(config: Config) {
     )
     // node.cleanedPath = removeGroups(removeUnderscores(node.path) ?? '')
 
-    // Ensure the boilerplate for the route exists
-    if (!node.isVirtual) {
+    // Ensure the boilerplate for the route exists, which can be skipped for virtual parent routes
+    if (!node.isVirtualParentRoute) {
       const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
       const escapedRoutePath = removeTrailingUnderscores(
@@ -338,11 +338,11 @@ export async function generator(config: Config) {
 
           const parentNode = {
             ...node,
-            path: removeLastSegment(node.path) || '/',
-            filePath: removeLastSegment(node.filePath) || '/',
-            fullPath: removeLastSegment(node.fullPath) || '/',
-            routePath: removeLastSegment(node.routePath) || '/',
-            variableName: removeLastVariableSegment(node.variableName),
+            path: removeLastSegmentFromPath(node.path) || '/',
+            filePath: removeLastSegmentFromPath(node.filePath) || '/',
+            fullPath: removeLastSegmentFromPath(node.fullPath) || '/',
+            routePath: removeLastSegmentFromPath(node.routePath) || '/',
+            variableName: removeLastSegmentFromVariableName(node.variableName),
             isVirtual: true,
             isVirtualParentRoute: true,
             isLayout: false,
@@ -504,7 +504,7 @@ export async function generator(config: Config) {
             node.isNonPath
               ? `id: '${node.path}'`
               : `path: '${node.cleanedPath}'`,
-            `getParentRoute: () => ${node.isVirtualParentRequired ? removeLastVariableSegment(node.variableName) : node.parent?.variableName ?? 'root'}Route`,
+            `getParentRoute: () => ${node.isVirtualParentRequired ? removeLastSegmentFromVariableName(node.variableName) : node.parent?.variableName ?? 'root'}Route`,
           ]
             .filter(Boolean)
             .join(',')}
@@ -703,24 +703,45 @@ function removeGroups(s: string) {
   return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
 }
 
-// given a string like `/sz/_goob/foo` or '/hj/bar/ikoi', consider the each segment to be separated by a `/`, we want to remove the last segment.
-// to get `/sz/_goob` or `/hj/bar`
-export function removeLastSegment(path: string = '/'): string {
+/**
+ * Removes the last segment from a given path. Segments are considered to be separated by a '/'.
+ *
+ * @param {string} path - The path from which to remove the last segment. Defaults to '/'.
+ * @returns {string} The path with the last segment removed.
+ * @example
+ * removeLastSegment('/workspace/_auth/foo') // '/workspace/_auth'
+ */
+export function removeLastSegmentFromPath(path: string = '/'): string {
   const segments = path.split('/')
   segments.pop() // Remove the last segment
   return segments.join('/')
 }
 
-// give a variable name like `RouteBBarTanRoute` or 'RouteAFoo', each segment is separated by a capital letter, we want to remove the last segment
-// to get `RouteBBarTan` or `RouteA`
-export function removeLastVariableSegment(variableName: string = ''): string {
+/**
+ * Removes the last segment from a given variable name. Segments are separated by capital letters.
+ *
+ * @param {string} variableName - The variable name from which to remove the last segment. Defaults to an empty string.
+ * @returns {string} The variable name with the last segment removed.
+ * @example
+ * removeLastVariableSegment('RouteBBarTanRoute') // 'RouteBBarTan'
+ * removeLastVariableSegment('RouteAFoo') // 'RouteA'
+ */
+export function removeLastSegmentFromVariableName(
+  variableName: string = '',
+): string {
   const segments = variableName.split(/(?=[A-Z])/)
   segments.pop() // Remove the last segment
   return segments.join('')
 }
 
-// given a route like `/sz/_goob/foo` or `/hj/_jokm/bar`, each segment is separated by a `/`, we want to remove all segments that start with a `_`
-// to get `/sz/foo` or `/hj/bar`
+/**
+ * Removes all segments from a given path that start with an underscore ('_').
+ *
+ * @param {string} path - The path from which to remove segments. Defaults to '/'.
+ * @returns {string} The path with all underscore-prefixed segments removed.
+ * @example
+ * removeLayoutSegments('/workspace/_auth/foo') // '/workspace/foo'
+ */
 function removeLayoutSegments(path: string = '/'): string {
   const segments = path.split('/')
   const newSegments = segments.filter((segment) => !segment.startsWith('_'))
