@@ -18,7 +18,6 @@ export type RouteNode = {
   path?: string
   isNonPath?: boolean
   isNonLayout?: boolean
-  isParentRoot?: boolean
   isLayout?: boolean
   isVirtualParentRequired?: boolean
   isVirtualParentRoute?: boolean
