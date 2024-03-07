@@ -135,6 +135,7 @@ export interface RouterOptions<
   hydrate?: (dehydrated: TDehydrated) => void
   routeMasks?: RouteMask<TRouteTree>[]
   unmaskOnReload?: boolean
+  scrollOnHashChange?: boolean
   Wrap?: (props: { children: any }) => React.ReactNode
   InnerWrap?: (props: { children: any }) => React.ReactNode
   /**
@@ -308,6 +309,7 @@ export class Router<
       stringifySearch: options?.stringifySearch ?? defaultStringifySearch,
       parseSearch: options?.parseSearch ?? defaultParseSearch,
       transformer: options?.transformer ?? JSON,
+      scrollOnHashChange: options?.scrollOnHashChange ?? true
     })
 
     if (typeof document !== 'undefined') {
