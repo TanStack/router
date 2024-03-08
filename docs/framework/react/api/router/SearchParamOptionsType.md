@@ -7,6 +7,8 @@ The `SearchParamOptions` type is used to describe how search params can be provi
 
 ```tsx
 type SearchParamOptions = {
-  search?: true | TToSearch | ((prev: TFromSearch) => TToSearch)
+  search?: true
+    | TToSearch
+    | ((prev: TFromSearch) => TToSearch)
 }
 ```

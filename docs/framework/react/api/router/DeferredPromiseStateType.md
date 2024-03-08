@@ -3,6 +3,8 @@ id: DeferredPromiseStateType
 title: DeferredPromiseState type
 ---
 
+The `DeferredPromiseState` type is used to describe the state of a deferred promise.
+
 ```tsx
 type DeferredPromiseState<T> = { uid: string } & (
   | {
@@ -21,3 +23,5 @@ type DeferredPromiseState<T> = { uid: string } & (
     }
 )
 ```
+
+- `uid` - A unique identifier for the promise state represented by a string.

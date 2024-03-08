@@ -5,20 +5,23 @@ title: isRedirect function
 
 The `isRedirect` function can be used to determine if an object is a redirect object.
 
-### Options
+## isRedirect options
 
-#### `obj`
+The `isRedirect` function accepts a single argument, an `input`.
 
-- The object to check
+#### `input`
+
+- Type: `unknown`
 - Required
+- An object to check if it is a redirect object
 
-### Returns
+## isRedirect returns
 
-#### `true` if the object is a redirect object
+- Type: `boolean`
+- `true` if the object is a redirect object
+- `false` if the object is not a redirect object
 
-#### `false` if the object is not a redirect object
-
-### Examples
+## Examples
 
 ```tsx
 import { isRedirect } from '@tanstack/react-router'

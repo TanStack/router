@@ -3,38 +3,47 @@ id: rootRouteWithContextFunction
 title: rootRouteWithContext function
 ---
 
-## ⚠️ Deprecated
-
-The `rootRouteWithContext` class is deprecated and will be removed in the next major version of TanStack Router. Please use the `createRootRouteWithContext` function instead.
+> 🚧 The `rootRouteWithContext` function is deprecated and will be removed in the next major version of TanStack Router. Please use the [`createRootRouteWithContext`](./api/router/createRootRouteWithContextFunction) function instead. The methods associated with this function are fully replicated on its newer.
+> 
 
 The `rootRouteWithContext` function is a helper function that can be used to create a root route instance that requires a context type to be fulfilled when the router is created.
 
-### Generics
+## rootRouteWithContext generics
 
-#### `TRouterContext`
+The `rootRouteWithContext` function accepts a single generic argument:
 
+### `TRouterContext` generic
+
+- Type: `TRouterContext`
+- Optional, **but recommended**.
 - The context type that will be required to be fulfilled when the router is created
 
-### Options
+## rootRouteWithContext options
 
 - No options are available for this function
 
-### Returns
+## rootRouteWithContext returns
 
-- A `RootRoute` factory function that can be used to create a root route instance
+- A factory function that can be used to create a new [`RootRoute`](./api/router/RootRouteClass) instance.
+- It accepts a single argument, the same as the [`createRootRoute`](./api/router/createRootRouteFunction) function.
 
-### Examples
+## Examples
 
 ```tsx
-import { rootRouteWithContext, createRouter } from '@tanstack/react-router'
+import { rootRouteWithContext, createRouter, Outlet } from '@tanstack/react-router'
 import { QueryClient } from '@tanstack/react-query'
 
-const rootRoute = rootRouteWithContext<{ queryClient: QueryClient }>()({
-  // ... Route Options
+interface MyRouterContext {
+  queryClient: QueryClient
+}
+
+const rootRoute = rootRouteWithContext<MyRouterContext>()({
+  component: () => <Outlet />
+  // ... root route options
 })
 
 const routeTree = rootRoute.addChildren([
-  // ... Other routes
+  // ... other routes
 ])
 
 const queryClient = new QueryClient()

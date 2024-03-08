@@ -7,6 +7,8 @@ The `PathParamOptions` type is used to describe how path params can be provided 
 
 ```tsx
 type PathParamOptions = {
-  path?: true | Record<string, TPathParam> | ((prev: TFromParams) => TToParams)
+  path?: true
+    | Record<string, TPathParam>
+    | ((prev: TFromParams) => TToParams)
 }
 ```

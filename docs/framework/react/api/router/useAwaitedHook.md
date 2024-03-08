@@ -5,27 +5,31 @@ title: useAwaited hook
 
 The `useAwaited` method is a hook that suspends until the provided promise is resolved or rejected.
 
-### Options
+## useAwaited options
 
-#### `opts.promise`
+The `useAwaited` hook accepts a single argument, an `options` object.
 
-- Type: `DeferredPromise<T>`
+### `options.promise` option
+
+- Type: [`DeferredPromise<T>`](./api/router/DeferredPromiseType)
 - Required
-- The deferred promise to await
+- The deferred promise to await.
 
-### Returns
+## useAwaited returns
 
-- Throws an error if the promise is rejected
-- Suspends (throws a promise) if the promise is pending
-- Returns the resolved value of a deferred promise if the promise is resolved
+- Throws an error if the promise is rejected.
+- Suspends (throws a promise) if the promise is pending.
+- Returns the resolved value of a deferred promise if the promise is resolved.
 
-### Examples
+## Examples
 
 ```tsx
 import { useAwaited } from '@tanstack/react-router'
 
 function Component() {
   const { deferredPromise } = route.useLoaderData()
+  
   const data = useAwaited({ promise: myDeferredPromise })
+  // ...
 }
 ```

@@ -14,3 +14,6 @@ type ToOptions = {
 } & SearchParamOptions &
   PathParamOptions
 ```
+
+- [`SearchParamOptions`](./api/router/SearchParamOptionsType)
+- [`PathParamOptions`](./api/router/PathParamOptionsType)

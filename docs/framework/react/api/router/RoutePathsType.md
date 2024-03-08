@@ -11,7 +11,7 @@ export type RoutePaths<TRouteTree extends AnyRoute> =
   | '/'
 ```
 
-### Example
+## Examples
 
 ```tsx
 import { RoutePaths } from '@tanstack/react-router'
