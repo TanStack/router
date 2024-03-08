@@ -338,12 +338,17 @@ export async function generator(config: Config) {
       return
     }
 
-    node.isVirtualParentRequired =
-      removeGroups(node.path ?? '')
-        .split('')
-        .filter((char) => char === '/').length >= 2 && // check that the parent route wouldn't be the root route
-      !node.parent &&
-      node.isLayout
+    // node.isVirtualParentRequired =
+    //   removeGroups(node.path ?? '')
+    //     .split('')
+    //     .filter((char) => char === '/').length >= 2 && // check that the parent route wouldn't be the root route
+    //   !node.parent &&
+    //   node.isLayout
+
+    const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
+    node.isVirtualParentRequired = node.isLayout
+      ? !cleanedPathIsEmpty && !node.parent
+      : false
 
     if (!node.isVirtual && node.isVirtualParentRequired) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
