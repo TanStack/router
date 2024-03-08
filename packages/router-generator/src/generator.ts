@@ -258,8 +258,8 @@ export async function generator(config: Config) {
           replaced = [
             `import { createLazyFileRoute } from '@tanstack/react-router'`,
             `export const Route = createLazyFileRoute('${escapedRoutePath}')({
-    component: () => <div>Hello ${escapedRoutePath}!</div>
-  })`,
+  component: () => <div>Hello ${escapedRoutePath}!</div>
+})`,
           ].join('\n\n')
         } else if (
           node.isRoute ||
@@ -271,8 +271,8 @@ export async function generator(config: Config) {
           replaced = [
             `import { createFileRoute } from '@tanstack/react-router'`,
             `export const Route = createFileRoute('${escapedRoutePath}')({
-    component: () => <div>Hello ${escapedRoutePath}!</div>
-  })`,
+  component: () => <div>Hello ${escapedRoutePath}!</div>
+})`,
           ].join('\n\n')
         }
       } else {
