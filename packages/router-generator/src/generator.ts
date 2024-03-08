@@ -214,8 +214,16 @@ export async function generator(config: Config) {
   const handleNode = async (node: RouteNode) => {
     let parentRoute = hasParentRoute(routeNodes, node.routePath)
 
+    // if the parent route is a virtual parent route, we need to find the real parent route
     if (parentRoute?.isVirtualParentRoute && parentRoute.children?.length) {
-      parentRoute = hasParentRoute(parentRoute.children, node.routePath)
+      // only if this sub-parent route returns a valid parent route, we use it, if not leave it as it
+      const possibleParentRoute = hasParentRoute(
+        parentRoute.children,
+        node.routePath,
+      )
+      if (possibleParentRoute) {
+        parentRoute = possibleParentRoute
+      }
     }
 
     if (parentRoute) node.parent = parentRoute
