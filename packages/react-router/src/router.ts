@@ -863,7 +863,7 @@ export class Router<
             dest.from ?? this.latestLocation.pathname,
             `${dest.to}`,
           )
-        : fromRoute?.fullPath
+        : this.resolvePathWithBase(fromRoute?.fullPath, fromRoute?.fullPath)
 
       const prevParams = { ...last(fromMatches)?.params }
 
