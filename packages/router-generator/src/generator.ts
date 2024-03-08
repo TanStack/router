@@ -228,9 +228,7 @@ export async function generator(config: Config) {
 
     if (parentRoute) node.parent = parentRoute
 
-    node.path = node.parent
-      ? node.routePath?.replace(node.parent.routePath!, '') || '/'
-      : node.routePath
+    node.path = determineNodePath(node)
 
     const trimmedPath = trimPathLeft(node.path ?? '')
 
@@ -368,6 +366,11 @@ export async function generator(config: Config) {
         parentNode.children.push(node)
 
         node.parent = parentNode
+
+        if (node.isLayout) {
+          // since `node.path` is used as the `id` on the route definition, we need to update it
+          node.path = determineNodePath(node)
+        }
 
         await handleNode(parentNode)
       } else {
@@ -705,6 +708,18 @@ function replaceBackslash(s: string) {
 
 function removeGroups(s: string) {
   return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
+}
+
+/**
+ * The `node.path` is used as the `id` in the route definition.
+ * This function checks if the given node has a parent and if so, it determines the correct path for the given node.
+ * @param node - The node to determine the path for.
+ * @returns The correct path for the given node.
+ */
+function determineNodePath(node: RouteNode) {
+  return (node.path = node.parent
+    ? node.routePath?.replace(node.parent.routePath!, '') || '/'
+    : node.routePath)
 }
 
 /**
