@@ -7,21 +7,21 @@ The `useMatch` hook returns the closest [`RouteMatch`](./api/router/RouteMatchTy
 
 ## useMatch options
 
-The `useMatch` hook accepts a single _optional_ argument, an `options` object.
+The `useMatch` hook accepts a single argument, an `options` object.
 
 ### `opts.from` option
 
 - Type: `string`
 - The route id of the closest parent match
 - Optional, but recommended for full type safety.
-- If `opts.strict` is `true`, TypeScript will warn for this option if it is not provided.
-- If `opts.strict` is `false`, TypeScript will provided loosened types for the returned [`RouteMatch`](./api/router/RouteMatchType).
+- If `opts.strict` is `true`, `from` is required and TypeScript will warn for this option if it is not provided.
+- If `opts.strict` is `false`, `from` must not be set and TypeScript will provided loosened types for the returned [`RouteMatch`](./api/router/RouteMatchType).
 
 ### `opts.strict` option
 
 - Type: `boolean`
 - Optional - `default: true`
-- If `false`, the `opts.from` option will be ignored and types will be loosened to `Partial<RouteMatch>` to reflect the shared types of all matches.
+- If `false`, the `opts.from` must not be set and types will be loosened to `Partial<RouteMatch>` to reflect the shared types of all matches.
 
 ### `opts.select` option
 
