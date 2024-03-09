@@ -19,7 +19,7 @@ The `createRoute` function implements returns a new [`Route`](./api/router/Route
 
 ```tsx
 import { createRoute } from '@tanstack/react-router'
-import { rootRoute } from './__root';
+import { rootRoute } from './__root'
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -27,7 +27,7 @@ const indexRoute = createRoute({
   loader: () => {
     return 'Hello World'
   },
-  component: IndexComponent
+  component: IndexComponent,
 })
 
 function IndexComponent() {

@@ -38,7 +38,7 @@ interface MyRouterContext {
 }
 
 const rootRoute = createRootRouteWithContext<MyRouterContext>()({
-  component: () => <Outlet />
+  component: () => <Outlet />,
   // ... root route options
 })
 

@@ -26,9 +26,9 @@ import { Link } from '@tanstack/react-router'
 function Component() {
   return (
     <Link
-      to='/somewhere/$somewhereId'
+      to="/somewhere/$somewhereId"
       params={{ somewhereId: 'baz' }}
-      search={(prev) => ({...prev, foo: 'bar'})}
+      search={(prev) => ({ ...prev, foo: 'bar' })}
     >
       Click me
     </Link>

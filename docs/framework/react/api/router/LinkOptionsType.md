@@ -48,4 +48,3 @@ The `LinkOptions` object accepts/contains the following properties:
 - Type: `boolean`
 - Optional
 - If true, will render the link without the href attribute
-

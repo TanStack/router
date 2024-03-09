@@ -23,7 +23,7 @@ import { routeTree } from './routeTree.gen'
 
 const router = createRouter({
   routeTree,
-  defaultPreload: 'intent'
+  defaultPreload: 'intent',
 })
 
 export default function App() {

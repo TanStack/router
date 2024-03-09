@@ -34,8 +34,9 @@ function Component() {
   return (
     <div>
       <MatchRoute to="/posts/$postId" params={{ postId: '123' }} pending>
-        {match => <Spinner show={!!match} wait="delay-50" />}
+        {(match) => <Spinner show={!!match} wait="delay-50" />}
       </MatchRoute>
     </div>
   )
 }
+```

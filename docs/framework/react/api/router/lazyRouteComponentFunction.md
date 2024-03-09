@@ -43,7 +43,7 @@ const route = createRoute({
   path: '/posts/$postId',
   component: lazyRouteComponent(
     () => import('./Post'),
-    'PostByIdPageComponent' // named export
+    'PostByIdPageComponent', // named export
   ),
 })
 ```

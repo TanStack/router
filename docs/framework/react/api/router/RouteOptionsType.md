@@ -49,6 +49,7 @@ The `RouteOptions` type accepts an object with the following properties:
 ### `beforeLoad` method
 
 - Type:
+
 ```tsx
 type beforeLoad = (
   opts: RouteMatch & {
@@ -74,6 +75,7 @@ type beforeLoad = (
 ### `loader` method
 
 - Type:
+
 ```tsx
 type loader = (
   opts: RouteMatch & {
@@ -98,14 +100,13 @@ type loader = (
 ### `loaderDeps` method
 
 - Type:
+
 ```tsx
-type loaderDeps = (
-  opts: { 
-    search: TFullSearchSchema; 
-    location: ParsedLocation, 
-    context: TAllContext
-    }
-  ) => Record<string, any>
+type loaderDeps = (opts: {
+  search: TFullSearchSchema
+  location: ParsedLocation
+  context: TAllContext
+}) => Record<string, any>
 ```
 
 - Optional

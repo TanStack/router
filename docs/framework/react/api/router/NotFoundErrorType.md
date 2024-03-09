@@ -41,4 +41,3 @@ The `NotFoundError` object accepts/contains the following properties:
 - Type: `boolean`
 - Optional - `default: false`
 - If provided, will throw the not-found object instead of returning it. This can be useful in places where `throwing` in a function might cause it to have a return type of `never`. In that case, you can use `notFound({ throw: true })` to throw the not-found object instead of returning it.
-

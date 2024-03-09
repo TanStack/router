@@ -8,4 +8,5 @@ The `AnyRouteMatch` type represents a route match in TanStack Router that is not
 ```tsx
 type AnyRouteMatch = RouteMatch<any, any>
 ```
+
 - [`RouteMatch`](./api/router/RouteMatchType)

@@ -7,7 +7,7 @@ The `useMatch` hook returns the closest [`RouteMatch`](./api/router/RouteMatchTy
 
 ## useMatch options
 
-The `useMatch` hook accepts a single *optional* argument, an `options` object.
+The `useMatch` hook accepts a single _optional_ argument, an `options` object.
 
 ### `opts.from` option
 

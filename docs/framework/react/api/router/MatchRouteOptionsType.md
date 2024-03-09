@@ -24,21 +24,20 @@ The `MatchRouteOptions` type has the following properties:
 - Optional
 - If `true`, will match against pending location instead of the current location
 
-### `caseSensitive` property 
+### `caseSensitive` property
 
 - Type: `boolean`
 - Optional
 - If `true`, will match against the current location with case sensitivity
 
-### `includeSearch` property 
+### `includeSearch` property
 
 - Type: `boolean`
 - Optional
 - If `true`, will match against the current location's search params using a deep inclusive check. e.g. `{ a: 1 }` will match for a current location of `{ a: 1, b: 2 }`
 
-### `fuzzy` property 
+### `fuzzy` property
 
 - Type: `boolean`
 - Optional
 - If `true`, will match against the current location using a fuzzy match. e.g. `/posts` will match for a current location of `/posts/123`
-

@@ -39,4 +39,5 @@ The `Route` class implements the following method(s):
 - Updates the route instance with a new lazy importer which will be resolved lazily when loading the route. This can be useful for code splitting.
 
 ### ...`RouteApi` methods
+
 - All of the methods from the [`RouteApi`](./api/router/RouteApiClass) class are available on the `Route` class.

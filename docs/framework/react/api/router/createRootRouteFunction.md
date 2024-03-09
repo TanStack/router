@@ -8,6 +8,7 @@ The `createRootRoute` function returns a new [`RootRoute`](./api/router/RootRout
 ## createRootRoute options
 
 - Type:
+
 ```tsx
 Omit<
   RouteOptions,
@@ -34,7 +35,7 @@ Omit<
 import { createRootRoute, createRouter, Outlet } from '@tanstack/react-router'
 
 const rootRoute = createRootRoute({
-  component: () => <Outlet />
+  component: () => <Outlet />,
   // ... root route options
 })
 
@@ -43,6 +44,6 @@ const routeTree = rootRoute.addChildren([
 ])
 
 const router = createRouter({
-  routeTree
+  routeTree,
 })
 ```

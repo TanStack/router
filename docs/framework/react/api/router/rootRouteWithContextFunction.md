@@ -4,7 +4,6 @@ title: rootRouteWithContext function
 ---
 
 > 🚧 The `rootRouteWithContext` function is deprecated and will be removed in the next major version of TanStack Router. Please use the [`createRootRouteWithContext`](./api/router/createRootRouteWithContextFunction) function instead. The methods associated with this function are fully replicated on its newer.
-> 
 
 The `rootRouteWithContext` function is a helper function that can be used to create a root route instance that requires a context type to be fulfilled when the router is created.
 
@@ -30,7 +29,11 @@ The `rootRouteWithContext` function accepts a single generic argument:
 ## Examples
 
 ```tsx
-import { rootRouteWithContext, createRouter, Outlet } from '@tanstack/react-router'
+import {
+  rootRouteWithContext,
+  createRouter,
+  Outlet,
+} from '@tanstack/react-router'
 import { QueryClient } from '@tanstack/react-query'
 
 interface MyRouterContext {
@@ -38,7 +41,7 @@ interface MyRouterContext {
 }
 
 const rootRoute = rootRouteWithContext<MyRouterContext>()({
-  component: () => <Outlet />
+  component: () => <Outlet />,
   // ... root route options
 })
 

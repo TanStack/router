@@ -28,7 +28,7 @@ import { useAwaited } from '@tanstack/react-router'
 
 function Component() {
   const { deferredPromise } = route.useLoaderData()
-  
+
   const data = useAwaited({ promise: myDeferredPromise })
   // ...
 }

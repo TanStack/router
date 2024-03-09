@@ -49,7 +49,7 @@ function Component() {
   // OR
 
   const looseParams = useParams({ strict: false })
-  
+
   // ...
 }
 ```

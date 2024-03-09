@@ -12,6 +12,7 @@ The `NotFoundRoute` class extends the `Route` class and can be used to create a 
 The `NotFoundRoute` constructor accepts an object as its only argument.
 
 - Type:
+
 ```tsx
 Omit<
   RouteOptions,
@@ -37,12 +38,12 @@ import { routeTree } from './routeTree.gen'
 
 const notFoundRoute = new NotFoundRoute({
   getParentRoute: () => rootRoute,
-  component: () => <div>Not found!!!</div>
+  component: () => <div>Not found!!!</div>,
 })
 
 const router = createRouter({
   routeTree,
-  notFoundRoute
+  notFoundRoute,
 })
 
 // ... other code

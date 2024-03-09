@@ -7,7 +7,7 @@ The `useMatches` hook returns all of the [`RouteMatch`](./api/router/RouteMatchT
 
 ## useMatches options
 
-The `useMatches` hook accepts a single *optional* argument, an `options` object.
+The `useMatches` hook accepts a single _optional_ argument, an `options` object.
 
 ### `opts.select` option
 

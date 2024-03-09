@@ -9,7 +9,7 @@ The `useChildMatches` hook returns all of the child [`RouteMatch`](./api/router/
 
 ## useChildMatches options
 
-The `useChildMatches` hook accepts a single *optional* argument, an `options` object.
+The `useChildMatches` hook accepts a single _optional_ argument, an `options` object.
 
 ### `opts.select` option
 

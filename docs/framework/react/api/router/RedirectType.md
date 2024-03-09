@@ -27,4 +27,3 @@ The `Redirect` object accepts/contains the following properties:
 - Type: `any`
 - Optional
 - If provided, will throw the redirect object instead of returning it. This can be useful in places where `throwing` in a function might cause it to have a return type of `never`. In that case, you can use `redirect({ throw: true })` to throw the redirect object instead of returning it.
-

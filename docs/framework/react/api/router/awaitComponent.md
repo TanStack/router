@@ -37,9 +37,7 @@ function Component() {
 
   return (
     <Await promise={deferredPromise}>
-      {(data) => (
-        <div>{JSON.stringify(data)}</div>
-      )}
+      {(data) => <div>{JSON.stringify(data)}</div>}
     </Await>
   )
 }

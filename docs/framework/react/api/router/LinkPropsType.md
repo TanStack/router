@@ -24,4 +24,3 @@ type LinkProps = ActiveLinkOptions &
 - Type: `React.ReactNode | ((state: { isActive: boolean }) => React.ReactNode)`
 - Optional
 - The children that will be rendered inside of the anchor element. If a function is provided, it will be called with an object that contains the `isActive` boolean value that can be used to determine if the link is active.
-

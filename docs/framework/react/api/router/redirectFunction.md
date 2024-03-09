@@ -3,7 +3,7 @@ id: redirectFunction
 title: redirect function
 ---
 
-The `redirect` function returns a new `Redirect` object that can be either returned or thrown from places like a Route's `beforeLoad` or `loader` callbacks to trigger *redirect* to a new location.
+The `redirect` function returns a new `Redirect` object that can be either returned or thrown from places like a Route's `beforeLoad` or `loader` callbacks to trigger _redirect_ to a new location.
 
 ## redirect options
 

@@ -31,7 +31,7 @@ const route = createRoute({
 })
 
 function MyComponent() {
-  const { deferredPromise } = Route.useLoaderData() 
+  const { deferredPromise } = Route.useLoaderData()
 
   const data = useAwaited({ promise: deferredPromise })
 
@@ -39,9 +39,7 @@ function MyComponent() {
 
   return (
     <Await promise={deferredPromise}>
-      {(data) => (
-        <div>{JSON.stringify(data)}</div>
-      )}
+      {(data) => <div>{JSON.stringify(data)}</div>}
     </Await>
   )
 }
