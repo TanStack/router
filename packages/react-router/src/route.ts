@@ -86,8 +86,7 @@ export type RouteOptions<
   TRouterContext,
   TAllContext,
   TLoaderDeps,
-  TLoaderDataReturn,
-  TLoaderData
+  TLoaderDataReturn
 > &
   UpdatableRouteOptions<
     NoInfer<TAllParams>,
@@ -180,9 +179,6 @@ export type BaseRouteOptions<
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
-    ? undefined
-    : TLoaderDataReturn,
 > = RoutePathOptions<TCustomId, TPath> &
   FileBaseRouteOptions<
     TParentRoute,
@@ -197,7 +193,7 @@ export type BaseRouteOptions<
     TRouterContext,
     TAllContext,
     TLoaderDeps,
-    TLoaderData
+    TLoaderDataReturn
   > & {
     getParentRoute: () => TParentRoute
   }
