@@ -100,28 +100,21 @@ export type ParamsFallback<
   TParams,
 > = unknown extends TParams ? Record<ParsePathParams<TPath>, string> : TParams
 
-export type BaseRouteOptions<
+export type FileBaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
-  TCustomId extends string = string,
   TPath extends string = string,
   TSearchSchemaInput extends Record<string, any> = {},
   TSearchSchema extends Record<string, any> = {},
-  TSearchSchemaUsed extends Record<string, any> = {},
-  TFullSearchSchemaInput extends Record<string, any> = TSearchSchemaUsed,
   TFullSearchSchema extends Record<string, any> = TSearchSchema,
-  TParams extends AnyPathParams = {},
+  TParams = {},
   TAllParams = ParamsFallback<TPath, TParams>,
   TRouteContextReturn extends RouteContext = RouteContext,
-  TRouteContext extends RouteContext = RouteContext,
+  TRouteContext extends Record<string, any> = RouteContext,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
-    ? undefined
-    : TLoaderDataReturn,
-> = RoutePathOptions<TCustomId, TPath> & {
-  getParentRoute: () => TParentRoute
+> = {
   validateSearch?: SearchSchemaValidator<TSearchSchemaInput, TSearchSchema>
   shouldReload?:
     | boolean
@@ -133,7 +126,6 @@ export type BaseRouteOptions<
           TRouteContext
         >,
       ) => any)
-} & {
   // This async function is called before a route is loaded.
   // If an error is thrown here, the route's loader will not be called.
   // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function.
@@ -145,7 +137,6 @@ export type BaseRouteOptions<
     TRouteContextReturn,
     TRouterContext
   >
-} & {
   loaderDeps?: (opts: { search: TFullSearchSchema }) => TLoaderDeps
   loader?: RouteLoaderFn<
     TAllParams,
@@ -155,22 +146,61 @@ export type BaseRouteOptions<
     TLoaderDataReturn
   >
 } & (
-    | {
-        // Both or none
-        parseParams?: (
-          rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
-        ) => TParams extends Record<ParsePathParams<TPath>, any>
-          ? TParams
-          : 'parseParams must return an object'
-        stringifyParams?: (
-          params: NoInfer<ParamsFallback<TPath, TParams>>,
-        ) => Record<ParsePathParams<TPath>, string>
-      }
-    | {
-        stringifyParams?: never
-        parseParams?: never
-      }
-  )
+  | {
+      // Both or none
+      parseParams?: (
+        rawParams: IsAny<TPath, any, Record<ParsePathParams<TPath>, string>>,
+      ) => TParams extends Record<ParsePathParams<TPath>, any>
+        ? TParams
+        : 'parseParams must return an object'
+      stringifyParams?: (
+        params: NoInfer<ParamsFallback<TPath, TParams>>,
+      ) => Record<ParsePathParams<TPath>, string>
+    }
+  | {
+      stringifyParams?: never
+      parseParams?: never
+    }
+)
+
+export type BaseRouteOptions<
+  TParentRoute extends AnyRoute = AnyRoute,
+  TCustomId extends string = string,
+  TPath extends string = string,
+  TSearchSchemaInput extends Record<string, any> = {},
+  TSearchSchema extends Record<string, any> = {},
+  TSearchSchemaUsed = {},
+  TFullSearchSchemaInput = TSearchSchemaUsed,
+  TFullSearchSchema extends Record<string, any> = TSearchSchema,
+  TParams = {},
+  TAllParams = ParamsFallback<TPath, TParams>,
+  TRouteContextReturn extends RouteContext = RouteContext,
+  TRouteContext extends Record<string, any> = RouteContext,
+  TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+  TAllContext extends Record<string, any> = AnyContext,
+  TLoaderDeps extends Record<string, any> = {},
+  TLoaderDataReturn extends any = unknown,
+  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+    ? undefined
+    : TLoaderDataReturn,
+> = RoutePathOptions<TCustomId, TPath> &
+  FileBaseRouteOptions<
+    TParentRoute,
+    TPath,
+    TSearchSchemaInput,
+    TSearchSchema,
+    TFullSearchSchema,
+    TParams,
+    TAllParams,
+    TRouteContextReturn,
+    TRouteContext,
+    TRouterContext,
+    TAllContext,
+    TLoaderDeps,
+    TLoaderData
+  > & {
+    getParentRoute: () => TParentRoute
+  }
 
 type BeforeLoadFn<
   TFullSearchSchema extends Record<string, any>,
