@@ -343,10 +343,19 @@ export async function generator(config: Config) {
       ? !cleanedPathIsEmpty && !node.parent
       : false
 
-    if (!node.isVirtual && node.isVirtualParentRequired) {
+    if (
+      node.isVirtualParentRequired &&
+      !node.isVirtual &&
+      !node.isComponent &&
+      !node.isErrorComponent &&
+      !node.isPendingComponent &&
+      !node.isLoader &&
+      !node.isLazy
+    ) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
       const parentVariableName = routePathToVariable(parentRoutePath)
 
+      logger.debug('variable name', node.variableName)
       const anchorRoute = routeNodes.find(
         (d) => d.routePath === parentRoutePath,
       )
@@ -432,6 +441,7 @@ export async function generator(config: Config) {
     (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
     (d) => d,
   ])
+  logger.debug(sortedRouteNodes.map((d) => [d.variableName, d.isVirtual]))
 
   const imports = Object.entries({
     createFileRoute: sortedRouteNodes.some((d) => d.isVirtual),
@@ -448,20 +458,8 @@ export async function generator(config: Config) {
     .filter((d) => d[1])
     .map((d) => d[0])
 
-  const virtualRouteNodes = sortedRouteNodes
-    .filter((d) => d.isVirtual)
-    .reduce((acc, route) => {
-      // ensuring we don't have any duplicated virtual routes or clashes with pre-existing routes
-      const existingPreNode = preRouteNodes.filter(
-        (d) => d.routePath === route.routePath,
-      )
-
-      if (existingPreNode.length === 0) {
-        acc.push(route)
-      }
-
-      return acc
-    }, [] as RouteNode[])
+  const virtualRouteNodes = sortedRouteNodes.filter((d) => d.isVirtual)
+  logger.debug(virtualRouteNodes.map((d) => d.variableName))
 
   const rootPathIdExtension =
     config.addExtensions && rootRouteNode
@@ -798,7 +796,14 @@ export function hasParentRoute(
 
       // a layout route's parent has to exactly match the layout route minus, the layout segment
       const exactParentRoutePath = removeLastSegmentFromPath(node.routePath)
-      if (route.routePath === exactParentRoutePath) {
+      if (
+        route.routePath === exactParentRoutePath &&
+        !route.isComponent &&
+        !route.isErrorComponent &&
+        !route.isPendingComponent &&
+        !route.isLoader &&
+        !route.isLazy
+      ) {
         return route
       }
     }
