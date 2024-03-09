@@ -431,7 +431,7 @@ export async function generator(config: Config) {
     (d) => d.routePath?.split('/').length,
     (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
     (d) => d,
-  ]).filter(removeLayoutRoutesWithoutChildren)
+  ])
 
   const imports = Object.entries({
     createFileRoute: sortedRouteNodes.some((d) => d.isVirtual),
@@ -448,7 +448,28 @@ export async function generator(config: Config) {
     .filter((d) => d[1])
     .map((d) => d[0])
 
-  const virtualRouteNodes = sortedRouteNodes.filter((d) => d.isVirtual)
+  const virtualRouteNodes = sortedRouteNodes
+    .filter((d) => d.isVirtual)
+    .reduce((acc, route) => {
+      // ensuring we don't have any duplicated virtual routes or clashes with pre-existing routes
+      const existingPreNode = preRouteNodes.filter(
+        (d) => d.routePath === route.routePath,
+      )
+      const existingVirtualNode = acc.find(
+        (d) => d.routePath === route.routePath,
+      )
+
+      if (existingPreNode.length === 0) {
+        logger.debug(
+          route.filePath,
+          'existing virtual node',
+          existingVirtualNode?.routePath,
+        )
+        acc.push(route)
+      }
+
+      return acc
+    }, [] as RouteNode[])
 
   const rootPathIdExtension =
     config.addExtensions && rootRouteNode
@@ -503,6 +524,14 @@ export async function generator(config: Config) {
       .join('\n'),
     '// Create/Update Routes',
     sortedRouteNodes
+      .reduce((acc, node) => {
+        // ensuring we update a unique route only once
+        if (acc.find((d) => d.routePath === node.routePath)) {
+          return acc
+        }
+        acc.push(node)
+        return acc
+      }, [] as RouteNode[])
       .map((node) => {
         const loaderNode = routePiecesByPath[node.routePath!]?.loader
         const componentNode = routePiecesByPath[node.routePath!]?.component
@@ -584,7 +613,6 @@ export async function generator(config: Config) {
           `declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     ${routeNodes
-      .filter(removeLayoutRoutesWithoutChildren)
       .map((routeNode) => {
         return `'${removeTrailingUnderscores(routeNode.routePath)}': {
           preLoaderRoute: typeof ${routeNode.variableName}Import
@@ -716,10 +744,6 @@ function replaceBackslash(s: string) {
 
 function removeGroups(s: string) {
   return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
-}
-
-function removeLayoutRoutesWithoutChildren(route: RouteNode) {
-  return route.isLayout ? route.children?.length : true
 }
 
 /**
