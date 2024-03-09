@@ -343,19 +343,10 @@ export async function generator(config: Config) {
       ? !cleanedPathIsEmpty && !node.parent
       : false
 
-    if (
-      node.isVirtualParentRequired &&
-      !node.isVirtual &&
-      !node.isComponent &&
-      !node.isErrorComponent &&
-      !node.isPendingComponent &&
-      !node.isLoader &&
-      !node.isLazy
-    ) {
+    if (!node.isVirtual && node.isVirtualParentRequired) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
       const parentVariableName = routePathToVariable(parentRoutePath)
 
-      logger.debug('variable name', node.variableName)
       const anchorRoute = routeNodes.find(
         (d) => d.routePath === parentRoutePath,
       )
@@ -441,7 +432,6 @@ export async function generator(config: Config) {
     (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
     (d) => d,
   ])
-  logger.debug(sortedRouteNodes.map((d) => [d.variableName, d.isVirtual]))
 
   const imports = Object.entries({
     createFileRoute: sortedRouteNodes.some((d) => d.isVirtual),
@@ -459,8 +449,6 @@ export async function generator(config: Config) {
     .map((d) => d[0])
 
   const virtualRouteNodes = sortedRouteNodes.filter((d) => d.isVirtual)
-  logger.debug(virtualRouteNodes.map((d) => d.variableName))
-
   const rootPathIdExtension =
     config.addExtensions && rootRouteNode
       ? path.extname(rootRouteNode.filePath)
@@ -514,14 +502,6 @@ export async function generator(config: Config) {
       .join('\n'),
     '// Create/Update Routes',
     sortedRouteNodes
-      .reduce((acc, node) => {
-        // ensuring we update a unique route only once
-        if (acc.find((d) => d.routePath === node.routePath)) {
-          return acc
-        }
-        acc.push(node)
-        return acc
-      }, [] as RouteNode[])
       .map((node) => {
         const loaderNode = routePiecesByPath[node.routePath!]?.loader
         const componentNode = routePiecesByPath[node.routePath!]?.component
@@ -790,33 +770,14 @@ export function hasParentRoute(
     (d) => d.variableName,
   ]).filter((d) => d.routePath !== `/${rootPathId}`)
 
-  if (node.isLayout) {
-    for (const route of sortedNodes) {
-      if (route.routePath === '/') continue
+  for (const route of sortedNodes) {
+    if (route.routePath === '/') continue
 
-      // a layout route's parent has to exactly match the layout route minus, the layout segment
-      const exactParentRoutePath = removeLastSegmentFromPath(node.routePath)
-      if (
-        route.routePath === exactParentRoutePath &&
-        !route.isComponent &&
-        !route.isErrorComponent &&
-        !route.isPendingComponent &&
-        !route.isLoader &&
-        !route.isLazy
-      ) {
-        return route
-      }
-    }
-  } else {
-    for (const route of sortedNodes) {
-      if (route.routePath === '/') continue
-
-      if (
-        routePathToCheck.startsWith(`${route.routePath}/`) &&
-        route.routePath !== routePathToCheck
-      ) {
-        return route
-      }
+    if (
+      routePathToCheck.startsWith(`${route.routePath}/`) &&
+      route.routePath !== routePathToCheck
+    ) {
+      return route
     }
   }
 
