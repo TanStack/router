@@ -455,16 +455,8 @@ export async function generator(config: Config) {
       const existingPreNode = preRouteNodes.filter(
         (d) => d.routePath === route.routePath,
       )
-      const existingVirtualNode = acc.find(
-        (d) => d.routePath === route.routePath,
-      )
 
       if (existingPreNode.length === 0) {
-        logger.debug(
-          route.filePath,
-          'existing virtual node',
-          existingVirtualNode?.routePath,
-        )
         acc.push(route)
       }
 
