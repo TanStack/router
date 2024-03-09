@@ -396,7 +396,9 @@ export async function generator(config: Config) {
     routeNodes.push(node)
   }
 
-  await Promise.all(preRouteNodes.map((node) => handleNode(node)))
+  for (const node of preRouteNodes) {
+    await handleNode(node)
+  }
 
   async function buildRouteConfig(
     nodes: RouteNode[],
