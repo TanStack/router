@@ -19,6 +19,7 @@ import {
   RouteLoaderFn,
   AnyPathParams,
   AnySearchSchema,
+  FileBaseRouteOptions,
 } from './route'
 import { Assign, Expand, IsAny } from './utils'
 import { useMatch, useLoaderDeps, useLoaderData, RouteMatch } from './Matches'
@@ -195,27 +196,20 @@ export class FileRoute<
     TChildren extends RouteConstraints['TChildren'] = unknown,
     TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
   >(
-    options?: Omit<
-      RouteOptions<
-        TParentRoute,
-        string,
-        TPath,
-        TSearchSchemaInput,
-        TSearchSchema,
-        TSearchSchemaUsed,
-        TFullSearchSchemaInput,
-        TFullSearchSchema,
-        TParams,
-        TAllParams,
-        TRouteContextReturn,
-        TRouteContext,
-        TRouterContext,
-        TAllContext,
-        TLoaderDeps,
-        TLoaderDataReturn,
-        TLoaderData
-      >,
-      'getParentRoute' | 'path' | 'id'
+    options?: FileBaseRouteOptions<
+      TParentRoute,
+      TPath,
+      TSearchSchemaInput,
+      TSearchSchema,
+      TFullSearchSchema,
+      TParams,
+      TAllParams,
+      TRouteContextReturn,
+      TRouteContext,
+      TRouterContext,
+      TAllContext,
+      TLoaderDeps,
+      TLoaderDataReturn
     > &
       UpdatableRouteOptions<TAllParams, TFullSearchSchema, TLoaderData>,
   ): Route<
