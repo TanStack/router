@@ -212,13 +212,14 @@ export async function generator(config: Config) {
   let routeNodes: RouteNode[] = []
 
   const handleNode = async (node: RouteNode) => {
-    let parentRoute = hasParentRoute(routeNodes, node.routePath)
+    let parentRoute = hasParentRoute(routeNodes, node, node.routePath)
 
     // if the parent route is a virtual parent route, we need to find the real parent route
     if (parentRoute?.isVirtualParentRoute && parentRoute.children?.length) {
       // only if this sub-parent route returns a valid parent route, we use it, if not leave it as it
       const possibleParentRoute = hasParentRoute(
         parentRoute.children,
+        node,
         node.routePath,
       )
       if (possibleParentRoute) {
@@ -228,9 +229,7 @@ export async function generator(config: Config) {
 
     if (parentRoute) node.parent = parentRoute
 
-    node.path = node.parent
-      ? node.routePath?.replace(node.parent.routePath!, '') || '/'
-      : node.routePath
+    node.path = determineNodePath(node)
 
     const trimmedPath = trimPathLeft(node.path ?? '')
 
@@ -260,8 +259,8 @@ export async function generator(config: Config) {
           replaced = [
             `import { createLazyFileRoute } from '@tanstack/react-router'`,
             `export const Route = createLazyFileRoute('${escapedRoutePath}')({
-    component: () => <div>Hello ${escapedRoutePath}!</div>
-  })`,
+  component: () => <div>Hello ${escapedRoutePath}!</div>
+})`,
           ].join('\n\n')
         } else if (
           node.isRoute ||
@@ -273,8 +272,8 @@ export async function generator(config: Config) {
           replaced = [
             `import { createFileRoute } from '@tanstack/react-router'`,
             `export const Route = createFileRoute('${escapedRoutePath}')({
-    component: () => <div>Hello ${escapedRoutePath}!</div>
-  })`,
+  component: () => <div>Hello ${escapedRoutePath}!</div>
+})`,
           ].join('\n\n')
         }
       } else {
@@ -338,15 +337,15 @@ export async function generator(config: Config) {
       return
     }
 
-    node.isVirtualParentRequired =
-      removeGroups(node.path ?? '')
-        .split('')
-        .filter((char) => char === '/').length >= 2 && // check that the parent route wouldn't be the root route
-      !node.parent &&
-      node.isLayout
+    const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
+
+    node.isVirtualParentRequired = node.isLayout
+      ? !cleanedPathIsEmpty && !node.parent
+      : false
 
     if (!node.isVirtual && node.isVirtualParentRequired) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
+      const parentVariableName = routePathToVariable(parentRoutePath)
 
       const anchorRoute = routeNodes.find(
         (d) => d.routePath === parentRoutePath,
@@ -359,7 +358,7 @@ export async function generator(config: Config) {
           filePath: removeLastSegmentFromPath(node.filePath) || '/',
           fullPath: removeLastSegmentFromPath(node.fullPath) || '/',
           routePath: parentRoutePath,
-          variableName: routePathToVariable(parentRoutePath),
+          variableName: parentVariableName,
           isVirtual: true,
           isLayout: false,
           isVirtualParentRoute: true,
@@ -370,6 +369,11 @@ export async function generator(config: Config) {
         parentNode.children.push(node)
 
         node.parent = parentNode
+
+        if (node.isLayout) {
+          // since `node.path` is used as the `id` on the route definition, we need to update it
+          node.path = determineNodePath(node)
+        }
 
         await handleNode(parentNode)
       } else {
@@ -400,6 +404,10 @@ export async function generator(config: Config) {
   ): Promise<string> {
     const children = nodes.map(async (node) => {
       if (node.isRoot) {
+        return
+      }
+
+      if (node.isLayout && !node.children?.length) {
         return
       }
 
@@ -440,7 +448,20 @@ export async function generator(config: Config) {
     .filter((d) => d[1])
     .map((d) => d[0])
 
-  const virtualRouteNodes = sortedRouteNodes.filter((d) => d.isVirtual)
+  const virtualRouteNodes = sortedRouteNodes
+    .filter((d) => d.isVirtual)
+    .reduce((acc, route) => {
+      // ensuring we don't have any duplicated virtual routes or clashes with pre-existing routes
+      const existingPreNode = preRouteNodes.filter(
+        (d) => d.routePath === route.routePath,
+      )
+
+      if (existingPreNode.length === 0) {
+        acc.push(route)
+      }
+
+      return acc
+    }, [] as RouteNode[])
 
   const rootPathIdExtension =
     config.addExtensions && rootRouteNode
@@ -495,6 +516,14 @@ export async function generator(config: Config) {
       .join('\n'),
     '// Create/Update Routes',
     sortedRouteNodes
+      .reduce((acc, node) => {
+        // ensuring we update a unique route only once
+        if (acc.find((d) => d.routePath === node.routePath)) {
+          return acc
+        }
+        acc.push(node)
+        return acc
+      }, [] as RouteNode[])
       .map((node) => {
         const loaderNode = routePiecesByPath[node.routePath!]?.loader
         const componentNode = routePiecesByPath[node.routePath!]?.component
@@ -710,6 +739,18 @@ function removeGroups(s: string) {
 }
 
 /**
+ * The `node.path` is used as the `id` in the route definition.
+ * This function checks if the given node has a parent and if so, it determines the correct path for the given node.
+ * @param node - The node to determine the path for.
+ * @returns The correct path for the given node.
+ */
+function determineNodePath(node: RouteNode) {
+  return (node.path = node.parent
+    ? node.routePath?.replace(node.parent.routePath!, '') || '/'
+    : node.routePath)
+}
+
+/**
  * Removes the last segment from a given path. Segments are considered to be separated by a '/'.
  *
  * @param {string} path - The path from which to remove the last segment. Defaults to '/'.
@@ -739,6 +780,7 @@ function removeLayoutSegments(path: string = '/'): string {
 
 export function hasParentRoute(
   routes: RouteNode[],
+  node: RouteNode,
   routePathToCheck: string | undefined,
 ): RouteNode | null {
   if (!routePathToCheck || routePathToCheck === '/') {
@@ -750,19 +792,32 @@ export function hasParentRoute(
     (d) => d.variableName,
   ]).filter((d) => d.routePath !== `/${rootPathId}`)
 
-  for (const route of sortedNodes) {
-    if (route.routePath === '/') continue
+  if (node.isLayout) {
+    for (const route of sortedNodes) {
+      if (route.routePath === '/') continue
 
-    if (
-      routePathToCheck.startsWith(`${route.routePath}/`) &&
-      route.routePath !== routePathToCheck
-    ) {
-      return route
+      // a layout route's parent has to exactly match the layout route minus, the layout segment
+      const exactParentRoutePath = removeLastSegmentFromPath(node.routePath)
+      if (route.routePath === exactParentRoutePath) {
+        return route
+      }
+    }
+  } else {
+    for (const route of sortedNodes) {
+      if (route.routePath === '/') continue
+
+      if (
+        routePathToCheck.startsWith(`${route.routePath}/`) &&
+        route.routePath !== routePathToCheck
+      ) {
+        return route
+      }
     }
   }
+
   const segments = routePathToCheck.split('/')
   segments.pop() // Remove the last segment
   const parentRoutePath = segments.join('/')
 
-  return hasParentRoute(routes, parentRoutePath)
+  return hasParentRoute(routes, node, parentRoutePath)
 }
