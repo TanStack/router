@@ -448,21 +448,7 @@ export async function generator(config: Config) {
     .filter((d) => d[1])
     .map((d) => d[0])
 
-  const virtualRouteNodes = sortedRouteNodes
-    .filter((d) => d.isVirtual)
-    .reduce((acc, route) => {
-      // ensuring we don't have any duplicated virtual routes or clashes with pre-existing routes
-      const existingPreNode = preRouteNodes.filter(
-        (d) => d.routePath === route.routePath,
-      )
-
-      if (existingPreNode.length === 0) {
-        acc.push(route)
-      }
-
-      return acc
-    }, [] as RouteNode[])
-
+  const virtualRouteNodes = sortedRouteNodes.filter((d) => d.isVirtual)
   const rootPathIdExtension =
     config.addExtensions && rootRouteNode
       ? path.extname(rootRouteNode.filePath)
@@ -792,26 +778,14 @@ export function hasParentRoute(
     (d) => d.variableName,
   ]).filter((d) => d.routePath !== `/${rootPathId}`)
 
-  if (node.isLayout) {
-    for (const route of sortedNodes) {
-      if (route.routePath === '/') continue
+  for (const route of sortedNodes) {
+    if (route.routePath === '/') continue
 
-      // a layout route's parent has to exactly match the layout route minus, the layout segment
-      const exactParentRoutePath = removeLastSegmentFromPath(node.routePath)
-      if (route.routePath === exactParentRoutePath) {
-        return route
-      }
-    }
-  } else {
-    for (const route of sortedNodes) {
-      if (route.routePath === '/') continue
-
-      if (
-        routePathToCheck.startsWith(`${route.routePath}/`) &&
-        route.routePath !== routePathToCheck
-      ) {
-        return route
-      }
+    if (
+      routePathToCheck.startsWith(`${route.routePath}/`) &&
+      route.routePath !== routePathToCheck
+    ) {
+      return route
     }
   }
 
