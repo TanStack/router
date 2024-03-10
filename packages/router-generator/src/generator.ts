@@ -338,11 +338,7 @@ export async function generator(config: Config) {
     }
 
     const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
-
-    node.isVirtualParentRequired = node.isLayout
-      ? !cleanedPathIsEmpty && !node.parent
-      : false
-
+    node.isVirtualParentRequired = node.isLayout ? !cleanedPathIsEmpty : false
     if (!node.isVirtual && node.isVirtualParentRequired) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
       const parentVariableName = routePathToVariable(parentRoutePath)
@@ -400,11 +396,8 @@ export async function generator(config: Config) {
     await handleNode(node)
   }
 
-  async function buildRouteConfig(
-    nodes: RouteNode[],
-    depth = 1,
-  ): Promise<string> {
-    const children = nodes.map(async (node) => {
+  function buildRouteConfig(nodes: RouteNode[], depth = 1): string {
+    const children = nodes.map((node) => {
       if (node.isRoot) {
         return
       }
@@ -416,17 +409,17 @@ export async function generator(config: Config) {
       const route = `${node.variableName}Route`
 
       if (node.children?.length) {
-        const childConfigs = await buildRouteConfig(node.children, depth + 1)
+        const childConfigs = buildRouteConfig(node.children, depth + 1)
         return `${route}.addChildren([${spaces(depth * 4)}${childConfigs}])`
       }
 
       return route
     })
 
-    return (await Promise.all(children)).filter(Boolean).join(`,`)
+    return children.filter(Boolean).join(`,`)
   }
 
-  const routeConfigChildrenText = await buildRouteConfig(routeTree)
+  const routeConfigChildrenText = buildRouteConfig(routeTree)
 
   const sortedRouteNodes = multiSortBy(routeNodes, [
     (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
