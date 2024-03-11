@@ -10,7 +10,7 @@ Here is the [example repo](https://github.com/Benanna2019/SickFitsForEveryone/tr
 - [ ] Install Router - `npm i @tanstack/react-router`
 - [ ] **Optional:** Uninstall React Router to get typescript errors on imports.
   - At this point I don’t know if you can do a gradual migration, but it seems likely you could have multiple router providers, not desirable.
-  - The api’s between React Router and Tanstack Router are very similar and could most likely be handled in a sprint cycle or two if that is your companies way of doing things.
+  - The api’s between React Router and TanStack Router are very similar and could most likely be handled in a sprint cycle or two if that is your companies way of doing things.
 - [ ] Create Routes for each existing React Router route we have
 - [ ] Create root route
 - [ ] Create router instance
@@ -18,17 +18,17 @@ Here is the [example repo](https://github.com/Benanna2019/SickFitsForEveryone/tr
 - [ ] Remove any React Router (`createBrowserRouter` or `BrowserRouter`), `Routes`, and `Route` Components from main.tsx
 - [ ] **Optional:** Refactor `render` function for custom setup/providers - The repo referenced above has an example - This was necessary in the case of Supertokens. Supertoken has a specific setup with React Router and a different setup with all other React implementations
 - [ ] Set RouterProvider and pass it the router as the prop
-- [ ] Replace all instances of React Router `Link` component with Tanstack/router `Link` component
+- [ ] Replace all instances of React Router `Link` component with TanStack Router `Link` component
   - [ ] Add `to` prop with literal path
   - [ ] Add `params` prop, where necessary with params like so `params={{ orderId: [order.id](http://order.id) }}`
-- [ ] Replace all instances of React Router `useNavigate` hook with Tanstack/router `useNavigate` hook
+- [ ] Replace all instances of React Router `useNavigate` hook with TanStack Router `useNavigate` hook
   - [ ] Set `to` property and `params` property where needed
-- [ ] Replace any React Router `Outlet`'s with the Tanstack/router equivalent
+- [ ] Replace any React Router `Outlet`'s with the TanStack Router equivalent
 - [ ] If you are using `useSearchParams` hook from React Router, move the search params default value to the validateSearch property on a Route definition.
-  - [ ] Instead of using the `useSearchParams` hook, use Tanstack/router `Link`'s search property to update the search params state
+  - [ ] Instead of using the `useSearchParams` hook, use TanStack Router `Link`'s search property to update the search params state
   - [ ] To read search params you can do something like the following
     - `const { page } = useSearch({ from: productPage.fullPath })`
-- [ ] If using React Router’s `useParams` hook, update the import to be from Tanstack/router and set the `from` property to the literal path name where you want to read the params object from
+- [ ] If using React Router’s `useParams` hook, update the import to be from TanStack Router and set the `from` property to the literal path name where you want to read the params object from
   - So say we have a route with the path name `orders/$orderid`.
   - In the `useParams` hook we would set up our hook like so: `const params = useParams({ from: "/orders/$orderId" })`
   - Then wherever we wanted to access the order id we would get it off of the params object `params.orderId`
