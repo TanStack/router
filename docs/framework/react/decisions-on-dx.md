@@ -16,9 +16,9 @@ But Tanstack Router is different. It's not your average routing library. It's no
 
 ## Tanstack Router's origin story
 
-It's important remember that Tanstack Router's origins stem from [Nozzle.io](https://nozzle.io)'s need for a client-side routing solution that offered a first-in-class _URL Search Parameters_ experience without compromising on the **_type-safety_** that was required to power its complex dashboards.
+It's important to remember that Tanstack Router's origins stem from [Nozzle.io](https://nozzle.io)'s need for a client-side routing solution that offered a first-in-class _URL Search Parameters_ experience without compromising on the **_type-safety_** that was required to power its complex dashboards.
 
-And so, from Tanstack Router's very inception, every facet of it's design was meticulously thought out to ensure that its type-safety and developer experience were second to none.
+And so, from Tanstack Router's very inception, every facet of its design was meticulously thought out to ensure that its type-safety and developer experience were second to none.
 
 ## How does Tanstack Router achieve this?
 
@@ -42,7 +42,7 @@ This means that you have to define your routes in a way that allows Typescript t
 
 > Can I use JSX to define my routes?
 
-Using JSX for defining your routes is **out of the question**, as Typescript will not be able infer the route configuration types of your router.
+Using JSX for defining your routes is **out of the question**, as Typescript will not be able to infer the route configuration types of your router.
 
 ```tsx
 // ⛔️ This is not possible
@@ -79,12 +79,12 @@ const router = createRouter({
 })
 ```
 
-At first glance, this seems like a good idea. It's easy to visualize the entire route hierarchy in one go. But this approach has a couple big downsides that make it not ideal for large applications:
+At first glance, this seems like a good idea. It's easy to visualize the entire route hierarchy in one go. But this approach has a couple of big downsides that make it not ideal for large applications:
 
-- **It's not very scalable**: As your application grows, the tree will grow and become harder to manage. And since its all defined in one file, it can become very hard to maintain.
+- **It's not very scalable**: As your application grows, the tree will grow and become harder to manage. And since it's all defined in one file, it can become very hard to maintain.
 - **It's not great for code-splitting**: You'd have to manually code-split each component and then pass it into the `component` property of the route, further complicating the route configuration with an ever-growing route configuration file.
 
-This only get worse as your begin to use more features of the router, such as nested context, loaders, search param validation, etc.
+This only gets worse as you begin to use more features of the router, such as nested context, loaders, search param validation, etc.
 
 > So, what's the best way to define my routes?
 
@@ -160,7 +160,7 @@ Something you'll notice (quite soon) in the Tanstack Router documentation is tha
 
 > ⚠️ Before you continue, it's important you have a good understanding of [code-based routing](./guide/code-based-routing) and [file-based routing](./guide/file-based-routing).
 
-As mentioned in the beginning, Tanstack Router was designed for complex applications that require a high degree of type-safety and maintainability. And to achieve this, the configuration of the router has be done in an precise way that allows Typescript to infer the types of your routes as much as possible.
+As mentioned in the beginning, Tanstack Router was designed for complex applications that require a high degree of type-safety and maintainability. And to achieve this, the configuration of the router has been done in a precise way that allows Typescript to infer the types of your routes as much as possible.
 
 A key difference in the set-up of a _basic_ application with Tanstack Router, is that your route configurations require a function to be provided to `getParentRoute`, that returns the parent route of the current route.
 
@@ -178,7 +178,7 @@ At this stage, this is done so the definition of `postsIndexRoute` can be aware 
 
 As such, this is a critical part of the route configuration and a point of failure if not done correctly.
 
-But this is only one part of setting up a basic application. Tanstack Router requires the all the routes (including the root route) to be stitched into a **_route-tree_** so that it may be passed into the `createRouter` function before declaring the `Router` instance on the module for type inference. This is another critical part of the route configuration and a point of failure if not done correctly.
+But this is only one part of setting up a basic application. Tanstack Router requires all the routes (including the root route) to be stitched into a **_route-tree_** so that it may be passed into the `createRouter` function before declaring the `Router` instance on the module for type inference. This is another critical part of the route configuration and a point of failure if not done correctly.
 
 > 🤯 If this route-tree were in its own file for an application with ~40-50 routes, it can easily grow up to 700+ lines.
 
