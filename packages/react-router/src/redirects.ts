@@ -1,9 +1,8 @@
+import { PickAsRequired } from '.'
 import { NavigateOptions } from './link'
 import { AnyRoute } from './route'
 import { RoutePaths } from './routeInfo'
 import { RegisteredRouter } from './router'
-
-// Detect if we're in the DOM
 
 export type AnyRedirect = Redirect<any, any, any, any, any>
 
@@ -14,10 +13,26 @@ export type Redirect<
   TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
   TMaskTo extends string = '',
 > = {
+  /**
+   * @deprecated Use `statusCode` instead
+   **/
   code?: number
+  statusCode?: number
   throw?: any
-  href?: string
 } & NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>
+
+export type ResolvedRedirect<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> = '/',
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskTo extends string = '',
+> = PickAsRequired<
+  Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
+  'code' | 'statusCode'
+> & {
+  href: string
+}
 
 export function redirect<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -29,6 +44,7 @@ export function redirect<
   opts: Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> {
   ;(opts as any).isRedirect = true
+  opts.statusCode = opts.statusCode || opts.code || 301
   if (opts.throw ?? true) {
     throw opts
   }

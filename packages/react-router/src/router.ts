@@ -65,7 +65,7 @@ import {
   trimPathRight,
 } from './path'
 import invariant from 'tiny-invariant'
-import { AnyRedirect, isRedirect } from './redirects'
+import { AnyRedirect, ResolvedRedirect, isRedirect } from './redirects'
 import { NotFoundError, isNotFound } from './not-found'
 import { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import { NoInfer } from '@tanstack/react-store'
@@ -168,6 +168,7 @@ export interface RouterState<TRouteTree extends AnyRoute = AnyRoute> {
   resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
   lastUpdated: number
   statusCode: number
+  redirect?: ResolvedRedirect
 }
 
 export type ListenerFn<TEvent extends RouterEvent> = (event: TEvent) => void
@@ -1476,9 +1477,14 @@ export class Router<
                   handleError(err)
 
                   // If the route is still active, redirect
-                  if (isActive) {
-                    this.handleRedirect(err)
-                  }
+                  // TODO: Do we really need this?
+                  invariant(
+                    false,
+                    'You need to redirect from a background fetch? This is not supported yet. File an issue.',
+                  )
+                  // if (isActive) {
+                  //   this.handleRedirect(err)
+                  // }
                 }
               }
             })()
@@ -1583,7 +1589,7 @@ export class Router<
       })
 
       try {
-        let redirected: AnyRedirect
+        let redirect: ResolvedRedirect
         let notFound: NotFoundError
 
         try {
@@ -1595,8 +1601,7 @@ export class Router<
           })
         } catch (err) {
           if (isRedirect(err)) {
-            redirected = err
-            this.handleRedirect(err)
+            redirect = this.resolveRedirect(err)
           } else if (isNotFound(err)) {
             notFound = err
             this.handleNotFound(pendingMatches, err)
@@ -1635,11 +1640,12 @@ export class Router<
               ...exitingMatches.filter((d) => d.status !== 'error'),
             ],
             statusCode:
-              redirected?.code || notFound
+              redirect?.statusCode || notFound
                 ? 404
                 : s.matches.some((d) => d.status === 'error')
                   ? 500
                   : 200,
+            redirect,
           }))
           this.cleanCache()
         })
@@ -1682,13 +1688,14 @@ export class Router<
     return this.latestLoadPromise
   }
 
-  handleRedirect = (err: AnyRedirect) => {
-    if (!err.href) {
-      err.href = this.buildLocation(err as any).href
+  resolveRedirect = (err: AnyRedirect): ResolvedRedirect => {
+    let redirect = err as ResolvedRedirect
+
+    if (!redirect.href) {
+      redirect.href = this.buildLocation(redirect as any).href
     }
-    if (!isServer) {
-      this.navigate({ ...(err as any), replace: true })
-    }
+
+    return redirect
   }
 
   cleanCache = () => {

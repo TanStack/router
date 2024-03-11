@@ -6,7 +6,6 @@ import { Trim } from './fileRoute'
 import { AnyRoute, ReactNode, RootSearchSchema } from './route'
 import { RouteByPath, RoutePaths, RoutePathsAutoComplete } from './routeInfo'
 import { RegisteredRouter } from './router'
-import { LinkProps, UseLinkPropsOptions } from './useNavigate'
 import {
   Expand,
   IsUnion,
@@ -580,32 +579,97 @@ export function useLinkProps<
   }
 }
 
-export interface LinkComponent<TProps extends Record<string, any> = {}> {
-  <
-    TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-    TFrom extends RoutePaths<TRouteTree> | string = string,
-    TTo extends string = '',
-    TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
-    TMaskTo extends string = '',
-  >(
-    props: LinkProps<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
-      TProps &
-      React.RefAttributes<HTMLAnchorElement>,
-  ): ReactNode
+export type UseLinkPropsOptions<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string = '',
+> = ActiveLinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
+  React.AnchorHTMLAttributes<HTMLAnchorElement>
+
+export type ActiveLinkOptions<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string = '',
+> = LinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
+  // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+  activeProps?:
+    | React.AnchorHTMLAttributes<HTMLAnchorElement>
+    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+  // A function that returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+  inactiveProps?:
+    | React.AnchorHTMLAttributes<HTMLAnchorElement>
+    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
 }
 
-export const Link: LinkComponent = React.forwardRef((props: any, ref) => {
-  const { type, ...linkProps } = useLinkProps(props)
+export type LinkProps<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string = '',
+> = ActiveLinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
+  // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+  children?:
+    | React.ReactNode
+    | ((state: { isActive: boolean }) => React.ReactNode)
+}
+
+type LinkComponent<TComp> = <
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> = string,
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskTo extends string = '',
+>(
+  props: React.PropsWithoutRef<
+    LinkProps<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
+      (TComp extends React.FC<infer TProps> | React.Component<infer TProps>
+        ? TProps
+        : TComp extends keyof JSX.IntrinsicElements
+          ? React.HTMLProps<TComp>
+          : never)
+  > &
+    React.RefAttributes<
+      TComp extends
+        | React.FC<{ ref: infer TRef }>
+        | React.Component<{ ref: infer TRef }>
+        ? TRef
+        : TComp extends keyof JSX.IntrinsicElements
+          ? React.ComponentRef<TComp>
+          : never
+    >,
+) => React.ReactElement
+
+export function createLink<const TComp>(Comp: TComp): LinkComponent<TComp> {
+  return React.forwardRef(function Link(props, ref) {
+    return <Link {...(props as any)} _asChild={Comp} ref={ref} />
+  }) as any
+}
+
+export const Link: LinkComponent<'a'> = React.forwardRef((props: any, ref) => {
+  const { _asChild, ...rest } = props
+  const { type, ...linkProps } = useLinkProps(rest as any)
 
   const children =
-    typeof props.children === 'function'
-      ? props.children({
+    typeof rest.children === 'function'
+      ? rest.children({
           isActive: (linkProps as any)['data-status'] === 'active',
         })
-      : props.children
+      : rest.children
 
-  return <a {...linkProps} ref={ref} children={children} />
-})
+  return React.createElement(
+    _asChild ? _asChild : 'a',
+    {
+      ...linkProps,
+      ref,
+    },
+    children as any,
+  )
+}) as any
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
