@@ -521,13 +521,13 @@ export class RouteApi<
   useLoaderDeps = <TSelected = TLoaderDeps>(opts?: {
     select?: (s: TLoaderDeps) => TSelected
   }): TSelected => {
-    return useLoaderDeps({ ...opts, from: this.id } as any)
+    return useLoaderDeps({ ...opts, from: this.id, strict: false } as any)
   }
 
   useLoaderData = <TSelected = TLoaderData>(opts?: {
     select?: (s: TLoaderData) => TSelected
   }): TSelected => {
-    return useLoaderData({ ...opts, from: this.id } as any)
+    return useLoaderData({ ...opts, from: this.id, strict: false } as any)
   }
 
   notFound = (opts?: NotFoundError) => {

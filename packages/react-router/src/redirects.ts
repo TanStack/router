@@ -16,6 +16,7 @@ export type Redirect<
   /**
    * @deprecated Use `statusCode` instead
    **/
+  href?: string
   code?: number
   statusCode?: number
   throw?: any
@@ -29,10 +30,8 @@ export type ResolvedRedirect<
   TMaskTo extends string = '',
 > = PickAsRequired<
   Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-  'code' | 'statusCode'
-> & {
-  href: string
-}
+  'code' | 'statusCode' | 'href'
+>
 
 export function redirect<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
