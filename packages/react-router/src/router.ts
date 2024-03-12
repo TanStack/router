@@ -873,7 +873,7 @@ export class Router<
           ? prevParams
           : { ...prevParams, ...functionalUpdate(dest.params!, prevParams) }
 
-      if (nextParams) {
+      if (Object.keys(nextParams).length > 0) {
         matches
           ?.map((d) => this.looseRoutesById[d.routeId]!.options.stringifyParams)
           .filter(Boolean)
