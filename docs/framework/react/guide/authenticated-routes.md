@@ -83,7 +83,7 @@ If your authentication flow relies on interactions with React context and/or hoo
 
 We'll cover the `router.context` options in-detail in the [Router Context](./guide/router-context) section.
 
-Here's an example that uses React context and hooks for protecting authenticated routes in Tanstack Router. See the entire working setup in the [Authenticated Routes with Context example](./examples/react/authenticated-routes-context).
+Here's an example that uses React context and hooks for protecting authenticated routes in Tanstack Router. See the entire working setup in the [Authenticated Routes with Context example](./examples/authenticated-routes-context).
 
 - `src/routes/__root.tsx`
 
