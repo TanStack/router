@@ -224,9 +224,19 @@ function MatchInner({
     ErrorComponent
 
   if (match.status === 'notFound') {
-    invariant(isNotFound(match.error), 'Expected a notFound error')
+    let error: unknown
+    if (isServerSideError(match.error)) {
+      const deserializeError =
+        router.options.errorSerializer?.deserialize ?? defaultDeserializeError
 
-    return renderRouteNotFound(router, route, match.error.data)
+      error = deserializeError(match.error.data)
+    } else {
+      error = match.error
+    }
+
+    invariant(isNotFound(error), 'Expected a notFound error')
+
+    return renderRouteNotFound(router, route, error)
   }
 
   if (match.status === 'redirected') {

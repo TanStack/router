@@ -142,6 +142,17 @@ function Transitioner() {
       }
     })
 
+		const nextLocation = router.buildLocation({
+			search: true,
+			params: true,
+			hash: true,
+			state: true,
+		});
+
+		if (routerState.location.href !== nextLocation.href) {
+			router.commitLocation({ ...nextLocation, replace: true });
+		}
+
     return () => {
       unsub()
     }
