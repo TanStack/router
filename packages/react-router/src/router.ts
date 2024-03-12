@@ -1602,6 +1602,10 @@ export class Router<
         } catch (err) {
           if (isRedirect(err)) {
             redirect = this.resolveRedirect(err)
+
+            if (!isServer) {
+              this.navigate({ ...(redirect as any), replace: true })
+            }
           } else if (isNotFound(err)) {
             notFound = err
             this.handleNotFound(pendingMatches, err)

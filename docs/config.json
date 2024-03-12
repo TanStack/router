@@ -5,13 +5,13 @@
     "apiKey": "8264730bab8a9b7fa6a0c85761d7a3fe",
     "indexName": "tanstack"
   },
-  "menu": [],
-  "frameworkMenus": [
+  "sections": [
     {
-      "framework": "react",
-      "menuItems": [
+      "label": "Getting Started",
+      "children": [],
+      "frameworks": [
         {
-          "label": "Getting Started",
+          "label": "react",
           "children": [
             {
               "label": "Overview",
@@ -42,9 +42,15 @@
               "to": "framework/react/decisions-on-dx"
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "label": "Guide",
+      "children": [],
+      "frameworks": [
         {
-          "label": "Guide",
+          "label": "react",
           "children": [
             {
               "label": "Route Trees & Nesting",
@@ -151,18 +157,30 @@
               "to": "framework/react/guide/ssr"
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "label": "API",
+      "children": [],
+      "frameworks": [
         {
-          "label": "API",
+          "label": "react",
           "children": [
             {
               "label": "Reference",
               "to": "framework/react/api/router"
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "label": "Examples",
+      "children": [],
+      "frameworks": [
         {
-          "label": "Examples",
+          "label": "react",
           "children": [
             {
               "label": "Quickstart (file-based)",
