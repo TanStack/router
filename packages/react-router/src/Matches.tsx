@@ -232,7 +232,7 @@ function MatchInner({
       error = deserializeError(match.error.data)
     } else {
       error = match.error
-    } 
+    }
 
     invariant(isNotFound(error), 'Expected a notFound error')
 
