@@ -1953,15 +1953,23 @@ export class Router<
       if (dehydratedMatch) {
         const route = this.looseRoutesById[match.routeId]!
 
+        const assets =
+          dehydratedMatch.status === 'notFound' ||
+          dehydratedMatch.status === 'redirected'
+            ? {}
+            : {
+                meta: route.options.meta?.({
+                  params: match.params,
+                  loaderData: dehydratedMatch.loaderData,
+                }),
+                links: route.options.links?.(),
+                scripts: route.options.scripts?.(),
+              }
+
         return {
           ...match,
           ...dehydratedMatch,
-          meta: route.options.meta?.({
-            params: match.params,
-            loaderData: dehydratedMatch.loaderData,
-          }),
-          links: route.options.links?.(),
-          scripts: route.options.scripts?.(),
+          ...assets,
         }
       }
       return match
