@@ -34,7 +34,7 @@ export type RouteNode = {
 }
 
 async function getRouteNodes(config: Config) {
-  const { routeFilePrefix, routeFileIgnorePrefix } = config
+  const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnoreType } = config
   const logger = logging({ disabled: config.disableLogging })
 
   let routeNodes: RouteNode[] = []
@@ -53,6 +53,10 @@ async function getRouteNodes(config: Config) {
 
       if (routeFilePrefix) {
         return d.name.startsWith(routeFilePrefix)
+      }
+
+      if (routeFileIgnoreType) {
+        return !d.name.match(new RegExp(routeFileIgnoreType, 'g'))
       }
 
       return true
