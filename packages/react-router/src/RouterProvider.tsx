@@ -143,6 +143,7 @@ function Transitioner() {
     })
 
     const nextLocation = router.buildLocation({
+      to: router.latestLocation.pathname,
       search: true,
       params: true,
       hash: true,
