@@ -2,10 +2,10 @@ import * as React from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/relative')({
-  component: PostDeepComponent,
+  component: RelativeComponent,
 })
 
-function PostDeepComponent() {
+function RelativeComponent() {
   return (
     <div className="p-2 space-y-2">
       <Link
@@ -13,7 +13,7 @@ function PostDeepComponent() {
         to="../relative"
         className="block py-1 text-blue-800 hover:text-blue-600"
       >
-        Absolute
+        Relative
       </Link>
     </div>
   )

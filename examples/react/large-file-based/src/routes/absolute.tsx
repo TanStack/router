@@ -2,10 +2,10 @@ import * as React from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/absolute')({
-  component: PostDeepComponent,
+  component: AbsoluteComponent,
 })
 
-function PostDeepComponent() {
+function AbsoluteComponent() {
   return (
     <div className="p-2 space-y-2">
       <Link
