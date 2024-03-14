@@ -91,6 +91,8 @@ The following options are available for configuration via the `tsr.config.json` 
   - (Optional) If set, only route files and directories that start with this string will be considered for routing.
 - **`routeFileIgnorePrefix`**
   - (Optional, **Defaults to `-`**) Route files and directories that start with this string will be ignored. By default this is set to `-` to allow for the use of directories to house related files that do not contain any route files.
+- **`routeFileIgnoreType`**
+  - (Optional) ignore specific file formats in the route directory. It can be used in regular expression format. For example `.((css|const).ts)` can ignore `.css.ts` and `.const.ts` file
 - **`routesDirectory`**
   - (Required) The directory containing the routes relative to the cwd.
 - **`generatedRouteTree`**
