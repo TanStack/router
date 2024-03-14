@@ -5,7 +5,7 @@ import { z } from 'zod'
 export const configSchema = z.object({
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
-  routeFileIgnoreType: z.string().optional(),
+  routeFileIgnorePattern: z.string().optional(),
   routesDirectory: z.string().optional().default('./src/routes'),
   generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
   quoteStyle: z.enum(['single', 'double']).optional().default('single'),
