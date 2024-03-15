@@ -176,5 +176,5 @@ if (!rootElement.innerHTML) {
 
 // Test that `Link` can be supplied its properties from a destructed `LinkProps` object without causing a type error.
 // TODO: Move into a defined test once a testing framework is set up.
-const testLinkOptions: LinkProps = { to: '/' }
-const testLink = <Link {...testLinkOptions}>test</Link>
+const testLinkProps: LinkProps = { to: '/' }
+const testLink = <Link {...testLinkProps}>test</Link>
