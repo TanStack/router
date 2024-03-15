@@ -10,6 +10,7 @@ import {
   createRootRoute,
   ErrorComponentProps,
   createRoute,
+  LinkProps,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -172,3 +173,8 @@ if (!rootElement.innerHTML) {
 
   root.render(<RouterProvider router={router} />)
 }
+
+// Test that `Link` can be supplied its properties from a destructed `LinkProps` object without causing a type error.
+// TODO: Move into a defined test once a testing framework is set up.
+const testLinkProps: LinkProps = { to: '/' }
+const testLink = <Link {...testLinkProps}>test</Link>
