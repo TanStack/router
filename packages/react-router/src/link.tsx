@@ -630,7 +630,7 @@ type LinkComponent<TComp> = <
       (TComp extends React.FC<infer TProps> | React.Component<infer TProps>
         ? TProps
         : TComp extends keyof JSX.IntrinsicElements
-          ? Omit<React.HTMLProps<TComp>, 'children'>
+          ? Omit<React.HTMLProps<TComp>, 'children' | 'preload'>
           : never)
   > &
     React.RefAttributes<
