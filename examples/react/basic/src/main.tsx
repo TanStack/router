@@ -61,13 +61,10 @@ function RootComponent() {
         >
           Home
         </Link>{' '}
-        <Link
-          to={'/posts'}
-          activeProps={{
-            className: 'font-bold',
-          }}
-        >
-          Posts
+        <Link to={'/posts'}>
+          {({ isActive }) => (
+            <span className={isActive ? 'font-bold' : ''}>Posts</span>
+          )}
         </Link>
       </div>
       <Outlet />
