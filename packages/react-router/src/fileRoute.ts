@@ -16,17 +16,18 @@ import {
   RouteConstraints,
   ResolveFullSearchSchemaInput,
   SearchSchemaInput,
-  LoaderFnContext,
   RouteLoaderFn,
   AnyPathParams,
   AnySearchSchema,
+  FileBaseRouteOptions,
 } from './route'
 import { Assign, Expand, IsAny } from './utils'
 import { useMatch, useLoaderDeps, useLoaderData, RouteMatch } from './Matches'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import warning from 'tiny-warning'
-import { RegisteredRouter, RouteById, RouteIds } from '.'
+import { RegisteredRouter } from './router'
+import { RouteById, RouteIds } from './routeInfo'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -188,30 +189,27 @@ export class FileRoute<
     >,
     TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
-    TLoaderData extends any = unknown,
+    TLoaderDataReturn extends any = unknown,
+    TLoaderData extends any = [TLoaderDataReturn] extends [never]
+      ? undefined
+      : TLoaderDataReturn,
     TChildren extends RouteConstraints['TChildren'] = unknown,
     TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
   >(
-    options?: Omit<
-      RouteOptions<
-        TParentRoute,
-        string,
-        TPath,
-        TSearchSchemaInput,
-        TSearchSchema,
-        TSearchSchemaUsed,
-        TFullSearchSchemaInput,
-        TFullSearchSchema,
-        TParams,
-        TAllParams,
-        TRouteContextReturn,
-        TRouteContext,
-        TRouterContext,
-        TAllContext,
-        TLoaderDeps,
-        TLoaderData
-      >,
-      'getParentRoute' | 'path' | 'id'
+    options?: FileBaseRouteOptions<
+      TParentRoute,
+      TPath,
+      TSearchSchemaInput,
+      TSearchSchema,
+      TFullSearchSchema,
+      TParams,
+      TAllParams,
+      TRouteContextReturn,
+      TRouteContext,
+      TRouterContext,
+      TAllContext,
+      TLoaderDeps,
+      TLoaderDataReturn
     > &
       UpdatableRouteOptions<TAllParams, TFullSearchSchema, TLoaderData>,
   ): Route<
@@ -232,6 +230,7 @@ export class FileRoute<
     TAllContext,
     TRouterContext,
     TLoaderDeps,
+    TLoaderDataReturn,
     TLoaderData,
     TChildren,
     TRouteTree

@@ -1,29 +1,31 @@
 ---
-id: useParams
+id: useParamsHook
 title: useParams
 ---
 
 The `useParams` method returns all of the path parameters that were parsed for the closest match and all of its parent matches.
 
-### Options
+## useParams options
 
-#### `opts.strict`
+The `useParams` hook accepts an optional `options` object.
+
+### `opts.strict` option
 
 - Type: `boolean`
 - Optional - `default: true`
-- If `false`, the `opts.from` option will be ignored and types will be loosened to `Partial<AllParams>` to reflect the shared types of all params.
+- If `false`, the `opts.from` option will be ignored and types will be loosened to [`Partial<AllParams>`](./api/router/AllParamsType) to reflect the shared types of all params.
 
-#### `opts.select`
+### `opts.select` option
 
 - Optional
 - `(params: AllParams) => TSelected`
 - If supplied, this function will be called with the params object and the return value will be returned from `useParams`. This value will also be used to determine if the hook should re-render its parent component using shallow equality checks.
 
-### Returns
+## useParams returns
 
 - An object of of the match's and parent match path params or `TSelected` if a `select` function is provided.
 
-### Examples
+## Examples
 
 ```tsx
 import { useParams } from '@tanstack/react-router'
@@ -35,7 +37,7 @@ function Component() {
 
   // OR
 
-  const routeParams = routeApi.useParams();
+  const routeParams = routeApi.useParams()
 
   // OR
 
@@ -47,5 +49,7 @@ function Component() {
   // OR
 
   const looseParams = useParams({ strict: false })
+
+  // ...
 }
 ```

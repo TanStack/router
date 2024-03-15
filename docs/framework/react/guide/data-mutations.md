@@ -38,7 +38,7 @@ TanStack Router comes with short-term caching built-in. So even though we're not
 When mutations related to loader data are made, we can use `router.invalidate` to force the router to reload all of the current route matches:
 
 ```tsx
-const router = createRouter()
+const router = useRouter()
 
 const addTodo = async (todo: Todo) => {
   try {
@@ -70,7 +70,7 @@ Without notifying your mutation management library about the route change, it's 
 Hopefully and hypothetically, the easiest way is for your mutation library to support a keying mechanism that will allow your mutations's state to be reset when the key changes:
 
 ```tsx
-const routeApi = getRouteApi("/posts/$postId/edit")
+const routeApi = getRouteApi('/posts/$postId/edit')
 
 function EditPost() {
   const { roomId } = routeApi.useParams()

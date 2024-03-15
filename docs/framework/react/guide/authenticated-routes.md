@@ -77,13 +77,13 @@ This keeps the user on the same page, but still allows you to render a login for
 
 ## Authentication using React context/hooks
 
-If your authentication flow relies on interactions with React context and/or hooks, you'll need to pass down your authentication state to Tanstack Router using `router.context` option.
+If your authentication flow relies on interactions with React context and/or hooks, you'll need to pass down your authentication state to TanStack Router using `router.context` option.
 
-> 🧠 React hooks are not meant to be consumed outside of React components. If you need to use a hook outside of a React component, you need extract the returned state from the hook in a component that wraps your `<RouterProvider />` and then pass the returned value down to Tanstack Router.
+> 🧠 React hooks are not meant to be consumed outside of React components. If you need to use a hook outside of a React component, you need to extract the returned state from the hook in a component that wraps your `<RouterProvider />` and then pass the returned value down to TanStack Router.
 
 We'll cover the `router.context` options in-detail in the [Router Context](./guide/router-context) section.
 
-Here's an example that uses React context and hooks for protecting authenticated routes in Tanstack Router. See the entire working setup in the [Authenticated Routes with Context example](./examples/react/authenticated-routes-context).
+Here's an example that uses React context and hooks for protecting authenticated routes in TanStack Router. See the entire working setup in the [Authenticated Routes with Context example](./examples/authenticated-routes-context).
 
 - `src/routes/__root.tsx`
 

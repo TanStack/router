@@ -11,7 +11,7 @@ export type RoutesById<TRouteTree extends AnyRoute> = {
 }
 ```
 
-### Example
+## Examples
 
 ```tsx
 import { RoutesById } from '@tanstack/react-router'

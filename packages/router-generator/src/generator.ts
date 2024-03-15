@@ -3,7 +3,7 @@ import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import * as prettier from 'prettier'
 import { Config } from './config'
-import { cleanPath, trimPathLeft } from './utils'
+import { cleanPath, logging, trimPathLeft } from './utils'
 
 let latestTask = 0
 export const rootPathId = '__root'
@@ -18,6 +18,9 @@ export type RouteNode = {
   path?: string
   isNonPath?: boolean
   isNonLayout?: boolean
+  isLayout?: boolean
+  isVirtualParentRequired?: boolean
+  isVirtualParentRoute?: boolean
   isRoute?: boolean
   isLoader?: boolean
   isComponent?: boolean
@@ -32,6 +35,7 @@ export type RouteNode = {
 
 async function getRouteNodes(config: Config) {
   const { routeFilePrefix, routeFileIgnorePrefix } = config
+  const logger = logging({ disabled: config.disableLogging })
 
   let routeNodes: RouteNode[] = []
 
@@ -88,6 +92,9 @@ async function getRouteNodes(config: Config) {
           let isPendingComponent = routePath?.endsWith('/pendingComponent')
           let isLoader = routePath?.endsWith('/loader')
 
+          const segments = (routePath ?? '').split('/')
+          let isLayout = segments[segments.length - 1]?.startsWith('_') || false
+
           ;(
             [
               [isComponent, 'component'],
@@ -97,7 +104,7 @@ async function getRouteNodes(config: Config) {
             ] as const
           ).forEach(([isType, type]) => {
             if (isType) {
-              console.warn(
+              logger.warn(
                 `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
               )
             }
@@ -125,6 +132,7 @@ async function getRouteNodes(config: Config) {
             isPendingComponent,
             isLoader,
             isLazy,
+            isLayout,
           })
         }
       }),
@@ -150,15 +158,16 @@ type RouteSubNode = {
 }
 
 export async function generator(config: Config) {
-  console.log('')
+  const logger = logging({ disabled: config.disableLogging })
+  logger.log('')
 
   if (!first) {
-    console.log('♻️  Generating routes...')
+    logger.log('♻️  Generating routes...')
     first = true
   } else if (skipMessage) {
     skipMessage = false
   } else {
-    console.log('♻️  Regenerating routes...')
+    logger.log('♻️  Regenerating routes...')
   }
 
   const taskId = latestTask + 1
@@ -203,72 +212,90 @@ export async function generator(config: Config) {
   let routeNodes: RouteNode[] = []
 
   const handleNode = async (node: RouteNode) => {
-    const parentRoute = hasParentRoute(routeNodes, node.routePath)
+    let parentRoute = hasParentRoute(routeNodes, node, node.routePath)
+
+    // if the parent route is a virtual parent route, we need to find the real parent route
+    if (parentRoute?.isVirtualParentRoute && parentRoute.children?.length) {
+      // only if this sub-parent route returns a valid parent route, we use it, if not leave it as it
+      const possibleParentRoute = hasParentRoute(
+        parentRoute.children,
+        node,
+        node.routePath,
+      )
+      if (possibleParentRoute) {
+        parentRoute = possibleParentRoute
+      }
+    }
+
     if (parentRoute) node.parent = parentRoute
 
-    node.path = node.parent
-      ? node.routePath?.replace(node.parent.routePath!, '') || '/'
-      : node.routePath
+    node.path = determineNodePath(node)
 
     const trimmedPath = trimPathLeft(node.path ?? '')
 
     const split = trimmedPath?.split('/') ?? []
     let first = split[0] ?? trimmedPath ?? ''
+    const lastRouteSegment = split[split.length - 1] ?? trimmedPath ?? ''
 
-    node.isNonPath = first.startsWith('_')
+    node.isNonPath = lastRouteSegment.startsWith('_')
     node.isNonLayout = first.endsWith('_')
-    node.cleanedPath = removeGroups(removeUnderscores(node.path) ?? '')
 
-    // Ensure the boilerplate for the route exists
-    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
-
-    const escapedRoutePath = removeTrailingUnderscores(
-      node.routePath?.replaceAll('$', '$$') ?? '',
+    node.cleanedPath = removeGroups(
+      removeUnderscores(removeLayoutSegments(node.path)) ?? '',
     )
 
-    let replaced = routeCode
+    // Ensure the boilerplate for the route exists, which can be skipped for virtual parent routes
+    if (!node.isVirtualParentRoute) {
+      const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
-    if (!routeCode) {
-      if (node.isLazy) {
-        replaced = [
-          `import { createLazyFileRoute } from '@tanstack/react-router'`,
-          `export const Route = createLazyFileRoute('${escapedRoutePath}')({
+      const escapedRoutePath = removeTrailingUnderscores(
+        node.routePath?.replaceAll('$', '$$') ?? '',
+      )
+
+      let replaced = routeCode
+
+      if (!routeCode) {
+        if (node.isLazy) {
+          replaced = [
+            `import { createLazyFileRoute } from '@tanstack/react-router'`,
+            `export const Route = createLazyFileRoute('${escapedRoutePath}')({
   component: () => <div>Hello ${escapedRoutePath}!</div>
 })`,
-        ].join('\n\n')
-      } else if (
-        node.isRoute ||
-        (!node.isComponent &&
-          !node.isErrorComponent &&
-          !node.isPendingComponent &&
-          !node.isLoader)
-      ) {
-        replaced = [
-          `import { createFileRoute } from '@tanstack/react-router'`,
-          `export const Route = createFileRoute('${escapedRoutePath}')({
+          ].join('\n\n')
+        } else if (
+          node.isRoute ||
+          (!node.isComponent &&
+            !node.isErrorComponent &&
+            !node.isPendingComponent &&
+            !node.isLoader)
+        ) {
+          replaced = [
+            `import { createFileRoute } from '@tanstack/react-router'`,
+            `export const Route = createFileRoute('${escapedRoutePath}')({
   component: () => <div>Hello ${escapedRoutePath}!</div>
 })`,
-        ].join('\n\n')
+          ].join('\n\n')
+        }
+      } else {
+        replaced = routeCode
+          .replace(
+            /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+          )
+          .replace(
+            /(createFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+          )
+          .replace(
+            /(createLazyFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+          )
       }
-    } else {
-      replaced = routeCode
-        .replace(
-          /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-          (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
-        )
-        .replace(
-          /(createFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-          (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
-        )
-        .replace(
-          /(createLazyFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-          (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
-        )
-    }
 
-    if (replaced !== routeCode) {
-      console.log(`🟡 Updating ${node.fullPath}`)
-      await fsp.writeFile(node.fullPath, replaced)
+      if (replaced !== routeCode) {
+        logger.log(`🟡 Updating ${node.fullPath}`)
+        await fsp.writeFile(node.fullPath, replaced)
+      }
     }
 
     if (
@@ -310,9 +337,54 @@ export async function generator(config: Config) {
       return
     }
 
+    const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
+    node.isVirtualParentRequired = node.isLayout ? !cleanedPathIsEmpty : false
+    if (!node.isVirtual && node.isVirtualParentRequired) {
+      const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
+      const parentVariableName = routePathToVariable(parentRoutePath)
+
+      const anchorRoute = routeNodes.find(
+        (d) => d.routePath === parentRoutePath,
+      )
+
+      if (!anchorRoute) {
+        const parentNode = {
+          ...node,
+          path: removeLastSegmentFromPath(node.path) || '/',
+          filePath: removeLastSegmentFromPath(node.filePath) || '/',
+          fullPath: removeLastSegmentFromPath(node.fullPath) || '/',
+          routePath: parentRoutePath,
+          variableName: parentVariableName,
+          isVirtual: true,
+          isLayout: false,
+          isVirtualParentRoute: true,
+          isVirtualParentRequired: false,
+        }
+
+        parentNode.children = parentNode.children ?? []
+        parentNode.children.push(node)
+
+        node.parent = parentNode
+
+        if (node.isLayout) {
+          // since `node.path` is used as the `id` on the route definition, we need to update it
+          node.path = determineNodePath(node)
+        }
+
+        await handleNode(parentNode)
+      } else {
+        anchorRoute.children = anchorRoute.children ?? []
+        anchorRoute.children.push(node)
+
+        node.parent = anchorRoute
+      }
+    }
+
     if (node.parent) {
-      node.parent.children = node.parent.children ?? []
-      node.parent.children.push(node)
+      if (!node.isVirtualParentRequired) {
+        node.parent.children = node.parent.children ?? []
+        node.parent.children.push(node)
+      }
     } else {
       routeTree.push(node)
     }
@@ -320,31 +392,34 @@ export async function generator(config: Config) {
     routeNodes.push(node)
   }
 
-  await Promise.all(preRouteNodes.map((node) => handleNode(node)))
+  for (const node of preRouteNodes) {
+    await handleNode(node)
+  }
 
-  async function buildRouteConfig(
-    nodes: RouteNode[],
-    depth = 1,
-  ): Promise<string> {
-    const children = nodes.map(async (node) => {
+  function buildRouteConfig(nodes: RouteNode[], depth = 1): string {
+    const children = nodes.map((node) => {
       if (node.isRoot) {
+        return
+      }
+
+      if (node.isLayout && !node.children?.length) {
         return
       }
 
       const route = `${node.variableName}Route`
 
       if (node.children?.length) {
-        const childConfigs = await buildRouteConfig(node.children, depth + 1)
+        const childConfigs = buildRouteConfig(node.children, depth + 1)
         return `${route}.addChildren([${spaces(depth * 4)}${childConfigs}])`
       }
 
       return route
     })
 
-    return (await Promise.all(children)).filter(Boolean).join(`,`)
+    return children.filter(Boolean).join(`,`)
   }
 
-  const routeConfigChildrenText = await buildRouteConfig(routeTree)
+  const routeConfigChildrenText = buildRouteConfig(routeTree)
 
   const sortedRouteNodes = multiSortBy(routeNodes, [
     (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
@@ -369,7 +444,6 @@ export async function generator(config: Config) {
     .map((d) => d[0])
 
   const virtualRouteNodes = sortedRouteNodes.filter((d) => d.isVirtual)
-
   const rootPathIdExtension =
     config.addExtensions && rootRouteNode
       ? path.extname(rootRouteNode.filePath)
@@ -508,9 +582,11 @@ export async function generator(config: Config) {
         return `'${removeTrailingUnderscores(routeNode.routePath)}': {
           preLoaderRoute: typeof ${routeNode.variableName}Import
           parentRoute: typeof ${
-            routeNode.parent?.variableName
-              ? `${routeNode.parent?.variableName}Import`
-              : 'rootRoute'
+            routeNode.isVirtualParentRequired
+              ? `${routeNode.parent?.variableName}Route`
+              : routeNode.parent?.variableName
+                ? `${routeNode.parent?.variableName}Import`
+                : 'rootRoute'
           }
         }`
       })
@@ -553,7 +629,7 @@ export async function generator(config: Config) {
     )
   }
 
-  console.log(
+  logger.log(
     `✅ Processed ${routeNodes.length === 1 ? 'route' : 'routes'} in ${
       Date.now() - start
     }ms`,
@@ -635,8 +711,49 @@ function removeGroups(s: string) {
   return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
 }
 
+/**
+ * The `node.path` is used as the `id` in the route definition.
+ * This function checks if the given node has a parent and if so, it determines the correct path for the given node.
+ * @param node - The node to determine the path for.
+ * @returns The correct path for the given node.
+ */
+function determineNodePath(node: RouteNode) {
+  return (node.path = node.parent
+    ? node.routePath?.replace(node.parent.routePath!, '') || '/'
+    : node.routePath)
+}
+
+/**
+ * Removes the last segment from a given path. Segments are considered to be separated by a '/'.
+ *
+ * @param {string} path - The path from which to remove the last segment. Defaults to '/'.
+ * @returns {string} The path with the last segment removed.
+ * @example
+ * removeLastSegmentFromPath('/workspace/_auth/foo') // '/workspace/_auth'
+ */
+export function removeLastSegmentFromPath(path: string = '/'): string {
+  const segments = path.split('/')
+  segments.pop() // Remove the last segment
+  return segments.join('/')
+}
+
+/**
+ * Removes all segments from a given path that start with an underscore ('_').
+ *
+ * @param {string} path - The path from which to remove segments. Defaults to '/'.
+ * @returns {string} The path with all underscore-prefixed segments removed.
+ * @example
+ * removeLayoutSegments('/workspace/_auth/foo') // '/workspace/foo'
+ */
+function removeLayoutSegments(path: string = '/'): string {
+  const segments = path.split('/')
+  const newSegments = segments.filter((segment) => !segment.startsWith('_'))
+  return newSegments.join('/')
+}
+
 export function hasParentRoute(
   routes: RouteNode[],
+  node: RouteNode,
   routePathToCheck: string | undefined,
 ): RouteNode | null {
   if (!routePathToCheck || routePathToCheck === '/') {
@@ -658,9 +775,10 @@ export function hasParentRoute(
       return route
     }
   }
+
   const segments = routePathToCheck.split('/')
   segments.pop() // Remove the last segment
   const parentRoutePath = segments.join('/')
 
-  return hasParentRoute(routes, parentRoutePath)
+  return hasParentRoute(routes, node, parentRoutePath)
 }

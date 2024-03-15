@@ -7,7 +7,11 @@ The `FileRoutesByPath` type is dynamically used with declaration merging to map 
 
 ```tsx
 export interface FileRoutesByPath {
-  // Empty by default, but is dynamically populated by declaration merging during route generation from the generated route tree file.
+  // Empty by default,
+  // but is dynamically populated by declaration merging
+  // during route generation from the generated route tree file.
+  //
+  // Example:
   // '/': {
   //   parentRoute: typeof rootRoute
   // }

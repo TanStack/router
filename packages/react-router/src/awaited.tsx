@@ -1,12 +1,10 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
+import { defaultSerializeError } from './router'
 import { DeferredPromise, isDehydratedDeferred } from './defer'
+import { defaultDeserializeError, isServerSideError } from './Matches'
+
 import warning from 'tiny-warning'
-import {
-  isServerSideError,
-  defaultDeserializeError,
-  defaultSerializeError,
-} from '.'
 
 export type AwaitOptions<T> = {
   promise: DeferredPromise<T>
@@ -25,7 +23,7 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
     const streamedData = (window as any)[`__TSR__DEFERRED__${state.uid}`]
 
     if (streamedData) {
-      Object.assign(state, streamedData)
+      Object.assign(state, router.options.transformer.parse(streamedData))
     } else {
       let token = router.registeredDeferredsIds.get(state.uid)
 
@@ -61,7 +59,7 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
   // If we are the originator of the promise,
   // inject the state into the HTML stream
   if (!isDehydratedDeferred(promise)) {
-    router.injectHtml(`<script class='tsr_deferred_data'>window.__TSR__DEFERRED__${state.uid} = ${router.options.transformer.stringify(state)}</script>
+    router.injectHtml(`<script class='tsr_deferred_data'>window.__TSR__DEFERRED__${state.uid} = ${JSON.stringify(router.options.transformer.stringify(state))}</script>
 <script class='tsr_deferred_handler'>
   if (window.__TSR__ROUTER__) {
     let deferred = window.__TSR__ROUTER__.getDeferred('${state.uid}')

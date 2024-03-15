@@ -5,35 +5,40 @@ title: Await component
 
 The `Await` component is a component that suspends until the provided promise is resolved or rejected.
 
-### Props
+## Await props
 
-#### `props.promise`
+The `Await` component accepts the following props:
 
-- Type: `DeferredPromise<T>`
+### `props.promise` prop
+
+- Type: [`DeferredPromise<T>`](./api/router/DeferredPromiseType)
 - Required
-- The deferred promise to await
+- The deferred promise to await.
 
-#### `props.children`
+### `props.children` prop
 
 - Type: `(result: T) => React.ReactNode`
 - Required
-- A function that will be called with the resolved value of the promise
+- A function that will be called with the resolved value of the promise.
 
-### Returns
+## Await returns
 
-- Throws an error if the promise is rejected
-- Suspends (throws a promise) if the promise is pending
-- Returns the resolved value of a deferred promise if the promise is resolved
+- Throws an error if the promise is rejected.
+- Suspends (throws a promise) if the promise is pending.
+- Returns the resolved value of a deferred promise if the promise is resolved using `props.children` as the render function.
 
-### Examples
+## Examples
 
 ```tsx
 import { Await } from '@tanstack/react-router'
 
 function Component() {
   const { deferredPromise } = route.useLoaderData()
+
   return (
-    <Await promise={myDeferredPromise}>{(data) => <div>{data}</div>}</Await>
+    <Await promise={deferredPromise}>
+      {(data) => <div>{JSON.stringify(data)}</div>}
+    </Await>
   )
 }
 ```

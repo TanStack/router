@@ -1,36 +1,49 @@
 ---
 id: createRootRouteWithContextFunction
-title: createRootRouteWithContextFunction function
+title: createRootRouteWithContext function
 ---
 
 The `createRootRouteWithContext` function is a helper function that can be used to create a root route instance that requires a context type to be fulfilled when the router is created.
 
-### Generics
+## createRootRouteWithContext generics
 
-#### `TRouterContext`
+The `createRootRouteWithContext` function accepts a single generic argument:
 
+### `TRouterContext` generic
+
+- Type: `TRouterContext`
+- Optional, **but recommended**.
 - The context type that will be required to be fulfilled when the router is created
 
-### Options
+## createRootRouteWithContext options
 
 - No options are available for this function
 
-### Returns
+## createRootRouteWithContext returns
 
-- A `RootRoute` factory function that can be used to create a root route instance
+- A factory function that can be used to create a new [`RootRoute`](./api/router/RootRouteClass) instance.
+- It accepts a single argument, the same as the [`createRootRoute`](./api/router/createRootRouteFunction) function.
 
-### Examples
+## Examples
 
 ```tsx
-import { createRootRouteWithContext, createRouter } from '@tanstack/react-router'
+import {
+  createRootRouteWithContext,
+  createRouter,
+} from '@tanstack/react-router'
 import { QueryClient } from '@tanstack/react-query'
 
-const rootRoute = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  // ... Route Options
+interface MyRouterContext {
+  queryClient: QueryClient
+}
+
+const rootRoute = createRootRouteWithContext<MyRouterContext>()({
+  component: () => <Outlet />,
+  // ... root route options
 })
 
 const routeTree = rootRoute.addChildren([
-  // ... Other routes
+  // ... other routes
 ])
 
 const queryClient = new QueryClient()
