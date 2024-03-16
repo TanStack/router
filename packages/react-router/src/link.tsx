@@ -620,9 +620,9 @@ export type LinkProps<
 
 type LinkComponent<TComp> = <
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = string,
+  TFrom extends RoutePaths<TRouteTree> | string = string,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
 >(
   props: React.PropsWithoutRef<
