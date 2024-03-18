@@ -5,7 +5,7 @@ import { type Config, getConfig, generator } from '@tanstack/router-generator'
 const CONFIG_FILE_NAME = 'tsr.config.json'
 
 export function TanStackRouterVite(inlineConfig: Partial<Config> = {}): Plugin {
-  let ROOT: string
+  const ROOT: string = process.cwd()
   let userConfig: Config
 
   const generate = async () => {
@@ -19,8 +19,7 @@ export function TanStackRouterVite(inlineConfig: Partial<Config> = {}): Plugin {
 
   return {
     name: 'vite-plugin-tanstack-router',
-    configResolved: async (vite) => {
-      ROOT = vite.root
+    configResolved: async () => {
       userConfig = await getConfig(inlineConfig, ROOT)
       await generate()
     },
