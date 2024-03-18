@@ -69,7 +69,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -180,7 +180,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       '@vanilla-extract/css':
         specifier: ^1.14.1
@@ -226,7 +226,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -309,7 +309,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -352,7 +352,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -416,7 +416,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -554,7 +554,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -643,7 +643,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -683,7 +683,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -822,7 +822,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -915,7 +915,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       '@types/react':
         specifier: ^18.2.47
@@ -958,7 +958,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       '@types/react':
         specifier: ^18.2.47
@@ -1001,7 +1001,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.20.0
+        specifier: ^1.20.2
         version: link:../../../packages/router-vite-plugin
       '@types/react':
         specifier: ^18.2.47
