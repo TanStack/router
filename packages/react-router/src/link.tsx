@@ -242,12 +242,11 @@ export type ParamOptions<
       ? TToParams
       : MakeDifferenceOptional<TFromParams, TToParams>,
   TReducer = ParamsReducer<TFromParams, TRelativeToParams>,
-> =
-  Expand<WithoutEmpty<PickRequired<TRelativeToParams>>> extends never
-    ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
-    : TFromParams extends Expand<WithoutEmpty<PickRequired<TRelativeToParams>>>
-      ? MakeParamOption<TParamVariant, true | TReducer>
-      : MakeParamOption<TParamVariant, TReducer>
+> = keyof PickRequired<TRelativeToParams> extends never
+  ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
+  : TFromParams extends Expand<WithoutEmpty<PickRequired<TRelativeToParams>>>
+    ? MakeParamOption<TParamVariant, true | TReducer>
+    : MakeParamOption<TParamVariant, TReducer>
 
 type MakeParamOption<
   TParamVariant extends ParamVariant,
