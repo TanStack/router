@@ -30,7 +30,6 @@ async function getExpectedRouteTreeFileText(folder: string) {
   return text
 }
 
-// Write a test
 describe('with a default config', () => {
   it('should wire-up the routes for a "single-level" tree', async () => {
     const folderName = 'single-level'
