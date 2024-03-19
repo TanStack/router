@@ -3,7 +3,7 @@ import { useMatch } from './Matches'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { Trim } from './fileRoute'
-import { AnyRoute, ReactNode, RootSearchSchema } from './route'
+import { AnyRoute, RootSearchSchema } from './route'
 import { RouteByPath, RoutePaths, RoutePathsAutoComplete } from './routeInfo'
 import { RegisteredRouter } from './router'
 import {
@@ -201,7 +201,11 @@ export type ResolveRoute<
   TFrom,
   TTo,
   TPath = RemoveTrailingSlashes<
-    string extends TTo ? TFrom : ResolveRelativePath<TFrom, TTo>
+    string extends TFrom
+      ? TTo
+      : string extends TTo
+        ? TFrom
+        : ResolveRelativePath<TFrom, TTo>
   >,
 > =
   RouteByPath<TRouteTree, `${TPath & string}/`> extends never
@@ -308,11 +312,7 @@ export type LinkOptions<
 
 export type CheckPath<TRouteTree extends AnyRoute, TPass, TFrom, TTo> =
   ResolveRoute<TRouteTree, TFrom, TTo> extends never
-    ? string extends TFrom
-      ? RemoveTrailingSlashes<TTo> extends '.' | '..'
-        ? TPass
-        : CheckPathError<TRouteTree>
-      : CheckPathError<TRouteTree>
+    ? CheckPathError<TRouteTree>
     : TPass
 
 export type CheckPathError<TRouteTree extends AnyRoute> = {
