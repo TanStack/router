@@ -253,7 +253,7 @@ export function TanStackRouterDevtools({
           onCloseClick: onCloseClick ?? (() => {}),
         }}
       >
-        <TanStackRouterDevtoolsPanel
+        <BaseTanStackRouterDevtoolsPanel
           ref={panelRef as any}
           {...otherPanelProps}
           router={router}
@@ -305,18 +305,37 @@ export function TanStackRouterDevtools({
   )
 }
 
+export const TanStackRouterDevtoolsPanel = React.forwardRef<
+  HTMLDivElement,
+  DevtoolsPanelOptions
+>(function TanStackRouterDevtoolsPanel(props, ref) {
+  return (
+    <DevtoolsOnCloseContext.Provider
+      value={{
+        onCloseClick: () => {},
+      }}
+    >
+      <BaseTanStackRouterDevtoolsPanel ref={ref} {...props} />
+    </DevtoolsOnCloseContext.Provider>
+  )
+})
+
 function RouteComp({
+  router,
   route,
   isRoot,
   activeId,
   setActiveId,
 }: {
+  router: AnyRouter
   route: AnyRootRoute | AnyRoute
   isRoot?: boolean
   activeId: string | undefined
   setActiveId: (id: string) => void
 }) {
-  const routerState = useRouterState()
+  const routerState = useRouterState({
+    router,
+  } as any)
   const matches =
     routerState.status === 'pending'
       ? routerState.pendingMatches ?? []
@@ -368,7 +387,7 @@ function RouteComp({
             </code>
             <code className={getStyles().routeParamInfo}>{param}</code>
           </div>
-          <AgeTicker match={match} />
+          <AgeTicker match={match} router={router} />
         </div>
       </div>
       {(route.children as Route[])?.length ? (
@@ -380,6 +399,7 @@ function RouteComp({
             .map((r) => (
               <RouteComp
                 key={r.id}
+                router={router}
                 route={r}
                 activeId={activeId}
                 setActiveId={setActiveId}
@@ -391,10 +411,10 @@ function RouteComp({
   )
 }
 
-export const TanStackRouterDevtoolsPanel = React.forwardRef<
+const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
   HTMLDivElement,
   DevtoolsPanelOptions
->(function TanStackRouterDevtoolsPanel(props, ref): React.ReactElement {
+>(function BaseTanStackRouterDevtoolsPanel(props, ref): React.ReactElement {
   const {
     isOpen = true,
     setIsOpen,
@@ -597,6 +617,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           <div className={cx(getStyles().routesContainer)}>
             {!showMatches ? (
               <RouteComp
+                router={router}
                 route={router.routeTree}
                 isRoot
                 activeId={activeId}
@@ -629,7 +650,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                       <code
                         className={getStyles().matchID}
                       >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
-                      <AgeTicker match={match} />
+                      <AgeTicker match={match} router={router} />
                     </div>
                   )
                 })}
@@ -665,7 +686,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
                     <code className={getStyles().matchID}>{`${match.id}`}</code>
 
-                    <AgeTicker match={match} />
+                    <AgeTicker match={match} router={router} />
                   </div>
                 )
               })}
@@ -758,9 +779,13 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   )
 })
 
-function AgeTicker({ match }: { match?: AnyRouteMatch }) {
-  const router = useRouter()
-
+function AgeTicker({
+  match,
+  router,
+}: {
+  match?: AnyRouteMatch
+  router: AnyRouter
+}) {
   const rerender = React.useReducer(
     () => ({}),
     () => ({}),
