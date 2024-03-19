@@ -98,10 +98,10 @@ import { Route as BlogRouteImport } from './routes/blog.route'
 import { Route as IndexImport } from './routes/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
 import { Route as BlogIndexImport } from './routes/blog.index'
-import { Route as PostsPostIdImport } from './routes/posts.$postId'
-import { Route as BlogSlugImport } from './routes/blog.$slug'
+import { Route as BlogStatsImport } from './routes/blog_.stats'
+import { Route as PostsPostIdIndexImport } from './routes/posts.$postId.index'
+import { Route as BlogSlugIndexImport } from './routes/blog.$slug.index'
 import { Route as PostsPostIdDeepImport } from './routes/posts.$postId.deep'
-import { Route as BlogSlugStatsImport } from './routes/blog_.$slug.stats'
 
 // Create/Update Routes
 
@@ -130,24 +130,24 @@ const BlogIndexRoute = BlogIndexImport.update({
   getParentRoute: () => BlogRouteRoute,
 } as any)
 
-const PostsPostIdRoute = PostsPostIdImport.update({
-  path: '/$postId',
+const BlogStatsRoute = BlogStatsImport.update({
+  path: '/blog/stats',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const PostsPostIdIndexRoute = PostsPostIdIndexImport.update({
+  path: '/$postId/',
   getParentRoute: () => PostsRouteRoute,
 } as any)
 
-const BlogSlugRoute = BlogSlugImport.update({
-  path: '/$slug',
+const BlogSlugIndexRoute = BlogSlugIndexImport.update({
+  path: '/$slug/',
   getParentRoute: () => BlogRouteRoute,
 } as any)
 
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
-  path: '/deep',
-  getParentRoute: () => PostsPostIdRoute,
-} as any)
-
-const BlogSlugStatsRoute = BlogSlugStatsImport.update({
-  path: '/blog/$slug/stats',
-  getParentRoute: () => rootRoute,
+  path: '/$postId/deep',
+  getParentRoute: () => PostsRouteRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -166,13 +166,9 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRoute
     }
-    '/blog/$slug': {
-      preLoaderRoute: typeof BlogSlugImport
-      parentRoute: typeof BlogRouteImport
-    }
-    '/posts/$postId': {
-      preLoaderRoute: typeof PostsPostIdImport
-      parentRoute: typeof PostsRouteImport
+    '/blog/stats': {
+      preLoaderRoute: typeof BlogStatsImport
+      parentRoute: typeof rootRoute
     }
     '/blog/': {
       preLoaderRoute: typeof BlogIndexImport
@@ -182,13 +178,17 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsIndexImport
       parentRoute: typeof PostsRouteImport
     }
-    '/blog/$slug/stats': {
-      preLoaderRoute: typeof BlogSlugStatsImport
-      parentRoute: typeof rootRoute
-    }
     '/posts/$postId/deep': {
       preLoaderRoute: typeof PostsPostIdDeepImport
-      parentRoute: typeof PostsPostIdImport
+      parentRoute: typeof PostsRouteImport
+    }
+    '/blog/$slug/': {
+      preLoaderRoute: typeof BlogSlugIndexImport
+      parentRoute: typeof BlogRouteImport
+    }
+    '/posts/$postId/': {
+      preLoaderRoute: typeof PostsPostIdIndexImport
+      parentRoute: typeof PostsRouteImport
     }
   }
 }
@@ -197,12 +197,13 @@ declare module '@tanstack/react-router' {
 
 export const routeTree = rootRoute.addChildren([
   IndexRoute,
-  BlogRouteRoute.addChildren([BlogSlugRoute, BlogIndexRoute]),
+  BlogRouteRoute.addChildren([BlogIndexRoute, BlogSlugIndexRoute]),
   PostsRouteRoute.addChildren([
-    PostsPostIdRoute.addChildren([PostsPostIdDeepRoute]),
     PostsIndexRoute,
+    PostsPostIdDeepRoute,
+    PostsPostIdIndexRoute,
   ]),
-  BlogSlugStatsRoute,
+  BlogStatsRoute,
 ])
 
 /* prettier-ignore-end */
@@ -236,7 +237,7 @@ import { Route as BlogIndexImport } from './routes/blog/index'
 import { Route as BlogStatsImport } from './routes/blog_/stats'
 import { Route as BlogSlugImport } from './routes/blog/$slug'
 import { Route as PostsPostIdIndexImport } from './routes/posts/$postId/index'
-import { Route as PostsPostIdDeepImport } from './routes/posts/$postId_/deep'
+import { Route as PostsPostIdDeepImport } from './routes/posts/$postId/deep'
 
 // Create/Update Routes
 
