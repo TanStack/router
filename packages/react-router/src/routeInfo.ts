@@ -25,7 +25,9 @@ export type RoutesByPath<TRouteTree extends AnyRoute> = {
 }
 
 export type RouteByPath<TRouteTree extends AnyRoute, TPath> = Extract<
-  RoutesByPath<TRouteTree>[TPath],
+  string extends TPath
+    ? ParseRoute<TRouteTree>
+    : RoutesByPath<TRouteTree>[TPath],
   AnyRoute
 >
 
