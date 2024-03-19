@@ -31,7 +31,6 @@ packages/router-generator/tests/**/*.gen.ts
 .env.production.local
 .next
 
-
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
