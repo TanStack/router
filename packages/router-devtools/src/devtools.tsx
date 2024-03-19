@@ -253,7 +253,7 @@ export function TanStackRouterDevtools({
           onCloseClick: onCloseClick ?? (() => {}),
         }}
       >
-        <TanStackRouterDevtoolsPanel
+        <BaseTanStackRouterDevtoolsPanel
           ref={panelRef as any}
           {...otherPanelProps}
           router={router}
@@ -304,6 +304,21 @@ export function TanStackRouterDevtools({
     </Container>
   )
 }
+
+export const TanStackRouterDevtoolsPanel = React.forwardRef<
+  HTMLDivElement,
+  DevtoolsPanelOptions
+>(function TanStackRouterDevtoolsPanel(props, ref) {
+  return (
+    <DevtoolsOnCloseContext.Provider
+      value={{
+        onCloseClick: () => {},
+      }}
+    >
+      <BaseTanStackRouterDevtoolsPanel ref={ref} {...props} />
+    </DevtoolsOnCloseContext.Provider>
+  )
+})
 
 function RouteComp({
   router,
@@ -396,10 +411,10 @@ function RouteComp({
   )
 }
 
-export const TanStackRouterDevtoolsPanel = React.forwardRef<
+const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
   HTMLDivElement,
   DevtoolsPanelOptions
->(function TanStackRouterDevtoolsPanel(props, ref): React.ReactElement {
+>(function BaseTanStackRouterDevtoolsPanel(props, ref): React.ReactElement {
   const {
     isOpen = true,
     setIsOpen,
