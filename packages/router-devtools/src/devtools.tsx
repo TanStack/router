@@ -306,17 +306,21 @@ export function TanStackRouterDevtools({
 }
 
 function RouteComp({
+  router,
   route,
   isRoot,
   activeId,
   setActiveId,
 }: {
+  router: AnyRouter
   route: AnyRootRoute | AnyRoute
   isRoot?: boolean
   activeId: string | undefined
   setActiveId: (id: string) => void
 }) {
-  const routerState = useRouterState()
+  const routerState = useRouterState({
+    router,
+  } as any)
   const matches =
     routerState.status === 'pending'
       ? routerState.pendingMatches ?? []
@@ -368,7 +372,7 @@ function RouteComp({
             </code>
             <code className={getStyles().routeParamInfo}>{param}</code>
           </div>
-          <AgeTicker match={match} />
+          <AgeTicker match={match} router={router} />
         </div>
       </div>
       {(route.children as Route[])?.length ? (
@@ -380,6 +384,7 @@ function RouteComp({
             .map((r) => (
               <RouteComp
                 key={r.id}
+                router={router}
                 route={r}
                 activeId={activeId}
                 setActiveId={setActiveId}
@@ -597,6 +602,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           <div className={cx(getStyles().routesContainer)}>
             {!showMatches ? (
               <RouteComp
+                router={router}
                 route={router.routeTree}
                 isRoot
                 activeId={activeId}
@@ -629,7 +635,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                       <code
                         className={getStyles().matchID}
                       >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
-                      <AgeTicker match={match} />
+                      <AgeTicker match={match} router={router} />
                     </div>
                   )
                 })}
@@ -665,7 +671,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
                     <code className={getStyles().matchID}>{`${match.id}`}</code>
 
-                    <AgeTicker match={match} />
+                    <AgeTicker match={match} router={router} />
                   </div>
                 )
               })}
@@ -758,9 +764,13 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   )
 })
 
-function AgeTicker({ match }: { match?: AnyRouteMatch }) {
-  const router = useRouter()
-
+function AgeTicker({
+  match,
+  router,
+}: {
+  match?: AnyRouteMatch
+  router: AnyRouter
+}) {
   const rerender = React.useReducer(
     () => ({}),
     () => ({}),
