@@ -93,9 +93,11 @@ export const routeTree = rootRoute.addChildren([IndexRoute, PostsRoute])
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as PostsImport } from './routes/posts'
-import { Route as BlogImport } from './routes/blog'
+import { Route as PostsRouteImport } from './routes/posts.route'
+import { Route as BlogRouteImport } from './routes/blog.route'
 import { Route as IndexImport } from './routes/index'
+import { Route as PostsIndexImport } from './routes/posts.index'
+import { Route as BlogIndexImport } from './routes/blog.index'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
 import { Route as BlogSlugImport } from './routes/blog.$slug'
 import { Route as PostsPostIdDeepImport } from './routes/posts.$postId.deep'
@@ -103,12 +105,12 @@ import { Route as BlogSlugStatsImport } from './routes/blog_.$slug.stats'
 
 // Create/Update Routes
 
-const PostsRoute = PostsImport.update({
+const PostsRouteRoute = PostsRouteImport.update({
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
-const BlogRoute = BlogImport.update({
+const BlogRouteRoute = BlogRouteImport.update({
   path: '/blog',
   getParentRoute: () => rootRoute,
 } as any)
@@ -118,14 +120,24 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const PostsIndexRoute = PostsIndexImport.update({
+  path: '/',
+  getParentRoute: () => PostsRouteRoute,
+} as any)
+
+const BlogIndexRoute = BlogIndexImport.update({
+  path: '/',
+  getParentRoute: () => BlogRouteRoute,
+} as any)
+
 const PostsPostIdRoute = PostsPostIdImport.update({
   path: '/$postId',
-  getParentRoute: () => PostsRoute,
+  getParentRoute: () => PostsRouteRoute,
 } as any)
 
 const BlogSlugRoute = BlogSlugImport.update({
   path: '/$slug',
-  getParentRoute: () => BlogRoute,
+  getParentRoute: () => BlogRouteRoute,
 } as any)
 
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
@@ -147,20 +159,28 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof rootRoute
     }
     '/blog': {
-      preLoaderRoute: typeof BlogImport
+      preLoaderRoute: typeof BlogRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
-      preLoaderRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRoute
     }
     '/blog/$slug': {
       preLoaderRoute: typeof BlogSlugImport
-      parentRoute: typeof BlogImport
+      parentRoute: typeof BlogRouteImport
     }
     '/posts/$postId': {
       preLoaderRoute: typeof PostsPostIdImport
-      parentRoute: typeof PostsImport
+      parentRoute: typeof PostsRouteImport
+    }
+    '/blog/': {
+      preLoaderRoute: typeof BlogIndexImport
+      parentRoute: typeof BlogRouteImport
+    }
+    '/posts/': {
+      preLoaderRoute: typeof PostsIndexImport
+      parentRoute: typeof PostsRouteImport
     }
     '/blog/$slug/stats': {
       preLoaderRoute: typeof BlogSlugStatsImport
@@ -177,9 +197,10 @@ declare module '@tanstack/react-router' {
 
 export const routeTree = rootRoute.addChildren([
   IndexRoute,
-  BlogRoute.addChildren([BlogSlugRoute]),
-  PostsRoute.addChildren([
+  BlogRouteRoute.addChildren([BlogSlugRoute, BlogIndexRoute]),
+  PostsRouteRoute.addChildren([
     PostsPostIdRoute.addChildren([PostsPostIdDeepRoute]),
+    PostsIndexRoute,
   ]),
   BlogSlugStatsRoute,
 ])
