@@ -19,6 +19,9 @@ artifacts
 coverage
 *.tgz
 
+# tests
+packages/router-generator/tests/**/*.gen.ts
+
 # misc
 .DS_Store
 .env
