@@ -66,7 +66,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -109,7 +109,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -143,7 +143,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -177,7 +177,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -223,7 +223,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -269,7 +269,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -306,7 +306,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -349,7 +349,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router-server
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -413,7 +413,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router-server
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -477,7 +477,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -514,7 +514,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -551,7 +551,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -597,7 +597,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -640,7 +640,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -680,7 +680,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -726,7 +726,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -760,7 +760,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -791,7 +791,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       react:
         specifier: ^18.2.0
@@ -819,7 +819,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -862,7 +862,7 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       react:
         specifier: ^18.2.0
@@ -912,7 +912,7 @@ importers:
         version: 0.1.2(@types/node@20.11.10)(preact@10.19.3)(rollup@4.9.6)
     devDependencies:
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -955,7 +955,7 @@ importers:
         version: 0.1.2(@types/node@20.11.10)(preact@10.19.3)(rollup@4.9.6)
     devDependencies:
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -998,7 +998,7 @@ importers:
         version: 0.1.2(@types/node@20.11.10)(preact@10.19.3)(rollup@4.9.6)
     devDependencies:
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.20.2
@@ -1025,7 +1025,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@trpc/client':
         specifier: ^10.45.0
@@ -1086,7 +1086,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       hono:
         specifier: ^3.12.0
@@ -1138,7 +1138,7 @@ importers:
         specifier: ^0.2.1
         version: 0.2.1(react-dom@18.3.0-canary-ab31a9ed2-20230824)(react@18.3.0-canary-ab31a9ed2-20230824)
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -1211,7 +1211,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -1257,7 +1257,7 @@ importers:
         specifier: ^1.20.1
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.20.1
+        specifier: ^1.20.3
         version: link:../../../packages/router-devtools
       '@trpc/client':
         specifier: ^10.45.0

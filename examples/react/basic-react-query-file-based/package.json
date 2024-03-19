@@ -12,7 +12,7 @@
     "@tanstack/react-query": "^5.17.8",
     "@tanstack/react-query-devtools": "^5.17.8",
     "@tanstack/react-router": "^1.20.1",
-    "@tanstack/router-devtools": "^1.20.1",
+    "@tanstack/router-devtools": "^1.20.3",
     "@tanstack/router-vite-plugin": "^1.20.2",
     "axios": "^1.6.5",
     "immer": "^10.0.3",
