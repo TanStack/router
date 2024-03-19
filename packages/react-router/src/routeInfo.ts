@@ -22,14 +22,12 @@ export type RouteIds<TRouteTree extends AnyRoute> = ParseRoute<TRouteTree>['id']
 
 export type RoutesByPath<TRouteTree extends AnyRoute> = {
   [K in ParseRoute<TRouteTree> as K['fullPath']]: K
-}
+} & Record<'.' | '..', ParseRoute<TRouteTree>>
 
 export type RouteByPath<TRouteTree extends AnyRoute, TPath> = Extract<
   string extends TPath
     ? ParseRoute<TRouteTree>
-    : TPath extends '.' | '..'
-      ? ParseRoute<TRouteTree>
-      : RoutesByPath<TRouteTree>[TPath],
+    : RoutesByPath<TRouteTree>[TPath],
   AnyRoute
 >
 
