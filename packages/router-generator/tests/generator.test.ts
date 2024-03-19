@@ -6,6 +6,7 @@ import { generator, getConfig, type Config } from '../src'
 async function setupConfig(folder: string) {
   const dir = process.cwd() + `/tests/${folder}`
   const config = await getConfig({
+    disableLogging: true,
     routesDirectory: dir + '/routes',
     generatedRouteTree: dir + '/routeTree.gen.ts',
   })
