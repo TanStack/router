@@ -36,9 +36,8 @@ export type RoutePaths<TRouteTree extends AnyRoute> =
   | '/'
 
 export type RoutePathsAutoComplete<TRouteTree extends AnyRoute, T> =
-  | T
+  | (string extends T ? T & {} : T)
   | RoutePaths<TRouteTree>
-  | (string & {})
 
 type UnionizeCollisions<T, U> = {
   [P in keyof T & keyof U]: T[P] extends U[P] ? T[P] : T[P] | U[P]
