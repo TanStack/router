@@ -1,6 +1,6 @@
 /// <reference types="vinxi/types/server" />
 import { eventHandler, toWebRequest } from 'vinxi/http'
-import { handleRequest } from './server-fns/handler'
+import { handleRequest } from '../server-fns/handler'
 
 export default eventHandler(handleServerAction) as any
 

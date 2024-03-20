@@ -1,12 +1,14 @@
 import {
-  CompiledFetcherFnOptions,
   encode,
   isNotFound,
   isPlainObject,
   isRedirect,
+} from '@tanstack/react-router'
+import {
+  CompiledFetcherFnOptions,
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
-} from '@tanstack/react-router'
+} from '../client'
 
 export async function fetcher<TPayload>(
   base: string,
@@ -19,7 +21,12 @@ export async function fetcher<TPayload>(
   // We need to handle the arguments differently
   if (isPlainObject(first) && first.method) {
     const opts = first as CompiledFetcherFnOptions<TPayload>
-    const type = opts.payload instanceof Request ? 'request' : 'payload'
+    const type =
+      opts.payload instanceof FormData
+        ? 'formData'
+        : opts.payload instanceof Request
+          ? 'request'
+          : 'payload'
 
     // Arrange the headers
     const headers = new Headers({
@@ -45,8 +52,15 @@ export async function fetcher<TPayload>(
     // Create the request
     const request = new Request(base, {
       ...opts.requestInit,
+      method: opts.method,
       headers,
-      ...(opts.method === 'POST' ? { body: JSON.stringify(opts.payload) } : {}),
+      ...(type === 'formData'
+        ? {
+            body: opts.payload as FormData,
+          }
+        : opts.method === 'POST'
+          ? { body: JSON.stringify(opts.payload ?? null) }
+          : {}),
     })
 
     // Fetch it

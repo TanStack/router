@@ -16,54 +16,64 @@
   },
   "type": "module",
   "exports": {
-    "./client": {
+    ".": {
       "import": {
-        "types": "./dist/esm/client.d.ts",
-        "default": "./dist/esm/client.js"
+        "types": "./dist/esm/client/index.d.ts",
+        "default": "./dist/esm/client/index.js"
       },
       "require": {
-        "types": "./dist/cjs/client.d.cts",
-        "default": "./dist/cjs/client.cjs"
+        "types": "./dist/cjs/client/index.d.cts",
+        "default": "./dist/cjs/client/index.cjs"
+      }
+    },
+    "./client": {
+      "import": {
+        "types": "./dist/esm/client/index.d.ts",
+        "default": "./dist/esm/client/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/client/index.d.cts",
+        "default": "./dist/cjs/client/index.cjs"
       }
     },
     "./server": {
       "import": {
-        "types": "./dist/esm/server.d.ts",
-        "default": "./dist/esm/server.js"
+        "types": "./dist/esm/server/index.d.ts",
+        "default": "./dist/esm/server/index.js"
       },
       "require": {
-        "types": "./dist/cjs/server.d.cts",
-        "default": "./dist/cjs/server.cjs"
+        "types": "./dist/cjs/server/index.d.cts",
+        "default": "./dist/cjs/server/index.cjs"
       }
     },
     "./client-runtime": {
       "import": {
-        "types": "./dist/esm/client-runtime.d.ts",
-        "default": "./dist/esm/client-runtime.js"
+        "types": "./dist/esm/client/client-runtime.d.ts",
+        "default": "./dist/esm/client/client-runtime.js"
       },
       "require": {
-        "types": "./dist/cjs/client-runtime.d.cts",
-        "default": "./dist/cjs/client-runtime.cjs"
+        "types": "./dist/cjs/client/client-runtime.d.cts",
+        "default": "./dist/cjs/client/client-runtime.cjs"
       }
     },
     "./server-runtime": {
       "import": {
-        "types": "./dist/esm/server-runtime.d.ts",
-        "default": "./dist/esm/server-runtime.js"
+        "types": "./dist/esm/server/server-runtime.d.ts",
+        "default": "./dist/esm/server/server-runtime.js"
       },
       "require": {
-        "types": "./dist/cjs/server-runtime.d.cts",
-        "default": "./dist/cjs/server-runtime.cjs"
+        "types": "./dist/cjs/server/server-runtime.d.cts",
+        "default": "./dist/cjs/server/server-runtime.cjs"
       }
     },
     "./server-handler": {
       "import": {
-        "types": "./dist/esm/server-handler.d.ts",
-        "default": "./dist/esm/server-handler.js"
+        "types": "./dist/esm/server/server-handler.d.ts",
+        "default": "./dist/esm/server/server-handler.js"
       },
       "require": {
-        "types": "./dist/cjs/server-handler.d.cts",
-        "default": "./dist/cjs/server-handler.cjs"
+        "types": "./dist/cjs/server/server-handler.d.cts",
+        "default": "./dist/cjs/server/server-handler.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -94,6 +104,7 @@
   "dependencies": {
     "@tanstack/react-cross-context": "workspace:*",
     "@tanstack/react-router": "workspace:*",
+    "tiny-invariant": "^1.3.1",
     "vinxi": "0.2.1"
   },
   "devDependencies": {

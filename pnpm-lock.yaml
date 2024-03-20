@@ -1359,6 +1359,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      tiny-invariant:
+        specifier: ^1.3.1
+        version: 1.3.1
       vinxi:
         specifier: 0.2.1
         version: 0.2.1(@types/node@20.11.10)(preact@10.19.3)(rollup@4.9.6)

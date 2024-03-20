@@ -86,22 +86,3 @@ export function createServerFn<
     },
   ) as Fetcher<TPayload, TResponse>
 }
-
-export function json<TData>(
-  payload: TData,
-  opts?: {
-    status?: number
-    statusText?: string
-    headers?: HeadersInit
-  },
-): JsonResponse<TData> {
-  return new Response(JSON.stringify(payload), {
-    status: opts?.status || 200,
-    statusText: opts?.statusText || opts?.status === 200 ? 'OK' : 'Error',
-    headers: {
-      'Content-Type': 'application/json',
-      [serverFnReturnTypeHeader]: 'json',
-      ...opts?.headers,
-    },
-  })
-}
