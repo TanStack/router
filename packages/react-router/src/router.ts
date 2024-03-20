@@ -817,7 +817,9 @@ export class Router<
     return matches as any
   }
 
-  cancelMatch = (id: string) => {}
+  cancelMatch = (id: string) => {
+    getRouteMatch(this.state, id)?.abortController.abort()
+  }
 
   cancelMatches = () => {
     this.state.pendingMatches?.forEach((match) => {
