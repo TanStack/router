@@ -479,15 +479,21 @@ export function useMatch<
     (d) => d.id === nearestMatchId,
   )?.routeId
 
+  const strict = opts?.strict ?? true
+
   const matchRouteId = (() => {
     const matches = getRenderedMatches(router.state)
     const match = opts?.from
       ? matches.find((d) => d.routeId === opts?.from)
       : matches.find((d) => d.id === nearestMatchId)
-    return match!.routeId
+    return match?.routeId
   })()
 
-  if (opts?.strict ?? true) {
+  if (strict) {
+    invariant(
+      matchRouteId,
+      `No match found for route '${opts?.from}' while rendering the '${nearestMatchRouteId}' route. Did you mean to pass '{ strict: false }' instead?`,
+    )
     invariant(
       nearestMatchRouteId == matchRouteId,
       `useMatch("${
