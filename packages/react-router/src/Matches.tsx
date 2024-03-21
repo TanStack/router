@@ -492,7 +492,7 @@ export function useMatch<
   if (strict) {
     invariant(
       matchRouteId,
-      `No match found while rendering useMatch() in a component that is meant to render the '${nearestMatchRouteId}' route. Did you mean to 'useMatch({ strict: false })' instead?`,
+      `No match found for route '${opts?.from}' while rendering the '${nearestMatchRouteId}' route. Did you mean to pass '{ strict: false }' instead?`,
     )
     invariant(
       nearestMatchRouteId == matchRouteId,
