@@ -38,11 +38,11 @@ export default mergeConfig(
   config,
   tanstackBuildConfig({
     entry: [
-      './src/client.tsx',
-      './src/server.tsx',
-      './src/client-runtime.tsx',
-      './src/server-runtime.tsx',
-      './src/server-handler.tsx',
+      './src/client/index.tsx',
+      './src/server/index.tsx',
+      './src/client/client-runtime.tsx',
+      './src/server/server-runtime.tsx',
+      './src/server/server-handler.tsx',
     ],
     srcDir: './src',
   }),
