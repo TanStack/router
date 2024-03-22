@@ -51,8 +51,10 @@ function Component() {
 ### accessing the root route's match
 
 ```tsx
-import { useMatch } from '@tanstack/react-router'
-import { rootRouteId } from '@tanstack/react-router'
+import {
+  useMatch,
+  rootRouteId, // <<<< use this token!
+} from '@tanstack/react-router'
 
 function Component() {
   const match = useMatch({ from: rootRouteId })
