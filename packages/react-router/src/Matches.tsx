@@ -472,39 +472,7 @@ export function useMatch<
     select?: (match: TRouteMatchState) => TSelected
   },
 ): TSelected {
-  const router = useRouter()
   const nearestMatchId = React.useContext(matchContext)
-
-  const nearestMatchRouteId = getRenderedMatches(router.state).find(
-    (d) => d.id === nearestMatchId,
-  )?.routeId
-
-  const strict = opts?.strict ?? true
-
-  const matchRouteId = (() => {
-    const matches = getRenderedMatches(router.state)
-    const match = opts?.from
-      ? matches.find((d) => d.routeId === opts?.from)
-      : matches.find((d) => d.id === nearestMatchId)
-    return match?.routeId
-  })()
-
-  if (strict) {
-    invariant(
-      matchRouteId,
-      `No match found for route '${opts?.from}' while rendering the '${nearestMatchRouteId}' route. Did you mean to pass '{ strict: false }' instead?`,
-    )
-    invariant(
-      nearestMatchRouteId == matchRouteId,
-      `useMatch("${
-        matchRouteId as string
-      }") is being called in a component that is meant to render the '${nearestMatchRouteId}' route. Did you mean to 'useMatch("${
-        matchRouteId as string
-      }", { strict: false })' or 'useRoute("${
-        matchRouteId as string
-      }")' instead?`,
-    )
-  }
 
   const matchSelection = useRouterState({
     select: (state) => {
