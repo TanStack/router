@@ -115,6 +115,24 @@ The `RouteApi` class implements the following properties and methods:
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TLoaderData` object or a loosened version of the `TLoaderData` object if `opts.strict` is `false`.
 
+### `useLoaderDeps` method
+
+```tsx
+  useLoaderDeps<TSelected = TLoaderDeps>(opts?: {
+    select?: (search: TLoaderDeps) => TSelected
+  }): TSelected
+```
+
+- A type-safe version of the [`useLoaderDeps`](./api/router/useLoaderDepsHook) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- Options
+  - `opts.select`
+    - Optional
+    - `(match: TLoaderDeps) => TSelected`
+    - If supplied, this function will be called with the route match and the return value will be returned from `useLoaderDeps`.
+- Returns
+  - If a `select` function is provided, the return value of the `select` function.
+  - If no `select` function is provided, the `TLoaderDeps` object.
+
 ### `useNavigate` method
 
 ```tsx

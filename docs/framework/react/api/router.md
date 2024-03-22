@@ -32,6 +32,7 @@ title: Router API
   - [`useChildMatches()`](./api/router/useChildMatchesHook)
   - [`useLinkProps()`](./api/router/useLinkPropsHook)
   - [`useLoaderData()`](./api/router/useLoaderDataHook)
+  - [`useLoaderDeps()`](./api/router/useLoaderDepsHook)
   - [`useMatch()`](./api/router/useMatchHook)
   - [`useMatchRoute()`](./api/router/useMatchRouteHook)
   - [`useMatches()`](./api/router/useMatchesHook)
