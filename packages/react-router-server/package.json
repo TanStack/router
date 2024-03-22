@@ -104,6 +104,8 @@
   "dependencies": {
     "@tanstack/react-cross-context": "workspace:*",
     "@tanstack/react-router": "workspace:*",
+    "@types/jsesc": "^3.0.3",
+    "jsesc": "^3.0.2",
     "tiny-invariant": "^1.3.1",
     "vinxi": "0.2.1"
   },
