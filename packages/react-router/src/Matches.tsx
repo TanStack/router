@@ -658,6 +658,9 @@ export function defaultDeserializeError(serializedData: Record<string, any>) {
   if ('name' in serializedData && 'message' in serializedData) {
     const error = new Error(serializedData.message)
     error.name = serializedData.name
+    if (process.env.NODE_ENV === 'development') {
+      error.stack = serializedData.stack
+    }
     return error
   }
 

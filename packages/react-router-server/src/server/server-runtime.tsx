@@ -34,15 +34,19 @@ export function createServerReference<TPayload, TResponse>(
 
       const response = await handleRequest(request)
 
-      const ogResponseHeaders = getResponseHeaders(event)
+      // Only augment the headers of the underlying document request
+      // if the response headers have not been sent yet
+      if (!(event as any).__tsrHeadersSent) {
+        const ogResponseHeaders = getResponseHeaders(event)
 
-      response.headers.forEach((value, key) => {
-        if (!Object.hasOwn(ogResponseHeaders, key)) {
-          ogResponseHeaders[key] = value
-        }
-      })
+        response.headers.forEach((value, key) => {
+          if (!Object.hasOwn(ogResponseHeaders, key)) {
+            ogResponseHeaders[key] = value
+          }
+        })
 
-      setResponseHeaders(event, ogResponseHeaders)
+        setResponseHeaders(event, ogResponseHeaders)
+      }
 
       return response
     })
