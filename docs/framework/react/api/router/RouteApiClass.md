@@ -33,7 +33,7 @@ The `RouteApi` class implements the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the `useMatch` hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useMatch`](./api/router/useMatchHook) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -51,7 +51,7 @@ The `RouteApi` class implements the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the `useRouteContext` hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useRouteContext`](./api/router/useRouteContextHook) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -87,7 +87,7 @@ The `RouteApi` class implements the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the `useParams` hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useParams`](./api/router/useParamsHook) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -105,7 +105,7 @@ The `RouteApi` class implements the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the `useLoaderData` hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useLoaderData`](./api/router/useLoaderDataHook) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional

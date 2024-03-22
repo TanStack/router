@@ -39,6 +39,7 @@ title: Router API
   - [`useNavigate()`](./api/router/useNavigateHook)
   - [`useParentMatches()`](./api/router/useParentMatchesHook)
   - [`useParams()`](./api/router/useParamsHook)
+  - [`useRouteContext()`](./api/router/useRouteContextHook)
   - [`useRouter()`](./api/router/useRouterHook)
   - [`useRouterState()`](./api/router/useRouterStateHook)
 - Types
