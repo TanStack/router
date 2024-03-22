@@ -69,7 +69,7 @@ The `RouteApi` class implements the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the `useSearch` hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useSearch`](./api/router/useSearchHook) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional

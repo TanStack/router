@@ -42,6 +42,7 @@ title: Router API
   - [`useRouteContext()`](./api/router/useRouteContextHook)
   - [`useRouter()`](./api/router/useRouterHook)
   - [`useRouterState()`](./api/router/useRouterStateHook)
+  - [`useSearch()`](./api/router/useSearchHook)
 - Types
   - [`ActiveLinkOptions Type`](./api/router/ActiveLinkOptionsType)
   - [`AllParams Type`](./api/router/AllParamsType)
