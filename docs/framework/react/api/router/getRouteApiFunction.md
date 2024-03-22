@@ -3,7 +3,7 @@ id: getRouteApiFunction
 title: getRouteApi function
 ---
 
-The `getRouteApi` function provides type-safe version of common hooks like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch` that are pre-bound to a specific route ID and corresponding registered route types.
+The `getRouteApi` function provides type-safe version of common hooks like `useParams`, `useSearch`, `useRouteContext`, `useNavigate`, `useLoaderData`, and `useLoaderDeps` that are pre-bound to a specific route ID and corresponding registered route types.
 
 ## getRouteApi options
 
