@@ -135,6 +135,11 @@ export function Match({ matchId }: { matchId: string }) {
     route.options.errorComponent ??
     router.options.defaultErrorComponent ??
     ErrorComponent
+  
+  const routeErrorBoundaryComponent =
+    route.options.errorBoundaryComponent ??
+    router.options.defaultErrorBoundaryComponent ??
+    CatchBoundary
 
   const routeNotFoundComponent = route.isRoot
     ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
@@ -152,7 +157,7 @@ export function Match({ matchId }: { matchId: string }) {
       : SafeFragment
 
   const ResolvedCatchBoundary = routeErrorComponent
-    ? CatchBoundary
+    ? routeErrorBoundaryComponent
     : SafeFragment
 
   const ResolvedNotFoundBoundary = routeNotFoundComponent

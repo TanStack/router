@@ -119,6 +119,7 @@ export interface RouterOptions<
   defaultPreloadDelay?: number
   defaultComponent?: RouteComponent
   defaultErrorComponent?: RouteComponent
+  defaultErrorBoundaryComponent?: RouteComponent
   defaultPendingComponent?: RouteComponent
   defaultPendingMs?: number
   defaultPendingMinMs?: number

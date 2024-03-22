@@ -220,17 +220,27 @@ type loaderDeps = (opts: {
 ### `component` property
 
 - Type: `RouteComponent` or `LazyRouteComponent`
-- Optional - Defaults to `<Outlet />`
+- Optional
+- Defaults to `<Outlet />`
 - The content to be rendered when the route is matched.
 
 ### `errorComponent` property
 
 - Type: `RouteComponent` or `LazyRouteComponent`
-- Optional - Defaults to `routerOptions.defaultErrorComponent`
+- Optional
+- Defaults to `routerOptions.defaultErrorComponent`
 - The content to be rendered when the route encounters an error.
+
+### `errorBoundaryComponent` property
+
+- Type: `RouteComponent`
+- Optional
+- Defaults to `routerOptions.defaultErrorBoundaryComponent`
+- The error boundary component to be rendered around each `Outlet`.
 
 ### `pendingComponent` property
 
 - Type: `RouteComponent` or `LazyRouteComponent`
-- Optional - Defaults to `routerOptions.defaultPendingComponent`
+- Optional
+- Defaults to `routerOptions.defaultPendingComponent`
 - The content to be rendered if and when the route is pending and has reached its pendingMs threshold.

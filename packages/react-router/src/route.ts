@@ -231,6 +231,7 @@ export type UpdatableRouteOptions<
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
   component?: RouteComponent
   errorComponent?: false | null | ErrorRouteComponent
+  errorBoundaryComponent?: false | null | RouteComponent
   notFoundComponent?: NotFoundRouteComponent
   pendingComponent?: RouteComponent
   pendingMs?: number

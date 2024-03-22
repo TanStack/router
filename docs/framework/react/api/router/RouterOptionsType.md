@@ -64,11 +64,19 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Defaults to `ErrorComponent`
 - The default `errorComponent` a route should use if no error component is provided.
 
+### `defaultErrorBoundaryComponent` property
+
+- Type: `RouteComponent`
+- Optional
+- Defaults to `CatchBoundary`
+- The default `errorBoundaryComponent` a route should use if no error boundary component is provided.
+
 ### `defaultPendingComponent` property
 
 - Type: `RouteComponent`
 - Optional
 - The default `pendingComponent` a route should use if no pending component is provided.
+
 
 ### `defaultPendingMs` property
 
