@@ -5,7 +5,7 @@ title: RouteApi class
 
 > 🚧 The `RouteApiClass` class is deprecated and will be removed in the next major version of TanStack Router. Please use the [`getRouteApi`](./api/router/getRouteApiFunction) function instead. The constructor and methods associated with this class will be implemented on its functional counterpart in the next major release.
 
-The `RouteApi` class provides type-safe version of common hooks like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch` that are pre-bound to a specific route ID and corresponding registered route types.
+The `RouteApi` class provides type-safe version of common hooks like `useParams`, `useSearch`, `useRouteContext`, `useNavigate`, `useLoaderData`, and `useLoaderDeps` that are pre-bound to a specific route ID and corresponding registered route types.
 
 ## Constructor options
 
@@ -19,7 +19,7 @@ The `RouteApi` constructor accepts a single argument: the `options` that will be
 
 ## Constructor returns
 
-- A `RouteApi` instance that is pre-bound to the route ID that the `RouteApi` constructor was called with that provides type-safe versions of common hooks like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch`.
+- A `RouteApi` instance that is pre-bound to the route ID that the `RouteApi` constructor was called with that provides type-safe versions of common hooks like `useParams`, `useSearch`, `useRouteContext`, `useNavigate`, `useLoaderData`, and `useLoaderDeps`.
 
 ## `RouteApi` properties and methods
 
