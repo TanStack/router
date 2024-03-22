@@ -132,9 +132,7 @@ export function Match({ matchId }: { matchId: string }) {
   const pendingElement = PendingComponent ? <PendingComponent /> : null
 
   const routeErrorComponent =
-    route.options.errorComponent ??
-    router.options.defaultErrorComponent ??
-    ErrorComponent
+    route.options.errorComponent ?? router.options.defaultErrorComponent
 
   const routeNotFoundComponent = route.isRoot
     ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
@@ -164,7 +162,7 @@ export function Match({ matchId }: { matchId: string }) {
       <ResolvedSuspenseBoundary fallback={pendingElement}>
         <ResolvedCatchBoundary
           getResetKey={() => router.state.resolvedLocation.state?.key!}
-          errorComponent={routeErrorComponent}
+          errorComponent={routeErrorComponent ?? ErrorComponent}
           onCatch={(error) => {
             // Forward not found errors (we don't want to show the error component for these)
             if (isNotFound(error)) throw error
