@@ -115,6 +115,14 @@ The `RouteApi` class implements the following properties and methods:
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TLoaderData` object or a loosened version of the `TLoaderData` object if `opts.strict` is `false`.
 
+### `useNavigate` method
+
+```tsx
+  useNavigate(): // navigate function
+```
+
+- A type-safe version of [`useNavigate`](./api/router/useNavigateHook) that is pre-bound to the route ID that the `RouteApi` instance was created with.
+
 ## Examples
 
 ```tsx
