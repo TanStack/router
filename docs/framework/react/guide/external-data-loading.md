@@ -15,7 +15,6 @@ Router is designed to be a perfect **coordinator** for external data fetching an
 
 Any data fetching library that supports asynchronous promises can be used with TanStack Router. This includes:
 
-- [TanStack Loaders](#tanstack-loaders)
 - [TanStack Query](https://tanstack.com/query/latest/docs/react/overview)
 - [SWR](https://swr.vercel.app/)
 - [RTK Query](https://redux-toolkit.js.org/rtk-query/overview)
