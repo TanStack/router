@@ -1,12 +1,7 @@
-import {
-  decode,
-  isNotFound,
-  isRedirect,
-  serverFnPayloadTypeHeader,
-  serverFnReturnTypeHeader,
-} from '@tanstack/react-router'
+import { decode, isNotFound, isRedirect } from '@tanstack/react-router'
 import invariant from 'vinxi/lib/invariant'
 import { getManifest } from 'vinxi/manifest'
+import { serverFnPayloadTypeHeader, serverFnReturnTypeHeader } from '../client'
 
 export async function handleRequest(request: Request) {
   const method = request.method
@@ -44,6 +39,18 @@ export async function handleRequest(request: Request) {
             ] as const
           }
 
+          if (request.headers.get(serverFnPayloadTypeHeader) === 'formData') {
+            return [
+              method.toLowerCase() === 'get'
+                ? (() => {
+                    const { _serverFnId, _serverFnName, ...rest } = search
+                    return rest
+                  })()
+                : await request.formData(),
+              { method, request },
+            ] as const
+          }
+
           if (request.headers.get(serverFnPayloadTypeHeader) === 'request') {
             return [request, { method, request }] as const
           }
@@ -53,6 +60,10 @@ export async function handleRequest(request: Request) {
         })()
 
         let result = await action.apply(null, args)
+
+        if (isRedirect(result) || isNotFound(result)) {
+          return redirectOrNotFoundResponse(result)
+        }
 
         if (result instanceof Response) {
           return result
@@ -71,18 +82,17 @@ export async function handleRequest(request: Request) {
 
         return response
       } catch (error: any) {
+        if (error instanceof Response) {
+          return error
+        }
+
         // Currently this server-side context has no idea how to
         // build final URLs, so we need to defer that to the client.
         // The client will check for __redirect and __notFound keys,
         // and if they exist, it will handle them appropriately.
 
         if (isRedirect(error) || isNotFound(error)) {
-          return new Response(JSON.stringify(error), {
-            headers: {
-              'Content-Type': 'application/json',
-              [serverFnReturnTypeHeader]: 'json',
-            },
-          })
+          return redirectOrNotFoundResponse(error)
         }
 
         console.error('Server Fn Error!')
@@ -118,4 +128,14 @@ export async function handleRequest(request: Request) {
   } else {
     throw new Error('Invalid request')
   }
+}
+
+function redirectOrNotFoundResponse(error: any) {
+  return new Response(JSON.stringify(error), {
+    headers: {
+      'Content-Type': 'application/json',
+      [serverFnReturnTypeHeader]: 'json',
+      ...(error.headers || {}),
+    },
+  })
 }

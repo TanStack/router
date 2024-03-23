@@ -132,9 +132,7 @@ export function Match({ matchId }: { matchId: string }) {
   const pendingElement = PendingComponent ? <PendingComponent /> : null
 
   const routeErrorComponent =
-    route.options.errorComponent ??
-    router.options.defaultErrorComponent ??
-    ErrorComponent
+    route.options.errorComponent ?? router.options.defaultErrorComponent
 
   const routeNotFoundComponent = route.isRoot
     ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
@@ -164,7 +162,7 @@ export function Match({ matchId }: { matchId: string }) {
       <ResolvedSuspenseBoundary fallback={pendingElement}>
         <ResolvedCatchBoundary
           getResetKey={() => router.state.resolvedLocation.state?.key!}
-          errorComponent={routeErrorComponent}
+          errorComponent={routeErrorComponent ?? ErrorComponent}
           onCatch={(error) => {
             // Forward not found errors (we don't want to show the error component for these)
             if (isNotFound(error)) throw error
@@ -472,33 +470,7 @@ export function useMatch<
     select?: (match: TRouteMatchState) => TSelected
   },
 ): TSelected {
-  const router = useRouter()
   const nearestMatchId = React.useContext(matchContext)
-
-  const nearestMatchRouteId = getRenderedMatches(router.state).find(
-    (d) => d.id === nearestMatchId,
-  )?.routeId
-
-  const matchRouteId = (() => {
-    const matches = getRenderedMatches(router.state)
-    const match = opts?.from
-      ? matches.find((d) => d.routeId === opts?.from)
-      : matches.find((d) => d.id === nearestMatchId)
-    return match!.routeId
-  })()
-
-  if (opts?.strict ?? true) {
-    invariant(
-      nearestMatchRouteId == matchRouteId,
-      `useMatch("${
-        matchRouteId as string
-      }") is being called in a component that is meant to render the '${nearestMatchRouteId}' route. Did you mean to 'useMatch("${
-        matchRouteId as string
-      }", { strict: false })' or 'useRoute("${
-        matchRouteId as string
-      }")' instead?`,
-    )
-  }
 
   const matchSelection = useRouterState({
     select: (state) => {
@@ -652,6 +624,9 @@ export function defaultDeserializeError(serializedData: Record<string, any>) {
   if ('name' in serializedData && 'message' in serializedData) {
     const error = new Error(serializedData.message)
     error.name = serializedData.name
+    if (process.env.NODE_ENV === 'development') {
+      error.stack = serializedData.stack
+    }
     return error
   }
 
