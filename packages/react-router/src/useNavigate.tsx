@@ -22,16 +22,16 @@ export function useNavigate<
 >(_defaultOpts?: {
   from?: RoutePathsAutoComplete<RegisteredRouter['routeTree'], TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const { navigate, state } = useRouter()
+  const router = useRouter()
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      return navigate({
+      return router.navigate({
         ...options,
-        from: options?.to ? state.location.pathname : undefined,
+        from: options?.to ? router.state.location.pathname : undefined,
       })
     },
-    [navigate],
+    [router],
   )
 }
 
