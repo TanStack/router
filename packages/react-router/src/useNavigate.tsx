@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useMatch } from './Matches'
 import { useRouter } from './useRouter'
-import { LinkOptions, NavigateOptions } from './link'
+import { NavigateOptions } from './link'
 import { AnyRoute } from './route'
 import { RoutePaths, RoutePathsAutoComplete } from './routeInfo'
 import { RegisteredRouter } from './router'
@@ -21,22 +21,18 @@ export function useNavigate<
   TDefaultFrom extends string = string,
 >(_defaultOpts?: {
   from?: RoutePathsAutoComplete<RegisteredRouter['routeTree'], TDefaultFrom>
-}) {
-  const { navigate } = useRouter()
+}): UseNavigateResult<TDefaultFrom> {
+  const { navigate, state } = useRouter()
 
-  const matchPathname = useMatch({
-    strict: false,
-    select: (s) => s.pathname,
-  })
-
-  const result: UseNavigateResult<TDefaultFrom> = ({ from, ...rest }) => {
-    return navigate({
-      from: rest?.to ? matchPathname : undefined,
-      ...(rest as any),
-    })
-  }
-
-  return React.useCallback(result, [])
+  return React.useCallback(
+    (options: NavigateOptions) => {
+      return navigate({
+        ...options,
+        from: options?.to ? state.location.pathname : undefined,
+      })
+    },
+    [navigate],
+  )
 }
 
 // NOTE: I don't know of anyone using this. It's undocumented, so let's wait until someone needs it
