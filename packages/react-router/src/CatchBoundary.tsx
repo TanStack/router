@@ -12,10 +12,11 @@ export function CatchBoundary(props: {
     <CatchBoundaryImpl
       getResetKey={props.getResetKey}
       onCatch={props.onCatch}
-      children={({ error }) => {
+      children={({ error, reset }) => {
         if (error) {
           return React.createElement(errorComponent, {
             error,
+            reset,
           })
         }
 
@@ -25,28 +26,31 @@ export function CatchBoundary(props: {
   )
 }
 
-export class CatchBoundaryImpl extends React.Component<{
-  getResetKey?: () => string
+class CatchBoundaryImpl extends React.Component<{
+  getResetKey: () => string
   children: (props: { error: any; reset: () => void }) => any
   onCatch?: (error: any) => void
 }> {
-  state = { error: null } as any
+  state = { error: null } as { error: any; resetKey: string }
   static getDerivedStateFromProps(props: any) {
-    return { resetKey: props.getResetKey?.() }
+    return { resetKey: props.getResetKey() }
   }
   static getDerivedStateFromError(error: any) {
     return { error }
   }
+  reset() {
+    this.setState({ error: null })
+  }
   componentDidUpdate(
     prevProps: Readonly<{
-      getResetKey?: () => string
+      getResetKey: () => string
       children: (props: { error: any; reset: () => void }) => any
       onCatch?: ((error: any, info: any) => void) | undefined
     }>,
     prevState: any,
   ): void {
     if (prevState.error && prevState.resetKey !== this.state.resetKey) {
-      this.setState({ error: null })
+      this.reset()
     }
   }
   componentDidCatch(error: any) {
@@ -57,7 +61,12 @@ export class CatchBoundaryImpl extends React.Component<{
     }
   }
   render() {
-    return this.props.children(this.state)
+    return this.props.children({
+      error: this.state.error,
+      reset: () => {
+        this.reset()
+      },
+    })
   }
 }
 

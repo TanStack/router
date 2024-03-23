@@ -1241,12 +1241,14 @@ export function createRouteMask<
  */
 export type ErrorRouteProps = {
   error: unknown
-  info: { componentStack: string }
+  info?: { componentStack: string }
+  reset: () => void
 }
 
 export type ErrorComponentProps = {
   error: unknown
-  info: { componentStack: string }
+  info?: { componentStack: string }
+  reset: () => void
 }
 export type NotFoundRouteProps = {
   // TODO: Make sure this is `| null | undefined` (this is for global not-founds)
