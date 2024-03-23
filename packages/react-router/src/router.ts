@@ -19,6 +19,7 @@ import {
   LoaderFnContext,
   rootRouteId,
   NotFoundRouteComponent,
+  ErrorRouteComponent,
 } from './route'
 import {
   FullSearchSchema,
@@ -118,7 +119,7 @@ export interface RouterOptions<
   defaultPreload?: false | 'intent'
   defaultPreloadDelay?: number
   defaultComponent?: RouteComponent
-  defaultErrorComponent?: RouteComponent
+  defaultErrorComponent?: ErrorRouteComponent
   defaultPendingComponent?: RouteComponent
   defaultPendingMs?: number
   defaultPendingMinMs?: number
