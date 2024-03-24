@@ -20,6 +20,7 @@ import {
 import { BuildLocationFn, NavigateFn } from './RouterProvider'
 import { NotFoundError, notFound } from './not-found'
 import { LazyRoute } from './fileRoute'
+import { useNavigate } from './useNavigate'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -528,6 +529,10 @@ export class RouteApi<
     select?: (s: TLoaderData) => TSelected
   }): TSelected => {
     return useLoaderData({ ...opts, from: this.id, strict: false } as any)
+  }
+
+  useNavigate = () => {
+    return useNavigate({ from: this.id })
   }
 
   notFound = (opts?: NotFoundError) => {

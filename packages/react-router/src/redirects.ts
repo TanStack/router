@@ -20,6 +20,7 @@ export type Redirect<
   code?: number
   statusCode?: number
   throw?: any
+  headers?: HeadersInit
 } & NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export type ResolvedRedirect<
@@ -30,7 +31,7 @@ export type ResolvedRedirect<
   TMaskTo extends string = '',
 > = PickAsRequired<
   Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-  'code' | 'statusCode' | 'href'
+  'code' | 'statusCode' | 'href' | 'headers'
 >
 
 export function redirect<
@@ -44,7 +45,8 @@ export function redirect<
 ): Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> {
   ;(opts as any).isRedirect = true
   opts.statusCode = opts.statusCode || opts.code || 301
-  if (opts.throw ?? true) {
+  opts.headers = opts.headers || {}
+  if (opts.throw) {
     throw opts
   }
 

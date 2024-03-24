@@ -1,6 +1,6 @@
 ---
 id: useParamsHook
-title: useParams
+title: useParams hook
 ---
 
 The `useParams` method returns all of the path parameters that were parsed for the closest match and all of its parent matches.

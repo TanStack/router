@@ -818,7 +818,9 @@ export class Router<
     return matches as any
   }
 
-  cancelMatch = (id: string) => {}
+  cancelMatch = (id: string) => {
+    getRouteMatch(this.state, id)?.abortController.abort()
+  }
 
   cancelMatches = () => {
     this.state.pendingMatches?.forEach((match) => {
@@ -2074,11 +2076,18 @@ export function getInitialRouterState(
 }
 
 export function defaultSerializeError(err: unknown) {
-  if (err instanceof Error)
-    return {
+  if (err instanceof Error) {
+    const obj = {
       name: err.name,
       message: err.message,
     }
+
+    if (process.env.NODE_ENV === 'development') {
+      ;(obj as any).stack = err.stack
+    }
+
+    return obj
+  }
 
   return {
     data: err,

@@ -1,5 +1,5 @@
-import { FetchFn } from '@tanstack/react-router'
-import { fetcher } from './server-fns/fetcher'
+import { FetchFn } from '.'
+import { fetcher } from '../server-fns/fetcher'
 
 export function getBaseUrl(base: string | undefined, id: string, name: string) {
   return `${base}/_server/?_serverFnId=${encodeURI(id)}&_serverFnName=${encodeURI(name)}`

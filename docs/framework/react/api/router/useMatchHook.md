@@ -3,7 +3,7 @@ id: useMatchHook
 title: useMatch hook
 ---
 
-The `useMatch` hook returns the closest [`RouteMatch`](./api/router/RouteMatchType) in the component tree. The raw route match contains all of the information about a route match in the router and also powers many other hooks under the hood like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch`.
+The `useMatch` hook returns a [`RouteMatch`](./api/router/RouteMatchType) in the component tree. The raw route match contains all of the information about a route match in the router and also powers many other hooks under the hood like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch`.
 
 ## useMatch options
 
@@ -12,7 +12,7 @@ The `useMatch` hook accepts a single argument, an `options` object.
 ### `opts.from` option
 
 - Type: `string`
-- The route id of the closest parent match
+- The route id of a match
 - Optional, but recommended for full type safety.
 - If `opts.strict` is `true`, `from` is required and TypeScript will warn for this option if it is not provided.
 - If `opts.strict` is `false`, `from` must not be set and TypeScript will provided loosened types for the returned [`RouteMatch`](./api/router/RouteMatchType).
@@ -36,11 +36,28 @@ The `useMatch` hook accepts a single argument, an `options` object.
 
 ## Examples
 
+### accessing a route match
+
 ```tsx
 import { useMatch } from '@tanstack/react-router'
 
 function Component() {
-  const match = useMatch({ from: '/posts/$postId', strict: true })
+  const match = useMatch({ from: '/posts/$postId' })
+  //     ^? strict match for RouteMatch
+  // ...
+}
+```
+
+### accessing the root route's match
+
+```tsx
+import {
+  useMatch,
+  rootRouteId, // <<<< use this token!
+} from '@tanstack/react-router'
+
+function Component() {
+  const match = useMatch({ from: rootRouteId })
   //     ^? strict match for RouteMatch
   // ...
 }

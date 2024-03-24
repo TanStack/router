@@ -5,7 +5,7 @@ title: RouteApi class
 
 > 🚧 The `RouteApiClass` class is deprecated and will be removed in the next major version of TanStack Router. Please use the [`getRouteApi`](./api/router/getRouteApiFunction) function instead. The constructor and methods associated with this class will be implemented on its functional counterpart in the next major release.
 
-The `RouteApi` class provides type-safe version of common hooks like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch` that are pre-bound to a specific route ID and corresponding registered route types.
+The `RouteApi` class provides type-safe version of common hooks like `useParams`, `useSearch`, `useRouteContext`, `useNavigate`, `useLoaderData`, and `useLoaderDeps` that are pre-bound to a specific route ID and corresponding registered route types.
 
 ## Constructor options
 
@@ -19,7 +19,7 @@ The `RouteApi` constructor accepts a single argument: the `options` that will be
 
 ## Constructor returns
 
-- A `RouteApi` instance that is pre-bound to the route ID that the `RouteApi` constructor was called with that provides type-safe versions of common hooks like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch`.
+- A `RouteApi` instance that is pre-bound to the route ID that the `RouteApi` constructor was called with that provides type-safe versions of common hooks like `useParams`, `useSearch`, `useRouteContext`, `useNavigate`, `useLoaderData`, and `useLoaderDeps`.
 
 ## `RouteApi` properties and methods
 
@@ -33,7 +33,7 @@ The `RouteApi` class implements the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the `useMatch` hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useMatch`](./api/router/useMatchHook) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -51,7 +51,7 @@ The `RouteApi` class implements the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the `useRouteContext` hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useRouteContext`](./api/router/useRouteContextHook) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -69,7 +69,7 @@ The `RouteApi` class implements the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the `useSearch` hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useSearch`](./api/router/useSearchHook) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -87,7 +87,7 @@ The `RouteApi` class implements the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the `useParams` hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useParams`](./api/router/useParamsHook) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -105,7 +105,7 @@ The `RouteApi` class implements the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the `useLoaderData` hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useLoaderData`](./api/router/useLoaderDataHook) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -114,6 +114,32 @@ The `RouteApi` class implements the following properties and methods:
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TLoaderData` object or a loosened version of the `TLoaderData` object if `opts.strict` is `false`.
+
+### `useLoaderDeps` method
+
+```tsx
+  useLoaderDeps<TSelected = TLoaderDeps>(opts?: {
+    select?: (search: TLoaderDeps) => TSelected
+  }): TSelected
+```
+
+- A type-safe version of the [`useLoaderDeps`](./api/router/useLoaderDepsHook) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- Options
+  - `opts.select`
+    - Optional
+    - `(match: TLoaderDeps) => TSelected`
+    - If supplied, this function will be called with the route match and the return value will be returned from `useLoaderDeps`.
+- Returns
+  - If a `select` function is provided, the return value of the `select` function.
+  - If no `select` function is provided, the `TLoaderDeps` object.
+
+### `useNavigate` method
+
+```tsx
+  useNavigate(): // navigate function
+```
+
+- A type-safe version of [`useNavigate`](./api/router/useNavigateHook) that is pre-bound to the route ID that the `RouteApi` instance was created with.
 
 ## Examples
 

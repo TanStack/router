@@ -326,6 +326,10 @@ export type StrictOrFrom<TFrom, TReturnIntersection extends boolean = false> =
 export const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
+/**
+ *
+ * @deprecated use `jsesc` instead
+ */
 export function escapeJSON(jsonString: string) {
   return jsonString
     .replace(/\\/g, '\\\\') // Escape backslashes
