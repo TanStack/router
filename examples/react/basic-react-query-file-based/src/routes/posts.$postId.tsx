@@ -1,30 +1,52 @@
 import * as React from 'react'
 import {
   ErrorComponent,
-  ErrorRouteProps,
+  ErrorComponentProps,
   Link,
+  useRouter,
   createFileRoute,
 } from '@tanstack/react-router'
 import { PostNotFoundError } from '../posts'
 import { postQueryOptions } from '../postQueryOptions'
+import {
+  useSuspenseQuery,
+  useQueryErrorResetBoundary,
+} from '@tanstack/react-query'
 
 export const Route = createFileRoute('/posts/$postId')({
-  loader: ({ context: { queryClient }, params: { postId } }) =>
-    queryClient.ensureQueryData(postQueryOptions(postId)),
-  errorComponent: PostErrorComponent as any,
+  loader: ({ context: { queryClient }, params: { postId } }) => {
+    return queryClient.ensureQueryData(postQueryOptions(postId))
+  },
+  errorComponent: PostErrorComponent,
   component: PostComponent,
 })
 
-export function PostErrorComponent({ error }: ErrorRouteProps) {
+export function PostErrorComponent({ error, reset }: ErrorComponentProps) {
+  const router = useRouter()
   if (error instanceof PostNotFoundError) {
     return <div>{error.message}</div>
   }
+  const queryErrorResetBoundary = useQueryErrorResetBoundary()
 
-  return <ErrorComponent error={error} />
+  return (
+    <div>
+      <button
+        onClick={() => {
+          reset()
+          queryErrorResetBoundary.reset()
+          router.invalidate()
+        }}
+      >
+        retry
+      </button>
+      <ErrorComponent error={error} />
+    </div>
+  )
 }
 
 function PostComponent() {
-  const post = Route.useLoaderData()
+  const postId = Route.useParams().postId
+  const { data: post } = useSuspenseQuery(postQueryOptions(postId))
 
   return (
     <div className="space-y-2">
