@@ -28,7 +28,7 @@ export function useNavigate<
     (options: NavigateOptions) => {
       return router.navigate({
         ...options,
-        from: options?.to ? router.state.location.pathname : undefined,
+        from: options?.to ? router.state.resolvedLocation.pathname : undefined,
       })
     },
     [router],
