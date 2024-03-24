@@ -1533,9 +1533,10 @@ export class Router<
   }
 
   invalidate = () => {
-    const invalidate = (d: any) => ({
+    const invalidate = (d: RouteMatch<TRouteTree>) => ({
       ...d,
       invalid: true,
+      ...(d.status === 'error' ? ({ status: 'pending' } as const) : {}),
     })
 
     this.__store.setState((s) => ({
@@ -1545,7 +1546,7 @@ export class Router<
       pendingMatches: s.pendingMatches?.map(invalidate),
     }))
 
-    this.load()
+    return this.load()
   }
 
   load = async (): Promise<void> => {
