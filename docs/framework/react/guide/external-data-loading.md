@@ -109,10 +109,10 @@ export const Route = createFileRoute('/posts')({
   errorComponent: ({ error, reset }) => {
     const router = useRouter()
     const queryErrorResetBoundary = useQueryErrorResetBoundary()
-    
+
     return (
       <div>
-        { error.message }
+        {error.message}
         <button
           onClick={() => {
             // Reset the router error boundary

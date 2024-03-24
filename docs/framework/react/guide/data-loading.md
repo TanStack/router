@@ -444,10 +444,10 @@ export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
   errorComponent: ({ error, reset }) => {
     const router = useRouter()
-      
+
     return (
       <div>
-        { error.message }
+        {error.message}
         <button
           onClick={() => {
             // Reset the router error boundary
@@ -461,7 +461,7 @@ export const Route = createFileRoute('/posts')({
       </div>
     )
   },
-}) 
+})
 ```
 
 > ⚠️ Note: If you are _not_ using a `pendingComponent`, you will need to wrap the above function calls into `startTransition` from `React`.
