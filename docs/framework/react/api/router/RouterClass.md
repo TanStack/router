@@ -147,8 +147,9 @@ Navigates to a new location.
 
 Invalidates all route matches by forcing their `beforeLoad` and `load` functions to be called again.
 
-- Type: `() => void`
-- This is useful any time your loader data might possibly be out of date or stale. For example, if you have a route that displays a list of posts, and you have a loader function that fetches the list of posts from an API, you might want to invalidate the route matches for that route any time a new post is created so that the list of posts is always up to date.
+- Type: `() => Promise<void>`
+- This is useful any time your loader data might be out of date or stale. For example, if you have a route that displays a list of posts, and you have a loader function that fetches the list of posts from an API, you might want to invalidate the route matches for that route any time a new post is created so that the list of posts is always up-to-date.
+- You might also want to invalidate the Router if you imperatively `reset` the router's `CatchBoundary` to trigger loaders again.
 
 ### `.load` method
 
