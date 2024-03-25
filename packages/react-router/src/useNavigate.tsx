@@ -2,7 +2,6 @@ import * as React from 'react'
 import { useMatch } from './Matches'
 import { useRouter } from './useRouter'
 
-import { LinkOptions } from './link'
 import type { NavigateOptions } from './link'
 import type { AnyRoute } from './route'
 import type { RoutePaths, RoutePathsAutoComplete } from './routeInfo'
@@ -30,7 +29,7 @@ export function useNavigate<
     (options: NavigateOptions) => {
       return router.navigate({
         ...options,
-        from: options?.to ? router.state.resolvedLocation.pathname : undefined,
+        from: options.to ? router.state.resolvedLocation.pathname : undefined,
       })
     },
     [router],
