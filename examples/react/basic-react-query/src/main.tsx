@@ -9,6 +9,7 @@ import {
   createRootRouteWithContext,
   ErrorComponentProps,
   createRoute,
+  useRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
@@ -20,7 +21,6 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import axios from 'axios'
-import { useRouter } from '@tanstack/react-router/src'
 
 type PostType = {
   id: string
