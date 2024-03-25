@@ -34,7 +34,7 @@
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:types": "tsc",
+    "test:types": "tsc --noEmit",
     "test:build": "publint --strict",
     "build": "vite build"
   },

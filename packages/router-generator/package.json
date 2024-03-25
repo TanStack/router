@@ -33,7 +33,7 @@
   },
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:types": "tsc",
+    "test:types": "tsc --noEmit",
     "test:lib": "vitest",
     "test:build": "publint --strict",
     "build": "vite build"

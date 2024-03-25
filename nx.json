@@ -40,7 +40,7 @@
     },
     "test:types": {
       "dependsOn": ["^build"],
-      "inputs": ["default", "^public"],
+      "inputs": ["default", "^public", { "env": "TS_VERSION" }],
       "cache": true
     },
     "test:build": {
