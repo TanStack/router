@@ -1,8 +1,9 @@
 import React from 'react'
-import { AnyRootRoute, AnyRoute, AnyRouteMatch } from '@tanstack/react-router'
-
-import { Theme, useTheme } from './theme'
+import { useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
+import type { AnyRootRoute, AnyRoute, AnyRouteMatch } from '@tanstack/react-router'
+
+import type { Theme} from './theme';
 
 export const isServer = typeof window === 'undefined'
 
@@ -38,7 +39,7 @@ export function getStatusColor(match: AnyRouteMatch) {
 }
 
 export function getRouteStatusColor(
-  matches: AnyRouteMatch[],
+  matches: Array<AnyRouteMatch>,
   route: AnyRoute | AnyRootRoute,
 ) {
   const found = matches.find((d) => d.routeId === route.id)
@@ -153,9 +154,9 @@ function scheduleMicrotask(callback: () => void) {
 }
 
 export function multiSortBy<T>(
-  arr: T[],
-  accessors: ((item: T) => any)[] = [(d) => d],
-): T[] {
+  arr: Array<T>,
+  accessors: Array<(item: T) => any> = [(d) => d],
+): Array<T> {
   return arr
     .map((d, i) => [d, i] as const)
     .sort(([a, ai], [b, bi]) => {

@@ -1,17 +1,14 @@
 import React from 'react'
 import {
   invariant,
-  AnyRouter,
-  Route,
-  AnyRoute,
-  AnyRootRoute,
+  rootRouteId,
   trimPath,
   useRouter,
   useRouterState,
-  AnyRouteMatch,
-  rootRouteId,
 } from '@tanstack/react-router'
 
+import { css } from 'goober'
+import { clsx as cx } from 'clsx'
 import useLocalStorage from './useLocalStorage'
 import {
   getRouteStatusColor,
@@ -20,11 +17,15 @@ import {
   useIsMounted,
   useSafeState,
 } from './utils'
-import { css } from 'goober'
-import { clsx as cx } from 'clsx'
 import Explorer from './Explorer'
 import { tokens } from './tokens'
 import { TanStackLogo } from './logo'
+import type {
+  AnyRootRoute,
+  AnyRoute,
+  AnyRouteMatch,
+  AnyRouter,
+  Route} from '@tanstack/react-router';
 
 export type PartialKeys<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
 
@@ -165,7 +166,7 @@ export function TanStackRouterDevtools({
 
     const run = (moveEvent: MouseEvent) => {
       const delta = dragInfo.pageY - moveEvent.pageY
-      const newHeight = dragInfo?.originalHeight + delta
+      const newHeight = dragInfo.originalHeight + delta
 
       setDevtoolsHeight(newHeight)
 
@@ -194,11 +195,11 @@ export function TanStackRouterDevtools({
 
   React.useEffect(() => {
     if (isResolvedOpen) {
-      const previousValue = rootEl?.parentElement?.style.paddingBottom
+      const previousValue = rootEl.parentElement?.style.paddingBottom
 
       const run = () => {
         const containerHeight = panelRef.current?.getBoundingClientRect().height
-        if (rootEl?.parentElement) {
+        if (rootEl.parentElement) {
           rootEl.parentElement.style.paddingBottom = `${containerHeight}px`
         }
       }
@@ -210,7 +211,7 @@ export function TanStackRouterDevtools({
 
         return () => {
           window.removeEventListener('resize', run)
-          if (rootEl?.parentElement && typeof previousValue === 'string') {
+          if (rootEl.parentElement && typeof previousValue === 'string') {
             rootEl.parentElement.style.paddingBottom = previousValue
           }
         }
@@ -390,9 +391,9 @@ function RouteComp({
           <AgeTicker match={match} router={router} />
         </div>
       </div>
-      {(route.children as Route[])?.length ? (
+      {(route.children as Array<Route>).length ? (
         <div className={getStyles().nestedRouteRow(!!isRoot)}>
-          {[...(route.children as Route[])]
+          {[...(route.children as Array<Route>)]
             .sort((a, b) => {
               return a.rank - b.rank
             })
@@ -658,7 +659,7 @@ const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
             )}
           </div>
         </div>
-        {routerState.cachedMatches?.length ? (
+        {routerState.cachedMatches.length ? (
           <div className={getStyles().cachedMatchesContainer}>
             <div className={getStyles().detailsHeader}>
               <div>Cached Matches</div>
@@ -724,7 +725,7 @@ const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
                     (d) => d.id === activeMatch.id,
                   )
                     ? 'Pending'
-                    : routerState.matches?.find((d) => d.id === activeMatch.id)
+                    : routerState.matches.find((d) => d.id === activeMatch.id)
                       ? 'Active'
                       : 'Cached'}
                 </div>
@@ -734,7 +735,7 @@ const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
                 <div className={getStyles().matchDetailsInfo}>
                   {activeMatch.updatedAt
                     ? new Date(
-                        activeMatch.updatedAt as number,
+                        activeMatch.updatedAt,
                       ).toLocaleTimeString()
                     : 'N/A'}
                 </div>
@@ -805,13 +806,13 @@ function AgeTicker({
     return null
   }
 
-  const route = router.looseRoutesById[match?.routeId]!
+  const route = router.looseRoutesById[match.routeId]!
 
   if (!route.options.loader) {
     return null
   }
 
-  const age = Date.now() - match?.updatedAt
+  const age = Date.now() - match.updatedAt
   const staleTime =
     route.options.staleTime ?? router.options.defaultStaleTime ?? 0
   const gcTime =
