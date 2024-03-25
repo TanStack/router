@@ -29,7 +29,7 @@ export async function watch() {
 
       await handle()
 
-      let timeout: ReturnType<typeof setTimeout>
+      let timeout: ReturnType<typeof setTimeout> | undefined
 
       const deduped = (file: string) => {
         if (timeout) {
