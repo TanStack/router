@@ -20,9 +20,9 @@ export async function handleRequest(request: Request) {
     console.info(`ServerFn Request: ${serverFnId} - ${serverFnName}`)
     console.info()
 
-    const action = (
-      await getManifest('server').chunks[serverFnId]?.import()
-    )?.[serverFnName] as Function
+    const action = (await getManifest('server').chunks[serverFnId]?.import())?.[
+      serverFnName
+    ] as Function
 
     const response = await (async () => {
       try {

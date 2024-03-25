@@ -1,5 +1,5 @@
 import { generator } from '@tanstack/router-generator'
-import type { Config} from '@tanstack/router-generator';
+import type { Config } from '@tanstack/router-generator'
 
 export async function generate(config: Config) {
   try {

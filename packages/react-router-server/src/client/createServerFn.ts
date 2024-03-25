@@ -41,23 +41,20 @@ type IsPayloadOptional<T> = [T] extends [undefined] ? true : false
 export type Fetcher<TPayload, TResponse> =
   (IsPayloadOptional<TPayload> extends true
     ? (
-          payload?: TPayload,
-          opts?: FetcherOptions,
-        ) => Promise<JsonResponseOrPayload<TResponse>>
+        payload?: TPayload,
+        opts?: FetcherOptions,
+      ) => Promise<JsonResponseOrPayload<TResponse>>
     : (
-          payload: TPayload,
-          opts?: FetcherOptions,
-        ) => Promise<JsonResponseOrPayload<TResponse>>) & {
+        payload: TPayload,
+        opts?: FetcherOptions,
+      ) => Promise<JsonResponseOrPayload<TResponse>>) & {
     url: string
   }
 
 export type JsonResponseOrPayload<TResponse> =
   TResponse extends JsonResponse<infer TData> ? TData : TResponse
 
-export function createServerFn<
-  TPayload = undefined,
-  TResponse = unknown,
->(
+export function createServerFn<TPayload = undefined, TResponse = unknown>(
   method: 'GET' | 'POST',
   fn: FetchFn<TPayload, TResponse>,
 ): Fetcher<TPayload, TResponse> {

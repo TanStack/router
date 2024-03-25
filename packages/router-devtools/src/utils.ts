@@ -1,9 +1,13 @@
 import React from 'react'
 import { useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
-import type { AnyRootRoute, AnyRoute, AnyRouteMatch } from '@tanstack/react-router'
+import type {
+  AnyRootRoute,
+  AnyRoute,
+  AnyRouteMatch,
+} from '@tanstack/react-router'
 
-import type { Theme} from './theme';
+import type { Theme } from './theme'
 
 export const isServer = typeof window === 'undefined'
 

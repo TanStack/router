@@ -1,7 +1,7 @@
 import { Context } from '@tanstack/react-cross-context'
 import { RouterProvider } from '@tanstack/react-router'
 import * as React from 'react'
-import type { AnyRouter} from '@tanstack/react-router';
+import type { AnyRouter } from '@tanstack/react-router'
 
 export function StartServer<TRouter extends AnyRouter>(props: {
   router: TRouter

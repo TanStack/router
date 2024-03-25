@@ -4,12 +4,8 @@ import {
   isPlainObject,
   isRedirect,
 } from '@tanstack/react-router'
-import {
-  serverFnPayloadTypeHeader,
-  serverFnReturnTypeHeader,
-} from '../client'
-import type {
-  CompiledFetcherFnOptions} from '../client';
+import { serverFnPayloadTypeHeader, serverFnReturnTypeHeader } from '../client'
+import type { CompiledFetcherFnOptions } from '../client'
 
 export async function fetcher<TPayload>(
   base: string,

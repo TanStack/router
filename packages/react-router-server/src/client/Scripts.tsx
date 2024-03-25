@@ -12,9 +12,9 @@ export const Scripts = () => {
   const router = useRouter()
 
   const manifestScripts =
-    (router.options.context?.assets.filter(
-      (d: any) => d.tag === 'script',
-    ) as Array<RouterManagedTag> | undefined) ?? []
+    (router.options.context?.assets.filter((d: any) => d.tag === 'script') as
+      | Array<RouterManagedTag>
+      | undefined) ?? []
 
   const { scripts } = useRouterState({
     select: (state) => ({

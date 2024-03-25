@@ -384,7 +384,10 @@ export function createMemoryHistory(
   })
 }
 
-function parseHref(href: string, state: HistoryState | undefined): HistoryLocation {
+function parseHref(
+  href: string,
+  state: HistoryState | undefined,
+): HistoryLocation {
   const hashIndex = href.indexOf('#')
   const searchIndex = href.indexOf('?')
 
