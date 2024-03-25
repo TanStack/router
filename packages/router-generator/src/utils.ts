@@ -9,19 +9,19 @@ export function trimPathLeft(path: string) {
 
 export function logging(config: { disabled: boolean }) {
   return {
-    log: (...args: any[]) => {
+    log: (...args: Array<any>) => {
       if (!config.disabled) console.log(...args)
     },
-    debug: (...args: any[]) => {
+    debug: (...args: Array<any>) => {
       if (!config.disabled) console.debug(...args)
     },
-    info: (...args: any[]) => {
+    info: (...args: Array<any>) => {
       if (!config.disabled) console.info(...args)
     },
-    warn: (...args: any[]) => {
+    warn: (...args: Array<any>) => {
       if (!config.disabled) console.warn(...args)
     },
-    error: (...args: any[]) => {
+    error: (...args: Array<any>) => {
       if (!config.disabled) console.error(...args)
     },
   }
