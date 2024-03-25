@@ -153,7 +153,7 @@ export function createHistory(opts: {
   }
 }
 
-function assignKey(state: HistoryState) {
+function assignKey(state: HistoryState | undefined) {
   if (!state) {
     state = {} as HistoryState
   }
@@ -313,14 +313,14 @@ export function createBrowserHistory(opts?: {
   win.addEventListener(pushStateEvent, onPushPop)
   win.addEventListener(popStateEvent, onPushPop)
 
-  win.history.pushState = function () {
-    const res = originalPushState.apply(win.history, arguments as any)
+  win.history.pushState = function (...args: Array<any>) {
+    const res = originalPushState.apply(win.history, args)
     if (tracking) history.notify()
     return res
   }
 
-  win.history.replaceState = function () {
-    const res = originalReplaceState.apply(win.history, arguments as any)
+  win.history.replaceState = function (...args: Array<any>) {
+    const res = originalReplaceState.apply(win.history, args)
     if (tracking) history.notify()
     return res
   }
@@ -384,7 +384,7 @@ export function createMemoryHistory(
   })
 }
 
-function parseHref(href: string, state: HistoryState): HistoryLocation {
+function parseHref(href: string, state: HistoryState | undefined): HistoryLocation {
   const hashIndex = href.indexOf('#')
   const searchIndex = href.indexOf('?')
 
