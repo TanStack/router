@@ -131,7 +131,7 @@ Just in these small examples above, we can see just about all of the major avail
 - Index Routes
 - Dynamic Route Segments
 - Splat / Catch-All Routes
-- Pathless Routes
+- Pathless / Layout Routes
 - Non-Nested Routes
 - Not-Found Routes
 
@@ -264,9 +264,9 @@ For example, our route tree above has a `files/$` splat route. If the URL pathna
 
 > 🧠 Why use `$`? Thanks to tools like Remix, we know that despite `*`s being the most common character to represent a wildcard, they do not play nice with filenames or CLI tools, so just like them, we decided to use `$` instead.
 
-## Pathless Routes
+## Pathless / Layout Routes
 
-File routes that are prefixed with an underscore (`_`) are considered "pathless". Pathless routes can be used to wrap child routes with additional components and logic, without requiring a matching `path` in the URL
+File routes that are prefixed with an underscore (`_`) are considered "pathless" / a "layout". Pathless/Layout routes can be used to wrap child routes with additional components and logic, without requiring a matching `path` in the URL
 
 - Wrap child routes with a layout component
 - Enforce a `loader` requirement before displaying any child routes
