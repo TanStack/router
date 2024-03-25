@@ -13,7 +13,7 @@ export function StartServer<TRouter extends AnyRouter>(props: {
       router: props.router.dehydrate(),
       payload: props.router.options.dehydrate?.(),
     }),
-    [],
+    [props.router],
   )
 
   return (

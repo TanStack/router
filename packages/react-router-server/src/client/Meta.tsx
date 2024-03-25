@@ -19,7 +19,7 @@ export const Meta = () => {
   })
 
   const meta: Array<RouterManagedTag> = React.useMemo(() => {
-    const meta: Array<RouterManagedTag> = []
+    const resultMeta: Array<RouterManagedTag> = []
     const metaByName: Record<string, true> = {}
     let title: RouterManagedTag | undefined
     ;[...routeMeta].reverse().forEach((metas) => {
@@ -40,7 +40,7 @@ export const Meta = () => {
             }
           }
 
-          meta.push({
+          resultMeta.push({
             tag: 'meta',
             attrs: {
               ...m,
@@ -52,12 +52,12 @@ export const Meta = () => {
     })
 
     if (title) {
-      meta.push(title)
+      resultMeta.push(title)
     }
 
-    meta.reverse()
+    resultMeta.reverse()
 
-    return meta
+    return resultMeta
   }, [routeMeta])
 
   const links = useRouterState({

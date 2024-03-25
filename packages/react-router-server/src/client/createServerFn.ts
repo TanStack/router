@@ -55,7 +55,7 @@ export type JsonResponseOrPayload<TResponse> =
   TResponse extends JsonResponse<infer TData> ? TData : TResponse
 
 export function createServerFn<
-  TPayload extends any = undefined,
+  TPayload = undefined,
   TResponse = unknown,
 >(
   method: 'GET' | 'POST',

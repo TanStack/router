@@ -1,6 +1,7 @@
 import type { RouterManagedTag } from './RouterManagedTag'
 
 declare global {
+  // eslint-disable-next-line no-var
   var MANIFEST: {
     client: {
       inputs: Record<string, {
@@ -13,7 +14,7 @@ declare global {
           >
         }>
       handler: string
-    }
+    } | undefined
   }
 }
 
@@ -24,7 +25,7 @@ export async function getManifestAssets(): Promise<Array<RouterManagedTag>> {
     return (
       ((await manifest.inputs[
         manifest.handler
-      ]?.assets()) as Array<RouterManagedTag>) || []
+      ]?.assets()) as Array<RouterManagedTag> | undefined) || []
     )
   }
 

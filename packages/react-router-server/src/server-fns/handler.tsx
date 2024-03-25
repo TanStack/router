@@ -59,7 +59,7 @@ export async function handleRequest(request: Request) {
           return (await request.json()) as Array<any>
         })()
 
-        const result = await action.apply(null, args)
+        const result = await action(...args)
 
         if (isRedirect(result) || isNotFound(result)) {
           return redirectOrNotFoundResponse(result)
@@ -69,7 +69,7 @@ export async function handleRequest(request: Request) {
           return result
         }
 
-        const response = new Response(
+        return new Response(
           result !== undefined ? JSON.stringify(result) : undefined,
           {
             status: 200,
@@ -79,8 +79,6 @@ export async function handleRequest(request: Request) {
             },
           },
         )
-
-        return response
       } catch (error: any) {
         if (error instanceof Response) {
           return error
