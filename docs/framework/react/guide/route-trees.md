@@ -80,7 +80,6 @@ Flat routing uses same level of nesting. They make it easy to see and find route
 | `_layout.layout-a.tsx`       | `/layout-a`               | `<Root><Layout><LayoutA>`         |
 | `_layout.layout-b.tsx`       | `/layout-b`               | `<Root><Layout><LayoutB>`         |
 | `files.$.tsx`                | `/files/$`                | `<Root><Files>`                   |
-| `__404.tsx`                  | (Not Found)               | `<Root><NotFound>`                |
 
 ## Directory Routes
 
@@ -108,7 +107,6 @@ Directory routes are routes that are nested within a directory, which can be use
 | - `layout-b.tsx`      | `/layout-b`               | `<Root><Layout><LayoutB>`         |
 | `files` (dir)         |                           |                                   |
 | - `$.tsx`             | `/files/$`                | `<Root><Files>`                   |
-| `__404.tsx`           | (Not Found)               | `<Root><NotFound>`                |
 
 ## Mixed Flat and Directory Routes
 
