@@ -9,3 +9,7 @@ npm install @tanstack/react-router
 ```
 
 TanStack Router is compatible with React v16.8+ and is currently only compatible with ReactDOM. If you would like to contribute to the React Native adapter, please reach out to us on [Discord](https://tlinz.com/discord).
+
+### Requirements
+
+TanStack Router requires React v16.8+ and ReactDOM v16.8+. If you're working with TypeScript, you'll need TypeScript v5.0+.
