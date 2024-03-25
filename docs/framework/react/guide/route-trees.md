@@ -126,14 +126,14 @@ Route paths by default are **not case-sensitive** by default. This means that `a
 
 Just in these small examples above, we can see just about all of the major available routing concepts at play:
 
-- The Root Route
-- Static Routes
-- Index Routes
-- Dynamic Route Segments
-- Splat / Catch-All Routes
-- Pathless / Layout Routes
-- Non-Nested Routes
-- Not-Found Routes
+- [The Root Route](./guide/route-trees#the-root-route)
+- [Static Routes](./guide/route-trees#static-routes)
+- [Index Routes](./guide/route-trees#index-routes)
+- [Dynamic Route Segments](./guide/route-trees#dynamic-route-segments)
+- [Splat / Catch-All Routes](./guide/route-trees#splat--catch-all-routes)
+- [Pathless / Layout Routes](./guide/route-trees#pathless--layout-routes)
+- [Non-Nested Routes](./guide/route-trees#non-nested-routes)
+- [Not-Found Routes](./guide/route-trees#404--notfoundroutes)
 
 Each of these concepts is useful and powerful, and we'll dive into each of them in the following sections.
 
