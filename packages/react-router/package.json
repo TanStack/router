@@ -69,7 +69,7 @@
     "zod": "^3.22.4"
   },
   "peerDependencies": {
-    "react": ">=16",
-    "react-dom": ">=16"
+    "react": ">=16.8",
+    "react-dom": ">=16.8"
   }
 }
