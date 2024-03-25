@@ -21,8 +21,8 @@ export async function handleRequest(request: Request) {
     console.info()
 
     const action = (
-      await getManifest('server').chunks[serverFnId!]?.import?.()
-    )?.[serverFnName!] as Function
+      await getManifest('server').chunks[serverFnId]?.import()
+    )?.[serverFnName] as Function
 
     const response = await (async () => {
       try {
@@ -56,10 +56,10 @@ export async function handleRequest(request: Request) {
           }
 
           // payload type === 'args'
-          return (await request.json()) as any[]
+          return (await request.json()) as Array<any>
         })()
 
-        let result = await action.apply(null, args)
+        const result = await action.apply(null, args)
 
         if (isRedirect(result) || isNotFound(result)) {
           return redirectOrNotFoundResponse(result)

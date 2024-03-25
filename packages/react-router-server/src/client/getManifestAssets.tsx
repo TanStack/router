@@ -1,10 +1,9 @@
-import { RouterManagedTag } from './RouterManagedTag'
+import type { RouterManagedTag } from './RouterManagedTag'
 
 declare global {
   var MANIFEST: {
     client: {
-      inputs: {
-        [key: string]: {
+      inputs: Record<string, {
           assets: () => Promise<
             Array<{
               tag: string
@@ -12,21 +11,20 @@ declare global {
               children: string
             }>
           >
-        }
-      }
+        }>
       handler: string
     }
   }
 }
 
-export async function getManifestAssets(): Promise<RouterManagedTag[]> {
-  const manifest = globalThis.MANIFEST?.['client']
+export async function getManifestAssets(): Promise<Array<RouterManagedTag>> {
+  const manifest = globalThis.MANIFEST['client']
 
   if (manifest) {
     return (
       ((await manifest.inputs[
-        manifest.handler!
-      ]?.assets()) as RouterManagedTag[]) || []
+        manifest.handler
+      ]?.assets()) as Array<RouterManagedTag>) || []
     )
   }
 

@@ -1,5 +1,5 @@
-import { AnyRouter } from '@tanstack/react-router'
 import { Transform } from 'stream'
+import type { AnyRouter } from '@tanstack/react-router'
 
 export function transformStreamWithRouter(router: AnyRouter) {
   return transformStreamHtmlCallback(async () => {
@@ -19,7 +19,7 @@ function transformStreamHtmlCallback(injector: () => Promise<string>) {
 
   return new Transform({
     transform(chunk, encoding, callback) {
-      let chunkString = leftover + chunk.toString()
+      const chunkString = leftover + chunk.toString()
 
       // regex pattern for matching closing body and html tags
       const patternBody = /(<\/body>)/

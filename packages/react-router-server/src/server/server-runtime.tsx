@@ -7,10 +7,10 @@ import {
   setResponseHeaders,
   toWebRequest,
 } from 'vinxi/http'
-import { FetchFn } from '../client'
 import { getBaseUrl } from '../client/client-runtime'
 import { fetcher } from '../server-fns/fetcher'
 import { handleRequest } from '../server-fns/handler'
+import type { FetchFn } from '../client'
 
 export function createServerReference<TPayload, TResponse>(
   _fn: FetchFn<TPayload, TResponse>,
@@ -18,9 +18,9 @@ export function createServerReference<TPayload, TResponse>(
   name: string,
 ) {
   // let base = getBaseUrl(import.meta.env.SERVER_BASE_URL, id, name)
-  let base = getBaseUrl('http://localhost:3000', id, name)
+  const base = getBaseUrl('http://localhost:3000', id, name)
 
-  const proxyFn = (...args: any[]) =>
+  const proxyFn = (...args: Array<any>) =>
     fetcher(base, args, async (request) => {
       const event = getEvent()
 

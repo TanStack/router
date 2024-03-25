@@ -5,14 +5,15 @@ import {
   isRedirect,
 } from '@tanstack/react-router'
 import {
-  CompiledFetcherFnOptions,
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
 } from '../client'
+import type {
+  CompiledFetcherFnOptions} from '../client';
 
 export async function fetcher<TPayload>(
   base: string,
-  args: any[],
+  args: Array<any>,
   handler: (request: Request) => Promise<Response>,
 ) {
   const first = args[0]
@@ -66,7 +67,7 @@ export async function fetcher<TPayload>(
     // Fetch it
     const handlerResponse = await handler(request)
 
-    let response = await handleResponseErrors(handlerResponse)
+    const response = await handleResponseErrors(handlerResponse)
 
     if (['json'].includes(response.headers.get(serverFnReturnTypeHeader)!)) {
       const text = await response.text()

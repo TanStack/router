@@ -5,8 +5,8 @@ import {
 } from '@tanstack/react-router'
 import * as React from 'react'
 import { DehydrateRouter } from './DehydrateRouter'
-import { RouterManagedTag } from './RouterManagedTag'
 import { Asset } from './Asset'
+import type { RouterManagedTag } from './RouterManagedTag'
 
 export const Scripts = () => {
   const router = useRouter()
@@ -14,7 +14,7 @@ export const Scripts = () => {
   const manifestScripts =
     (router.options.context?.assets.filter(
       (d: any) => d.tag === 'script',
-    ) as RouterManagedTag[]) ?? []
+    ) as Array<RouterManagedTag>) ?? []
 
   const { scripts } = useRouterState({
     select: (state) => ({
@@ -34,7 +34,7 @@ export const Scripts = () => {
     }),
   })
 
-  const allScripts = [...scripts, ...manifestScripts] as RouterManagedTag[]
+  const allScripts = [...scripts, ...manifestScripts] as Array<RouterManagedTag>
 
   return (
     <>
