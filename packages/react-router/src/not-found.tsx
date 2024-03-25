@@ -18,6 +18,7 @@ export type NotFoundError = {
   data?: any
   throw?: boolean
   routeId?: RouteIds<RegisteredRouter['routeTree']>
+  headers?: HeadersInit
 }
 
 export function notFound(options: NotFoundError = {}) {
