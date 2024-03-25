@@ -640,7 +640,7 @@ export class Route<
    * @deprecated Use the `createRoute` function instead.
    */
   constructor(
-    options: RouteOptions<
+    options?: RouteOptions<
       TParentRoute,
       TCustomId,
       TPath,
@@ -661,7 +661,8 @@ export class Route<
     >,
   ) {
     this.options = (options as any) || {}
-    this.isRoot = !options.getParentRoute as any
+
+    this.isRoot = !options?.getParentRoute as any
     invariant(
       !((options as any)?.id && (options as any)?.path),
       `Route cannot have both an 'id' and a 'path' option.`,
@@ -695,30 +696,33 @@ export class Route<
   init = (opts: { originalIndex: number }) => {
     this.originalIndex = opts.originalIndex
 
-    const options = this.options as RouteOptions<
-      TParentRoute,
-      TCustomId,
-      TPath,
-      TSearchSchemaInput,
-      TSearchSchema,
-      TSearchSchemaUsed,
-      TFullSearchSchemaInput,
-      TFullSearchSchema,
-      TParams,
-      TAllParams,
-      TRouteContextReturn,
-      TRouteContext,
-      TRouterContext,
-      TAllContext,
-      TLoaderDeps,
-      TLoaderDataReturn,
-      TLoaderData
-    > &
-      RoutePathOptionsIntersection<TCustomId, TPath>
+    const options = this.options as
+      | (RouteOptions<
+          TParentRoute,
+          TCustomId,
+          TPath,
+          TSearchSchemaInput,
+          TSearchSchema,
+          TSearchSchemaUsed,
+          TFullSearchSchemaInput,
+          TFullSearchSchema,
+          TParams,
+          TAllParams,
+          TRouteContextReturn,
+          TRouteContext,
+          TRouterContext,
+          TAllContext,
+          TLoaderDeps,
+          TLoaderDataReturn,
+          TLoaderData
+        > &
+          RoutePathOptionsIntersection<TCustomId, TPath>)
+      | undefined
 
-    const isRoot = !options.path && !options.id
+    const isRoot = !options?.path && !options?.id
 
-    this.parentRoute = this.options.getParentRoute()
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    this.parentRoute = this.options?.getParentRoute?.()
 
     if (isRoot) {
       this.path = rootRouteId as TPath
@@ -736,7 +740,7 @@ export class Route<
       path = trimPathLeft(path)
     }
 
-    const customId = options.id || path
+    const customId = options?.id || path
 
     // Strip the parentId prefix from the first level of children
     let id = isRoot

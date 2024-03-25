@@ -434,9 +434,9 @@ export class Router<
           }
         }
 
-        const children = childRoute.children as Array<Route>
+        const children = childRoute.children
 
-        if (children.length) {
+        if (children?.length) {
           recurseRoutes(children)
         }
       })
@@ -1602,8 +1602,8 @@ export class Router<
       })
 
       try {
-        let redirect: ResolvedRedirect
-        let notFound: NotFoundError
+        let redirect: ResolvedRedirect | undefined
+        let notFound: NotFoundError | undefined
 
         try {
           // Load the matches
@@ -1657,8 +1657,7 @@ export class Router<
               ...exitingMatches.filter((d) => d.status !== 'error'),
             ],
             statusCode:
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-              redirect.statusCode || notFound
+              redirect?.statusCode || notFound
                 ? 404
                 : s.matches.some((d) => d.status === 'error')
                   ? 500

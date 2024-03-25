@@ -390,7 +390,7 @@ function RouteComp({
           <AgeTicker match={match} router={router} />
         </div>
       </div>
-      {(route.children as Array<Route>).length ? (
+      {route.children?.length ? (
         <div className={getStyles().nestedRouteRow(!!isRoot)}>
           {[...(route.children as Array<Route>)]
             .sort((a, b) => {
