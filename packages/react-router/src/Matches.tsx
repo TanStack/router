@@ -383,7 +383,6 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
 >() {
-  useRouterState({ select: (s) => [s.location, s.resolvedLocation] })
   const router = useRouter()
 
   return React.useCallback(
