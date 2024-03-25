@@ -89,10 +89,14 @@ export function Matches() {
     },
   })
 
+  const resetKey = useRouterState({
+    select: (s) => s.resolvedLocation.state?.key!,
+  })
+
   return (
     <matchContext.Provider value={matchId}>
       <CatchBoundary
-        getResetKey={() => router.state.resolvedLocation.state?.key!}
+        getResetKey={() => resetKey}
         errorComponent={ErrorComponent}
         onCatch={(error) => {
           warning(
@@ -159,11 +163,15 @@ export function Match({ matchId }: { matchId: string }) {
     ? CatchNotFound
     : SafeFragment
 
+  const resetKey = useRouterState({
+    select: (s) => s.resolvedLocation.state?.key!,
+  })
+
   return (
     <matchContext.Provider value={matchId}>
       <ResolvedSuspenseBoundary fallback={pendingElement}>
         <ResolvedCatchBoundary
-          getResetKey={() => router.state.resolvedLocation.state?.key!}
+          getResetKey={() => resetKey}
           errorComponent={routeErrorComponent}
           onCatch={(error) => {
             // Forward not found errors (we don't want to show the error component for these)
