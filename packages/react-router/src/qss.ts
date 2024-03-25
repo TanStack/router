@@ -3,7 +3,7 @@
 // qss has been slightly modified and inlined here for our use cases (and compression's sake). We've included it as a hard dependency for MIT license attribution.
 
 export function encode(obj, pfx?: string) {
-  var k,
+  let k,
     i,
     tmp,
     str = ''
@@ -27,14 +27,14 @@ export function encode(obj, pfx?: string) {
 
 function toValue(mix) {
   if (!mix) return ''
-  var str = decodeURIComponent(mix)
+  const str = decodeURIComponent(mix)
   if (str === 'false') return false
   if (str === 'true') return true
   return +str * 0 === 0 && +str + '' === str ? +str : str
 }
 
 export function decode(str, pfx?: string) {
-  var tmp,
+  let tmp,
     k,
     out = {},
     arr = (pfx ? str.substr(pfx.length) : str).split('&')

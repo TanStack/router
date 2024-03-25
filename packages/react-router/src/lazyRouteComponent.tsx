@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { AsyncRouteComponent } from './route'
+import type { AsyncRouteComponent } from './route'
 
 // If the load fails due to module not found, it may mean a new version of
 // the build was deployed and the user's browser is still using an old version.

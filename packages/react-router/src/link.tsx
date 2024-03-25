@@ -2,11 +2,17 @@ import * as React from 'react'
 import { useMatch } from './Matches'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { Trim } from './fileRoute'
-import { AnyRoute, RootSearchSchema } from './route'
-import { RouteByPath, RoutePaths, RoutePathsAutoComplete } from './routeInfo'
-import { RegisteredRouter } from './router'
-import {
+import { deepEqual, functionalUpdate } from './utils'
+import type { HistoryState } from '@tanstack/history'
+import type { Trim } from './fileRoute'
+import type { AnyRoute, RootSearchSchema } from './route'
+import type {
+  RouteByPath,
+  RoutePaths,
+  RoutePathsAutoComplete,
+} from './routeInfo'
+import type { RegisteredRouter } from './router'
+import type {
   Expand,
   IsUnion,
   MakeDifferenceOptional,
@@ -15,10 +21,7 @@ import {
   PickRequired,
   Updater,
   WithoutEmpty,
-  deepEqual,
-  functionalUpdate,
 } from './utils'
-import { HistoryState } from '@tanstack/history'
 
 export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
   ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
@@ -30,7 +33,7 @@ export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
 
 export type Split<S, TIncludeTrailingSlash = true> = S extends unknown
   ? string extends S
-    ? string[]
+    ? Array<string>
     : S extends string
       ? CleanPath<S> extends ''
         ? []
@@ -62,11 +65,16 @@ export type Join<T, Delimiter extends string = '/'> = T extends []
   ? ''
   : T extends [infer L extends string]
     ? L
-    : T extends [infer L extends string, ...infer Tail extends [...string[]]]
+    : T extends [
+          infer L extends string,
+          ...infer Tail extends [...Array<string>],
+        ]
       ? CleanPath<`${L}${Delimiter}${Join<Tail>}`>
       : never
 
-export type Last<T extends any[]> = T extends [...infer _, infer L] ? L : never
+export type Last<T extends Array<any>> = T extends [...infer _, infer L]
+  ? L
+  : never
 
 export type RemoveTrailingSlashes<T> = T extends `${infer R}/`
   ? RemoveTrailingSlashes<R>
@@ -522,7 +530,7 @@ export function useLinkProps<
   }
 
   const composeHandlers =
-    (handlers: (undefined | ((e: any) => void))[]) =>
+    (handlers: Array<undefined | ((e: any) => void)>) =>
     (e: React.SyntheticEvent) => {
       if (e.persist) e.persist()
       handlers.filter(Boolean).forEach((handler) => {
@@ -651,7 +659,7 @@ export function createLink<const TComp>(Comp: TComp): LinkComponent<TComp> {
 
 export const Link: LinkComponent<'a'> = React.forwardRef((props: any, ref) => {
   const { _asChild, ...rest } = props
-  const { type, ...linkProps } = useLinkProps(rest as any)
+  const { type, ...linkProps } = useLinkProps(rest)
 
   const children =
     typeof rest.children === 'function'
@@ -666,7 +674,7 @@ export const Link: LinkComponent<'a'> = React.forwardRef((props: any, ref) => {
       ...linkProps,
       ref,
     },
-    children as any,
+    children,
   )
 }) as any
 

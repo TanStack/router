@@ -4,14 +4,17 @@ import warning from 'tiny-warning'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { ResolveRelativePath, ToOptions } from './link'
-import {
+import { isServer, pick } from './utils'
+import { CatchNotFound, DefaultGlobalNotFound, isNotFound } from './not-found'
+import { isRedirect } from './redirects'
+import type { ResolveRelativePath, ToOptions } from './link'
+import type {
   AnyRoute,
   ReactNode,
   RootSearchSchema,
   StaticDataRouteOption,
 } from './route'
-import {
+import type {
   AllParams,
   FullSearchSchema,
   ParseRoute,
@@ -20,17 +23,8 @@ import {
   RouteIds,
   RoutePaths,
 } from './routeInfo'
-import { AnyRouter, RegisteredRouter, RouterState } from './router'
-import {
-  DeepPartial,
-  Expand,
-  NoInfer,
-  StrictOrFrom,
-  isServer,
-  pick,
-} from './utils'
-import { CatchNotFound, DefaultGlobalNotFound, isNotFound } from './not-found'
-import { isRedirect } from './redirects'
+import type { AnyRouter, RegisteredRouter, RouterState } from './router'
+import type { DeepPartial, Expand, NoInfer, StrictOrFrom } from './utils'
 
 export const matchContext = React.createContext<string | undefined>(undefined)
 
@@ -71,9 +65,9 @@ export interface RouteMatch<
   preload: boolean
   invalid: boolean
   pendingPromise?: Promise<void>
-  meta?: JSX.IntrinsicElements['meta'][]
-  links?: JSX.IntrinsicElements['link'][]
-  scripts?: JSX.IntrinsicElements['script'][]
+  meta?: Array<JSX.IntrinsicElements['meta']>
+  links?: Array<JSX.IntrinsicElements['link']>
+  scripts?: Array<JSX.IntrinsicElements['script']>
   headers?: Record<string, string>
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
@@ -92,7 +86,7 @@ export function Matches() {
   return (
     <matchContext.Provider value={matchId}>
       <CatchBoundary
-        getResetKey={() => router.state.resolvedLocation.state?.key!}
+        getResetKey={() => router.state.resolvedLocation.state.key!}
         errorComponent={ErrorComponent}
         onCatch={(error) => {
           warning(
@@ -126,8 +120,8 @@ export function Match({ matchId }: { matchId: string }) {
 
   const route = router.routesById[routeId]!
 
-  const PendingComponent = (route.options.pendingComponent ??
-    router.options.defaultPendingComponent) as any
+  const PendingComponent =
+    route.options.pendingComponent ?? router.options.defaultPendingComponent
 
   const pendingElement = PendingComponent ? <PendingComponent /> : null
 
@@ -145,7 +139,7 @@ export function Match({ matchId }: { matchId: string }) {
     PendingComponent ??
     route.options.component?.preload ??
     route.options.pendingComponent?.preload ??
-    (route.options.errorComponent as any)?.preload
+    route.options.errorComponent?.preload
       ? React.Suspense
       : SafeFragment
 
@@ -161,7 +155,7 @@ export function Match({ matchId }: { matchId: string }) {
     <matchContext.Provider value={matchId}>
       <ResolvedSuspenseBoundary fallback={pendingElement}>
         <ResolvedCatchBoundary
-          getResetKey={() => router.state.resolvedLocation.state?.key!}
+          getResetKey={() => router.state.resolvedLocation.state.key!}
           errorComponent={routeErrorComponent ?? ErrorComponent}
           onCatch={(error) => {
             // Forward not found errors (we don't want to show the error component for these)
@@ -184,7 +178,7 @@ export function Match({ matchId }: { matchId: string }) {
               return React.createElement(routeNotFoundComponent, error as any)
             }}
           >
-            <MatchInner matchId={matchId!} pendingElement={pendingElement} />
+            <MatchInner matchId={matchId} pendingElement={pendingElement} />
           </ResolvedNotFoundBoundary>
         </ResolvedCatchBoundary>
       </ResolvedSuspenseBoundary>
@@ -284,7 +278,7 @@ function MatchInner({
   }
 
   if (match.status === 'success') {
-    let Comp = route.options.component ?? router.options.defaultComponent
+    const Comp = route.options.component ?? router.options.defaultComponent
 
     if (Comp) {
       return <Comp />
@@ -448,7 +442,7 @@ export function MatchRoute<
     return (props.children as any)(params)
   }
 
-  return !!params ? props.children : null
+  return params ? props.children : null
 }
 
 export function getRenderedMatches<
@@ -475,19 +469,17 @@ export function useMatch<
   const matchSelection = useRouterState({
     select: (state) => {
       const match = getRenderedMatches(state).find((d) =>
-        opts?.from ? opts?.from === d.routeId : d.id === nearestMatchId,
+        opts.from ? opts.from === d.routeId : d.id === nearestMatchId,
       )
 
       invariant(
         match,
         `Could not find ${
-          opts?.from
-            ? `an active match from "${opts.from}"`
-            : 'a nearest match!'
+          opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'
         }`,
       )
 
-      return opts?.select ? opts.select(match as any) : match
+      return opts.select ? opts.select(match as any) : match
     },
   })
 
@@ -499,16 +491,16 @@ export function useMatches<
   TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
   TReturnIntersection extends boolean = false,
   TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
-  T = TRouteMatch[],
+  T = Array<TRouteMatch>,
 >(opts?: {
-  select?: (matches: TRouteMatch[]) => T
+  select?: (matches: Array<TRouteMatch>) => T
   experimental_returnIntersection?: TReturnIntersection
 }): T {
   return useRouterState({
     select: (state) => {
       const matches = getRenderedMatches(state)
       return opts?.select
-        ? opts.select(matches as TRouteMatch[])
+        ? opts.select(matches as Array<TRouteMatch>)
         : (matches as T)
     },
   })
@@ -519,9 +511,9 @@ export function useParentMatches<
   TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
   TReturnIntersection extends boolean = false,
   TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
-  T = TRouteMatch[],
+  T = Array<TRouteMatch>,
 >(opts?: {
-  select?: (matches: TRouteMatch[]) => T
+  select?: (matches: Array<TRouteMatch>) => T
   experimental_returnIntersection?: TReturnIntersection
 }): T {
   const contextMatchId = React.useContext(matchContext)
@@ -533,7 +525,7 @@ export function useParentMatches<
         matches.findIndex((d) => d.id === contextMatchId),
       )
       return opts?.select
-        ? opts.select(matches as TRouteMatch[])
+        ? opts.select(matches as Array<TRouteMatch>)
         : (matches as T)
     },
   })
@@ -544,9 +536,9 @@ export function useChildMatches<
   TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
   TReturnIntersection extends boolean = false,
   TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
-  T = TRouteMatch[],
+  T = Array<TRouteMatch>,
 >(opts?: {
-  select?: (matches: TRouteMatch[]) => T
+  select?: (matches: Array<TRouteMatch>) => T
   experimental_returnIntersection?: TReturnIntersection
 }): T {
   const contextMatchId = React.useContext(matchContext)
@@ -557,7 +549,7 @@ export function useChildMatches<
         matches.findIndex((d) => d.id === contextMatchId) + 1,
       )
       return opts?.select
-        ? opts.select(matches as TRouteMatch[])
+        ? opts.select(matches as Array<TRouteMatch>)
         : (matches as T)
     },
   })
@@ -580,8 +572,8 @@ export function useLoaderDeps<
     ...opts,
     select: (s) => {
       return typeof opts.select === 'function'
-        ? opts.select(s?.loaderDeps)
-        : s?.loaderDeps
+        ? opts.select(s.loaderDeps)
+        : s.loaderDeps
     },
   })
 }
@@ -603,8 +595,8 @@ export function useLoaderData<
     ...opts,
     select: (s) => {
       return typeof opts.select === 'function'
-        ? opts.select(s?.loaderData)
-        : s?.loaderData
+        ? opts.select(s.loaderData)
+        : s.loaderData
     },
   })
 }

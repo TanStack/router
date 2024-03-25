@@ -1,16 +1,21 @@
 import * as React from 'react'
 import { Matches } from './Matches'
-import { NavigateOptions, ToOptions } from './link'
-import { ParsedLocation } from './location'
-import { AnyRoute } from './route'
-import { RoutePaths } from './routeInfo'
-import { RegisteredRouter, Router, RouterOptions, RouterState } from './router'
 import { pick, useLayoutEffect } from './utils'
-
-import { RouteMatch } from './Matches'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { getRouterContext } from './routerContext'
+import type { NavigateOptions, ToOptions } from './link'
+import type { ParsedLocation } from './location'
+import type { AnyRoute } from './route'
+import type { RoutePaths } from './routeInfo'
+import type {
+  RegisteredRouter,
+  Router,
+  RouterOptions,
+  RouterState,
+} from './router'
+
+import type { RouteMatch } from './Matches'
 
 const useTransition =
   React.useTransition ||
@@ -67,7 +72,7 @@ export function RouterProvider<
     ...rest,
     context: {
       ...router.options.context,
-      ...rest?.context,
+      ...rest.context,
     },
   } as any)
 
@@ -172,14 +177,12 @@ function Transitioner() {
         fromLocation: routerState.resolvedLocation,
         toLocation: routerState.location,
         pathChanged:
-          routerState.location!.href !== routerState.resolvedLocation?.href,
+          routerState.location.href !== routerState.resolvedLocation.href,
       })
 
       if ((document as any).querySelector) {
         if (routerState.location.hash !== '') {
-          const el = document.getElementById(
-            routerState.location.hash,
-          ) as HTMLElement | null
+          const el = document.getElementById(routerState.location.hash)
           if (el) {
             el.scrollIntoView()
           }

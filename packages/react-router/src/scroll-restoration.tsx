@@ -3,9 +3,10 @@ import * as React from 'react'
 const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
-import { ParsedLocation } from './location'
 import { useRouter } from './useRouter'
-import { NonNullableUpdater, functionalUpdate } from './utils'
+import { functionalUpdate } from './utils'
+import type { ParsedLocation } from './location'
+import type { NonNullableUpdater } from './utils'
 
 const windowKey = 'window'
 const delimiter = '___'
@@ -25,7 +26,7 @@ type Cache = {
 
 const sessionsStorage = typeof window !== 'undefined' && window.sessionStorage
 
-let cache: Cache = sessionsStorage
+const cache: Cache = sessionsStorage
   ? (() => {
       const storageKey = 'tsr-scroll-restoration-v2'
 
@@ -196,7 +197,7 @@ export function useElementScrollRestoration(
   },
 ) {
   const router = useRouter()
-  const getKey = options?.getKey || defaultGetKey
+  const getKey = options.getKey || defaultGetKey
 
   let elementSelector = ''
 

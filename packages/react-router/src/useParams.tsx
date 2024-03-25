@@ -1,9 +1,9 @@
-import { AnyRoute } from './route'
-import { RouteIds, RouteById, AllParams } from './routeInfo'
-import { RegisteredRouter } from './router'
-import { Expand } from './utils'
-import { StrictOrFrom } from './utils'
 import { useMatch } from './Matches'
+import type { AnyRoute } from './route'
+import type { AllParams, RouteById, RouteIds } from './routeInfo'
+import type { RegisteredRouter } from './router'
+import type { Expand } from './utils'
+import type { StrictOrFrom } from './utils'
 
 export function useParams<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -21,7 +21,7 @@ export function useParams<
   return useMatch({
     ...opts,
     select: (match) => {
-      return opts?.select ? opts.select(match.params) : match.params
+      return opts.select ? opts.select(match.params) : match.params
     },
   })
 }

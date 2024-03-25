@@ -1,10 +1,10 @@
-import { AnyRoute } from './route'
-import { Expand, UnionToIntersection, UnionToTuple } from './utils'
+import type { AnyRoute } from './route'
+import type { Expand, UnionToIntersection, UnionToTuple } from './utils'
 
 export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
   types: { children: infer TChildren }
 }
-  ? TChildren extends unknown[]
+  ? TChildren extends Array<unknown>
     ? ParseRoute<TChildren[number], TAcc | TChildren[number]>
     : TAcc
   : TAcc
@@ -46,7 +46,7 @@ type Reducer<T, U, C = UnionizeCollisions<T, U>> = C &
   Omit<T, keyof C> &
   Omit<U, keyof C>
 
-type Reduce<T extends any[], Result = unknown> = T extends [
+type Reduce<T extends Array<any>, Result = unknown> = T extends [
   infer First,
   ...infer Rest,
 ]

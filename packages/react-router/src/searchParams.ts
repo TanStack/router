@@ -1,5 +1,5 @@
 import { decode, encode } from './qss'
-import { AnySearchSchema } from './route'
+import type { AnySearchSchema } from './route'
 
 export const defaultParseSearch = parseSearchWith(JSON.parse)
 export const defaultStringifySearch = stringifySearchWith(
@@ -13,10 +13,10 @@ export function parseSearchWith(parser: (str: string) => any) {
       searchStr = searchStr.substring(1)
     }
 
-    let query: Record<string, unknown> = decode(searchStr)
+    const query: Record<string, unknown> = decode(searchStr)
 
     // Try to parse any query params that might be json
-    for (let key in query) {
+    for (const key in query) {
       const value = query[key]
       if (typeof value === 'string') {
         try {

@@ -63,8 +63,11 @@ export type IsUnion<T, U extends T = T> = (
 
 export type Assign<Left, Right> = Omit<Left, keyof Right> & Right
 
-export type AssignAll<T extends any[]> = T extends [infer Left, ...infer Right]
-  ? Right extends any[]
+export type AssignAll<T extends Array<any>> = T extends [
+  infer Left,
+  ...infer Right,
+]
+  ? Right extends Array<any>
     ? Assign<Left, AssignAll<Right>>
     : Left
   : {}
@@ -130,7 +133,7 @@ export type UnionToTuple<U, Last = LastInUnion<U>> = [U] extends [never]
 
 export const isServer = typeof document === 'undefined'
 
-export function last<T>(arr: T[]) {
+export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
 }
 
@@ -143,13 +146,16 @@ export function functionalUpdate<TResult>(
   previous: TResult,
 ): TResult {
   if (isFunction(updater)) {
-    return updater(previous as TResult)
+    return updater(previous)
   }
 
   return updater
 }
 
-export function pick<T, K extends keyof T>(parent: T, keys: K[]): Pick<T, K> {
+export function pick<T, K extends keyof T>(
+  parent: T,
+  keys: Array<K>,
+): Pick<T, K> {
   return keys.reduce((obj: any, key: K) => {
     obj[key] = parent[key]
     return obj
@@ -268,11 +274,13 @@ export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
   return false
 }
 
-export function useStableCallback<T extends (...args: any[]) => any>(fn: T): T {
+export function useStableCallback<T extends (...args: Array<any>) => any>(
+  fn: T,
+): T {
   const fnRef = React.useRef(fn)
   fnRef.current = fn
 
-  const ref = React.useRef((...args: any[]) => fnRef.current(...args))
+  const ref = React.useRef((...args: Array<any>) => fnRef.current(...args))
   return ref.current as T
 }
 

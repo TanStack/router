@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { ReactNode } from './route'
 import { useRouter } from './useRouter'
-import { BlockerFn } from '@tanstack/history'
+import type { BlockerFn } from '@tanstack/history'
+import type { ReactNode } from './route'
 
 export function useBlocker(
   blockerFn: BlockerFn,
@@ -17,7 +17,7 @@ export function useBlocker(
 
 export function Block({ blocker, condition, children }: PromptProps) {
   useBlocker(blocker, condition)
-  return (children ?? null) as ReactNode
+  return children ?? null
 }
 
 export type PromptProps = {

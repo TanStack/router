@@ -1,15 +1,18 @@
-import * as React from 'react'
 import invariant from 'tiny-invariant'
-import { useLoaderData, useLoaderDeps, useMatch, RouteMatch } from './Matches'
-import { AnyRouteMatch } from './Matches'
-import { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
-import { ParsedLocation } from './location'
+import { useLoaderData, useLoaderDeps, useMatch } from './Matches'
 import { joinPaths, trimPathLeft } from './path'
-import { RouteById, RouteIds, RoutePaths } from './routeInfo'
-import { AnyRouter, RegisteredRouter } from './router'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
-import {
+import { notFound } from './not-found'
+import { useNavigate } from './useNavigate'
+import type * as React from 'react'
+import type { RouteMatch } from './Matches'
+import type { AnyRouteMatch } from './Matches'
+import type { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
+import type { ParsedLocation } from './location'
+import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
+import type { AnyRouter, RegisteredRouter } from './router'
+import type {
   Assign,
   Expand,
   IsAny,
@@ -17,10 +20,9 @@ import {
   PickRequired,
   UnionToIntersection,
 } from './utils'
-import { BuildLocationFn, NavigateFn } from './RouterProvider'
-import { NotFoundError, notFound } from './not-found'
-import { LazyRoute } from './fileRoute'
-import { useNavigate } from './useNavigate'
+import type { BuildLocationFn, NavigateFn } from './RouterProvider'
+import type { NotFoundError } from './not-found'
+import type { LazyRoute } from './fileRoute'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -241,10 +243,10 @@ export type UpdatableRouteOptions<
   preloadGcTime?: number
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
   // calls that match this route.
-  preSearchFilters?: SearchFilter<TFullSearchSchema>[]
+  preSearchFilters?: Array<SearchFilter<TFullSearchSchema>>
   // Filter functions that can manipulate search params *after* they are passed to links and navigate
   // calls that match this route.
-  postSearchFilters?: SearchFilter<TFullSearchSchema>[]
+  postSearchFilters?: Array<SearchFilter<TFullSearchSchema>>
   onError?: (err: any) => void
   // These functions are called as route matches are loaded, stick around and leave the active
   // matches
@@ -255,10 +257,10 @@ export type UpdatableRouteOptions<
     params: TAllParams
     loaderData: TLoaderData
   }) =>
-    | JSX.IntrinsicElements['meta'][]
-    | Promise<JSX.IntrinsicElements['meta'][]>
-  links?: () => JSX.IntrinsicElements['link'][]
-  scripts?: () => JSX.IntrinsicElements['script'][]
+    | Array<JSX.IntrinsicElements['meta']>
+    | Promise<Array<JSX.IntrinsicElements['meta']>>
+  links?: () => Array<JSX.IntrinsicElements['link']>
+  scripts?: () => Array<JSX.IntrinsicElements['script']>
   headers?: (ctx: {
     loaderData: TLoaderData
   }) => Promise<Record<string, string>> | Record<string, string>
@@ -281,12 +283,12 @@ export type MetaDescriptor =
   | { httpEquiv: string; content: string }
   | { 'script:ld+json': LdJsonObject }
   | { tagName: 'meta' | 'link'; [name: string]: string }
-  | { [name: string]: unknown }
+  | Record<string, unknown>
 
 type LdJsonObject = { [Key in string]: LdJsonValue } & {
   [Key in string]?: LdJsonValue | undefined
 }
-type LdJsonArray = LdJsonValue[] | readonly LdJsonValue[]
+type LdJsonArray = Array<LdJsonValue> | ReadonlyArray<LdJsonValue>
 type LdJsonPrimitive = string | number | boolean | null
 type LdJsonValue = LdJsonPrimitive | LdJsonObject | LdJsonArray
 
@@ -658,7 +660,7 @@ export class Route<
     >,
   ) {
     this.options = (options as any) || {}
-    this.isRoot = !options?.getParentRoute as any
+    this.isRoot = !options.getParentRoute as any
     invariant(
       !((options as any)?.id && (options as any)?.path),
       `Route cannot have both an 'id' and a 'path' option.`,
@@ -713,9 +715,9 @@ export class Route<
     > &
       RoutePathOptionsIntersection<TCustomId, TPath>
 
-    const isRoot = !options?.path && !options?.id
+    const isRoot = !options.path && !options.id
 
-    this.parentRoute = this.options?.getParentRoute?.()
+    this.parentRoute = this.options.getParentRoute()
 
     if (isRoot) {
       this.path = rootRouteId as TPath
@@ -733,15 +735,13 @@ export class Route<
       path = trimPathLeft(path)
     }
 
-    const customId = options?.id || path
+    const customId = options.id || path
 
     // Strip the parentId prefix from the first level of children
     let id = isRoot
       ? rootRouteId
       : joinPaths([
-          (this.parentRoute.id as any) === rootRouteId
-            ? ''
-            : this.parentRoute.id,
+          this.parentRoute.id === rootRouteId ? '' : this.parentRoute.id,
           customId,
         ])
 
@@ -763,7 +763,7 @@ export class Route<
     this.to = fullPath as TrimPathRight<TFullPath>
   }
 
-  addChildren = <TNewChildren extends AnyRoute[]>(
+  addChildren = <TNewChildren extends Array<AnyRoute>>(
     children: TNewChildren,
   ): Route<
     TParentRoute,

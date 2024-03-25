@@ -1,33 +1,33 @@
-import { NoInfer } from '@tanstack/react-store'
-import { ParsePathParams } from './link'
-import {
-  AnyRoute,
-  ResolveFullPath,
-  ResolveFullSearchSchema,
-  MergeFromFromParent,
-  RouteContext,
-  AnyContext,
-  RouteOptions,
-  UpdatableRouteOptions,
-  Route,
-  createRoute,
-  RootRouteId,
-  TrimPathLeft,
-  RouteConstraints,
-  ResolveFullSearchSchemaInput,
-  SearchSchemaInput,
-  RouteLoaderFn,
-  AnyPathParams,
-  AnySearchSchema,
-  FileBaseRouteOptions,
-} from './route'
-import { Assign, Expand, IsAny } from './utils'
-import { useMatch, useLoaderDeps, useLoaderData, RouteMatch } from './Matches'
+import warning from 'tiny-warning'
+import { RouteOptions, createRoute } from './route'
+import { useLoaderData, useLoaderDeps, useMatch } from './Matches'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
-import warning from 'tiny-warning'
-import { RegisteredRouter } from './router'
-import { RouteById, RouteIds } from './routeInfo'
+import type { ParsePathParams } from './link'
+import type {
+  AnyContext,
+  AnyPathParams,
+  AnyRoute,
+  AnySearchSchema,
+  FileBaseRouteOptions,
+  MergeFromFromParent,
+  ResolveFullPath,
+  ResolveFullSearchSchema,
+  ResolveFullSearchSchemaInput,
+  RootRouteId,
+  Route,
+  RouteConstraints,
+  RouteContext,
+  RouteLoaderFn,
+  SearchSchemaInput,
+  TrimPathLeft,
+  UpdatableRouteOptions,
+} from './route'
+import type { Assign, Expand, IsAny } from './utils'
+import type { RouteMatch } from './Matches'
+import type { NoInfer } from '@tanstack/react-store'
+import type { RegisteredRouter } from './router'
+import type { RouteById, RouteIds } from './routeInfo'
 
 export interface FileRoutesByPath {
   // '/': {
