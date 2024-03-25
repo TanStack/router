@@ -28,12 +28,15 @@ export function PostErrorComponent({ error, reset }: ErrorComponentProps) {
   }
   const queryErrorResetBoundary = useQueryErrorResetBoundary()
 
+  React.useEffect(() => {
+    queryErrorResetBoundary.reset()
+  }, [queryErrorResetBoundary])
+
   return (
     <div>
       <button
         onClick={() => {
           reset()
-          queryErrorResetBoundary.reset()
           router.invalidate()
         }}
       >
