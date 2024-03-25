@@ -38,7 +38,7 @@ TanStack Router separates code into two categories:
 
 ## Using the `.lazy.tsx` suffix
 
-If you're using the recommended [File-Based Routing](../guide/route-trees) approach, code splitting is **as easy as moving your code into a separate file with a `.lazy.tsx` suffix** and use the `createLazyFileRoute` function instead of the `FileRoute` class or `createFileRoute` function.
+If you're using the recommended [File-Based Routing](./guide/route-trees) approach, code splitting is **as easy as moving your code into a separate file with a `.lazy.tsx` suffix** and use the `createLazyFileRoute` function instead of the `FileRoute` class or `createFileRoute` function.
 
 Here are the options currently supported by the `createLazyFileRoute` function:
 
