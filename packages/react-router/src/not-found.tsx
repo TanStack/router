@@ -1,6 +1,7 @@
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import * as React from 'react'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
-import type * as React from 'react'
 import type { RegisteredRouter } from './router'
 import type { RouteIds } from './routeInfo'
 

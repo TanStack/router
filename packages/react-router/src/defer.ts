@@ -23,7 +23,7 @@ export type DeferredPromiseState<T> = {
 )
 
 export type DeferredPromise<T> = Promise<T> & {
-  __deferredState?: DeferredPromiseState<T>
+  __deferredState: DeferredPromiseState<T>
 }
 
 export function defer<T>(
@@ -34,6 +34,7 @@ export function defer<T>(
 ) {
   const promise = _promise as DeferredPromise<T>
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (!promise.__deferredState) {
     promise.__deferredState = {
       uid: Math.random().toString(36).slice(2),
