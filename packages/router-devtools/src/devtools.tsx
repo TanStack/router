@@ -25,9 +25,8 @@ import type {
   AnyRoute,
   AnyRouteMatch,
   AnyRouter,
-  Route} from '@tanstack/react-router';
-
-export type PartialKeys<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
+  Route,
+} from '@tanstack/react-router'
 
 interface DevtoolsOptions {
   /**
@@ -137,7 +136,7 @@ export function TanStackRouterDevtools({
   containerElement: Container = 'footer',
   router,
 }: DevtoolsOptions): React.ReactElement | null {
-  const [rootEl, setRootEl] = React.useState<HTMLDivElement>(null!)
+  const [rootEl, setRootEl] = React.useState<HTMLDivElement>()
   const panelRef = React.useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useLocalStorage(
     'tanstackRouterDevtoolsOpen',
@@ -195,11 +194,11 @@ export function TanStackRouterDevtools({
 
   React.useEffect(() => {
     if (isResolvedOpen) {
-      const previousValue = rootEl.parentElement?.style.paddingBottom
+      const previousValue = rootEl?.parentElement?.style.paddingBottom
 
       const run = () => {
         const containerHeight = panelRef.current?.getBoundingClientRect().height
-        if (rootEl.parentElement) {
+        if (rootEl?.parentElement) {
           rootEl.parentElement.style.paddingBottom = `${containerHeight}px`
         }
       }
@@ -211,14 +210,14 @@ export function TanStackRouterDevtools({
 
         return () => {
           window.removeEventListener('resize', run)
-          if (rootEl.parentElement && typeof previousValue === 'string') {
+          if (rootEl?.parentElement && typeof previousValue === 'string') {
             rootEl.parentElement.style.paddingBottom = previousValue
           }
         }
       }
     }
     return
-  }, [isResolvedOpen])
+  }, [isResolvedOpen, rootEl?.parentElement])
 
   React.useEffect(() => {
     if (rootEl) {
@@ -433,12 +432,6 @@ const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
     router,
   } as any)
 
-  const matches = [
-    ...(routerState.pendingMatches ?? []),
-    ...routerState.matches,
-    ...routerState.cachedMatches,
-  ]
-
   invariant(
     router,
     'No router was found for the TanStack Router Devtools. Please place the devtools in the <RouterProvider> component tree or pass the router instance to the devtools manually.',
@@ -456,12 +449,21 @@ const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
     '',
   )
 
-  const activeMatch = React.useMemo(
-    () => matches.find((d) => d.routeId === activeId || d.id === activeId),
-    [matches, activeId],
-  )
+  const activeMatch = React.useMemo(() => {
+    const matches = [
+      ...(routerState.pendingMatches ?? []),
+      ...routerState.matches,
+      ...routerState.cachedMatches,
+    ]
+    return matches.find((d) => d.routeId === activeId || d.id === activeId)
+  }, [
+    activeId,
+    routerState.cachedMatches,
+    routerState.matches,
+    routerState.pendingMatches,
+  ])
 
-  const hasSearch = Object.keys(routerState.location.search || {}).length
+  const hasSearch = Object.keys(routerState.location.search).length
 
   const explorerState = {
     ...router,
@@ -734,9 +736,7 @@ const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
                 <div>Last Updated:</div>
                 <div className={getStyles().matchDetailsInfo}>
                   {activeMatch.updatedAt
-                    ? new Date(
-                        activeMatch.updatedAt,
-                      ).toLocaleTimeString()
+                    ? new Date(activeMatch.updatedAt).toLocaleTimeString()
                     : 'N/A'}
                 </div>
               </div>
@@ -765,13 +765,14 @@ const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
           <div className={getStyles().detailsHeader}>Search Params</div>
           <div className={getStyles().detailsContent}>
             <Explorer
-              value={routerState.location.search || {}}
-              defaultExpanded={Object.keys(
-                (routerState.location.search as {}) || {},
-              ).reduce((obj: any, next) => {
-                obj[next] = {}
-                return obj
-              }, {})}
+              value={routerState.location.search}
+              defaultExpanded={Object.keys(routerState.location.search).reduce(
+                (obj: any, next) => {
+                  obj[next] = {}
+                  return obj
+                },
+                {},
+              )}
             />
           </div>
         </div>
@@ -800,7 +801,7 @@ function AgeTicker({
     return () => {
       clearInterval(interval)
     }
-  }, [])
+  }, [rerender])
 
   if (!match) {
     return null
@@ -1046,10 +1047,9 @@ const stylesFactory = () => {
       }
 
       if (showBorder) {
-        const border = css`
+        classes.push(css`
           border-right: 1px solid ${tokens.colors.gray[500]};
-        `
-        classes.push(border)
+        `)
       }
 
       return classes
