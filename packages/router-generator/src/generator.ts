@@ -98,8 +98,9 @@ async function getRouteNodes(config: Config) {
           const isPendingComponent = routePath.endsWith('/pendingComponent')
           const isLoader = routePath.endsWith('/loader')
 
-          const segments = (routePath ?? '').split('/')
-          const isLayout = segments[segments.length - 1]?.startsWith('_') || false
+          const segments = routePath.split('/')
+          const isLayout =
+            segments[segments.length - 1]?.startsWith('_') || false
 
           ;(
             [
@@ -152,7 +153,7 @@ async function getRouteNodes(config: Config) {
   return routeNodes
 }
 
-let first = false
+let isFirst = false
 let skipMessage = false
 
 type RouteSubNode = {
@@ -167,9 +168,9 @@ export async function generator(config: Config) {
   const logger = logging({ disabled: config.disableLogging })
   logger.log('')
 
-  if (!first) {
+  if (!isFirst) {
     logger.log('♻️  Generating routes...')
-    first = true
+    isFirst = true
   } else if (skipMessage) {
     skipMessage = false
   } else {
@@ -239,9 +240,9 @@ export async function generator(config: Config) {
 
     const trimmedPath = trimPathLeft(node.path ?? '')
 
-    const split = trimmedPath.split('/') ?? []
-    const first = split[0] ?? trimmedPath ?? ''
-    const lastRouteSegment = split[split.length - 1] ?? trimmedPath ?? ''
+    const split = trimmedPath.split('/')
+    const first = split[0] ?? trimmedPath
+    const lastRouteSegment = split[split.length - 1] ?? trimmedPath
 
     node.isNonPath = lastRouteSegment.startsWith('_')
     node.isNonLayout = first.endsWith('_')
@@ -642,16 +643,16 @@ export async function generator(config: Config) {
   )
 }
 
-function routePathToVariable(d: string): string {
+function routePathToVariable(routePath: string): string {
   return (
-    removeUnderscores(d)
+    removeUnderscores(routePath)
       ?.replace(/\/\$\//g, '/splat/')
       .replace(/\$$/g, 'splat')
       .replace(/\$/g, '')
       .split(/[/-]/g)
       .map((d, i) => (i > 0 ? capitalize(d) : d))
       .join('')
-      .replace(/([^a-zA-Z0-9]|[\.])/gm, '')
+      .replace(/([^a-zA-Z0-9]|[.])/gm, '')
       .replace(/^(\d)/g, 'R$1') ?? ''
   )
 }
@@ -732,13 +733,13 @@ function determineNodePath(node: RouteNode) {
 /**
  * Removes the last segment from a given path. Segments are considered to be separated by a '/'.
  *
- * @param {string} path - The path from which to remove the last segment. Defaults to '/'.
+ * @param {string} routePath - The path from which to remove the last segment. Defaults to '/'.
  * @returns {string} The path with the last segment removed.
  * @example
  * removeLastSegmentFromPath('/workspace/_auth/foo') // '/workspace/_auth'
  */
-export function removeLastSegmentFromPath(path: string = '/'): string {
-  const segments = path.split('/')
+export function removeLastSegmentFromPath(routePath: string = '/'): string {
+  const segments = routePath.split('/')
   segments.pop() // Remove the last segment
   return segments.join('/')
 }
@@ -746,13 +747,13 @@ export function removeLastSegmentFromPath(path: string = '/'): string {
 /**
  * Removes all segments from a given path that start with an underscore ('_').
  *
- * @param {string} path - The path from which to remove segments. Defaults to '/'.
+ * @param {string} routePath - The path from which to remove segments. Defaults to '/'.
  * @returns {string} The path with all underscore-prefixed segments removed.
  * @example
  * removeLayoutSegments('/workspace/_auth/foo') // '/workspace/foo'
  */
-function removeLayoutSegments(path: string = '/'): string {
-  const segments = path.split('/')
+function removeLayoutSegments(routePath: string = '/'): string {
+  const segments = routePath.split('/')
   const newSegments = segments.filter((segment) => !segment.startsWith('_'))
   return newSegments.join('/')
 }
