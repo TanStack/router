@@ -388,8 +388,7 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
 >() {
-  useRouterState({ select: (s) => [s.location, s.resolvedLocation] })
-  const { matchRoute } = useRouter()
+  const router = useRouter()
 
   return React.useCallback(
     <
@@ -403,14 +402,14 @@ export function useMatchRoute<
     ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
-      return matchRoute(rest as any, {
+      return router.matchRoute(rest as any, {
         pending,
         caseSensitive,
         fuzzy,
         includeSearch,
       })
     },
-    [],
+    [router],
   )
 }
 
