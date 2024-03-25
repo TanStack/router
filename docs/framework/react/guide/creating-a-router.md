@@ -102,4 +102,4 @@ const router = createRouter({
 
 ## Other Options
 
-There are many other options that can be passed to the `Router` constructor. You can find a full list of them in the [API Reference](../api/router/RouterOptionsType).
+There are many other options that can be passed to the `Router` constructor. You can find a full list of them in the [API Reference](./api/router/RouterOptionsType).
