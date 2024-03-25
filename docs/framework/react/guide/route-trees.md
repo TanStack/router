@@ -55,10 +55,11 @@ Consider the following route tree:
 
 Route trees are represented using a number of different ways:
 
-- Flat Routes
-- Directory Routes
-- Mixed Flat and Directory Routes
-- Code-Based Routes
+- [Flat Routes](./guide/route-trees#flat-routes)
+- [Directory Routes](./guide/route-trees#directory-routes)
+- [Mixed Flat and Directory Routes](./guide/route-trees#mixed-flat-and-directory-routes)
+- [Code-Based Routes](./guide/route-trees#code-based-routes)
+- [Case-Sensitivity](./guide/route-trees#case-sensitivity)
 
 ## Flat Routes
 
