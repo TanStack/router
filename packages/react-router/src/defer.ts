@@ -23,7 +23,7 @@ export type DeferredPromiseState<T> = {
 )
 
 export type DeferredPromise<T> = Promise<T> & {
-  __deferredState: DeferredPromiseState<T>
+  __deferredState?: DeferredPromiseState<T>
 }
 
 export function defer<T>(

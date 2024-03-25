@@ -34,9 +34,8 @@ function toValue(mix) {
 }
 
 export function decode(str, pfx?: string) {
-  let tmp,
-    k,
-    out = {},
+  let tmp, k
+  const out = {},
     arr = (pfx ? str.substr(pfx.length) : str).split('&')
 
   while ((tmp = arr.shift())) {

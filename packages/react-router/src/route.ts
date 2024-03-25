@@ -69,8 +69,8 @@ export type RouteOptions<
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
     ? undefined
     : TLoaderDataReturn,
 > = BaseRouteOptions<
@@ -115,7 +115,7 @@ export type FileBaseRouteOptions<
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
+  TLoaderDataReturn = unknown,
 > = {
   validateSearch?: SearchSchemaValidator<TSearchSchemaInput, TSearchSchema>
   shouldReload?:
@@ -181,7 +181,7 @@ export type BaseRouteOptions<
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
+  TLoaderDataReturn = unknown,
 > = RoutePathOptions<TCustomId, TPath> &
   FileBaseRouteOptions<
     TParentRoute,
@@ -223,7 +223,7 @@ type BeforeLoadFn<
 export type UpdatableRouteOptions<
   TAllParams extends Record<string, any>,
   TFullSearchSchema extends Record<string, any>,
-  TLoaderData extends any,
+  TLoaderData,
 > = {
   // test?: (args: TAllContext) => void
   // If true, this route will be matched as case-sensitive
@@ -327,7 +327,7 @@ export type RouteLoaderFn<
   TLoaderDeps extends Record<string, any> = {},
   TAllContext extends Record<string, any> = AnyContext,
   TRouteContext extends Record<string, any> = AnyContext,
-  TLoaderData extends any = unknown,
+  TLoaderData = unknown,
 > = (
   match: LoaderFnContext<TAllParams, TLoaderDeps, TAllContext, TRouteContext>,
 ) => Promise<TLoaderData> | TLoaderData | void
@@ -350,7 +350,7 @@ export interface LoaderFnContext<
   route: Route
 }
 
-export type SearchFilter<T, U = T> = (prev: T) => U
+export type SearchFilter<TInput, TResult = TInput> = (prev: TInput) => TResult
 
 export type ResolveId<
   TParentRoute,
@@ -416,6 +416,7 @@ export interface AnyRoute
     any
   > {}
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export type MergeFromFromParent<T, U> = IsAny<T, U, T & U>
 
 export type ResolveAllParams<
@@ -456,7 +457,7 @@ export function getRouteApi<
   TAllParams extends AnyPathParams = TRoute['types']['allParams'],
   TAllContext extends Record<string, any> = TRoute['types']['allContext'],
   TLoaderDeps extends Record<string, any> = TRoute['types']['loaderDeps'],
-  TLoaderData extends any = TRoute['types']['loaderData'],
+  TLoaderData = TRoute['types']['loaderData'],
 >(id: TId) {
   return new RouteApi<
     TId,
@@ -479,7 +480,7 @@ export class RouteApi<
   TAllParams extends AnyPathParams = TRoute['types']['allParams'],
   TAllContext extends Record<string, any> = TRoute['types']['allContext'],
   TLoaderDeps extends Record<string, any> = TRoute['types']['loaderDeps'],
-  TLoaderData extends any = TRoute['types']['loaderData'],
+  TLoaderData = TRoute['types']['loaderData'],
 > {
   id: TId
 
@@ -592,8 +593,8 @@ export class Route<
   >,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
     ? undefined
     : TLoaderDataReturn,
   TChildren extends RouteConstraints['TChildren'] = unknown,
@@ -792,7 +793,7 @@ export class Route<
     return this as any
   }
 
-  updateLoader = <TNewLoaderData extends any = unknown>(options: {
+  updateLoader = <TNewLoaderData = unknown>(options: {
     loader: RouteLoaderFn<
       TAllParams,
       TLoaderDeps,
@@ -839,6 +840,7 @@ export class Route<
   }
 
   useMatch = <
+    // eslint-disable-next-line no-shadow
     TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
     TRouteMatchState = RouteMatch<TRouteTree, TId>,
     TSelected = TRouteMatchState,
@@ -933,8 +935,8 @@ export function createRoute<
   >,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
     ? undefined
     : TLoaderDataReturn,
   TChildren extends RouteConstraints['TChildren'] = unknown,
@@ -997,8 +999,8 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       ? RouteContext
       : TRouteContextReturn,
     TLoaderDeps extends Record<string, any> = {},
-    TLoaderDataReturn extends any = unknown,
-    TLoaderData extends any = [TLoaderDataReturn] extends [never]
+    TLoaderDataReturn = unknown,
+    TLoaderData = [TLoaderDataReturn] extends [never]
       ? undefined
       : TLoaderDataReturn,
   >(
@@ -1062,8 +1064,8 @@ export class RootRoute<
     : TRouteContextReturn,
   TRouterContext extends {} = {},
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
     ? undefined
     : TLoaderDataReturn,
 > extends Route<
@@ -1135,8 +1137,8 @@ export function createRootRoute<
     : TRouteContextReturn,
   TRouterContext extends {} = {},
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
     ? undefined
     : TLoaderDataReturn,
 >(
@@ -1300,8 +1302,8 @@ export class NotFoundRoute<
   >,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
     ? undefined
     : TLoaderDataReturn,
   TChildren extends RouteConstraints['TChildren'] = unknown,

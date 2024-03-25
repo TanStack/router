@@ -37,6 +37,7 @@ export function useNavigate<
     })
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   return React.useCallback(result, [])
 }
 
@@ -70,6 +71,7 @@ export function Navigate<
       from: props.to ? match.pathname : undefined,
       ...props,
     } as any)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return null

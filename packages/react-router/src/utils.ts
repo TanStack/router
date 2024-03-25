@@ -1,9 +1,14 @@
 import * as React from 'react'
 
 export type NoInfer<T> = [T][T extends any ? 0 : never]
-export type IsAny<T, Y, N = T> = 1 extends 0 & T ? Y : N
-export type PickAsRequired<T, K extends keyof T> = Omit<T, K> &
-  Required<Pick<T, K>>
+export type IsAny<TValue, TYesResult, TNoResult = TValue> = 1 extends 0 & TValue
+  ? TYesResult
+  : TNoResult
+export type PickAsRequired<TValue, TKey extends keyof TValue> = Omit<
+  TValue,
+  TKey
+> &
+  Required<Pick<TValue, TKey>>
 
 export type PickRequired<T> = {
   [K in keyof T as undefined extends T[K] ? never : K]: T[K]
@@ -19,14 +24,11 @@ export type Expand<T> = T extends object
     : never
   : T
 
-export type UnionToIntersection<U> = (
-  U extends any ? (k: U) => void : never
+export type UnionToIntersection<T> = (
+  T extends any ? (k: T) => void : never
 ) extends (k: infer I) => any
   ? I
   : never
-
-export type DeepOptional<T, K extends keyof T> = Pick<DeepPartial<T>, K> &
-  Omit<T, K>
 
 export type DeepPartial<T> = T extends object
   ? {
@@ -34,11 +36,13 @@ export type DeepPartial<T> = T extends object
     }
   : T
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export type MakeDifferenceOptional<T, U> = Omit<U, keyof T> &
   Partial<Pick<U, keyof T & keyof U>> &
   PickRequired<Omit<U, keyof PickRequired<T>>>
 
 // from https://stackoverflow.com/a/53955431
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export type IsUnion<T, U extends T = T> = (
   T extends any ? (U extends T ? false : true) : never
 ) extends false
@@ -61,7 +65,7 @@ export type IsUnion<T, U extends T = T> = (
 //   }
 // >
 
-export type Assign<Left, Right> = Omit<Left, keyof Right> & Right
+export type Assign<TLeft, TRight> = Omit<TLeft, keyof TRight> & TRight
 
 export type AssignAll<T extends Array<any>> = T extends [
   infer Left,
@@ -119,15 +123,15 @@ export type NonNullableUpdater<TPrevious, TResult = TPrevious> =
   | ((prev: TPrevious) => TResult)
 
 // from https://github.com/type-challenges/type-challenges/issues/737
-type LastInUnion<U> =
-  UnionToIntersection<U extends unknown ? (x: U) => 0 : never> extends (
+type LastInUnion<T> =
+  UnionToIntersection<T extends unknown ? (x: T) => 0 : never> extends (
     x: infer L,
   ) => 0
     ? L
     : never
-export type UnionToTuple<U, Last = LastInUnion<U>> = [U] extends [never]
+export type UnionToTuple<T, TLast = LastInUnion<T>> = [T] extends [never]
   ? []
-  : [...UnionToTuple<Exclude<U, Last>>, Last]
+  : [...UnionToTuple<Exclude<T, TLast>>, TLast]
 
 //
 
@@ -152,11 +156,11 @@ export function functionalUpdate<TResult>(
   return updater
 }
 
-export function pick<T, K extends keyof T>(
-  parent: T,
-  keys: Array<K>,
-): Pick<T, K> {
-  return keys.reduce((obj: any, key: K) => {
+export function pick<TValue, TKey extends keyof TValue>(
+  parent: TValue,
+  keys: Array<TKey>,
+): Pick<TValue, TKey> {
+  return keys.reduce((obj: any, key: TKey) => {
     obj[key] = parent[key]
     return obj
   }, {} as any)
@@ -303,10 +307,10 @@ export function shallow<T>(objA: T, objB: T) {
     return false
   }
 
-  for (let i = 0; i < keysA.length; i++) {
+  for (const item of keysA) {
     if (
-      !Object.prototype.hasOwnProperty.call(objB, keysA[i] as string) ||
-      !Object.is(objA[keysA[i] as keyof T], objB[keysA[i] as keyof T])
+      !Object.prototype.hasOwnProperty.call(objB, item) ||
+      !Object.is(objA[item as keyof T], objB[item as keyof T])
     ) {
       return false
     }

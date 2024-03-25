@@ -25,6 +25,8 @@ import {
   trimPathLeft,
   trimPathRight,
 } from './path'
+import { isRedirect } from './redirects'
+import { isNotFound } from './not-found'
 import type * as React from 'react'
 import type {
   HistoryLocation,
@@ -68,9 +70,8 @@ import type {
 } from './RouterProvider'
 
 import type { AnyRedirect, ResolvedRedirect } from './redirects'
-import { isRedirect } from './redirects'
+
 import type { NotFoundError } from './not-found'
-import { isNotFound } from './not-found'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NoInfer } from '@tanstack/react-store'
 import type { DeferredPromiseState } from './defer'
@@ -359,6 +360,7 @@ export class Router<
     }
 
     if (
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
@@ -377,6 +379,7 @@ export class Router<
       this.buildRouteTree()
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!this.__store) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
         onUpdate: () => {
@@ -449,7 +452,10 @@ export class Router<
       scores: Array<number>
     }> = []
 
-    Object.values(this.routesById).forEach((d, i) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const routes = Object.values(this.routesById) as Array<AnyRoute>
+
+    routes.forEach((d, i) => {
       if (d.isRoot || !d.path) {
         return
       }
@@ -461,16 +467,16 @@ export class Router<
         parsed.shift()
       }
 
-      const scores = parsed.map((d) => {
-        if (d.value === '/') {
+      const scores = parsed.map((segment) => {
+        if (segment.value === '/') {
           return 0.75
         }
 
-        if (d.type === 'param') {
+        if (segment.type === 'param') {
           return 0.5
         }
 
-        if (d.type === 'wildcard') {
+        if (segment.type === 'wildcard') {
           return 0.25
         }
 
@@ -592,6 +598,7 @@ export class Router<
     return this.routesById as Record<string, AnyRoute>
   }
 
+  // eslint-disable-next-line no-shadow
   matchRoutes = <TRouteTree extends AnyRoute>(
     pathname: string,
     locationSearch: AnySearchSchema,
@@ -645,7 +652,7 @@ export class Router<
 
     while (routeCursor.parentRoute) {
       routeCursor = routeCursor.parentRoute
-      if (routeCursor) matchedRoutes.unshift(routeCursor)
+      matchedRoutes.unshift(routeCursor)
     }
 
     const globalNotFoundRouteId = (() => {
@@ -725,15 +732,15 @@ export class Router<
             undefined,
           ]
         } catch (err: any) {
-          const searchError = new SearchParamError(err.message, {
+          const searchParamError = new SearchParamError(err.message, {
             cause: err,
           })
 
           if (opts?.throwOnError) {
-            throw searchError
+            throw searchParamError
           }
 
-          return [parentSearch, searchError]
+          return [parentSearch, searchParamError]
         }
       })()
 
@@ -851,6 +858,7 @@ export class Router<
 
       const relevantMatches = this.state.pendingMatches || this.state.matches
       const fromSearch =
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         relevantMatches[relevantMatches.length - 1]?.search ||
         this.latestLocation.search
 
@@ -924,7 +932,7 @@ export class Router<
         dest.search === true
           ? preFilteredSearch // Preserve resolvedFrom true
           : dest.search
-            ? functionalUpdate(dest.search, preFilteredSearch) ?? {} // Updater
+            ? functionalUpdate(dest.search, preFilteredSearch) // Updater
             : preSearchFilters.length
               ? preFilteredSearch // Preserve resolvedFrom filters
               : {}
@@ -1040,6 +1048,7 @@ export class Router<
     // If the next urls are the same and we're not replacing,
     // do nothing
     if (!isSameUrl) {
+      // eslint-disable-next-line prefer-const
       let { maskedLocation, ...nextHistory } = next
 
       if (maskedLocation) {
@@ -1189,6 +1198,7 @@ export class Router<
     }
 
     // Check each match middleware to see if the route can be accessed
+    // eslint-disable-next-line prefer-const
     for (let [index, match] of matches.entries()) {
       const parentMatch = matches[index - 1]
       const route = this.looseRoutesById[match.routeId]!
@@ -1284,6 +1294,7 @@ export class Router<
 
     validResolvedMatches.forEach((match, index) => {
       matchPromises.push(
+        // eslint-disable-next-line no-async-promise-executor
         new Promise<void>(async (resolve, reject) => {
           const parentMatchPromise = matchPromises[index - 1]
           const route = this.looseRoutesById[match.routeId]!
@@ -1409,13 +1420,14 @@ export class Router<
                 meta,
                 headers,
               }
-            } catch (error) {
+            } catch (e) {
+              let error = e
               if ((latestPromise = checkLatest())) return await latestPromise
 
-              handleError(error)
+              handleError(e)
 
               try {
-                route.options.onError?.(error)
+                route.options.onError?.(e)
               } catch (onErrorError) {
                 error = onErrorError
                 handleError(onErrorError)
@@ -1441,14 +1453,12 @@ export class Router<
               30_000 // 30 seconds for preloads by default
             : route.options.staleTime ?? this.options.defaultStaleTime ?? 0
 
-          // Default to reloading the route all the time
-          let shouldReload
-
           const shouldReloadOption = route.options.shouldReload
 
+          // Default to reloading the route all the time
           // Allow shouldReload to get the last say,
           // if provided.
-          shouldReload =
+          const shouldReload =
             typeof shouldReloadOption === 'function'
               ? shouldReloadOption(loaderContext)
               : shouldReloadOption
@@ -1550,6 +1560,7 @@ export class Router<
   }
 
   load = async (): Promise<void> => {
+    // eslint-disable-next-line no-async-promise-executor
     const promise = new Promise<void>(async (resolve, reject) => {
       const next = this.latestLocation
       const prevLocation = this.state.resolvedLocation
@@ -1646,6 +1657,7 @@ export class Router<
               ...exitingMatches.filter((d) => d.status !== 'error'),
             ],
             statusCode:
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
               redirect.statusCode || notFound
                 ? 404
                 : s.matches.some((d) => d.status === 'error')
@@ -1809,9 +1821,6 @@ export class Router<
       ? this.latestLocation
       : this.state.resolvedLocation
 
-    if (!baseLocation) {
-      return false
-    }
     const match = matchPathname(this.basepath, baseLocation.pathname, {
       ...opts,
       to: next.pathname,
@@ -1884,7 +1893,7 @@ export class Router<
   /**
    * @deprecated Please extract your own data from scripts injected using the `injectHtml` method
    */
-  hydrateData = <T extends any = unknown>(key: any) => {
+  hydrateData = <T = unknown>(key: any) => {
     warning(
       false,
       `The hydrateData method is deprecated. Please use the extractHtml method to extract your own data.`,
@@ -1952,29 +1961,26 @@ export class Router<
         `Could not find a client-side match for dehydrated match with id: ${match.id}!`,
       )
 
-      if (dehydratedMatch) {
-        const route = this.looseRoutesById[match.routeId]!
+      const route = this.looseRoutesById[match.routeId]!
 
-        const assets =
-          dehydratedMatch.status === 'notFound' ||
-          dehydratedMatch.status === 'redirected'
-            ? {}
-            : {
-                meta: route.options.meta?.({
-                  params: match.params,
-                  loaderData: dehydratedMatch.loaderData,
-                }),
-                links: route.options.links?.(),
-                scripts: route.options.scripts?.(),
-              }
+      const assets =
+        dehydratedMatch.status === 'notFound' ||
+        dehydratedMatch.status === 'redirected'
+          ? {}
+          : {
+              meta: route.options.meta?.({
+                params: match.params,
+                loaderData: dehydratedMatch.loaderData,
+              }),
+              links: route.options.links?.(),
+              scripts: route.options.scripts?.(),
+            }
 
-        return {
-          ...match,
-          ...dehydratedMatch,
-          ...assets,
-        }
+      return {
+        ...match,
+        ...dehydratedMatch,
+        ...assets,
       }
-      return match
     })
 
     this.__store.setState((s) => {

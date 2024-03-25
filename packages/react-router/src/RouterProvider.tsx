@@ -18,6 +18,7 @@ import type {
 import type { RouteMatch } from './Matches'
 
 const useTransition =
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   React.useTransition ||
   (() => [
     false,
@@ -119,7 +120,7 @@ function Transitioner() {
         isTransitioning,
       }))
     }
-  }, [isTransitioning])
+  }, [isTransitioning, router])
 
   const tryLoad = () => {
     const apply = (cb: () => void) => {
@@ -162,14 +163,14 @@ function Transitioner() {
     return () => {
       unsub()
     }
-  }, [router.history])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, router.history])
 
   useLayoutEffect(() => {
     if (
       (React.useTransition as any)
         ? routerState.isTransitioning && !isTransitioning
-        : true &&
-          !routerState.isLoading &&
+        : !routerState.isLoading &&
           routerState.resolvedLocation !== routerState.location
     ) {
       router.emit({
@@ -201,6 +202,7 @@ function Transitioner() {
     routerState.isLoading,
     routerState.resolvedLocation,
     routerState.location,
+    router,
   ])
 
   useLayoutEffect(() => {
@@ -213,6 +215,7 @@ function Transitioner() {
     }
     mountLoadForRouter.current = { router, mounted: true }
     tryLoad()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   return null

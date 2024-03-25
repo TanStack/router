@@ -31,24 +31,24 @@ export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
       ? `/${CleanPath<L>}`
       : T
 
-export type Split<S, TIncludeTrailingSlash = true> = S extends unknown
-  ? string extends S
+export type Split<TValue, TIncludeTrailingSlash = true> = TValue extends unknown
+  ? string extends TValue
     ? Array<string>
-    : S extends string
-      ? CleanPath<S> extends ''
+    : TValue extends string
+      ? CleanPath<TValue> extends ''
         ? []
         : TIncludeTrailingSlash extends true
-          ? CleanPath<S> extends `${infer T}/`
+          ? CleanPath<TValue> extends `${infer T}/`
             ? [...Split<T>, '/']
-            : CleanPath<S> extends `/${infer U}`
+            : CleanPath<TValue> extends `/${infer U}`
               ? Split<U>
-              : CleanPath<S> extends `${infer T}/${infer U}`
+              : CleanPath<TValue> extends `${infer T}/${infer U}`
                 ? [...Split<T>, ...Split<U>]
-                : [S]
-          : CleanPath<S> extends `${infer T}/${infer U}`
+                : [TValue]
+          : CleanPath<TValue> extends `${infer T}/${infer U}`
             ? [...Split<T>, ...Split<U>]
-            : S extends string
-              ? [S]
+            : TValue extends string
+              ? [TValue]
               : never
       : never
   : never
@@ -61,7 +61,7 @@ export type ParsePathParams<T extends string> = keyof {
     : never]: K
 }
 
-export type Join<T, Delimiter extends string = '/'> = T extends []
+export type Join<T, TDelimiter extends string = '/'> = T extends []
   ? ''
   : T extends [infer L extends string]
     ? L
@@ -69,7 +69,7 @@ export type Join<T, Delimiter extends string = '/'> = T extends []
           infer L extends string,
           ...infer Tail extends [...Array<string>],
         ]
-      ? CleanPath<`${L}${Delimiter}${Join<Tail>}`>
+      ? CleanPath<`${L}${TDelimiter}${Join<Tail>}`>
       : never
 
 export type Last<T extends Array<any>> = T extends [...infer _, infer L]
@@ -93,8 +93,8 @@ export type SearchRelativePathAutoComplete<
   TTo extends string,
   TSearchPath extends string,
   TPaths,
-  SearchedPaths = SearchPaths<TPaths, TSearchPath>,
-> = SearchedPaths extends string ? `${TTo}/${SearchedPaths}` : never
+  TSearchedPaths = SearchPaths<TPaths, TSearchPath>,
+> = TSearchedPaths extends string ? `${TTo}/${TSearchedPaths}` : never
 
 export type RelativeToParentPathAutoComplete<
   TFrom extends string,
@@ -198,11 +198,11 @@ export type ToSubOptions<
 type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
 type ParamVariant = 'PATH' | 'SEARCH'
-type ExcludeRootSearchSchema<T, Excluded = Exclude<T, RootSearchSchema>> = [
-  Excluded,
+type ExcludeRootSearchSchema<T, TExcluded = Exclude<T, RootSearchSchema>> = [
+  TExcluded,
 ] extends [never]
   ? {}
-  : Excluded
+  : TExcluded
 
 export type ResolveRoute<
   TRouteTree extends AnyRoute,
@@ -505,15 +505,15 @@ export function useLinkProps<
 
   const handleEnter = (e: MouseEvent) => {
     if (disabled) return
-    const target = (e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
 
     if (preload) {
-      if (target.preloadTimeout) {
+      if (eventTarget.preloadTimeout) {
         return
       }
 
-      target.preloadTimeout = setTimeout(() => {
-        target.preloadTimeout = null
+      eventTarget.preloadTimeout = setTimeout(() => {
+        eventTarget.preloadTimeout = null
         doPreload()
       }, preloadDelay)
     }
@@ -521,18 +521,18 @@ export function useLinkProps<
 
   const handleLeave = (e: MouseEvent) => {
     if (disabled) return
-    const target = (e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
 
-    if (target.preloadTimeout) {
-      clearTimeout(target.preloadTimeout)
-      target.preloadTimeout = null
+    if (eventTarget.preloadTimeout) {
+      clearTimeout(eventTarget.preloadTimeout)
+      eventTarget.preloadTimeout = null
     }
   }
 
   const composeHandlers =
     (handlers: Array<undefined | ((e: any) => void)>) =>
     (e: React.SyntheticEvent) => {
-      if (e.persist) e.persist()
+      e.persist()
       handlers.filter(Boolean).forEach((handler) => {
         if (e.defaultPrevented) return
         handler!(e)
@@ -546,7 +546,7 @@ export function useLinkProps<
 
   // Get the inactive props
   const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-    isActive ? {} : functionalUpdate(inactiveProps, {}) ?? {}
+    isActive ? {} : functionalUpdate(inactiveProps, {})
 
   return {
     ...resolvedActiveProps,

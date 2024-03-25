@@ -27,6 +27,7 @@ export function lazyRouteComponent<
   }
 
   const load = () => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!loadPromise) {
       loadPromise = importer().catch((error) => {
         if (isModuleNotFoundError(error)) {

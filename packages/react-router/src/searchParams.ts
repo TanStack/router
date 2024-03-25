@@ -58,16 +58,14 @@ export function stringifySearchWith(
   return (search: Record<string, any>) => {
     search = { ...search }
 
-    if (search) {
-      Object.keys(search).forEach((key) => {
-        const val = search[key]
-        if (typeof val === 'undefined' || val === undefined) {
-          delete search[key]
-        } else {
-          search[key] = stringifyValue(val)
-        }
-      })
-    }
+    Object.keys(search).forEach((key) => {
+      const val = search[key]
+      if (typeof val === 'undefined' || val === undefined) {
+        delete search[key]
+      } else {
+        search[key] = stringifyValue(val)
+      }
+    })
 
     const searchStr = encode(search as Record<string, string>).toString()
 

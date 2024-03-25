@@ -277,6 +277,7 @@ function MatchInner({
     throw match.loadPromise
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (match.status === 'success') {
     const Comp = route.options.component ?? router.options.defaultComponent
 
@@ -368,22 +369,22 @@ export type UseMatchRouteOptions<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
   TMaskTo extends string = '',
-  Options extends ToOptions<
+  TOptions extends ToOptions<
     TRouteTree,
     TFrom,
     TTo,
     TMaskFrom,
     TMaskTo
   > = ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-  RelaxedOptions = Omit<Options, 'search' | 'params'> &
-    DeepPartial<Pick<Options, 'search' | 'params'>>,
-> = RelaxedOptions & MatchRouteOptions
+  TRelaxedOptions = Omit<TOptions, 'search' | 'params'> &
+    DeepPartial<Pick<TOptions, 'search' | 'params'>>,
+> = TRelaxedOptions & MatchRouteOptions
 
 export function useMatchRoute<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
 >() {
   useRouterState({ select: (s) => [s.location, s.resolvedLocation] })
-  const { matchRoute } = useRouter()
+  const router = useRouter()
 
   return React.useCallback(
     <
@@ -397,14 +398,14 @@ export function useMatchRoute<
     ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
-      return matchRoute(rest as any, {
+      return router.matchRoute(rest as any, {
         pending,
         caseSensitive,
         fuzzy,
         includeSearch,
       })
     },
-    [],
+    [router],
   )
 }
 

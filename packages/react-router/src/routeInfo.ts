@@ -39,19 +39,21 @@ export type RoutePathsAutoComplete<TRouteTree extends AnyRoute, T> =
   | (string extends T ? T & {} : T)
   | RoutePaths<TRouteTree>
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type UnionizeCollisions<T, U> = {
   [P in keyof T & keyof U]: T[P] extends U[P] ? T[P] : T[P] | U[P]
 }
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type Reducer<T, U, C = UnionizeCollisions<T, U>> = C &
   Omit<T, keyof C> &
   Omit<U, keyof C>
 
-type Reduce<T extends Array<any>, Result = unknown> = T extends [
+type Reduce<TValue extends Array<any>, TResult = unknown> = TValue extends [
   infer First,
   ...infer Rest,
 ]
-  ? Reduce<Rest, Reducer<Result, First>>
-  : Result
+  ? Reduce<Rest, Reducer<TResult, First>>
+  : TResult
 
 export type FullSearchSchema<TRouteTree extends AnyRoute> = Partial<
   Expand<
