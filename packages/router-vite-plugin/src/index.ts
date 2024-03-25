@@ -1,6 +1,6 @@
-import { Plugin } from 'vite'
-import { join, normalize, isAbsolute } from 'path'
-import { type Config, getConfig, generator } from '@tanstack/router-generator'
+import { isAbsolute, join, normalize } from 'path'
+import { type Config, generator, getConfig } from '@tanstack/router-generator'
+import type { Plugin } from 'vite'
 
 const CONFIG_FILE_NAME = 'tsr.config.json'
 
