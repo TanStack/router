@@ -25,7 +25,33 @@ export * from './qss'
 export * from './redirects'
 export * from './route'
 export * from './routeInfo'
-export * from './router'
+export {
+  componentTypes,
+  createRouter,
+  Router,
+  lazyFn,
+  SearchParamError,
+  PathParamError,
+  getInitialRouterState,
+  defaultSerializeError,
+  type Register,
+  type AnyRouter,
+  type RegisteredRouter,
+  type HydrationCtx,
+  type RouterContextOptions,
+  type RouterOptions,
+  type RouterTransformer,
+  type RouterErrorSerializer,
+  type RouterState,
+  type ListenerFn,
+  type BuildNextOptions,
+  type DehydratedRouterState,
+  type DehydratedRouteMatch,
+  type DehydratedRouter,
+  type RouterConstructorOptions,
+  type RouterEvents,
+  type RouterEvent,
+} from './router'
 export {
   RouterProvider,
   getRouteMatch,
