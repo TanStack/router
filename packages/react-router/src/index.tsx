@@ -20,7 +20,20 @@ export * from './lazyRouteComponent'
 export * from './link'
 export * from './location'
 export * from './Matches'
-export * from './path'
+export {
+  joinPaths,
+  cleanPath,
+  trimPathLeft,
+  trimPathRight,
+  trimPath,
+  resolvePath,
+  parsePathname,
+  interpolatePath,
+  matchPathname,
+  removeBasepath,
+  matchByPath,
+  type Segment,
+} from './path'
 export { encode, decode } from './qss'
 export {
   redirect,
