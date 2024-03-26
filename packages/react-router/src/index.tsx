@@ -33,11 +33,16 @@ export * from './useBlocker'
 export * from './useNavigate'
 export * from './useParams'
 export * from './useSearch'
-export * from './routerContext'
+export {
+  getRouterContext, // SSR
+} from './routerContext'
 export { useRouteContext } from './useRouteContext'
 export { useRouter } from './useRouter'
 export { useRouterState } from './useRouterState'
-export { escapeJSON, useLayoutEffect } from './utils'
+export {
+  escapeJSON, // SSR
+  useLayoutEffect, // SSR
+} from './utils'
 export {
   notFound,
   isNotFound,
