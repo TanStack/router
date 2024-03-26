@@ -14,7 +14,22 @@ export { default as warning } from 'tiny-warning'
 export * from './awaited'
 export * from './defer'
 export * from './CatchBoundary'
-export * from './fileRoute'
+export {
+  FileRoute,
+  createFileRoute,
+  FileRouteLoader,
+  LazyRoute,
+  createLazyRoute,
+  createLazyFileRoute,
+  type FileRoutesByPath,
+  type Trim,
+  type TrimLeft,
+  type TrimRight,
+  type RemoveUnderScores,
+  type ResolveFilePath,
+  type FileRoutePath,
+  type LazyRouteOptions,
+} from './fileRoute'
 export * from './history'
 export { lazyRouteComponent } from './lazyRouteComponent'
 export {
