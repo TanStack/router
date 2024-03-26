@@ -16,7 +16,7 @@ export * from './defer'
 export * from './CatchBoundary'
 export * from './fileRoute'
 export * from './history'
-export * from './lazyRouteComponent'
+export { lazyRouteComponent } from './lazyRouteComponent'
 export {
   useLinkProps,
   createLink,
