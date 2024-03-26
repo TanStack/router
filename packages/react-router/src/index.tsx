@@ -83,6 +83,7 @@ export {
   useLoaderData,
   isServerSideError,
   defaultDeserializeError,
+  getRenderedMatches,
   type RouteMatch,
   type AnyRouteMatch,
   type MatchRouteOptions,
@@ -248,6 +249,14 @@ export { useRouterState } from './useRouterState'
 export {
   escapeJSON, // SSR
   useLayoutEffect, // SSR
+  pick,
+  functionalUpdate,
+  replaceEqualDeep,
+  isPlainObject,
+  isPlainArray,
+  deepEqual,
+  useStableCallback,
+  shallow,
 } from './utils'
 export {
   notFound,
