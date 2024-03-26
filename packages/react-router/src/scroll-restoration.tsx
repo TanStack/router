@@ -3,9 +3,10 @@ import * as React from 'react'
 const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
-import { ParsedLocation } from './location'
 import { useRouter } from './useRouter'
-import { NonNullableUpdater, functionalUpdate } from './utils'
+import { functionalUpdate } from './utils'
+import type { ParsedLocation } from './location'
+import type { NonNullableUpdater } from './utils'
 
 const windowKey = 'window'
 const delimiter = '___'
@@ -25,7 +26,7 @@ type Cache = {
 
 const sessionsStorage = typeof window !== 'undefined' && window.sessionStorage
 
-let cache: Cache = sessionsStorage
+const cache: Cache = sessionsStorage
   ? (() => {
       const storageKey = 'tsr-scroll-restoration-v2'
 
@@ -56,9 +57,7 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
     const getKey = options?.getKey || defaultGetKey
 
     const { history } = window
-    if (history.scrollRestoration) {
-      history.scrollRestoration = 'manual'
-    }
+    history.scrollRestoration = 'manual'
 
     const onScroll = (event: Event) => {
       if (weakScrolledElements.has(event.target)) return
@@ -137,8 +136,6 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
 
         router.resetNextScroll = true
 
-        const getKey = options?.getKey || defaultGetKey
-
         const restoreKey = getKey(event.toLocation)
         let windowRestored = false
 
@@ -173,7 +170,7 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
       unsubOnBeforeLoad()
       unsubOnResolved()
     }
-  }, [])
+  }, [options?.getKey, router])
 }
 
 export function ScrollRestoration(props: ScrollRestorationOptions) {
@@ -196,7 +193,7 @@ export function useElementScrollRestoration(
   },
 ) {
   const router = useRouter()
-  const getKey = options?.getKey || defaultGetKey
+  const getKey = options.getKey || defaultGetKey
 
   let elementSelector = ''
 
@@ -216,8 +213,8 @@ export function useElementScrollRestoration(
 }
 
 function getCssSelector(el: any): string {
-  let path = [],
-    parent
+  const path = []
+  let parent
   while ((parent = el.parentNode)) {
     path.unshift(
       `${el.tagName}:nth-child(${

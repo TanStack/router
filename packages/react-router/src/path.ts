@@ -1,13 +1,13 @@
-import { MatchLocation } from './RouterProvider'
-import { AnyPathParams } from './route'
 import { last } from './utils'
+import type { MatchLocation } from './RouterProvider'
+import type { AnyPathParams } from './route'
 
 export interface Segment {
   type: 'pathname' | 'param' | 'wildcard'
   value: string
 }
 
-export function joinPaths(paths: (string | undefined)[]) {
+export function joinPaths(paths: Array<string | undefined>) {
   return cleanPath(paths.filter(Boolean).join('/'))
 }
 
@@ -64,14 +64,14 @@ export function resolvePath(basepath: string, base: string, to: string) {
   return cleanPath(joined)
 }
 
-export function parsePathname(pathname?: string): Segment[] {
+export function parsePathname(pathname?: string): Array<Segment> {
   if (!pathname) {
     return []
   }
 
   pathname = cleanPath(pathname)
 
-  const segments: Segment[] = []
+  const segments: Array<Segment> = []
 
   if (pathname.slice(0, 1) === '/') {
     pathname = pathname.substring(1)
@@ -206,7 +206,7 @@ export function matchByPath(
 
   const params: Record<string, string> = {}
 
-  let isMatch = (() => {
+  const isMatch = (() => {
     for (
       let i = 0;
       i < Math.max(baseSegments.length, routeSegments.length);
@@ -256,7 +256,7 @@ export function matchByPath(
         }
 
         if (routeSegment.type === 'param') {
-          if (baseSegment?.value === '/') {
+          if (baseSegment.value === '/') {
             return false
           }
           if (baseSegment.value.charAt(0) !== '$') {
@@ -276,5 +276,5 @@ export function matchByPath(
     return true
   })()
 
-  return isMatch ? (params as Record<string, string>) : undefined
+  return isMatch ? params : undefined
 }

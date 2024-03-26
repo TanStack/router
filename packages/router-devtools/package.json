@@ -34,6 +34,7 @@
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:eslint": "eslint --ext .ts,.tsx ./src",
     "test:types": "tsc",
     "test:build": "publint --strict",
     "build": "vite build"

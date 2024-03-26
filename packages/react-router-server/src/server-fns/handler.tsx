@@ -20,9 +20,9 @@ export async function handleRequest(request: Request) {
     console.info(`ServerFn Request: ${serverFnId} - ${serverFnName}`)
     console.info()
 
-    const action = (
-      await getManifest('server').chunks[serverFnId!]?.import?.()
-    )?.[serverFnName!] as Function
+    const action = (await getManifest('server').chunks[serverFnId]?.import())?.[
+      serverFnName
+    ] as Function
 
     const response = await (async () => {
       try {
@@ -56,10 +56,10 @@ export async function handleRequest(request: Request) {
           }
 
           // payload type === 'args'
-          return (await request.json()) as any[]
+          return (await request.json()) as Array<any>
         })()
 
-        let result = await action.apply(null, args)
+        const result = await action(...args)
 
         if (isRedirect(result) || isNotFound(result)) {
           return redirectOrNotFoundResponse(result)
@@ -69,7 +69,7 @@ export async function handleRequest(request: Request) {
           return result
         }
 
-        const response = new Response(
+        return new Response(
           result !== undefined ? JSON.stringify(result) : undefined,
           {
             status: 200,
@@ -79,8 +79,6 @@ export async function handleRequest(request: Request) {
             },
           },
         )
-
-        return response
       } catch (error: any) {
         if (error instanceof Response) {
           return error

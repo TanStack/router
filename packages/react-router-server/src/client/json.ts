@@ -1,4 +1,5 @@
-import { JsonResponse, serverFnReturnTypeHeader } from './createServerFn'
+import { serverFnReturnTypeHeader } from './createServerFn'
+import type { JsonResponse } from './createServerFn'
 
 export function json<TData>(
   payload: TData,

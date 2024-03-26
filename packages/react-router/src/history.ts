@@ -1,4 +1,4 @@
-import { HistoryLocation } from '@tanstack/history'
+import type { HistoryLocation } from '@tanstack/history'
 
 declare module '@tanstack/history' {
   interface HistoryState {

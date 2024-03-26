@@ -2,8 +2,8 @@ import path from 'path'
 import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import * as prettier from 'prettier'
-import { Config } from './config'
 import { cleanPath, logging, trimPathLeft } from './utils'
+import type { Config } from './config'
 
 let latestTask = 0
 export const rootPathId = '__root'
@@ -29,7 +29,7 @@ export type RouteNode = {
   isVirtual?: boolean
   isLazy?: boolean
   isRoot?: boolean
-  children?: RouteNode[]
+  children?: Array<RouteNode>
   parent?: RouteNode
 }
 
@@ -39,7 +39,7 @@ async function getRouteNodes(config: Config) {
   const logger = logging({ disabled: config.disableLogging })
   const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
 
-  let routeNodes: RouteNode[] = []
+  const routeNodes: Array<RouteNode> = []
 
   async function recurse(dir: string) {
     const fullDir = path.resolve(config.routesDirectory, dir)
@@ -86,20 +86,21 @@ async function getRouteNodes(config: Config) {
           // Remove the index from the route path and
           // if the route path is empty, use `/'
 
-          let isLazy = routePath?.endsWith('/lazy')
+          const isLazy = routePath.endsWith('/lazy')
 
           if (isLazy) {
-            routePath = routePath?.replace(/\/lazy$/, '')
+            routePath = routePath.replace(/\/lazy$/, '')
           }
 
-          let isRoute = routePath?.endsWith('/route')
-          let isComponent = routePath?.endsWith('/component')
-          let isErrorComponent = routePath?.endsWith('/errorComponent')
-          let isPendingComponent = routePath?.endsWith('/pendingComponent')
-          let isLoader = routePath?.endsWith('/loader')
+          const isRoute = routePath.endsWith('/route')
+          const isComponent = routePath.endsWith('/component')
+          const isErrorComponent = routePath.endsWith('/errorComponent')
+          const isPendingComponent = routePath.endsWith('/pendingComponent')
+          const isLoader = routePath.endsWith('/loader')
 
-          const segments = (routePath ?? '').split('/')
-          let isLayout = segments[segments.length - 1]?.startsWith('_') || false
+          const segments = routePath.split('/')
+          const isLayout =
+            segments[segments.length - 1]?.startsWith('_') || false
 
           ;(
             [
@@ -116,7 +117,7 @@ async function getRouteNodes(config: Config) {
             }
           })
 
-          routePath = routePath?.replace(
+          routePath = routePath.replace(
             /\/(component|errorComponent|pendingComponent|loader|route|lazy)$/,
             '',
           )
@@ -152,7 +153,7 @@ async function getRouteNodes(config: Config) {
   return routeNodes
 }
 
-let first = false
+let isFirst = false
 let skipMessage = false
 
 type RouteSubNode = {
@@ -167,9 +168,9 @@ export async function generator(config: Config) {
   const logger = logging({ disabled: config.disableLogging })
   logger.log('')
 
-  if (!first) {
+  if (!isFirst) {
     logger.log('♻️  Generating routes...')
-    first = true
+    isFirst = true
   } else if (skipMessage) {
     skipMessage = false
   } else {
@@ -198,24 +199,24 @@ export async function generator(config: Config) {
   const preRouteNodes = multiSortBy(beforeRouteNodes, [
     (d) => (d.routePath === '/' ? -1 : 1),
     (d) => d.routePath?.split('/').length,
-    (d) => (d.filePath?.match(/[./]index[.]/) ? 1 : -1),
+    (d) => (d.filePath.match(/[./]index[.]/) ? 1 : -1),
     (d) =>
-      d.filePath?.match(
+      d.filePath.match(
         /[./](component|errorComponent|pendingComponent|loader|lazy)[.]/,
       )
         ? 1
         : -1,
-    (d) => (d.filePath?.match(/[./]route[.]/) ? -1 : 1),
+    (d) => (d.filePath.match(/[./]route[.]/) ? -1 : 1),
     (d) => (d.routePath?.endsWith('/') ? -1 : 1),
     (d) => d.routePath,
   ]).filter((d) => ![`/${rootPathId}`].includes(d.routePath || ''))
 
-  const routeTree: RouteNode[] = []
+  const routeTree: Array<RouteNode> = []
   const routePiecesByPath: Record<string, RouteSubNode> = {}
 
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
-  let routeNodes: RouteNode[] = []
+  const routeNodes: Array<RouteNode> = []
 
   const handleNode = async (node: RouteNode) => {
     let parentRoute = hasParentRoute(routeNodes, node, node.routePath)
@@ -239,9 +240,9 @@ export async function generator(config: Config) {
 
     const trimmedPath = trimPathLeft(node.path ?? '')
 
-    const split = trimmedPath?.split('/') ?? []
-    let first = split[0] ?? trimmedPath ?? ''
-    const lastRouteSegment = split[split.length - 1] ?? trimmedPath ?? ''
+    const split = trimmedPath.split('/')
+    const first = split[0] ?? trimmedPath
+    const lastRouteSegment = split[split.length - 1] ?? trimmedPath
 
     node.isNonPath = lastRouteSegment.startsWith('_')
     node.isNonLayout = first.endsWith('_')
@@ -402,7 +403,7 @@ export async function generator(config: Config) {
     await handleNode(node)
   }
 
-  function buildRouteConfig(nodes: RouteNode[], depth = 1): string {
+  function buildRouteConfig(nodes: Array<RouteNode>, depth = 1): string {
     const children = nodes.map((node) => {
       if (node.isRoot) {
         return
@@ -567,7 +568,7 @@ export async function generator(config: Config) {
                     path.dirname(config.generatedRouteTree),
                     path.resolve(
                       config.routesDirectory,
-                      lazyComponentNode!.filePath,
+                      lazyComponentNode.filePath,
                     ),
                   ),
                   config.addExtensions,
@@ -591,7 +592,7 @@ export async function generator(config: Config) {
             routeNode.isVirtualParentRequired
               ? `${routeNode.parent?.variableName}Route`
               : routeNode.parent?.variableName
-                ? `${routeNode.parent?.variableName}Import`
+                ? `${routeNode.parent.variableName}Import`
                 : 'rootRoute'
           }
         }`
@@ -642,16 +643,16 @@ export async function generator(config: Config) {
   )
 }
 
-function routePathToVariable(d: string): string {
+function routePathToVariable(routePath: string): string {
   return (
-    removeUnderscores(d)
+    removeUnderscores(routePath)
       ?.replace(/\/\$\//g, '/splat/')
-      ?.replace(/\$$/g, 'splat')
-      ?.replace(/\$/g, '')
-      ?.split(/[/-]/g)
+      .replace(/\$$/g, 'splat')
+      .replace(/\$/g, '')
+      .split(/[/-]/g)
       .map((d, i) => (i > 0 ? capitalize(d) : d))
       .join('')
-      .replace(/([^a-zA-Z0-9]|[\.])/gm, '')
+      .replace(/([^a-zA-Z0-9]|[.])/gm, '')
       .replace(/^(\d)/g, 'R$1') ?? ''
   )
 }
@@ -667,9 +668,9 @@ function spaces(d: number): string {
 }
 
 export function multiSortBy<T>(
-  arr: T[],
-  accessors: ((item: T) => any)[] = [(d) => d],
-): T[] {
+  arr: Array<T>,
+  accessors: Array<(item: T) => any> = [(d) => d],
+): Array<T> {
   return arr
     .map((d, i) => [d, i] as const)
     .sort(([a, ai], [b, bi]) => {
@@ -732,13 +733,13 @@ function determineNodePath(node: RouteNode) {
 /**
  * Removes the last segment from a given path. Segments are considered to be separated by a '/'.
  *
- * @param {string} path - The path from which to remove the last segment. Defaults to '/'.
+ * @param {string} routePath - The path from which to remove the last segment. Defaults to '/'.
  * @returns {string} The path with the last segment removed.
  * @example
  * removeLastSegmentFromPath('/workspace/_auth/foo') // '/workspace/_auth'
  */
-export function removeLastSegmentFromPath(path: string = '/'): string {
-  const segments = path.split('/')
+export function removeLastSegmentFromPath(routePath: string = '/'): string {
+  const segments = routePath.split('/')
   segments.pop() // Remove the last segment
   return segments.join('/')
 }
@@ -746,19 +747,19 @@ export function removeLastSegmentFromPath(path: string = '/'): string {
 /**
  * Removes all segments from a given path that start with an underscore ('_').
  *
- * @param {string} path - The path from which to remove segments. Defaults to '/'.
+ * @param {string} routePath - The path from which to remove segments. Defaults to '/'.
  * @returns {string} The path with all underscore-prefixed segments removed.
  * @example
  * removeLayoutSegments('/workspace/_auth/foo') // '/workspace/foo'
  */
-function removeLayoutSegments(path: string = '/'): string {
-  const segments = path.split('/')
+function removeLayoutSegments(routePath: string = '/'): string {
+  const segments = routePath.split('/')
   const newSegments = segments.filter((segment) => !segment.startsWith('_'))
   return newSegments.join('/')
 }
 
 export function hasParentRoute(
-  routes: RouteNode[],
+  routes: Array<RouteNode>,
   node: RouteNode,
   routePathToCheck: string | undefined,
 ): RouteNode | null {
