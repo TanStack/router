@@ -90,7 +90,7 @@ export function Matches() {
   return (
     <matchContext.Provider value={matchId}>
       <CatchBoundary
-        getResetKey={() => router.state.resolvedLocation.state.key!}
+        getResetKey={() => resetKey}
         errorComponent={ErrorComponent}
         onCatch={(error) => {
           warning(
