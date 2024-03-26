@@ -18,7 +18,7 @@ export * from './fileRoute'
 export * from './history'
 export * from './lazyRouteComponent'
 export * from './link'
-export * from './location'
+export { type ParsedLocation } from './location'
 export {
   matchContext,
   Matches,
