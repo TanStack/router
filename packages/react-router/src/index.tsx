@@ -30,7 +30,7 @@ export * from './RouterProvider'
 export * from './scroll-restoration'
 export * from './searchParams'
 export * from './useBlocker'
-export * from './useNavigate'
+export { useNavigate, Navigate, type UseNavigateResult } from './useNavigate'
 export { useParams } from './useParams'
 export { useSearch } from './useSearch'
 export {
