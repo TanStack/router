@@ -1,10 +1,11 @@
 import * as React from 'react'
 import { useMatch } from './Matches'
 import { useRouter } from './useRouter'
-import { NavigateOptions } from './link'
-import { AnyRoute } from './route'
-import { RoutePaths, RoutePathsAutoComplete } from './routeInfo'
-import { RegisteredRouter } from './router'
+
+import type { NavigateOptions } from './link'
+import type { AnyRoute } from './route'
+import type { RoutePaths, RoutePathsAutoComplete } from './routeInfo'
+import type { RegisteredRouter } from './router'
 
 export type UseNavigateResult<TDefaultFrom extends string> = <
   TTo extends string,
@@ -28,7 +29,7 @@ export function useNavigate<
     (options: NavigateOptions) => {
       return router.navigate({
         ...options,
-        from: options?.to ? router.state.resolvedLocation.pathname : undefined,
+        from: options.to ? router.state.resolvedLocation.pathname : undefined,
       })
     },
     [router],
@@ -65,6 +66,7 @@ export function Navigate<
       from: props.to ? match.pathname : undefined,
       ...props,
     } as any)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return null

@@ -3,7 +3,7 @@ import { createContext } from 'react'
 class Context {
   cache = new Map()
 
-  private static instance: Context
+  private static instance: Context | undefined
 
   public static create(): Context {
     if (!Context.instance) {
@@ -22,9 +22,7 @@ class Context {
   }
 
   get<T>(key: string, initialValue?: T) {
-    const context = this.cache.get(key) || this.createContext(key, initialValue)
-
-    return context
+    return this.cache.get(key) || this.createContext(key, initialValue)
   }
 }
 

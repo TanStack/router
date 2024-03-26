@@ -1,9 +1,10 @@
-import { AnyRoute, RootSearchSchema } from './route'
-import { RouteIds, RouteById, FullSearchSchema } from './routeInfo'
-import { RegisteredRouter } from './router'
-import { RouteMatch } from './Matches'
 import { useMatch } from './Matches'
-import { Expand, StrictOrFrom } from './utils'
+import { Expand } from './utils'
+import type { AnyRoute, RootSearchSchema } from './route'
+import type { FullSearchSchema, RouteById, RouteIds } from './routeInfo'
+import type { RegisteredRouter } from './router'
+import type { RouteMatch } from './Matches'
+import type { StrictOrFrom } from './utils'
 
 export function useSearch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -24,7 +25,7 @@ export function useSearch<
   return useMatch({
     ...opts,
     select: (match: RouteMatch) => {
-      return opts?.select ? opts.select(match.search as TSearch) : match.search
+      return opts.select ? opts.select(match.search as TSearch) : match.search
     },
   })
 }

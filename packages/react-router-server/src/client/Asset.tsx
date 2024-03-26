@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { RouterManagedTag } from './RouterManagedTag'
+import type { RouterManagedTag } from './RouterManagedTag'
 
 export function Asset({ tag, attrs, children }: RouterManagedTag): any {
   switch (tag) {
@@ -12,7 +12,7 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
     case 'style':
       return <style {...attrs} dangerouslySetInnerHTML={{ __html: children }} />
     case 'script':
-      if (attrs?.src) {
+      if (attrs.src) {
         return <script {...attrs} suppressHydrationWarning />
       }
       if (typeof children === 'string')
