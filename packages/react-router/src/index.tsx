@@ -11,7 +11,7 @@ export {
 } from '@tanstack/history'
 export { default as invariant } from 'tiny-invariant'
 export { default as warning } from 'tiny-warning'
-export * from './awaited'
+export { useAwaited, Await, type AwaitOptions } from './awaited'
 export {
   defer,
   isDehydratedDeferred,
