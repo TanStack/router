@@ -17,7 +17,41 @@ export * from './CatchBoundary'
 export * from './fileRoute'
 export * from './history'
 export * from './lazyRouteComponent'
-export * from './link'
+export {
+  useLinkProps,
+  createLink,
+  Link,
+  type CleanPath,
+  type Split,
+  type ParsePathParams,
+  type Join,
+  type Last,
+  type RemoveTrailingSlashes,
+  type RemoveLeadingSlashes,
+  type SearchPaths,
+  type SearchRelativePathAutoComplete,
+  type RelativeToParentPathAutoComplete,
+  type RelativeToCurrentPathAutoComplete,
+  type AbsolutePathAutoComplete,
+  type RelativeToPathAutoComplete,
+  type NavigateOptions,
+  type ToOptions,
+  type ToMaskOptions,
+  type ToSubOptions,
+  type ResolveRoute,
+  type ParamOptions,
+  type SearchParamOptions,
+  type PathParamOptions,
+  type ActiveOptions,
+  type LinkOptions,
+  type CheckPath,
+  type CheckPathError,
+  type ResolveRelativePath,
+  type UseLinkPropsOptions,
+  type ActiveLinkOptions,
+  type LinkProps,
+  type LinkComponent,
+} from './link'
 export { type ParsedLocation } from './location'
 export {
   matchContext,
