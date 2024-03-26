@@ -31,7 +31,7 @@ export * from './scroll-restoration'
 export * from './searchParams'
 export * from './useBlocker'
 export * from './useNavigate'
-export * from './useParams'
+export { useParams } from './useParams'
 export { useSearch } from './useSearch'
 export {
   getRouterContext, // SSR
