@@ -1,5 +1,14 @@
 //
-export * from '@tanstack/history'
+export {
+  createHistory,
+  createBrowserHistory,
+  createHashHistory,
+  createMemoryHistory,
+  type BlockerFn,
+  type HistoryLocation,
+  type RouterHistory,
+  type ParsedPath,
+} from '@tanstack/history'
 export { default as invariant } from 'tiny-invariant'
 export { default as warning } from 'tiny-warning'
 export * from './awaited'
