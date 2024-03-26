@@ -115,5 +115,5 @@ function AwaitInner<T>(
   },
 ) {
   const awaited = useAwaited(props)
-  return props.children(...awaited)
+  return props.children(...awaited) as React.JSX.Element
 }
