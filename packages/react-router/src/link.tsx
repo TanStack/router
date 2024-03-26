@@ -625,7 +625,7 @@ export type LinkProps<
     | ((state: { isActive: boolean }) => React.ReactNode)
 }
 
-type LinkComponent<TComp> = <
+export type LinkComponent<TComp> = <
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RoutePaths<TRouteTree> | string = string,
   TTo extends string = '',
@@ -652,7 +652,7 @@ type LinkComponent<TComp> = <
 ) => React.ReactElement
 
 export function createLink<const TComp>(Comp: TComp): LinkComponent<TComp> {
-  return React.forwardRef(function Link(props, ref) {
+  return React.forwardRef(function CreatedLink(props, ref) {
     return <Link {...(props as any)} _asChild={Comp} ref={ref} />
   }) as any
 }
