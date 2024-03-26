@@ -1,8 +1,8 @@
 import * as React from 'react'
 import warning from 'tiny-warning'
-import { AnyRoute } from './route'
-import { RegisteredRouter, Router } from './router'
 import { getRouterContext } from './routerContext'
+import type { AnyRoute } from './route'
+import type { RegisteredRouter, Router } from './router'
 
 export function useRouter<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],

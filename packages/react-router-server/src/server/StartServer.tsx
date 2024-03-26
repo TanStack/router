@@ -1,6 +1,7 @@
 import { Context } from '@tanstack/react-cross-context'
-import { AnyRouter, RouterProvider } from '@tanstack/react-router'
+import { RouterProvider } from '@tanstack/react-router'
 import * as React from 'react'
+import type { AnyRouter } from '@tanstack/react-router'
 
 export function StartServer<TRouter extends AnyRouter>(props: {
   router: TRouter
@@ -12,7 +13,7 @@ export function StartServer<TRouter extends AnyRouter>(props: {
       router: props.router.dehydrate(),
       payload: props.router.options.dehydrate?.(),
     }),
-    [],
+    [props.router],
   )
 
   return (

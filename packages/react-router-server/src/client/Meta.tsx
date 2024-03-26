@@ -4,13 +4,13 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import * as React from 'react'
-import { RouterManagedTag } from './RouterManagedTag'
 import { Asset } from './Asset'
+import type { RouterManagedTag } from './RouterManagedTag'
 
 export const Meta = () => {
   const router = useRouter()
 
-  let routeMeta = useRouterState({
+  const routeMeta = useRouterState({
     select: (state) => {
       return getRenderedMatches(state)
         .map((match) => match.meta!)
@@ -18,8 +18,8 @@ export const Meta = () => {
     },
   })
 
-  const meta: RouterManagedTag[] = React.useMemo(() => {
-    let meta: RouterManagedTag[] = []
+  const meta: Array<RouterManagedTag> = React.useMemo(() => {
+    const resultMeta: Array<RouterManagedTag> = []
     const metaByName: Record<string, true> = {}
     let title: RouterManagedTag | undefined
     ;[...routeMeta].reverse().forEach((metas) => {
@@ -40,7 +40,7 @@ export const Meta = () => {
             }
           }
 
-          meta.push({
+          resultMeta.push({
             tag: 'meta',
             attrs: {
               ...m,
@@ -52,12 +52,12 @@ export const Meta = () => {
     })
 
     if (title) {
-      meta.push(title)
+      resultMeta.push(title)
     }
 
-    meta.reverse()
+    resultMeta.reverse()
 
-    return meta as RouterManagedTag[]
+    return resultMeta
   }, [routeMeta])
 
   const links = useRouterState({
@@ -72,12 +72,12 @@ export const Meta = () => {
             ...link,
             key: `link-${[link.rel, link.href].join('')}`,
           },
-        })) as RouterManagedTag[],
+        })) as Array<RouterManagedTag>,
   })
 
   const manifestMeta = router.options.context?.assets.filter(
     (d: any) => d.tag !== 'script',
-  ) as RouterManagedTag[]
+  ) as Array<RouterManagedTag>
 
   return (
     <>

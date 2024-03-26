@@ -4,7 +4,7 @@ export const serverFnReturnTypeHeader = 'server-fn-return-type'
 export const serverFnPayloadTypeHeader = 'server-fn-payload-type'
 
 export interface JsonResponse<TData> extends Response {
-  json(): Promise<TData>
+  json: () => Promise<TData>
 }
 
 export type FetcherOptionsBase = {
@@ -40,28 +40,21 @@ type IsPayloadOptional<T> = [T] extends [undefined] ? true : false
 
 export type Fetcher<TPayload, TResponse> =
   (IsPayloadOptional<TPayload> extends true
-    ? {
-        (
-          payload?: TPayload,
-          opts?: FetcherOptions,
-        ): Promise<JsonResponseOrPayload<TResponse>>
-      }
-    : {
-        (
-          payload: TPayload,
-          opts?: FetcherOptions,
-        ): Promise<JsonResponseOrPayload<TResponse>>
-      }) & {
+    ? (
+        payload?: TPayload,
+        opts?: FetcherOptions,
+      ) => Promise<JsonResponseOrPayload<TResponse>>
+    : (
+        payload: TPayload,
+        opts?: FetcherOptions,
+      ) => Promise<JsonResponseOrPayload<TResponse>>) & {
     url: string
   }
 
 export type JsonResponseOrPayload<TResponse> =
   TResponse extends JsonResponse<infer TData> ? TData : TResponse
 
-export function createServerFn<
-  TPayload extends any = undefined,
-  TResponse = unknown,
->(
+export function createServerFn<TPayload = undefined, TResponse = unknown>(
   method: 'GET' | 'POST',
   fn: FetchFn<TPayload, TResponse>,
 ): Fetcher<TPayload, TResponse> {

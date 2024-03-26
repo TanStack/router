@@ -1,15 +1,18 @@
-import * as React from 'react'
 import invariant from 'tiny-invariant'
-import { useLoaderData, useLoaderDeps, useMatch, RouteMatch } from './Matches'
-import { AnyRouteMatch } from './Matches'
-import { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
-import { ParsedLocation } from './location'
+import { useLoaderData, useLoaderDeps, useMatch } from './Matches'
 import { joinPaths, trimPathLeft } from './path'
-import { RouteById, RouteIds, RoutePaths } from './routeInfo'
-import { AnyRouter, RegisteredRouter } from './router'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
-import {
+import { notFound } from './not-found'
+import { useNavigate } from './useNavigate'
+import type * as React from 'react'
+import type { RouteMatch } from './Matches'
+import type { AnyRouteMatch } from './Matches'
+import type { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
+import type { ParsedLocation } from './location'
+import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
+import type { AnyRouter, RegisteredRouter } from './router'
+import type {
   Assign,
   Expand,
   IsAny,
@@ -17,10 +20,9 @@ import {
   PickRequired,
   UnionToIntersection,
 } from './utils'
-import { BuildLocationFn, NavigateFn } from './RouterProvider'
-import { NotFoundError, notFound } from './not-found'
-import { LazyRoute } from './fileRoute'
-import { useNavigate } from './useNavigate'
+import type { BuildLocationFn, NavigateFn } from './RouterProvider'
+import type { NotFoundError } from './not-found'
+import type { LazyRoute } from './fileRoute'
 
 export const rootRouteId = '__root__' as const
 export type RootRouteId = typeof rootRouteId
@@ -67,8 +69,8 @@ export type RouteOptions<
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
     ? undefined
     : TLoaderDataReturn,
 > = BaseRouteOptions<
@@ -113,7 +115,7 @@ export type FileBaseRouteOptions<
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
+  TLoaderDataReturn = unknown,
 > = {
   validateSearch?: SearchSchemaValidator<TSearchSchemaInput, TSearchSchema>
   shouldReload?:
@@ -179,7 +181,7 @@ export type BaseRouteOptions<
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TAllContext extends Record<string, any> = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
+  TLoaderDataReturn = unknown,
 > = RoutePathOptions<TCustomId, TPath> &
   FileBaseRouteOptions<
     TParentRoute,
@@ -221,7 +223,7 @@ type BeforeLoadFn<
 export type UpdatableRouteOptions<
   TAllParams extends Record<string, any>,
   TFullSearchSchema extends Record<string, any>,
-  TLoaderData extends any,
+  TLoaderData,
 > = {
   // test?: (args: TAllContext) => void
   // If true, this route will be matched as case-sensitive
@@ -241,10 +243,10 @@ export type UpdatableRouteOptions<
   preloadGcTime?: number
   // Filter functions that can manipulate search params *before* they are passed to links and navigate
   // calls that match this route.
-  preSearchFilters?: SearchFilter<TFullSearchSchema>[]
+  preSearchFilters?: Array<SearchFilter<TFullSearchSchema>>
   // Filter functions that can manipulate search params *after* they are passed to links and navigate
   // calls that match this route.
-  postSearchFilters?: SearchFilter<TFullSearchSchema>[]
+  postSearchFilters?: Array<SearchFilter<TFullSearchSchema>>
   onError?: (err: any) => void
   // These functions are called as route matches are loaded, stick around and leave the active
   // matches
@@ -255,10 +257,10 @@ export type UpdatableRouteOptions<
     params: TAllParams
     loaderData: TLoaderData
   }) =>
-    | JSX.IntrinsicElements['meta'][]
-    | Promise<JSX.IntrinsicElements['meta'][]>
-  links?: () => JSX.IntrinsicElements['link'][]
-  scripts?: () => JSX.IntrinsicElements['script'][]
+    | Array<JSX.IntrinsicElements['meta']>
+    | Promise<Array<JSX.IntrinsicElements['meta']>>
+  links?: () => Array<JSX.IntrinsicElements['link']>
+  scripts?: () => Array<JSX.IntrinsicElements['script']>
   headers?: (ctx: {
     loaderData: TLoaderData
   }) => Promise<Record<string, string>> | Record<string, string>
@@ -281,12 +283,12 @@ export type MetaDescriptor =
   | { httpEquiv: string; content: string }
   | { 'script:ld+json': LdJsonObject }
   | { tagName: 'meta' | 'link'; [name: string]: string }
-  | { [name: string]: unknown }
+  | Record<string, unknown>
 
 type LdJsonObject = { [Key in string]: LdJsonValue } & {
   [Key in string]?: LdJsonValue | undefined
 }
-type LdJsonArray = LdJsonValue[] | readonly LdJsonValue[]
+type LdJsonArray = Array<LdJsonValue> | ReadonlyArray<LdJsonValue>
 type LdJsonPrimitive = string | number | boolean | null
 type LdJsonValue = LdJsonPrimitive | LdJsonObject | LdJsonArray
 
@@ -325,7 +327,7 @@ export type RouteLoaderFn<
   TLoaderDeps extends Record<string, any> = {},
   TAllContext extends Record<string, any> = AnyContext,
   TRouteContext extends Record<string, any> = AnyContext,
-  TLoaderData extends any = unknown,
+  TLoaderData = unknown,
 > = (
   match: LoaderFnContext<TAllParams, TLoaderDeps, TAllContext, TRouteContext>,
 ) => Promise<TLoaderData> | TLoaderData | void
@@ -348,7 +350,7 @@ export interface LoaderFnContext<
   route: Route
 }
 
-export type SearchFilter<T, U = T> = (prev: T) => U
+export type SearchFilter<TInput, TResult = TInput> = (prev: TInput) => TResult
 
 export type ResolveId<
   TParentRoute,
@@ -414,6 +416,7 @@ export interface AnyRoute
     any
   > {}
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export type MergeFromFromParent<T, U> = IsAny<T, U, T & U>
 
 export type ResolveAllParams<
@@ -454,7 +457,7 @@ export function getRouteApi<
   TAllParams extends AnyPathParams = TRoute['types']['allParams'],
   TAllContext extends Record<string, any> = TRoute['types']['allContext'],
   TLoaderDeps extends Record<string, any> = TRoute['types']['loaderDeps'],
-  TLoaderData extends any = TRoute['types']['loaderData'],
+  TLoaderData = TRoute['types']['loaderData'],
 >(id: TId) {
   return new RouteApi<
     TId,
@@ -477,7 +480,7 @@ export class RouteApi<
   TAllParams extends AnyPathParams = TRoute['types']['allParams'],
   TAllContext extends Record<string, any> = TRoute['types']['allContext'],
   TLoaderDeps extends Record<string, any> = TRoute['types']['loaderDeps'],
-  TLoaderData extends any = TRoute['types']['loaderData'],
+  TLoaderData = TRoute['types']['loaderData'],
 > {
   id: TId
 
@@ -590,8 +593,8 @@ export class Route<
   >,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
     ? undefined
     : TLoaderDataReturn,
   TChildren extends RouteConstraints['TChildren'] = unknown,
@@ -637,7 +640,7 @@ export class Route<
    * @deprecated Use the `createRoute` function instead.
    */
   constructor(
-    options: RouteOptions<
+    options?: RouteOptions<
       TParentRoute,
       TCustomId,
       TPath,
@@ -658,6 +661,7 @@ export class Route<
     >,
   ) {
     this.options = (options as any) || {}
+
     this.isRoot = !options?.getParentRoute as any
     invariant(
       !((options as any)?.id && (options as any)?.path),
@@ -692,29 +696,32 @@ export class Route<
   init = (opts: { originalIndex: number }) => {
     this.originalIndex = opts.originalIndex
 
-    const options = this.options as RouteOptions<
-      TParentRoute,
-      TCustomId,
-      TPath,
-      TSearchSchemaInput,
-      TSearchSchema,
-      TSearchSchemaUsed,
-      TFullSearchSchemaInput,
-      TFullSearchSchema,
-      TParams,
-      TAllParams,
-      TRouteContextReturn,
-      TRouteContext,
-      TRouterContext,
-      TAllContext,
-      TLoaderDeps,
-      TLoaderDataReturn,
-      TLoaderData
-    > &
-      RoutePathOptionsIntersection<TCustomId, TPath>
+    const options = this.options as
+      | (RouteOptions<
+          TParentRoute,
+          TCustomId,
+          TPath,
+          TSearchSchemaInput,
+          TSearchSchema,
+          TSearchSchemaUsed,
+          TFullSearchSchemaInput,
+          TFullSearchSchema,
+          TParams,
+          TAllParams,
+          TRouteContextReturn,
+          TRouteContext,
+          TRouterContext,
+          TAllContext,
+          TLoaderDeps,
+          TLoaderDataReturn,
+          TLoaderData
+        > &
+          RoutePathOptionsIntersection<TCustomId, TPath>)
+      | undefined
 
     const isRoot = !options?.path && !options?.id
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     this.parentRoute = this.options?.getParentRoute?.()
 
     if (isRoot) {
@@ -739,9 +746,7 @@ export class Route<
     let id = isRoot
       ? rootRouteId
       : joinPaths([
-          (this.parentRoute.id as any) === rootRouteId
-            ? ''
-            : this.parentRoute.id,
+          this.parentRoute.id === rootRouteId ? '' : this.parentRoute.id,
           customId,
         ])
 
@@ -763,7 +768,7 @@ export class Route<
     this.to = fullPath as TrimPathRight<TFullPath>
   }
 
-  addChildren = <TNewChildren extends AnyRoute[]>(
+  addChildren = <TNewChildren extends Array<AnyRoute>>(
     children: TNewChildren,
   ): Route<
     TParentRoute,
@@ -792,7 +797,7 @@ export class Route<
     return this as any
   }
 
-  updateLoader = <TNewLoaderData extends any = unknown>(options: {
+  updateLoader = <TNewLoaderData = unknown>(options: {
     loader: RouteLoaderFn<
       TAllParams,
       TLoaderDeps,
@@ -839,6 +844,7 @@ export class Route<
   }
 
   useMatch = <
+    // eslint-disable-next-line no-shadow
     TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
     TRouteMatchState = RouteMatch<TRouteTree, TId>,
     TSelected = TRouteMatchState,
@@ -933,8 +939,8 @@ export function createRoute<
   >,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
     ? undefined
     : TLoaderDataReturn,
   TChildren extends RouteConstraints['TChildren'] = unknown,
@@ -997,8 +1003,8 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       ? RouteContext
       : TRouteContextReturn,
     TLoaderDeps extends Record<string, any> = {},
-    TLoaderDataReturn extends any = unknown,
-    TLoaderData extends any = [TLoaderDataReturn] extends [never]
+    TLoaderDataReturn = unknown,
+    TLoaderData = [TLoaderDataReturn] extends [never]
       ? undefined
       : TLoaderDataReturn,
   >(
@@ -1062,8 +1068,8 @@ export class RootRoute<
     : TRouteContextReturn,
   TRouterContext extends {} = {},
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
     ? undefined
     : TLoaderDataReturn,
 > extends Route<
@@ -1135,8 +1141,8 @@ export function createRootRoute<
     : TRouteContextReturn,
   TRouterContext extends {} = {},
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
     ? undefined
     : TLoaderDataReturn,
 >(
@@ -1302,8 +1308,8 @@ export class NotFoundRoute<
   >,
   TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
-  TLoaderDataReturn extends any = unknown,
-  TLoaderData extends any = [TLoaderDataReturn] extends [never]
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
     ? undefined
     : TLoaderDataReturn,
   TChildren extends RouteConstraints['TChildren'] = unknown,

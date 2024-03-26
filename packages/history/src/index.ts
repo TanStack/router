@@ -67,8 +67,8 @@ export function createHistory(opts: {
   onBlocked?: (onUpdate: () => void) => void
 }): RouterHistory {
   let location = opts.getLocation()
-  let subscribers = new Set<() => void>()
-  let blockers: BlockerFn[] = []
+  const subscribers = new Set<() => void>()
+  let blockers: Array<BlockerFn> = []
 
   const onUpdate = () => {
     location = opts.getLocation()
@@ -77,7 +77,7 @@ export function createHistory(opts: {
 
   const tryNavigation = async (task: () => void) => {
     if (typeof document !== 'undefined' && blockers.length) {
-      for (let blocker of blockers) {
+      for (const blocker of blockers) {
         const allowed = await blocker()
         if (!allowed) {
           opts.onBlocked?.(onUpdate)
@@ -153,7 +153,7 @@ export function createHistory(opts: {
   }
 }
 
-function assignKey(state: HistoryState) {
+function assignKey(state: HistoryState | undefined) {
   if (!state) {
     state = {} as HistoryState
   }
@@ -281,8 +281,8 @@ export function createBrowserHistory(opts?: {
     history.notify()
   }
 
-  var originalPushState = win.history.pushState
-  var originalReplaceState = win.history.replaceState
+  const originalPushState = win.history.pushState
+  const originalReplaceState = win.history.replaceState
 
   const history = createHistory({
     getLocation,
@@ -313,14 +313,14 @@ export function createBrowserHistory(opts?: {
   win.addEventListener(pushStateEvent, onPushPop)
   win.addEventListener(popStateEvent, onPushPop)
 
-  win.history.pushState = function () {
-    let res = originalPushState.apply(win.history, arguments as any)
+  win.history.pushState = function (...args: Array<any>) {
+    const res = originalPushState.apply(win.history, args)
     if (tracking) history.notify()
     return res
   }
 
-  win.history.replaceState = function () {
-    let res = originalReplaceState.apply(win.history, arguments as any)
+  win.history.replaceState = function (...args: Array<any>) {
+    const res = originalReplaceState.apply(win.history, args)
     if (tracking) history.notify()
     return res
   }
@@ -345,7 +345,7 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
 
 export function createMemoryHistory(
   opts: {
-    initialEntries: string[]
+    initialEntries: Array<string>
     initialIndex?: number
   } = {
     initialEntries: ['/'],
@@ -384,9 +384,12 @@ export function createMemoryHistory(
   })
 }
 
-function parseHref(href: string, state: HistoryState): HistoryLocation {
-  let hashIndex = href.indexOf('#')
-  let searchIndex = href.indexOf('?')
+function parseHref(
+  href: string,
+  state: HistoryState | undefined,
+): HistoryLocation {
+  const hashIndex = href.indexOf('#')
+  const searchIndex = href.indexOf('?')
 
   return {
     href,
