@@ -1,10 +1,10 @@
-import { AnyRoute } from './route'
-import { Expand, UnionToIntersection, UnionToTuple } from './utils'
+import type { AnyRoute } from './route'
+import type { Expand, UnionToIntersection, UnionToTuple } from './utils'
 
 export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
   types: { children: infer TChildren }
 }
-  ? TChildren extends unknown[]
+  ? TChildren extends Array<unknown>
     ? ParseRoute<TChildren[number], TAcc | TChildren[number]>
     : TAcc
   : TAcc
@@ -39,19 +39,21 @@ export type RoutePathsAutoComplete<TRouteTree extends AnyRoute, T> =
   | (string extends T ? T & {} : T)
   | RoutePaths<TRouteTree>
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type UnionizeCollisions<T, U> = {
   [P in keyof T & keyof U]: T[P] extends U[P] ? T[P] : T[P] | U[P]
 }
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type Reducer<T, U, C = UnionizeCollisions<T, U>> = C &
   Omit<T, keyof C> &
   Omit<U, keyof C>
 
-type Reduce<T extends any[], Result = unknown> = T extends [
+type Reduce<TValue extends Array<any>, TResult = unknown> = TValue extends [
   infer First,
   ...infer Rest,
 ]
-  ? Reduce<Rest, Reducer<Result, First>>
-  : Result
+  ? Reduce<Rest, Reducer<TResult, First>>
+  : TResult
 
 export type FullSearchSchema<TRouteTree extends AnyRoute> = Partial<
   Expand<

@@ -1,5 +1,5 @@
 import path from 'path'
-import { readFileSync, existsSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { z } from 'zod'
 
 export const configSchema = z.object({

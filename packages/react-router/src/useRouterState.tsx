@@ -1,7 +1,7 @@
 import { useStore } from '@tanstack/react-store'
-import { AnyRoute } from './route'
-import { RegisteredRouter, Router, RouterState } from './router'
 import { useRouter } from './useRouter'
+import type { AnyRoute } from './route'
+import type { RegisteredRouter, Router, RouterState } from './router'
 
 export function useRouterState<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],

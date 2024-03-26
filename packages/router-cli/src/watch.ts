@@ -1,6 +1,6 @@
-import chokidar from 'chokidar'
 import path from 'path'
-import { getConfig, generator } from '@tanstack/router-generator'
+import chokidar from 'chokidar'
+import { generator, getConfig } from '@tanstack/router-generator'
 
 export async function watch() {
   const configWatcher = chokidar.watch(
@@ -29,7 +29,7 @@ export async function watch() {
 
       await handle()
 
-      let timeout: ReturnType<typeof setTimeout>
+      let timeout: ReturnType<typeof setTimeout> | undefined
 
       const deduped = (file: string) => {
         if (timeout) {

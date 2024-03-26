@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router",
-  "version": "1.22.5",
+  "version": "1.22.6",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -34,6 +34,7 @@
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:eslint": "eslint --ext .ts,.tsx ./src",
     "test:types": "tsc --noEmit",
     "test:lib": "vitest --typecheck",
     "test:lib:dev": "pnpm run test:lib --watch",

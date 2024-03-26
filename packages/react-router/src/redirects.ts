@@ -1,8 +1,8 @@
-import { PickAsRequired } from '.'
-import { NavigateOptions } from './link'
-import { AnyRoute } from './route'
-import { RoutePaths } from './routeInfo'
-import { RegisteredRouter } from './router'
+import type { NavigateOptions } from './link'
+import type { AnyRoute } from './route'
+import type { RoutePaths } from './routeInfo'
+import type { RegisteredRouter } from './router'
+import type { PickAsRequired } from '.'
 
 export type AnyRedirect = Redirect<any, any, any, any, any>
 
