@@ -32,7 +32,7 @@ export * from './searchParams'
 export * from './useBlocker'
 export * from './useNavigate'
 export * from './useParams'
-export * from './useSearch'
+export { useSearch } from './useSearch'
 export {
   getRouterContext, // SSR
 } from './routerContext'
