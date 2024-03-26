@@ -27,7 +27,12 @@ export * from './route'
 export * from './routeInfo'
 export * from './router'
 export * from './RouterProvider'
-export * from './scroll-restoration'
+export {
+  useScrollRestoration,
+  useElementScrollRestoration,
+  ScrollRestoration,
+  type ScrollRestorationOptions,
+} from './scroll-restoration'
 export {
   defaultParseSearch,
   defaultStringifySearch,
