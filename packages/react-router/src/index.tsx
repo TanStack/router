@@ -26,7 +26,16 @@ export * from './redirects'
 export * from './route'
 export * from './routeInfo'
 export * from './router'
-export * from './RouterProvider'
+export {
+  RouterProvider,
+  getRouteMatch,
+  type RouterProps,
+  type CommitLocationOptions,
+  type MatchLocation,
+  type NavigateFn,
+  type BuildLocationFn,
+  type InjectedHtmlEntry,
+} from './RouterProvider'
 export {
   useScrollRestoration,
   useElementScrollRestoration,
