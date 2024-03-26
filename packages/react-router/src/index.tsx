@@ -12,7 +12,12 @@ export {
 export { default as invariant } from 'tiny-invariant'
 export { default as warning } from 'tiny-warning'
 export * from './awaited'
-export * from './defer'
+export {
+  defer,
+  isDehydratedDeferred,
+  type DeferredPromiseState,
+  type DeferredPromise,
+} from './defer'
 export {
   CatchBoundary,
   CatchBoundaryImpl,
