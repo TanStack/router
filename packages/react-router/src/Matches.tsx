@@ -122,7 +122,7 @@ export function Match({ matchId }: { matchId: string }) {
     `Could not find routeId for matchId "${matchId}". Please file an issue!`,
   )
 
-  const route: AnyRoute = router.routesById[routeId]!
+  const route: AnyRoute = router.routesById[routeId]
 
   const PendingComponent =
     route.options.pendingComponent ?? router.options.defaultPendingComponent

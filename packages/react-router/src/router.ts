@@ -40,10 +40,9 @@ import type {
   AnyContext,
   AnyRoute,
   AnySearchSchema,
+  ErrorRouteComponent,
   LoaderFnContext,
   NotFoundRouteComponent,
-  ErrorRouteComponent,
-  Route,
   RouteMask,
 } from './route'
 import type {
