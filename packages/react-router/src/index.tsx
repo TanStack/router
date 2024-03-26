@@ -19,7 +19,27 @@ export * from './history'
 export * from './lazyRouteComponent'
 export * from './link'
 export * from './location'
-export * from './Matches'
+export {
+  matchContext,
+  Matches,
+  Match,
+  Outlet,
+  useMatchRoute,
+  MatchRoute,
+  useMatch,
+  useMatches,
+  useParentMatches,
+  useChildMatches,
+  useLoaderDeps,
+  useLoaderData,
+  isServerSideError,
+  defaultDeserializeError,
+  type RouteMatch,
+  type AnyRouteMatch,
+  type MatchRouteOptions,
+  type UseMatchRouteOptions,
+  type MakeMatchRouteOptions,
+} from './Matches'
 export {
   joinPaths,
   cleanPath,
