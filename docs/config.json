@@ -57,6 +57,10 @@
               "to": "framework/react/guide/route-trees"
             },
             {
+              "label": "Routing Concepts",
+              "to": "framework/react/guide/routing-concepts"
+            },
+            {
               "label": "Code Splitting",
               "to": "framework/react/guide/code-splitting"
             },
