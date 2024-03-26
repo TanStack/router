@@ -21,7 +21,7 @@ export * from './link'
 export * from './location'
 export * from './Matches'
 export * from './path'
-export * from './qss'
+export { encode, decode } from './qss'
 export {
   redirect,
   isRedirect,
