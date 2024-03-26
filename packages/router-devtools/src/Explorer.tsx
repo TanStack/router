@@ -68,7 +68,7 @@ export function chunkArray<T>(array: Array<T>, size: number): Array<Array<T>> {
   return result
 }
 
-type Renderer = (props: RendererProps) => React.ReactNode
+type Renderer = (props: RendererProps) => React.JSX.Element
 
 export const DefaultRenderer: Renderer = ({
   handleEntry,
