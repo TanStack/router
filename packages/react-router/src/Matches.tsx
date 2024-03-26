@@ -143,7 +143,7 @@ export function Match({ matchId }: { matchId: string }) {
     PendingComponent ??
     route.options.component?.preload ??
     route.options.pendingComponent?.preload ??
-    route.options.errorComponent?.preload
+    (route.options.errorComponent as any)?.preload
       ? React.Suspense
       : SafeFragment
 
