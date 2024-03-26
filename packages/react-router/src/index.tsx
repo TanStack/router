@@ -38,4 +38,10 @@ export * from './useRouteContext'
 export * from './useRouter'
 export * from './useRouterState'
 export * from './utils'
-export * from './not-found'
+export {
+  notFound,
+  isNotFound,
+  CatchNotFound,
+  DefaultGlobalNotFound,
+  type NotFoundError,
+} from './not-found'
