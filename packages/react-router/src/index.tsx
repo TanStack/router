@@ -24,7 +24,18 @@ export * from './path'
 export * from './qss'
 export * from './redirects'
 export * from './route'
-export * from './routeInfo'
+export {
+  type ParseRoute,
+  type RoutesById,
+  type RouteById,
+  type RouteIds,
+  type RoutesByPath,
+  type RouteByPath,
+  type RoutePaths,
+  type RoutePathsAutoComplete,
+  type FullSearchSchema,
+  type AllParams,
+} from './routeInfo'
 export {
   componentTypes,
   createRouter,
