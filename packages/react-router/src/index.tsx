@@ -28,7 +28,14 @@ export * from './routeInfo'
 export * from './router'
 export * from './RouterProvider'
 export * from './scroll-restoration'
-export * from './searchParams'
+export {
+  defaultParseSearch,
+  defaultStringifySearch,
+  parseSearchWith,
+  stringifySearchWith,
+  type SearchSerializer,
+  type SearchParser,
+} from './searchParams'
 export { useBlocker, Block } from './useBlocker'
 export { useNavigate, Navigate, type UseNavigateResult } from './useNavigate'
 export { useParams } from './useParams'
