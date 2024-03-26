@@ -139,8 +139,8 @@ export interface RouterOptions<
   hydrate?: (dehydrated: TDehydrated) => void
   routeMasks?: Array<RouteMask<TRouteTree>>
   unmaskOnReload?: boolean
-  Wrap?: (props: { children: any }) => React.ReactNode
-  InnerWrap?: (props: { children: any }) => React.ReactNode
+  Wrap?: (props: { children: any }) => React.JSX.Element
+  InnerWrap?: (props: { children: any }) => React.JSX.Element
   /**
    * @deprecated
    * Use `notFoundComponent` instead.
