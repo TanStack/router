@@ -22,7 +22,13 @@ export * from './location'
 export * from './Matches'
 export * from './path'
 export * from './qss'
-export * from './redirects'
+export {
+  redirect,
+  isRedirect,
+  type AnyRedirect,
+  type Redirect,
+  type ResolvedRedirect,
+} from './redirects'
 export {
   rootRouteId,
   RouteApi,
