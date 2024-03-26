@@ -1,4 +1,4 @@
-export { Asset } from './Asset'
+export * from './Asset'
 export * from './createServerFn'
 export * from './DehydrateRouter'
 export * from './getManifestAssets'
