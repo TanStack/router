@@ -1506,6 +1506,7 @@ export class Router<
 
           const shouldPending =
             !preload &&
+            route.options.loader &&
             typeof pendingMs === 'number' &&
             (route.options.pendingComponent ??
               this.options.defaultPendingComponent)
