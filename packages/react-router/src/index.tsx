@@ -35,7 +35,7 @@ export * from './useParams'
 export * from './useSearch'
 export * from './routerContext'
 export * from './useRouteContext'
-export * from './useRouter'
+export { useRouter } from './useRouter'
 export { useRouterState } from './useRouterState'
 export { escapeJSON, useLayoutEffect } from './utils'
 export {
