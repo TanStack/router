@@ -14,7 +14,7 @@ export {
 } from './createServerFn'
 export { DehydrateRouter } from './DehydrateRouter'
 export { getManifestAssets } from './getManifestAssets'
-export * from './json'
+export { json } from './json'
 export * from './Meta'
 export * from './RouterManagedTag'
 export * from './Scripts'
