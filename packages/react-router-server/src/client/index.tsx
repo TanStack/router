@@ -12,7 +12,7 @@ export {
   type Fetcher,
   type JsonResponseOrPayload,
 } from './createServerFn'
-export * from './DehydrateRouter'
+export { DehydrateRouter } from './DehydrateRouter'
 export * from './getManifestAssets'
 export * from './json'
 export * from './Meta'
