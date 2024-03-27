@@ -40,8 +40,10 @@ export function TanStackRouterVite(inlineConfig: Partial<Config> = {}): Plugin {
     handleHotUpdate: async ({ file }) => {
       await handleFile(file)
     },
-    watchChange: async (file) => {
-      await handleFile(file)
+    watchChange: async (file, context) => {
+      if (['create', 'update', 'delete'].includes(context.event)) {
+        await handleFile(file)
+      }
     },
   }
 }
