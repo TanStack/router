@@ -67,6 +67,7 @@ export {
   type ParamOptions,
   type SearchParamOptions,
   type PathParamOptions,
+  type ToPathOption,
   type ActiveOptions,
   type LinkOptions,
   type CheckPath,
