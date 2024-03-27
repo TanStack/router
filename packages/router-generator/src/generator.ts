@@ -609,7 +609,7 @@ export async function generator(config: Config) {
     .join('\n\n')
 
   const routeConfigFileContent = await prettier.format(routeImports, {
-    semi: false,
+    semi: config.semicolons,
     singleQuote: config.quoteStyle === 'single',
     parser: 'typescript',
   })
