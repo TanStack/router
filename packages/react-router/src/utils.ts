@@ -348,3 +348,18 @@ export function escapeJSON(jsonString: string) {
     .replace(/'/g, "\\'") // Escape single quotes
     .replace(/"/g, '\\"') // Escape double quotes
 }
+
+export function removeTrailingSlash(value: string): string {
+  if (value.endsWith('/') && value !== '/') {
+    return value.slice(0, -1)
+  }
+  return value
+}
+
+// intended to only compare path name
+// see the usage in the isActive under useLinkProps
+// /sample/path1 = /sample/path1/
+// /sample/path1/some <> /sample/path1
+export function exactPathTest(pathName1: string, pathName2: string): boolean {
+  return removeTrailingSlash(pathName1) === removeTrailingSlash(pathName2)
+}

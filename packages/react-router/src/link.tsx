@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useMatch } from './Matches'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { deepEqual, functionalUpdate } from './utils'
+import { deepEqual, exactPathTest, functionalUpdate } from './utils'
 import type { HistoryState } from '@tanstack/history'
 import type { Trim } from './fileRoute'
 import type { AnyRoute, RootSearchSchema } from './route'
@@ -435,7 +435,7 @@ export function useLinkProps<
       )
       // Combine the matches based on user router.options
       const pathTest = activeOptions?.exact
-        ? s.location.pathname === next.pathname
+        ? exactPathTest(s.location.pathname, next.pathname)
         : pathIsFuzzyEqual
       const hashTest = activeOptions?.includeHash
         ? s.location.hash === next.hash
