@@ -13,7 +13,7 @@ export {
   type JsonResponseOrPayload,
 } from './createServerFn'
 export { DehydrateRouter } from './DehydrateRouter'
-export * from './getManifestAssets'
+export { getManifestAssets } from './getManifestAssets'
 export * from './json'
 export * from './Meta'
 export * from './RouterManagedTag'
