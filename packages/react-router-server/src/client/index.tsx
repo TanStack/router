@@ -15,7 +15,7 @@ export {
 export { DehydrateRouter } from './DehydrateRouter'
 export { getManifestAssets } from './getManifestAssets'
 export { json } from './json'
-export * from './Meta'
+export { Meta } from './Meta'
 export * from './RouterManagedTag'
 export * from './Scripts'
 export * from './StartClient'
