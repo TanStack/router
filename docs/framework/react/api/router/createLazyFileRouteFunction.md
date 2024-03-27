@@ -17,7 +17,7 @@ The `createLazyFileRoute` function accepts a single argument of type `string` th
 
 ### createLazyFileRoute returns
 
-The `createLazyFileRoute` function a partial of the [`FileRoute`](./api/router/FileRouteClass) instance, only letting you configure the non-critical parts of the route.
+The `createLazyFileRoute` function a partial set of configuration options of the [`createFileRoute`](./api/router/createFileRouteFunction) function, only letting you configure the non-critical parts of the route.
 
 #### `component`
 
