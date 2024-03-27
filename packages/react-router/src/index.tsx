@@ -155,6 +155,7 @@ export {
   type RouteLinkEntry,
   type ParseParamsOption,
   type ParseParamsFn,
+  type ParseParamsObj,
   type SearchSchemaValidator,
   type SearchSchemaValidatorObj,
   type SearchSchemaValidatorFn,
@@ -183,6 +184,9 @@ export {
   type RouteComponent,
   type ErrorRouteComponent,
   type NotFoundRouteComponent,
+  type TrimPath,
+  type TrimPathLeft,
+  type TrimPathRight,
 } from './route'
 export {
   type ParseRoute,
