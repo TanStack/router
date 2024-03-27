@@ -11,7 +11,7 @@ The `createLazyFileRoute` function accepts a single argument of type `string` th
 
 ### `path`
 
-- Type: `string` literal
+- Type: `string`
 - Required, but **automatically inserted and updated by the `tsr generate` and `tsr watch` commands**
 - The full path of the file that the route will be generated from.
 
