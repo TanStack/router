@@ -1,2 +1,2 @@
-export * from './StartServer'
+export { StartServer } from './StartServer'
 export * from './transformStreamWithRouter'
