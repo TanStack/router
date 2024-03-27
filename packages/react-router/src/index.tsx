@@ -8,6 +8,7 @@ export {
   type HistoryLocation,
   type RouterHistory,
   type ParsedPath,
+  type HistoryState,
 } from '@tanstack/history'
 export { default as invariant } from 'tiny-invariant'
 export { default as warning } from 'tiny-warning'
