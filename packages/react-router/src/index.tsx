@@ -226,6 +226,7 @@ export {
   type RouterConstructorOptions,
   type RouterEvents,
   type RouterEvent,
+  type RouterListener,
 } from './router'
 export {
   RouterProvider,
