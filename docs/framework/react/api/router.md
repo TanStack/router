@@ -5,6 +5,7 @@ title: Router API
 
 - Functions
   - [`createFileRoute`](./api/router/createFileRouteFunction)
+  - [`createLazyFileRoute`](./api/router/createLazyFileRouteFunction)
   - [`createRootRoute`](./api/router/createRootRouteFunction)
   - [`createRootRouteWithContext`](./api/router/createRootRouteWithContextFunction)
   - [`createRoute`](./api/router/createRouteFunction)
