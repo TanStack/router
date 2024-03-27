@@ -99,6 +99,8 @@ The following options are available for configuration via the `tsr.config.json` 
   - (Required) The path to the file where the generated route tree will be saved, relative to the cwd.
 - **`quoteStyle`**
   - (Optional, **Defaults to `single`**) whether to use `single` or `double` quotes when formatting the generated route tree file.`
+- **`semicolons`**
+  - (Optional, **Defaults to `false`**) whether to use semicolons in the generated route tree file.
 - **`disableTypes`**
   - (Optional, **Defaults to `false`**) whether to disable generating types for the route tree
   - If set to `true`, the generated route tree will not include any types.
