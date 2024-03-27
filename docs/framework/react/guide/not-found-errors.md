@@ -191,7 +191,7 @@ export const Route = createFileRoute('/_layout')({
 export const Route = createFileRoute('/_layout/a')({
   loader: async () => {
     // This will make LayoutRoute handle the not-found error
-    throw notFound({ route: '/_layout' })
+    throw notFound({ routeId: '/_layout' })
     //                      ^^^^^^^^^ This will autocomplete from the registered router
   },
   // This WILL NOT render
@@ -211,7 +211,7 @@ import { rootRouteId } from '@tanstack/react-router'
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId } }) => {
     const post = await getPost(postId)
-    if (!post) throw notFound({ route: rootRouteId })
+    if (!post) throw notFound({ routeId: rootRouteId })
     return { post }
   },
 })
