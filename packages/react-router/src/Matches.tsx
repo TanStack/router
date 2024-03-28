@@ -90,7 +90,7 @@ export function Matches() {
   return (
     <matchContext.Provider value={matchId}>
       <CatchBoundary
-        getResetKey={() => router.state.resolvedLocation.state.key!}
+        getResetKey={() => resetKey}
         errorComponent={ErrorComponent}
         onCatch={(error) => {
           warning(
@@ -122,7 +122,7 @@ export function Match({ matchId }: { matchId: string }) {
     `Could not find routeId for matchId "${matchId}". Please file an issue!`,
   )
 
-  const route = router.routesById[routeId]!
+  const route: AnyRoute = router.routesById[routeId]
 
   const PendingComponent =
     route.options.pendingComponent ?? router.options.defaultPendingComponent
@@ -143,7 +143,7 @@ export function Match({ matchId }: { matchId: string }) {
     PendingComponent ??
     route.options.component?.preload ??
     route.options.pendingComponent?.preload ??
-    route.options.errorComponent?.preload
+    (route.options.errorComponent as any)?.preload
       ? React.Suspense
       : SafeFragment
 

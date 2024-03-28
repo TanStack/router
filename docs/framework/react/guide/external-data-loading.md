@@ -99,6 +99,41 @@ export const Route = createFileRoute('/posts')({
 })
 ```
 
+### Error handling with TanStack Query
+
+When an error occurs while using `suspense` with `Tanstack Query`, you'll need to let queries know that you want to try again when re-rendering. This can be done by using the `reset` function provided by the `useQueryErrorResetBoundary` hook. We can invoke this function in an effect as soon as the error component mounts. This will make sure that the query is reset and will try to fetch data again when the route component is rendered again. This will also cover cases where users navigate away from our route instead of clicking the `retry` button.
+
+```tsx
+export const Route = createFileRoute('/posts')({
+  loader: () => queryClient.ensureQueryData(postsQueryOptions),
+  errorComponent: ({ error, reset }) => {
+    const router = useRouter()
+    const queryErrorResetBoundary = useQueryErrorResetBoundary()
+
+    React.useEffect(() => {
+      // Reset the query error boundary
+      queryErrorResetBoundary.reset()
+    }, [queryErrorResetBoundary])
+
+    return (
+      <div>
+        {error.message}
+        <button
+          onClick={() => {
+            // Reset the router error boundary
+            reset()
+            // Invalidate the route to reload the loader
+            router.invalidate()
+          }}
+        >
+          retry
+        </button>
+      </div>
+    )
+  },
+})
+```
+
 ## SSR Dehydration/Hydration
 
 Tools that are able can integrate with TanStack Router's convenient Dehydration/Hydration APIs to shuttle dehydrated data between the server and client and rehydrate it where needed. Let's go over how to do this with both 3rd party critical data and 3rd party deferred data.

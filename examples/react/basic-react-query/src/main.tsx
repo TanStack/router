@@ -9,6 +9,7 @@ import {
   createRootRouteWithContext,
   ErrorComponentProps,
   createRoute,
+  useRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
@@ -16,6 +17,7 @@ import {
   QueryClient,
   QueryClientProvider,
   queryOptions,
+  useQueryErrorResetBoundary,
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import axios from 'axios'
@@ -171,12 +173,30 @@ const postRoute = createRoute({
   component: PostRouteComponent,
 })
 
-function PostErrorComponent({ error }: ErrorComponentProps) {
+function PostErrorComponent({ error, reset }: ErrorComponentProps) {
+  const router = useRouter()
   if (error instanceof NotFoundError) {
     return <div>{error.message}</div>
   }
+  const queryErrorResetBoundary = useQueryErrorResetBoundary()
 
-  return <ErrorComponent error={error} />
+  React.useEffect(() => {
+    queryErrorResetBoundary.reset()
+  }, [queryErrorResetBoundary])
+
+  return (
+    <div>
+      <button
+        onClick={() => {
+          reset()
+          router.invalidate()
+        }}
+      >
+        retry
+      </button>
+      <ErrorComponent error={error} />
+    </div>
+  )
 }
 
 function PostRouteComponent() {
