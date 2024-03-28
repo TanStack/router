@@ -1,16 +1,15 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
+  ErrorComponent,
+  type ErrorComponentProps,
+  Link,
+  NotFoundRoute,
   Outlet,
   RouterProvider,
-  Link,
-  ErrorComponent,
-  createRouter,
-  NotFoundRoute,
   createRootRoute,
-  ErrorComponentProps,
   createRoute,
-  LinkProps,
+  createRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -24,9 +23,12 @@ type PostType = {
 const fetchPosts = async () => {
   console.log('Fetching posts...')
   await new Promise((r) => setTimeout(r, 300))
-  return axios
-    .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
-    .then((r) => r.data.slice(0, 10))
+  return (
+    axios
+      /* eslint-disable-next-line @typescript-eslint/array-type */
+      .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
+      .then((r) => r.data.slice(0, 10))
+  )
 }
 
 const fetchPost = async (postId: string) => {
@@ -173,8 +175,3 @@ if (!rootElement.innerHTML) {
 
   root.render(<RouterProvider router={router} />)
 }
-
-// Test that `Link` can be supplied its properties from a destructed `LinkProps` object without causing a type error.
-// TODO: Move into a defined test once a testing framework is set up.
-const testLinkProps: LinkProps = { to: '/' }
-const testLink = <Link {...testLinkProps}>test</Link>
