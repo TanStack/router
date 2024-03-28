@@ -17,23 +17,29 @@ export function TanStackRouterVite(inlineConfig: Partial<Config> = {}): Plugin {
     }
   }
 
+  const handleFile = async (file: string) => {
+    const filePath = normalize(file)
+    if (filePath === join(ROOT, CONFIG_FILE_NAME)) {
+      userConfig = await getConfig(inlineConfig, ROOT)
+      return
+    }
+    const routesDirectoryPath = isAbsolute(userConfig.routesDirectory)
+      ? userConfig.routesDirectory
+      : join(ROOT, userConfig.routesDirectory)
+    if (filePath.startsWith(routesDirectoryPath)) {
+      await generate()
+    }
+  }
+
   return {
     name: 'vite-plugin-tanstack-router',
     configResolved: async () => {
       userConfig = await getConfig(inlineConfig, ROOT)
       await generate()
     },
-    handleHotUpdate: async ({ file }) => {
-      const filePath = normalize(file)
-      if (filePath === join(ROOT, CONFIG_FILE_NAME)) {
-        userConfig = await getConfig(inlineConfig, ROOT)
-        return
-      }
-      const routesDirectoryPath = isAbsolute(userConfig.routesDirectory)
-        ? userConfig.routesDirectory
-        : join(ROOT, userConfig.routesDirectory)
-      if (filePath.startsWith(routesDirectoryPath)) {
-        await generate()
+    watchChange: async (file, context) => {
+      if (['create', 'update', 'delete'].includes(context.event)) {
+        await handleFile(file)
       }
     },
   }
