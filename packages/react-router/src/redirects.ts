@@ -2,7 +2,7 @@ import type { NavigateOptions } from './link'
 import type { AnyRoute } from './route'
 import type { RoutePaths } from './routeInfo'
 import type { RegisteredRouter } from './router'
-import type { PickAsRequired } from '.'
+import type { PickAsRequired } from './utils'
 
 export type AnyRedirect = Redirect<any, any, any, any, any>
 
