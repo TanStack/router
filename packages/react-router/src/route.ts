@@ -887,6 +887,10 @@ export class Route<
   }): TSelected => {
     return useLoaderData({ ...opts, from: this.id } as any)
   }
+
+  useNavigate = () => {
+    return useNavigate({ from: this.id })
+  }
 }
 
 export function createRoute<
