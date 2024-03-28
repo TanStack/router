@@ -1,8 +1,9 @@
 import warning from 'tiny-warning'
-import { RouteOptions, createRoute } from './route'
+import { createRoute } from './route'
 import { useLoaderData, useLoaderDeps, useMatch } from './Matches'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
+import { useNavigate } from './useNavigate'
 import type { ParsePathParams } from './link'
 import type {
   AnyContext,
@@ -339,6 +340,10 @@ export class LazyRoute<TRoute extends AnyRoute> {
     select?: (s: TRoute['types']['loaderData']) => TSelected
   }): TSelected => {
     return useLoaderData({ ...opts, from: this.options.id } as any)
+  }
+
+  useNavigate = () => {
+    return useNavigate({ from: this.options.id })
   }
 }
 
