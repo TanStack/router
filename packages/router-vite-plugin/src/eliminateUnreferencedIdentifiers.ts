@@ -174,7 +174,8 @@ export const eliminateUnreferencedIdentifiers = (
             const local = property.get(
               property.node.type === 'ObjectProperty'
                 ? 'value'
-                : property.node.type === 'RestElement'
+                : // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                  property.node.type === 'RestElement'
                   ? 'argument'
                   : (function () {
                       throw new Error('invariant')
@@ -260,6 +261,7 @@ function getIdentifier(
     return null
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   return path.node.id && path.node.id.type === 'Identifier'
     ? (path.get('id') as NodePath<BabelTypes.Identifier>)
     : null

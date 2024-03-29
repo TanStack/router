@@ -1,6 +1,8 @@
 // @ts-check
 
 /** @type {import('eslint').Linter.Config} */
-const config = {}
+const config = {
+  ignorePatterns: ['test-files', 'snapshots'],
+}
 
 module.exports = config
