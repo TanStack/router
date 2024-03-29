@@ -76,9 +76,11 @@ export type Last<T extends Array<any>> = T extends [...infer _, infer L]
   ? L
   : never
 
-export type RemoveTrailingSlashes<T> = T extends `${infer R}/`
-  ? RemoveTrailingSlashes<R>
-  : T
+export type RemoveTrailingSlashes<T> = T extends '/'
+  ? T
+  : T extends `${infer R}/`
+    ? RemoveTrailingSlashes<R>
+    : T
 
 export type RemoveLeadingSlashes<T> = T extends `/${infer R}`
   ? RemoveLeadingSlashes<R>
