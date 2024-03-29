@@ -45,7 +45,7 @@ export async function createServer(
       const url = req.originalUrl
 
       if (url.includes('.')) {
-        console.warn(`${url} is not valid router path`)
+        console.warn(`${String(url).replace(/\n|\r/g, '')} is not valid router path`)
         res.status(404)
         res.end(`${url} is not valid router path`)
         return
@@ -72,7 +72,7 @@ export async function createServer(
         }
       })()
 
-      console.log('Rendering: ', url, '...')
+      console.log('Rendering: ', String(url).replace(/\n|\r/g, ''), '...')
       entry.render({ req, res, url, head: viteHead })
     } catch (e) {
       !isProd && vite.ssrFixStacktrace(e)
