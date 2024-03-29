@@ -12,8 +12,12 @@ The `ErrorComponent` component accepts the following props:
 ### `props.error` prop
 
 - Type: `any`
-- Required
 - The error that was thrown by the component's children
+
+### `props.reset` prop
+
+- Type: `() => void`
+- A function to programmatically reset the error state
 
 ## ErrorComponent returns
 

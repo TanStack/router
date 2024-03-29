@@ -423,6 +423,7 @@ export const Route = createFileRoute('/posts')({
 The `routeOptions.errorComponent` option is a component that is rendered when an error occurs during the route loading or rendering lifecycle. It is rendered with the following props:
 
 - `error` - The error that occurred
+- `reset` - A function to reset the internal `CatchBoundary`
 
 ```tsx
 // routes/posts.tsx
@@ -435,9 +436,39 @@ export const Route = createFileRoute('/posts')({
 })
 ```
 
+The `reset` function can be used to show a `retry` button. If you want to retry the route loading, you need to additionally call `router.invalidate()`:
+
+```tsx
+// routes/posts.tsx
+export const Route = createFileRoute('/posts')({
+  loader: () => fetchPosts(),
+  errorComponent: ({ error, reset }) => {
+    const router = useRouter()
+
+    return (
+      <div>
+        {error.message}
+        <button
+          onClick={() => {
+            // Reset the router error boundary
+            reset()
+            // Invalidate the route to reload the loader
+            router.invalidate()
+          }}
+        >
+          retry
+        </button>
+      </div>
+    )
+  },
+})
+```
+
+> ⚠️ Note: If you are _not_ using a `pendingComponent`, you will need to wrap the above function calls into `startTransition` from `React`.
+
 ### Using the default `ErrorComponent`
 
-TanStack Router provides a default `ErrorComponent` that is rendered when an error occurs during the route loading or rendering lifecycle. If you choose to override your routes' error components, it's still wise to always fallback to rendering any uncaught errors with the default `ErrorComponent`:
+TanStack Router provides a default `ErrorComponent` that is rendered when an error occurs during the route loading or rendering lifecycle. If you choose to override your routes' error components, it's still wise to always fall back to rendering any uncaught errors with the default `ErrorComponent`:
 
 ```tsx
 // routes/posts.tsx
