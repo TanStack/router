@@ -19,11 +19,7 @@ export {
   type DeferredPromiseState,
   type DeferredPromise,
 } from './defer'
-export {
-  CatchBoundary,
-  CatchBoundaryImpl,
-  ErrorComponent,
-} from './CatchBoundary'
+export { CatchBoundary, ErrorComponent } from './CatchBoundary'
 export {
   FileRoute,
   createFileRoute,
