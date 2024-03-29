@@ -11,7 +11,7 @@
   "dependencies": {
     "@tanstack/react-router": "^1.24.0",
     "@tanstack/router-devtools": "^1.24.0",
-    "@tanstack/router-vite-plugin": "^1.24.1",
+    "@tanstack/router-vite-plugin": "^1.25.0",
     "axios": "^1.6.5",
     "immer": "^10.0.3",
     "react": "^18.2.0",
