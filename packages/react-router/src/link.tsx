@@ -409,7 +409,7 @@ export function useLinkProps<
   // null for LinkUtils
 
   const dest = {
-    from: options.to ? matchPathname : undefined,
+    ...(options.to && { from: matchPathname }),
     ...options,
   }
 
@@ -548,6 +548,20 @@ export function useLinkProps<
   const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
     isActive ? {} : functionalUpdate(inactiveProps, {})
 
+  const resolvedClassName = [
+    className,
+    resolvedActiveProps.className,
+    resolvedInactiveProps.className,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const resolvedStyle = {
+    ...style,
+    ...resolvedActiveProps.style,
+    ...resolvedInactiveProps.style,
+  }
+
   return {
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
@@ -563,26 +577,13 @@ export function useLinkProps<
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     target,
-    style: {
-      ...style,
-      ...resolvedActiveProps.style,
-      ...resolvedInactiveProps.style,
-    },
-    className:
-      [
-        className,
-        resolvedActiveProps.className,
-        resolvedInactiveProps.className,
-      ]
-        .filter(Boolean)
-        .join(' ') || undefined,
-    ...(disabled
-      ? {
-          role: 'link',
-          'aria-disabled': true,
-        }
-      : undefined),
-    ['data-status']: isActive ? 'active' : undefined,
+    ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
+    ...(resolvedClassName && { className: resolvedClassName }),
+    ...(disabled && {
+      role: 'link',
+      'aria-disabled': true,
+    }),
+    ...(isActive && { 'data-status': 'active' }),
   }
 }
 
