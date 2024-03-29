@@ -6,8 +6,13 @@ import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    TanStackRouterVite({
+      routeFileIgnorePattern: '.((css|const).ts)',
+      experimental: {
+        enableCodeSplitting: true,
+      },
+    }),
     react(),
-    TanStackRouterVite({ routeFileIgnorePattern: '.((css|const).ts)' }),
     vanillaExtractPlugin(),
   ],
 })

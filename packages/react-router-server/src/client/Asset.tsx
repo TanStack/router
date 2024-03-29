@@ -12,7 +12,8 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
     case 'style':
       return <style {...attrs} dangerouslySetInnerHTML={{ __html: children }} />
     case 'script':
-      if (attrs.src) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (attrs && attrs.src) {
         return <script {...attrs} suppressHydrationWarning />
       }
       if (typeof children === 'string')

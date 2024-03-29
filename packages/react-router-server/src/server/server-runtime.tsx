@@ -1,11 +1,8 @@
 import {
   getEvent,
-  getHeaders,
   getRequestHeaders,
   getResponseHeaders,
-  setHeader,
   setResponseHeaders,
-  toWebRequest,
 } from 'vinxi/http'
 import { getBaseUrl } from '../client/client-runtime'
 import { fetcher } from '../server-fns/fetcher'
