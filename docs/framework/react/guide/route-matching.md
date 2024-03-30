@@ -99,3 +99,5 @@ During matching, [pathless routes](./guide/route-trees#pathless-routes) are trea
 ## `NotFoundRoute`s and Matching
 
 If you choose to configure a `NotFoundRoute` for your router, it should be passed to the `notFoundRoute` option and not as part of your `routeTree`. This is because `NotFoundRoute`s are not considered during matching and only render as a fallback when no other suitable match is found.
+
+You can read more about `NotFoundRoute`s in the [Not Found Errors](./guide/not-found-errors) guide.
