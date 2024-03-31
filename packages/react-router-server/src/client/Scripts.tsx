@@ -27,7 +27,6 @@ export const Scripts = () => {
           attrs: {
             ...script,
             suppressHydrationWarning: true,
-            key: `script-${script.src}`,
           },
           children,
         })),
@@ -40,7 +39,7 @@ export const Scripts = () => {
     <>
       <DehydrateRouter />
       {allScripts.map((asset, i) => (
-        <Asset {...asset} key={i} />
+        <Asset {...asset} key={`tsr-scripts-${asset.tag}-${i}`} />
       ))}
     </>
   )
