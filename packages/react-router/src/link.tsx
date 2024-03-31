@@ -654,7 +654,7 @@ export type LinkComponent<TComp> = <
     >,
 ) => React.ReactElement
 
-export function createLink<const TComp>(Comp: TComp): LinkComponent<TComp> {
+export function createLink<TComp>(Comp: TComp): LinkComponent<TComp> {
   return React.forwardRef(function CreatedLink(props, ref) {
     return <Link {...(props as any)} _asChild={Comp} ref={ref} />
   }) as any
