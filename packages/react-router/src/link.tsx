@@ -2,12 +2,17 @@ import * as React from 'react'
 import { useMatch } from './Matches'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { Trim } from './fileRoute'
-import { AnyRoute, ReactNode, RootSearchSchema } from './route'
-import { RouteByPath, RoutePaths, RoutePathsAutoComplete } from './routeInfo'
-import { RegisteredRouter } from './router'
-import { LinkProps, UseLinkPropsOptions } from './useNavigate'
-import {
+import { deepEqual, exactPathTest, functionalUpdate } from './utils'
+import type { HistoryState } from '@tanstack/history'
+import type { Trim } from './fileRoute'
+import type { AnyRoute, RootSearchSchema } from './route'
+import type {
+  RouteByPath,
+  RoutePaths,
+  RoutePathsAutoComplete,
+} from './routeInfo'
+import type { RegisteredRouter } from './router'
+import type {
   Expand,
   IsUnion,
   MakeDifferenceOptional,
@@ -16,10 +21,7 @@ import {
   PickRequired,
   Updater,
   WithoutEmpty,
-  deepEqual,
-  functionalUpdate,
 } from './utils'
-import { HistoryState } from '@tanstack/history'
 
 export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
   ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
@@ -29,24 +31,24 @@ export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
       ? `/${CleanPath<L>}`
       : T
 
-export type Split<S, TIncludeTrailingSlash = true> = S extends unknown
-  ? string extends S
-    ? string[]
-    : S extends string
-      ? CleanPath<S> extends ''
+export type Split<TValue, TIncludeTrailingSlash = true> = TValue extends unknown
+  ? string extends TValue
+    ? Array<string>
+    : TValue extends string
+      ? CleanPath<TValue> extends ''
         ? []
         : TIncludeTrailingSlash extends true
-          ? CleanPath<S> extends `${infer T}/`
+          ? CleanPath<TValue> extends `${infer T}/`
             ? [...Split<T>, '/']
-            : CleanPath<S> extends `/${infer U}`
+            : CleanPath<TValue> extends `/${infer U}`
               ? Split<U>
-              : CleanPath<S> extends `${infer T}/${infer U}`
+              : CleanPath<TValue> extends `${infer T}/${infer U}`
                 ? [...Split<T>, ...Split<U>]
-                : [S]
-          : CleanPath<S> extends `${infer T}/${infer U}`
+                : [TValue]
+          : CleanPath<TValue> extends `${infer T}/${infer U}`
             ? [...Split<T>, ...Split<U>]
-            : S extends string
-              ? [S]
+            : TValue extends string
+              ? [TValue]
               : never
       : never
   : never
@@ -59,19 +61,26 @@ export type ParsePathParams<T extends string> = keyof {
     : never]: K
 }
 
-export type Join<T, Delimiter extends string = '/'> = T extends []
+export type Join<T, TDelimiter extends string = '/'> = T extends []
   ? ''
   : T extends [infer L extends string]
     ? L
-    : T extends [infer L extends string, ...infer Tail extends [...string[]]]
-      ? CleanPath<`${L}${Delimiter}${Join<Tail>}`>
+    : T extends [
+          infer L extends string,
+          ...infer Tail extends [...Array<string>],
+        ]
+      ? CleanPath<`${L}${TDelimiter}${Join<Tail>}`>
       : never
 
-export type Last<T extends any[]> = T extends [...infer _, infer L] ? L : never
+export type Last<T extends Array<any>> = T extends [...infer _, infer L]
+  ? L
+  : never
 
-export type RemoveTrailingSlashes<T> = T extends `${infer R}/`
-  ? RemoveTrailingSlashes<R>
-  : T
+export type RemoveTrailingSlashes<T> = T extends '/'
+  ? T
+  : T extends `${infer R}/`
+    ? RemoveTrailingSlashes<R>
+    : T
 
 export type RemoveLeadingSlashes<T> = T extends `/${infer R}`
   ? RemoveLeadingSlashes<R>
@@ -86,8 +95,8 @@ export type SearchRelativePathAutoComplete<
   TTo extends string,
   TSearchPath extends string,
   TPaths,
-  SearchedPaths = SearchPaths<TPaths, TSearchPath>,
-> = SearchedPaths extends string ? `${TTo}/${SearchedPaths}` : never
+  TSearchedPaths = SearchPaths<TPaths, TSearchPath>,
+> = TSearchedPaths extends string ? `${TTo}/${TSearchedPaths}` : never
 
 export type RelativeToParentPathAutoComplete<
   TFrom extends string,
@@ -191,18 +200,22 @@ export type ToSubOptions<
 type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
 
 type ParamVariant = 'PATH' | 'SEARCH'
-type ExcludeRootSearchSchema<T, Excluded = Exclude<T, RootSearchSchema>> = [
-  Excluded,
+type ExcludeRootSearchSchema<T, TExcluded = Exclude<T, RootSearchSchema>> = [
+  TExcluded,
 ] extends [never]
   ? {}
-  : Excluded
+  : TExcluded
 
 export type ResolveRoute<
   TRouteTree extends AnyRoute,
   TFrom,
   TTo,
   TPath = RemoveTrailingSlashes<
-    string extends TTo ? TFrom : ResolveRelativePath<TFrom, TTo>
+    string extends TFrom
+      ? TTo
+      : string extends TTo
+        ? TFrom
+        : ResolveRelativePath<TFrom, TTo>
   >,
 > =
   RouteByPath<TRouteTree, `${TPath & string}/`> extends never
@@ -243,12 +256,11 @@ export type ParamOptions<
       ? TToParams
       : MakeDifferenceOptional<TFromParams, TToParams>,
   TReducer = ParamsReducer<TFromParams, TRelativeToParams>,
-> =
-  Expand<WithoutEmpty<PickRequired<TRelativeToParams>>> extends never
-    ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
-    : TFromParams extends Expand<WithoutEmpty<PickRequired<TRelativeToParams>>>
-      ? MakeParamOption<TParamVariant, true | TReducer>
-      : MakeParamOption<TParamVariant, TReducer>
+> = keyof PickRequired<TRelativeToParams> extends never
+  ? Partial<MakeParamOption<TParamVariant, true | TReducer>>
+  : TFromParams extends Expand<WithoutEmpty<PickRequired<TRelativeToParams>>>
+    ? MakeParamOption<TParamVariant, true | TReducer>
+    : MakeParamOption<TParamVariant, TReducer>
 
 type MakeParamOption<
   TParamVariant extends ParamVariant,
@@ -310,11 +322,7 @@ export type LinkOptions<
 
 export type CheckPath<TRouteTree extends AnyRoute, TPass, TFrom, TTo> =
   ResolveRoute<TRouteTree, TFrom, TTo> extends never
-    ? string extends TFrom
-      ? RemoveTrailingSlashes<TTo> extends '.' | '..'
-        ? TPass
-        : CheckPathError<TRouteTree>
-      : CheckPathError<TRouteTree>
+    ? CheckPathError<TRouteTree>
     : TPass
 
 export type CheckPathError<TRouteTree extends AnyRoute> = {
@@ -403,7 +411,7 @@ export function useLinkProps<
   // null for LinkUtils
 
   const dest = {
-    from: options.to ? matchPathname : undefined,
+    ...(options.to && { from: matchPathname }),
     ...options,
   }
 
@@ -429,7 +437,7 @@ export function useLinkProps<
       )
       // Combine the matches based on user router.options
       const pathTest = activeOptions?.exact
-        ? s.location.pathname === next.pathname
+        ? exactPathTest(s.location.pathname, next.pathname)
         : pathIsFuzzyEqual
       const hashTest = activeOptions?.includeHash
         ? s.location.hash === next.hash
@@ -449,16 +457,16 @@ export function useLinkProps<
       ...rest,
       type,
       href: to,
-      children,
-      target,
-      disabled,
-      style,
-      className,
-      onClick,
-      onFocus,
-      onMouseEnter,
-      onMouseLeave,
-      onTouchStart,
+      ...(children && { children }),
+      ...(target && { target }),
+      ...(disabled && { disabled }),
+      ...(style && { style }),
+      ...(className && { className }),
+      ...(onClick && { onClick }),
+      ...(onFocus && { onFocus }),
+      ...(onMouseEnter && { onMouseEnter }),
+      ...(onMouseLeave && { onMouseLeave }),
+      ...(onTouchStart && { onTouchStart }),
     }
   }
 
@@ -499,15 +507,15 @@ export function useLinkProps<
 
   const handleEnter = (e: MouseEvent) => {
     if (disabled) return
-    const target = (e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
 
     if (preload) {
-      if (target.preloadTimeout) {
+      if (eventTarget.preloadTimeout) {
         return
       }
 
-      target.preloadTimeout = setTimeout(() => {
-        target.preloadTimeout = null
+      eventTarget.preloadTimeout = setTimeout(() => {
+        eventTarget.preloadTimeout = null
         doPreload()
       }, preloadDelay)
     }
@@ -515,18 +523,18 @@ export function useLinkProps<
 
   const handleLeave = (e: MouseEvent) => {
     if (disabled) return
-    const target = (e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
 
-    if (target.preloadTimeout) {
-      clearTimeout(target.preloadTimeout)
-      target.preloadTimeout = null
+    if (eventTarget.preloadTimeout) {
+      clearTimeout(eventTarget.preloadTimeout)
+      eventTarget.preloadTimeout = null
     }
   }
 
   const composeHandlers =
-    (handlers: (undefined | ((e: any) => void))[]) =>
+    (handlers: Array<undefined | ((e: any) => void)>) =>
     (e: React.SyntheticEvent) => {
-      if (e.persist) e.persist()
+      e.persist()
       handlers.filter(Boolean).forEach((handler) => {
         if (e.defaultPrevented) return
         handler!(e)
@@ -540,7 +548,21 @@ export function useLinkProps<
 
   // Get the inactive props
   const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-    isActive ? {} : functionalUpdate(inactiveProps, {}) ?? {}
+    isActive ? {} : functionalUpdate(inactiveProps, {})
+
+  const resolvedClassName = [
+    className,
+    resolvedActiveProps.className,
+    resolvedInactiveProps.className,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const resolvedStyle = {
+    ...style,
+    ...resolvedActiveProps.style,
+    ...resolvedInactiveProps.style,
+  }
 
   return {
     ...resolvedActiveProps,
@@ -557,55 +579,107 @@ export function useLinkProps<
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     target,
-    style: {
-      ...style,
-      ...resolvedActiveProps.style,
-      ...resolvedInactiveProps.style,
-    },
-    className:
-      [
-        className,
-        resolvedActiveProps.className,
-        resolvedInactiveProps.className,
-      ]
-        .filter(Boolean)
-        .join(' ') || undefined,
-    ...(disabled
-      ? {
-          role: 'link',
-          'aria-disabled': true,
-        }
-      : undefined),
-    ['data-status']: isActive ? 'active' : undefined,
+    ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
+    ...(resolvedClassName && { className: resolvedClassName }),
+    ...(disabled && {
+      role: 'link',
+      'aria-disabled': true,
+    }),
+    ...(isActive && { 'data-status': 'active' }),
   }
 }
 
-export interface LinkComponent<TProps extends Record<string, any> = {}> {
-  <
-    TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-    TFrom extends RoutePaths<TRouteTree> | string = string,
-    TTo extends string = '',
-    TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
-    TMaskTo extends string = '',
-  >(
-    props: LinkProps<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
-      TProps &
-      React.RefAttributes<HTMLAnchorElement>,
-  ): ReactNode
+export type UseLinkPropsOptions<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string = '',
+> = ActiveLinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
+  React.AnchorHTMLAttributes<HTMLAnchorElement>
+
+export type ActiveLinkOptions<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string = '',
+> = LinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
+  // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+  activeProps?:
+    | React.AnchorHTMLAttributes<HTMLAnchorElement>
+    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+  // A function that returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+  inactiveProps?:
+    | React.AnchorHTMLAttributes<HTMLAnchorElement>
+    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
 }
 
-export const Link: LinkComponent = React.forwardRef((props: any, ref) => {
-  const { type, ...linkProps } = useLinkProps(props)
+export type LinkProps<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string = '',
+> = ActiveLinkOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
+  // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+  children?:
+    | React.ReactNode
+    | ((state: { isActive: boolean }) => React.ReactNode)
+}
+
+export type LinkComponent<TComp> = <
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string = '',
+>(
+  props: React.PropsWithoutRef<
+    LinkProps<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> &
+      (TComp extends React.FC<infer TProps> | React.Component<infer TProps>
+        ? TProps
+        : TComp extends keyof JSX.IntrinsicElements
+          ? Omit<React.HTMLProps<TComp>, 'children' | 'preload'>
+          : never)
+  > &
+    React.RefAttributes<
+      TComp extends
+        | React.FC<{ ref: infer TRef }>
+        | React.Component<{ ref: infer TRef }>
+        ? TRef
+        : TComp extends keyof JSX.IntrinsicElements
+          ? React.ComponentRef<TComp>
+          : never
+    >,
+) => React.ReactElement
+
+export function createLink<const TComp>(Comp: TComp): LinkComponent<TComp> {
+  return React.forwardRef(function CreatedLink(props, ref) {
+    return <Link {...(props as any)} _asChild={Comp} ref={ref} />
+  }) as any
+}
+
+export const Link: LinkComponent<'a'> = React.forwardRef((props: any, ref) => {
+  const { _asChild, ...rest } = props
+  const { type, ...linkProps } = useLinkProps(rest)
 
   const children =
-    typeof props.children === 'function'
-      ? props.children({
+    typeof rest.children === 'function'
+      ? rest.children({
           isActive: (linkProps as any)['data-status'] === 'active',
         })
-      : props.children
+      : rest.children
 
-  return <a {...linkProps} ref={ref} children={children} />
-})
+  return React.createElement(
+    _asChild ? _asChild : 'a',
+    {
+      ...linkProps,
+      ref,
+    },
+    children,
+  )
+}) as any
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)

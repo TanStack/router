@@ -1,8 +1,9 @@
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import * as React from 'react'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
-import { RegisteredRouter } from './router'
-import { RouteIds } from './routeInfo'
+import type { RegisteredRouter } from './router'
+import type { RouteIds } from './routeInfo'
 
 export type NotFoundError = {
   /**
@@ -18,6 +19,7 @@ export type NotFoundError = {
   data?: any
   throw?: boolean
   routeId?: RouteIds<RegisteredRouter['routeTree']>
+  headers?: HeadersInit
 }
 
 export function notFound(options: NotFoundError = {}) {

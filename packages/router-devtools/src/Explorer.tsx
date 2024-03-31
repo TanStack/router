@@ -1,8 +1,8 @@
 import * as React from 'react'
 import { clsx as cx } from 'clsx'
+import { css } from 'goober'
 import { tokens } from './tokens'
 import { displayValue, styled } from './utils'
-import { css } from 'goober'
 
 type ExpanderProps = {
   expanded: boolean
@@ -38,14 +38,14 @@ type RendererProps = {
   handleEntry: HandleEntryFn
   label?: React.ReactNode
   value: unknown
-  subEntries: Entry[]
-  subEntryPages: Entry[][]
+  subEntries: Array<Entry>
+  subEntryPages: Array<Array<Entry>>
   type: string
   expanded: boolean
   toggleExpanded: () => void
   pageSize: number
   renderer?: Renderer
-  filterSubEntries?: (subEntries: Property[]) => Property[]
+  filterSubEntries?: (subEntries: Array<Property>) => Array<Property>
 }
 
 /**
@@ -57,10 +57,10 @@ type RendererProps = {
  * @example
  * chunkArray(['a','b', 'c', 'd', 'e'], 2) // returns [['a','b'], ['c', 'd'], ['e']]
  */
-export function chunkArray<T>(array: T[], size: number): T[][] {
+export function chunkArray<T>(array: Array<T>, size: number): Array<Array<T>> {
   if (size < 1) return []
   let i = 0
-  const result: T[][] = []
+  const result: Array<Array<T>> = []
   while (i < array.length) {
     result.push(array.slice(i, i + size))
     i = i + size
@@ -68,7 +68,7 @@ export function chunkArray<T>(array: T[], size: number): T[][] {
   return result
 }
 
-type Renderer = (props: RendererProps) => React.ReactNode
+type Renderer = (props: RendererProps) => React.JSX.Element
 
 export const DefaultRenderer: Renderer = ({
   handleEntry,
@@ -82,7 +82,7 @@ export const DefaultRenderer: Renderer = ({
   pageSize,
   renderer,
 }) => {
-  const [expandedPages, setExpandedPages] = React.useState<number[]>([])
+  const [expandedPages, setExpandedPages] = React.useState<Array<number>>([])
   const [valueSnapshot, setValueSnapshot] = React.useState(undefined)
 
   const refreshValueSnapshot = () => {
@@ -197,7 +197,7 @@ export default function Explorer({
   const toggleExpanded = React.useCallback(() => setExpanded((old) => !old), [])
 
   let type: string = typeof value
-  let subEntries: Property[] = []
+  let subEntries: Array<Property> = []
 
   const makeProperty = (sub: { label: string; value: unknown }): Property => {
     const subDefaultExpanded =

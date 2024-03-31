@@ -3,31 +3,62 @@ id: useMatchHook
 title: useMatch hook
 ---
 
-The `useMatch` hook returns the closest `RouteMatch` in the component tree. The raw route match contains all of the information about a route match in the router and also powers many other hooks under the hood like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch`.
+The `useMatch` hook returns a [`RouteMatch`](./api/router/RouteMatchType) in the component tree. The raw route match contains all of the information about a route match in the router and also powers many other hooks under the hood like `useParams`, `useLoaderData`, `useRouteContext`, and `useSearch`.
 
-### Options
+## useMatch options
 
-#### `opts.from`
+The `useMatch` hook accepts a single argument, an `options` object.
+
+### `opts.from` option
 
 - Type: `string`
-- The route id of the closest parent match
+- The route id of a match
 - Optional, but recommended for full type safety.
-- If `opts.strict` is `true`, TypeScript will warn for this option if it is not provided.
-- If `opts.strict` is `false`, TypeScript will provided loosened types for the returned `RouteMatch`.
+- If `opts.strict` is `true`, `from` is required and TypeScript will warn for this option if it is not provided.
+- If `opts.strict` is `false`, `from` must not be set and TypeScript will provided loosened types for the returned [`RouteMatch`](./api/router/RouteMatchType).
 
-#### `opts.strict`
+### `opts.strict` option
 
 - Type: `boolean`
 - Optional - `default: true`
-- If `false`, the `opts.from` option will be ignored and types will be loosened to `Partial<RouteMatch>` to reflect the shared types of all matches.
+- If `false`, the `opts.from` must not be set and types will be loosened to `Partial<RouteMatch>` to reflect the shared types of all matches.
 
-#### `opts.select`
+### `opts.select` option
 
 - Optional
 - `(match: RouteMatch) => TSelected`
 - If supplied, this function will be called with the route match and the return value will be returned from `useMatch`. This value will also be used to determine if the hook should re-render its parent component using shallow equality checks.
 
-### Returns
+## useMatch returns
 
 - If a `select` function is provided, the return value of the `select` function.
-- If no `select` function is provided, the `RouteMatch` object or a loosened version of the `RouteMatch` object if `opts.strict` is `false`.
+- If no `select` function is provided, the [`RouteMatch`](./api/router/RouteMatchType) object or a loosened version of the `RouteMatch` object if `opts.strict` is `false`.
+
+## Examples
+
+### accessing a route match
+
+```tsx
+import { useMatch } from '@tanstack/react-router'
+
+function Component() {
+  const match = useMatch({ from: '/posts/$postId' })
+  //     ^? strict match for RouteMatch
+  // ...
+}
+```
+
+### accessing the root route's match
+
+```tsx
+import {
+  useMatch,
+  rootRouteId, // <<<< use this token!
+} from '@tanstack/react-router'
+
+function Component() {
+  const match = useMatch({ from: rootRouteId })
+  //     ^? strict match for RouteMatch
+  // ...
+}
+```

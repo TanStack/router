@@ -1,1 +1,1 @@
-export * from './devtools'
+export { TanStackRouterDevtools, TanStackRouterDevtoolsPanel } from './devtools'

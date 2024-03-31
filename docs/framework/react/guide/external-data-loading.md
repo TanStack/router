@@ -15,7 +15,6 @@ Router is designed to be a perfect **coordinator** for external data fetching an
 
 Any data fetching library that supports asynchronous promises can be used with TanStack Router. This includes:
 
-- [TanStack Loaders](#tanstack-loaders)
 - [TanStack Query](https://tanstack.com/query/latest/docs/react/overview)
 - [SWR](https://swr.vercel.app/)
 - [RTK Query](https://redux-toolkit.js.org/rtk-query/overview)
@@ -94,6 +93,41 @@ export const Route = createFileRoute('/posts')({
         {posts.map((post) => (
           <Post key={post.id} post={post} />
         ))}
+      </div>
+    )
+  },
+})
+```
+
+### Error handling with TanStack Query
+
+When an error occurs while using `suspense` with `Tanstack Query`, you'll need to let queries know that you want to try again when re-rendering. This can be done by using the `reset` function provided by the `useQueryErrorResetBoundary` hook. We can invoke this function in an effect as soon as the error component mounts. This will make sure that the query is reset and will try to fetch data again when the route component is rendered again. This will also cover cases where users navigate away from our route instead of clicking the `retry` button.
+
+```tsx
+export const Route = createFileRoute('/posts')({
+  loader: () => queryClient.ensureQueryData(postsQueryOptions),
+  errorComponent: ({ error, reset }) => {
+    const router = useRouter()
+    const queryErrorResetBoundary = useQueryErrorResetBoundary()
+
+    React.useEffect(() => {
+      // Reset the query error boundary
+      queryErrorResetBoundary.reset()
+    }, [queryErrorResetBoundary])
+
+    return (
+      <div>
+        {error.message}
+        <button
+          onClick={() => {
+            // Reset the router error boundary
+            reset()
+            // Invalidate the route to reload the loader
+            router.invalidate()
+          }}
+        >
+          retry
+        </button>
       </div>
     )
   },

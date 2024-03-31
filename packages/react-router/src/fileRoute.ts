@@ -1,32 +1,34 @@
-import { NoInfer } from '@tanstack/react-store'
-import { ParsePathParams } from './link'
-import {
-  AnyRoute,
-  ResolveFullPath,
-  ResolveFullSearchSchema,
-  MergeFromFromParent,
-  RouteContext,
-  AnyContext,
-  RouteOptions,
-  UpdatableRouteOptions,
-  Route,
-  createRoute,
-  RootRouteId,
-  TrimPathLeft,
-  RouteConstraints,
-  ResolveFullSearchSchemaInput,
-  SearchSchemaInput,
-  RouteLoaderFn,
-  AnyPathParams,
-  AnySearchSchema,
-} from './route'
-import { Assign, Expand, IsAny } from './utils'
-import { useMatch, useLoaderDeps, useLoaderData, RouteMatch } from './Matches'
+import warning from 'tiny-warning'
+import { createRoute } from './route'
+import { useLoaderData, useLoaderDeps, useMatch } from './Matches'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
-import warning from 'tiny-warning'
-import { RegisteredRouter } from './router'
-import { RouteById, RouteIds } from './routeInfo'
+import { useNavigate } from './useNavigate'
+import type { ParsePathParams } from './link'
+import type {
+  AnyContext,
+  AnyPathParams,
+  AnyRoute,
+  AnySearchSchema,
+  FileBaseRouteOptions,
+  MergeFromFromParent,
+  ResolveFullPath,
+  ResolveFullSearchSchema,
+  ResolveFullSearchSchemaInput,
+  RootRouteId,
+  Route,
+  RouteConstraints,
+  RouteContext,
+  RouteLoaderFn,
+  SearchSchemaInput,
+  TrimPathLeft,
+  UpdatableRouteOptions,
+} from './route'
+import type { Assign, Expand, IsAny } from './utils'
+import type { RouteMatch } from './Matches'
+import type { NoInfer } from '@tanstack/react-store'
+import type { RegisteredRouter } from './router'
+import type { RouteById, RouteIds } from './routeInfo'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -35,26 +37,26 @@ export interface FileRoutesByPath {
 }
 
 type Replace<
-  S extends string,
-  From extends string,
-  To extends string,
-> = S extends `${infer Start}${From}${infer Rest}`
-  ? `${Start}${To}${Replace<Rest, From, To>}`
-  : S
+  TValue extends string,
+  TFrom extends string,
+  TTo extends string,
+> = TValue extends `${infer Start}${TFrom}${infer Rest}`
+  ? `${Start}${TTo}${Replace<Rest, TFrom, TTo>}`
+  : TValue
 
 export type TrimLeft<
-  T extends string,
-  S extends string,
-> = T extends `${S}${infer U}` ? U : T
+  TValue extends string,
+  TStartsWith extends string,
+> = TValue extends `${TStartsWith}${infer U}` ? U : TValue
 
 export type TrimRight<
-  T extends string,
-  S extends string,
-> = T extends `${infer U}${S}` ? U : T
+  TValue extends string,
+  TEndsWith extends string,
+> = TValue extends `${infer U}${TEndsWith}` ? U : TValue
 
-export type Trim<T extends string, S extends string> = TrimLeft<
-  TrimRight<T, S>,
-  S
+export type Trim<TValue extends string, TFind extends string> = TrimLeft<
+  TrimRight<TValue, TFind>,
+  TFind
 >
 
 export type RemoveUnderScores<T extends string> = Replace<
@@ -63,23 +65,23 @@ export type RemoveUnderScores<T extends string> = Replace<
   '/'
 >
 
-type RemoveRouteGroups<S extends string> =
-  S extends `${infer Before}(${infer RouteGroup})${infer After}`
+type RemoveRouteGroups<T extends string> =
+  T extends `${infer Before}(${infer RouteGroup})${infer After}`
     ? RemoveRouteGroups<`${Before}${After}`>
-    : S
+    : T
 
-type NormalizeSlashes<S extends string> =
-  S extends `${infer Before}//${infer After}`
+type NormalizeSlashes<T extends string> =
+  T extends `${infer Before}//${infer After}`
     ? NormalizeSlashes<`${Before}/${After}`>
-    : S
+    : T
 
 type ReplaceFirstOccurrence<
-  T extends string,
-  Search extends string,
-  Replacement extends string,
-> = T extends `${infer Prefix}${Search}${infer Suffix}`
-  ? `${Prefix}${Replacement}${Suffix}`
-  : T
+  TValue extends string,
+  TSearch extends string,
+  TReplacement extends string,
+> = TValue extends `${infer Prefix}${TSearch}${infer Suffix}`
+  ? `${Prefix}${TReplacement}${Suffix}`
+  : TValue
 
 export type ResolveFilePath<
   TParentRoute extends AnyRoute,
@@ -188,34 +190,27 @@ export class FileRoute<
     >,
     TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
-    TLoaderDataReturn extends any = unknown,
-    TLoaderData extends any = [TLoaderDataReturn] extends [never]
+    TLoaderDataReturn = unknown,
+    TLoaderData = [TLoaderDataReturn] extends [never]
       ? undefined
       : TLoaderDataReturn,
     TChildren extends RouteConstraints['TChildren'] = unknown,
     TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
   >(
-    options?: Omit<
-      RouteOptions<
-        TParentRoute,
-        string,
-        TPath,
-        TSearchSchemaInput,
-        TSearchSchema,
-        TSearchSchemaUsed,
-        TFullSearchSchemaInput,
-        TFullSearchSchema,
-        TParams,
-        TAllParams,
-        TRouteContextReturn,
-        TRouteContext,
-        TRouterContext,
-        TAllContext,
-        TLoaderDeps,
-        TLoaderDataReturn,
-        TLoaderData
-      >,
-      'getParentRoute' | 'path' | 'id'
+    options?: FileBaseRouteOptions<
+      TParentRoute,
+      TPath,
+      TSearchSchemaInput,
+      TSearchSchema,
+      TFullSearchSchema,
+      TParams,
+      TAllParams,
+      TRouteContextReturn,
+      TRouteContext,
+      TRouterContext,
+      TAllContext,
+      TLoaderDeps,
+      TLoaderDataReturn
     > &
       UpdatableRouteOptions<TAllParams, TFullSearchSchema, TLoaderData>,
   ): Route<
@@ -261,7 +256,7 @@ export function FileRouteLoader<
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
 >(
   _path: TFilePath,
-): <TLoaderData extends any>(
+): <TLoaderData>(
   loaderFn: RouteLoaderFn<
     TRoute['types']['allParams'],
     TRoute['types']['loaderDeps'],
@@ -345,6 +340,10 @@ export class LazyRoute<TRoute extends AnyRoute> {
     select?: (s: TRoute['types']['loaderData']) => TSelected
   }): TSelected => {
     return useLoaderData({ ...opts, from: this.options.id } as any)
+  }
+
+  useNavigate = () => {
+    return useNavigate({ from: this.options.id })
   }
 }
 

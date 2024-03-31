@@ -1,17 +1,14 @@
 import React from 'react'
 import {
   invariant,
-  AnyRouter,
-  Route,
-  AnyRoute,
-  AnyRootRoute,
+  rootRouteId,
   trimPath,
   useRouter,
   useRouterState,
-  AnyRouteMatch,
-  rootRouteId,
 } from '@tanstack/react-router'
 
+import { css } from 'goober'
+import { clsx as cx } from 'clsx'
 import useLocalStorage from './useLocalStorage'
 import {
   getRouteStatusColor,
@@ -20,13 +17,16 @@ import {
   useIsMounted,
   useSafeState,
 } from './utils'
-import { css } from 'goober'
-import { clsx as cx } from 'clsx'
 import Explorer from './Explorer'
 import { tokens } from './tokens'
 import { TanStackLogo } from './logo'
-
-export type PartialKeys<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
+import type {
+  AnyRootRoute,
+  AnyRoute,
+  AnyRouteMatch,
+  AnyRouter,
+  Route,
+} from '@tanstack/react-router'
 
 interface DevtoolsOptions {
   /**
@@ -136,7 +136,7 @@ export function TanStackRouterDevtools({
   containerElement: Container = 'footer',
   router,
 }: DevtoolsOptions): React.ReactElement | null {
-  const [rootEl, setRootEl] = React.useState<HTMLDivElement>(null!)
+  const [rootEl, setRootEl] = React.useState<HTMLDivElement>()
   const panelRef = React.useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useLocalStorage(
     'tanstackRouterDevtoolsOpen',
@@ -165,7 +165,7 @@ export function TanStackRouterDevtools({
 
     const run = (moveEvent: MouseEvent) => {
       const delta = dragInfo.pageY - moveEvent.pageY
-      const newHeight = dragInfo?.originalHeight + delta
+      const newHeight = dragInfo.originalHeight + delta
 
       setDevtoolsHeight(newHeight)
 
@@ -217,7 +217,7 @@ export function TanStackRouterDevtools({
       }
     }
     return
-  }, [isResolvedOpen])
+  }, [isResolvedOpen, rootEl?.parentElement])
 
   React.useEffect(() => {
     if (rootEl) {
@@ -253,7 +253,7 @@ export function TanStackRouterDevtools({
           onCloseClick: onCloseClick ?? (() => {}),
         }}
       >
-        <TanStackRouterDevtoolsPanel
+        <BaseTanStackRouterDevtoolsPanel
           ref={panelRef as any}
           {...otherPanelProps}
           router={router}
@@ -305,18 +305,37 @@ export function TanStackRouterDevtools({
   )
 }
 
+export const TanStackRouterDevtoolsPanel = React.forwardRef<
+  HTMLDivElement,
+  DevtoolsPanelOptions
+>(function TanStackRouterDevtoolsPanel(props, ref) {
+  return (
+    <DevtoolsOnCloseContext.Provider
+      value={{
+        onCloseClick: () => {},
+      }}
+    >
+      <BaseTanStackRouterDevtoolsPanel ref={ref} {...props} />
+    </DevtoolsOnCloseContext.Provider>
+  )
+})
+
 function RouteComp({
+  router,
   route,
   isRoot,
   activeId,
   setActiveId,
 }: {
+  router: AnyRouter
   route: AnyRootRoute | AnyRoute
   isRoot?: boolean
   activeId: string | undefined
   setActiveId: (id: string) => void
 }) {
-  const routerState = useRouterState()
+  const routerState = useRouterState({
+    router,
+  } as any)
   const matches =
     routerState.status === 'pending'
       ? routerState.pendingMatches ?? []
@@ -368,18 +387,19 @@ function RouteComp({
             </code>
             <code className={getStyles().routeParamInfo}>{param}</code>
           </div>
-          <AgeTicker match={match} />
+          <AgeTicker match={match} router={router} />
         </div>
       </div>
-      {(route.children as Route[])?.length ? (
+      {route.children?.length ? (
         <div className={getStyles().nestedRouteRow(!!isRoot)}>
-          {[...(route.children as Route[])]
+          {[...(route.children as Array<Route>)]
             .sort((a, b) => {
               return a.rank - b.rank
             })
             .map((r) => (
               <RouteComp
                 key={r.id}
+                router={router}
                 route={r}
                 activeId={activeId}
                 setActiveId={setActiveId}
@@ -391,10 +411,10 @@ function RouteComp({
   )
 }
 
-export const TanStackRouterDevtoolsPanel = React.forwardRef<
+const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
   HTMLDivElement,
   DevtoolsPanelOptions
->(function TanStackRouterDevtoolsPanel(props, ref): React.ReactElement {
+>(function BaseTanStackRouterDevtoolsPanel(props, ref): React.ReactElement {
   const {
     isOpen = true,
     setIsOpen,
@@ -411,12 +431,6 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   const routerState = useRouterState({
     router,
   } as any)
-
-  const matches = [
-    ...(routerState.pendingMatches ?? []),
-    ...routerState.matches,
-    ...routerState.cachedMatches,
-  ]
 
   invariant(
     router,
@@ -435,12 +449,21 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
     '',
   )
 
-  const activeMatch = React.useMemo(
-    () => matches.find((d) => d.routeId === activeId || d.id === activeId),
-    [matches, activeId],
-  )
+  const activeMatch = React.useMemo(() => {
+    const matches = [
+      ...(routerState.pendingMatches ?? []),
+      ...routerState.matches,
+      ...routerState.cachedMatches,
+    ]
+    return matches.find((d) => d.routeId === activeId || d.id === activeId)
+  }, [
+    activeId,
+    routerState.cachedMatches,
+    routerState.matches,
+    routerState.pendingMatches,
+  ])
 
-  const hasSearch = Object.keys(routerState.location.search || {}).length
+  const hasSearch = Object.keys(routerState.location.search).length
 
   const explorerState = {
     ...router,
@@ -597,6 +620,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           <div className={cx(getStyles().routesContainer)}>
             {!showMatches ? (
               <RouteComp
+                router={router}
                 route={router.routeTree}
                 isRoot
                 activeId={activeId}
@@ -629,7 +653,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                       <code
                         className={getStyles().matchID}
                       >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
-                      <AgeTicker match={match} />
+                      <AgeTicker match={match} router={router} />
                     </div>
                   )
                 })}
@@ -637,7 +661,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
             )}
           </div>
         </div>
-        {routerState.cachedMatches?.length ? (
+        {routerState.cachedMatches.length ? (
           <div className={getStyles().cachedMatchesContainer}>
             <div className={getStyles().detailsHeader}>
               <div>Cached Matches</div>
@@ -665,7 +689,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
 
                     <code className={getStyles().matchID}>{`${match.id}`}</code>
 
-                    <AgeTicker match={match} />
+                    <AgeTicker match={match} router={router} />
                   </div>
                 )
               })}
@@ -703,7 +727,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                     (d) => d.id === activeMatch.id,
                   )
                     ? 'Pending'
-                    : routerState.matches?.find((d) => d.id === activeMatch.id)
+                    : routerState.matches.find((d) => d.id === activeMatch.id)
                       ? 'Active'
                       : 'Cached'}
                 </div>
@@ -712,9 +736,7 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
                 <div>Last Updated:</div>
                 <div className={getStyles().matchDetailsInfo}>
                   {activeMatch.updatedAt
-                    ? new Date(
-                        activeMatch.updatedAt as number,
-                      ).toLocaleTimeString()
+                    ? new Date(activeMatch.updatedAt).toLocaleTimeString()
                     : 'N/A'}
                 </div>
               </div>
@@ -743,13 +765,14 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
           <div className={getStyles().detailsHeader}>Search Params</div>
           <div className={getStyles().detailsContent}>
             <Explorer
-              value={routerState.location.search || {}}
-              defaultExpanded={Object.keys(
-                (routerState.location.search as {}) || {},
-              ).reduce((obj: any, next) => {
-                obj[next] = {}
-                return obj
-              }, {})}
+              value={routerState.location.search}
+              defaultExpanded={Object.keys(routerState.location.search).reduce(
+                (obj: any, next) => {
+                  obj[next] = {}
+                  return obj
+                },
+                {},
+              )}
             />
           </div>
         </div>
@@ -758,9 +781,13 @@ export const TanStackRouterDevtoolsPanel = React.forwardRef<
   )
 })
 
-function AgeTicker({ match }: { match?: AnyRouteMatch }) {
-  const router = useRouter()
-
+function AgeTicker({
+  match,
+  router,
+}: {
+  match?: AnyRouteMatch
+  router: AnyRouter
+}) {
   const rerender = React.useReducer(
     () => ({}),
     () => ({}),
@@ -774,19 +801,19 @@ function AgeTicker({ match }: { match?: AnyRouteMatch }) {
     return () => {
       clearInterval(interval)
     }
-  }, [])
+  }, [rerender])
 
   if (!match) {
     return null
   }
 
-  const route = router.looseRoutesById[match?.routeId]!
+  const route = router.looseRoutesById[match.routeId]!
 
   if (!route.options.loader) {
     return null
   }
 
-  const age = Date.now() - match?.updatedAt
+  const age = Date.now() - match.updatedAt
   const staleTime =
     route.options.staleTime ?? router.options.defaultStaleTime ?? 0
   const gcTime =
@@ -1020,10 +1047,9 @@ const stylesFactory = () => {
       }
 
       if (showBorder) {
-        const border = css`
+        classes.push(css`
           border-right: 1px solid ${tokens.colors.gray[500]};
-        `
-        classes.push(border)
+        `)
       }
 
       return classes

@@ -1,15 +1,15 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
+  ErrorComponent,
+  type ErrorComponentProps,
+  Link,
+  NotFoundRoute,
   Outlet,
   RouterProvider,
-  Link,
-  ErrorComponent,
-  createRouter,
-  NotFoundRoute,
   createRootRoute,
-  ErrorComponentProps,
   createRoute,
+  createRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'axios'
@@ -23,9 +23,12 @@ type PostType = {
 const fetchPosts = async () => {
   console.log('Fetching posts...')
   await new Promise((r) => setTimeout(r, 300))
-  return axios
-    .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
-    .then((r) => r.data.slice(0, 10))
+  return (
+    axios
+      /* eslint-disable-next-line @typescript-eslint/array-type */
+      .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
+      .then((r) => r.data.slice(0, 10))
+  )
 }
 
 const fetchPost = async (postId: string) => {
@@ -61,13 +64,10 @@ function RootComponent() {
         >
           Home
         </Link>{' '}
-        <Link
-          to={'/posts'}
-          activeProps={{
-            className: 'font-bold',
-          }}
-        >
-          Posts
+        <Link to={'/posts'}>
+          {({ isActive }) => (
+            <span className={isActive ? 'font-bold' : ''}>Posts</span>
+          )}
         </Link>
       </div>
       <Outlet />

@@ -1,4 +1,8 @@
 {
   "extends": "../../tsconfig.json",
   "include": ["src", "vite.config.ts"],
+  "exclude": ["./src/tests/test-files/**", "./src/tests/snapshots/**"],
+  "compilerOptions": {
+    "jsx": "react",
+  },
 }

@@ -1,18 +1,24 @@
 import * as React from 'react'
 import { Matches } from './Matches'
-import { NavigateOptions, ToOptions } from './link'
-import { ParsedLocation } from './location'
-import { AnyRoute } from './route'
-import { RoutePaths } from './routeInfo'
-import { RegisteredRouter, Router, RouterOptions, RouterState } from './router'
 import { pick, useLayoutEffect } from './utils'
-
-import { RouteMatch } from './Matches'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { getRouterContext } from './routerContext'
+import type { NavigateOptions, ToOptions } from './link'
+import type { ParsedLocation } from './location'
+import type { AnyRoute } from './route'
+import type { RoutePaths } from './routeInfo'
+import type {
+  RegisteredRouter,
+  Router,
+  RouterOptions,
+  RouterState,
+} from './router'
+
+import type { RouteMatch } from './Matches'
 
 const useTransition =
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   React.useTransition ||
   (() => [
     false,
@@ -67,7 +73,7 @@ export function RouterProvider<
     ...rest,
     context: {
       ...router.options.context,
-      ...rest?.context,
+      ...rest.context,
     },
   } as any)
 
@@ -114,7 +120,7 @@ function Transitioner() {
         isTransitioning,
       }))
     }
-  }, [isTransitioning])
+  }, [isTransitioning, router])
 
   const tryLoad = () => {
     const apply = (cb: () => void) => {
@@ -142,17 +148,29 @@ function Transitioner() {
       }
     })
 
+    const nextLocation = router.buildLocation({
+      to: router.latestLocation.pathname,
+      search: true,
+      params: true,
+      hash: true,
+      state: true,
+    })
+
+    if (routerState.location.href !== nextLocation.href) {
+      router.commitLocation({ ...nextLocation, replace: true })
+    }
+
     return () => {
       unsub()
     }
-  }, [router.history])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, router.history])
 
   useLayoutEffect(() => {
     if (
       (React.useTransition as any)
         ? routerState.isTransitioning && !isTransitioning
-        : true &&
-          !routerState.isLoading &&
+        : !routerState.isLoading &&
           routerState.resolvedLocation !== routerState.location
     ) {
       router.emit({
@@ -160,14 +178,12 @@ function Transitioner() {
         fromLocation: routerState.resolvedLocation,
         toLocation: routerState.location,
         pathChanged:
-          routerState.location!.href !== routerState.resolvedLocation?.href,
+          routerState.location.href !== routerState.resolvedLocation.href,
       })
 
       if (router.options.scrollOnHashChange && (document as any).querySelector) {
         if (routerState.location.hash !== '') {
-          const el = document.getElementById(
-            routerState.location.hash,
-          ) as HTMLElement | null
+          const el = document.getElementById(routerState.location.hash)
           if (el) {
             el.scrollIntoView()
           }
@@ -186,6 +202,7 @@ function Transitioner() {
     routerState.isLoading,
     routerState.resolvedLocation,
     routerState.location,
+    router,
   ])
 
   useLayoutEffect(() => {
@@ -198,6 +215,7 @@ function Transitioner() {
     }
     mountLoadForRouter.current = { router, mounted: true }
     tryLoad()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   return null

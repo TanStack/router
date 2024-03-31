@@ -1,8 +1,9 @@
-import { useMatch, RouteMatch } from './Matches'
-import { AnyRoute } from './route'
-import { RouteIds, RouteById } from './routeInfo'
-import { RegisteredRouter } from './router'
-import { StrictOrFrom } from './utils'
+import { useMatch } from './Matches'
+import type { RouteMatch } from './Matches'
+import type { AnyRoute } from './route'
+import type { RouteById, RouteIds } from './routeInfo'
+import type { RegisteredRouter } from './router'
+import type { StrictOrFrom } from './utils'
 
 export function useRouteContext<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -17,8 +18,6 @@ export function useRouteContext<
   return useMatch({
     ...(opts as any),
     select: (match: RouteMatch) =>
-      opts?.select
-        ? opts.select(match.context as TRouteContext)
-        : match.context,
+      opts.select ? opts.select(match.context as TRouteContext) : match.context,
   })
 }

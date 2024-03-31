@@ -13,7 +13,7 @@ export type FullSearchSchema<TRouteTree extends AnyRoute> = Partial<
 >
 ```
 
-### Example
+## Examples
 
 ```tsx
 import { FullSearchSchema } from '@tanstack/react-router'

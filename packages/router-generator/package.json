@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-generator",
-  "version": "1.19.0",
+  "version": "1.23.0",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -33,7 +33,9 @@
   },
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:types": "tsc",
+    "test:eslint": "eslint --ext .ts,.tsx ./src",
+    "test:types": "tsc --noEmit",
+    "test:lib": "vitest",
     "test:build": "publint --strict",
     "build": "vite build"
   },

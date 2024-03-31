@@ -3,21 +3,19 @@ id: createRouteMaskFunction
 title: createRouteMask function
 ---
 
-The `createRouteMask` function is a helper function that can be used to create a route mask configuration that can be passed to the `routerOptions.routeMasks` option.
+The `createRouteMask` function is a helper function that can be used to create a route mask configuration that can be passed to the `RouterOptions.routeMasks` option.
 
-### Options
+## createRouteMask options
 
-#### `options`
-
-- Type: `RouteMask`
+- Type: [`RouteMask`](./api/router/RouteMaskType)
 - Required
 - The options that will be used to configure the route mask
 
-### Returns
+## createRouteMask returns
 
-- A `RouteMask` object that can be passed to the `routerOptions.routeMasks` option.
+- A object with the type signature of [`RouteMask`](./api/router/RouteMaskType) that can be passed to the `RouterOptions.routeMasks` option.
 
-### Examples
+## Examples
 
 ```tsx
 import { createRouteMask, createRouter } from '@tanstack/react-router'

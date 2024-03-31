@@ -1,9 +1,14 @@
 import * as React from 'react'
 
 export type NoInfer<T> = [T][T extends any ? 0 : never]
-export type IsAny<T, Y, N = T> = 1 extends 0 & T ? Y : N
-export type PickAsRequired<T, K extends keyof T> = Omit<T, K> &
-  Required<Pick<T, K>>
+export type IsAny<TValue, TYesResult, TNoResult = TValue> = 1 extends 0 & TValue
+  ? TYesResult
+  : TNoResult
+export type PickAsRequired<TValue, TKey extends keyof TValue> = Omit<
+  TValue,
+  TKey
+> &
+  Required<Pick<TValue, TKey>>
 
 export type PickRequired<T> = {
   [K in keyof T as undefined extends T[K] ? never : K]: T[K]
@@ -19,14 +24,11 @@ export type Expand<T> = T extends object
     : never
   : T
 
-export type UnionToIntersection<U> = (
-  U extends any ? (k: U) => void : never
+export type UnionToIntersection<T> = (
+  T extends any ? (k: T) => void : never
 ) extends (k: infer I) => any
   ? I
   : never
-
-export type DeepOptional<T, K extends keyof T> = Pick<DeepPartial<T>, K> &
-  Omit<T, K>
 
 export type DeepPartial<T> = T extends object
   ? {
@@ -34,11 +36,13 @@ export type DeepPartial<T> = T extends object
     }
   : T
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export type MakeDifferenceOptional<T, U> = Omit<U, keyof T> &
   Partial<Pick<U, keyof T & keyof U>> &
   PickRequired<Omit<U, keyof PickRequired<T>>>
 
 // from https://stackoverflow.com/a/53955431
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export type IsUnion<T, U extends T = T> = (
   T extends any ? (U extends T ? false : true) : never
 ) extends false
@@ -61,10 +65,13 @@ export type IsUnion<T, U extends T = T> = (
 //   }
 // >
 
-export type Assign<Left, Right> = Omit<Left, keyof Right> & Right
+export type Assign<TLeft, TRight> = Omit<TLeft, keyof TRight> & TRight
 
-export type AssignAll<T extends any[]> = T extends [infer Left, ...infer Right]
-  ? Right extends any[]
+export type AssignAll<T extends Array<any>> = T extends [
+  infer Left,
+  ...infer Right,
+]
+  ? Right extends Array<any>
     ? Assign<Left, AssignAll<Right>>
     : Left
   : {}
@@ -116,21 +123,21 @@ export type NonNullableUpdater<TPrevious, TResult = TPrevious> =
   | ((prev: TPrevious) => TResult)
 
 // from https://github.com/type-challenges/type-challenges/issues/737
-type LastInUnion<U> =
-  UnionToIntersection<U extends unknown ? (x: U) => 0 : never> extends (
+type LastInUnion<T> =
+  UnionToIntersection<T extends unknown ? (x: T) => 0 : never> extends (
     x: infer L,
   ) => 0
     ? L
     : never
-export type UnionToTuple<U, Last = LastInUnion<U>> = [U] extends [never]
+export type UnionToTuple<T, TLast = LastInUnion<T>> = [T] extends [never]
   ? []
-  : [...UnionToTuple<Exclude<U, Last>>, Last]
+  : [...UnionToTuple<Exclude<T, TLast>>, TLast]
 
 //
 
 export const isServer = typeof document === 'undefined'
 
-export function last<T>(arr: T[]) {
+export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
 }
 
@@ -143,14 +150,17 @@ export function functionalUpdate<TResult>(
   previous: TResult,
 ): TResult {
   if (isFunction(updater)) {
-    return updater(previous as TResult)
+    return updater(previous)
   }
 
   return updater
 }
 
-export function pick<T, K extends keyof T>(parent: T, keys: K[]): Pick<T, K> {
-  return keys.reduce((obj: any, key: K) => {
+export function pick<TValue, TKey extends keyof TValue>(
+  parent: TValue,
+  keys: Array<TKey>,
+): Pick<TValue, TKey> {
+  return keys.reduce((obj: any, key: TKey) => {
     obj[key] = parent[key]
     return obj
   }, {} as any)
@@ -268,11 +278,13 @@ export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
   return false
 }
 
-export function useStableCallback<T extends (...args: any[]) => any>(fn: T): T {
+export function useStableCallback<T extends (...args: Array<any>) => any>(
+  fn: T,
+): T {
   const fnRef = React.useRef(fn)
   fnRef.current = fn
 
-  const ref = React.useRef((...args: any[]) => fnRef.current(...args))
+  const ref = React.useRef((...args: Array<any>) => fnRef.current(...args))
   return ref.current as T
 }
 
@@ -295,10 +307,10 @@ export function shallow<T>(objA: T, objB: T) {
     return false
   }
 
-  for (let i = 0; i < keysA.length; i++) {
+  for (const item of keysA) {
     if (
-      !Object.prototype.hasOwnProperty.call(objB, keysA[i] as string) ||
-      !Object.is(objA[keysA[i] as keyof T], objB[keysA[i] as keyof T])
+      !Object.prototype.hasOwnProperty.call(objB, item) ||
+      !Object.is(objA[item as keyof T], objB[item as keyof T])
     ) {
       return false
     }
@@ -326,9 +338,28 @@ export type StrictOrFrom<TFrom, TReturnIntersection extends boolean = false> =
 export const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
+/**
+ *
+ * @deprecated use `jsesc` instead
+ */
 export function escapeJSON(jsonString: string) {
   return jsonString
     .replace(/\\/g, '\\\\') // Escape backslashes
     .replace(/'/g, "\\'") // Escape single quotes
     .replace(/"/g, '\\"') // Escape double quotes
+}
+
+export function removeTrailingSlash(value: string): string {
+  if (value.endsWith('/') && value !== '/') {
+    return value.slice(0, -1)
+  }
+  return value
+}
+
+// intended to only compare path name
+// see the usage in the isActive under useLinkProps
+// /sample/path1 = /sample/path1/
+// /sample/path1/some <> /sample/path1
+export function exactPathTest(pathName1: string, pathName2: string): boolean {
+  return removeTrailingSlash(pathName1) === removeTrailingSlash(pathName2)
 }

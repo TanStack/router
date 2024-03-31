@@ -1,13 +1,15 @@
 import path from 'path'
-import { readFileSync, existsSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { z } from 'zod'
 
 export const configSchema = z.object({
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
+  routeFileIgnorePattern: z.string().optional(),
   routesDirectory: z.string().optional().default('./src/routes'),
   generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
   quoteStyle: z.enum(['single', 'double']).optional().default('single'),
+  semicolons: z.boolean().optional().default(false),
   disableTypes: z.boolean().optional().default(false),
   addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),

@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-devtools",
-  "version": "1.19.1",
+  "version": "1.26.1",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -34,7 +34,8 @@
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:types": "tsc",
+    "test:eslint": "eslint --ext .ts,.tsx ./src",
+    "test:types": "tsc --noEmit",
     "test:build": "publint --strict",
     "build": "vite build"
   },
@@ -67,7 +68,7 @@
     "vite": "^5.0.12"
   },
   "peerDependencies": {
-    "react": ">=16",
-    "react-dom": ">=16"
+    "react": ">=16.8",
+    "react-dom": ">=16.8"
   }
 }

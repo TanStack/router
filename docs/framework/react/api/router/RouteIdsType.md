@@ -9,7 +9,7 @@ This type takes a route tree and returns a union of all of the route IDs in the 
 export type RouteIds<TRouteTree extends AnyRoute> = ParseRoute<TRouteTree>['id']
 ```
 
-### Example
+## Examples
 
 ```tsx
 import { RouteIds } from '@tanstack/react-router'

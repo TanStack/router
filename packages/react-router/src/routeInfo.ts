@@ -1,10 +1,10 @@
-import { AnyRoute } from './route'
-import { Expand, UnionToIntersection, UnionToTuple } from './utils'
+import type { AnyRoute } from './route'
+import type { Expand, UnionToIntersection, UnionToTuple } from './utils'
 
 export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
   types: { children: infer TChildren }
 }
-  ? TChildren extends unknown[]
+  ? TChildren extends Array<unknown>
     ? ParseRoute<TChildren[number], TAcc | TChildren[number]>
     : TAcc
   : TAcc
@@ -22,34 +22,38 @@ export type RouteIds<TRouteTree extends AnyRoute> = ParseRoute<TRouteTree>['id']
 
 export type RoutesByPath<TRouteTree extends AnyRoute> = {
   [K in ParseRoute<TRouteTree> as K['fullPath']]: K
-}
+} & Record<'.' | '..', ParseRoute<TRouteTree>>
 
 export type RouteByPath<TRouteTree extends AnyRoute, TPath> = Extract<
-  Extract<ParseRoute<TRouteTree>, { fullPath: TPath }>,
+  string extends TPath
+    ? ParseRoute<TRouteTree>
+    : RoutesByPath<TRouteTree>[TPath],
   AnyRoute
 >
+
 export type RoutePaths<TRouteTree extends AnyRoute> =
   | ParseRoute<TRouteTree>['fullPath']
   | '/'
 
 export type RoutePathsAutoComplete<TRouteTree extends AnyRoute, T> =
-  | T
+  | (string extends T ? T & {} : T)
   | RoutePaths<TRouteTree>
-  | (string & {})
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type UnionizeCollisions<T, U> = {
   [P in keyof T & keyof U]: T[P] extends U[P] ? T[P] : T[P] | U[P]
 }
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type Reducer<T, U, C = UnionizeCollisions<T, U>> = C &
   Omit<T, keyof C> &
   Omit<U, keyof C>
 
-type Reduce<T extends any[], Result = unknown> = T extends [
+type Reduce<TValue extends Array<any>, TResult = unknown> = TValue extends [
   infer First,
   ...infer Rest,
 ]
-  ? Reduce<Rest, Reducer<Result, First>>
-  : Result
+  ? Reduce<Rest, Reducer<TResult, First>>
+  : TResult
 
 export type FullSearchSchema<TRouteTree extends AnyRoute> = Partial<
   Expand<

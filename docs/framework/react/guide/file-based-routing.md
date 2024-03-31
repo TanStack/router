@@ -91,12 +91,16 @@ The following options are available for configuration via the `tsr.config.json` 
   - (Optional) If set, only route files and directories that start with this string will be considered for routing.
 - **`routeFileIgnorePrefix`**
   - (Optional, **Defaults to `-`**) Route files and directories that start with this string will be ignored. By default this is set to `-` to allow for the use of directories to house related files that do not contain any route files.
+- **`routeFileIgnorePattern`**
+  - (Optional) Ignore specific file and directories in the route directory. It can be used in regular expression format. For example `.((css|const).ts)|test-page` can ignore `.css.ts` and `.const.ts` file and ignore file and directories includes name with `test-page`
 - **`routesDirectory`**
   - (Required) The directory containing the routes relative to the cwd.
 - **`generatedRouteTree`**
   - (Required) The path to the file where the generated route tree will be saved, relative to the cwd.
 - **`quoteStyle`**
   - (Optional, **Defaults to `single`**) whether to use `single` or `double` quotes when formatting the generated route tree file.`
+- **`semicolons`**
+  - (Optional, **Defaults to `false`**) whether to use semicolons in the generated route tree file.
 - **`disableTypes`**
   - (Optional, **Defaults to `false`**) whether to disable generating types for the route tree
   - If set to `true`, the generated route tree will not include any types.

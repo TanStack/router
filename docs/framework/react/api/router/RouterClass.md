@@ -3,60 +3,64 @@ id: Router
 title: Router
 ---
 
-## ⚠️ Deprecated
+> 🚧 The `Router` class is deprecated and will be removed in the next major version of TanStack Router. Please use the [`createRouter`](./api/router/createRouterFunction) function instead. The constructor and methods associated with this class will be implemented on its functional counterpart in the next major release.
 
-The `Router` class has been deprecated in favor of the `createRouter` function.
+The `Router` class is used to instantiate a new router instance.
 
-# `Router` class
+## `Router` constructor
 
-The `Router` class is used to create a router instance.
+The `Router` constructor accepts a single argument: the `options` that will be used to configure the router instance.
 
-### `Router` constructor
+### Constructor options
 
-#### `options`
-
-- Type: `RouterOptions`
+- Type: [`RouterOptions`](./api/router/RouterOptionsType)
 - Required
-- The options that will be used to configure the router instance
+- The options that will be used to configure the router instance.
 
-### `Router` properties and methods
+### Constructor returns
 
-#### `update`
+The instantiation of the `Router` class returns a new instance of the router.
+
+## `Router` properties and methods
+
+The `Router` class implements the following properties and methods:
+
+### `.update` method
 
 - Type: `(newOptions: RouterOptions) => void`
-- Updates the router instance with new options
+- Updates the router instance with new options.
 
-#### `state`
+### `state` property
 
 - Type: `RouterState`
-- The current state of the router
+- The current state of the router.
 
 > ⚠️⚠️⚠️ **`router.state` is always up to date, but NOT REACTIVE. If you use `router.state` in a component, the component will not re-render when the router state changes. To get a reactive version of the router state, use the `useRouterState` hook.**
 
-#### `subscribe`
+### `.subscribe` method
 
 - Type: `(eventType: TType, fn: ListenerFn<RouterEvents[TType]>) => (event: RouterEvent) => void`
-- Subscribes to a router event
-- Returns a function that can be used to unsubscribe from the event
-- The callback provided to the returned function will be called with the event that was emitted
+- Subscribes to a router event.
+- Returns a function that can be used to unsubscribe from the event.
+- The callback provided to the returned function will be called with the event that was emitted.
 
-#### `matchRoutes`
+### `.matchRoutes` method
 
 - Type: `(pathname: string, locationSearch: Record<string, any>, opts?: { throwOnError?: boolean; }) => RouteMatch[]`
-- Matches a pathname and search params against the router's route tree and returns an array of route matches
+- Matches a pathname and search params against the router's route tree and returns an array of route matches.
 - If `opts.throwOnError` is `true`, any errors that occur during the matching process will be thrown (in addition to being returned in the route match's `error` property).
 
-#### `cancelMatch`
+### `.cancelMatch` method
 
 - Type: `(matchId: string) => void`
 - Cancels a route match that is currently pending by calling `match.abortController.abort()`.
 
-#### `cancelMatches`
+### `.cancelMatches` method
 
 - Type: `() => void`
 - Cancels all route matches that are currently pending by calling `match.abortController.abort()` on each one.
 
-#### `buildLocation`
+### `.buildLocation` method
 
 Builds a new parsed location object that can be used later to navigate to a new location.
 
@@ -89,13 +93,13 @@ Builds a new parsed location object that can be used later to navigate to a new 
   - `mask`
     - Type: `object`
     - Optional
-    - Contains all of the same BuildNextOptions, with the addition of `unmaskOnReload`
+    - Contains all of the same BuildNextOptions, with the addition of `unmaskOnReload`.
     - `unmaskOnReload`
       - Type: `boolean`
       - Optional
       - If `true`, the route mask will be removed when the page is reloaded. This can be overridden on a per-navigation basis by setting the `unmaskOnReload` option in the `Navigate` options.
 
-#### `commitLocation`
+### `.commitLocation` method
 
 Commits a new location object to the browser history.
 
@@ -113,12 +117,12 @@ Commits a new location object to the browser history.
   - `location`
     - Type: `ParsedLocation`
     - Required
-    - The location to commit to the browser history
+    - The location to commit to the browser history.
   - `replace`
     - Type: `boolean`
     - Optional
-    - Defaults to `false`
-    - If `true`, the location will be committed to the browser history using `history.replace` instead of `history.push`
+    - Defaults to `false`.
+    - If `true`, the location will be committed to the browser history using `history.replace` instead of `history.push`.
   - `resetScroll`
     - Type: `boolean`
     - Optional
@@ -130,7 +134,7 @@ Commits a new location object to the browser history.
     - Defaults to `true`, so that the router will apply the commit wrapped in a React `startTransition` call.
     - If `false`, the router will not wrap the commit in a React `startTransition` call.
 
-#### `navigate`
+### `.navigate` method
 
 Navigates to a new location.
 
@@ -139,14 +143,15 @@ Navigates to a new location.
   type navigate = (options: NavigateOptions) => Promise<void>
   ```
 
-#### `invalidate`
+### `.invalidate` method
 
 Invalidates all route matches by forcing their `beforeLoad` and `load` functions to be called again.
 
-- Type: `() => void`
-- This is useful any time your loader data might possibly be out of date or stale. For example, if you have a route that displays a list of posts, and you have a loader function that fetches the list of posts from an API, you might want to invalidate the route matches for that route any time a new post is created so that the list of posts is always up to date.
+- Type: `() => Promise<void>`
+- This is useful any time your loader data might be out of date or stale. For example, if you have a route that displays a list of posts, and you have a loader function that fetches the list of posts from an API, you might want to invalidate the route matches for that route any time a new post is created so that the list of posts is always up-to-date.
+- You might also want to invalidate the Router if you imperatively `reset` the router's `CatchBoundary` to trigger loaders again.
 
-#### `load`
+### `.load` method
 
 Loads all of the currently matched route matches and resolves when they are all loaded and ready to be rendered.
 
@@ -155,7 +160,7 @@ Loads all of the currently matched route matches and resolves when they are all 
 - Type: `() => Promise<void>`
 - The most common use case for this method is to call it when doing SSR to ensure that all of the critical data for the current route is loaded before attempting to stream or render the application to the client.
 
-#### `preloadRoute`
+### `.preloadRoute` method
 
 Preloads all of the matches that match the provided `NavigateOptions`.
 
@@ -165,12 +170,12 @@ Preloads all of the matches that match the provided `NavigateOptions`.
 - Properties
   - `opts`
     - Type: `NavigateOptions`
-    - Optional, defaults to the current location
-    - The options that will be used to determine which route matches to preload
+    - Optional, defaults to the current location.
+    - The options that will be used to determine which route matches to preload.
 - Returns
-  - A promise that resolves with an array of all of the route matches that were preloaded
+  - A promise that resolves with an array of all of the route matches that were preloaded.
 
-#### `matchRoute`
+### `.matchRoute` method
 
 Matches a pathname and search params against the router's route tree and returns a route match's params or false if no match was found.
 
@@ -179,16 +184,16 @@ Matches a pathname and search params against the router's route tree and returns
   - `dest`
     - Type: `ToOptions`
     - Required
-    - The destination to match against
+    - The destination to match against.
   - `matchOpts`
     - Type: `MatchRouteOptions`
     - Optional
-    - Options that will be used to match the destination
+    - Options that will be used to match the destination.
 - Returns
-  - A route match object if a match was found
-  - `false` if no match was found
+  - A route match object if a match was found.
+  - `false` if no match was found.
 
-#### `injectHtml`
+### `.injectHtml` method
 
 Injects the HTML for the router into the DOM.
 
@@ -197,10 +202,10 @@ Injects the HTML for the router into the DOM.
   - `html`
     - Type: `string | (() => Promise<string> | string)`
     - Required
-    - The HTML to inject into the DOM
-    - If a function is provided, it will be called and the resolved value will be injected into the DOM
+    - The HTML to inject into the DOM.
+    - If a function is provided, it will be called and the resolved value will be injected into the DOM.
 
-#### `dehydrateData`
+### `.dehydrateData` method
 
 Dehydrates data into the router on the server that can be streamed to the client and rehydrated later.
 
@@ -209,14 +214,14 @@ Dehydrates data into the router on the server that can be streamed to the client
   - `key`
     - Type: `any`
     - Required
-    - The key that will be used to identify the dehydrated data
+    - The key that will be used to identify the dehydrated data.
   - `getData`
     - Type: `T | (() => Promise<T> | T)`
     - Required
-    - The data that will be dehydrated
-    - If a function is provided, it will be called and the resolved value will be dehydrated
+    - The data that will be dehydrated.
+    - If a function is provided, it will be called and the resolved value will be dehydrated.
 
-#### `hydrateData`
+### `.hydrateData` method
 
 Hydrates data into the router on the client that was dehydrated on the server.
 
@@ -225,20 +230,20 @@ Hydrates data into the router on the client that was dehydrated on the server.
   - `key`
     - Type: `any`
     - Required
-    - The key that was used to identify the dehydrated data
+    - The key that was used to identify the dehydrated data.
 - Returns
-  - The dehydrated data if it exists
-  - `undefined` if the dehydrated data does not exist
+  - The dehydrated data if it exists.
+  - `undefined` if the dehydrated data does not exist.
 
-#### `dehydrate`
+### `.dehydrate` method
 
 Dehydrates the router's critical state into a serializable object that can be sent to the client in an initial request.
 
 - Type: `() => DehydratedRouter`
 - Returns
-  - A serializable object that contains the router's critical state
+  - A serializable object that contains the router's critical state.
 
-#### `hydrate`
+### `.hydrate` method
 
 Hydrates the router's critical state from a serializable object that was sent from the server in an initial request.
 
@@ -247,4 +252,20 @@ Hydrates the router's critical state from a serializable object that was sent fr
   - `dehydrated`
     - Type: `DehydratedRouter`
     - Required
-    - The dehydrated router state that was sent from the server
+    - The dehydrated router state that was sent from the server.
+
+## Examples
+
+```tsx
+import { Router, RouterProvider } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+
+const router = new Router({
+  routeTree,
+  defaultPreload: 'intent',
+})
+
+export default function App() {
+  return <RouterProvider router={router} />
+}
+```

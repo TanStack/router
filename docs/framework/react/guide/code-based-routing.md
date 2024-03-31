@@ -12,7 +12,7 @@ title: Code-Based Routing
 
 Code-based routing is no different from file-based routing in that it uses the same route tree concept to organize, match and compose matching routes into a component tree. The only difference is that instead of using the filesystem to organize your routes, you use code.
 
-Let's consider the same route tree from the [File-Based Routing](./guide/file-based-routing) guide, but from a code-based perspective:
+Let's consider the same route tree from the [Route Trees & Nesting](./guide/route-trees#route-trees) guide, but from a code-based perspective:
 
 - _Root_
   - `/`
@@ -276,4 +276,4 @@ const routeTree = rootRoute.addChildren([
 
 ## 404 / `NotFoundRoute`s
 
-We'll cover how to configure a `NotFoundRoute` in the [Route Matching - Not-Found Routes](./guide/route-matching#not-found-routes) guide.
+We'll cover how to configure a `NotFoundRoute` in the [Not Found Errors](./guide/not-found-errors) guide.
