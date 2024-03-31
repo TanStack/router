@@ -8,6 +8,13 @@ import { DehydrateRouter } from './DehydrateRouter'
 import { Asset } from './Asset'
 import type { RouterManagedTag } from './RouterManagedTag'
 
+function getScriptKey(src: string, index: number) {
+  if (!src) {
+    return `tsr-scripts-${index}`
+  }
+  return `tsr-scripts-${src}`
+}
+
 export const Scripts = () => {
   const router = useRouter()
 
@@ -39,7 +46,7 @@ export const Scripts = () => {
     <>
       <DehydrateRouter />
       {allScripts.map((asset, i) => (
-        <Asset {...asset} key={`tsr-scripts-${asset.tag}-${i}`} />
+        <Asset {...asset} key={getScriptKey(asset.attrs?.src || '', i)} />
       ))}
     </>
   )

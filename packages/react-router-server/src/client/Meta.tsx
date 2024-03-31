@@ -7,6 +7,29 @@ import * as React from 'react'
 import { Asset } from './Asset'
 import type { RouterManagedTag } from './RouterManagedTag'
 
+function getMetaKey(asset: RouterManagedTag, index: number) {
+  if (asset.tag === 'title') {
+    return `tsr-meta-title`
+  }
+
+  if (asset.tag === 'meta') {
+    const ident = [
+      asset.attrs.name,
+      asset.attrs.content,
+      asset.attrs.httpEquiv,
+      asset.attrs.charSet,
+    ].join('')
+    return `tsr-meta-meta-${ident}`
+  }
+
+  if (asset.tag === 'link') {
+    const ident = [asset.attrs.rel, asset.attrs.href].join('')
+    return `tsr-meta-link-${ident}`
+  }
+
+  return `tsr-meta-${asset.tag}-${index}`
+}
+
 export const Meta = () => {
   const router = useRouter()
 
@@ -80,7 +103,7 @@ export const Meta = () => {
   return (
     <>
       {[...meta, ...links, ...manifestMeta].map((asset, i) => (
-        <Asset {...asset} key={`tsr-meta-${asset.tag}-${i}`} />
+        <Asset {...asset} key={getMetaKey(asset, i)} />
       ))}
     </>
   )
