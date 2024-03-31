@@ -44,7 +44,6 @@ export const Meta = () => {
             tag: 'meta',
             attrs: {
               ...m,
-              key: `meta-${[m.name, m.content, m.httpEquiv, m.charSet].join('')}`,
             },
           })
         }
@@ -70,7 +69,6 @@ export const Meta = () => {
           tag: 'link',
           attrs: {
             ...link,
-            key: `link-${[link.rel, link.href].join('')}`,
           },
         })) as Array<RouterManagedTag>,
   })
@@ -82,7 +80,7 @@ export const Meta = () => {
   return (
     <>
       {[...meta, ...links, ...manifestMeta].map((asset, i) => (
-        <Asset {...asset} key={i} />
+        <Asset {...asset} key={`tsr-meta-${asset.tag}-${i}`} />
       ))}
     </>
   )
