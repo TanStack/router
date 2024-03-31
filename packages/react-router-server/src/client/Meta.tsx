@@ -9,7 +9,7 @@ import type { RouterManagedTag } from './RouterManagedTag'
 
 function getMetaKey(asset: RouterManagedTag, index: number) {
   if (asset.tag === 'title') {
-    return `tsr-meta-title`
+    return `tsr-meta-title-${index}`
   }
 
   if (asset.tag === 'meta') {
@@ -19,12 +19,12 @@ function getMetaKey(asset: RouterManagedTag, index: number) {
       asset.attrs.httpEquiv,
       asset.attrs.charSet,
     ].join('')
-    return `tsr-meta-meta-${ident}`
+    return `tsr-meta-meta-${ident || index}`
   }
 
   if (asset.tag === 'link') {
     const ident = [asset.attrs.rel, asset.attrs.href].join('')
-    return `tsr-meta-link-${ident}`
+    return `tsr-meta-link-${ident || index}`
   }
 
   return `tsr-meta-${asset.tag}-${index}`
