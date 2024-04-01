@@ -117,16 +117,19 @@ export function createHistory(opts: {
     go: (index) => {
       tryNavigation(() => {
         opts.go(index)
+        onUpdate()
       })
     },
     back: () => {
       tryNavigation(() => {
         opts.back()
+        onUpdate()
       })
     },
     forward: () => {
       tryNavigation(() => {
         opts.forward()
+        onUpdate()
       })
     },
     createHref: (str) => opts.createHref(str),
