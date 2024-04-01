@@ -2,6 +2,17 @@
 
 // qss has been slightly modified and inlined here for our use cases (and compression's sake). We've included it as a hard dependency for MIT license attribution.
 
+/**
+ * Encodes an object into a query string.
+ * @param obj - The object to encode into a query string.
+ * @param [pfx] - An optional prefix to add before the query string.
+ * @returns The encoded query string.
+ * @example
+ * ```
+ * // Example input: encode({ token: 'foo', key: 'value' })
+ * // Expected output: "token=foo&key=value"
+ * ```
+ */
 export function encode(obj, pfx?: string) {
   let k,
     i,
@@ -25,6 +36,14 @@ export function encode(obj, pfx?: string) {
   return (pfx || '') + str
 }
 
+/**
+ * Converts a string value to its appropriate type (string, number, boolean).
+ * @param mix - The string value to convert.
+ * @returns The converted value.
+ * @example
+ * // Example input: toValue("123")
+ * // Expected output: 123
+ */
 function toValue(mix) {
   if (!mix) return ''
   const str = decodeURIComponent(mix)
@@ -33,6 +52,15 @@ function toValue(mix) {
   return +str * 0 === 0 && +str + '' === str ? +str : str
 }
 
+/**
+ * Decodes a query string into an object.
+ * @param str - The query string to decode.
+ * @param [pfx] - An optional prefix to filter out from the query string.
+ * @returns The decoded key-value pairs in an object format.
+ * @example
+ * // Example input: decode("token=foo&key=value")
+ * // Expected output: { "token": "foo", "key": "value" }
+ */
 export function decode(str, pfx?: string) {
   let tmp, k
   const out = {},
