@@ -39,12 +39,18 @@ export function decode(str, pfx?: string) {
     arr = (pfx ? str.substr(pfx.length) : str).split('&')
 
   while ((tmp = arr.shift())) {
-    tmp = tmp.split('=')
-    k = tmp.shift()
-    if (out[k] !== void 0) {
-      out[k] = [].concat(out[k], toValue(tmp.shift()))
+    const equalIndex = tmp.indexOf('=')
+    if (equalIndex !== -1) {
+      k = tmp.slice(0, equalIndex)
+      const value = tmp.slice(equalIndex + 1)
+      if (out[k] !== void 0) {
+        out[k] = [].concat(out[k], toValue(value))
+      } else {
+        out[k] = toValue(value)
+      }
     } else {
-      out[k] = toValue(tmp.shift())
+      k = tmp
+      out[k] = ''
     }
   }
 
