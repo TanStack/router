@@ -10,10 +10,10 @@ File based route generation (via Vite) is the recommended way to use TanStack Ro
 
 > 🧠 You can also use the Router CLI (the `tsr` binary) to generate routes if you are unable to use Vite. See [File-Based Routing](./guide/file-based-routing) for more info.
 
-### Install the Vite Plugin
+### Install the Vite Plugin and the Router Devtools
 
 ```bash
-npm install --save-dev @tanstack/router-vite-plugin
+npm install --save-dev @tanstack/router-vite-plugin @tanstack/router-devtools
 ```
 
 ### Configure the Vite Plugin
