@@ -18,7 +18,7 @@ describe('encode function', () => {
   it('should handle encoding an object with empty values and trailing equal signs', () => {
     const obj = { token: '', key: 'value=' }
     const queryString = encode(obj)
-    expect(queryString).toEqual('token=&key=value=%3D') // token=&key=value=
+    expect(queryString).toEqual('token=&key=value%3D') // token=&key=value=
   })
 
   it('should handle encoding an object with array values', () => {
