@@ -1,4 +1,4 @@
-import { test, expectTypeOf } from 'vitest'
+import { expectTypeOf, test } from 'vitest'
 import { Link, createRoute } from '../src'
 import { createRootRoute } from '../src'
 
@@ -40,9 +40,17 @@ const invoiceRoute = createRoute({
   validateSearch: () => ({ page: 0 }),
 })
 
+const invoiceEditRoute = createRoute({
+  getParentRoute: () => invoiceRoute,
+  path: 'edit',
+})
+
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
-  invoicesRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
+  invoicesRoute.addChildren([
+    invoicesIndexRoute,
+    invoiceRoute.addChildren([invoiceEditRoute]),
+  ]),
   indexRoute,
 ])
 
@@ -60,6 +68,7 @@ test('when navigating to the root, to autocompletes to all routes, ../ and ./', 
       | '/invoices'
       | '/invoices/'
       | '/invoices/$invoiceId'
+      | '/invoices/$invoiceId/edit'
       | '../'
       | './'
       | undefined
@@ -78,6 +87,7 @@ test('when navigating from a static route to the root, to autocompletes to all r
       | '/invoices'
       | '/invoices/'
       | '/invoices/$invoiceId'
+      | '/invoices/$invoiceId/edit'
       | '../'
       | './'
       | undefined
@@ -100,6 +110,7 @@ test('when navigating from a static route to the parent route, to autocompletes 
       | '../posts/'
       | '../posts/$postId'
       | '../invoices/$invoiceId'
+      | '../invoices/$invoiceId/edit'
       | '../invoices'
       | '../invoices/'
       | '../'
@@ -121,6 +132,7 @@ test('from autocompletes to all absolute routes', () => {
       | '/invoices'
       | '/invoices/'
       | '/invoices/$invoiceId'
+      | '/invoices/$invoiceId/edit'
       | undefined
     >()
 })
@@ -176,7 +188,7 @@ test('when navigating to a route with params, params can be a object of required
   const TestLink = Link<RouteTree, string, '/posts/$postId/'>
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('params')
 
-  params.exclude<Function | boolean>().toMatchTypeOf<{ postId: string }>()
+  params.exclude<Function | boolean>().toEqualTypeOf<{ postId: string }>()
 })
 
 test('when navigating to a route with params, params is a function from all params to next params', () => {
@@ -202,7 +214,9 @@ test('when navigating from a route with no params to a route with params, params
   const TestLink = Link<RouteTree, '/invoices/', './$invoiceId/'>
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('params')
 
-  params.exclude<Function | boolean>().toMatchTypeOf<{ invoiceId: string }>()
+  params
+    .exclude<Function | boolean>()
+    .branded.toEqualTypeOf<{ invoiceId: string }>()
 })
 
 test('when navigating from a route with no params to a route with params, params is a function from no params to next params', () => {
@@ -214,6 +228,116 @@ test('when navigating from a route with no params to a route with params, params
 
   params.returns.branded.toEqualTypeOf<{ invoiceId: string }>()
   params.parameter(0).toEqualTypeOf<{}>()
+})
+
+test('when navigating from a route to a route with the same params, the params can be an object with optional properties', () => {
+  const TestLink = Link<RouteTree, '/invoices/$invoiceId', './edit'>
+  const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('params')
+
+  params
+    .exclude<Function | boolean>()
+    .branded.toEqualTypeOf<{ invoiceId?: string | undefined } | undefined>()
+})
+
+test('when navigating from a route to a route with the same params, params is a function from params to optional next params', () => {
+  const TestLink = Link<RouteTree, '/invoices/$invoiceId', './edit'>
+  const params = expectTypeOf(TestLink)
+    .parameter(0)
+    .toHaveProperty('params')
+    .extract<Function>()
+
+  params.returns.branded.toEqualTypeOf<{ invoiceId?: string | undefined }>()
+  params.parameter(0).toEqualTypeOf<{ invoiceId: string }>()
+})
+
+test('when navigating to a union of routes, params is optional', () => {
+  const TestLink = Link<
+    RouteTree,
+    string,
+    '/invoices/$invoiceId/' | '/posts/$postId/'
+  >
+  expectTypeOf(TestLink).parameter(0).not.toMatchTypeOf<{ params: unknown }>()
+})
+
+test('when navigating to a union of routes, params can be a union of objects', () => {
+  const TestLink = Link<
+    RouteTree,
+    string,
+    '/invoices/$invoiceId/' | '/posts/$postId/'
+  >
+
+  expectTypeOf(TestLink)
+    .parameter(0)
+    .toHaveProperty('params')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ invoiceId: string } | { postId: string } | undefined>()
+})
+
+test('when navigating to a union of routes, params is a function from all params to a union of params', () => {
+  const TestLink = Link<
+    RouteTree,
+    string,
+    '/invoices/$invoiceId/' | '/posts/$postId/'
+  >
+
+  const params = expectTypeOf(TestLink)
+    .parameter(0)
+    .toHaveProperty('params')
+    .extract<Function>()
+
+  params.returns.branded.toEqualTypeOf<
+    { invoiceId: string } | { postId: string }
+  >()
+
+  params
+    .parameter(0)
+    .toEqualTypeOf<{} | { invoiceId: string } | { postId: string }>()
+})
+
+test('when navigating to a union of routes including the route, params is optional', () => {
+  const TestLink = Link<
+    RouteTree,
+    string,
+    '/' | '/invoices/$invoiceId/' | '/posts/$postId/'
+  >
+  expectTypeOf(TestLink).parameter(0).not.toMatchTypeOf<{ params: unknown }>()
+})
+
+test('when navigating to a union of routes including the root, params can be a union of objects', () => {
+  const TestLink = Link<
+    RouteTree,
+    string,
+    '/' | '/invoices/$invoiceId/' | '/posts/$postId/'
+  >
+
+  expectTypeOf(TestLink)
+    .parameter(0)
+    .toHaveProperty('params')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<
+      { invoiceId: string } | { postId: string } | {} | undefined
+    >()
+})
+
+test('when navigating to a union of routes including the root, params is a function from all params to a union of params', () => {
+  const TestLink = Link<
+    RouteTree,
+    string,
+    '/' | '/invoices/$invoiceId/' | '/posts/$postId/'
+  >
+
+  const params = expectTypeOf(TestLink)
+    .parameter(0)
+    .toHaveProperty('params')
+    .extract<Function>()
+
+  params.returns.branded.toEqualTypeOf<
+    { invoiceId: string } | { postId: string } | {}
+  >()
+
+  params
+    .parameter(0)
+    .toEqualTypeOf<{} | { invoiceId: string } | { postId: string }>()
 })
 
 test('when navigating to the same route search is optional', () => {
@@ -267,7 +391,7 @@ test('when navigating to a route with search params, search params can be a obje
   const TestLink = Link<RouteTree, string, '/invoices/$invoiceId/'>
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('search')
 
-  params.exclude<Function | boolean>().toMatchTypeOf<{ page: number }>()
+  params.exclude<Function | boolean>().toEqualTypeOf<{ page: number }>()
 })
 
 test('when navigating to a route with search params, search params is a function from all params to current params', () => {
@@ -291,7 +415,7 @@ test('when navigating from a route with no search params to a route with search 
   const TestLink = Link<RouteTree, '/invoices/', './$invoiceId/'>
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('search')
 
-  params.exclude<Function | boolean>().toMatchTypeOf<{ page: number }>()
+  params.exclude<Function | boolean>().toEqualTypeOf<{ page: number }>()
 })
 
 test('when navigating to a route with search params, search params is a function from all search params to current search params', () => {
@@ -303,4 +427,84 @@ test('when navigating to a route with search params, search params is a function
 
   params.returns.branded.toEqualTypeOf<{ page: number }>()
   params.parameter(0).toEqualTypeOf<{}>()
+})
+
+test('when navigating to a union of routes, search params is optional', () => {
+  const TestLink = Link<
+    RouteTree,
+    string,
+    '/invoices/$invoiceId/' | '/posts/$postId/'
+  >
+  expectTypeOf(TestLink).parameter(0).not.toMatchTypeOf<{ search: unknown }>()
+})
+
+test('when navigating to a union of routes, search params can be a union of objects', () => {
+  const TestLink = Link<
+    RouteTree,
+    string,
+    '/invoices/$invoiceId/' | '/posts/$postId/'
+  >
+
+  expectTypeOf(TestLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ page: number } | {} | undefined>()
+})
+
+test('when navigating to a union of routes, search params is a function from all params to a union of params', () => {
+  const TestLink = Link<
+    RouteTree,
+    string,
+    '/invoices/$invoiceId/' | '/posts/$postId/'
+  >
+
+  const params = expectTypeOf(TestLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .extract<Function>()
+
+  params.returns.branded.toEqualTypeOf<{ page: number } | {}>()
+
+  params.parameter(0).toEqualTypeOf<{} | { page: number }>()
+})
+
+test('when navigating to a union of routes including the route, search params is optional', () => {
+  const TestLink = Link<
+    RouteTree,
+    string,
+    '/' | '/invoices/$invoiceId/' | '/posts/$postId/'
+  >
+  expectTypeOf(TestLink).parameter(0).not.toMatchTypeOf<{ search: unknown }>()
+})
+
+test('when navigating to a union of routes including the root, search params can be a union of objects', () => {
+  const TestLink = Link<
+    RouteTree,
+    string,
+    '/' | '/invoices/$invoiceId/' | '/posts/$postId/'
+  >
+
+  expectTypeOf(TestLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ page: number } | {} | undefined>()
+})
+
+test('when navigating to a union of routes including the root, params is a function from all params to a union of params', () => {
+  const TestLink = Link<
+    RouteTree,
+    string,
+    '/' | '/invoices/$invoiceId/' | '/posts/$postId/'
+  >
+
+  const params = expectTypeOf(TestLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .extract<Function>()
+
+  params.returns.toEqualTypeOf<{ page: number } | {}>()
+
+  params.parameter(0).toEqualTypeOf<{} | { page: number }>()
 })
