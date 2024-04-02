@@ -22,7 +22,7 @@ export const configSchema = generatorConfigSchema.extend({
 export type Config = z.infer<typeof configSchema>
 
 const CONFIG_FILE_NAME = 'tsr.config.json'
-const debug = true as any
+const debug = false as any
 
 const getConfig = async (inlineConfig: Partial<Config>, root: string) => {
   const config = await getGeneratorConfig(inlineConfig, root)
