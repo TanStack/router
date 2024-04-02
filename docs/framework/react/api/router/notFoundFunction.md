@@ -9,7 +9,7 @@ The `notFound` function returns a new `NotFoundError` object that can be either 
 
 The `notFound` function accepts a single optional argument, the `options` to create the not-found error object.
 
-- Type: [`Partial<NotFoundError>`](./api/router/NotFoundErrorType)
+- Type: [`Partial<NotFoundError>`](../NotFoundErrorType)
 - Optional
 
 ## notFound returns

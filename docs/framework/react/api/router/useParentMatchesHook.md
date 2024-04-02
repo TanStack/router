@@ -3,7 +3,7 @@ id: useParentMatchesHook
 title: useParentMatches hook
 ---
 
-The `useParentMatches` hook returns all of the parent [`RouteMatch`](./api/router/RouteMatchType) objects from the root down to the immediate parent of the current match in context. **It does not include the current match, which can be obtained using the `useMatch` hook.**
+The `useParentMatches` hook returns all of the parent [`RouteMatch`](../RouteMatchType) objects from the root down to the immediate parent of the current match in context. **It does not include the current match, which can be obtained using the `useMatch` hook.**
 
 > ⚠️ Note: If the router has pending matches and they are showing their pending component fallbacks, `router.state.pendingMatches` will used instead of `router.state.matches`.
 
@@ -20,7 +20,7 @@ The `useParentMatches` hook accepts an optional `options` object.
 ## useParentMatches returns
 
 - If a `select` function is provided, the return value of the `select` function.
-- If no `select` function is provided, an array of [`RouteMatch`](./api/router/RouteMatchType) objects.
+- If no `select` function is provided, an array of [`RouteMatch`](../RouteMatchType) objects.
 
 ## Examples
 

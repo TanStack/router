@@ -3,7 +3,7 @@ id: LinkPropsType
 title: LinkProps type
 ---
 
-The `LinkProps` type extends the [`ActiveLinkOptions`](./api/router/ActiveLinkOptionsType) and `React.AnchorHTMLAttributes<HTMLAnchorElement>` types and contains additional props specific to the `Link` component.
+The `LinkProps` type extends the [`ActiveLinkOptions`](../ActiveLinkOptionsType) and `React.AnchorHTMLAttributes<HTMLAnchorElement>` types and contains additional props specific to the `Link` component.
 
 ```tsx
 type LinkProps = ActiveLinkOptions &
@@ -16,7 +16,7 @@ type LinkProps = ActiveLinkOptions &
 
 ## LinkProps properties
 
-- All of the props from [`ActiveLinkOptions`](./api/router/ActiveLinkOptionsType)
+- All of the props from [`ActiveLinkOptions`](../ActiveLinkOptionsType)
 - All of the props from `React.AnchorHTMLAttributes<HTMLAnchorElement>`
 
 #### `children`

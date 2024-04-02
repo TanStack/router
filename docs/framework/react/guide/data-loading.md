@@ -48,7 +48,7 @@ TanStack Router Cache Cons:
 - No built-in mutation APIs (a basic `useMutation` hook is provided in many examples that may be sufficient for many use cases)
 - No built-in cache-level optimistic update APIs (you can still use ephemeral state from something like a `useMutation` hook to achieve this at the component level)
 
-> 🧠 If you know right away that you'd like to or need to use something more robust like TanStack Query, [skip to the External Data Loading page](./guide/external-data-loading)
+> 🧠 If you know right away that you'd like to or need to use something more robust like TanStack Query, [skip to the External Data Loading page](../external-data-loading)
 
 ## Using the Router Cache
 
@@ -198,7 +198,7 @@ To opt out of preloading, don't turn it on via the `routerOptions.defaultPreload
 
 ## Passing all loader events to an external cache
 
-We break down this use case in the [External Data Loading](./guide/external-data-loading) page, but if you'd like to use an external cache like TanStack Query, you can do so by passing all loader events to your external cache. As long as you are using the defaults, the only change you'll need to make is to set the `defaultPreloadStaleTime` option on the router to `0`:
+We break down this use case in the [External Data Loading](../external-data-loading) page, but if you'd like to use an external cache like TanStack Query, you can do so by passing all loader events to your external cache. As long as you are using the defaults, the only change you'll need to make is to set the `defaultPreloadStaleTime` option on the router to `0`:
 
 ```tsx
 const router = createRouter({
@@ -380,7 +380,7 @@ export const Route = createFileRoute('/posts')({
 
 Ideally most route loaders can resolve their data within a short moment, removing the need to render a placeholder spinner and simply rely on suspense to render the next route when it's completely ready. When critical data that is required to render a route's component is slow though, you have 2 options:
 
-- Split up your fast and slow data into separate promises and `defer` the slow data until after the fast data is loaded (see [deferred-data-loading](./guide/deferred-data-loading))
+- Split up your fast and slow data into separate promises and `defer` the slow data until after the fast data is loaded (see [deferred-data-loading](../deferred-data-loading))
 - Show a pending component after an optimistic suspense threshold until all of the data is ready (See below).
 
 ## Showing a pending component

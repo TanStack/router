@@ -3,7 +3,7 @@ id: AwaitOptionsType
 title: AwaitOptions type
 ---
 
-The `AwaitOptions` type is used to describe the options for the [`<Await>`](./api/router/awaitComponent) component and the [`useAwaited`](./api/router/useAwaitedHook) hook.
+The `AwaitOptions` type is used to describe the options for the [`<Await>`](../awaitComponent) component and the [`useAwaited`](../useAwaitedHook) hook.
 
 ```tsx
 type AwaitOptions<T> = {
@@ -11,4 +11,4 @@ type AwaitOptions<T> = {
 }
 ```
 
-- [`DeferredPromise`](./api/router/DeferredPromiseType)
+- [`DeferredPromise`](../DeferredPromiseType)

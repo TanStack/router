@@ -17,7 +17,7 @@ The `createFileRoute` function accepts a single argument of type `string` that r
 
 ## createFileRoute returns
 
-- A new [`FileRoute`](./api/router/FileRouteClass) instance.
+- A new [`FileRoute`](../FileRouteClass) instance.
 
 > ⚠️ Note: For `tsr generate` and `tsr watch` to work properly, the file route instance must be exported from the file using the `Route` identifier.
 

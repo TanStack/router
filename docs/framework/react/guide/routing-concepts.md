@@ -4,14 +4,14 @@ title: Routing Concepts
 
 TanStack Router supports a number of powerful routing concepts that allow you to build complex and dynamic routing systems with ease.
 
-- [The Root Route](./guide/routing-concepts#the-root-route)
-- [Static Routes](./guide/routing-concepts#static-routes)
-- [Index Routes](./guide/routing-concepts#index-routes)
-- [Dynamic Route Segments](./guide/routing-concepts#dynamic-route-segments)
-- [Splat / Catch-All Routes](./guide/routing-concepts#splat--catch-all-routes)
-- [Pathless / Layout Routes](./guide/routing-concepts#pathless--layout-routes)
-- [Non-Nested Routes](./guide/routing-concepts#non-nested-routes)
-- [Not-Found Routes](./guide/routing-concepts#404--notfoundroutes)
+- [The Root Route](../routing-concepts#the-root-route)
+- [Static Routes](../routing-concepts#static-routes)
+- [Index Routes](../routing-concepts#index-routes)
+- [Dynamic Route Segments](../routing-concepts#dynamic-route-segments)
+- [Splat / Catch-All Routes](../routing-concepts#splat--catch-all-routes)
+- [Pathless / Layout Routes](../routing-concepts#pathless--layout-routes)
+- [Non-Nested Routes](../routing-concepts#non-nested-routes)
+- [Not-Found Routes](../routing-concepts#404--notfoundroutes)
 
 Each of these concepts is useful and powerful, and we'll dive into each of them in the following sections.
 
@@ -38,7 +38,7 @@ import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 ```
 
-> 🧠 You can also create a root route via the `createRootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./guide/router-context) -->
+> 🧠 You can also create a root route via the `createRootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](../router-context) -->
 
 ## Anatomy of a Route
 
@@ -233,4 +233,4 @@ They do however still have the ability to:
 - Configure `loader`s and `beforeLoad` hooks
 - Receive `data` and search params from the root route
 
-We'll cover how to configure a `NotFoundRoute` in the [Route Matching - Not-Found Routes](./guide/route-matching#not-found-routes) guide.
+We'll cover how to configure a `NotFoundRoute` in the [Route Matching - Not-Found Routes](../route-matching#not-found-routes) guide.

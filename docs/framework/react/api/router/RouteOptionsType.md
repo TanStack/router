@@ -32,7 +32,7 @@ The `RouteOptions` type accepts an object with the following properties:
 - Type: `(rawSearchParams: unknown) => TSearchSchema`
 - Optional
 - A function that will be called when this route is matched and passed the raw search params from the current location and return valid parsed search params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's search params and the return type will be inferred into the rest of the router.
-- Optionally, the parameter type can be tagged with the [`SearchSchemaInput`](./api/router/SearchSchemaInputType) type like this: `(searchParams: TSearchSchemaInput & SearchSchemaInput) => TSearchSchema`. If this tag is present, `TSearchSchemaInput` will be used to type the `search` property of `<Link />` and `navigate()` **instead of** `TSearchSchema`. The difference between `TSearchSchemaInput` and `TSearchSchema` can be useful, for example, to express optional search parameters.
+- Optionally, the parameter type can be tagged with the [`SearchSchemaInput`](../SearchSchemaInputType) type like this: `(searchParams: TSearchSchemaInput & SearchSchemaInput) => TSearchSchema`. If this tag is present, `TSearchSchemaInput` will be used to type the `search` property of `<Link />` and `navigate()` **instead of** `TSearchSchema`. The difference between `TSearchSchemaInput` and `TSearchSchema` can be useful, for example, to express optional search parameters.
 
 ### `parseParams` method
 
