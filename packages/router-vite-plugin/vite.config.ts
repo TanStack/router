@@ -8,5 +8,6 @@ export default mergeConfig(
   tanstackBuildConfig({
     entry: './src/index.ts',
     srcDir: './src',
+    exclude: ['./src/tests/'],
   }),
 )

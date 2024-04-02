@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.26.4",
-    "@tanstack/react-router-server": "^1.26.4",
+    "@tanstack/react-router-server": "^1.26.5",
     "@tanstack/router-devtools": "^1.26.4",
-    "@tanstack/router-vite-plugin": "^1.25.0",
+    "@tanstack/router-vite-plugin": "^1.26.6",
     "axios": "^1.6.5",
     "get-port": "^7.0.0",
     "react": "^18.2.0",
