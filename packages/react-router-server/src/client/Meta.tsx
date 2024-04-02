@@ -87,7 +87,11 @@ export const Meta = () => {
       }
     }) ?? []
 
-  const allMeta = [...meta, ...links, ...manifestMeta] as RouterManagedTag[]
+  const allMeta = [
+    ...meta,
+    ...links,
+    ...manifestMeta,
+  ] as Array<RouterManagedTag>
 
   return (
     <>
