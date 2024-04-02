@@ -3,7 +3,7 @@ id: LinkOptionsType
 title: LinkOptions type
 ---
 
-The `LinkOptions` type extends the [`NavigateOptions`](./api/router/NavigateOptionsType) type and contains additional options that can be used by TanStack Router when handling actual anchor element attributes.
+The `LinkOptions` type extends the [`NavigateOptions`](../NavigateOptionsType) type and contains additional options that can be used by TanStack Router when handling actual anchor element attributes.
 
 ```tsx
 type LinkOptions = NavigateOptions & {

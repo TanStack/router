@@ -3,7 +3,7 @@ id: Router
 title: Router
 ---
 
-> 🚧 The `Router` class is deprecated and will be removed in the next major version of TanStack Router. Please use the [`createRouter`](./api/router/createRouterFunction) function instead. The constructor and methods associated with this class will be implemented on its functional counterpart in the next major release.
+> 🚧 The `Router` class is deprecated and will be removed in the next major version of TanStack Router. Please use the [`createRouter`](../createRouterFunction) function instead. The constructor and methods associated with this class will be implemented on its functional counterpart in the next major release.
 
 The `Router` class is used to instantiate a new router instance.
 
@@ -13,7 +13,7 @@ The `Router` constructor accepts a single argument: the `options` that will be u
 
 ### Constructor options
 
-- Type: [`RouterOptions`](./api/router/RouterOptionsType)
+- Type: [`RouterOptions`](../RouterOptionsType)
 - Required
 - The options that will be used to configure the router instance.
 

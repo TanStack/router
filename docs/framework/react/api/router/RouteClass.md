@@ -3,7 +3,7 @@ id: RouteClass
 title: Route class
 ---
 
-> 🚧 The `Route` class is deprecated and will be removed in the next major version of TanStack Router. Please use the [`createRoute`](./api/router/createRouteFunction) function instead.
+> 🚧 The `Route` class is deprecated and will be removed in the next major version of TanStack Router. Please use the [`createRoute`](../createRouteFunction) function instead.
 
 The `Route` class implements the `RouteApi` class and can be used to create route instances. A route instance can then be used to create a route tree.
 
@@ -13,7 +13,7 @@ The `Route` constructor accepts an object as its only argument.
 
 ### Constructor options
 
-- Type: [`RouteOptions`](./api/router/RouteOptionsType)
+- Type: [`RouteOptions`](../RouteOptionsType)
 - Required
 - The options that will be used to configure the route instance
 
@@ -40,4 +40,4 @@ The `Route` class implements the following method(s):
 
 ### ...`RouteApi` methods
 
-- All of the methods from the [`RouteApi`](./api/router/RouteApiClass) class are available on the `Route` class.
+- All of the methods from the [`RouteApi`](../RouteApiClass) class are available on the `Route` class.

@@ -24,7 +24,7 @@ The `CatchBoundary` component accepts the following props:
 ### `props.errorComponent` prop
 
 - Type: `React.ReactNode`
-- Optional - [`default: ErrorComponent`](./api/router/errorComponentComponent)
+- Optional - [`default: ErrorComponent`](../errorComponentComponent)
 - The component to render when there is an error.
 
 ### `props.onCatch` prop

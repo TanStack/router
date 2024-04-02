@@ -112,7 +112,7 @@ The following options are available for configuration via the `tsr.config.json` 
 
 ## File Naming Conventions
 
-File-based routing requires that you follow a few simple file naming conventions to ensure that your routes are generated correctly. The concepts these conventions enable are covered in detail in the [Route Trees & Nesting](./guide/route-trees) guide.
+File-based routing requires that you follow a few simple file naming conventions to ensure that your routes are generated correctly. The concepts these conventions enable are covered in detail in the [Route Trees & Nesting](../route-trees) guide.
 
 - **`__root.tsx`**
   - The root route file must be named `__root.tsx` and must be placed in the root of the configured `routesDirectory`.

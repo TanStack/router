@@ -11,7 +11,7 @@ The `Navigate` component accepts the following props:
 
 ### `...options`
 
-- Type: [`NavigateOptions`](./api/router/NavigateOptionsType)
+- Type: [`NavigateOptions`](../NavigateOptionsType)
 
 ## Navigate returns
 

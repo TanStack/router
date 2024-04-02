@@ -3,7 +3,7 @@ id: createLazyFileRouteFunction
 title: createLazyFileRoute function
 ---
 
-The `createLazyFileRoute` function is used for creating a partial file-based route route instance that is lazily loaded when matched. This route instance can only be used to configure the [non-critical properties](./guide/code-splitting#how-does-tanstack-router-split-code) of the route, such as `component`, `pendingComponent`, `errorComponent`, and the `notFoundComponent`.
+The `createLazyFileRoute` function is used for creating a partial file-based route route instance that is lazily loaded when matched. This route instance can only be used to configure the [non-critical properties](../../guide/code-splitting#how-does-tanstack-router-split-code) of the route, such as `component`, `pendingComponent`, `errorComponent`, and the `notFoundComponent`.
 
 ## createLazyFileRoute options
 
@@ -17,7 +17,7 @@ The `createLazyFileRoute` function accepts a single argument of type `string` th
 
 ### createLazyFileRoute returns
 
-The `createLazyFileRoute` function a partial set of configuration options of the [`createFileRoute`](./api/router/createFileRouteFunction) function, only letting you configure the non-critical parts of the route.
+The `createLazyFileRoute` function a partial set of configuration options of the [`createFileRoute`](../createFileRouteFunction) function, only letting you configure the non-critical parts of the route.
 
 #### `component`
 

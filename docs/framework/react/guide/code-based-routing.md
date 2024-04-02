@@ -4,15 +4,15 @@ title: Code-Based Routing
 
 ## ⚠️ Before You Start
 
-- If you're using [File-Based Routing](./guide/file-based-routing), **skip this guide**.
-- If you are new to TanStack Router, please be aware that **file-based routing is the recommended way to configure TanStack Router**. If you're not sure which to use, please read the [File-Based Routing](./guide/file-based-routing) guide first.
-- If you still insist on using code-based routing, you must read the [File-Based Routing](./guide/file-based-routing) guide first as it also covers core concepts of the router that are not repeated here.
+- If you're using [File-Based Routing](../file-based-routing), **skip this guide**.
+- If you are new to TanStack Router, please be aware that **file-based routing is the recommended way to configure TanStack Router**. If you're not sure which to use, please read the [File-Based Routing](../file-based-routing) guide first.
+- If you still insist on using code-based routing, you must read the [File-Based Routing](../file-based-routing) guide first as it also covers core concepts of the router that are not repeated here.
 
 ## Route Trees
 
 Code-based routing is no different from file-based routing in that it uses the same route tree concept to organize, match and compose matching routes into a component tree. The only difference is that instead of using the filesystem to organize your routes, you use code.
 
-Let's consider the same route tree from the [Route Trees & Nesting](./guide/route-trees#route-trees) guide, but from a code-based perspective:
+Let's consider the same route tree from the [Route Trees & Nesting](../route-trees#route-trees) guide, but from a code-based perspective:
 
 - _Root_
   - `/`
@@ -35,7 +35,7 @@ Let's consider the same route tree from the [Route Trees & Nesting](./guide/rout
 
 Notice how the route tree is exactly the same as the file-based route tree? Believe it or not, file-based routing is really a superset of code-based routing and at the end of the day, file-based routing is just code-based routing with a filesystem and code-generation abstraction on top of it.
 
-We're going to assume you've read the [File-Based Routing](./guide/file-based-routing) guide and are familiar with each of these main concepts:
+We're going to assume you've read the [File-Based Routing](../file-based-routing) guide and are familiar with each of these main concepts:
 
 - The Root Route
 - Static Routes
@@ -60,7 +60,7 @@ import { createRootRoute } from '@tanstack/react-router'
 const rootRoute = createRootRoute()
 ```
 
-> 🧠 You can also create a root route via the `createRootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./guide/router-context) -->
+> 🧠 You can also create a root route via the `createRootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](../router-context) -->
 
 ## Anatomy of a Route
 
@@ -177,7 +177,7 @@ function PostComponent() {
 }
 ```
 
-> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](./guide/code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `postIdRoute` configuration to get access to the typed `useParams()` hook.
+> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](../code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `postIdRoute` configuration to get access to the typed `useParams()` hook.
 
 ## Splat / Catch-All Routes
 
@@ -276,4 +276,4 @@ const routeTree = rootRoute.addChildren([
 
 ## 404 / `NotFoundRoute`s
 
-We'll cover how to configure a `NotFoundRoute` in the [Not Found Errors](./guide/not-found-errors) guide.
+We'll cover how to configure a `NotFoundRoute` in the [Not Found Errors](../not-found-errors) guide.

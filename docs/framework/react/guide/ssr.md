@@ -115,7 +115,7 @@ Resolved loader data fetched by routes is automatically dehydrated and rehydrate
 
 ⚠️ If you are using deferred data streaming, you will also need to ensure that you have implemented the [SSR Streaming & Stream Transform](#streaming-ssr) pattern near the end of this guide.
 
-For more information on how to utilize data loading and data streaming, see the [Data Loading](./guide/data-loading) and [Data Streaming](./guide/data-streaming) guides.
+For more information on how to utilize data loading and data streaming, see the [Data Loading](../data-loading) and [Data Streaming](../data-streaming) guides.
 
 ### Dehydrating the Router
 
@@ -276,7 +276,7 @@ With `renderToPipeableStream` and `transformStreamWithRouter`, TanStack Router i
 
 When using SSR, data passed between the server and the client must be serialized before it is sent accross network-boundaries. By default, TanStack Router will serialize data using the default `JSON.parse` and `JSON.stringify` implementations. This, however, can lead to incorrect type-definitions when using objects such as `Date`/`Map`/`Set` etc. The Data Transformer API allows the usage of a custom serializer that can allow us to transparently use these data types when communicating across the network.
 
-The following example shows usage with [SuperJSON](https://github.com/blitz-js/superjson), however, anything that implements [`Router Transformer`](./api/router/RouterOptionsType#transformer-property) can be used.
+The following example shows usage with [SuperJSON](https://github.com/blitz-js/superjson), however, anything that implements [`Router Transformer`](../../api/router/RouterOptionsType#transformer-property) can be used.
 
 ```tsx
 import { SuperJSON } from 'superjson'

@@ -11,4 +11,4 @@ type DeferredPromise<T> = Promise<T> & {
 }
 ```
 
-- [`DeferredPromiseState`](./api/router/DeferredPromiseStateType)
+- [`DeferredPromiseState`](../DeferredPromiseStateType)

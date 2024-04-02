@@ -26,22 +26,22 @@ The `RouterState` type contains all of the properties that are available on the 
 
 ### `matches` property
 
-- Type: [`RouteMatch[]`](./api/router/RouteMatchType)
+- Type: [`RouteMatch[]`](../RouteMatchType)
 - An array of all of the route matches that have been resolved and are currently active.
 
 ### `pendingMatches` property
 
-- Type: [`RouteMatch[]`](./api/router/RouteMatchType)
+- Type: [`RouteMatch[]`](../RouteMatchType)
 - An array of all of the route matches that are currently pending.
 
 ### `location` property
 
-- Type: [`ParsedLocation`](./api/router/ParsedLocationType)
+- Type: [`ParsedLocation`](../ParsedLocationType)
 - The latest location that the router has parsed from the browser history. This location may not be resolved and loaded yet.
 
 ### `resolvedLocation` property
 
-- Type: [`ParsedLocation`](./api/router/ParsedLocationType)
+- Type: [`ParsedLocation`](../ParsedLocationType)
 - The location that the router has resolved and loaded.
 
 ### `lastUpdated` property
