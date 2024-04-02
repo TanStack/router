@@ -571,8 +571,8 @@ export function useLinkProps<
     href: disabled
       ? undefined
       : next.maskedLocation
-        ? next.maskedLocation.href
-        : next.href,
+        ? router.history.createHref(next.maskedLocation.href)
+        : router.history.createHref(next.href),
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
