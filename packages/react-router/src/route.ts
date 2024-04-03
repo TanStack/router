@@ -330,7 +330,7 @@ export type RouteLoaderFn<
   TLoaderData = unknown,
 > = (
   match: LoaderFnContext<TAllParams, TLoaderDeps, TAllContext, TRouteContext>,
-) => Promise<TLoaderData> | TLoaderData | void
+) => Promise<TLoaderData> | TLoaderData
 
 export interface LoaderFnContext<
   TAllParams = {},
