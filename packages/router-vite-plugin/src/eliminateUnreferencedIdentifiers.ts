@@ -197,29 +197,37 @@ export const eliminateUnreferencedIdentifiers = (
         } else if (path.node.id.type === 'ArrayPattern') {
           const pattern = path.get('id') as NodePath<BabelTypes.ArrayPattern>
 
-          const beforeCount = referencesRemovedInThisPass
-          const elements = pattern.get('elements')
-          elements.forEach((e) => {
-            let local: NodePath<BabelTypes.Identifier>
-            if (e.node?.type === 'Identifier') {
-              local = e as NodePath<BabelTypes.Identifier>
-            } else if (e.node?.type === 'RestElement') {
-              local = e.get('argument') as NodePath<BabelTypes.Identifier>
+          let hasRemoved = false as boolean
+
+          pattern.get('elements').forEach((element, index) => {
+            // if (!element) return // Skip holes in the pattern
+
+            let identifierPath: NodePath<BabelTypes.Identifier>
+
+            if (t.isIdentifier(element.node)) {
+              identifierPath = element as NodePath<BabelTypes.Identifier>
+            } else if (t.isRestElement(element.node)) {
+              identifierPath = element.get(
+                'argument',
+              ) as NodePath<BabelTypes.Identifier>
             } else {
+              // For now, ignore other types like AssignmentPattern
               return
             }
 
-            if (shouldBeRemoved(local)) {
-              ++referencesRemovedInThisPass
-              e.remove()
+            if (shouldBeRemoved(identifierPath)) {
+              hasRemoved = true
+              pattern.node.elements[index] = null // Remove the element by setting it to null
             }
           })
 
+          // If any elements were removed and no elements are left, remove the entire declaration
           if (
-            beforeCount !== referencesRemovedInThisPass &&
-            pattern.get('elements').length < 1
+            hasRemoved &&
+            pattern.node.elements.every((element) => element === null)
           ) {
             path.remove()
+            ++referencesRemovedInThisPass
           }
         }
       },
