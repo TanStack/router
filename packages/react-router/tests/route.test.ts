@@ -47,7 +47,7 @@ describe('createRoute has the same hooks as getRouteApi', () => {
   it.each(hookNames.map((name) => [name]))(
     'should have the "%s" hook defined',
     (hookName) => {
-      expect(route[hookName]).toBeDefined()
+      expect(route[hookName as keyof typeof route]).toBeDefined()
     },
   )
 })
