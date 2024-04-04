@@ -13,11 +13,11 @@ The `getRouteApi` function accepts a single argument, a `routeId` string literal
 
 - Type: `string`
 - Required
-- The route ID to which the [`RouteApi`](./api/router/RouteApiClass) instance will be bound
+- The route ID to which the [`RouteApi`](../RouteApiClass) instance will be bound
 
 ## getRouteApi returns
 
-- A [`RouteApi`](./api/router/RouteApiClass) instance that is pre-bound to the route ID that the `getRouteApi` function was called with.
+- A [`RouteApi`](../RouteApiClass) instance that is pre-bound to the route ID that the `getRouteApi` function was called with.
 
 ## Examples
 

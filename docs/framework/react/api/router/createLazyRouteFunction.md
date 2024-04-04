@@ -3,7 +3,7 @@ id: createLazyRouteFunction
 title: createLazyRoute function
 ---
 
-The `createLazyRoute` function is used for creating a partial code-based route route instance that is lazily loaded when matched. This route instance can only be used to configure the [non-critical properties](./guide/code-splitting#how-does-tanstack-router-split-code) of the route, such as `component`, `pendingComponent`, `errorComponent`, and the `notFoundComponent`.
+The `createLazyRoute` function is used for creating a partial code-based route route instance that is lazily loaded when matched. This route instance can only be used to configure the [non-critical properties](../../guide/code-splitting#how-does-tanstack-router-split-code) of the route, such as `component`, `pendingComponent`, `errorComponent`, and the `notFoundComponent`.
 
 ## createLazyRoute options
 
@@ -17,7 +17,7 @@ The `createLazyRoute` function accepts a single argument of type `string` that r
 
 ### createLazyRoute returns
 
-The `createLazyRoute` function a partial set of the configuration options of [`createRoute`](./api/router/createRouteFunction) function, only letting you configure the non-critical parts of the route.
+The `createLazyRoute` function a partial set of the configuration options of [`createRoute`](../createRouteFunction) function, only letting you configure the non-critical parts of the route.
 
 #### `component`
 

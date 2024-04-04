@@ -13,11 +13,11 @@ The `useRouterState` hook accepts an optional `options` object.
 
 - Type: `(state: RouterState) => TSelected`
 - Optional
-- If supplied, this function will be called with the [RouterState](./api/router/RouterStateType) object and the return value will be returned from `useRouterState`.
+- If supplied, this function will be called with the [RouterState](../RouterStateType) object and the return value will be returned from `useRouterState`.
 
 ## useRouterState returns
 
-- The current [RouterState](./api/router/RouterStateType) object or `TSelected` if a `select` function is provided.
+- The current [RouterState](../RouterStateType) object or `TSelected` if a `select` function is provided.
 
 ## Examples
 

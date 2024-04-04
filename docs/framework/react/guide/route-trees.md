@@ -12,7 +12,7 @@ To build a route tree, TanStack Router supports both:
 Both methods support the exact same core features and functionality, but **file-based routing requires less code for the same or better results**. For this reasons, **file-based routing is the preferred and recommended way to configure TanStack Router and most of the documentation is written from the perspective of file-based routing**
 
 For code-based routing documentation, please see
-the [Code-Based Routing](./guide/code-based-routing) guide.
+the [Code-Based Routing](../code-based-routing) guide.
 
 ## Route Trees
 
@@ -55,13 +55,13 @@ Consider the following route tree:
 
 Route trees are represented using a number of different ways:
 
-- [Flat Routes](./guide/route-trees#flat-routes)
-- [Directory Routes](./guide/route-trees#directory-routes)
-- [Mixed Flat and Directory Routes](./guide/route-trees#mixed-flat-and-directory-routes)
-- [Code-Based Routes](./guide/route-trees#code-based-routes)
-- [Case-Sensitivity](./guide/route-trees#case-sensitivity)
+- [Flat Routes](../route-trees#flat-routes)
+- [Directory Routes](../route-trees#directory-routes)
+- [Mixed Flat and Directory Routes](../route-trees#mixed-flat-and-directory-routes)
+- [Code-Based Routes](../route-trees#code-based-routes)
+- [Case-Sensitivity](../route-trees#case-sensitivity)
 
-The route tree examples below showcase the [Routing Concepts](./guide/routing-concepts) that are available in TanStack Router.
+The route tree examples below showcase the [Routing Concepts](../routing-concepts) that are available in TanStack Router.
 
 ## Flat Routes
 
@@ -117,7 +117,7 @@ Both flat and directory routes can be mixed together to create a route tree that
 
 ## Code-Based Routes
 
-Code-based routes are routes that are configured using the `RootRoute` and `Route` classes directly. You may want to do this simply for taste, or you may find a use-case where file-based routing doesn't work for you (if you do, please let us know!). For code-based routing documentation, please see the [Code-Based Routing](./guide/code-based-routing) guide.
+Code-based routes are routes that are configured using the `RootRoute` and `Route` classes directly. You may want to do this simply for taste, or you may find a use-case where file-based routing doesn't work for you (if you do, please let us know!). For code-based routing documentation, please see the [Code-Based Routing](../code-based-routing) guide.
 
 ## Case-Sensitivity
 

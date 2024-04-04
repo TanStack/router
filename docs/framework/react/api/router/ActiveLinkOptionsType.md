@@ -3,7 +3,7 @@ id: ActiveLinkOptionsType
 title: ActiveLinkOptions type
 ---
 
-The `ActiveLinkOptions` type extends the [`LinkOptions`](./api/router/LinkOptionsType) type and contains additional options that can be used to describe how a link should be styled when it is active.
+The `ActiveLinkOptions` type extends the [`LinkOptions`](../LinkOptionsType) type and contains additional options that can be used to describe how a link should be styled when it is active.
 
 ```tsx
 type ActiveLinkOptions = LinkOptions & {

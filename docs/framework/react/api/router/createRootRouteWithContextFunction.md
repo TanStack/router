@@ -21,8 +21,8 @@ The `createRootRouteWithContext` function accepts a single generic argument:
 
 ## createRootRouteWithContext returns
 
-- A factory function that can be used to create a new [`RootRoute`](./api/router/RootRouteClass) instance.
-- It accepts a single argument, the same as the [`createRootRoute`](./api/router/createRootRouteFunction) function.
+- A factory function that can be used to create a new [`RootRoute`](../RootRouteClass) instance.
+- It accepts a single argument, the same as the [`createRootRoute`](../createRootRouteFunction) function.
 
 ## Examples
 

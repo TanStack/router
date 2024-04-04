@@ -3,7 +3,7 @@ id: RouteMaskType
 title: RouteMask type
 ---
 
-The `RouteMask` type extends the [`ToOptions`](./api/router/ToOptionsType) type and has other the necessary properties to create a route mask.
+The `RouteMask` type extends the [`ToOptions`](../ToOptionsType) type and has other the necessary properties to create a route mask.
 
 ## RouteMask properties
 
@@ -11,7 +11,7 @@ The `RouteMask` type accepts an object with the following properties:
 
 ### `...ToOptions`
 
-- Type: [`ToOptions`](./api/router/ToOptionsType)
+- Type: [`ToOptions`](../ToOptionsType)
 - Required
 - The options that will be used to configure the route mask
 

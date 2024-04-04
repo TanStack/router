@@ -3,11 +3,11 @@ id: useRouterHook
 title: useRouter hook
 ---
 
-The `useRouter` method is a hook that returns the current instance of [`Router`](./api/router/RouterClass) from context. This hook is useful for accessing the router instance in a component.
+The `useRouter` method is a hook that returns the current instance of [`Router`](../RouterClass) from context. This hook is useful for accessing the router instance in a component.
 
 ## useRouter returns
 
-- The current [`Router`](./api/router/RouterClass) instance.
+- The current [`Router`](../RouterClass) instance.
 
 ## Examples
 

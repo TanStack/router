@@ -13,4 +13,4 @@ type NavigateOptions = ToOptions & {
 }
 ```
 
-- [`ToOptions`](./api/router/ToOptionsType)
+- [`ToOptions`](../ToOptionsType)
