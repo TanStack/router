@@ -2,7 +2,7 @@
 title: Static Route Data
 ---
 
-When creating routes, you can optionally specify a `staticData` property in the route's options. This object can literally contain you want it to be as long as it's synchronous available when you create your route.
+When creating routes, you can optionally specify a `staticData` property in the route's options. This object can literally contain anything you want as long as it's synchronously available when you create your route.
 
 In addition to being able to access this data from the route itself, you can also access it from any match under the `match.staticData` property.
 
