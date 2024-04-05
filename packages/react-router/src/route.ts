@@ -621,13 +621,12 @@ export class Route<
     TLoaderData
   >
 
-  // Set up in this.init()
-  parentRoute!: TParentRoute
-  id!: TId
-  // customId!: TCustomId
-  path!: TPath
-  fullPath!: TFullPath
-  to!: TrimPathRight<TFullPath>
+  parentRoute: TParentRoute
+  id: TId
+  // customId: TCustomId
+  path: TPath
+  fullPath: TFullPath
+  to: TrimPathRight<TFullPath>
 
   // Optional
   children?: TChildren
@@ -668,6 +667,15 @@ export class Route<
       `Route cannot have both an 'id' and a 'path' option.`,
     )
     ;(this as any).$$typeof = Symbol.for('react.memo')
+
+    const derived = this.deriveProperties()
+
+    this.parentRoute = derived.parentRoute
+    this.path = derived.path
+    this.id = derived.id
+    // this.customId = paths.customId
+    this.fullPath = derived.fullPath
+    this.to = derived.to
   }
 
   types!: {
@@ -695,7 +703,9 @@ export class Route<
 
   init = (opts: { originalIndex: number }) => {
     this.originalIndex = opts.originalIndex
+  }
 
+  private deriveProperties = () => {
     const options = this.options as
       | (RouteOptions<
           TParentRoute,
@@ -722,50 +732,42 @@ export class Route<
     const isRoot = !options?.path && !options?.id
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    this.parentRoute = this.options?.getParentRoute?.()
+    const parentRoute = options?.getParentRoute?.()
+
+    let path: string | undefined
+    let customId: string | undefined
+    let id: string
+    let fullPath: string
 
     if (isRoot) {
-      this.path = rootRouteId as TPath
+      path = '/'
+      customId = options?.id || rootRouteId
+      id = rootRouteId
+      fullPath = '/'
     } else {
       invariant(
-        this.parentRoute,
+        parentRoute,
         `Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a Route instance.`,
       )
+
+      path = options.path ? trimPathLeft(options.path) : undefined
+      customId = options.id || path
+      id = joinPaths([
+        '/',
+        parentRoute.id === rootRouteId ? '' : parentRoute.id,
+        customId,
+      ])
+      fullPath = joinPaths([parentRoute.fullPath, path])
     }
 
-    let path: undefined | string = isRoot ? rootRouteId : options.path
-
-    // If the path is anything other than an index path, trim it up
-    if (path && path !== '/') {
-      path = trimPathLeft(path)
+    return {
+      parentRoute: parentRoute as TParentRoute,
+      path: path as TPath,
+      id: id as TId,
+      // customId: customId as TCustomId,
+      fullPath: fullPath as TFullPath,
+      to: fullPath as TrimPathRight<TFullPath>,
     }
-
-    const customId = options?.id || path
-
-    // Strip the parentId prefix from the first level of children
-    let id = isRoot
-      ? rootRouteId
-      : joinPaths([
-          this.parentRoute.id === rootRouteId ? '' : this.parentRoute.id,
-          customId,
-        ])
-
-    if (path === rootRouteId) {
-      path = '/'
-    }
-
-    if (id !== rootRouteId) {
-      id = joinPaths(['/', id])
-    }
-
-    const fullPath =
-      id === rootRouteId ? '/' : joinPaths([this.parentRoute.fullPath, path])
-
-    this.path = path as TPath
-    this.id = id as TId
-    // this.customId = customId as TCustomId
-    this.fullPath = fullPath as TFullPath
-    this.to = fullPath as TrimPathRight<TFullPath>
   }
 
   addChildren = <TNewChildren extends Array<AnyRoute>>(
