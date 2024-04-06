@@ -49,68 +49,7 @@ export type IsUnion<T, U extends T = T> = (
   ? false
   : true
 
-// type Compute<T> = { [K in keyof T]: T[K] } | never
-
-// type AllKeys<T> = T extends any ? keyof T : never
-
-// export type MergeUnion<T, Keys extends keyof T = keyof T> = Compute<
-//   {
-//     [K in Keys]: T[Keys]
-//   } & {
-//     [K in AllKeys<T>]?: T extends any
-//       ? K extends keyof T
-//         ? T[K]
-//         : never
-//       : never
-//   }
-// >
-
 export type Assign<TLeft, TRight> = Omit<TLeft, keyof TRight> & TRight
-
-export type AssignAll<T extends Array<any>> = T extends [
-  infer Left,
-  ...infer Right,
-]
-  ? Right extends Array<any>
-    ? Assign<Left, AssignAll<Right>>
-    : Left
-  : {}
-
-// // Sample types to merge
-// type TypeA = {
-//   shared: string
-//   onlyInA: string
-//   nested: {
-//     shared: string
-//     aProp: string
-//   }
-//   array: string[]
-// }
-
-// type TypeB = {
-//   shared: number
-//   onlyInB: number
-//   nested: {
-//     shared: number
-//     bProp: number
-//   }
-//   array: number[]
-// }
-
-// type TypeC = {
-//   shared: boolean
-//   onlyInC: boolean
-//   nested: {
-//     shared: boolean
-//     cProp: boolean
-//   }
-//   array: boolean[]
-// }
-
-// type Test = Expand<Assign<TypeA, TypeB>>
-
-// // Using DeepMerge to merge TypeA and TypeB
-// type MergedType = Expand<AssignAll<[TypeA, TypeB, TypeC]>>
 
 export type Timeout = ReturnType<typeof setTimeout>
 

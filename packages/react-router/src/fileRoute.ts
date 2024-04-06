@@ -40,9 +40,10 @@ type Replace<
   TValue extends string,
   TFrom extends string,
   TTo extends string,
+  TAcc extends string = '',
 > = TValue extends `${infer Start}${TFrom}${infer Rest}`
-  ? `${Start}${TTo}${Replace<Rest, TFrom, TTo>}`
-  : TValue
+  ? Replace<Rest, TFrom, TTo, `${TAcc}${Start}${TTo}`>
+  : `${TAcc}${TValue}`
 
 export type TrimLeft<
   TValue extends string,
@@ -97,12 +98,12 @@ export type ResolveFilePath<
 export type FileRoutePath<
   TParentRoute extends AnyRoute,
   TFilePath extends string,
-> =
-  ResolveFilePath<TParentRoute, TFilePath> extends `_${infer _}`
+  TResolvedFilePath = ResolveFilePath<TParentRoute, TFilePath>,
+> = TResolvedFilePath extends `_${infer _}`
+  ? ''
+  : TResolvedFilePath extends `/_${infer _}`
     ? ''
-    : ResolveFilePath<TParentRoute, TFilePath> extends `/_${infer _}`
-      ? ''
-      : ResolveFilePath<TParentRoute, TFilePath>
+    : TResolvedFilePath
 
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
