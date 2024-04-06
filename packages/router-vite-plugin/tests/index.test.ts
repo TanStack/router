@@ -1,8 +1,8 @@
 import { readFile, readdir } from 'fs/promises'
 import path from 'path'
 import { expect, test } from 'vitest'
-import { compileFile, makeCompile, splitFile } from '../compilers'
-import { splitPrefix } from '../constants'
+import { compileFile, makeCompile, splitFile } from '../src/compilers'
+import { splitPrefix } from '../src/constants'
 
 test('it compiles and splits', async () => {
   // get the list of files from the /test-files directory
