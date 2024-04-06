@@ -380,8 +380,9 @@ export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
   TSearchSchema,
 > = Assign<
-  Omit<TParentRoute['types']['fullSearchSchema'], keyof RootSearchSchema>,
-  TSearchSchema
+  TParentRoute['types']['fullSearchSchema'],
+  TSearchSchema,
+  keyof RootSearchSchema
 >
 
 export type ResolveFullSearchSchemaInput<TParentRoute, TSearchSchemaUsed> =
