@@ -12,10 +12,10 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.26.9",
-    "@tanstack/react-router-server": "^1.26.9",
-    "@tanstack/router-devtools": "^1.26.9",
-    "@tanstack/router-vite-plugin": "^1.26.8",
+    "@tanstack/react-router": "^1.26.10",
+    "@tanstack/react-router-server": "^1.26.10",
+    "@tanstack/router-devtools": "^1.26.10",
+    "@tanstack/router-vite-plugin": "^1.26.10",
     "axios": "^1.6.5",
     "get-port": "^7.0.0",
     "react": "^18.2.0",
