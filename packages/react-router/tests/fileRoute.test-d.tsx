@@ -15,8 +15,6 @@ const postsRoute = createFileRoute('/_postLayout/posts')()
 
 const postRoute = createFileRoute('/_postLayout/posts/$postId_')()
 
-const authRoute = createFileRoute('/(auth)')()
-
 const protectedRoute = createFileRoute('/(auth)/protected')()
 
 declare module '../src/fileRoute' {
@@ -25,13 +23,9 @@ declare module '../src/fileRoute' {
       preLoaderRoute: typeof indexRoute
       parentRoute: typeof rootRoute
     }
-    '/(auth)': {
-      preLoaderRoute: typeof authRoute
-      parentRoute: typeof rootRoute
-    }
     '/(auth)/protected': {
       preLoaderRoute: typeof protectedRoute
-      parentRoute: typeof authRoute
+      parentRoute: typeof rootRoute
     }
     '/invoices': {
       preLoaderRoute: typeof invoicesRoute
@@ -82,6 +76,6 @@ test('when creating a _ suffix route', () => {
 
 test('when creating a folder group', () => {
   expectTypeOf<'/protected'>(protectedRoute.fullPath)
-  expectTypeOf<'/protected'>(protectedRoute.path)
+  expectTypeOf<'(auth)/protected'>(protectedRoute.path)
   expectTypeOf<'/protected'>(protectedRoute.id)
 })
