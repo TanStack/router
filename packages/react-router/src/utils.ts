@@ -57,11 +57,11 @@ export type IsUnion<T, U extends T = T> = (
 //       ? TLeft[K]
 //       : never
 // }
-export type Assign<
+export type Assign<TLeft, TRight, TExclude = never> = Omit<
   TLeft,
-  TRight,
-  TExclude extends string | number | symbol = never,
-> = Omit<TLeft, keyof TRight | TExclude> & TRight
+  keyof TRight | (TExclude & string)
+> &
+  TRight
 
 export type Timeout = ReturnType<typeof setTimeout>
 
