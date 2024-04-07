@@ -380,7 +380,7 @@ export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
   TSearchSchema,
 > = TParentRoute['isRoot'] extends true
-  ? {}
+  ? TSearchSchema
   : Assign<
       TParentRoute['types']['fullSearchSchema'],
       TSearchSchema,
@@ -391,7 +391,7 @@ export type ResolveFullSearchSchemaInput<
   TParentRoute extends AnyRoute,
   TSearchSchemaUsed,
 > = TParentRoute['isRoot'] extends true
-  ? {}
+  ? TSearchSchemaUsed
   : Assign<
       TParentRoute['types']['fullSearchSchemaInput'],
       TSearchSchemaUsed,
