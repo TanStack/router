@@ -379,24 +379,24 @@ export type InferFullSearchSchemaInput<TRoute> = TRoute extends {
 export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
   TSearchSchema,
-> = TParentRoute['isRoot'] extends true
-  ? TSearchSchema
-  : Assign<
-      TParentRoute['types']['fullSearchSchema'],
-      TSearchSchema,
-      keyof RootSearchSchema
-    >
+> = Assign<
+  TParentRoute['isRoot'] extends true
+    ? TParentRoute['types']['searchSchema']
+    : TParentRoute['types']['fullSearchSchema'],
+  TSearchSchema,
+  keyof RootSearchSchema
+>
 
 export type ResolveFullSearchSchemaInput<
   TParentRoute extends AnyRoute,
   TSearchSchemaUsed,
-> = TParentRoute['isRoot'] extends true
-  ? TSearchSchemaUsed
-  : Assign<
-      TParentRoute['types']['fullSearchSchemaInput'],
-      TSearchSchemaUsed,
-      keyof RootSearchSchema
-    >
+> = Assign<
+  TParentRoute['isRoot'] extends true
+    ? TParentRoute['types']['searchSchemaInput']
+    : TParentRoute['types']['fullSearchSchemaInput'],
+  TSearchSchemaUsed,
+  keyof RootSearchSchema
+>
 
 export interface AnyRoute
   extends Route<
