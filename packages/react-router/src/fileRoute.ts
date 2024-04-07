@@ -165,11 +165,7 @@ export class FileRoute<
       TParentRoute,
       TSearchSchemaUsed
     >,
-    TFullSearchSchema extends
-      RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchema<
-      TParentRoute,
-      TSearchSchema
-    >,
+    TFullSearchSchema = ResolveFullSearchSchema<TParentRoute, TSearchSchema>,
     TParams extends RouteConstraints['TParams'] = Expand<
       Record<ParsePathParams<TPath>, string>
     >,
@@ -184,9 +180,7 @@ export class FileRoute<
     ] extends [never]
       ? RouteContext
       : TRouteContextReturn,
-    TAllContext extends Expand<
-      Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
-    > = Expand<
+    TAllContext = Expand<
       Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
     >,
     TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
