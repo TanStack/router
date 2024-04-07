@@ -1020,7 +1020,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
         TRouteContextReturn, // TRouteContextReturn
         TRouteContext, // TRouteContext
         TRouterContext,
-        Expand<Assign<TRouterContext, TRouteContext>>, // TAllContext
+        Assign<TRouterContext, TRouteContext>, // TAllContext
         TLoaderDeps,
         TLoaderDataReturn, // TLoaderDataReturn,
         TLoaderData // TLoaderData,
