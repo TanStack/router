@@ -383,8 +383,8 @@ export type ResolveFullSearchSchema<
   TParentRoute['isRoot'] extends true
     ? TParentRoute['types']['searchSchema']
     : TParentRoute['types']['fullSearchSchema'],
-  TSearchSchema,
-  keyof RootSearchSchema
+  TSearchSchema
+  // keyof RootSearchSchema
 >
 
 export type ResolveFullSearchSchemaInput<
@@ -394,8 +394,8 @@ export type ResolveFullSearchSchemaInput<
   TParentRoute['isRoot'] extends true
     ? TParentRoute['types']['searchSchemaInput']
     : TParentRoute['types']['fullSearchSchemaInput'],
-  TSearchSchemaUsed,
-  keyof RootSearchSchema
+  TSearchSchemaUsed
+  // keyof RootSearchSchema
 >
 
 export interface AnyRoute
