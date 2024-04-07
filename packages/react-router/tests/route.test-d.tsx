@@ -145,6 +145,23 @@ test('when creating a child route with search params from the root route', () =>
     >()
 })
 
+test('when creating a child route with optional search params from the root route', () => {
+  const rootRoute = createRootRoute()
+
+  const invoicesRoute = createRoute({
+    path: 'invoices',
+    getParentRoute: () => rootRoute,
+    validateSearch: (): { page?: number } => ({ page: 0 }),
+  })
+
+  expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{ page?: number }>()
+  expectTypeOf(invoicesRoute.useSearch<number>)
+    .parameter(0)
+    .toEqualTypeOf<
+      { select?: (search: { page?: number }) => number } | undefined
+    >()
+})
+
 test('when creating a child route with params from the root route', () => {
   const rootRoute = createRootRoute()
 
