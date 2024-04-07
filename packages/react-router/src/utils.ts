@@ -49,13 +49,15 @@ export type IsUnion<T, U extends T = T> = (
   ? false
   : true
 
-export type Assign<TLeft, TRight, TExclude = never> = {
-  [K in Exclude<keyof TLeft | keyof TRight, TExclude>]: K extends keyof TRight
-    ? TRight[K]
-    : K extends keyof TLeft
-      ? TLeft[K]
-      : never
-}
+// reverted from https://github.com/TanStack/router/pull/1436
+// export type Assign<TLeft, TRight, TExclude = never> = {
+//   [K in Exclude<keyof TLeft | keyof TRight, TExclude>]: K extends keyof TRight
+//     ? TRight[K]
+//     : K extends keyof TLeft
+//       ? TLeft[K]
+//       : never
+// }
+export type Assign<TLeft, TRight> = Omit<TLeft, keyof TRight> & TRight
 
 export type Timeout = ReturnType<typeof setTimeout>
 
