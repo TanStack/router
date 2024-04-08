@@ -264,7 +264,7 @@ export function createBrowserHistory(opts?: {
     }
 
     // Update the location in memory
-    currentLocation = parseHref(destHref, state)
+    currentLocation = parseHref(href, state)
 
     // Keep track of the next location we need to flush to the URL
     next = {
