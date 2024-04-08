@@ -532,8 +532,8 @@ export function useLinkProps<
 
   const composeHandlers =
     (handlers: Array<undefined | ((e: any) => void)>) =>
-    (e: React.SyntheticEvent) => {
-      e.persist()
+    (e: { persist?: () => void; defaultPrevented: boolean }) => {
+      e.persist?.()
       handlers.filter(Boolean).forEach((handler) => {
         if (e.defaultPrevented) return
         handler!(e)
