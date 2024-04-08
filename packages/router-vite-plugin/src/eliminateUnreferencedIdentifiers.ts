@@ -269,6 +269,10 @@ function getIdentifier(
     return null
   }
 
+  if (path.node.type === 'FunctionExpression') {
+    return null
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   return path.node.id && path.node.id.type === 'Identifier'
     ? (path.get('id') as NodePath<BabelTypes.Identifier>)
