@@ -8,7 +8,7 @@ If you're feeling impatient and prefer to skip all of our wonderful documentatio
 
 File based route generation (via Vite) is the recommended way to use TanStack Router as it provides the best experience, performance, and ergonomics for the least amount of effort.
 
-> 🧠 You can also use the Router CLI (the `tsr` binary) to generate routes if you are unable to use Vite. See [File-Based Routing](./guide/file-based-routing) for more info.
+> 🧠 You can also use the Router CLI (the `tsr` binary) to generate routes if you are unable to use Vite. See [File-Based Routing](../guide/file-based-routing) for more info.
 
 ### Install the Vite Plugin and the Router Devtools
 
