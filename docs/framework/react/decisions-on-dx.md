@@ -205,7 +205,7 @@ export const postsIndexRoute = createRoute({
 
 All of this boilerplate, no matter how essential for providing a best-in-class type-inference experience, can be a bit overwhelming and can lead to inconsistencies and errors in the route configuration.
 
-... and this example configuration is just for rendering a single codes-split route. Imagine having to do this for 40-50 routes. Now remember that you still haven't touched the `context`, `loaders`, `search param validation`, and other features of the router 🤕.
+... and this example configuration is just for rendering a single code-split route. Imagine having to do this for 40-50 routes. Now remember that you still haven't touched the `context`, `loaders`, `search param validation`, and other features of the router 🤕.
 
 > So, why's file-based routing the preferred way?
 
