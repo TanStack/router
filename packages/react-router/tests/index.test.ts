@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 
 import {
   cleanPath,
@@ -547,23 +547,14 @@ import {
 // })
 
 describe('resolvePath', () => {
-  describe('basic resolution', () => {
-    ;[
+  ;(
+    [
       ['/', '/', '/', '/'],
       ['/', '/', '/a', '/a'],
       ['/', '/', 'a/', '/a/'],
       ['/', '/', '/a/b', '/a/b'],
       ['/', 'a', 'b', '/a/b'],
       ['/a/b', 'c', '/a/b/c', '/a/b/c'],
-    ].forEach(([base, a, b, eq]) => {
-      test(`${a} to ${b} === ${eq}`, () => {
-        expect(resolvePath(base, a, b)).toEqual(eq)
-      })
-    })
-  })
-
-  describe('relative', () => {
-    ;[
       ['/a/b', '/', 'c', '/a/b/c'],
       ['/a/b', '/', './c', '/a/b/c'],
       ['/', '/', 'a/b', '/a/b'],
@@ -578,13 +569,13 @@ describe('resolvePath', () => {
       ['/', '/a/b/c', '../..', '/'],
       ['/', '/a/b/c', '../../..', '/'],
       ['/', '/a/b/c/', '../../..', '/'],
-    ].forEach(([base, a, b, eq]) => {
-      test(`Base: ${base} - ${a} to ${b} === ${eq}`, () => {
-        expect(resolvePath(base, a, b)).toEqual(eq)
-      })
-      test(`Base: ${base} - ${a}/ to ${b} === ${eq} (trailing slash)`, () => {
-        expect(resolvePath(base, a + '/', b)).toEqual(eq)
-      })
+    ] as const
+  ).forEach(([base, a, b, eq]) => {
+    test(`Base: ${base} - ${a} to ${b} === ${eq}`, () => {
+      expect(resolvePath(base, a, b)).toEqual(eq)
+    })
+    test(`Base: ${base} - ${a}/ to ${b} === ${eq} (trailing slash)`, () => {
+      expect(resolvePath(base, a + '/', b)).toEqual(eq)
     })
   })
 })
