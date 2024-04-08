@@ -26,10 +26,12 @@ test('when creating the root route with context', () => {
   expectTypeOf(rootRoute.id).toEqualTypeOf<'__root__'>()
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 
-  expectTypeOf(rootRoute.useRouteContext()).toEqualTypeOf<{ userId: string }>()
+  expectTypeOf(rootRoute.useRouteContext()).branded.toEqualTypeOf<{
+    userId: string
+  }>()
   expectTypeOf(rootRoute.useRouteContext<string>)
     .parameter(0)
-    .toEqualTypeOf<
+    .branded.toEqualTypeOf<
       { select?: (search: { userId: string }) => string } | undefined
     >()
 })
@@ -55,7 +57,9 @@ test('when creating a child route from the root route with context', () => {
     getParentRoute: () => rootRoute,
   })
 
-  expectTypeOf(rootRoute.useRouteContext()).toEqualTypeOf<{ userId: string }>()
+  expectTypeOf(rootRoute.useRouteContext()).branded.toEqualTypeOf<{
+    userId: string
+  }>()
 
   expectTypeOf(invoicesRoute.useRouteContext<string>)
     .parameter(0)
@@ -133,11 +137,32 @@ test('when creating a child route with search params from the root route', () =>
     validateSearch: () => ({ page: 0 }),
   })
 
-  expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{ page: number }>()
+  expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{
+    page: number
+  }>()
   expectTypeOf(invoicesRoute.useSearch<number>)
     .parameter(0)
     .toEqualTypeOf<
       { select?: (search: { page: number }) => number } | undefined
+    >()
+})
+
+test('when creating a child route with optional search params from the root route', () => {
+  const rootRoute = createRootRoute()
+
+  const invoicesRoute = createRoute({
+    path: 'invoices',
+    getParentRoute: () => rootRoute,
+    validateSearch: (): { page?: number } => ({ page: 0 }),
+  })
+
+  expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{
+    page?: number
+  }>()
+  expectTypeOf(invoicesRoute.useSearch<number>)
+    .parameter(0)
+    .toEqualTypeOf<
+      { select?: (search: { page?: number }) => number } | undefined
     >()
 })
 

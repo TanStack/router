@@ -45,11 +45,17 @@ const invoiceEditRoute = createRoute({
   path: 'edit',
 })
 
+const invoiceDetailsRoute = createRoute({
+  getParentRoute: () => invoiceRoute,
+  path: 'details',
+  validateSearch: (): { page?: number } => ({ page: 0 }),
+})
+
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
   invoicesRoute.addChildren([
     invoicesIndexRoute,
-    invoiceRoute.addChildren([invoiceEditRoute]),
+    invoiceRoute.addChildren([invoiceEditRoute, invoiceDetailsRoute]),
   ]),
   indexRoute,
 ])
@@ -69,6 +75,7 @@ test('when navigating to the root', () => {
       | '/invoices/'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
+      | '/invoices/$invoiceId/details'
       | '../'
       | './'
       | undefined
@@ -88,6 +95,7 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/invoices/'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
+      | '/invoices/$invoiceId/details'
       | '../'
       | './'
       | undefined
@@ -111,6 +119,7 @@ test('when navigating from a route with no params and no search to the parent ro
       | '../posts/$postId'
       | '../invoices/$invoiceId'
       | '../invoices/$invoiceId/edit'
+      | '../invoices/$invoiceId/details'
       | '../invoices'
       | '../invoices/'
       | '../'
@@ -133,6 +142,7 @@ test('from autocompletes to all absolute routes', () => {
       | '/invoices/'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
+      | '/invoices/$invoiceId/details'
       | undefined
     >()
 })
@@ -304,7 +314,21 @@ test('when navigating to a route with search params', () => {
 
   params.exclude<Function | boolean>().toEqualTypeOf<{ page: number }>()
   params.returns.toEqualTypeOf<{ page: number }>()
-  params.parameter(0).toEqualTypeOf<{} | { page: number }>()
+  params.parameter(0).toEqualTypeOf<{} | { page: number } | { page?: number }>()
+})
+
+test('when navigating to a route with optional search params', () => {
+  const TestLink = Link<RouteTree, string, '/invoices/$invoiceId/details'>
+  const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('search')
+
+  expectTypeOf(TestLink).parameter(0).not.toMatchTypeOf<{ search: unknown }>()
+
+  params
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ page?: number | undefined } | undefined>()
+
+  params.returns.toEqualTypeOf<{ page?: number }>()
+  params.parameter(0).toEqualTypeOf<{} | { page: number } | { page?: number }>()
 })
 
 test('when navigating from a route with no search params to a route with search params', () => {
@@ -333,7 +357,7 @@ test('when navigating to a union of routes with search params', () => {
 
   params.returns.branded.toEqualTypeOf<{ page: number } | {}>()
 
-  params.parameter(0).toEqualTypeOf<{} | { page: number }>()
+  params.parameter(0).toEqualTypeOf<{} | { page: number } | { page?: number }>()
 })
 
 test('when navigating to a union of routes with search params including the root', () => {
@@ -351,5 +375,5 @@ test('when navigating to a union of routes with search params including the root
     .toEqualTypeOf<{ page: number } | {} | undefined>()
 
   params.returns.toEqualTypeOf<{ page: number } | {}>()
-  params.parameter(0).toEqualTypeOf<{} | { page: number }>()
+  params.parameter(0).toEqualTypeOf<{} | { page: number } | { page?: number }>()
 })

@@ -379,23 +379,25 @@ export type InferFullSearchSchemaInput<TRoute> = TRoute extends {
 export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
   TSearchSchema,
-> = Assign<
-  TParentRoute['isRoot'] extends true
-    ? TParentRoute['types']['searchSchema']
-    : TParentRoute['types']['fullSearchSchema'],
-  TSearchSchema,
-  keyof RootSearchSchema
+> = Expand<
+  Assign<
+    TParentRoute['id'] extends RootRouteId
+      ? Omit<TParentRoute['types']['searchSchema'], keyof RootSearchSchema>
+      : TParentRoute['types']['fullSearchSchema'],
+    TSearchSchema
+  >
 >
 
 export type ResolveFullSearchSchemaInput<
   TParentRoute extends AnyRoute,
   TSearchSchemaUsed,
-> = Assign<
-  TParentRoute['isRoot'] extends true
-    ? TParentRoute['types']['searchSchemaInput']
-    : TParentRoute['types']['fullSearchSchemaInput'],
-  TSearchSchemaUsed,
-  keyof RootSearchSchema
+> = Expand<
+  Assign<
+    TParentRoute['id'] extends RootRouteId
+      ? Omit<TParentRoute['types']['searchSchemaInput'], keyof RootSearchSchema>
+      : TParentRoute['types']['fullSearchSchemaInput'],
+    TSearchSchemaUsed
+  >
 >
 
 export interface AnyRoute
@@ -1016,7 +1018,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
         TRouteContextReturn, // TRouteContextReturn
         TRouteContext, // TRouteContext
         TRouterContext,
-        Assign<TRouterContext, TRouteContext>, // TAllContext
+        Expand<Assign<TRouterContext, TRouteContext>>, // TAllContext
         TLoaderDeps,
         TLoaderDataReturn, // TLoaderDataReturn,
         TLoaderData // TLoaderData,
