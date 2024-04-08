@@ -379,27 +379,24 @@ export type InferFullSearchSchemaInput<TRoute> = TRoute extends {
 export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
   TSearchSchema,
-> = Omit<
+> = Expand<
   Assign<
-    TParentRoute['isRoot'] extends true
-      ? TParentRoute['types']['searchSchema']
-      : TParentRoute['types']['fullSearchSchema'],
+    Omit<TParentRoute['types']['fullSearchSchema'], keyof RootSearchSchema>,
     TSearchSchema
-  >,
-  keyof RootSearchSchema
+  >
 >
 
 export type ResolveFullSearchSchemaInput<
   TParentRoute extends AnyRoute,
   TSearchSchemaUsed,
-> = Omit<
+> = Expand<
   Assign<
-    TParentRoute['isRoot'] extends true
-      ? TParentRoute['types']['searchSchemaInput']
-      : TParentRoute['types']['fullSearchSchemaInput'],
+    Omit<
+      TParentRoute['types']['fullSearchSchemaInput'],
+      keyof RootSearchSchema
+    >,
     TSearchSchemaUsed
-  >,
-  keyof RootSearchSchema
+  >
 >
 
 export interface AnyRoute
@@ -1020,7 +1017,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
         TRouteContextReturn, // TRouteContextReturn
         TRouteContext, // TRouteContext
         TRouterContext,
-        Assign<TRouterContext, TRouteContext>, // TAllContext
+        Expand<Assign<TRouterContext, TRouteContext>>, // TAllContext
         TLoaderDeps,
         TLoaderDataReturn, // TLoaderDataReturn,
         TLoaderData // TLoaderData,

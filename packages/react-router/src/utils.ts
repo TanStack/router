@@ -49,7 +49,11 @@ export type IsUnion<T, U extends T = T> = (
   ? false
   : true
 
-export type Assign<TLeft, TRight> = Omit<TLeft, keyof TRight> & TRight
+export type Assign<TLeft, TRight> = keyof TLeft extends never
+  ? TRight
+  : keyof TRight extends never
+    ? TLeft
+    : Omit<TLeft, keyof TRight> & TRight
 
 export type Timeout = ReturnType<typeof setTimeout>
 

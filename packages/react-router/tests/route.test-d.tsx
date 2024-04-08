@@ -137,7 +137,9 @@ test('when creating a child route with search params from the root route', () =>
     validateSearch: () => ({ page: 0 }),
   })
 
-  expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{ page: number }>()
+  expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{
+    page: number
+  }>()
   expectTypeOf(invoicesRoute.useSearch<number>)
     .parameter(0)
     .toEqualTypeOf<
@@ -154,7 +156,9 @@ test('when creating a child route with optional search params from the root rout
     validateSearch: (): { page?: number } => ({ page: 0 }),
   })
 
-  expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{ page?: number }>()
+  expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{
+    page?: number
+  }>()
   expectTypeOf(invoicesRoute.useSearch<number>)
     .parameter(0)
     .toEqualTypeOf<
