@@ -27,7 +27,7 @@
     ]
   },
   "targetDefaults": {
-    "test:lib": {
+    "test:unit": {
       "dependsOn": ["^build"],
       "inputs": ["default", "^public"],
       "outputs": ["{projectRoot}/coverage"],

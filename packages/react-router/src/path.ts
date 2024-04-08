@@ -35,6 +35,10 @@ export function resolvePath(basepath: string, base: string, to: string) {
   let baseSegments = parsePathname(base)
   const toSegments = parsePathname(to)
 
+  if (baseSegments.length > 1 && last(baseSegments)?.value === '/') {
+    baseSegments.pop()
+  }
+
   toSegments.forEach((toSegment, index) => {
     if (toSegment.value === '/') {
       if (!index) {
@@ -47,12 +51,10 @@ export function resolvePath(basepath: string, base: string, to: string) {
         // ignore inter-slashes
       }
     } else if (toSegment.value === '..') {
-      // Extra trailing slash? pop it off
-      if (baseSegments.length > 1 && last(baseSegments)?.value === '/') {
-        baseSegments.pop()
-      }
+      baseSegments.pop()
       baseSegments.pop()
     } else if (toSegment.value === '.') {
+      baseSegments.pop()
       return
     } else {
       baseSegments.push(toSegment)

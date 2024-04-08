@@ -1,18 +1,18 @@
 import { describe, test, expect } from 'vitest'
 
-// import {
-//   cleanPath,
-//   // Location,
-//   matchPathname,
-//   ParsedLocation,
-//   parsePathname,
-//   // Route,
-//   // createMemoryHistory,
-//   resolvePath,
-//   Segment,
-//   trimPath,
-//   trimPathLeft,
-// } from '../src'
+import {
+  cleanPath,
+  // Location,
+  matchPathname,
+  ParsedLocation,
+  parsePathname,
+  // Route,
+  // createMemoryHistory,
+  resolvePath,
+  Segment,
+  trimPath,
+  trimPathLeft,
+} from '../src'
 
 // import { createTimer, sleep } from './utils'
 
@@ -36,8 +36,6 @@ import { describe, test, expect } from 'vitest'
 //     ...location,
 //   }
 // }
-
-test('it works', () => {})
 
 // describe('Router', () => {
 //   test('mounts to /', async () => {
@@ -548,48 +546,45 @@ test('it works', () => {})
 //   })
 // })
 
-// describe('resolvePath', () => {
-//   describe('basic resolution', () => {
-//     ;[
-//       ['/', '/', '/', '/'],
-//       ['/', '/', '/a', '/a'],
-//       ['/', '/', 'a/', '/a/'],
-//       ['/', '/', '/a/b', '/a/b'],
-//       ['/', 'a', 'b', '/a/b'],
-//       ['/a/b', 'c', '/a/b/c', '/a/b/c'],
-//     ].forEach(([base, a, b, eq]) => {
-//       test(`${a} to ${b} === ${eq}`, () => {
-//         expect(resolvePath(base, a, b)).toEqual(eq)
-//       })
-//     })
-//   })
+describe('resolvePath', () => {
+  describe('basic resolution', () => {
+    ;[
+      ['/', '/', '/', '/'],
+      ['/', '/', '/a', '/a'],
+      ['/', '/', 'a/', '/a/'],
+      ['/', '/', '/a/b', '/a/b'],
+      ['/', 'a', 'b', '/a/b'],
+      ['/a/b', 'c', '/a/b/c', '/a/b/c'],
+    ].forEach(([base, a, b, eq]) => {
+      test(`${a} to ${b} === ${eq}`, () => {
+        expect(resolvePath(base, a, b)).toEqual(eq)
+      })
+    })
+  })
 
-//   describe('relative', () => {
-//     ;[
-//       ['/a/b', '/', './c', '/a/b/c'],
-//       ['/', '/', './a/b', '/a/b'],
-//       ['/', '/a/b/c', './d', '/a/b/c/d'],
-//       ['/', '/a/b/c', '../d', '/a/b/d'],
-//       ['/', '/a/b/c', '../../d', '/a/d'],
-//       ['/', '/a/b/c', '../..', '/a'],
-//       ['/', '/a/b/c/', '../..', '/a'],
-//       ['/', '/a/b/c', '../../..', '/'],
-//       ['/', '/a/b/c/', '../../..', '/'],
-//     ].forEach(([base, a, b, eq]) => {
-//       test(`${a} to ${b} === ${eq}`, () => {
-//         expect(resolvePath(base, a, b)).toEqual(eq)
-//       })
-//     })
-//   })
-
-//   describe('trailing slash', () => {
-//     ;[
-//       ['/', '/a', './b/', '/a/b/'],
-//       ['/', '/', 'a/b/c/', '/a/b/c/'],
-//     ].forEach(([base, a, b, eq]) => {
-//       test(`${a} to ${b} === ${eq}`, () => {
-//         expect(resolvePath(base, a, b)).toEqual(eq)
-//       })
-//     })
-//   })
-// })
+  describe('relative', () => {
+    ;[
+      ['/a/b', '/', 'c', '/a/b/c'],
+      ['/a/b', '/', './c', '/a/b/c'],
+      ['/', '/', 'a/b', '/a/b'],
+      ['/', '/', './a/b', '/a/b'],
+      ['/', '/a/b/c', 'd', '/a/b/c/d'],
+      ['/', '/a/b/c', './d', '/a/b/d'],
+      ['/', '/a/b/c', './../d', '/d'],
+      ['/', '/a/b/c/d', './../d', '/a/d'],
+      ['/', '/a/b/c', '../d', '/a/d'],
+      ['/', '/a/b/c', '../../d', '/d'],
+      ['/', '/a/b/c', '..', '/a'],
+      ['/', '/a/b/c', '../..', '/'],
+      ['/', '/a/b/c', '../../..', '/'],
+      ['/', '/a/b/c/', '../../..', '/'],
+    ].forEach(([base, a, b, eq]) => {
+      test(`Base: ${base} - ${a} to ${b} === ${eq}`, () => {
+        expect(resolvePath(base, a, b)).toEqual(eq)
+      })
+      test(`Base: ${base} - ${a}/ to ${b} === ${eq} (trailing slash)`, () => {
+        expect(resolvePath(base, a + '/', b)).toEqual(eq)
+      })
+    })
+  })
+})
