@@ -9,7 +9,7 @@ To build a route tree, TanStack Router supports both:
 - File-Based Routing
 - Code-Based Routing
 
-Both methods support the exact same core features and functionality, but **file-based routing requires less code for the same or better results**. For this reasons, **file-based routing is the preferred and recommended way to configure TanStack Router and most of the documentation is written from the perspective of file-based routing**
+Both methods support the exact same core features and functionality, but **file-based routing requires less code for the same or better results**. For this reason, **file-based routing is the preferred and recommended way to configure TanStack Router and most of the documentation is written from the perspective of file-based routing**
 
 For code-based routing documentation, please see
 the [Code-Based Routing](../code-based-routing) guide.
