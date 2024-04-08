@@ -90,7 +90,7 @@ This only gets worse as you begin to use more features of the router, such as ne
 
 What we found to be the best way to define your routes is to abstract the definition of the route configuration outside of the route-tree. Then stitch together your route configurations into a single cohesive route-tree that is then passed into the `createRouter` function.
 
-You can read more about [code-based routing](/docs/framework/react/guide/code-based-routing) to see how to define your routes in this way.
+You can read more about [code-based routing](../guide/code-based-routing) to see how to define your routes in this way.
 
 > 🙋🏼 Finding Code-based routing to be a bit too cumbersome? See why [file-based routing](#3-why-is-file-based-routing-the-preferred-way-to-define-routes) is the preferred way to define your routes.
 
@@ -158,7 +158,7 @@ We went with **module declaration**, as it is what we found to be the most scala
 
 Something you'll notice (quite soon) in the TanStack Router documentation is that we push for **file-based routing** as the preferred method for defining your routes. This is because we've found that file-based routing is the most scalable and maintainable way to define your routes.
 
-> ⚠️ Before you continue, it's important you have a good understanding of [code-based routing](./guide/code-based-routing) and [file-based routing](./guide/file-based-routing).
+> ⚠️ Before you continue, it's important you have a good understanding of [code-based routing](../guide/code-based-routing) and [file-based routing](../guide/file-based-routing).
 
 As mentioned in the beginning, TanStack Router was designed for complex applications that require a high degree of type-safety and maintainability. And to achieve this, the configuration of the router has been done in a precise way that allows TypeScript to infer the types of your routes as much as possible.
 
@@ -232,4 +232,4 @@ That's it! No need to worry about defining the `getParentRoute` function, stitch
 
 At no point does the TanStack Router CLI take away your control over your route configurations. It's designed to be as flexible as possible, allowing you to define your routes in a way that suits your application whilst reducing the boilerplate and complexity of the route configuration.
 
-> 🧠 Check out the guides for [file-based routing](./guide/file-based-routing) and [code-splitting](./guide/code-splitting) for a more in-depth explanation of how they work in TanStack Router.
+> 🧠 Check out the guides for [file-based routing](../guide/file-based-routing) and [code-splitting](../guide/code-splitting) for a more in-depth explanation of how they work in TanStack Router.
