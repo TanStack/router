@@ -85,7 +85,7 @@ export async function compileFile(opts: {
             visitor: {
               Program: {
                 enter(programPath: babel.NodePath<t.Program>, state: State) {
-                  const splitUrl = `${splitPrefix}:${state.filename}?${splitPrefix}`
+                  const splitUrl = `${splitPrefix}:${opts.filename}?${splitPrefix}`
 
                   programPath.traverse(
                     {
