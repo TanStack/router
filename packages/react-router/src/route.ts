@@ -381,7 +381,9 @@ export type ResolveFullSearchSchema<
   TSearchSchema,
 > = Expand<
   Assign<
-    Omit<TParentRoute['types']['fullSearchSchema'], keyof RootSearchSchema>,
+    TParentRoute['id'] extends RootRouteId
+      ? Omit<TParentRoute['types']['searchSchema'], keyof RootSearchSchema>
+      : TParentRoute['types']['fullSearchSchema'],
     TSearchSchema
   >
 >
@@ -391,10 +393,9 @@ export type ResolveFullSearchSchemaInput<
   TSearchSchemaUsed,
 > = Expand<
   Assign<
-    Omit<
-      TParentRoute['types']['fullSearchSchemaInput'],
-      keyof RootSearchSchema
-    >,
+    TParentRoute['id'] extends RootRouteId
+      ? Omit<TParentRoute['types']['searchSchemaInput'], keyof RootSearchSchema>
+      : TParentRoute['types']['fullSearchSchemaInput'],
     TSearchSchemaUsed
   >
 >
