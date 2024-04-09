@@ -11,8 +11,8 @@
     "test:types": "tsc --extendedDiagnostics"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.26.17",
-    "@tanstack/router-devtools": "^1.26.17",
+    "@tanstack/react-router": "^1.26.18",
+    "@tanstack/router-devtools": "^1.26.18",
     "@tanstack/router-vite-plugin": "^1.26.16",
     "axios": "^1.6.5",
     "immer": "^10.0.3",
