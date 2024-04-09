@@ -338,9 +338,18 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
   return createBrowserHistory({
     window: win,
     parseLocation: () => {
-      const search = win.location.search
+      let search = win.location.search
       const hashHref = win.location.hash.split('#').slice(1).join('#') ?? '/'
-      return parseHref(`${hashHref}${search}`, win.history.state)
+
+      // If there are duplicate query parameters in the hash we merge them with the
+      // once found in window.location.search to be backwards compatible
+      // with how createHashHistory worked before
+      const [cleanHashHref, ...otherSearch] = hashHref.split('?')
+
+      if (search && otherSearch) search = [search, ...otherSearch].join('&')
+      else if (!search && otherSearch) search = `?${otherSearch.join()}`
+
+      return parseHref(`${cleanHashHref}${search}`, win.history.state)
     },
     createHref: (href) => {
       const searchHref = href.split('?').slice(1).join()
