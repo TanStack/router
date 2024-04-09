@@ -338,11 +338,14 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
   return createBrowserHistory({
     window: win,
     parseLocation: () => {
+      const search = win.location.search
       const hashHref = win.location.hash.split('#').slice(1).join('#') ?? '/'
-      return parseHref(hashHref, win.history.state)
+      return parseHref(`${hashHref}${search}`, win.history.state)
     },
-    createHref: (href) =>
-      `${win.location.pathname}${win.location.search}#${href}`,
+    createHref: (href) => {
+      const searchHref = href.split('?').slice(1).join()
+      return `${win.location.pathname}${searchHref ? `?${searchHref}` : ''}#${href}`
+    },
   })
 }
 

@@ -36,6 +36,8 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:eslint": "eslint --ext .ts,.tsx ./src",
     "test:types": "tsc --noEmit",
+    "test:unit": "vitest --typecheck",
+    "test:unit:dev": "pnpm run test:unit --watch",
     "test:build": "publint --strict",
     "build": "vite build"
   },
