@@ -28,6 +28,32 @@ export function trimPath(path: string) {
   return trimPathRight(trimPathLeft(path))
 }
 
+// When resolving relative paths, we treat all paths as if they are trailing slash
+// documents. All trailing slashes are removed after the path is resolved.
+// Here are a few examples:
+//
+// /a/b/c + ./d = /a/b/c/d
+// /a/b/c + ../d = /a/b/d
+// /a/b/c + ./d/ = /a/b/c/d
+// /a/b/c + ../d/ = /a/b/d
+// /a/b/c + ./ = /a/b/c
+//
+// Absolute paths that start with `/` short circuit the resolution process to the root
+// path.
+//
+// Here are some examples:
+//
+// /a/b/c + /d = /d
+// /a/b/c + /d/ = /d
+// /a/b/c + / = /
+//
+// Non-.-prefixed paths are still treated as relative paths, resolved like `./`
+//
+// Here are some examples:
+//
+// /a/b/c + d = /a/b/c/d
+// /a/b/c + d/ = /a/b/c/d
+// /a/b/c + d/e = /a/b/c/d/e
 export function resolvePath(basepath: string, base: string, to: string) {
   base = base.replace(new RegExp(`^${basepath}`), '/')
   to = to.replace(new RegExp(`^${basepath}`), '/')
@@ -52,10 +78,8 @@ export function resolvePath(basepath: string, base: string, to: string) {
       }
     } else if (toSegment.value === '..') {
       baseSegments.pop()
-      baseSegments.pop()
     } else if (toSegment.value === '.') {
-      baseSegments.pop()
-      return
+      // ignore
     } else {
       baseSegments.push(toSegment)
     }
@@ -63,7 +87,7 @@ export function resolvePath(basepath: string, base: string, to: string) {
 
   const joined = joinPaths([basepath, ...baseSegments.map((d) => d.value)])
 
-  return cleanPath(joined)
+  return cleanPath(trimPathRight(joined))
 }
 
 export function parsePathname(pathname?: string): Array<Segment> {
