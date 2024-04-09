@@ -63,21 +63,36 @@ const routeTree = rootRoute.addChildren([
 type RouteTree = typeof routeTree
 
 test('when navigating to the root', () => {
+  const thing = expectTypeOf(Link<RouteTree, string, '/'>)
+    //
+    .parameter(0)
+    .toHaveProperty('to')
+    .extract()
+
   expectTypeOf(Link<RouteTree, string, '/'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
+      | '../'
+      | './'
+      | ''
       | '/'
-      | '/posts'
-      | '/posts/'
-      | '/posts/$postId'
       | '/invoices'
       | '/invoices/'
       | '/invoices/$invoiceId'
-      | '/invoices/$invoiceId/edit'
       | '/invoices/$invoiceId/details'
-      | '../'
-      | './'
+      | '/invoices/$invoiceId/edit'
+      | '/posts'
+      | '/posts/'
+      | '/posts/$postId'
+      | 'invoices'
+      | 'invoices/'
+      | 'invoices/$invoiceId'
+      | 'invoices/$invoiceId/details'
+      | 'invoices/$invoiceId/edit'
+      | 'posts'
+      | 'posts/'
+      | 'posts/$postId'
       | undefined
     >()
 })
@@ -87,17 +102,19 @@ test('when navigating from a route with no params and no search to the root', ()
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
+      | '../'
+      | './'
       | '/'
-      | '/posts'
-      | '/posts/'
-      | '/posts/$postId'
+      | ''
       | '/invoices'
       | '/invoices/'
       | '/invoices/$invoiceId'
-      | '/invoices/$invoiceId/edit'
       | '/invoices/$invoiceId/details'
-      | '../'
-      | './'
+      | '/invoices/$invoiceId/edit'
+      | '/posts'
+      | '/posts/'
+      | '/posts/$postId'
+      | '$postId'
       | undefined
     >()
 })

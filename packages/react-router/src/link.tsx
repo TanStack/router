@@ -87,7 +87,9 @@ export type RemoveLeadingSlashes<T> = T extends `/${infer R}`
 export type SearchPaths<
   TPaths,
   TSearchPath extends string,
-> = TPaths extends `${TSearchPath}/${infer TRest}` ? TRest : never
+> = TPaths extends `${RemoveTrailingSlashes<TSearchPath>}/${infer TRest}`
+  ? TRest
+  : never
 
 export type SearchRelativePathAutoComplete<
   TTo extends string,
@@ -121,16 +123,12 @@ export type AbsolutePathAutoComplete<TFrom extends string, TPaths> =
       ? './'
       : TFrom extends `/`
         ? never
-        : SearchPaths<
-              TPaths,
-              RemoveTrailingSlashes<TFrom>
-            > extends infer SearchedPaths
-          ? SearchedPaths extends ''
-            ? never
-            : './'
-          : never)
+        : SearchPaths<TPaths, TFrom> extends ''
+          ? never
+          : './')
   | (string extends TFrom ? '../' : TFrom extends `/` ? never : '../')
   | TPaths
+  | (TFrom extends '/' ? never : SearchPaths<TPaths, TFrom>)
 
 export type RelativeToPathAutoComplete<
   TRouteTree extends AnyRoute,
