@@ -165,7 +165,7 @@ In our example route tree above, the `_layout` route is a pathless route that wr
 Let's take a look at the `_layout.tsx` route:
 
 ```tsx
-import { createFileRoute } from '@tanstack/react-router'
+import { Outlet, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_layout')({
   component: LayoutComponent,
