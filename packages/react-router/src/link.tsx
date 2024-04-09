@@ -352,6 +352,25 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
     : never
   : never
 
+// type Test1 = ResolveRelativePath<'/', '/posts'>
+// //   ^?
+// type Test4 = ResolveRelativePath<'/posts/1/comments', '../..'>
+// //   ^?
+// type Test5 = ResolveRelativePath<'/posts/1/comments', '../../..'>
+// //   ^?
+// type Test6 = ResolveRelativePath<'/posts/1/comments', './1'>
+// //   ^?
+// type Test7 = ResolveRelativePath<'/posts/1/comments', './1/2'>
+// //   ^?
+// type Test8 = ResolveRelativePath<'/posts/1/comments', '../edit'>
+// //   ^?
+// type Test9 = ResolveRelativePath<'/posts/1/comments', '1'>
+// //   ^?
+// type Test10 = ResolveRelativePath<'/posts/1/comments', './1'>
+// //   ^?
+// type Test11 = ResolveRelativePath<'/posts/1/comments', './1/2'>
+// //   ^?
+
 type LinkCurrentTargetElement = {
   preloadTimeout?: null | ReturnType<typeof setTimeout>
 }
