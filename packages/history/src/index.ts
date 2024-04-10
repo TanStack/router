@@ -351,11 +351,15 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
       else if (!search && otherSearch.length > 0)
         search = `?${otherSearch.join()}`
 
-      return parseHref(`${cleanHashHref}${search}`, win.history.state)
+      const res = parseHref(`${cleanHashHref}`, win.history.state)
+      res.search = search
+      res.href = `${res.href}${search}`
+      return res
     },
     createHref: (href) => {
-      const searchHref = href.split('?').slice(1).join()
-      return `${win.location.pathname}${searchHref ? `?${searchHref}` : ''}#${href}`
+      const [cleanHref, ...searchParams] = href.split('?')
+      const search = searchParams.length > 0 ? `?${searchParams.join('&')}` : ''
+      return `${win.location.pathname}${search}#${cleanHref}`
     },
   })
 }

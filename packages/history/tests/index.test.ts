@@ -60,6 +60,7 @@ describe('createHashHistory', () => {
     win.location.hash = '#/some/route'
     const history = createHashHistory({ window: win })
     expect(history.location.href).toBe('/some/route?hello=world')
+    expect(history.location.pathname).toBe('/some/route')
     expect(history.location.search).toBe('?hello=world')
 
     history.replace('/other/route?other=query')
@@ -82,20 +83,25 @@ describe('createHashHistory', () => {
 
   it('should respect query parameters in hash route', () => {
     const win = createWindow()
+    win.location.href = '/#/some/route?other=parameters'
+    win.location.search = ''
     win.location.hash = '#/some/route?other=parameters'
     const history = createHashHistory({ window: win })
     expect(history.location.href).toBe('/some/route?other=parameters')
+    expect(history.location.pathname).toBe('/some/route')
     expect(history.location.search).toBe('?other=parameters')
   })
 
   it('should merge query parameters in hash route', () => {
     const win = createWindow()
+    win.location.href = '/?hello=world#/some/route?other=parameters'
     win.location.search = '?hello=world'
     win.location.hash = '#/some/route?other=parameters'
     const history = createHashHistory({ window: win })
     expect(history.location.href).toBe(
       '/some/route?hello=world&other=parameters',
     )
+    expect(history.location.pathname).toBe('/some/route')
     expect(history.location.search).toBe('?hello=world&other=parameters')
   })
 })
