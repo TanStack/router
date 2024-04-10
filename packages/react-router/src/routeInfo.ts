@@ -4,7 +4,7 @@ import type { Expand, UnionToIntersection, UnionToTuple } from './utils'
 export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
   types: { children: infer TChildren }
 }
-  ? TChildren extends Array<unknown>
+  ? TChildren extends ReadonlyArray<unknown>
     ? ParseRoute<TChildren[number], TAcc | TChildren[number]>
     : TAcc
   : TAcc
@@ -14,7 +14,7 @@ export type RoutesById<TRouteTree extends AnyRoute> = {
 }
 
 export type RouteById<TRouteTree extends AnyRoute, TId> = Extract<
-  Extract<ParseRoute<TRouteTree>, { id: TId }>,
+  RoutesById<TRouteTree>[TId],
   AnyRoute
 >
 
@@ -56,11 +56,9 @@ type Reduce<TValue extends Array<any>, TResult = unknown> = TValue extends [
   : TResult
 
 export type FullSearchSchema<TRouteTree extends AnyRoute> = Partial<
-  Expand<
-    Reduce<UnionToTuple<ParseRoute<TRouteTree>['types']['fullSearchSchema']>>
-  >
+  Reduce<UnionToTuple<ParseRoute<TRouteTree>['types']['fullSearchSchema']>>
 >
 
-export type AllParams<TRouteTree extends AnyRoute> = Expand<
-  UnionToIntersection<ParseRoute<TRouteTree>['types']['allParams']>
+export type AllParams<TRouteTree extends AnyRoute> = UnionToIntersection<
+  ParseRoute<TRouteTree>['types']['allParams']
 >

@@ -21,7 +21,7 @@ export function useParams<
   return useMatch({
     ...opts,
     select: (match) => {
-      return opts.select ? opts.select(match.params) : match.params
+      return opts.select ? opts.select(match.params as TParams) : match.params
     },
-  })
+  }) as TSelected
 }

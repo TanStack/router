@@ -15,12 +15,14 @@ export type PickRequired<T> = {
 }
 
 // from https://stackoverflow.com/a/76458160
-export type WithoutEmpty<T> = T extends T ? ({} extends T ? never : T) : never
+export type WithoutEmpty<T> = T extends any ? ({} extends T ? never : T) : never
 
 // export type Expand<T> = T
 export type Expand<T> = T extends object
   ? T extends infer O
-    ? { [K in keyof O]: O[K] }
+    ? O extends Function
+      ? O
+      : { [K in keyof O]: O[K] }
     : never
   : T
 
@@ -36,10 +38,12 @@ export type DeepPartial<T> = T extends object
     }
   : T
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export type MakeDifferenceOptional<T, U> = Omit<U, keyof T> &
-  Partial<Pick<U, keyof T & keyof U>> &
-  PickRequired<Omit<U, keyof PickRequired<T>>>
+export type MakeDifferenceOptional<TLeft, TRight> = Omit<
+  TRight,
+  keyof TLeft
+> & {
+  [K in keyof TLeft & keyof TRight]?: TRight[K]
+}
 
 // from https://stackoverflow.com/a/53955431
 // eslint-disable-next-line @typescript-eslint/naming-convention

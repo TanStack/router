@@ -261,9 +261,9 @@ export function createRouter<
 }
 
 export class Router<
-  TRouteTree extends AnyRoute = AnyRoute,
-  TDehydrated extends Record<string, any> = Record<string, any>,
-  TSerializedError extends Record<string, any> = Record<string, any>,
+  in out TRouteTree extends AnyRoute = AnyRoute,
+  in out TDehydrated extends Record<string, any> = Record<string, any>,
+  in out TSerializedError extends Record<string, any> = Record<string, any>,
 > {
   // Option-independent properties
   tempLocationKey: string | undefined = `${Math.round(
@@ -1268,8 +1268,8 @@ export class Router<
             preload: !!preload,
             context: parentContext,
             location,
-            navigate: (opts) =>
-              this.navigate({ ...opts, from: match.pathname } as any),
+            navigate: (opts: any) =>
+              this.navigate({ ...opts, from: match.pathname }),
             buildLocation: this.buildLocation,
             cause: preload ? 'preload' : match.cause,
           })) ?? ({} as any)
