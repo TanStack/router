@@ -346,8 +346,10 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
       // with how createHashHistory worked before
       const [cleanHashHref, ...otherSearch] = hashHref.split('?')
 
-      if (search && otherSearch) search = [search, ...otherSearch].join('&')
-      else if (!search && otherSearch) search = `?${otherSearch.join()}`
+      if (search && otherSearch.length > 0)
+        search = [search, ...otherSearch].join('&')
+      else if (!search && otherSearch.length > 0)
+        search = `?${otherSearch.join()}`
 
       return parseHref(`${cleanHashHref}${search}`, win.history.state)
     },
