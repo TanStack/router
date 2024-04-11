@@ -344,6 +344,9 @@ export interface LoaderFnContext<
   deps: TLoaderDeps
   context: Expand<Assign<TAllContext, TRouteContext>>
   location: ParsedLocation // Do not supply search schema here so as to demotivate people from trying to shortcut loaderDeps
+  /**
+   * @deprecated Use `throw redirect({ to: '/somewhere' })` instead
+   **/
   navigate: (opts: NavigateOptions<AnyRoute>) => Promise<void>
   parentMatchPromise?: Promise<void>
   cause: 'preload' | 'enter' | 'stay'
