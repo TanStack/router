@@ -601,7 +601,7 @@ export function useLinkProps<
       role: 'link',
       'aria-disabled': true,
     }),
-    ...(isActive && { 'data-status': 'active' }),
+    ...(isActive && { 'data-status': 'active', 'aria-current': 'page' }),
   }
 }
 
