@@ -54,7 +54,18 @@ export function trimPath(path: string) {
 // /a/b/c + d = /a/b/c/d
 // /a/b/c + d/ = /a/b/c/d
 // /a/b/c + d/e = /a/b/c/d/e
-export function resolvePath(basepath: string, base: string, to: string) {
+interface ResolvePathOptions {
+  basepath: string
+  base: string
+  to: string
+  trailingSlash?: 'always' | 'never' | 'preserve'
+}
+export function resolvePath({
+  basepath,
+  base,
+  to,
+  trailingSlash = 'never',
+}: ResolvePathOptions) {
   base = base.replace(new RegExp(`^${basepath}`), '/')
   to = to.replace(new RegExp(`^${basepath}`), '/')
 
@@ -85,9 +96,18 @@ export function resolvePath(basepath: string, base: string, to: string) {
     }
   })
 
-  const joined = joinPaths([basepath, ...baseSegments.map((d) => d.value)])
+  if (baseSegments.length > 1) {
+    if (last(baseSegments)?.value === '/') {
+      if (trailingSlash === 'never') {
+        baseSegments.pop()
+      }
+    } else if (trailingSlash === 'always') {
+      baseSegments.push({ type: 'pathname', value: '/' })
+    }
+  }
 
-  return cleanPath(trimPathRight(joined))
+  const joined = joinPaths([basepath, ...baseSegments.map((d) => d.value)])
+  return cleanPath(joined)
 }
 
 export function parsePathname(pathname?: string): Array<Segment> {

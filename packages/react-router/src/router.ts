@@ -150,6 +150,7 @@ export interface RouterOptions<
   defaultNotFoundComponent?: NotFoundRouteComponent
   transformer?: RouterTransformer
   errorSerializer?: RouterErrorSerializer<TSerializedError>
+  trailingSlash?: 'always' | 'never' | 'preserve'
 }
 
 export interface RouterTransformer {
@@ -591,7 +592,13 @@ export class Router<
   }
 
   resolvePathWithBase = (from: string, path: string) => {
-    return resolvePath(this.basepath, from, cleanPath(path))
+    const resolvedPath = resolvePath({
+      basepath: this.basepath,
+      base: from,
+      to: cleanPath(path),
+      trailingSlash: this.options.trailingSlash,
+    })
+    return resolvedPath
   }
 
   get looseRoutesById() {
