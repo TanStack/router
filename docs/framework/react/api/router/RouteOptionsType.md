@@ -59,7 +59,7 @@ type beforeLoad = (
     params: TAllParams
     context: TParentContext
     location: ParsedLocation
-    navigate: NavigateFn<AnyRoute>
+    navigate: NavigateFn<AnyRoute> // @deprecated
     buildLocation: BuildLocationFn<AnyRoute>
     cause: 'enter' | 'stay'
   },
@@ -71,6 +71,8 @@ type beforeLoad = (
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this routes pendingMs threshold is reached, the `pendingComponent` will be shown until it resolved. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TRouteContext` object, that object will be merged into the route's context and be made available in the `loader` and other related route components/methods.
 - It's common to use this function to check if a user is authenticated and redirect them to a login page if they are not. To do this, you can either return or throw a `redirect` object from this function.
+
+> 🚧 `opts.navigate` has been deprecated and will be removed in the next major release. Use `throw redirect({ to: '/somewhere' })` instead. Read more about the `redirect` function [here](../redirectFunction).
 
 ### `loader` method
 
@@ -85,7 +87,7 @@ type loader = (
     params: TAllParams
     context: TAllContext
     location: ParsedLocation
-    navigate: NavigateFn<AnyRoute>
+    navigate: NavigateFn<AnyRoute> // @deprecated
     buildLocation: BuildLocationFn<AnyRoute>
     cause: 'enter' | 'stay'
   },
@@ -96,6 +98,8 @@ type loader = (
 - This async function is called when a route is matched and passed the route's match object. If an error is thrown here, the route will be put into an error state and the error will be thrown during render. If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this routes pendingMs threshold is reached, the `pendingComponent` will be shown until it resolved. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TLoaderData` object, that object will be stored on the route match until the route match is no longer active. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
+
+> 🚧 `opts.navigate` has been deprecated and will be removed in the next major release. Use `throw redirect({ to: '/somewhere' })` instead. Read more about the `redirect` function [here](../redirectFunction).
 
 ### `loaderDeps` method
 
