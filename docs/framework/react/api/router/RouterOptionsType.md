@@ -190,3 +190,10 @@ const router = createRouter({
 - Type: [`RouterTransformer`](../RouterTransformerType)
 - Optional
 - The transformer that will be used when sending data between the server and the client during SSR.
+
+### `trailingSlash` property
+
+- Type: `'always' | 'never' | 'preserve'`
+- Optional
+- Defaults to `never`
+- Configures how trailing slashes are treated. `'always'` will add a trailing slash if not present, `'never'` will remove the trailing slash if present and `'preserve'` will not modify the trailing slash.

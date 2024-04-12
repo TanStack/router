@@ -572,13 +572,83 @@ describe('resolvePath', () => {
     ] as const
   ).forEach(([base, a, b, eq]) => {
     test(`Base: ${base} - ${a} to ${b} === ${eq}`, () => {
-      expect(resolvePath(base, a, b)).toEqual(eq)
+      expect(resolvePath({ basepath: base, base: a, to: b })).toEqual(eq)
     })
     test(`Base: ${base} - ${a}/ to ${b} === ${eq} (trailing slash)`, () => {
-      expect(resolvePath(base, a + '/', b)).toEqual(eq)
+      expect(resolvePath({ basepath: base, base: a + '/', to: b })).toEqual(eq)
     })
     test(`Base: ${base} - ${a}/ to ${b}/ === ${eq} (trailing slash + trailing slash)`, () => {
-      expect(resolvePath(base, a + '/', b + '/')).toEqual(eq)
+      expect(
+        resolvePath({ basepath: base, base: a + '/', to: b + '/' }),
+      ).toEqual(eq)
+    })
+  })
+  describe('trailingSlash', () => {
+    describe(`'always'`, () => {
+      test('keeps trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd/',
+            trailingSlash: 'always',
+          }),
+        ).toBe('/a/b/c/d/')
+      })
+      test('adds trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd',
+            trailingSlash: 'always',
+          }),
+        ).toBe('/a/b/c/d/')
+      })
+    })
+    describe(`'never'`, () => {
+      test('removes trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd/',
+            trailingSlash: 'never',
+          }),
+        ).toBe('/a/b/c/d')
+      })
+      test('does not add trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd',
+            trailingSlash: 'never',
+          }),
+        ).toBe('/a/b/c/d')
+      })
+    })
+    describe(`'preserve'`, () => {
+      test('keeps trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd/',
+            trailingSlash: 'preserve',
+          }),
+        ).toBe('/a/b/c/d/')
+      })
+      test('does not add trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd',
+            trailingSlash: 'preserve',
+          }),
+        ).toBe('/a/b/c/d')
+      })
     })
   })
 })
