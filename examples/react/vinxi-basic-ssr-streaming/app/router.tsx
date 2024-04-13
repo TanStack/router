@@ -1,8 +1,8 @@
-import {  Router } from '@tanstack/react-router'
+import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
 export function createRouter() {
-  const router= new Router({
+  const router = createTanStackRouter({
     routeTree,
     defaultPreload: 'intent',
     defaultStaleTime: 1,
@@ -29,7 +29,7 @@ declare module '@tanstack/react-router' {
     baseParent?: boolean
   }
 
-  interface RouterState  {
+  interface RouterState {
     statusCode: number
   }
 }
