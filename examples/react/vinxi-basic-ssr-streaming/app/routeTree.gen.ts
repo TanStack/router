@@ -26,12 +26,12 @@ const TestRoute = TestImport.update({
 const NoTitleRoute = NoTitleImport.update({
   path: '/no-title',
   getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/no-title.lazy').then((d) => d.Route))
+} as any)
 
 const HelloRoute = HelloImport.update({
   path: '/hello',
   getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/hello.lazy').then((d) => d.Route))
+} as any)
 
 const IndexRoute = IndexImport.update({
   path: '/',

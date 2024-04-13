@@ -17,7 +17,14 @@ export default createApp({
       middleware: './app/middleware.tsx',
       handler: './app/server.tsx',
       target: 'server',
-      plugins: () => [reactRefresh(), TanStackRouterVite()],
+      plugins: () => [
+        TanStackRouterVite({
+          experimental: {
+            enableCodeSplitting: true,
+          },
+        }),
+        reactRefresh(),
+      ],
     },
     {
       name: 'client',
@@ -26,8 +33,12 @@ export default createApp({
       target: 'browser',
       plugins: () => [
         serverFunctions.client(),
+        TanStackRouterVite({
+          experimental: {
+            enableCodeSplitting: true,
+          },
+        }),
         reactRefresh(),
-        TanStackRouterVite(),
       ],
       base: '/_build',
     },
