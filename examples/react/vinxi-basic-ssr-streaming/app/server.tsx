@@ -1,13 +1,18 @@
 /// <reference types="vinxi/types/server" />
 import type { PipeableStream } from 'react-dom/server'
 import { renderToPipeableStream } from 'react-dom/server'
-import { eventHandler, toWebRequest } from 'vinxi/server'
+import { eventHandler, toWebRequest, getResponseHeaders } from 'vinxi/server'
 import { getManifest } from 'vinxi/manifest'
 import { StartServer, transformStreamWithRouter } from '@tanstack/react-router-server/server'
 
 import { createRouter } from './router'
 import { createMemoryHistory } from '@tanstack/react-router'
+import {
+  serverFnPayloadTypeHeader,
+  serverFnReturnTypeHeader,
+} from '@tanstack/react-router-server'
 import React from 'react'
+import { isbot } from 'isbot'
 
 export default eventHandler(async (event) => {
   const req = toWebRequest(event)
@@ -21,26 +26,28 @@ export default eventHandler(async (event) => {
   ).filter((d: any) => {
     return !d.children?.includes('nuxt-devtools')
   }) as any
-
-  assets.push(
-    {
-      tag: 'script',
-      attrs: {},
-      children: getHydrationOverlayScriptContext(),
-    },
-    {
-      tag: 'script',
-      children: `window.__vite_plugin_react_preamble_installed__ = true`,
-    },
-    {
-      tag: 'script',
-      attrs: {
-        src: clientManifest.inputs[clientManifest.handler].output.path,
-        type: 'module',
-        async: true,
+  if (import.meta.env.DEV) {
+    assets.push(
+      {
+        tag: 'script',
+        attrs: {},
+        children: getHydrationOverlayScriptContext(),
       },
-    }
-  )
+      {
+        tag: 'script',
+        children: `window.__vite_plugin_react_preamble_installed__ = true`,
+      }
+    )
+  }
+
+  assets.push({
+    tag: 'script',
+    attrs: {
+      src: clientManifest.inputs[clientManifest.handler].output.path,
+      type: 'module',
+      async: true,
+    },
+  })
 
   // Create a router
   const router = createRouter()
@@ -59,12 +66,36 @@ export default eventHandler(async (event) => {
   })
 
   await router.load()
+  // Handle Redirects
+  const { redirect } = router.state
+
+  if (redirect) {
+    console.info('Redirecting...', redirect.statusCode, redirect.href)
+    return new Response(null, {
+      status: redirect.statusCode,
+      headers: {
+        ...redirect.headers,
+        Location: redirect.href,
+      },
+    })
+  }
+
+  const isRobot = isbot(req.headers.get('User-Agent'))
+
 
   const stream = await new Promise<PipeableStream>(async (resolve) => {
     const stream = renderToPipeableStream(<StartServer router={router} />, {
-      onShellReady() {
-        resolve(stream)
-      },
+      ...(isRobot
+        ? {
+          onAllReady() {
+            resolve(stream)
+          },
+        }
+        : {
+          onShellReady() {
+            resolve(stream)
+          },
+        }),
     })
   })
 
@@ -78,24 +109,53 @@ export default eventHandler(async (event) => {
     (stream, transform) => stream.pipe(transform as any),
     stream
   )
+  ;(event as any).__tsrHeadersSent = true
 
-  const headers = router.state.matches.reduce((acc, match) => {
-    if (match.headers) {
-      Object.assign(acc, match.headers)
+  let headers = {
+      ...getResponseHeaders(event),
+      'Content-Type': 'text/html',
+      ...router.state.matches.reduce((acc, match) => {
+        if (match.headers) {
+          Object.assign(acc, match.headers)
+        }
+        return acc
+      }, {}),
     }
-    return acc
-  }, {})
+
+    // Remove server function headers
+  ;[serverFnReturnTypeHeader, serverFnPayloadTypeHeader].forEach((header) => {
+    delete headers[header]
+  })
+
+  // Dedupe headers
+  headers = dedupeHeaders(Object.entries(headers))
 
   return new Response(transformedStream as any, {
     status: router.state.statusCode,
     statusText:
       router.state.statusCode === 200 ? 'OK' : 'Internal Server Error',
-    headers: {
-      'Content-Type': 'text/html',
-      ...headers,
-    },
+    headers,
   })
 })
+
+
+function dedupeHeaders(headerList: [string, string][]): [string, string][] {
+  // Object to store the deduplicated headers
+  const seen = new Set()
+
+  // Reverse, filter with seen, then reverse again
+  return [...headerList]
+    .reverse()
+    .filter(([name]) => {
+      const key = name.toLowerCase()
+      if (seen.has(key)) {
+        return false
+      }
+      seen.add(key)
+      return true
+    })
+    .reverse()
+}
 
 function getHydrationOverlayScriptContext() {
   return `
