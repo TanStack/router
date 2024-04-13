@@ -115,7 +115,7 @@ Since TanStack Router's file-based routing system is designed to support both fl
 
 To encapsulate a route's files into a directory, move the route file itself into a `.route` file within a directory with the same name as the route file.
 
-For example, if you have a route file named `posts.tsx`, you would create a new directory named `posts` and move the `posts.tsx` file into that directory, renaming it to `index.route.tsx`.
+For example, if you have a route file named `posts.tsx`, you would create a new directory named `posts` and move the `posts.tsx` file into that directory, renaming it to `route.tsx`.
 
 #### Before
 
