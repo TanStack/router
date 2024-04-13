@@ -1,2 +1,5 @@
 export { StartServer } from './StartServer'
-export { transformStreamWithRouter } from './transformStreamWithRouter'
+export {
+  transformStreamWithRouter,
+  transformReadableStreamWithRouter,
+} from './transformStreamWithRouter'
