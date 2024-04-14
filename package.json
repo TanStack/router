@@ -58,8 +58,8 @@
     "react-dom": "^18.2.0",
     "rimraf": "^5.0.5",
     "typescript": "^5.3.3",
-    "vite": "^5.0.13",
-    "vitest": "^1.2.2"
+    "vite": "^5.2.8",
+    "vitest": "^1.5.0"
   },
   "resolutions": {
     "use-sync-external-store": "1.2.0"
