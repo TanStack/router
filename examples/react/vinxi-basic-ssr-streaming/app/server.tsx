@@ -1,21 +1,21 @@
 /// <reference types="vinxi/types/server" />
 import * as React from 'react'
-import type { PipeableStream } from 'react-dom/server'
 import { renderToPipeableStream } from 'react-dom/server'
-import { eventHandler, toWebRequest, getResponseHeaders } from 'vinxi/server'
+import { eventHandler, getResponseHeaders, toWebRequest } from 'vinxi/server'
 import { getManifest } from 'vinxi/manifest'
 import {
   StartServer,
   transformStreamWithRouter,
 } from '@tanstack/react-router-server/server'
 
-import { createRouter } from './router'
 import { createMemoryHistory } from '@tanstack/react-router'
 import {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
 } from '@tanstack/react-router-server'
 import { isbot } from 'isbot'
+import { createRouter } from './router'
+import type { PipeableStream } from 'react-dom/server'
 
 export default eventHandler(async (event) => {
   const req = toWebRequest(event)
@@ -24,7 +24,7 @@ export default eventHandler(async (event) => {
 
   // Get assets for the server/client
   const clientManifest = getManifest('client')
-  let assets = (
+  const assets = (
     await clientManifest.inputs[clientManifest.handler].assets()
   ).filter((d: any) => {
     return !d.children?.includes('nuxt-devtools')
@@ -86,6 +86,7 @@ export default eventHandler(async (event) => {
   const isRobot = isbot(req.headers.get('User-Agent'))
 
   const stream = await new Promise<PipeableStream>(async (resolve) => {
+    // eslint-disable-next-line no-shadow
     const stream = renderToPipeableStream(<StartServer router={router} />, {
       ...(isRobot
         ? {
@@ -106,6 +107,7 @@ export default eventHandler(async (event) => {
 
   // Pipe the stream through our transforms
   const transformedStream = transforms.reduce(
+      // eslint-disable-next-line no-shadow
     (stream, transform) => stream.pipe(transform as any),
     stream,
   )

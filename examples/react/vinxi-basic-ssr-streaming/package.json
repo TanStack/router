@@ -15,7 +15,6 @@
     "@vinxi/server-functions": "^0.3.2",
     "autoprefixer": "^10.4.19",
     "isbot": "^4.3.0",
-    "autoprefixer": "^10.4.15",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "vinxi": "^0.3.11"
