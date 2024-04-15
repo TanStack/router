@@ -603,10 +603,10 @@ export function useLoaderData<
     ...opts,
     select: (s) => {
       return typeof opts.select === 'function'
-        ? opts.select(s.loaderData)
+        ? opts.select(s.loaderData as TRouteMatch)
         : s.loaderData
     },
-  })
+  }) as TSelected
 }
 
 export function isServerSideError(error: unknown): error is {

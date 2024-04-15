@@ -24,7 +24,7 @@ import type {
   TrimPathLeft,
   UpdatableRouteOptions,
 } from './route'
-import type { Assign, Expand, IsAny } from './utils'
+import type { Assign, IsAny } from './utils'
 import type { RouteMatch } from './Matches'
 import type { NoInfer } from '@tanstack/react-store'
 import type { RegisteredRouter } from './router'
@@ -67,7 +67,7 @@ export type RemoveUnderScores<T extends string> = Replace<
 >
 
 type RemoveRouteGroups<T extends string> =
-  T extends `${infer Before}(${infer RouteGroup})${infer After}`
+  T extends `${infer Before}(${string})${infer After}`
     ? RemoveRouteGroups<`${Before}${After}`>
     : T
 
@@ -76,32 +76,22 @@ type NormalizeSlashes<T extends string> =
     ? NormalizeSlashes<`${Before}/${After}`>
     : T
 
-type ReplaceFirstOccurrence<
-  TValue extends string,
-  TSearch extends string,
-  TReplacement extends string,
-> = TValue extends `${infer Prefix}${TSearch}${infer Suffix}`
-  ? `${Prefix}${TReplacement}${Suffix}`
-  : TValue
-
 export type ResolveFilePath<
   TParentRoute extends AnyRoute,
   TFilePath extends string,
 > = TParentRoute['id'] extends RootRouteId
   ? TrimPathLeft<TFilePath>
-  : ReplaceFirstOccurrence<
-      TrimPathLeft<TFilePath>,
-      TrimPathLeft<TParentRoute['types']['customId']>,
-      ''
-    >
+  : TFilePath extends `${TParentRoute['types']['customId']}${infer TRest}`
+    ? TRest
+    : TFilePath
 
 export type FileRoutePath<
   TParentRoute extends AnyRoute,
   TFilePath extends string,
   TResolvedFilePath = ResolveFilePath<TParentRoute, TFilePath>,
-> = TResolvedFilePath extends `_${infer _}`
+> = TResolvedFilePath extends `_${string}`
   ? ''
-  : TResolvedFilePath extends `/_${infer _}`
+  : TResolvedFilePath extends `/_${string}`
     ? ''
     : TResolvedFilePath
 
@@ -154,34 +144,27 @@ export class FileRoute<
   createRoute = <
     TSearchSchemaInput extends RouteConstraints['TSearchSchema'] = {},
     TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
-    TSearchSchemaUsed extends Record<
-      string,
-      any
-    > = TSearchSchemaInput extends SearchSchemaInput
+    TSearchSchemaUsed = TSearchSchemaInput extends SearchSchemaInput
       ? Omit<TSearchSchemaInput, keyof SearchSchemaInput>
       : TSearchSchema,
-    TFullSearchSchemaInput extends
-      RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchemaInput<
+    TFullSearchSchemaInput = ResolveFullSearchSchemaInput<
       TParentRoute,
       TSearchSchemaUsed
     >,
     TFullSearchSchema = ResolveFullSearchSchema<TParentRoute, TSearchSchema>,
-    TParams extends RouteConstraints['TParams'] = Expand<
-      Record<ParsePathParams<TPath>, string>
-    >,
-    TAllParams extends RouteConstraints['TAllParams'] = MergeFromFromParent<
+    TParams = Record<ParsePathParams<TPath>, string>,
+    TAllParams = MergeFromFromParent<
       TParentRoute['types']['allParams'],
       TParams
     >,
     TRouteContextReturn extends
       RouteConstraints['TRouteContext'] = RouteContext,
-    TRouteContext extends RouteConstraints['TRouteContext'] = [
-      TRouteContextReturn,
-    ] extends [never]
+    TRouteContext = [TRouteContextReturn] extends [never]
       ? RouteContext
       : TRouteContextReturn,
-    TAllContext = Expand<
-      Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
+    TAllContext = Assign<
+      IsAny<TParentRoute['types']['allContext'], {}>,
+      TRouteContext
     >,
     TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
@@ -190,7 +173,6 @@ export class FileRoute<
       ? undefined
       : TLoaderDataReturn,
     TChildren extends RouteConstraints['TChildren'] = unknown,
-    TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
   >(
     options?: FileBaseRouteOptions<
       TParentRoute,
@@ -228,8 +210,7 @@ export class FileRoute<
     TLoaderDeps,
     TLoaderDataReturn,
     TLoaderData,
-    TChildren,
-    TRouteTree
+    TChildren
   > => {
     warning(
       this.silent,
@@ -294,7 +275,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
 
   useMatch = <
     TRouteMatchState = RouteMatch<
-      TRoute['types']['routeTree'],
+      RegisteredRouter['routeTree'],
       TRoute['types']['id']
     >,
     TSelected = TRouteMatchState,

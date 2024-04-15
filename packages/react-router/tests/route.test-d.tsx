@@ -16,22 +16,21 @@ test('when creating the root', () => {
 test('when creating the root route with context', () => {
   const createRouteResult = createRootRouteWithContext<{ userId: string }>()
 
-  const rootRoute = createRouteResult()
-
-  expectTypeOf(rootRoute.options.loader)
-    .parameter(0)
-    .toMatchTypeOf<{ context: { userId: string } }>()
+  const rootRoute = createRouteResult({
+    loader: (opts) =>
+      expectTypeOf(opts).toMatchTypeOf<{ context: { userId: string } }>(),
+  })
 
   expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
   expectTypeOf(rootRoute.id).toEqualTypeOf<'__root__'>()
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 
-  expectTypeOf(rootRoute.useRouteContext()).branded.toEqualTypeOf<{
+  expectTypeOf(rootRoute.useRouteContext()).toEqualTypeOf<{
     userId: string
   }>()
   expectTypeOf(rootRoute.useRouteContext<string>)
     .parameter(0)
-    .branded.toEqualTypeOf<
+    .toEqualTypeOf<
       { select?: (search: { userId: string }) => string } | undefined
     >()
 })
@@ -57,7 +56,7 @@ test('when creating a child route from the root route with context', () => {
     getParentRoute: () => rootRoute,
   })
 
-  expectTypeOf(rootRoute.useRouteContext()).branded.toEqualTypeOf<{
+  expectTypeOf(rootRoute.useRouteContext()).toEqualTypeOf<{
     userId: string
   }>()
 
@@ -102,12 +101,11 @@ test('when creating a child route with a loader from the root route with context
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    loader: async () => [{ id: 'invoice1' }, { id: 'invoice2' }] as const,
+    loader: async (opts) => {
+      expectTypeOf(opts).toMatchTypeOf<{ context: { userId: string } }>()
+      return [{ id: 'invoice1' }, { id: 'invoice2' }] as const
+    },
   })
-
-  expectTypeOf(invoicesRoute.options.loader)
-    .parameter(0)
-    .toMatchTypeOf<{ context: { userId: string } }>()
 
   expectTypeOf(invoicesRoute.useLoaderData<string>)
     .parameter(0)
@@ -156,9 +154,8 @@ test('when creating a child route with optional search params from the root rout
     validateSearch: (): { page?: number } => ({ page: 0 }),
   })
 
-  expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{
-    page?: number
-  }>()
+  expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{ page?: number }>()
+
   expectTypeOf(invoicesRoute.useSearch<number>)
     .parameter(0)
     .toEqualTypeOf<
@@ -185,67 +182,64 @@ test('when creating a child route with params from the root route', () => {
 test('when creating a child route with params, search and loader from the root route', () => {
   const rootRoute = createRootRoute()
 
-  const invoicesRoute = createRoute({
+  createRoute({
     path: 'invoices/$invoiceId',
     getParentRoute: () => rootRoute,
-    loader: () => ({ id: 'invoiceId1' }),
+    loader: (opts) =>
+      expectTypeOf(opts).toMatchTypeOf<{
+        params: { invoiceId: string }
+      }>,
     validateSearch: () => ({ page: 0 }),
   })
-
-  expectTypeOf(invoicesRoute.options.loader).parameter(0).toMatchTypeOf<{
-    params: { invoiceId: string }
-  }>()
 })
 
 test('when creating a child route with params, search, loader and loaderDeps from the root route', () => {
   const rootRoute = createRootRoute()
 
-  const invoicesRoute = createRoute({
+  createRoute({
     path: 'invoices/$invoiceId',
     getParentRoute: () => rootRoute,
-    loader: () => ({ id: 'invoiceId1' }),
-    validateSearch: () => ({ page: 0 }),
     loaderDeps: (deps) => ({ page: deps.search.page }),
+    loader: (opts) =>
+      expectTypeOf(opts).toMatchTypeOf<{
+        params: { invoiceId: string }
+        deps: { page: number }
+      }>(),
+    validateSearch: () => ({ page: 0 }),
   })
-
-  expectTypeOf(invoicesRoute.options.loader).parameter(0).toMatchTypeOf<{
-    params: { invoiceId: string }
-    deps: { page: number }
-  }>()
 })
 
 test('when creating a child route with params, search, loader and loaderDeps from the root route with context', () => {
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
-  const invoicesRoute = createRoute({
+  createRoute({
     path: 'invoices/$invoiceId',
     getParentRoute: () => rootRoute,
-    loader: () => ({ id: 'invoiceId1' }),
-    validateSearch: () => ({ page: 0 }),
     loaderDeps: (deps) => ({ page: deps.search.page }),
+    loader: (opts) =>
+      expectTypeOf(opts).toMatchTypeOf<{
+        params: { invoiceId: string }
+        deps: { page: number }
+        context: { userId: string }
+      }>(),
+    validateSearch: () => ({ page: 0 }),
   })
-
-  expectTypeOf(invoicesRoute.options.loader).parameter(0).toMatchTypeOf<{
-    params: { invoiceId: string }
-    deps: { page: number }
-    context: { userId: string }
-  }>()
 })
 
 test('when creating a child route with params, search with beforeLoad from the root route with context', () => {
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
-  const invoicesRoute = createRoute({
+  createRoute({
     path: 'invoices/$invoiceId',
     getParentRoute: () => rootRoute,
     validateSearch: () => ({ page: 0 }),
+    beforeLoad: (opts) =>
+      expectTypeOf(opts).toMatchTypeOf<{
+        params: { invoiceId: string }
+        context: { userId: string }
+        search: { page: number }
+      }>(),
   })
-
-  expectTypeOf(invoicesRoute.options.beforeLoad).parameter(0).toMatchTypeOf<{
-    params: { invoiceId: string }
-    context: { userId: string }
-    search: { page: number }
-  }>()
 })
 
 test('when creating a child route with params from a parent with params', () => {
@@ -373,17 +367,17 @@ test('when creating a child route with context, search, params, loaderDeps and l
       detailPage: deps.search.detailPage,
       invoicePage: deps.search.page,
     }),
+    loader: (opts) =>
+      expectTypeOf(opts).toMatchTypeOf<{
+        params: { detailId: string; invoiceId: string }
+        deps: { detailPage: number; invoicePage: number }
+        context: {
+          userId: string
+          detailsPermissions: readonly ['view']
+          invoicePermissions: readonly ['view']
+        }
+      }>(),
   })
-
-  expectTypeOf(detailRoute.options.loader).parameter(0).toMatchTypeOf<{
-    params: { detailId: string; invoiceId: string }
-    deps: { detailPage: number; invoicePage: number }
-    context: {
-      userId: string
-      detailsPermissions: readonly ['view']
-      invoicePermissions: readonly ['view']
-    }
-  }>()
 })
 
 test('when creating a child route with context, search, params and beforeLoad', () => {
@@ -408,18 +402,18 @@ test('when creating a child route with context, search, params and beforeLoad', 
     beforeLoad: () => ({ detailsPermissions: ['view'] as const }),
   })
 
-  const detailRoute = createRoute({
+  createRoute({
     path: '$detailId',
     getParentRoute: () => detailsRoute,
+    beforeLoad: (opts) =>
+      expectTypeOf(opts).toMatchTypeOf<{
+        params: { detailId: string; invoiceId: string }
+        search: { detailPage: number; page: number }
+        context: {
+          userId: string
+          detailsPermissions: readonly ['view']
+          invoicePermissions: readonly ['view']
+        }
+      }>(),
   })
-
-  expectTypeOf(detailRoute.options.beforeLoad).parameter(0).toMatchTypeOf<{
-    params: { detailId: string; invoiceId: string }
-    search: { detailPage: number; page: number }
-    context: {
-      userId: string
-      detailsPermissions: readonly ['view']
-      invoicePermissions: readonly ['view']
-    }
-  }>()
 })

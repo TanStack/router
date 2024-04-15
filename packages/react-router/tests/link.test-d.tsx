@@ -51,11 +51,19 @@ const invoiceDetailsRoute = createRoute({
   validateSearch: (): { page?: number } => ({ page: 0 }),
 })
 
+const detailRoute = createRoute({
+  getParentRoute: () => invoiceDetailsRoute,
+  path: '$detailId',
+})
+
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
   invoicesRoute.addChildren([
     invoicesIndexRoute,
-    invoiceRoute.addChildren([invoiceEditRoute, invoiceDetailsRoute]),
+    invoiceRoute.addChildren([
+      invoiceEditRoute,
+      invoiceDetailsRoute.addChildren([detailRoute]),
+    ]),
   ]),
   indexRoute,
 ])
@@ -63,12 +71,6 @@ const routeTree = rootRoute.addChildren([
 type RouteTree = typeof routeTree
 
 test('when navigating to the root', () => {
-  const thing = expectTypeOf(Link<RouteTree, string, '/'>)
-    //
-    .parameter(0)
-    .toHaveProperty('to')
-    .extract()
-
   expectTypeOf(Link<RouteTree, string, '/'>)
     .parameter(0)
     .toHaveProperty('to')
@@ -81,6 +83,7 @@ test('when navigating to the root', () => {
       | '/invoices/'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/details'
+      | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/'
@@ -89,6 +92,7 @@ test('when navigating to the root', () => {
       | 'invoices/'
       | 'invoices/$invoiceId'
       | 'invoices/$invoiceId/details'
+      | 'invoices/$invoiceId/details/$detailId'
       | 'invoices/$invoiceId/edit'
       | 'posts'
       | 'posts/'
@@ -111,6 +115,7 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/edit'
+      | '/invoices/$invoiceId/details/$detailId'
       | '/posts'
       | '/posts/'
       | '/posts/$postId'
@@ -137,6 +142,7 @@ test('when navigating from a route with no params and no search to the parent ro
       | '../invoices/$invoiceId'
       | '../invoices/$invoiceId/edit'
       | '../invoices/$invoiceId/details'
+      | '../invoices/$invoiceId/details/$detailId'
       | '../invoices'
       | '../invoices/'
       | '../'
@@ -160,6 +166,7 @@ test('from autocompletes to all absolute routes', () => {
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
       | '/invoices/$invoiceId/details'
+      | '/invoices/$invoiceId/details/$detailId'
       | undefined
     >()
 })
@@ -232,7 +239,12 @@ test('when navigating to a route with params', () => {
   params.returns.toEqualTypeOf<{ postId: string }>()
   params
     .parameter(0)
-    .toEqualTypeOf<{} | { invoiceId: string } | { postId: string }>()
+    .toEqualTypeOf<
+      | {}
+      | { invoiceId: string }
+      | { postId: string }
+      | { invoiceId: string; detailId: string }
+    >()
 })
 
 test('when navigating from a route with no params to a route with params', () => {
@@ -242,11 +254,9 @@ test('when navigating from a route with no params to a route with params', () =>
 
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('params')
 
-  params
-    .exclude<Function | boolean>()
-    .branded.toEqualTypeOf<{ invoiceId: string }>()
+  params.exclude<Function | boolean>().toEqualTypeOf<{ invoiceId: string }>()
 
-  params.returns.branded.toEqualTypeOf<{ invoiceId: string }>()
+  params.returns.toEqualTypeOf<{ invoiceId: string }>()
   params.parameter(0).toEqualTypeOf<{}>()
 })
 
@@ -258,9 +268,43 @@ test('when navigating from a route to a route with the same params', () => {
 
   params
     .exclude<Function | boolean>()
-    .branded.toEqualTypeOf<{ invoiceId?: string | undefined } | undefined>()
+    .toEqualTypeOf<{ invoiceId?: string | undefined } | undefined>()
 
-  params.returns.branded.toEqualTypeOf<{ invoiceId?: string | undefined }>()
+  params.returns.toEqualTypeOf<{ invoiceId?: string | undefined }>()
+  params.parameter(0).toEqualTypeOf<{ invoiceId: string }>()
+})
+
+test('when navigating from a route with params to a route with different params', () => {
+  const TestLink = Link<
+    RouteTree,
+    '/invoices/$invoiceId',
+    '../../posts/$postId'
+  >
+  const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('params')
+
+  expectTypeOf(TestLink).parameter(0).toMatchTypeOf<{ params: unknown }>()
+
+  params.exclude<Function | boolean>().toEqualTypeOf<{ postId: string }>()
+
+  params.returns.toEqualTypeOf<{ postId: string }>()
+  params.parameter(0).toEqualTypeOf<{ invoiceId: string }>()
+})
+
+test('when navigating from a route with params to a route with an additional param', () => {
+  const TestLink = Link<
+    RouteTree,
+    '/invoices/$invoiceId',
+    './details/$detailId'
+  >
+  const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('params')
+
+  expectTypeOf(TestLink).parameter(0).toMatchTypeOf<{ params: unknown }>()
+
+  params
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ invoiceId?: string | undefined; detailId: string }>()
+
+  params.returns.toEqualTypeOf<{ invoiceId?: string; detailId: string }>()
   params.parameter(0).toEqualTypeOf<{ invoiceId: string }>()
 })
 
@@ -278,13 +322,16 @@ test('when navigating to a union of routes with params', () => {
     .exclude<Function | boolean>()
     .toEqualTypeOf<{ invoiceId: string } | { postId: string } | undefined>()
 
-  params.returns.branded.toEqualTypeOf<
-    { invoiceId: string } | { postId: string }
-  >()
+  params.returns.toEqualTypeOf<{ invoiceId: string } | { postId: string }>()
 
   params
     .parameter(0)
-    .toEqualTypeOf<{} | { invoiceId: string } | { postId: string }>()
+    .toEqualTypeOf<
+      | {}
+      | { invoiceId: string }
+      | { postId: string }
+      | { invoiceId: string; detailId: string }
+    >()
 })
 
 test('when navigating to a union of routes including the root', () => {
@@ -303,13 +350,18 @@ test('when navigating to a union of routes including the root', () => {
       { invoiceId: string } | { postId: string } | {} | undefined
     >()
 
-  params.returns.branded.toEqualTypeOf<
+  params.returns.toEqualTypeOf<
     { invoiceId: string } | { postId: string } | {}
   >()
 
   params
     .parameter(0)
-    .toEqualTypeOf<{} | { invoiceId: string } | { postId: string }>()
+    .toEqualTypeOf<
+      | {}
+      | { invoiceId: string }
+      | { postId: string }
+      | { invoiceId: string; detailId: string }
+    >()
 })
 
 test('when navigating from a route with search params to the same route', () => {
@@ -354,7 +406,7 @@ test('when navigating from a route with no search params to a route with search 
 
   expectTypeOf(TestLink).parameter(0).toMatchTypeOf<{ search: unknown }>()
   params.exclude<Function | boolean>().toEqualTypeOf<{ page: number }>()
-  params.returns.branded.toEqualTypeOf<{ page: number }>()
+  params.returns.toEqualTypeOf<{ page: number }>()
   params.parameter(0).toEqualTypeOf<{}>()
 })
 
@@ -372,7 +424,7 @@ test('when navigating to a union of routes with search params', () => {
     .exclude<Function | boolean>()
     .toEqualTypeOf<{ page: number } | {} | undefined>()
 
-  params.returns.branded.toEqualTypeOf<{ page: number } | {}>()
+  params.returns.toEqualTypeOf<{ page: number } | {}>()
 
   params.parameter(0).toEqualTypeOf<{} | { page: number } | { page?: number }>()
 })

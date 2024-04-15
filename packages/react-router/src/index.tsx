@@ -67,7 +67,6 @@ export {
   type ActiveOptions,
   type LinkOptions,
   type CheckPath,
-  type CheckPathError,
   type ResolveRelativePath,
   type UseLinkPropsOptions,
   type ActiveLinkOptions,
