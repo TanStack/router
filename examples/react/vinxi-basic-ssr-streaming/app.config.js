@@ -7,27 +7,38 @@ export default createApp({
   routers: [
     {
       name: 'public',
-      mode: 'static',
+      type: 'static',
       dir: './public',
       base: '/',
     },
     {
       name: 'ssr',
-      mode: 'handler',
+      type: 'http',
       middleware: './app/middleware.tsx',
       handler: './app/server.tsx',
       target: 'server',
-      plugins: () => [reactRefresh(), TanStackRouterVite()],
+      plugins: () => [
+        TanStackRouterVite({
+          experimental: {
+            enableCodeSplitting: true,
+          },
+        }),
+        reactRefresh(),
+      ],
     },
     {
       name: 'client',
-      mode: 'build',
+      type: 'client',
       handler: './app/client.tsx',
       target: 'browser',
       plugins: () => [
         serverFunctions.client(),
+        TanStackRouterVite({
+          experimental: {
+            enableCodeSplitting: true,
+          },
+        }),
         reactRefresh(),
-        TanStackRouterVite(),
       ],
       base: '/_build',
     },

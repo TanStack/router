@@ -60,3 +60,4 @@ gpt/db.json
 
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+.idea

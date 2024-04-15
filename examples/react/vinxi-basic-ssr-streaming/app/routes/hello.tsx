@@ -1,4 +1,5 @@
-import { createFileRoute, defer } from '@tanstack/react-router'
+import * as React from 'react'
+import { createFileRoute, defer, Await } from '@tanstack/react-router'
 
 async function getData() {
   'use server'
@@ -36,4 +37,19 @@ export const Route = createFileRoute('/hello')({
       content: `Hello ${ctx.loaderData.data}`,
     },
   ],
+  component: Hello,
 })
+
+function Hello() {
+  const { data, slowData } = Route.useLoaderData()
+
+  return (
+    <div className="p-2">
+      <p>Hello from the client!</p>
+      <p>{data}</p>
+      <React.Suspense fallback={<p>Loading...</p>}>
+        <Await promise={slowData}>{(slowData) => <p>{slowData}</p>}</Await>
+      </React.Suspense>
+    </div>
+  )
+}
