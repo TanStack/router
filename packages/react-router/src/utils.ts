@@ -82,8 +82,6 @@ export type UnionToTuple<T, TLast = LastInUnion<T>> = [T] extends [never]
 
 //
 
-export const isServer = typeof document === 'undefined'
-
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
 }
@@ -309,4 +307,35 @@ export function removeTrailingSlash(value: string): string {
 // /sample/path1/some <> /sample/path1
 export function exactPathTest(pathName1: string, pathName2: string): boolean {
   return removeTrailingSlash(pathName1) === removeTrailingSlash(pathName2)
+}
+
+export type ControlledPromise<T> = Promise<T> & {
+  resolve: (value: T) => void
+  reject: (value: any) => void
+  status: 'pending' | 'resolved' | 'rejected'
+}
+
+export function createControlledPromise<T>(onResolve?: () => void) {
+  let resolveLoadPromise!: () => void
+  let rejectLoadPromise!: (value: any) => void
+
+  const controlledPromise = new Promise<void>((resolve, reject) => {
+    resolveLoadPromise = resolve
+    rejectLoadPromise = reject
+  }) as ControlledPromise<T>
+
+  controlledPromise.status = 'pending'
+
+  controlledPromise.resolve = () => {
+    controlledPromise.status = 'resolved'
+    resolveLoadPromise()
+    onResolve?.()
+  }
+
+  controlledPromise.reject = (e) => {
+    controlledPromise.status = 'rejected'
+    rejectLoadPromise(e)
+  }
+
+  return controlledPromise
 }

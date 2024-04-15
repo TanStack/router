@@ -3,6 +3,7 @@ import { useMatch } from './Matches'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { deepEqual, exactPathTest, functionalUpdate } from './utils'
+import type { ParsedLocation } from '.'
 import type { HistoryState } from '@tanstack/history'
 import type { Trim } from './fileRoute'
 import type { AnyRoute, RootSearchSchema } from './route'
@@ -178,6 +179,7 @@ export type ToOptions<
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
 > = ToSubOptions<TRouteTree, TFrom, TTo> & {
+  _fromLocation?: ParsedLocation
   mask?: ToMaskOptions<TRouteTree, TMaskFrom, TMaskTo>
 }
 

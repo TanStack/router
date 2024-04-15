@@ -49,8 +49,9 @@ function injectorFromRouter(router: AnyRouter) {
 }
 
 // regex pattern for matching closing body and html tags
-const patternBody = /(<\/body>)/
-const patternHtml = /(<\/html>)/
+const patternBodyStart = /(<body)/
+const patternBodyEnd = /(<\/body>)/
+const patternHtmlEnd = /(<\/html>)/
 
 // regex pattern for matching closing tags
 const pattern = /(<\/[a-zA-Z][\w:.-]*?>)/g
@@ -58,6 +59,7 @@ const pattern = /(<\/[a-zA-Z][\w:.-]*?>)/g
 const textDecoder = new TextDecoder()
 
 function transformHtmlCallbacks(injector: () => Promise<string>) {
+  let bodyStarted = false
   let leftover = ''
   // If a closing tag is split across chunks, store the HTML to add after it
   // This expects that all the HTML that's added is closed properly
@@ -67,15 +69,31 @@ function transformHtmlCallbacks(injector: () => Promise<string>) {
     async transform(chunk: any, push: (chunkToPush: string) => boolean) {
       const chunkString = leftover + textDecoder.decode(chunk)
 
-      const bodyMatch = chunkString.match(patternBody)
-      const htmlMatch = chunkString.match(patternHtml)
+      const bodyStartMatch = chunkString.match(patternBodyStart)
+      const bodyEndMatch = chunkString.match(patternBodyEnd)
+      const htmlEndMatch = chunkString.match(patternHtmlEnd)
 
       try {
         const html = await injector()
+
+        if (bodyStartMatch) {
+          bodyStarted = true
+        }
+
+        if (!bodyStarted) {
+          push(chunkString)
+          leftover = ''
+          return
+        }
+
         // If a </body></html> sequence was found
-        if (bodyMatch && htmlMatch && bodyMatch.index! < htmlMatch.index!) {
-          const bodyIndex = bodyMatch.index! + bodyMatch[0].length
-          const htmlIndex = htmlMatch.index! + htmlMatch[0].length
+        if (
+          bodyEndMatch &&
+          htmlEndMatch &&
+          bodyEndMatch.index! < htmlEndMatch.index!
+        ) {
+          const bodyIndex = bodyEndMatch.index! + bodyEndMatch[0].length
+          const htmlIndex = htmlEndMatch.index! + htmlEndMatch[0].length
 
           // Add the arbitrary HTML before the closing body tag
           const processed =

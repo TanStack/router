@@ -43,8 +43,3 @@ The `RouterState` type contains all of the properties that are available on the 
 
 - Type: [`ParsedLocation`](../ParsedLocationType)
 - The location that the router has resolved and loaded.
-
-### `lastUpdated` property
-
-- Type: `number`
-- The timestamp of the last time the router was resolved.

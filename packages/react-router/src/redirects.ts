@@ -31,8 +31,10 @@ export type ResolvedRedirect<
   TMaskTo extends string = '',
 > = PickAsRequired<
   Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-  'code' | 'statusCode' | 'href' | 'headers'
->
+  'code' | 'statusCode' | 'headers'
+> & {
+  href: string
+}
 
 export function redirect<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],

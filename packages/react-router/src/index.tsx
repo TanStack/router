@@ -89,7 +89,6 @@ export {
   useLoaderData,
   isServerSideError,
   defaultDeserializeError,
-  getRenderedMatches,
   type RouteMatch,
   type AnyRouteMatch,
   type MatchRouteOptions,

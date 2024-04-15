@@ -254,14 +254,10 @@ export type UpdatableRouteOptions<TAllParams, TFullSearchSchema, TLoaderData> =
     meta?: (ctx: {
       params: TAllParams
       loaderData: TLoaderData
-    }) =>
-      | Array<JSX.IntrinsicElements['meta']>
-      | Promise<Array<JSX.IntrinsicElements['meta']>>
+    }) => Array<JSX.IntrinsicElements['meta']>
     links?: () => Array<JSX.IntrinsicElements['link']>
     scripts?: () => Array<JSX.IntrinsicElements['script']>
-    headers?: (ctx: {
-      loaderData: TLoaderData
-    }) => Promise<Record<string, string>> | Record<string, string>
+    headers?: (ctx: { loaderData: TLoaderData }) => Record<string, string>
   } & UpdatableStaticRouteOption
 
 export type UpdatableStaticRouteOption =
@@ -822,7 +818,6 @@ export class Route<
   }
 
   useMatch = <
-    // eslint-disable-next-line no-shadow
     TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
     TRouteMatchState = RouteMatch<TRouteTree, TId>,
     TSelected = TRouteMatchState,

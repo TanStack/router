@@ -1,8 +1,4 @@
-import {
-  getRenderedMatches,
-  useRouter,
-  useRouterState,
-} from '@tanstack/react-router'
+import { useRouter, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
 import { DehydrateRouter } from './DehydrateRouter'
 import { Asset } from './Asset'
@@ -13,7 +9,7 @@ export const Scripts = () => {
 
   const manifestScripts =
     (
-      router.options.context?.assets.filter((d: any) => d.tag === 'script') as
+      router.options.context?.assets?.filter((d: any) => d.tag === 'script') as
         | Array<RouterManagedTag>
         | undefined
     )?.map(({ tag, children, attrs }) => {
@@ -27,7 +23,7 @@ export const Scripts = () => {
 
   const { scripts } = useRouterState({
     select: (state) => ({
-      scripts: getRenderedMatches(state)
+      scripts: state.matches
         .map((match) => match.scripts!)
         .filter(Boolean)
         .flat(1)
@@ -42,7 +38,7 @@ export const Scripts = () => {
     }),
   })
 
-  const allScripts = [...scripts, ...manifestScripts] as Array<RouterManagedTag>
+  const allScripts = [...manifestScripts, ...scripts] as Array<RouterManagedTag>
 
   return (
     <>

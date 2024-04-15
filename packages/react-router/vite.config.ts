@@ -7,6 +7,7 @@ const config = defineConfig({
   test: {
     name: 'react-router',
     watch: false,
+    environment: 'jsdom',
   },
 })
 
