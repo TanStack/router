@@ -107,7 +107,7 @@ export default eventHandler(async (event) => {
 
   // Pipe the stream through our transforms
   const transformedStream = transforms.reduce(
-      // eslint-disable-next-line no-shadow
+    // eslint-disable-next-line no-shadow
     (stream, transform) => stream.pipe(transform as any),
     stream,
   )
