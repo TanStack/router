@@ -111,6 +111,7 @@
     "vinxi": "0.2.1"
   },
   "devDependencies": {
+    "@testing-library/react": "^15.0.2",
     "@vitejs/plugin-react": "^4.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
