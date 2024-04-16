@@ -557,7 +557,50 @@ import {
 // })
 
 describe('ssr redirects', async () => {
-  test('via throw', async () => {
+  test('via throw in beforeLoad', async () => {
+    const rootRoute = createRootRoute()
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      beforeLoad: () => {
+        throw redirect({
+          to: '/about',
+        })
+      },
+    })
+
+    const aboutRoute = createRoute({
+      path: '/about',
+      getParentRoute: () => rootRoute,
+      component: () => {
+        return 'About'
+      },
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+    })
+
+    // Mock server mode
+    router.isServer = true
+
+    await router.load()
+
+    expect(router.state.redirect).toEqual({
+      to: '/about',
+      headers: {},
+      href: '/about',
+      isRedirect: true,
+      routeId: '/',
+      routerCode: 'BEFORE_LOAD',
+      statusCode: 301,
+    })
+  })
+  test('via throw in loader', async () => {
     const rootRoute = createRootRoute()
 
     const indexRoute = createRoute({

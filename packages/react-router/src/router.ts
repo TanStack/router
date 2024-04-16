@@ -1206,7 +1206,15 @@ export class Router<
       return updated
     }
 
-    const handleMatchSpecialError = (match: AnyRouteMatch, err: any) => {
+    try {
+      await new Promise<void>((resolveAll, rejectAll) => {
+        ;(async () => {
+          try {
+            const handleRedirectAndNotFound = (
+              match: AnyRouteMatch,
+              err: any,
+            ) => {
+              if (isRedirect(err) || isNotFound(err)) {
       updateMatch(match.id, (prev) => ({
         ...prev,
         status: isRedirect(err)
@@ -1218,17 +1226,25 @@ export class Router<
         error: err,
       }))
 
-      if (!err.routeId) {
-        err.routeId = match.routeId
+                if (!(err as any).routeId) {
+                  ;(err as any).routeId = match.routeId
       }
 
+                if (isRedirect(err)) {
+                  const redirect = this.resolveRedirect(err)
+
+                  if (!preload && !this.isServer) {
+                    this.navigate({ ...(redirect as any), replace: true })
+                  }
+
+                  throw redirect
+                } else if (isNotFound(err)) {
+                  if (!preload) this.handleNotFound(matches, err)
       throw err
     }
+              }
+            }
 
-    try {
-      await new Promise<void>((resolveAll, rejectAll) => {
-        ;(async () => {
-          try {
             // Check each match middleware to see if the route can be accessed
             // eslint-disable-next-line prefer-const
             for (let [index, match] of matches.entries()) {
@@ -1236,22 +1252,16 @@ export class Router<
               const route = this.looseRoutesById[match.routeId]!
               const abortController = new AbortController()
 
-              const handleSerialError = (err: any, code: string) => {
-                err.routerCode = code
+              const handleSerialError = (err: any, routerCode: string) => {
+                err.routerCode = routerCode
                 firstBadMatchIndex = firstBadMatchIndex ?? index
-
-                if (isRedirect(err) || isNotFound(err)) {
-                  handleMatchSpecialError(match, err)
-                }
+                handleRedirectAndNotFound(match, err)
 
                 try {
                   route.options.onError?.(err)
                 } catch (errorHandlerErr) {
                   err = errorHandlerErr
-
-                  if (isRedirect(err) || isNotFound(err)) {
-                    handleMatchSpecialError(match, errorHandlerErr)
-                  }
+                  handleRedirectAndNotFound(match, err)
                 }
 
                 matches[index] = match = {
@@ -1355,12 +1365,6 @@ export class Router<
               validResolvedMatches.map(async (match, index) => {
                 const parentMatchPromise = matchPromises[index - 1]
                 const route = this.looseRoutesById[match.routeId]!
-
-                const handleError = (err: any) => {
-                  if (isRedirect(err) || isNotFound(err)) {
-                    handleMatchSpecialError(match, err)
-                  }
-                }
 
                 const loaderContext: LoaderFnContext = {
                   params: match.params,
@@ -1469,7 +1473,7 @@ export class Router<
                     if ((latestPromise = checkLatest()))
                       return await latestPromise
 
-                    handleError(loaderData)
+                    handleRedirectAndNotFound(match, loaderData)
 
                     if ((latestPromise = checkLatest()))
                       return await latestPromise
@@ -1506,13 +1510,13 @@ export class Router<
                     if ((latestPromise = checkLatest()))
                       return await latestPromise
 
-                    handleError(e)
+                    handleRedirectAndNotFound(match, e)
 
                     try {
                       route.options.onError?.(e)
                     } catch (onErrorError) {
                       error = onErrorError
-                      handleError(onErrorError)
+                      handleRedirectAndNotFound(match, onErrorError)
                     }
 
                     matches[index] = match = updateMatch(match.id, (prev) => ({
@@ -1561,27 +1565,13 @@ export class Router<
                     !this.state.matches.find((d) => d.id === match.id),
                 }
 
-                const fetchWithRedirect = async () => {
+                const fetchWithRedirectAndNotFound = async () => {
                   try {
                     await fetch()
                   } catch (err) {
                     if ((latestPromise = checkLatest()))
                       return await latestPromise
-
-                    if (isRedirect(err)) {
-                      const redirect = this.resolveRedirect(err)
-
-                      if (!preload && !this.isServer) {
-                        this.navigate({ ...(redirect as any), replace: true })
-                      }
-
-                      throw redirect
-                    } else if (isNotFound(err)) {
-                      if (!preload) this.handleNotFound(matches, err)
-                      throw err
-                    }
-
-                    handleError(err)
+                    handleRedirectAndNotFound(match, err)
                   }
                 }
 
@@ -1590,12 +1580,12 @@ export class Router<
                   match.status === 'success' &&
                   (match.invalid || (shouldReload ?? age > staleAge))
                 ) {
-                  fetchWithRedirect()
+                  fetchWithRedirectAndNotFound()
                   return
                 }
 
                 if (match.status !== 'success') {
-                  await fetchWithRedirect()
+                  await fetchWithRedirectAndNotFound()
                 }
               }),
             )
