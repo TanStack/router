@@ -1,13 +1,14 @@
+import fs from 'fs'
+import path from 'path'
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackBuildConfig } from '@tanstack/config/build'
 import replace from '@rollup/plugin-replace'
 import react from '@vitejs/plugin-react'
-import fs from 'fs'
-import path from 'path'
 
 const config = defineConfig({
   plugins: [
     react(),
+    // @ts-ignore
     replace({
       'import.meta.env': '__import__meta__env__',
     }),
@@ -35,6 +36,7 @@ const config = defineConfig({
 })
 
 export default mergeConfig(
+  // @ts-ignore
   config,
   tanstackBuildConfig({
     entry: [
