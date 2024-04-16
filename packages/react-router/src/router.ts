@@ -719,7 +719,6 @@ export class Router<
       // which is used to uniquely identify the route match in state
 
       const parentMatch = matches[index - 1]
-      const isLast = index === matchedRoutes.length - 1
 
       const [preMatchSearch, searchError]: [Record<string, any>, any] = (() => {
         // Validate the search params and stabilize them

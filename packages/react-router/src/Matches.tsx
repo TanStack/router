@@ -1,18 +1,13 @@
 import * as React from 'react'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
-import { set } from 'zod'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { createControlledPromise, pick } from './utils'
 import { CatchNotFound, DefaultGlobalNotFound, isNotFound } from './not-found'
 import { isRedirect } from './redirects'
-import {
-  type AnyRouter,
-  type RegisteredRouter,
-  type RouterState,
-} from './router'
+import { type AnyRouter, type RegisteredRouter } from './router'
 import type { ResolveRelativePath, ToOptions } from './link'
 import type {
   AnyRoute,
