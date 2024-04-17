@@ -1,5 +1,5 @@
 import { useMatch } from './Matches'
-import type { RouteMatch } from './Matches'
+import type { MakeRouteMatch } from './Matches'
 import type { AnyRoute } from './route'
 import type { RouteById, RouteIds } from './routeInfo'
 import type { RegisteredRouter } from './router'
@@ -17,7 +17,7 @@ export function useRouteContext<
 ): TSelected {
   return useMatch({
     ...(opts as any),
-    select: (match: RouteMatch) =>
-      opts.select ? opts.select(match.context as TRouteContext) : match.context,
+    select: (match: MakeRouteMatch<TRouteTree, TFrom>) =>
+      opts.select ? opts.select(match.context) : match.context,
   })
 }

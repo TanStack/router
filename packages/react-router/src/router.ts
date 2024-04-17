@@ -60,7 +60,12 @@ import type {
   Updater,
 } from './utils'
 import type { RouteComponent } from './route'
-import type { AnyRouteMatch, MatchRouteOptions, RouteMatch } from './Matches'
+import type {
+  AnyRouteMatch,
+  MakeRouteMatch,
+  MatchRouteOptions,
+  RouteMatch,
+} from './Matches'
 import type { ParsedLocation } from './location'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type {
@@ -164,13 +169,16 @@ export interface RouterErrorSerializer<TSerializedError> {
   deserialize: (err: TSerializedError) => unknown
 }
 
-export interface RouterState<TRouteTree extends AnyRoute = AnyRoute> {
+export interface RouterState<
+  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteMatch extends MakeRouteMatch<TRouteTree> = MakeRouteMatch<TRouteTree>,
+> {
   status: 'pending' | 'idle'
   isLoading: boolean
   isTransitioning: boolean
-  matches: Array<RouteMatch<TRouteTree>>
-  pendingMatches?: Array<RouteMatch<TRouteTree>>
-  cachedMatches: Array<RouteMatch<TRouteTree>>
+  matches: Array<TRouteMatch>
+  pendingMatches?: Array<TRouteMatch>
+  cachedMatches: Array<TRouteMatch>
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
   statusCode: number
@@ -202,7 +210,7 @@ export interface DehydratedRouterState {
 }
 
 export type DehydratedRouteMatch = Pick<
-  RouteMatch,
+  MakeRouteMatch,
   'id' | 'status' | 'updatedAt' | 'loaderData'
 >
 
@@ -607,12 +615,11 @@ export class Router<
     return this.routesById as Record<string, AnyRoute>
   }
 
-  // eslint-disable-next-line no-shadow
-  matchRoutes = <TRouteTree extends AnyRoute>(
+  matchRoutes = (
     pathname: string,
     locationSearch: AnySearchSchema,
     opts?: { preload?: boolean; throwOnError?: boolean },
-  ): Array<RouteMatch<TRouteTree>> => {
+  ): Array<AnyRouteMatch> => {
     let routeParams: Record<string, string> = {}
 
     const foundRoute = this.flatRoutes.find((route) => {
@@ -880,7 +887,7 @@ export class Router<
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
       } = {},
-      matches?: Array<AnyRouteMatch>,
+      matches?: Array<MakeRouteMatch<TRouteTree>>,
     ): ParsedLocation => {
       const fromPath = dest.from || this.latestLocation.pathname
       let fromSearch = dest._fromLocation?.search || this.latestLocation.search
@@ -1171,7 +1178,7 @@ export class Router<
     location: ParsedLocation
     matches: Array<AnyRouteMatch>
     preload?: boolean
-  }): Promise<Array<RouteMatch>> => {
+  }): Promise<Array<MakeRouteMatch>> => {
     let latestPromise
     let firstBadMatchIndex: number | undefined
 
@@ -1606,7 +1613,7 @@ export class Router<
   }
 
   invalidate = () => {
-    const invalidate = (d: RouteMatch<TRouteTree>) => ({
+    const invalidate = (d: MakeRouteMatch<TRouteTree>) => ({
       ...d,
       invalid: true,
       ...(d.status === 'error' ? ({ status: 'pending' } as const) : {}),
@@ -1651,7 +1658,7 @@ export class Router<
           pathChanged: pathDidChange,
         })
 
-        let pendingMatches!: Array<RouteMatch<any, any>>
+        let pendingMatches!: Array<AnyRouteMatch>
         const previousMatches = this.state.matches
 
         this.__store.batch(() => {
