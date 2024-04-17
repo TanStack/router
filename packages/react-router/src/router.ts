@@ -1343,15 +1343,15 @@ export class Router<
                   ...beforeLoadContext,
                 }
 
-                matches[index] = match = {
-                  ...match,
+                matches[index] = match = updateMatch(match.id, (prev) => ({
+                  ...prev,
                   routeContext: replaceEqualDeep(
                     match.routeContext,
                     beforeLoadContext,
                   ),
                   context: replaceEqualDeep(match.context, context),
                   abortController,
-                }
+                }))
               } catch (err) {
                 handleSerialError(err, 'BEFORE_LOAD')
                 break
