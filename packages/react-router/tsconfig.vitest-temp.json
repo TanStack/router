@@ -10,11 +10,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ES2022"
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "module": "ES2022",
     "moduleResolution": "Bundler",
     "noEmit": true,
@@ -31,9 +27,5 @@
     "incremental": true,
     "tsBuildInfoFile": "/Users/tannerlinsley/GitHub/router/node_modules/.pnpm/vitest@1.5.0_@types+node@20.11.10/node_modules/vitest/dist/vendor/tsconfig.tmp.tsbuildinfo"
   },
-  "include": [
-    "src",
-    "tests",
-    "vite.config.ts"
-  ]
+  "include": ["src", "tests", "vite.config.ts"]
 }
