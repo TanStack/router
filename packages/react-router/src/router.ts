@@ -1355,6 +1355,8 @@ export class Router<
               } catch (err) {
                 handleSerialError(err, 'BEFORE_LOAD')
                 break
+              } finally {
+                updateMatch(match.id, () => match)
               }
             }
 

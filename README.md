@@ -37,7 +37,6 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
   - Search Params
   - Path Params
   - Loaders
-  - Actions
 - 1st Class Search Params
   - Schemas + Validation
   - Parsing + Serialization
