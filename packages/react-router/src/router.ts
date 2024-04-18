@@ -1215,20 +1215,20 @@ export class Router<
               err: any,
             ) => {
               if (isRedirect(err) || isNotFound(err)) {
-      updateMatch(match.id, (prev) => ({
-        ...prev,
-        status: isRedirect(err)
-          ? 'redirected'
-          : isNotFound(err)
-            ? 'notFound'
-            : 'error',
-        isFetching: false,
-        error: err,
-      }))
+                updateMatch(match.id, (prev) => ({
+                  ...prev,
+                  status: isRedirect(err)
+                    ? 'redirected'
+                    : isNotFound(err)
+                      ? 'notFound'
+                      : 'error',
+                  isFetching: false,
+                  error: err,
+                }))
 
                 if (!(err as any).routeId) {
                   ;(err as any).routeId = match.routeId
-      }
+                }
 
                 if (isRedirect(err)) {
                   const redirect = this.resolveRedirect(err)
@@ -1240,8 +1240,8 @@ export class Router<
                   throw redirect
                 } else if (isNotFound(err)) {
                   if (!preload) this.handleNotFound(matches, err)
-      throw err
-    }
+                  throw err
+                }
               }
             }
 

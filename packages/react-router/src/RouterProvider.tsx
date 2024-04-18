@@ -89,10 +89,10 @@ export function RouterProvider<
 
   const provider = (
     <React.Suspense fallback={null}>
-    <routerContext.Provider value={router}>
-      {matches}
-      <Transitioner />
-    </routerContext.Provider>
+      <routerContext.Provider value={router}>
+        {matches}
+        <Transitioner />
+      </routerContext.Provider>
     </React.Suspense>
   )
 
