@@ -109,7 +109,6 @@ Commits a new location object to the browser history.
     location: ParsedLocation & {
       replace?: boolean
       resetScroll?: boolean
-      startTransition?: boolean
     },
   ) => Promise<void>
   ```
@@ -128,11 +127,6 @@ Commits a new location object to the browser history.
     - Optional
     - Defaults to `true` so that the scroll position will be reset to 0,0 after the location is committed to the browser history.
     - If `false`, the scroll position will not be reset to 0,0 after the location is committed to history.
-  - `startTransition`
-    - Type: `boolean`
-    - Optional
-    - Defaults to `true`, so that the router will apply the commit wrapped in a React `startTransition` call.
-    - If `false`, the router will not wrap the commit in a React `startTransition` call.
 
 ### `.navigate` method
 

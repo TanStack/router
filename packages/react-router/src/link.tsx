@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { flushSync } from 'react-dom'
 import { useMatch } from './Matches'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -168,8 +169,10 @@ export type NavigateOptions<
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
   resetScroll?: boolean
-  // If set to `true`, the link's underlying navigate() call will be wrapped in a `React.startTransition` call. Defaults to `true`.
+  /** @deprecated All navigations now use startTransition under the hood */
   startTransition?: boolean
+  // if set to `true`, the router will wrap the resulting navigation in a document.startViewTransition() call.
+  viewTransition?: boolean
 }
 
 export type ToOptions<
@@ -494,6 +497,7 @@ export function useLinkProps<
     strict: false,
     select: (s) => s.pathname,
   })
+  const [isTransitioning, setIsTransitioning] = React.useState(false)
 
   const {
     // custom props
@@ -511,6 +515,7 @@ export function useLinkProps<
     replace,
     startTransition,
     resetScroll,
+    viewTransition,
     // element props
     children,
     target,
@@ -602,17 +607,30 @@ export function useLinkProps<
     ) {
       e.preventDefault()
 
+      flushSync(() => {
+        setIsTransitioning(true)
+      })
+
+      const unsub = router.subscribe('onResolved', () => {
+        unsub()
+        setIsTransitioning(false)
+      })
+
       // All is well? Navigate!
-      router.commitLocation({ ...next, replace, resetScroll, startTransition })
+      router.commitLocation({
+        ...next,
+        replace,
+        resetScroll,
+        startTransition,
+        viewTransition,
+      })
     }
   }
 
   const doPreload = () => {
-    React.startTransition(() => {
-      router.preloadRoute(dest as any).catch((err) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
+    router.preloadRoute(dest as any).catch((err) => {
+      console.warn(err)
+      console.warn(preloadWarning)
     })
   }
 
@@ -707,6 +725,7 @@ export function useLinkProps<
       'aria-disabled': true,
     }),
     ...(isActive && { 'data-status': 'active', 'aria-current': 'page' }),
+    ...(isTransitioning && { 'data-transitioning': 'transitioning' }),
   }
 }
 
@@ -746,7 +765,10 @@ export type LinkProps<
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | React.ReactNode
-    | ((state: { isActive: boolean }) => React.ReactNode)
+    | ((state: {
+        isActive: boolean
+        isTransitioning: boolean
+      }) => React.ReactNode)
 }
 
 type LinkComponentProps<TComp> = React.PropsWithoutRef<

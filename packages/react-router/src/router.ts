@@ -53,6 +53,7 @@ import type {
   RoutesByPath,
 } from './routeInfo'
 import type {
+  ControlledPromise,
   NonNullableUpdater,
   PickAsRequired,
   Timeout,
@@ -129,6 +130,7 @@ export interface RouterOptions<
   defaultStaleTime?: number
   defaultPreloadStaleTime?: number
   defaultPreloadGcTime?: number
+  defaultViewTransition?: boolean
   notFoundMode?: 'root' | 'fuzzy'
   defaultGcTime?: number
   caseSensitive?: boolean
@@ -270,11 +272,13 @@ export class Router<
     Math.random() * 10000000,
   )}`
   resetNextScroll = true
+  shouldViewTransition?: true = undefined
   navigateTimeout: Timeout | null = null
   latestLoadPromise: Promise<void> = Promise.resolve()
   subscribers = new Set<RouterListener<RouterEvent>>()
   injectedHtml: Array<InjectedHtmlEntry> = []
   dehydratedData?: TDehydrated
+  viewTransitionPromise?: ControlledPromise<true>
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -388,10 +392,6 @@ export class Router<
         onUpdate: () => {
           this.__store.state = {
             ...this.state,
-            status:
-              this.state.isTransitioning || this.state.isLoading
-                ? 'pending'
-                : 'idle',
             cachedMatches: this.state.cachedMatches.filter(
               (d) => !['redirected'].includes(d.status),
             ),
@@ -1063,6 +1063,7 @@ export class Router<
 
   commitLocation = async ({
     startTransition,
+    viewTransition,
     ...next
   }: ParsedLocation & CommitLocationOptions) => {
     if (this.navigateTimeout) clearTimeout(this.navigateTimeout)
@@ -1103,18 +1104,14 @@ export class Router<
         }
       }
 
-      const apply = () => {
-        this.history[next.replace ? 'replace' : 'push'](
-          nextHistory.href,
-          nextHistory.state,
-        )
+      if (viewTransition) {
+        this.shouldViewTransition = true
       }
 
-      if (startTransition ?? true) {
-        this.startReactTransition(apply)
-      } else {
-        apply()
-      }
+      this.history[next.replace ? 'replace' : 'push'](
+        nextHistory.href,
+        nextHistory.state,
+      )
     }
 
     this.resetNextScroll = next.resetScroll ?? true
@@ -1638,7 +1635,8 @@ export class Router<
     this.latestLoadPromise = promise
 
     let latestPromise: Promise<void> | undefined | null
-    ;(async () => {
+
+    this.startReactTransition(async () => {
       try {
         const next = this.latestLocation
         const prevLocation = this.state.resolvedLocation
@@ -1667,6 +1665,7 @@ export class Router<
           // If a cached moved to pendingMatches, remove it from cachedMatches
           this.__store.setState((s) => ({
             ...s,
+            status: 'pending',
             isLoading: true,
             location: next,
             pendingMatches,
@@ -1717,50 +1716,65 @@ export class Router<
           pendingMatches.find((d) => d.id === match.id),
         )
 
-        // Commit the pending matches. If a previous match was
-        // removed, place it in the cachedMatches
-        this.__store.batch(() => {
-          this.__store.setState((s) => ({
-            ...s,
-            isLoading: false,
-            matches: s.pendingMatches!,
-            pendingMatches: undefined,
-            cachedMatches: [
-              ...s.cachedMatches,
-              ...exitingMatches.filter((d) => d.status !== 'error'),
-            ],
-            statusCode:
-              redirect?.statusCode || notFound
-                ? 404
-                : s.matches.some((d) => d.status === 'error')
-                  ? 500
-                  : 200,
-            redirect,
-          }))
-          this.cleanCache()
-        })
+        // Determine if we should start a view transition from the navigation
+        // or from the router default
+        const shouldViewTransition =
+          this.shouldViewTransition ?? this.options.defaultViewTransition
 
-        //
-        ;(
-          [
-            [exitingMatches, 'onLeave'],
-            [enteringMatches, 'onEnter'],
-            [stayingMatches, 'onStay'],
-          ] as const
-        ).forEach(([matches, hook]) => {
-          matches.forEach((match) => {
-            this.looseRoutesById[match.routeId]!.options[hook]?.(match)
+        // Reset the view transition flag
+        delete this.shouldViewTransition
+
+        const apply = () => {
+          // this.viewTransitionPromise = createControlledPromise<true>()
+
+          // Commit the pending matches. If a previous match was
+          // removed, place it in the cachedMatches
+          this.__store.batch(() => {
+            this.__store.setState((s) => ({
+              ...s,
+              isLoading: false,
+              matches: s.pendingMatches!,
+              pendingMatches: undefined,
+              cachedMatches: [
+                ...s.cachedMatches,
+                ...exitingMatches.filter((d) => d.status !== 'error'),
+              ],
+              statusCode:
+                redirect?.statusCode || notFound
+                  ? 404
+                  : s.matches.some((d) => d.status === 'error')
+                    ? 500
+                    : 200,
+              redirect,
+            }))
+            this.cleanCache()
           })
-        })
 
-        this.emit({
-          type: 'onLoad',
-          fromLocation: prevLocation,
-          toLocation: next,
-          pathChanged: pathDidChange,
-        })
+          //
+          ;(
+            [
+              [exitingMatches, 'onLeave'],
+              [enteringMatches, 'onEnter'],
+              [stayingMatches, 'onStay'],
+            ] as const
+          ).forEach(([matches, hook]) => {
+            matches.forEach((match) => {
+              this.looseRoutesById[match.routeId]!.options[hook]?.(match)
+            })
+          })
 
-        resolveLoad()
+          resolveLoad()
+
+          // return this.viewTransitionPromise
+        }
+
+        // Attempt to start a view transition (or just apply the changes if we can't)
+        ;(shouldViewTransition && typeof document !== 'undefined'
+          ? document
+          : undefined
+        )
+          // @ts-expect-error
+          ?.startViewTransition?.(apply) || apply()
       } catch (err) {
         // Only apply the latest transition
         if ((latestPromise = this.checkLatest(promise))) {
@@ -1771,7 +1785,7 @@ export class Router<
 
         rejectLoad(err)
       }
-    })()
+    })
 
     return this.latestLoadPromise
   }

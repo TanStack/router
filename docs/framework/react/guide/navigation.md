@@ -132,8 +132,6 @@ export type LinkProps<
   inactiveProps?:
     | React.AnchorHTMLAttributes<HTMLAnchorElement>
     | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
-  // If set to `true`, the link's underlying navigate() call will be wrapped in a `React.startTransition` call. Defaults to `true`.
-  startTransition?: boolean
 }
 ```
 

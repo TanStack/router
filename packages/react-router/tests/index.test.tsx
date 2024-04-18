@@ -600,6 +600,7 @@ describe('ssr redirects', async () => {
       statusCode: 301,
     })
   })
+
   test('via throw in loader', async () => {
     const rootRoute = createRootRoute()
 

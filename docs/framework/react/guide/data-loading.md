@@ -464,8 +464,6 @@ export const Route = createFileRoute('/posts')({
 })
 ```
 
-> ⚠️ Note: If you are _not_ using a `pendingComponent`, you will need to wrap the above function calls into `startTransition` from `React`.
-
 ### Using the default `ErrorComponent`
 
 TanStack Router provides a default `ErrorComponent` that is rendered when an error occurs during the route loading or rendering lifecycle. If you choose to override your routes' error components, it's still wise to always fall back to rendering any uncaught errors with the default `ErrorComponent`:
