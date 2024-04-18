@@ -24,17 +24,26 @@ export default eventHandler(async (event) => {
 
   // Get assets for the server/client
   const clientManifest = getManifest('client')
+
   const assets = (
     await clientManifest.inputs[clientManifest.handler].assets()
   ).filter((d: any) => {
     return !d.children?.includes('nuxt-devtools')
   }) as any
+
   if (import.meta.env.DEV) {
     assets.push(
       {
         tag: 'script',
         attrs: {},
-        children: getHydrationOverlayScriptContext(),
+        children: `
+        // remove all script tags with src containing chrome-extension
+        document.querySelectorAll('script').forEach((script) => {
+          if (script.src.includes('chrome-extension')) {
+            script.remove()
+          }
+        })
+        `,
       },
       {
         tag: 'script',
@@ -49,8 +58,17 @@ export default eventHandler(async (event) => {
       src: clientManifest.inputs[clientManifest.handler].output.path,
       type: 'module',
       async: true,
+      suppressHydrationWarning: true,
     },
   })
+
+  if (import.meta.env.DEV) {
+    assets.push({
+      tag: 'script',
+      attrs: {},
+      children: getHydrationOverlayScriptContext(),
+    })
+  }
 
   // Create a router
   const router = createRouter()
