@@ -70,7 +70,7 @@ export function createHistory(opts: {
   const subscribers = new Set<() => void>()
   let blockers: Array<BlockerFn> = []
 
-  const onUpdate = () => {
+  const notify = () => {
     location = opts.getLocation()
     subscribers.forEach((subscriber) => subscriber())
   }
@@ -80,7 +80,7 @@ export function createHistory(opts: {
       for (const blocker of blockers) {
         const allowed = await blocker()
         if (!allowed) {
-          opts.onBlocked?.(onUpdate)
+          opts.onBlocked?.(notify)
           return
         }
       }
@@ -104,32 +104,32 @@ export function createHistory(opts: {
       state = assignKey(state)
       tryNavigation(() => {
         opts.pushState(path, state)
-        onUpdate()
+        notify()
       })
     },
     replace: (path: string, state: any) => {
       state = assignKey(state)
       tryNavigation(() => {
         opts.replaceState(path, state)
-        onUpdate()
+        notify()
       })
     },
     go: (index) => {
       tryNavigation(() => {
         opts.go(index)
-        onUpdate()
+        notify()
       })
     },
     back: () => {
       tryNavigation(() => {
         opts.back()
-        onUpdate()
+        notify()
       })
     },
     forward: () => {
       tryNavigation(() => {
         opts.forward()
-        onUpdate()
+        notify()
       })
     },
     createHref: (str) => opts.createHref(str),
@@ -152,7 +152,7 @@ export function createHistory(opts: {
     },
     flush: () => opts.flush?.(),
     destroy: () => opts.destroy?.(),
-    notify: onUpdate,
+    notify,
   }
 }
 
@@ -191,6 +191,9 @@ export function createBrowserHistory(opts?: {
     opts?.window ??
     (typeof document !== 'undefined' ? window : (undefined as any))
 
+  const originalPushState = win.history.pushState
+  const originalReplaceState = win.history.replaceState
+
   const createHref = opts?.createHref ?? ((path) => path)
   const parseLocation =
     opts?.parseLocation ??
@@ -216,39 +219,24 @@ export function createBrowserHistory(opts?: {
         isPush: boolean
       }
 
-  // Because we are proactively updating the location
-  // in memory before actually updating the browser history,
-  // we need to track when we are doing this so we don't
-  // notify subscribers twice on the last update.
-  let tracking = true
-
   // We need to track the current scheduled update to prevent
   // multiple updates from being scheduled at the same time.
   let scheduled: Promise<void> | undefined
 
-  // This function is a wrapper to prevent any of the callback's
-  // side effects from causing a subscriber notification
-  const untrack = (fn: () => void) => {
-    tracking = false
-    fn()
-    tracking = true
-  }
-
   // This function flushes the next update to the browser history
   const flush = () => {
-    // Do not notify subscribers about this push/replace call
-    untrack(() => {
-      if (!next) return
-      win.history[next.isPush ? 'pushState' : 'replaceState'](
-        next.state,
-        '',
-        next.href,
-      )
-      // Reset the nextIsPush flag and clear the scheduled update
-      next = undefined
-      scheduled = undefined
-      rollbackLocation = undefined
-    })
+    if (!next) {
+      return
+    }
+
+    // We use the original push/replace calls here to ensure that
+    // we do not notify subscribers about this push/replace call
+    const caller = next.isPush ? originalPushState : originalReplaceState
+    caller.call(win.history, next.state, '', next.href)
+    // Reset the nextIsPush flag and clear the scheduled update
+    next = undefined
+    scheduled = undefined
+    rollbackLocation = undefined
   }
 
   // This function queues up a call to update the browser history
@@ -284,9 +272,6 @@ export function createBrowserHistory(opts?: {
     history.notify()
   }
 
-  const originalPushState = win.history.pushState
-  const originalReplaceState = win.history.replaceState
-
   const history = createHistory({
     getLocation,
     pushState: (href, state) => queueHistoryAction('push', href, state),
@@ -318,13 +303,13 @@ export function createBrowserHistory(opts?: {
 
   win.history.pushState = function (...args: Array<any>) {
     const res = originalPushState.apply(win.history, args)
-    if (tracking) history.notify()
+    onPushPop()
     return res
   }
 
   win.history.replaceState = function (...args: Array<any>) {
     const res = originalReplaceState.apply(win.history, args)
-    if (tracking) history.notify()
+    onPushPop()
     return res
   }
 
