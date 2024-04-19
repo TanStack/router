@@ -360,12 +360,15 @@ export function createMemoryHistory(
       entries[index] = path
     },
     back: () => {
+      currentState.key = createRandomKey()
       index--
     },
     forward: () => {
+      currentState.key = createRandomKey()
       index = Math.min(index + 1, entries.length - 1)
     },
     go: (n) => {
+      currentState.key = createRandomKey()
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
     createHref: (path) => path,
