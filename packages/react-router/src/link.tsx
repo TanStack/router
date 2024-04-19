@@ -537,8 +537,8 @@ export function useLinkProps<
   // null for LinkUtils
 
   const dest = {
-    ...(options.to && { from: matchPathname }),
     ...options,
+    ...(options.to && { from: matchPathname }),
   }
 
   let type: 'internal' | 'external' = 'internal'
