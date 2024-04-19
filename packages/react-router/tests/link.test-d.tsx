@@ -79,22 +79,14 @@ test('when navigating to the root', () => {
       | './'
       | ''
       | '/'
-      | '/invoices'
       | '/invoices/'
-      | '/invoices/$invoiceId'
-      | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/edit'
-      | '/posts'
       | '/posts/'
       | '/posts/$postId'
-      | 'invoices'
       | 'invoices/'
-      | 'invoices/$invoiceId'
-      | 'invoices/$invoiceId/details'
       | 'invoices/$invoiceId/details/$detailId'
       | 'invoices/$invoiceId/edit'
-      | 'posts'
       | 'posts/'
       | 'posts/$postId'
       | undefined
@@ -110,13 +102,9 @@ test('when navigating from a route with no params and no search to the root', ()
       | './'
       | '/'
       | ''
-      | '/invoices'
       | '/invoices/'
-      | '/invoices/$invoiceId'
-      | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/edit'
       | '/invoices/$invoiceId/details/$detailId'
-      | '/posts'
       | '/posts/'
       | '/posts/$postId'
       | '$postId'
@@ -136,16 +124,35 @@ test('when navigating from a route with no params and no search to the parent ro
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | '../posts'
       | '../posts/'
       | '../posts/$postId'
-      | '../invoices/$invoiceId'
       | '../invoices/$invoiceId/edit'
-      | '../invoices/$invoiceId/details'
       | '../invoices/$invoiceId/details/$detailId'
-      | '../invoices'
       | '../invoices/'
       | '../'
+      | undefined
+    >()
+})
+
+test('cannot navigate to a branch', () => {
+  expectTypeOf(Link<RouteTree, string, '/invoices/invoiceId'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | ''
+      | '../'
+      | './'
+      | '/'
+      | '/invoices/'
+      | '/invoices/$invoiceId/details/$detailId'
+      | '/invoices/$invoiceId/edit'
+      | '/posts/'
+      | '/posts/$postId'
+      | 'invoices/'
+      | 'invoices/$invoiceId/details/$detailId'
+      | 'invoices/$invoiceId/edit'
+      | 'posts/'
+      | 'posts/$postId'
       | undefined
     >()
 })
@@ -248,7 +255,7 @@ test('when navigating to a route with params', () => {
 })
 
 test('when navigating from a route with no params to a route with params', () => {
-  const TestLink = Link<RouteTree, '/invoices/', './$invoiceId/'>
+  const TestLink = Link<RouteTree, '/invoices/', './$invoiceId/edit'>
 
   expectTypeOf(TestLink).parameter(0).toMatchTypeOf<{ params: unknown }>()
 

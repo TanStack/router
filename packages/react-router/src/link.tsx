@@ -10,6 +10,7 @@ import type { Trim } from './fileRoute'
 import type { AnyRoute, RootSearchSchema } from './route'
 import type {
   RouteByPath,
+  RouteLeaves,
   RoutePaths,
   RoutePathsAutoComplete,
 } from './routeInfo'
@@ -88,8 +89,8 @@ export type RemoveLeadingSlashes<T> = T extends `/${infer R}`
 
 export type ResolvePaths<TRouteTree extends AnyRoute, TSearchPath> =
   RouteByPath<TRouteTree, RemoveTrailingSlashes<TSearchPath>> extends never
-    ? RoutePaths<TRouteTree>
-    : RoutePaths<RouteByPath<TRouteTree, RemoveTrailingSlashes<TSearchPath>>>
+    ? RouteLeaves<TRouteTree>
+    : RouteLeaves<RouteByPath<TRouteTree, RemoveTrailingSlashes<TSearchPath>>>
 
 export type SearchPaths<
   TRouteTree extends AnyRoute,
@@ -137,7 +138,7 @@ export type AbsolutePathAutoComplete<
           ? never
           : './')
   | (string extends TFrom ? '../' : TFrom extends `/` ? never : '../')
-  | RoutePaths<TRouteTree>
+  | RouteLeaves<TRouteTree>
   | (TFrom extends '/' ? never : SearchPaths<TRouteTree, TFrom>)
 
 export type RelativeToPathAutoComplete<
@@ -432,7 +433,15 @@ export type LinkOptions<
 }
 
 export type CheckPath<TRouteTree extends AnyRoute, TPass, TFail, TFrom, TTo> =
-  ResolveRoute<TRouteTree, TFrom, TTo> extends never ? TFail : TPass
+  ResolveRoute<TRouteTree, TFrom, TTo> extends infer TRoute extends AnyRoute
+    ? [TRoute] extends [never]
+      ? TFail
+      : string extends TTo
+        ? TPass
+        : unknown extends TRoute['children']
+          ? TPass
+          : TFail
+    : TFail
 
 export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
   ? TTo extends string
