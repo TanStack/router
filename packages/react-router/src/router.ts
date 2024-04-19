@@ -919,6 +919,10 @@ export class Router<
           })
       }
 
+      Object.keys(nextParams).forEach((key) => {
+        nextParams[key] = encodeURI(nextParams[key])
+      })
+
       pathname = interpolatePath({
         path: pathname,
         params: nextParams ?? {},
