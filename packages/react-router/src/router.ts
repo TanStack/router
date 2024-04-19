@@ -925,6 +925,11 @@ export class Router<
           })
       }
 
+      // encodeURI all params so the generated href is valid and stable
+      Object.keys(nextParams).forEach((key) => {
+        nextParams[key] = encodeURI(nextParams[key])
+      })
+
       pathname = interpolatePath({
         path: pathname,
         params: nextParams ?? {},
