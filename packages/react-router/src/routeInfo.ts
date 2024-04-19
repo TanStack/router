@@ -1,13 +1,22 @@
 import type { AnyRoute } from './route'
-import type { Expand, UnionToIntersection, UnionToTuple } from './utils'
+import type { UnionToIntersection, UnionToTuple } from './utils'
 
 export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
   types: { children: infer TChildren }
 }
-  ? TChildren extends ReadonlyArray<unknown>
+  ? TChildren extends ReadonlyArray<any>
     ? ParseRoute<TChildren[number], TAcc | TChildren[number]>
     : TAcc
   : TAcc
+
+export type RouteLeaves<TRouteTree> =
+  ParseRoute<TRouteTree> extends infer TRoute extends AnyRoute
+    ? TRoute extends any
+      ? TRoute['types']['children'] extends ReadonlyArray<any>
+        ? never
+        : TRoute['fullPath']
+      : never
+    : never
 
 export type RoutesById<TRouteTree extends AnyRoute> = {
   [K in ParseRoute<TRouteTree> as K['id']]: K
