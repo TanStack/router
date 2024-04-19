@@ -171,7 +171,7 @@ export interface RouterErrorSerializer<TSerializedError> {
 
 export interface RouterState<
   TRouteTree extends AnyRoute = AnyRoute,
-  TRouteMatch extends MakeRouteMatch<TRouteTree> = MakeRouteMatch<TRouteTree>,
+  TRouteMatch = MakeRouteMatch<TRouteTree>,
 > {
   status: 'pending' | 'idle'
   isLoading: boolean

@@ -71,18 +71,15 @@ export interface RouteMatch<
 
 export type MakeRouteMatch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
+  TRouteId = ParseRoute<TRouteTree>['id'],
   TReturnIntersection extends boolean = false,
-  TTypes extends RouteById<TRouteTree, TRouteId>['types'] = RouteById<
-    TRouteTree,
-    TRouteId
-  >['types'],
+  TTypes extends AnyRoute['types'] = RouteById<TRouteTree, TRouteId>['types'],
   TAllParams = TReturnIntersection extends false
     ? TTypes['allParams']
-    : Expand<Partial<AllParams<TRouteTree>>>,
+    : Partial<AllParams<TRouteTree>>,
   TFullSearchSchema = TReturnIntersection extends false
     ? TTypes['fullSearchSchema']
-    : Expand<Partial<FullSearchSchema<TRouteTree>>>,
+    : Partial<FullSearchSchema<TRouteTree>>,
   TLoaderData = TTypes['loaderData'],
   TAllContext = TTypes['allContext'],
   TRouteContext = TTypes['routeContext'],
