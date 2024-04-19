@@ -417,3 +417,56 @@ test('when creating a child route with context, search, params and beforeLoad', 
       }>(),
   })
 })
+
+test('when creating a child route with context, search, params, loader, loaderDeps and onEnter, onStay, onLeave', () => {
+  const rootRoute = createRootRouteWithContext<{ userId: string }>()()
+
+  const invoicesRoute = createRoute({
+    path: 'invoices',
+    getParentRoute: () => rootRoute,
+    validateSearch: () => ({ page: 0 }),
+    beforeLoad: () => ({ invoicePermissions: ['view'] as const }),
+  })
+
+  const invoiceRoute = createRoute({
+    path: '$invoiceId',
+    getParentRoute: () => invoicesRoute,
+  })
+
+  const detailsRoute = createRoute({
+    path: 'details',
+    getParentRoute: () => invoiceRoute,
+    validateSearch: () => ({ detailPage: 0 }),
+    beforeLoad: () => ({ detailsPermissions: ['view'] as const }),
+  })
+
+  type TExpectedParams = { detailId: string; invoiceId: string }
+  type TExpectedSearch = { detailPage: number; page: number }
+  type TExpectedContext = {
+    userId: string
+    detailsPermissions: readonly ['view']
+    invoicePermissions: readonly ['view']
+  }
+  type TExpectedLoaderData = { detailLoader: 'detailResult' }
+  type TExpectedMatch = {
+    params: TExpectedParams
+    search: TExpectedSearch
+    context: TExpectedContext
+    loaderDeps: { detailPage: number; invoicePage: number }
+    loaderPromise: Promise<TExpectedLoaderData>
+    loaderData?: TExpectedLoaderData
+  }
+
+  createRoute({
+    path: '$detailId',
+    getParentRoute: () => detailsRoute,
+    loaderDeps: (deps) => ({
+      detailPage: deps.search.detailPage,
+      invoicePage: deps.search.page,
+    }),
+    loader: () => ({ detailLoader: 'detailResult' }) as const,
+    onEnter: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
+    onStay: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
+    onLeave: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
+  })
+})
