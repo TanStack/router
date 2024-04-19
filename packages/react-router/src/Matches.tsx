@@ -1,25 +1,15 @@
 import * as React from 'react'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
-import { set } from 'zod'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { createControlledPromise, pick } from './utils'
 import { CatchNotFound, DefaultGlobalNotFound, isNotFound } from './not-found'
 import { isRedirect } from './redirects'
-import {
-  type AnyRouter,
-  type RegisteredRouter,
-  type RouterState,
-} from './router'
+import { type AnyRouter, type RegisteredRouter } from './router'
 import type { ResolveRelativePath, ToOptions } from './link'
-import type {
-  AnyRoute,
-  ReactNode,
-  RootSearchSchema,
-  StaticDataRouteOption,
-} from './route'
+import type { AnyRoute, ReactNode, StaticDataRouteOption } from './route'
 import type {
   AllParams,
   FullSearchSchema,
@@ -40,16 +30,18 @@ import type {
 export const matchContext = React.createContext<string | undefined>(undefined)
 
 export interface RouteMatch<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-  TReturnIntersection extends boolean = false,
+  TRouteId,
+  TAllParams,
+  TFullSearchSchema,
+  TLoaderData,
+  TAllContext,
+  TRouteContext,
+  TLoaderDeps,
 > {
   id: string
   routeId: TRouteId
   pathname: string
-  params: TReturnIntersection extends false
-    ? RouteById<TRouteTree, TRouteId>['types']['allParams']
-    : Expand<Partial<AllParams<TRouteTree>>>
+  params: TAllParams
   status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
   isFetching: boolean
   error: unknown
@@ -57,22 +49,15 @@ export interface RouteMatch<
   searchError: unknown
   updatedAt: number
   loadPromise: ControlledPromise<void>
-  loaderPromise: Promise<RouteById<TRouteTree, TRouteId>['types']['loaderData']>
-  loaderData?: RouteById<TRouteTree, TRouteId>['types']['loaderData']
-  routeContext: RouteById<TRouteTree, TRouteId>['types']['routeContext']
-  context: RouteById<TRouteTree, TRouteId>['types']['allContext']
-  search: TReturnIntersection extends false
-    ? Exclude<
-        RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
-        RootSearchSchema
-      >
-    : Expand<
-        Partial<Omit<FullSearchSchema<TRouteTree>, keyof RootSearchSchema>>
-      >
+  loaderPromise: Promise<TLoaderData>
+  loaderData?: TLoaderData
+  routeContext: TRouteContext
+  context: TAllContext
+  search: TFullSearchSchema
   fetchCount: number
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'
-  loaderDeps: RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
+  loaderDeps: TLoaderDeps
   preload: boolean
   invalid: boolean
   meta?: Array<JSX.IntrinsicElements['meta']>
@@ -84,7 +69,32 @@ export interface RouteMatch<
   minPendingPromise?: ControlledPromise<void>
 }
 
-export type AnyRouteMatch = RouteMatch<any, any>
+export type MakeRouteMatch<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRouteId = ParseRoute<TRouteTree>['id'],
+  TReturnIntersection extends boolean = false,
+  TTypes extends AnyRoute['types'] = RouteById<TRouteTree, TRouteId>['types'],
+  TAllParams = TReturnIntersection extends false
+    ? TTypes['allParams']
+    : Partial<AllParams<TRouteTree>>,
+  TFullSearchSchema = TReturnIntersection extends false
+    ? TTypes['fullSearchSchema']
+    : Partial<FullSearchSchema<TRouteTree>>,
+  TLoaderData = TTypes['loaderData'],
+  TAllContext = TTypes['allContext'],
+  TRouteContext = TTypes['routeContext'],
+  TLoaderDeps = TTypes['loaderDeps'],
+> = RouteMatch<
+  TRouteId,
+  TAllParams,
+  TFullSearchSchema,
+  TLoaderData,
+  TAllContext,
+  TRouteContext,
+  TLoaderDeps
+>
+
+export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
 
 export function Matches() {
   const matchId = useRouterState({
@@ -503,11 +513,11 @@ export function useMatch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
   TReturnIntersection extends boolean = false,
-  TRouteMatchState = RouteMatch<TRouteTree, TFrom, TReturnIntersection>,
-  TSelected = TRouteMatchState,
+  TRouteMatch = MakeRouteMatch<TRouteTree, TFrom, TReturnIntersection>,
+  TSelected = TRouteMatch,
 >(
   opts: StrictOrFrom<TFrom, TReturnIntersection> & {
-    select?: (match: TRouteMatchState) => TSelected
+    select?: (match: TRouteMatch) => TSelected
   },
 ): TSelected {
   const nearestMatchId = React.useContext(matchContext)
@@ -536,7 +546,7 @@ export function useMatches<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
   TReturnIntersection extends boolean = false,
-  TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
+  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
   T = Array<TRouteMatch>,
 >(opts?: {
   select?: (matches: Array<TRouteMatch>) => T
@@ -556,7 +566,7 @@ export function useParentMatches<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
   TReturnIntersection extends boolean = false,
-  TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
+  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
   T = Array<TRouteMatch>,
 >(opts?: {
   select?: (matches: Array<TRouteMatch>) => T
@@ -581,7 +591,7 @@ export function useChildMatches<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
   TReturnIntersection extends boolean = false,
-  TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
+  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
   T = Array<TRouteMatch>,
 >(opts?: {
   select?: (matches: Array<TRouteMatch>) => T
@@ -604,7 +614,7 @@ export function useChildMatches<
 export function useLoaderDeps<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TRouteMatch extends RouteMatch<TRouteTree, TFrom> = RouteMatch<
+  TRouteMatch extends MakeRouteMatch<TRouteTree, TFrom> = MakeRouteMatch<
     TRouteTree,
     TFrom
   >,
@@ -627,7 +637,7 @@ export function useLoaderDeps<
 export function useLoaderData<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TRouteMatch extends RouteMatch<TRouteTree, TFrom> = RouteMatch<
+  TRouteMatch extends MakeRouteMatch<TRouteTree, TFrom> = MakeRouteMatch<
     TRouteTree,
     TFrom
   >,

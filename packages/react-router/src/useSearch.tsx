@@ -1,9 +1,8 @@
 import { useMatch } from './Matches'
-import { Expand } from './utils'
 import type { AnyRoute, RootSearchSchema } from './route'
 import type { FullSearchSchema, RouteById, RouteIds } from './routeInfo'
 import type { RegisteredRouter } from './router'
-import type { RouteMatch } from './Matches'
+import type { MakeRouteMatch } from './Matches'
 import type { StrictOrFrom } from './utils'
 
 export function useSearch<
@@ -24,8 +23,8 @@ export function useSearch<
 ): TSelected {
   return useMatch({
     ...opts,
-    select: (match: RouteMatch) => {
-      return opts.select ? opts.select(match.search as TSearch) : match.search
+    select: (match: MakeRouteMatch<TRouteTree, TFrom>) => {
+      return opts.select ? opts.select(match.search) : match.search
     },
   })
 }

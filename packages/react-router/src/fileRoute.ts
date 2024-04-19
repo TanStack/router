@@ -25,7 +25,7 @@ import type {
   UpdatableRouteOptions,
 } from './route'
 import type { Assign, IsAny } from './utils'
-import type { RouteMatch } from './Matches'
+import type { MakeRouteMatch } from './Matches'
 import type { NoInfer } from '@tanstack/react-store'
 import type { RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
@@ -189,7 +189,15 @@ export class FileRoute<
       TLoaderDeps,
       TLoaderDataReturn
     > &
-      UpdatableRouteOptions<TAllParams, TFullSearchSchema, TLoaderData>,
+      UpdatableRouteOptions<
+        TId,
+        TAllParams,
+        TFullSearchSchema,
+        TLoaderData,
+        TAllContext,
+        TRouteContext,
+        TLoaderDeps
+      >,
   ): Route<
     TParentRoute,
     TPath,
@@ -255,7 +263,15 @@ export function FileRouteLoader<
 }
 
 export type LazyRouteOptions = Pick<
-  UpdatableRouteOptions<AnyPathParams, AnySearchSchema, any>,
+  UpdatableRouteOptions<
+    string,
+    AnyPathParams,
+    AnySearchSchema,
+    {},
+    AnyContext,
+    AnyContext,
+    {}
+  >,
   'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
 >
 
@@ -274,13 +290,13 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useMatch = <
-    TRouteMatchState = RouteMatch<
+    TRouteMatch = MakeRouteMatch<
       RegisteredRouter['routeTree'],
       TRoute['types']['id']
     >,
-    TSelected = TRouteMatchState,
+    TSelected = TRouteMatch,
   >(opts?: {
-    select?: (match: TRouteMatchState) => TSelected
+    select?: (match: TRouteMatch) => TSelected
   }): TSelected => {
     return useMatch({ select: opts?.select, from: this.options.id })
   }
