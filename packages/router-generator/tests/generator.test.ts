@@ -41,13 +41,26 @@ async function getExpectedRouteTreeFileText(folder: string) {
   return text
 }
 
-describe('with a default config', async () => {
+function rewriteConfigByFolderName(folderName: string, config: Config) {
+  switch (folderName) {
+    case 'append-and-prepend':
+      config.prependToGeneratedRouteTree = ['// prepend1', '// prepend2']
+      config.appendToGeneratedRouteTree = ['// append1', '// append2']
+      break
+    default:
+      break
+  }
+}
+
+describe('generator works', async () => {
   const folderNames = await getFoldersNames()
 
   it.each(folderNames.map((folder) => [folder]))(
     'should wire-up the routes for a "%s" tree',
     async (folderName) => {
       const config = await setupConfig(folderName)
+
+      rewriteConfigByFolderName(folderName, config)
 
       await generator(config)
 
