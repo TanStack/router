@@ -83,7 +83,7 @@ Create a `tsr.config.json` file in the root of your project with the following c
 }
 ```
 
-You can find the full list of options for the `tsr.config.json` file over [here](../guide/file-based-routing#options).
+You can find the full list of options for the `tsr.config.json` file [here](../guide/file-based-routing#options).
 
 ### Step 4: Create the routes directory
 
