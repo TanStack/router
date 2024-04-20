@@ -267,6 +267,7 @@ TanStack Router also has a few more features that you might want to explore:
 - [Preloading](../guide/preloading)
 - [Pathless / Layout Routes](../guide/routing-concepts#pathless--layout-routes)
 - [Route masking](../guide/route-masking)
+- [SSR](../guide/ssr)
 - ... and more!
 
 If you are facing any issues or have any questions, feel free to ask for help in the TanStack Discord.
