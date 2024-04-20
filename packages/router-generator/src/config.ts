@@ -13,8 +13,19 @@ export const configSchema = z.object({
   disableTypes: z.boolean().optional().default(false),
   addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),
-  routeTreeFileHeader: z.array(z.string()).optional().default([]),
-  routeTreeFileFooter: z.array(z.string()).optional().default([]),
+  routeTreeFileHeader: z
+    .array(z.string())
+    .optional()
+    .default([
+      '/* prettier-ignore-start */',
+      '/* eslint-disable */',
+      '// @ts-nocheck',
+      '// noinspection JSUnusedGlobalSymbols',
+    ]),
+  routeTreeFileFooter: z
+    .array(z.string())
+    .optional()
+    .default(['/* prettier-ignore-end */']),
 })
 
 export type Config = z.infer<typeof configSchema>
