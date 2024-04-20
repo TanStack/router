@@ -2,6 +2,8 @@
 
 /* eslint-disable */
 
+// biome-ignore
+
 // @ts-nocheck
 
 // noinspection JSUnusedGlobalSymbols
