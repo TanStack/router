@@ -13,8 +13,8 @@ export const configSchema = z.object({
   disableTypes: z.boolean().optional().default(false),
   addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),
-  prependToRouteTreeFile: z.array(z.string()).optional().default([]),
-  appendToRouteTreeFile: z.array(z.string()).optional().default([]),
+  routeTreeFileHeader: z.array(z.string()).optional().default([]),
+  routeTreeFileFooter: z.array(z.string()).optional().default([]),
 })
 
 export type Config = z.infer<typeof configSchema>
