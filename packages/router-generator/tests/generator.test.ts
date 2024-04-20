@@ -44,8 +44,8 @@ async function getExpectedRouteTreeFileText(folder: string) {
 function rewriteConfigByFolderName(folderName: string, config: Config) {
   switch (folderName) {
     case 'append-and-prepend':
-      config.prependToGeneratedRouteTree = ['// prepend1', '// prepend2']
-      config.appendToGeneratedRouteTree = ['// append1', '// append2']
+      config.prependToRouteTreeFile = ['// prepend1', '// prepend2']
+      config.appendToRouteTreeFile = ['// append1', '// append2']
       break
     default:
       break
