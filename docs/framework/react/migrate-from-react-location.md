@@ -136,7 +136,7 @@ export const Route = createFileRoute({
 
 ```tsx
 // src/routes/posts.tsx
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
 
 export const Route = createFileRoute({
   component: Posts,
@@ -152,11 +152,18 @@ function Posts() {
   const { posts } = Route.useLoaderData()
   return (
     <div>
-      {posts.map((post) => (
-        <Link key={post.id} to={`/posts/$postId`} params={{ postId: post.id }}>
-          {post.title}
-        </Link>
-      ))}
+      <nav>
+        {posts.map((post) => (
+          <Link
+            key={post.id}
+            to={`/posts/$postId`}
+            params={{ postId: post.id }}
+          >
+            {post.title}
+          </Link>
+        ))}
+      </nav>
+      <Outlet />
     </div>
   )
 }
