@@ -13,6 +13,8 @@ export const configSchema = z.object({
   disableTypes: z.boolean().optional().default(false),
   addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),
+  prependToGeneratedRouteTree: z.array(z.string()).optional().default([]),
+  appendToGeneratedRouteTree: z.array(z.string()).optional().default([]),
 })
 
 export type Config = z.infer<typeof configSchema>
