@@ -1,7 +1,16 @@
 import axios from 'axios'
-import { loaderDelayFn } from './utils'
 
-export type Invoice = {
+async function loaderDelayFn<T>(fn: (...args: any[]) => Promise<T> | T) {
+  const delay = Number(sessionStorage.getItem('loaderDelay') ?? 0)
+  const delayPromise = new Promise((r) => setTimeout(r, delay))
+
+  await delayPromise
+  const res = await fn()
+
+  return res
+}
+
+type Invoice = {
   id: number
   title: string
   body: string
