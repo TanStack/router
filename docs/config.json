@@ -255,8 +255,8 @@
               "to": "framework/react/examples/location-masking"
             },
             {
-              "label": "Authenticated Routes with Context",
-              "to": "framework/react/examples/authenticated-routes-context"
+              "label": "Authenticated Routes",
+              "to": "framework/react/examples/authenticated-routes"
             },
             {
               "label": "Scroll Restoration",
