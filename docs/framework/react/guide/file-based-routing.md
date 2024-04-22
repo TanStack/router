@@ -109,6 +109,27 @@ The following options are available for configuration via the `tsr.config.json` 
   - (Optional, **Defaults to `false`**) add file extensions to the route names in the generated route tree
 - **`disableLogging`**
   - (Optional, **Defaults to `false`**) disables logging for the route generation process
+- **`routeTreeFileHeader`**
+
+  - (Optional) An array of strings to prepend to the generated route tree file content.
+  - Default:
+  - ```
+    [
+      '/* prettier-ignore-start */',
+      '/* eslint-disable */',
+      '// @ts-nocheck',
+      '// noinspection JSUnusedGlobalSymbols'
+    ]
+    ```
+
+- **`routeTreeFileFooter`**
+  - (Optional) An array of strings to append to the generated route tree file content.
+  - Default:
+  - ```
+    [
+      '/* prettier-ignore-end */'
+    ]
+    ```
 
 ## File Naming Conventions
 

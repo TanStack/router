@@ -90,7 +90,7 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0(@types/node@20.11.10)
 
-  examples/react/authenticated-routes-context:
+  examples/react/authenticated-routes:
     dependencies:
       '@tanstack/react-router':
         specifier: ^1.29.2
@@ -99,7 +99,7 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -125,10 +125,10 @@ importers:
         version: 18.2.18
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.2.1(vite@5.0.13)
+        version: 4.2.1(vite@5.2.8)
       vite:
         specifier: ^5.0.13
-        version: 5.0.13(@types/node@20.11.10)
+        version: 5.2.8(@types/node@20.11.10)
 
   examples/react/basic:
     dependencies:
@@ -210,7 +210,7 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       '@vanilla-extract/css':
         specifier: ^1.14.1
@@ -256,7 +256,7 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -339,7 +339,7 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -382,7 +382,7 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -446,7 +446,7 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -584,7 +584,7 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -673,7 +673,7 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -713,7 +713,7 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -852,7 +852,7 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       axios:
         specifier: ^1.6.5
@@ -945,7 +945,7 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       '@types/react':
         specifier: ^18.2.47
@@ -988,7 +988,7 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       '@types/react':
         specifier: ^18.2.47
@@ -1034,7 +1034,7 @@ importers:
         version: 0.3.11(@types/node@20.11.10)
     devDependencies:
       '@tanstack/router-vite-plugin':
-        specifier: ^1.28.2
+        specifier: ^1.30.0
         version: link:../../../packages/router-vite-plugin
       '@types/react':
         specifier: ^18.2.47
@@ -1570,12 +1570,12 @@ packages:
     engines: {node: '>=6.9.0'}
     dependencies:
       '@ampproject/remapping': 2.2.1
-      '@babel/code-frame': 7.23.5
-      '@babel/generator': 7.23.6
+      '@babel/code-frame': 7.24.2
+      '@babel/generator': 7.24.1
       '@babel/helper-compilation-targets': 7.23.6
       '@babel/helper-module-transforms': 7.23.3(@babel/core@7.23.9)
       '@babel/helpers': 7.23.9
-      '@babel/parser': 7.23.9
+      '@babel/parser': 7.24.1
       '@babel/template': 7.24.0
       '@babel/traverse': 7.24.1
       '@babel/types': 7.24.0
@@ -1774,13 +1774,6 @@ packages:
       chalk: 2.4.2
       js-tokens: 4.0.0
       picocolors: 1.0.0
-
-  /@babel/parser@7.23.9:
-    resolution: {integrity: sha512-9tcKgqKbs3xGJ+NtKF2ndOBBLVwPjl1SHxPQkd36r3Dlirw3xWUeGaTbqr7uGZcTaxkVNwc+03SVP7aCdWrTlA==}
-    engines: {node: '>=6.0.0'}
-    hasBin: true
-    dependencies:
-      '@babel/types': 7.23.9
 
   /@babel/parser@7.24.1:
     resolution: {integrity: sha512-Zo9c7N3xdOIQrNip7Lc9wvRPzlRtovHVE4lkz8WEDr7uYh/GMQhSiIgFxGIArRHYdJE5kxtZjAf8rT0xhdLCzg==}
