@@ -35,7 +35,7 @@ function LoginComponent() {
       auth.setUser(name)
     })
 
-    navigate({ to: search.redirect || '/' })
+    navigate({ to: search.redirect || '/dashboard' })
   }
 
   return (
