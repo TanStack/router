@@ -1,22 +1,36 @@
 import * as React from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
-import { useAuth } from '../auth'
-
 export const Route = createFileRoute('/')({
   component: HomeComponent,
 })
 
 function HomeComponent() {
-  const auth = useAuth()
   return (
-    <div className="p-2">
-      <h3>Welcome Home!</h3>
+    <div className="p-2 grid gap-2">
+      <h1 className="text-xl">Welcome!</h1>
       <p>
-        <Link to="/dashboard" className="font-semibold">
-          {auth.isAuthenticated ? 'Go' : 'Try going'} to the dashboard page
-        </Link>
+        You are currently on the index route of the{' '}
+        <strong>authenticated-routes</strong> example.
       </p>
+      <p>You can try going through these options.</p>
+      <ol className="list-disc list-inside px-2">
+        <li>
+          <Link to="/login" className="text-blue-500">
+            Go to the public login page.
+          </Link>
+        </li>
+        <li>
+          <Link to="/dashboard" className="text-blue-500">
+            Go to the auth-only dashboard page.
+          </Link>
+        </li>
+        <li>
+          <Link to="/invoices" className="text-blue-500">
+            Go to the auth-only invoices page.
+          </Link>
+        </li>
+      </ol>
     </div>
   )
 }

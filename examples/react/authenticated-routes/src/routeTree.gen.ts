@@ -12,8 +12,12 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as LoginImport } from './routes/login'
-import { Route as DashboardImport } from './routes/dashboard'
+import { Route as AuthImport } from './routes/_auth'
 import { Route as IndexImport } from './routes/index'
+import { Route as AuthInvoicesImport } from './routes/_auth.invoices'
+import { Route as AuthDashboardImport } from './routes/_auth.dashboard'
+import { Route as AuthInvoicesIndexImport } from './routes/_auth.invoices.index'
+import { Route as AuthInvoicesInvoiceIdImport } from './routes/_auth.invoices.$invoiceId'
 
 // Create/Update Routes
 
@@ -22,14 +26,34 @@ const LoginRoute = LoginImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const DashboardRoute = DashboardImport.update({
-  path: '/dashboard',
+const AuthRoute = AuthImport.update({
+  id: '/_auth',
   getParentRoute: () => rootRoute,
 } as any)
 
 const IndexRoute = IndexImport.update({
   path: '/',
   getParentRoute: () => rootRoute,
+} as any)
+
+const AuthInvoicesRoute = AuthInvoicesImport.update({
+  path: '/invoices',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthDashboardRoute = AuthDashboardImport.update({
+  path: '/dashboard',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthInvoicesIndexRoute = AuthInvoicesIndexImport.update({
+  path: '/',
+  getParentRoute: () => AuthInvoicesRoute,
+} as any)
+
+const AuthInvoicesInvoiceIdRoute = AuthInvoicesInvoiceIdImport.update({
+  path: '/$invoiceId',
+  getParentRoute: () => AuthInvoicesRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -40,13 +64,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
-    '/dashboard': {
-      preLoaderRoute: typeof DashboardImport
+    '/_auth': {
+      preLoaderRoute: typeof AuthImport
       parentRoute: typeof rootRoute
     }
     '/login': {
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
+    }
+    '/_auth/dashboard': {
+      preLoaderRoute: typeof AuthDashboardImport
+      parentRoute: typeof AuthImport
+    }
+    '/_auth/invoices': {
+      preLoaderRoute: typeof AuthInvoicesImport
+      parentRoute: typeof AuthImport
+    }
+    '/_auth/invoices/$invoiceId': {
+      preLoaderRoute: typeof AuthInvoicesInvoiceIdImport
+      parentRoute: typeof AuthInvoicesImport
+    }
+    '/_auth/invoices/': {
+      preLoaderRoute: typeof AuthInvoicesIndexImport
+      parentRoute: typeof AuthInvoicesImport
     }
   }
 }
@@ -55,7 +95,13 @@ declare module '@tanstack/react-router' {
 
 export const routeTree = rootRoute.addChildren([
   IndexRoute,
-  DashboardRoute,
+  AuthRoute.addChildren([
+    AuthDashboardRoute,
+    AuthInvoicesRoute.addChildren([
+      AuthInvoicesInvoiceIdRoute,
+      AuthInvoicesIndexRoute,
+    ]),
+  ]),
   LoginRoute,
 ])
 
