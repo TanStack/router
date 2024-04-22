@@ -1,5 +1,11 @@
 import * as React from 'react'
-import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  redirect,
+  useRouter,
+} from '@tanstack/react-router'
 
 import { useAuth } from '../auth'
 
@@ -18,13 +24,16 @@ export const Route = createFileRoute('/_auth')({
 })
 
 function AuthLayout() {
+  const router = useRouter()
   const navigate = Route.useNavigate()
   const auth = useAuth()
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {
       auth.logout()
-      navigate({ to: '/' })
+      router.invalidate().finally(() => {
+        navigate({ to: '/' })
+      })
     }
   }
 
