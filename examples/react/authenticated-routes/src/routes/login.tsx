@@ -1,41 +1,42 @@
 import * as React from 'react'
 import { flushSync } from 'react-dom'
-import {
-  createFileRoute,
-  getRouteApi,
-  useNavigate,
-} from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { useAuth } from '../auth'
+
+const fallback = '/dashboard' as const
 
 export const Route = createFileRoute('/login')({
   validateSearch: z.object({
     redirect: z.string().optional().catch(''),
   }),
+  beforeLoad: ({ context, search }) => {
+    if (context.auth.isAuthenticated) {
+      throw redirect({ to: search.redirect || fallback })
+    }
+  },
   component: LoginComponent,
 })
 
-const routeApi = getRouteApi('/login')
-
 function LoginComponent() {
   const auth = useAuth()
-  const navigate = useNavigate()
+  const navigate = Route.useNavigate()
 
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [name, setName] = React.useState('')
 
-  const search = routeApi.useSearch()
+  const search = Route.useSearch()
 
   const handleLogin = (evt: React.FormEvent<HTMLFormElement>) => {
     evt.preventDefault()
     setIsSubmitting(true)
 
     flushSync(() => {
-      auth.setUser(name)
+      auth.login(name)
     })
 
-    navigate({ to: search.redirect || '/dashboard' })
+    navigate({ to: search.redirect || fallback })
   }
 
   return (

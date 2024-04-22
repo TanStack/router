@@ -23,7 +23,7 @@ function AuthLayout() {
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {
-      auth.setUser(null)
+      auth.logout()
       navigate({ to: '/' })
     }
   }
