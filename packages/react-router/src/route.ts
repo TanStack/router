@@ -11,7 +11,7 @@ import type { MakeRouteMatch, RouteMatch } from './Matches'
 import type { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type { AnyRouter, RegisteredRouter, Router } from './router'
 import type {
   Assign,
   Expand,
@@ -360,7 +360,7 @@ export interface LoaderFnContext<
   /**
    * @deprecated Use `throw redirect({ to: '/somewhere' })` instead
    **/
-  navigate: (opts: NavigateOptions<AnyRoute>) => Promise<void>
+  navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
   parentMatchPromise?: Promise<void>
   cause: 'preload' | 'enter' | 'stay'
   route: Route
@@ -1230,7 +1230,7 @@ export function createRouteMask<
 >(
   opts: {
     routeTree: TRouteTree
-  } & ToSubOptions<TRouteTree, TFrom, TTo>,
+  } & ToSubOptions<Router<TRouteTree, 'never'>, TFrom, TTo>,
 ): RouteMask<TRouteTree> {
   return opts as any
 }

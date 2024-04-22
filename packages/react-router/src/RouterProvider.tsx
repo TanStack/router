@@ -10,6 +10,7 @@ import type { ParsedLocation } from './location'
 import type { AnyRoute } from './route'
 import type { RoutePaths } from './routeInfo'
 import type {
+  AnyRouter,
   RegisteredRouter,
   Router,
   RouterOptions,
@@ -37,12 +38,12 @@ export interface MatchLocation {
 
 export type NavigateFn = <
   TTo extends string,
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> | string = string,
-  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
 >(
-  opts: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
+  opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => Promise<void>
 
 export type BuildLocationFn<TRouteTree extends AnyRoute> = <
@@ -51,7 +52,13 @@ export type BuildLocationFn<TRouteTree extends AnyRoute> = <
   TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
   TMaskTo extends string = '',
 >(
-  opts: ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
+  opts: ToOptions<
+    Router<TRouteTree, 'never'>,
+    TFrom,
+    TTo,
+    TMaskFrom,
+    TMaskTo
+  > & {
     leaveParams?: boolean
   },
 ) => ParsedLocation
@@ -59,9 +66,9 @@ export type BuildLocationFn<TRouteTree extends AnyRoute> = <
 export type InjectedHtmlEntry = string | (() => Promise<string> | string)
 
 export function RouterProvider<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRouter extends AnyRouter = RegisteredRouter,
   TDehydrated extends Record<string, any> = Record<string, any>,
->({ router, ...rest }: RouterProps<TRouteTree, TDehydrated>) {
+>({ router, ...rest }: RouterProps<TRouter, TDehydrated>) {
   // Allow the router to update options on the router instance
   router.update({
     ...router.options,
@@ -238,11 +245,27 @@ export function getRouteMatch<TRouteTree extends AnyRoute>(
 }
 
 export type RouterProps<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRouter extends AnyRouter = RegisteredRouter,
   TDehydrated extends Record<string, any> = Record<string, any>,
-> = Omit<RouterOptions<TRouteTree, TDehydrated>, 'context'> & {
-  router: Router<TRouteTree>
-  context?: Partial<RouterOptions<TRouteTree, TDehydrated>['context']>
+> = Omit<
+  RouterOptions<
+    TRouter['routeTree'],
+    NonNullable<TRouter['options']['trailingSlash']>,
+    TDehydrated
+  >,
+  'context'
+> & {
+  router: Router<
+    TRouter['routeTree'],
+    NonNullable<TRouter['options']['trailingSlash']>
+  >
+  context?: Partial<
+    RouterOptions<
+      TRouter['routeTree'],
+      NonNullable<TRouter['options']['trailingSlash']>,
+      TDehydrated
+    >['context']
+  >
 }
 
 function usePrevious<T>(value: T) {

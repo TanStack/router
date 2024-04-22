@@ -1,5 +1,5 @@
 import { expectTypeOf, test } from 'vitest'
-import { Link, createRoute } from '../src'
+import { Link, createRoute, createRouter } from '../src'
 import { createRootRoute } from '../src'
 
 const rootRoute = createRootRoute()
@@ -68,10 +68,57 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
 ])
 
-type RouteTree = typeof routeTree
+const defaultRouter = createRouter({
+  routeTree,
+})
+
+const routerAlwaysTrailingSlashes = createRouter({
+  routeTree,
+  trailingSlash: 'always',
+})
+
+const routerNeverTrailingSlashes = createRouter({
+  routeTree,
+  trailingSlash: 'never',
+})
+
+const routerPreserveTrailingSlashes = createRouter({
+  routeTree,
+  trailingSlash: 'preserve',
+})
+
+type DefaultRouter = typeof defaultRouter
+
+type RouterAlwaysTrailingSlashes = typeof routerAlwaysTrailingSlashes
+
+type RouterNeverTrailingSlashes = typeof routerNeverTrailingSlashes
+
+type RouterPreserveTrailingSlashes = typeof routerPreserveTrailingSlashes
 
 test('when navigating to the root', () => {
-  expectTypeOf(Link<RouteTree, string, '/'>)
+  type hi = DefaultRouter['options']['trailingSlash']
+  expectTypeOf(Link<DefaultRouter, string, '/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../'
+      | './'
+      | ''
+      | '/'
+      | '/invoices'
+      | '/invoices/$invoiceId/details/$detailId'
+      | '/invoices/$invoiceId/edit'
+      | '/posts'
+      | '/posts/$postId'
+      | 'invoices'
+      | 'invoices/$invoiceId/details/$detailId'
+      | 'invoices/$invoiceId/edit'
+      | 'posts'
+      | 'posts/$postId'
+      | undefined
+    >()
+
+  expectTypeOf(Link<RouterAlwaysTrailingSlashes, string, '/'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -80,21 +127,90 @@ test('when navigating to the root', () => {
       | ''
       | '/'
       | '/invoices/'
+      | '/invoices/$invoiceId/details/$detailId/'
+      | '/invoices/$invoiceId/edit/'
+      | '/posts/'
+      | '/posts/$postId/'
+      | 'invoices/'
+      | 'invoices/$invoiceId/details/$detailId/'
+      | 'invoices/$invoiceId/edit/'
+      | 'posts/'
+      | 'posts/$postId/'
+      | undefined
+    >()
+
+  expectTypeOf(Link<RouterNeverTrailingSlashes, string, '/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../'
+      | './'
+      | ''
+      | '/'
+      | '/invoices'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/edit'
-      | '/posts/'
+      | '/posts'
       | '/posts/$postId'
-      | 'invoices/'
+      | 'invoices'
       | 'invoices/$invoiceId/details/$detailId'
       | 'invoices/$invoiceId/edit'
+      | 'posts'
+      | 'posts/$postId'
+      | undefined
+    >()
+
+  expectTypeOf(Link<RouterPreserveTrailingSlashes, string, '/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../'
+      | './'
+      | ''
+      | '/'
+      | '/invoices'
+      | '/invoices/'
+      | '/invoices/$invoiceId/details/$detailId'
+      | '/invoices/$invoiceId/details/$detailId/'
+      | '/invoices/$invoiceId/edit'
+      | '/invoices/$invoiceId/edit/'
+      | '/posts'
+      | '/posts/'
+      | '/posts/$postId'
+      | '/posts/$postId/'
+      | 'invoices'
+      | 'invoices/'
+      | 'invoices/$invoiceId/details/$detailId'
+      | 'invoices/$invoiceId/details/$detailId/'
+      | 'invoices/$invoiceId/edit'
+      | 'invoices/$invoiceId/edit/'
+      | 'posts'
       | 'posts/'
       | 'posts/$postId'
+      | 'posts/$postId/'
       | undefined
     >()
 })
 
 test('when navigating from a route with no params and no search to the root', () => {
-  expectTypeOf(Link<RouteTree, '/posts/', '/'>)
+  expectTypeOf(Link<DefaultRouter, '/posts/', '/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../'
+      | './'
+      | '/'
+      | ''
+      | '/invoices'
+      | '/invoices/$invoiceId/edit'
+      | '/invoices/$invoiceId/details/$detailId'
+      | '/posts'
+      | '/posts/$postId'
+      | '$postId'
+      | undefined
+    >()
+
+  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', '/'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -103,31 +219,130 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/'
       | ''
       | '/invoices/'
+      | '/invoices/$invoiceId/edit/'
+      | '/invoices/$invoiceId/details/$detailId/'
+      | '/posts/'
+      | '/posts/$postId/'
+      | '$postId/'
+      | undefined
+    >()
+
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', '/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../'
+      | './'
+      | '/'
+      | ''
+      | '/invoices'
       | '/invoices/$invoiceId/edit'
       | '/invoices/$invoiceId/details/$detailId'
-      | '/posts/'
+      | '/posts'
       | '/posts/$postId'
+      | '$postId'
+      | undefined
+    >()
+
+  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', '/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../'
+      | './'
+      | '/'
+      | ''
+      | '/invoices/'
+      | '/invoices'
+      | '/invoices/$invoiceId/edit/'
+      | '/invoices/$invoiceId/edit'
+      | '/invoices/$invoiceId/details/$detailId/'
+      | '/invoices/$invoiceId/details/$detailId'
+      | '/posts/'
+      | '/posts'
+      | '/posts/$postId/'
+      | '/posts/$postId'
+      | '$postId/'
       | '$postId'
       | undefined
     >()
 })
 
 test('when navigating from a route with no params and no search to the current route', () => {
-  expectTypeOf(Link<RouteTree, '/posts/', './'>)
+  expectTypeOf(Link<DefaultRouter, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<'./$postId' | undefined | './'>()
+
+  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'./$postId/' | undefined | './'>()
+
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'./$postId' | undefined | './'>()
+
+  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'./$postId/' | './$postId' | undefined | './'>()
 })
 
 test('when navigating from a route with no params and no search to the parent route', () => {
-  expectTypeOf(Link<RouteTree, '/posts', '../'>)
+  expectTypeOf(Link<DefaultRouter, '/posts', '../'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../posts'
+      | '../posts/$postId'
+      | '../invoices/$invoiceId/edit'
+      | '../invoices/$invoiceId/details/$detailId'
+      | '../invoices'
+      | '../'
+      | undefined
+    >()
+
+  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts', '../'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
       | '../posts/'
+      | '../posts/$postId/'
+      | '../invoices/$invoiceId/edit/'
+      | '../invoices/$invoiceId/details/$detailId/'
+      | '../invoices/'
+      | '../'
+      | undefined
+    >()
+
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '../'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../posts'
       | '../posts/$postId'
       | '../invoices/$invoiceId/edit'
       | '../invoices/$invoiceId/details/$detailId'
+      | '../invoices'
+      | '../'
+      | undefined
+    >()
+
+  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts', '../'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../posts'
+      | '../posts/'
+      | '../posts/$postId'
+      | '../posts/$postId/'
+      | '../invoices/$invoiceId/edit'
+      | '../invoices/$invoiceId/edit/'
+      | '../invoices/$invoiceId/details/$detailId'
+      | '../invoices/$invoiceId/details/$detailId/'
+      | '../invoices'
       | '../invoices/'
       | '../'
       | undefined
@@ -135,30 +350,52 @@ test('when navigating from a route with no params and no search to the parent ro
 })
 
 test('cannot navigate to a branch', () => {
-  expectTypeOf(Link<RouteTree, string, '/invoices/invoiceId'>)
+  expectTypeOf(Link<DefaultRouter, string, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
       | ''
-      | '../'
-      | './'
-      | '/'
-      | '/invoices/'
-      | '/invoices/$invoiceId/details/$detailId'
-      | '/invoices/$invoiceId/edit'
-      | '/posts/'
+      | 'posts'
+      | '/posts'
       | '/posts/$postId'
-      | 'invoices/'
-      | 'invoices/$invoiceId/details/$detailId'
-      | 'invoices/$invoiceId/edit'
-      | 'posts/'
       | 'posts/$postId'
+      | 'invoices'
+      | '/invoices'
+      | '/invoices/$invoiceId/edit'
+      | 'invoices/$invoiceId/edit'
+      | '/invoices/$invoiceId/details/$detailId'
+      | 'invoices/$invoiceId/details/$detailId'
+      | './'
+      | '../'
+      | undefined
+    >()
+
+  expectTypeOf(
+    Link<RouterAlwaysTrailingSlashes, string, '/invoices/$invoiceId'>,
+  )
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '/'
+      | ''
+      | 'posts/'
+      | '/posts/'
+      | '/posts/$postId/'
+      | 'posts/$postId/'
+      | 'invoices/'
+      | '/invoices/'
+      | '/invoices/$invoiceId/edit/'
+      | 'invoices/$invoiceId/edit/'
+      | '/invoices/$invoiceId/details/$detailId/'
+      | 'invoices/$invoiceId/details/$detailId/'
+      | './'
+      | '../'
       | undefined
     >()
 })
 
 test('from autocompletes to all absolute routes', () => {
-  const TestLink = Link<RouteTree, '/', '/'>
+  const TestLink = Link<DefaultRouter, '/', '/'>
   expectTypeOf(TestLink)
     .parameter(0)
     .toHaveProperty('from')
@@ -179,7 +416,7 @@ test('from autocompletes to all absolute routes', () => {
 })
 
 test('when navigating to the same route', () => {
-  const TestLink = Link<RouteTree, string, string>
+  const TestLink = Link<DefaultRouter, string, string>
 
   expectTypeOf(TestLink).parameter(0).not.toMatchTypeOf<{ params: unknown }>()
 
@@ -205,7 +442,7 @@ test('when navigating to the same route', () => {
 })
 
 test('when navigating to the parent route', () => {
-  const TestLink = Link<RouteTree, string, '..'>
+  const TestLink = Link<DefaultRouter, string, '..'>
 
   expectTypeOf(TestLink).parameter(0).not.toMatchTypeOf<{ params: unknown }>()
   expectTypeOf(TestLink)
@@ -224,7 +461,7 @@ test('when navigating to the parent route', () => {
 })
 
 test('when navigating from a route with params to the same route', () => {
-  const TestLink = Link<RouteTree, '/posts/$postId', string>
+  const TestLink = Link<DefaultRouter, '/posts/$postId', string>
 
   expectTypeOf(TestLink).parameter(0).not.toMatchTypeOf<{ params: unknown }>()
   expectTypeOf(TestLink)
@@ -235,7 +472,7 @@ test('when navigating from a route with params to the same route', () => {
 })
 
 test('when navigating to a route with params', () => {
-  const TestLink = Link<RouteTree, string, '/posts/$postId/'>
+  const TestLink = Link<DefaultRouter, string, '/posts/$postId/'>
 
   expectTypeOf(TestLink).parameter(0).toMatchTypeOf<{ params: unknown }>()
 
@@ -255,7 +492,7 @@ test('when navigating to a route with params', () => {
 })
 
 test('when navigating from a route with no params to a route with params', () => {
-  const TestLink = Link<RouteTree, '/invoices/', './$invoiceId/edit'>
+  const TestLink = Link<DefaultRouter, '/invoices/', './$invoiceId/edit'>
 
   expectTypeOf(TestLink).parameter(0).toMatchTypeOf<{ params: unknown }>()
 
@@ -268,7 +505,7 @@ test('when navigating from a route with no params to a route with params', () =>
 })
 
 test('when navigating from a route to a route with the same params', () => {
-  const TestLink = Link<RouteTree, '/invoices/$invoiceId', './edit'>
+  const TestLink = Link<DefaultRouter, '/invoices/$invoiceId', './edit'>
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('params')
 
   expectTypeOf(TestLink).parameter(0).not.toMatchTypeOf<{ params: unknown }>()
@@ -283,7 +520,7 @@ test('when navigating from a route to a route with the same params', () => {
 
 test('when navigating from a route with params to a route with different params', () => {
   const TestLink = Link<
-    RouteTree,
+    DefaultRouter,
     '/invoices/$invoiceId',
     '../../posts/$postId'
   >
@@ -299,7 +536,7 @@ test('when navigating from a route with params to a route with different params'
 
 test('when navigating from a route with params to a route with an additional param', () => {
   const TestLink = Link<
-    RouteTree,
+    DefaultRouter,
     '/invoices/$invoiceId',
     './details/$detailId'
   >
@@ -317,9 +554,9 @@ test('when navigating from a route with params to a route with an additional par
 
 test('when navigating to a union of routes with params', () => {
   const TestLink = Link<
-    RouteTree,
+    DefaultRouter,
     string,
-    '/invoices/$invoiceId/' | '/posts/$postId/'
+    '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('params')
 
@@ -343,9 +580,9 @@ test('when navigating to a union of routes with params', () => {
 
 test('when navigating to a union of routes including the root', () => {
   const TestLink = Link<
-    RouteTree,
+    DefaultRouter,
     string,
-    '/' | '/invoices/$invoiceId/' | '/posts/$postId/'
+    '/' | '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('params')
 
@@ -372,7 +609,7 @@ test('when navigating to a union of routes including the root', () => {
 })
 
 test('when navigating from a route with search params to the same route', () => {
-  const TestLink = Link<RouteTree, '/invoices/$invoiceId', string>
+  const TestLink = Link<DefaultRouter, '/invoices/$invoiceId', string>
 
   expectTypeOf(TestLink).parameter(0).toMatchTypeOf<{ search: unknown }>()
   expectTypeOf(TestLink)
@@ -383,7 +620,7 @@ test('when navigating from a route with search params to the same route', () => 
 })
 
 test('when navigating to a route with search params', () => {
-  const TestLink = Link<RouteTree, string, '/invoices/$invoiceId/'>
+  const TestLink = Link<DefaultRouter, string, '/invoices/$invoiceId/edit'>
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('search')
 
   expectTypeOf(TestLink).parameter(0).toMatchTypeOf<{ search: unknown }>()
@@ -394,7 +631,11 @@ test('when navigating to a route with search params', () => {
 })
 
 test('when navigating to a route with optional search params', () => {
-  const TestLink = Link<RouteTree, string, '/invoices/$invoiceId/details'>
+  const TestLink = Link<
+    DefaultRouter,
+    string,
+    '/invoices/$invoiceId/details/$detailId'
+  >
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('search')
 
   expectTypeOf(TestLink).parameter(0).not.toMatchTypeOf<{ search: unknown }>()
@@ -408,7 +649,7 @@ test('when navigating to a route with optional search params', () => {
 })
 
 test('when navigating from a route with no search params to a route with search params', () => {
-  const TestLink = Link<RouteTree, '/invoices/', './$invoiceId/'>
+  const TestLink = Link<DefaultRouter, '/invoices/', './$invoiceId/edit'>
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('search')
 
   expectTypeOf(TestLink).parameter(0).toMatchTypeOf<{ search: unknown }>()
@@ -419,9 +660,9 @@ test('when navigating from a route with no search params to a route with search 
 
 test('when navigating to a union of routes with search params', () => {
   const TestLink = Link<
-    RouteTree,
+    DefaultRouter,
     string,
-    '/invoices/$invoiceId/' | '/posts/$postId/'
+    '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('search')
 
@@ -438,9 +679,9 @@ test('when navigating to a union of routes with search params', () => {
 
 test('when navigating to a union of routes with search params including the root', () => {
   const TestLink = Link<
-    RouteTree,
+    DefaultRouter,
     string,
-    '/' | '/invoices/$invoiceId/' | '/posts/$postId/'
+    '/' | '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
   const params = expectTypeOf(TestLink).parameter(0).toHaveProperty('search')
 

@@ -1,12 +1,11 @@
 import * as React from 'react'
 import warning from 'tiny-warning'
 import { getRouterContext } from './routerContext'
-import type { AnyRoute } from './route'
-import type { RegisteredRouter, Router } from './router'
+import type { AnyRouter, RegisteredRouter, Router } from './router'
 
-export function useRouter<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
->(opts?: { warn?: boolean }): Router<TRouteTree> {
+export function useRouter<TRouter extends AnyRouter = RegisteredRouter>(opts?: {
+  warn?: boolean
+}): TRouter {
   const value = React.useContext(getRouterContext())
   warning(
     !((opts?.warn ?? true) && !value),
