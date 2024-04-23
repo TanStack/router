@@ -1122,8 +1122,8 @@ importers:
         specifier: ^1.29.2
         version: link:../../../packages/router-devtools
       hono:
-        specifier: ^3.12.0
-        version: 3.12.0
+        specifier: ^4.2.7
+        version: 4.2.7
       react:
         specifier: 18.3.0-canary-0cdfef19b-20231211
         version: 18.3.0-canary-0cdfef19b-20231211
@@ -1135,7 +1135,7 @@ importers:
         version: 18.3.0-canary-0cdfef19b-20231211(react-dom@18.3.0-canary-0cdfef19b-20231211)(react@18.3.0-canary-0cdfef19b-20231211)(webpack@5.90.0)
       waku:
         specifier: 0.18.1
-        version: 0.18.1(@hono/node-server@1.4.1)(@swc/core@1.3.102)(@vitejs/plugin-react@4.2.1)(hono@3.12.0)(react-server-dom-webpack@18.3.0-canary-0cdfef19b-20231211)(react@18.3.0-canary-0cdfef19b-20231211)(vite@5.0.13)
+        version: 0.18.1(@hono/node-server@1.4.1)(@swc/core@1.3.102)(@vitejs/plugin-react@4.2.1)(hono@4.2.7)(react-server-dom-webpack@18.3.0-canary-0cdfef19b-20231211)(react@18.3.0-canary-0cdfef19b-20231211)(vite@5.0.13)
     devDependencies:
       '@swc/core':
         specifier: ^1.3.102
@@ -8481,8 +8481,8 @@ packages:
       parse-passwd: 1.0.0
     dev: true
 
-  /hono@3.12.0:
-    resolution: {integrity: sha512-UPEtZuLY7Wo7g0mqKWSOjLFdT8t7wJ60IYEcxKl3AQNU4u+R2QqU2fJMPmSu24C+/ag20Z8mOTQOErZzK4DMvA==}
+  /hono@4.2.7:
+    resolution: {integrity: sha512-k1xHi86tJnRIVvqhFMBDGFKJ8r5O+bEsT4P59ZK59r0F300Xd910/r237inVfuT/VmE86RQQffX4OYNda6dLXw==}
     engines: {node: '>=16.0.0'}
     dev: false
 
@@ -13031,7 +13031,7 @@ packages:
       - supports-color
     dev: true
 
-  /waku@0.18.1(@hono/node-server@1.4.1)(@swc/core@1.3.102)(@vitejs/plugin-react@4.2.1)(hono@3.12.0)(react-server-dom-webpack@18.3.0-canary-0cdfef19b-20231211)(react@18.3.0-canary-0cdfef19b-20231211)(vite@5.0.13):
+  /waku@0.18.1(@hono/node-server@1.4.1)(@swc/core@1.3.102)(@vitejs/plugin-react@4.2.1)(hono@4.2.7)(react-server-dom-webpack@18.3.0-canary-0cdfef19b-20231211)(react@18.3.0-canary-0cdfef19b-20231211)(vite@5.0.13):
     resolution: {integrity: sha512-s+FAawZtVuZVQ5cgvt0RGOWHXhW+xp07UspIf2FL0M/N4MuH381Pu+rtxFhNKlT6waS4cV7/xMaJW6iUeuoiLw==}
     engines: {node: '>=18.3.0'}
     hasBin: true
@@ -13058,7 +13058,7 @@ packages:
       '@hono/node-server': 1.4.1
       '@swc/core': 1.3.102
       '@vitejs/plugin-react': 4.2.1(vite@5.0.13)
-      hono: 3.12.0
+      hono: 4.2.7
       react: 18.3.0-canary-0cdfef19b-20231211
       react-server-dom-webpack: 18.3.0-canary-0cdfef19b-20231211(react-dom@18.3.0-canary-0cdfef19b-20231211)(react@18.3.0-canary-0cdfef19b-20231211)(webpack@5.90.0)
       vite: 5.0.13(@types/node@20.11.10)
