@@ -305,7 +305,6 @@ export class Router<
   )}`
   resetNextScroll = true
   shouldViewTransition?: true = undefined
-  navigateTimeout: Timeout | null = null
   latestLoadPromise: Promise<void> = Promise.resolve()
   subscribers = new Set<RouterListener<RouterEvent>>()
   injectedHtml: Array<InjectedHtmlEntry> = []
@@ -1113,8 +1112,6 @@ export class Router<
     viewTransition,
     ...next
   }: ParsedLocation & CommitLocationOptions) => {
-    if (this.navigateTimeout) clearTimeout(this.navigateTimeout)
-
     const isSameUrl = this.latestLocation.href === next.href
 
     // If the next urls are the same and we're not replacing,
@@ -1275,15 +1272,10 @@ export class Router<
                 }
 
                 if (isRedirect(err)) {
-                  const redirect = this.resolveRedirect(err)
-
-                  if (!preload && !this.isServer) {
-                    this.navigate({ ...(redirect as any), replace: true })
-                  }
-
-                  throw redirect
+                  err = this.resolveRedirect(err)
+                  throw err
                 } else if (isNotFound(err)) {
-                  if (!preload) this.handleNotFound(matches, err)
+                  this.handleNotFound(matches, err)
                   throw err
                 }
               }
@@ -1745,27 +1737,38 @@ export class Router<
         let redirect: ResolvedRedirect | undefined
         let notFound: NotFoundError | undefined
 
-        try {
-          // Load the matches
-          const loadMatchesPromise = this.loadMatches({
+        const loadMatches = () =>
+          this.loadMatches({
             matches: pendingMatches,
             location: next,
             checkLatest: () => this.checkLatest(promise),
           })
 
-          if (previousMatches.length || this.isServer) {
-            await loadMatchesPromise
+        // If we are on the server or non-first load on the client, await
+        // the loadMatches before transitioning
+        if (previousMatches.length || this.isServer) {
+          try {
+            await loadMatches()
+          } catch (err) {
+            if (isRedirect(err)) {
+              redirect = err as ResolvedRedirect
+            } else if (isNotFound(err)) {
+              notFound = err
+            }
           }
-        } catch (err) {
-          if (isRedirect(err)) {
-            redirect = err as ResolvedRedirect
-          } else if (isNotFound(err)) {
-            notFound = err
-          }
-
-          // Swallow all other errors that happen inside
-          // of loadMatches. These errors will be handled
-          // as state on each match.
+        } else {
+          // For client-only first loads, we need to start the transition
+          // immediately and load the matches in the background
+          loadMatches().catch((err) => {
+            // This also means that we need to handle any redirects
+            // that might happen during the load/transition
+            if (isRedirect(err)) {
+              this.navigate({ ...err, replace: true })
+            }
+            // Because our history listener isn't guaranteed to be mounted
+            // on the first load, we need to manually call load again
+            this.load()
+          })
         }
 
         // Only apply the latest transition
