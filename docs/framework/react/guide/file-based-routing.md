@@ -87,7 +87,7 @@ If these defaults work for your project, you don't need to configure anything at
 
 The following options are available for configuration via the `tsr.config.json` file:
 
-> **🚨 Important:** Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern`, to match any of the token in the [file-naming conventions](#file-naming-conventions) section
+> **🚨 Important:** Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern`, to match any of the tokens used in the [file-naming conventions](#file-naming-conventions) section
 
 - **`routeFilePrefix`**
   - (Optional) If set, only route files and directories that start with this string will be considered for routing.
@@ -137,7 +137,7 @@ The following options are available for configuration via the `tsr.config.json` 
 
 File-based routing requires that you follow a few simple file naming conventions to ensure that your routes are generated correctly. The concepts these conventions enable are covered in detail in the [Route Trees & Nesting](../route-trees) guide.
 
-> **💡 Remember:** The file-naming conventions can be affected/extended by what you've configured as the `routeFilePrefix` and `routeFileIgnorePrefix` options in your `tsr.config.json`. By default, the `routeFileIgnorePrefix` is set to `-` and as such files and directories starting with this value are not be considered for routing.
+> **💡 Remember:** The file-naming conventions for your project could be affected by what the options configured in your `tsr.config.json`.
 
 - **`__root.tsx`**
   - The root route file must be named `__root.tsx` and must be placed in the root of the configured `routesDirectory`.
@@ -162,3 +162,5 @@ File-based routing requires that you follow a few simple file naming conventions
 - **`.pendingComponent.tsx` File Type (⚠️ deprecated)**
 - **`.loader.tsx` File Type (⚠️ deprecated)**
   - Each of these suffixes can be used to code-split components or loaders for a route. For example, `blog.post.component.tsx` will be used as the component for the `blog.post` route.
+
+> By default, the `routeFileIgnorePrefix` option is set to `-`, as such files and directories starting with this value will not be considered for routing. You customize this value in the `tsr.config.json` file. Check the [Options](#options) section for more details.
