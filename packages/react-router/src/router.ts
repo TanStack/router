@@ -205,7 +205,7 @@ export interface BuildNextOptions {
     unmaskOnReload?: boolean
   }
   from?: string
-  _fromLocation?: ParsedLocation
+  fromSearch?: unknown
 }
 
 export interface DehydratedRouterState {
@@ -920,25 +920,25 @@ export class Router<
       } = {},
       matches?: Array<MakeRouteMatch<TRouteTree>>,
     ): ParsedLocation => {
-      const fromPath = dest.from || this.latestLocation.pathname
-      let fromSearch = dest._fromLocation?.search || this.latestLocation.search
+      let fromPath = this.latestLocation.pathname
+      let fromSearch = dest.fromSearch || this.latestLocation.search
 
-      const fromMatches = this.matchRoutes(fromPath, fromSearch)
+      const fromMatches = this.matchRoutes(
+        this.latestLocation.pathname,
+        fromSearch,
+      )
 
+      fromPath =
+        fromMatches.find((d) => d.id === dest.from)?.pathname || fromPath
       fromSearch = last(fromMatches)?.search || this.latestLocation.search
 
       const stayingMatches = matches?.filter((d) =>
         fromMatches.find((e) => e.routeId === d.routeId),
       )
 
-      const fromRoute = this.looseRoutesById[last(fromMatches)?.routeId]
-
       let pathname = dest.to
-        ? this.resolvePathWithBase(
-            dest.from ?? this.latestLocation.pathname,
-            `${dest.to}`,
-          )
-        : this.resolvePathWithBase(fromRoute?.fullPath, fromRoute?.fullPath)
+        ? this.resolvePathWithBase(fromPath, `${dest.to}`)
+        : this.resolvePathWithBase(fromPath, fromPath)
 
       const prevParams = { ...last(fromMatches)?.params }
 
@@ -1295,6 +1295,25 @@ export class Router<
               const parentMatch = matches[index - 1]
               const route = this.looseRoutesById[match.routeId]!
               const abortController = new AbortController()
+              let loadPromise = match.loadPromise
+
+              if (match.isFetching) {
+                continue
+              }
+
+              const previousResolve = loadPromise.resolve
+              // Create a new one
+              loadPromise = createControlledPromise<void>(
+                // Resolve the old when we we resolve the new one
+                previousResolve,
+              )
+
+              // Otherwise, load the route
+              matches[index] = match = updateMatch(match.id, (prev) => ({
+                ...prev,
+                isFetching: 'beforeLoad',
+                loadPromise,
+              }))
 
               const handleSerialError = (err: any, routerCode: string) => {
                 err.routerCode = routerCode
@@ -1375,6 +1394,8 @@ export class Router<
                     cause: preload ? 'preload' : match.cause,
                   })) ?? ({} as any)
 
+                if ((latestPromise = checkLatest())) return latestPromise
+
                 if (
                   isRedirect(beforeLoadContext) ||
                   isNotFound(beforeLoadContext)
@@ -1404,6 +1425,8 @@ export class Router<
               }
             }
 
+            if ((latestPromise = checkLatest())) return latestPromise
+
             const validResolvedMatches = matches.slice(0, firstBadMatchIndex)
             const matchPromises: Array<Promise<any>> = []
 
@@ -1431,7 +1454,6 @@ export class Router<
                   let lazyPromise = Promise.resolve()
                   let componentsPromise = Promise.resolve() as Promise<any>
                   let loaderPromise = existing.loaderPromise
-                  let loadPromise = existing.loadPromise
 
                   // If the Matches component rendered
                   // the pending component and needs to show it for
@@ -1455,7 +1477,7 @@ export class Router<
                   }
 
                   try {
-                    if (!match.isFetching) {
+                    if (match.isFetching === 'beforeLoad') {
                       // If the user doesn't want the route to reload, just
                       // resolve with the existing loader data
 
@@ -1464,11 +1486,14 @@ export class Router<
                       // }
 
                       // Otherwise, load the route
-                      matches[index] = match = {
-                        ...match,
-                        isFetching: true,
-                        fetchCount: match.fetchCount + 1,
-                      }
+                      matches[index] = match = updateMatch(
+                        match.id,
+                        (prev) => ({
+                          ...prev,
+                          isFetching: 'loader',
+                          fetchCount: match.fetchCount + 1,
+                        }),
+                      )
 
                       lazyPromise =
                         route.lazyFn?.().then((lazyRoute) => {
@@ -1501,19 +1526,14 @@ export class Router<
                       // Kick off the loader!
                       loaderPromise = route.options.loader?.(loaderContext)
 
-                      const previousResolve = loadPromise.resolve
-                      // Create a new one
-                      loadPromise = createControlledPromise<void>(
-                        // Resolve the old when we we resolve the new one
-                        previousResolve,
+                      matches[index] = match = updateMatch(
+                        match.id,
+                        (prev) => ({
+                          ...prev,
+                          loaderPromise,
+                        }),
                       )
                     }
-
-                    matches[index] = match = updateMatch(match.id, (prev) => ({
-                      ...prev,
-                      loaderPromise,
-                      loadPromise,
-                    }))
 
                     const loaderData = await loaderPromise
                     if ((latestPromise = checkLatest()))
@@ -1580,7 +1600,7 @@ export class Router<
                   if ((latestPromise = checkLatest()))
                     return await latestPromise
 
-                  loadPromise.resolve()
+                  match.loadPromise.resolve()
                 }
 
                 // This is where all of the stale-while-revalidate magic happens
@@ -1942,7 +1962,7 @@ export class Router<
     } catch (err) {
       if (isRedirect(err)) {
         return await this.preloadRoute({
-          _fromDest: next,
+          fromSearch: next.search,
           from: next.pathname,
           ...(err as any),
         })

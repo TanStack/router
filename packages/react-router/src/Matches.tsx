@@ -43,7 +43,7 @@ export interface RouteMatch<
   pathname: string
   params: TAllParams
   status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
-  isFetching: boolean
+  isFetching: false | 'beforeLoad' | 'loader'
   error: unknown
   paramsError: unknown
   searchError: unknown
