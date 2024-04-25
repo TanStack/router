@@ -87,7 +87,7 @@ If these defaults work for your project, you don't need to configure anything at
 
 The following options are available for configuration via the `tsr.config.json` file:
 
-> **🚨 Important:** Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern`, to match any of the tokens used in the [file-naming conventions](#file-naming-conventions) section
+> **🚨 Important:** Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern` options, to match any of the tokens used in the [file-naming conventions](#file-naming-conventions) section.
 
 - **`routeFilePrefix`**
   - (Optional) If set, only route files and directories that start with this string will be considered for routing.
