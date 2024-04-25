@@ -1,16 +1,16 @@
 import type { NavigateOptions } from './link'
 import type { AnyRoute } from './route'
 import type { RoutePaths } from './routeInfo'
-import type { RegisteredRouter } from './router'
+import type { AnyRouter, RegisteredRouter } from './router'
 import type { PickAsRequired } from './utils'
 
 export type AnyRedirect = Redirect<any, any, any, any, any>
 
 export type Redirect<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = '/',
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends RoutePaths<TRouter['routeTree']> = '/',
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
   TMaskTo extends string = '',
 > = {
   /**
@@ -21,30 +21,30 @@ export type Redirect<
   statusCode?: number
   throw?: any
   headers?: HeadersInit
-} & NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>
+} & NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export type ResolvedRedirect<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = '/',
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends RoutePaths<TRouter['routeTree']> = '/',
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
   TMaskTo extends string = '',
 > = PickAsRequired<
-  Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
+  Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
   'code' | 'statusCode' | 'headers'
 > & {
   href: string
 }
 
 export function redirect<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = '/',
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
 >(
-  opts: Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-): Redirect<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> {
+  opts: Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+): Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {
   ;(opts as any).isRedirect = true
   opts.statusCode = opts.statusCode || opts.code || 301
   opts.headers = opts.headers || {}

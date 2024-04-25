@@ -3,20 +3,19 @@ import { useMatch } from './Matches'
 import { useRouter } from './useRouter'
 
 import type { NavigateOptions } from './link'
-import type { AnyRoute } from './route'
 import type { RoutePaths, RoutePathsAutoComplete } from './routeInfo'
-import type { RegisteredRouter } from './router'
+import type { AnyRouter, RegisteredRouter } from './router'
 
 export type UseNavigateResult<TDefaultFrom extends string> = <
   TTo extends string,
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> | string = TDefaultFrom,
-  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = TDefaultFrom,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
 >({
   from,
   ...rest
-}: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>) => Promise<void>
+}: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>) => Promise<void>
 
 export function useNavigate<
   TDefaultFrom extends string = string,
@@ -52,12 +51,12 @@ export function useNavigate<
 // } //
 
 export function Navigate<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
->(props: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>): null {
+>(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const { navigate } = useRouter()
   const match = useMatch({ strict: false })
 

@@ -1,7 +1,7 @@
 import * as React from 'react'
 import type { Router } from './router'
 
-const routerContext = React.createContext<Router<any>>(null!)
+const routerContext = React.createContext<Router<any, any>>(null!)
 
 export function getRouterContext() {
   if (typeof document === 'undefined') {

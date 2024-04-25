@@ -1,4 +1,5 @@
 import type { AnyRoute } from './route'
+import type { AnyRouter, Router, TrailingSlashOption } from './router'
 import type { UnionToIntersection, UnionToTuple } from './utils'
 
 export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
@@ -9,12 +10,14 @@ export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
     : TAcc
   : TAcc
 
-export type RouteLeaves<TRouteTree> =
+export type ParseRouteWithoutBranches<TRouteTree> =
   ParseRoute<TRouteTree> extends infer TRoute extends AnyRoute
     ? TRoute extends any
       ? TRoute['types']['children'] extends ReadonlyArray<any>
-        ? never
-        : TRoute['fullPath']
+        ? '/' extends TRoute['types']['children'][number]['path']
+          ? never
+          : TRoute
+        : TRoute
       : never
     : never
 
@@ -29,9 +32,14 @@ export type RouteById<TRouteTree extends AnyRoute, TId> = Extract<
 
 export type RouteIds<TRouteTree extends AnyRoute> = ParseRoute<TRouteTree>['id']
 
+export type CatchAllPaths<TRouteTree extends AnyRoute> = Record<
+  '.' | '..' | '',
+  ParseRoute<TRouteTree>
+>
+
 export type RoutesByPath<TRouteTree extends AnyRoute> = {
   [K in ParseRoute<TRouteTree> as K['fullPath']]: K
-} & Record<'.' | '..', ParseRoute<TRouteTree>>
+} & CatchAllPaths<TRouteTree>
 
 export type RouteByPath<TRouteTree extends AnyRoute, TPath> = Extract<
   string extends TPath
@@ -43,6 +51,66 @@ export type RouteByPath<TRouteTree extends AnyRoute, TPath> = Extract<
 export type RoutePaths<TRouteTree extends AnyRoute> =
   | ParseRoute<TRouteTree>['fullPath']
   | '/'
+
+export type RouteToPathAlwaysTrailingSlash<TRoute extends AnyRoute> =
+  TRoute['path'] extends '/'
+    ? TRoute['fullPath']
+    : TRoute['fullPath'] extends '/'
+      ? TRoute['fullPath']
+      : `${TRoute['fullPath']}/`
+
+export type RouteToPathNeverTrailingSlash<TRoute extends AnyRoute> =
+  TRoute['path'] extends '/'
+    ? TRoute['fullPath'] extends '/'
+      ? TRoute['fullPath']
+      : TRoute['fullPath'] extends `${infer TRest}/`
+        ? TRest
+        : TRoute['fullPath']
+    : TRoute['fullPath']
+
+export type RouteToPathPreserveTrailingSlash<TRoute extends AnyRoute> =
+  | RouteToPathNeverTrailingSlash<TRoute>
+  | RouteToPathAlwaysTrailingSlash<TRoute>
+
+export type RouteToPathByTrailingSlashOption<TRoute extends AnyRoute> = {
+  always: RouteToPathAlwaysTrailingSlash<TRoute>
+  preserve: RouteToPathPreserveTrailingSlash<TRoute>
+  never: RouteToPathNeverTrailingSlash<TRoute>
+}
+
+export type TrailingSlashOptionByRouter<TRouter extends AnyRouter> =
+  TrailingSlashOption extends TRouter['options']['trailingSlash']
+    ? 'never'
+    : NonNullable<TRouter['options']['trailingSlash']>
+
+export type RouteToByRouter<
+  TRouter extends AnyRouter,
+  TRoute extends AnyRoute,
+> = RouteToPathByTrailingSlashOption<TRoute>[TrailingSlashOptionByRouter<TRouter>]
+
+export type RouteToPath<
+  TRouter extends AnyRouter,
+  TRouteTree extends AnyRoute,
+> =
+  ParseRouteWithoutBranches<TRouteTree> extends infer TRoute extends AnyRoute
+    ? TRoute extends any
+      ? RouteToByRouter<TRouter, TRoute>
+      : never
+    : never
+
+export type RoutesByToPath<TRouter extends AnyRouter> = {
+  [TRoute in ParseRouteWithoutBranches<TRouter['routeTree']> as RouteToByRouter<
+    TRouter,
+    TRoute
+  >]: TRoute
+} & CatchAllPaths<TRouter['routeTree']>
+
+export type RouteByToPath<TRouter extends AnyRouter, TTo> = Extract<
+  string extends TTo
+    ? ParseRouteWithoutBranches<TRouter['routeTree']>
+    : RoutesByToPath<TRouter>[TTo],
+  AnyRoute
+>
 
 export type RoutePathsAutoComplete<TRouteTree extends AnyRoute, T> =
   | (string extends T ? T & {} : T)

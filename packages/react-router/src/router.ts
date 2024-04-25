@@ -87,7 +87,7 @@ import type { DeferredPromiseState } from './defer'
 declare global {
   interface Window {
     __TSR_DEHYDRATED__?: { data: string }
-    __TSR_ROUTER_CONTEXT__?: React.Context<Router<any>>
+    __TSR_ROUTER_CONTEXT__?: React.Context<Router<any, any>>
   }
 }
 
@@ -95,7 +95,7 @@ export interface Register {
   // router: Router
 }
 
-export type AnyRouter = Router<AnyRoute, any, any>
+export type AnyRouter = Router<any, any, any, any>
 
 export type RegisteredRouter = Register extends {
   router: infer TRouter extends AnyRouter
@@ -117,8 +117,11 @@ export type RouterContextOptions<TRouteTree extends AnyRoute> =
         context: TRouteTree['types']['routerContext']
       }
 
+export type TrailingSlashOption = 'always' | 'never' | 'preserve'
+
 export interface RouterOptions<
   TRouteTree extends AnyRoute,
+  TTrailingSlashOption extends TrailingSlashOption,
   TDehydrated extends Record<string, any> = Record<string, any>,
   TSerializedError extends Record<string, any> = Record<string, any>,
 > {
@@ -157,7 +160,7 @@ export interface RouterOptions<
   defaultNotFoundComponent?: NotFoundRouteComponent
   transformer?: RouterTransformer
   errorSerializer?: RouterErrorSerializer<TSerializedError>
-  trailingSlash?: 'always' | 'never' | 'preserve'
+  trailingSlash?: TTrailingSlashOption
 }
 
 export interface RouterTransformer {
@@ -220,9 +223,18 @@ export interface DehydratedRouter {
 
 export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
+  TTrailingSlashOption extends TrailingSlashOption,
   TDehydrated extends Record<string, any>,
   TSerializedError extends Record<string, any>,
-> = Omit<RouterOptions<TRouteTree, TDehydrated, TSerializedError>, 'context'> &
+> = Omit<
+  RouterOptions<
+    TRouteTree,
+    TTrailingSlashOption,
+    TDehydrated,
+    TSerializedError
+  >,
+  'context'
+> &
   RouterContextOptions<TRouteTree>
 
 export const componentTypes = [
@@ -261,17 +273,29 @@ export type RouterListener<TRouterEvent extends RouterEvent> = {
 }
 
 export function createRouter<
-  TRouteTree extends AnyRoute = AnyRoute,
+  TRouteTree extends AnyRoute,
+  TTrailingSlashOption extends TrailingSlashOption,
   TDehydrated extends Record<string, any> = Record<string, any>,
   TSerializedError extends Record<string, any> = Record<string, any>,
 >(
-  options: RouterConstructorOptions<TRouteTree, TDehydrated, TSerializedError>,
+  options: RouterConstructorOptions<
+    TRouteTree,
+    TTrailingSlashOption,
+    TDehydrated,
+    TSerializedError
+  >,
 ) {
-  return new Router<TRouteTree, TDehydrated, TSerializedError>(options)
+  return new Router<
+    TRouteTree,
+    TTrailingSlashOption,
+    TDehydrated,
+    TSerializedError
+  >(options)
 }
 
 export class Router<
-  in out TRouteTree extends AnyRoute = AnyRoute,
+  in out TRouteTree extends AnyRoute,
+  in out TTrailingSlashOption extends TrailingSlashOption,
   in out TDehydrated extends Record<string, any> = Record<string, any>,
   in out TSerializedError extends Record<string, any> = Record<string, any>,
 > {
@@ -292,7 +316,12 @@ export class Router<
   __store!: Store<RouterState<TRouteTree>>
   options!: PickAsRequired<
     Omit<
-      RouterOptions<TRouteTree, TDehydrated, TSerializedError>,
+      RouterOptions<
+        TRouteTree,
+        TTrailingSlashOption,
+        TDehydrated,
+        TSerializedError
+      >,
       'transformer'
     > & {
       transformer: RouterTransformer
@@ -313,6 +342,7 @@ export class Router<
   constructor(
     options: RouterConstructorOptions<
       TRouteTree,
+      TTrailingSlashOption,
       TDehydrated,
       TSerializedError
     >,
@@ -343,6 +373,7 @@ export class Router<
   update = (
     newOptions: RouterConstructorOptions<
       TRouteTree,
+      TTrailingSlashOption,
       TDehydrated,
       TSerializedError
     >,
@@ -1848,7 +1879,13 @@ export class Router<
     TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
     TMaskTo extends string = '',
   >(
-    opts: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
+    opts: NavigateOptions<
+      Router<TRouteTree, TTrailingSlashOption, TDehydrated, TSerializedError>,
+      TFrom,
+      TTo,
+      TMaskFrom,
+      TMaskTo
+    >,
   ): Promise<Array<AnyRouteMatch> | undefined> => {
     const next = this.buildLocation(opts as any)
 
@@ -1921,7 +1958,11 @@ export class Router<
     TTo extends string = '',
     TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
   >(
-    location: ToOptions<TRouteTree, TFrom, TTo>,
+    location: ToOptions<
+      Router<TRouteTree, TTrailingSlashOption, TDehydrated, TSerializedError>,
+      TFrom,
+      TTo
+    >,
     opts?: MatchRouteOptions,
   ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
     const matchLocation = {
