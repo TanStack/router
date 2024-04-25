@@ -87,12 +87,12 @@ If these defaults work for your project, you don't need to configure anything at
 
 The following options are available for configuration via the `tsr.config.json` file:
 
+> **🚨 Important:** Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern`, to match any of the token in the [file-naming conventions](#file-naming-conventions) section
+
 - **`routeFilePrefix`**
   - (Optional) If set, only route files and directories that start with this string will be considered for routing.
-    > **🚨 Important:** Do not set the `routeFilePrefix` option to match any of the tokens in the [file naming conventions](#file-naming-conventions) section.
 - **`routeFileIgnorePrefix`**
   - (Optional, **Defaults to `-`**) Route files and directories that start with this string will be ignored. By default this is set to `-` to allow for the use of directories to house related files that do not contain any route files.
-    > **🚨 Important:** Do not set the `routeFileIgnorePrefix` option to match any of the tokens in the [file naming conventions](#file-naming-conventions) section.
 - **`routeFileIgnorePattern`**
   - (Optional) Ignore specific file and directories in the route directory. It can be used in regular expression format. For example `.((css|const).ts)|test-page` can ignore `.css.ts` and `.const.ts` file and ignore file and directories includes name with `test-page`
 - **`routesDirectory`**
