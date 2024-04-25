@@ -71,18 +71,18 @@ describe('encoding: path params for /posts/$slug', () => {
   })
 
   it('state.location.pathname, should have the params.slug value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
-    const unencoded = 'framework/react/guide/file-based-routing tanstack'
-
     const { router } = createTestRouter(
       createMemoryHistory({
-        initialEntries: [`/posts/${encodeURIComponent(unencoded)}`],
+        initialEntries: [
+          '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
+        ],
       }),
     )
 
     await router.load()
 
     expect(router.state.location.pathname).toBe(
-      `/posts/${encodeURIComponent(unencoded)}`,
+      '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
     )
   })
 
@@ -141,11 +141,11 @@ describe('encoding: path params for /posts/$slug', () => {
   })
 
   it('params.slug for the matched route, should be "framework/react/guide/file-based-routing tanstack" instead of it being "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
-    const unencoded = 'framework/react/guide/file-based-routing tanstack'
-
     const { router, routes } = createTestRouter(
       createMemoryHistory({
-        initialEntries: [`/posts/${encodeURIComponent(unencoded)}`],
+        initialEntries: [
+          '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
+        ],
       }),
     )
 
@@ -159,7 +159,9 @@ describe('encoding: path params for /posts/$slug', () => {
       throw new Error('No match found')
     }
 
-    expect((match.params as unknown as any).slug).toBe(unencoded)
+    expect((match.params as unknown as any).slug).toBe(
+      'framework/react/guide/file-based-routing tanstack',
+    )
   })
 })
 
@@ -195,33 +197,33 @@ describe('encoding: splat param for /$', () => {
   })
 
   it('state.location.pathname, should have the params._splat value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
-    const unencoded = 'framework/react/guide/file-based-routing tanstack'
-
     const { router } = createTestRouter(
       createMemoryHistory({
-        initialEntries: [`/${encodeURIComponent(unencoded)}`],
+        initialEntries: [
+          '/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
+        ],
       }),
     )
 
     await router.load()
 
     expect(router.state.location.pathname).toBe(
-      `/${encodeURIComponent(unencoded)}`,
+      '/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
     )
   })
 
   it('state.location.pathname, should have the params._splat value of "framework/react/guide/file-based-routing tanstack"', async () => {
-    const value = 'framework/react/guide/file-based-routing tanstack'
-
     const { router } = createTestRouter(
       createMemoryHistory({
-        initialEntries: [`/${value}`],
+        initialEntries: ['/framework/react/guide/file-based-routing tanstack'],
       }),
     )
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe(`/${value}`)
+    expect(router.state.location.pathname).toBe(
+      '/framework/react/guide/file-based-routing tanstack',
+    )
   })
 
   it('params._splat for the matched route, should be "tanner"', async () => {
@@ -279,11 +281,9 @@ describe('encoding: splat param for /$', () => {
   })
 
   it('params._splat for the matched route, should be "framework/react/guide/file-based-routing tanstack"', async () => {
-    const value = 'framework/react/guide/file-based-routing tanstack'
-
     const { router, routes } = createTestRouter(
       createMemoryHistory({
-        initialEntries: [`/${value}`],
+        initialEntries: ['/framework/react/guide/file-based-routing tanstack'],
       }),
     )
 
@@ -297,6 +297,8 @@ describe('encoding: splat param for /$', () => {
       throw new Error('No match found')
     }
 
-    expect((match.params as unknown as any)._splat).toBe(value)
+    expect((match.params as unknown as any)._splat).toBe(
+      'framework/react/guide/file-based-routing tanstack',
+    )
   })
 })
