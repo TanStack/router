@@ -184,7 +184,7 @@ describe('encoding: splat param for /$', () => {
     expect(router.state.location.pathname).toBe('/🚀')
   })
 
-  it('state.location.pathname, should have the params._slug value of "%F0%9F%9A%80"', async () => {
+  it('state.location.pathname, should have the params._splat value of "%F0%9F%9A%80"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
     )
