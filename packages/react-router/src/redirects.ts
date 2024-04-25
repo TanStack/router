@@ -38,9 +38,9 @@ export type ResolvedRedirect<
 
 export function redirect<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> = '/',
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
 >(
   opts: Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,

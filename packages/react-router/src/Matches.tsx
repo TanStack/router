@@ -451,11 +451,9 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 
   return React.useCallback(
     <
-      TFrom extends RoutePaths<TRouter['routeTree']> = RoutePaths<
-        TRouter['routeTree']
-      >,
+      TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
       TTo extends string = '',
-      TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
+      TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
       TMaskTo extends string = '',
       TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
     >(

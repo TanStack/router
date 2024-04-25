@@ -10,10 +10,10 @@ import type { Trim } from './fileRoute'
 import type { AnyRoute, RootSearchSchema } from './route'
 import type {
   RouteByPath,
-  RouteLeafByPath,
-  RouteLeafPaths,
+  RouteByToPath,
   RoutePaths,
   RoutePathsAutoComplete,
+  RouteToPath,
 } from './routeInfo'
 import type { RegisteredRouter } from './router'
 import type {
@@ -79,25 +79,17 @@ export type Last<T extends Array<any>> = T extends [...infer _, infer L]
   ? L
   : never
 
-export type AddTrailingSlash<T extends string> = T extends `${string}/`
-  ? T
-  : `${T}/`
+export type RemoveTrailingSlashes<T> = T extends `${infer R}/` ? R : T
 
-export type RemoveTrailingSlashes<T> = T extends `${infer R}/`
-  ? RemoveTrailingSlashes<R>
-  : T
-
-export type RemoveLeadingSlashes<T> = T extends `/${infer R}`
-  ? RemoveLeadingSlashes<R>
-  : T
+export type RemoveLeadingSlashes<T> = T extends `/${infer R}` ? R : T
 
 export type ResolvePaths<TRouter extends AnyRouter, TSearchPath> =
   RouteByPath<
     TRouter['routeTree'],
     RemoveTrailingSlashes<TSearchPath>
   > extends never
-    ? RouteLeafPaths<TRouter, TRouter['routeTree']>
-    : RouteLeafPaths<
+    ? RouteToPath<TRouter, TRouter['routeTree']>
+    : RouteToPath<
         TRouter,
         RouteByPath<TRouter['routeTree'], RemoveTrailingSlashes<TSearchPath>>
       >
@@ -106,7 +98,7 @@ export type SearchPaths<
   TRouter extends AnyRouter,
   TSearchPath extends string,
   TPaths = ResolvePaths<TRouter, TSearchPath>,
-> = TPaths extends `${RemoveTrailingSlashes<TSearchPath>}/${infer TRest}`
+> = TPaths extends `${RemoveTrailingSlashes<TSearchPath>}${infer TRest}`
   ? TRest
   : never
 
@@ -114,7 +106,7 @@ export type SearchRelativePathAutoComplete<
   TRouter extends AnyRouter,
   TTo extends string,
   TSearchPath extends string,
-> = `${TTo}/${SearchPaths<TRouter, TSearchPath>}`
+> = `${TTo}/${RemoveLeadingSlashes<SearchPaths<TRouter, TSearchPath>>}`
 
 export type RelativeToParentPathAutoComplete<
   TRouter extends AnyRouter,
@@ -148,8 +140,12 @@ export type AbsolutePathAutoComplete<
           ? never
           : './')
   | (string extends TFrom ? '../' : TFrom extends `/` ? never : '../')
-  | RouteLeafPaths<TRouter, TRouter['routeTree']>
-  | (TFrom extends '/' ? never : SearchPaths<TRouter, TFrom>)
+  | RouteToPath<TRouter, TRouter['routeTree']>
+  | (TFrom extends '/'
+      ? never
+      : string extends TFrom
+        ? RemoveLeadingSlashes<RouteToPath<TRouter, TRouter['routeTree']>>
+        : RemoveLeadingSlashes<SearchPaths<TRouter, TFrom>>)
 
 export type RelativeToPathAutoComplete<
   TRouter extends AnyRouter,
@@ -229,17 +225,15 @@ export type ResolveRoute<
   TRouter extends AnyRouter,
   TFrom,
   TTo,
-  TPath = RemoveTrailingSlashes<
-    string extends TFrom
-      ? TTo
-      : string extends TTo
-        ? TFrom
-        : ResolveRelativePath<TFrom, TTo>
-  >,
+  TPath = string extends TFrom
+    ? TTo
+    : string extends TTo
+      ? TFrom
+      : ResolveRelativePath<TFrom, TTo>,
 > = TPath extends string
   ? string extends TTo
     ? RouteByPath<TRouter['routeTree'], TPath>
-    : RouteLeafByPath<TRouter, TPath>
+    : RouteByToPath<TRouter, TPath>
   : never
 
 type PostProcessParams<
