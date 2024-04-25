@@ -306,7 +306,7 @@ export function matchByPath(
             return false
           }
           if (baseSegment.value.charAt(0) !== '$') {
-            params[routeSegment.value.substring(1)] = decodeURI(
+            params[routeSegment.value.substring(1)] = decodeURIComponent(
               baseSegment.value,
             )
           }
