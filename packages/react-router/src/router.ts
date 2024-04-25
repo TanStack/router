@@ -925,7 +925,7 @@ export class Router<
           })
       }
 
-      // encodeURI all params so the generated href is valid and stable
+      // encode all path params so the generated href is valid and stable
       Object.keys(nextParams).forEach((key) => {
         if (['*', '_splat'].includes(key)) {
           // the splat/catch-all routes shouldn't have the '/' encoded out
