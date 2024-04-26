@@ -336,11 +336,7 @@ function RouteComp({
   const routerState = useRouterState({
     router,
   } as any)
-  const matches =
-    routerState.status === 'pending'
-      ? routerState.pendingMatches ?? []
-      : routerState.matches
-
+  const matches = routerState.pendingMatches || routerState.matches
   const match = routerState.matches.find((d) => d.routeId === route.id)
 
   const param = React.useMemo(() => {
@@ -628,35 +624,34 @@ const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
               />
             ) : (
               <div>
-                {(routerState.status === 'pending'
-                  ? routerState.pendingMatches ?? []
-                  : routerState.matches
-                ).map((match, i) => {
-                  return (
-                    <div
-                      key={match.id || i}
-                      role="button"
-                      aria-label={`Open match details for ${match.id}`}
-                      onClick={() =>
-                        setActiveId(activeId === match.id ? '' : match.id)
-                      }
-                      className={cx(
-                        getStyles().matchRow(match === activeMatch),
-                      )}
-                    >
+                {(routerState.pendingMatches || routerState.matches).map(
+                  (match, i) => {
+                    return (
                       <div
+                        key={match.id || i}
+                        role="button"
+                        aria-label={`Open match details for ${match.id}`}
+                        onClick={() =>
+                          setActiveId(activeId === match.id ? '' : match.id)
+                        }
                         className={cx(
-                          getStyles().matchIndicator(getStatusColor(match)),
+                          getStyles().matchRow(match === activeMatch),
                         )}
-                      />
+                      >
+                        <div
+                          className={cx(
+                            getStyles().matchIndicator(getStatusColor(match)),
+                          )}
+                        />
 
-                      <code
-                        className={getStyles().matchID}
-                      >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
-                      <AgeTicker match={match} router={router} />
-                    </div>
-                  )
-                })}
+                        <code
+                          className={getStyles().matchID}
+                        >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
+                        <AgeTicker match={match} router={router} />
+                      </div>
+                    )
+                  },
+                )}
               </div>
             )}
           </div>
@@ -1249,7 +1244,7 @@ const stylesFactory = () => {
     `,
     matchStatus: (
       status: 'pending' | 'success' | 'error' | 'notFound' | 'redirected',
-      isFetching: boolean,
+      isFetching: false | 'beforeLoad' | 'loader',
     ) => {
       const colorMap = {
         pending: 'yellow',
@@ -1260,7 +1255,11 @@ const stylesFactory = () => {
       } as const
 
       const color =
-        isFetching && status === 'success' ? 'blue' : colorMap[status]
+        isFetching && status === 'success'
+          ? isFetching === 'beforeLoad'
+            ? 'purple'
+            : 'blue'
+          : colorMap[status]
 
       return css`
         display: flex;

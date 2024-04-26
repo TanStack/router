@@ -25,7 +25,7 @@ import {
   trimPathLeft,
   trimPathRight,
 } from './path'
-import { isRedirect } from './redirects'
+import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
 import type * as React from 'react'
 import type {
@@ -583,10 +583,10 @@ export class Router<
     })
   }
 
-  checkLatest = (promise: Promise<void>): undefined | Promise<void> => {
-    return this.latestLoadPromise !== promise
-      ? this.latestLoadPromise
-      : undefined
+  checkLatest = (promise: Promise<void>): void => {
+    if (this.latestLoadPromise !== promise) {
+      throw this.latestLoadPromise
+    }
   }
 
   parseLocation = (
@@ -1206,19 +1206,189 @@ export class Router<
     })
   }
 
+  load = async (): Promise<void> => {
+    const promise = createControlledPromise<void>()
+    this.latestLoadPromise = promise
+
+    this.startReactTransition(async () => {
+      try {
+        const next = this.latestLocation
+        const prevLocation = this.state.resolvedLocation
+        const pathDidChange = prevLocation.href !== next.href
+
+        // Cancel any pending matches
+        this.cancelMatches()
+
+        this.emit({
+          type: 'onBeforeLoad',
+          fromLocation: prevLocation,
+          toLocation: next,
+          pathChanged: pathDidChange,
+        })
+
+        let pendingMatches!: Array<AnyRouteMatch>
+
+        this.__store.batch(() => {
+          this.cleanCache()
+
+          // Match the routes
+          pendingMatches = this.matchRoutes(next.pathname, next.search)
+
+          // Ingest the new matches
+          this.__store.setState((s) => ({
+            ...s,
+            status: 'pending',
+            isLoading: true,
+            location: next,
+            pendingMatches,
+            // If a cached moved to pendingMatches, remove it from cachedMatches
+            cachedMatches: s.cachedMatches.filter((d) => {
+              return !pendingMatches.find((e) => e.id === d.id)
+            }),
+          }))
+        })
+
+        let redirect: ResolvedRedirect | undefined
+        let notFound: NotFoundError | undefined
+
+        try {
+          await this.loadMatches({
+            matches: pendingMatches,
+            location: next,
+            checkLatest: () => this.checkLatest(promise),
+            onReady: async () => {
+              await this.startViewTransition(async () => {
+                // this.viewTransitionPromise = createControlledPromise<true>()
+
+                // Commit the pending matches. If a previous match was
+                // removed, place it in the cachedMatches
+                let exitingMatches!: Array<AnyRouteMatch>
+                let enteringMatches!: Array<AnyRouteMatch>
+                let stayingMatches!: Array<AnyRouteMatch>
+
+                this.__store.batch(() => {
+                  this.__store.setState((s) => {
+                    const previousMatches = s.matches
+                    const newMatches = s.pendingMatches || s.matches
+
+                    exitingMatches = previousMatches.filter(
+                      (match) => !newMatches.find((d) => d.id === match.id),
+                    )
+                    enteringMatches = newMatches.filter(
+                      (match) =>
+                        !previousMatches.find((d) => d.id === match.id),
+                    )
+                    stayingMatches = previousMatches.filter((match) =>
+                      newMatches.find((d) => d.id === match.id),
+                    )
+
+                    return {
+                      ...s,
+                      isLoading: false,
+                      matches: newMatches,
+                      pendingMatches: undefined,
+                      cachedMatches: [
+                        ...s.cachedMatches,
+                        ...exitingMatches.filter((d) => d.status !== 'error'),
+                      ],
+                      statusCode:
+                        redirect?.statusCode || notFound
+                          ? 404
+                          : s.matches.some((d) => d.status === 'error')
+                            ? 500
+                            : 200,
+                      redirect,
+                    }
+                  })
+                  this.cleanCache()
+                })
+
+                //
+                ;(
+                  [
+                    [exitingMatches, 'onLeave'],
+                    [enteringMatches, 'onEnter'],
+                    [stayingMatches, 'onStay'],
+                  ] as const
+                ).forEach(([matches, hook]) => {
+                  matches.forEach((match) => {
+                    this.looseRoutesById[match.routeId]!.options[hook]?.(match)
+                  })
+                })
+              })
+            },
+          })
+        } catch (err) {
+          if (isResolvedRedirect(err)) {
+            redirect = err
+            if (!this.isServer) {
+              this.navigate({ ...err, replace: true })
+              this.load()
+            }
+          } else if (isNotFound(err)) {
+            notFound = err
+          }
+
+          throw err
+        }
+
+        promise.resolve()
+      } catch (err) {
+        if (this.isServer) {
+          return promise.reject(err)
+        }
+        if (!isRedirect(err)) {
+          console.error('Load Error', err)
+        }
+      }
+    })
+
+    return this.latestLoadPromise
+  }
+
+  startViewTransition = async (fn: () => Promise<void>) => {
+    // Determine if we should start a view transition from the navigation
+    // or from the router default
+    const shouldViewTransition =
+      this.shouldViewTransition ?? this.options.defaultViewTransition
+
+    // Reset the view transition flag
+    delete this.shouldViewTransition
+    // Attempt to start a view transition (or just apply the changes if we can't)
+    ;(shouldViewTransition && typeof document !== 'undefined'
+      ? document
+      : undefined
+    )
+      // @ts-expect-error
+      ?.startViewTransition?.(fn) || fn()
+  }
+
   loadMatches = async ({
     checkLatest,
     location,
     matches,
     preload,
+    onReady,
   }: {
-    checkLatest: () => Promise<void> | undefined
+    checkLatest: () => void
     location: ParsedLocation
     matches: Array<AnyRouteMatch>
     preload?: boolean
+    onReady?: () => Promise<void>
   }): Promise<Array<MakeRouteMatch>> => {
-    let latestPromise
     let firstBadMatchIndex: number | undefined
+    let rendered = false
+
+    const triggerOnReady = async () => {
+      if (!rendered) {
+        rendered = true
+        await onReady?.()
+      }
+    }
+
+    if (!this.isServer && !this.state.matches.length) {
+      triggerOnReady()
+    }
 
     const updateMatch = (
       id: string,
@@ -1247,40 +1417,43 @@ export class Router<
       return updated
     }
 
+    const handleRedirectAndNotFound = (match: AnyRouteMatch, err: any) => {
+      if (isResolvedRedirect(err)) throw err
+
+      if (isRedirect(err) || isNotFound(err)) {
+        // if (!rendered) {
+        updateMatch(match.id, (prev) => ({
+          ...prev,
+          status: isRedirect(err)
+            ? 'redirected'
+            : isNotFound(err)
+              ? 'notFound'
+              : 'error',
+          isFetching: false,
+          error: err,
+        }))
+        // }
+
+        rendered = true
+
+        if (!(err as any).routeId) {
+          ;(err as any).routeId = match.routeId
+        }
+
+        if (isRedirect(err)) {
+          err = this.resolveRedirect(err)
+          throw err
+        } else if (isNotFound(err)) {
+          this.handleNotFound(matches, err)
+          throw err
+        }
+      }
+    }
+
     try {
       await new Promise<void>((resolveAll, rejectAll) => {
         ;(async () => {
           try {
-            const handleRedirectAndNotFound = (
-              match: AnyRouteMatch,
-              err: any,
-            ) => {
-              if (isRedirect(err) || isNotFound(err)) {
-                updateMatch(match.id, (prev) => ({
-                  ...prev,
-                  status: isRedirect(err)
-                    ? 'redirected'
-                    : isNotFound(err)
-                      ? 'notFound'
-                      : 'error',
-                  isFetching: false,
-                  error: err,
-                }))
-
-                if (!(err as any).routeId) {
-                  ;(err as any).routeId = match.routeId
-                }
-
-                if (isRedirect(err)) {
-                  err = this.resolveRedirect(err)
-                  throw err
-                } else if (isNotFound(err)) {
-                  this.handleNotFound(matches, err)
-                  throw err
-                }
-              }
-            }
-
             // Check each match middleware to see if the route can be accessed
             // eslint-disable-next-line prefer-const
             for (let [index, match] of matches.entries()) {
@@ -1288,6 +1461,33 @@ export class Router<
               const route = this.looseRoutesById[match.routeId]!
               const abortController = new AbortController()
               let loadPromise = match.loadPromise
+
+              const pendingMs =
+                route.options.pendingMs ?? this.options.defaultPendingMs
+
+              const shouldPending = !!(
+                onReady &&
+                !this.isServer &&
+                !preload &&
+                (route.options.loader || route.options.beforeLoad) &&
+                typeof pendingMs === 'number' &&
+                pendingMs !== Infinity &&
+                (route.options.pendingComponent ??
+                  this.options.defaultPendingComponent)
+              )
+
+              if (shouldPending) {
+                // If we might show a pending component, we need to wait for the
+                // pending promise to resolve before we start showing that state
+                setTimeout(() => {
+                  try {
+                    checkLatest()
+                    // Update the match and prematurely resolve the loadMatches promise so that
+                    // the pending component can start rendering
+                    triggerOnReady()
+                  } catch {}
+                }, pendingMs)
+              }
 
               if (match.isFetching) {
                 continue
@@ -1336,41 +1536,9 @@ export class Router<
                 handleSerialError(match.searchError, 'VALIDATE_SEARCH')
               }
 
-              // if (match.globalNotFound && !preload) {
-              //   handleSerialError(notFound({ _global: true }), 'NOT_FOUND')
-              // }
-
               try {
                 const parentContext =
                   parentMatch?.context ?? this.options.context ?? {}
-
-                const pendingMs =
-                  route.options.pendingMs ?? this.options.defaultPendingMs
-                const pendingPromise =
-                  typeof pendingMs !== 'number' || pendingMs <= 0
-                    ? Promise.resolve()
-                    : new Promise<void>((r) => {
-                        if (pendingMs !== Infinity) setTimeout(r, pendingMs)
-                      })
-
-                const shouldPending =
-                  !this.isServer &&
-                  !preload &&
-                  (route.options.loader || route.options.beforeLoad) &&
-                  typeof pendingMs === 'number' &&
-                  (route.options.pendingComponent ??
-                    this.options.defaultPendingComponent)
-
-                if (shouldPending) {
-                  // If we might show a pending component, we need to wait for the
-                  // pending promise to resolve before we start showing that state
-                  pendingPromise.then(async () => {
-                    if ((latestPromise = checkLatest())) return latestPromise
-                    // Update the match and prematurely resolve the loadMatches promise so that
-                    // the pending component can start rendering
-                    resolveAll()
-                  })
-                }
 
                 const beforeLoadContext =
                   (await route.options.beforeLoad?.({
@@ -1386,7 +1554,7 @@ export class Router<
                     cause: preload ? 'preload' : match.cause,
                   })) ?? ({} as any)
 
-                if ((latestPromise = checkLatest())) return latestPromise
+                checkLatest()
 
                 if (
                   isRedirect(beforeLoadContext) ||
@@ -1417,7 +1585,7 @@ export class Router<
               }
             }
 
-            if ((latestPromise = checkLatest())) return latestPromise
+            checkLatest()
 
             const validResolvedMatches = matches.slice(0, firstBadMatchIndex)
             const matchPromises: Array<Promise<any>> = []
@@ -1458,8 +1626,7 @@ export class Router<
                     if (latestMatch?.minPendingPromise) {
                       await latestMatch.minPendingPromise
 
-                      if ((latestPromise = checkLatest()))
-                        return await latestPromise
+                      checkLatest()
 
                       updateMatch(latestMatch.id, (prev) => ({
                         ...prev,
@@ -1512,8 +1679,7 @@ export class Router<
                       // we can use the options
                       await lazyPromise
 
-                      if ((latestPromise = checkLatest()))
-                        return await latestPromise
+                      checkLatest()
 
                       // Kick off the loader!
                       loaderPromise = route.options.loader?.(loaderContext)
@@ -1528,17 +1694,12 @@ export class Router<
                     }
 
                     const loaderData = await loaderPromise
-                    if ((latestPromise = checkLatest()))
-                      return await latestPromise
+                    checkLatest()
 
                     handleRedirectAndNotFound(match, loaderData)
 
-                    if ((latestPromise = checkLatest()))
-                      return await latestPromise
-
                     await potentialPendingMinPromise()
-                    if ((latestPromise = checkLatest()))
-                      return await latestPromise
+                    checkLatest()
 
                     const meta = route.options.meta?.({
                       params: match.params,
@@ -1560,13 +1721,11 @@ export class Router<
                       headers,
                     }))
                   } catch (e) {
+                    checkLatest()
                     let error = e
-                    if ((latestPromise = checkLatest()))
-                      return await latestPromise
 
                     await potentialPendingMinPromise()
-                    if ((latestPromise = checkLatest()))
-                      return await latestPromise
+                    checkLatest()
 
                     handleRedirectAndNotFound(match, e)
 
@@ -1589,8 +1748,7 @@ export class Router<
                   // to be preloaded before we resolve the match
                   await componentsPromise
 
-                  if ((latestPromise = checkLatest()))
-                    return await latestPromise
+                  checkLatest()
 
                   match.loadPromise.resolve()
                 }
@@ -1627,8 +1785,7 @@ export class Router<
                   try {
                     await fetch()
                   } catch (err) {
-                    if ((latestPromise = checkLatest()))
-                      return await latestPromise
+                    checkLatest()
                     handleRedirectAndNotFound(match, err)
                   }
                 }
@@ -1648,7 +1805,7 @@ export class Router<
               }),
             )
 
-            if ((latestPromise = checkLatest())) return await latestPromise
+            checkLatest()
 
             resolveAll()
           } catch (err) {
@@ -1656,6 +1813,7 @@ export class Router<
           }
         })()
       })
+      await triggerOnReady()
     } catch (err) {
       if (isRedirect(err) || isNotFound(err)) {
         throw err
@@ -1680,184 +1838,6 @@ export class Router<
     }))
 
     return this.load()
-  }
-
-  load = async (): Promise<void> => {
-    let resolveLoad!: (value: void) => void
-    let rejectLoad!: (reason: any) => void
-
-    const promise = new Promise<void>((resolve, reject) => {
-      resolveLoad = resolve
-      rejectLoad = reject
-    })
-
-    this.latestLoadPromise = promise
-
-    let latestPromise: Promise<void> | undefined | null
-
-    this.startReactTransition(async () => {
-      try {
-        const next = this.latestLocation
-        const prevLocation = this.state.resolvedLocation
-        const pathDidChange = prevLocation.href !== next.href
-
-        // Cancel any pending matches
-        this.cancelMatches()
-
-        this.emit({
-          type: 'onBeforeLoad',
-          fromLocation: prevLocation,
-          toLocation: next,
-          pathChanged: pathDidChange,
-        })
-
-        let pendingMatches!: Array<AnyRouteMatch>
-        const previousMatches = this.state.matches
-
-        this.__store.batch(() => {
-          this.cleanCache()
-
-          // Match the routes
-          pendingMatches = this.matchRoutes(next.pathname, next.search)
-
-          // Ingest the new matches
-          // If a cached moved to pendingMatches, remove it from cachedMatches
-          this.__store.setState((s) => ({
-            ...s,
-            status: 'pending',
-            isLoading: true,
-            location: next,
-            pendingMatches,
-            cachedMatches: s.cachedMatches.filter((d) => {
-              return !pendingMatches.find((e) => e.id === d.id)
-            }),
-          }))
-        })
-
-        let redirect: ResolvedRedirect | undefined
-        let notFound: NotFoundError | undefined
-
-        const loadMatches = () =>
-          this.loadMatches({
-            matches: pendingMatches,
-            location: next,
-            checkLatest: () => this.checkLatest(promise),
-          })
-
-        // If we are on the server or non-first load on the client, await
-        // the loadMatches before transitioning
-        if (previousMatches.length || this.isServer) {
-          try {
-            await loadMatches()
-          } catch (err) {
-            if (isRedirect(err)) {
-              redirect = err as ResolvedRedirect
-            } else if (isNotFound(err)) {
-              notFound = err
-            }
-          }
-        } else {
-          // For client-only first loads, we need to start the transition
-          // immediately and load the matches in the background
-          loadMatches().catch((err) => {
-            // This also means that we need to handle any redirects
-            // that might happen during the load/transition
-            if (isRedirect(err)) {
-              this.navigate({ ...err, replace: true })
-            }
-            // Because our history listener isn't guaranteed to be mounted
-            // on the first load, we need to manually call load again
-            this.load()
-          })
-        }
-
-        // Only apply the latest transition
-        if ((latestPromise = this.checkLatest(promise))) {
-          return latestPromise
-        }
-
-        const exitingMatches = previousMatches.filter(
-          (match) => !pendingMatches.find((d) => d.id === match.id),
-        )
-        const enteringMatches = pendingMatches.filter(
-          (match) => !previousMatches.find((d) => d.id === match.id),
-        )
-        const stayingMatches = previousMatches.filter((match) =>
-          pendingMatches.find((d) => d.id === match.id),
-        )
-
-        // Determine if we should start a view transition from the navigation
-        // or from the router default
-        const shouldViewTransition =
-          this.shouldViewTransition ?? this.options.defaultViewTransition
-
-        // Reset the view transition flag
-        delete this.shouldViewTransition
-
-        const apply = () => {
-          // this.viewTransitionPromise = createControlledPromise<true>()
-
-          // Commit the pending matches. If a previous match was
-          // removed, place it in the cachedMatches
-          this.__store.batch(() => {
-            this.__store.setState((s) => ({
-              ...s,
-              isLoading: false,
-              matches: s.pendingMatches!,
-              pendingMatches: undefined,
-              cachedMatches: [
-                ...s.cachedMatches,
-                ...exitingMatches.filter((d) => d.status !== 'error'),
-              ],
-              statusCode:
-                redirect?.statusCode || notFound
-                  ? 404
-                  : s.matches.some((d) => d.status === 'error')
-                    ? 500
-                    : 200,
-              redirect,
-            }))
-            this.cleanCache()
-          })
-
-          //
-          ;(
-            [
-              [exitingMatches, 'onLeave'],
-              [enteringMatches, 'onEnter'],
-              [stayingMatches, 'onStay'],
-            ] as const
-          ).forEach(([matches, hook]) => {
-            matches.forEach((match) => {
-              this.looseRoutesById[match.routeId]!.options[hook]?.(match)
-            })
-          })
-
-          resolveLoad()
-
-          // return this.viewTransitionPromise
-        }
-
-        // Attempt to start a view transition (or just apply the changes if we can't)
-        ;(shouldViewTransition && typeof document !== 'undefined'
-          ? document
-          : undefined
-        )
-          // @ts-expect-error
-          ?.startViewTransition?.(apply) || apply()
-      } catch (err) {
-        // Only apply the latest transition
-        if ((latestPromise = this.checkLatest(promise))) {
-          return latestPromise
-        }
-
-        console.error('Load Error', err)
-
-        rejectLoad(err)
-      }
-    })
-
-    return this.latestLoadPromise
   }
 
   resolveRedirect = (err: AnyRedirect): ResolvedRedirect => {

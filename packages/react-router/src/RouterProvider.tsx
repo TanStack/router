@@ -127,9 +127,9 @@ function Transitioner() {
 
   router.startReactTransition = startReactTransition_
 
-  const tryLoad = () => {
+  const tryLoad = async () => {
     try {
-      router.load()
+      await router.load()
     } catch (err) {
       console.error(err)
     }

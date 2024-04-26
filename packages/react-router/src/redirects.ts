@@ -58,3 +58,7 @@ export function redirect<
 export function isRedirect(obj: any): obj is AnyRedirect {
   return !!obj?.isRedirect
 }
+
+export function isResolvedRedirect(obj: any): obj is ResolvedRedirect {
+  return !!obj?.isRedirect && obj.href
+}

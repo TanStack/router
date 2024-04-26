@@ -263,12 +263,12 @@ function MatchInner({
     // encounter a redirect here, it's a bug. Let's warn, but render nothing.
     invariant(isRedirect(match.error), 'Expected a redirect error')
 
-    warning(
-      false,
-      'Tried to render a redirected route match! This is a weird circumstance, please file an issue!',
-    )
+    // warning(
+    //   false,
+    //   'Tried to render a redirected route match! This is a weird circumstance, please file an issue!',
+    // )
 
-    return null
+    throw match.loadPromise
   }
 
   if (match.status === 'error') {
