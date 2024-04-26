@@ -700,7 +700,7 @@ const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
               <div
                 className={getStyles().matchStatus(
                   activeMatch.status,
-                  !!activeMatch.isFetching,
+                  activeMatch.isFetching,
                 )}
               >
                 <div>
