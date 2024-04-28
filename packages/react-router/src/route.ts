@@ -205,7 +205,7 @@ export type BaseRouteOptions<
     getParentRoute: () => TParentRoute
   }
 
-type BeforeLoadFn<
+export type BeforeLoadFn<
   in out TFullSearchSchema,
   in out TParentRoute extends AnyRoute,
   in out TAllParams,
