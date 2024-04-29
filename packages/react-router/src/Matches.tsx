@@ -482,13 +482,7 @@ export type MakeMatchRouteOptions<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
   TMaskTo extends string = '',
-> = UseMatchRouteOptions<
-  TRouter['routeTree'],
-  TFrom,
-  TTo,
-  TMaskFrom,
-  TMaskTo
-> & {
+> = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | ((
@@ -508,15 +502,7 @@ export function MatchRoute<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
   TMaskTo extends string = '',
->(
-  props: MakeMatchRouteOptions<
-    TRouter['routeTree'],
-    TFrom,
-    TTo,
-    TMaskFrom,
-    TMaskTo
-  >,
-): any {
+>(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
   const matchRoute = useMatchRoute()
   const params = matchRoute(props as any)
 

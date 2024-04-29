@@ -1,5 +1,6 @@
 import { expectTypeOf, test } from 'vitest'
 import {
+  MatchRoute,
   createRootRoute,
   createRoute,
   createRouter,
@@ -46,6 +47,21 @@ test('when matching a route with params', () => {
   const matchRoute = useDefaultMatchRoute()
 
   expectTypeOf(matchRoute<string, '/invoices/$invoiceId'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | ''
+      | '/'
+      | './'
+      | '../'
+      | '/invoices'
+      | '/invoices/$invoiceId'
+      | 'invoices'
+      | 'invoices/$invoiceId'
+      | undefined
+    >()
+
+  expectTypeOf(MatchRoute<DefaultRouter, any, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
