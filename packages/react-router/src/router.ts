@@ -1209,6 +1209,8 @@ export class Router<
   load = async (): Promise<void> => {
     const promise = createControlledPromise<void>()
     this.latestLoadPromise = promise
+    let redirect: ResolvedRedirect | undefined
+    let notFound: NotFoundError | undefined
 
     this.startReactTransition(async () => {
       try {
@@ -1248,99 +1250,88 @@ export class Router<
           }))
         })
 
-        let redirect: ResolvedRedirect | undefined
-        let notFound: NotFoundError | undefined
+        await this.loadMatches({
+          matches: pendingMatches,
+          location: next,
+          checkLatest: () => this.checkLatest(promise),
+          onReady: async () => {
+            await this.startViewTransition(async () => {
+              // this.viewTransitionPromise = createControlledPromise<true>()
 
-        try {
-          await this.loadMatches({
-            matches: pendingMatches,
-            location: next,
-            checkLatest: () => this.checkLatest(promise),
-            onReady: async () => {
-              await this.startViewTransition(async () => {
-                // this.viewTransitionPromise = createControlledPromise<true>()
+              // Commit the pending matches. If a previous match was
+              // removed, place it in the cachedMatches
+              let exitingMatches!: Array<AnyRouteMatch>
+              let enteringMatches!: Array<AnyRouteMatch>
+              let stayingMatches!: Array<AnyRouteMatch>
 
-                // Commit the pending matches. If a previous match was
-                // removed, place it in the cachedMatches
-                let exitingMatches!: Array<AnyRouteMatch>
-                let enteringMatches!: Array<AnyRouteMatch>
-                let stayingMatches!: Array<AnyRouteMatch>
+              this.__store.batch(() => {
+                this.__store.setState((s) => {
+                  const previousMatches = s.matches
+                  const newMatches = s.pendingMatches || s.matches
 
-                this.__store.batch(() => {
-                  this.__store.setState((s) => {
-                    const previousMatches = s.matches
-                    const newMatches = s.pendingMatches || s.matches
+                  exitingMatches = previousMatches.filter(
+                    (match) => !newMatches.find((d) => d.id === match.id),
+                  )
+                  enteringMatches = newMatches.filter(
+                    (match) => !previousMatches.find((d) => d.id === match.id),
+                  )
+                  stayingMatches = previousMatches.filter((match) =>
+                    newMatches.find((d) => d.id === match.id),
+                  )
 
-                    exitingMatches = previousMatches.filter(
-                      (match) => !newMatches.find((d) => d.id === match.id),
-                    )
-                    enteringMatches = newMatches.filter(
-                      (match) =>
-                        !previousMatches.find((d) => d.id === match.id),
-                    )
-                    stayingMatches = previousMatches.filter((match) =>
-                      newMatches.find((d) => d.id === match.id),
-                    )
-
-                    return {
-                      ...s,
-                      isLoading: false,
-                      matches: newMatches,
-                      pendingMatches: undefined,
-                      cachedMatches: [
-                        ...s.cachedMatches,
-                        ...exitingMatches.filter((d) => d.status !== 'error'),
-                      ],
-                      statusCode:
-                        redirect?.statusCode || notFound
-                          ? 404
-                          : s.matches.some((d) => d.status === 'error')
-                            ? 500
-                            : 200,
-                      redirect,
-                    }
-                  })
-                  this.cleanCache()
+                  return {
+                    ...s,
+                    isLoading: false,
+                    matches: newMatches,
+                    pendingMatches: undefined,
+                    cachedMatches: [
+                      ...s.cachedMatches,
+                      ...exitingMatches.filter((d) => d.status !== 'error'),
+                    ],
+                  }
                 })
+                this.cleanCache()
+              })
 
-                //
-                ;(
-                  [
-                    [exitingMatches, 'onLeave'],
-                    [enteringMatches, 'onEnter'],
-                    [stayingMatches, 'onStay'],
-                  ] as const
-                ).forEach(([matches, hook]) => {
-                  matches.forEach((match) => {
-                    this.looseRoutesById[match.routeId]!.options[hook]?.(match)
-                  })
+              //
+              ;(
+                [
+                  [exitingMatches, 'onLeave'],
+                  [enteringMatches, 'onEnter'],
+                  [stayingMatches, 'onStay'],
+                ] as const
+              ).forEach(([matches, hook]) => {
+                matches.forEach((match) => {
+                  this.looseRoutesById[match.routeId]!.options[hook]?.(match)
                 })
               })
-            },
-          })
-        } catch (err) {
-          if (isResolvedRedirect(err)) {
-            redirect = err
-            if (!this.isServer) {
-              this.navigate({ ...err, replace: true })
-              this.load()
-            }
-          } else if (isNotFound(err)) {
-            notFound = err
-          }
-
-          throw err
-        }
-
-        promise.resolve()
+            })
+          },
+        })
       } catch (err) {
-        if (this.isServer) {
-          return promise.reject(err)
+        if (isResolvedRedirect(err)) {
+          redirect = err
+          if (!this.isServer) {
+            this.navigate({ ...err, replace: true })
+            this.load()
+          }
+        } else if (isNotFound(err)) {
+          notFound = err
         }
-        if (!isRedirect(err)) {
-          console.error('Load Error', err)
-        }
+
+        this.__store.setState((s) => ({
+          ...s,
+          statusCode:
+            redirect?.statusCode || notFound
+              ? 404
+              : s.matches.some((d) => d.status === 'error')
+                ? 500
+                : 200,
+          redirect,
+        }))
       }
+
+      promise.resolve()
     })
 
     return this.latestLoadPromise
