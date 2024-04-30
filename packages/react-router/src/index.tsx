@@ -153,6 +153,7 @@ export {
   type SearchSchemaValidator,
   type SearchSchemaValidatorObj,
   type SearchSchemaValidatorFn,
+  type BeforeLoadFn,
   type RouteLoaderFn,
   type LoaderFnContext,
   type SearchFilter,
