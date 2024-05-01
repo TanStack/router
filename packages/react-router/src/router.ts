@@ -1167,12 +1167,14 @@ export class Router<
     replace,
     resetScroll,
     startTransition,
+    viewTransition,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
     const location = this.buildLocation(rest as any)
     return this.commitLocation({
       ...location,
       startTransition,
+      viewTransition,
       replace,
       resetScroll,
     })
