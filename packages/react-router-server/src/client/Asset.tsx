@@ -4,11 +4,15 @@ import type { RouterManagedTag } from './RouterManagedTag'
 export function Asset({ tag, attrs, children }: RouterManagedTag): any {
   switch (tag) {
     case 'title':
-      return <title {...attrs}>{children}</title>
+      return (
+        <title {...attrs} suppressHydrationWarning>
+          {children}
+        </title>
+      )
     case 'meta':
-      return <meta {...attrs} />
+      return <meta {...attrs} suppressHydrationWarning />
     case 'link':
-      return <link {...attrs} />
+      return <link {...attrs} suppressHydrationWarning />
     case 'style':
       return <style {...attrs} dangerouslySetInnerHTML={{ __html: children }} />
     case 'script':

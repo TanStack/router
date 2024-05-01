@@ -138,12 +138,7 @@ function Transitioner() {
   // Subscribe to location changes
   // and try to load the new location
   useLayoutEffect(() => {
-    const unsub = router.history.subscribe(() => {
-      router.latestLocation = router.parseLocation(router.latestLocation)
-      if (router.state.location !== router.latestLocation) {
-        tryLoad()
-      }
-    })
+    const unsub = router.history.subscribe(router.load)
 
     const nextLocation = router.buildLocation({
       to: router.latestLocation.pathname,
