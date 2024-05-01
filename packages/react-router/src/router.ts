@@ -1116,7 +1116,9 @@ export class Router<
 
     // If the next urls are the same and we're not replacing,
     // do nothing
-    if (!isSameUrl) {
+    if (isSameUrl) {
+      this.load()
+    } else {
       // eslint-disable-next-line prefer-const
       let { maskedLocation, ...nextHistory } = next
 
@@ -1207,6 +1209,12 @@ export class Router<
   }
 
   load = async (): Promise<void> => {
+    this.latestLocation = this.parseLocation(this.latestLocation)
+
+    if (this.state.location === this.latestLocation) {
+      return
+    }
+
     const promise = createControlledPromise<void>()
     this.latestLoadPromise = promise
     let redirect: ResolvedRedirect | undefined
