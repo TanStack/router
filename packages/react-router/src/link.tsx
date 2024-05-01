@@ -711,6 +711,7 @@ export function useLinkProps<
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
+    disabled: !!disabled,
     target,
     ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
     ...(resolvedClassName && { className: resolvedClassName }),
@@ -809,6 +810,12 @@ export const Link: LinkComponent<'a'> = React.forwardRef((props: any, ref) => {
           isActive: (linkProps as any)['data-status'] === 'active',
         })
       : rest.children
+
+  if (typeof _asChild === 'undefined') {
+    // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a delete prop
+    // @ts-expect-error
+    delete linkProps.disabled
+  }
 
   return React.createElement(
     _asChild ? _asChild : 'a',
