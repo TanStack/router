@@ -36,7 +36,7 @@ describe('Link', () => {
     await router.load()
 
     const rendered = render(<RouterProvider router={router} />)
-    const customElement = rendered.queryByRole('link')
+    const customElement = rendered.queryByText('Index')
 
     expect(customElement!.hasAttribute('disabled')).toBe(false)
   })
@@ -64,7 +64,7 @@ describe('createLink', () => {
     await router.load()
 
     const rendered = render(<RouterProvider router={router} />)
-    const customElement = rendered.queryByRole('link')
+    const customElement = rendered.queryByText('Index')
 
     expect(customElement!.hasAttribute('disabled')).toBe(true)
     expect(customElement!.getAttribute('disabled')).toBe('')
