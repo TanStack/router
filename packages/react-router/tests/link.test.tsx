@@ -17,7 +17,7 @@ afterEach(() => {
 })
 
 describe('Link', () => {
-  it('should NOT pass the disabled prop to the target element', async () => {
+  it('should NOT pass the "disabled" prop to the rendered Link component', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -37,14 +37,13 @@ describe('Link', () => {
 
     const rendered = render(<RouterProvider router={router} />)
     const customElement = rendered.queryByRole('link')
-    customElement?.hasAttribute('disabled')
 
     expect(customElement!.hasAttribute('disabled')).toBe(false)
   })
 })
 
 describe('createLink', () => {
-  it('should pass the disabled prop to the target element', async () => {
+  it('should pass the "disabled" prop to the rendered target element', async () => {
     const CustomLink = createLink('button')
 
     const rootRoute = createRootRoute()
@@ -66,9 +65,39 @@ describe('createLink', () => {
 
     const rendered = render(<RouterProvider router={router} />)
     const customElement = rendered.queryByRole('link')
-    customElement?.hasAttribute('disabled')
 
     expect(customElement!.hasAttribute('disabled')).toBe(true)
     expect(customElement!.getAttribute('disabled')).toBe('')
+  })
+
+  it('should pass the "foo" prop to the rendered target element', async () => {
+    const CustomLink = createLink('button')
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <CustomLink
+          to="/"
+          // @ts-expect-error
+          foo="bar"
+        >
+          Index
+        </CustomLink>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+
+    const rendered = render(<RouterProvider router={router} />)
+    const customElement = rendered.queryByText('Index')
+
+    expect(customElement!.hasAttribute('foo')).toBe(true)
+    expect(customElement!.getAttribute('foo')).toBe('bar')
   })
 })
