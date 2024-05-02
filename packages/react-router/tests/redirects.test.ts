@@ -6,6 +6,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
 } from '../src'
 
 function createTestRouter(initialHistory?: RouterHistory) {
@@ -66,7 +67,7 @@ function createTestRouter(initialHistory?: RouterHistory) {
   }
 }
 
-describe('redirects for simple route with one param', () => {
+describe('navigate for simple route with one param', () => {
   it('"/posts/tanner" to "/posts/tkdodo"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
@@ -81,12 +82,11 @@ describe('redirects for simple route with one param', () => {
     })
     await router.invalidate()
 
-    // This fails but should succeed
     expect(router.state.location.pathname).toBe('/posts/tkdodo')
   })
 })
 
-describe('redirects for complex route with two params', () => {
+describe('navigate for complex route with two params', () => {
   it('"/p/router/v1/react to /p/router/v3/react"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
