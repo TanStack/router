@@ -67,8 +67,8 @@ function createTestRouter(initialHistory?: RouterHistory) {
   }
 }
 
-describe('navigate for simple route with one param', () => {
-  it('"/posts/tanner" to "/posts/tkdodo"', async () => {
+describe('router.navigate navigation using a single path param', () => {
+  it('should change $slug in "/posts/$slug" from "tanner" to "tkdodo"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     )
@@ -78,7 +78,25 @@ describe('navigate for simple route with one param', () => {
     expect(router.state.resolvedLocation.pathname).toBe('/posts/tanner')
 
     await router.navigate({
-      params: (prev: any) => ({ ...prev, slug: 'tkdodo' }),
+      to: '/posts/$slug',
+      params: { slug: 'tkdodo' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/tkdodo')
+  })
+
+  it('should change $slug in "/posts/$slug" from "tanner" to "tkdodo" w/o "to" path being provided', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.resolvedLocation.pathname).toBe('/posts/tanner')
+
+    await router.navigate({
+      params: { slug: 'tkdodo' },
     })
     await router.invalidate()
 
@@ -86,8 +104,8 @@ describe('navigate for simple route with one param', () => {
   })
 })
 
-describe('navigate for complex route with two params', () => {
-  it('"/p/router/v1/react to /p/router/v3/react"', async () => {
+describe('router.navigate navigation using multiple path params', () => {
+  it('should change $projectId in "/p/$projectId/$version/$framework" from "router" to "query"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
     )
@@ -97,69 +115,98 @@ describe('navigate for complex route with two params', () => {
     expect(router.state.location.pathname).toBe('/p/router/v1/react')
 
     await router.navigate({
-      params: (prev: any) => {
-        return { ...prev, version: 'v3' }
-      },
+      to: '/p/$projectId/$version/$framework',
+      params: { projectId: 'query' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/p/query/v1/react')
+  })
+
+  it('should change $projectId in "/p/$projectId/$version/$framework" from "router" to "query" w/o "to" path being provided', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
+
+    await router.navigate({
+      params: { projectId: 'query' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/p/query/v1/react')
+  })
+
+  it('should change $version in "/p/$projectId/$version/$framework" from "v1" to "v3"', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
+
+    await router.navigate({
+      to: '/p/$projectId/$version/$framework',
+      params: { version: 'v3' },
     })
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/router/v3/react')
   })
 
-  it('"/p/router/latest/react to /p/router/latest/vue"', async () => {
+  it('should change $version in "/p/$projectId/$version/$framework" from "v1" to "v3" w/o "to" path being provided', async () => {
     const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/p/router/latest/react'] }),
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
     )
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/p/router/latest/react')
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
 
     await router.navigate({
-      params: (prev: any) => {
-        return { ...prev, framework: 'vue' }
-      },
+      params: { version: 'v3' },
     })
     await router.invalidate()
 
-    expect(router.state.location.pathname).toBe('/p/router/latest/vue')
+    expect(router.state.location.pathname).toBe('/p/router/v3/react')
   })
 
-  it('"/p/router/latest/react to /p/router/latest/react?framework=vue"', async () => {
+  it('should change $framework in "/p/$projectId/$version/$framework" from "react" to "vue"', async () => {
     const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/p/form/latest/angular'] }),
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
     )
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/p/form/latest/angular')
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
 
     await router.navigate({
-      params: (prev: any) => {
-        return { ...prev, projectId: 'query' }
-      },
+      to: '/p/$projectId/$version/$framework',
+      params: { framework: 'vue' },
     })
     await router.invalidate()
 
-    expect(router.state.location.pathname).toBe('/p/query/latest/angular')
+    expect(router.state.location.pathname).toBe('/p/router/v1/vue')
   })
 
-  it('"/p/table/latest/angular to /p/router/latest/react"', async () => {
+  it('should change $framework in "/p/$projectId/$version/$framework" from "react" to "vue" w/o "to" path being provided', async () => {
     const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/p/table/latest/angular'] }),
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
     )
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/p/table/latest/angular')
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
 
     await router.navigate({
-      params: (prev: any) => {
-        return { ...prev, projectId: 'router', framework: 'react' }
-      },
+      params: { framework: 'vue' },
     })
     await router.invalidate()
 
-    expect(router.state.location.pathname).toBe('/p/router/latest/react')
+    expect(router.state.location.pathname).toBe('/p/router/v1/vue')
   })
 })
