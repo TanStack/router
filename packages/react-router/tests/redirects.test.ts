@@ -30,27 +30,39 @@ function createTestRouter(initialHistory?: RouterHistory) {
     getParentRoute: () => projectRoute,
     path: '/$projectId',
   })
-  const projectFrameRoute = createRoute({
-    getParentRoute: () => projectIdRoute,
-    path: '/$framework',
-  })
   const projectVersionRoute = createRoute({
-    getParentRoute: () => projectFrameRoute,
+    getParentRoute: () => projectIdRoute,
     path: '/$version',
   })
+  const projectFrameRoute = createRoute({
+    getParentRoute: () => projectVersionRoute,
+    path: '/$framework',
+  })
+
+  const projectTree = projectRoute.addChildren([
+    projectIdRoute.addChildren([
+      projectVersionRoute.addChildren([projectFrameRoute]),
+    ]),
+  ])
 
   const routeTree = rootRoute.addChildren([
     indexRoute,
     postsRoute.addChildren([postIdRoute]),
-    projectRoute.addChildren([
-      projectIdRoute.addChildren([projectFrameRoute.addChildren([projectVersionRoute])]),
-    ]),
+    projectTree,
   ])
   const router = createRouter({ routeTree, history })
 
   return {
     router,
-    routes: { indexRoute, postsRoute, postIdRoute },
+    routes: {
+      indexRoute,
+      postsRoute,
+      postIdRoute,
+      projectRoute,
+      projectIdRoute,
+      projectVersionRoute,
+      projectFrameRoute,
+    },
   }
 }
 
@@ -75,14 +87,14 @@ describe('redirects for simple route with one param', () => {
 })
 
 describe('redirects for complex route with two params', () => {
-  it('"/p/router/react/v1 to /p/router/react/v3"', async () => {
+  it('"/p/router/v1/react to /p/router/v3/react"', async () => {
     const { router, routes } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/p/router/react/v1'] }),
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
     )
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/p/router/react/v1')
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
 
     await router.navigate({
       params: (prev: any) => {
@@ -91,7 +103,7 @@ describe('redirects for complex route with two params', () => {
     })
     await router.invalidate()
 
-    expect(router.state.location.pathname).toBe('/p/router/react/v3')
+    expect(router.state.location.pathname).toBe('/p/router/v3/react')
   })
 
   it('"/p/router/latest/react to /p/router/latest/vue"', async () => {
@@ -126,7 +138,7 @@ describe('redirects for complex route with two params', () => {
       params: (prev: any) => {
         return { ...prev, projectId: 'query' }
       },
-    });
+    })
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/query/latest/angular')
@@ -145,10 +157,9 @@ describe('redirects for complex route with two params', () => {
       params: (prev: any) => {
         return { ...prev, projectId: 'router', framework: 'react' }
       },
-    });
+    })
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/router/latest/react')
   })
 })
-
