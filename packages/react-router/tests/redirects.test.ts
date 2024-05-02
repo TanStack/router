@@ -67,7 +67,7 @@ function createTestRouter(initialHistory?: RouterHistory) {
   }
 }
 
-describe('router.navigate navigation using a single path param', () => {
+describe('router.navigate navigation using a single path param - object syntax for updates', () => {
   it('should change $slug in "/posts/$slug" from "tanner" to "tkdodo"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
@@ -104,7 +104,44 @@ describe('router.navigate navigation using a single path param', () => {
   })
 })
 
-describe('router.navigate navigation using multiple path params', () => {
+describe('router.navigate navigation using a single path param - function syntax for updates', () => {
+  it('should change $slug in "/posts/$slug" from "tanner" to "tkdodo"', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.resolvedLocation.pathname).toBe('/posts/tanner')
+
+    await router.navigate({
+      to: '/posts/$slug',
+      params: (p: any) => ({ ...p, slug: 'tkdodo' }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/tkdodo')
+  })
+
+  it('should change $slug in "/posts/$slug" from "tanner" to "tkdodo" w/o "to" path being provided', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.resolvedLocation.pathname).toBe('/posts/tanner')
+
+    await router.navigate({
+      params: (p: any) => ({ ...p, slug: 'tkdodo' }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/tkdodo')
+  })
+})
+
+describe('router.navigate navigation using multiple path params - object syntax for updates', () => {
   it('should change $projectId in "/p/$projectId/$version/$framework" from "router" to "query"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
@@ -204,6 +241,113 @@ describe('router.navigate navigation using multiple path params', () => {
 
     await router.navigate({
       params: { framework: 'vue' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/p/router/v1/vue')
+  })
+})
+
+describe('router.navigate navigation using multiple path params - function syntax for updates', () => {
+  it('should change $projectId in "/p/$projectId/$version/$framework" from "router" to "query"', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
+
+    await router.navigate({
+      to: '/p/$projectId/$version/$framework',
+      params: (p: any) => ({ ...p, projectId: 'query' }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/p/query/v1/react')
+  })
+
+  it('should change $projectId in "/p/$projectId/$version/$framework" from "router" to "query" w/o "to" path being provided', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
+
+    await router.navigate({
+      params: (p: any) => ({ ...p, projectId: 'query' }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/p/query/v1/react')
+  })
+
+  it('should change $version in "/p/$projectId/$version/$framework" from "v1" to "v3"', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
+
+    await router.navigate({
+      to: '/p/$projectId/$version/$framework',
+      params: (p: any) => ({ ...p, version: 'v3' }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/p/router/v3/react')
+  })
+
+  it('should change $version in "/p/$projectId/$version/$framework" from "v1" to "v3" w/o "to" path being provided', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
+
+    await router.navigate({
+      params: (p: any) => ({ ...p, version: 'v3' }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/p/router/v3/react')
+  })
+
+  it('should change $framework in "/p/$projectId/$version/$framework" from "react" to "vue"', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
+
+    await router.navigate({
+      to: '/p/$projectId/$version/$framework',
+      params: (p: any) => ({ ...p, framework: 'vue' }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/p/router/v1/vue')
+  })
+
+  it('should change $framework in "/p/$projectId/$version/$framework" from "react" to "vue" w/o "to" path being provided', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
+
+    await router.navigate({
+      params: (p: any) => ({ ...p, framework: 'vue' }),
     })
     await router.invalidate()
 
