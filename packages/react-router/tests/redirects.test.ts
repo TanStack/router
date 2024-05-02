@@ -88,7 +88,7 @@ describe('redirects for simple route with one param', () => {
 
 describe('redirects for complex route with two params', () => {
   it('"/p/router/v1/react to /p/router/v3/react"', async () => {
-    const { router, routes } = createTestRouter(
+    const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
     )
 
@@ -107,7 +107,7 @@ describe('redirects for complex route with two params', () => {
   })
 
   it('"/p/router/latest/react to /p/router/latest/vue"', async () => {
-    const { router, routes } = createTestRouter(
+    const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/p/router/latest/react'] }),
     )
 
@@ -126,7 +126,7 @@ describe('redirects for complex route with two params', () => {
   })
 
   it('"/p/router/latest/react to /p/router/latest/react?framework=vue"', async () => {
-    const { router, routes } = createTestRouter(
+    const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/p/form/latest/angular'] }),
     )
 
@@ -145,7 +145,7 @@ describe('redirects for complex route with two params', () => {
   })
 
   it('"/p/table/latest/angular to /p/router/latest/react"', async () => {
-    const { router, routes } = createTestRouter(
+    const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/p/table/latest/angular'] }),
     )
 
