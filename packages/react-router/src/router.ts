@@ -937,7 +937,11 @@ export class Router<
 
       let pathname = dest.to
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
-        : this.resolvePathWithBase(fromPath, fromPath)
+        : this.resolvePathWithBase(
+            fromPath,
+            stayingMatches?.find((d) => d.pathname === fromPath)?.routeId ||
+              fromPath,
+          )
 
       const prevParams = { ...last(fromMatches)?.params }
 
