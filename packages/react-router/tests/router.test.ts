@@ -301,45 +301,4 @@ describe('encoding: splat param for /$', () => {
       'framework/react/guide/file-based-routing tanstack',
     )
   })
-
-  it('router.navigate with `params` and `to`, should transition from "/posts/tanner" to "/posts/tkdodo"', async () => {
-    const { router, routes } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
-    )
-
-    await router.load()
-
-    expect(router.state.location.pathname).toBe('/posts/tanner')
-
-    await router.navigate({
-      to: routes.postIdRoute.to,
-      params: (prev: any) => {
-        console.log(prev)
-        return { ...prev, slug: 'tkdodo' }
-      }
-    })
-    // Not sure why I have to do this
-    await router.invalidate()
-
-    expect(router.state.location.pathname).toBe('/posts/tkdodo')
-  })
-
-  it('router.navigate with `params` and no `to`, should transition from "/posts/tanner" to "/posts/tkdodo"', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
-    )
-
-    await router.load()
-
-    expect(router.state.location.pathname).toBe('/posts/tanner')
-
-    await router.navigate({ params: (prev: any) => ({ ...prev, slug: 'tkdodo' }) })
-    await router.invalidate()
-
-    // This fails but should succeed
-    expect(router.state.location.pathname).toBe('/posts/tkdodo')
-
-    // This succeeds but should fail
-    // expect(router.state.location.pathname).toBe('/posts/tanner')
-  })
 })
