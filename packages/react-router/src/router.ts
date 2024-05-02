@@ -304,7 +304,7 @@ export class Router<
     Math.random() * 10000000,
   )}`
   resetNextScroll = true
-  shouldViewTransition?: true = undefined
+  shouldViewTransition?: boolean = undefined
   latestLoadPromise: Promise<void> = Promise.resolve()
   subscribers = new Set<RouterListener<RouterEvent>>()
   injectedHtml: Array<InjectedHtmlEntry> = []
@@ -1150,9 +1150,7 @@ export class Router<
         }
       }
 
-      if (viewTransition) {
-        this.shouldViewTransition = true
-      }
+      this.shouldViewTransition = viewTransition
 
       this.history[next.replace ? 'replace' : 'push'](
         nextHistory.href,
@@ -1169,12 +1167,14 @@ export class Router<
     replace,
     resetScroll,
     startTransition,
+    viewTransition,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
     const location = this.buildLocation(rest as any)
     return this.commitLocation({
       ...location,
       startTransition,
+      viewTransition,
       replace,
       resetScroll,
     })
