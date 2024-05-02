@@ -316,7 +316,7 @@ describe('encoding: splat param for /$', () => {
       params: (prev: any) => {
         console.log(prev)
         return { ...prev, slug: 'tkdodo' }
-      }
+      },
     })
     // Not sure why I have to do this
     await router.invalidate()
@@ -333,7 +333,9 @@ describe('encoding: splat param for /$', () => {
 
     expect(router.state.location.pathname).toBe('/posts/tanner')
 
-    await router.navigate({ params: (prev: any) => ({ ...prev, slug: 'tkdodo' }) })
+    await router.navigate({
+      params: (prev: any) => ({ ...prev, slug: 'tkdodo' }),
+    })
     await router.invalidate()
 
     // This fails but should succeed
