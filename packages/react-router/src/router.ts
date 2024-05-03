@@ -1116,11 +1116,21 @@ export class Router<
     viewTransition,
     ...next
   }: ParsedLocation & CommitLocationOptions) => {
+    const isSameState = () => {
+      // `state.key` is ignored but may still be provided when navigating,
+      // temporarily add the previous key to the next state so it doesn't affect
+      // the comparison
+
+      next.state.key = this.latestLocation.state.key
+      const isEqual = deepEqual(next.state, this.latestLocation.state)
+      delete next.state.key
+      return isEqual
+    }
+
     const isSameUrl = this.latestLocation.href === next.href
 
-    // If the next urls are the same and we're not replacing,
-    // do nothing
-    if (isSameUrl) {
+    // Don't commit to history if nothing changed
+    if (isSameUrl && isSameState()) {
       this.load()
     } else {
       // eslint-disable-next-line prefer-const
