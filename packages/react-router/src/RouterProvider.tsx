@@ -87,8 +87,12 @@ export function RouterContextProvider<
 
   const routerContext = getRouterContext()
 
+  const pendingElement = router.options.defaultPendingComponent ? (
+    <router.options.defaultPendingComponent />
+  ) : null
+
   const provider = (
-    <React.Suspense fallback={null}>
+    <React.Suspense fallback={pendingElement}>
       <routerContext.Provider value={router}>
         {children}
         <Transitioner />
