@@ -5,6 +5,7 @@ import {
   rootRouteId,
 } from '@tanstack/react-router'
 import * as React from 'react'
+import type { RootRouteOptions } from '../../../react-router/dist/esm/route'
 import type { AnyRouter } from '@tanstack/react-router'
 
 export function StartServer<TRouter extends AnyRouter>(props: {
@@ -20,8 +21,9 @@ export function StartServer<TRouter extends AnyRouter>(props: {
     [props.router],
   )
 
-  const ShellComponent =
-    props.router.looseRoutesById[rootRouteId]?.options.shellComponent
+  const ShellComponent = (
+    props.router.looseRoutesById[rootRouteId]?.options as RootRouteOptions
+  ).shellComponent
 
   return (
     // Provide the hydration context still, since `<DehydrateRouter />` needs it.
