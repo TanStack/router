@@ -78,7 +78,7 @@ import type {
 import type { AnyRedirect, ResolvedRedirect } from './redirects'
 
 import type { NotFoundError } from './not-found'
-import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
+import type { NavigateOptions, ResolveRelativePath, ToOptions, SameUrlDetection } from './link'
 import type { NoInfer } from '@tanstack/react-store'
 import type { DeferredPromiseState } from './defer'
 
@@ -161,6 +161,7 @@ export interface RouterOptions<
   transformer?: RouterTransformer
   errorSerializer?: RouterErrorSerializer<TSerializedError>
   trailingSlash?: TTrailingSlashOption
+  sameUrlDetection?: SameUrlDetection
 }
 
 export interface RouterTransformer {
@@ -235,7 +236,8 @@ export type RouterConstructorOptions<
   >,
   'context'
 > &
-  RouterContextOptions<TRouteTree>
+  RouterContextOptions<TRouteTree> & {
+}
 
 export const componentTypes = [
   'component',
@@ -291,6 +293,15 @@ export function createRouter<
     TDehydrated,
     TSerializedError
   >(options)
+}
+
+interface ResolveSameUrlNavigation {
+  sameUrlDetection: SameUrlDetection | undefined;
+  nextLocation: ParsedLocation;
+}
+
+interface ResolvedSameUrlNavigation {
+  needNavigation: boolean;
 }
 
 export class Router<
@@ -351,6 +362,7 @@ export class Router<
       defaultPendingMs: 1000,
       defaultPendingMinMs: 500,
       context: undefined!,
+      sameUrlDetection: 'default',
       ...options,
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
@@ -1107,16 +1119,102 @@ export class Router<
     return buildWithMatches(opts)
   }
 
+  __isStateEqual(state1?: object, state2?: object) {
+    const cleanesedState1 = {
+      ...state1,
+      __tempKey: undefined!,
+      __tempLocation: undefined!,
+      key: undefined!,
+    };
+    const cleanesedState2 = {
+      ...state2,
+      __tempKey: undefined!,
+      __tempLocation: undefined!,
+      key: undefined!,
+    };
+
+    return deepEqual(cleanesedState1, cleanesedState2);
+  }
+
+  __resolveNavigationConditionDefault = (opts: ResolveSameUrlNavigation): ResolvedSameUrlNavigation => {
+    const isSameUrl = this.latestLocation.href === opts.nextLocation.href;
+
+    return {
+      needNavigation: !isSameUrl,
+    };
+  }
+
+  __resolveNavigationConditionDeepComparison = (opts: ResolveSameUrlNavigation): ResolvedSameUrlNavigation => {
+    const isSameRealUrl = this.latestLocation.href === opts.nextLocation.href;
+
+    // If real href has been changed, we need perform navigation for sure
+    if (!isSameRealUrl) {
+      return {
+        needNavigation: true,
+      };
+    }
+
+    // Real href has not been changed
+
+    const hasLatestLocationMasking = !!this.latestLocation.maskedLocation;
+    const hasNextLocationMasking = !!opts.nextLocation.maskedLocation;
+
+    // Only one of locations is masked => we need navigate
+    if (hasLatestLocationMasking !== hasNextLocationMasking) {
+      return {
+        needNavigation: true,
+      };
+    }
+
+    // Both locations are not masked, so we need navigate only if state has been changed
+    if (!hasLatestLocationMasking && !hasNextLocationMasking) {
+      return {
+        needNavigation: !this.__isStateEqual(this.latestLocation.state, opts.nextLocation.state),
+      };
+    }
+
+    const isSameMaskedUrl = this.latestLocation.maskedLocation?.href === opts.nextLocation.maskedLocation?.href;
+
+    // Both locations are masked => we need navigate
+    // if regular and masked states have been changed or
+    // masked href has been changed
+    return {
+      needNavigation: (
+        !isSameMaskedUrl ||
+        !this.__isStateEqual(this.latestLocation.state, opts.nextLocation.state) ||
+        !this.__isStateEqual(this.latestLocation.maskedLocation?.state, opts.nextLocation.maskedLocation?.state)
+      ),
+    };
+  }
+
+  __resolveNavigationCondition = (opts: ResolveSameUrlNavigation): ResolvedSameUrlNavigation => {
+    const sameUrlDetection: SameUrlDetection = opts.sameUrlDetection || this.options.sameUrlDetection || 'hrefEquality';
+
+    switch (sameUrlDetection) {
+      case 'deepComparison':
+        return this.__resolveNavigationConditionDeepComparison(opts);
+      case 'hrefEquality':
+      default:
+        return this.__resolveNavigationConditionDefault(opts);
+    }
+  }
+
   commitLocation = async ({
     startTransition,
     viewTransition,
+    sameUrlDetection: sameUrlDetection,
     ...next
   }: ParsedLocation & CommitLocationOptions) => {
-    const isSameUrl = this.latestLocation.href === next.href
+    const {
+      needNavigation,
+    } = this.__resolveNavigationCondition({
+      sameUrlDetection: sameUrlDetection,
+      nextLocation: next,
+    });
 
     // If the next urls are the same and we're not replacing,
     // do nothing
-    if (!isSameUrl) {
+    if (needNavigation) {
       // eslint-disable-next-line prefer-const
       let { maskedLocation, ...nextHistory } = next
 

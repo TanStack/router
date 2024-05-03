@@ -5,7 +5,7 @@ import { pick, useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { getRouterContext } from './routerContext'
-import type { NavigateOptions, ToOptions } from './link'
+import type { NavigateOptions, ToOptions, SameUrlDetection } from './link'
 import type { ParsedLocation } from './location'
 import type { AnyRoute } from './route'
 import type { RoutePaths } from './routeInfo'
@@ -27,6 +27,7 @@ export interface CommitLocationOptions {
    * @deprecated All navigations use React transitions under the hood now
    **/
   startTransition?: boolean
+  sameUrlDetection?: SameUrlDetection
 }
 
 export interface MatchLocation {
