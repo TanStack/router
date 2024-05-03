@@ -224,6 +224,7 @@ export {
 } from './router'
 export {
   RouterProvider,
+  RouterContextProvider,
   getRouteMatch,
   type RouterProps,
   type CommitLocationOptions,

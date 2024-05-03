@@ -97,6 +97,8 @@ export type MakeRouteMatch<
 export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
 
 export function Matches() {
+  const router = useRouter()
+
   const matchId = useRouterState({
     select: (s) => {
       return s.matches[0]?.id
@@ -107,7 +109,7 @@ export function Matches() {
     select: (s) => s.resolvedLocation.state.key!,
   })
 
-  return (
+  const inner = (
     <matchContext.Provider value={matchId}>
       <CatchBoundary
         getResetKey={() => resetKey}
@@ -123,6 +125,12 @@ export function Matches() {
         {matchId ? <Match matchId={matchId} /> : null}
       </CatchBoundary>
     </matchContext.Provider>
+  )
+
+  return router.options.InnerWrap ? (
+    <router.options.InnerWrap>{inner}</router.options.InnerWrap>
+  ) : (
+    inner
   )
 }
 

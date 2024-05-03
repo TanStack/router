@@ -65,10 +65,16 @@ export type BuildLocationFn<TRouteTree extends AnyRoute> = <
 
 export type InjectedHtmlEntry = string | (() => Promise<string> | string)
 
-export function RouterProvider<
+export function RouterContextProvider<
   TRouter extends AnyRouter = RegisteredRouter,
   TDehydrated extends Record<string, any> = Record<string, any>,
->({ router, ...rest }: RouterProps<TRouter, TDehydrated>) {
+>({
+  router,
+  children,
+  ...rest
+}: RouterProps<TRouter, TDehydrated> & {
+  children: React.ReactNode
+}) {
   // Allow the router to update options on the router instance
   router.update({
     ...router.options,
@@ -79,23 +85,15 @@ export function RouterProvider<
     },
   } as any)
 
-  const matches = router.options.InnerWrap ? (
-    <router.options.InnerWrap>
-      <Matches />
-    </router.options.InnerWrap>
-  ) : (
-    <Matches />
-  )
-
   const routerContext = getRouterContext()
 
   const provider = (
-    <React.Suspense fallback={null}>
-      <routerContext.Provider value={router}>
-        {matches}
-        <Transitioner />
-      </routerContext.Provider>
-    </React.Suspense>
+    // <React.Suspense fallback="Loading...">
+    <routerContext.Provider value={router}>
+      {children}
+      <Transitioner />
+    </routerContext.Provider>
+    // </React.Suspense>
   )
 
   if (router.options.Wrap) {
@@ -103,6 +101,17 @@ export function RouterProvider<
   }
 
   return provider
+}
+
+export function RouterProvider<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TDehydrated extends Record<string, any> = Record<string, any>,
+>({ router, ...rest }: RouterProps<TRouter, TDehydrated>) {
+  return (
+    <RouterContextProvider router={router} {...rest}>
+      <Matches />
+    </RouterContextProvider>
+  )
 }
 
 function Transitioner() {
