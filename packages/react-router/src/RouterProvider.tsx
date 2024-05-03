@@ -88,12 +88,12 @@ export function RouterContextProvider<
   const routerContext = getRouterContext()
 
   const provider = (
-    // <React.Suspense fallback="Loading...">
-    <routerContext.Provider value={router}>
-      {children}
-      <Transitioner />
-    </routerContext.Provider>
-    // </React.Suspense>
+    <React.Suspense fallback={null}>
+      <routerContext.Provider value={router}>
+        {children}
+        <Transitioner />
+      </routerContext.Provider>
+    </React.Suspense>
   )
 
   if (router.options.Wrap) {
