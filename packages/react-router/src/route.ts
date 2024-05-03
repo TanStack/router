@@ -252,21 +252,6 @@ export type UpdatableRouteOptions<
   errorComponent?: false | null | ErrorRouteComponent
   notFoundComponent?: NotFoundRouteComponent
   pendingComponent?: RouteComponent
-  /**
-   * @description When using SSR and the <StartServer> component, this component, if supplied will wrap
-   * the entire application during SSR and provide a <div id='root'> node for client-side hydration.
-   * The shellComponent is non-reactive and will not be re-rendered on the client.
-   * When used, it's common to render <html>, <head>, and <body> tags here.
-   *
-   * If your shell needs to be reactive, consider rendering your <html>, <head>, and <body> tags your
-   * root route's component, but be VERY cautious as attempting to hydrate/render over the entire
-   * document can and likely will lead to hydration mismatches.
-   *
-   * NOTE: Version 19 of React will allow using native <html>, <head>, and <body> tags in
-   * your components, which will automatically be hoisted and kept in sync with both server
-   * and client-side rendering. When 19 is released, this prop will be deprecated.
-   */
-  shellComponent?: (props: { children: React.ReactNode }) => JSX.Element
   pendingMs?: number
   pendingMinMs?: number
   staleTime?: number
@@ -995,6 +980,64 @@ export function createRoute<
 
 export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any, any>
 
+export type RootRouteOptions<
+  TSearchSchemaInput extends Record<string, any> = RootSearchSchema,
+  TSearchSchema extends Record<string, any> = RootSearchSchema,
+  TSearchSchemaUsed extends Record<string, any> = RootSearchSchema,
+  TRouteContextReturn extends RouteContext = RouteContext,
+  TRouteContext extends RouteContext = [TRouteContextReturn] extends [never]
+    ? RouteContext
+    : TRouteContextReturn,
+  TRouterContext extends {} = {},
+  TLoaderDeps extends Record<string, any> = {},
+  TLoaderDataReturn = unknown,
+  TLoaderData = [TLoaderDataReturn] extends [never]
+    ? undefined
+    : TLoaderDataReturn,
+> = Omit<
+  RouteOptions<
+    any, // TParentRoute
+    RootRouteId, // TCustomId
+    '', // TPath
+    TSearchSchemaInput, // TSearchSchemaInput
+    TSearchSchema, // TSearchSchema
+    TSearchSchemaUsed,
+    TSearchSchemaUsed, //TFullSearchSchemaInput
+    TSearchSchema, // TFullSearchSchema
+    {}, // TParams
+    {}, // TAllParams
+    TRouteContextReturn, // TRouteContextReturn
+    TRouteContext, // TRouteContext
+    TRouterContext,
+    Assign<TRouterContext, TRouteContext>, // TAllContext
+    TLoaderDeps,
+    TLoaderDataReturn, // TLoaderDataReturn,
+    TLoaderData // TLoaderData,
+  >,
+  | 'path'
+  | 'id'
+  | 'getParentRoute'
+  | 'caseSensitive'
+  | 'parseParams'
+  | 'stringifyParams'
+> & {
+  /**
+   * @description When using SSR and the <StartServer> component, this component, if supplied will wrap
+   * the entire application during SSR and provide a <div id='root'> node for client-side hydration.
+   * The shellComponent is non-reactive and will not be re-rendered on the client.
+   * When used, it's common to render <html>, <head>, and <body> tags here.
+   *
+   * If your shell needs to be reactive, consider rendering your <html>, <head>, and <body> tags your
+   * root route's component, but be VERY cautious as attempting to hydrate/render over the entire
+   * document can and likely will lead to hydration mismatches.
+   *
+   * NOTE: Version 19 of React will allow using native <html>, <head>, and <body> tags in
+   * your components, which will automatically be hoisted and kept in sync with both server
+   * and client-side rendering. When 19 is released, this prop will be deprecated.
+   */
+  shellComponent?: (props: { children: React.ReactNode }) => JSX.Element
+}
+
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
     TSearchSchemaInput extends Record<string, any> = RootSearchSchema,
@@ -1010,32 +1053,16 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       ? undefined
       : TLoaderDataReturn,
   >(
-    options?: Omit<
-      RouteOptions<
-        any, // TParentRoute
-        RootRouteId, // TCustomId
-        '', // TPath
-        TSearchSchemaInput, // TSearchSchemaInput
-        TSearchSchema, // TSearchSchema
-        TSearchSchemaUsed,
-        TSearchSchemaUsed, //TFullSearchSchemaInput
-        TSearchSchema, // TFullSearchSchema
-        {}, // TParams
-        {}, // TAllParams
-        TRouteContextReturn, // TRouteContextReturn
-        TRouteContext, // TRouteContext
-        TRouterContext,
-        Assign<TRouterContext, TRouteContext>, // TAllContext
-        TLoaderDeps,
-        TLoaderDataReturn, // TLoaderDataReturn,
-        TLoaderData // TLoaderData,
-      >,
-      | 'path'
-      | 'id'
-      | 'getParentRoute'
-      | 'caseSensitive'
-      | 'parseParams'
-      | 'stringifyParams'
+    options?: RootRouteOptions<
+      TSearchSchemaInput,
+      TSearchSchema,
+      TSearchSchemaUsed,
+      TRouteContextReturn,
+      TRouteContext,
+      TRouterContext,
+      TLoaderDeps,
+      TLoaderDataReturn,
+      TLoaderData
     >,
   ) => {
     return createRootRoute<
@@ -1102,32 +1129,16 @@ export class RootRoute<
    * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
    */
   constructor(
-    options?: Omit<
-      RouteOptions<
-        any, // TParentRoute
-        RootRouteId, // TCustomId
-        '', // TPath
-        TSearchSchemaInput, // TSearchSchemaInput
-        TSearchSchema, // TSearchSchema
-        TSearchSchemaUsed,
-        TSearchSchemaUsed, // TFullSearchSchemaInput
-        TSearchSchema, // TFullSearchSchema
-        {}, // TParams
-        {}, // TAllParams
-        TRouteContextReturn, // TRouteContextReturn
-        TRouteContext, // TRouteContext
-        TRouterContext,
-        Assign<TRouterContext, TRouteContext>, // TAllContext
-        TLoaderDeps,
-        TLoaderDataReturn,
-        TLoaderData
-      >,
-      | 'path'
-      | 'id'
-      | 'getParentRoute'
-      | 'caseSensitive'
-      | 'parseParams'
-      | 'stringifyParams'
+    options?: RootRouteOptions<
+      TSearchSchemaInput,
+      TSearchSchema,
+      TSearchSchemaUsed,
+      TRouteContextReturn,
+      TRouteContext,
+      TRouterContext,
+      TLoaderDeps,
+      TLoaderDataReturn,
+      TLoaderData
     >,
   ) {
     super(options as any)
