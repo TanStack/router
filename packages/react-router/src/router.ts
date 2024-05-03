@@ -1603,8 +1603,8 @@ export class Router<
             const validResolvedMatches = matches.slice(0, firstBadMatchIndex)
             const matchPromises: Array<Promise<any>> = []
 
-            await Promise.all(
-              validResolvedMatches.map(async (match, index) => {
+            validResolvedMatches.forEach((match, index) => {
+              const createValidateResolvedMatchPromise = async () => {
                 const parentMatchPromise = matchPromises[index - 1]
                 const route = this.looseRoutesById[match.routeId]!
 
@@ -1815,8 +1815,14 @@ export class Router<
                 if (match.status !== 'success') {
                   await fetchWithRedirectAndNotFound()
                 }
-              }),
-            )
+
+                return
+              }
+
+              matchPromises.push(createValidateResolvedMatchPromise())
+            })
+
+            await Promise.all(matchPromises)
 
             checkLatest()
 
