@@ -60,12 +60,12 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
   // inject the state into the HTML stream
   if (!isDehydratedDeferred(promise)) {
     router.injectHtml(`<script class='tsr_deferred_data'>window.__TSR__DEFERRED__${state.uid} = ${JSON.stringify(router.options.transformer.stringify(state))}</script>
-<script class='tsr_deferred_handler'>
+<script class='tsr_deferred_data'>
   if (window.__TSR__ROUTER__) {
     let deferred = window.__TSR__ROUTER__.getDeferred('${state.uid}')
     if (deferred) deferred.resolve(window.__TSR__DEFERRED__${state.uid})
   }
-  document.querySelectorAll('.tsr_deferred_handler').forEach((el) => el.parentElement.removeChild(el))
+  document.querySelectorAll('.tsr_deferred_data').forEach((el) => el.parentElement.removeChild(el))
 </script>`)
   }
 
