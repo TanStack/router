@@ -1224,7 +1224,7 @@ export class Router<
     // do nothing
     if (!needNavigation) {
       if (preserveNavigationBehavior === 'reload') {
-        // this.load()
+        this.load()
       }
     } else {
       // eslint-disable-next-line prefer-const
@@ -1317,11 +1317,11 @@ export class Router<
   }
 
   load = async (): Promise<void> => {
-    // this.latestLocation = this.parseLocation(this.latestLocation)
-    //
-    // if (this.state.location === this.latestLocation) {
-    //   return
-    // }
+    this.latestLocation = this.parseLocation(this.latestLocation)
+
+    if (this.state.location === this.latestLocation) {
+      return
+    }
 
     const promise = createControlledPromise<void>()
     this.latestLoadPromise = promise
