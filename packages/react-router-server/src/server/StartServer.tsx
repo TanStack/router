@@ -20,21 +20,20 @@ export function StartServer<TRouter extends AnyRouter>(props: {
     [props.router],
   )
 
-  const Shell = (
-    props.router.looseRoutesById[rootRouteId]?.options.staticData as any
-  )?.Shell
+  const ShellComponent =
+    props.router.looseRoutesById[rootRouteId]?.options.shellComponent
 
   return (
     // Provide the hydration context still, since `<DehydrateRouter />` needs it.
     <hydrationContext.Provider value={hydrationCtxValue}>
       {/* We also render the shell here */}
       <RouterContextProvider router={props.router}>
-        {Shell ? (
-          <Shell>
+        {ShellComponent ? (
+          <ShellComponent>
             <div id="root">
               <Matches />
             </div>
-          </Shell>
+          </ShellComponent>
         ) : (
           <Matches />
         )}
