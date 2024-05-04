@@ -936,7 +936,7 @@ export class Router<
         fromMatches.find((e) => e.routeId === d.routeId),
       )
 
-      const fromPathMatched = stayingMatches?.find(
+      const fromRouteByFromPath = stayingMatches?.find(
         (d) => d.pathname === fromPath,
       )
 
@@ -944,8 +944,8 @@ export class Router<
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
         : this.resolvePathWithBase(
             fromPath,
-            fromPathMatched
-              ? removeLayoutSegments(fromPathMatched.routeId)
+            fromRouteByFromPath
+              ? removeLayoutSegments(fromRouteByFromPath.routeId)
               : fromPath,
           )
 
