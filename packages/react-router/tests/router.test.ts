@@ -302,3 +302,15 @@ describe('encoding: splat param for /$', () => {
     )
   })
 })
+
+describe('router.state', () => {
+  it('router.state.status should be "idle" after calling router.load()', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.status).toBe('idle')
+  })
+})
