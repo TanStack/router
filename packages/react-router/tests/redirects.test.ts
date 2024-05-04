@@ -40,16 +40,33 @@ function createTestRouter(initialHistory?: RouterHistory) {
     path: '/$framework',
   })
 
+  const userRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/u',
+  })
+  const userLayoutRoute = createRoute({
+    id: '_layout',
+    getParentRoute: () => userRoute,
+  })
+  const usernameRoute = createRoute({
+    getParentRoute: () => userLayoutRoute,
+    path: '$username',
+  })
+
   const projectTree = projectRoute.addChildren([
     projectIdRoute.addChildren([
       projectVersionRoute.addChildren([projectFrameRoute]),
     ]),
+  ])
+  const userTree = userRoute.addChildren([
+    userLayoutRoute.addChildren([usernameRoute]),
   ])
 
   const routeTree = rootRoute.addChildren([
     indexRoute,
     postsRoute.addChildren([postIdRoute]),
     projectTree,
+    userTree,
   ])
   const router = createRouter({ routeTree, history })
 
@@ -352,5 +369,42 @@ describe('router.navigate navigation using multiple path params - function synta
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/router/v1/vue')
+  })
+})
+
+describe('router.navigate navigation using layout routes resolves correctly', async () => {
+  it('should resolve "/u/tanner" in "/u/_layout/$username" to "/u/tkdodo"', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/u/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/u/tanner')
+
+    await router.navigate({
+      to: '/u/$username',
+      params: { username: 'tkdodo' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/u/tkdodo')
+  })
+
+  it('should resolve "/u/tanner" in "/u/_layout/$username" to "/u/tkdodo" w/o "to" path being provided', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/u/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/u/tanner')
+
+    await router.navigate({
+      params: { username: 'tkdodo' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/u/tkdodo')
   })
 })
