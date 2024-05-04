@@ -373,7 +373,7 @@ describe('router.navigate navigation using multiple path params - function synta
 })
 
 describe('router.navigate navigation using layout routes resolves correctly', async () => {
-  it('should resolve "/u/$username" to "/u/tkdodo"', async () => {
+  it('should resolve "/u/tanner" in "/u/_layout/$username" to "/u/tkdodo"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/u/tanner'] }),
     )
@@ -391,7 +391,7 @@ describe('router.navigate navigation using layout routes resolves correctly', as
     expect(router.state.location.pathname).toBe('/u/tkdodo')
   })
 
-  it('should resolve "/u/$username" to "/u/tkdodo" w/o "to" path being provided', async () => {
+  it('should resolve "/u/tanner" in "/u/_layout/$username" to "/u/tkdodo" w/o "to" path being provided', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/u/tanner'] }),
     )
