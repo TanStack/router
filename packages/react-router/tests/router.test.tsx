@@ -1,12 +1,21 @@
-import { describe, it, expect } from 'vitest'
-
+import React from 'react'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { cleanup, render, waitFor } from '@testing-library/react'
 import {
   createRootRoute,
   createRoute,
   createRouter,
   createMemoryHistory,
+  RouterProvider,
   type RouterHistory,
 } from '../src'
+
+afterEach(() => {
+  vi.resetAllMocks()
+  cleanup()
+})
+
+const mockFn1 = vi.fn()
 
 function createTestRouter(initialHistory?: RouterHistory) {
   const history =
@@ -300,5 +309,33 @@ describe('encoding: splat param for /$', () => {
     expect((match.params as unknown as any)._splat).toBe(
       'framework/react/guide/file-based-routing tanstack',
     )
+  })
+})
+
+describe('router emits events during rendering', () => {
+  it('during initial load, should emit the "onResolved" event', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/'] }),
+    )
+
+    router.subscribe('onResolved', mockFn1)
+    await router.load()
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => expect(mockFn1).toBeCalled())
+  })
+
+  it('after a navigation, should have emitted the "onResolved" event twice', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/'] }),
+    )
+
+    router.subscribe('onResolved', mockFn1)
+    await router.load()
+    render(<RouterProvider router={router} />)
+
+    router.navigate({ to: '/$', params: { _splat: 'tanner' } })
+
+    await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
   })
 })
