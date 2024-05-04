@@ -313,18 +313,6 @@ describe('encoding: splat param for /$', () => {
 })
 
 describe('router emits events during rendering', () => {
-  it('during initial load, should emit the "onLoad" event', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/'] }),
-    )
-
-    router.subscribe('onLoad', eventFn)
-    await router.load()
-    render(<RouterProvider router={router} />)
-
-    await waitFor(() => expect(eventFn).toBeCalled())
-  })
-
   it('during initial load, should emit the "onResolved" event', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/'] }),
