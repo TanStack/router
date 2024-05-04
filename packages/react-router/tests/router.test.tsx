@@ -1,12 +1,21 @@
-import { describe, it, expect } from 'vitest'
-
+import React from 'react'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { render, cleanup } from '@testing-library/react'
 import {
   createRootRoute,
   createRoute,
   createRouter,
   createMemoryHistory,
+  RouterProvider,
   type RouterHistory,
 } from '../src'
+
+const eventFn = vi.fn()
+
+afterEach(() => {
+  vi.resetAllMocks()
+  cleanup()
+})
 
 function createTestRouter(initialHistory?: RouterHistory) {
   const history =
@@ -303,14 +312,16 @@ describe('encoding: splat param for /$', () => {
   })
 })
 
-describe('router.state', () => {
-  it('router.state.status should be "idle" after calling router.load()', async () => {
+describe('emits the router events', () => {
+  it('emits the "onResolved" event', async () => {
     const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/'] }),
+      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     )
 
-    await router.load()
+    router.subscribe('onResolved', eventFn)
 
-    expect(router.state.status).toBe('idle')
+    render(<RouterProvider router={router} />)
+
+    expect(eventFn).toBeCalled()
   })
 })
