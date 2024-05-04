@@ -276,14 +276,6 @@ export type RouterProps<
   >
 }
 
-// function usePrevious<T>(value: T) {
-//   const ref = React.useRef<T>(value)
-//   React.useEffect(() => {
-//     ref.current = value
-//   })
-//   return ref.current
-// }
-
 function usePrevious<T>(value: T): T {
   const ref = React.useRef<T>(value)
 
