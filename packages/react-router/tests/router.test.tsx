@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, cleanup } from '@testing-library/react'
+import { cleanup, render, waitFor } from '@testing-library/react'
 import {
   createRootRoute,
   createRoute,
@@ -9,6 +9,7 @@ import {
   RouterProvider,
   type RouterHistory,
 } from '../src'
+import { sleep } from './utils'
 
 const eventFn = vi.fn()
 
@@ -312,16 +313,18 @@ describe('encoding: splat param for /$', () => {
   })
 })
 
-describe('emits the router events', () => {
-  it('emits the "onResolved" event', async () => {
+describe('router emits events during rendering', () => {
+  it('should emit the "onResolved" event, during initial load', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     )
 
     router.subscribe('onResolved', eventFn)
 
+    await router.load()
+
     render(<RouterProvider router={router} />)
 
-    expect(eventFn).toBeCalled()
+    await waitFor(() => expect(eventFn).toBeCalled())
   })
 })
