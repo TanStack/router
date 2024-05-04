@@ -11,6 +11,7 @@ import {
   functionalUpdate,
   last,
   pick,
+  removeLayoutSegments,
   replaceEqualDeep,
 } from './utils'
 import { getRouteMatch } from './RouterProvider'
@@ -935,12 +936,17 @@ export class Router<
         fromMatches.find((e) => e.routeId === d.routeId),
       )
 
+      const fromPathMatched = stayingMatches?.find(
+        (d) => d.pathname === fromPath,
+      )
+
       let pathname = dest.to
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
         : this.resolvePathWithBase(
             fromPath,
-            stayingMatches?.find((d) => d.pathname === fromPath)?.routeId ||
-              fromPath,
+            fromPathMatched
+              ? removeLayoutSegments(fromPathMatched.routeId)
+              : fromPath,
           )
 
       const prevParams = { ...last(fromMatches)?.params }
