@@ -430,6 +430,10 @@ export class Router<
         onUpdate: () => {
           this.__store.state = {
             ...this.state,
+            status:
+              this.state.isTransitioning || this.state.isLoading
+                ? 'pending'
+                : 'idle',
             cachedMatches: this.state.cachedMatches.filter(
               (d) => !['redirected'].includes(d.status),
             ),
