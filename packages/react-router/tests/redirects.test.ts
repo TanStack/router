@@ -399,7 +399,7 @@ describe('router.navigate navigation using layout routes resolves correctly', as
     await router.load()
 
     expect(router.state.location.pathname).toBe('/u/tanner')
-    // console.log(router.state)
+
     await router.navigate({
       params: { username: 'tkdodo' },
     })
