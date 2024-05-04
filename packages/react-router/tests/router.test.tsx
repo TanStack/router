@@ -10,7 +10,7 @@ import {
   type RouterHistory,
 } from '../src'
 
-const eventFn = vi.fn(console.log)
+const eventFn = vi.fn()
 
 afterEach(() => {
   vi.resetAllMocks()
