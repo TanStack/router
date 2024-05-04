@@ -9,7 +9,6 @@ import {
   RouterProvider,
   type RouterHistory,
 } from '../src'
-import { sleep } from './utils'
 
 const eventFn = vi.fn()
 
