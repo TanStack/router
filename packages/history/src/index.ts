@@ -353,7 +353,7 @@ export function createMemoryHistory(
     pushState: (path, state) => {
       currentState = state
       entries.push(path)
-      index++
+      index = Math.max(entries.length - 1, 0)
     },
     replaceState: (path, state) => {
       currentState = state
