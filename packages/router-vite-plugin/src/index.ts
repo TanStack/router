@@ -88,7 +88,7 @@ export function TanStackRouterViteGenerator(
   return {
     name: 'vite-plugin-tanstack-router-generator',
     configResolved: async (config) => {
-      ROOT = config.root
+      ROOT = process.cwd()
       userConfig = await getConfig(inlineConfig, ROOT)
 
       if (userConfig.enableRouteGeneration ?? true) {
