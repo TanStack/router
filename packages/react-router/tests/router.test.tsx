@@ -318,7 +318,7 @@ describe('router emits events during rendering', () => {
       createMemoryHistory({ initialEntries: ['/'] }),
     )
 
-    router.subscribe('onResolved', eventFn)
+    router.subscribe('onLoad', eventFn)
     await router.load()
     render(<RouterProvider router={router} />)
 
