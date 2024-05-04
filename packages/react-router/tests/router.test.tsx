@@ -10,12 +10,12 @@ import {
   type RouterHistory,
 } from '../src'
 
-const eventFn = vi.fn()
-
 afterEach(() => {
   vi.resetAllMocks()
   cleanup()
 })
+
+const mockFn1 = vi.fn()
 
 function createTestRouter(initialHistory?: RouterHistory) {
   const history =
@@ -318,11 +318,11 @@ describe('router emits events during rendering', () => {
       createMemoryHistory({ initialEntries: ['/'] }),
     )
 
-    router.subscribe('onResolved', eventFn)
+    router.subscribe('onResolved', mockFn1)
     await router.load()
     render(<RouterProvider router={router} />)
 
-    await waitFor(() => expect(eventFn).toBeCalled())
+    await waitFor(() => expect(mockFn1).toBeCalled())
   })
 
   it('after a navigation, should have emitted the "onResolved" event twice', async () => {
@@ -330,12 +330,12 @@ describe('router emits events during rendering', () => {
       createMemoryHistory({ initialEntries: ['/'] }),
     )
 
-    router.subscribe('onResolved', eventFn)
+    router.subscribe('onResolved', mockFn1)
     await router.load()
     render(<RouterProvider router={router} />)
 
     router.navigate({ to: '/$', params: { _splat: 'tanner' } })
 
-    await waitFor(() => expect(eventFn).toBeCalledTimes(2))
+    await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
   })
 })
