@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   exactPathTest,
   isPlainArray,
+  removeLayoutSegments,
   removeTrailingSlash,
   replaceEqualDeep,
-  removeLayoutSegments,
 } from '../src/utils'
 
 describe('replaceEqualDeep', () => {
