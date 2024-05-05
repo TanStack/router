@@ -68,7 +68,7 @@ export async function createServer(
         if (!isProd) {
           return vite.ssrLoadModule('/src/entry-server.tsx')
         } else {
-          return import('./dist/server/entry-server.tsx')
+          return import('./dist/server/entry-server.js')
         }
       })()
 
