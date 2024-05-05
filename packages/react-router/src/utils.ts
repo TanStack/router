@@ -138,10 +138,9 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
     for (let i = 0; i < nextSize; i++) {
       const key = array ? i : nextItems[i]
       if (
-        !array &&
+        ((!array && prevItems.includes(key)) || array) &&
         prev[key] === undefined &&
-        next[key] === undefined &&
-        prevItems.includes(key)
+        next[key] === undefined
       ) {
         copy[key] = undefined
         equalItems++
