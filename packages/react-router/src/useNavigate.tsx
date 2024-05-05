@@ -20,7 +20,7 @@ export type UseNavigateResult<TDefaultFrom extends string> = <
 export function useNavigate<
   TDefaultFrom extends string = string,
 >(_defaultOpts?: {
-  from?: RoutePathsAutoComplete<RegisteredRouter['routeTree'], TDefaultFrom>
+  from?: RoutePathsAutoComplete<RegisteredRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
   const router = useRouter()
 

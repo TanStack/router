@@ -417,7 +417,7 @@ export async function generator(config: Config) {
 
       if (node.children?.length) {
         const childConfigs = buildRouteConfig(node.children, depth + 1)
-        return `${route}.addChildren([${spaces(depth * 4)}${childConfigs}])`
+        return `${route}: ${route}.addChildren({${spaces(depth * 4)}${childConfigs}})`
       }
 
       return route
@@ -584,6 +584,9 @@ export async function generator(config: Config) {
     ${routeNodes
       .map((routeNode) => {
         return `'${removeTrailingUnderscores(routeNode.routePath)}': {
+          id: '${removeGroups(removeTrailingUnderscores(routeNode.routePath) ?? '')}'
+          path: '${routeNode.cleanedPath}'
+          fullPath: '${removeGroups(removeTrailingUnderscores(routeNode.routePath ?? '') ?? '')}'
           preLoaderRoute: typeof ${routeNode.variableName}Import
           parentRoute: typeof ${
             routeNode.isVirtualParentRequired
@@ -599,7 +602,7 @@ export async function generator(config: Config) {
 }`,
         ]),
     '// Create and export the route tree',
-    `export const routeTree = rootRoute.addChildren([${routeConfigChildrenText}])`,
+    `export const routeTree = rootRoute.addChildren({${routeConfigChildrenText}})`,
     ...config.routeTreeFileFooter,
   ]
     .filter(Boolean)

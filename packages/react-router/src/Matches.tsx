@@ -498,9 +498,9 @@ export type MakeMatchRouteOptions<
   TFrom extends RoutePaths<TRouter['routeTree']> = RoutePaths<
     TRouter['routeTree']
   >,
-  TTo extends string = '',
+  TTo extends string = string,
   TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
-  TMaskTo extends string = '',
+  TMaskTo extends string = string,
 > = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:

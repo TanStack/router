@@ -26,9 +26,9 @@ export type Redirect<
 export type ResolvedRedirect<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> = '/',
-  TTo extends string = '',
+  TTo extends string = string,
   TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
-  TMaskTo extends string = '',
+  TMaskTo extends string = string,
 > = PickAsRequired<
   Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
   'code' | 'statusCode' | 'headers'
@@ -39,9 +39,9 @@ export type ResolvedRedirect<
 export function redirect<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-  TTo extends string = '',
+  TTo extends string = string,
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
-  TMaskTo extends string = '',
+  TMaskTo extends string = string,
 >(
   opts: Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {

@@ -12,9 +12,13 @@ import type {
   AnySearchSchema,
   FileBaseRouteOptions,
   MergeFromFromParent,
+  ResolveAllContext,
   ResolveFullPath,
   ResolveFullSearchSchema,
   ResolveFullSearchSchemaInput,
+  ResolveLoaderData,
+  ResolveRouteContext,
+  ResolveSearchSchemaUsed,
   RootRouteId,
   Route,
   RouteConstraints,
@@ -98,17 +102,10 @@ export type FileRoutePath<
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
-  TId extends RouteConstraints['TId'] = NormalizeSlashes<
-    RemoveRouteGroups<TFilePath>
-  >,
-  TPath extends RouteConstraints['TPath'] = FileRoutePath<
-    TParentRoute,
-    TFilePath
-  >,
-  TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
-    TParentRoute,
-    NormalizeSlashes<RemoveRouteGroups<RemoveUnderScores<TPath>>>
-  >,
+  TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
+  TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
+  TFullPath extends
+    RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
 >(path: TFilePath) {
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
     silent: true,
@@ -142,37 +139,27 @@ export class FileRoute<
   }
 
   createRoute = <
-    TSearchSchemaInput extends RouteConstraints['TSearchSchema'] = {},
-    TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
-    TSearchSchemaUsed = TSearchSchemaInput extends SearchSchemaInput
-      ? Omit<TSearchSchemaInput, keyof SearchSchemaInput>
-      : TSearchSchema,
+    TSearchSchemaInput = {},
+    TSearchSchema = {},
+    TSearchSchemaUsed = ResolveSearchSchemaUsed<
+      TSearchSchemaInput,
+      TSearchSchema
+    >,
     TFullSearchSchemaInput = ResolveFullSearchSchemaInput<
       TParentRoute,
       TSearchSchemaUsed
     >,
     TFullSearchSchema = ResolveFullSearchSchema<TParentRoute, TSearchSchema>,
     TParams = Record<ParsePathParams<TPath>, string>,
-    TAllParams = MergeFromFromParent<
-      TParentRoute['types']['allParams'],
-      TParams
-    >,
-    TRouteContextReturn extends
-      RouteConstraints['TRouteContext'] = RouteContext,
-    TRouteContext = [TRouteContextReturn] extends [never]
-      ? RouteContext
-      : TRouteContextReturn,
-    TAllContext = Assign<
-      IsAny<TParentRoute['types']['allContext'], {}>,
-      TRouteContext
-    >,
-    TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+    TAllParams = MergeFromFromParent<TParentRoute, TParams>,
+    TRouteContextReturn = RouteContext,
+    TRouteContext = ResolveRouteContext<TRouteContextReturn>,
+    TAllContext = ResolveAllContext<TParentRoute, TRouteContext>,
+    TRouterContext = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderDataReturn = unknown,
-    TLoaderData = [TLoaderDataReturn] extends [never]
-      ? undefined
-      : TLoaderDataReturn,
-    TChildren extends RouteConstraints['TChildren'] = unknown,
+    TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
+    TChildren = unknown,
   >(
     options?: FileBaseRouteOptions<
       TParentRoute,

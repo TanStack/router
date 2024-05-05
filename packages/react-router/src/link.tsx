@@ -6,9 +6,11 @@ import { useRouter } from './useRouter'
 import { deepEqual, exactPathTest, functionalUpdate } from './utils'
 import type { AnyRouter, ParsedLocation } from '.'
 import type { HistoryState } from '@tanstack/history'
-import type { Trim } from './fileRoute'
 import type { AnyRoute, RootSearchSchema } from './route'
 import type {
+  CatchAllPaths,
+  ParseRoute,
+  ParseRouteWithoutBranches,
   RouteByPath,
   RouteByToPath,
   RoutePaths,
@@ -56,13 +58,16 @@ export type Split<TValue, TIncludeTrailingSlash = true> = TValue extends unknown
       : never
   : never
 
-export type ParsePathParams<T extends string> = keyof {
-  [K in Trim<Split<T>[number], '_'> as K extends `$${infer L}`
-    ? L extends ''
+export type ParsePathParams<
+  T extends string,
+  TAcc = never,
+> = T extends `${string}$${infer TPossiblyParam}`
+  ? TPossiblyParam extends `${infer TParam}/${infer TRest}`
+    ? ParsePathParams<TRest, TParam extends '' ? '_splat' : TParam | TAcc>
+    : TPossiblyParam extends ''
       ? '_splat'
-      : L
-    : never]: K
-}
+      : TPossiblyParam | TAcc
+  : TAcc
 
 export type Join<T, TDelimiter extends string = '/'> = T extends []
   ? ''
@@ -206,12 +211,28 @@ export type ToSubOptions<
   hash?: true | Updater<string>
   state?: true | NonNullableUpdater<HistoryState>
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
-  from?: RoutePathsAutoComplete<TRouter['routeTree'], TFrom> & {}
+  from?: RoutePathsAutoComplete<TRouter, TFrom> & {}
   // // When using relative route paths, this option forces resolution from the current path, instead of the route API's path or `from` path
 } & SearchParamOptions<TRouter, TFrom, TTo> &
   PathParamOptions<TRouter, TFrom, TTo>
 
-type ParamsReducer<TFrom, TTo> = TTo | ((current: TFrom) => TTo)
+export type ParamsReducerFn<
+  TRouter extends AnyRouter,
+  TParamVariant extends ParamVariant,
+  TFrom,
+  TTo,
+> = (
+  current: Expand<ResolveFromParams<TRouter, TParamVariant, TFrom>>,
+) => Expand<ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>>
+
+type ParamsReducer<
+  TRouter extends AnyRouter,
+  TParamVariant extends ParamVariant,
+  TFrom,
+  TTo,
+> =
+  | Expand<ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>>
+  | (ParamsReducerFn<TRouter, TParamVariant, TFrom, TTo> & {})
 
 type ParamVariant = 'PATH' | 'SEARCH'
 
@@ -225,43 +246,52 @@ export type ResolveRoute<
   TRouter extends AnyRouter,
   TFrom,
   TTo,
-  TPath = string extends TFrom
-    ? TTo
-    : string extends TTo
-      ? TFrom
-      : ResolveRelativePath<TFrom, TTo>,
-> = TPath extends string
-  ? string extends TTo
-    ? RouteByPath<TRouter['routeTree'], TPath>
-    : RouteByToPath<TRouter, TPath>
-  : never
+  TPath = ResolveRelativePath<TFrom, TTo>,
+> = string extends TPath
+  ? ParseRouteWithoutBranches<TRouter['routeTree']>
+  : TPath extends CatchAllPaths
+    ? ParseRouteWithoutBranches<TRouter['routeTree']>
+    : TPath extends string
+      ? string extends TTo
+        ? RouteByPath<TRouter['routeTree'], TPath>
+        : RouteByToPath<TRouter, TPath>
+      : never
 
 type PostProcessParams<
   T,
   TParamVariant extends ParamVariant,
 > = TParamVariant extends 'SEARCH' ? ExcludeRootSearchSchema<T> : T
 
+type ResolveFromParamType<TParamVariant extends ParamVariant> =
+  TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchema'
+
 type ResolveFromParams<
   TRouter extends AnyRouter,
   TParamVariant extends ParamVariant,
   TFrom,
-> = PostProcessParams<
-  RouteByPath<TRouter['routeTree'], TFrom>['types'][TParamVariant extends 'PATH'
-    ? 'allParams'
-    : 'fullSearchSchema'],
-  TParamVariant
->
+> = string extends TFrom
+  ? PostProcessParams<
+      ParseRoute<
+        TRouter['routeTree']
+      >['types'][ResolveFromParamType<TParamVariant>],
+      TParamVariant
+    >
+  : RouteByPath<
+      TRouter['routeTree'],
+      TFrom
+    >['types'][ResolveFromParamType<TParamVariant>]
 
-type ResolveToParams<
+type ResolveToParamType<TParamVariant extends ParamVariant> =
+  TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchemaInput'
+
+export type ResolveToParams<
   TRouter extends AnyRouter,
   TParamVariant extends ParamVariant,
   TFrom,
   TTo,
   TRoute extends AnyRoute = ResolveRoute<TRouter, TFrom, TTo>,
 > = PostProcessParams<
-  TRoute['types'][TParamVariant extends 'PATH'
-    ? 'allParams'
-    : 'fullSearchSchemaInput'],
+  TRoute['types'][ResolveToParamType<TParamVariant>],
   TParamVariant
 >
 
@@ -287,33 +317,28 @@ type MakeOptionalParams<
   TTo,
 > = TParamVariant extends 'SEARCH'
   ? {
-      search?:
-        | true
-        | (ParamsReducer<
-            Expand<ResolveFromParams<TRouter, TParamVariant, TFrom>>,
-            Expand<ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>>
-          > & {})
+      search?: true | (ParamsReducer<TRouter, TParamVariant, TFrom, TTo> & {})
     }
   : {
-      params?:
-        | true
-        | (ParamsReducer<
-            Expand<ResolveFromParams<TRouter, TParamVariant, TFrom>>,
-            Expand<ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>>
-          > & {})
+      params?: true | (ParamsReducer<TRouter, TParamVariant, TFrom, TTo> & {})
     }
 
 type MakeRequiredParamsReducer<
   TRouter extends AnyRouter,
   TParamVariant extends ParamVariant,
   TFrom,
-  TToParams,
-  TFromParams = ResolveFromParams<TRouter, TParamVariant, TFrom>,
+  TTo,
 > =
-  | ([TFromParams] extends [WithoutEmpty<PickRequired<TToParams>>]
-      ? true
-      : never)
-  | ParamsReducer<Expand<TFromParams>, TToParams>
+  | (string extends TFrom
+      ? never
+      : ResolveFromParams<TRouter, TParamVariant, TFrom> extends WithoutEmpty<
+            PickRequired<
+              ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
+            >
+          >
+        ? true
+        : never)
+  | (ParamsReducer<TRouter, TParamVariant, TFrom, TTo> & {})
 
 export type MakeRequiredParams<
   TRouter extends AnyRouter,
@@ -322,24 +347,10 @@ export type MakeRequiredParams<
   TTo,
 > = TParamVariant extends 'SEARCH'
   ? {
-      search: Expand<
-        MakeRequiredParamsReducer<
-          TRouter,
-          TParamVariant,
-          TFrom,
-          Expand<ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>>
-        >
-      > & {}
+      search: MakeRequiredParamsReducer<TRouter, TParamVariant, TFrom, TTo> & {}
     }
   : {
-      params: Expand<
-        MakeRequiredParamsReducer<
-          TRouter,
-          TParamVariant,
-          TFrom,
-          Expand<ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>>
-        >
-      > & {}
+      params: MakeRequiredParamsReducer<TRouter, TParamVariant, TFrom, TTo> & {}
     }
 
 export type IsRequiredParams<TParams> = keyof TParams extends infer K extends
@@ -359,9 +370,11 @@ export type IsRequired<
 > = string extends TTo
   ? string extends TFrom
     ? never
-    : IsRequiredParams<
-        ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
-      >
+    : ResolveRelativePath<TFrom, TTo> extends CatchAllPaths
+      ? never
+      : IsRequiredParams<
+          ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
+        >
   : IsRequiredParams<
       ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
     >
@@ -390,7 +403,7 @@ export type PathParamOptions<
 
 export type ToPathOption<
   TRouter extends AnyRouter = AnyRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TFrom extends string = string,
   TTo extends string = string,
 > =
   | CheckPath<TRouter, TTo, never, TFrom, TTo>
@@ -408,9 +421,9 @@ export interface ActiveOptions {
 
 export type LinkOptions<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TFrom extends string = string,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
 > = NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // The standard anchor tag target attribute
@@ -426,31 +439,39 @@ export type LinkOptions<
 }
 
 export type CheckPath<TRouter extends AnyRouter, TPass, TFail, TFrom, TTo> =
-  ResolveRoute<TRouter, TFrom, TTo> extends never ? TFail : TPass
+  string extends ResolveRelativePath<TFrom, TTo>
+    ? TPass
+    : ResolveRoute<TRouter, TFrom, TTo> extends never
+      ? TFail
+      : TPass
 
-export type ResolveRelativePath<TFrom, TTo = '.'> = TFrom extends string
-  ? TTo extends string
-    ? TTo extends '.'
-      ? TFrom
-      : TTo extends `./`
-        ? Join<[TFrom, '/']>
-        : TTo extends `./${infer TRest}`
-          ? ResolveRelativePath<TFrom, TRest>
-          : TTo extends `/${infer TRest}`
-            ? TTo
-            : Split<TTo> extends ['..', ...infer ToRest]
-              ? Split<TFrom> extends [...infer FromRest, infer FromTail]
-                ? ToRest extends ['/']
-                  ? Join<['/', ...FromRest, '/']>
-                  : ResolveRelativePath<Join<FromRest>, Join<ToRest>>
-                : never
-              : Split<TTo> extends ['.', ...infer ToRest]
-                ? ToRest extends ['/']
-                  ? Join<[TFrom, '/']>
-                  : ResolveRelativePath<TFrom, Join<ToRest>>
-                : CleanPath<Join<['/', ...Split<TFrom>, ...Split<TTo>]>>
-    : never
-  : never
+export type ResolveRelativePath<TFrom, TTo = '.'> = string extends TFrom
+  ? TTo
+  : string extends TTo
+    ? TFrom
+    : TFrom extends string
+      ? TTo extends string
+        ? TTo extends '.'
+          ? TFrom
+          : TTo extends `./`
+            ? Join<[TFrom, '/']>
+            : TTo extends `./${infer TRest}`
+              ? ResolveRelativePath<TFrom, TRest>
+              : TTo extends `/${infer TRest}`
+                ? TTo
+                : Split<TTo> extends ['..', ...infer ToRest]
+                  ? Split<TFrom> extends [...infer FromRest, infer FromTail]
+                    ? ToRest extends ['/']
+                      ? Join<['/', ...FromRest, '/']>
+                      : ResolveRelativePath<Join<FromRest>, Join<ToRest>>
+                    : never
+                  : Split<TTo> extends ['.', ...infer ToRest]
+                    ? ToRest extends ['/']
+                      ? Join<[TFrom, '/']>
+                      : ResolveRelativePath<TFrom, Join<ToRest>>
+                    : CleanPath<Join<['/', ...Split<TFrom>, ...Split<TTo>]>>
+        : never
+      : never
 
 // type Test1 = ResolveRelativePath<'/', '/posts'>
 // //   ^?
@@ -735,9 +756,9 @@ export type UseLinkPropsOptions<
 
 export type ActiveLinkOptions<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TFrom extends string = string,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
 > = LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
@@ -752,10 +773,10 @@ export type ActiveLinkOptions<
 
 export type LinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TFrom extends string = string,
   TTo extends string = string,
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
-  TMaskTo extends string = '',
+  TMaskFrom extends string = TFrom,
+  TMaskTo extends string = string,
 > = ActiveLinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
@@ -785,9 +806,9 @@ type LinkComponentProps<TComp> = React.PropsWithoutRef<
 
 export type LinkComponent<TComp> = <
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TFrom extends string = string,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
 >(
   props: LinkProps<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
