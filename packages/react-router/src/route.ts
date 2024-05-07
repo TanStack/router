@@ -271,6 +271,7 @@ export type UpdatableRouteOptions<
   onStay?: (match: TRouteMatch) => void
   onLeave?: (match: TRouteMatch) => void
   meta?: (ctx: {
+    matches: Array<TRouteMatch>
     params: TAllParams
     loaderData: TLoaderData
   }) => Array<JSX.IntrinsicElements['meta']>
@@ -1036,6 +1037,13 @@ export type RootRouteOptions<
    * and client-side rendering. When 19 is released, this prop will be deprecated.
    */
   shellComponent?: (props: { children: React.ReactNode }) => JSX.Element
+  /**
+   * @description It's suggested to first use the `meta` option in the root route and sub routes to
+   * add meta tags. However, it may not be possible to add all types of meta tags using the `meta` option, like
+   * "base", for example, or you may want to read from router state/context to conditionally add meta tags in a
+   * component context.
+   **/
+  metaComponent?: (props: { children: React.ReactNode }) => JSX.Element
 }
 
 export function createRootRouteWithContext<TRouterContext extends {}>() {

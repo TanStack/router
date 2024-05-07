@@ -877,6 +877,7 @@ export class Router<
       // due to being stale
       if (match.status === 'success') {
         match.meta = route.options.meta?.({
+          matches,
           params: match.params,
           loaderData: match.loaderData,
         })
@@ -1721,6 +1722,7 @@ export class Router<
                     checkLatest()
 
                     const meta = route.options.meta?.({
+                      matches,
                       params: match.params,
                       loaderData,
                     })
@@ -2141,7 +2143,7 @@ export class Router<
     const matches = this.matchRoutes(
       this.state.location.pathname,
       this.state.location.search,
-    ).map((match) => {
+    ).map((match, i, allMatches) => {
       const dehydratedMatch = dehydratedState.dehydratedMatches.find(
         (d) => d.id === match.id,
       )
@@ -2159,6 +2161,7 @@ export class Router<
           ? {}
           : {
               meta: route.options.meta?.({
+                matches: allMatches,
                 params: match.params,
                 loaderData: dehydratedMatch.loaderData,
               }),

@@ -14,7 +14,7 @@ export {
 } from './createServerFn'
 export { DehydrateRouter } from './DehydrateRouter'
 export { json } from './json'
-export { Meta } from './Meta'
+export { Meta, ClientMeta } from './Meta'
 export { type RouterManagedTag } from './RouterManagedTag'
 export { Scripts } from './Scripts'
 export { StartClient } from './StartClient'

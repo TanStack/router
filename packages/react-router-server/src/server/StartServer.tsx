@@ -5,6 +5,7 @@ import {
   rootRouteId,
 } from '@tanstack/react-router'
 import * as React from 'react'
+import { StartClient } from '../client'
 import type { RootRouteOptions } from '../../../react-router/dist/esm/route'
 import type { AnyRouter } from '@tanstack/react-router'
 
@@ -33,7 +34,7 @@ export function StartServer<TRouter extends AnyRouter>(props: {
         {ShellComponent ? (
           <ShellComponent>
             <div id="root">
-              <Matches />
+              <StartClient router={props.router} />
             </div>
           </ShellComponent>
         ) : (

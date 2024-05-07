@@ -181,6 +181,7 @@ export {
   type TrimPath,
   type TrimPathLeft,
   type TrimPathRight,
+  type RootRouteOptions,
 } from './route'
 export {
   type ParseRoute,
