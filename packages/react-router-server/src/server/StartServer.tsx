@@ -38,7 +38,7 @@ export function StartServer<TRouter extends AnyRouter>(props: {
             </div>
           </ShellComponent>
         ) : (
-          <Matches />
+          <StartClient router={props.router} />
         )}
       </RouterContextProvider>
     </hydrationContext.Provider>
