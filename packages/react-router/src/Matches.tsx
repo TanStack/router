@@ -100,11 +100,15 @@ export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
 export function Matches() {
   const router = useRouter()
 
+  const pendingElement = router.options.defaultPendingComponent ? (
+    <router.options.defaultPendingComponent />
+  ) : null
+
   const inner = (
-    <>
-      <MatchesInner />
+    <React.Suspense fallback={pendingElement}>
       <Transitioner />
-    </>
+      <MatchesInner />
+    </React.Suspense>
   )
 
   return router.options.InnerWrap ? (
@@ -231,13 +235,7 @@ export function Match({ matchId }: { matchId: string }) {
   )
 }
 
-function MatchInner({
-  matchId,
-  // pendingElement,
-}: {
-  matchId: string
-  // pendingElement: any
-}): any {
+function MatchInner({ matchId }: { matchId: string }): any {
   const router = useRouter()
   const routeId = useRouterState({
     select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,

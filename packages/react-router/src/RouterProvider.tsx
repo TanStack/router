@@ -86,10 +86,7 @@ export function RouterContextProvider<
   const routerContext = getRouterContext()
 
   const provider = (
-    <routerContext.Provider value={router}>
-      {children}
-      <Transitioner />
-    </routerContext.Provider>
+    <routerContext.Provider value={router}>{children}</routerContext.Provider>
   )
 
   if (router.options.Wrap) {
