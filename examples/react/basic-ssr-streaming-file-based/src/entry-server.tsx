@@ -1,10 +1,7 @@
 import * as React from 'react'
 import ReactDOMServer, { PipeableStream } from 'react-dom/server'
 import { createMemoryHistory } from '@tanstack/react-router'
-import {
-  StartServer,
-  transformStreamWithRouter,
-} from '@tanstack/react-router-server/server'
+import { StartServer, transformStreamWithRouter } from '@tanstack/start/server'
 import { isbot } from 'isbot'
 import { ServerResponse } from 'http'
 import express from 'express'

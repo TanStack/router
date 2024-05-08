@@ -6,7 +6,7 @@ import {
   useRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { Meta, Scripts } from '@tanstack/react-router-server/client'
+import { Meta, Scripts } from '@tanstack/start'
 
 import '../style.css'
 

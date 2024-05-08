@@ -1,8 +1,6 @@
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import * as React from 'react'
 import { Matches } from './Matches'
 import { getRouterContext } from './routerContext'
-import { Transitioner } from './Transitioner'
+import type * as React from 'react'
 import type { NavigateOptions, ToOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { AnyRoute } from './route'

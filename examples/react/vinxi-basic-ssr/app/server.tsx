@@ -3,10 +3,7 @@ import { renderAsset } from '@vinxi/react'
 import React, { Suspense } from 'react'
 import { PipeableStream, renderToPipeableStream } from 'react-dom/server'
 import { eventHandler, setHeader, toWebRequest } from 'vinxi/server'
-import {
-  StartServer,
-  transformStreamWithRouter,
-} from '@tanstack/react-router-server/server'
+import { StartServer, transformStreamWithRouter } from '@tanstack/start/server'
 
 import { createRouter } from './router'
 import { createMemoryHistory } from '@tanstack/react-router'

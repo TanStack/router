@@ -37,8 +37,8 @@ export const packages = [
     packageDir: 'packages/react-cross-context',
   },
   {
-    name: '@tanstack/react-router-server',
-    packageDir: 'packages/react-router-server',
+    name: '@tanstack/start',
+    packageDir: 'packages/start',
   },
 ]
 
