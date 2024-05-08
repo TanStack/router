@@ -5,7 +5,7 @@ import {
   rootRouteId,
 } from '@tanstack/react-router'
 import * as React from 'react'
-import { StartClient } from '../client'
+import { ClientMeta } from '../client'
 import type { RootRouteOptions } from '../../../react-router/dist/esm/route'
 import type { AnyRouter } from '@tanstack/react-router'
 
@@ -26,20 +26,25 @@ export function StartServer<TRouter extends AnyRouter>(props: {
     props.router.looseRoutesById[rootRouteId]?.options as RootRouteOptions
   ).shellComponent
 
+  const client = (
+    <>
+      {ShellComponent ? <ClientMeta /> : null}
+      <Matches />
+    </>
+  )
+
+  const shell = ShellComponent ? (
+    <ShellComponent>
+      <div id="root">{client}</div>
+    </ShellComponent>
+  ) : (
+    client
+  )
+
   return (
-    // Provide the hydration context still, since `<DehydrateRouter />` needs it.
     <hydrationContext.Provider value={hydrationCtxValue}>
-      {/* We also render the shell here */}
       <RouterContextProvider router={props.router}>
-        {ShellComponent ? (
-          <ShellComponent>
-            <div id="root">
-              <StartClient router={props.router} />
-            </div>
-          </ShellComponent>
-        ) : (
-          <StartClient router={props.router} />
-        )}
+        {shell}
       </RouterContextProvider>
     </hydrationContext.Provider>
   )

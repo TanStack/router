@@ -352,3 +352,15 @@ export function removeLayoutSegments(routePath: string): string {
   const newSegments = segments.filter((segment) => !segment.startsWith('_'))
   return newSegments.join('/')
 }
+
+export function usePrevious<T>(value: T): T {
+  const ref = React.useRef<T>(value)
+
+  if (ref.current !== value) {
+    const prevValue = ref.current
+    ref.current = value
+    return prevValue
+  } else {
+    return ref.current
+  }
+}

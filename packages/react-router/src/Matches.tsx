@@ -8,6 +8,7 @@ import { createControlledPromise, pick } from './utils'
 import { CatchNotFound, DefaultGlobalNotFound, isNotFound } from './not-found'
 import { isRedirect } from './redirects'
 import { type AnyRouter, type RegisteredRouter } from './router'
+import { Transitioner } from './Transitioner'
 import type { ResolveRelativePath, ToOptions } from './link'
 import type { AnyRoute, ReactNode, StaticDataRouteOption } from './route'
 import type {
@@ -99,6 +100,21 @@ export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
 export function Matches() {
   const router = useRouter()
 
+  const inner = (
+    <>
+      <MatchesInner />
+      <Transitioner />
+    </>
+  )
+
+  return router.options.InnerWrap ? (
+    <router.options.InnerWrap>{inner}</router.options.InnerWrap>
+  ) : (
+    inner
+  )
+}
+
+function MatchesInner() {
   const matchId = useRouterState({
     select: (s) => {
       return s.matches[0]?.id
@@ -109,7 +125,7 @@ export function Matches() {
     select: (s) => s.resolvedLocation.state.key!,
   })
 
-  const inner = (
+  return (
     <matchContext.Provider value={matchId}>
       <CatchBoundary
         getResetKey={() => resetKey}
@@ -125,12 +141,6 @@ export function Matches() {
         {matchId ? <Match matchId={matchId} /> : null}
       </CatchBoundary>
     </matchContext.Provider>
-  )
-
-  return router.options.InnerWrap ? (
-    <router.options.InnerWrap>{inner}</router.options.InnerWrap>
-  ) : (
-    inner
   )
 }
 
