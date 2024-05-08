@@ -583,10 +583,16 @@ export async function generator(config: Config) {
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
-        return `'${removeTrailingUnderscores(routeNode.routePath)}': {
-          id: '${removeGroups(removeTrailingUnderscores(routeNode.routePath) ?? '')}'
+        const filePathId = removeTrailingUnderscores(routeNode.routePath)
+        const id = filePathId
+        const fullPath = removeGroups(
+          removeUnderscores(removeLayoutSegments(routeNode.routePath)) ?? '',
+        )
+
+        return `'${filePathId}': {
+          id: '${id}'
           path: '${routeNode.cleanedPath}'
-          fullPath: '${removeGroups(removeTrailingUnderscores(routeNode.routePath ?? '') ?? '')}'
+          fullPath: '${fullPath}'
           preLoaderRoute: typeof ${routeNode.variableName}Import
           parentRoute: typeof ${
             routeNode.isVirtualParentRequired

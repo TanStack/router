@@ -817,7 +817,9 @@ export class Route<
     TLoaderData,
     TNewChildren
   > => {
-    this.children = children as any
+    this.children = (
+      Array.isArray(children) ? children : Object.values(children)
+    ) as any
     return this as any
   }
 
