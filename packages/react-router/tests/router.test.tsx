@@ -255,7 +255,7 @@ describe('encoding: path params for /posts/$slug', () => {
       'framework/react/guide/file-based-routing tanstack',
     )
 
-    const routerWithObjects = createTestRouter(
+    const routerWithObjects = createTestRouterWithObjects(
       createMemoryHistory({
         initialEntries: [
           '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
