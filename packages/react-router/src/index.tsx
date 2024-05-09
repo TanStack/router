@@ -258,6 +258,7 @@ export {
 export { useRouteContext } from './useRouteContext'
 export { useRouter } from './useRouter'
 export { useRouterState } from './useRouterState'
+export { useLocation } from './useLocation'
 export {
   escapeJSON, // SSR
   useLayoutEffect, // SSR
