@@ -353,14 +353,28 @@ export function removeLayoutSegments(routePath: string): string {
   return newSegments.join('/')
 }
 
-export function usePrevious<T>(value: T): T {
-  const ref = React.useRef<T>(value)
+/**
+ * Taken from https://www.developerway.com/posts/implementing-advanced-use-previous-hook#part3
+ */
+export function usePrevious<T>(value: T): T | null {
+  // initialise the ref with previous and current values
+  const ref = React.useRef<{ value: T; prev: T | null }>({
+    value: value,
+    prev: null,
+  })
 
-  if (ref.current !== value) {
-    const prevValue = ref.current
-    ref.current = value
-    return prevValue
-  } else {
-    return ref.current
+  const current = ref.current.value
+
+  // if the value passed into hook doesn't match what we store as "current"
+  // move the "current" to the "previous"
+  // and store the passed value as "current"
+  if (value !== current) {
+    ref.current = {
+      value: value,
+      prev: current,
+    }
   }
+
+  // return the previous value only
+  return ref.current.prev
 }
