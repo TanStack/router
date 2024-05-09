@@ -1528,6 +1528,12 @@ export class Router<
               }))
 
               const handleSerialError = (err: any, routerCode: string) => {
+                // If the error is a promise, it means we're outdated and
+                // should abort the current async operation
+                if (err instanceof Promise) {
+                  throw err
+                }
+
                 err.routerCode = routerCode
                 firstBadMatchIndex = firstBadMatchIndex ?? index
                 handleRedirectAndNotFound(match, err)
