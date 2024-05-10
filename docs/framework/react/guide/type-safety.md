@@ -110,3 +110,90 @@ const router = createRouter({
   },
 })
 ```
+
+## Performance Recommendations
+
+As your application scales, typescript check times will naturally increase. There are a few things to keep in mind when your application scales to keep your TS check times down.
+
+### Narrow to relevant routes as much as you possibly can
+
+Consider the following usage of `Link`
+
+```tsx
+<Link to=".." search={{ page: 0 }} />
+<Link to="." search={{ page: 0 }} />
+<Link search={{ page: 0 }} />
+```
+
+**These examples are bad for TS performance**. Thats because `search` resolves to a union of all `search` params for all routes and TS has to check whatever you pass to the `search` prop against this potentially big union. As your application grows, this check time will increase linearly to number of routes and search params. We have done our best to optimise for this case (typescript will typically do this work once and cache it) but the initial check against this large union is expensive. This also applies to `params` and other API's such as `useSearch`, `useParams`, `useNavigate` etc
+
+Instead you should try to narrow to relevant routes with `from` or `to`
+
+```tsx
+<Link from={Route.fullPath} to=".." search={{page: 0}} />
+<Link from="/posts" to=".." search={{page: 0}} />
+```
+
+Remember you can always pass a union to `to` or `from` to narrow the routes you're interested in. You can also pass branches to `from` to be more loose.
+
+```tsx
+const from: '/posts/$postId/deep' | '/posts/' = '/posts/'
+<Link from={from} to='..' />
+```
+
+### Consider using the object syntax of `createChildren`
+
+It's tyipcal of routes to have `params` `search`, `loaders` or `context` that can even reference external dependencies which are also heavy on TS inference. For such applications, using objects for creating the route tree can be more performant than tuples.
+
+`createChildren` also can accept an object. For large route trees with complex routes and external libraries, objects can be much faster for TS to type check as opposed to large tuples. The performance gains depend on your project, what external dependencies you have and how the types for those libraries are written
+
+```tsx
+const routeTree = rootRoute.addChildren({
+  postsRoute: postsRoute.addChildren({ postRoute, postsIndexRoute }),
+  indexRoute,
+})
+```
+
+Note this syntax is more verbose but has better TS performance. With file based routing, the route tree is generated for you so a verbose route tree is not a concern
+
+### Avoid internal types without narrowing
+
+Its common you might want to re-use types exposed. For example you might be tempted to use `LinkProps` like so
+
+```tsx
+const props: LinkProps = {
+  to: '/posts/',
+}
+
+return (
+  <Link {...props}>
+)
+```
+
+**This is VERY bad for TS Performance**. The problem here is `LinkProps` has no type arguments and is therefore an extremely large type. It includes `search` which is a union of all `search` params, it contains `params` which is a union of all `params`. When merging this object with `Link` it will do a structural comparison of this huge type.
+
+Instead you can use `as const satisfies` to infer a precise type and not `LinkProps` directly to avoid the huge check
+
+```tsx
+const props = {
+  to: '/posts/',
+} as const satisfies LinkProps
+
+return (
+  <Link {...props}>
+)
+```
+
+As `props` is not of type `LinkProps` and therefore this check is cheaper because the type is much more precise. You can also improve type checking further by narrowing `LinkProps`
+
+```tsx
+const props = {
+  to: '/posts/',
+} as const satisfies LinkProps<RegisteredRouter, string '/posts/'>
+
+return (
+  <Link {...props}>
+)
+```
+
+This is even faster as we're checking against the narrowed `LinkProps` type.
