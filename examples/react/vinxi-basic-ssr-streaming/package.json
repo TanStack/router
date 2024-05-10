@@ -8,9 +8,9 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.31.27",
-    "@tanstack/start": "^1.31.27",
-    "@tanstack/router-devtools": "^1.31.27",
+    "@tanstack/react-router": "^1.31.28",
+    "@tanstack/start": "^1.31.28",
+    "@tanstack/router-devtools": "^1.31.28",
     "@vinxi/react": "0.2.2",
     "@vinxi/server-functions": "^0.3.2",
     "autoprefixer": "^10.4.19",
@@ -20,7 +20,7 @@
     "vinxi": "^0.3.11"
   },
   "devDependencies": {
-    "@tanstack/router-devtools": "^1.31.27",
+    "@tanstack/router-devtools": "^1.31.28",
     "@tanstack/router-vite-plugin": "^1.31.18",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
