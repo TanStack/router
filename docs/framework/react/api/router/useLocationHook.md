@@ -3,11 +3,11 @@ id: useLocationHook
 title: useLocation hook
 ---
 
-The `useLocation` method is a hook that returns the current [`location`](./ParsedLocationType.md) object. This hook is useful for when you want to perform some side effect whenever the current location changes.
+The `useLocation` method is a hook that returns the current [`location`](../ParsedLocationType) object. This hook is useful for when you want to perform some side effect whenever the current location changes.
 
 ## useLocation returns
 
-- The current [`location`](./ParsedLocationType.md) object.
+- The current [`location`](../ParsedLocationType) object.
 
 ## Examples
 
