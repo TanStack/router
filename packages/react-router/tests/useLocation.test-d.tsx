@@ -9,9 +9,9 @@ test('should have the types for a ParsedLocation in useLocation', () => {
 })
 
 test('should have the type of string for selecting the pathname in useLocation', () => {
-  const location = useLocation({
+  const pathname = useLocation({
     select: (state) => state.pathname,
   })
 
-  expectTypeOf(location).toEqualTypeOf<string>()
+  expectTypeOf(pathname).toEqualTypeOf<string>()
 })
