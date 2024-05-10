@@ -401,22 +401,29 @@ export type ResolveSearchSchemaUsed<TSearchSchemaInput, TSearchSchema> =
 export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
   TSearchSchema,
-> = Assign<
-  TParentRoute['id'] extends RootRouteId
-    ? Omit<TParentRoute['types']['searchSchema'], keyof RootSearchSchema>
-    : TParentRoute['types']['fullSearchSchema'],
-  TSearchSchema
->
+> = unknown extends TParentRoute
+  ? Omit<TSearchSchema, keyof RootSearchSchema>
+  : Assign<
+      TParentRoute['id'] extends RootRouteId
+        ? Omit<TParentRoute['types']['searchSchema'], keyof RootSearchSchema>
+        : TParentRoute['types']['fullSearchSchema'],
+      TSearchSchema
+    >
 
 export type ResolveFullSearchSchemaInput<
   TParentRoute extends AnyRoute,
   TSearchSchemaUsed,
-> = Assign<
-  TParentRoute['id'] extends RootRouteId
-    ? Omit<TParentRoute['types']['searchSchemaInput'], keyof RootSearchSchema>
-    : TParentRoute['types']['fullSearchSchemaInput'],
-  TSearchSchemaUsed
->
+> = unknown extends TParentRoute
+  ? Omit<TSearchSchemaUsed, keyof RootSearchSchema>
+  : Assign<
+      TParentRoute['id'] extends RootRouteId
+        ? Omit<
+            TParentRoute['types']['searchSchemaInput'],
+            keyof RootSearchSchema
+          >
+        : TParentRoute['types']['fullSearchSchemaInput'],
+      TSearchSchemaUsed
+    >
 
 export type ResolveRouteContext<TRouteContextReturn> = [
   TRouteContextReturn,
@@ -459,11 +466,12 @@ export interface AnyRoute
     any
   > {}
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export type MergeFromFromParent<
+export type ResolveAllParamsFromParent<
   TParentRoute extends AnyRoute,
   TParams,
-> = Assign<TParentRoute['types']['allParams'], TParams>
+> = unknown extends TParentRoute
+  ? TParams
+  : Assign<TParentRoute['types']['allParams'], TParams>
 
 export type ResolveAllParams<TParentRoute extends AnyRoute, TParams> =
   Record<never, string> extends TParentRoute['types']['allParams']

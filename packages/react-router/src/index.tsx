@@ -28,12 +28,6 @@ export {
   createLazyRoute,
   createLazyFileRoute,
   type FileRoutesByPath,
-  type Trim,
-  type TrimLeft,
-  type TrimRight,
-  type RemoveUnderScores,
-  type ResolveFilePath,
-  type FileRoutePath,
   type LazyRouteOptions,
 } from './fileRoute'
 export * from './history'
@@ -60,7 +54,6 @@ export {
   type ToMaskOptions,
   type ToSubOptions,
   type ResolveRoute,
-  type ParamOptions,
   type SearchParamOptions,
   type PathParamOptions,
   type ToPathOption,
@@ -71,6 +64,7 @@ export {
   type UseLinkPropsOptions,
   type ActiveLinkOptions,
   type LinkProps,
+  type LinkComponentProps,
   type LinkComponent,
 } from './link'
 export { type ParsedLocation } from './location'
@@ -162,7 +156,6 @@ export {
   type ResolveFullSearchSchema,
   type ResolveFullSearchSchemaInput,
   type AnyRoute,
-  type MergeFromFromParent,
   type ResolveAllParams,
   type RouteConstraints,
   type AnyRootRoute,

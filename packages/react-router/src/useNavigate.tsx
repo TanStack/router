@@ -32,7 +32,7 @@ export function useNavigate<
       })
     },
     [router],
-  )
+  ) as UseNavigateResult<TDefaultFrom>
 }
 
 // NOTE: I don't know of anyone using this. It's undocumented, so let's wait until someone needs it
