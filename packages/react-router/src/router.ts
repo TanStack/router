@@ -1822,7 +1822,11 @@ export class Router<
                   match.status === 'success' &&
                   (match.invalid || (shouldReload ?? age > staleAge))
                 ) {
-                  fetchWithRedirectAndNotFound()
+                  ;(async () => {
+                    try {
+                      await fetchWithRedirectAndNotFound()
+                    } catch (err) {}
+                  })()
                   return
                 }
 

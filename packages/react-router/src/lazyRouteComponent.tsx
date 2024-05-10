@@ -1,5 +1,4 @@
 import * as React from 'react'
-import { ControlledPromise, createControlledPromise } from './utils'
 import type { AsyncRouteComponent } from './route'
 
 // If the load fails due to module not found, it may mean a new version of

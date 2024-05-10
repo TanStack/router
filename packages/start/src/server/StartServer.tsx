@@ -1,12 +1,6 @@
 import { Context } from '@tanstack/react-cross-context'
-import {
-  Matches,
-  RouterContextProvider,
-  rootRouteId,
-} from '@tanstack/react-router'
+import { RouterProvider } from '@tanstack/react-router'
 import * as React from 'react'
-import { ClientMeta } from '../client'
-import type { RootRouteOptions } from '../../../react-router/dist/esm/route'
 import type { AnyRouter } from '@tanstack/react-router'
 
 export function StartServer<TRouter extends AnyRouter>(props: {
@@ -22,30 +16,9 @@ export function StartServer<TRouter extends AnyRouter>(props: {
     [props.router],
   )
 
-  const ShellComponent = (
-    props.router.looseRoutesById[rootRouteId]?.options as RootRouteOptions
-  ).shellComponent
-
-  const client = (
-    <>
-      {ShellComponent ? <ClientMeta /> : null}
-      <Matches />
-    </>
-  )
-
-  const shell = ShellComponent ? (
-    <ShellComponent>
-      <div id="root">{client}</div>
-    </ShellComponent>
-  ) : (
-    client
-  )
-
   return (
     <hydrationContext.Provider value={hydrationCtxValue}>
-      <RouterContextProvider router={props.router}>
-        {shell}
-      </RouterContextProvider>
+      <RouterProvider router={props.router} />
     </hydrationContext.Provider>
   )
 }

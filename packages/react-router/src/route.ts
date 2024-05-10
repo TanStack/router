@@ -1021,30 +1021,7 @@ export type RootRouteOptions<
   | 'caseSensitive'
   | 'parseParams'
   | 'stringifyParams'
-> & {
-  /**
-   * @description When using SSR and the <StartServer> component, this component, if supplied will wrap
-   * the entire application during SSR and provide a <div id='root'> node for client-side hydration.
-   * The shellComponent is non-reactive and will not be re-rendered on the client.
-   * When used, it's common to render <html>, <head>, and <body> tags here.
-   *
-   * If your shell needs to be reactive, consider rendering your <html>, <head>, and <body> tags your
-   * root route's component, but be VERY cautious as attempting to hydrate/render over the entire
-   * document can and likely will lead to hydration mismatches.
-   *
-   * NOTE: Version 19 of React will allow using native <html>, <head>, and <body> tags in
-   * your components, which will automatically be hoisted and kept in sync with both server
-   * and client-side rendering. When 19 is released, this prop will be deprecated.
-   */
-  shellComponent?: (props: { children: React.ReactNode }) => JSX.Element
-  /**
-   * @description It's suggested to first use the `meta` option in the root route and sub routes to
-   * add meta tags. However, it may not be possible to add all types of meta tags using the `meta` option, like
-   * "base", for example, or you may want to read from router state/context to conditionally add meta tags in a
-   * component context.
-   **/
-  metaComponent?: (props: { children: React.ReactNode }) => JSX.Element
-}
+>
 
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
