@@ -11,7 +11,6 @@ import {
   functionalUpdate,
   last,
   pick,
-  removeLayoutSegments,
   replaceEqualDeep,
 } from './utils'
 import { getRouteMatch } from './RouterProvider'
@@ -494,8 +493,7 @@ export class Router<
       scores: Array<number>
     }> = []
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    const routes = Object.values(this.routesById) as Array<AnyRoute>
+    const routes: Array<AnyRoute> = Object.values(this.routesById)
 
     routes.forEach((d, i) => {
       if (d.isRoot || !d.path) {
@@ -937,17 +935,16 @@ export class Router<
         fromMatches.find((e) => e.routeId === d.routeId),
       )
 
-      const fromRouteByFromPath = stayingMatches?.find(
-        (d) => d.pathname === fromPath,
-      )
+      const fromRouteByFromPathRouteId =
+        this.routesById[
+          stayingMatches?.find((d) => d.pathname === fromPath)?.routeId
+        ]
 
       let pathname = dest.to
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
         : this.resolvePathWithBase(
             fromPath,
-            fromRouteByFromPath
-              ? removeLayoutSegments(fromRouteByFromPath.routeId)
-              : fromPath,
+            fromRouteByFromPathRouteId?.to ?? fromPath,
           )
 
       const prevParams = { ...last(fromMatches)?.params }

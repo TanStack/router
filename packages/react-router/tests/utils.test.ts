@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   exactPathTest,
   isPlainArray,
-  removeLayoutSegments,
   removeTrailingSlash,
   replaceEqualDeep,
 } from '../src/utils'
@@ -373,55 +372,5 @@ describe('exactPathTest', () => {
     const path2 = '/'
     const result = exactPathTest(path1, path2)
     expect(result).toBe(true)
-  })
-})
-
-describe('removeLayoutSegments', () => {
-  it('should remove the "_layout" segment from "/_layout/" and return "/"', () => {
-    const path = '/_layout/'
-    const result = removeLayoutSegments(path)
-    expect(result).toBe('/')
-  })
-
-  it('should remove the "_layout" segment from "/_layout/blog" and return "/blog"', () => {
-    const path = '/_layout/blog'
-    const result = removeLayoutSegments(path)
-    expect(result).toBe('/blog')
-  })
-
-  it('should remove the "_layout1" and "_layout2" segments from "/_layout1/" and return "/"', () => {
-    const path = '/_layout1/_layout2/'
-    const result = removeLayoutSegments(path)
-    expect(result).toBe('/')
-  })
-
-  it('should remove the "_layout1" and "_layout2" segments from "/_layout1/blog" and return "/blog"', () => {
-    const path = '/_layout1/_layout2/blog'
-    const result = removeLayoutSegments(path)
-    expect(result).toBe('/blog')
-  })
-
-  it('should remove the "_layout" segment from "/posts/_layout/" and return "/posts/"', () => {
-    const path = '/posts/_layout/1'
-    const result = removeLayoutSegments(path)
-    expect(result).toBe('/posts/1')
-  })
-
-  it('should remove the "_layout" segment from "/posts/_layout/1" and return "/posts/1"', () => {
-    const path = '/posts/_layout/1'
-    const result = removeLayoutSegments(path)
-    expect(result).toBe('/posts/1')
-  })
-
-  it('should remove the "_layout" segment from "/posts/_layout/" and return "/posts"', () => {
-    const path = '/posts/_layout/'
-    const result = removeLayoutSegments(path)
-    expect(result).toBe('/posts/')
-  })
-
-  it('should remove the "_layout" segment from "/posts/_layout/blog" and return "/posts/blog"', () => {
-    const path = '/posts/_layout/blog'
-    const result = removeLayoutSegments(path)
-    expect(result).toBe('/posts/blog')
   })
 })
