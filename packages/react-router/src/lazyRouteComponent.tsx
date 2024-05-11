@@ -22,50 +22,39 @@ export function lazyRouteComponent<
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
-  let loadPromise: Promise<any> & {
-    moduleNotFoundError?: Error
-  }
+  let loadPromise: Promise<any> | undefined
+  let comp: T[TKey] | T['default']
+  let error: any
 
   const load = () => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!loadPromise) {
-      loadPromise = importer().catch((error) => {
-        if (isModuleNotFoundError(error)) {
-          // We don't want an error thrown from preload in this case, because
-          // there's nothing we want to do about module not found during preload.
-          // Record the error, recover the promise with a null return,
-          // and we will attempt module not found resolution during the render path.
-
-          loadPromise.moduleNotFoundError = error
-
-          return null
-        }
-        throw error
-      })
+      loadPromise = importer()
+        .then((res) => {
+          comp = res[exportName ?? 'default']
+        })
+        .catch((err) => {
+          error = err
+        })
     }
 
     return loadPromise
   }
 
-  const lazyComp = React.lazy(async () => {
-    try {
-      const promise = load()
+  const lazyComp = function Lazy(props: any) {
+    if (!loadPromise) {
+      load()
+    }
 
-      // Now that we're out of preload and into actual render path,
-      // throw the error if it was a module not found error during preload
-      if (promise.moduleNotFoundError) {
-        throw promise.moduleNotFoundError
-      }
-      const moduleExports = await promise
+    // Now that we're out of preload and into actual render path,
+    // throw the error if it was a module not found error during preload
+    if (isModuleNotFoundError(error)) {
+      // We don't want an error thrown from preload in this case, because
+      // there's nothing we want to do about module not found during preload.
+      // Record the error, recover the promise with a null return,
+      // and we will attempt module not found resolution during the render path.
 
-      const comp = moduleExports[exportName ?? 'default']
-      return {
-        default: comp,
-      }
-    } catch (error) {
       if (
         error instanceof Error &&
-        isModuleNotFoundError(error) &&
         typeof window !== 'undefined' &&
         typeof sessionStorage !== 'undefined'
       ) {
@@ -84,9 +73,17 @@ export function lazyRouteComponent<
           }
         }
       }
+
+      // Otherwise, just throw the error
       throw error
     }
-  })
+
+    if (!comp) {
+      throw loadPromise
+    }
+
+    return React.createElement(comp, props)
+  }
 
   ;(lazyComp as any).preload = load
 

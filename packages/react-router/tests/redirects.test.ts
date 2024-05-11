@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  type RouterHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
-  redirect,
+  type RouterHistory,
 } from '../src'
 
 function createTestRouter(initialHistory?: RouterHistory) {
@@ -40,16 +39,29 @@ function createTestRouter(initialHistory?: RouterHistory) {
     path: '/$framework',
   })
 
-  const userRoute = createRoute({
+  const uRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/u',
   })
-  const userLayoutRoute = createRoute({
+  const uLayoutRoute = createRoute({
     id: '_layout',
-    getParentRoute: () => userRoute,
+    getParentRoute: () => uRoute,
   })
-  const usernameRoute = createRoute({
-    getParentRoute: () => userLayoutRoute,
+  const uUsernameRoute = createRoute({
+    getParentRoute: () => uLayoutRoute,
+    path: '$username',
+  })
+
+  const gRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/g',
+  })
+  const gLayoutRoute = createRoute({
+    id: 'layout',
+    getParentRoute: () => gRoute,
+  })
+  const gUsernameRoute = createRoute({
+    getParentRoute: () => gLayoutRoute,
     path: '$username',
   })
 
@@ -58,15 +70,15 @@ function createTestRouter(initialHistory?: RouterHistory) {
       projectVersionRoute.addChildren([projectFrameRoute]),
     ]),
   ])
-  const userTree = userRoute.addChildren([
-    userLayoutRoute.addChildren([usernameRoute]),
-  ])
+  const uTree = uRoute.addChildren([uLayoutRoute.addChildren([uUsernameRoute])])
+  const gTree = gRoute.addChildren([gLayoutRoute.addChildren([gUsernameRoute])])
 
   const routeTree = rootRoute.addChildren([
     indexRoute,
     postsRoute.addChildren([postIdRoute]),
     projectTree,
-    userTree,
+    uTree,
+    gTree,
   ])
   const router = createRouter({ routeTree, history })
 
@@ -406,5 +418,40 @@ describe('router.navigate navigation using layout routes resolves correctly', as
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/u/tkdodo')
+  })
+
+  it('should resolve "/g/tanner" in "/g/layout/$username" to "/g/tkdodo"', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/g/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/g/tanner')
+
+    await router.navigate({
+      to: '/g/$username',
+      params: { username: 'tkdodo' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/g/tkdodo')
+  })
+
+  it('should resolve "/g/tanner" in "/g/layout/$username" to "/g/tkdodo" w/o "to" path being provided', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/g/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/g/tanner')
+
+    await router.navigate({
+      params: { username: 'tkdodo' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/g/tkdodo')
   })
 })

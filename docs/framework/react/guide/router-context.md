@@ -190,7 +190,7 @@ export const Route = createFileRoute('/todos')({
     return {
       bar: true,
     }
-  }
+  },
   loader: ({ context }) => {
     context.foo // true
     context.bar // true

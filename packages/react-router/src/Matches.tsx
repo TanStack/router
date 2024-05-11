@@ -104,11 +104,15 @@ export function Matches() {
     <router.options.defaultPendingComponent />
   ) : null
 
+  const ResolvedSuspense = !router.state.matches.length
+    ? React.Suspense
+    : SafeFragment
+
   const inner = (
-    <React.Suspense fallback={pendingElement}>
+    <ResolvedSuspense fallback={pendingElement}>
       <Transitioner />
       <MatchesInner />
-    </React.Suspense>
+    </ResolvedSuspense>
   )
 
   return router.options.InnerWrap ? (
@@ -180,11 +184,10 @@ export function Match({ matchId }: { matchId: string }) {
     : route.options.notFoundComponent
 
   const ResolvedSuspenseBoundary =
-    route.options.wrapInSuspense ??
-    PendingComponent ??
-    route.options.component?.preload ??
-    route.options.pendingComponent?.preload ??
-    (route.options.errorComponent as any)?.preload
+    !route.isRoot &&
+    (route.options.wrapInSuspense ??
+      PendingComponent ??
+      (route.options.errorComponent as any)?.preload)
       ? React.Suspense
       : SafeFragment
 
