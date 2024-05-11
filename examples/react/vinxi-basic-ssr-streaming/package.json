@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.32.0",
-    "@tanstack/start": "^1.32.0",
+    "@tanstack/start": "^1.32.1",
     "@tanstack/router-devtools": "^1.32.0",
     "@vinxi/react": "0.2.2",
     "@vinxi/server-functions": "^0.3.2",
