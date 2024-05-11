@@ -37,7 +37,7 @@ Create the following files:
 - `src/routes/__root.tsx`
 - `src/routes/index.lazy.tsx`
 - `src/routes/about.lazy.tsx`
-- `src/app.tsx`
+- `src/main.tsx`
 
 > 🧠 **Route files with the `.lazy.tsx` extension are lazy loaded via separate bundles to keep the main bundle size as lean as possible.**
 
@@ -98,7 +98,7 @@ function About() {
 }
 ```
 
-### `src/app.tsx`
+### `src/main.tsx`
 
 Regardless if you are using the `@tanstack/router-vite-plugin` or manually run `tsr watch`/`tsr generate` from your package scripts, the following file will be generated for you:
 
@@ -125,7 +125,7 @@ declare module '@tanstack/react-router' {
 }
 
 // Render the app
-const rootElement = document.getElementById('app')!
+const rootElement = document.getElementById('root')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
