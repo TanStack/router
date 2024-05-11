@@ -58,10 +58,10 @@ function createTestRouter(initialHistory?: RouterHistory) {
   })
   const gLayoutRoute = createRoute({
     id: 'layout',
-    getParentRoute: () => uRoute,
+    getParentRoute: () => gRoute,
   })
   const gUsernameRoute = createRoute({
-    getParentRoute: () => uLayoutRoute,
+    getParentRoute: () => gLayoutRoute,
     path: '$username',
   })
 
@@ -430,7 +430,7 @@ describe('router.navigate navigation using layout routes resolves correctly', as
     expect(router.state.location.pathname).toBe('/g/tanner')
 
     await router.navigate({
-      to: '/u/$username',
+      to: '/g/$username',
       params: { username: 'tkdodo' },
     })
     await router.invalidate()
