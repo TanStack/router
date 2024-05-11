@@ -936,7 +936,7 @@ export class Router<
         fromMatches.find((e) => e.routeId === d.routeId),
       )
 
-      const fromRouteFromByRouteId = (
+      const fromRouteByFromPathRouteId = (
         this.routesById as RoutesById<TRouteTree>
       )[stayingMatches?.find((d) => d.pathname === fromPath)?.routeId]
 
@@ -944,7 +944,7 @@ export class Router<
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
         : this.resolvePathWithBase(
             fromPath,
-            fromRouteFromByRouteId?.to ?? fromPath,
+            fromRouteByFromPathRouteId?.to ?? fromPath,
           )
 
       const prevParams = { ...last(fromMatches)?.params }

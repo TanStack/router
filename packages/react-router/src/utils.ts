@@ -340,20 +340,6 @@ export function createControlledPromise<T>(onResolve?: () => void) {
 }
 
 /**
- * Removes all segments from a given path that start with an underscore ('_').
- *
- * @param {string} routePath - The path from which to remove segments. Defaults to '/'.
- * @returns {string} The path with all underscore-prefixed segments removed.
- * @example
- * removeLayoutSegments('/workspace/_auth/foo') // '/workspace/foo'
- */
-export function removeLayoutSegments(routePath: string): string {
-  const segments = routePath.split('/')
-  const newSegments = segments.filter((segment) => !segment.startsWith('_'))
-  return newSegments.join('/')
-}
-
-/**
  * Taken from https://www.developerway.com/posts/implementing-advanced-use-previous-hook#part3
  */
 export function usePrevious<T>(value: T): T | null {
