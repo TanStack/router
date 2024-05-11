@@ -11,7 +11,6 @@ import {
   functionalUpdate,
   last,
   pick,
-  removeLayoutSegments,
   replaceEqualDeep,
 } from './utils'
 import { getRouteMatch } from './RouterProvider'
@@ -494,7 +493,7 @@ export class Router<
       scores: Array<number>
     }> = []
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    // eslint-disable-next-line
     const routes = Object.values(this.routesById) as Array<AnyRoute>
 
     routes.forEach((d, i) => {
