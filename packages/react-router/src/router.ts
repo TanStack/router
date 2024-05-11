@@ -493,8 +493,7 @@ export class Router<
       scores: Array<number>
     }> = []
 
-    // eslint-disable-next-line
-    const routes = Object.values(this.routesById) as Array<AnyRoute>
+    const routes: Array<AnyRoute> = Object.values(this.routesById)
 
     routes.forEach((d, i) => {
       if (d.isRoot || !d.path) {
@@ -936,9 +935,10 @@ export class Router<
         fromMatches.find((e) => e.routeId === d.routeId),
       )
 
-      const fromRouteByFromPathRouteId = (
-        this.routesById as RoutesById<TRouteTree>
-      )[stayingMatches?.find((d) => d.pathname === fromPath)?.routeId]
+      const fromRouteByFromPathRouteId =
+        this.routesById[
+          stayingMatches?.find((d) => d.pathname === fromPath)?.routeId
+        ]
 
       let pathname = dest.to
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
