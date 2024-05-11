@@ -35,6 +35,7 @@ title: Router API
   - [`useLinkProps()`](./useLinkPropsHook)
   - [`useLoaderData()`](./useLoaderDataHook)
   - [`useLoaderDeps()`](./useLoaderDepsHook)
+  - [`useLocation()`](./useLocationHook)
   - [`useMatch()`](./useMatchHook)
   - [`useMatchRoute()`](./useMatchRouteHook)
   - [`useMatches()`](./useMatchesHook)
