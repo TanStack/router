@@ -1221,11 +1221,9 @@ type RoutePrefix<
       ? TPath extends '/'
         ? '/'
         : `/${TrimPath<TPath>}`
-      : TrimPath<TPath> extends infer TTrimmedPath extends string
-        ? TPrefix extends `${string}/`
-          ? `${TPrefix}${TTrimmedPath}`
-          : `${TPrefix}/${TTrimmedPath}`
-        : never
+      : `${TPrefix}/${TPath}` extends '/'
+        ? '/'
+        : `/${TrimPathLeft<`${TrimPathRight<TPrefix>}/${TrimPath<TPath>}`>}`
     : never
 
 export type TrimPath<T extends string> = '' extends T

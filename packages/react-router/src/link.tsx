@@ -825,7 +825,7 @@ type LinkComponentReactProps<TComp> = React.PropsWithoutRef<
 
 export type LinkComponentProps<
   TComp,
-  TRouter extends RegisteredRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
   TTo extends string = '',
   TMaskFrom extends string = TFrom,
