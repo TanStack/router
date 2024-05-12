@@ -172,7 +172,7 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof rootRoute
     }
     '/(folder)/in-folder': {
-      id: '/(folder)/in-folder'
+      id: '/in-folder'
       path: '/in-folder'
       fullPath: '/in-folder'
       preLoaderRoute: typeof folderInFolderImport

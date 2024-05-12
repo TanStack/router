@@ -584,7 +584,7 @@ export async function generator(config: Config) {
     ${routeNodes
       .map((routeNode) => {
         const filePathId = removeTrailingUnderscores(routeNode.routePath)
-        const id = filePathId
+        const id = removeGroups(filePathId ?? '')
         const fullPath = removeGroups(
           removeUnderscores(removeLayoutSegments(routeNode.routePath)) ?? '',
         )
