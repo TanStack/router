@@ -113,7 +113,7 @@ const router = createRouter({
 
 ## Performance Recommendations
 
-As your application scales, typescript check times will naturally increase. There are a few things to keep in mind when your application scales to keep your TS check times down.
+As your application scales, TypeScript check times will naturally increase. There are a few things to keep in mind when your application scales to keep your TS check times down.
 
 ### Narrow to relevant routes as much as you possibly can
 
@@ -125,7 +125,7 @@ Consider the following usage of `Link`
 <Link search={{ page: 0 }} />
 ```
 
-**These examples are bad for TS performance**. Thats because `search` resolves to a union of all `search` params for all routes and TS has to check whatever you pass to the `search` prop against this potentially big union. As your application grows, this check time will increase linearly to number of routes and search params. We have done our best to optimise for this case (typescript will typically do this work once and cache it) but the initial check against this large union is expensive. This also applies to `params` and other API's such as `useSearch`, `useParams`, `useNavigate` etc
+**These examples are bad for TS performance**. That's because `search` resolves to a union of all `search` params for all routes and TS has to check whatever you pass to the `search` prop against this potentially big union. As your application grows, this check time will increase linearly to number of routes and search params. We have done our best to optimise for this case (TypeScript will typically do this work once and cache it) but the initial check against this large union is expensive. This also applies to `params` and other API's such as `useSearch`, `useParams`, `useNavigate` etc
 
 Instead you should try to narrow to relevant routes with `from` or `to`
 
@@ -134,14 +134,23 @@ Instead you should try to narrow to relevant routes with `from` or `to`
 <Link from="/posts" to=".." search={{page: 0}} />
 ```
 
-Remember you can always pass a union to `to` or `from` to narrow the routes you're interested in. You can also pass branches to `from` to be more loose.
+Remember you can always pass a union to `to` or `from` to narrow the routes you're interested in.
 
 ```tsx
 const from: '/posts/$postId/deep' | '/posts/' = '/posts/'
 <Link from={from} to='..' />
 ```
 
-### Consider using the object syntax of `createChildren`
+You can also pass branches to `from` to only resolve `search` or `params` to be from any descendants of that branch
+
+```tsx
+const from = '/posts'
+<Link from={from} to='..' />
+```
+
+`/posts` could be a branch with many descendants which share the same `search` or `params`
+
+### Consider using the object syntax of `addChildren`
 
 It's tyipcal of routes to have `params` `search`, `loaders` or `context` that can even reference external dependencies which are also heavy on TS inference. For such applications, using objects for creating the route tree can be more performant than tuples.
 
@@ -158,7 +167,7 @@ Note this syntax is more verbose but has better TS performance. With file based 
 
 ### Avoid internal types without narrowing
 
-Its common you might want to re-use types exposed. For example you might be tempted to use `LinkProps` like so
+It's common you might want to re-use types exposed. For example you might be tempted to use `LinkProps` like so
 
 ```tsx
 const props: LinkProps = {
@@ -197,3 +206,44 @@ return (
 ```
 
 This is even faster as we're checking against the narrowed `LinkProps` type.
+
+You can also use this to narrow the type of `LinkProps` to a specific type to be used as a prop or parameter to a function
+
+```tsx
+export const myLinkProps = [
+  {
+    to: '/posts',
+  },
+  {
+    to: '/posts/$postId',
+    params: { postId: 'postId' },
+  },
+] as const satisfies ReadonlyArray<LinkProps>
+
+export type MyLinkProps = (typeof myLinkProps)[number]
+
+const MyComponent = (props: { linkProps: MyLinkProps }) => {
+  return <Link {...props.linkProps} />
+}
+```
+
+This is faster than using `LinkProps` directly in a component because `MyLinkProps` is a much more precise type
+
+Another solution is not to use `LinkProps` and to provide inversion of control to render a `Link` component narrowed to a specific route. Render props are a good method of inverting control to the user of a component
+
+```tsx
+export interface MyComponentProps {
+  readonly renderLink: () => React.ReactNode
+}
+
+const MyComponent = (props: MyComponentProps) => {
+  return <div>{props.renderLink()}</div>
+}
+
+const Page = () => {
+  return <MyComponent renderLink={() => <Link to="/absolute" />} />
+}
+```
+
+This particular example is very fast as we've inverted control of where we're navigating to the user of the component. The `Link` is narrowed to the exact route
+we want to navigate to
