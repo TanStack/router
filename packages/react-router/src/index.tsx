@@ -64,7 +64,6 @@ export {
   type UseLinkPropsOptions,
   type ActiveLinkOptions,
   type LinkProps,
-  type LinkComponentProps,
   type LinkComponent,
 } from './link'
 export { type ParsedLocation } from './location'
