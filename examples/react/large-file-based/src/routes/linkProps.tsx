@@ -7,7 +7,7 @@ export const Route = createFileRoute('/linkProps')({
 
 function LinkPropsPage() {
   const linkProps: LinkProps = {
-    to: '/absolute11',
+    to: '/absolute',
   }
 
   return <Link {...linkProps} />
