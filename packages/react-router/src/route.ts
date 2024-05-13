@@ -498,7 +498,8 @@ export type RouteConstraints = {
 
 export function getRouteApi<
   TId extends RouteIds<RegisteredRouter['routeTree']>,
-  TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRoute extends AnyRoute = RouteById<TRouter['routeTree'], TId>,
   TFullSearchSchema = TRoute['types']['fullSearchSchema'],
   TAllParams = TRoute['types']['allParams'],
   TAllContext = TRoute['types']['allContext'],
@@ -507,6 +508,7 @@ export function getRouteApi<
 >(id: TId) {
   return new RouteApi<
     TId,
+    TRouter,
     TRoute,
     TFullSearchSchema,
     TAllParams,
@@ -518,7 +520,8 @@ export function getRouteApi<
 
 export class RouteApi<
   TId extends RouteIds<RegisteredRouter['routeTree']>,
-  TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRoute extends AnyRoute = RouteById<TRouter['routeTree'], TId>,
   TFullSearchSchema = TRoute['types']['fullSearchSchema'],
   TAllParams = TRoute['types']['allParams'],
   TAllContext = TRoute['types']['allContext'],
@@ -535,7 +538,7 @@ export class RouteApi<
   }
 
   useMatch = <
-    TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+    TRouteTree extends AnyRoute = TRouter['routeTree'],
     TRouteMatch = MakeRouteMatch<TRouteTree, TId>,
     TSelected = TRouteMatch,
   >(opts?: {
@@ -577,7 +580,7 @@ export class RouteApi<
     return useLoaderData({ ...opts, from: this.id, strict: false } as any)
   }
 
-  useNavigate = () => {
+  useNavigate = (): UseNavigateResult<TRoute['fullPath']> => {
     return useNavigate({ from: this.id })
   }
 
@@ -882,7 +885,8 @@ export class Route<
   }
 
   useMatch = <
-    TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+    TRouter extends AnyRouter = RegisteredRouter,
+    TRouteTree extends AnyRoute = TRouter['routeTree'],
     TRouteMatch = MakeRouteMatch<TRouteTree, TId>,
     TSelected = TRouteMatch,
   >(opts?: {
