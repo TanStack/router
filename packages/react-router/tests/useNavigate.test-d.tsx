@@ -42,14 +42,6 @@ test('can redirect to valid route', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | ''
-      | '/'
-      | 'invoices'
-      | '/invoices'
-      | '/invoices/$invoiceId'
-      | 'invoices/$invoiceId'
-      | './'
-      | '../'
-      | undefined
+      '/' | '/invoices' | '/invoices/$invoiceId' | './' | '../' | undefined
     >()
 })

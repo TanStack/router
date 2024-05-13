@@ -120,7 +120,6 @@ test('when navigating to the root', () => {
     .toEqualTypeOf<
       | '../'
       | './'
-      | ''
       | '/'
       | '/invoices'
       | '/invoices/$invoiceId'
@@ -129,13 +128,6 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
-      | 'invoices'
-      | 'invoices/$invoiceId'
-      | 'invoices/$invoiceId/details/$detailId'
-      | 'invoices/$invoiceId/details'
-      | 'invoices/$invoiceId/edit'
-      | 'posts'
-      | 'posts/$postId'
       | undefined
     >()
 
@@ -145,7 +137,6 @@ test('when navigating to the root', () => {
     .toEqualTypeOf<
       | '../'
       | './'
-      | ''
       | '/'
       | '/invoices'
       | '/invoices/$invoiceId'
@@ -154,13 +145,6 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
-      | 'invoices'
-      | 'invoices/$invoiceId'
-      | 'invoices/$invoiceId/details/$detailId'
-      | 'invoices/$invoiceId/details'
-      | 'invoices/$invoiceId/edit'
-      | 'posts'
-      | 'posts/$postId'
       | undefined
     >()
 
@@ -170,7 +154,6 @@ test('when navigating to the root', () => {
     .toEqualTypeOf<
       | '../'
       | './'
-      | ''
       | '/'
       | '/invoices/'
       | '/invoices/$invoiceId/'
@@ -179,13 +162,6 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/edit/'
       | '/posts/'
       | '/posts/$postId/'
-      | 'invoices/'
-      | 'invoices/$invoiceId/'
-      | 'invoices/$invoiceId/details/$detailId/'
-      | 'invoices/$invoiceId/details/'
-      | 'invoices/$invoiceId/edit/'
-      | 'posts/'
-      | 'posts/$postId/'
       | undefined
     >()
 
@@ -195,7 +171,6 @@ test('when navigating to the root', () => {
     .toEqualTypeOf<
       | '../'
       | './'
-      | ''
       | '/'
       | '/invoices'
       | '/invoices/$invoiceId'
@@ -204,13 +179,6 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
-      | 'invoices'
-      | 'invoices/$invoiceId'
-      | 'invoices/$invoiceId/details/$detailId'
-      | 'invoices/$invoiceId/details'
-      | 'invoices/$invoiceId/edit'
-      | 'posts'
-      | 'posts/$postId'
       | undefined
     >()
 
@@ -220,7 +188,6 @@ test('when navigating to the root', () => {
     .toEqualTypeOf<
       | '../'
       | './'
-      | ''
       | '/'
       | '/invoices'
       | '/invoices/'
@@ -236,20 +203,6 @@ test('when navigating to the root', () => {
       | '/posts/'
       | '/posts/$postId'
       | '/posts/$postId/'
-      | 'invoices'
-      | 'invoices/'
-      | 'invoices/$invoiceId'
-      | 'invoices/$invoiceId/'
-      | 'invoices/$invoiceId/details/$detailId'
-      | 'invoices/$invoiceId/details/$detailId/'
-      | 'invoices/$invoiceId/details'
-      | 'invoices/$invoiceId/details/'
-      | 'invoices/$invoiceId/edit'
-      | 'invoices/$invoiceId/edit/'
-      | 'posts'
-      | 'posts/'
-      | 'posts/$postId'
-      | 'posts/$postId/'
       | undefined
     >()
 })
@@ -476,22 +429,14 @@ test('cannot navigate to a branch with an index', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | ''
       | '/'
-      | 'posts'
       | '/posts'
       | '/posts/$postId'
-      | 'posts/$postId'
-      | 'invoices'
       | '/invoices'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
-      | 'invoices/$invoiceId'
-      | 'invoices/$invoiceId/edit'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
-      | 'invoices/$invoiceId/details'
-      | 'invoices/$invoiceId/details/$detailId'
       | './'
       | '../'
       | undefined
@@ -501,22 +446,14 @@ test('cannot navigate to a branch with an index', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | ''
       | '/'
-      | 'posts'
       | '/posts'
       | '/posts/$postId'
-      | 'posts/$postId'
-      | 'invoices'
       | '/invoices'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
-      | 'invoices/$invoiceId'
-      | 'invoices/$invoiceId/edit'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
-      | 'invoices/$invoiceId/details'
-      | 'invoices/$invoiceId/details/$detailId'
       | './'
       | '../'
       | undefined
@@ -528,22 +465,14 @@ test('cannot navigate to a branch with an index', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | ''
       | '/'
-      | 'posts/'
       | '/posts/'
       | '/posts/$postId/'
-      | 'posts/$postId/'
-      | 'invoices/'
       | '/invoices/'
       | '/invoices/$invoiceId/'
       | '/invoices/$invoiceId/edit/'
-      | 'invoices/$invoiceId/'
-      | 'invoices/$invoiceId/edit/'
       | '/invoices/$invoiceId/details/'
       | '/invoices/$invoiceId/details/$detailId/'
-      | 'invoices/$invoiceId/details/'
-      | 'invoices/$invoiceId/details/$detailId/'
       | './'
       | '../'
       | undefined
@@ -553,22 +482,14 @@ test('cannot navigate to a branch with an index', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | ''
       | '/'
-      | 'posts'
       | '/posts'
       | '/posts/$postId'
-      | 'posts/$postId'
-      | 'invoices'
       | '/invoices'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
-      | 'invoices/$invoiceId'
-      | 'invoices/$invoiceId/edit'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
-      | 'invoices/$invoiceId/details'
-      | 'invoices/$invoiceId/details/$detailId'
       | './'
       | '../'
       | undefined
@@ -580,36 +501,21 @@ test('cannot navigate to a branch with an index', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | ''
       | '/'
-      | 'posts'
-      | 'posts/'
       | '/posts'
       | '/posts/'
       | '/posts/$postId'
       | '/posts/$postId/'
-      | 'posts/$postId'
-      | 'posts/$postId/'
-      | 'invoices'
-      | 'invoices/'
       | '/invoices'
       | '/invoices/'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/'
       | '/invoices/$invoiceId/edit'
       | '/invoices/$invoiceId/edit/'
-      | 'invoices/$invoiceId'
-      | 'invoices/$invoiceId/'
-      | 'invoices/$invoiceId/edit'
-      | 'invoices/$invoiceId/edit/'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/'
-      | 'invoices/$invoiceId/details'
-      | 'invoices/$invoiceId/details/'
-      | 'invoices/$invoiceId/details/$detailId'
-      | 'invoices/$invoiceId/details/$detailId/'
       | './'
       | '../'
       | undefined
