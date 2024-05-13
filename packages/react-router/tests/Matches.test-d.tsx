@@ -50,30 +50,14 @@ test('when matching a route with params', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | ''
-      | '/'
-      | './'
-      | '../'
-      | '/invoices'
-      | '/invoices/$invoiceId'
-      | 'invoices'
-      | 'invoices/$invoiceId'
-      | undefined
+      '/' | './' | '../' | '/invoices' | '/invoices/$invoiceId' | undefined
     >()
 
   expectTypeOf(MatchRoute<DefaultRouter, any, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | ''
-      | '/'
-      | './'
-      | '../'
-      | '/invoices'
-      | '/invoices/$invoiceId'
-      | 'invoices'
-      | 'invoices/$invoiceId'
-      | undefined
+      '/' | './' | '../' | '/invoices' | '/invoices/$invoiceId' | undefined
     >()
 
   expectTypeOf(

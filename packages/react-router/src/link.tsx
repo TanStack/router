@@ -149,7 +149,7 @@ export type AbsolutePathAutoComplete<
   | (TFrom extends '/'
       ? never
       : string extends TFrom
-        ? RemoveLeadingSlashes<RouteToPath<TRouter, TRouter['routeTree']>>
+        ? never
         : RemoveLeadingSlashes<SearchPaths<TRouter, TFrom>>)
 
 export type RelativeToPathAutoComplete<
