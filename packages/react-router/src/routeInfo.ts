@@ -5,19 +5,28 @@ import type { UnionToIntersection, UnionToTuple } from './utils'
 export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
   types: { children: infer TChildren }
 }
-  ? TChildren extends ReadonlyArray<any>
-    ? ParseRoute<TChildren[number], TAcc | TChildren[number]>
-    : TAcc
+  ? unknown extends TChildren
+    ? TAcc
+    : TChildren extends ReadonlyArray<any>
+      ? ParseRoute<TChildren[number], TAcc | TChildren[number]>
+      : ParseRoute<
+          TChildren[keyof TChildren],
+          TAcc | TChildren[keyof TChildren]
+        >
   : TAcc
 
 export type ParseRouteWithoutBranches<TRouteTree> =
   ParseRoute<TRouteTree> extends infer TRoute extends AnyRoute
     ? TRoute extends any
-      ? TRoute['types']['children'] extends ReadonlyArray<any>
-        ? '/' extends TRoute['types']['children'][number]['path']
-          ? never
-          : TRoute
-        : TRoute
+      ? unknown extends TRoute['types']['children']
+        ? TRoute
+        : TRoute['types']['children'] extends ReadonlyArray<any>
+          ? '/' extends TRoute['types']['children'][number]['path']
+            ? never
+            : TRoute
+          : '/' extends TRoute['types']['children'][keyof TRoute['types']['children']]['path']
+            ? never
+            : TRoute
       : never
     : never
 
@@ -32,19 +41,14 @@ export type RouteById<TRouteTree extends AnyRoute, TId> = Extract<
 
 export type RouteIds<TRouteTree extends AnyRoute> = ParseRoute<TRouteTree>['id']
 
-export type CatchAllPaths<TRouteTree extends AnyRoute> = Record<
-  '.' | '..' | '',
-  ParseRoute<TRouteTree>
->
+export type CatchAllPaths = '.' | '..' | ''
 
 export type RoutesByPath<TRouteTree extends AnyRoute> = {
   [K in ParseRoute<TRouteTree> as K['fullPath']]: K
-} & CatchAllPaths<TRouteTree>
+}
 
 export type RouteByPath<TRouteTree extends AnyRoute, TPath> = Extract<
-  string extends TPath
-    ? ParseRoute<TRouteTree>
-    : RoutesByPath<TRouteTree>[TPath],
+  RoutesByPath<TRouteTree>[TPath],
   AnyRoute
 >
 
@@ -103,18 +107,16 @@ export type RoutesByToPath<TRouter extends AnyRouter> = {
     TRouter,
     TRoute
   >]: TRoute
-} & CatchAllPaths<TRouter['routeTree']>
+}
 
 export type RouteByToPath<TRouter extends AnyRouter, TTo> = Extract<
-  string extends TTo
-    ? ParseRouteWithoutBranches<TRouter['routeTree']>
-    : RoutesByToPath<TRouter>[TTo],
+  RoutesByToPath<TRouter>[TTo],
   AnyRoute
 >
 
-export type RoutePathsAutoComplete<TRouteTree extends AnyRoute, T> =
+export type RoutePathsAutoComplete<TRouter extends AnyRouter, T> =
   | (string extends T ? T & {} : T)
-  | RoutePaths<TRouteTree>
+  | RoutePaths<TRouter['routeTree']>
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 type UnionizeCollisions<T, U> = {

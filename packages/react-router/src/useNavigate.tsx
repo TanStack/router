@@ -20,7 +20,7 @@ export type UseNavigateResult<TDefaultFrom extends string> = <
 export function useNavigate<
   TDefaultFrom extends string = string,
 >(_defaultOpts?: {
-  from?: RoutePathsAutoComplete<RegisteredRouter['routeTree'], TDefaultFrom>
+  from?: RoutePathsAutoComplete<RegisteredRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
   const router = useRouter()
 
@@ -32,7 +32,7 @@ export function useNavigate<
       })
     },
     [router],
-  )
+  ) as UseNavigateResult<TDefaultFrom>
 }
 
 // NOTE: I don't know of anyone using this. It's undocumented, so let's wait until someone needs it

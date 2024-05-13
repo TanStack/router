@@ -700,6 +700,9 @@ importers:
 
   examples/react/large-file-based:
     dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.17.8
+        version: 5.36.0(react@18.2.0)
       '@tanstack/react-router':
         specifier: ^1.32.0
         version: link:../../../packages/react-router
@@ -1507,7 +1510,7 @@ importers:
         version: 1.3.1
       vinxi:
         specifier: 0.2.1
-        version: 0.2.1(@opentelemetry/api@1.8.0)(@types/node@20.12.11)(preact@10.21.0)(rollup@4.17.2)
+        version: 0.2.1(@types/node@20.12.11)(preact@10.21.0)(rollup@4.17.2)
     devDependencies:
       '@testing-library/react':
         specifier: ^15.0.2
@@ -4561,19 +4564,6 @@ packages:
       terser: 5.27.0
     dev: false
 
-  /@rollup/plugin-wasm@6.2.2(rollup@4.17.2):
-    resolution: {integrity: sha512-gpC4R1G9Ni92ZIRTexqbhX7U+9estZrbhP+9SRb0DW9xpB9g7j34r+J2hqrcW/lRI7dJaU84MxZM0Rt82tqYPQ==}
-    engines: {node: '>=14.0.0'}
-    peerDependencies:
-      rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
-    peerDependenciesMeta:
-      rollup:
-        optional: true
-    dependencies:
-      '@rollup/pluginutils': 5.1.0(rollup@4.17.2)
-      rollup: 4.17.2
-    dev: false
-
   /@rollup/plugin-wasm@6.2.2(rollup@4.9.6):
     resolution: {integrity: sha512-gpC4R1G9Ni92ZIRTexqbhX7U+9estZrbhP+9SRb0DW9xpB9g7j34r+J2hqrcW/lRI7dJaU84MxZM0Rt82tqYPQ==}
     engines: {node: '>=14.0.0'}
@@ -5197,6 +5187,10 @@ packages:
     resolution: {integrity: sha512-V4hQv4jmRwbji9wo3F6/JQEjbWLUlv2sE2K5R49girEyok71ksDnVHbQiAvp4+FbovMY8A3IbP3cH3jqAUe/BQ==}
     dev: false
 
+  /@tanstack/query-core@5.36.0:
+    resolution: {integrity: sha512-B5BD3pg/mztDR36i77hGcyySKKeYrbM5mnogOROTBi1SUml5ByRK7PGUUl16vvubvQC+mSnqziFG/VIy/DE3FQ==}
+    dev: false
+
   /@tanstack/query-devtools@5.17.7:
     resolution: {integrity: sha512-TfgvOqza5K7Sk6slxqkRIvXlEJoUoPSsGGwpuYSrpqgSwLSSvPPpZhq7hv7hcY5IvRoTNGoq6+MT01C/jILqoQ==}
     dev: false
@@ -5251,6 +5245,15 @@ packages:
       react: ^18.0.0
     dependencies:
       '@tanstack/query-core': 5.17.8
+      react: 18.2.0
+    dev: false
+
+  /@tanstack/react-query@5.36.0(react@18.2.0):
+    resolution: {integrity: sha512-BATvtM0rohwg7pRHUnxgeDiwLWRGZ8OM/4y8LImHVpecQWoH6Uhytu3Z8YV6V7hQ1sMQBFcUrGE1/e4MxR6YiA==}
+    peerDependencies:
+      react: ^18.0.0
+    dependencies:
+      '@tanstack/query-core': 5.36.0
       react: 18.2.0
     dev: false
 
@@ -10651,100 +10654,6 @@ packages:
       - uWebSockets.js
     dev: false
 
-  /nitropack@2.8.1(@opentelemetry/api@1.8.0):
-    resolution: {integrity: sha512-pODv2kEEzZSDQR+1UMXbGyNgMedUDq/qUomtiAnQKQvLy52VGlecXO1xDfH3i0kP1yKEcKTnWsx1TAF5gHM7xQ==}
-    engines: {node: ^16.11.0 || >=17.0.0}
-    hasBin: true
-    peerDependencies:
-      xml2js: ^0.6.2
-    peerDependenciesMeta:
-      xml2js:
-        optional: true
-    dependencies:
-      '@cloudflare/kv-asset-handler': 0.3.2
-      '@netlify/functions': 2.6.3(@opentelemetry/api@1.8.0)
-      '@rollup/plugin-alias': 5.1.0(rollup@4.17.2)
-      '@rollup/plugin-commonjs': 25.0.7(rollup@4.17.2)
-      '@rollup/plugin-inject': 5.0.5(rollup@4.17.2)
-      '@rollup/plugin-json': 6.1.0(rollup@4.17.2)
-      '@rollup/plugin-node-resolve': 15.2.3(rollup@4.17.2)
-      '@rollup/plugin-replace': 5.0.5(rollup@4.17.2)
-      '@rollup/plugin-terser': 0.4.4(rollup@4.17.2)
-      '@rollup/plugin-wasm': 6.2.2(rollup@4.17.2)
-      '@rollup/pluginutils': 5.1.0(rollup@4.17.2)
-      '@types/http-proxy': 1.17.14
-      '@vercel/nft': 0.24.4
-      archiver: 6.0.1
-      c12: 1.10.0
-      chalk: 5.3.0
-      chokidar: 3.6.0
-      citty: 0.1.6
-      consola: 3.2.3
-      cookie-es: 1.1.0
-      defu: 6.1.4
-      destr: 2.0.3
-      dot-prop: 8.0.2
-      esbuild: 0.19.12
-      escape-string-regexp: 5.0.0
-      estree-walker: 3.0.3
-      etag: 1.8.1
-      fs-extra: 11.2.0
-      globby: 14.0.1
-      gzip-size: 7.0.0
-      h3: 1.11.1
-      hookable: 5.5.3
-      httpxy: 0.1.5
-      is-primitive: 3.0.1
-      jiti: 1.21.0
-      klona: 2.0.6
-      knitwork: 1.1.0
-      listhen: 1.7.2
-      magic-string: 0.30.10
-      mime: 3.0.0
-      mlly: 1.7.0
-      mri: 1.2.0
-      node-fetch-native: 1.6.4
-      ofetch: 1.3.4
-      ohash: 1.1.3
-      openapi-typescript: 6.7.5
-      pathe: 1.1.2
-      perfect-debounce: 1.0.0
-      pkg-types: 1.1.1
-      pretty-bytes: 6.1.1
-      radix3: 1.1.2
-      rollup: 4.17.2
-      rollup-plugin-visualizer: 5.12.0(rollup@4.17.2)
-      scule: 1.3.0
-      semver: 7.6.2
-      serve-placeholder: 2.0.1
-      serve-static: 1.15.0
-      std-env: 3.7.0
-      ufo: 1.5.3
-      uncrypto: 0.1.3
-      unctx: 2.3.1
-      unenv: 1.9.0
-      unimport: 3.7.1(rollup@4.17.2)
-      unstorage: 1.10.2(ioredis@5.4.1)
-    transitivePeerDependencies:
-      - '@azure/app-configuration'
-      - '@azure/cosmos'
-      - '@azure/data-tables'
-      - '@azure/identity'
-      - '@azure/keyvault-secrets'
-      - '@azure/storage-blob'
-      - '@capacitor/preferences'
-      - '@netlify/blobs'
-      - '@opentelemetry/api'
-      - '@planetscale/database'
-      - '@upstash/redis'
-      - '@vercel/kv'
-      - encoding
-      - idb-keyval
-      - ioredis
-      - supports-color
-      - uWebSockets.js
-    dev: false
-
   /nitropack@2.9.6(@opentelemetry/api@1.8.0):
     resolution: {integrity: sha512-HP2PE0dREcDIBVkL8Zm6eVyrDd10/GI9hTL00PHvjUM8I9Y/2cv73wRDmxNyInfrx/CJKHATb2U/pQrqpzJyXA==}
     engines: {node: ^16.11.0 || >=17.0.0}
@@ -13657,7 +13566,7 @@ packages:
       - xml2js
     dev: false
 
-  /vinxi@0.2.1(@opentelemetry/api@1.8.0)(@types/node@20.12.11)(preact@10.21.0)(rollup@4.17.2):
+  /vinxi@0.2.1(@types/node@20.12.11)(preact@10.21.0)(rollup@4.17.2):
     resolution: {integrity: sha512-zrgFO2XuKpdoW5VwlbieeQ0YhzMuuYCJyFWFyj41h9BnymHZ5dnKElALvFQn5JVzHhyrsdmlm8GU7tIuH786hw==}
     hasBin: true
     dependencies:
@@ -13687,7 +13596,7 @@ packages:
       http-proxy: 1.18.1
       micromatch: 4.0.5
       mri: 1.2.0
-      nitropack: 2.8.1(@opentelemetry/api@1.8.0)
+      nitropack: 2.8.1
       node-fetch-native: 1.6.4
       path-to-regexp: 6.2.2
       pathe: 1.1.2
@@ -13716,7 +13625,6 @@ packages:
       - '@capacitor/preferences'
       - '@netlify/blobs'
       - '@nuxt/kit'
-      - '@opentelemetry/api'
       - '@planetscale/database'
       - '@testing-library/jest-dom'
       - '@types/node'

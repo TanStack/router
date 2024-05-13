@@ -11,6 +11,7 @@
     "test:types": "tsc --extendedDiagnostics"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.17.8",
     "@tanstack/react-router": "^1.32.0",
     "@tanstack/router-devtools": "^1.32.0",
     "@tanstack/router-vite-plugin": "^1.31.18",

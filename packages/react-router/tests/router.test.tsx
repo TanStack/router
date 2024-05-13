@@ -1,13 +1,13 @@
 import React from 'react'
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, waitFor } from '@testing-library/react'
 import {
+  type RouterHistory,
+  RouterProvider,
+  createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
-  createMemoryHistory,
-  RouterProvider,
-  type RouterHistory,
 } from '../src'
 
 afterEach(() => {
@@ -35,11 +35,46 @@ function createTestRouter(initialHistory?: RouterHistory) {
     getParentRoute: () => rootRoute,
     path: '$',
   })
+
   const routeTree = rootRoute.addChildren([
     indexRoute,
     postsRoute.addChildren([postIdRoute]),
     topLevelSplatRoute,
   ])
+
+  const router = createRouter({ routeTree, history })
+
+  return {
+    router,
+    routes: { indexRoute, postsRoute, postIdRoute, topLevelSplatRoute },
+  }
+}
+
+function createTestRouterWithObjects(initialHistory?: RouterHistory) {
+  const history =
+    initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
+
+  const rootRoute = createRootRoute({})
+  const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/posts',
+  })
+  const postIdRoute = createRoute({
+    getParentRoute: () => postsRoute,
+    path: '/$slug',
+  })
+  const topLevelSplatRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '$',
+  })
+
+  const routeTree = rootRoute.addChildren({
+    indexRoute,
+    postsRoute: postsRoute.addChildren({ postIdRoute }),
+    topLevelSplatRoute,
+  })
+
   const router = createRouter({ routeTree, history })
 
   return {
@@ -111,6 +146,22 @@ describe('encoding: path params for /posts/$slug', () => {
     }
 
     expect((match.params as unknown as any).slug).toBe('tanner')
+
+    const routerWithObjects = createTestRouterWithObjects(
+      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
+    )
+
+    await routerWithObjects.router.load()
+
+    const matchWithObjects = routerWithObjects.router.state.matches.find(
+      (r) => r.routeId === routes.postIdRoute.id,
+    )
+
+    if (!matchWithObjects) {
+      throw new Error('No match found')
+    }
+
+    expect((matchWithObjects.params as unknown as any).slug).toBe('tanner')
   })
 
   it('params.slug for the matched route, should be "🚀"', async () => {
@@ -129,6 +180,22 @@ describe('encoding: path params for /posts/$slug', () => {
     }
 
     expect((match.params as unknown as any).slug).toBe('🚀')
+
+    const routerWithObjects = createTestRouterWithObjects(
+      createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
+    )
+
+    await routerWithObjects.router.load()
+
+    const matchWithObjects = routerWithObjects.router.state.matches.find(
+      (r) => r.routeId === routes.postIdRoute.id,
+    )
+
+    if (!matchWithObjects) {
+      throw new Error('No match found')
+    }
+
+    expect((matchWithObjects.params as unknown as any).slug).toBe('🚀')
   })
 
   it('params.slug for the matched route, should be "🚀" instead of it being "%F0%9F%9A%80"', async () => {
@@ -147,6 +214,22 @@ describe('encoding: path params for /posts/$slug', () => {
     }
 
     expect((match.params as unknown as any).slug).toBe('🚀')
+
+    const routerWithObjects = createTestRouterWithObjects(
+      createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
+    )
+
+    await routerWithObjects.router.load()
+
+    const matchWithObjects = routerWithObjects.router.state.matches.find(
+      (r) => r.routeId === routes.postIdRoute.id,
+    )
+
+    if (!matchWithObjects) {
+      throw new Error('No match found')
+    }
+
+    expect((matchWithObjects.params as unknown as any).slug).toBe('🚀')
   })
 
   it('params.slug for the matched route, should be "framework/react/guide/file-based-routing tanstack" instead of it being "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
@@ -169,6 +252,28 @@ describe('encoding: path params for /posts/$slug', () => {
     }
 
     expect((match.params as unknown as any).slug).toBe(
+      'framework/react/guide/file-based-routing tanstack',
+    )
+
+    const routerWithObjects = createTestRouterWithObjects(
+      createMemoryHistory({
+        initialEntries: [
+          '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
+        ],
+      }),
+    )
+
+    await routerWithObjects.router.load()
+
+    const matchWithObjects = routerWithObjects.router.state.matches.find(
+      (r) => r.routeId === routes.postIdRoute.id,
+    )
+
+    if (!matchWithObjects) {
+      throw new Error('No match found')
+    }
+
+    expect((matchWithObjects.params as unknown as any).slug).toBe(
       'framework/react/guide/file-based-routing tanstack',
     )
   })

@@ -73,38 +73,65 @@ const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
     '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
       preLoaderRoute: typeof BlogRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRoute
     }
     '/blog/stats': {
+      id: '/blog/stats'
+      path: '/blog/stats'
+      fullPath: '/blog/stats'
       preLoaderRoute: typeof BlogStatsImport
       parentRoute: typeof rootRoute
     }
     '/blog/': {
+      id: '/blog/'
+      path: '/'
+      fullPath: '/blog/'
       preLoaderRoute: typeof BlogIndexImport
       parentRoute: typeof BlogRouteImport
     }
     '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
       preLoaderRoute: typeof PostsIndexImport
       parentRoute: typeof PostsRouteImport
     }
     '/posts/$postId/deep': {
+      id: '/posts/$postId/deep'
+      path: '/$postId/deep'
+      fullPath: '/posts/$postId/deep'
       preLoaderRoute: typeof PostsPostIdDeepImport
       parentRoute: typeof PostsRouteImport
     }
     '/blog/$slug/': {
+      id: '/blog/$slug/'
+      path: '/$slug/'
+      fullPath: '/blog/$slug/'
       preLoaderRoute: typeof BlogSlugIndexImport
       parentRoute: typeof BlogRouteImport
     }
     '/posts/$postId/': {
+      id: '/posts/$postId/'
+      path: '/$postId/'
+      fullPath: '/posts/$postId/'
       preLoaderRoute: typeof PostsPostIdIndexImport
       parentRoute: typeof PostsRouteImport
     }
@@ -113,15 +140,18 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren([
+export const routeTree = rootRoute.addChildren({
   IndexRoute,
-  BlogRouteRoute.addChildren([BlogIndexRoute, BlogSlugIndexRoute]),
-  PostsRouteRoute.addChildren([
+  BlogRouteRoute: BlogRouteRoute.addChildren({
+    BlogIndexRoute,
+    BlogSlugIndexRoute,
+  }),
+  PostsRouteRoute: PostsRouteRoute.addChildren({
     PostsIndexRoute,
     PostsPostIdDeepRoute,
     PostsPostIdIndexRoute,
-  ]),
+  }),
   BlogStatsRoute,
-])
+})
 
 /* prettier-ignore-end */
