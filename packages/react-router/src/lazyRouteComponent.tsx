@@ -30,6 +30,7 @@ export function lazyRouteComponent<
     if (!loadPromise) {
       loadPromise = importer()
         .then((res) => {
+          loadPromise = undefined
           comp = res[exportName ?? 'default']
         })
         .catch((err) => {
@@ -41,35 +42,33 @@ export function lazyRouteComponent<
   }
 
   const lazyComp = function Lazy(props: any) {
-    if (!loadPromise) {
-      load()
-    }
-
     // Now that we're out of preload and into actual render path,
     // throw the error if it was a module not found error during preload
-    if (isModuleNotFoundError(error)) {
-      // We don't want an error thrown from preload in this case, because
-      // there's nothing we want to do about module not found during preload.
-      // Record the error, recover the promise with a null return,
-      // and we will attempt module not found resolution during the render path.
+    if (error) {
+      if (isModuleNotFoundError(error)) {
+        // We don't want an error thrown from preload in this case, because
+        // there's nothing we want to do about module not found during preload.
+        // Record the error, recover the promise with a null return,
+        // and we will attempt module not found resolution during the render path.
 
-      if (
-        error instanceof Error &&
-        typeof window !== 'undefined' &&
-        typeof sessionStorage !== 'undefined'
-      ) {
-        // Again, we want to reload one time on module not found error and not enter
-        // a reload loop if there is some other issue besides an old deploy.
-        // That's why we store our reload attempt in sessionStorage.
-        // Use error.message as key because it contains the module path that failed.
-        const storageKey = `tanstack_router_reload:${error.message}`
-        if (!sessionStorage.getItem(storageKey)) {
-          sessionStorage.setItem(storageKey, '1')
-          window.location.reload()
+        if (
+          error instanceof Error &&
+          typeof window !== 'undefined' &&
+          typeof sessionStorage !== 'undefined'
+        ) {
+          // Again, we want to reload one time on module not found error and not enter
+          // a reload loop if there is some other issue besides an old deploy.
+          // That's why we store our reload attempt in sessionStorage.
+          // Use error.message as key because it contains the module path that failed.
+          const storageKey = `tanstack_router_reload:${error.message}`
+          if (!sessionStorage.getItem(storageKey)) {
+            sessionStorage.setItem(storageKey, '1')
+            window.location.reload()
 
-          // Return empty component while we wait for window to reload
-          return {
-            default: () => null,
+            // Return empty component while we wait for window to reload
+            return {
+              default: () => null,
+            }
           }
         }
       }
@@ -79,7 +78,7 @@ export function lazyRouteComponent<
     }
 
     if (!comp) {
-      throw loadPromise
+      throw load()
     }
 
     return React.createElement(comp, props)
