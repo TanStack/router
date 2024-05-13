@@ -23,6 +23,7 @@ import { Route as JestedLayoutB4Import } from './routes/jested/_layout-b4'
 import { Route as JestedLayoutB3Import } from './routes/jested/_layout-b3'
 import { Route as LayoutA2BarImport } from './routes/_layout-a2/bar'
 import { Route as LayoutA1FooImport } from './routes/_layout-a1/foo'
+import { Route as folderInFolderImport } from './routes/(folder)/in-folder'
 import { Route as NestedLayoutB1IndexImport } from './routes/nested/_layout-b1/index'
 import { Route as JestedLayoutB3IndexImport } from './routes/jested/_layout-b3/index'
 import { Route as NestedLayoutB2FooImport } from './routes/nested/_layout-b2/foo'
@@ -93,6 +94,11 @@ const LayoutA1FooRoute = LayoutA1FooImport.update({
   getParentRoute: () => LayoutA1Route,
 } as any)
 
+const folderInFolderRoute = folderInFolderImport.update({
+  path: '/in-folder',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const NestedLayoutB1IndexRoute = NestedLayoutB1IndexImport.update({
   path: '/',
   getParentRoute: () => NestedLayoutB1Route,
@@ -138,78 +144,142 @@ const JestedLayoutB3LayoutC2BarRoute = JestedLayoutB3LayoutC2BarImport.update({
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
     '/jested': {
+      id: '/jested'
+      path: '/jested'
+      fullPath: '/jested'
       preLoaderRoute: typeof JestedRouteImport
       parentRoute: typeof rootRoute
     }
     '/_layout-a1': {
+      id: '/_layout-a1'
+      path: ''
+      fullPath: ''
       preLoaderRoute: typeof LayoutA1Import
       parentRoute: typeof rootRoute
     }
     '/_layout-a2': {
+      id: '/_layout-a2'
+      path: ''
+      fullPath: ''
       preLoaderRoute: typeof LayoutA2Import
       parentRoute: typeof rootRoute
     }
+    '/(folder)/in-folder': {
+      id: '/in-folder'
+      path: '/in-folder'
+      fullPath: '/in-folder'
+      preLoaderRoute: typeof folderInFolderImport
+      parentRoute: typeof rootRoute
+    }
     '/_layout-a1/foo': {
+      id: '/_layout-a1/foo'
+      path: '/foo'
+      fullPath: '/foo'
       preLoaderRoute: typeof LayoutA1FooImport
       parentRoute: typeof LayoutA1Import
     }
     '/_layout-a2/bar': {
+      id: '/_layout-a2/bar'
+      path: '/bar'
+      fullPath: '/bar'
       preLoaderRoute: typeof LayoutA2BarImport
       parentRoute: typeof LayoutA2Import
     }
     '/jested/_layout-b3': {
+      id: '/jested/_layout-b3'
+      path: ''
+      fullPath: '/jested'
       preLoaderRoute: typeof JestedLayoutB3Import
       parentRoute: typeof JestedRouteImport
     }
     '/jested/_layout-b4': {
+      id: '/jested/_layout-b4'
+      path: ''
+      fullPath: '/jested'
       preLoaderRoute: typeof JestedLayoutB4Import
       parentRoute: typeof JestedRouteImport
     }
     '/nested': {
+      id: '/nested'
+      path: '/nested'
+      fullPath: '/nested'
       preLoaderRoute: typeof NestedImport
       parentRoute: typeof rootRoute
     }
     '/nested/_layout-b1': {
+      id: '/nested/_layout-b1'
+      path: '/nested'
+      fullPath: '/nested'
       preLoaderRoute: typeof NestedLayoutB1Import
       parentRoute: typeof NestedRoute
     }
     '/nested/_layout-b2': {
+      id: '/nested/_layout-b2'
+      path: ''
+      fullPath: '/nested'
       preLoaderRoute: typeof NestedLayoutB2Import
       parentRoute: typeof NestedImport
     }
     '/jested/_layout-b3/_layout-c2': {
+      id: '/jested/_layout-b3/_layout-c2'
+      path: ''
+      fullPath: '/jested'
       preLoaderRoute: typeof JestedLayoutB3LayoutC2Import
       parentRoute: typeof JestedLayoutB3Import
     }
     '/jested/_layout-b4/foo': {
+      id: '/jested/_layout-b4/foo'
+      path: '/foo'
+      fullPath: '/jested/foo'
       preLoaderRoute: typeof JestedLayoutB4FooImport
       parentRoute: typeof JestedLayoutB4Import
     }
     '/nested/_layout-b1/_layout-c1': {
+      id: '/nested/_layout-b1/_layout-c1'
+      path: ''
+      fullPath: '/nested'
       preLoaderRoute: typeof NestedLayoutB1LayoutC1Import
       parentRoute: typeof NestedLayoutB1Import
     }
     '/nested/_layout-b2/foo': {
+      id: '/nested/_layout-b2/foo'
+      path: '/foo'
+      fullPath: '/nested/foo'
       preLoaderRoute: typeof NestedLayoutB2FooImport
       parentRoute: typeof NestedLayoutB2Import
     }
     '/jested/_layout-b3/': {
+      id: '/jested/_layout-b3/'
+      path: '/'
+      fullPath: '/jested/'
       preLoaderRoute: typeof JestedLayoutB3IndexImport
       parentRoute: typeof JestedLayoutB3Import
     }
     '/nested/_layout-b1/': {
+      id: '/nested/_layout-b1/'
+      path: '/'
+      fullPath: '/nested/'
       preLoaderRoute: typeof NestedLayoutB1IndexImport
       parentRoute: typeof NestedLayoutB1Import
     }
     '/jested/_layout-b3/_layout-c2/bar': {
+      id: '/jested/_layout-b3/_layout-c2/bar'
+      path: '/bar'
+      fullPath: '/jested/bar'
       preLoaderRoute: typeof JestedLayoutB3LayoutC2BarImport
       parentRoute: typeof JestedLayoutB3LayoutC2Import
     }
     '/nested/_layout-b1/_layout-c1/bar': {
+      id: '/nested/_layout-b1/_layout-c1/bar'
+      path: '/bar'
+      fullPath: '/nested/bar'
       preLoaderRoute: typeof NestedLayoutB1LayoutC1BarImport
       parentRoute: typeof NestedLayoutB1LayoutC1Import
     }
@@ -218,24 +288,33 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren([
+export const routeTree = rootRoute.addChildren({
   IndexRoute,
-  JestedRouteRoute.addChildren([
-    JestedLayoutB3Route.addChildren([
-      JestedLayoutB3LayoutC2Route.addChildren([JestedLayoutB3LayoutC2BarRoute]),
+  JestedRouteRoute: JestedRouteRoute.addChildren({
+    JestedLayoutB3Route: JestedLayoutB3Route.addChildren({
+      JestedLayoutB3LayoutC2Route: JestedLayoutB3LayoutC2Route.addChildren({
+        JestedLayoutB3LayoutC2BarRoute,
+      }),
       JestedLayoutB3IndexRoute,
-    ]),
-    JestedLayoutB4Route.addChildren([JestedLayoutB4FooRoute]),
-  ]),
-  LayoutA1Route.addChildren([LayoutA1FooRoute]),
-  LayoutA2Route.addChildren([LayoutA2BarRoute]),
-  NestedRoute.addChildren([
-    NestedLayoutB1Route.addChildren([
-      NestedLayoutB1LayoutC1Route.addChildren([NestedLayoutB1LayoutC1BarRoute]),
+    }),
+    JestedLayoutB4Route: JestedLayoutB4Route.addChildren({
+      JestedLayoutB4FooRoute,
+    }),
+  }),
+  LayoutA1Route: LayoutA1Route.addChildren({ LayoutA1FooRoute }),
+  LayoutA2Route: LayoutA2Route.addChildren({ LayoutA2BarRoute }),
+  folderInFolderRoute,
+  NestedRoute: NestedRoute.addChildren({
+    NestedLayoutB1Route: NestedLayoutB1Route.addChildren({
+      NestedLayoutB1LayoutC1Route: NestedLayoutB1LayoutC1Route.addChildren({
+        NestedLayoutB1LayoutC1BarRoute,
+      }),
       NestedLayoutB1IndexRoute,
-    ]),
-    NestedLayoutB2Route.addChildren([NestedLayoutB2FooRoute]),
-  ]),
-])
+    }),
+    NestedLayoutB2Route: NestedLayoutB2Route.addChildren({
+      NestedLayoutB2FooRoute,
+    }),
+  }),
+})
 
 /* prettier-ignore-end */

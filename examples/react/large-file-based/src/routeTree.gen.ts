@@ -12,8 +12,13 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as RelativeImport } from './routes/relative'
+import { Route as LinkPropsImport } from './routes/linkProps'
 import { Route as AbsoluteImport } from './routes/absolute'
+import { Route as SearchRouteImport } from './routes/search/route'
+import { Route as ParamsRouteImport } from './routes/params/route'
 import { Route as IndexImport } from './routes/index'
+import { Route as SearchSearchPlaceholderImport } from './routes/search/searchPlaceholder'
+import { Route as ParamsParamsPlaceholderImport } from './routes/params/$paramsPlaceholder'
 
 // Create/Update Routes
 
@@ -22,8 +27,23 @@ const RelativeRoute = RelativeImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const LinkPropsRoute = LinkPropsImport.update({
+  path: '/linkProps',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const AbsoluteRoute = AbsoluteImport.update({
   path: '/absolute',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const SearchRouteRoute = SearchRouteImport.update({
+  path: '/search',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ParamsRouteRoute = ParamsRouteImport.update({
+  path: '/params',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -32,31 +52,92 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const SearchSearchPlaceholderRoute = SearchSearchPlaceholderImport.update({
+  path: '/searchPlaceholder',
+  getParentRoute: () => SearchRouteRoute,
+} as any)
+
+const ParamsParamsPlaceholderRoute = ParamsParamsPlaceholderImport.update({
+  path: '/$paramsPlaceholder',
+  getParentRoute: () => ParamsRouteRoute,
+} as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/params': {
+      id: '/params'
+      path: '/params'
+      fullPath: '/params'
+      preLoaderRoute: typeof ParamsRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRoute
+    }
     '/absolute': {
+      id: '/absolute'
+      path: '/absolute'
+      fullPath: '/absolute'
       preLoaderRoute: typeof AbsoluteImport
       parentRoute: typeof rootRoute
     }
+    '/linkProps': {
+      id: '/linkProps'
+      path: '/linkProps'
+      fullPath: '/linkProps'
+      preLoaderRoute: typeof LinkPropsImport
+      parentRoute: typeof rootRoute
+    }
     '/relative': {
+      id: '/relative'
+      path: '/relative'
+      fullPath: '/relative'
       preLoaderRoute: typeof RelativeImport
       parentRoute: typeof rootRoute
+    }
+    '/params/$paramsPlaceholder': {
+      id: '/params/$paramsPlaceholder'
+      path: '/$paramsPlaceholder'
+      fullPath: '/params/$paramsPlaceholder'
+      preLoaderRoute: typeof ParamsParamsPlaceholderImport
+      parentRoute: typeof ParamsRouteImport
+    }
+    '/search/searchPlaceholder': {
+      id: '/search/searchPlaceholder'
+      path: '/searchPlaceholder'
+      fullPath: '/search/searchPlaceholder'
+      preLoaderRoute: typeof SearchSearchPlaceholderImport
+      parentRoute: typeof SearchRouteImport
     }
   }
 }
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren([
+export const routeTree = rootRoute.addChildren({
   IndexRoute,
+  ParamsRouteRoute: ParamsRouteRoute.addChildren({
+    ParamsParamsPlaceholderRoute,
+  }),
+  SearchRouteRoute: SearchRouteRoute.addChildren({
+    SearchSearchPlaceholderRoute,
+  }),
   AbsoluteRoute,
+  LinkPropsRoute,
   RelativeRoute,
-])
+})
 
 /* prettier-ignore-end */
