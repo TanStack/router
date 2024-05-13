@@ -18,8 +18,8 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5(rollup@4.17.2)
       '@tanstack/config':
-        specifier: ^0.7.0
-        version: 0.7.0(@types/node@20.12.11)(esbuild@0.21.1)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11)
+        specifier: ^0.7.3
+        version: 0.7.3(@types/node@20.12.11)(esbuild@0.21.1)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11)
       '@types/eslint':
         specifier: ^8.56.2
         version: 8.56.2
@@ -3293,7 +3293,7 @@ packages:
       nopt: 5.0.0
       npmlog: 5.0.1
       rimraf: 3.0.2
-      semver: 7.5.4
+      semver: 7.6.2
       tar: 6.2.0
     transitivePeerDependencies:
       - encoding
@@ -5150,11 +5150,10 @@ packages:
       - vite
     dev: false
 
-  /@tanstack/config@0.7.0(@types/node@20.12.11)(esbuild@0.21.1)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11):
-    resolution: {integrity: sha512-J5zOQGErjl59MnHaAExgY/2jCZpwmg+iSXkZyT8LZzsW8jeSGFp5YZ/auQHiggcsd3Oy5Lv3TlijnYbxz2uKcw==}
+  /@tanstack/config@0.7.3(@types/node@20.12.11)(esbuild@0.21.1)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11):
+    resolution: {integrity: sha512-pQDIGgmRg1MUySYnRXW4AwtxnkMmcwbVTxK5vZPIu+EwrUWaKPFP3hye3OEjPCLkycwTrQtaaQ/9gkE7NMmDtA==}
     engines: {node: '>=18'}
     hasBin: true
-    requiresBuild: true
     dependencies:
       '@commitlint/parse': 19.0.3
       chalk: 5.3.0
