@@ -151,10 +151,10 @@ export const Meta = ({ children }: { children?: React.ReactNode }) => {
 export function Html({ children, ...props }: React.HTMLProps<HTMLHtmlElement>) {
   const router = useRouter()
 
-  warning(
-    !Object.keys(props).length,
-    'Passing props other than children to the Html component will be supported very soon in React 19.',
-  )
+  // warning(
+  //   !Object.keys(props).length,
+  //   'Passing props other than children to the Html component will be supported very soon in React 19.',
+  // )
 
   if (!router.isServer) {
     return <>{children}</>
@@ -166,10 +166,10 @@ export function Html({ children, ...props }: React.HTMLProps<HTMLHtmlElement>) {
 export function Head({ children, ...props }: React.HTMLProps<HTMLHeadElement>) {
   const router = useRouter()
 
-  warning(
-    !Object.keys(props).length,
-    'Passing props other than children to the Head component will be supported very soon in React 19.',
-  )
+  // warning(
+  //   !Object.keys(props).length,
+  //   'Passing props other than children to the Head component will be supported very soon in React 19.',
+  // )
 
   if (!router.isServer) {
     return <Meta>{children}</Meta>
@@ -185,10 +185,10 @@ export function Head({ children, ...props }: React.HTMLProps<HTMLHeadElement>) {
 export function Body({ children, ...props }: React.HTMLProps<HTMLBodyElement>) {
   const router = useRouter()
 
-  warning(
-    !Object.keys(props).length,
-    'Passing props other than children to the Body component will be supported very soon in React 19.',
-  )
+  // warning(
+  //   !Object.keys(props).length,
+  //   'Passing props other than children to the Body component will be supported very soon in React 19.',
+  // )
 
   if (!router.isServer) {
     return children

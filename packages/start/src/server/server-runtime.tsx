@@ -42,7 +42,7 @@ export function createServerReference<TPayload, TResponse>(
           }
         })
 
-        setResponseHeaders(event, ogResponseHeaders)
+        setResponseHeaders(event, ogResponseHeaders as any)
       }
 
       return response

@@ -9,29 +9,29 @@ const config = defineConfig({
   plugins: [
     react(),
     // @ts-ignore
-    replace({
-      'import.meta.env': '__import__meta__env__',
-    }),
-    (() => {
-      return {
-        name: 'replace-import-meta-env',
-        writeBundle(options, bundle) {
-          const basePath = options.dir || path.dirname(options.file || '')
+    // replace({
+    //   'import.meta.env': '__import__meta__env__',
+    // }),
+    // (() => {
+    //   return {
+    //     name: 'replace-import-meta-env',
+    //     writeBundle(options, bundle) {
+    //       const basePath = options.dir || path.dirname(options.file || '')
 
-          for (const [fileName, fileEntry] of Object.entries(bundle)) {
-            if (fileEntry.type === 'chunk') {
-              const fullPath = path.resolve(basePath, fileName)
-              fs.writeFileSync(
-                fullPath,
-                fs
-                  .readFileSync(fullPath, 'utf-8')
-                  .replace(/__import__meta__env__/g, 'import.meta.env'),
-              )
-            }
-          }
-        },
-      }
-    })(),
+    //       for (const [fileName, fileEntry] of Object.entries(bundle)) {
+    //         if (fileEntry.type === 'chunk') {
+    //           const fullPath = path.resolve(basePath, fileName)
+    //           fs.writeFileSync(
+    //             fullPath,
+    //             fs
+    //               .readFileSync(fullPath, 'utf-8')
+    //               .replace(/__import__meta__env__/g, 'import.meta.env'),
+    //           )
+    //         }
+    //       }
+    //     },
+    //   }
+    // })(),
   ],
 })
 
@@ -40,6 +40,7 @@ export default mergeConfig(
   config,
   tanstackBuildConfig({
     entry: [
+      // './src/config/index.ts',
       './src/client/index.tsx',
       './src/server/index.tsx',
       './src/client/client-runtime.tsx',

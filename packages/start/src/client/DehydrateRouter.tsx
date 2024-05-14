@@ -1,7 +1,7 @@
+import * as React from 'react'
 import { Context } from '@tanstack/react-cross-context'
 import { useRouter } from '@tanstack/react-router'
 import jsesc from 'jsesc'
-import * as React from 'react'
 
 export function DehydrateRouter() {
   const router = useRouter()
@@ -10,13 +10,17 @@ export function DehydrateRouter() {
     Context.get('TanStackRouterHydrationContext', {}),
   )
 
-  const dehydrated = router.dehydratedData || dehydratedCtx
+  let stringified = ''
 
-  // Use jsesc to escape the stringified JSON for use in a script tag
-  const stringified = jsesc(router.options.transformer.stringify(dehydrated), {
-    isScriptContext: true,
-    wrap: true,
-  })
+  if (router.isServer) {
+    const dehydrated = router.dehydratedData || dehydratedCtx
+
+    // Use jsesc to escape the stringified JSON for use in a script tag
+    stringified = jsesc(router.options.transformer.stringify(dehydrated), {
+      isScriptContext: true,
+      wrap: true,
+    })
+  }
 
   return (
     <script
