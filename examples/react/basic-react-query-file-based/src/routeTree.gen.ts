@@ -67,34 +67,58 @@ const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
     '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: ''
       preLoaderRoute: typeof LayoutImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
       preLoaderRoute: typeof PostsImport
       parentRoute: typeof rootRoute
     }
     '/_layout/layout-a': {
+      id: '/_layout/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
       preLoaderRoute: typeof LayoutLayoutAImport
       parentRoute: typeof LayoutImport
     }
     '/_layout/layout-b': {
+      id: '/_layout/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
       preLoaderRoute: typeof LayoutLayoutBImport
       parentRoute: typeof LayoutImport
     }
     '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostIdImport
       parentRoute: typeof PostsImport
     }
     '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
       preLoaderRoute: typeof PostsIndexImport
       parentRoute: typeof PostsImport
     }
     '/posts/$postId/deep': {
+      id: '/posts/$postId/deep'
+      path: '/posts/$postId/deep'
+      fullPath: '/posts/$postId/deep'
       preLoaderRoute: typeof PostsPostIdDeepImport
       parentRoute: typeof rootRoute
     }
@@ -103,11 +127,14 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren([
+export const routeTree = rootRoute.addChildren({
   IndexRoute,
-  LayoutRoute.addChildren([LayoutLayoutARoute, LayoutLayoutBRoute]),
-  PostsRoute.addChildren([PostsPostIdRoute, PostsIndexRoute]),
+  LayoutRoute: LayoutRoute.addChildren({
+    LayoutLayoutARoute,
+    LayoutLayoutBRoute,
+  }),
+  PostsRoute: PostsRoute.addChildren({ PostsPostIdRoute, PostsIndexRoute }),
   PostsPostIdDeepRoute,
-])
+})
 
 /* prettier-ignore-end */

@@ -110,6 +110,7 @@ export async function fetcher<TPayload>(
     return text
   }
 }
+
 async function handleResponseErrors(response: Response) {
   if (!response.ok) {
     const body = await (async () => {

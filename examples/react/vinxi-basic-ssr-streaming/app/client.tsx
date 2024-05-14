@@ -1,9 +1,7 @@
-/// <reference types="vinxi/types/client" />
+// import 'vinxi/client'
 import { hydrateRoot } from 'react-dom/client'
-import 'vinxi/client'
-
-import { createRouter } from './router'
 import { StartClient } from '@tanstack/start'
+import { createRouter } from './router'
 
 const router = createRouter()
 

@@ -14,7 +14,14 @@ import { config } from 'vinxi/plugins/config'
 // import { config } from 'vinxi/plugins/config'
 
 function startVite() {
-  return config('start-vite', {})
+  return config('start-vite', {
+    ssr: {
+      // external: ['@tanstack/start'],
+    },
+    optimizeDeps: {
+      // exclude: ['@tanstack/start'],
+    },
+  })
 }
 
 export function defineConfig(opts) {
@@ -48,7 +55,7 @@ export function defineConfig(opts) {
           }),
           tsconfigPaths(),
           serverTransform({
-            runtime: resolveRelativePath('../server/server-runtime.tsx'),
+            runtime: resolveRelativePath('../server-runtime/index.tsx'),
           }),
         ],
         link: {
@@ -74,7 +81,7 @@ export function defineConfig(opts) {
           opts.vite?.(),
           tsconfigPaths(),
           serverFunctions.client({
-            runtime: resolveRelativePath('../client/client-runtime.tsx'),
+            runtime: resolveRelativePath('../client-runtime/index.tsx'),
           }),
           reactRefresh(),
         ],
@@ -82,8 +89,8 @@ export function defineConfig(opts) {
       serverFunctions.router({
         name: 'server',
         plugins: () => [startVite(), opts.vite?.(), tsconfigPaths()],
-        handler: resolveRelativePath('../server/server-handler.tsx'),
-        runtime: resolveRelativePath('../server/server-runtime.tsx'),
+        handler: resolveRelativePath('../server-handler/index.tsx'),
+        runtime: resolveRelativePath('../server-runtime/index.tsx'),
       }),
     ],
   })

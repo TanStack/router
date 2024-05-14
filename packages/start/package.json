@@ -54,32 +54,32 @@
     },
     "./client-runtime": {
       "import": {
-        "types": "./dist/esm/client/client-runtime.d.ts",
-        "default": "./dist/esm/client/client-runtime.js"
+        "types": "./dist/esm/client-runtime/index.d.ts",
+        "default": "./dist/esm/client-runtime/index.js"
       },
       "require": {
-        "types": "./dist/cjs/client/client-runtime.d.cts",
-        "default": "./dist/cjs/client/client-runtime.cjs"
+        "types": "./dist/cjs/client-runtime/index.d.cts",
+        "default": "./dist/cjs/client-runtime/index.cjs"
       }
     },
     "./server-runtime": {
       "import": {
-        "types": "./dist/esm/server/server-runtime.d.ts",
-        "default": "./dist/esm/server/server-runtime.js"
+        "types": "./dist/esm/server-runtime/index.d.ts",
+        "default": "./dist/esm/server-runtime/index.js"
       },
       "require": {
-        "types": "./dist/cjs/server/server-runtime.d.cts",
-        "default": "./dist/cjs/server/server-runtime.cjs"
+        "types": "./dist/cjs/server-runtime/index.d.cts",
+        "default": "./dist/cjs/server-runtime/index.cjs"
       }
     },
     "./server-handler": {
       "import": {
-        "types": "./dist/esm/server/server-handler.d.ts",
-        "default": "./dist/esm/server/server-handler.js"
+        "types": "./dist/esm/server-handler/index.d.ts",
+        "default": "./dist/esm/server-handler/index.js"
       },
       "require": {
-        "types": "./dist/cjs/server/server-handler.d.cts",
-        "default": "./dist/cjs/server/server-handler.cjs"
+        "types": "./dist/cjs/server-handler/index.d.cts",
+        "default": "./dist/cjs/server-handler/index.cjs"
       }
     },
     "./package.json": "./package.json"

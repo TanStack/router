@@ -131,70 +131,121 @@ const DashboardInvoicesInvoiceIdRoute = DashboardInvoicesInvoiceIdImport.update(
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
     '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: ''
       preLoaderRoute: typeof AuthImport
       parentRoute: typeof rootRoute
     }
     '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: ''
       preLoaderRoute: typeof LayoutImport
       parentRoute: typeof rootRoute
     }
     '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardImport
       parentRoute: typeof rootRoute
     }
     '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
     }
     '/(this-folder-is-not-in-the-url)/route-group': {
+      id: '/route-group'
+      path: '/route-group'
+      fullPath: '/route-group'
       preLoaderRoute: typeof thisFolderIsNotInTheUrlRouteGroupImport
       parentRoute: typeof rootRoute
     }
     '/_auth/profile': {
+      id: '/_auth/profile'
+      path: '/profile'
+      fullPath: '/profile'
       preLoaderRoute: typeof AuthProfileImport
       parentRoute: typeof AuthImport
     }
     '/_layout/layout-a': {
+      id: '/_layout/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
       preLoaderRoute: typeof LayoutLayoutAImport
       parentRoute: typeof LayoutImport
     }
     '/_layout/layout-b': {
+      id: '/_layout/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
       preLoaderRoute: typeof LayoutLayoutBImport
       parentRoute: typeof LayoutImport
     }
     '/dashboard/invoices': {
+      id: '/dashboard/invoices'
+      path: '/invoices'
+      fullPath: '/dashboard/invoices'
       preLoaderRoute: typeof DashboardInvoicesImport
       parentRoute: typeof DashboardImport
     }
     '/dashboard/users': {
+      id: '/dashboard/users'
+      path: '/users'
+      fullPath: '/dashboard/users'
       preLoaderRoute: typeof DashboardUsersImport
       parentRoute: typeof DashboardImport
     }
     '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexImport
       parentRoute: typeof DashboardImport
     }
     '/expensive/': {
+      id: '/expensive/'
+      path: '/expensive/'
+      fullPath: '/expensive/'
       preLoaderRoute: typeof ExpensiveIndexLazyImport
       parentRoute: typeof rootRoute
     }
     '/dashboard/invoices/$invoiceId': {
+      id: '/dashboard/invoices/$invoiceId'
+      path: '/$invoiceId'
+      fullPath: '/dashboard/invoices/$invoiceId'
       preLoaderRoute: typeof DashboardInvoicesInvoiceIdImport
       parentRoute: typeof DashboardInvoicesImport
     }
     '/dashboard/users/user': {
+      id: '/dashboard/users/user'
+      path: '/user'
+      fullPath: '/dashboard/users/user'
       preLoaderRoute: typeof DashboardUsersUserImport
       parentRoute: typeof DashboardUsersImport
     }
     '/dashboard/invoices/': {
+      id: '/dashboard/invoices/'
+      path: '/'
+      fullPath: '/dashboard/invoices/'
       preLoaderRoute: typeof DashboardInvoicesIndexImport
       parentRoute: typeof DashboardInvoicesImport
     }
     '/dashboard/users/': {
+      id: '/dashboard/users/'
+      path: '/'
+      fullPath: '/dashboard/users/'
       preLoaderRoute: typeof DashboardUsersIndexImport
       parentRoute: typeof DashboardUsersImport
     }
@@ -203,24 +254,27 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren([
+export const routeTree = rootRoute.addChildren({
   IndexRoute,
-  AuthRoute.addChildren([AuthProfileRoute]),
-  LayoutRoute.addChildren([LayoutLayoutARoute, LayoutLayoutBRoute]),
-  DashboardRoute.addChildren([
-    DashboardInvoicesRoute.addChildren([
+  AuthRoute: AuthRoute.addChildren({ AuthProfileRoute }),
+  LayoutRoute: LayoutRoute.addChildren({
+    LayoutLayoutARoute,
+    LayoutLayoutBRoute,
+  }),
+  DashboardRoute: DashboardRoute.addChildren({
+    DashboardInvoicesRoute: DashboardInvoicesRoute.addChildren({
       DashboardInvoicesInvoiceIdRoute,
       DashboardInvoicesIndexRoute,
-    ]),
-    DashboardUsersRoute.addChildren([
+    }),
+    DashboardUsersRoute: DashboardUsersRoute.addChildren({
       DashboardUsersUserRoute,
       DashboardUsersIndexRoute,
-    ]),
+    }),
     DashboardIndexRoute,
-  ]),
+  }),
   LoginRoute,
   thisFolderIsNotInTheUrlRouteGroupRoute,
   ExpensiveIndexLazyRoute,
-])
+})
 
 /* prettier-ignore-end */

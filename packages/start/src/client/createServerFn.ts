@@ -1,8 +1,5 @@
 import invariant from 'tiny-invariant'
 
-export const serverFnReturnTypeHeader = 'server-fn-return-type'
-export const serverFnPayloadTypeHeader = 'server-fn-payload-type'
-
 export interface JsonResponse<TData> extends Response {
   json: () => Promise<TData>
 }

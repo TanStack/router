@@ -61,30 +61,51 @@ const AuthInvoicesInvoiceIdRoute = AuthInvoicesInvoiceIdImport.update({
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
     '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: ''
       preLoaderRoute: typeof AuthImport
       parentRoute: typeof rootRoute
     }
     '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
     }
     '/_auth/dashboard': {
+      id: '/_auth/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
       preLoaderRoute: typeof AuthDashboardImport
       parentRoute: typeof AuthImport
     }
     '/_auth/invoices': {
+      id: '/_auth/invoices'
+      path: '/invoices'
+      fullPath: '/invoices'
       preLoaderRoute: typeof AuthInvoicesImport
       parentRoute: typeof AuthImport
     }
     '/_auth/invoices/$invoiceId': {
+      id: '/_auth/invoices/$invoiceId'
+      path: '/$invoiceId'
+      fullPath: '/invoices/$invoiceId'
       preLoaderRoute: typeof AuthInvoicesInvoiceIdImport
       parentRoute: typeof AuthInvoicesImport
     }
     '/_auth/invoices/': {
+      id: '/_auth/invoices/'
+      path: '/'
+      fullPath: '/invoices/'
       preLoaderRoute: typeof AuthInvoicesIndexImport
       parentRoute: typeof AuthInvoicesImport
     }
@@ -93,16 +114,16 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren([
+export const routeTree = rootRoute.addChildren({
   IndexRoute,
-  AuthRoute.addChildren([
+  AuthRoute: AuthRoute.addChildren({
     AuthDashboardRoute,
-    AuthInvoicesRoute.addChildren([
+    AuthInvoicesRoute: AuthInvoicesRoute.addChildren({
       AuthInvoicesInvoiceIdRoute,
       AuthInvoicesIndexRoute,
-    ]),
-  ]),
+    }),
+  }),
   LoginRoute,
-])
+})
 
 /* prettier-ignore-end */

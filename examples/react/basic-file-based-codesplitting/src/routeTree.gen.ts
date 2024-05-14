@@ -84,38 +84,65 @@ const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
       preLoaderRoute: typeof IndexLazyImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
       preLoaderRoute: typeof PostsImport
       parentRoute: typeof rootRoute
     }
     '/_layout-test': {
+      id: '/_layout-test'
+      path: ''
+      fullPath: ''
       preLoaderRoute: typeof LayoutTestLazyImport
       parentRoute: typeof rootRoute
     }
     '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostIdRouteImport
       parentRoute: typeof PostsImport
     }
     '/_layout-test/layout-a': {
+      id: '/_layout-test/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
       preLoaderRoute: typeof LayoutTestLayoutAImport
       parentRoute: typeof LayoutTestLazyImport
     }
     '/_layout-test/layout-b': {
+      id: '/_layout-test/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
       preLoaderRoute: typeof LayoutTestLayoutBImport
       parentRoute: typeof LayoutTestLazyImport
     }
     '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
       preLoaderRoute: typeof PostsIndexImport
       parentRoute: typeof PostsImport
     }
     '/posts/$postId/deep': {
+      id: '/posts/$postId/deep'
+      path: '/posts/$postId/deep'
+      fullPath: '/posts/$postId/deep'
       preLoaderRoute: typeof PostsPostIdDeepImport
       parentRoute: typeof rootRoute
     }
     '/_layout-test/layout-b/test': {
+      id: '/_layout-test/layout-b/test'
+      path: '/test'
+      fullPath: '/layout-b/test'
       preLoaderRoute: typeof LayoutTestLayoutBTestLazyImport
       parentRoute: typeof LayoutTestLayoutBImport
     }
@@ -124,14 +151,19 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren([
+export const routeTree = rootRoute.addChildren({
   IndexLazyRoute,
-  PostsRoute.addChildren([PostsPostIdRouteRoute, PostsIndexRoute]),
-  LayoutTestLazyRoute.addChildren([
+  PostsRoute: PostsRoute.addChildren({
+    PostsPostIdRouteRoute,
+    PostsIndexRoute,
+  }),
+  LayoutTestLazyRoute: LayoutTestLazyRoute.addChildren({
     LayoutTestLayoutARoute,
-    LayoutTestLayoutBRoute.addChildren([LayoutTestLayoutBTestLazyRoute]),
-  ]),
+    LayoutTestLayoutBRoute: LayoutTestLayoutBRoute.addChildren({
+      LayoutTestLayoutBTestLazyRoute,
+    }),
+  }),
   PostsPostIdDeepRoute,
-])
+})
 
 /* prettier-ignore-end */
