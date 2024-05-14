@@ -19,11 +19,11 @@
     ".": {
       "import": {
         "types": "./dist/esm/client/index.d.ts",
-        "default": "./dist/esm/client/index.js"
+        "default": "./dist/esm/src/client/index.js"
       },
       "require": {
         "types": "./dist/cjs/client/index.d.cts",
-        "default": "./dist/cjs/client/index.cjs"
+        "default": "./dist/cjs/src/client/index.cjs"
       }
     },
     "./config": {
@@ -35,51 +35,51 @@
     "./client": {
       "import": {
         "types": "./dist/esm/client/index.d.ts",
-        "default": "./dist/esm/client/index.js"
+        "default": "./dist/esm/src/client/index.js"
       },
       "require": {
         "types": "./dist/cjs/client/index.d.cts",
-        "default": "./dist/cjs/client/index.cjs"
+        "default": "./dist/cjs/src/client/index.cjs"
       }
     },
     "./server": {
       "import": {
         "types": "./dist/esm/server/index.d.ts",
-        "default": "./dist/esm/server/index.js"
+        "default": "./dist/esm/src/server/index.js"
       },
       "require": {
         "types": "./dist/cjs/server/index.d.cts",
-        "default": "./dist/cjs/server/index.cjs"
+        "default": "./dist/cjs/src/server/index.cjs"
       }
     },
     "./client-runtime": {
       "import": {
         "types": "./dist/esm/client-runtime/index.d.ts",
-        "default": "./dist/esm/client-runtime/index.js"
+        "default": "./dist/esm/src/client-runtime/index.js"
       },
       "require": {
         "types": "./dist/cjs/client-runtime/index.d.cts",
-        "default": "./dist/cjs/client-runtime/index.cjs"
+        "default": "./dist/cjs/src/client-runtime/index.cjs"
       }
     },
     "./server-runtime": {
       "import": {
         "types": "./dist/esm/server-runtime/index.d.ts",
-        "default": "./dist/esm/server-runtime/index.js"
+        "default": "./dist/esm/src/server-runtime/index.js"
       },
       "require": {
         "types": "./dist/cjs/server-runtime/index.d.cts",
-        "default": "./dist/cjs/server-runtime/index.cjs"
+        "default": "./dist/cjs/src/server-runtime/index.cjs"
       }
     },
     "./server-handler": {
       "import": {
         "types": "./dist/esm/server-handler/index.d.ts",
-        "default": "./dist/esm/server-handler/index.js"
+        "default": "./dist/esm/src/server-handler/index.js"
       },
       "require": {
         "types": "./dist/cjs/server-handler/index.d.cts",
-        "default": "./dist/cjs/server-handler/index.cjs"
+        "default": "./dist/cjs/src/server-handler/index.cjs"
       }
     },
     "./package.json": "./package.json"
