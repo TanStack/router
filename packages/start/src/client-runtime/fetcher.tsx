@@ -7,8 +7,8 @@ import {
 import {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
-} from '@tanstack/start'
-import type { CompiledFetcherFnOptions } from '@tanstack/start'
+} from '../constants'
+import type { CompiledFetcherFnOptions } from '../client'
 
 export async function fetcher<TPayload>(
   base: string,

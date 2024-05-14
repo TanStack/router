@@ -1,4 +1,4 @@
-import { serverFnReturnTypeHeader } from './constants'
+import { serverFnReturnTypeHeader } from '../constants'
 import type { JsonResponse } from './createServerFn'
 
 export function json<TData>(
