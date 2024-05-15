@@ -61,9 +61,9 @@ export interface RouteMatch<
   loaderDeps: TLoaderDeps
   preload: boolean
   invalid: boolean
-  meta?: Array<JSX.IntrinsicElements['meta']>
-  links?: Array<JSX.IntrinsicElements['link']>
-  scripts?: Array<JSX.IntrinsicElements['script']>
+  meta?: Array<React.JSX.IntrinsicElements['meta']>
+  links?: Array<React.JSX.IntrinsicElements['link']>
+  scripts?: Array<React.JSX.IntrinsicElements['script']>
   headers?: Record<string, string>
   globalNotFound?: boolean
   staticData: StaticDataRouteOption

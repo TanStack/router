@@ -809,7 +809,7 @@ export interface LinkPropsChildren {
 type LinkComponentReactProps<TComp> = React.PropsWithoutRef<
   TComp extends React.FC<infer TProps> | React.Component<infer TProps>
     ? TProps
-    : TComp extends keyof JSX.IntrinsicElements
+    : TComp extends keyof React.JSX.IntrinsicElements
       ? Omit<React.HTMLProps<TComp>, 'children' | 'preload'>
       : never
 > &
@@ -818,7 +818,7 @@ type LinkComponentReactProps<TComp> = React.PropsWithoutRef<
       | React.FC<{ ref: infer TRef }>
       | React.Component<{ ref: infer TRef }>
       ? TRef
-      : TComp extends keyof JSX.IntrinsicElements
+      : TComp extends keyof React.JSX.IntrinsicElements
         ? React.ComponentRef<TComp>
         : never
   >
