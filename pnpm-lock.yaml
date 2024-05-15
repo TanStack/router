@@ -376,7 +376,7 @@ importers:
         specifier: ^1.32.2
         version: link:../../../packages/router-vite-plugin
       '@tanstack/start':
-        specifier: ^1.32.6
+        specifier: ^1.32.7
         version: link:../../../packages/start
       axios:
         specifier: ^1.6.5
@@ -440,7 +440,7 @@ importers:
         specifier: ^1.32.2
         version: link:../../../packages/router-vite-plugin
       '@tanstack/start':
-        specifier: ^1.32.6
+        specifier: ^1.32.7
         version: link:../../../packages/start
       axios:
         specifier: ^1.6.5
@@ -917,7 +917,7 @@ importers:
         specifier: ^1.32.5
         version: link:../../../packages/react-router
       '@tanstack/start':
-        specifier: ^1.32.6
+        specifier: ^1.32.7
         version: link:../../../packages/start
       '@vinxi/react':
         specifier: 0.1.1
@@ -960,7 +960,7 @@ importers:
         specifier: ^1.32.5
         version: link:../../../packages/react-router
       '@tanstack/start':
-        specifier: ^1.32.6
+        specifier: ^1.32.7
         version: link:../../../packages/start
       '@vinxi/react':
         specifier: 0.1.1
@@ -1006,7 +1006,7 @@ importers:
         specifier: ^1.32.5
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.32.6
+        specifier: ^1.32.7
         version: link:../../../packages/start
       '@vinxi/react':
         specifier: 0.2.2
@@ -1168,7 +1168,7 @@ importers:
         specifier: ^1.32.5
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.32.6
+        specifier: ^1.32.7
         version: link:../../../packages/start
       axios:
         specifier: ^1.6.5
