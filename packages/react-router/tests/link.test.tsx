@@ -130,6 +130,43 @@ describe('Link', () => {
 
       expect(link.getAttribute('href')).toBe('/invoices/123/sub')
     })
+
+    it('should ignore from for absolute links', async () => {
+      const router = await buildRouter(
+        <Link from="/invoices/123" to="/invoices/123/sub">
+          Link
+        </Link>,
+        { page: '/' },
+      )
+
+      const rendered = render(<RouterProvider router={router} />)
+
+      const link = rendered.getByText('Link')
+
+      expect(link.getAttribute('href')).toBe('/invoices/123/sub')
+    })
+
+    it('should take from into account for building relative urls', async () => {
+      const router = await buildRouter(
+        <div>
+          <Link from="/invoices/123" to="sub">
+            sub
+          </Link>
+          <Link from="/invoices/123" to="./sub">
+            dot-sub
+          </Link>
+        </div>,
+        { page: '/' },
+      )
+
+      const rendered = render(<RouterProvider router={router} />)
+
+      const sub = rendered.getByText('sub')
+      const dotSub = rendered.getByText('dot-sub')
+
+      expect(sub.getAttribute('href')).toBe('/invoices/123/sub')
+      expect(dotSub.getAttribute('href')).toBe('/invoices/123/sub')
+    })
   })
 })
 
