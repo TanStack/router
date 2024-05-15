@@ -274,9 +274,9 @@ export type UpdatableRouteOptions<
     matches: Array<TRouteMatch>
     params: TAllParams
     loaderData: TLoaderData
-  }) => Array<JSX.IntrinsicElements['meta']>
-  links?: () => Array<JSX.IntrinsicElements['link']>
-  scripts?: () => Array<JSX.IntrinsicElements['script']>
+  }) => Array<React.JSX.IntrinsicElements['meta']>
+  links?: () => Array<React.JSX.IntrinsicElements['link']>
+  scripts?: () => Array<React.JSX.IntrinsicElements['script']>
   headers?: (ctx: { loaderData: TLoaderData }) => Record<string, string>
 } & UpdatableStaticRouteOption
 
