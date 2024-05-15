@@ -919,7 +919,7 @@ export class Router<
       } = {},
       matches?: Array<MakeRouteMatch<TRouteTree>>,
     ): ParsedLocation => {
-      let fromPath = this.latestLocation.pathname
+      let fromPath = dest.from || this.latestLocation.pathname
       let fromSearch = dest.fromSearch || this.latestLocation.search
 
       const fromMatches = this.matchRoutes(
