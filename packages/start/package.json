@@ -28,8 +28,8 @@
     },
     "./config": {
       "import": {
-        "_types": "./src/config/index.d.ts",
-        "default": "./src/config/index.js"
+        "types": "./dist/esm/config/index.d.ts",
+        "default": "./dist/esm/config/index.js"
       }
     },
     "./client": {
@@ -90,7 +90,8 @@
     "test:eslint": "eslint --ext .ts,.tsx ./src",
     "test:types": "tsc --noEmit",
     "test:build": "publint --strict",
-    "build": "vite build"
+    "build": "vite build && pnpm build:config",
+    "build:config": "tsc --project config.tsconfig.json"
   },
   "keywords": [
     "react",

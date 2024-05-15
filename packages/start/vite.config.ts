@@ -40,7 +40,6 @@ export default mergeConfig(
   config,
   tanstackBuildConfig({
     entry: [
-      './src/constants.ts',
       './src/client/index.tsx',
       './src/server/index.tsx',
       './src/client-runtime/index.tsx',
