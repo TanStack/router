@@ -114,10 +114,6 @@ export type RouteByToPath<TRouter extends AnyRouter, TTo> = Extract<
   AnyRoute
 >
 
-export type RoutePathsAutoComplete<TRouter extends AnyRouter, T> =
-  | (string extends T ? T & {} : T)
-  | RoutePaths<TRouter['routeTree']>
-
 // eslint-disable-next-line @typescript-eslint/naming-convention
 type UnionizeCollisions<T, U> = {
   [P in keyof T & keyof U]: T[P] extends U[P] ? T[P] : T[P] | U[P]

@@ -183,7 +183,6 @@ export {
   type RoutesByPath,
   type RouteByPath,
   type RoutePaths,
-  type RoutePathsAutoComplete,
   type FullSearchSchema,
   type AllParams,
 } from './routeInfo'
