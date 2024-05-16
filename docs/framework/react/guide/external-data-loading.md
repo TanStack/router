@@ -86,7 +86,9 @@ export const Route = createFileRoute('/posts')({
   loader: () => queryClient.ensureQueryData(postsQueryOptions),
   component: () => {
     // Read the data from the cache and subscribe to updates
-    const {data: {posts}} = useSuspenseQuery(postsQueryOptions)
+    const {
+      data: { posts },
+    } = useSuspenseQuery(postsQueryOptions)
 
     return (
       <div>
