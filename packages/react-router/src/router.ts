@@ -1600,10 +1600,12 @@ export class Router<
                   context: replaceEqualDeep(match.context, context),
                   abortController,
                 }
-                updateMatch(match.id, () => match)
+                // updateMatch(match.id, () => match)
               } catch (err) {
                 handleSerialError(err, 'BEFORE_LOAD')
                 break
+              } finally {
+                updateMatch(match.id, () => match)
               }
             }
 
