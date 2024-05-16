@@ -585,14 +585,11 @@ export async function generator(config: Config) {
       .map((routeNode) => {
         const filePathId = removeTrailingUnderscores(routeNode.routePath)
         const id = removeGroups(filePathId ?? '')
-        const fullPath = removeGroups(
-          removeUnderscores(removeLayoutSegments(routeNode.routePath)) ?? '',
-        )
 
         return `'${filePathId}': {
           id: '${id}'
-          path: '${routeNode.cleanedPath}'
-          fullPath: '${fullPath}'
+          path: '${inferPath(routeNode)}'
+          fullPath: '${inferFullPath(routeNode)}'
           preLoaderRoute: typeof ${routeNode.variableName}Import
           parentRoute: typeof ${
             routeNode.isVirtualParentRequired
@@ -794,4 +791,24 @@ export function hasParentRoute(
   const parentRoutePath = segments.join('/')
 
   return hasParentRoute(routes, node, parentRoutePath)
+}
+
+/**
+ * Infers the full path for use by TS
+ */
+export const inferFullPath = (routeNode: RouteNode): string => {
+  const fullPath = removeGroups(
+    removeUnderscores(removeLayoutSegments(routeNode.routePath)) ?? '',
+  )
+
+  return routeNode.cleanedPath === '/' ? fullPath : fullPath.replace(/\/$/, '')
+}
+
+/**
+ * Infers the path for use by TS
+ */
+export const inferPath = (routeNode: RouteNode): string => {
+  return routeNode.cleanedPath === '/'
+    ? routeNode.cleanedPath
+    : routeNode.cleanedPath?.replace(/\/$/, '') ?? ''
 }

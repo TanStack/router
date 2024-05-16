@@ -130,8 +130,8 @@ declare module '@tanstack/react-router' {
     }
     '/posts/$postId/': {
       id: '/posts/$postId/'
-      path: '/$postId/'
-      fullPath: '/posts/$postId/'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostIdIndexImport
       parentRoute: typeof PostsRouteImport
     }
