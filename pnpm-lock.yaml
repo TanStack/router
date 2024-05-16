@@ -93,10 +93,10 @@ importers:
   examples/react/authenticated-routes:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.32.10
@@ -136,10 +136,10 @@ importers:
         specifier: ^5.17.8
         version: 5.17.8(react@18.2.0)
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -170,10 +170,10 @@ importers:
         specifier: ^5.17.8
         version: 5.17.8(react@18.2.0)
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -204,10 +204,10 @@ importers:
   examples/react/basic-file-based:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.32.10
@@ -244,10 +244,10 @@ importers:
   examples/react/basic-file-based-codesplitting:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.32.10
@@ -290,10 +290,10 @@ importers:
         specifier: ^5.17.8
         version: 5.17.8(@tanstack/react-query@5.17.8)(react@18.2.0)
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -327,10 +327,10 @@ importers:
         specifier: ^5.17.8
         version: 5.17.8(@tanstack/react-query@5.17.8)(react@18.2.0)
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.32.10
@@ -367,16 +367,16 @@ importers:
   examples/react/basic-ssr-file-based:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.32.10
         version: link:../../../packages/router-vite-plugin
       '@tanstack/start':
-        specifier: ^1.32.10
+        specifier: ^1.32.11
         version: link:../../../packages/start
       axios:
         specifier: ^1.6.5
@@ -431,16 +431,16 @@ importers:
   examples/react/basic-ssr-streaming-file-based:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.32.10
         version: link:../../../packages/router-vite-plugin
       '@tanstack/start':
-        specifier: ^1.32.10
+        specifier: ^1.32.11
         version: link:../../../packages/start
       axios:
         specifier: ^1.6.5
@@ -498,10 +498,10 @@ importers:
   examples/react/deferred-data:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -535,10 +535,10 @@ importers:
   examples/react/kitchen-sink:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -572,10 +572,10 @@ importers:
   examples/react/kitchen-sink-file-based:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.32.10
@@ -618,10 +618,10 @@ importers:
         specifier: ^5.17.8
         version: 5.17.8(@tanstack/react-query@5.17.8)(react@18.2.0)
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -661,10 +661,10 @@ importers:
         specifier: ^5.17.8
         version: 5.17.8(@tanstack/react-query@5.17.8)(react@18.2.0)
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.32.10
@@ -704,10 +704,10 @@ importers:
         specifier: ^5.17.8
         version: 5.36.0(react@18.2.0)
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.32.10
@@ -750,10 +750,10 @@ importers:
         specifier: ^5.17.8
         version: 5.17.8(react@18.2.0)
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -784,10 +784,10 @@ importers:
         specifier: ^5.17.8
         version: 5.17.8(react@18.2.0)
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -815,10 +815,10 @@ importers:
   examples/react/quickstart:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       react:
         specifier: ^18.2.0
@@ -843,10 +843,10 @@ importers:
   examples/react/quickstart-file-based:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.32.10
@@ -883,13 +883,13 @@ importers:
   examples/react/scroll-restoration:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/react-virtual':
         specifier: ^3.0.1
         version: 3.0.1(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       react:
         specifier: ^18.2.0
@@ -914,10 +914,10 @@ importers:
   examples/react/vinxi-basic:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/start':
-        specifier: ^1.32.10
+        specifier: ^1.32.11
         version: link:../../../packages/start
       '@vinxi/react':
         specifier: 0.1.1
@@ -939,7 +939,7 @@ importers:
         version: 0.1.2(@types/node@20.12.11)(preact@10.21.0)(rollup@4.17.2)
     devDependencies:
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.32.10
@@ -957,10 +957,10 @@ importers:
   examples/react/vinxi-basic-ssr:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/start':
-        specifier: ^1.32.10
+        specifier: ^1.32.11
         version: link:../../../packages/start
       '@vinxi/react':
         specifier: 0.1.1
@@ -982,7 +982,7 @@ importers:
         version: 0.1.2(@types/node@20.12.11)(preact@10.21.0)(rollup@4.17.2)
     devDependencies:
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/router-vite-plugin':
         specifier: ^1.32.10
@@ -1000,13 +1000,13 @@ importers:
   examples/react/vinxi-basic-ssr-streaming:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.32.10
+        specifier: ^1.32.11
         version: link:../../../packages/start
       '@vinxi/react':
         specifier: 0.2.2
@@ -1052,10 +1052,10 @@ importers:
         specifier: ^4.36.1
         version: 4.36.1(@tanstack/react-query@4.36.1)(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@trpc/client':
         specifier: ^10.45.0
@@ -1113,10 +1113,10 @@ importers:
         specifier: ^1.4.1
         version: 1.4.1
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       hono:
         specifier: ^3.12.0
@@ -1159,16 +1159,16 @@ importers:
         specifier: ^0.5.0
         version: 0.5.0(vite@5.0.13)
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/react-store':
         specifier: ^0.2.1
         version: 0.2.1(react-dom@18.3.0-canary-ab31a9ed2-20230824)(react@18.3.0-canary-ab31a9ed2-20230824)
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.32.10
+        specifier: ^1.32.11
         version: link:../../../packages/start
       axios:
         specifier: ^1.6.5
@@ -1238,10 +1238,10 @@ importers:
   examples/react/wip-with-framer-motion:
     dependencies:
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       axios:
         specifier: ^1.6.5
@@ -1284,10 +1284,10 @@ importers:
         specifier: ^4.36.1
         version: 4.36.1(@tanstack/react-query@4.36.1)(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/react-router':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: ^1.32.9
+        specifier: ^1.32.11
         version: link:../../../packages/router-devtools
       '@trpc/client':
         specifier: ^10.45.0
