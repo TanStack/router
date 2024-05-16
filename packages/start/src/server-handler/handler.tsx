@@ -1,7 +1,10 @@
 import { decode, isNotFound, isRedirect } from '@tanstack/react-router'
 import invariant from 'vinxi/lib/invariant'
 import { getManifest } from 'vinxi/manifest'
-import { serverFnPayloadTypeHeader, serverFnReturnTypeHeader } from '../client'
+import {
+  serverFnPayloadTypeHeader,
+  serverFnReturnTypeHeader,
+} from '../constants'
 
 export async function handleRequest(request: Request) {
   const method = request.method

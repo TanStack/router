@@ -1,0 +1,462 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    @apply text-gray-900 bg-gray-50 dark:bg-gray-950 dark:text-gray-200;
+  }
+
+  .using-mouse * {
+    outline: none !important;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    * {
+      color-scheme: dark;
+    }
+  }
+  /* * {
+    scrollbar-color: theme(colors.gray.500) theme(colors.gray.100);
+  }
+
+  *::-webkit-scrollbar,
+  * scrollbar {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  *::-webkit-scrollbar-track,
+  * scrollbar-track {
+    background: theme(colors.gray.100);
+  }
+
+  *::-webkit-scrollbar-thumb,
+  * scrollbar-thumb {
+    background: theme(colors.gray.300);
+    border-radius: 0.5rem;
+    border: 3px solid theme(colors.gray.100);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    * {
+      scrollbar-color: theme(colors.gray.500) theme(colors.gray.800);
+    }
+
+    *::-webkit-scrollbar,
+    * scrollbar {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    *::-webkit-scrollbar-track,
+    * scrollbar-track {
+      background: theme(colors.gray.800);
+    }
+
+    *::-webkit-scrollbar-thumb,
+    * scrollbar-thumb {
+      background: theme(colors.gray.600);
+      border-radius: 0.5rem;
+      border: 3px solid theme(colors.gray.800);
+    }
+  } */
+
+  [disabled] {
+    @apply opacity-50 pointer-events-none;
+  }
+
+  #docs-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  #docs-details .icon-close {
+    display: none;
+  }
+
+  #docs-details[open] .icon-close {
+    display: block;
+  }
+
+  #docs-details[open] .icon-open {
+    display: none;
+  }
+
+  #docs-details[open] > summary + * {
+    height: 80vh;
+  }
+
+  .anchor-heading {
+    text-decoration: none !important;
+  }
+
+  .anchor-heading > *:after {
+    content: '#';
+    @apply relative opacity-0 ml-2 transition duration-100;
+  }
+
+  .anchor-heading:hover > *:after {
+    @apply opacity-50;
+  }
+
+  :has(+ .anchor-heading) {
+    margin-bottom: 0 !important;
+  }
+
+  .anchor-heading + * {
+    margin-top: 0 !important;
+  }
+
+  .carbon-small {
+    pointer-events: none;
+  }
+
+  .carbon-small #carbonads {
+    @apply pointer-events-none;
+  }
+
+  .carbon-small .carbon-outer {
+    @apply pointer-events-none;
+  }
+
+  .carbon-small .carbon-wrap {
+    @apply flex flex-col;
+  }
+
+  .carbon-small .carbon-wrap .carbon-img {
+    @apply w-[50%] pt-2 !pointer-events-auto rounded-tr-lg border-t border-r border-gray-500 border-opacity-10 overflow-hidden;
+  }
+
+  .carbon-small .carbon-wrap .carbon-img img {
+    @apply w-full !max-w-full;
+  }
+
+  .carbon-small .carbon-wrap .carbon-text {
+    @apply bg-white dark:bg-gray-800 rounded-tr-lg !pb-6 !m-0 !pointer-events-auto border-t border-r border-gray-500 border-opacity-10;
+  }
+
+  .carbon-small .carbon-wrap .carbon-poweredby {
+    @apply absolute bottom-0 right-0;
+  }
+}
+
+/* https://github.com/shikijs/twoslash/tree/main/packages/remark-shiki-twoslash#plugin-setup */
+pre {
+  /* All code samples get a grey border, twoslash ones get a different color */
+  @apply bg-white text-black p-2 border border-gray-500/30 mb-4 rounded-md;
+  @apply overflow-x-auto relative leading-tight;
+}
+pre.shiki {
+  overflow-x: auto;
+}
+pre.shiki:hover .dim {
+  opacity: 1;
+}
+pre.shiki div.dim {
+  opacity: 0.5;
+}
+pre.shiki div.dim,
+pre.shiki div.highlight {
+  margin: 0;
+  padding: 0;
+}
+pre.shiki div.highlight {
+  opacity: 1;
+  background-color: #f1f8ff;
+}
+pre.shiki div.line {
+  min-height: 1rem;
+}
+
+/** Don't show the language identifiers */
+pre.shiki .language-id {
+  display: none;
+}
+
+pre.has-diff span.remove {
+  background-color: #ff000036;
+}
+
+pre.has-diff span.add {
+  background-color: #00ff0036;
+}
+/* Visually differentiates twoslash code samples  */
+pre.twoslash {
+  border-color: #719af4;
+}
+
+/** When you mouse over the pre, show the underlines */
+pre.twoslash:hover data-lsp {
+  border-color: #747474;
+}
+
+/** The tooltip-like which provides the LSP response */
+pre.twoslash data-lsp:hover::before {
+  content: attr(lsp);
+  position: absolute;
+  transform: translate(0, 1rem);
+
+  background-color: #3f3f3f;
+  color: #fff;
+  text-align: left;
+  padding: 5px 8px;
+  border-radius: 2px;
+  font-family: 'JetBrains Mono', Menlo, Monaco, Consolas, Courier New, monospace;
+  font-size: 14px;
+  white-space: pre-wrap;
+  z-index: 100;
+}
+
+pre .code-container {
+  overflow: auto;
+}
+/* The try button */
+pre .code-container > a {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  border-radius: 4px;
+  border: 1px solid #719af4;
+  padding: 0 8px;
+  color: #719af4;
+  text-decoration: none;
+  opacity: 0;
+  transition-timing-function: ease;
+  transition: opacity 0.3s;
+}
+/* Respect no animations */
+@media (prefers-reduced-motion: reduce) {
+  pre .code-container > a {
+    transition: none;
+  }
+}
+pre .code-container > a:hover {
+  color: white;
+  background-color: #719af4;
+}
+pre .code-container:hover a {
+  opacity: 1;
+}
+
+pre code {
+  font-size: 12px;
+  font-family: 'JetBrains Mono', Menlo, Monaco, Consolas, Courier New, monospace;
+  white-space: pre;
+  -webkit-overflow-scrolling: touch;
+}
+pre code a {
+  text-decoration: none;
+}
+pre data-err {
+  /* Extracted from VS Code */
+  background: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%206%203'%20enable-background%3D'new%200%200%206%203'%20height%3D'3'%20width%3D'6'%3E%3Cg%20fill%3D'%23c94824'%3E%3Cpolygon%20points%3D'5.5%2C0%202.5%2C3%201.1%2C3%204.1%2C0'%2F%3E%3Cpolygon%20points%3D'4%2C0%206%2C2%206%2C0.6%205.4%2C0'%2F%3E%3Cpolygon%20points%3D'0%2C2%201%2C3%202.4%2C3%200%2C0.6'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E")
+    repeat-x bottom left;
+  padding-bottom: 3px;
+}
+pre .query {
+  margin-bottom: 10px;
+  color: #137998;
+  display: inline-block;
+}
+
+/* In order to have the 'popped out' style design and to not break the layout
+/* we need to place a fake and un-selectable copy of the error which _isn't_ broken out
+/* behind the actual error message.
+
+/* This sections keeps both of those two in in sync  */
+
+pre .error,
+pre .error-behind {
+  margin-left: -14px;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  padding: 6px;
+  padding-left: 14px;
+  width: calc(100% - 20px);
+  white-space: pre-wrap;
+  display: block;
+}
+pre .error {
+  position: absolute;
+  background-color: #fee;
+  border-left: 2px solid #bf1818;
+  /* Give the space to the error code */
+  display: flex;
+  align-items: center;
+  color: black;
+}
+pre .error .code {
+  display: none;
+}
+pre .error-behind {
+  user-select: none;
+  visibility: transparent;
+  color: #fee;
+}
+/* Queries */
+pre .arrow {
+  /* Transparent background */
+  background-color: #eee;
+  position: relative;
+  top: -7px;
+  margin-left: 0.1rem;
+  /* Edges */
+  border-left: 1px solid #eee;
+  border-top: 1px solid #eee;
+  transform: translateY(25%) rotate(45deg);
+  /* Size */
+  height: 8px;
+  width: 8px;
+}
+pre .popover {
+  margin-bottom: 10px;
+  background-color: #eee;
+  display: inline-block;
+  padding: 0 0.5rem 0.3rem;
+  margin-top: 10px;
+  border-radius: 3px;
+}
+/* Completion */
+pre .inline-completions ul.dropdown {
+  display: inline-block;
+  position: absolute;
+  width: 240px;
+  background-color: gainsboro;
+  color: grey;
+  padding-top: 4px;
+  font-family: var(--code-font);
+  font-size: 0.8rem;
+  margin: 0;
+  padding: 0;
+  border-left: 4px solid #4b9edd;
+}
+pre .inline-completions ul.dropdown::before {
+  background-color: #4b9edd;
+  width: 2px;
+  position: absolute;
+  top: -1.2rem;
+  left: -3px;
+  content: ' ';
+}
+pre .inline-completions ul.dropdown li {
+  overflow-x: hidden;
+  padding-left: 4px;
+  margin-bottom: 4px;
+}
+pre .inline-completions ul.dropdown li.deprecated {
+  text-decoration: line-through;
+}
+pre .inline-completions ul.dropdown li span.result-found {
+  color: #4b9edd;
+}
+pre .inline-completions ul.dropdown li span.result {
+  width: 100px;
+  color: black;
+  display: inline-block;
+}
+.dark-theme .markdown pre {
+  background-color: #d8d8d8;
+  border-color: #ddd;
+  filter: invert(98%) hue-rotate(180deg);
+}
+data-lsp {
+  /* Ensures there's no 1px jump when the hover happens */
+  border-bottom: 1px dotted transparent;
+  /* Fades in unobtrusively */
+  transition-timing-function: ease;
+  transition: border-color 0.3s;
+}
+/* Respect people's wishes to not have animations */
+@media (prefers-reduced-motion: reduce) {
+  data-lsp {
+    transition: none;
+  }
+}
+
+/** Annotations support, providing a tool for meta commentary */
+.tag-container {
+  position: relative;
+}
+.tag-container .twoslash-annotation {
+  position: absolute;
+  font-family: 'JetBrains Mono', Menlo, Monaco, Consolas, Courier New, monospace;
+  right: -10px;
+  /** Default annotation text to 200px */
+  width: 200px;
+  color: #187abf;
+  background-color: #fcf3d9 bb;
+}
+.tag-container .twoslash-annotation p {
+  text-align: left;
+  font-size: 0.8rem;
+  line-height: 0.9rem;
+}
+.tag-container .twoslash-annotation svg {
+  float: left;
+  margin-left: -44px;
+}
+.tag-container .twoslash-annotation.left {
+  right: auto;
+  left: -200px;
+}
+.tag-container .twoslash-annotation.left svg {
+  float: right;
+  margin-right: -5px;
+}
+
+/** Support for showing console log/warn/errors inline */
+pre .logger {
+  display: flex;
+  align-items: center;
+  color: black;
+  padding: 6px;
+  padding-left: 8px;
+  width: calc(100% - 19px);
+  white-space: pre-wrap;
+}
+pre .logger svg {
+  margin-right: 9px;
+}
+pre .logger.error-log {
+  background-color: #fee;
+  border-left: 2px solid #bf1818;
+}
+pre .logger.warn-log {
+  background-color: #ffe;
+  border-left: 2px solid #eae662;
+}
+pre .logger.log-log {
+  background-color: #e9e9e9;
+  border-left: 2px solid #ababab;
+}
+pre .logger.log-log svg {
+  margin-left: 6px;
+  margin-right: 9px;
+}
+
+@media (prefers-color-scheme: light) {
+  .shiki.tokyo-night {
+    display: none;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .shiki.github-light {
+    display: none;
+  }
+}
+
+/* TanStack Router Devtools */
+
+.TanStackRouterDevtools > button {
+  @apply rotate-90 origin-top-right -translate-y-[50px] translate-x-2 rounded-t-none bg-white dark:bg-gray-900;
+  @apply border-t-0 border-gray-500/10 shadow-xl text-gray-800;
+}
+
+/* Hubspot */
+
+#hubspot-messages-iframe-container {
+  @apply translate-x-[10px] translate-y-[10px];
+  @apply dark:[color-scheme:dark];
+}

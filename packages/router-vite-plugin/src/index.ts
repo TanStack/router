@@ -66,10 +66,12 @@ export function TanStackRouterViteGenerator(
     event: 'create' | 'update' | 'delete',
   ) => {
     const filePath = normalize(file)
+
     if (filePath === join(ROOT, CONFIG_FILE_NAME)) {
       userConfig = await getConfig(inlineConfig, ROOT)
       return
     }
+
     if (
       event === 'update' &&
       filePath === resolve(userConfig.generatedRouteTree)
@@ -77,9 +79,11 @@ export function TanStackRouterViteGenerator(
       // skip generating routes if the generated route tree is updated
       return
     }
+
     const routesDirectoryPath = isAbsolute(userConfig.routesDirectory)
       ? userConfig.routesDirectory
       : join(ROOT, userConfig.routesDirectory)
+
     if (filePath.startsWith(routesDirectoryPath)) {
       await generate()
     }
@@ -90,9 +94,11 @@ export function TanStackRouterViteGenerator(
     configResolved: async (config) => {
       ROOT = process.cwd()
       userConfig = await getConfig(inlineConfig, ROOT)
-
+      console.log('resolve')
       if (userConfig.enableRouteGeneration ?? true) {
+        console.log('start')
         await generate()
+        console.log('end')
       }
     },
     watchChange: async (file, context) => {

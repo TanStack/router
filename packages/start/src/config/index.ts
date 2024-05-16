@@ -11,28 +11,33 @@ import { serverFunctions } from '@vinxi/server-functions/plugin'
 import { serverTransform } from '@vinxi/server-functions/server'
 import { config } from 'vinxi/plugins/config'
 import type * as vite from 'vite'
-// import { config } from 'vinxi/plugins/config'
 
 function startVite() {
   return config('start-vite', {
     ssr: {
-      // external: [
-      //   '@tanstack/start/client-runtime',
-      //   '@tanstack/start/server-runtime',
-      //   '@tanstack/start/server-handler',
-      // ],
+      external: [
+        '@tanstack/start/client-runtime',
+        '@tanstack/start/server-runtime',
+        '@tanstack/start/server-handler',
+      ],
     },
     optimizeDeps: {
-      // exclude: ['@tanstack/start'],
+      exclude: [
+        '@tanstack/start/client-runtime',
+        '@tanstack/start/server-runtime',
+        '@tanstack/start/server-handler',
+      ],
     },
   })
 }
 
 export function defineConfig(opts?: {
   vite?: {
-    plugins: () => Array<vite.UserConfig>
+    plugins?: () => Array<vite.UserConfig>
   }
 }) {
+  console.log('App Config:', opts)
+
   return createApp({
     server: {
       preset: 'vercel',
@@ -55,7 +60,7 @@ export function defineConfig(opts?: {
         target: 'server',
         plugins: () => [
           startVite(),
-
+          ...(opts?.vite?.plugins?.() || []),
           TanStackRouterVite({
             experimental: {
               enableCodeSplitting: true,
@@ -63,7 +68,7 @@ export function defineConfig(opts?: {
           }),
           tsconfigPaths(),
           serverTransform({
-            runtime: resolveRelativePath('../server-runtime'),
+            runtime: resolveRelativePath('@tanstack/start/server-runtime'),
           }),
         ],
         link: {
@@ -86,19 +91,23 @@ export function defineConfig(opts?: {
             },
           }),
           startVite(),
-
+          ...(opts?.vite?.plugins?.() || []),
           tsconfigPaths(),
           serverFunctions.client({
-            runtime: resolveRelativePath('../client-runtime'),
+            runtime: resolveRelativePath('@tanstack/start/client-runtime'),
           }),
           reactRefresh(),
         ],
       },
       serverFunctions.router({
         name: 'server',
-        plugins: () => [startVite(), tsconfigPaths()],
-        handler: resolveRelativePath('../server-handler'),
-        runtime: resolveRelativePath('../server-runtime'),
+        plugins: () => [
+          startVite(),
+          ...(opts?.vite?.plugins?.() || []),
+          tsconfigPaths(),
+        ],
+        handler: resolveRelativePath('@tanstack/start/server-handler'),
+        runtime: resolveRelativePath('@tanstack/start/server-runtime'),
       }),
     ],
   })
