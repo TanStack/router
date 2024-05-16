@@ -2,8 +2,8 @@ import * as React from 'react'
 import { useMatch } from './Matches'
 import { useRouter } from './useRouter'
 
-import type { NavigateOptions } from './link'
-import type { RoutePaths, RoutePathsAutoComplete } from './routeInfo'
+import type { FromPathOption, NavigateOptions } from './link'
+import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 
 export type UseNavigateResult<TDefaultFrom extends string> = <
@@ -18,9 +18,10 @@ export type UseNavigateResult<TDefaultFrom extends string> = <
 }: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>) => Promise<void>
 
 export function useNavigate<
+  TRouter extends AnyRouter = RegisteredRouter,
   TDefaultFrom extends string = string,
 >(_defaultOpts?: {
-  from?: RoutePathsAutoComplete<RegisteredRouter, TDefaultFrom>
+  from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
   const router = useRouter()
 

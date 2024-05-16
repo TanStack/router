@@ -14,7 +14,6 @@ import type {
   RouteByPath,
   RouteByToPath,
   RoutePaths,
-  RoutePathsAutoComplete,
   RouteToPath,
 } from './routeInfo'
 import type { RegisteredRouter } from './router'
@@ -227,7 +226,7 @@ export interface ToSubOptionsProps<
   hash?: true | Updater<string>
   state?: true | NonNullableUpdater<HistoryState>
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
-  from?: RoutePathsAutoComplete<TRouter, TFrom> & {}
+  from?: FromPathOption<TRouter, TFrom> & {}
 }
 
 export type ParamsReducerFn<
@@ -422,6 +421,26 @@ export type ToPathOption<
       NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
       NoInfer<TTo> & string
     >
+
+export type CheckFromPath<
+  TRouter extends AnyRouter,
+  TPass,
+  TFail,
+  TFrom,
+> = string extends TFrom
+  ? TPass
+  : RouteByPath<TRouter['routeTree'], TFrom> extends never
+    ? TFail
+    : TPass
+
+export type FromPathOption<TRouter extends AnyRouter, TFrom> =
+  | CheckFromPath<
+      TRouter,
+      string extends TFrom ? TFrom & {} : TFrom,
+      never,
+      TFrom
+    >
+  | RoutePaths<TRouter['routeTree']>
 
 export interface ActiveOptions {
   exact?: boolean

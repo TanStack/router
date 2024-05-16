@@ -533,7 +533,6 @@ test('from autocompletes to all absolute routes', () => {
       | '/'
       | '/posts/$postId'
       | '/posts/'
-      | '/'
       | '/posts'
       | '/invoices'
       | '/invoices/'
@@ -551,7 +550,45 @@ test('from autocompletes to all absolute routes', () => {
       | '/'
       | '/posts/$postId'
       | '/posts/'
+      | '/posts'
+      | '/invoices'
+      | '/invoices/'
+      | '/invoices/$invoiceId'
+      | '/invoices/$invoiceId/edit'
+      | '/invoices/$invoiceId/details'
+      | '/invoices/$invoiceId/details/$detailId'
+      | undefined
+    >()
+})
+
+test('from does not allow invalid routes', () => {
+  const DefaultRouterLink = Link<DefaultRouter, '/invalid', '/'>
+  const DefaultRouterObjectsLink = Link<DefaultRouterObjects, '/invalid', '/'>
+
+  expectTypeOf(DefaultRouterLink)
+    .parameter(0)
+    .toHaveProperty('from')
+    .toEqualTypeOf<
       | '/'
+      | '/posts/$postId'
+      | '/posts/'
+      | '/posts'
+      | '/invoices'
+      | '/invoices/'
+      | '/invoices/$invoiceId'
+      | '/invoices/$invoiceId/edit'
+      | '/invoices/$invoiceId/details'
+      | '/invoices/$invoiceId/details/$detailId'
+      | undefined
+    >()
+
+  expectTypeOf(DefaultRouterObjectsLink)
+    .parameter(0)
+    .toHaveProperty('from')
+    .toEqualTypeOf<
+      | '/'
+      | '/posts/$postId'
+      | '/posts/'
       | '/posts'
       | '/invoices'
       | '/invoices/'

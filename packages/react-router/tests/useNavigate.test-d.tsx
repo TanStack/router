@@ -35,7 +35,7 @@ const defaultRouter = createRouter({
 
 type DefaultRouter = typeof defaultRouter
 
-test('can redirect to valid route', () => {
+test('when navigating to a route', () => {
   const navigate = useNavigate()
 
   expectTypeOf(navigate<'/invoices', DefaultRouter>)
@@ -43,5 +43,25 @@ test('can redirect to valid route', () => {
     .toHaveProperty('to')
     .toEqualTypeOf<
       '/' | '/invoices' | '/invoices/$invoiceId' | './' | '../' | undefined
+    >()
+})
+
+test('when setting a default from', () => {
+  expectTypeOf(useNavigate<DefaultRouter, '/'>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('from')
+    .toEqualTypeOf<
+      '/invoices' | '/' | '/invoices/$invoiceId' | '/invoices/' | undefined
+    >()
+})
+
+test('when setting an invalid default from', () => {
+  expectTypeOf(useNavigate<DefaultRouter, '/invalid'>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('from')
+    .toEqualTypeOf<
+      '/invoices' | '/' | '/invoices/$invoiceId' | '/invoices/' | undefined
     >()
 })
