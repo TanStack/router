@@ -58,6 +58,8 @@ function LoginComponent() {
     }
   }
 
+  const isLoggingIn = isLoading || isSubmitting
+
   return (
     <div className="p-2 grid gap-2 place-items-center">
       <h3 className="text-xl">Login page</h3>
@@ -67,10 +69,7 @@ function LoginComponent() {
         <p>Login to see all the cool content in here.</p>
       )}
       <form className="mt-4 max-w-lg" onSubmit={onFormSubmit}>
-        <fieldset
-          disabled={isLoading || isSubmitting}
-          className="w-full grid gap-2"
-        >
+        <fieldset disabled={isLoggingIn} className="w-full grid gap-2">
           <div className="grid gap-2 items-center min-w-[300px]">
             <label htmlFor="username-input" className="text-sm font-medium">
               Username
@@ -86,9 +85,9 @@ function LoginComponent() {
           </div>
           <button
             type="submit"
-            className="bg-blue-500 text-white py-2 px-4 rounded-md w-full"
+            className="bg-blue-500 text-white py-2 px-4 rounded-md w-full disabled:bg-gray-300 disabled:text-gray-500"
           >
-            {isLoading ? 'Loading...' : 'Login'}
+            {isLoggingIn ? 'Loading...' : 'Login'}
           </button>
         </fieldset>
       </form>
