@@ -236,8 +236,8 @@ export function TanStackRouterDevtools({
   } = closeButtonProps
 
   const {
-    style: toggleButtonStyle = {},
     onClick: onToggleClick,
+    className: toggleButtonClassName,
     ...otherToggleButtonProps
   } = toggleButtonProps
 
@@ -288,6 +288,7 @@ export function TanStackRouterDevtools({
           getStyles().mainCloseBtn,
           getStyles().mainCloseBtnPosition(position),
           getStyles().mainCloseBtnAnimation(!isButtonClosed),
+          toggleButtonClassName,
         )}
       >
         <div className={getStyles().mainCloseBtnIconContainer}>
