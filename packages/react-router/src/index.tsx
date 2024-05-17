@@ -200,6 +200,7 @@ export {
   type RegisteredRouter,
   type HydrationCtx,
   type RouterContextOptions,
+  type TrailingSlashOption,
   type RouterOptions,
   type RouterTransformer,
   type RouterErrorSerializer,
