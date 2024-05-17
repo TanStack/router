@@ -8,6 +8,7 @@ import {
 import { z } from 'zod'
 
 import { useAuth } from '../auth'
+import { sleep } from '../utils'
 
 const fallback = '/dashboard' as const
 
@@ -28,23 +29,29 @@ function LoginComponent() {
   const router = useRouter()
   const isLoading = useRouterState({ select: (s) => s.isLoading })
   const navigate = Route.useNavigate()
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   const search = Route.useSearch()
 
-  const onFormSubmit = (evt: React.FormEvent<HTMLFormElement>) => {
-    evt.preventDefault()
-    const data = new FormData(evt.currentTarget)
-    const fieldValue = data.get('username')
+  const onFormSubmit = async (evt: React.FormEvent<HTMLFormElement>) => {
+    setIsSubmitting(true)
+    try {
+      evt.preventDefault()
+      const data = new FormData(evt.currentTarget)
+      const fieldValue = data.get('username')
 
-    if (!fieldValue) return
+      if (!fieldValue) return
+      const username = fieldValue.toString()
+      await auth.login(username)
 
-    const username = fieldValue.toString()
-
-    auth.login(username)
-
-    router.invalidate().finally(() => {
-      navigate({ to: search.redirect || fallback })
-    })
+      await router.invalidate()
+      await sleep(1)
+      await navigate({ to: search.redirect || fallback })
+    } catch (error) {
+      console.error('Error logging in: ', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -56,7 +63,10 @@ function LoginComponent() {
         <p>Login to see all the cool content in here.</p>
       )}
       <form className="mt-4 max-w-lg" onSubmit={onFormSubmit}>
-        <fieldset disabled={isLoading} className="w-full grid gap-2">
+        <fieldset
+          disabled={isLoading || isSubmitting}
+          className="w-full grid gap-2"
+        >
           <div className="grid gap-2 items-center min-w-[300px]">
             <label htmlFor="username-input" className="text-sm font-medium">
               Username
