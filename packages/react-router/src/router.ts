@@ -1856,7 +1856,7 @@ export class Router<
     return matches
   }
 
-  invalidate = async () => {
+  invalidate = () => {
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => ({
       ...d,
       invalid: true,
@@ -1870,7 +1870,7 @@ export class Router<
       pendingMatches: s.pendingMatches?.map(invalidate),
     }))
 
-    return await this.load()
+    return this.load()
   }
 
   resolveRedirect = (err: AnyRedirect): ResolvedRedirect => {
