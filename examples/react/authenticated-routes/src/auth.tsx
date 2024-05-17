@@ -1,9 +1,11 @@
 import * as React from 'react'
 
+import { sleep } from './utils'
+
 export interface AuthContext {
   isAuthenticated: boolean
-  login: (username: string) => void
-  logout: () => void
+  login: (username: string) => Promise<void>
+  logout: () => Promise<void>
   user: string | null
 }
 
@@ -27,14 +29,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<string | null>(getStoredUser())
   const isAuthenticated = !!user
 
-  const logout = React.useCallback(() => {
+  const logout = React.useCallback(async () => {
+    await sleep(250)
+
     setStoredUser(null)
     setUser(null)
   }, [])
 
-  const login = React.useCallback((username: string) => {
+  const login = React.useCallback(async (username: string) => {
+    await sleep(500)
+
     setStoredUser(username)
     setUser(username)
+  }, [])
+
+  React.useEffect(() => {
+    setUser(getStoredUser())
   }, [])
 
   return (

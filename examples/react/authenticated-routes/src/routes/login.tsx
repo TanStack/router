@@ -8,6 +8,7 @@ import {
 import { z } from 'zod'
 
 import { useAuth } from '../auth'
+import { sleep } from '../utils'
 
 const fallback = '/dashboard' as const
 
@@ -28,24 +29,36 @@ function LoginComponent() {
   const router = useRouter()
   const isLoading = useRouterState({ select: (s) => s.isLoading })
   const navigate = Route.useNavigate()
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   const search = Route.useSearch()
 
-  const onFormSubmit = (evt: React.FormEvent<HTMLFormElement>) => {
-    evt.preventDefault()
-    const data = new FormData(evt.currentTarget)
-    const fieldValue = data.get('username')
+  const onFormSubmit = async (evt: React.FormEvent<HTMLFormElement>) => {
+    setIsSubmitting(true)
+    try {
+      evt.preventDefault()
+      const data = new FormData(evt.currentTarget)
+      const fieldValue = data.get('username')
 
-    if (!fieldValue) return
+      if (!fieldValue) return
+      const username = fieldValue.toString()
+      await auth.login(username)
 
-    const username = fieldValue.toString()
+      await router.invalidate()
 
-    auth.login(username)
+      // This is just a hack being used to wait for the auth state to update
+      // in a real app, you'd want to use a more robust solution
+      await sleep(1)
 
-    router.invalidate().finally(() => {
-      navigate({ to: search.redirect || fallback })
-    })
+      await navigate({ to: search.redirect || fallback })
+    } catch (error) {
+      console.error('Error logging in: ', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
+
+  const isLoggingIn = isLoading || isSubmitting
 
   return (
     <div className="p-2 grid gap-2 place-items-center">
@@ -56,7 +69,7 @@ function LoginComponent() {
         <p>Login to see all the cool content in here.</p>
       )}
       <form className="mt-4 max-w-lg" onSubmit={onFormSubmit}>
-        <fieldset disabled={isLoading} className="w-full grid gap-2">
+        <fieldset disabled={isLoggingIn} className="w-full grid gap-2">
           <div className="grid gap-2 items-center min-w-[300px]">
             <label htmlFor="username-input" className="text-sm font-medium">
               Username
@@ -72,9 +85,9 @@ function LoginComponent() {
           </div>
           <button
             type="submit"
-            className="bg-blue-500 text-white py-2 px-4 rounded-md w-full"
+            className="bg-blue-500 text-white py-2 px-4 rounded-md w-full disabled:bg-gray-300 disabled:text-gray-500"
           >
-            {isLoading ? 'Loading...' : 'Login'}
+            {isLoggingIn ? 'Loading...' : 'Login'}
           </button>
         </fieldset>
       </form>

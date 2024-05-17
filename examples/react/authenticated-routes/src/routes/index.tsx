@@ -9,6 +9,16 @@ function HomeComponent() {
   return (
     <div className="p-2 grid gap-2">
       <h1 className="text-xl">Welcome!</h1>
+      <p className="py-4 px-2 italic bg-slate-100">
+        <strong className="text-red-500">IMPORTANT!!!</strong> This is just an
+        example of how to use authenticated routes with TanStack Router.
+        <br />
+        This is NOT an example how you'd write a production-level authentication
+        system.
+        <br />
+        You'll need to take the concepts and patterns used in this example and
+        adapt then to work with your authentication flow/system for your app.
+      </p>
       <p>
         You are currently on the index route of the{' '}
         <strong>authenticated-routes</strong> example.
