@@ -184,7 +184,8 @@ export function Match({ matchId }: { matchId: string }) {
     : route.options.notFoundComponent
 
   const ResolvedSuspenseBoundary =
-    !route.isRoot &&
+    // If we're on the root route, allow forcefully wrapping in suspense
+    (!route.isRoot || route.options.wrapInSuspense) &&
     (route.options.wrapInSuspense ??
       PendingComponent ??
       (route.options.errorComponent as any)?.preload)
