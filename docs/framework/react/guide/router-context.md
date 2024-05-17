@@ -146,6 +146,81 @@ export const Route = createFileRoute('/todos')({
 })
 ```
 
+## How about using React Context/Hooks?
+
+When trying to use React Context or Hooks in your route's `beforeLoad` or `loader` functions, it's important to remember React's [Rules of Hooks](https://react.dev/reference/rules/rules-of-hooks). You can't use hooks in a non-React function, so you can't use hooks in your `beforeLoad` or `loader` functions.
+
+So, how do we use React Context or Hooks in our route's `beforeLoad` or `loader` functions? We can use the router context to pass down the React Context or Hooks to our route's `beforeLoad` or `loader` functions.
+
+Let's look at the setup for an example, where we pass down a `useNetworkStrength` hook to our route's `loader` function:
+
+- `src/routes/__root.tsx`
+
+```tsx
+// First, make sure the context for the root route is typed
+import { createRootRouteWithContext } from '@tanstack/react-router'
+import { useNetworkStrength } from '@/hooks/useNetworkStrength'
+
+interface MyRouterContext {
+  networkStrength: ReturnType<typeof useNetworkStrength>
+}
+
+export const Route = createRootRouteWithContext<MyRouterContext>()({
+  component: App,
+})
+```
+
+In this example, we'd instantiate the hook before rendering the router using the `<RouterProvider />`. This way, the hook would be called in React-land, therefore adhering to the Rules of Hooks.
+
+- `src/router.tsx`
+
+```tsx
+import { createRouter } from '@tanstack/react-router'
+
+import { routeTree } from './routeTree.gen'
+
+export const router = createRouter({
+  routeTree,
+  context: {
+    networkStrength: undefined!, // We'll set this in React-land
+  },
+})
+```
+
+- `src/main.tsx`
+
+```tsx
+import { RouterProvider } from '@tanstack/react-router'
+import { router } from './router'
+
+import { useNetworkStrength } from '@/hooks/useNetworkStrength'
+
+function App() {
+  const networkStrength = useNetworkStrength()
+  // Inject the returned value from the hook into the router context
+  return <RouterProvider router={router} context={{ networkStrength }} />
+}
+
+// ...
+```
+
+So, now in our route's `loader` function, we can access the `networkStrength` hook from the router context:
+
+- `src/routes/posts.tsx`
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({
+  component: Posts,
+  loader: ({ context }) => {
+    if (context.networkStrength === 'STRONG') {
+      // Do something
+    }
+  },
+})
+```
+
 ## Modifying the Router Context
 
 The router context is passed down the route tree and is merged at each route. This means that you can modify the context at each route and the modifications will be available to all child routes. Here's an example:
