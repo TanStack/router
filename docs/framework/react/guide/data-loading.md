@@ -405,13 +405,27 @@ TanStack Router provides a few ways to handle errors that occur during the route
 
 ### Handling Errors with `routeOptions.onError`
 
-The `routeOptions.onError` option is a function that is called when an error occurs during the route loading or rendering lifecycle.
+The `routeOptions.onError` option is a function that is called when an error occurs during the route loading.
 
 ```tsx
 // routes/posts.tsx
 export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
   onError: ({ error }) => {
+    // Log the error
+    console.error(error)
+  },
+})
+```
+
+### Handling Errors with `routeOptions.onCatch`
+
+The `routeOptions.onCatch` option is a function that is called whenever an error was caught by the router's CatchBoundary.
+
+```tsx
+// routes/posts.tsx
+export const Route = createFileRoute('/posts')({
+  onCatch: ({ error, errorInfo }) => {
     // Log the error
     console.error(error)
   },

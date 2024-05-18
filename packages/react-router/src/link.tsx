@@ -796,11 +796,17 @@ export type ActiveLinkOptions<
 > = LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & ActiveLinkOptionProps
 
 export interface ActiveLinkOptionProps {
-  // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+  /**
+   * A function that returns additional props for the `active` state of this link.
+   * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+   */
   activeProps?:
     | React.AnchorHTMLAttributes<HTMLAnchorElement>
     | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
-  // A function that returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+  /**
+   * A function that returns additional props for the `inactive` state of this link.
+   * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+   */
   inactiveProps?:
     | React.AnchorHTMLAttributes<HTMLAnchorElement>
     | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
