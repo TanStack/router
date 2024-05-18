@@ -203,9 +203,19 @@ const router = createRouter({
 
 ### `transformer` property
 
-- Type: [`RouterTransformer`](../RouterTransformerType)
+- Type: `RouterTransformer`
 - Optional
 - The transformer that will be used when sending data between the server and the client during SSR.
+
+#### `transformer.stringify` method
+
+- Type: `(obj: unknown) => string`
+- This method is called when stringifying data to be sent to the client.
+
+#### `transformer.parse` method
+
+- Type: `(str: string) => unknown`
+- This method is called when parsing the string encoded by the server.
 
 ### `trailingSlash` property
 
