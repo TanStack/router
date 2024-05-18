@@ -21,11 +21,13 @@ export default eventHandler(async (event) => {
 
   // Get assets for the server/client
   const clientManifest = getManifest('client')
-  let assets = (
-    await clientManifest.inputs[clientManifest.handler].assets()
-  ).filter((d: any) => {
-    return !d.children?.includes('nuxt-devtools')
-  }) as any
+  // let assets = (
+  //   await clientManifest.inputs[clientManifest.handler].assets()
+  // ).filter((d: any) => {
+  //   return !d.children?.includes('nuxt-devtools')
+  // }) as any
+
+  const assets = []
 
   if (import.meta.env.DEV) {
     assets.push({
@@ -141,8 +143,9 @@ export default eventHandler(async (event) => {
 
   return new Response(transformedStream as any, {
     status: router.state.statusCode,
-    statusText:
-      router.state.statusCode === 200 ? 'OK' : 'Internal Server Error',
+    statusText: `${router.state.statusCode}`.startsWith('5')
+      ? 'Internal Server Error'
+      : 'OK',
     headers,
   })
 })

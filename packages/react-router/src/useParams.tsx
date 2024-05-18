@@ -1,4 +1,4 @@
-import { useMatch } from './Matches'
+import { useMatch } from './useMatch'
 import type { AnyRoute } from './route'
 import type { AllParams, RouteById, RouteIds } from './routeInfo'
 import type { RegisteredRouter } from './router'

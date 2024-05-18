@@ -9,8 +9,13 @@ import { CatchNotFound, DefaultGlobalNotFound, isNotFound } from './not-found'
 import { isRedirect } from './redirects'
 import { type AnyRouter, type RegisteredRouter } from './router'
 import { Transitioner } from './Transitioner'
+import {
+  type AnyRoute,
+  type ReactNode,
+  type StaticDataRouteOption,
+  rootRouteId,
+} from './route'
 import type { ResolveRelativePath, ToOptions } from './link'
-import type { AnyRoute, ReactNode, StaticDataRouteOption } from './route'
 import type {
   AllParams,
   FullSearchSchema,
@@ -20,13 +25,7 @@ import type {
   RouteIds,
   RoutePaths,
 } from './routeInfo'
-import type {
-  ControlledPromise,
-  DeepPartial,
-  Expand,
-  NoInfer,
-  StrictOrFrom,
-} from './utils'
+import type { ControlledPromise, DeepPartial, Expand, NoInfer } from './utils'
 
 export const matchContext = React.createContext<string | undefined>(undefined)
 
@@ -417,7 +416,19 @@ export const Outlet = React.memo(function Outlet() {
     return null
   }
 
-  return <Match matchId={childMatchId} />
+  const nextMatch = <Match matchId={childMatchId} />
+
+  const pendingElement = router.options.defaultPendingComponent ? (
+    <router.options.defaultPendingComponent />
+  ) : null
+
+  if (matchId === rootRouteId) {
+    return (
+      <React.Suspense fallback={pendingElement}>{nextMatch}</React.Suspense>
+    )
+  }
+
+  return nextMatch
 })
 
 function renderRouteNotFound(router: AnyRouter, route: AnyRoute, data: any) {
@@ -532,39 +543,6 @@ export function MatchRoute<
   return params ? props.children : null
 }
 
-export function useMatch<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TReturnIntersection extends boolean = false,
-  TRouteMatch = MakeRouteMatch<TRouteTree, TFrom, TReturnIntersection>,
-  TSelected = TRouteMatch,
->(
-  opts: StrictOrFrom<TFrom, TReturnIntersection> & {
-    select?: (match: TRouteMatch) => TSelected
-  },
-): TSelected {
-  const nearestMatchId = React.useContext(matchContext)
-
-  const matchSelection = useRouterState({
-    select: (state) => {
-      const match = state.matches.find((d) =>
-        opts.from ? opts.from === d.routeId : d.id === nearestMatchId,
-      )
-
-      invariant(
-        match,
-        `Could not find ${
-          opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'
-        }`,
-      )
-
-      return opts.select ? opts.select(match as any) : match
-    },
-  })
-
-  return matchSelection as TSelected
-}
-
 export function useMatches<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
@@ -632,52 +610,6 @@ export function useChildMatches<
         : (matches as T)
     },
   })
-}
-
-export function useLoaderDeps<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TRouteMatch extends MakeRouteMatch<TRouteTree, TFrom> = MakeRouteMatch<
-    TRouteTree,
-    TFrom
-  >,
-  TSelected = Required<TRouteMatch>['loaderDeps'],
->(
-  opts: StrictOrFrom<TFrom> & {
-    select?: (match: TRouteMatch) => TSelected
-  },
-): TSelected {
-  return useMatch({
-    ...opts,
-    select: (s) => {
-      return typeof opts.select === 'function'
-        ? opts.select(s.loaderDeps)
-        : s.loaderDeps
-    },
-  })
-}
-
-export function useLoaderData<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TRouteMatch extends MakeRouteMatch<TRouteTree, TFrom> = MakeRouteMatch<
-    TRouteTree,
-    TFrom
-  >,
-  TSelected = Required<TRouteMatch>['loaderData'],
->(
-  opts: StrictOrFrom<TFrom> & {
-    select?: (match: TRouteMatch) => TSelected
-  },
-): TSelected {
-  return useMatch({
-    ...opts,
-    select: (s) => {
-      return typeof opts.select === 'function'
-        ? opts.select(s.loaderData as TRouteMatch)
-        : s.loaderData
-    },
-  }) as TSelected
 }
 
 export function isServerSideError(error: unknown): error is {

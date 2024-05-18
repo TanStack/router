@@ -51,8 +51,12 @@ export type Fetcher<TPayload, TResponse> =
 export type JsonResponseOrPayload<TResponse> =
   TResponse extends JsonResponse<infer TData> ? TData : TResponse
 
-export function createServerFn<TPayload = undefined, TResponse = unknown>(
-  method: 'GET' | 'POST',
+export function createServerFn<
+  TMethod extends 'GET' | 'POST',
+  TPayload = undefined,
+  TResponse = unknown,
+>(
+  method: TMethod,
   fn: FetchFn<TPayload, TResponse>,
 ): Fetcher<TPayload, TResponse> {
   // Cast the compiled function that will be injected by vinxi
@@ -60,7 +64,7 @@ export function createServerFn<TPayload = undefined, TResponse = unknown>(
 
   invariant(
     compiledFn.url,
-    `createServerFn must be called with a function that is marked with the 'use server' pragma.`,
+    `createServerFn must be called with a function that is marked with the 'use server' pragma. Are you using the @tanstack/router-vite-plugin ?`,
   )
 
   return Object.assign(

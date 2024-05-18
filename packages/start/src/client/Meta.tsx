@@ -172,14 +172,10 @@ export function Head({ children, ...props }: React.HTMLProps<HTMLHeadElement>) {
   // )
 
   if (!router.isServer) {
-    return <Meta>{children}</Meta>
+    return children
   }
 
-  return (
-    <head>
-      <Meta>{children}</Meta>
-    </head>
-  )
+  return <head>{children}</head>
 }
 
 export function Body({ children, ...props }: React.HTMLProps<HTMLBodyElement>) {

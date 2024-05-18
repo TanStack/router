@@ -8,7 +8,6 @@ export function createRouter() {
     routeTree,
     defaultPreload: 'intent',
     defaultErrorComponent: DefaultCatchBoundary,
-    // defaultStaleTime: 1,
     context: {
       assets: [],
     },

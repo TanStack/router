@@ -63,6 +63,30 @@ export const eliminateUnreferencedIdentifiers = (
     }
   }
 
+  const handleObjectPattern = (pattern: NodePath<BabelTypes.ObjectPattern>) => {
+    const properties = pattern.get('properties')
+    properties.forEach((property) => {
+      if (property.node.type === 'ObjectProperty') {
+        const value = property.get('value') as any
+        if (t.isIdentifier(value)) {
+          if (shouldBeRemoved(value as NodePath<BabelTypes.Identifier>)) {
+            property.remove()
+          }
+        } else if (t.isObjectPattern(value)) {
+          handleObjectPattern(value as NodePath<BabelTypes.ObjectPattern>)
+        }
+      } else if (t.isRestElement(property.node)) {
+        const argument = property.get('argument')
+        if (
+          t.isIdentifier(argument) &&
+          shouldBeRemoved(argument as NodePath<BabelTypes.Identifier>)
+        ) {
+          property.remove()
+        }
+      }
+    })
+  }
+
   // Traverse again to remove unused references. This happens at least once,
   // then repeats until no more references are removed.
   do {
@@ -78,6 +102,10 @@ export const eliminateUnreferencedIdentifiers = (
             ++referencesRemovedInThisPass
             path.remove()
           }
+        } else if (path.node.id.type === 'ObjectPattern') {
+          handleObjectPattern(
+            path.get('id') as NodePath<BabelTypes.ObjectPattern>,
+          )
         } else if (path.node.id.type === 'ObjectPattern') {
           const pattern = path.get('id') as NodePath<BabelTypes.ObjectPattern>
 

@@ -91,7 +91,35 @@ export async function compileFile(opts: {
                     {
                       CallExpression: (path) => {
                         if (path.node.callee.type === 'Identifier') {
-                          if (
+                          if (path.node.callee.name === 'createServerFn') {
+                            // If the function at createServerFn(_, MyFunc) doesn't have a
+                            // 'use server' directive at the top of the function scope,
+                            // then add it.
+
+                            const fn = path.node.arguments[1]
+
+                            if (
+                              t.isFunctionExpression(fn) ||
+                              t.isArrowFunctionExpression(fn)
+                            ) {
+                              if (t.isBlockStatement(fn.body)) {
+                                const hasUseServerDirective =
+                                  fn.body.directives.some((directive) => {
+                                    return (
+                                      directive.value.value === 'use server'
+                                    )
+                                  })
+
+                                if (!hasUseServerDirective) {
+                                  fn.body.directives.unshift(
+                                    t.directive(
+                                      t.directiveLiteral('use server'),
+                                    ),
+                                  )
+                                }
+                              }
+                            }
+                          } else if (
                             path.node.callee.name === 'createRoute' ||
                             path.node.callee.name === 'createFileRoute'
                           ) {
@@ -105,6 +133,12 @@ export async function compileFile(opts: {
 
                               let found = false
 
+                              const hasImportedOrDefinedIdentifier = (
+                                name: string,
+                              ) => {
+                                return programPath.scope.hasBinding(name)
+                              }
+
                               if (t.isObjectExpression(options)) {
                                 options.properties.forEach((prop) => {
                                   if (t.isObjectProperty(prop)) {
@@ -117,15 +151,32 @@ export async function compileFile(opts: {
                                         }
 
                                         // Prepend the import statement to the program along with the importer function
+                                        // Check to see if lazyRouteComponent is already imported before attempting
+                                        // to import it again
 
-                                        programPath.unshiftContainer('body', [
-                                          template.smart(
-                                            `import { lazyRouteComponent } from '@tanstack/react-router'`,
-                                          )() as t.Statement,
-                                          template.smart(
-                                            `const $$splitComponentImporter = () => import('${splitUrl}')`,
-                                          )() as t.Statement,
-                                        ])
+                                        if (
+                                          !hasImportedOrDefinedIdentifier(
+                                            'lazyRouteComponent',
+                                          )
+                                        ) {
+                                          programPath.unshiftContainer('body', [
+                                            template.smart(
+                                              `import { lazyRouteComponent } from '@tanstack/react-router'`,
+                                            )() as t.Statement,
+                                          ])
+                                        }
+
+                                        if (
+                                          !hasImportedOrDefinedIdentifier(
+                                            '$$splitComponentImporter',
+                                          )
+                                        ) {
+                                          programPath.unshiftContainer('body', [
+                                            template.smart(
+                                              `const $$splitComponentImporter = () => import('${splitUrl}')`,
+                                            )() as t.Statement,
+                                          ])
+                                        }
 
                                         prop.value = template.expression(
                                           `lazyRouteComponent($$splitComponentImporter, 'component')`,
@@ -147,14 +198,29 @@ export async function compileFile(opts: {
 
                                         // Prepend the import statement to the program along with the importer function
 
-                                        programPath.unshiftContainer('body', [
-                                          template.smart(
-                                            `import { lazyFn } from '@tanstack/react-router'`,
-                                          )() as t.Statement,
-                                          template.smart(
-                                            `const $$splitLoaderImporter = () => import('${splitUrl}')`,
-                                          )() as t.Statement,
-                                        ])
+                                        if (
+                                          !hasImportedOrDefinedIdentifier(
+                                            'lazyFn',
+                                          )
+                                        ) {
+                                          programPath.unshiftContainer('body', [
+                                            template.smart(
+                                              `import { lazyFn } from '@tanstack/react-router'`,
+                                            )() as t.Statement,
+                                          ])
+                                        }
+
+                                        if (
+                                          !hasImportedOrDefinedIdentifier(
+                                            '$$splitLoaderImporter',
+                                          )
+                                        ) {
+                                          programPath.unshiftContainer('body', [
+                                            template.smart(
+                                              `const $$splitLoaderImporter = () => import('${splitUrl}')`,
+                                            )() as t.Statement,
+                                          ])
+                                        }
 
                                         prop.value = template.expression(
                                           `lazyFn($$splitLoaderImporter, 'loader')`,
@@ -164,6 +230,8 @@ export async function compileFile(opts: {
                                       }
                                     }
                                   }
+
+                                  programPath.scope.crawl()
                                 })
                               }
 
@@ -259,7 +327,38 @@ export async function splitFile(opts: {
                     {
                       CallExpression: (path) => {
                         if (path.node.callee.type === 'Identifier') {
-                          if (path.node.callee.name === 'createFileRoute') {
+                          if (path.node.callee.name === 'createServerFn') {
+                            // If the function at createServerFn(_, MyFunc) doesn't have a
+                            // 'use server' directive at the top of the function scope,
+                            // then add it.
+
+                            const fn = path.node.arguments[1]
+
+                            if (
+                              t.isFunctionExpression(fn) ||
+                              t.isArrowFunctionExpression(fn)
+                            ) {
+                              if (t.isBlockStatement(fn.body)) {
+                                const hasUseServerDirective =
+                                  fn.body.directives.some((directive) => {
+                                    return (
+                                      directive.value.value === 'use server'
+                                    )
+                                  })
+
+                                if (!hasUseServerDirective) {
+                                  fn.body.directives.unshift(
+                                    t.directive(
+                                      t.directiveLiteral('use server'),
+                                    ),
+                                  )
+                                }
+                              }
+                            }
+                          } else if (
+                            path.node.callee.name === 'createRoute' ||
+                            path.node.callee.name === 'createFileRoute'
+                          ) {
                             if (
                               path.parentPath.node.type === 'CallExpression'
                             ) {

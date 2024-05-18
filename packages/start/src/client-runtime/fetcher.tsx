@@ -1,5 +1,5 @@
 import {
-  encode,
+  defaultStringifySearch,
   isNotFound,
   isPlainObject,
   isRedirect,
@@ -45,8 +45,14 @@ export async function fetcher<TPayload>(
     // If the method is GET, we need to move the payload to the query string
     if (opts.method === 'GET') {
       // If the method is GET, we need to move the payload to the query string
-      const encodedPayload = encode(opts.payload)
-      if (encodedPayload) base += `&${encode(opts.payload)}`
+      const encodedPayload =
+        opts.payload !== undefined
+          ? defaultStringifySearch({
+              payload: opts.payload,
+            }).substring(1)
+          : ''
+
+      if (encodedPayload) base += `&${encodedPayload}`
     }
 
     // Create the request
@@ -54,13 +60,14 @@ export async function fetcher<TPayload>(
       ...opts.requestInit,
       method: opts.method,
       headers,
-      ...(type === 'formData'
+      ...(opts.method === 'POST'
         ? {
-            body: opts.payload as FormData,
+            body:
+              type === 'formData'
+                ? opts.payload
+                : (JSON.stringify(opts.payload ?? null) as any),
           }
-        : opts.method === 'POST'
-          ? { body: JSON.stringify(opts.payload ?? null) }
-          : {}),
+        : {}),
     })
 
     // Fetch it

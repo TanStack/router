@@ -1,29 +1,24 @@
 import { defineConfig } from '@tanstack/start/config'
 import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
 import { config } from 'vinxi/plugins/config'
-import visualizer from 'rollup-plugin-visualizer'
+import { visualizer } from 'rollup-plugin-visualizer'
+import tsConfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
   vite: {
     plugins: () => [
-      config('myApp', {
-        resolve: {
-          dedupe: ['react', 'react-dom'],
-        },
-        optimizeDeps: {
-          exclude: ['@tanstack/start'],
-        },
+      tsConfigPaths({
+        projects: ['./tsconfig.json'],
       }),
       TanStackRouterVite({
         experimental: {
           enableCodeSplitting: true,
         },
       }) as any,
-      // visualizer({
-      //   emitFile: true,
-      //   filename: 'test',
-      // }),
-      true,
+      visualizer({
+        emitFile: true,
+        filename: 'test',
+      }),
     ],
   },
 })

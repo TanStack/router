@@ -22,7 +22,7 @@ export const configSchema = generatorConfigSchema.extend({
 export type Config = z.infer<typeof configSchema>
 
 const CONFIG_FILE_NAME = 'tsr.config.json'
-const debug = false as any
+const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
 const getConfig = async (inlineConfig: Partial<Config>, root: string) => {
   const config = await getGeneratorConfig(inlineConfig, root)
@@ -94,11 +94,8 @@ export function TanStackRouterViteGenerator(
     configResolved: async (config) => {
       ROOT = process.cwd()
       userConfig = await getConfig(inlineConfig, ROOT)
-      console.log('resolve')
       if (userConfig.enableRouteGeneration ?? true) {
-        console.log('start')
         await generate()
-        console.log('end')
       }
     },
     watchChange: async (file, context) => {
@@ -181,8 +178,10 @@ export function TanStackRouterViteCodeSplitter(
 
         return compiled
       } else if (
-        fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
-        (code.includes('createRoute(') || code.includes('createFileRoute('))
+        (fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
+          (code.includes('createRoute(') ||
+            code.includes('createFileRoute('))) ||
+        code.includes('createServerFn')
       ) {
         if (code.includes('@react-refresh')) {
           throw new Error(

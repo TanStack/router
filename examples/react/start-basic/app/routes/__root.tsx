@@ -1,9 +1,9 @@
 import {
+  CatchBoundary,
   Link,
   Outlet,
   ScrollRestoration,
   createRootRouteWithContext,
-  useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import {
@@ -15,7 +15,6 @@ import {
   Scripts,
 } from '@tanstack/start'
 import * as React from 'react'
-import { CgSpinner } from 'react-icons/cg'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
@@ -67,13 +66,7 @@ export const Route = createRootRouteWithContext<{
       </RootDocument>
     )
   },
-  notFoundComponent: () => {
-    return (
-      <RootDocument>
-        <NotFound />
-      </RootDocument>
-    )
-  },
+  notFoundComponent: () => <NotFound />,
   component: RootComponent,
 })
 
@@ -87,12 +80,11 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <Html lang="en">
+    <Html>
       <Head>
         <Meta />
       </Head>
       <Body>
-        <Loading />
         <div className="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -137,33 +129,5 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Scripts />
       </Body>
     </Html>
-  )
-}
-
-function Loading() {
-  const isLoading = useRouterState({
-    select: (s) => s.status === 'pending',
-  })
-
-  return (
-    <div
-      className={`fixed top-0 left-0 h-[300px] w-full
-        transition-all duration-300 pointer-events-none
-        z-30 dark:h-[200px] dark:!bg-white/10 dark:rounded-[100%] ${
-          isLoading
-            ? 'delay-0 opacity-1 -translate-y-1/2'
-            : 'delay-300 opacity-0 -translate-y-full'
-        }`}
-      style={{
-        background: `radial-gradient(closest-side, rgba(0,10,40,0.2) 0%, rgba(0,0,0,0) 100%)`,
-      }}
-    >
-      <div
-        className={`absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-[30px] p-2 bg-white/80 dark:bg-gray-800
-        rounded-lg shadow-lg`}
-      >
-        <CgSpinner className="text-3xl animate-spin" />
-      </div>
-    </div>
   )
 }
