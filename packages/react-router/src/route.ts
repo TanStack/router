@@ -7,6 +7,8 @@ import { useParams } from './useParams'
 import { useSearch } from './useSearch'
 import { notFound } from './not-found'
 import { useNavigate } from './useNavigate'
+import { rootRouteId } from './root'
+import type { RootRouteId } from './root'
 import type { UseNavigateResult } from './useNavigate'
 import type * as React from 'react'
 import type { MakeRouteMatch, RouteMatch } from './Matches'
@@ -26,8 +28,6 @@ import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { NotFoundError } from './not-found'
 import type { LazyRoute } from './fileRoute'
 
-export const rootRouteId = '__root__' as const
-export type RootRouteId = typeof rootRouteId
 export type AnyPathParams = {}
 
 export type SearchSchemaInput = {

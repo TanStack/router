@@ -13,8 +13,8 @@ import {
   type AnyRoute,
   type ReactNode,
   type StaticDataRouteOption,
-  rootRouteId,
 } from './route'
+import { rootRouteId } from './root'
 import type { ResolveRelativePath, ToOptions } from './link'
 import type {
   AllParams,
@@ -25,7 +25,7 @@ import type {
   RouteIds,
   RoutePaths,
 } from './routeInfo'
-import type { ControlledPromise, DeepPartial, Expand, NoInfer } from './utils'
+import type { ControlledPromise, DeepPartial, NoInfer } from './utils'
 
 export const matchContext = React.createContext<string | undefined>(undefined)
 
