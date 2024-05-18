@@ -2036,7 +2036,6 @@ export class Router<
     } catch (err) {
       if (isRedirect(err) || isNotFound(err)) {
         if (isNotFound(err) && !preload) {
-          console.log('trigger')
           await triggerOnReady()
         }
         throw err
