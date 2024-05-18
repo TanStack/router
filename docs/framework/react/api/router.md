@@ -49,7 +49,6 @@ title: Router API
 - Types
   - [`ActiveLinkOptions Type`](./ActiveLinkOptionsType)
   - [`AsyncRouteComponent Type`](./AsyncRouteComponentType)
-  - [`AwaitOptions Type`](./AwaitOptionsType)
   - [`DeferredPromise Type`](./DeferredPromiseType)
   - [`DeferredPromiseState Type`](./DeferredPromiseStateType)
   - [`FileRoutesByPath Type`](./FileRoutesByPathType)
