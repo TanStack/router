@@ -81,6 +81,7 @@ import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NoInfer } from '@tanstack/react-store'
 import type { DeferredPromiseState } from './defer'
+import type { ErrorInfo } from 'react'
 
 //
 
@@ -138,6 +139,7 @@ export interface RouterOptions<
   defaultStaleTime?: number
   defaultPreloadStaleTime?: number
   defaultPreloadGcTime?: number
+  defaultOnCatch?: (error: Error, errorInfo: ErrorInfo) => void
   defaultViewTransition?: boolean
   notFoundMode?: 'root' | 'fuzzy'
   defaultGcTime?: number

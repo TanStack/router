@@ -7,6 +7,7 @@ import { useParams } from './useParams'
 import { useSearch } from './useSearch'
 import { notFound } from './not-found'
 import { useNavigate } from './useNavigate'
+import type { ErrorInfo } from 'react'
 import type { UseNavigateResult } from './useNavigate'
 import type * as React from 'react'
 import type { MakeRouteMatch, RouteMatch } from './Matches'
@@ -266,6 +267,7 @@ export type UpdatableRouteOptions<
   // Filter functions that can manipulate search params *after* they are passed to links and navigate
   // calls that match this route.
   postSearchFilters?: Array<SearchFilter<TFullSearchSchema>>
+  onCatch?: (error: Error, errorInfo: ErrorInfo) => void
   onError?: (err: any) => void
   // These functions are called as route matches are loaded, stick around and leave the active
   // matches
@@ -1281,7 +1283,7 @@ export type ErrorRouteProps = {
 }
 
 export type ErrorComponentProps = {
-  error: unknown
+  error: Error
   info?: { componentStack: string }
   reset: () => void
 }

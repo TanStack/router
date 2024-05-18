@@ -140,9 +140,9 @@ function MatchesInner() {
         onCatch={(error) => {
           warning(
             false,
-            `The following error wasn't caught by any route! 👇 At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+            `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
           )
-          console.error(error)
+          warning(false, error.message || error.toString())
         }}
       >
         {matchId ? <Match matchId={matchId} /> : null}
@@ -176,6 +176,8 @@ export function Match({ matchId }: { matchId: string }) {
   const routeErrorComponent =
     route.options.errorComponent ?? router.options.defaultErrorComponent
 
+  const routeOnCatch = route.options.onCatch ?? router.options.defaultOnCatch
+
   const routeNotFoundComponent = route.isRoot
     ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
       route.options.notFoundComponent ??
@@ -207,12 +209,12 @@ export function Match({ matchId }: { matchId: string }) {
       <ResolvedSuspenseBoundary fallback={pendingElement}>
         <ResolvedCatchBoundary
           getResetKey={() => resetKey}
-          errorComponent={routeErrorComponent ?? ErrorComponent}
-          onCatch={(error) => {
+          errorComponent={routeErrorComponent || ErrorComponent}
+          onCatch={(error, errorInfo) => {
             // Forward not found errors (we don't want to show the error component for these)
             if (isNotFound(error)) throw error
             warning(false, `Error in route match: ${matchId}`)
-            console.error(error)
+            routeOnCatch?.(error, errorInfo)
           }}
         >
           <ResolvedNotFoundBoundary
