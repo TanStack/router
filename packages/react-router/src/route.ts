@@ -266,6 +266,7 @@ export type UpdatableRouteOptions<
   // Filter functions that can manipulate search params *after* they are passed to links and navigate
   // calls that match this route.
   postSearchFilters?: Array<SearchFilter<TFullSearchSchema>>
+  onCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
   onError?: (err: any) => void
   // These functions are called as route matches are loaded, stick around and leave the active
   // matches
@@ -1281,7 +1282,7 @@ export type ErrorRouteProps = {
 }
 
 export type ErrorComponentProps = {
-  error: unknown
+  error: Error
   info?: { componentStack: string }
   reset: () => void
 }

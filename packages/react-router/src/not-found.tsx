@@ -4,6 +4,7 @@ import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import type { RegisteredRouter } from './router'
 import type { RouteIds } from './routeInfo'
+import type { ErrorInfo } from 'react'
 
 export type NotFoundError = {
   /**
@@ -34,7 +35,7 @@ export function isNotFound(obj: any): obj is NotFoundError {
 
 export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => React.ReactElement
-  onCatch?: (error: any) => void
+  onCatch?: (error: Error, errorInfo: ErrorInfo) => void
   children: React.ReactNode
 }) {
   // TODO: Some way for the user to programmatically reset the not-found boundary?
@@ -45,9 +46,9 @@ export function CatchNotFound(props: {
   return (
     <CatchBoundary
       getResetKey={() => resetKey}
-      onCatch={(error) => {
+      onCatch={(error, errorInfo) => {
         if (isNotFound(error)) {
-          props.onCatch?.(error)
+          props.onCatch?.(error, errorInfo)
         } else {
           throw error
         }

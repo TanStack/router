@@ -221,6 +221,12 @@ type loaderDeps = (opts: {
 - Optional
 - A function that will be called when a route is no longer matched after being matched in the previous location.
 
+### `onCatch` property
+
+- Type: `(error: Error, errorInfo: ErrorInfo) => void`
+- Optional - Defaults to `routerOptions.defaultOnCatch`
+- A function that will be called when errors are caught when the route encounters an error.
+
 ### `component` property
 
 - Type: `RouteComponent` or `LazyRouteComponent`
