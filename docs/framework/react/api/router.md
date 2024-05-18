@@ -64,7 +64,6 @@ title: Router API
   - [`RouteMask Type`](./RouteMaskType)
   - [`RouteMatch Type`](./RouteMatchType)
   - [`RouteOptions Type`](./RouteOptionsType)
-  - [`RoutePaths Type`](./RoutePathsType)
   - [`RouterErrorSerializer Type`](./RouterErrorSerializerType)
   - [`RouterEvents Type`](./RouterEventsType)
   - [`RouterOptions Type`](./RouterOptionsType)
