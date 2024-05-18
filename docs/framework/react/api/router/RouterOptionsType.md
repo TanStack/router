@@ -191,6 +191,16 @@ const router = createRouter({
 - Optional
 - The serializer object that will be used to determine how errors are serialized and deserialized between the server and the client.
 
+#### `errorSerializer.serialize` method
+
+- Type: `(err: unknown) => TSerializedError`
+- This method is called to define how errors are serialized when they are stored in the router's dehydrated state.
+
+#### `errorSerializer.deserialize` method
+
+- Type: `(err: TSerializedError) => unknown`
+- This method is called to define how errors are deserialized from the router's dehydrated state.
+
 ### `transformer` property
 
 - Type: [`RouterTransformer`](../RouterTransformerType)
