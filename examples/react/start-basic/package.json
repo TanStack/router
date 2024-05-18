@@ -12,10 +12,10 @@
     "format": "prettier --write '**/*' --ignore-unknown"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.33.3",
-    "@tanstack/router-devtools": "^1.33.3",
+    "@tanstack/react-router": "^1.33.4",
+    "@tanstack/router-devtools": "^1.33.4",
     "@tanstack/router-vite-plugin": "^1.32.17",
-    "@tanstack/start": "^1.33.3",
+    "@tanstack/start": "^1.33.4",
     "@typescript-eslint/parser": "^7.2.0",
     "@vitejs/plugin-react": "^4",
     "axios": "^1.6.8",
