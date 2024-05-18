@@ -25,14 +25,6 @@ export function Transitioner() {
 
   router.startReactTransition = startReactTransition_
 
-  const tryLoad = async () => {
-    try {
-      await router.load()
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
   // Subscribe to location changes
   // and try to load the new location
   useLayoutEffect(() => {
@@ -46,14 +38,13 @@ export function Transitioner() {
       state: true,
     })
 
-    if (routerState.location.href !== nextLocation.href) {
+    if (router.state.location.href !== nextLocation.href) {
       router.commitLocation({ ...nextLocation, replace: true })
     }
 
     return () => {
       unsub()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, router.history])
 
   // Try to load the initial location
@@ -66,8 +57,16 @@ export function Transitioner() {
       return
     }
     mountLoadForRouter.current = { router, mounted: true }
+
+    const tryLoad = async () => {
+      try {
+        await router.load()
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
     tryLoad()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   useLayoutEffect(() => {
