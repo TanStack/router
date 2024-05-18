@@ -61,7 +61,6 @@ title: Router API
   - [`PathParamOptions Type`](./PathParamOptionsType)
   - [`Redirect Type`](./RedirectType)
   - [`Register Type`](./RegisterType)
-  - [`RouteById Type`](./RouteByIdType)
   - [`RouteIds Type`](./RouteIdsType)
   - [`RouteMask Type`](./RouteMaskType)
   - [`RouteByPath Type`](./RouteByPathType)
