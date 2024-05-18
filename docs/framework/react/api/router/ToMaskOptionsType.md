@@ -10,3 +10,5 @@ type ToMaskOptions = ToOptions & {
   unmaskOnReload?: boolean
 }
 ```
+
+- [`ToOptions`](../ToOptionsType)

@@ -13,7 +13,7 @@ The `useParams` hook accepts an optional `options` object.
 
 - Type: `boolean`
 - Optional - `default: true`
-- If `false`, the `opts.from` option will be ignored and types will be loosened to [`Partial<AllParams>`](../AllParamsType) to reflect the shared types of all params.
+- If `false`, the `opts.from` option will be ignored and types will be loosened to `Partial<AllParams>` to reflect the shared types of all params.
 
 ### `opts.select` option
 
