@@ -84,6 +84,12 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Defaults to `500`
 - The default `pendingMinMs` a route should use if no pendingMinMs is provided.
 
+### `defaultOnCatch` property
+
+- Type: `(error: Error, errorInfo: ErrorInfo) => void`
+- Optional
+- The default `onCatch` handler for errors caught by the Router ErrorBoundary
+
 ### `caseSensitive` property
 
 - Type: `boolean`

@@ -1,10 +1,12 @@
 import * as React from 'react'
+import type { ErrorRouteComponent } from './route'
+import type { ErrorInfo } from 'react'
 
 export function CatchBoundary(props: {
   getResetKey: () => string
-  children: any
-  errorComponent?: any
-  onCatch?: (error: any) => void
+  children: React.ReactNode
+  errorComponent?: ErrorRouteComponent
+  onCatch?: (error: Error, errorInfo: ErrorInfo) => void
 }) {
   const errorComponent = props.errorComponent ?? ErrorComponent
 
@@ -28,14 +30,17 @@ export function CatchBoundary(props: {
 
 class CatchBoundaryImpl extends React.Component<{
   getResetKey: () => string
-  children: (props: { error: any; reset: () => void }) => any
-  onCatch?: (error: any) => void
+  children: (props: {
+    error: Error | null
+    reset: () => void
+  }) => React.ReactNode
+  onCatch?: (error: Error, errorInfo: ErrorInfo) => void
 }> {
-  state = { error: null } as { error: any; resetKey: string }
+  state = { error: null } as { error: Error | null; resetKey: string }
   static getDerivedStateFromProps(props: any) {
     return { resetKey: props.getResetKey() }
   }
-  static getDerivedStateFromError(error: any) {
+  static getDerivedStateFromError(error: Error) {
     return { error }
   }
   reset() {
@@ -53,11 +58,9 @@ class CatchBoundaryImpl extends React.Component<{
       this.reset()
     }
   }
-  componentDidCatch(error: any) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (this.props.onCatch) {
-      this.props.onCatch(error)
-    } else {
-      console.error(error)
+      this.props.onCatch(error, errorInfo)
     }
   }
   render() {
