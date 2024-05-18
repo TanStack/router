@@ -40,7 +40,7 @@ The `Router` class implements the following properties and methods:
 ### `.subscribe` method
 
 - Type: `(eventType: TType, fn: ListenerFn<RouterEvents[TType]>) => (event: RouterEvent) => void`
-- Subscribes to a router event.
+- Subscribes to a [RouterEvent](../RouterEventsType).
 - Returns a function that can be used to unsubscribe from the event.
 - The callback provided to the returned function will be called with the event that was emitted.
 
