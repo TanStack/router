@@ -59,7 +59,6 @@ title: Router API
   - [`NotFoundError Type`](./NotFoundErrorType)
   - [`ParsedLocation Type`](./ParsedLocationType)
   - [`PathParamOptions Type`](./PathParamOptionsType)
-  - [`ParseRouteChildren Type`](./ParseRouteChildrenType)
   - [`Redirect Type`](./RedirectType)
   - [`Register Type`](./RegisterType)
   - [`RegisteredRouter Type`](./RegisteredRouterType)
