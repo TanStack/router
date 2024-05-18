@@ -64,6 +64,13 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Defaults to `ErrorComponent`
 - The default `errorComponent` a route should use if no error component is provided.
 
+### `defaultNotFoundComponent` property
+
+- Type: `NotFoundRouteComponent`
+- Optional
+- Defaults to `NotFound`
+- The default `notFoundComponent` a route should use if no notFound component is provided.
+
 ### `defaultPendingComponent` property
 
 - Type: `RouteComponent`
@@ -83,6 +90,34 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Optional
 - Defaults to `500`
 - The default `pendingMinMs` a route should use if no pendingMinMs is provided.
+
+### `defaultStaleTime` property
+
+- Type: `number`
+- Optional
+- Defaults to `0`
+- The default `staleTime` a route should use if no staleTime is provided.
+
+### `defaultPreloadStaleTime` property
+
+- Type: `number`
+- Optional
+- Defaults to `30_000` ms (30 seconds)
+- The default `preloadStaleTime` a route should use if no preloadStaleTime is provided.
+
+### `defaultPreloadGcTime` property
+
+- Type: `number`
+- Optional
+- Defaults to `routerOptions.defaultGcTime`, which defaults to 30 minutes.
+- The default `preloadGcTime` a route should use if no preloadGcTime is provided.
+
+### `defaultGcTime` property
+
+- Type: `number`
+- Optional
+- Defaults to 30 minutes.
+- The default `gcTime` a route should use if no gcTime is provided.
 
 ### `defaultOnCatch` property
 

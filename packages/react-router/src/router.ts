@@ -126,42 +126,214 @@ export interface RouterOptions<
   TDehydrated extends Record<string, any> = Record<string, any>,
   TSerializedError extends Record<string, any> = Record<string, any>,
 > {
+  /**
+   * The history object that will be used to manage the browser history.
+   * If not provided, a new createBrowserHistory instance will be created and used.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#history-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/history-types)
+   */
   history?: RouterHistory
+  /**
+   * A function that will be used to stringify search params when generating links.
+   * Defaults to `defaultStringifySearch`.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#stringifysearch-method)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization)
+   */
   stringifySearch?: SearchSerializer
+  /**
+   * A function that will be used to parse search params when parsing the current location.
+   * Defaults to `defaultParseSearch`.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#parsesearch-method)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization)
+   */
   parseSearch?: SearchParser
+  /**
+   * Defaults to `false`
+   * If `false`, routes will not be preloaded by default in any way.
+   * If `'intent'`, routes will be preloaded by default when the user hovers over a link or a `touchstart` event is detected on a `<Link>`.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreload-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
+   */
   defaultPreload?: false | 'intent'
+  /**
+   * Defaults to 50
+   * The delay in milliseconds that a route must be hovered over or touched before it is preloaded.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreloaddelay-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading#preload-delay)
+   */
   defaultPreloadDelay?: number
+  /**
+   * Defaults to `Outlet`
+   * The default `component` a route should use if no component is provided.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultcomponent-property)
+   */
   defaultComponent?: RouteComponent
+  /**
+   * Defaults to `ErrorComponent`
+   * The default `errorComponent` a route should use if no error component is provided.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaulterrorcomponent-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionserrorcomponent)
+   */
   defaultErrorComponent?: ErrorRouteComponent
+  /**
+   * The default `pendingComponent` a route should use if no pending component is provided.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpendingcomponent-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#showing-a-pending-component)
+   */
   defaultPendingComponent?: RouteComponent
+  /**
+   * Defaults to `1000`
+   * The default `pendingMs` a route should use if no pendingMs is provided.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpendingms-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#avoiding-pending-component-flash)
+   */
   defaultPendingMs?: number
+  /**
+   * Defaults to `500`
+   * The default `pendingMinMs` a route should use if no pendingMinMs is provided.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpendingminms-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#avoiding-pending-component-flash)
+   */
   defaultPendingMinMs?: number
+  /**
+   * Defaults to `0`
+   * The default `staleTime` a route should use if no staleTime is
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultstaletime-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#key-options)
+   */
   defaultStaleTime?: number
+  /**
+   * Defaults to `30_000` ms (30 seconds)
+   * The default `preloadStaleTime` a route should use if no preloadStaleTime is provided.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreloadstaletime-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
+   */
   defaultPreloadStaleTime?: number
+  /**
+   * Defaults to `routerOptions.defaultGcTime`, which defaults to 30 minutes.
+   * The default `defaultPreloadGcTime` a route should use if no preloadGcTime is provided.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreloadgctime-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
+   */
   defaultPreloadGcTime?: number
+  /**
+   * The default `onCatch` handler for errors caught by the Router ErrorBoundary
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultoncatch-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionsoncatch)
+   */
   defaultOnCatch?: (error: Error, errorInfo: ErrorInfo) => void
   defaultViewTransition?: boolean
+  /**
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#the-notfoundmode-option)
+   */
   notFoundMode?: 'root' | 'fuzzy'
+  /**
+   * Defaults to 30 minutes.
+   * The default `gcTime` a route should use if no
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultgctime-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#key-options)
+   */
   defaultGcTime?: number
+  /**
+   * Defaults to `false`
+   * If `true`, all routes will be matched as case-sensitive.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#casesensitive-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/route-trees#case-sensitivity)
+   */
   caseSensitive?: boolean
+  /**
+   * Required
+   * The route tree that will be used to configure the router instance.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#routetree-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/route-trees)
+   */
   routeTree?: TRouteTree
+  /**
+   * Defaults to `/`
+   * The basepath for then entire router. This is useful for mounting a router instance at a subpath.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#basepath-property)
+   */
   basepath?: string
+  /**
+   * Optional or required if the root route was created with [`createRootRouteWithContext()`](https://tanstack.com/router/latest/docs/framework/react/api/router/createRootRouteWithContextFunction).
+   * The root context that will be provided to all routes in the route tree.
+   * This can be used to provide a context to all routes in the tree without having to provide it to each route individually.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#context-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/router-context)
+   */
   context?: TRouteTree['types']['routerContext']
+  /**
+   * A function that will be called when the router is dehydrated.
+   * The return value of this function will be serialized and stored in the router's dehydrated state.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#dehydrate-method)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/external-data-loading#critical-dehydrationhydration)
+   */
   dehydrate?: () => TDehydrated
+  /**
+   * A function that will be called when the router is hydrated.
+   * The return value of this function will be serialized and stored in the router's dehydrated state.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#hydrate-method)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/external-data-loading#critical-dehydrationhydration)
+   */
   hydrate?: (dehydrated: TDehydrated) => void
+  /**
+   * An array of route masks that will be used to mask routes in the route tree.
+   * Route masking is when you display a route at a different path than the one it is configured to match, like a modal popup that when shared will unmask to the modal's content instead of the modal's context.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#routemasks-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/route-masking)
+   */
   routeMasks?: Array<RouteMask<TRouteTree>>
+  /**
+   * Defaults to `false`
+   * If `true`, route masks will, by default, be removed when the page is reloaded.
+   * This can be overridden on a per-mask basis by setting the `unmaskOnReload` option on the mask, or on a per-navigation basis by setting the `unmaskOnReload` option in the `Navigate` options.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#unmaskonreload-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/route-masking#unmasking-on-page-reload)
+   */
   unmaskOnReload?: boolean
+  /**
+   * A component that will be used to wrap the entire router.
+   * This is useful for providing a context to the entire router.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#wrap-property)
+   */
   Wrap?: (props: { children: any }) => React.JSX.Element
+  /**
+   * A component that will be used to wrap the inner contents of the router.
+   * This is useful for providing a context to the inner contents of the router where you also need access to the router context and hooks.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#innerwrap-property)
+   */
   InnerWrap?: (props: { children: any }) => React.JSX.Element
   /**
    * @deprecated
    * Use `notFoundComponent` instead.
    * See https://tanstack.com/router/v1/docs/guide/not-found-errors#migrating-from-notfoundroute for more info.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#notfoundroute-property)
    */
   notFoundRoute?: AnyRoute
+  /**
+   * Defaults to `NotFound`
+   * The default `notFoundComponent` a route should use if no notFound component is provided.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultnotfoundcomponent-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#default-router-wide-not-found-handling)
+   */
   defaultNotFoundComponent?: NotFoundRouteComponent
+  /**
+   * The transformer that will be used when sending data between the server and the client during SSR.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#transformer-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/ssr#data-transformers)
+   */
   transformer?: RouterTransformer
+  /**
+   * The serializer object that will be used to determine how errors are serialized and deserialized between the server and the client.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#errorserializer-property)
+   */
   errorSerializer?: RouterErrorSerializer<TSerializedError>
+  /**
+   * Defaults to `never`
+   * Configures how trailing slashes are treated.
+   * `'always'` will add a trailing slash if not present, `'never'` will remove the trailing slash if present and `'preserve'` will not modify the trailing slash.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#trailingslash-property)
+   */
   trailingSlash?: TTrailingSlashOption
 }
 
