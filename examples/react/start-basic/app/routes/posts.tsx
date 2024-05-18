@@ -29,7 +29,7 @@ function PostsComponent() {
                 </Link>
               </li>
             )
-          }
+          },
         )}
       </ul>
       <hr />
