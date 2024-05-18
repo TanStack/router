@@ -224,7 +224,7 @@ type loaderDeps = (opts: {
 ### `onCatch` property
 
 - Type: `(error: Error, errorInfo: ErrorInfo) => void`
-- Optional
+- Optional - Defaults to `routerOptions.defaultOnCatch`
 - A function that will be called when errors are caught when the route encounters an error.
 
 ### `component` property
