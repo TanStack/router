@@ -2,7 +2,7 @@ import { createBrowserHistory, createMemoryHistory } from '@tanstack/history'
 import { Store } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
-import { rootRouteId } from './route'
+import { rootRouteId } from './root'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
   createControlledPromise,

@@ -6,7 +6,7 @@ import {
 } from 'vinxi/http'
 import { handleRequest } from '../server-handler'
 import { fetcher, getBaseUrl } from '../client-runtime'
-import type { FetchFn } from '@tanstack/start/client'
+import type { FetchFn } from '../client'
 
 export function createServerReference<TPayload, TResponse>(
   _fn: FetchFn<TPayload, TResponse>,
