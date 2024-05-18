@@ -110,8 +110,8 @@ export {
   type Redirect,
   type ResolvedRedirect,
 } from './redirects'
+export { rootRouteId, type RootRouteId } from './root'
 export {
-  rootRouteId,
   RouteApi,
   getRouteApi,
   Route,
@@ -122,7 +122,6 @@ export {
   createRootRouteWithContext,
   createRouteMask,
   NotFoundRoute,
-  type RootRouteId,
   type AnyPathParams,
   type SearchSchemaInput,
   type AnySearchSchema,

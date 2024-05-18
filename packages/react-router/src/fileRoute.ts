@@ -20,7 +20,6 @@ import type {
   ResolveLoaderData,
   ResolveRouteContext,
   ResolveSearchSchemaUsed,
-  RootRouteId,
   Route,
   RouteConstraints,
   RouteContext,
@@ -34,6 +33,7 @@ import type { MakeRouteMatch } from './Matches'
 import type { NoInfer } from '@tanstack/react-store'
 import type { RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
+import type { RootRouteId } from './root'
 
 export interface FileRoutesByPath {
   // '/': {
