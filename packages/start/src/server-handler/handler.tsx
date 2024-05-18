@@ -1,14 +1,23 @@
-import { decode, isNotFound, isRedirect } from '@tanstack/react-router'
+import {
+  decode,
+  defaultParseSearch,
+  isNotFound,
+  isRedirect,
+} from '@tanstack/react-router'
 import invariant from 'vinxi/lib/invariant'
 import { getManifest } from 'vinxi/manifest'
-import { serverFnPayloadTypeHeader, serverFnReturnTypeHeader } from '../client'
+import {
+  serverFnPayloadTypeHeader,
+  serverFnReturnTypeHeader,
+} from '../constants'
 
 export async function handleRequest(request: Request) {
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
-  const search = decode(url.search, '?') as {
+  const search = defaultParseSearch(url.search) as {
     _serverFnId?: string
     _serverFnName?: string
+    payload?: any
   }
 
   const serverFnId = search._serverFnId
@@ -31,8 +40,8 @@ export async function handleRequest(request: Request) {
             return [
               method.toLowerCase() === 'get'
                 ? (() => {
-                    const { _serverFnId, _serverFnName, ...rest } = search
-                    return rest
+                    const { _serverFnId, _serverFnName, payload } = search
+                    return payload
                   })()
                 : await request.json(),
               { method, request },
@@ -43,8 +52,8 @@ export async function handleRequest(request: Request) {
             return [
               method.toLowerCase() === 'get'
                 ? (() => {
-                    const { _serverFnId, _serverFnName, ...rest } = search
-                    return rest
+                    const { _serverFnId, _serverFnName, payload } = search
+                    return payload
                   })()
                 : await request.formData(),
               { method, request },

@@ -1,5 +1,7 @@
 import invariant from 'tiny-invariant'
-import { useLoaderData, useLoaderDeps, useMatch } from './Matches'
+import { useMatch } from './useMatch'
+import { useLoaderDeps } from './useLoaderDeps'
+import { useLoaderData } from './useLoaderData'
 import { joinPaths, trimPathLeft } from './path'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'

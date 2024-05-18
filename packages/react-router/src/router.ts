@@ -1453,13 +1453,12 @@ export class Router<
         }))
         // }
 
-        rendered = true
-
         if (!(err as any).routeId) {
           ;(err as any).routeId = match.routeId
         }
 
         if (isRedirect(err)) {
+          rendered = true
           err = this.resolveRedirect(err)
           throw err
         } else if (isNotFound(err)) {
@@ -1862,6 +1861,10 @@ export class Router<
       await triggerOnReady()
     } catch (err) {
       if (isRedirect(err) || isNotFound(err)) {
+        if (isNotFound(err) && !preload) {
+          console.log('trigger')
+          await triggerOnReady()
+        }
         throw err
       }
     }
@@ -2151,7 +2154,7 @@ export class Router<
 
     invariant(
       _ctx,
-      'Expected to find a __TSR_DEHYDRATED__ property on window... but we did not. Did you forget to render <DehydrateRouter /> in your app?',
+      'Expected to find a __TSR_DEHYDRATED__ property on window... but we did not. Please file an issue!',
     )
 
     const ctx = this.options.transformer.parse(_ctx) as HydrationCtx

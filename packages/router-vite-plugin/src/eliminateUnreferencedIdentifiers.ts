@@ -7,93 +7,6 @@ import type { NodePath } from '@babel/traverse'
 
 type IdentifierPath = NodePath<BabelTypes.Identifier>
 
-// export function findReferencedIdentifiers(
-//   programPath: NodePath<BabelTypes.Program>,
-// ): Set<IdentifierPath> {
-//   const refs = new Set<IdentifierPath>()
-
-//   function markFunction(
-//     path: NodePath<
-//       | BabelTypes.FunctionDeclaration
-//       | BabelTypes.FunctionExpression
-//       | BabelTypes.ArrowFunctionExpression
-//     >,
-//   ) {
-//     const ident = getIdentifier(path)
-//     if (ident?.node && isIdentifierReferenced(ident)) {
-//       refs.add(ident)
-//     }
-//   }
-
-//   function markImport(
-//     path: NodePath<
-//       | BabelTypes.ImportSpecifier
-//       | BabelTypes.ImportDefaultSpecifier
-//       | BabelTypes.ImportNamespaceSpecifier
-//     >,
-//   ) {
-//     const local = path.get('local')
-//     if (isIdentifierReferenced(local)) {
-//       refs.add(local)
-//     }
-//   }
-
-//   programPath.traverse({
-//     VariableDeclarator(path) {
-//       if (path.node.id.type === 'Identifier') {
-//         const local = path.get('id') as NodePath<BabelTypes.Identifier>
-//         if (isIdentifierReferenced(local)) {
-//           refs.add(local)
-//         }
-//       } else if (path.node.id.type === 'ObjectPattern') {
-//         const pattern = path.get('id') as NodePath<BabelTypes.ObjectPattern>
-
-//         const properties = pattern.get('properties')
-//         properties.forEach((p) => {
-//           const local = p.get(
-//             p.node.type === 'ObjectProperty'
-//               ? 'value'
-//               : p.node.type === 'RestElement'
-//                 ? 'argument'
-//                 : (function () {
-//                     throw new Error('invariant')
-//                   })(),
-//           ) as NodePath<BabelTypes.Identifier>
-//           if (isIdentifierReferenced(local)) {
-//             refs.add(local)
-//           }
-//         })
-//       } else if (path.node.id.type === 'ArrayPattern') {
-//         const pattern = path.get('id') as NodePath<BabelTypes.ArrayPattern>
-
-//         const elements = pattern.get('elements')
-//         elements.forEach((e) => {
-//           let local: NodePath<BabelTypes.Identifier>
-//           if (e.node?.type === 'Identifier') {
-//             local = e as NodePath<BabelTypes.Identifier>
-//           } else if (e.node?.type === 'RestElement') {
-//             local = e.get('argument') as NodePath<BabelTypes.Identifier>
-//           } else {
-//             return
-//           }
-
-//           if (isIdentifierReferenced(local)) {
-//             refs.add(local)
-//           }
-//         })
-//       }
-//     },
-
-//     FunctionDeclaration: markFunction,
-//     FunctionExpression: markFunction,
-//     ArrowFunctionExpression: markFunction,
-//     ImportSpecifier: markImport,
-//     ImportDefaultSpecifier: markImport,
-//     ImportNamespaceSpecifier: markImport,
-//   })
-//   return refs
-// }
-
 /**
  * @param refs - If provided, only these identifiers will be considered for removal.
  */
@@ -150,6 +63,30 @@ export const eliminateUnreferencedIdentifiers = (
     }
   }
 
+  const handleObjectPattern = (pattern: NodePath<BabelTypes.ObjectPattern>) => {
+    const properties = pattern.get('properties')
+    properties.forEach((property) => {
+      if (property.node.type === 'ObjectProperty') {
+        const value = property.get('value') as any
+        if (t.isIdentifier(value)) {
+          if (shouldBeRemoved(value as NodePath<BabelTypes.Identifier>)) {
+            property.remove()
+          }
+        } else if (t.isObjectPattern(value)) {
+          handleObjectPattern(value as NodePath<BabelTypes.ObjectPattern>)
+        }
+      } else if (t.isRestElement(property.node)) {
+        const argument = property.get('argument')
+        if (
+          t.isIdentifier(argument) &&
+          shouldBeRemoved(argument as NodePath<BabelTypes.Identifier>)
+        ) {
+          property.remove()
+        }
+      }
+    })
+  }
+
   // Traverse again to remove unused references. This happens at least once,
   // then repeats until no more references are removed.
   do {
@@ -165,6 +102,10 @@ export const eliminateUnreferencedIdentifiers = (
             ++referencesRemovedInThisPass
             path.remove()
           }
+        } else if (path.node.id.type === 'ObjectPattern') {
+          handleObjectPattern(
+            path.get('id') as NodePath<BabelTypes.ObjectPattern>,
+          )
         } else if (path.node.id.type === 'ObjectPattern') {
           const pattern = path.get('id') as NodePath<BabelTypes.ObjectPattern>
 

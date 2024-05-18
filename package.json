@@ -69,7 +69,15 @@
       "@typescript-eslint/eslint-plugin": "$@typescript-eslint/eslint-plugin",
       "@typescript-eslint/parser": "$@typescript-eslint/parser",
       "eslint": "$eslint",
-      "use-sync-external-store": "1.2.0"
+      "use-sync-external-store": "1.2.0",
+      "@tanstack/history": "workspace:*",
+      "@tanstack/react-cross-context": "workspace:*",
+      "@tanstack/react-router": "workspace:*",
+      "@tanstack/router-cli": "workspace:*",
+      "@tanstack/router-devtools": "workspace:*",
+      "@tanstack/router-generator": "workspace:*",
+      "@tanstack/router-vite-plugin": "workspace:*",
+      "@tanstack/start": "workspace:*"
     }
   }
 }

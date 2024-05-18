@@ -74,12 +74,9 @@ export {
   Outlet,
   useMatchRoute,
   MatchRoute,
-  useMatch,
   useMatches,
   useParentMatches,
   useChildMatches,
-  useLoaderDeps,
-  useLoaderData,
   isServerSideError,
   defaultDeserializeError,
   type RouteMatch,
@@ -88,6 +85,9 @@ export {
   type UseMatchRouteOptions,
   type MakeMatchRouteOptions,
 } from './Matches'
+export { useMatch } from './useMatch'
+export { useLoaderDeps } from './useLoaderDeps'
+export { useLoaderData } from './useLoaderData'
 export {
   joinPaths,
   cleanPath,

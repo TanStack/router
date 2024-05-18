@@ -10,17 +10,18 @@ export function DehydrateRouter() {
     Context.get('TanStackRouterHydrationContext', {}),
   )
 
-  let stringified = ''
+  const dehydrated = router.dehydratedData || dehydratedCtx
 
-  if (router.isServer) {
-    const dehydrated = router.dehydratedData || dehydratedCtx
-
-    // Use jsesc to escape the stringified JSON for use in a script tag
-    stringified = jsesc(router.options.transformer.stringify(dehydrated), {
-      isScriptContext: true,
-      wrap: true,
-    })
-  }
+  // Use jsesc to escape the stringified JSON for use in a script tag
+  const stringified = React.useMemo(
+    () =>
+      jsesc(router.options.transformer.stringify(dehydrated), {
+        isScriptContext: true,
+        wrap: true,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
 
   return (
     <script

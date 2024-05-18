@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useMatch } from './Matches'
+import { useMatch } from './useMatch'
 import { useRouter } from './useRouter'
 
 import type { FromPathOption, NavigateOptions } from './link'

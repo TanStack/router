@@ -22,7 +22,7 @@ export const configSchema = generatorConfigSchema.extend({
 export type Config = z.infer<typeof configSchema>
 
 const CONFIG_FILE_NAME = 'tsr.config.json'
-const debug = false as any
+const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
 const getConfig = async (inlineConfig: Partial<Config>, root: string) => {
   const config = await getGeneratorConfig(inlineConfig, root)
@@ -66,10 +66,12 @@ export function TanStackRouterViteGenerator(
     event: 'create' | 'update' | 'delete',
   ) => {
     const filePath = normalize(file)
+
     if (filePath === join(ROOT, CONFIG_FILE_NAME)) {
       userConfig = await getConfig(inlineConfig, ROOT)
       return
     }
+
     if (
       event === 'update' &&
       filePath === resolve(userConfig.generatedRouteTree)
@@ -77,9 +79,11 @@ export function TanStackRouterViteGenerator(
       // skip generating routes if the generated route tree is updated
       return
     }
+
     const routesDirectoryPath = isAbsolute(userConfig.routesDirectory)
       ? userConfig.routesDirectory
       : join(ROOT, userConfig.routesDirectory)
+
     if (filePath.startsWith(routesDirectoryPath)) {
       await generate()
     }
@@ -90,7 +94,6 @@ export function TanStackRouterViteGenerator(
     configResolved: async (config) => {
       ROOT = process.cwd()
       userConfig = await getConfig(inlineConfig, ROOT)
-
       if (userConfig.enableRouteGeneration ?? true) {
         await generate()
       }
@@ -175,8 +178,10 @@ export function TanStackRouterViteCodeSplitter(
 
         return compiled
       } else if (
-        fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
-        (code.includes('createRoute(') || code.includes('createFileRoute('))
+        (fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
+          (code.includes('createRoute(') ||
+            code.includes('createFileRoute('))) ||
+        code.includes('createServerFn')
       ) {
         if (code.includes('@react-refresh')) {
           throw new Error(

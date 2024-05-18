@@ -1,4 +1,4 @@
-import { useMatch } from './Matches'
+import { useMatch } from './useMatch'
 import type { AnyRoute, RootSearchSchema } from './route'
 import type { FullSearchSchema, RouteById, RouteIds } from './routeInfo'
 import type { RegisteredRouter } from './router'
