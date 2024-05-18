@@ -51,7 +51,6 @@ title: Router API
   - [`AsyncRouteComponent Type`](./AsyncRouteComponentType)
   - [`DeferredPromise Type`](./DeferredPromiseType)
   - [`DeferredPromiseState Type`](./DeferredPromiseStateType)
-  - [`FileRoutesByPath Type`](./FileRoutesByPathType)
   - [`FullSearchSchema Type`](./FullSearchSchemaType)
   - [`HistoryState Interface`](./historyStateInterface)
   - [`LinkOptions Type`](./LinkOptionsType)
