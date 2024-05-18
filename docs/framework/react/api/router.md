@@ -48,7 +48,6 @@ title: Router API
   - [`useSearch()`](./useSearchHook)
 - Types
   - [`ActiveLinkOptions Type`](./ActiveLinkOptionsType)
-  - [`AnyRedirect Type`](./AnyRedirectType)
   - [`AnyRouteMatch Type`](./AnyRouteMatchType)
   - [`AsyncRouteComponent Type`](./AsyncRouteComponentType)
   - [`AwaitOptions Type`](./AwaitOptionsType)
