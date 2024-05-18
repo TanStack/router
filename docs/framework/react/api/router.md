@@ -50,7 +50,6 @@ title: Router API
   - [`ActiveLinkOptions Type`](./ActiveLinkOptionsType)
   - [`AsyncRouteComponent Type`](./AsyncRouteComponentType)
   - [`DeferredPromise Type`](./DeferredPromiseType)
-  - [`DeferredPromiseState Type`](./DeferredPromiseStateType)
   - [`HistoryState Interface`](./historyStateInterface)
   - [`LinkOptions Type`](./LinkOptionsType)
   - [`LinkProps Type`](./LinkPropsType)

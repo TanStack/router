@@ -9,6 +9,21 @@ The `DeferredPromise` type is used to describe a promise that can be resolved or
 type DeferredPromise<T> = Promise<T> & {
   __deferredState: DeferredPromiseState<T>
 }
-```
 
-- [`DeferredPromiseState`](../DeferredPromiseStateType)
+type DeferredPromiseState<T> = { uid: string } & (
+  | {
+      status: 'pending'
+      data?: T
+      error?: unknown
+    }
+  | {
+      status: 'success'
+      data: T
+    }
+  | {
+      status: 'error'
+      data?: T
+      error: unknown
+    }
+)
+```
