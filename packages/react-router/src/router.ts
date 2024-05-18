@@ -1257,7 +1257,9 @@ export class Router<
         let pendingMatches!: Array<AnyRouteMatch>
 
         this.__store.batch(() => {
-          this.cleanCache()
+          // this call breaks a route context of destination route after a redirect
+          // we should be fine not eagerly calling this since we call it later
+          // this.cleanCache()
 
           // Match the routes
           pendingMatches = this.matchRoutes(next.pathname, next.search)
