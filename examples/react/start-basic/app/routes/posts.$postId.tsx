@@ -12,7 +12,7 @@ export const Route = createFileRoute('/posts/$postId')({
   errorComponent: PostErrorComponent as any,
   component: PostComponent,
   notFoundComponent: () => {
-    return <p>Post not found</p>
+    return <NotFound>Post not found</NotFound>
   },
 })
 

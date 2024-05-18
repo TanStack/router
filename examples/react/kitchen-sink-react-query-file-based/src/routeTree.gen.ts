@@ -202,8 +202,8 @@ declare module '@tanstack/react-router' {
     }
     '/expensive/': {
       id: '/expensive/'
-      path: '/expensive/'
-      fullPath: '/expensive/'
+      path: '/expensive'
+      fullPath: '/expensive'
       preLoaderRoute: typeof ExpensiveIndexLazyImport
       parentRoute: typeof rootRoute
     }
