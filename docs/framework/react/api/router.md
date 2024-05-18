@@ -68,7 +68,6 @@ title: Router API
   - [`RouterOptions Type`](./RouterOptionsType)
   - [`RouterState Type`](./RouterStateType)
   - [`SearchParamOptions Type`](./SearchParamOptionsType)
-  - [`SearchSchemaInput Type`](./SearchSchemaInputType)
   - [`ToMaskOptions Type`](./ToMaskOptionsType)
   - [`ToOptions Type`](./ToOptionsType)
   - [`UseLinkPropsOptions Type`](./UseLinkPropsOptionsType)
