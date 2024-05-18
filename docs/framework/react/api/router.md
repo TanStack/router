@@ -67,7 +67,6 @@ title: Router API
   - [`RouterEvents Type`](./RouterEventsType)
   - [`RouterOptions Type`](./RouterOptionsType)
   - [`RouterState Type`](./RouterStateType)
-  - [`RoutesByPath Type`](./RoutesByPathType)
   - [`SearchParamOptions Type`](./SearchParamOptionsType)
   - [`SearchSchemaInput Type`](./SearchSchemaInputType)
   - [`ToMaskOptions Type`](./ToMaskOptionsType)
