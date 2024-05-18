@@ -69,16 +69,16 @@ export const eliminateUnreferencedIdentifiers = (
       if (property.node.type === 'ObjectProperty') {
         const value = property.get('value') as any
         if (t.isIdentifier(value)) {
-          if (shouldBeRemoved(value as NodePath<BabelTypes.Identifier>)) {
+          if (shouldBeRemoved(value as any)) {
             property.remove()
           }
         } else if (t.isObjectPattern(value)) {
-          handleObjectPattern(value as NodePath<BabelTypes.ObjectPattern>)
+          handleObjectPattern(value as any)
         }
       } else if (t.isRestElement(property.node)) {
         const argument = property.get('argument')
         if (
-          t.isIdentifier(argument) &&
+          t.isIdentifier(argument as any) &&
           shouldBeRemoved(argument as NodePath<BabelTypes.Identifier>)
         ) {
           property.remove()
@@ -106,35 +106,6 @@ export const eliminateUnreferencedIdentifiers = (
           handleObjectPattern(
             path.get('id') as NodePath<BabelTypes.ObjectPattern>,
           )
-        } else if (path.node.id.type === 'ObjectPattern') {
-          const pattern = path.get('id') as NodePath<BabelTypes.ObjectPattern>
-
-          const beforeCount = referencesRemovedInThisPass
-          const properties = pattern.get('properties')
-          properties.forEach((property) => {
-            const local = property.get(
-              property.node.type === 'ObjectProperty'
-                ? 'value'
-                : // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                  property.node.type === 'RestElement'
-                  ? 'argument'
-                  : (function () {
-                      throw new Error('invariant')
-                    })(),
-            ) as NodePath<BabelTypes.Identifier>
-
-            if (shouldBeRemoved(local)) {
-              ++referencesRemovedInThisPass
-              property.remove()
-            }
-          })
-
-          if (
-            beforeCount !== referencesRemovedInThisPass &&
-            pattern.get('properties').length < 1
-          ) {
-            path.remove()
-          }
         } else if (path.node.id.type === 'ArrayPattern') {
           const pattern = path.get('id') as NodePath<BabelTypes.ArrayPattern>
 
