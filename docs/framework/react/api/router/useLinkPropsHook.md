@@ -16,8 +16,6 @@ type UseLinkPropsOptions = ActiveLinkOptions &
 - The `useLinkProps` options are used to build a [`LinkProps`](../LinkPropsType) object.
 - It also extends the `React.AnchorHTMLAttributes<HTMLAnchorElement>` type, so that any additional props that are passed to the `useLinkProps` hook will be merged with the [`LinkProps`](../LinkPropsType) object.
 
-The [`UseLinkPropsOptions`](../UseLinkPropsOptionsType) object accepts the following properties:
-
 ## useLinkProps returns
 
 - A `React.AnchorHTMLAttributes<HTMLAnchorElement>` object that can be applied to an anchor element to create a link that can be used to navigate to the new location
