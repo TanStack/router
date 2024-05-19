@@ -38,7 +38,7 @@ The `createRoute` method is a method that can be used to configure the file rout
 
 #### .createRoute returns
 
-- A [`Route`](../RouteClass) instance that can be used to configure the route for the eventual route-tree.
+A [`Route`](../RouteType) instance that can be used to configure the route to be inserted into the route-tree.
 
 > ⚠️ Note: For `tsr generate` and `tsr watch` to work properly, the file route instance must be exported from the file using the `Route` identifier.
 

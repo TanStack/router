@@ -3,17 +3,17 @@ id: createRouteFunction
 title: createRoute function
 ---
 
-The `createRoute` function implements returns a new [`Route`](../RouteClass) instance. A route instance can then be passed to a root route's children to create a route tree, which is then passed to the router.
+The `createRoute` function implements returns a [`Route`](../RouteType) instance. A route instance can then be passed to a root route's children to create a route tree, which is then passed to the router.
 
 ## createRoute options
 
-- Type: `RouteOptions`
+- Type: [`RouteOptions`](../RouteOptionsType)
 - Required
 - The options that will be used to configure the route instance
 
 ## createRoute returns
 
-- A new [`Route`](../RouteClass) instance.
+A new [`Route`](../RouteType) instance.
 
 ## Examples
 
@@ -21,7 +21,7 @@ The `createRoute` function implements returns a new [`Route`](../RouteClass) ins
 import { createRoute } from '@tanstack/react-router'
 import { rootRoute } from './__root'
 
-const indexRoute = createRoute({
+const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   loader: () => {

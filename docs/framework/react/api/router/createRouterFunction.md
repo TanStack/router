@@ -13,7 +13,7 @@ The `createRouter` function accepts a [`RouterOptions`](../RouterOptionsType) ob
 
 ## createRouter returns
 
-- A new instance of the [`Router`](../RouterClass) class.
+- An instance of the [`Router`](../RouterType).
 
 ## Examples
 

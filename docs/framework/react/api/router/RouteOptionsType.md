@@ -27,6 +27,30 @@ The `RouteOptions` type accepts an object with the following properties:
 - Optional, but required if a `path` is not provided
 - The unique identifier for the route if it is to be configured as a layout route. If provided, the, the route will not match against the location pathname and its routes will be flattened into its parent route for matching.
 
+### `component` property
+
+- Type: `RouteComponent` or `LazyRouteComponent`
+- Optional - Defaults to `<Outlet />`
+- The content to be rendered when the route is matched.
+
+### `errorComponent` property
+
+- Type: `RouteComponent` or `LazyRouteComponent`
+- Optional - Defaults to `routerOptions.defaultErrorComponent`
+- The content to be rendered when the route encounters an error.
+
+### `pendingComponent` property
+
+- Type: `RouteComponent` or `LazyRouteComponent`
+- Optional - Defaults to `routerOptions.defaultPendingComponent`
+- The content to be rendered if and when the route is pending and has reached its pendingMs threshold.
+
+### `notFoundComponent` property
+
+- Type: `NotFoundRouteComponent` or `LazyRouteComponent`
+- Optional - Defaults to `routerOptions.defaultNotFoundComponent`
+- The content to be rendered when the route is not found.
+
 ### `validateSearch` method
 
 - Type: `(rawSearchParams: unknown) => TSearchSchema`
@@ -67,6 +91,7 @@ type beforeLoad = (
 ```
 
 - Optional
+- [`ParsedLocation`](../ParsedLocationType)
 - This async function is called before a route is loaded. If an error is thrown here, the route's loader will not be called and the route will not render. If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this routes pendingMs threshold is reached, the `pendingComponent` will be shown until it resolved. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TRouteContext` object, that object will be merged into the route's context and be made available in the `loader` and other related route components/methods.
@@ -95,6 +120,7 @@ type loader = (
 ```
 
 - Optional
+- [`ParsedLocation`](../ParsedLocationType)
 - This async function is called when a route is matched and passed the route's match object. If an error is thrown here, the route will be put into an error state and the error will be thrown during render. If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this routes pendingMs threshold is reached, the `pendingComponent` will be shown until it resolved. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TLoaderData` object, that object will be stored on the route match until the route match is no longer active. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
@@ -114,6 +140,7 @@ type loaderDeps = (opts: {
 ```
 
 - Optional
+- [`ParsedLocation`](../ParsedLocationType)
 - A function that will be called before this route is matched to provide additional unique identification to the route match and serve as a dependency tracker for when the match should be reloaded. It should return any serializable value that can uniquely identify the route match from navigation to navigation.
 - By default, path params are already used to uniquely identify a route match, so it's unnecessary to return these here.
 - If your route match relies on search params or context values for unique identification, it's required that you return them here so they can be made available in the `loader`'s `deps` argument.
@@ -226,21 +253,3 @@ type loaderDeps = (opts: {
 - Type: `(error: Error, errorInfo: ErrorInfo) => void`
 - Optional - Defaults to `routerOptions.defaultOnCatch`
 - A function that will be called when errors are caught when the route encounters an error.
-
-### `component` property
-
-- Type: `RouteComponent` or `LazyRouteComponent`
-- Optional - Defaults to `<Outlet />`
-- The content to be rendered when the route is matched.
-
-### `errorComponent` property
-
-- Type: `RouteComponent` or `LazyRouteComponent`
-- Optional - Defaults to `routerOptions.defaultErrorComponent`
-- The content to be rendered when the route encounters an error.
-
-### `pendingComponent` property
-
-- Type: `RouteComponent` or `LazyRouteComponent`
-- Optional - Defaults to `routerOptions.defaultPendingComponent`
-- The content to be rendered if and when the route is pending and has reached its pendingMs threshold.

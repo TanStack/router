@@ -13,6 +13,8 @@ The `RootRoute` constructor accepts an object as its only argument.
 
 ### Constructor options
 
+The options that will be used to configure the root route instance.
+
 - Type:
 
 ```tsx
@@ -27,21 +29,28 @@ Omit<
 >
 ```
 
-- [RouteOptions](../RouteOptionsType)
-- Required
-- The options that will be used to configure the root route instance.
+- [`RouteOptions`](../RouteOptionsType)
+- Optional
 
-## `RootRoute` methods
+## Constructor returns
 
-The `RootRoute` class implements the following method(s):
+A new [`Route`](../RouteType) instance.
 
-### `.addChildren` method
+## Examples
 
-- Type: `(children: Route[]) => this`
-- Adds child routes to the root route instance and returns the root route instance (but with updated types to reflect the new children)
+```tsx
+import { RootRoute, createRouter, Outlet } from '@tanstack/react-router'
 
-### `.update` method
+const rootRoute = new RootRoute({
+  component: () => <Outlet />,
+  // ... root route options
+})
 
-- Type: `(options: Partial<UpdatableRouteOptions>) => this`
-- Updates the root route instance with new options and returns the root route instance (but with updated types to reflect the new options)
-- In some circumstances, it can be useful to update a root route instance's options after it has been created to avoid circular type references.
+const routeTree = rootRoute.addChildren([
+  // ... other routes
+])
+
+const router = createRouter({
+  routeTree,
+})
+```
