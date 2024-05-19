@@ -98,7 +98,7 @@ Commits a new location object to the browser history.
   ```
 - Properties
   - `location`
-    - Type: `ParsedLocation`
+    - Type: [`ParsedLocation`](../ParsedLocationType)
     - Required
     - The location to commit to the browser history.
   - `replace`
@@ -231,4 +231,3 @@ Hydrates the router's critical state from a serializable object that was sent fr
     - Type: `DehydratedRouter`
     - Required
     - The dehydrated router state that was sent from the server.
-    -
