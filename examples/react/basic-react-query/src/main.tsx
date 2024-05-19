@@ -20,7 +20,7 @@ import {
   useQueryErrorResetBoundary,
   useSuspenseQuery,
 } from '@tanstack/react-query'
-import axios from 'axios'
+import axios from 'redaxios'
 
 type PostType = {
   id: string

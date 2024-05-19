@@ -1,6 +1,6 @@
 import { PickAsPartial, PickAsRequired } from '@tanstack/react-router'
 import { match } from 'assert'
-import axios from 'axios'
+import axios from 'redaxios'
 import { produce } from 'immer'
 import { actionDelayFn, loaderDelayFn, shuffle } from './utils'
 export type Invoice = {

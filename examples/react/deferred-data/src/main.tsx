@@ -14,7 +14,7 @@ import {
   createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import axios from 'axios'
+import axios from 'redaxios'
 
 type PostType = {
   id: string
@@ -56,7 +56,7 @@ const fetchPost = async (postId: string) => {
       ),
     )
     .catch((err) => {
-      if (err.response.status === 404) {
+      if (err.status === 404) {
         throw new NotFoundError(`Post with id "${postId}" not found!`)
       }
       throw err

@@ -12,7 +12,7 @@
     "@tanstack/react-router": "^1.33.4",
     "@tanstack/router-devtools": "^1.33.4",
     "@tanstack/router-vite-plugin": "^1.32.17",
-    "axios": "^1.6.5",
+    "redaxios": "^0.5.0",
     "immer": "^10.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

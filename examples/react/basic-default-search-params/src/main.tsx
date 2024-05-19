@@ -13,7 +13,7 @@ import {
   createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import axios from 'axios'
+import axios from 'redaxios'
 import { z } from 'zod'
 
 type PostType = {
@@ -36,7 +36,7 @@ const fetchPost = async (postId: number) => {
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .catch((err) => {
-      if (err.response.status === 404) {
+      if (err.status === 404) {
         throw new NotFoundError(`Post with id "${postId}" not found!`)
       }
       throw err

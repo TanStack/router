@@ -14,7 +14,7 @@ import {
   createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import axios from 'axios'
+import axios from 'redaxios'
 import * as Dialog from '@radix-ui/react-dialog'
 
 type PhotoType = {
@@ -42,7 +42,7 @@ const fetchPhoto = async (photoId: string) => {
     .get<PhotoType>(`https://jsonplaceholder.typicode.com/photos/${photoId}`)
     .then((r) => r.data)
     .catch((err) => {
-      if (err.response.status === 404) {
+      if (err.status === 404) {
         throw new NotFoundError(`Photo with id "${photoId}" not found!`)
       }
       throw err

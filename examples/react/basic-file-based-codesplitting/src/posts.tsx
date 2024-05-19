@@ -1,5 +1,5 @@
 import { notFound } from '@tanstack/react-router'
-import axios from 'axios'
+import axios from 'redaxios'
 
 export type PostType = {
   id: string
@@ -14,7 +14,7 @@ export const fetchPost = async (postId: string) => {
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .then((r) => r.data)
     .catch((err) => {
-      if (err.response.status === 404) {
+      if (err.status === 404) {
         throw notFound()
       }
       throw err

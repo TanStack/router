@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios from 'redaxios'
 
 async function loaderDelayFn<T>(fn: (...args: any[]) => Promise<T> | T) {
   const delay = Number(sessionStorage.getItem('loaderDelay') ?? 0)

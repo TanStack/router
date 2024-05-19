@@ -8,9 +8,12 @@ import { createApp } from 'vinxi'
 import { normalize } from 'vinxi/lib/path'
 import { config } from 'vinxi/plugins/config'
 // @ts-expect-error
+import { serverComponents } from '@vinxi/server-components/plugin'
+// @ts-expect-error
 import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
 import { serverTransform } from '@vinxi/server-functions/server'
+import { z } from 'zod'
 import type * as vite from 'vite'
 
 function startVite() {
@@ -27,18 +30,56 @@ function startVite() {
   })
 }
 
-export function defineConfig(opts?: {
-  vite?: {
-    plugins?: () => Array<vite.Plugin>
-  }
-  routers?: {
-    client?: {
-      vite?: {
-        plugins?: () => Array<vite.Plugin>
-      }
-    }
-  }
-}) {
+const viteSchema = z.object({
+  plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
+})
+
+const babelSchema = z.object({
+  plugins: z
+    .array(z.union([z.tuple([z.string(), z.any()]), z.string()]))
+    .optional(),
+})
+
+const reactSchema = z.object({
+  babel: babelSchema.optional(),
+})
+
+const routersSchema = z.object({
+  ssr: z
+    .object({
+      entry: z.string().optional(),
+      vite: viteSchema.optional(),
+    })
+    .optional(),
+  rsc: z
+    .object({
+      vite: viteSchema.optional(),
+    })
+    .optional(),
+  client: z
+    .object({
+      entry: z.string().optional(),
+      vite: viteSchema.optional(),
+    })
+    .optional(),
+  server: z
+    .object({
+      vite: viteSchema.optional(),
+    })
+    .optional(),
+})
+
+const optsSchema = z
+  .object({
+    react: reactSchema.optional(),
+    vite: viteSchema.optional(),
+    routers: routersSchema.optional(),
+  })
+  .optional()
+
+export function defineConfig(opts?: z.infer<typeof optsSchema>) {
+  optsSchema.parse(opts)
+
   return createApp({
     server: {
       preset: 'vercel',
@@ -53,14 +94,30 @@ export function defineConfig(opts?: {
         dir: './public',
         base: '/',
       },
+      // startRouterProxy({
+      //   name: 'rsc',
+      //   worker: true,
+      //   type: 'http',
+      //   base: '/_rsc',
+      //   handler: './app/react-server.tsx',
+      //   target: 'server',
+      //   plugins: () => [
+      //     startVite(),
+      //     ...(opts?.vite?.plugins?.() || []),
+      //     ...(opts?.routers?.rsc?.vite?.plugins?.() || []),
+      //     serverComponents.server(),
+      //     reactRefresh(),
+      //   ],
+      // }),
       startRouterProxy({
         name: 'ssr',
         type: 'http',
-        handler: './app/server.tsx',
+        handler: opts?.routers?.ssr?.entry || './app/server.tsx',
         target: 'server',
         plugins: () => [
           startVite(),
           ...(opts?.vite?.plugins?.() || []),
+          ...(opts?.routers?.ssr?.vite?.plugins?.() || []),
           serverTransform({
             runtime: '@tanstack/start/server-runtime',
           }),
@@ -72,7 +129,7 @@ export function defineConfig(opts?: {
       startRouterProxy({
         name: 'client',
         type: 'client',
-        handler: './app/client.tsx',
+        handler: opts?.routers?.client?.entry || './app/client.tsx',
         target: 'browser',
         base: '/_build',
         build: {
@@ -85,13 +142,21 @@ export function defineConfig(opts?: {
           serverFunctions.client({
             runtime: '@tanstack/start/client-runtime',
           }),
-          reactRefresh(),
+          reactRefresh({
+            babel: opts?.react?.babel,
+          }),
+          // serverComponents.client(),
         ],
       }),
       startRouterProxy(
         serverFunctions.router({
           name: 'server',
-          plugins: () => [startVite(), ...(opts?.vite?.plugins?.() || [])],
+          plugins: () => [
+            startVite(),
+            ...(opts?.vite?.plugins?.() || []),
+            ...(opts?.routers?.server?.vite?.plugins?.() || []),
+            // serverComponents.serverActions(),
+          ],
           // For whatever reason, vinxi expects a path relative
           // to the project here. This is a workaround for that.
           handler: importToProjectRelative('@tanstack/start/server-handler'),
