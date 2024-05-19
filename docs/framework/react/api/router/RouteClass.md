@@ -40,4 +40,4 @@ The `Route` class implements the following method(s):
 
 ### ...`RouteApi` methods
 
-- All of the methods from the [`RouteApi`](../RouteApiClass) class are available on the `Route` class.
+- All of the methods from [`RouteApi`](../RouteApiType) class are available on the `Route` class.
