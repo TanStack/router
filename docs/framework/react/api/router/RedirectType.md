@@ -12,6 +12,8 @@ export type Redirect = {
 } & NavigateOptions
 ```
 
+- [`NavigateOptions`](../NavigateOptionsType)
+
 ## Redirect properties
 
 The `Redirect` object accepts/contains the following properties:

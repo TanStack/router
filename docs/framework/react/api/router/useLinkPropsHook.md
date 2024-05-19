@@ -7,11 +7,16 @@ The `useLinkProps` hook that takes a [`UseLinkPropsOptions`](../UseLinkPropsOpti
 
 ## useLinkProps options
 
+```tsx
+type UseLinkPropsOptions = ActiveLinkOptions &
+  React.AnchorHTMLAttributes<HTMLAnchorElement>
+```
+
+- [`ActiveLinkOptions`](../ActiveLinkOptionsType)
+- The `useLinkProps` options are used to build a [`LinkProps`](../LinkPropsType) object.
+- It also extends the `React.AnchorHTMLAttributes<HTMLAnchorElement>` type, so that any additional props that are passed to the `useLinkProps` hook will be merged with the [`LinkProps`](../LinkPropsType) object.
+
 The [`UseLinkPropsOptions`](../UseLinkPropsOptionsType) object accepts the following properties:
-
-### `options` option
-
-- Type: [`NavigateOptions`](../NavigateOptionsType)
 
 ## useLinkProps returns
 

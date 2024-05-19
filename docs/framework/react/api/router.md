@@ -70,7 +70,6 @@ title: Router API
   - [`RouterState Type`](./RouterStateType)
   - [`ToMaskOptions Type`](./ToMaskOptionsType)
   - [`ToOptions Type`](./ToOptionsType)
-  - [`UseLinkPropsOptions Type`](./UseLinkPropsOptionsType)
   - [`UseMatchRouteOptions Type`](./UseMatchRouteOptionsType)
 - ⚠️ Deprecated
   - [`FileRoute Class`](./FileRouteClass)
