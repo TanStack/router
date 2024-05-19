@@ -27,6 +27,30 @@ The `RouteOptions` type accepts an object with the following properties:
 - Optional, but required if a `path` is not provided
 - The unique identifier for the route if it is to be configured as a layout route. If provided, the, the route will not match against the location pathname and its routes will be flattened into its parent route for matching.
 
+### `component` property
+
+- Type: `RouteComponent` or `LazyRouteComponent`
+- Optional - Defaults to `<Outlet />`
+- The content to be rendered when the route is matched.
+
+### `errorComponent` property
+
+- Type: `RouteComponent` or `LazyRouteComponent`
+- Optional - Defaults to `routerOptions.defaultErrorComponent`
+- The content to be rendered when the route encounters an error.
+
+### `pendingComponent` property
+
+- Type: `RouteComponent` or `LazyRouteComponent`
+- Optional - Defaults to `routerOptions.defaultPendingComponent`
+- The content to be rendered if and when the route is pending and has reached its pendingMs threshold.
+
+### `notFoundComponent` property
+
+- Type: `NotFoundRouteComponent` or `LazyRouteComponent`
+- Optional - Defaults to `routerOptions.defaultNotFoundComponent`
+- The content to be rendered when the route is not found.
+
 ### `validateSearch` method
 
 - Type: `(rawSearchParams: unknown) => TSearchSchema`
@@ -226,21 +250,3 @@ type loaderDeps = (opts: {
 - Type: `(error: Error, errorInfo: ErrorInfo) => void`
 - Optional - Defaults to `routerOptions.defaultOnCatch`
 - A function that will be called when errors are caught when the route encounters an error.
-
-### `component` property
-
-- Type: `RouteComponent` or `LazyRouteComponent`
-- Optional - Defaults to `<Outlet />`
-- The content to be rendered when the route is matched.
-
-### `errorComponent` property
-
-- Type: `RouteComponent` or `LazyRouteComponent`
-- Optional - Defaults to `routerOptions.defaultErrorComponent`
-- The content to be rendered when the route encounters an error.
-
-### `pendingComponent` property
-
-- Type: `RouteComponent` or `LazyRouteComponent`
-- Optional - Defaults to `routerOptions.defaultPendingComponent`
-- The content to be rendered if and when the route is pending and has reached its pendingMs threshold.

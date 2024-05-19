@@ -15,13 +15,9 @@ The `createRootRouteWithContext` function accepts a single generic argument:
 - Optional, **but recommended**.
 - The context type that will be required to be fulfilled when the router is created
 
-## createRootRouteWithContext options
-
-- No options are available for this function
-
 ## createRootRouteWithContext returns
 
-- A factory function that can be used to create a new [`RootRoute`](../RootRouteClass) instance.
+- A factory function that can be used to create a new [`createRootRoute`](../createRootRouteFunction) instance.
 - It accepts a single argument, the same as the [`createRootRoute`](../createRootRouteFunction) function.
 
 ## Examples

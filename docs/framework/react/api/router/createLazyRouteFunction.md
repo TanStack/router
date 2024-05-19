@@ -17,27 +17,18 @@ The `createLazyRoute` function accepts a single argument of type `string` that r
 
 ### createLazyRoute returns
 
-The `createLazyRoute` function a partial set of the configuration options of [`createRoute`](../createRouteFunction) function, only letting you configure the non-critical parts of the route.
+A new function that accepts a single argument of partial of the type [`RouteOptions`](../RouteOptionsType) that will be used to configure the file [`Route`](../RouteType) instance.
 
-#### `component`
+- Type:
 
-- Type: `RouteComponent`
-- The component to render when the route is matched.
+```tsx
+Pick<
+  RouteOptions,
+  'component' | 'pendingComponent' | 'errorComponent' | 'notFoundComponent'
+>
+```
 
-#### `pendingComponent`
-
-- Type: `RouteComponent`
-- The component to render while the route is loading.
-
-#### `errorComponent`
-
-- Type: `ErrorRouteComponent`
-- The component to render when an error has been thrown by the router for the route.
-
-#### `notFoundComponent`
-
-- Type: `NotFoundRouteComponent`
-- The component to render when the route is not found.
+- [`RouteOptions`](../RouteOptionsType)
 
 > ⚠️ Note: This route instance must be manually lazily loaded against its critical route instance using the `lazy` method returned by the `createRoute` function.
 

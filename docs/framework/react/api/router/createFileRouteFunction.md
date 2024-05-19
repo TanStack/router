@@ -9,7 +9,7 @@ The `createFileRoute` function is a factory that can be used to create a file-ba
 
 The `createFileRoute` function accepts a single argument of type `string` that represents the `path` of the file that the route will be generated from.
 
-### `path`
+### `path` option
 
 - Type: `string` literal
 - Required, but **automatically inserted and updated by the `tsr generate` and `tsr watch` commands**
@@ -17,7 +17,7 @@ The `createFileRoute` function accepts a single argument of type `string` that r
 
 ## createFileRoute returns
 
-- A new [`FileRoute`](../FileRouteClass) instance.
+A new function that accepts a single argument of type [`RouteOptions`](../RouteOptionsType) that will be used to configure the file [`Route`](../RouteType) instance.
 
 > ⚠️ Note: For `tsr generate` and `tsr watch` to work properly, the file route instance must be exported from the file using the `Route` identifier.
 

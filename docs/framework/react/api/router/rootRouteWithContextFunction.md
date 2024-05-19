@@ -17,23 +17,15 @@ The `rootRouteWithContext` function accepts a single generic argument:
 - Optional, **but recommended**.
 - The context type that will be required to be fulfilled when the router is created
 
-## rootRouteWithContext options
-
-- No options are available for this function
-
 ## rootRouteWithContext returns
 
-- A factory function that can be used to create a new [`RootRoute`](../RootRouteClass) instance.
+- A factory function that can be used to create a new [`createRootRoute`](../createRootRouteFunction) instance.
 - It accepts a single argument, the same as the [`createRootRoute`](../createRootRouteFunction) function.
 
 ## Examples
 
 ```tsx
-import {
-  rootRouteWithContext,
-  createRouter,
-  Outlet,
-} from '@tanstack/react-router'
+import { rootRouteWithContext, createRouter } from '@tanstack/react-router'
 import { QueryClient } from '@tanstack/react-query'
 
 interface MyRouterContext {

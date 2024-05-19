@@ -17,27 +17,27 @@ The `Route` constructor accepts an object as its only argument.
 - Required
 - The options that will be used to configure the route instance
 
-## `Route` methods
+### Constructor returns
 
-The `Route` class implements the following method(s):
+A new [`Route`](../RouteType) instance.
 
-### `.addChildren` method
+## Examples
 
-- Type: `(children: Route[]) => this`
-- Adds child routes to the route instance and returns the route instance (but with updated types to reflect the new children).
+```tsx
+import { Route } from '@tanstack/react-router'
+import { rootRoute } from './__root'
 
-### `.update` method
+const indexRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  loader: () => {
+    return 'Hello World'
+  },
+  component: IndexComponent,
+})
 
-- Type: `(options: Partial<UpdatableRouteOptions>) => this`
-- Updates the route instance with new options and returns the route instance (but with updated types to reflect the new options).
-- In some circumstances, it can be useful to update a route instance's options after it has been created to avoid circular type references.
-- ...`RouteApi` methods
-
-### `.lazy` method
-
-- Type: `(lazyImporter: () => Promise<Partial<UpdatableRouteOptions>>) => this`
-- Updates the route instance with a new lazy importer which will be resolved lazily when loading the route. This can be useful for code splitting.
-
-### ...`RouteApi` methods
-
-- All of the methods from [`RouteApi`](../RouteApiType) class are available on the `Route` class.
+function IndexComponent() {
+  const data = indexRoute.useLoaderData()
+  return <div>{data}</div>
+}
+```
