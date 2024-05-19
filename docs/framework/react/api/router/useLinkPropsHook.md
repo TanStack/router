@@ -3,7 +3,7 @@ id: useLinkPropsHook
 title: useLinkProps hook
 ---
 
-The `useLinkProps` hook that takes a [`UseLinkPropsOptions`](../UseLinkPropsOptionsType) object and returns an `React.AnchorHTMLAttributes<HTMLAnchorElement>` props object. These props can then be safely applied to an anchor element to create a link that can be used to navigate to the new location. This includes changes to the pathname, search params, hash, and location state.
+The `useLinkProps` hook that takes an object as its argument and returns a `React.AnchorHTMLAttributes<HTMLAnchorElement>` props object. These props can then be safely applied to an anchor element to create a link that can be used to navigate to the new location. This includes changes to the pathname, search params, hash, and location state.
 
 ## useLinkProps options
 
