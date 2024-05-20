@@ -21,6 +21,7 @@
     "test:types": "nx affected --target=test:types --exclude=examples/**",
     "build": "nx affected --target=build --exclude=examples/**",
     "build:all": "nx run-many --target=build --exclude=examples/**",
+    "build:examples": "nx run-many --target=build",
     "watch": "pnpm run build:all && nx watch --all -- pnpm run build:all",
     "dev": "pnpm run watch",
     "prettier": "prettier --ignore-unknown '**/*'",
