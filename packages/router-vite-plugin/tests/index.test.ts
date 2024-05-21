@@ -59,6 +59,6 @@ async function splitTestFile(opts: { file: string }) {
   // console.log(result.code)
   // console.log()
   await expect(result.code).toMatchFileSnapshot(
-    `./snapshots/${filename.replace('.tsx', '')}?split.tsx`,
+    `./snapshots/${filename.replace('.tsx', '')}(...)split.tsx`,
   )
 }
