@@ -8,7 +8,10 @@ type Resolver = {
   deny: () => void
 }
 
-export function useBlocker(blockerFn: BlockerFn, condition: boolean = true) {
+export function useBlocker(
+  blockerFn: BlockerFn,
+  condition: boolean | any = true,
+) {
   const { history } = useRouter()
 
   const [resolver, setResolver] = React.useState<Resolver>({
@@ -35,7 +38,7 @@ export function useBlocker(blockerFn: BlockerFn, condition: boolean = true) {
 
       const canNavigateAsync = await promise
 
-      if (!canNavigateAsync) setPromise(createPromise)
+      setPromise(createPromise)
 
       return canNavigateAsync
     }
