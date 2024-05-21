@@ -1738,6 +1738,7 @@ export class Router<
                 const parentContext =
                   parentMatch?.context ?? this.options.context ?? {}
 
+                // Make sure the match has parent context set before going further
                 matches[index] = match = updateMatch(match.id, (prev) => ({
                   ...prev,
                   routeContext: replaceEqualDeep(
