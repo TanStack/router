@@ -47,12 +47,16 @@ export function useBlocker(blockerFn: BlockerFn, condition: boolean = true) {
 }
 
 export function Block({ blocker, condition, children }: PromptProps) {
-  useBlocker(blocker, condition)
-  return children ?? null
+  const resolver = useBlocker(blocker, condition)
+  return children
+    ? typeof children === 'function'
+      ? children(resolver)
+      : children
+    : null
 }
 
 export type PromptProps = {
   blocker: BlockerFn
   condition?: boolean | any
-  children?: ReactNode
+  children?: ReactNode | (({ allow, deny }: Resolver) => ReactNode)
 }
