@@ -77,7 +77,7 @@ describe('Link', () => {
     ).rejects.toThrow()
   })
 
-  it('when the current route is the root', async () => {
+  test('when the current route is the root', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -130,6 +130,55 @@ describe('Link', () => {
     expect(postsLink).toHaveAttribute('href', '/posts')
     expect(postsLink).not.toHaveAttribute('aria-current', 'page')
     expect(postsLink).not.toHaveAttribute('data-status', 'active')
+  })
+
+  test('when the current route is the root with beforeLoad that throws', async () => {
+    const onError = vi.fn()
+    const rootRoute = createRootRoute({
+      onError,
+      beforeLoad: () => {
+        throw new Error('Something went wrong!')
+      },
+      errorComponent: () => <span>Oops! Something went wrong!</span>,
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Index</h1>
+            <Link to="/" activeProps={{ className: 'active' }}>
+              Index
+            </Link>
+            <Link to="/posts" inactiveProps={{ className: 'inactive' }}>
+              Posts
+            </Link>
+          </React.Fragment>
+        )
+      },
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Posts</h1>
+          </React.Fragment>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Oops! Something went wrong!'))
+    expect(onError).toHaveBeenCalledOnce()
   })
 
   test('when navigating to /posts', async () => {
@@ -342,7 +391,7 @@ describe('Link', () => {
     }
 
     const ErrorComponent = () => {
-      return <h1>Ooops, something went wrong</h1>
+      return <h1>Oops, something went wrong</h1>
     }
 
     const postsRoute = createRoute({
@@ -377,7 +426,7 @@ describe('Link', () => {
     await waitFor(() => expect(onError).toHaveBeenCalledOnce())
 
     expect(
-      await screen.findByText('Ooops, something went wrong'),
+      await screen.findByText('Oops, something went wrong'),
     ).toBeInTheDocument()
   })
 
@@ -617,6 +666,173 @@ describe('Link', () => {
     fireEvent.click(postsLink)
 
     expect(await screen.findByText('UserId: userId')).toBeInTheDocument()
+  })
+
+  test('when navigating to /posts with a beforeLoad that throws an error', async () => {
+    const onError = vi.fn()
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Index</h1>
+            <Link to="/posts">Posts</Link>
+          </React.Fragment>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <React.Fragment>
+          <h1>Posts</h1>
+        </React.Fragment>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      beforeLoad: () => {
+        throw new Error('Oops. Something went wrong!')
+      },
+      onError,
+      errorComponent: () => <span>Oops! Something went wrong!</span>,
+      component: PostsComponent,
+    })
+
+    const router = createRouter({
+      context: { userId: 'userId' },
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    fireEvent.click(postsLink)
+
+    expect(
+      await screen.findByText('Oops! Something went wrong!'),
+    ).toBeInTheDocument()
+
+    expect(onError).toHaveBeenCalledOnce()
+  })
+
+  test('when navigating to /posts with a beforeLoad that throws an error bubbles to the root', async () => {
+    const rootRoute = createRootRoute({
+      errorComponent: () => <span>Oops! Something went wrong!</span>,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Index</h1>
+            <Link to="/posts">Posts</Link>
+          </React.Fragment>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <React.Fragment>
+          <h1>Posts</h1>
+        </React.Fragment>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      beforeLoad: () => {
+        throw new Error('Oops. Something went wrong!')
+      },
+      component: PostsComponent,
+    })
+
+    const router = createRouter({
+      context: { userId: 'userId' },
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    fireEvent.click(postsLink)
+
+    expect(
+      await screen.findByText('Oops! Something went wrong!'),
+    ).toBeInTheDocument()
+  })
+
+  test('when navigating to /posts with a beforeLoad that throws an error bubbles to the nearest parent', async () => {
+    const rootRoute = createRootRoute({
+      errorComponent: () => <span>Root error</span>,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Index</h1>
+            <Link to="/posts/$postId" params={{ postId: 'id1' }}>
+              Post
+            </Link>
+          </React.Fragment>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <React.Fragment>
+          <h1>Posts</h1>
+          <Outlet />
+        </React.Fragment>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      errorComponent: () => <span>Oops! Something went wrong!</span>,
+      component: PostsComponent,
+    })
+
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postId',
+      beforeLoad: () => {
+        throw new Error('Oops. Something went wrong!')
+      },
+    })
+
+    const router = createRouter({
+      context: { userId: 'userId' },
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        postsRoute.addChildren([postRoute]),
+      ]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postLink = await screen.findByRole('link', { name: 'Post' })
+
+    fireEvent.click(postLink)
+
+    expect(
+      await screen.findByText('Oops! Something went wrong!'),
+    ).toBeInTheDocument()
   })
 
   test('when navigating to /posts with params', async () => {

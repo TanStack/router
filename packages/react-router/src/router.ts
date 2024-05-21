@@ -1717,13 +1717,13 @@ export class Router<
                   handleRedirectAndNotFound(match, err)
                 }
 
-                matches[index] = match = {
+                matches[index] = match = updateMatch(match.id, () => ({
                   ...match,
                   error: err,
                   status: 'error',
                   updatedAt: Date.now(),
                   abortController: new AbortController(),
-                }
+                }))
               }
 
               if (match.paramsError) {
