@@ -3,7 +3,7 @@ id: RouterEventsType
 title: RouterEvents type
 ---
 
-The `RouterEvents` type contains all of the events that the router can emit. Each top-level key of this type, represents an events that the router can emit.
+The `RouterEvents` type contains all of the events that the router can emit. Each top-level key of this type, represents the name of an event that the router can emit. The values of the keys are the event payloads.
 
 ```tsx
 type RouterEvents = {
@@ -30,7 +30,7 @@ type RouterEvents = {
 
 ## RouterEvents properties
 
-After subscribing to an event in the router, the following properties become accessible in the first argument of the callback function once it has been emitted.
+Once an event is emitted, the following properties will be present on the event payload.
 
 ### `type` property
 
