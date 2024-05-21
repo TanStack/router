@@ -19,7 +19,7 @@ The `useRouterState` hook accepts an optional `options` object.
 
 ## useRouterState returns
 
-- The current [RouterState](../RouterStateType) object or `TSelected` if a `select` function is provided.
+- The current [`RouterState`](../RouterStateType) object or `TSelected` if a `select` function is provided.
 
 ## Examples
 
