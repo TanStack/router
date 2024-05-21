@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 const config = defineConfig({
   plugins: [react()],
   test: {
+    globals: true,
     name: 'react-router',
     watch: false,
     environment: 'jsdom',
