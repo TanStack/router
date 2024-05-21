@@ -54,7 +54,7 @@ function MyComponent() {
 
 The `useBlocker` hook takes 2 arguments:
 
-- `message: () => string` **Required** - A function that returns a string to show to the user when they attempt to navigate away
+- `blockerFn: BlockerFn` **Required** - A function that returns a `boolean` or `Promise<boolean>` indicating whether to allow navigation.
 - `condition?: boolean` Optional, defaults to `true` - Any expression or variable to be tested for truthiness to determine if navigation should be blocked
 
 ## Component-based blocking
