@@ -5,6 +5,8 @@ title: useMatches hook
 
 The `useMatches` hook returns all of the [`RouteMatch`](../RouteMatchType) objects from the router **regardless of its callers position in the React component tree**.
 
+> 🧠 If you only want the parent or child matches, then you can use the [`useParentMatches`](../useParentMatchesHook) or the [`useChildMatches`](../useChildMatchesHook) based on the selection you need.
+
 ## useMatches options
 
 The `useMatches` hook accepts a single _optional_ argument, an `options` object.
