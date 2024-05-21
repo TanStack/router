@@ -31,7 +31,6 @@ export function useBlocker(
 
   React.useEffect(() => {
     const blockerFnComposed = async () => {
-      // Execute the blocker function
       const canNavigateSync = blockerFn()
 
       if (canNavigateSync) return true

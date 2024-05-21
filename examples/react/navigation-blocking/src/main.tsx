@@ -1,15 +1,15 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
 import {
+  Link,
   Outlet,
   RouterProvider,
-  Link,
+  createRootRoute,
+  createRoute,
   createRouter,
   useBlocker,
-  createRoute,
-  createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
 
 const rootRoute = createRootRoute({
   component: RootComponent,
@@ -66,11 +66,9 @@ const editor1Route = createRoute({
 
 function Editor1Component() {
   const [value, setValue] = React.useState('')
+  const [showConfirm, setShowConfirm] = React.useState(false)
 
-  useBlocker(
-    () => window.confirm('Are you sure you want to leave editor 1?'),
-    value,
-  )
+  const { allow, deny } = useBlocker(() => setShowConfirm(true), value)
 
   return (
     <div className="p-2">
@@ -80,6 +78,29 @@ function Editor1Component() {
         onChange={(e) => setValue(e.target.value)}
         className="border"
       />
+      {showConfirm && (
+        <div className="mt-2">
+          <div>Are you sure you want to leave editor 1?</div>
+          <button
+            className="bg-lime-500 text-white rounded p-1 px-2 mr-2"
+            onClick={() => {
+              setShowConfirm(false)
+              allow()
+            }}
+          >
+            YES
+          </button>
+          <button
+            className="bg-red-500 text-white rounded p-1 px-2"
+            onClick={() => {
+              setShowConfirm(false)
+              deny()
+            }}
+          >
+            NO
+          </button>
+        </div>
+      )}
       <hr className="m-2" />
       <Link to="/editor-1/editor-2">Go to Editor 2</Link>
       <Outlet />
