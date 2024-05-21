@@ -25,7 +25,7 @@ const renderPosts = createServerFn('GET', async () => {
                 </Link>
               </li>
             )
-          }
+          },
         )}
       </ul>
       <hr />
