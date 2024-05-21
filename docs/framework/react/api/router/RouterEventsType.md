@@ -30,7 +30,7 @@ type RouterEvents = {
 
 ## RouterEvents properties
 
-After subscribing to an event in the router, the following properties become accessible in the event object when the event is emitted.
+After subscribing to an event in the router, the following properties become accessible in the first argument of the callback function once it has been emitted.
 
 ### `type` property
 
