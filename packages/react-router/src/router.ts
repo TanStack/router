@@ -1745,7 +1745,6 @@ export class Router<
                     match.routeContext,
                     parentContext,
                   ),
-                  context: replaceEqualDeep(match.context, parentContext),
                   abortController,
                 }))
 

@@ -59,7 +59,7 @@ export default eventHandler(async (event) => {
     await reactServerManifest.inputs[reactServerManifest.handler].assets()
   ).filter(
     (m) =>
-      (m.tag === 'link' && m.attrs.rel === 'stylesheet') || m.tag === 'style'
+      (m.tag === 'link' && m.attrs.rel === 'stylesheet') || m.tag === 'style',
   )
 
   const assets = await clientManifest.inputs[clientManifest.handler].assets()
@@ -72,7 +72,7 @@ export default eventHandler(async (event) => {
           {assets.map((m) => renderAsset(m))}
         </Suspense>
       }
-    />
+    />,
   )
 
   // // @ts-ignore
