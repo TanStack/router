@@ -670,9 +670,7 @@ describe('Link', () => {
 
   test('when navigating to /posts with a beforeLoad that throws an error', async () => {
     const onError = vi.fn()
-    const rootRoute = createRootRouteWithContext<{
-      userId: string
-    }>()()
+    const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
@@ -687,12 +685,9 @@ describe('Link', () => {
     })
 
     const PostsComponent = () => {
-      const context = useRouteContext({ strict: false })
       return (
         <React.Fragment>
           <h1>Posts</h1>
-          <span>UserId: {context.userId}</span>
-          <span>Username: {context.username}</span>
         </React.Fragment>
       )
     }
@@ -724,6 +719,57 @@ describe('Link', () => {
     ).toBeInTheDocument()
 
     expect(onError).toHaveBeenCalledOnce()
+  })
+
+  test('when navigating to /posts with a beforeLoad that throws an error bubbles to the root', async () => {
+    const rootRoute = createRootRoute({
+      errorComponent: () => <span>Oops! Something went wrong!</span>,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Index</h1>
+            <Link to="/posts">Posts</Link>
+          </React.Fragment>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <React.Fragment>
+          <h1>Posts</h1>
+        </React.Fragment>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      beforeLoad: () => {
+        throw new Error('Oops. Something went wrong!')
+      },
+      component: PostsComponent,
+    })
+
+    const router = createRouter({
+      context: { userId: 'userId' },
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    fireEvent.click(postsLink)
+
+    expect(
+      await screen.findByText('Oops! Something went wrong!'),
+    ).toBeInTheDocument()
   })
 
   test('when navigating to /posts with params', async () => {
