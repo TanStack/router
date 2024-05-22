@@ -3,9 +3,9 @@ import { useRouter } from './useRouter'
 import type { BlockerFn } from '@tanstack/history'
 import type { ReactNode } from './route'
 
-type Resolver = {
-  allow: () => void
-  deny: () => void
+type BlockerResolver = {
+  proceed: () => void
+  reset: () => void
 }
 
 export function useBlocker(
@@ -14,16 +14,16 @@ export function useBlocker(
 ) {
   const { history } = useRouter()
 
-  const [resolver, setResolver] = React.useState<Resolver>({
-    allow: () => {},
-    deny: () => {},
+  const [resolver, setResolver] = React.useState<BlockerResolver>({
+    proceed: () => {},
+    reset: () => {},
   })
 
   const createPromise = () =>
     new Promise<boolean>((resolve) => {
       setResolver({
-        allow: () => resolve(true),
-        deny: () => resolve(false),
+        proceed: () => resolve(true),
+        reset: () => resolve(false),
       })
     })
 
@@ -60,5 +60,5 @@ export function Block({ blocker, condition, children }: PromptProps) {
 export type PromptProps = {
   blocker: BlockerFn
   condition?: boolean | any
-  children?: ReactNode | (({ allow, deny }: Resolver) => ReactNode)
+  children?: ReactNode | (({ proceed, reset }: BlockerResolver) => ReactNode)
 }
