@@ -4,17 +4,20 @@ import type { BlockerFn } from '@tanstack/history'
 import type { ReactNode } from './route'
 
 type BlockerResolver = {
+  status: 'idle' | 'blocked'
   proceed: () => void
   reset: () => void
 }
 
-export function useBlocker(
-  blockerFn: BlockerFn,
-  condition: boolean | any = true,
-) {
+export function useBlocker(opts?: {
+  blockerFn?: BlockerFn
+  condition: boolean | any
+}) {
+  const condition = opts?.condition ?? true
   const { history } = useRouter()
 
   const [resolver, setResolver] = React.useState<BlockerResolver>({
+    status: 'idle',
     proceed: () => {},
     reset: () => {},
   })
@@ -22,6 +25,7 @@ export function useBlocker(
   const createPromise = () =>
     new Promise<boolean>((resolve) => {
       setResolver({
+        status: 'idle',
         proceed: () => resolve(true),
         reset: () => resolve(false),
       })
@@ -31,10 +35,14 @@ export function useBlocker(
 
   React.useEffect(() => {
     const blockerFnComposed = async () => {
-      const canNavigateSync = blockerFn()
+      const canNavigateSync = opts?.blockerFn?.()
 
       if (canNavigateSync) return true
 
+      setResolver((prev) => ({
+        ...prev,
+        status: 'blocked',
+      }))
       const canNavigateAsync = await promise
 
       setPromise(createPromise)
@@ -43,13 +51,13 @@ export function useBlocker(
     }
 
     return !condition ? undefined : history.block(blockerFnComposed)
-  }, [blockerFn, condition, history, promise])
+  }, [opts?.blockerFn, condition, history, promise, opts])
 
   return resolver
 }
 
-export function Block({ blocker, condition, children }: PromptProps) {
-  const resolver = useBlocker(blocker, condition)
+export function Block({ blockerFn, condition, children }: PromptProps) {
+  const resolver = useBlocker({ blockerFn, condition })
   return children
     ? typeof children === 'function'
       ? children(resolver)
@@ -58,7 +66,7 @@ export function Block({ blocker, condition, children }: PromptProps) {
 }
 
 export type PromptProps = {
-  blocker: BlockerFn
+  blockerFn?: BlockerFn
   condition?: boolean | any
   children?: ReactNode | (({ proceed, reset }: BlockerResolver) => ReactNode)
 }

@@ -67,15 +67,13 @@ const editor1Route = createRoute({
 function Editor1Component() {
   const [value, setValue] = React.useState('')
   const [useCustomBlocker, setUseCustomBlocker] = React.useState(false)
-  const [showConfirm, setShowConfirm] = React.useState(false)
 
-  const { allow, deny } = useBlocker(
-    () =>
-      useCustomBlocker
-        ? setShowConfirm(true)
-        : window.confirm('Are you sure you want to leave editor 1?'),
-    value,
-  )
+  const { proceed, reset, status } = useBlocker({
+    blockerFn: useCustomBlocker
+      ? undefined
+      : () => window.confirm('Are you sure you want to leave editor 1?'),
+    condition: value,
+  })
 
   return (
     <div className="flex flex-col p-2">
@@ -95,24 +93,18 @@ function Editor1Component() {
           className="border"
         />
       </div>
-      {showConfirm && (
+      {status === 'blocked' && (
         <div className="mt-2">
           <div>Are you sure you want to leave editor 1?</div>
           <button
             className="bg-lime-500 text-white rounded p-1 px-2 mr-2"
-            onClick={() => {
-              setShowConfirm(false)
-              allow()
-            }}
+            onClick={proceed}
           >
             YES
           </button>
           <button
             className="bg-red-500 text-white rounded p-1 px-2"
-            onClick={() => {
-              setShowConfirm(false)
-              deny()
-            }}
+            onClick={reset}
           >
             NO
           </button>
@@ -134,10 +126,10 @@ const editor2Route = createRoute({
 function Editor2Component() {
   const [value, setValue] = React.useState('')
 
-  useBlocker(
-    () => window.confirm('Are you sure you want to leave editor 2?'),
-    value,
-  )
+  useBlocker({
+    blockerFn: () => window.confirm('Are you sure you want to leave editor 2?'),
+    condition: value,
+  })
 
   return (
     <div className="p-2">
