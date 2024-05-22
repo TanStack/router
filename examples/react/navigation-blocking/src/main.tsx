@@ -66,18 +66,35 @@ const editor1Route = createRoute({
 
 function Editor1Component() {
   const [value, setValue] = React.useState('')
+  const [useCustomBlocker, setUseCustomBlocker] = React.useState(false)
   const [showConfirm, setShowConfirm] = React.useState(false)
 
-  const { allow, deny } = useBlocker(() => setShowConfirm(true), value)
+  const { allow, deny } = useBlocker(
+    () =>
+      useCustomBlocker
+        ? setShowConfirm(true)
+        : window.confirm('Are you sure you want to leave editor 1?'),
+    value,
+  )
 
   return (
-    <div className="p-2">
+    <div className="flex flex-col p-2">
       <h3>Editor 1</h3>
-      <input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        className="border"
-      />
+      <label>
+        <input
+          type="checkbox"
+          checked={useCustomBlocker}
+          onChange={(e) => setUseCustomBlocker(e.target.checked)}
+        />{' '}
+        Use custom blocker
+      </label>
+      <div>
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="border"
+        />
+      </div>
       {showConfirm && (
         <div className="mt-2">
           <div>Are you sure you want to leave editor 1?</div>
