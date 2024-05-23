@@ -82,8 +82,7 @@ export const useMeta = () => {
               preloadMeta.push({
                 tag: 'link',
                 attrs: {
-                  rel: 'preload',
-                  as: 'script',
+                  rel: 'modulepreload',
                   href: preload,
                 },
               })
