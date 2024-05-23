@@ -94,7 +94,12 @@ export const useMeta = () => {
     },
   })
 
-  return [...meta, ...preloadMeta, ...links] as Array<RouterManagedTag>
+  return uniqBy(
+    [...meta, ...preloadMeta, ...links] as Array<RouterManagedTag>,
+    (d) => {
+      return JSON.stringify(d)
+    },
+  )
 }
 
 export const useMetaElements = () => {
@@ -104,7 +109,7 @@ export const useMetaElements = () => {
     <>
       <meta name="tsr-meta" />
       {meta.map((asset, i) => (
-        <Asset {...asset} key={`tsr-meta-${asset.tag}-${i}`} />
+        <Asset {...asset} key={`tsr-meta-${JSON.stringify(asset)}`} />
       ))}
       <meta name="/tsr-meta" />
     </>
@@ -207,4 +212,16 @@ export function Body({ children, ...props }: React.HTMLProps<HTMLBodyElement>) {
       <div id="root">{children}</div>
     </body>
   )
+}
+
+function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
+  const seen = new Set<string>()
+  return arr.filter((item) => {
+    const key = fn(item)
+    if (seen.has(key)) {
+      return false
+    }
+    seen.add(key)
+    return true
+  })
 }
