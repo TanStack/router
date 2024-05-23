@@ -3,7 +3,12 @@ import type { PipeableStream } from 'react-dom/server'
 import { renderToPipeableStream } from 'react-dom/server'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'vinxi/server'
 import { getManifest } from 'vinxi/manifest'
-import { StartServer, transformStreamWithRouter } from '@tanstack/start/server'
+import {
+  StartServer,
+  transformStreamWithRouter,
+  getRouterManifest,
+} from '@tanstack/start/server'
+// import vinxi from 'vinxi'
 // import { Transform, PassThrough } from 'node:stream'
 
 import { createRouter } from './router'
@@ -19,27 +24,27 @@ export default eventHandler(async (event) => {
   const url = new URL(req.url)
   const href = url.href.replace(url.origin, '')
 
-  // Get assets for the server/client
-  const clientManifest = getManifest('client')
-  // let assets = (
-  //   await clientManifest.inputs[clientManifest.handler].assets()
-  // ).filter((d: any) => {
-  //   return !d.children?.includes('nuxt-devtools')
-  // }) as any
+  const routesManifest = getRouterManifest()
+  const rootRoute = (routesManifest.routes.__root__ =
+    routesManifest.routes.__root__ || {})
 
-  const assets = []
+  rootRoute.assets = rootRoute.assets || []
 
+  // Always fake that HMR is ready
   if (import.meta.env.DEV) {
-    assets.push({
+    rootRoute.assets.push({
       tag: 'script',
       children: `window.__vite_plugin_react_preamble_installed__ = true`,
     })
   }
 
-  assets.push({
+  // Get the entry for the client from vinxi
+  const vinxiClientManifest = getManifest('client')
+
+  rootRoute.assets.push({
     tag: 'script',
     attrs: {
-      src: clientManifest.inputs[clientManifest.handler].output.path,
+      src: vinxiClientManifest.inputs[vinxiClientManifest.handler].output.path,
       type: 'module',
       async: true,
       suppressHydrationWarning: true,
@@ -57,10 +62,23 @@ export default eventHandler(async (event) => {
   // Update the router with the history and context
   router.update({
     history,
-    context: {
-      assets,
-    },
   })
+
+  router.manifest = {
+    ...routesManifest,
+    routes: Object.fromEntries(
+      Object.entries(routesManifest.routes).map(([k, v]: any) => {
+        const { preloads, assets } = v
+        return [
+          k,
+          {
+            preloads,
+            assets,
+          },
+        ]
+      })
+    ),
+  }
 
   await router.load()
 
@@ -117,7 +135,7 @@ export default eventHandler(async (event) => {
   // Pipe the stream through our transforms
   const transformedStream = transforms.reduce(
     (stream, transform) => stream.pipe(transform as any),
-    stream,
+    stream
   )
 
   ;(event as any).__tsrHeadersSent = true

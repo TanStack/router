@@ -27,6 +27,7 @@ import {
 } from './path'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
+import type { Manifest } from './manifest'
 import type * as React from 'react'
 import type {
   HistoryLocation,
@@ -393,6 +394,7 @@ export type DehydratedRouteMatch = Pick<
 
 export interface DehydratedRouter {
   state: DehydratedRouterState
+  manifest?: Manifest
 }
 
 export type RouterConstructorOptions<
@@ -484,6 +486,7 @@ export class Router<
   injectedHtml: Array<InjectedHtmlEntry> = []
   dehydratedData?: TDehydrated
   viewTransitionPromise?: ControlledPromise<true>
+  manifest?: Manifest
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -2315,6 +2318,7 @@ export class Router<
             : undefined,
         })),
       },
+      manifest: this.manifest,
     }
   }
 
@@ -2377,6 +2381,8 @@ export class Router<
         matches: matches as any,
       }
     })
+
+    this.manifest = ctx.router.manifest
   }
 
   handleNotFound = (matches: Array<AnyRouteMatch>, err: NotFoundError) => {

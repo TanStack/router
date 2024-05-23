@@ -269,3 +269,4 @@ export {
   DefaultGlobalNotFound,
   type NotFoundError,
 } from './not-found'
+export { type Manifest, type RouterManagedTag } from './manifest'

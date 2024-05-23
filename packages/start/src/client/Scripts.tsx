@@ -1,25 +1,34 @@
+/* eslint-disable no-shadow */
 import { useRouter, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
 import { DehydrateRouter } from './DehydrateRouter'
 import { Asset } from './Asset'
-import type { RouterManagedTag } from './RouterManagedTag'
+import type { RouterManagedTag } from '@tanstack/react-router'
 
 export const Scripts = () => {
   const router = useRouter()
 
-  const manifestScripts =
-    (
-      router.options.context?.assets?.filter((d: any) => d.tag === 'script') as
-        | Array<RouterManagedTag>
-        | undefined
-    )?.map(({ tag, children, attrs }) => {
-      const { key, ...rest } = attrs || {}
-      return {
-        tag,
-        attrs: rest,
-        children,
-      }
-    }) ?? []
+  const assetScripts = useRouterState({
+    select: (state) => {
+      const assetScripts: Array<RouterManagedTag> = []
+
+      state.matches
+        .map((match) => router.looseRoutesById[match.routeId]!)
+        .forEach((route) =>
+          router.manifest?.routes[route.id]?.assets
+            ?.filter((d) => d.tag === 'script')
+            .forEach((asset) => {
+              assetScripts.push({
+                tag: 'script',
+                attrs: asset.attrs,
+                children: asset.children,
+              } as any)
+            }),
+        )
+
+      return assetScripts
+    },
+  })
 
   const { scripts } = useRouterState({
     select: (state) => ({
@@ -38,7 +47,7 @@ export const Scripts = () => {
     }),
   })
 
-  const allScripts = [...manifestScripts, ...scripts] as Array<RouterManagedTag>
+  const allScripts = [...scripts, ...assetScripts] as Array<RouterManagedTag>
 
   return (
     <>

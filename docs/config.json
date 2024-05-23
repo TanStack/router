@@ -199,6 +199,14 @@
               "to": "framework/react/examples/quickstart"
             },
             {
+              "label": "Start Basic",
+              "to": "framework/react/examples/start-basic"
+            },
+            {
+              "label": "Start Basic (RSC)",
+              "to": "framework/react/examples/start-basic-rsc"
+            },
+            {
               "label": "Basic (file-based)",
               "to": "framework/react/examples/basic-file-based"
             },
@@ -237,18 +245,6 @@
             {
               "label": "Kitchen Sink + React Query (code-based)",
               "to": "framework/react/examples/kitchen-sink-react-query"
-            },
-            {
-              "label": "Vinxi (file-based)",
-              "to": "framework/react/examples/vinxi-basic"
-            },
-            {
-              "label": "Vinxi + SSR (file-based)",
-              "to": "framework/react/examples/vinxi-basic-ssr"
-            },
-            {
-              "label": "Vinxi + SSR Streaming (file-based)",
-              "to": "framework/react/examples/vinxi-basic-ssr-streaming"
             },
             {
               "label": "Location Masking",

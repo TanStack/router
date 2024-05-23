@@ -1,28 +1,18 @@
 import {
-  CatchBoundary,
   Link,
   Outlet,
   ScrollRestoration,
-  createRootRouteWithContext,
+  createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import {
-  Body,
-  Head,
-  Html,
-  Meta,
-  RouterManagedTag,
-  Scripts,
-} from '@tanstack/start'
+import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
 
-export const Route = createRootRouteWithContext<{
-  assets: RouterManagedTag[]
-}>()({
+export const Route = createRootRoute({
   meta: () => [
     {
       charSet: 'utf-8',

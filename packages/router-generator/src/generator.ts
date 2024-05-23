@@ -583,11 +583,12 @@ export async function generator(config: Config) {
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
-        const filePathId = removeTrailingUnderscores(routeNode.routePath)
-        const id = removeGroups(filePathId ?? '')
+        const [filePathId, routeId] = getFilePathIdAndRouteIdFromPath(
+          routeNode.routePath!,
+        )
 
         return `'${filePathId}': {
-          id: '${id}'
+          id: '${routeId}'
           path: '${inferPath(routeNode)}'
           fullPath: '${inferFullPath(routeNode)}'
           preLoaderRoute: typeof ${routeNode.variableName}Import
@@ -611,32 +612,81 @@ export async function generator(config: Config) {
     .filter(Boolean)
     .join('\n\n')
 
-  const routeConfigFileContent = await prettier.format(routeImports, {
-    semi: config.semicolons,
-    singleQuote: config.quoteStyle === 'single',
-    parser: 'typescript',
-  })
+  const routeManifest = JSON.stringify(
+    {
+      routes: {
+        __root__: {
+          filePath: rootRouteNode?.filePath,
+          children: routeTree.map(
+            (d) => getFilePathIdAndRouteIdFromPath(d.routePath!)[1],
+          ),
+        },
+        ...Object.fromEntries(
+          routeNodes.map((d) => {
+            const [filePathId, routeId] = getFilePathIdAndRouteIdFromPath(
+              d.routePath!,
+            )
 
-  const routeTreeContent = await fsp
+            return [
+              routeId,
+              {
+                filePath: d.filePath,
+                parent: d.parent?.routePath
+                  ? getFilePathIdAndRouteIdFromPath(d.parent.routePath)[1]
+                  : undefined,
+                children: d.children?.map(
+                  (childRoute) =>
+                    getFilePathIdAndRouteIdFromPath(childRoute.routePath!)[1],
+                ),
+              },
+            ]
+          }),
+        ),
+      },
+    },
+    null,
+    2,
+  )
+
+  const routeConfigFileContent = [
+    await prettier.format(routeImports, {
+      semi: config.semicolons,
+      singleQuote: config.quoteStyle === 'single',
+      parser: 'typescript',
+    }),
+    ['/* ROUTE_MANIFEST_START', routeManifest, 'ROUTE_MANIFEST_END */'].join(
+      '\n',
+    ),
+  ].join('\n\n')
+
+  if (!checkLatest()) return
+
+  const existingRouteTreeContent = await fsp
     .readFile(path.resolve(config.generatedRouteTree), 'utf-8')
-    .catch((err: any) => {
+    .catch((err) => {
       if (err.code === 'ENOENT') {
-        return undefined
+        return ''
       }
+
       throw err
     })
 
   if (!checkLatest()) return
 
-  if (routeTreeContent !== routeConfigFileContent) {
-    await fsp.mkdir(path.dirname(path.resolve(config.generatedRouteTree)), {
-      recursive: true,
-    })
-    if (!checkLatest()) return
+  // Ensure the directory exists
+  await fsp.mkdir(path.dirname(path.resolve(config.generatedRouteTree)), {
+    recursive: true,
+  })
+
+  if (!checkLatest()) return
+
+  // Write the route tree file, if it has changed
+  if (existingRouteTreeContent !== routeConfigFileContent) {
     await fsp.writeFile(
       path.resolve(config.generatedRouteTree),
       routeConfigFileContent,
     )
+    if (!checkLatest()) return
   }
 
   logger.log(
@@ -811,4 +861,11 @@ export const inferPath = (routeNode: RouteNode): string => {
   return routeNode.cleanedPath === '/'
     ? routeNode.cleanedPath
     : routeNode.cleanedPath?.replace(/\/$/, '') ?? ''
+}
+
+function getFilePathIdAndRouteIdFromPath(pathname: string) {
+  const filePathId = removeTrailingUnderscores(pathname)
+  const id = removeGroups(filePathId ?? '')
+
+  return [filePathId, id] as const
 }

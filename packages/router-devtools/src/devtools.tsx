@@ -531,6 +531,7 @@ const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
                       'routesByPath',
                       'flatRoutes',
                       'options',
+                      'manifest',
                     ] as const
                   ).map((d) => (dd) => dd !== d),
                 )

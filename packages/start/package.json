@@ -112,6 +112,7 @@
   "dependencies": {
     "@tanstack/react-cross-context": "workspace:*",
     "@tanstack/react-router": "workspace:*",
+    "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-vite-plugin": "workspace:*",
     "@types/jsesc": "^3.0.3",
     "@vinxi/react": "0.2.2",

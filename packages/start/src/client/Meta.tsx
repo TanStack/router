@@ -1,8 +1,9 @@
-import { useRouter, useRouterState, warning } from '@tanstack/react-router'
+/* eslint-disable no-shadow */
+import { useRouter, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { Asset } from './Asset'
-import type { RouterManagedTag } from './RouterManagedTag'
+import type { RouterManagedTag } from '@tanstack/react-router'
 
 export const useMeta = () => {
   const router = useRouter()
@@ -68,21 +69,32 @@ export const useMeta = () => {
         })) as Array<RouterManagedTag>,
   })
 
-  const manifestMeta =
-    (
-      router.options.context?.assets?.filter((d: any) => d.tag !== 'script') as
-        | Array<RouterManagedTag>
-        | undefined
-    )?.map(({ tag, children, attrs }) => {
-      const { key, ...rest } = attrs || {}
-      return {
-        tag,
-        attrs: rest,
-        children,
-      }
-    }) ?? []
+  const preloadMeta = useRouterState({
+    select: (state) => {
+      const preloadMeta: Array<RouterManagedTag> = []
 
-  return [...meta, ...links, ...manifestMeta] as Array<RouterManagedTag>
+      state.matches
+        .map((match) => router.looseRoutesById[match.routeId]!)
+        .forEach((route) =>
+          router.manifest?.routes[route.id]?.preloads
+            ?.filter(Boolean)
+            .forEach((preload) => {
+              preloadMeta.push({
+                tag: 'link',
+                attrs: {
+                  rel: 'preload',
+                  as: 'script',
+                  href: preload,
+                },
+              })
+            }),
+        )
+
+      return preloadMeta
+    },
+  })
+
+  return [...meta, ...preloadMeta, ...links] as Array<RouterManagedTag>
 }
 
 export const useMetaElements = () => {

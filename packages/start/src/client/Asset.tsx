@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { RouterManagedTag } from './RouterManagedTag'
+import type { RouterManagedTag } from '@tanstack/react-router'
 
 export function Asset({ tag, attrs, children }: RouterManagedTag): any {
   switch (tag) {
@@ -14,10 +14,14 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
     case 'link':
       return <link {...attrs} suppressHydrationWarning />
     case 'style':
-      return <style {...attrs} dangerouslySetInnerHTML={{ __html: children }} />
+      return (
+        <style
+          {...attrs}
+          dangerouslySetInnerHTML={{ __html: children as any }}
+        />
+      )
     case 'script':
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (attrs && attrs.src) {
+      if ((attrs as any) && (attrs as any).src) {
         return <script {...attrs} suppressHydrationWarning />
       }
       if (typeof children === 'string')

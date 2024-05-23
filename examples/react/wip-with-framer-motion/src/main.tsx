@@ -2,15 +2,16 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  ErrorComponent,
+  Link,
   Outlet,
   RouterProvider,
-  createRouter,
-  Link,
-  ErrorComponent,
-  useMatch,
-  useMatches,
+  createRootRoute,
   createRootRouteWithContext,
   createRoute,
+  createRouter,
+  useMatch,
+  useMatches,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'redaxios'
@@ -25,7 +26,7 @@ const fetchPosts = async () => {
   console.log('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
-    .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
+    .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
 }
 
@@ -65,7 +66,7 @@ export const postTransitionProps = {
   },
 } as const
 
-const rootRoute = createRootRouteWithContext()({
+const rootRoute = createRootRoute({
   component: () => {
     const matches = useMatches()
     const match = useMatch({ strict: false })
@@ -128,25 +129,24 @@ const postsRoute = createRoute({
     return (
       <motion.div className="p-2 flex gap-2" {...mainTransitionProps}>
         <ul className="list-disc pl-4">
-          {[
-            ...posts,
-            { id: 'i-do-not-exist', title: 'Non-existent Post' },
-          ]?.map((post) => {
-            return (
-              <li key={post.id} className="whitespace-nowrap">
-                <Link
-                  to={postRoute.to}
-                  params={{
-                    postId: post.id,
-                  }}
-                  className="block py-1 text-blue-800 hover:text-blue-600"
-                  activeProps={{ className: 'text-black font-bold' }}
-                >
-                  <div>{post.title.substring(0, 20)}</div>
-                </Link>
-              </li>
-            )
-          })}
+          {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
+            (post) => {
+              return (
+                <li key={post.id} className="whitespace-nowrap">
+                  <Link
+                    to={postRoute.to}
+                    params={{
+                      postId: post.id,
+                    }}
+                    className="block py-1 text-blue-800 hover:text-blue-600"
+                    activeProps={{ className: 'text-black font-bold' }}
+                  >
+                    <div>{post.title.substring(0, 20)}</div>
+                  </Link>
+                </li>
+              )
+            },
+          )}
         </ul>
         <hr />
         <AnimatePresence>
