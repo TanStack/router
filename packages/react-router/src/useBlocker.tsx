@@ -9,11 +9,23 @@ type BlockerResolver = {
   reset: () => void
 }
 
-export function useBlocker(opts?: {
+type BlockerOpts = {
   blockerFn?: BlockerFn
-  condition: boolean | any
-}) {
-  const condition = opts?.condition ?? true
+  condition?: boolean | any
+}
+
+export function useBlocker(
+  blockerFnOrOpts?: BlockerFn | BlockerOpts,
+  condition?: boolean | any,
+) {
+  const { blockerFn, blockerCondition } = blockerFnOrOpts
+    ? typeof blockerFnOrOpts === 'function'
+      ? { blockerFn: blockerFnOrOpts, blockerCondition: condition ?? true }
+      : {
+          blockerFn: blockerFnOrOpts.blockerFn,
+          blockerCondition: blockerFnOrOpts.condition ?? true,
+        }
+    : { blockerFn: undefined, blockerCondition: true }
   const { history } = useRouter()
 
   const [resolver, setResolver] = React.useState<BlockerResolver>({
@@ -35,7 +47,7 @@ export function useBlocker(opts?: {
 
   React.useEffect(() => {
     const blockerFnComposed = async () => {
-      const canNavigateSync = opts?.blockerFn?.()
+      const canNavigateSync = blockerFn?.()
 
       if (canNavigateSync) return true
 
@@ -50,8 +62,8 @@ export function useBlocker(opts?: {
       return canNavigateAsync
     }
 
-    return !condition ? undefined : history.block(blockerFnComposed)
-  }, [opts?.blockerFn, condition, history, promise, opts])
+    return !blockerCondition ? undefined : history.block(blockerFnComposed)
+  }, [blockerFn, blockerCondition, history, promise])
 
   return resolver
 }
