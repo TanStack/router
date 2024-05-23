@@ -5,4 +5,3 @@ export {
   transformStreamWithRouter,
   transformReadableStreamWithRouter,
 } from './transformStreamWithRouter'
-export { getRouterManifest } from './getRouterManifest'

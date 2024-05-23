@@ -141,3 +141,54 @@ export const routeTree = rootRoute.addChildren({
 })
 
 /* prettier-ignore-end */
+
+
+/* ROUTE_MANIFEST_START
+{
+  "routes": {
+    "__root__": {
+      "filePath": "__root.tsx",
+      "children": [
+        "/",
+        "/params",
+        "/search",
+        "/absolute",
+        "/linkProps",
+        "/relative"
+      ]
+    },
+    "/": {
+      "filePath": "index.tsx"
+    },
+    "/params": {
+      "filePath": "params/route.tsx",
+      "children": [
+        "/params/$paramsPlaceholder"
+      ]
+    },
+    "/search": {
+      "filePath": "search/route.tsx",
+      "children": [
+        "/search/searchPlaceholder"
+      ]
+    },
+    "/absolute": {
+      "filePath": "absolute.tsx"
+    },
+    "/linkProps": {
+      "filePath": "linkProps.tsx"
+    },
+    "/relative": {
+      "filePath": "relative.tsx"
+    },
+    "/params/$paramsPlaceholder": {
+      "filePath": "params/$paramsPlaceholder.tsx",
+      "parent": "/params"
+    },
+    "/search/searchPlaceholder": {
+      "filePath": "search/searchPlaceholder.tsx",
+      "parent": "/search"
+    }
+  }
+}
+ROUTE_MANIFEST_END */

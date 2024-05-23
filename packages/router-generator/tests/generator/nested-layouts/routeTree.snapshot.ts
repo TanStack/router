@@ -318,3 +318,130 @@ export const routeTree = rootRoute.addChildren({
 })
 
 /* prettier-ignore-end */
+
+
+/* ROUTE_MANIFEST_START
+{
+  "routes": {
+    "__root__": {
+      "filePath": "__root.tsx",
+      "children": [
+        "/",
+        "/jested",
+        "/_layout-a1",
+        "/_layout-a2",
+        "/in-folder",
+        "/nested"
+      ]
+    },
+    "/": {
+      "filePath": "index.tsx"
+    },
+    "/jested": {
+      "filePath": "jested/route.tsx",
+      "children": [
+        "/jested/_layout-b3",
+        "/jested/_layout-b4"
+      ]
+    },
+    "/_layout-a1": {
+      "filePath": "_layout-a1.tsx",
+      "children": [
+        "/_layout-a1/foo"
+      ]
+    },
+    "/_layout-a2": {
+      "filePath": "_layout-a2.tsx",
+      "children": [
+        "/_layout-a2/bar"
+      ]
+    },
+    "/in-folder": {
+      "filePath": "(folder)/in-folder.tsx"
+    },
+    "/_layout-a1/foo": {
+      "filePath": "_layout-a1/foo.tsx",
+      "parent": "/_layout-a1"
+    },
+    "/_layout-a2/bar": {
+      "filePath": "_layout-a2/bar.tsx",
+      "parent": "/_layout-a2"
+    },
+    "/jested/_layout-b3": {
+      "filePath": "jested/_layout-b3.tsx",
+      "parent": "/jested",
+      "children": [
+        "/jested/_layout-b3/_layout-c2",
+        "/jested/_layout-b3/"
+      ]
+    },
+    "/jested/_layout-b4": {
+      "filePath": "jested/_layout-b4.tsx",
+      "parent": "/jested",
+      "children": [
+        "/jested/_layout-b4/foo"
+      ]
+    },
+    "/nested": {
+      "filePath": "nested",
+      "children": [
+        "/nested/_layout-b1",
+        "/nested/_layout-b2"
+      ]
+    },
+    "/nested/_layout-b1": {
+      "filePath": "nested/_layout-b1.tsx",
+      "parent": "/nested",
+      "children": [
+        "/nested/_layout-b1/_layout-c1",
+        "/nested/_layout-b1/"
+      ]
+    },
+    "/nested/_layout-b2": {
+      "filePath": "nested/_layout-b2.tsx",
+      "parent": "/nested",
+      "children": [
+        "/nested/_layout-b2/foo"
+      ]
+    },
+    "/jested/_layout-b3/_layout-c2": {
+      "filePath": "jested/_layout-b3/_layout-c2.tsx",
+      "parent": "/jested/_layout-b3",
+      "children": [
+        "/jested/_layout-b3/_layout-c2/bar"
+      ]
+    },
+    "/jested/_layout-b4/foo": {
+      "filePath": "jested/_layout-b4/foo.tsx",
+      "parent": "/jested/_layout-b4"
+    },
+    "/nested/_layout-b1/_layout-c1": {
+      "filePath": "nested/_layout-b1/_layout-c1.tsx",
+      "parent": "/nested/_layout-b1",
+      "children": [
+        "/nested/_layout-b1/_layout-c1/bar"
+      ]
+    },
+    "/nested/_layout-b2/foo": {
+      "filePath": "nested/_layout-b2/foo.tsx",
+      "parent": "/nested/_layout-b2"
+    },
+    "/jested/_layout-b3/": {
+      "filePath": "jested/_layout-b3/index.tsx",
+      "parent": "/jested/_layout-b3"
+    },
+    "/nested/_layout-b1/": {
+      "filePath": "nested/_layout-b1/index.tsx",
+      "parent": "/nested/_layout-b1"
+    },
+    "/jested/_layout-b3/_layout-c2/bar": {
+      "filePath": "jested/_layout-b3/_layout-c2/bar.tsx",
+      "parent": "/jested/_layout-b3/_layout-c2"
+    },
+    "/nested/_layout-b1/_layout-c1/bar": {
+      "filePath": "nested/_layout-b1/_layout-c1/bar.tsx",
+      "parent": "/nested/_layout-b1/_layout-c1"
+    }
+  }
+}
+ROUTE_MANIFEST_END */

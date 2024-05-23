@@ -52,3 +52,24 @@ declare module '@tanstack/react-router' {
 export const routeTree = rootRoute.addChildren({ IndexRoute, PostsRoute })
 
 /* prettier-ignore-end */
+
+
+/* ROUTE_MANIFEST_START
+{
+  "routes": {
+    "__root__": {
+      "filePath": "__root.tsx",
+      "children": [
+        "/",
+        "/posts"
+      ]
+    },
+    "/": {
+      "filePath": "index.tsx"
+    },
+    "/posts": {
+      "filePath": "posts.tsx"
+    }
+  }
+}
+ROUTE_MANIFEST_END */

@@ -3,11 +3,8 @@ import type { PipeableStream } from 'react-dom/server'
 import { renderToPipeableStream } from 'react-dom/server'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'vinxi/server'
 import { getManifest } from 'vinxi/manifest'
-import {
-  StartServer,
-  transformStreamWithRouter,
-  getRouterManifest,
-} from '@tanstack/start/server'
+import { StartServer, transformStreamWithRouter } from '@tanstack/start/server'
+import { getRouterManifest } from '@tanstack/start/router-manifest'
 // import vinxi from 'vinxi'
 // import { Transform, PassThrough } from 'node:stream'
 

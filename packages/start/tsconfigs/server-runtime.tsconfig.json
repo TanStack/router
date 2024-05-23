@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig.json",
+  "include": ["../src/server-runtime/index.tsx"],
+  "compilerOptions": {
+    "outDir": "../dist/esm/server-runtime",
+    "target": "esnext",
+    "noEmit": false,
+    "jsx": "react"
+  }
+}

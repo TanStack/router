@@ -2,6 +2,7 @@ import fs from 'fs/promises'
 import { describe, it, expect } from 'vitest'
 
 import { generator, getConfig, type Config } from '../src'
+import path from 'path'
 
 function makeFolderDir(folder: string) {
   return process.cwd() + `/tests/generator/${folder}`
@@ -64,12 +65,11 @@ describe('generator works', async () => {
 
       await generator(config)
 
-      const [expectedRouteTree, generatedRouteTree] = await Promise.all([
-        getExpectedRouteTreeFileText(folderName),
-        getRouteTreeFileText(config),
-      ])
+      const generatedRouteTree = await getRouteTreeFileText(config)
 
-      expect(generatedRouteTree).equal(expectedRouteTree)
+      expect(generatedRouteTree).toMatchFileSnapshot(
+        path.join('generator', folderName, 'routeTree.snapshot.ts'),
+      )
     },
   )
 })

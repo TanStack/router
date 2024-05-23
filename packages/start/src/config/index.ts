@@ -78,10 +78,15 @@ export async function defineConfig(opts?: z.infer<typeof optsSchema>) {
 
   const tsrConfig = await getConfig(opts?.tsr)
 
-  const startVinxi = () => {
+  const startVite = () => {
     return config('start-vite', {
       ssr: {
-        noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+        // external: ['@tanstack/start/server-runtime'],
+        noExternal: [
+          '@tanstack/start',
+          'tsr:routes-manifest',
+          // '@tanstack/start/server-runtime',
+        ],
       },
       optimizeDeps: {
         include: ['@tanstack/start/server-runtime'],
@@ -122,7 +127,7 @@ export async function defineConfig(opts?: z.infer<typeof optsSchema>) {
       //   handler: './app/react-server.tsx',
       //   target: 'server',
       //   plugins: () => [
-      //     startVinxi(),
+      //     startVite(),
       //     ...(opts?.vite?.plugins?.() || []),
       //     ...(opts?.routers?.rsc?.vite?.plugins?.() || []),
       //     serverComponents.server(),
@@ -139,7 +144,7 @@ export async function defineConfig(opts?: z.infer<typeof optsSchema>) {
           sourcemap: true,
         },
         plugins: () => [
-          startVinxi(),
+          startVite(),
           ...(opts?.vite?.plugins?.() || []),
           ...(opts?.routers?.client?.vite?.plugins?.() || []),
           serverFunctions.client({
@@ -157,7 +162,7 @@ export async function defineConfig(opts?: z.infer<typeof optsSchema>) {
         handler: opts?.routers?.ssr?.entry || './app/server.tsx',
         target: 'server',
         plugins: () => [
-          startVinxi(),
+          startVite(),
           tsrRoutesManifest({
             tsrConfig,
             clientBase,
@@ -176,7 +181,7 @@ export async function defineConfig(opts?: z.infer<typeof optsSchema>) {
         serverFunctions.router({
           name: 'server',
           plugins: () => [
-            startVinxi(),
+            startVite(),
             ...(opts?.vite?.plugins?.() || []),
             ...(opts?.routers?.server?.vite?.plugins?.() || []),
             // serverComponents.serverActions(),

@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig.json",
+  "include": ["../src/server-handler/index.tsx"],
+  "compilerOptions": {
+    "outDir": "../dist/esm/server-handler",
+    "target": "esnext",
+    "noEmit": false,
+    "jsx": "react"
+  }
+}

@@ -26,12 +26,6 @@
         "default": "./dist/cjs/client/index.cjs"
       }
     },
-    "./config": {
-      "import": {
-        "types": "./dist/esm/config/index.d.ts",
-        "default": "./dist/esm/config/index.js"
-      }
-    },
     "./client": {
       "import": {
         "types": "./dist/esm/client/index.d.ts",
@@ -62,24 +56,28 @@
         "default": "./dist/cjs/client-runtime/index.cjs"
       }
     },
+    "./config": {
+      "import": {
+        "types": "./dist/esm/config/index.d.ts",
+        "default": "./dist/esm/config/index.js"
+      }
+    },
+    "./router-manifest": {
+      "import": {
+        "types": "./dist/esm/router-manifest/index.d.ts",
+        "default": "./dist/esm/router-manifest/index.js"
+      }
+    },
     "./server-runtime": {
       "import": {
-        "types": "./dist/esm/server-runtime/index.d.ts",
-        "default": "./dist/esm/server-runtime/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/server-runtime/index.d.cts",
-        "default": "./dist/cjs/server-runtime/index.cjs"
+        "types": "./dist/esm/server-runtime/server-runtime/index.d.ts",
+        "default": "./dist/esm/server-runtime/server-runtime/index.js"
       }
     },
     "./server-handler": {
       "import": {
-        "types": "./dist/esm/server-handler/index.d.ts",
-        "default": "./dist/esm/server-handler/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/server-handler/index.d.cts",
-        "default": "./dist/cjs/server-handler/index.cjs"
+        "types": "./dist/esm/server-handler/server-handler/index.d.ts",
+        "default": "./dist/esm/server-handler/server-handler/index.js"
       }
     },
     "./package.json": "./package.json"
@@ -90,8 +88,11 @@
     "test:eslint": "eslint --ext .ts,.tsx ./src",
     "test:types": "tsc --noEmit",
     "test:build": "publint --strict",
-    "build": "vite build && pnpm build:config",
-    "build:config": "tsc --project config.tsconfig.json"
+    "build": "vite build && pnpm build:config && pnpm build:router-manifest && pnpm build:server-handler && pnpm build:server-runtime",
+    "build:config": "tsc --project tsconfigs/config.tsconfig.json",
+    "build:router-manifest": "tsc --project tsconfigs/router-manifest.tsconfig.json",
+    "build:server-handler": "tsc --project tsconfigs/server-handler.tsconfig.json",
+    "build:server-runtime": "tsc --project tsconfigs/server-runtime.tsconfig.json"
   },
   "keywords": [
     "react",
@@ -129,7 +130,11 @@
     "@testing-library/react": "^15.0.2",
     "@vitejs/plugin-react": "^4.2.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "rollup-plugin-preserve-directives": "^0.4.0",
+    "typescript": "^5.4.5",
+    "vite-plugin-dts": "^3.9.1",
+    "vite-plugin-externalize-deps": "^0.8.0"
   },
   "peerDependencies": {
     "react": ">=18.0.0 || >=19.0.0",

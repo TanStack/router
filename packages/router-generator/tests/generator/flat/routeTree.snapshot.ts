@@ -155,3 +155,61 @@ export const routeTree = rootRoute.addChildren({
 })
 
 /* prettier-ignore-end */
+
+
+/* ROUTE_MANIFEST_START
+{
+  "routes": {
+    "__root__": {
+      "filePath": "__root.tsx",
+      "children": [
+        "/",
+        "/blog",
+        "/posts",
+        "/blog/stats"
+      ]
+    },
+    "/": {
+      "filePath": "index.tsx"
+    },
+    "/blog": {
+      "filePath": "blog.route.tsx",
+      "children": [
+        "/blog/",
+        "/blog/$slug/"
+      ]
+    },
+    "/posts": {
+      "filePath": "posts.route.tsx",
+      "children": [
+        "/posts/",
+        "/posts/$postId/deep",
+        "/posts/$postId/"
+      ]
+    },
+    "/blog/stats": {
+      "filePath": "blog_.stats.tsx"
+    },
+    "/blog/": {
+      "filePath": "blog.index.tsx",
+      "parent": "/blog"
+    },
+    "/posts/": {
+      "filePath": "posts.index.tsx",
+      "parent": "/posts"
+    },
+    "/posts/$postId/deep": {
+      "filePath": "posts.$postId.deep.tsx",
+      "parent": "/posts"
+    },
+    "/blog/$slug/": {
+      "filePath": "blog.$slug.index.tsx",
+      "parent": "/blog"
+    },
+    "/posts/$postId/": {
+      "filePath": "posts.$postId.index.tsx",
+      "parent": "/posts"
+    }
+  }
+}
+ROUTE_MANIFEST_END */

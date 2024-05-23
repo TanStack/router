@@ -167,3 +167,63 @@ export const routeTree = rootRoute.addChildren({
 })
 
 /* prettier-ignore-end */
+
+
+/* ROUTE_MANIFEST_START
+{
+  "routes": {
+    "__root__": {
+      "filePath": "__root.tsx",
+      "children": [
+        "/",
+        "/posts",
+        "/_layout-test",
+        "/posts/$postId/deep"
+      ]
+    },
+    "/": {
+      "filePath": "index.lazy.tsx"
+    },
+    "/posts": {
+      "filePath": "posts.tsx",
+      "children": [
+        "/posts/$postId",
+        "/posts/"
+      ]
+    },
+    "/_layout-test": {
+      "filePath": "_layout-test.lazy.tsx",
+      "children": [
+        "/_layout-test/layout-a",
+        "/_layout-test/layout-b"
+      ]
+    },
+    "/posts/$postId": {
+      "filePath": "posts.$postId/route.tsx",
+      "parent": "/posts"
+    },
+    "/_layout-test/layout-a": {
+      "filePath": "_layout-test/layout-a.tsx",
+      "parent": "/_layout-test"
+    },
+    "/_layout-test/layout-b": {
+      "filePath": "_layout-test/layout-b.tsx",
+      "parent": "/_layout-test",
+      "children": [
+        "/_layout-test/layout-b/test"
+      ]
+    },
+    "/posts/": {
+      "filePath": "posts.index.tsx",
+      "parent": "/posts"
+    },
+    "/posts/$postId/deep": {
+      "filePath": "posts_.$postId.deep.tsx"
+    },
+    "/_layout-test/layout-b/test": {
+      "filePath": "_layout-test/layout-b.test.lazy.tsx",
+      "parent": "/_layout-test/layout-b"
+    }
+  }
+}
+ROUTE_MANIFEST_END */

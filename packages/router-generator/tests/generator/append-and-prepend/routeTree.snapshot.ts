@@ -37,3 +37,20 @@ export const routeTree = rootRoute.addChildren({ IndexRoute })
 // append1
 
 // append2
+
+
+/* ROUTE_MANIFEST_START
+{
+  "routes": {
+    "__root__": {
+      "filePath": "__root.tsx",
+      "children": [
+        "/"
+      ]
+    },
+    "/": {
+      "filePath": "index.tsx"
+    }
+  }
+}
+ROUTE_MANIFEST_END */

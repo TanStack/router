@@ -6,7 +6,7 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/react-router'
 import { DehydrateRouter } from '@tanstack/start'
-import { RouterContext } from '../routerContext'
+import type { RouterContext } from '../routerContext'
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootComponent,
