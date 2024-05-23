@@ -47,9 +47,10 @@ export function useBlocker(
 
   React.useEffect(() => {
     const blockerFnComposed = async () => {
-      const canNavigateSync = blockerFn?.()
-
-      if (canNavigateSync) return true
+      // If a function is provided, it takes precedence over the promise blocker
+      if (blockerFn) {
+        return await blockerFn()
+      }
 
       setResolver((prev) => ({
         ...prev,
