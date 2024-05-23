@@ -3,11 +3,34 @@ id: RouterEventsType
 title: RouterEvents type
 ---
 
-The `RouterEvents` type contains all of the events that the router can emit.
+The `RouterEvents` type contains all of the events that the router can emit. Each top-level key of this type, represents the name of an event that the router can emit. The values of the keys are the event payloads.
+
+```tsx
+type RouterEvents = {
+  onBeforeLoad: {
+    type: 'onBeforeLoad'
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+  }
+  onLoad: {
+    type: 'onLoad'
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+  }
+  onResolved: {
+    type: 'onResolved'
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+  }
+}
+```
 
 ## RouterEvents properties
 
-Each property on this type is an event that the router can emit. The value of each property is an object that contains the following properties:
+Once an event is emitted, the following properties will be present on the event payload.
 
 ### `type` property
 
@@ -29,3 +52,16 @@ Each property on this type is an event that the router can emit. The value of ea
 
 - Type: `boolean`
 - `true` if the path has changed between the `fromLocation` and `toLocation`.
+
+## Example
+
+```tsx
+import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+
+const router = createRouter({ routeTree })
+
+const unsub = router.subscribe('onResolved', (evt) => {
+  // ...
+})
+```

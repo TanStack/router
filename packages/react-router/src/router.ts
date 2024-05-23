@@ -1720,13 +1720,13 @@ export class Router<
                   handleRedirectAndNotFound(match, err)
                 }
 
-                matches[index] = match = {
+                matches[index] = match = updateMatch(match.id, () => ({
                   ...match,
                   error: err,
                   status: 'error',
                   updatedAt: Date.now(),
                   abortController: new AbortController(),
-                }
+                }))
               }
 
               if (match.paramsError) {
@@ -1742,13 +1742,12 @@ export class Router<
                   parentMatch?.context ?? this.options.context ?? {}
 
                 // Make sure the match has parent context set before going further
-                matches[index] = match = updateMatch(match.id, (prev) => ({
-                  ...prev,
+                matches[index] = match = updateMatch(match.id, () => ({
+                  ...match,
                   routeContext: replaceEqualDeep(
                     match.routeContext,
                     parentContext,
                   ),
-                  context: replaceEqualDeep(match.context, parentContext),
                   abortController,
                 }))
 
