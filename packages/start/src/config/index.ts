@@ -15,6 +15,7 @@ import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
 import { serverTransform } from '@vinxi/server-functions/server'
 import { z } from 'zod'
+import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
 const viteSchema = z
@@ -261,7 +262,16 @@ function tsrRoutesManifest(opts: {
           '../client/_build/.vite/manifest.json',
         )
 
-        let manifest: any
+        type ViteManifest = Record<
+          string,
+          {
+            file: string
+            isEntry: boolean
+            imports: Array<string>
+          }
+        >
+
+        let manifest: ViteManifest
         try {
           manifest = JSON.parse(await readFile(clientViteManifestPath, 'utf-8'))
         } catch (err) {
@@ -294,53 +304,57 @@ function tsrRoutesManifest(opts: {
           routeTreeContent.match(
             /\/\* ROUTE_MANIFEST_START([\s\S]*?)ROUTE_MANIFEST_END \*\//,
           )?.[1] || '{ routes: {} }',
-        )
+        ) as Manifest
 
         const routes = routerManifest.routes
 
         let entryFile:
           | {
+              file: string
               imports: Array<string>
             }
           | undefined
 
-        const assetsByRouteFilePath = Object.entries(manifest).reduce(
-          (acc, [k, v]: any) => {
+        const filesByRouteFilePath = Object.fromEntries(
+          Object.entries(manifest).map(([k, v]: any) => {
             if (v.isEntry) {
               entryFile = v
             }
 
             const rPath = k.split('?')[0]
 
-            if (acc[rPath]) {
-              acc[rPath] = [...acc[rPath], v]
-            } else {
-              acc[rPath] = [v]
-            }
-
-            return acc
-          },
-          {} as any,
-        )
+            return [rPath, v]
+          }, {} as any),
+        ) as ViteManifest
 
         // Add preloads to the routes from the vite manifest
         Object.entries(routes).forEach(([k, v]: any) => {
-          const preloads = assetsByRouteFilePath[
-            path.join(opts.tsrConfig.routesDirectory, v.filePath)
-          ]
-            ?.flatMap((d: any) => d.imports || [])
-            .map((d: any) => path.join(opts.clientBase, manifest[d].file))
+          const file =
+            filesByRouteFilePath[
+              path.join(opts.tsrConfig.routesDirectory, v.filePath)
+            ]
 
-          routes[k] = {
-            ...v,
-            preloads,
+          if (file) {
+            const preloads = file.imports.map((d: any) =>
+              path.join(opts.clientBase, manifest[d]!.file),
+            )
+
+            preloads.unshift(path.join(opts.clientBase, file.file))
+
+            routes[k] = {
+              ...v,
+              preloads,
+            }
           }
         })
 
         if (entryFile) {
-          routes.__root__.preloads = entryFile.imports.map((d: any) =>
-            path.join(opts.clientBase, manifest[d].file),
-          )
+          routes.__root__!.preloads = [
+            path.join(opts.clientBase, entryFile.file),
+            ...entryFile.imports.map((d: any) =>
+              path.join(opts.clientBase, manifest[d]!.file),
+            ),
+          ]
         }
 
         const recurseRoute = (
@@ -360,17 +374,20 @@ function tsrRoutesManifest(opts: {
 
           if (route.children) {
             route.children.forEach((child: any) => {
-              const childRoute = routes[child]
+              const childRoute = routes[child]!
               recurseRoute(childRoute, { ...seenPreloads })
             })
           }
         }
 
-        recurseRoute(routes.__root__)
+        recurseRoute(routes.__root__!)
 
         const routesManifest = {
           routes,
         }
+
+        if (process.env.TSR_VITE_DEBUG)
+          console.log(JSON.stringify(routesManifest, null, 2))
 
         return `export default () => (${JSON.stringify(routesManifest)})`
       }
