@@ -648,16 +648,20 @@ export async function generator(config: Config) {
     2,
   )
 
-  const routeConfigFileContent = [
-    await prettier.format(routeImports, {
+  const routeConfigFileContent = await prettier.format(
+    [
+      routeImports,
+      '\n',
+      '/* ROUTE_MANIFEST_START',
+      routeManifest,
+      'ROUTE_MANIFEST_END */',
+    ].join('\n'),
+    {
       semi: config.semicolons,
       singleQuote: config.quoteStyle === 'single',
       parser: 'typescript',
-    }),
-    ['/* ROUTE_MANIFEST_START', routeManifest, 'ROUTE_MANIFEST_END */'].join(
-      '\n',
-    ),
-  ].join('\n')
+    },
+  )
 
   if (!checkLatest()) return
 
