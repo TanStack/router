@@ -53,7 +53,6 @@ export const routeTree = rootRoute.addChildren({ IndexRoute, PostsRoute })
 
 /* prettier-ignore-end */
 
-
 /* ROUTE_MANIFEST_START
 {
   "routes": {

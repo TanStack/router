@@ -264,7 +264,6 @@ export const routeTree = rootRoute.addChildren({
 
 /* prettier-ignore-end */
 
-
 /* ROUTE_MANIFEST_START
 {
   "routes": {
