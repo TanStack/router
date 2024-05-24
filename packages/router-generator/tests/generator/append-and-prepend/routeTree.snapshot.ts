@@ -38,7 +38,6 @@ export const routeTree = rootRoute.addChildren({ IndexRoute })
 
 // append2
 
-
 /* ROUTE_MANIFEST_START
 {
   "routes": {

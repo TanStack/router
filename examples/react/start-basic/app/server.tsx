@@ -73,7 +73,7 @@ export default eventHandler(async (event) => {
             assets,
           },
         ]
-      })
+      }),
     ),
   }
 
@@ -132,7 +132,7 @@ export default eventHandler(async (event) => {
   // Pipe the stream through our transforms
   const transformedStream = transforms.reduce(
     (stream, transform) => stream.pipe(transform as any),
-    stream
+    stream,
   )
 
   ;(event as any).__tsrHeadersSent = true
