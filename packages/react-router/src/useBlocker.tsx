@@ -14,10 +14,20 @@ type BlockerOpts = {
   condition?: boolean | any
 }
 
+export function useBlocker(blockerFnOrOpts?: BlockerOpts): BlockerResolver
+
+/**
+ * @deprecated Use the BlockerOpts object syntax instead
+ */
+export function useBlocker(
+  blockerFnOrOpts?: BlockerOpts,
+  condition?: boolean | any,
+): BlockerResolver
+
 export function useBlocker(
   blockerFnOrOpts?: BlockerFn | BlockerOpts,
   condition?: boolean | any,
-) {
+): BlockerResolver {
   const { blockerFn, blockerCondition } = blockerFnOrOpts
     ? typeof blockerFnOrOpts === 'function'
       ? { blockerFn: blockerFnOrOpts, blockerCondition: condition ?? true }

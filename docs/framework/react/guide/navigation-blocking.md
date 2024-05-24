@@ -43,18 +43,18 @@ import { useBlocker } from '@tanstack/react-router'
 function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
-  useBlocker(
-    () => window.confirm('Are you sure you want to leave?'),
-    formIsDirty,
-  )
+  useBlocker({
+    blockerfn: () => window.confirm('Are you sure you want to leave?'),
+    condition: formIsDirty,
+  })
 
   // ...
 }
 ```
 
-The `useBlocker` hook takes 2 arguments:
+The `useBlocker` hook takes an object as argument with two optional fields:
 
-- `blockerFn: BlockerFn` **Required** - A function that returns a `boolean` or `Promise<boolean>` indicating whether to allow navigation.
+- `blockerFn?: BlockerFn` Optional, a function that returns a `boolean` or `Promise<boolean>` indicating whether to allow navigation.
 - `condition?: boolean` Optional, defaults to `true` - Any expression or variable to be tested for truthiness to determine if navigation should be blocked
 
 ## Component-based blocking
@@ -82,6 +82,77 @@ function MyComponent() {
       condition={formIsDirty}
     >
       {/* ... */}
+    </Block>
+  )
+}
+```
+
+## How can I show a custom UI?
+
+In most cases, passing `window.confirm` to the `blockerFn` field of the hook input is enough since it will clearly show the user that the navigation is being blocked.
+
+However, in some situations, you might want to show a custom UI that is intentionally less disruptive and more integrated with your app's design.
+
+**Note:** The return value of `blockerFn` takes precedence, do not pass it if you want to use the manual `proceed` and `reset` functions.
+
+### Hook/logical-based custom UI
+
+The `useBlocker` hook returns the state and two functions to lend control to you:
+
+- `status` - A string literal that can be either `'blocked'` or `'idle'`
+- `proceed` - A function that allows navigation to continue
+- `reset` - A function that cancels navigation (`status` will be be reset to `'idle'`)
+
+```tsx
+import { useBlocker } from '@tanstack/react-router'
+
+function MyComponent() {
+  const [formIsDirty, setFormIsDirty] = useState(false)
+
+  const { proceed, reset, status } = useBlocker({
+    condition: formIsDirty,
+  })
+
+  // ...
+
+  return (
+    <>
+      {/* ... */}
+      {status === 'blocked' && (
+        <div>
+          <p>Are you sure you want to leave?</p>
+          <button onClick={proceed}>Yes</button>
+          <button onClick={reset}>No</button>
+        </div>
+      )}
+    </>
+}
+```
+
+### Component-based custom UI
+
+Similarly to the hook, the `Block` component returns the same state and functions as render props:
+
+```tsx
+import { Block } from '@tanstack/react-router'
+
+function MyComponent() {
+  const [formIsDirty, setFormIsDirty] = useState(false)
+
+  return (
+    <Block condition={formIsDirty}>
+      {({ status, proceed, reset }) => (
+        <>
+          {/* ... */}
+          {status === 'blocked' && (
+            <div>
+              <p>Are you sure you want to leave?</p>
+              <button onClick={proceed}>Yes</button>
+              <button onClick={reset}>No</button>
+            </div>
+          )}
+        </>
+      )}
     </Block>
   )
 }
