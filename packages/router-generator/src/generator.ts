@@ -654,13 +654,9 @@ export async function generator(config: Config) {
       singleQuote: config.quoteStyle === 'single',
       parser: 'typescript',
     }),
-    [
-      '/* ROUTE_MANIFEST_START',
+    ['/* ROUTE_MANIFEST_START', routeManifest, 'ROUTE_MANIFEST_END */'].join(
       '\n',
-      routeManifest,
-      '\n',
-      'ROUTE_MANIFEST_END */',
-    ].join(''),
+    ),
   ].join('\n')
 
   if (!checkLatest()) return
