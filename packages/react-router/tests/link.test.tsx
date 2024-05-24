@@ -362,7 +362,7 @@ describe('Link', () => {
     await screen.findByText('Page: 0')
   })
 
-  it('when navigating to /posts with invalid search', async () => {
+  test('when navigating to /posts with invalid search', async () => {
     const rootRoute = createRootRoute()
     const onError = vi.fn()
     const indexRoute = createRoute({
@@ -494,7 +494,7 @@ describe('Link', () => {
     expect(loader).toHaveBeenCalledOnce()
   })
 
-  it('when navigating to /posts with a loader that errors', async () => {
+  test('when navigating to /posts with a loader that errors', async () => {
     const onError = vi.fn()
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
@@ -560,7 +560,7 @@ describe('Link', () => {
     expect(onError).toHaveBeenCalledOnce()
   })
 
-  it('when navigating to /posts with a beforeLoad that redirects', async () => {
+  test('when navigating to /posts with a beforeLoad that redirects', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
