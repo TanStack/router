@@ -25,7 +25,7 @@ export function useBlocker(
           blockerFn: blockerFnOrOpts.blockerFn,
           blockerCondition: blockerFnOrOpts.condition ?? true,
         }
-    : { blockerFn: undefined, blockerCondition: true }
+    : { blockerFn: undefined, blockerCondition: condition ?? true }
   const { history } = useRouter()
 
   const [resolver, setResolver] = React.useState<BlockerResolver>({
