@@ -31,6 +31,7 @@ title: Router API
   - [`<Outlet>`](./outletComponent)
 - Hooks
   - [`useAwaited()`](./useAwaitedHook)
+  - [`useBlocker()`](./useBlockerHook)
   - [`useChildMatches()`](./useChildMatchesHook)
   - [`useLinkProps()`](./useLinkPropsHook)
   - [`useLoaderData()`](./useLoaderDataHook)
