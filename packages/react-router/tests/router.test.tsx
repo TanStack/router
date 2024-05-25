@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { act } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, waitFor } from '@testing-library/react'
 import {
@@ -439,7 +439,7 @@ describe('router emits events during rendering', () => {
     await router.load()
     render(<RouterProvider router={router} />)
 
-    router.navigate({ to: '/$', params: { _splat: 'tanner' } })
+    await act(() => router.navigate({ to: '/$', params: { _splat: 'tanner' } }))
 
     await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
   })
