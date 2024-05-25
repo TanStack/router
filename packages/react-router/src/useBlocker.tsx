@@ -44,17 +44,6 @@ export function useBlocker(
     reset: () => {},
   })
 
-  const createPromise = () =>
-    new Promise<boolean>((resolve) => {
-      setResolver({
-        status: 'idle',
-        proceed: () => resolve(true),
-        reset: () => resolve(false),
-      })
-    })
-
-  const [promise, setPromise] = React.useState(createPromise)
-
   React.useEffect(() => {
     const blockerFnComposed = async () => {
       // If a function is provided, it takes precedence over the promise blocker
@@ -62,19 +51,27 @@ export function useBlocker(
         return await blockerFn()
       }
 
-      setResolver((prev) => ({
-        ...prev,
-        status: 'blocked',
-      }))
-      const canNavigateAsync = await promise
+      const promise = new Promise<boolean>((resolve) => {
+        setResolver({
+          status: "blocked",
+          proceed: () => resolve(true),
+          reset: () => resolve(false),
+        });
+      });
 
-      setPromise(createPromise)
+      const canNavigateAsync = await promise;
+
+      setResolver({
+        status: "idle",
+        proceed: () => {},
+        reset: () => {},
+      });
 
       return canNavigateAsync
     }
 
     return !blockerCondition ? undefined : history.block(blockerFnComposed)
-  }, [blockerFn, blockerCondition, history, promise])
+  }, [blockerFn, blockerCondition, history])
 
   return resolver
 }
