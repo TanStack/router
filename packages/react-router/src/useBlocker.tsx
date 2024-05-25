@@ -53,19 +53,19 @@ export function useBlocker(
 
       const promise = new Promise<boolean>((resolve) => {
         setResolver({
-          status: "blocked",
+          status: 'blocked',
           proceed: () => resolve(true),
           reset: () => resolve(false),
-        });
-      });
+        })
+      })
 
-      const canNavigateAsync = await promise;
+      const canNavigateAsync = await promise
 
       setResolver({
-        status: "idle",
+        status: 'idle',
         proceed: () => {},
         reset: () => {},
-      });
+      })
 
       return canNavigateAsync
     }
