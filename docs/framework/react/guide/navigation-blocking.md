@@ -52,10 +52,7 @@ function MyComponent() {
 }
 ```
 
-The `useBlocker` hook takes an object as argument with two optional fields:
-
-- `blockerFn?: BlockerFn` Optional, a function that returns a `boolean` or `Promise<boolean>` indicating whether to allow navigation.
-- `condition?: boolean` Optional, defaults to `true` - Any expression or variable to be tested for truthiness to determine if navigation should be blocked
+You can find more information about the `useBlocker` hook in the [API reference](../../api/router/useBlockerHook).
 
 ## Component-based blocking
 
@@ -96,12 +93,6 @@ However, in some situations, you might want to show a custom UI that is intentio
 **Note:** The return value of `blockerFn` takes precedence, do not pass it if you want to use the manual `proceed` and `reset` functions.
 
 ### Hook/logical-based custom UI
-
-The `useBlocker` hook returns the state and two functions to lend control to you:
-
-- `status` - A string literal that can be either `'blocked'` or `'idle'`
-- `proceed` - A function that allows navigation to continue
-- `reset` - A function that cancels navigation (`status` will be be reset to `'idle'`)
 
 ```tsx
 import { useBlocker } from '@tanstack/react-router'
