@@ -20,7 +20,7 @@ export function useBlocker(blockerFnOrOpts?: BlockerOpts): BlockerResolver
  * @deprecated Use the BlockerOpts object syntax instead
  */
 export function useBlocker(
-  blockerFnOrOpts?: BlockerOpts,
+  blockerFn?: BlockerFn,
   condition?: boolean | any,
 ): BlockerResolver
 
