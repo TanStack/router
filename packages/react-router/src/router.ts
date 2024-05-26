@@ -1525,8 +1525,9 @@ export class Router<
 
         this.__store.setState((s) => ({
           ...s,
-          statusCode:
-            redirect?.statusCode || notFound
+          statusCode: redirect
+            ? redirect.statusCode
+            : notFound
               ? 404
               : s.matches.some((d) => d.status === 'error')
                 ? 500

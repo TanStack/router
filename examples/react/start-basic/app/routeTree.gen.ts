@@ -11,6 +11,7 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as RedirectImport } from './routes/redirect'
 import { Route as PostsImport } from './routes/posts'
 import { Route as DeferredImport } from './routes/deferred'
 import { Route as LayoutImport } from './routes/_layout'
@@ -23,6 +24,11 @@ import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/
 import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
 
 // Create/Update Routes
+
+const RedirectRoute = RedirectImport.update({
+  path: '/redirect',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const PostsRoute = PostsImport.update({
   path: '/posts',
@@ -106,6 +112,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsImport
       parentRoute: typeof rootRoute
     }
+    '/redirect': {
+      id: '/redirect'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectImport
+      parentRoute: typeof rootRoute
+    }
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
@@ -163,11 +176,11 @@ export const routeTree = rootRoute.addChildren({
   }),
   DeferredRoute,
   PostsRoute: PostsRoute.addChildren({ PostsPostIdRoute, PostsIndexRoute }),
+  RedirectRoute,
   PostsPostIdDeepRoute,
 })
 
 /* prettier-ignore-end */
-
 
 /* ROUTE_MANIFEST_START
 {
@@ -179,6 +192,7 @@ export const routeTree = rootRoute.addChildren({
         "/_layout",
         "/deferred",
         "/posts",
+        "/redirect",
         "/posts/$postId/deep"
       ]
     },
@@ -200,6 +214,9 @@ export const routeTree = rootRoute.addChildren({
         "/posts/$postId",
         "/posts/"
       ]
+    },
+    "/redirect": {
+      "filePath": "redirect.tsx"
     },
     "/_layout/_layout-2": {
       "filePath": "_layout/_layout-2.tsx",
