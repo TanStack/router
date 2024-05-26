@@ -12,6 +12,7 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as PostsImport } from './routes/posts'
+import { Route as DeferredImport } from './routes/deferred'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
@@ -25,6 +26,11 @@ import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/
 
 const PostsRoute = PostsImport.update({
   path: '/posts',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const DeferredRoute = DeferredImport.update({
+  path: '/deferred',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -84,6 +90,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof LayoutImport
+      parentRoute: typeof rootRoute
+    }
+    '/deferred': {
+      id: '/deferred'
+      path: '/deferred'
+      fullPath: '/deferred'
+      preLoaderRoute: typeof DeferredImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
@@ -148,11 +161,13 @@ export const routeTree = rootRoute.addChildren({
       LayoutLayout2LayoutBRoute,
     }),
   }),
+  DeferredRoute,
   PostsRoute: PostsRoute.addChildren({ PostsPostIdRoute, PostsIndexRoute }),
   PostsPostIdDeepRoute,
 })
 
 /* prettier-ignore-end */
+
 
 /* ROUTE_MANIFEST_START
 {
@@ -162,6 +177,7 @@ export const routeTree = rootRoute.addChildren({
       "children": [
         "/",
         "/_layout",
+        "/deferred",
         "/posts",
         "/posts/$postId/deep"
       ]
@@ -174,6 +190,9 @@ export const routeTree = rootRoute.addChildren({
       "children": [
         "/_layout/_layout-2"
       ]
+    },
+    "/deferred": {
+      "filePath": "deferred.tsx"
     },
     "/posts": {
       "filePath": "posts.tsx",
