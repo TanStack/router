@@ -10,7 +10,9 @@ export type AwaitOptions<T> = {
   promise: DeferredPromise<T>
 }
 
-export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
+export function useAwaited<T>({
+  promise,
+}: AwaitOptions<T>): [T, DeferredPromise<T>] {
   const router = useRouter()
   // const rerender = React.useReducer((x) => x + 1, 0)[1]
 
@@ -56,20 +58,6 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
     throw isDehydratedDeferred(promise) ? state.promise : promise
   }
 
-  // If we are the originator of the promise,
-  // inject the state into the HTML stream
-  if (!isDehydratedDeferred(promise)) {
-    router.injectHtml(
-      `<script class='tsr_deferred_data'>window.__TSR__DEFERRED__${state.uid} = ${JSON.stringify(router.options.transformer.stringify(state))}
-  if (window.__TSR__ROUTER__) {
-    let deferred = window.__TSR__ROUTER__.getDeferred('${state.uid}');
-    if (deferred) deferred.resolve(window.__TSR__DEFERRED__${state.uid});
-  }
-  document.querySelectorAll('.tsr_deferred_data').forEach((el) => el.parentElement.removeChild(el));
-</script>`,
-    )
-  }
-
   if (state.status === 'error') {
     if (typeof document !== 'undefined') {
       if (isServerSideError(state.error)) {
@@ -93,7 +81,7 @@ export function useAwaited<T>({ promise }: AwaitOptions<T>): [T] {
     }
   }
 
-  return [promise.__deferredState.data as any]
+  return [promise.__deferredState.data as any, promise]
 }
 
 export function Await<T>(
@@ -115,6 +103,40 @@ function AwaitInner<T>(
     children: (result: T) => React.ReactNode
   },
 ) {
-  const awaited = useAwaited(props)
-  return props.children(...awaited) as React.JSX.Element
+  const router = useRouter()
+  const [data, promise] = useAwaited(props)
+  const state = promise.__deferredState
+  // If we are the originator of the promise,
+  // inject the state into the HTML stream
+  return (
+    <>
+      {!isDehydratedDeferred(promise) ? (
+        <ScriptOnce
+          children={`window.__TSR__DEFERRED__${state.uid} = ${JSON.stringify(router.options.transformer.stringify(state))}
+  if (window.__TSR__ROUTER__) {
+    let deferred = window.__TSR__ROUTER__.getDeferred('${state.uid}');
+    if (deferred) deferred.resolve(window.__TSR__DEFERRED__${state.uid});
+  }
+  document.querySelectorAll('.tsr-script-once').forEach((el) => el.parentElement.removeChild(el));`}
+        />
+      ) : null}
+      {props.children(data)}
+    </>
+  )
+}
+
+function ScriptOnce({
+  className,
+  children,
+  ...rest
+}: { children: string } & React.HTMLProps<HTMLScriptElement>) {
+  return (
+    <script
+      {...rest}
+      className={`tsr-script-once ${className || ''}`}
+      dangerouslySetInnerHTML={{
+        __html: children,
+      }}
+    />
+  )
 }

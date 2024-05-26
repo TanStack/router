@@ -483,7 +483,6 @@ export class Router<
   shouldViewTransition?: boolean = undefined
   latestLoadPromise: Promise<void> = Promise.resolve()
   subscribers = new Set<RouterListener<RouterEvent>>()
-  injectedHtml: Array<InjectedHtmlEntry> = []
   dehydratedData?: TDehydrated
   viewTransitionPromise?: ControlledPromise<true>
   manifest?: Manifest
@@ -2231,9 +2230,10 @@ export class Router<
     return match
   }
 
-  injectHtml = async (html: string | (() => Promise<string> | string)) => {
-    this.injectedHtml.push(html)
-  }
+  /**
+   * @deprecated Injecting HTML directly is no longer supported. Use the new <ScriptOnce /> component instead.
+   */
+  injectHtml = async (html: string | (() => Promise<string> | string)) => {}
 
   // We use a token -> weak map to keep track of deferred promises
   // that are registered on the server and need to be resolved
@@ -2248,55 +2248,6 @@ export class Router<
     }
 
     return this.registeredDeferreds.get(token)
-  }
-
-  /**
-   * @deprecated Please inject your own html using the `injectHtml` method
-   */
-  dehydrateData = <T>(key: any, getData: T | (() => Promise<T> | T)) => {
-    warning(
-      false,
-      `The dehydrateData method is deprecated. Please use the injectHtml method to inject your own data.`,
-    )
-
-    if (typeof document === 'undefined') {
-      const strKey = typeof key === 'string' ? key : JSON.stringify(key)
-
-      this.injectHtml(async () => {
-        const id = `__TSR_DEHYDRATED__${strKey}`
-        const data =
-          typeof getData === 'function' ? await (getData as any)() : getData
-        return `<script id='${id}' suppressHydrationWarning>
-  window["__TSR_DEHYDRATED__${escapeJSON(
-    strKey,
-  )}"] = ${JSON.stringify(this.options.transformer.stringify(data))}
-</script>`
-      })
-
-      return () => this.hydrateData<T>(key)
-    }
-
-    return () => undefined
-  }
-
-  /**
-   * @deprecated Please extract your own data from scripts injected using the `injectHtml` method
-   */
-  hydrateData = <T = unknown>(key: any) => {
-    warning(
-      false,
-      `The hydrateData method is deprecated. Please use the extractHtml method to extract your own data.`,
-    )
-
-    if (typeof document !== 'undefined') {
-      const strKey = typeof key === 'string' ? key : JSON.stringify(key)
-
-      return this.options.transformer.parse(
-        window[`__TSR_DEHYDRATED__${strKey}` as any] as unknown as string,
-      ) as T
-    }
-
-    return undefined
   }
 
   dehydrate = (): DehydratedRouter => {
