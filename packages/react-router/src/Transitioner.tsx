@@ -23,7 +23,9 @@ export function Transitioner() {
     routerState.isLoading || isTransitioning || hasPendingMatches
   const previousIsAnyPending = usePrevious(isAnyPending)
 
-  router.startReactTransition = startReactTransition_
+  if (!router.isServer) {
+    router.startReactTransition = startReactTransition_
+  }
 
   // Subscribe to location changes
   // and try to load the new location
