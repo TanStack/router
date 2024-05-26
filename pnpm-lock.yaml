@@ -1554,6 +1554,9 @@ importers:
       import-meta-resolve:
         specifier: ^4.0.0
         version: 4.1.0
+      isbot:
+        specifier: ^5.1.7
+        version: 5.1.7
       jsesc:
         specifier: ^3.0.2
         version: 3.0.2
@@ -9903,6 +9906,11 @@ packages:
     resolution: {integrity: sha512-cohu4X66cXP120xwF+UubL+BQzOQLN1O0DOPOmkci6elgZ7o6XIn8B3FARk59RL0aX3cGTq8Ta7MVOWpay3rbw==}
     engines: {node: '>=18'}
     dev: true
+
+  /isbot@5.1.7:
+    resolution: {integrity: sha512-/U9wtTOhYcP1cnDUFKNalTSQHVD3y4ginXstBBQDRwDKTZ2liBb0IEnRu8X+RpX9VnNN/I3MNNgJvKnKQ5+CnA==}
+    engines: {node: '>=18'}
+    dev: false
 
   /isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}

@@ -1,6 +1,10 @@
 import { Transform } from 'stream'
 import type { AnyRouter } from '@tanstack/react-router'
 
+/**
+ * @deprecated This is no longer necessary as long as you
+ * are using the <Await> component or `useAwaited` hook
+ */
 export function transformStreamWithRouter(router: AnyRouter) {
   const callbacks = transformHtmlCallbacks(injectorFromRouter(router))
   return new Transform({
@@ -19,6 +23,10 @@ export function transformStreamWithRouter(router: AnyRouter) {
   })
 }
 
+/**
+ * @deprecated This is no longer necessary as long as you
+ * are using the <Await> component or `useAwaited` hook
+ */
 export function transformReadableStreamWithRouter(router: AnyRouter) {
   const callbacks = transformHtmlCallbacks(injectorFromRouter(router))
   return new TransformStream<string>({
@@ -38,14 +46,7 @@ export function transformReadableStreamWithRouter(router: AnyRouter) {
 }
 
 function injectorFromRouter(router: AnyRouter) {
-  return async () => {
-    const injectorPromises = router.injectedHtml.map((d) =>
-      typeof d === 'function' ? d() : d,
-    )
-    const injectors = await Promise.all(injectorPromises)
-    router.injectedHtml = []
-    return injectors.join('')
-  }
+  return async () => ''
 }
 
 // regex pattern for matching closing body and html tags
