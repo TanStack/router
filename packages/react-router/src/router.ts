@@ -2231,11 +2231,6 @@ export class Router<
     return match
   }
 
-  /**
-   * @deprecated Injecting HTML directly is no longer supported. Use the new <ScriptOnce /> component instead.
-   */
-  injectHtml = async (html: string | (() => Promise<string> | string)) => {}
-
   // We use a token -> weak map to keep track of deferred promises
   // that are registered on the server and need to be resolved
   registeredDeferredsIds = new Map<string, {}>()

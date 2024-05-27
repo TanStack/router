@@ -116,8 +116,7 @@ function AwaitInner<T>(
   if (window.__TSR__ROUTER__) {
     let deferred = window.__TSR__ROUTER__.getDeferred('${state.uid}');
     if (deferred) deferred.resolve(window.__TSR__DEFERRED__${state.uid});
-  }
-  document.querySelectorAll('.tsr-script-once').forEach((el) => el.parentElement.removeChild(el));`}
+  }`}
         />
       ) : null}
       {props.children(data)}
@@ -125,7 +124,7 @@ function AwaitInner<T>(
   )
 }
 
-function ScriptOnce({
+export function ScriptOnce({
   className,
   children,
   ...rest
@@ -135,7 +134,10 @@ function ScriptOnce({
       {...rest}
       className={`tsr-script-once ${className || ''}`}
       dangerouslySetInnerHTML={{
-        __html: children,
+        __html: [
+          children,
+          `document.querySelectorAll('.tsr-script-once').forEach((el) => el.parentElement.removeChild(el));`,
+        ].join('\n'),
       }}
     />
   )

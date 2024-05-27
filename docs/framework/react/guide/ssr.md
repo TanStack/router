@@ -221,56 +221,11 @@ Streaming SSR is the most modern flavor of SSR and is the process of continuousl
 
 This pattern can be useful for pages that have slow or high-latency data fetching requirements. For example, if you have a page that needs to fetch data from a third-party API, you can stream the critical initial markup and data to the client and then stream the less-critical third-party data to the client as it is resolved.
 
-To enable this streaming pattern with TanStack Router, you will need to use React's `renderToPipeableStream` function to render your application to a readable stream. This function returns a stream that can be piped to the response. Here's the utility information:
+**This streaming pattern is all automatic as long as you are using `renderToPipeableStream`**.
 
-- `transformStreamWithRouter` from `@tanstack/start`
-  - e.g. `transformStreamWithRouter(router)`
-  - This function returns a stream Transform instance that can be used to transform a stream of HTML markup from React DOM's `renderToPipeableStream` function as it is piped to the response.
-  - This transform automatically and incrementally embeds fine-grained HTML injections and dehydrated data chunks into the stream.
+## Streaming Dehydration/Hydration
 
-### Transforming the Stream
-
-Let's implement the `transformStreamWithRouter` function from `@tanstack/start` to transform the stream of HTML markup from React DOM's `renderToPipeableStream` function as it is piped to the response.
-
-```tsx
-// Render the app to a readable stream
-let stream!: PipeableStream
-
-await new Promise<void>((resolve) => {
-  stream = ReactDOMServer.renderToPipeableStream(
-    <StartServer router={router} />,
-    {
-      [callbackName]: () => {
-        res.statusCode = didError ? 500 : 200
-        res.setHeader('Content-Type', 'text/html')
-        resolve()
-      },
-      onError: (err) => {
-        didError = true
-        console.log(err)
-      },
-    },
-  )
-})
-
-if (router.hasNotFoundMatch() && res.statusCode !== 500) {
-  res.statusCode = 404
-}
-
-// Add our Router transform to the stream
-const transforms = [transformStreamWithRouter(router)]
-
-// Pipe the stream through our transforms
-const transformedStream = transforms.reduce(
-  (stream, transform) => stream.pipe(transform as any),
-  stream,
-)
-
-// Pipe the transformed stream to the response
-transformedStream.pipe(res)
-```
-
-With `renderToPipeableStream` and `transformStreamWithRouter`, TanStack Router is now configured to stream data to the client as it is rendered on the server!
+Streaming dehydration/hydration is an advanced pattern that goes beyond markup and allows you to dehydrate and stream any supporting data from the server to the client and rehydrate it on arrival. This is useful for applications that may need to further use/manage the underlying data that was used to render the initial markup on the server.
 
 ## Data Transformers
 
