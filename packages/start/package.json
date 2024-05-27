@@ -117,6 +117,7 @@
     "@tanstack/router-vite-plugin": "workspace:*",
     "@types/jsesc": "^3.0.3",
     "@vinxi/react": "0.2.2",
+    "@vinxi/react-server-dom": "^0.0.3",
     "@vinxi/server-components": "^0.3.3",
     "@vinxi/server-functions": "^0.3.2",
     "import-meta-resolve": "^4.0.0",

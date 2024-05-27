@@ -18,61 +18,50 @@ import { z } from 'zod'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
-const viteSchema = z
-  .object({
-    plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
-  })
-  .optional()
-  .default({})
+const viteSchema = z.object({
+  plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
+})
 
-const babelSchema = z
-  .object({
-    plugins: z
-      .array(z.union([z.tuple([z.string(), z.any()]), z.string()]))
-      .optional(),
-  })
-  .optional()
-  .default({})
+const babelSchema = z.object({
+  plugins: z
+    .array(z.union([z.tuple([z.string(), z.any()]), z.string()]))
+    .optional(),
+})
 
-const reactSchema = z
-  .object({
-    babel: babelSchema,
-  })
-  .optional()
-  .default({})
+const reactSchema = z.object({
+  babel: babelSchema.optional(),
+})
 
-const routersSchema = z
-  .object({
-    ssr: z
-      .object({
-        entry: z.string().default('./app/ssr.tsx'),
-        vite: viteSchema,
-      })
-      .optional()
-      .default({}),
-    rsc: z
-      .object({
-        vite: viteSchema,
-      })
-      .optional()
-      .default({}),
-    client: z
-      .object({
-        entry: z.string().optional().default('./app/client.tsx'),
-        base: z.string().optional(),
-        vite: viteSchema,
-      })
-      .optional()
-      .default({}),
-    server: z
-      .object({
-        vite: viteSchema,
-      })
-      .optional()
-      .default({}),
-  })
-  .optional()
-  .default({})
+const routersSchema = z.object({
+  ssr: z
+    .object({
+      entry: z.string().default('./app/ssr.tsx'),
+      vite: viteSchema.optional().default({}),
+    })
+    .optional()
+    .default({}),
+  // rsc: z
+  //   .object({
+  //     entry: z.string().default('./app/rsc.tsx'),
+  //     vite: viteSchema,
+  //   })
+  //   .optional()
+  //   .default({}),
+  client: z
+    .object({
+      entry: z.string().optional().default('./app/client.tsx'),
+      base: z.string().optional(),
+      vite: viteSchema.optional().default({}),
+    })
+    .optional()
+    .default({}),
+  server: z
+    .object({
+      vite: viteSchema.optional().default({}),
+    })
+    .optional()
+    .default({}),
+})
 
 const optsSchema = z
   .object({
@@ -86,9 +75,9 @@ const optsSchema = z
       })
       .optional()
       .default({}),
-    react: reactSchema,
-    vite: viteSchema,
-    routers: routersSchema,
+    react: reactSchema.optional().default({}),
+    vite: viteSchema.optional().default({}),
+    routers: routersSchema.optional().default({}),
   })
   .optional()
   .default({})
@@ -122,6 +111,7 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
 
   const clientEntry = opts.routers.client.entry
   const ssrEntry = opts.routers.ssr.entry
+  // const rscEntry = opts.routers.rsc.entry
 
   return createApp({
     server: {
@@ -137,21 +127,6 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
         dir: './public',
         base: '/',
       },
-      // startRouterProxy({
-      //   name: 'rsc',
-      //   worker: true,
-      //   type: 'http',
-      //   base: '/_rsc',
-      //   handler: './app/react-server.tsx',
-      //   target: 'server',
-      //   plugins: () => [
-      //     startVite(),
-      //     ...(opts.vite?.plugins?.() || []),
-      //     ...(opts.routers.rsc?.vite?.plugins?.() || []),
-      //     serverComponents.server(),
-      //     reactRefresh(),
-      //   ],
-      // }),
       startRouterProxy(tsrConfig)({
         name: 'client',
         type: 'client',
@@ -171,7 +146,7 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
           reactRefresh({
             babel: opts.react.babel,
           }),
-          // serverComponents.client(),
+          serverComponents.client(),
         ],
       }),
       startRouterProxy(tsrConfig)({
@@ -202,7 +177,7 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
             startVite(),
             ...(opts.vite.plugins?.() || []),
             ...(opts.routers.server.vite.plugins?.() || []),
-            // serverComponents.serverActions(),
+            serverComponents.serverActions(),
           ],
           // For whatever reason, vinxi expects a path relative
           // to the project here. This is a workaround for that.

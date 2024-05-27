@@ -68,23 +68,22 @@ export {
 } from './link'
 export { type ParsedLocation } from './location'
 export {
-  matchContext,
   Matches,
-  Match,
-  Outlet,
   useMatchRoute,
   MatchRoute,
   useMatches,
   useParentMatches,
   useChildMatches,
-  isServerSideError,
-  defaultDeserializeError,
   type RouteMatch,
   type AnyRouteMatch,
   type MatchRouteOptions,
   type UseMatchRouteOptions,
   type MakeMatchRouteOptions,
 } from './Matches'
+export { matchContext } from './matchContext'
+export { Match } from './Match'
+export { Outlet } from './Outlet'
+export { isServerSideError, defaultDeserializeError } from './isServerSideError'
 export { useMatch } from './useMatch'
 export { useLoaderDeps } from './useLoaderDeps'
 export { useLoaderData } from './useLoaderData'
