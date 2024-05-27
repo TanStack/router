@@ -5,7 +5,9 @@ export const Route = createFileRoute('/deferred')({
   loader: () => {
     return {
       deferredStuff: defer(
-        new Promise<string>((r) => setTimeout(() => r('Hello deferred!'), 5000))
+        new Promise<string>((r) =>
+          setTimeout(() => r('Hello deferred!'), 5000),
+        ),
       ),
     }
   },
