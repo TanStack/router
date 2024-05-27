@@ -73,7 +73,9 @@
       "@tanstack/router-plugin": "workspace:*",
       "@tanstack/router-vite-plugin": "workspace:*",
       "@tanstack/start": "workspace:*",
-      "@tanstack/start-vite-plugin": "workspace:*"
+      "@tanstack/start-vite-plugin": "workspace:*",
+      "_react": "0.0.0-experimental-035a41c4e-20230704",
+      "_react-dom": "0.0.0-experimental-035a41c4e-20230704"
     }
   }
 }

@@ -1,12 +1,8 @@
 import * as React from 'react'
-import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { createControlledPromise, pick } from './utils'
-import { CatchNotFound, DefaultGlobalNotFound, isNotFound } from './not-found'
-import { isRedirect } from './redirects'
 import { type AnyRouter, type RegisteredRouter } from './router'
 import { Transitioner } from './Transitioner'
 import {
@@ -14,7 +10,9 @@ import {
   type ReactNode,
   type StaticDataRouteOption,
 } from './route'
-import { rootRouteId } from './root'
+import { matchContext } from './matchContext'
+import { Match } from './Match'
+import { SafeFragment } from './SafeFragment'
 import type { ResolveRelativePath, ToOptions } from './link'
 import type {
   AllContext,
@@ -28,8 +26,6 @@ import type {
   RoutePaths,
 } from './routeInfo'
 import type { ControlledPromise, DeepPartial, NoInfer } from './utils'
-
-export const matchContext = React.createContext<string | undefined>(undefined)
 
 export interface RouteMatch<
   TRouteId,
@@ -607,28 +603,4 @@ export function useChildMatches<
         : (matches as T)
     },
   })
-}
-
-export function isServerSideError(error: unknown): error is {
-  __isServerError: true
-  data: Record<string, any>
-} {
-  if (!(typeof error === 'object' && error && 'data' in error)) return false
-  if (!('__isServerError' in error && error.__isServerError)) return false
-  if (!(typeof error.data === 'object' && error.data)) return false
-
-  return error.__isServerError === true
-}
-
-export function defaultDeserializeError(serializedData: Record<string, any>) {
-  if ('name' in serializedData && 'message' in serializedData) {
-    const error = new Error(serializedData.message)
-    error.name = serializedData.name
-    if (process.env.NODE_ENV === 'development') {
-      error.stack = serializedData.stack
-    }
-    return error
-  }
-
-  return serializedData.data
 }
