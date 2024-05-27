@@ -76,16 +76,21 @@ const routersSchema = z
 
 const optsSchema = z
   .object({
-    tsr: configSchema
-      .partial()
-      .extend({
-        appDirectory: z.string().default('./app'),
-        // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
-        routesDirectory: z.string().default('./app/routes'),
-        generatedRouteTree: z.string().default('./app/routeTree.gen.ts'),
-      })
+    tsr: z
+      .discriminatedUnion('enabled', [
+        configSchema.partial().extend({
+          enabled: z.literal(true),
+          appDirectory: z.string().default('./app'),
+          // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
+          routesDirectory: z.string().default('./app/routes'),
+          generatedRouteTree: z.string().default('./app/routeTree.gen.ts'),
+        }),
+        z.object({
+          enabled: z.literal(false),
+        }),
+      ])
       .optional()
-      .default({}),
+      .default({ enabled: true }),
     react: reactSchema,
     vite: viteSchema,
     routers: routersSchema,
@@ -93,10 +98,12 @@ const optsSchema = z
   .optional()
   .default({})
 
-export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
+export async function defineConfig(opts_?: z.input<typeof optsSchema>) {
   const opts = optsSchema.parse(opts_)
 
-  const tsrConfig = await getConfig(opts.tsr)
+  const isTsrEnabled = opts.tsr.enabled
+
+  const tsrConfig = isTsrEnabled ? await getConfig(opts.tsr) : null
 
   const startVite = () => {
     return config('start-vite', {
@@ -106,15 +113,17 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
       optimizeDeps: {
         include: ['@tanstack/start/server-runtime'],
       },
-      plugins: [
-        TanStackRouterVite({
-          ...tsrConfig,
-          experimental: {
-            ...opts.tsr.experimental,
-            enableCodeSplitting: true,
-          },
-        }),
-      ],
+      plugins: isTsrEnabled
+        ? [
+            TanStackRouterVite({
+              ...tsrConfig,
+              experimental: {
+                ...opts.tsr.experimental,
+                enableCodeSplitting: true,
+              },
+            }),
+          ]
+        : [],
     })
   }
 
@@ -181,10 +190,11 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
         target: 'server',
         plugins: () => [
           startVite(),
-          tsrRoutesManifest({
-            tsrConfig,
-            clientBase,
-          }),
+          ...[
+            isTsrEnabled
+              ? [tsrRoutesManifest({ tsrConfig: tsrConfig!, clientBase })]
+              : [],
+          ],
           ...(opts.vite.plugins?.() || []),
           ...(opts.routers.ssr.vite.plugins?.() || []),
           serverTransform({
@@ -214,18 +224,22 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
   })
 }
 
-function startRouterProxy(tsrConfig: z.infer<typeof configSchema>) {
+function startRouterProxy(tsrConfig: z.infer<typeof configSchema> | null) {
   return (router: any) => {
     return {
       ...router,
       plugins: async () => [
-        TanStackRouterVite({
-          ...tsrConfig,
-          experimental: {
-            ...tsrConfig.experimental,
-            enableCodeSplitting: true,
-          },
-        }),
+        ...(tsrConfig
+          ? [
+              TanStackRouterVite({
+                ...tsrConfig,
+                experimental: {
+                  ...tsrConfig.experimental,
+                  enableCodeSplitting: true,
+                },
+              }),
+            ]
+          : []),
         ...((await router?.plugins?.()) ?? []),
       ],
     }
