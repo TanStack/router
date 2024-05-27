@@ -56,7 +56,6 @@
     "src"
   ],
   "dependencies": {
-    "@tanstack/react-router": "workspace:*",
     "clsx": "^2.1.0",
     "date-fns": "^2.29.1",
     "goober": "^2.1.14"
@@ -67,6 +66,7 @@
     "react-dom": "^18.2.0"
   },
   "peerDependencies": {
+    "@tanstack/react-router": "workspace:^",
     "react": ">=16.8",
     "react-dom": ">=16.8"
   }
