@@ -1,17 +1,21 @@
 import { createRouter as createReactRouter } from '@tanstack/react-router'
 
 import SuperJSON from 'superjson'
-import { createQueryPreloader } from '@apollo/client'
+import { ApolloProvider, createQueryPreloader } from '@apollo/client'
 import { routeTree } from './routeTree.gen'
-import type { ApolloClient } from '@apollo/client'
+import { makeClient } from './apollo'
 
-export function createRouter(apolloClient: ApolloClient<any>) {
+export function createRouter() {
+  const apolloClient = makeClient()
   return createReactRouter({
     routeTree,
     context: {
       head: '',
       preloadQuery: createQueryPreloader(apolloClient),
       apolloClient,
+    },
+    Wrap({ children }) {
+      return <ApolloProvider client={apolloClient}>{children}</ApolloProvider>
     },
     defaultPreload: 'intent',
     // Maybe this is already possible if we provided some kind of

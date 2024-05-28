@@ -3,9 +3,7 @@ import { StartServer } from '@tanstack/start/server'
 import { isbot } from 'isbot'
 import { renderToPipeableStream } from 'react-dom/server'
 import { createMemoryHistory } from '@tanstack/react-router'
-import { ApolloProvider, createQueryPreloader } from '@apollo/client'
 import { createRouter } from './router'
-import { makeClient } from './apollo'
 import type express from 'express'
 import type { ServerResponse } from 'http'
 
@@ -22,8 +20,7 @@ export async function render(opts: {
   req: express.Request
   res: ServerResponse
 }) {
-  const client = makeClient()
-  const router = createRouter(client)
+  const router = createRouter()
 
   const memoryHistory = createMemoryHistory({
     initialEntries: [opts.url],
@@ -45,27 +42,22 @@ export async function render(opts: {
 
   const passthrough = new PassThrough()
 
-  const pipeable = renderToPipeableStream(
-    <ApolloProvider client={client}>
-      <StartServer router={router} />
-    </ApolloProvider>,
-    {
-      ...(isbot(opts.req.headers['user-agent'])
-        ? {
-            onAllReady() {
-              pipeable.pipe(passthrough)
-            },
-          }
-        : {
-            onShellReady() {
-              pipeable.pipe(passthrough)
-            },
-          }),
-      onShellError(err) {
-        throw err
-      },
+  const pipeable = renderToPipeableStream(<StartServer router={router} />, {
+    ...(isbot(opts.req.headers['user-agent'])
+      ? {
+          onAllReady() {
+            pipeable.pipe(passthrough)
+          },
+        }
+      : {
+          onShellReady() {
+            pipeable.pipe(passthrough)
+          },
+        }),
+    onShellError(err) {
+      throw err
     },
-  )
+  })
 
   opts.res.setHeader('Content-Type', 'text/html')
   opts.res.statusCode = router.state.statusCode
