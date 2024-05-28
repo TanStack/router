@@ -15,6 +15,7 @@ import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
 import { serverTransform } from '@vinxi/server-functions/server'
 import { z } from 'zod'
+import type { RouterSchemaInput } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
@@ -87,26 +88,6 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
 
   const tsrConfig = await getConfig(opts.tsr)
 
-  const startVite = () => {
-    return config('start-vite', {
-      ssr: {
-        noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-      },
-      optimizeDeps: {
-        include: ['@tanstack/start/server-runtime'],
-      },
-      plugins: [
-        TanStackRouterVite({
-          ...tsrConfig,
-          experimental: {
-            ...opts.tsr.experimental,
-            enableCodeSplitting: true,
-          },
-        }),
-      ],
-    })
-  }
-
   const clientBase = opts.routers.client.base || '/_build'
 
   const clientEntry = opts.routers.client.entry
@@ -127,7 +108,7 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
         dir: './public',
         base: '/',
       },
-      startRouterProxy(tsrConfig)({
+      withStartPlugins(tsrConfig)({
         name: 'client',
         type: 'client',
         handler: clientEntry,
@@ -137,7 +118,6 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
           sourcemap: true,
         },
         plugins: () => [
-          startVite(),
           ...(opts.vite.plugins?.() || []),
           ...(opts.routers.client.vite.plugins?.() || []),
           serverFunctions.client({
@@ -149,13 +129,12 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
           serverComponents.client(),
         ],
       }),
-      startRouterProxy(tsrConfig)({
+      withStartPlugins(tsrConfig)({
         name: 'ssr',
         type: 'http',
         handler: ssrEntry,
         target: 'server',
         plugins: () => [
-          startVite(),
           tsrRoutesManifest({
             tsrConfig,
             clientBase,
@@ -170,30 +149,56 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
           client: 'client',
         },
       }),
-      startRouterProxy(tsrConfig)(
-        serverFunctions.router({
-          name: 'server',
-          plugins: () => [
-            startVite(),
-            ...(opts.vite.plugins?.() || []),
-            ...(opts.routers.server.vite.plugins?.() || []),
-            serverComponents.serverActions(),
-          ],
-          // For whatever reason, vinxi expects a path relative
-          // to the project here. This is a workaround for that.
-          handler: importToProjectRelative('@tanstack/start/server-handler'),
-          runtime: '@tanstack/start/server-runtime',
-        }),
-      ),
+      withStartPlugins(tsrConfig)({
+        name: 'server',
+        type: 'http',
+        worker: true,
+        handler: importToProjectRelative('@tanstack/start/server-handler'),
+        target: 'server',
+        plugins: () => [
+          ...(opts.vite.plugins?.() || []),
+          ...(opts.routers.server.vite.plugins?.() || []),
+          serverFunctions.server({
+            runtime: '@tanstack/start/server-runtime',
+          }),
+          serverComponents.serverActions({
+            conditions: ['react-server'],
+          }),
+        ],
+      }),
     ],
   })
 }
 
-function startRouterProxy(tsrConfig: z.infer<typeof configSchema>) {
-  return (router: any) => {
+function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
+  return (
+    router: Extract<
+      RouterSchemaInput,
+      {
+        type: 'client' | 'http'
+      }
+    > & {
+      base?: string
+      link?: {
+        client: string
+      }
+      runtime?: string
+      build?: {
+        sourcemap?: boolean
+      }
+    },
+  ) => {
     return {
       ...router,
       plugins: async () => [
+        config('start-vite', {
+          ssr: {
+            noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+          },
+          optimizeDeps: {
+            include: ['@tanstack/start/server-runtime'],
+          },
+        }),
         TanStackRouterVite({
           ...tsrConfig,
           experimental: {
@@ -201,7 +206,7 @@ function startRouterProxy(tsrConfig: z.infer<typeof configSchema>) {
             enableCodeSplitting: true,
           },
         }),
-        ...((await router?.plugins?.()) ?? []),
+        ...((await router.plugins?.()) ?? []),
       ],
     }
   }
