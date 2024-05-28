@@ -9,7 +9,9 @@
     "build": "vinxi build",
     "start": "vinxi start",
     "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
-    "format": "prettier --write '**/*' --ignore-unknown"
+    "format": "prettier --write '**/*' --ignore-unknown",
+    "test:playwright": "playwright test --project=chromium",
+    "test:playwright:replay": "playwright test --project=replay-chromium"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.34.5",
@@ -18,6 +20,7 @@
     "@tanstack/start": "^1.34.5",
     "@typescript-eslint/parser": "^7.2.0",
     "@vitejs/plugin-react": "^4",
+    "dotenv": "^16.4.5",
     "isbot": "^3.7.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -26,6 +29,9 @@
     "vinxi": "^0.3.11"
   },
   "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "@replayio/playwright": "^3.0.1",
+    "@types/node": "^20.12.11",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4",
