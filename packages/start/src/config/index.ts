@@ -59,6 +59,7 @@ const routersSchema = z.object({
   server: z
     .object({
       vite: viteSchema.optional().default({}),
+      base: z.string().optional().default('/_server'),
     })
     .optional()
     .default({}),
@@ -92,6 +93,7 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
 
   const clientEntry = opts.routers.client.entry
   const ssrEntry = opts.routers.ssr.entry
+  const serverBase = opts.routers.server.base
   // const rscEntry = opts.routers.rsc.entry
 
   return createApp({
@@ -111,8 +113,8 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
       withStartPlugins(tsrConfig)({
         name: 'client',
         type: 'client',
-        handler: clientEntry,
         target: 'browser',
+        handler: clientEntry,
         base: clientBase,
         build: {
           sourcemap: true,
@@ -132,8 +134,8 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
       withStartPlugins(tsrConfig)({
         name: 'ssr',
         type: 'http',
-        handler: ssrEntry,
         target: 'server',
+        handler: ssrEntry,
         plugins: () => [
           tsrRoutesManifest({
             tsrConfig,
@@ -152,18 +154,19 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
       withStartPlugins(tsrConfig)({
         name: 'server',
         type: 'http',
-        worker: true,
-        handler: importToProjectRelative('@tanstack/start/server-handler'),
         target: 'server',
+        base: serverBase,
+        // worker: true,
+        handler: importToProjectRelative('@tanstack/start/server-handler'),
         plugins: () => [
-          ...(opts.vite.plugins?.() || []),
-          ...(opts.routers.server.vite.plugins?.() || []),
           serverFunctions.server({
             runtime: '@tanstack/start/server-runtime',
           }),
-          serverComponents.serverActions({
-            conditions: ['react-server'],
-          }),
+          // serverComponents.serverActions({
+          //   conditions: ['react-server'],
+          // }),
+          ...(opts.vite.plugins?.() || []),
+          ...(opts.routers.server.vite.plugins?.() || []),
         ],
       }),
     ],
