@@ -5,6 +5,7 @@ import { readFile } from 'fs/promises'
 import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite, configSchema } from '@tanstack/router-vite-plugin'
+import { TanStackStartVite } from '@tanstack/start-vite-plugin'
 import { getConfig } from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
@@ -122,8 +123,9 @@ export async function defineConfig(opts_?: z.input<typeof optsSchema>) {
                 enableCodeSplitting: true,
               },
             }),
+            TanStackStartVite(),
           ]
-        : [],
+        : [TanStackStartVite()],
     })
   }
 
@@ -238,8 +240,9 @@ function startRouterProxy(tsrConfig: z.infer<typeof configSchema> | null) {
                   enableCodeSplitting: true,
                 },
               }),
+              TanStackStartVite(),
             ]
-          : []),
+          : [TanStackStartVite()]),
         ...((await router?.plugins?.()) ?? []),
       ],
     }

@@ -115,6 +115,7 @@
     "@tanstack/react-router": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-vite-plugin": "workspace:*",
+    "@tanstack/start-vite-plugin": "workspace:*",
     "@types/jsesc": "^3.0.3",
     "@vinxi/react": "0.2.2",
     "@vinxi/server-components": "^0.3.3",

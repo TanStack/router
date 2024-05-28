@@ -91,35 +91,7 @@ export async function compileFile(opts: {
                     {
                       CallExpression: (path) => {
                         if (path.node.callee.type === 'Identifier') {
-                          if (path.node.callee.name === 'createServerFn') {
-                            // If the function at createServerFn(_, MyFunc) doesn't have a
-                            // 'use server' directive at the top of the function scope,
-                            // then add it.
-
-                            const fn = path.node.arguments[1]
-
-                            if (
-                              t.isFunctionExpression(fn) ||
-                              t.isArrowFunctionExpression(fn)
-                            ) {
-                              if (t.isBlockStatement(fn.body)) {
-                                const hasUseServerDirective =
-                                  fn.body.directives.some((directive) => {
-                                    return (
-                                      directive.value.value === 'use server'
-                                    )
-                                  })
-
-                                if (!hasUseServerDirective) {
-                                  fn.body.directives.unshift(
-                                    t.directive(
-                                      t.directiveLiteral('use server'),
-                                    ),
-                                  )
-                                }
-                              }
-                            }
-                          } else if (
+                          if (
                             path.node.callee.name === 'createRoute' ||
                             path.node.callee.name === 'createFileRoute'
                           ) {
@@ -327,35 +299,7 @@ export async function splitFile(opts: {
                     {
                       CallExpression: (path) => {
                         if (path.node.callee.type === 'Identifier') {
-                          if (path.node.callee.name === 'createServerFn') {
-                            // If the function at createServerFn(_, MyFunc) doesn't have a
-                            // 'use server' directive at the top of the function scope,
-                            // then add it.
-
-                            const fn = path.node.arguments[1]
-
-                            if (
-                              t.isFunctionExpression(fn) ||
-                              t.isArrowFunctionExpression(fn)
-                            ) {
-                              if (t.isBlockStatement(fn.body)) {
-                                const hasUseServerDirective =
-                                  fn.body.directives.some((directive) => {
-                                    return (
-                                      directive.value.value === 'use server'
-                                    )
-                                  })
-
-                                if (!hasUseServerDirective) {
-                                  fn.body.directives.unshift(
-                                    t.directive(
-                                      t.directiveLiteral('use server'),
-                                    ),
-                                  )
-                                }
-                              }
-                            }
-                          } else if (
+                          if (
                             path.node.callee.name === 'createRoute' ||
                             path.node.callee.name === 'createFileRoute'
                           ) {
