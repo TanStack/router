@@ -7,7 +7,6 @@ import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
   createControlledPromise,
   deepEqual,
-  escapeJSON,
   functionalUpdate,
   last,
   pick,
@@ -421,6 +420,12 @@ export const componentTypes = [
 ] as const
 
 export type RouterEvents = {
+  onBeforeNavigate: {
+    type: 'onBeforeNavigate'
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+  }
   onBeforeLoad: {
     type: 'onBeforeLoad'
     fromLocation: ParsedLocation
@@ -1374,7 +1379,7 @@ export class Router<
     })
   }
 
-  navigate: NavigateFn = ({ from, to, ...rest }) => {
+  navigate: NavigateFn = ({ from, to, __isRedirect, ...rest }) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
@@ -1423,13 +1428,6 @@ export class Router<
         // Cancel any pending matches
         this.cancelMatches()
 
-        this.emit({
-          type: 'onBeforeLoad',
-          fromLocation: prevLocation,
-          toLocation: next,
-          pathChanged: pathDidChange,
-        })
-
         let pendingMatches!: Array<AnyRouteMatch>
 
         this.__store.batch(() => {
@@ -1452,6 +1450,22 @@ export class Router<
               return !pendingMatches.find((e) => e.id === d.id)
             }),
           }))
+        })
+
+        if (!this.state.redirect) {
+          this.emit({
+            type: 'onBeforeNavigate',
+            fromLocation: prevLocation,
+            toLocation: next,
+            pathChanged: pathDidChange,
+          })
+        }
+
+        this.emit({
+          type: 'onBeforeLoad',
+          fromLocation: prevLocation,
+          toLocation: next,
+          pathChanged: pathDidChange,
         })
 
         await this.loadMatches({
@@ -1516,7 +1530,7 @@ export class Router<
         if (isResolvedRedirect(err)) {
           redirect = err
           if (!this.isServer) {
-            this.navigate({ ...err, replace: true })
+            this.navigate({ ...err, replace: true, __isRedirect: true })
             this.load()
           }
         } else if (isNotFound(err)) {
