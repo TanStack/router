@@ -30,6 +30,8 @@ export async function render(opts: {
   router.update({
     history: memoryHistory,
     context: {
+      // is this the official way to do this?
+      ...router.options.context,
       head: opts.head,
     },
   })
