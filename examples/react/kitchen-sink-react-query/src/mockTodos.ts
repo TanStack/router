@@ -1,8 +1,10 @@
-import { PickAsPartial, PickAsRequired } from '@tanstack/react-router'
-import { match } from 'assert'
 import axios from 'redaxios'
 import { produce } from 'immer'
 import { actionDelayFn, loaderDelayFn, shuffle } from './utils'
+
+type PickAsRequired<TValue, TKey extends keyof TValue> = Omit<TValue, TKey> &
+  Required<Pick<TValue, TKey>>
+
 export type Invoice = {
   id: number
   title: string

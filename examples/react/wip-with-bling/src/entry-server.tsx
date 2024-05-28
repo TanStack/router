@@ -1,14 +1,13 @@
+import { PassThrough } from 'stream'
 import * as React from 'react'
-import ReactDOMServer, { PipeableStream } from 'react-dom/server'
+import { renderToPipeableStream } from 'react-dom/server'
 import { createMemoryHistory } from '@tanstack/react-router'
-import { StartServer, transformStreamWithRouter } from '@tanstack/start/server'
+import { StartServer } from '@tanstack/start/server'
 import { isbot } from 'isbot'
-import { ServerResponse } from 'http'
-import express from 'express'
-
-// index.js
-import './fetch-polyfill'
 import { createRouter } from './router'
+import type { ServerResponse } from 'http'
+import type express from 'express'
+import './fetch-polyfill'
 
 type ReactReadableStream = ReadableStream<Uint8Array> & {
   allReady?: Promise<void> | undefined
@@ -38,41 +37,30 @@ export async function render(opts: {
   // (streamed data will continue to load in the background)
   await router.load()
 
-  // Track errors
-  let didError = false
+  const passthrough = new PassThrough()
 
-  // Clever way to get the right callback. Thanks Remix!
-  const callbackName = isbot(opts.req.headers['user-agent'])
-    ? 'onAllReady'
-    : 'onShellReady'
-
-  // Render the app to a readable stream
-  let stream!: PipeableStream
-
-  await new Promise<void>((resolve) => {
-    stream = ReactDOMServer.renderToPipeableStream(
-      <StartServer router={router} />,
-      {
-        [callbackName]: () => {
-          opts.res.statusCode = didError ? 500 : 200
-          opts.res.setHeader('Content-Type', 'text/html')
-          resolve()
-        },
-        onError: (err) => {
-          didError = true
-          console.log(err)
-        },
-      },
-    )
+  const pipeable = renderToPipeableStream(<StartServer router={router} />, {
+    ...(isbot(opts.req.headers['user-agent'])
+      ? {
+          onAllReady() {
+            pipeable.pipe(passthrough)
+          },
+        }
+      : {
+          onShellReady() {
+            pipeable.pipe(passthrough)
+          },
+        }),
+    onShellError(err) {
+      throw err
+    },
   })
 
-  // Add our Router transform to the stream
-  const transforms = [transformStreamWithRouter(router)]
+  opts.res.setHeader('Content-Type', 'text/html')
+  opts.res.statusCode = router.state.statusCode
+  opts.res.statusMessage = `${router.state.statusCode}`.startsWith('5')
+    ? 'Internal Server Error'
+    : 'OK'
 
-  const transformedStream = transforms.reduce(
-    (stream, transform) => stream.pipe(transform as any),
-    stream,
-  )
-
-  transformedStream.pipe(opts.res)
+  pipeable.pipe(opts.res)
 }

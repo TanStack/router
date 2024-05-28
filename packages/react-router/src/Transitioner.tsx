@@ -23,7 +23,9 @@ export function Transitioner() {
     routerState.isLoading || isTransitioning || hasPendingMatches
   const previousIsAnyPending = usePrevious(isAnyPending)
 
-  router.startReactTransition = startReactTransition_
+  if (!router.isServer) {
+    router.startReactTransition = startReactTransition_
+  }
 
   // Subscribe to location changes
   // and try to load the new location
@@ -77,16 +79,11 @@ export function Transitioner() {
       const pathChanged = fromLocation.href !== toLocation.href
 
       router.emit({
-        type: 'onLoad',
+        type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
         fromLocation,
         toLocation,
         pathChanged,
       })
-
-      // if (router.viewTransitionPromise) {
-      //   console.log('resolving view transition promise')
-      // }
-      // router.viewTransitionPromise?.resolve(true)
     }
   }, [previousIsLoading, router, routerState.isLoading])
 

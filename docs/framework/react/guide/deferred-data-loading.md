@@ -93,7 +93,7 @@ The following is a high-level overview of how deferred data streaming works with
   - The client receives the initial html from the server
   - `<Await>` components suspend with placeholder promises while they wait for their data to resolve on the server
 - Server
-  - As deferred promises resolve, their results (or errors) are serialized and streamed to the client (via Router's `router.dehydrateData()` and `router.hydrateData()` methods)
+  - As deferred promises resolve, their results (or errors) are serialized and streamed to the client via an inline script tag
   - The resolved `<Await>` components and their suspense boundaries are resolved and their resulting HTML is streamed to the client along with their dehydrated data
 - Client
   - The suspended placeholder promises within `<Await>` are resolved with the streamed data/error responses and either render the result or throw the error to the nearest error boundary

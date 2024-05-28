@@ -98,6 +98,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Layout
           </Link>
           <Link
+            to="/deferred"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Deferred
+          </Link>
+          <Link
             // @ts-expect-error
             to="/this-route-does-not-exist"
             activeProps={{
@@ -108,7 +116,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
         <hr />
-        {/* <React.Suspense fallback={null}>{children}</React.Suspense> */}
         {children}
         <ScrollRestoration />
         <TanStackRouterDevtools position="bottom-right" />

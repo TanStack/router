@@ -7,7 +7,6 @@ import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
   createControlledPromise,
   deepEqual,
-  escapeJSON,
   functionalUpdate,
   last,
   pick,
@@ -421,6 +420,12 @@ export const componentTypes = [
 ] as const
 
 export type RouterEvents = {
+  onBeforeNavigate: {
+    type: 'onBeforeNavigate'
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+  }
   onBeforeLoad: {
     type: 'onBeforeLoad'
     fromLocation: ParsedLocation
@@ -483,7 +488,6 @@ export class Router<
   shouldViewTransition?: boolean = undefined
   latestLoadPromise: Promise<void> = Promise.resolve()
   subscribers = new Set<RouterListener<RouterEvent>>()
-  injectedHtml: Array<InjectedHtmlEntry> = []
   dehydratedData?: TDehydrated
   viewTransitionPromise?: ControlledPromise<true>
   manifest?: Manifest
@@ -1375,7 +1379,7 @@ export class Router<
     })
   }
 
-  navigate: NavigateFn = ({ from, to, ...rest }) => {
+  navigate: NavigateFn = ({ from, to, __isRedirect, ...rest }) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
@@ -1424,13 +1428,6 @@ export class Router<
         // Cancel any pending matches
         this.cancelMatches()
 
-        this.emit({
-          type: 'onBeforeLoad',
-          fromLocation: prevLocation,
-          toLocation: next,
-          pathChanged: pathDidChange,
-        })
-
         let pendingMatches!: Array<AnyRouteMatch>
 
         this.__store.batch(() => {
@@ -1453,6 +1450,22 @@ export class Router<
               return !pendingMatches.find((e) => e.id === d.id)
             }),
           }))
+        })
+
+        if (!this.state.redirect) {
+          this.emit({
+            type: 'onBeforeNavigate',
+            fromLocation: prevLocation,
+            toLocation: next,
+            pathChanged: pathDidChange,
+          })
+        }
+
+        this.emit({
+          type: 'onBeforeLoad',
+          fromLocation: prevLocation,
+          toLocation: next,
+          pathChanged: pathDidChange,
         })
 
         await this.loadMatches({
@@ -1517,7 +1530,7 @@ export class Router<
         if (isResolvedRedirect(err)) {
           redirect = err
           if (!this.isServer) {
-            this.navigate({ ...err, replace: true })
+            this.navigate({ ...err, replace: true, __isRedirect: true })
             this.load()
           }
         } else if (isNotFound(err)) {
@@ -1526,8 +1539,9 @@ export class Router<
 
         this.__store.setState((s) => ({
           ...s,
-          statusCode:
-            redirect?.statusCode || notFound
+          statusCode: redirect
+            ? redirect.statusCode
+            : notFound
               ? 404
               : s.matches.some((d) => d.status === 'error')
                 ? 500
@@ -2231,10 +2245,6 @@ export class Router<
     return match
   }
 
-  injectHtml = async (html: string | (() => Promise<string> | string)) => {
-    this.injectedHtml.push(html)
-  }
-
   // We use a token -> weak map to keep track of deferred promises
   // that are registered on the server and need to be resolved
   registeredDeferredsIds = new Map<string, {}>()
@@ -2248,55 +2258,6 @@ export class Router<
     }
 
     return this.registeredDeferreds.get(token)
-  }
-
-  /**
-   * @deprecated Please inject your own html using the `injectHtml` method
-   */
-  dehydrateData = <T>(key: any, getData: T | (() => Promise<T> | T)) => {
-    warning(
-      false,
-      `The dehydrateData method is deprecated. Please use the injectHtml method to inject your own data.`,
-    )
-
-    if (typeof document === 'undefined') {
-      const strKey = typeof key === 'string' ? key : JSON.stringify(key)
-
-      this.injectHtml(async () => {
-        const id = `__TSR_DEHYDRATED__${strKey}`
-        const data =
-          typeof getData === 'function' ? await (getData as any)() : getData
-        return `<script id='${id}' suppressHydrationWarning>
-  window["__TSR_DEHYDRATED__${escapeJSON(
-    strKey,
-  )}"] = ${JSON.stringify(this.options.transformer.stringify(data))}
-</script>`
-      })
-
-      return () => this.hydrateData<T>(key)
-    }
-
-    return () => undefined
-  }
-
-  /**
-   * @deprecated Please extract your own data from scripts injected using the `injectHtml` method
-   */
-  hydrateData = <T = unknown>(key: any) => {
-    warning(
-      false,
-      `The hydrateData method is deprecated. Please use the extractHtml method to extract your own data.`,
-    )
-
-    if (typeof document !== 'undefined') {
-      const strKey = typeof key === 'string' ? key : JSON.stringify(key)
-
-      return this.options.transformer.parse(
-        window[`__TSR_DEHYDRATED__${strKey}` as any] as unknown as string,
-      ) as T
-    }
-
-    return undefined
   }
 
   dehydrate = (): DehydratedRouter => {

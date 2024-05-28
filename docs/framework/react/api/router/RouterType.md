@@ -171,48 +171,6 @@ Matches a pathname and search params against the router's route tree and returns
   - A route match object if a match was found.
   - `false` if no match was found.
 
-### `.injectHtml` method
-
-Injects the HTML for the router into the DOM.
-
-- Type: `(html: string | (() => Promise<string> | string)) => void`
-- Properties
-  - `html`
-    - Type: `string | (() => Promise<string> | string)`
-    - Required
-    - The HTML to inject into the DOM.
-    - If a function is provided, it will be called and the resolved value will be injected into the DOM.
-
-### `.dehydrateData` method
-
-Dehydrates data into the router on the server that can be streamed to the client and rehydrated later.
-
-- Type: `<T>(key: any, getData: T | (() => Promise<T> | T)) => () => void`
-- Properties
-  - `key`
-    - Type: `any`
-    - Required
-    - The key that will be used to identify the dehydrated data.
-  - `getData`
-    - Type: `T | (() => Promise<T> | T)`
-    - Required
-    - The data that will be dehydrated.
-    - If a function is provided, it will be called and the resolved value will be dehydrated.
-
-### `.hydrateData` method
-
-Hydrates data into the router on the client that was dehydrated on the server.
-
-- Type: `<T>(key: any) => T | undefined`
-- Properties
-  - `key`
-    - Type: `any`
-    - Required
-    - The key that was used to identify the dehydrated data.
-- Returns
-  - The dehydrated data if it exists.
-  - `undefined` if the dehydrated data does not exist.
-
 ### `.dehydrate` method
 
 Dehydrates the router's critical state into a serializable object that can be sent to the client in an initial request.

@@ -1,15 +1,15 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
 import {
+  Link,
   Outlet,
   RouterProvider,
-  Link,
+  createRootRoute,
+  createRoute,
   createRouter,
   useBlocker,
-  createRoute,
-  createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
 
 const rootRoute = createRootRoute({
   component: RootComponent,
@@ -66,20 +66,50 @@ const editor1Route = createRoute({
 
 function Editor1Component() {
   const [value, setValue] = React.useState('')
+  const [useCustomBlocker, setUseCustomBlocker] = React.useState(false)
 
-  useBlocker(
-    () => window.confirm('Are you sure you want to leave editor 1?'),
-    value,
-  )
+  const { proceed, reset, status } = useBlocker({
+    blockerFn: useCustomBlocker
+      ? undefined
+      : () => window.confirm('Are you sure you want to leave editor 1?'),
+    condition: value,
+  })
 
   return (
-    <div className="p-2">
+    <div className="flex flex-col p-2">
       <h3>Editor 1</h3>
-      <input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        className="border"
-      />
+      <label>
+        <input
+          type="checkbox"
+          checked={useCustomBlocker}
+          onChange={(e) => setUseCustomBlocker(e.target.checked)}
+        />{' '}
+        Use custom blocker
+      </label>
+      <div>
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="border"
+        />
+      </div>
+      {status === 'blocked' && (
+        <div className="mt-2">
+          <div>Are you sure you want to leave editor 1?</div>
+          <button
+            className="bg-lime-500 text-white rounded p-1 px-2 mr-2"
+            onClick={proceed}
+          >
+            YES
+          </button>
+          <button
+            className="bg-red-500 text-white rounded p-1 px-2"
+            onClick={reset}
+          >
+            NO
+          </button>
+        </div>
+      )}
       <hr className="m-2" />
       <Link to="/editor-1/editor-2">Go to Editor 2</Link>
       <Outlet />
@@ -96,10 +126,10 @@ const editor2Route = createRoute({
 function Editor2Component() {
   const [value, setValue] = React.useState('')
 
-  useBlocker(
-    () => window.confirm('Are you sure you want to leave editor 2?'),
-    value,
-  )
+  useBlocker({
+    blockerFn: () => window.confirm('Are you sure you want to leave editor 2?'),
+    condition: value,
+  })
 
   return (
     <div className="p-2">

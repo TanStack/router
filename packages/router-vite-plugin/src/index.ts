@@ -27,7 +27,7 @@ const debug = Boolean(process.env.TSR_VITE_DEBUG)
 const getConfig = async (inlineConfig: Partial<Config>, root: string) => {
   const config = await getGeneratorConfig(inlineConfig, root)
 
-  return configSchema.parse({ ...inlineConfig, ...config })
+  return configSchema.parse({ ...config, ...inlineConfig })
 }
 
 export function TanStackRouterVite(

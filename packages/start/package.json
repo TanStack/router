@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start",
-  "version": "1.33.11",
+  "version": "1.34.5",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -120,6 +120,7 @@
     "@vinxi/server-components": "^0.3.3",
     "@vinxi/server-functions": "^0.3.2",
     "import-meta-resolve": "^4.0.0",
+    "isbot": "^5.1.7",
     "jsesc": "^3.0.2",
     "tiny-invariant": "^1.3.1",
     "vinxi": "0.3.11",

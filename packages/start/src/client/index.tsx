@@ -20,3 +20,4 @@ export {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
 } from '../constants'
+export { mergeHeaders } from './headers'

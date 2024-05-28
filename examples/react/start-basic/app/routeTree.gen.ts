@@ -11,7 +11,9 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as RedirectImport } from './routes/redirect'
 import { Route as PostsImport } from './routes/posts'
+import { Route as DeferredImport } from './routes/deferred'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
@@ -23,8 +25,18 @@ import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/
 
 // Create/Update Routes
 
+const RedirectRoute = RedirectImport.update({
+  path: '/redirect',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const PostsRoute = PostsImport.update({
   path: '/posts',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const DeferredRoute = DeferredImport.update({
+  path: '/deferred',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -86,11 +98,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutImport
       parentRoute: typeof rootRoute
     }
+    '/deferred': {
+      id: '/deferred'
+      path: '/deferred'
+      fullPath: '/deferred'
+      preLoaderRoute: typeof DeferredImport
+      parentRoute: typeof rootRoute
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsImport
+      parentRoute: typeof rootRoute
+    }
+    '/redirect': {
+      id: '/redirect'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectImport
       parentRoute: typeof rootRoute
     }
     '/_layout/_layout-2': {
@@ -148,12 +174,13 @@ export const routeTree = rootRoute.addChildren({
       LayoutLayout2LayoutBRoute,
     }),
   }),
+  DeferredRoute,
   PostsRoute: PostsRoute.addChildren({ PostsPostIdRoute, PostsIndexRoute }),
+  RedirectRoute,
   PostsPostIdDeepRoute,
 })
 
 /* prettier-ignore-end */
-
 
 /* ROUTE_MANIFEST_START
 {
@@ -163,7 +190,9 @@ export const routeTree = rootRoute.addChildren({
       "children": [
         "/",
         "/_layout",
+        "/deferred",
         "/posts",
+        "/redirect",
         "/posts/$postId/deep"
       ]
     },
@@ -176,12 +205,18 @@ export const routeTree = rootRoute.addChildren({
         "/_layout/_layout-2"
       ]
     },
+    "/deferred": {
+      "filePath": "deferred.tsx"
+    },
     "/posts": {
       "filePath": "posts.tsx",
       "children": [
         "/posts/$postId",
         "/posts/"
       ]
+    },
+    "/redirect": {
+      "filePath": "redirect.tsx"
     },
     "/_layout/_layout-2": {
       "filePath": "_layout/_layout-2.tsx",

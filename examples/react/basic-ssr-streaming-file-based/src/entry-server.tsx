@@ -1,14 +1,14 @@
-import * as React from 'react'
-import ReactDOMServer, { PipeableStream } from 'react-dom/server'
-import { createMemoryHistory } from '@tanstack/react-router'
-import { StartServer, transformStreamWithRouter } from '@tanstack/start/server'
+import { PassThrough } from 'stream'
+import { StartServer } from '@tanstack/start/server'
 import { isbot } from 'isbot'
-import { ServerResponse } from 'http'
-import express from 'express'
+import { renderToPipeableStream } from 'react-dom/server'
+import { createMemoryHistory } from '@tanstack/react-router'
+import { createRouter } from './router'
+import type express from 'express'
+import type { ServerResponse } from 'http'
 
 // index.js
 import './fetch-polyfill'
-import { createRouter } from './router'
 
 type ReactReadableStream = ReadableStream<Uint8Array> & {
   allReady?: Promise<void> | undefined
@@ -38,44 +38,30 @@ export async function render(opts: {
   // (streamed data will continue to load in the background)
   await router.load()
 
-  // Track errors
-  let statusCode = 200
+  const passthrough = new PassThrough()
 
-  // Clever way to get the right callback. Thanks Remix!
-  const callbackName = isbot(opts.req.headers['user-agent'])
-    ? 'onAllReady'
-    : 'onShellReady'
-
-  // Render the app to a readable stream
-  let stream!: PipeableStream
-
-  await new Promise<void>((resolve) => {
-    stream = ReactDOMServer.renderToPipeableStream(
-      <StartServer router={router} />,
-      {
-        [callbackName]: () => {
-          resolve()
-        },
-        onError: (err) => {
-          statusCode = 500
-          console.log(err)
-        },
-      },
-    )
+  const pipeable = renderToPipeableStream(<StartServer router={router} />, {
+    ...(isbot(opts.req.headers['user-agent'])
+      ? {
+          onAllReady() {
+            pipeable.pipe(passthrough)
+          },
+        }
+      : {
+          onShellReady() {
+            pipeable.pipe(passthrough)
+          },
+        }),
+    onShellError(err) {
+      throw err
+    },
   })
 
-  if (router.hasNotFoundMatch() && statusCode !== 500) statusCode = 404
-
-  opts.res.statusCode = statusCode
   opts.res.setHeader('Content-Type', 'text/html')
+  opts.res.statusCode = router.state.statusCode
+  opts.res.statusMessage = `${router.state.statusCode}`.startsWith('5')
+    ? 'Internal Server Error'
+    : 'OK'
 
-  // Add our Router transform to the stream
-  const transforms = [transformStreamWithRouter(router)]
-
-  const transformedStream = transforms.reduce(
-    (stream, transform) => stream.pipe(transform as any),
-    stream,
-  )
-
-  transformedStream.pipe(opts.res)
+  pipeable.pipe(opts.res)
 }

@@ -6,8 +6,8 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { Auth } from '../utils/auth'
 import { Spinner } from '../components/Spinner'
+import { Auth } from '../utils/auth'
 
 function RouterSpinner() {
   const isLoading = useRouterState({ select: (s) => s.status === 'pending' })

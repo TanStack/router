@@ -1,6 +1,6 @@
 /* eslint-disable no-shadow */
 import path from 'path'
-import { readFileSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { readFile } from 'fs/promises'
 import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
@@ -20,91 +20,108 @@ import type * as vite from 'vite'
 
 const viteSchema = z
   .object({
-    plugins: z.function().returns(z.array(z.custom<vite.Plugin>())),
+    plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
   })
-  .partial()
+  .optional()
+  .default({})
 
 const babelSchema = z
   .object({
-    plugins: z.array(z.union([z.tuple([z.string(), z.any()]), z.string()])),
+    plugins: z
+      .array(z.union([z.tuple([z.string(), z.any()]), z.string()]))
+      .optional(),
   })
-  .partial()
+  .optional()
+  .default({})
 
 const reactSchema = z
   .object({
     babel: babelSchema,
   })
-  .partial()
+  .optional()
+  .default({})
 
 const routersSchema = z
   .object({
     ssr: z
       .object({
-        entry: z.string(),
+        entry: z.string().default('./app/ssr.tsx'),
         vite: viteSchema,
       })
-      .partial(),
+      .optional()
+      .default({}),
     rsc: z
       .object({
         vite: viteSchema,
       })
-      .partial(),
+      .optional()
+      .default({}),
     client: z
       .object({
-        entry: z.string(),
-        base: z.string(),
+        entry: z.string().optional().default('./app/client.tsx'),
+        base: z.string().optional(),
         vite: viteSchema,
       })
-      .partial(),
+      .optional()
+      .default({}),
     server: z
       .object({
         vite: viteSchema,
       })
-      .partial(),
+      .optional()
+      .default({}),
   })
-  .partial()
+  .optional()
+  .default({})
 
 const optsSchema = z
   .object({
-    tsr: configSchema.partial(),
+    tsr: configSchema
+      .partial()
+      .extend({
+        appDirectory: z.string().default('./app'),
+        // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
+        routesDirectory: z.string().default('./app/routes'),
+        generatedRouteTree: z.string().default('./app/routeTree.gen.ts'),
+      })
+      .optional()
+      .default({}),
     react: reactSchema,
     vite: viteSchema,
     routers: routersSchema,
   })
-  .partial()
   .optional()
+  .default({})
 
-export async function defineConfig(opts?: z.infer<typeof optsSchema>) {
-  optsSchema.parse(opts)
+export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
+  const opts = optsSchema.parse(opts_)
 
-  const tsrConfig = await getConfig(opts?.tsr)
+  const tsrConfig = await getConfig(opts.tsr)
 
   const startVite = () => {
     return config('start-vite', {
       ssr: {
-        // external: ['@tanstack/start/server-runtime'],
-        noExternal: [
-          '@tanstack/start',
-          'tsr:routes-manifest',
-          // '@tanstack/start/server-runtime',
-        ],
+        noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
       },
       optimizeDeps: {
         include: ['@tanstack/start/server-runtime'],
       },
       plugins: [
         TanStackRouterVite({
-          ...opts?.tsr,
+          ...tsrConfig,
           experimental: {
+            ...opts.tsr.experimental,
             enableCodeSplitting: true,
-            ...opts?.tsr?.experimental,
           },
         }),
       ],
     })
   }
 
-  const clientBase = opts?.routers?.client?.base || '/_build'
+  const clientBase = opts.routers.client.base || '/_build'
+
+  const clientEntry = opts.routers.client.entry
+  const ssrEntry = opts.routers.ssr.entry
 
   return createApp({
     server: {
@@ -129,16 +146,16 @@ export async function defineConfig(opts?: z.infer<typeof optsSchema>) {
       //   target: 'server',
       //   plugins: () => [
       //     startVite(),
-      //     ...(opts?.vite?.plugins?.() || []),
-      //     ...(opts?.routers?.rsc?.vite?.plugins?.() || []),
+      //     ...(opts.vite?.plugins?.() || []),
+      //     ...(opts.routers.rsc?.vite?.plugins?.() || []),
       //     serverComponents.server(),
       //     reactRefresh(),
       //   ],
       // }),
-      startRouterProxy({
+      startRouterProxy(tsrConfig)({
         name: 'client',
         type: 'client',
-        handler: opts?.routers?.client?.entry || './app/client.tsx',
+        handler: clientEntry,
         target: 'browser',
         base: clientBase,
         build: {
@@ -146,21 +163,21 @@ export async function defineConfig(opts?: z.infer<typeof optsSchema>) {
         },
         plugins: () => [
           startVite(),
-          ...(opts?.vite?.plugins?.() || []),
-          ...(opts?.routers?.client?.vite?.plugins?.() || []),
+          ...(opts.vite.plugins?.() || []),
+          ...(opts.routers.client.vite.plugins?.() || []),
           serverFunctions.client({
             runtime: '@tanstack/start/client-runtime',
           }),
           reactRefresh({
-            babel: opts?.react?.babel,
+            babel: opts.react.babel,
           }),
           // serverComponents.client(),
         ],
       }),
-      startRouterProxy({
+      startRouterProxy(tsrConfig)({
         name: 'ssr',
         type: 'http',
-        handler: opts?.routers?.ssr?.entry || './app/server.tsx',
+        handler: ssrEntry,
         target: 'server',
         plugins: () => [
           startVite(),
@@ -168,8 +185,8 @@ export async function defineConfig(opts?: z.infer<typeof optsSchema>) {
             tsrConfig,
             clientBase,
           }),
-          ...(opts?.vite?.plugins?.() || []),
-          ...(opts?.routers?.ssr?.vite?.plugins?.() || []),
+          ...(opts.vite.plugins?.() || []),
+          ...(opts.routers.ssr.vite.plugins?.() || []),
           serverTransform({
             runtime: '@tanstack/start/server-runtime',
           }),
@@ -178,13 +195,13 @@ export async function defineConfig(opts?: z.infer<typeof optsSchema>) {
           client: 'client',
         },
       }),
-      startRouterProxy(
+      startRouterProxy(tsrConfig)(
         serverFunctions.router({
           name: 'server',
           plugins: () => [
             startVite(),
-            ...(opts?.vite?.plugins?.() || []),
-            ...(opts?.routers?.server?.vite?.plugins?.() || []),
+            ...(opts.vite.plugins?.() || []),
+            ...(opts.routers.server.vite.plugins?.() || []),
             // serverComponents.serverActions(),
           ],
           // For whatever reason, vinxi expects a path relative
@@ -197,17 +214,21 @@ export async function defineConfig(opts?: z.infer<typeof optsSchema>) {
   })
 }
 
-function startRouterProxy(router: any) {
-  return {
-    ...router,
-    plugins: async () => [
-      TanStackRouterVite({
-        experimental: {
-          enableCodeSplitting: true,
-        },
-      }),
-      ...((await router?.plugins?.()) ?? []),
-    ],
+function startRouterProxy(tsrConfig: z.infer<typeof configSchema>) {
+  return (router: any) => {
+    return {
+      ...router,
+      plugins: async () => [
+        TanStackRouterVite({
+          ...tsrConfig,
+          experimental: {
+            ...tsrConfig.experimental,
+            enableCodeSplitting: true,
+          },
+        }),
+        ...((await router?.plugins?.()) ?? []),
+      ],
+    }
   }
 }
 

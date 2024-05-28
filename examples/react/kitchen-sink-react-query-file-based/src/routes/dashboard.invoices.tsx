@@ -5,9 +5,9 @@ import {
   MatchRoute,
   Outlet,
 } from '@tanstack/react-router'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { Spinner } from '../components/Spinner'
 import { invoicesQueryOptions } from '../utils/queryOptions'
-import { useSuspenseQuery } from '@tanstack/react-query'
 
 export const Route = createFileRoute('/dashboard/invoices')({
   loader: (opts) =>
