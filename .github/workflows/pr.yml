@@ -93,6 +93,7 @@ jobs:
           max_timeout: 120
     outputs:
       preview_url: ${{ steps.wait.outputs.url }}
+  # Playwright tests with Replay
   e2e-start-basic-test:
     name: Playwright e2e tests
     needs: [wait-for-vercel]
