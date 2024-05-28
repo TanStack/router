@@ -5,25 +5,34 @@ import type { MakeRouteMatch } from './Matches'
 import type { RouteIds } from './routeInfo'
 import type { StrictOrFrom } from './utils'
 
+export type UseLoaderDataOptions<
+  TFrom,
+  TStrict extends boolean,
+  TRouteMatch,
+  TSelected,
+> = StrictOrFrom<TFrom, TStrict> & {
+  select?: (match: TRouteMatch) => TSelected
+}
+
 export function useLoaderData<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TRouteMatch extends MakeRouteMatch<TRouteTree, TFrom> = MakeRouteMatch<
+  TStrict extends boolean = true,
+  TRouteMatch extends MakeRouteMatch<
     TRouteTree,
-    TFrom
-  >,
+    TFrom,
+    TStrict
+  > = MakeRouteMatch<TRouteTree, TFrom, TStrict>,
   TSelected = Required<TRouteMatch>['loaderData'],
 >(
-  opts: StrictOrFrom<TFrom> & {
-    select?: (match: TRouteMatch) => TSelected
-  },
+  opts: UseLoaderDataOptions<TFrom, TStrict, TRouteMatch, TSelected>,
 ): TSelected {
-  return useMatch({
+  return useMatch<TRouteTree, TFrom, TStrict, TRouteMatch, TSelected>({
     ...opts,
     select: (s) => {
       return typeof opts.select === 'function'
         ? opts.select(s.loaderData as TRouteMatch)
-        : s.loaderData
+        : (s.loaderData as TSelected)
     },
-  }) as TSelected
+  })
 }

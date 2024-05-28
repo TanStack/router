@@ -69,18 +69,38 @@ export type NonNullableUpdater<TPrevious, TResult = TPrevious> =
   | TResult
   | ((prev: TPrevious) => TResult)
 
-// from https://github.com/type-challenges/type-challenges/issues/737
-type LastInUnion<T> =
-  UnionToIntersection<T extends unknown ? (x: T) => 0 : never> extends (
-    x: infer L,
-  ) => 0
-    ? L
-    : never
-export type UnionToTuple<T, TLast = LastInUnion<T>> = [T] extends [never]
-  ? []
-  : [...UnionToTuple<Exclude<T, TLast>>, TLast]
+export type MergeUnionObjects<TUnion> = TUnion extends MergeUnionPrimitive
+  ? never
+  : TUnion
 
-//
+export type MergeUnionObject<TUnion> =
+  MergeUnionObjects<TUnion> extends infer TObj
+    ? {
+        [TKey in TObj extends any ? keyof TObj : never]?: TObj extends any
+          ? TKey extends keyof TObj
+            ? TObj[TKey]
+            : never
+          : never
+      }
+    : never
+
+export type MergeUnionPrimitive =
+  | ReadonlyArray<any>
+  | number
+  | string
+  | bigint
+  | boolean
+  | symbol
+
+export type MergeUnionPrimitives<TUnion> = TUnion extends MergeUnionPrimitive
+  ? TUnion
+  : TUnion extends object
+    ? never
+    : TUnion
+
+export type MergeUnion<TUnion> =
+  | MergeUnionPrimitives<TUnion>
+  | MergeUnionObject<MergeUnionObjects<TUnion>>
 
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
@@ -268,15 +288,17 @@ export type StringLiteral<T> = T extends string
     : T
   : never
 
-export type StrictOrFrom<TFrom, TReturnIntersection extends boolean = false> =
-  | {
-      from: StringLiteral<TFrom> | TFrom
-      strict?: true
-    }
-  | {
+export type StrictOrFrom<
+  TFrom,
+  TStrict extends boolean = true,
+> = TStrict extends false
+  ? {
       from?: never
-      strict: false
-      experimental_returnIntersection?: TReturnIntersection
+      strict: TStrict
+    }
+  : {
+      from: StringLiteral<TFrom> | TFrom
+      strict?: TStrict
     }
 
 export const useLayoutEffect =

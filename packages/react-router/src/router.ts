@@ -505,7 +505,7 @@ export class Router<
     'stringifySearch' | 'parseSearch' | 'context'
   >
   history!: RouterHistory
-  latestLocation!: ParsedLocation
+  latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   basepath!: string
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
@@ -766,7 +766,7 @@ export class Router<
   }
 
   parseLocation = (
-    previousLocation?: ParsedLocation,
+    previousLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>,
   ): ParsedLocation<FullSearchSchema<TRouteTree>> => {
     const parse = ({
       pathname,
