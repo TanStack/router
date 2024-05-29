@@ -72,7 +72,7 @@ export type RouteOptions<
   TAllContext = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn = {},
-  TLoaderData = [TLoaderDataReturn] extends [never] ? {} : TLoaderDataReturn,
+  TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
 > = BaseRouteOptions<
   TParentRoute,
   TCustomId,
@@ -342,7 +342,7 @@ export type RouteLoaderFn<
   in out TLoaderDeps extends Record<string, any> = {},
   in out TAllContext = AnyContext,
   in out TRouteContext = AnyContext,
-  TLoaderData = {},
+  TLoaderData = undefined,
 > = (
   match: LoaderFnContext<TAllParams, TLoaderDeps, TAllContext, TRouteContext>,
 ) => Promise<TLoaderData> | TLoaderData
@@ -440,7 +440,7 @@ export type ResolveAllContext<
 export type ResolveLoaderData<TLoaderDataReturn> = [TLoaderDataReturn] extends [
   never,
 ]
-  ? {}
+  ? undefined
   : TLoaderDataReturn
 
 export interface AnyRoute
@@ -1068,7 +1068,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       : TRouteContextReturn,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderDataReturn = {},
-    TLoaderData = [TLoaderDataReturn] extends [never] ? {} : TLoaderDataReturn,
+    TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
   >(
     options?: RootRouteOptions<
       TSearchSchemaInput,
