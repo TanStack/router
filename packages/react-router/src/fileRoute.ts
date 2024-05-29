@@ -94,7 +94,7 @@ export class FileRoute<
     TAllContext = ResolveAllContext<TParentRoute, TRouteContext>,
     TRouterContext = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
-    TLoaderDataReturn = unknown,
+    TLoaderDataReturn = {},
     TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
     TChildren = unknown,
   >(
