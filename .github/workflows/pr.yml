@@ -109,6 +109,6 @@ jobs:
       - name: Get Replay Chromium
         run: npx replayio install
       - name: Run Playwright tests
-        run: pnpm --filter="tanstack-router-example-react-start-basic" run test:playwright:replay
+        run: pnpm run test:e2e:replay
         env:
           REPLAY_API_KEY: ${{ secrets.REPLAY_API_KEY }}
