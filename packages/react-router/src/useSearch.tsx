@@ -5,22 +5,27 @@ import type { RegisteredRouter } from './router'
 import type { MakeRouteMatch } from './Matches'
 import type { StrictOrFrom } from './utils'
 
+export type UseSearchOptions<
+  TFrom,
+  TStrict extends boolean,
+  TSearch,
+  TSelected,
+> = StrictOrFrom<TFrom, TStrict> & {
+  select?: (search: TSearch) => TSelected
+}
+
 export function useSearch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TReturnIntersection extends boolean = false,
-  TSearch = TReturnIntersection extends false
-    ? Exclude<
+  TStrict extends boolean = true,
+  TSearch = TStrict extends false
+    ? FullSearchSchema<TRouteTree>
+    : Exclude<
         RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'],
         RootSearchSchema
-      >
-    : Partial<Omit<FullSearchSchema<TRouteTree>, keyof RootSearchSchema>>,
+      >,
   TSelected = TSearch,
->(
-  opts: StrictOrFrom<TFrom, TReturnIntersection> & {
-    select?: (search: TSearch) => TSelected
-  },
-): TSelected {
+>(opts: UseSearchOptions<TFrom, TStrict, TSearch, TSelected>): TSelected {
   return useMatch({
     ...opts,
     select: (match: MakeRouteMatch<TRouteTree, TFrom>) => {

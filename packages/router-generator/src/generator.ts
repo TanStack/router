@@ -244,7 +244,9 @@ export async function generator(config: Config) {
     const first = split[0] ?? trimmedPath
     const lastRouteSegment = split[split.length - 1] ?? trimmedPath
 
-    node.isNonPath = lastRouteSegment.startsWith('_')
+    node.isNonPath =
+      lastRouteSegment.startsWith('_') ||
+      routeGroupPatternRegex.test(lastRouteSegment)
     node.isNonLayout = first.endsWith('_')
 
     node.cleanedPath = removeGroups(

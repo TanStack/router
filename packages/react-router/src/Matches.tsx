@@ -17,6 +17,8 @@ import {
 import { rootRouteId } from './root'
 import type { ResolveRelativePath, ToOptions } from './link'
 import type {
+  AllContext,
+  AllLoaderData,
   AllParams,
   FullSearchSchema,
   ParseRoute,
@@ -72,16 +74,20 @@ export interface RouteMatch<
 export type MakeRouteMatch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TRouteId = ParseRoute<TRouteTree>['id'],
-  TReturnIntersection extends boolean = false,
+  TStrict extends boolean = true,
   TTypes extends AnyRoute['types'] = RouteById<TRouteTree, TRouteId>['types'],
-  TAllParams = TReturnIntersection extends false
-    ? TTypes['allParams']
-    : Partial<AllParams<TRouteTree>>,
-  TFullSearchSchema = TReturnIntersection extends false
-    ? TTypes['fullSearchSchema']
-    : Partial<FullSearchSchema<TRouteTree>>,
-  TLoaderData = TTypes['loaderData'],
-  TAllContext = TTypes['allContext'],
+  TAllParams = TStrict extends false
+    ? AllParams<TRouteTree>
+    : TTypes['allParams'],
+  TFullSearchSchema = TStrict extends false
+    ? FullSearchSchema<TRouteTree>
+    : TTypes['fullSearchSchema'],
+  TLoaderData = TStrict extends false
+    ? AllLoaderData<TRouteTree>
+    : TTypes['loaderData'],
+  TAllContext = TStrict extends false
+    ? AllContext<TRouteTree>
+    : TTypes['allContext'],
   TRouteContext = TTypes['routeContext'],
   TLoaderDeps = TTypes['loaderDeps'],
 > = RouteMatch<
@@ -549,13 +555,9 @@ export function MatchRoute<
 export function useMatches<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-  TReturnIntersection extends boolean = false,
-  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
+  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId>,
   T = Array<TRouteMatch>,
->(opts?: {
-  select?: (matches: Array<TRouteMatch>) => T
-  experimental_returnIntersection?: TReturnIntersection
-}): T {
+>(opts?: { select?: (matches: Array<TRouteMatch>) => T }): T {
   return useRouterState({
     select: (state) => {
       const matches = state.matches
@@ -569,13 +571,9 @@ export function useMatches<
 export function useParentMatches<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-  TReturnIntersection extends boolean = false,
-  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
+  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId>,
   T = Array<TRouteMatch>,
->(opts?: {
-  select?: (matches: Array<TRouteMatch>) => T
-  experimental_returnIntersection?: TReturnIntersection
-}): T {
+>(opts?: { select?: (matches: Array<TRouteMatch>) => T }): T {
   const contextMatchId = React.useContext(matchContext)
 
   return useMatches({
@@ -594,13 +592,9 @@ export function useParentMatches<
 export function useChildMatches<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
   TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-  TReturnIntersection extends boolean = false,
-  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
+  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId>,
   T = Array<TRouteMatch>,
->(opts?: {
-  select?: (matches: Array<TRouteMatch>) => T
-  experimental_returnIntersection?: TReturnIntersection
-}): T {
+>(opts?: { select?: (matches: Array<TRouteMatch>) => T }): T {
   const contextMatchId = React.useContext(matchContext)
 
   return useMatches({

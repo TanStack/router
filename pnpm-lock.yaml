@@ -1086,6 +1086,97 @@ importers:
         specifier: ^4.3.2
         version: 4.3.2(typescript@5.4.5)(vite@5.2.11)
 
+  examples/react/start-trellaux:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.40.0
+        version: 5.40.0(react@18.3.1)
+      '@tanstack/react-query-devtools':
+        specifier: ^5.40.0
+        version: 5.40.0(@tanstack/react-query@5.40.0)(react@18.3.1)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-vite-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-vite-plugin
+      '@tanstack/start':
+        specifier: workspace:*
+        version: link:../../../packages/start
+      '@typescript-eslint/parser':
+        specifier: ^6.20.0
+        version: 6.21.0(eslint@8.57.0)(typescript@5.4.5)
+      '@vitejs/plugin-react':
+        specifier: ^4
+        version: 4.2.1(vite@5.2.11)
+      isbot:
+        specifier: ^3.7.0
+        version: 3.8.0
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      react-hot-toast:
+        specifier: ^2.4.1
+        version: 2.4.1(csstype@3.1.3)(react-dom@18.3.1)(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.0
+        version: 0.5.1
+      tailwind-merge:
+        specifier: ^1.14.0
+        version: 1.14.0
+      vinxi:
+        specifier: ^0.3.11
+        version: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.12.11)
+      zod:
+        specifier: ^3.22.4
+        version: 3.23.8
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.65
+        version: 18.3.1
+      '@types/react-dom':
+        specifier: ^18.2.21
+        version: 18.3.0
+      autoprefixer:
+        specifier: ^10.4.18
+        version: 10.4.19(postcss@8.4.38)
+      eslint:
+        specifier: ^8.56.0
+        version: 8.57.0
+      eslint-config-react-app:
+        specifier: ^7.0.1
+        version: 7.0.1(@babel/plugin-syntax-flow@7.24.1)(@babel/plugin-transform-react-jsx@7.23.4)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)(typescript@5.4.5)
+      eslint-plugin-unicorn:
+        specifier: ^49.0.0
+        version: 49.0.0(eslint@8.57.0)
+      npm-run-all:
+        specifier: ^4.1.5
+        version: 4.1.5
+      postcss:
+        specifier: ^8.4.35
+        version: 8.4.38
+      prettier:
+        specifier: ^2.8.8
+        version: 2.8.8
+      tailwindcss:
+        specifier: ^3.4.1
+        version: 3.4.3
+      typescript:
+        specifier: ^5.3.3
+        version: 5.4.5
+      vite:
+        specifier: ^5.1.4
+        version: 5.2.11(@types/node@20.12.11)
+      vite-tsconfig-paths:
+        specifier: ^4.3.2
+        version: 4.3.2(typescript@5.4.5)(vite@5.2.11)
+
   examples/react/wip-trpc-react-query:
     dependencies:
       '@tanstack/react-query':
@@ -5593,8 +5684,16 @@ packages:
     resolution: {integrity: sha512-B5BD3pg/mztDR36i77hGcyySKKeYrbM5mnogOROTBi1SUml5ByRK7PGUUl16vvubvQC+mSnqziFG/VIy/DE3FQ==}
     dev: false
 
+  /@tanstack/query-core@5.40.0:
+    resolution: {integrity: sha512-eD8K8jsOIq0Z5u/QbvOmfvKKE/XC39jA7yv4hgpl/1SRiU+J8QCIwgM/mEHuunQsL87dcvnHqSVLmf9pD4CiaA==}
+    dev: false
+
   /@tanstack/query-devtools@5.17.7:
     resolution: {integrity: sha512-TfgvOqza5K7Sk6slxqkRIvXlEJoUoPSsGGwpuYSrpqgSwLSSvPPpZhq7hv7hcY5IvRoTNGoq6+MT01C/jILqoQ==}
+    dev: false
+
+  /@tanstack/query-devtools@5.37.1:
+    resolution: {integrity: sha512-XcG4IIHIv0YQKrexTqo2zogQWR1Sz672tX2KsfE9kzB+9zhx44vRKH5si4WDILE1PIWQpStFs/NnrDQrBAUQpg==}
     dev: false
 
   /@tanstack/react-query-devtools@4.36.1(@tanstack/react-query@4.36.1)(react-dom@18.3.1)(react@18.3.1):
@@ -5623,6 +5722,17 @@ packages:
       react: 18.3.1
     dev: false
 
+  /@tanstack/react-query-devtools@5.40.0(@tanstack/react-query@5.40.0)(react@18.3.1):
+    resolution: {integrity: sha512-JoQOQj/LKaHoHVMAh73R0pc4lIAHiZMV8L4DGHsTSvHcKi22LZmSC9aYBY9oMkqGpFtKmbspwrUIn55+czNSbA==}
+    peerDependencies:
+      '@tanstack/react-query': ^5.40.0
+      react: ^18 || ^19
+    dependencies:
+      '@tanstack/query-devtools': 5.37.1
+      '@tanstack/react-query': 5.40.0(react@18.3.1)
+      react: 18.3.1
+    dev: false
+
   /@tanstack/react-query@4.36.1(react-dom@18.3.1)(react@18.3.1):
     resolution: {integrity: sha512-y7ySVHFyyQblPl3J3eQBWpXZkliroki3ARnBKsdJchlgt7yJLRDUcf4B8soufgiYt3pEQIkBWBx1N9/ZPIeUWw==}
     peerDependencies:
@@ -5647,6 +5757,15 @@ packages:
       react: ^18.0.0
     dependencies:
       '@tanstack/query-core': 5.36.0
+      react: 18.3.1
+    dev: false
+
+  /@tanstack/react-query@5.40.0(react@18.3.1):
+    resolution: {integrity: sha512-iv/W0Axc4aXhFzkrByToE1JQqayxTPNotCoSCnarR/A1vDIHaoKpg7FTIfP3Ev2mbKn1yrxq0ZKYUdLEJxs6Tg==}
+    peerDependencies:
+      react: ^18.0.0
+    dependencies:
+      '@tanstack/query-core': 5.40.0
       react: 18.3.1
     dev: false
 
@@ -11800,6 +11919,20 @@ packages:
       loose-envify: 1.4.0
       react: 18.3.1
       scheduler: 0.23.2
+
+  /react-hot-toast@2.4.1(csstype@3.1.3)(react-dom@18.3.1)(react@18.3.1):
+    resolution: {integrity: sha512-j8z+cQbWIM5LY37pR6uZR6D4LfseplqnuAO4co4u8917hBUvXlEqyP1ZzqVLcqoyUesZZv/ImreoCeHVDpE5pQ==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: '>=16'
+      react-dom: '>=16'
+    dependencies:
+      goober: 2.1.14(csstype@3.1.3)
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+    transitivePeerDependencies:
+      - csstype
+    dev: false
 
   /react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
