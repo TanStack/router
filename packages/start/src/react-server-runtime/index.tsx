@@ -10,8 +10,8 @@ import {
   setResponseHeaders,
 } from 'vinxi/http'
 // import * as ReactServerDOM from '@vinxi/react-server-dom/client'
-import { fetcher, getBaseUrl } from '../client-runtime'
-import type { FetchFn } from '../client'
+// import { fetcher, getBaseUrl } from '../client-runtime'
+// import type { FetchFn } from '../client'
 /**
  *
  * @returns {import('node:http').IncomingMessage}
@@ -77,10 +77,12 @@ async function handleRequest(request: Request) {
 }
 
 export function createServerReference<TPayload, TResponse>(
-  _fn: FetchFn<TPayload, TResponse>,
+  _fn: any,
   id: string,
   name: string,
 ) {
+  return _fn
+  console.log('creating server reference in worker', _fn, id, name)
   // let base = getBaseUrl(import.meta.env.SERVER_BASE_URL, id, name)
   const base = getBaseUrl('http://localhost:3000', id, name)
 

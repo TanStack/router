@@ -74,6 +74,12 @@
         "default": "./dist/esm/server-runtime/server-runtime/index.js"
       }
     },
+    "./react-server-runtime": {
+      "import": {
+        "types": "./dist/esm/react-server-runtime/index.d.ts",
+        "default": "./dist/esm/react-server-runtime/index.js"
+      }
+    },
     "./server-handler": {
       "import": {
         "types": "./dist/esm/server-handler/server-handler/index.d.ts",
@@ -88,11 +94,12 @@
     "test:eslint": "eslint --ext .ts,.tsx ./src",
     "test:types": "tsc --noEmit",
     "test:build": "publint --strict",
-    "build": "vite build && pnpm build:config && pnpm build:router-manifest && pnpm build:server-handler && pnpm build:server-runtime",
+    "build": "vite build && pnpm build:config && pnpm build:router-manifest && pnpm build:server-handler && pnpm build:server-runtime && pnpm build:react-server-runtime",
     "build:config": "tsc --project tsconfigs/config.tsconfig.json",
     "build:router-manifest": "tsc --project tsconfigs/router-manifest.tsconfig.json",
     "build:server-handler": "tsc --project tsconfigs/server-handler.tsconfig.json",
-    "build:server-runtime": "tsc --project tsconfigs/server-runtime.tsconfig.json"
+    "build:server-runtime": "tsc --project tsconfigs/server-runtime.tsconfig.json",
+    "build:react-server-runtime": "tsc --project tsconfigs/react-server-runtime.tsconfig.json"
   },
   "keywords": [
     "react",
