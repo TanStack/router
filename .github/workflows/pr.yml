@@ -100,9 +100,13 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
-        #TODO: build && start seems broken
+      - name: Get base and head commits for `nx affected`
+        uses: nrwl/nx-set-shas@v3
+        with:
+          main-branch-name: 'main'
       - name: Build dependecies
         run: pnpm run build
+        #TODO: build && start seems broken
       - name: Run the app
         run: pnpm --filter="tanstack-router-example-react-start-basic" run dev
         env:
