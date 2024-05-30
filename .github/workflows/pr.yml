@@ -106,13 +106,6 @@ jobs:
           main-branch-name: 'main'
       - name: Build dependecies
         run: pnpm run build
-        #TODO: build && start seems broken
-      - name: Run the app
-        run: pnpm --filter="tanstack-router-example-react-start-basic" run dev
-        env:
-          NODE_ENV: test
-      - name: Wait for server to be ready
-        run: sleep 15
       - name: Run Playwright tests
         run: pnpm --filter="tanstack-router-example-react-start-basic" run test:playwright:replay
       - name: Get Replay Chromium

@@ -24,6 +24,14 @@ export default defineConfig({
     baseURL: 'http://localhost:3000/',
   },
 
+  webServer: {
+    // TODO: build && start seems broken, use that if it's working
+    command: 'pnpm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    stdout: 'pipe',
+  },
+
   projects: [
     {
       name: 'replay-chromium',
