@@ -81,21 +81,8 @@ jobs:
         run: pnpm add -Dw typescript@${{ matrix.typescript-version }}
       - name: Start Type Test
         run: TS_VERSION=${{ matrix.typescript-version }} pnpm run test:types
-  wait-for-vercel:
-    name: Wait for vercel
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for Vercel preview deployment to be ready
-        uses: patrickedqvist/wait-for-vercel-preview@v1.3.1
-        id: wait
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          max_timeout: 120
-    outputs:
-      preview_url: ${{ steps.wait.outputs.url }}
   e2e-start-basic-test:
     name: Playwright e2e tests
-    needs: [wait-for-vercel]
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
@@ -113,10 +100,20 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
+        #TODO: build && start seems broken
+      - name: Build dependecies
+        run: pnpm run build
+      - name: Run the app
+        run: pnpm --filter="tanstack-router-example-react-start-basic" run dev
+        env:
+          NODE_ENV: test
+      - name: Wait for server to be ready
+        run: sleep 15
+      - name: Run Playwright tests
+        run: pnpm --filter="tanstack-router-example-react-start-basic" run test:playwright:replay
       - name: Get Replay Chromium
         run: npx replayio install
       - name: Run Playwright tests
         run: pnpm test:e2e
         env:
-          APP_BASE_URL: ${{ needs.wait-for-vercel.outputs.preview_url }}
           REPLAY_API_KEY: ${{ secrets.REPLAY_API_KEY }}

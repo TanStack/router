@@ -1,8 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
-import {
-  createReplayReporterConfig as replayReporter,
-  devices as replayDevices,
-} from '@replayio/playwright'
+import { replayReporter, devices as replayDevices } from '@replayio/playwright'
 
 import dotenv from 'dotenv'
 
@@ -24,7 +21,7 @@ export default defineConfig({
 
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.APP_BASE_URL ?? 'http://localhost:3000/',
+    baseURL: 'http://localhost:3000/',
   },
 
   projects: [
