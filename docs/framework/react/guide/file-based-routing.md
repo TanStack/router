@@ -36,6 +36,24 @@ export default defineConfig({
 
 With the plugin enabled, Vite will now watch your configured `routesDirectory` and generate your route tree whenever a file is added, removed, or changed.
 
+> ⚠️ Note: To disable the plugin when running tests, you can conditionally add it based on the current `NODE_ENV`:
+
+```tsx
+// vite.config.ts
+import { defineConfig } from 'vite'
+import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
+
+const isTest = process.env.NODE_ENV === 'test'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [
+    // ...,
+    !isTest && TanStackRouterVite(),
+  ],
+})
+```
+
 ## Router CLI
 
 If you are unable to use Vite, you can always use the Router CLI (which is what the Vite plugin uses) to generate your route configuration from your package dev/build scripts.
