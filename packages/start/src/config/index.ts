@@ -161,15 +161,27 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
         type: 'http',
         target: 'server',
         base: serverBase,
-        // worker: true,
+        worker: true,
         handler: importToProjectRelative('@tanstack/start/server-handler'),
         plugins: () => [
           serverFunctions.server({
-            runtime: '@tanstack/start/server-runtime',
+            resolve: {
+              conditions: ['react-server'],
+            },
+            runtime: '@tanstack/start/react-server-runtime',
           }),
-          // serverComponents.serverActions({
-          //   conditions: ['react-server'],
-          // }),
+          serverComponents.serverActions({
+            resolve: {
+              conditions: [
+                'react-server',
+                'node',
+                'import',
+                process.env.NODE_ENV,
+              ],
+            },
+            runtime: '@vinxi/react-server-dom/runtime',
+            transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
+          }),
           ...(opts.vite.plugins?.() || []),
           ...(opts.routers.server.vite.plugins?.() || []),
         ],

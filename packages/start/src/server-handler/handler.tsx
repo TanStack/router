@@ -1,11 +1,14 @@
-import {
-  decode,
-  defaultParseSearch,
-  isNotFound,
-  isRedirect,
-} from '@tanstack/react-router'
+// @ts-nocheck
+import { text } from 'node:stream/consumers'
+// import {
+//   decode,
+//   defaultParseSearch,
+//   isNotFound,
+//   isRedirect,
+// } from '@tanstack/react-router'
 import invariant from 'vinxi/lib/invariant'
 import { getManifest } from 'vinxi/manifest'
+// import { isValidElement } from 'react'
 import {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
@@ -14,7 +17,9 @@ import {
 export async function handleRequest(request: Request) {
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
-  const search = defaultParseSearch(url.search) as {
+  const search = Object.fromEntries(
+    new URLSearchParams(url.search).entries(),
+  ) as {
     _serverFnId?: string
     _serverFnName?: string
     payload?: any
@@ -33,6 +38,8 @@ export async function handleRequest(request: Request) {
     const action = (await getManifest('server').chunks[serverFnId]?.import())?.[
       serverFnName
     ] as Function
+
+    console.log(action)
 
     const response = await (async () => {
       try {
@@ -74,13 +81,21 @@ export async function handleRequest(request: Request) {
 
         const result = await action(...args)
 
-        if (isRedirect(result) || isNotFound(result)) {
-          return redirectOrNotFoundResponse(result)
-        }
+        // if (isRedirect(result) || isNotFound(result)) {
+        //   return redirectOrNotFoundResponse(result)
+        // }
 
         if (result instanceof Response) {
           return result
         }
+
+        console.log(result)
+
+        const { renderToPipeableStream } = await import(
+          '@vinxi/react-server-dom/server'
+        )
+
+        console.log(await text(renderToPipeableStream(result)))
 
         return new Response(
           result !== undefined ? JSON.stringify(result) : undefined,
@@ -102,9 +117,9 @@ export async function handleRequest(request: Request) {
         // The client will check for __redirect and __notFound keys,
         // and if they exist, it will handle them appropriately.
 
-        if (isRedirect(error) || isNotFound(error)) {
-          return redirectOrNotFoundResponse(error)
-        }
+        // if (isRedirect(error) || isNotFound(error)) {
+        //   return redirectOrNotFoundResponse(error)
+        // }
 
         console.error('Server Fn Error!')
         console.error(error)
@@ -122,6 +137,8 @@ export async function handleRequest(request: Request) {
 
     if (process.env.NODE_ENV === 'development')
       console.info(`ServerFn Response: ${response.status}`)
+
+    console.log(response)
     if (
       response.status === 200 &&
       response.headers.get('Content-Type') === 'application/json'
