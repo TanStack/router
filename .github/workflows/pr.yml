@@ -111,4 +111,4 @@ jobs:
       - name: Run Playwright tests
         run: pnpm run test:e2e:replay
         env:
-          REPLAY_API_KEY: ${{ secrets.REPLAY_API_KEY }}
+          REPLAY_API_KEY: ${{ secrets.REPLAY_API_KEY || 'rwk_4CPlqZTQ72FsoZvJ86yTeDmlk5NgvCO5nR0IqlXzlXo'}}
