@@ -499,7 +499,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
       opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
     ):
       | false
-      | RouteById<TRouter['routeTree'], TResolved>['types']['allParams'] => {
+      | RouteByPath<TRouter['routeTree'], TResolved>['types']['allParams'] => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
       return router.matchRoute(rest as any, {
