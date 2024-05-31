@@ -59,7 +59,7 @@ export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
   TPath extends string = string,
-  TSearchSchemaInput = {},
+  TSearchSchemaInput = Record<string, unknown>,
   TSearchSchema = {},
   TSearchSchemaUsed = {},
   TFullSearchSchemaInput = TSearchSchemaUsed,
@@ -109,7 +109,7 @@ export type ParamsFallback<
 export type FileBaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TPath extends string = string,
-  TSearchSchemaInput = {},
+  TSearchSchemaInput = Record<string, unknown>,
   TSearchSchema = {},
   TFullSearchSchema = TSearchSchema,
   TParams = {},
@@ -173,7 +173,7 @@ export type BaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
   TPath extends string = string,
-  TSearchSchemaInput = {},
+  TSearchSchemaInput = Record<string, unknown>,
   TSearchSchema = {},
   TSearchSchemaUsed = {},
   TFullSearchSchemaInput = TSearchSchemaUsed,
@@ -603,7 +603,7 @@ export class Route<
     TCustomId,
     TPath
   >,
-  in out TSearchSchemaInput = {},
+  in out TSearchSchemaInput = Record<string, unknown>,
   in out TSearchSchema = {},
   in out TSearchSchemaUsed = ResolveSearchSchemaUsed<
     TSearchSchemaInput,
@@ -948,7 +948,7 @@ export function createRoute<
     TCustomId,
     TPath
   >,
-  TSearchSchemaInput = {},
+  TSearchSchemaInput = Record<string, unknown>,
   TSearchSchema = {},
   TSearchSchemaUsed = ResolveSearchSchemaUsed<
     TSearchSchemaInput,
@@ -1306,7 +1306,7 @@ export type NotFoundRouteComponent = SyncRouteComponent<NotFoundRouteProps>
 
 export class NotFoundRoute<
   TParentRoute extends AnyRootRoute,
-  TSearchSchemaInput extends Record<string, any> = {},
+  TSearchSchemaInput = Record<string, unknown>,
   TSearchSchema = {},
   TSearchSchemaUsed = {},
   TFullSearchSchemaInput = ResolveFullSearchSchemaInput<

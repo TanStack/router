@@ -76,7 +76,7 @@ export class FileRoute<
   }
 
   createRoute = <
-    TSearchSchemaInput = {},
+    TSearchSchemaInput = Record<string, unknown>,
     TSearchSchema = {},
     TSearchSchemaUsed = ResolveSearchSchemaUsed<
       TSearchSchemaInput,
