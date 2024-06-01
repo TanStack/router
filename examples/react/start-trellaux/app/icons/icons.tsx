@@ -1,27 +1,27 @@
-import iconsHref from "./icons.svg?url";
+import iconsHref from './icons.svg?url'
 
 export function Icon({
   name,
-  size = "md",
+  size = 'md',
   spin = false,
 }: {
-  name: string;
-  size?: "md" | "xl";
-  spin?: boolean;
+  name: string
+  size?: 'md' | 'xl'
+  spin?: boolean
 }) {
   const classNames = {
-    md: "w-4 h-4",
-    xl: "w-8 h-8",
-  };
+    md: 'w-4 h-4',
+    xl: 'w-8 h-8',
+  }
   return (
     <svg
       className={`${classNames[size]} inline self-center ${
-        spin ? "animate-spin" : ""
+        spin ? 'animate-spin' : ''
       }`}
     >
       <use href={`${iconsHref}#${name}`} />
     </svg>
-  );
+  )
 }
 
 export function LoginIcon() {
@@ -29,7 +29,7 @@ export function LoginIcon() {
     <svg className="inline self-center w-8 h-8 text-white transform scale-x-[-1]">
       <use href={`${iconsHref}#login`} />
     </svg>
-  );
+  )
 }
 
 export function LogoutIcon() {
@@ -37,5 +37,5 @@ export function LogoutIcon() {
     <svg className="inline self-center w-8 h-8 text-white">
       <use href={`${iconsHref}#logout`} />
     </svg>
-  );
+  )
 }
