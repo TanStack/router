@@ -20,10 +20,10 @@ interface CardProps {
 export const Card = forwardRef<HTMLLIElement, CardProps>(
   (
     { title, content, id, columnId, boardId, order, nextOrder, previousOrder },
-    ref
+    ref,
   ) => {
     const [acceptDrop, setAcceptDrop] = useState<'none' | 'top' | 'bottom'>(
-      'none'
+      'none',
     )
 
     const deleteCard = useDeleteCardMutation()
@@ -48,7 +48,7 @@ export const Card = forwardRef<HTMLLIElement, CardProps>(
           event.stopPropagation()
 
           const transfer = JSON.parse(
-            event.dataTransfer.getData(CONTENT_TYPES.card)
+            event.dataTransfer.getData(CONTENT_TYPES.card),
           )
           invariant(transfer.id, 'missing cardId')
           invariant(transfer.title, 'missing title')
@@ -71,8 +71,8 @@ export const Card = forwardRef<HTMLLIElement, CardProps>(
           (acceptDrop === 'top'
             ? 'border-t-brand-red border-b-transparent'
             : acceptDrop === 'bottom'
-            ? 'border-b-brand-red border-t-transparent'
-            : 'border-t-transparent border-b-transparent')
+              ? 'border-b-brand-red border-t-transparent'
+              : 'border-t-transparent border-b-transparent')
         }
       >
         <div
@@ -82,7 +82,7 @@ export const Card = forwardRef<HTMLLIElement, CardProps>(
             event.dataTransfer.effectAllowed = 'move'
             event.dataTransfer.setData(
               CONTENT_TYPES.card,
-              JSON.stringify({ id, title })
+              JSON.stringify({ id, title }),
             )
           }}
         >
@@ -93,7 +93,7 @@ export const Card = forwardRef<HTMLLIElement, CardProps>(
               event.preventDefault()
               const formData = new FormData(event.currentTarget)
               deleteCard.mutate(
-                deleteItemSchema.parse(Object.fromEntries(formData.entries()))
+                deleteItemSchema.parse(Object.fromEntries(formData.entries())),
               )
             }}
           >
@@ -113,5 +113,5 @@ export const Card = forwardRef<HTMLLIElement, CardProps>(
         </div>
       </li>
     )
-  }
+  },
 )

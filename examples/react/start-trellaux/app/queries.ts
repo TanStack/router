@@ -39,7 +39,7 @@ export function useNewColumnMutation() {
                   { ...variables, order: board.columns.length + 1 },
                 ],
               }
-            : undefined
+            : undefined,
       )
     },
   })
@@ -61,7 +61,7 @@ export function useNewCardMutation() {
                 ...board,
                 items: [...board.items, variables],
               }
-            : undefined
+            : undefined,
       )
     },
   })
@@ -82,10 +82,10 @@ export function useMoveCardMutation() {
             ? {
                 ...board,
                 items: board.items.map((i) =>
-                  i.id === variables.id ? variables : i
+                  i.id === variables.id ? variables : i,
                 ),
               }
-            : undefined
+            : undefined,
       )
     },
   })
@@ -108,7 +108,7 @@ export function useDeleteCardMutation() {
                 ...board,
                 items: board.items.filter((item) => item.id !== variables.id),
               }
-            : undefined
+            : undefined,
       )
     },
   })

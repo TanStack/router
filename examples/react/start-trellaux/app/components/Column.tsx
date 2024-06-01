@@ -54,7 +54,7 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
         }}
         onDrop={(event) => {
           const transfer = JSON.parse(
-            event.dataTransfer.getData(CONTENT_TYPES.card)
+            event.dataTransfer.getData(CONTENT_TYPES.card),
           )
           invariant(transfer.id, 'missing transfer.id')
           invariant(transfer.title, 'missing transfer.title')
@@ -131,5 +131,5 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
         )}
       </div>
     )
-  }
+  },
 )

@@ -30,9 +30,20 @@ const invoiceRoute = createRoute({
   validateSearch: () => ({ page: 0 }),
 })
 
+const layoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_layout',
+})
+
+const commentsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: 'comments/$id',
+})
+
 const routeTree = rootRoute.addChildren([
   invoicesRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
   indexRoute,
+  layoutRoute.addChildren([commentsRoute]),
 ])
 
 const defaultRouter = createRouter({
@@ -50,14 +61,26 @@ test('when matching a route with params', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      '/' | './' | '../' | '/invoices' | '/invoices/$invoiceId' | undefined
+      | '/'
+      | './'
+      | '../'
+      | '/invoices'
+      | '/invoices/$invoiceId'
+      | '/comments/$id'
+      | undefined
     >()
 
   expectTypeOf(MatchRoute<DefaultRouter, any, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      '/' | './' | '../' | '/invoices' | '/invoices/$invoiceId' | undefined
+      | '/'
+      | './'
+      | '../'
+      | '/invoices'
+      | '/invoices/$invoiceId'
+      | '/comments/$id'
+      | undefined
     >()
 
   expectTypeOf(
@@ -65,4 +88,14 @@ test('when matching a route with params', () => {
       to: '/invoices/$invoiceId',
     }),
   ).toEqualTypeOf<false | { invoiceId: string }>()
+})
+
+test('when matching a route with params underneath a layout route', () => {
+  const matchRoute = useDefaultMatchRoute()
+
+  expectTypeOf(
+    matchRoute({
+      to: '/comments/$id',
+    }),
+  ).toEqualTypeOf<false | { id: string }>()
 })
