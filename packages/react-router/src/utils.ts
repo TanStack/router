@@ -100,7 +100,7 @@ export type MergeUnionPrimitives<TUnion> = TUnion extends MergeUnionPrimitive
 
 export type MergeUnion<TUnion> =
   | MergeUnionPrimitives<TUnion>
-  | MergeUnionObject<MergeUnionObjects<TUnion>>
+  | MergeUnionObject<TUnion>
 
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]

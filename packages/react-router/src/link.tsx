@@ -8,9 +8,10 @@ import type { AnyRouter, ParsedLocation } from '.'
 import type { HistoryState } from '@tanstack/history'
 import type { AnyRoute, RootSearchSchema } from './route'
 import type {
+  AllParams,
   CatchAllPaths,
-  ParseRoute,
-  ParseRouteWithoutBranches,
+  FullSearchSchema,
+  FullSearchSchemaInput,
   RouteByPath,
   RouteByToPath,
   RoutePaths,
@@ -257,15 +258,11 @@ export type ResolveRoute<
   TFrom,
   TTo,
   TPath = ResolveRelativePath<TFrom, TTo>,
-> = string extends TPath
-  ? ParseRouteWithoutBranches<TRouter['routeTree']>
-  : TPath extends CatchAllPaths
-    ? ParseRouteWithoutBranches<TRouter['routeTree']>
-    : TPath extends string
-      ? string extends TTo
-        ? RouteByPath<TRouter['routeTree'], TPath>
-        : RouteByToPath<TRouter, TPath>
-      : never
+> = TPath extends string
+  ? string extends TTo
+    ? RouteByPath<TRouter['routeTree'], TPath>
+    : RouteByToPath<TRouter, TPath>
+  : never
 
 type PostProcessParams<
   T,
@@ -275,17 +272,19 @@ type PostProcessParams<
 type ResolveFromParamType<TParamVariant extends ParamVariant> =
   TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchema'
 
+type ResolveFromAllParams<
+  TRouter extends AnyRouter,
+  TParamVariant extends ParamVariant,
+> = TParamVariant extends 'PATH'
+  ? AllParams<TRouter['routeTree']>
+  : FullSearchSchema<TRouter['routeTree']>
+
 type ResolveFromParams<
   TRouter extends AnyRouter,
   TParamVariant extends ParamVariant,
   TFrom,
 > = string extends TFrom
-  ? PostProcessParams<
-      ParseRoute<
-        TRouter['routeTree']
-      >['types'][ResolveFromParamType<TParamVariant>],
-      TParamVariant
-    >
+  ? ResolveFromAllParams<TRouter, TParamVariant>
   : RouteByPath<
       TRouter['routeTree'],
       TFrom
@@ -294,16 +293,33 @@ type ResolveFromParams<
 type ResolveToParamType<TParamVariant extends ParamVariant> =
   TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchemaInput'
 
+type ResolveAllToParams<
+  TRouter extends AnyRouter,
+  TParamVariant extends ParamVariant,
+> = TParamVariant extends 'PATH'
+  ? AllParams<TRouter['routeTree']>
+  : FullSearchSchemaInput<TRouter['routeTree']>
+
 export type ResolveToParams<
   TRouter extends AnyRouter,
   TParamVariant extends ParamVariant,
   TFrom,
   TTo,
-  TRoute extends AnyRoute = ResolveRoute<TRouter, TFrom, TTo>,
-> = PostProcessParams<
-  TRoute['types'][ResolveToParamType<TParamVariant>],
-  TParamVariant
->
+> =
+  ResolveRelativePath<TFrom, TTo> extends infer TPath
+    ? string extends TPath
+      ? ResolveAllToParams<TRouter, TParamVariant>
+      : TPath extends CatchAllPaths
+        ? ResolveAllToParams<TRouter, TParamVariant>
+        : PostProcessParams<
+            ResolveRoute<
+              TRouter,
+              TFrom,
+              TTo
+            >['types'][ResolveToParamType<TParamVariant>],
+            TParamVariant
+          >
+    : never
 
 type ResolveRelativeToParams<
   TRouter extends AnyRouter,
@@ -369,14 +385,8 @@ export interface MakeRequiredSearchParams<
   search: MakeRequiredParamsReducer<TRouter, 'SEARCH', TFrom, TTo> & {}
 }
 
-export type IsRequiredParams<TParams> = keyof TParams extends infer K extends
-  keyof TParams
-  ? K extends any
-    ? undefined extends TParams[K]
-      ? never
-      : true
-    : never
-  : never
+export type IsRequiredParams<TParams> =
+  Record<never, never> extends TParams ? never : true
 
 export type IsRequired<
   TRouter extends AnyRouter,
@@ -384,13 +394,15 @@ export type IsRequired<
   TFrom,
   TTo,
 > =
-  string extends ResolveRelativePath<TFrom, TTo>
-    ? never
-    : ResolveRelativePath<TFrom, TTo> extends CatchAllPaths
+  ResolveRelativePath<TFrom, TTo> extends infer TPath
+    ? string extends TPath
       ? never
-      : IsRequiredParams<
-          ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
-        >
+      : TPath extends CatchAllPaths
+        ? never
+        : IsRequiredParams<
+            ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
+          >
+    : never
 
 export type SearchParamOptions<
   TRouter extends AnyRouter,

@@ -1027,50 +1027,35 @@ test('when navigating to a route with params', () => {
     postId: string
   }>()
 
-  defaultRouterLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  defaultRouterLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 
-  defaultRouterObjectsLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  defaultRouterObjectsLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 
-  routerAlwaysTrailingSlashesLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  routerAlwaysTrailingSlashesLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 
-  routerNeverTrailingSlashesLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  routerNeverTrailingSlashesLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 
-  routerPreserveTrailingSlashesLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  routerPreserveTrailingSlashesLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 })
 
 test('when navigating from a route with no params to a route with params', () => {
@@ -1650,43 +1635,43 @@ test('when navigating to a union of routes with params', () => {
 
   expectTypeOf(DefaultRouterLink)
     .parameter(0)
-    .not.toMatchTypeOf<{ params: unknown }>()
+    .toMatchTypeOf<{ params: unknown }>()
 
   expectTypeOf(DefaultRouterObjectsLink)
     .parameter(0)
-    .not.toMatchTypeOf<{ params: unknown }>()
+    .toMatchTypeOf<{ params: unknown }>()
 
   expectTypeOf(RouterAlwaysTrailingSlashesLink)
     .parameter(0)
-    .not.toMatchTypeOf<{ params: unknown }>()
+    .toMatchTypeOf<{ params: unknown }>()
 
   expectTypeOf(RouterNeverTrailingSlashesLink)
     .parameter(0)
-    .not.toMatchTypeOf<{ params: unknown }>()
+    .toMatchTypeOf<{ params: unknown }>()
 
   expectTypeOf(RouterPreserveTrailingSlashesLink)
     .parameter(0)
-    .not.toMatchTypeOf<{ params: unknown }>()
+    .toMatchTypeOf<{ params: unknown }>()
 
   defaultRouterLinkParams
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ invoiceId: string } | { postId: string } | undefined>()
+    .toEqualTypeOf<{ invoiceId: string } | { postId: string }>()
 
   defaultRouterObjectsLinkParams
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ invoiceId: string } | { postId: string } | undefined>()
+    .toEqualTypeOf<{ invoiceId: string } | { postId: string }>()
 
   routerAlwaysTrailingSlashesLinkParams
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ invoiceId: string } | { postId: string } | undefined>()
+    .toEqualTypeOf<{ invoiceId: string } | { postId: string }>()
 
   routerNeverTrailingSlashesLinkParams
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ invoiceId: string } | { postId: string } | undefined>()
+    .toEqualTypeOf<{ invoiceId: string } | { postId: string }>()
 
   routerPreserveTrailingSlashesLinkParams
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ invoiceId: string } | { postId: string } | undefined>()
+    .toEqualTypeOf<{ invoiceId: string } | { postId: string }>()
 
   defaultRouterLinkParams.returns.toEqualTypeOf<
     { invoiceId: string } | { postId: string }
@@ -1708,50 +1693,35 @@ test('when navigating to a union of routes with params', () => {
     { invoiceId: string } | { postId: string }
   >()
 
-  defaultRouterLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  defaultRouterLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 
-  defaultRouterObjectsLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  defaultRouterObjectsLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 
-  routerAlwaysTrailingSlashesLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  routerAlwaysTrailingSlashesLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 
-  routerNeverTrailingSlashesLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  routerNeverTrailingSlashesLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 
-  routerPreserveTrailingSlashesLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  routerPreserveTrailingSlashesLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 })
 
 test('when navigating to a union of routes including the root', () => {
@@ -1885,50 +1855,35 @@ test('when navigating to a union of routes including the root', () => {
     { invoiceId: string } | { postId: string } | {}
   >()
 
-  defaultRouterLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  defaultRouterLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 
-  defaultRouterObjectsLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  defaultRouterObjectsLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 
-  routerAlwaysTrailingSlashesLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  routerAlwaysTrailingSlashesLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 
-  routerNeverTrailingSlashesLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  routerNeverTrailingSlashesLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 
-  routerPreserveTrailingSlashesLinkParams
-    .parameter(0)
-    .toEqualTypeOf<
-      | {}
-      | { invoiceId: string }
-      | { postId: string }
-      | { invoiceId: string; detailId: string }
-    >()
+  routerPreserveTrailingSlashesLinkParams.parameter(0).toEqualTypeOf<{
+    invoiceId?: string
+    postId?: string
+    detailId?: string
+  }>()
 })
 
 test('when navigating from a route with search params to the same route', () => {
@@ -2118,25 +2073,21 @@ test('when navigating to a route with search params', () => {
     page: number
   }>()
 
-  defaultRouterLinkSearch
-    .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+  defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
 
-  defaultRouterObjectsLinkSearch
-    .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+  defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
 
   routerAlwaysTrailingSlashesLinkSearch
     .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+    .toEqualTypeOf<{ page?: number }>()
 
   routerNeverTrailingSlashesLinkSearch
     .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+    .toEqualTypeOf<{ page?: number }>()
 
   routerPreserveTrailingSlashesLinkSearch
     .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+    .toEqualTypeOf<{ page?: number }>()
 })
 
 test('when navigating to a route with optional search params', () => {
@@ -2253,25 +2204,21 @@ test('when navigating to a route with optional search params', () => {
     page?: number
   }>()
 
-  defaultRouterLinkSearch
-    .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+  defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
 
-  defaultRouterObjectsLinkSearch
-    .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+  defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
 
   routerAlwaysTrailingSlashesLinkSearch
     .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+    .toEqualTypeOf<{ page?: number }>()
 
   routerNeverTrailingSlashesLinkSearch
     .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+    .toEqualTypeOf<{ page?: number }>()
 
   routerPreserveTrailingSlashesLinkSearch
     .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+    .toEqualTypeOf<{ page?: number }>()
 })
 
 test('when navigating from a route with no search params to a route with search params', () => {
@@ -2526,25 +2473,21 @@ test('when navigating to a union of routes with search params', () => {
     { page: number } | {}
   >()
 
-  defaultRouterLinkSearch
-    .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+  defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
 
-  defaultRouterObjectsLinkSearch
-    .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+  defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
 
   routerAlwaysTrailingSlashesSearch
     .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+    .toEqualTypeOf<{ page?: number }>()
 
   routerNeverTrailingSlashesSearch
     .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+    .toEqualTypeOf<{ page?: number }>()
 
   routerPreserveTrailingSlashesSearch
     .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+    .toEqualTypeOf<{ page?: number }>()
 })
 
 test('when navigating to a union of routes with search params including the root', () => {
@@ -2664,23 +2607,19 @@ test('when navigating to a union of routes with search params including the root
     { page: number } | {}
   >()
 
-  defaultRouterSearch
-    .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+  defaultRouterSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
 
-  defaultRouterObjectsSearch
-    .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+  defaultRouterObjectsSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
 
   routerAlwaysTrailingSlashesLinkSearch
     .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+    .toEqualTypeOf<{ page?: number }>()
 
   routerNeverTrailingSlashesLinkSearch
     .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+    .toEqualTypeOf<{ page?: number }>()
 
   routerPreserveTrailingSlashesLinkSearch
     .parameter(0)
-    .toEqualTypeOf<{} | { page: number } | { page?: number }>()
+    .toEqualTypeOf<{ page?: number }>()
 })

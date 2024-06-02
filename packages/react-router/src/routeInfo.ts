@@ -114,20 +114,25 @@ export type RouteByToPath<TRouter extends AnyRouter, TTo> = Extract<
   AnyRoute
 >
 
-export type FullSearchSchema<TRouteTree extends AnyRoute> = Expand<
-  MergeUnion<
-    Exclude<ParseRoute<TRouteTree>['types']['searchSchema'], RootSearchSchema>
+export type FullSearchSchema<TRouteTree extends AnyRoute> = MergeUnion<
+  Exclude<ParseRoute<TRouteTree>['types']['fullSearchSchema'], RootSearchSchema>
+>
+
+export type FullSearchSchemaInput<TRouteTree extends AnyRoute> = MergeUnion<
+  Exclude<
+    ParseRoute<TRouteTree>['types']['fullSearchSchemaInput'],
+    RootSearchSchema
   >
 >
 
-export type AllParams<TRouteTree extends AnyRoute> = Expand<
-  MergeUnion<ParseRoute<TRouteTree>['types']['params']>
+export type AllParams<TRouteTree extends AnyRoute> = MergeUnion<
+  ParseRoute<TRouteTree>['types']['allParams']
 >
 
-export type AllContext<TRouteTree extends AnyRoute> = Expand<
-  MergeUnion<ParseRoute<TRouteTree>['types']['allContext']>
+export type AllContext<TRouteTree extends AnyRoute> = MergeUnion<
+  ParseRoute<TRouteTree>['types']['allContext']
 >
 
-export type AllLoaderData<TRouteTree extends AnyRoute> = Expand<
-  MergeUnion<ParseRoute<TRouteTree>['types']['loaderData']>
+export type AllLoaderData<TRouteTree extends AnyRoute> = MergeUnion<
+  ParseRoute<TRouteTree>['types']['loaderData']
 >
