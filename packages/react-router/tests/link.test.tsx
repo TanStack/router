@@ -1091,7 +1091,7 @@ describe('Link', () => {
     expect(await screen.findByText('Params: id1')).toBeInTheDocument()
   })
 
-  test('when navigating from /posts/$postId/details to /posts/$postId/info with from /posts/$postId', async () => {
+  test('when navigating from /posts/$postId to /posts/$postId/info and the current route is /posts/$postId/details', async () => {
     const rootRoute = createRootRoute()
 
     const indexRoute = createRoute({
@@ -1219,6 +1219,8 @@ describe('Link', () => {
     expect(await screen.findByText('Information')).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1/info')
+
+    expect(await screen.findByText('Params: id1'))
   })
 })
 
