@@ -1102,6 +1102,8 @@ export class Router<
     ): ParsedLocation => {
       let fromPath = this.latestLocation.pathname
       let fromSearch = dest.fromSearch || this.latestLocation.search
+      const fromRoute =
+        this.routesByPath[dest.from as keyof typeof this.routesByPath]
 
       const fromMatches = this.matchRoutes(
         this.latestLocation.pathname,
@@ -1109,7 +1111,8 @@ export class Router<
       )
 
       fromPath =
-        fromMatches.find((d) => d.id === dest.from)?.pathname || fromPath
+        fromMatches.find((d) => d.routeId === fromRoute?.id)?.pathname ||
+        fromPath
       fromSearch = last(fromMatches)?.search || this.latestLocation.search
 
       const stayingMatches = matches?.filter((d) =>
