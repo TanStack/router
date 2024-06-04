@@ -29,7 +29,6 @@ export function useNavigate<
     (options: NavigateOptions) => {
       return router.navigate({
         ...options,
-        from: options.to ? router.state.resolvedLocation.pathname : undefined,
       })
     },
     [router],
@@ -63,7 +62,6 @@ export function Navigate<
 
   React.useEffect(() => {
     navigate({
-      from: props.to ? match.pathname : undefined,
       ...props,
     } as any)
     // eslint-disable-next-line react-hooks/exhaustive-deps
