@@ -825,10 +825,6 @@ export class Router<
     return this.routesById as Record<string, AnyRoute>
   }
 
-  get looseRoutesByPath() {
-    return this.routesByPath as Record<string, AnyRoute>
-  }
-
   matchRoutes = (
     pathname: string,
     locationSearch: AnySearchSchema,
@@ -1106,9 +1102,11 @@ export class Router<
     ): ParsedLocation => {
       let fromPath = this.latestLocation.pathname
       let fromSearch = dest.fromSearch || this.latestLocation.search
+      const looseRoutesByPath = this.routesByPath as Record<string, AnyRoute>
+
       const fromRoute =
         dest.from !== undefined
-          ? this.looseRoutesByPath[trimPathRight(dest.from)]
+          ? looseRoutesByPath[trimPathRight(dest.from)]
           : undefined
 
       const fromMatches = this.matchRoutes(
