@@ -16,14 +16,7 @@ import type { NavigateOptions, ParsePathParams, ToSubOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter, Router } from './router'
-import type {
-  Assign,
-  Expand,
-  IsAny,
-  NoInfer,
-  PickRequired,
-  UnionToIntersection,
-} from './utils'
+import type { Assign, Expand, IsAny, NoInfer, PickRequired } from './utils'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { NotFoundError } from './not-found'
 import type { LazyRoute } from './fileRoute'
@@ -52,8 +45,10 @@ export type RoutePathOptions<TCustomId, TPath> =
 
 export interface StaticDataRouteOption {}
 
-export type RoutePathOptionsIntersection<TCustomId, TPath> =
-  UnionToIntersection<RoutePathOptions<TCustomId, TPath>>
+export type RoutePathOptionsIntersection<TCustomId, TPath> = {
+  path: TPath
+  id: TCustomId
+}
 
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
@@ -474,11 +469,6 @@ export type ResolveAllParamsFromParent<
   ? TParams
   : Assign<TParentRoute['types']['allParams'], TParams>
 
-export type ResolveAllParams<TParentRoute extends AnyRoute, TParams> =
-  Record<never, string> extends TParentRoute['types']['allParams']
-    ? TParams
-    : UnionToIntersection<TParentRoute['types']['allParams'] & TParams> & {}
-
 export type RouteConstraints = {
   TParentRoute: AnyRoute
   TPath: string
@@ -618,7 +608,7 @@ export class Route<
     TSearchSchema
   >,
   in out TParams = Record<ParsePathParams<TPath>, string>,
-  in out TAllParams = ResolveAllParams<TParentRoute, TParams>,
+  in out TAllParams = ResolveAllParamsFromParent<TParentRoute, TParams>,
   TRouteContextReturn = RouteContext,
   in out TRouteContext = ResolveRouteContext<TRouteContextReturn>,
   in out TAllContext = Assign<
@@ -960,7 +950,7 @@ export function createRoute<
   >,
   TFullSearchSchema = ResolveFullSearchSchema<TParentRoute, TSearchSchema>,
   TParams = Record<ParsePathParams<TPath>, string>,
-  TAllParams = ResolveAllParams<TParentRoute, TParams>,
+  TAllParams = ResolveAllParamsFromParent<TParentRoute, TParams>,
   TRouteContextReturn = RouteContext,
   TRouteContext = ResolveRouteContext<TRouteContextReturn>,
   TAllContext = Assign<
