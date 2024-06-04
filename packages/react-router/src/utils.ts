@@ -26,12 +26,6 @@ export type Expand<T> = T extends object
     : never
   : T
 
-export type UnionToIntersection<T> = (
-  T extends any ? (k: T) => void : never
-) extends (k: infer I) => any
-  ? I
-  : never
-
 export type DeepPartial<T> = T extends object
   ? {
       [P in keyof T]?: DeepPartial<T[P]>
@@ -100,7 +94,7 @@ export type MergeUnionPrimitives<TUnion> = TUnion extends MergeUnionPrimitive
 
 export type MergeUnion<TUnion> =
   | MergeUnionPrimitives<TUnion>
-  | MergeUnionObject<MergeUnionObjects<TUnion>>
+  | MergeUnionObject<TUnion>
 
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]

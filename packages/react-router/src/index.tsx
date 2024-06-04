@@ -154,7 +154,6 @@ export {
   type ResolveFullSearchSchema,
   type ResolveFullSearchSchemaInput,
   type AnyRoute,
-  type ResolveAllParams,
   type RouteConstraints,
   type AnyRootRoute,
   type RootSearchSchema,
