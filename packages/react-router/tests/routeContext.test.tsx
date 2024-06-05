@@ -169,10 +169,10 @@ describe('beforeLoad in the route definition', () => {
     render(<RouterProvider router={router} />)
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
-    expect(mock).toHaveBeenCalledOnce()
+    expect(router.state.location.pathname).toBe('/about')
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
-    expect(router.state.location.pathname).toBe('/about')
   })
 
   test('on first-load, route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
@@ -200,10 +200,10 @@ describe('beforeLoad in the route definition', () => {
     render(<RouterProvider router={router} />)
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
-    expect(mock).toHaveBeenCalledOnce()
+    expect(router.state.location.pathname).toBe('/about')
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
-    expect(router.state.location.pathname).toBe('/about')
   })
 
   // Check if context the context is available after a redirect on navigate
@@ -242,10 +242,10 @@ describe('beforeLoad in the route definition', () => {
     await act(() => router.navigate({ to: '/about' }))
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
-    expect(mock).toHaveBeenCalledOnce()
+    expect(router.state.location.pathname).toBe('/person')
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
-    expect(router.state.location.pathname).toBe('/person')
   })
 
   test('on navigate, route context is present in the /person route after a redirect is thrown in the loader of the /about route', async () => {
@@ -283,10 +283,10 @@ describe('beforeLoad in the route definition', () => {
     await act(() => router.navigate({ to: '/about' }))
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
-    expect(mock).toHaveBeenCalledOnce()
+    expect(router.state.location.pathname).toBe('/person')
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
-    expect(router.state.location.pathname).toBe('/person')
   })
 })
 
@@ -429,10 +429,10 @@ describe('loader in the route definition', () => {
     render(<RouterProvider router={router} />)
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
-    expect(mock).toHaveBeenCalledOnce()
+    expect(router.state.location.pathname).toBe('/about')
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
-    expect(router.state.location.pathname).toBe('/about')
   })
 
   test('on first-load, route context is present in the /about route after a redirect is thrown in loader of the index route', async () => {
@@ -460,10 +460,10 @@ describe('loader in the route definition', () => {
     render(<RouterProvider router={router} />)
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
-    expect(mock).toHaveBeenCalledOnce()
+    expect(router.state.location.pathname).toBe('/about')
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
-    expect(router.state.location.pathname).toBe('/about')
   })
 
   // Check if context the context is available after a redirect on navigate
@@ -502,10 +502,10 @@ describe('loader in the route definition', () => {
     await act(() => router.navigate({ to: '/about' }))
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
-    expect(mock).toHaveBeenCalledOnce()
+    expect(router.state.location.pathname).toBe('/person')
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
-    expect(router.state.location.pathname).toBe('/person')
   })
 
   test('on navigate, route context is present in the /person route after a redirect is thrown in the loader of the /about route', async () => {
@@ -543,10 +543,10 @@ describe('loader in the route definition', () => {
     await act(() => router.navigate({ to: '/about' }))
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
-    expect(mock).toHaveBeenCalledOnce()
+    expect(router.state.location.pathname).toBe('/person')
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
-    expect(router.state.location.pathname).toBe('/person')
   })
 })
 
@@ -765,6 +765,7 @@ describe('useRouteContext in the component', () => {
 
     expect(router.state.location.href).toBe('/about')
     expect(window.location.pathname).toBe('/about')
+
     expect(content).toBeInTheDocument()
   })
 
@@ -795,6 +796,7 @@ describe('useRouteContext in the component', () => {
 
     expect(router.state.location.href).toBe('/about')
     expect(window.location.pathname).toBe('/about')
+
     expect(content).toBeInTheDocument()
   })
 
@@ -846,6 +848,7 @@ describe('useRouteContext in the component', () => {
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
     await waitFor(() => expect(content).toBeInTheDocument())
+
     expect(router.state.location.href).toBe('/person')
     expect(window.location.pathname).toBe('/person')
   })
@@ -897,6 +900,7 @@ describe('useRouteContext in the component', () => {
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
     await waitFor(() => expect(content).toBeInTheDocument())
+
     expect(router.state.location.href).toBe('/person')
     expect(window.location.pathname).toBe('/person')
   })
