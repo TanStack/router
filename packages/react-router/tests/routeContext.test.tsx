@@ -28,6 +28,7 @@ afterEach(() => {
 })
 
 const WAIT_TIME = 150
+const SLEEP_MODIFIER = 1.5
 
 describe('beforeLoad in the route definition', () => {
   // Present at the root route
@@ -167,7 +168,8 @@ describe('beforeLoad in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(mock).toHaveBeenCalledOnce()
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
     expect(router.state.location.pathname).toBe('/about')
@@ -197,7 +199,8 @@ describe('beforeLoad in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(mock).toHaveBeenCalledOnce()
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
     expect(router.state.location.pathname).toBe('/about')
@@ -238,7 +241,8 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => router.navigate({ to: '/about' }))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(mock).toHaveBeenCalledOnce()
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
     expect(router.state.location.pathname).toBe('/person')
@@ -278,7 +282,8 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => router.navigate({ to: '/about' }))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(mock).toHaveBeenCalledOnce()
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
     expect(router.state.location.pathname).toBe('/person')
@@ -423,7 +428,8 @@ describe('loader in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(mock).toHaveBeenCalledOnce()
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
     expect(router.state.location.pathname).toBe('/about')
@@ -453,7 +459,8 @@ describe('loader in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(mock).toHaveBeenCalledOnce()
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
     expect(router.state.location.pathname).toBe('/about')
@@ -494,7 +501,8 @@ describe('loader in the route definition', () => {
 
     await act(() => router.navigate({ to: '/about' }))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(mock).toHaveBeenCalledOnce()
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
     expect(router.state.location.pathname).toBe('/person')
@@ -534,7 +542,8 @@ describe('loader in the route definition', () => {
 
     await act(() => router.navigate({ to: '/about' }))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(mock).toHaveBeenCalledOnce()
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
     expect(router.state.location.pathname).toBe('/person')
