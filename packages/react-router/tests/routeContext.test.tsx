@@ -1,16 +1,16 @@
 import React from 'react'
 import '@testing-library/jest-dom/vitest'
-import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import {
+  RouterProvider,
   createRootRoute,
   createRoute,
   createRouter,
-  RouterProvider,
-  useRouteContext,
-  rootRouteId,
   redirect,
+  rootRouteId,
+  useRouteContext,
 } from '../src'
 
 import { sleep } from './utils'
@@ -135,8 +135,8 @@ describe('beforeLoad in the route definition', () => {
     expect(mock).toHaveBeenCalledTimes(1)
   })
 
-  // Check if context the context is available after a redirect
-  test('route context is present in the /about route after a redirect is thrown in the beforeLoad of the index route', async () => {
+  // Check if context the context is available after a redirect on first-load
+  test('on first-load route context is present in the /about route after a redirect is thrown in the beforeLoad of the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -166,7 +166,7 @@ describe('beforeLoad in the route definition', () => {
     expect(router.state.location.pathname).toBe('/about')
   })
 
-  test('route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
+  test('on first-load route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -310,8 +310,8 @@ describe('loader in the route definition', () => {
     expect(mock).toHaveBeenCalledTimes(1)
   })
 
-  // Check if context the context is available after a redirect
-  test('route context is present in the /about route after a redirect is thrown in beforeLoad of the index route', async () => {
+  // Check if context the context is available after a redirect on first-load
+  test('on first-load route context is present in the /about route after a redirect is thrown in beforeLoad of the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -341,7 +341,7 @@ describe('loader in the route definition', () => {
     expect(router.state.location.pathname).toBe('/about')
   })
 
-  test('route context is present in the /about route after a redirect is thrown in loader of the index route', async () => {
+  test('on first-load route context is present in the /about route after a redirect is thrown in loader of the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -559,8 +559,8 @@ describe('useRouteContext in the component', () => {
     expect(content).toBeInTheDocument()
   })
 
-  // Check if context the context is available after a redirect
-  test('route context is present in the /about route after a redirect is thrown in the beforeLoad of the index route', async () => {
+  // Check if context the context is available after a redirect on first-load
+  test('on first-load route context is present in the /about route after a redirect is thrown in the beforeLoad of the index route', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -590,7 +590,7 @@ describe('useRouteContext in the component', () => {
     expect(content).toBeInTheDocument()
   })
 
-  test('route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
+  test('on first-load route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
