@@ -21,9 +21,9 @@ afterEach(() => {
 
 const WAIT_TIME = 150
 
-describe('beforeLoad', () => {
+describe('beforeLoad in the route definition', () => {
   // Present at the root route
-  test('sync route context, present in beforeLoad, root route', () => {
+  test('route context, present in the root route', () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute({
@@ -39,7 +39,7 @@ describe('beforeLoad', () => {
     waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
   })
 
-  test('async route context, present in beforeLoad, root route', () => {
+  test('route context (sleep), present in the root route', () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute({
@@ -57,7 +57,7 @@ describe('beforeLoad', () => {
   })
 
   // Present at the index route
-  test('sync route context, present in beforeLoad, index route', () => {
+  test('route context, present in the index route', () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -76,7 +76,7 @@ describe('beforeLoad', () => {
     waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
   })
 
-  test('async route context, present in beforeLoad, index route', () => {
+  test('route context (sleep), present in the index route', () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -97,7 +97,7 @@ describe('beforeLoad', () => {
   })
 
   // Check if context that is updated at the root, is the same in the index route
-  test('modified route context, present in beforeLoad, index route', async () => {
+  test('modified route context, present in the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute({
@@ -125,9 +125,9 @@ describe('beforeLoad', () => {
   })
 })
 
-describe('loader', () => {
+describe('loader in the route definition', () => {
   // Present at the root route
-  test('sync route context, present in loader, root route', () => {
+  test('route context, present in the root route', () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute({
@@ -143,7 +143,7 @@ describe('loader', () => {
     waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
   })
 
-  test('async route context, present in loader, root route', () => {
+  test('route context (sleep), present in the root route', () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute({
@@ -161,7 +161,7 @@ describe('loader', () => {
   })
 
   // Present at the index route
-  test('sync route context, present in loader, index route', () => {
+  test('route context, present in the index route', () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -180,7 +180,7 @@ describe('loader', () => {
     waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
   })
 
-  test('async route context, present in loader, index route', () => {
+  test('route context (sleep), present in the index route', () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -201,7 +201,7 @@ describe('loader', () => {
   })
 
   // Check if context that is updated at the root, is the same in the index route
-  test('modified route context, present in loader, index route', async () => {
+  test('modified route context, present in the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute({
@@ -229,9 +229,9 @@ describe('loader', () => {
   })
 })
 
-describe('useRouteContext', () => {
+describe('useRouteContext in the component', () => {
   // Present at the root route
-  test('sync route context, present in component, root route', async () => {
+  test('route context, present in the root route', async () => {
     const rootRoute = createRootRoute({
       component: () => {
         const context = useRouteContext({ from: rootRouteId })
@@ -249,7 +249,7 @@ describe('useRouteContext', () => {
     expect(content).toBeInTheDocument()
   })
 
-  test('async route context beforeLoad, present in component, root route', async () => {
+  test('route context (sleep in beforeLoad), present in the root route', async () => {
     const rootRoute = createRootRoute({
       beforeLoad: async () => {
         await sleep(WAIT_TIME)
@@ -270,7 +270,7 @@ describe('useRouteContext', () => {
     expect(content).toBeInTheDocument()
   })
 
-  test('async route context loader, present in component, root route', async () => {
+  test('route context (sleep in loader), present root route', async () => {
     const rootRoute = createRootRoute({
       loader: async () => {
         await sleep(WAIT_TIME)
@@ -292,7 +292,7 @@ describe('useRouteContext', () => {
   })
 
   // Present at the index route
-  test('sync route context, present in component, index route', async () => {
+  test('route context, present in the index route', async () => {
     const rootRoute = createRootRoute({})
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -313,7 +313,7 @@ describe('useRouteContext', () => {
     expect(content).toBeInTheDocument()
   })
 
-  test('async route context beforeLoad, present in component, index route', async () => {
+  test('route context (sleep in beforeLoad), present in the index route', async () => {
     const rootRoute = createRootRoute({})
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -337,7 +337,7 @@ describe('useRouteContext', () => {
     expect(content).toBeInTheDocument()
   })
 
-  test('async route context loader, present in component, index route', async () => {
+  test('route context (sleep in loader), present in the index route', async () => {
     const rootRoute = createRootRoute({})
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -362,7 +362,7 @@ describe('useRouteContext', () => {
   })
 
   // Check if context that is updated at the root, is the same in the root route
-  test('modified route context, present in component, root route', async () => {
+  test('modified route context, present in the root route', async () => {
     const rootRoute = createRootRoute({
       beforeLoad: async ({ context }) => {
         await sleep(WAIT_TIME)
@@ -388,7 +388,7 @@ describe('useRouteContext', () => {
   })
 
   // Check if context that is updated at the root, is the same in the index route
-  test('modified route context, present in component, index route', async () => {
+  test('modified route context, present in the index route', async () => {
     const rootRoute = createRootRoute({
       beforeLoad: async ({ context }) => {
         await sleep(WAIT_TIME)
