@@ -309,8 +309,8 @@ export function escapeJSON(jsonString: string) {
     .replace(/"/g, '\\"') // Escape double quotes
 }
 
-export function removeTrailingSlash(value: string): string {
-  if (value.endsWith('/') && value !== '/') {
+export function removeTrailingSlash(value: string, basepath: string): string {
+  if (value.endsWith('/') && value !== '/' && value !== `${basepath}/`) {
     return value.slice(0, -1)
   }
   return value
@@ -320,8 +320,15 @@ export function removeTrailingSlash(value: string): string {
 // see the usage in the isActive under useLinkProps
 // /sample/path1 = /sample/path1/
 // /sample/path1/some <> /sample/path1
-export function exactPathTest(pathName1: string, pathName2: string): boolean {
-  return removeTrailingSlash(pathName1) === removeTrailingSlash(pathName2)
+export function exactPathTest(
+  pathName1: string,
+  pathName2: string,
+  basepath: string,
+): boolean {
+  return (
+    removeTrailingSlash(pathName1, basepath) ===
+    removeTrailingSlash(pathName2, basepath)
+  )
 }
 
 export type ControlledPromise<T> = Promise<T> & {

@@ -1711,7 +1711,7 @@ describe('Link', () => {
     expect(postsLink).toHaveAttribute('aria-current', 'page')
   })
 
-  test('when on /posts/$postId/, Links to /posts should be active (trailingSlash: always)', async () => {
+  test('when on /posts/$postId/, Links to /posts/ should be active (trailingSlash: always)', async () => {
     const rootRoute = createRootRoute({
       component: () => {
         return (

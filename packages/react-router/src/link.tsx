@@ -620,16 +620,20 @@ export function useLinkProps<
   const isActive = useRouterState({
     select: (s) => {
       // Compare path/hash for matches
-      const currentPathSplit = removeTrailingSlash(s.location.pathname).split(
-        '/',
-      )
-      const nextPathSplit = removeTrailingSlash(next.pathname).split('/')
+      const currentPathSplit = removeTrailingSlash(
+        s.location.pathname,
+        router.basepath,
+      ).split('/')
+      const nextPathSplit = removeTrailingSlash(
+        next.pathname,
+        router.basepath,
+      ).split('/')
       const pathIsFuzzyEqual = nextPathSplit.every(
         (d, i) => d === currentPathSplit[i],
       )
       // Combine the matches based on user router.options
       const pathTest = activeOptions?.exact
-        ? exactPathTest(s.location.pathname, next.pathname)
+        ? exactPathTest(s.location.pathname, next.pathname, router.basepath)
         : pathIsFuzzyEqual
       const hashTest = activeOptions?.includeHash
         ? s.location.hash === next.hash
