@@ -10,6 +10,7 @@ import {
   RouterProvider,
   useRouteContext,
   rootRouteId,
+  redirect,
 } from '../src'
 
 import { sleep } from './utils'
@@ -133,6 +134,67 @@ describe('beforeLoad in the route definition', () => {
     expect(mock).toHaveBeenCalledWith({ foo: 'sean' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
+
+  // Check if context the context is available after a redirect
+  test('route context is present in the /about route after a redirect is thrown in the beforeLoad of the index route', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/about' })
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      beforeLoad: async ({ context }) => {
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/about')
+  })
+
+  test('route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/about' })
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      beforeLoad: async ({ context }) => {
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/about')
+  })
 })
 
 describe('loader in the route definition', () => {
@@ -246,6 +308,67 @@ describe('loader in the route definition', () => {
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'sean' })
     expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  // Check if context the context is available after a redirect
+  test('route context is present in the /about route after a redirect is thrown in beforeLoad of the index route', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/about' })
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      loader: async ({ context }) => {
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/about')
+  })
+
+  test('route context is present in the /about route after a redirect is thrown in loader of the index route', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/about' })
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      loader: async ({ context }) => {
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/about')
   })
 })
 
@@ -433,6 +556,67 @@ describe('useRouteContext in the component', () => {
 
     const content = await screen.findByText(JSON.stringify({ foo: 'sean' }))
 
+    expect(content).toBeInTheDocument()
+  })
+
+  // Check if context the context is available after a redirect
+  test('route context is present in the /about route after a redirect is thrown in the beforeLoad of the index route', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/about' })
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => {
+        const context = useRouteContext({ from: rootRouteId })
+        return <div>{JSON.stringify(context)}</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
+
+    expect(router.state.location.href).toBe('/about')
+    expect(window.location.pathname).toBe('/about')
+    expect(content).toBeInTheDocument()
+  })
+
+  test('route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/about' })
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => {
+        const context = useRouteContext({ from: rootRouteId })
+        return <div>{JSON.stringify(context)}</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
+
+    expect(router.state.location.href).toBe('/about')
+    expect(window.location.pathname).toBe('/about')
     expect(content).toBeInTheDocument()
   })
 })
