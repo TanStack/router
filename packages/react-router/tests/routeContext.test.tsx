@@ -526,6 +526,35 @@ describe('useRouteContext in the component', () => {
     expect(content).toBeInTheDocument()
   })
 
+  // Check if context that is updated at the root, is the same in the index route
+  test('modified route context, present in the index route', async () => {
+    const rootRoute = createRootRoute({
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return {
+          ...context,
+          foo: 'sean',
+        }
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        const context = useRouteContext({ from: rootRouteId })
+        return <div>{JSON.stringify(context)}</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    const content = await screen.findByText(JSON.stringify({ foo: 'sean' }))
+
+    expect(content).toBeInTheDocument()
+  })
+
   // Check if context the context is available after a redirect
   test('route context is present in the /about route after a redirect is thrown in the beforeLoad of the index route', async () => {
     const rootRoute = createRootRoute()
