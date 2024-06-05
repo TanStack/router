@@ -169,6 +169,7 @@ describe('beforeLoad in the route definition', () => {
     render(<RouterProvider router={router} />)
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(window.location.pathname).toBe('/about')
     expect(router.state.location.pathname).toBe('/about')
 
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -200,6 +201,7 @@ describe('beforeLoad in the route definition', () => {
     render(<RouterProvider router={router} />)
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(window.location.pathname).toBe('/about')
     expect(router.state.location.pathname).toBe('/about')
 
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -242,6 +244,7 @@ describe('beforeLoad in the route definition', () => {
     await act(() => router.navigate({ to: '/about' }))
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(window.location.pathname).toBe('/person')
     expect(router.state.location.pathname).toBe('/person')
 
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -283,6 +286,7 @@ describe('beforeLoad in the route definition', () => {
     await act(() => router.navigate({ to: '/about' }))
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(window.location.pathname).toBe('/person')
     expect(router.state.location.pathname).toBe('/person')
 
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -429,6 +433,7 @@ describe('loader in the route definition', () => {
     render(<RouterProvider router={router} />)
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(window.location.pathname).toBe('/about')
     expect(router.state.location.pathname).toBe('/about')
 
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -460,6 +465,7 @@ describe('loader in the route definition', () => {
     render(<RouterProvider router={router} />)
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(window.location.pathname).toBe('/about')
     expect(router.state.location.pathname).toBe('/about')
 
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -502,6 +508,7 @@ describe('loader in the route definition', () => {
     await act(() => router.navigate({ to: '/about' }))
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(window.location.pathname).toBe('/person')
     expect(router.state.location.pathname).toBe('/person')
 
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -540,9 +547,12 @@ describe('loader in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    await act(() => router.navigate({ to: '/about' }))
+    await act(async () => {
+      await router.navigate({ to: '/about' })
+    })
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(window.location.pathname).toBe('/person')
     expect(router.state.location.pathname).toBe('/person')
 
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
