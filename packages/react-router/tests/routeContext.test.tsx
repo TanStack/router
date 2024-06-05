@@ -143,7 +143,7 @@ describe('beforeLoad in the route definition', () => {
   })
 
   // Check if context the context is available after a redirect on first-load
-  test('on first-load route context is present in the /about route after a redirect is thrown in the beforeLoad of the index route', async () => {
+  test('on first-load, route context is present in the /about route after a redirect is thrown in the beforeLoad of the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -173,7 +173,7 @@ describe('beforeLoad in the route definition', () => {
     expect(router.state.location.pathname).toBe('/about')
   })
 
-  test('on first-load route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
+  test('on first-load, route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -201,6 +201,87 @@ describe('beforeLoad in the route definition', () => {
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
     expect(router.state.location.pathname).toBe('/about')
+  })
+
+  // Check if context the context is available after a redirect on navigate
+  test('on navigate, route context is present in the /person route after a redirect is thrown in the beforeLoad of the /about route', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/person' })
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/person',
+      beforeLoad: ({ context }) => {
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      personRoute,
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/about' }))
+
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/person')
+  })
+
+  test('on navigate, route context is present in the /person route after a redirect is thrown in the loader of the /about route', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/person' })
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/person',
+      beforeLoad: ({ context }) => {
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      personRoute,
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/about' }))
+
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/person')
   })
 })
 
@@ -318,7 +399,7 @@ describe('loader in the route definition', () => {
   })
 
   // Check if context the context is available after a redirect on first-load
-  test('on first-load route context is present in the /about route after a redirect is thrown in beforeLoad of the index route', async () => {
+  test('on first-load, route context is present in the /about route after a redirect is thrown in beforeLoad of the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -348,7 +429,7 @@ describe('loader in the route definition', () => {
     expect(router.state.location.pathname).toBe('/about')
   })
 
-  test('on first-load route context is present in the /about route after a redirect is thrown in loader of the index route', async () => {
+  test('on first-load, route context is present in the /about route after a redirect is thrown in loader of the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -376,6 +457,87 @@ describe('loader in the route definition', () => {
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
     expect(router.state.location.pathname).toBe('/about')
+  })
+
+  // Check if context the context is available after a redirect on navigate
+  test('on navigate, route context is present in the /person route after a redirect is thrown in the beforeLoad of the /about route', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/person' })
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/person',
+      loader: ({ context }) => {
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      personRoute,
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/about' }))
+
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/person')
+  })
+
+  test('on navigate, route context is present in the /person route after a redirect is thrown in the loader of the /about route', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/person' })
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/person',
+      loader: ({ context }) => {
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      personRoute,
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/about' }))
+
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/person')
   })
 })
 
@@ -567,7 +729,7 @@ describe('useRouteContext in the component', () => {
   })
 
   // Check if context the context is available after a redirect on first-load
-  test('on first-load route context is present in the /about route after a redirect is thrown in the beforeLoad of the index route', async () => {
+  test('on first-load, route context is present in the /about route after a redirect is thrown in the beforeLoad of the index route', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -597,7 +759,7 @@ describe('useRouteContext in the component', () => {
     expect(content).toBeInTheDocument()
   })
 
-  test('on first-load route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
+  test('on first-load, route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -628,7 +790,7 @@ describe('useRouteContext in the component', () => {
   })
 
   // Check if context the context is available after a redirect on navigate
-  test('on navigate route context is present in the /person route after a redirect is thrown in the beforeLoad of the /about route', async () => {
+  test('on navigate, route context is present in the /person route after a redirect is thrown in the beforeLoad of the /about route', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -679,7 +841,7 @@ describe('useRouteContext in the component', () => {
     expect(window.location.pathname).toBe('/person')
   })
 
-  test('on navigate route context is present in the /person route after a redirect is thrown in the loader of the /about route', async () => {
+  test('on navigate, route context is present in the /person route after a redirect is thrown in the loader of the /about route', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
