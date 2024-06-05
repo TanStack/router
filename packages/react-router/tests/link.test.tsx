@@ -1527,7 +1527,7 @@ describe('Link', () => {
     }
 
     const postsRoute = createRoute({
-      getParentRoute: () => rootRoute,
+      getParentRoute: () => layoutRoute,
       path: 'posts',
       component: PostsComponent,
     })
