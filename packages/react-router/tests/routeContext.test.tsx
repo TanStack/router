@@ -10,6 +10,7 @@ import {
   RouterProvider,
   useRouteContext,
   rootRouteId,
+  redirect,
 } from '../src'
 
 import { sleep } from './utils'
@@ -407,32 +408,64 @@ describe('useRouteContext in the component', () => {
     expect(content).toBeInTheDocument()
   })
 
-  // Check if context that is updated at the root, is the same in the index route
-  test('modified route context, present in the index route', async () => {
-    const rootRoute = createRootRoute({
-      beforeLoad: async ({ context }) => {
-        await sleep(WAIT_TIME)
-        return {
-          ...context,
-          foo: 'sean',
-        }
-      },
-    })
+  // Check if context the context is available after a redirect
+  test('route context is present in the /about route after a redirect is thrown in the beforeLoad of the index route', async () => {
+    const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/about' })
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
       component: () => {
         const context = useRouteContext({ from: rootRouteId })
         return <div>{JSON.stringify(context)}</div>
       },
     })
-    const routeTree = rootRoute.addChildren([indexRoute])
+    const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
-    const content = await screen.findByText(JSON.stringify({ foo: 'sean' }))
+    const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
+    expect(router.state.location.href).toBe('/about')
+    expect(window.location.pathname).toBe('/about')
+    expect(content).toBeInTheDocument()
+  })
+
+  test('route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/about' })
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => {
+        const context = useRouteContext({ from: rootRouteId })
+        return <div>{JSON.stringify(context)}</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
+
+    expect(router.state.location.href).toBe('/about')
+    expect(window.location.pathname).toBe('/about')
     expect(content).toBeInTheDocument()
   })
 })
