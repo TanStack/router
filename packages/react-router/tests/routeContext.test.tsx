@@ -1,9 +1,16 @@
-import React from 'react'
+import React, { act } from 'react'
 import '@testing-library/jest-dom/vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import {
+  Link,
   RouterProvider,
   createRootRoute,
   createRoute,
@@ -574,7 +581,7 @@ describe('useRouteContext in the component', () => {
       getParentRoute: () => rootRoute,
       path: '/about',
       component: () => {
-        const context = useRouteContext({ from: rootRouteId })
+        const context = useRouteContext({ from: '/about' })
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -604,7 +611,7 @@ describe('useRouteContext in the component', () => {
       getParentRoute: () => rootRoute,
       path: '/about',
       component: () => {
-        const context = useRouteContext({ from: rootRouteId })
+        const context = useRouteContext({ from: '/about' })
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -618,5 +625,108 @@ describe('useRouteContext in the component', () => {
     expect(router.state.location.href).toBe('/about')
     expect(window.location.pathname).toBe('/about')
     expect(content).toBeInTheDocument()
+  })
+
+  // Check if context the context is available after a redirect on navigate
+  test('on navigate route context is present in the /person route after a redirect is thrown in the beforeLoad of the /about route', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <div>
+            <h1>Index page</h1>
+            <Link to="/about">link to about</Link>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/person' })
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/person',
+      component: () => {
+        const context = useRouteContext({ from: '/person' })
+        return <div>{JSON.stringify(context)}</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      personRoute,
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    const linkToAbout = await screen.findByRole('link', {
+      name: 'link to about',
+    })
+    expect(linkToAbout).toBeInTheDocument()
+    fireEvent.click(linkToAbout)
+
+    const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
+    await waitFor(() => expect(content).toBeInTheDocument())
+    expect(router.state.location.href).toBe('/person')
+    expect(window.location.pathname).toBe('/person')
+  })
+
+  test('on navigate route context is present in the /person route after a redirect is thrown in the loader of the /about route', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <div>
+            <h1>Index page</h1>
+            <Link to="/about">link to about</Link>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/person' })
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/person',
+      component: () => {
+        const context = useRouteContext({ from: '/person' })
+        return <div>{JSON.stringify(context)}</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      personRoute,
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    const linkToAbout = await screen.findByRole('link', {
+      name: 'link to about',
+    })
+    expect(linkToAbout).toBeInTheDocument()
+    fireEvent.click(linkToAbout)
+
+    const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
+    await waitFor(() => expect(content).toBeInTheDocument())
+    expect(router.state.location.href).toBe('/person')
+    expect(window.location.pathname).toBe('/person')
   })
 })
