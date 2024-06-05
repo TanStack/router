@@ -22,6 +22,7 @@ afterEach(() => {
 const WAIT_TIME = 150
 
 describe('beforeLoad', () => {
+  // At the root route
   test('sync route context, present in beforeLoad, root route', () => {
     const mock = vi.fn()
 
@@ -55,6 +56,7 @@ describe('beforeLoad', () => {
     waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
   })
 
+  // At the index route
   test('sync route context, present in beforeLoad, index route', () => {
     const mock = vi.fn()
 
@@ -96,6 +98,7 @@ describe('beforeLoad', () => {
 })
 
 describe('loader', () => {
+  // At the root route
   test('sync route context, present in loader, root route', () => {
     const mock = vi.fn()
 
@@ -129,6 +132,7 @@ describe('loader', () => {
     waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
   })
 
+  // At the index route
   test('sync route context, present in loader, index route', () => {
     const mock = vi.fn()
 
@@ -170,6 +174,7 @@ describe('loader', () => {
 })
 
 describe('useRouteContext', () => {
+  // At the root route
   test('sync route context, present in component, root route', async () => {
     const rootRoute = createRootRoute({
       component: () => {
@@ -230,6 +235,7 @@ describe('useRouteContext', () => {
     expect(content).toBeInTheDocument()
   })
 
+  // At the index route
   test('sync route context, present in component, index route', async () => {
     const rootRoute = createRootRoute({})
     const indexRoute = createRoute({
