@@ -10,20 +10,20 @@ import {
 } from '@testing-library/react'
 
 import {
+  Link,
+  Outlet,
+  RouterProvider,
   createLink,
   createMemoryHistory,
   createRootRoute,
+  createRootRouteWithContext,
   createRoute,
   createRouter,
-  Link,
-  RouterProvider,
-  useLoaderData,
-  useSearch,
   redirect,
-  useRouteContext,
+  useLoaderData,
   useParams,
-  Outlet,
-  createRootRouteWithContext,
+  useRouteContext,
+  useSearch,
 } from '../src'
 
 afterEach(() => {
@@ -1527,7 +1527,7 @@ describe('Link', () => {
     }
 
     const postsRoute = createRoute({
-      getParentRoute: () => layoutRoute,
+      getParentRoute: () => rootRoute,
       path: 'posts',
       component: PostsComponent,
     })
@@ -1634,6 +1634,157 @@ describe('Link', () => {
         'Invariant failed: Could not find match for from: /invoices',
       ),
     ).toBeInTheDocument()
+  })
+
+  test('when on /posts/$postId, Links to /posts should be active', async () => {
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Root</h1>
+            <Link to="/posts">Posts</Link>
+            <Link to="/posts/$postId" params={{ postId: 'id1' }}>
+              To first post
+            </Link>
+            <Outlet />
+          </React.Fragment>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Index</h1>
+          </React.Fragment>
+        )
+      },
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Posts</h1>
+            <Outlet />
+          </React.Fragment>
+        )
+      },
+    })
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <React.Fragment>
+          <span>Params: {params.postId}</span>
+          <Outlet />
+        </React.Fragment>
+      )
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postId',
+      component: PostComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        postsRoute.addChildren([postRoute]),
+      ]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    fireEvent.click(await screen.findByRole('link', { name: 'To first post' }))
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    expect(router.state.location.pathname).toBe('/posts/id1')
+    expect(postsLink).toHaveAttribute('data-status', 'active')
+    expect(postsLink).toHaveAttribute('aria-current', 'page')
+  })
+
+  test('when on /posts/$postId/, Links to /posts should be active (trailingSlash: always)', async () => {
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Root</h1>
+            <Link to="/posts/">Posts</Link>
+            <Link to="/posts/$postId/" params={{ postId: 'id1' }}>
+              To first post
+            </Link>
+            <Outlet />
+          </React.Fragment>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Index</h1>
+          </React.Fragment>
+        )
+      },
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Posts</h1>
+            <Outlet />
+          </React.Fragment>
+        )
+      },
+    })
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <React.Fragment>
+          <span>Params: {params.postId}</span>
+          <Outlet />
+        </React.Fragment>
+      )
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postId',
+      component: PostComponent,
+    })
+
+    const router = createRouter({
+      trailingSlash: 'always',
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        postsRoute.addChildren([postRoute]),
+      ]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    fireEvent.click(await screen.findByRole('link', { name: 'To first post' }))
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    expect(router.state.location.pathname).toBe('/posts/id1/')
+    expect(postsLink).toHaveAttribute('data-status', 'active')
+    expect(postsLink).toHaveAttribute('aria-current', 'page')
   })
 })
 

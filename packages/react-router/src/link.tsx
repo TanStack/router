@@ -3,7 +3,12 @@ import { flushSync } from 'react-dom'
 import { useMatch } from './useMatch'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { deepEqual, exactPathTest, functionalUpdate } from './utils'
+import {
+  deepEqual,
+  exactPathTest,
+  functionalUpdate,
+  removeTrailingSlash,
+} from './utils'
 import type { AnyRouter, ParsedLocation } from '.'
 import type { HistoryState } from '@tanstack/history'
 import type { AnyRoute, RootSearchSchema } from './route'
@@ -615,8 +620,10 @@ export function useLinkProps<
   const isActive = useRouterState({
     select: (s) => {
       // Compare path/hash for matches
-      const currentPathSplit = s.location.pathname.split('/')
-      const nextPathSplit = next.pathname.split('/')
+      const currentPathSplit = removeTrailingSlash(s.location.pathname).split(
+        '/',
+      )
+      const nextPathSplit = removeTrailingSlash(next.pathname).split('/')
       const pathIsFuzzyEqual = nextPathSplit.every(
         (d, i) => d === currentPathSplit[i],
       )
