@@ -163,6 +163,7 @@ describe('beforeLoad in the route definition', () => {
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/about')
   })
 
   test('route context is present in the /about route after a redirect is thrown in the loader of the index route', async () => {
@@ -192,6 +193,7 @@ describe('beforeLoad in the route definition', () => {
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/about')
   })
 })
 
@@ -336,6 +338,7 @@ describe('loader in the route definition', () => {
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/about')
   })
 
   test('route context is present in the /about route after a redirect is thrown in loader of the index route', async () => {
@@ -365,6 +368,7 @@ describe('loader in the route definition', () => {
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/about')
   })
 })
 
