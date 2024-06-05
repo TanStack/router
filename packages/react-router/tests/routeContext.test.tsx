@@ -23,7 +23,7 @@ const WAIT_TIME = 150
 
 describe('beforeLoad in the route definition', () => {
   // Present at the root route
-  test('route context, present in the root route', () => {
+  test('route context, present in the root route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute({
@@ -36,10 +36,12 @@ describe('beforeLoad in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
   })
 
-  test('route context (sleep), present in the root route', () => {
+  test('route context (sleep), present in the root route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute({
@@ -53,11 +55,13 @@ describe('beforeLoad in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
   })
 
   // Present at the index route
-  test('route context, present in the index route', () => {
+  test('route context, present in the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -73,10 +77,12 @@ describe('beforeLoad in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
   })
 
-  test('route context (sleep), present in the index route', () => {
+  test('route context (sleep), present in the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -93,7 +99,9 @@ describe('beforeLoad in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
   })
 
   // Check if context that is updated at the root, is the same in the index route
@@ -121,13 +129,15 @@ describe('beforeLoad in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'sean' }))
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'sean' })
+    expect(mock).toHaveBeenCalledTimes(1)
   })
 })
 
 describe('loader in the route definition', () => {
   // Present at the root route
-  test('route context, present in the root route', () => {
+  test('route context, present in the root route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute({
@@ -140,10 +150,12 @@ describe('loader in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
   })
 
-  test('route context (sleep), present in the root route', () => {
+  test('route context (sleep), present in the root route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute({
@@ -157,11 +169,13 @@ describe('loader in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
   })
 
   // Present at the index route
-  test('route context, present in the index route', () => {
+  test('route context, present in the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -177,10 +191,12 @@ describe('loader in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
   })
 
-  test('route context (sleep), present in the index route', () => {
+  test('route context (sleep), present in the index route', async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -197,7 +213,9 @@ describe('loader in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'bar' }))
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
   })
 
   // Check if context that is updated at the root, is the same in the index route
@@ -225,7 +243,9 @@ describe('loader in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    waitFor(() => expect(mock).toHaveBeenCalledWith({ foo: 'sean' }))
+    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    expect(mock).toHaveBeenCalledWith({ foo: 'sean' })
+    expect(mock).toHaveBeenCalledTimes(1)
   })
 })
 
