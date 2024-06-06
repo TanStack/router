@@ -28,6 +28,28 @@ export function trimPath(path: string) {
   return trimPathRight(trimPathLeft(path))
 }
 
+export function removeTrailingSlash(value: string, basepath: string): string {
+  if (value.endsWith('/') && value !== '/' && value !== `${basepath}/`) {
+    return value.slice(0, -1)
+  }
+  return value
+}
+
+// intended to only compare path name
+// see the usage in the isActive under useLinkProps
+// /sample/path1 = /sample/path1/
+// /sample/path1/some <> /sample/path1
+export function exactPathTest(
+  pathName1: string,
+  pathName2: string,
+  basepath: string,
+): boolean {
+  return (
+    removeTrailingSlash(pathName1, basepath) ===
+    removeTrailingSlash(pathName2, basepath)
+  )
+}
+
 // When resolving relative paths, we treat all paths as if they are trailing slash
 // documents. All trailing slashes are removed after the path is resolved.
 // Here are a few examples:
