@@ -2,6 +2,7 @@ import React, { act } from 'react'
 import '@testing-library/jest-dom/vitest'
 import {
   cleanup,
+  configure,
   fireEvent,
   render,
   screen,
@@ -295,6 +296,8 @@ describe('beforeLoad in the route definition', () => {
 })
 
 describe('loader in the route definition', () => {
+  configure({ reactStrictMode: true })
+
   // Present at the root route
   test('route context, present in the root route', async () => {
     const mock = vi.fn()
