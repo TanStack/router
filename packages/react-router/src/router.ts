@@ -1756,14 +1756,16 @@ export class Router<
                   parentMatch?.context ?? this.options.context ?? {}
 
                 // Make sure the match has parent context set before going further
-                matches[index] = match = updateMatch(match.id, () => ({
+                matches[index] = match = {
                   ...match,
                   routeContext: replaceEqualDeep(
                     match.routeContext,
                     parentContext,
                   ),
+                  context: replaceEqualDeep(match.context, parentContext),
                   abortController,
-                }))
+                }
+                updateMatch(match.id, () => match)
 
                 const beforeLoadContext =
                   (await route.options.beforeLoad?.({
@@ -1771,7 +1773,7 @@ export class Router<
                     abortController,
                     params: match.params,
                     preload: !!preload,
-                    context: parentContext,
+                    context: match.context,
                     location,
                     navigate: (opts: any) =>
                       this.navigate({ ...opts, from: match.pathname }),
