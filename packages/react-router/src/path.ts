@@ -29,7 +29,7 @@ export function trimPath(path: string) {
 }
 
 export function removeTrailingSlash(value: string, basepath: string): string {
-  if (value.endsWith('/') && baseReplace({ path: value, basepath }) !== '/') {
+  if (value.endsWith('/') && value !== '/' && value !== `${basepath}/`) {
     return value.slice(0, -1)
   }
   return value
@@ -48,16 +48,6 @@ export function exactPathTest(
     removeTrailingSlash(pathName1, basepath) ===
     removeTrailingSlash(pathName2, basepath)
   )
-}
-
-export function baseReplace({
-  path,
-  basepath,
-}: {
-  path: string
-  basepath: string
-}) {
-  return path.replace(new RegExp(`^${basepath}`), '/')
 }
 
 // When resolving relative paths, we treat all paths as if they are trailing slash
@@ -98,8 +88,11 @@ export function resolvePath({
   to,
   trailingSlash = 'never',
 }: ResolvePathOptions) {
-  let baseSegments = parsePathname(baseReplace({ path: base, basepath }))
-  const toSegments = parsePathname(baseReplace({ path: to, basepath }))
+  base = base.replace(new RegExp(`^${basepath}`), '/')
+  to = to.replace(new RegExp(`^${basepath}`), '/')
+
+  let baseSegments = parsePathname(base)
+  const toSegments = parsePathname(to)
 
   if (baseSegments.length > 1 && last(baseSegments)?.value === '/') {
     baseSegments.pop()
