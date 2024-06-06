@@ -32,6 +32,8 @@ const WAIT_TIME = 150
 const SLEEP_MODIFIER = 1.5
 
 describe('beforeLoad in the route definition', () => {
+  configure({ reactStrictMode: true })
+
   // Present at the root route
   test('route context, present in the root route', async () => {
     const mock = vi.fn()
@@ -550,9 +552,7 @@ describe('loader in the route definition', () => {
 
     render(<RouterProvider router={router} />)
 
-    await act(async () => {
-      await router.navigate({ to: '/about' })
-    })
+    await act(() => router.navigate({ to: '/about' }))
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
     expect(window.location.pathname).toBe('/person')
@@ -564,6 +564,8 @@ describe('loader in the route definition', () => {
 })
 
 describe('useRouteContext in the component', () => {
+  configure({ reactStrictMode: true })
+
   // Present at the root route
   test('route context, present in the root route', async () => {
     const rootRoute = createRootRoute({
