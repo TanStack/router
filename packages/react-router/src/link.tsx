@@ -3,7 +3,8 @@ import { flushSync } from 'react-dom'
 import { useMatch } from './useMatch'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { deepEqual, exactPathTest, functionalUpdate } from './utils'
+import { deepEqual, functionalUpdate } from './utils'
+import { exactPathTest, removeTrailingSlash } from './path'
 import type { AnyRouter, ParsedLocation } from '.'
 import type { HistoryState } from '@tanstack/history'
 import type { AnyRoute, RootSearchSchema } from './route'
@@ -597,6 +598,7 @@ export function useLinkProps<
   // null for LinkUtils
 
   const dest = {
+    ...(options.to && { from: matchPathname }),
     ...options,
   }
 
@@ -615,14 +617,20 @@ export function useLinkProps<
   const isActive = useRouterState({
     select: (s) => {
       // Compare path/hash for matches
-      const currentPathSplit = s.location.pathname.split('/')
-      const nextPathSplit = next.pathname.split('/')
+      const currentPathSplit = removeTrailingSlash(
+        s.location.pathname,
+        router.basepath,
+      ).split('/')
+      const nextPathSplit = removeTrailingSlash(
+        next.pathname,
+        router.basepath,
+      ).split('/')
       const pathIsFuzzyEqual = nextPathSplit.every(
         (d, i) => d === currentPathSplit[i],
       )
       // Combine the matches based on user router.options
       const pathTest = activeOptions?.exact
-        ? exactPathTest(s.location.pathname, next.pathname)
+        ? exactPathTest(s.location.pathname, next.pathname, router.basepath)
         : pathIsFuzzyEqual
       const hashTest = activeOptions?.includeHash
         ? s.location.hash === next.hash
