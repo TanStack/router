@@ -1103,13 +1103,25 @@ export class Router<
       let fromPath = this.latestLocation.pathname
       let fromSearch = dest.fromSearch || this.latestLocation.search
 
+      const fromRoute =
+        dest.from !== undefined
+          ? this.flatRoutes.find((route) => route.fullPath === dest.from)
+          : undefined
+
       const fromMatches = this.matchRoutes(
         this.latestLocation.pathname,
         fromSearch,
       )
 
-      fromPath =
-        fromMatches.find((d) => d.id === dest.from)?.pathname || fromPath
+      const fromMatch = fromMatches.find((d) => d.routeId === fromRoute?.id)
+
+      fromPath = fromMatch?.pathname || fromPath
+
+      invariant(
+        dest.from == null || fromMatch != null,
+        'Could not find match for from: ' + dest.from,
+      )
+
       fromSearch = last(fromMatches)?.search || this.latestLocation.search
 
       const stayingMatches = matches?.filter((d) =>
@@ -1260,9 +1272,10 @@ export class Router<
         })
 
         if (foundMask) {
+          const { from, ...maskProps } = foundMask
           maskedDest = {
             ...pick(opts, ['from']),
-            ...foundMask,
+            ...maskProps,
             params,
           }
           maskedNext = build(maskedDest)
@@ -1773,8 +1786,7 @@ export class Router<
                     preload: !!preload,
                     context: parentContext,
                     location,
-                    navigate: (opts: any) =>
-                      this.navigate({ ...opts, from: match.pathname }),
+                    navigate: (opts: any) => this.navigate({ ...opts }),
                     buildLocation: this.buildLocation,
                     cause: preload ? 'preload' : match.cause,
                   })) ?? ({} as any)
@@ -1827,8 +1839,7 @@ export class Router<
                   abortController: match.abortController,
                   context: match.context,
                   location,
-                  navigate: (opts) =>
-                    this.navigate({ ...opts, from: match.pathname } as any),
+                  navigate: (opts) => this.navigate({ ...opts } as any),
                   cause: preload ? 'preload' : match.cause,
                   route,
                 }
@@ -2183,8 +2194,6 @@ export class Router<
     } catch (err) {
       if (isRedirect(err)) {
         return await this.preloadRoute({
-          fromSearch: next.search,
-          from: next.pathname,
           ...(err as any),
         })
       }
