@@ -1102,27 +1102,14 @@ export class Router<
     ): ParsedLocation => {
       let fromPath = this.latestLocation.pathname
       let fromSearch = dest.fromSearch || this.latestLocation.search
-      const looseRoutesByPath = this.routesByPath as Record<string, AnyRoute>
-
-      const fromRoute =
-        dest.from !== undefined
-          ? looseRoutesByPath[trimPathRight(dest.from)]
-          : undefined
 
       const fromMatches = this.matchRoutes(
         this.latestLocation.pathname,
         fromSearch,
       )
 
-      const fromMatch = fromMatches.find((d) => d.routeId === fromRoute?.id)
-
-      fromPath = fromMatch?.pathname || fromPath
-
-      invariant(
-        dest.from == null || fromMatch != null,
-        'Could not find match for from: ' + dest.from,
-      )
-
+      fromPath =
+        fromMatches.find((d) => d.id === dest.from)?.pathname || fromPath
       fromSearch = last(fromMatches)?.search || this.latestLocation.search
 
       const stayingMatches = matches?.filter((d) =>
@@ -1786,7 +1773,8 @@ export class Router<
                     preload: !!preload,
                     context: parentContext,
                     location,
-                    navigate: (opts: any) => this.navigate({ ...opts }),
+                    navigate: (opts: any) =>
+                      this.navigate({ ...opts, from: match.pathname }),
                     buildLocation: this.buildLocation,
                     cause: preload ? 'preload' : match.cause,
                   })) ?? ({} as any)
@@ -1839,7 +1827,8 @@ export class Router<
                   abortController: match.abortController,
                   context: match.context,
                   location,
-                  navigate: (opts) => this.navigate({ ...opts } as any),
+                  navigate: (opts) =>
+                    this.navigate({ ...opts, from: match.pathname } as any),
                   cause: preload ? 'preload' : match.cause,
                   route,
                 }

@@ -598,6 +598,7 @@ export function useLinkProps<
   // null for LinkUtils
 
   const dest = {
+    ...(options.to && { from: matchPathname }),
     ...options,
   }
 
