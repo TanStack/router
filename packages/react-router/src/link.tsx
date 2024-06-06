@@ -3,12 +3,8 @@ import { flushSync } from 'react-dom'
 import { useMatch } from './useMatch'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import {
-  deepEqual,
-  exactPathTest,
-  functionalUpdate,
-  removeTrailingSlash,
-} from './utils'
+import { deepEqual, functionalUpdate } from './utils'
+import { exactPathTest, removeTrailingSlash } from './path'
 import type { AnyRouter, ParsedLocation } from '.'
 import type { HistoryState } from '@tanstack/history'
 import type { AnyRoute, RootSearchSchema } from './route'
