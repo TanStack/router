@@ -124,6 +124,9 @@ function App() {
 - `position?: "top-left" | "top-right" | "bottom-left" | "bottom-right"`
   - Defaults to `bottom-left`
   - The position of the TanStack Router logo to open and close the devtools panel
+- `shadowDOMTarget?: ShadowRoot`
+  - Specifies a Shadow DOM target for the devtools.
+  - By default, devtool styles are applied to the `<head>` tag of the main document (light DOM). When a `shadowDOMTarget` is provided, styles will be applied within this Shadow DOM instead.
 
 ## Embedded Mode
 
