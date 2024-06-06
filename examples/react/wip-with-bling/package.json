@@ -13,10 +13,10 @@
   },
   "dependencies": {
     "@tanstack/bling": "^0.5.0",
-    "@tanstack/react-router": "^1.35.2",
-    "@tanstack/start": "^1.35.2",
+    "@tanstack/react-router": "^1.35.3",
+    "@tanstack/start": "^1.35.3",
     "@tanstack/react-store": "^0.2.1",
-    "@tanstack/router-devtools": "^1.35.2",
+    "@tanstack/router-devtools": "^1.35.3",
     "redaxios": "^0.5.0",
     "fastify": "^4.25.2",
     "get-port": "^7.0.0",
