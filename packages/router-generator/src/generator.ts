@@ -8,6 +8,7 @@ import type { Config } from './config'
 let latestTask = 0
 export const rootPathId = '__root'
 const routeGroupPatternRegex = /\(.+\)/g
+const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
 
 export type RouteNode = {
   filePath: string
@@ -774,7 +775,7 @@ function replaceBackslash(s: string) {
 }
 
 function removeGroups(s: string) {
-  return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
+  return s.replace(possiblyNestedRouteGroupPatternRegex, '')
 }
 
 /**
