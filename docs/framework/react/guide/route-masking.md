@@ -2,12 +2,12 @@
 title: Route Masking
 ---
 
-Route masking is a way to mask the actual URL of a route that gets persisted to the browser's history and URL bar. This is useful for scenarios where you want to show a different URL than the one that is actually being navigated to and then falling back to the displayed URL when it is shared and (optionally) when the the page is reloaded. Here's a few examples:
+Route masking is a way to mask the actual URL of a route that gets persisted to the browser's history and URL bar. This is useful for scenarios where you want to show a different URL than the one that is actually being navigated to and then falling back to the displayed URL when it is shared and (optionally) when the page is reloaded. Here's a few examples:
 
 - Navigating to a modal route like `/photo/5/modal`, but masking the actual URL as `/photos/5`
 - Navigating to a modal route like `/post/5/comments`, but masking the actual URL as `/posts/5`
-- Navigating to a route with the search param `?showLogin=true`, but masking the the URL to _not_ contain the search param
-- Navigating to a route with the search param `?modal=settings`, but masking the the URL as `/settings'
+- Navigating to a route with the search param `?showLogin=true`, but masking the URL to _not_ contain the search param
+- Navigating to a route with the search param `?modal=settings`, but masking the URL as `/settings'
 
 Each of these scenarios can be achieved with route masking and even extended to support more advanced patterns like [parallel routes](../parallel-routes)
 
