@@ -1756,15 +1756,14 @@ export class Router<
                   parentMatch?.context ?? this.options.context ?? {}
 
                 // Make sure the match has parent context set before going further
-                matches[index] = match = {
+                matches[index] = match = updateMatch(match.id, () => ({
                   ...match,
                   routeContext: replaceEqualDeep(
                     match.routeContext,
                     parentContext,
                   ),
                   abortController,
-                }
-                updateMatch(match.id, () => match)
+                }))
 
                 const beforeLoadFnContext = {
                   search: match.search,
@@ -1837,7 +1836,7 @@ export class Router<
                   route,
                 }
 
-                const fetchAndResolveLazyDependents = async () => {
+                const fetchAndResolveInLoaderLifetime = async () => {
                   const existing = getRouteMatch(this.state, match.id)!
                   let lazyPromise = Promise.resolve()
                   let componentsPromise = Promise.resolve() as Promise<any>
@@ -2013,7 +2012,7 @@ export class Router<
 
                 const fetchWithRedirectAndNotFound = async () => {
                   try {
-                    await fetchAndResolveLazyDependents()
+                    await fetchAndResolveInLoaderLifetime()
                   } catch (err) {
                     checkLatest()
                     handleRedirectAndNotFound(match, err)
