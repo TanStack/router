@@ -859,7 +859,7 @@ describe('useRouteContext in the component', () => {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    fireEvent.click(linkToAbout)
+    await act(() => fireEvent.click(linkToAbout))
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
     await waitFor(() => expect(content).toBeInTheDocument())
@@ -911,7 +911,7 @@ describe('useRouteContext in the component', () => {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    fireEvent.click(linkToAbout)
+    await act(() => fireEvent.click(linkToAbout))
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
     await waitFor(() => expect(content).toBeInTheDocument())
