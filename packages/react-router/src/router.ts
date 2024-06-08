@@ -1767,19 +1767,22 @@ export class Router<
                 }
                 updateMatch(match.id, () => match)
 
-                const beforeLoadContext =
-                  (await route.options.beforeLoad?.({
-                    search: match.search,
-                    abortController,
-                    params: match.params,
-                    preload: !!preload,
-                    context: match.context,
-                    location,
-                    navigate: (opts: any) =>
-                      this.navigate({ ...opts, from: match.pathname }),
-                    buildLocation: this.buildLocation,
-                    cause: preload ? 'preload' : match.cause,
-                  })) ?? ({} as any)
+                const beforeLoadFnContext = {
+                  search: match.search,
+                  abortController,
+                  params: match.params,
+                  preload: !!preload,
+                  context: match.context,
+                  location,
+                  navigate: (opts: any) =>
+                    this.navigate({ ...opts, from: match.pathname }),
+                  buildLocation: this.buildLocation,
+                  cause: preload ? 'preload' : match.cause,
+                }
+
+                const beforeLoadContext = route.options.beforeLoad
+                  ? (await route.options.beforeLoad(beforeLoadFnContext)) ?? {}
+                  : {}
 
                 checkLatest()
 
@@ -1835,7 +1838,7 @@ export class Router<
                   route,
                 }
 
-                const fetch = async () => {
+                const fetchAndResolveLazyDependents = async () => {
                   const existing = getRouteMatch(this.state, match.id)!
                   let lazyPromise = Promise.resolve()
                   let componentsPromise = Promise.resolve() as Promise<any>
@@ -2010,7 +2013,7 @@ export class Router<
 
                 const fetchWithRedirectAndNotFound = async () => {
                   try {
-                    await fetch()
+                    await fetchAndResolveLazyDependents()
                   } catch (err) {
                     checkLatest()
                     handleRedirectAndNotFound(match, err)
