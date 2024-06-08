@@ -1762,7 +1762,6 @@ export class Router<
                     match.routeContext,
                     parentContext,
                   ),
-                  context: replaceEqualDeep(match.context, parentContext),
                   abortController,
                 }
                 updateMatch(match.id, () => match)
@@ -1772,7 +1771,7 @@ export class Router<
                   abortController,
                   params: match.params,
                   preload: !!preload,
-                  context: match.context,
+                  context: match.routeContext,
                   location,
                   navigate: (opts: any) =>
                     this.navigate({ ...opts, from: match.pathname }),
