@@ -1756,14 +1756,15 @@ export class Router<
                   parentMatch?.context ?? this.options.context ?? {}
 
                 // Make sure the match has parent context set before going further
-                matches[index] = match = updateMatch(match.id, () => ({
+                matches[index] = match = {
                   ...match,
                   routeContext: replaceEqualDeep(
                     match.routeContext,
                     parentContext,
                   ),
+                  context: replaceEqualDeep(match.context, parentContext),
                   abortController,
-                }))
+                }
 
                 const beforeLoadFnContext = {
                   search: match.search,
