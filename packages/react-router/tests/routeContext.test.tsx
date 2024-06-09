@@ -18,8 +18,6 @@ import {
   createRoute,
   createRouter,
   redirect,
-  rootRouteId,
-  useRouteContext,
 } from '../src'
 
 import { sleep } from './utils'
@@ -935,7 +933,7 @@ describe('useRouteContext in the component', () => {
   test('route context, present in the root route', async () => {
     const rootRoute = createRootRoute({
       component: () => {
-        const context = useRouteContext({ from: rootRouteId })
+        const context = rootRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -956,7 +954,7 @@ describe('useRouteContext in the component', () => {
         await sleep(WAIT_TIME)
       },
       component: () => {
-        const context = useRouteContext({ from: rootRouteId })
+        const context = rootRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -977,7 +975,7 @@ describe('useRouteContext in the component', () => {
         await sleep(WAIT_TIME)
       },
       component: () => {
-        const context = useRouteContext({ from: rootRouteId })
+        const context = rootRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -999,7 +997,7 @@ describe('useRouteContext in the component', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => {
-        const context = useRouteContext({ from: rootRouteId })
+        const context = indexRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -1023,7 +1021,7 @@ describe('useRouteContext in the component', () => {
         await sleep(WAIT_TIME)
       },
       component: () => {
-        const context = useRouteContext({ from: rootRouteId })
+        const context = indexRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -1047,7 +1045,7 @@ describe('useRouteContext in the component', () => {
         await sleep(WAIT_TIME)
       },
       component: () => {
-        const context = useRouteContext({ from: rootRouteId })
+        const context = indexRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -1073,7 +1071,7 @@ describe('useRouteContext in the component', () => {
         }
       },
       component: () => {
-        const context = useRouteContext({ from: rootRouteId })
+        const context = rootRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -1103,7 +1101,7 @@ describe('useRouteContext in the component', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => {
-        const context = useRouteContext({ from: rootRouteId })
+        const context = indexRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -1132,7 +1130,7 @@ describe('useRouteContext in the component', () => {
       getParentRoute: () => rootRoute,
       path: '/about',
       component: () => {
-        const context = useRouteContext({ from: '/about' })
+        const context = aboutRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -1163,7 +1161,7 @@ describe('useRouteContext in the component', () => {
       getParentRoute: () => rootRoute,
       path: '/about',
       component: () => {
-        const context = useRouteContext({ from: '/about' })
+        const context = aboutRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -1207,7 +1205,7 @@ describe('useRouteContext in the component', () => {
       getParentRoute: () => rootRoute,
       path: '/person',
       component: () => {
-        const context = useRouteContext({ from: '/person' })
+        const context = personRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -1259,7 +1257,7 @@ describe('useRouteContext in the component', () => {
       getParentRoute: () => rootRoute,
       path: '/person',
       component: () => {
-        const context = useRouteContext({ from: '/person' })
+        const context = personRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
