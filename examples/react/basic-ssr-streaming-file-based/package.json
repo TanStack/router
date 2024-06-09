@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.35.3",
-    "@tanstack/start": "^1.35.3",
+    "@tanstack/start": "^1.35.4",
     "@tanstack/router-devtools": "^1.35.3",
-    "@tanstack/router-vite-plugin": "^1.34.8",
+    "@tanstack/router-vite-plugin": "^1.35.4",
     "redaxios": "^0.5.0",
     "get-port": "^7.0.0",
     "react": "^18.2.0",
