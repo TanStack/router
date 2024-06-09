@@ -6,14 +6,12 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
 } from '@testing-library/react'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import {
   Link,
-  Outlet,
   RouterProvider,
   createRootRoute,
   createRoute,
@@ -24,6 +22,8 @@ import {
 import { sleep } from './utils'
 
 afterEach(() => {
+  vi.clearAllMocks()
+  vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
   cleanup()
 })
@@ -31,6 +31,8 @@ afterEach(() => {
 const WAIT_TIME = 100
 
 describe('loaders are being called', () => {
+  configure({ reactStrictMode: true })
+
   test('called on /', async () => {
     const indexLoaderMock = vi.fn()
 
