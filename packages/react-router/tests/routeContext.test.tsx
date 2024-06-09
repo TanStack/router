@@ -45,7 +45,7 @@ describe('beforeLoad in the route definition', () => {
     const routeTree = rootRoute.addChildren([])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -64,7 +64,7 @@ describe('beforeLoad in the route definition', () => {
     const routeTree = rootRoute.addChildren([])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -86,7 +86,7 @@ describe('beforeLoad in the route definition', () => {
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -108,7 +108,7 @@ describe('beforeLoad in the route definition', () => {
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -138,7 +138,7 @@ describe('beforeLoad in the route definition', () => {
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'sean' })
@@ -168,7 +168,7 @@ describe('beforeLoad in the route definition', () => {
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
     expect(window.location.pathname).toBe('/about')
@@ -200,7 +200,7 @@ describe('beforeLoad in the route definition', () => {
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
     expect(window.location.pathname).toBe('/about')
@@ -241,7 +241,7 @@ describe('beforeLoad in the route definition', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/about' }))
 
@@ -283,7 +283,7 @@ describe('beforeLoad in the route definition', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/about' }))
 
@@ -321,7 +321,7 @@ describe('beforeLoad in the route definition', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await sleep(WAIT_TIME * (SLEEP_MODIFIER * 2))
     expect(router.state.location.href).toBe('/')
@@ -362,7 +362,7 @@ describe('beforeLoad in the route definition', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/about' }))
 
@@ -414,7 +414,7 @@ describe('beforeLoad in the route definition', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/about' }))
 
@@ -465,7 +465,7 @@ describe('beforeLoad in the route definition', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/about' }))
 
@@ -493,7 +493,7 @@ describe('loader in the route definition', () => {
     const routeTree = rootRoute.addChildren([])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -512,7 +512,7 @@ describe('loader in the route definition', () => {
     const routeTree = rootRoute.addChildren([])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -534,7 +534,7 @@ describe('loader in the route definition', () => {
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -556,7 +556,7 @@ describe('loader in the route definition', () => {
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
@@ -586,7 +586,7 @@ describe('loader in the route definition', () => {
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => expect(mock).toHaveBeenCalledOnce())
     expect(mock).toHaveBeenCalledWith({ foo: 'sean' })
@@ -616,7 +616,7 @@ describe('loader in the route definition', () => {
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
     expect(window.location.pathname).toBe('/about')
@@ -648,7 +648,7 @@ describe('loader in the route definition', () => {
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await sleep(WAIT_TIME * SLEEP_MODIFIER)
     expect(window.location.pathname).toBe('/about')
@@ -689,7 +689,7 @@ describe('loader in the route definition', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/about' }))
 
@@ -731,7 +731,7 @@ describe('loader in the route definition', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/about' }))
 
@@ -769,7 +769,7 @@ describe('loader in the route definition', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await sleep(WAIT_TIME * (SLEEP_MODIFIER * 2))
     expect(router.state.location.href).toBe('/')
@@ -810,7 +810,7 @@ describe('loader in the route definition', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/about' }))
 
@@ -862,7 +862,7 @@ describe('loader in the route definition', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/about' }))
 
@@ -913,7 +913,7 @@ describe('loader in the route definition', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/about' }))
 
@@ -941,7 +941,7 @@ describe('useRouteContext in the component', () => {
     const ctx = { foo: 'bar' }
     const router = createRouter({ routeTree, context: ctx })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const content = await screen.findByText(JSON.stringify(ctx))
 
@@ -962,7 +962,7 @@ describe('useRouteContext in the component', () => {
     const ctx = { foo: 'bar' }
     const router = createRouter({ routeTree, context: ctx })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const content = await screen.findByText(JSON.stringify(ctx))
 
@@ -983,7 +983,7 @@ describe('useRouteContext in the component', () => {
     const ctx = { foo: 'bar' }
     const router = createRouter({ routeTree, context: ctx })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const content = await screen.findByText(JSON.stringify(ctx))
 
@@ -1005,7 +1005,7 @@ describe('useRouteContext in the component', () => {
     const ctx = { foo: 'bar' }
     const router = createRouter({ routeTree, context: ctx })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const content = await screen.findByText(JSON.stringify(ctx))
 
@@ -1029,7 +1029,7 @@ describe('useRouteContext in the component', () => {
     const ctx = { foo: 'bar' }
     const router = createRouter({ routeTree, context: ctx })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const content = await screen.findByText(JSON.stringify(ctx))
 
@@ -1053,7 +1053,7 @@ describe('useRouteContext in the component', () => {
     const ctx = { foo: 'bar' }
     const router = createRouter({ routeTree, context: ctx })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const content = await screen.findByText(JSON.stringify(ctx))
 
@@ -1079,7 +1079,7 @@ describe('useRouteContext in the component', () => {
     const routeTree = rootRoute.addChildren([])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const content = await screen.findByText(JSON.stringify({ foo: 'sean' }))
 
@@ -1108,7 +1108,7 @@ describe('useRouteContext in the component', () => {
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const content = await screen.findByText(JSON.stringify({ foo: 'sean' }))
 
@@ -1137,7 +1137,7 @@ describe('useRouteContext in the component', () => {
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
@@ -1168,7 +1168,7 @@ describe('useRouteContext in the component', () => {
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
@@ -1216,7 +1216,7 @@ describe('useRouteContext in the component', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
@@ -1268,7 +1268,7 @@ describe('useRouteContext in the component', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
@@ -1308,7 +1308,7 @@ describe('useRouteContext in the component', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'layout' }),
@@ -1358,7 +1358,7 @@ describe('useRouteContext in the component', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
@@ -1423,7 +1423,7 @@ describe('useRouteContext in the component', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
@@ -1487,7 +1487,7 @@ describe('useRouteContext in the component', () => {
     ])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
