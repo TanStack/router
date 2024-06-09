@@ -7,7 +7,6 @@ import { deepEqual, functionalUpdate } from './utils'
 import { exactPathTest, removeTrailingSlash } from './path'
 import type { AnyRouter, ParsedLocation } from '.'
 import type { HistoryState } from '@tanstack/history'
-import type { AnyRoute, RootSearchSchema } from './route'
 import type {
   AllParams,
   CatchAllPaths,
@@ -251,9 +250,6 @@ type ParamsReducer<
 
 type ParamVariant = 'PATH' | 'SEARCH'
 
-type ExcludeRootSearchSchema<T> =
-  Exclude<T, RootSearchSchema> extends never ? {} : Exclude<T, RootSearchSchema>
-
 export type ResolveRoute<
   TRouter extends AnyRouter,
   TFrom,
@@ -264,11 +260,6 @@ export type ResolveRoute<
     ? RouteByPath<TRouter['routeTree'], TPath>
     : RouteByToPath<TRouter, TPath>
   : never
-
-type PostProcessParams<
-  T,
-  TParamVariant extends ParamVariant,
-> = TParamVariant extends 'SEARCH' ? ExcludeRootSearchSchema<T> : T
 
 type ResolveFromParamType<TParamVariant extends ParamVariant> =
   TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchema'
@@ -312,14 +303,11 @@ export type ResolveToParams<
       ? ResolveAllToParams<TRouter, TParamVariant>
       : TPath extends CatchAllPaths
         ? ResolveAllToParams<TRouter, TParamVariant>
-        : PostProcessParams<
-            ResolveRoute<
-              TRouter,
-              TFrom,
-              TTo
-            >['types'][ResolveToParamType<TParamVariant>],
-            TParamVariant
-          >
+        : ResolveRoute<
+            TRouter,
+            TFrom,
+            TTo
+          >['types'][ResolveToParamType<TParamVariant>]
     : never
 
 type ResolveRelativeToParams<

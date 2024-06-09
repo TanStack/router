@@ -1,5 +1,5 @@
 import { useMatch } from './useMatch'
-import type { AnyRoute, RootSearchSchema } from './route'
+import type { AnyRoute } from './route'
 import type { FullSearchSchema, RouteById, RouteIds } from './routeInfo'
 import type { RegisteredRouter } from './router'
 import type { MakeRouteMatch } from './Matches'
@@ -20,10 +20,7 @@ export function useSearch<
   TStrict extends boolean = true,
   TSearch = TStrict extends false
     ? FullSearchSchema<TRouteTree>
-    : Exclude<
-        RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'],
-        RootSearchSchema
-      >,
+    : RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'],
   TSelected = TSearch,
 >(opts: UseSearchOptions<TFrom, TStrict, TSearch, TSelected>): TSelected {
   return useMatch({

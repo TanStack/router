@@ -398,28 +398,15 @@ export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
   TSearchSchema,
 > = unknown extends TParentRoute
-  ? Omit<TSearchSchema, keyof RootSearchSchema>
-  : Assign<
-      TParentRoute['id'] extends RootRouteId
-        ? Omit<TParentRoute['types']['searchSchema'], keyof RootSearchSchema>
-        : TParentRoute['types']['fullSearchSchema'],
-      TSearchSchema
-    >
+  ? TSearchSchema
+  : Assign<TParentRoute['types']['fullSearchSchema'], TSearchSchema>
 
 export type ResolveFullSearchSchemaInput<
   TParentRoute extends AnyRoute,
   TSearchSchemaUsed,
 > = unknown extends TParentRoute
-  ? Omit<TSearchSchemaUsed, keyof RootSearchSchema>
-  : Assign<
-      TParentRoute['id'] extends RootRouteId
-        ? Omit<
-            TParentRoute['types']['searchSchemaInput'],
-            keyof RootSearchSchema
-          >
-        : TParentRoute['types']['fullSearchSchemaInput'],
-      TSearchSchemaUsed
-    >
+  ? TSearchSchemaUsed
+  : Assign<TParentRoute['types']['fullSearchSchemaInput'], TSearchSchemaUsed>
 
 export type ResolveRouteContext<TRouteContextReturn> = [
   TRouteContextReturn,
@@ -1010,9 +997,9 @@ export function createRoute<
 export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any, any>
 
 export type RootRouteOptions<
-  TSearchSchemaInput = RootSearchSchema,
-  TSearchSchema = RootSearchSchema,
-  TSearchSchemaUsed = RootSearchSchema,
+  TSearchSchemaInput = {},
+  TSearchSchema = {},
+  TSearchSchemaUsed = {},
   TRouteContextReturn = RouteContext,
   TRouteContext = ResolveRouteContext<TRouteContextReturn>,
   TRouterContext = {},
@@ -1049,9 +1036,9 @@ export type RootRouteOptions<
 
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
-    TSearchSchemaInput extends Record<string, any> = RootSearchSchema,
-    TSearchSchema extends Record<string, any> = RootSearchSchema,
-    TSearchSchemaUsed extends Record<string, any> = RootSearchSchema,
+    TSearchSchemaInput extends Record<string, any> = {},
+    TSearchSchema extends Record<string, any> = {},
+    TSearchSchemaUsed extends Record<string, any> = {},
     TRouteContextReturn extends RouteContext = RouteContext,
     TRouteContext extends RouteContext = [TRouteContextReturn] extends [never]
       ? RouteContext
@@ -1090,14 +1077,10 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
  */
 export const rootRouteWithContext = createRootRouteWithContext
 
-export type RootSearchSchema = {
-  __TRootSearchSchema__: '__TRootSearchSchema__'
-}
-
 export class RootRoute<
-  in out TSearchSchemaInput = RootSearchSchema,
-  in out TSearchSchema = RootSearchSchema,
-  in out TSearchSchemaUsed = RootSearchSchema,
+  in out TSearchSchemaInput = {},
+  in out TSearchSchema = {},
+  in out TSearchSchemaUsed = {},
   TRouteContextReturn = RouteContext,
   in out TRouteContext = ResolveRouteContext<TRouteContextReturn>,
   in out TRouterContext = {},
@@ -1147,9 +1130,9 @@ export class RootRoute<
 }
 
 export function createRootRoute<
-  TSearchSchemaInput = RootSearchSchema,
-  TSearchSchema = RootSearchSchema,
-  TSearchSchemaUsed = RootSearchSchema,
+  TSearchSchemaInput = {},
+  TSearchSchema = {},
+  TSearchSchemaUsed = {},
   TRouteContextReturn = RouteContext,
   TRouteContext = ResolveRouteContext<TRouteContextReturn>,
   TRouterContext = {},
