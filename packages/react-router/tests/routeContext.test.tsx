@@ -174,6 +174,7 @@ describe('beforeLoad in the route definition', () => {
       beforeLoad: async ({ context }) => {
         mock(context)
       },
+      component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = await act(() =>
@@ -182,7 +183,9 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const aboutElement = await screen.findByText('About page')
+    expect(aboutElement).toBeInTheDocument()
+
     expect(window.location.pathname).toBe('/about')
     expect(router.state.location.pathname).toBe('/about')
 
@@ -208,6 +211,7 @@ describe('beforeLoad in the route definition', () => {
       beforeLoad: async ({ context }) => {
         mock(context)
       },
+      component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = await act(() =>
@@ -216,7 +220,9 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const aboutElement = await screen.findByText('About page')
+    expect(aboutElement).toBeInTheDocument()
+
     expect(window.location.pathname).toBe('/about')
     expect(router.state.location.pathname).toBe('/about')
 
@@ -232,6 +238,21 @@ describe('beforeLoad in the route definition', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
     })
     const aboutRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -247,6 +268,7 @@ describe('beforeLoad in the route definition', () => {
       beforeLoad: ({ context }) => {
         mock(context)
       },
+      component: () => <div>Person page</div>,
     })
     const routeTree = rootRoute.addChildren([
       personRoute,
@@ -259,9 +281,15 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await act(() => router.navigate({ to: '/about' }))
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const personElement = await screen.findByText('Person page')
+    expect(personElement).toBeInTheDocument()
+
     expect(window.location.pathname).toBe('/person')
     expect(router.state.location.pathname).toBe('/person')
 
@@ -276,6 +304,21 @@ describe('beforeLoad in the route definition', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
     })
     const aboutRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -291,6 +334,7 @@ describe('beforeLoad in the route definition', () => {
       beforeLoad: ({ context }) => {
         mock(context)
       },
+      component: () => <div>Person page</div>,
     })
     const routeTree = rootRoute.addChildren([
       personRoute,
@@ -303,9 +347,15 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await act(() => router.navigate({ to: '/about' }))
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const personElement = await screen.findByText('Person page')
+    expect(personElement).toBeInTheDocument()
+
     expect(window.location.pathname).toBe('/person')
     expect(router.state.location.pathname).toBe('/person')
 
@@ -333,6 +383,7 @@ describe('beforeLoad in the route definition', () => {
         await sleep(WAIT_TIME)
         mock(context)
       },
+      component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([indexRoute]),
@@ -343,7 +394,9 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await sleep(WAIT_TIME * (SLEEP_MODIFIER * 2))
+    const indexElement = await screen.findByText('Index page')
+    expect(indexElement).toBeInTheDocument()
+
     expect(router.state.location.href).toBe('/')
     expect(window.location.pathname).toBe('/')
 
@@ -359,6 +412,21 @@ describe('beforeLoad in the route definition', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
     })
     const layoutRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -375,6 +443,7 @@ describe('beforeLoad in the route definition', () => {
         await sleep(WAIT_TIME)
         mock(context)
       },
+      component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([aboutRoute]),
@@ -386,9 +455,15 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await act(() => router.navigate({ to: '/about' }))
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const aboutElement = await screen.findByText('About page')
+    expect(aboutElement).toBeInTheDocument()
+
     expect(router.state.location.href).toBe('/about')
     expect(window.location.pathname).toBe('/about')
 
@@ -404,6 +479,21 @@ describe('beforeLoad in the route definition', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
     })
     const aboutRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -428,6 +518,7 @@ describe('beforeLoad in the route definition', () => {
         await sleep(WAIT_TIME)
         mock(context)
       },
+      component: () => <div>Person page</div>,
     })
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([personRoute]),
@@ -440,9 +531,15 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await act(() => router.navigate({ to: '/about' }))
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const personElement = await screen.findByText('Person page')
+    expect(personElement).toBeInTheDocument()
+
     expect(router.state.location.href).toBe('/person')
     expect(window.location.pathname).toBe('/person')
 
@@ -457,6 +554,21 @@ describe('beforeLoad in the route definition', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
     })
     const aboutRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -481,6 +593,7 @@ describe('beforeLoad in the route definition', () => {
         await sleep(WAIT_TIME)
         mock(context)
       },
+      component: () => <div>Person page</div>,
     })
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([personRoute]),
@@ -493,9 +606,15 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await act(() => router.navigate({ to: '/about' }))
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const personElement = await screen.findByText('Person page')
+    expect(personElement).toBeInTheDocument()
+
     expect(router.state.location.href).toBe('/person')
     expect(window.location.pathname).toBe('/person')
 
@@ -648,6 +767,7 @@ describe('loader in the route definition', () => {
       loader: async ({ context }) => {
         mock(context)
       },
+      component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = await act(() =>
@@ -656,7 +776,9 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const aboutElement = await screen.findByText('About page')
+    expect(aboutElement).toBeInTheDocument()
+
     expect(window.location.pathname).toBe('/about')
     expect(router.state.location.pathname).toBe('/about')
 
@@ -682,6 +804,7 @@ describe('loader in the route definition', () => {
       loader: async ({ context }) => {
         mock(context)
       },
+      component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = await act(() =>
@@ -690,7 +813,9 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const aboutElement = await screen.findByText('About page')
+    expect(aboutElement).toBeInTheDocument()
+
     expect(window.location.pathname).toBe('/about')
     expect(router.state.location.pathname).toBe('/about')
 
@@ -706,6 +831,21 @@ describe('loader in the route definition', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
     })
     const aboutRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -721,6 +861,7 @@ describe('loader in the route definition', () => {
       loader: ({ context }) => {
         mock(context)
       },
+      component: () => <div>Person page</div>,
     })
     const routeTree = rootRoute.addChildren([
       personRoute,
@@ -733,9 +874,15 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await act(() => router.navigate({ to: '/about' }))
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const personElement = await screen.findByText('Person page')
+    expect(personElement).toBeInTheDocument()
+
     expect(window.location.pathname).toBe('/person')
     expect(router.state.location.pathname).toBe('/person')
 
@@ -750,6 +897,21 @@ describe('loader in the route definition', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
     })
     const aboutRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -765,6 +927,7 @@ describe('loader in the route definition', () => {
       loader: ({ context }) => {
         mock(context)
       },
+      component: () => <div>Person page</div>,
     })
     const routeTree = rootRoute.addChildren([
       personRoute,
@@ -777,9 +940,15 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await act(() => router.navigate({ to: '/about' }))
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const personElement = await screen.findByText('Person page')
+    expect(personElement).toBeInTheDocument()
+
     expect(window.location.pathname).toBe('/person')
     expect(router.state.location.pathname).toBe('/person')
 
@@ -807,6 +976,7 @@ describe('loader in the route definition', () => {
         await sleep(WAIT_TIME)
         mock(context)
       },
+      component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([indexRoute]),
@@ -817,7 +987,9 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await sleep(WAIT_TIME * (SLEEP_MODIFIER * 2))
+    const indexElement = await screen.findByText('Index page')
+    expect(indexElement).toBeInTheDocument()
+
     expect(router.state.location.href).toBe('/')
     expect(window.location.pathname).toBe('/')
 
@@ -833,6 +1005,21 @@ describe('loader in the route definition', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
     })
     const layoutRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -849,6 +1036,7 @@ describe('loader in the route definition', () => {
         await sleep(WAIT_TIME)
         mock(context)
       },
+      component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([aboutRoute]),
@@ -860,9 +1048,15 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await act(() => router.navigate({ to: '/about' }))
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const aboutElement = await screen.findByText('About page')
+    expect(aboutElement).toBeInTheDocument()
+
     expect(router.state.location.href).toBe('/about')
     expect(window.location.pathname).toBe('/about')
 
@@ -878,6 +1072,21 @@ describe('loader in the route definition', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
     })
     const aboutRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -902,6 +1111,7 @@ describe('loader in the route definition', () => {
         await sleep(WAIT_TIME)
         mock(context)
       },
+      component: () => <div>Person page</div>,
     })
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([personRoute]),
@@ -914,9 +1124,15 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await act(() => router.navigate({ to: '/about' }))
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const personElement = await screen.findByText('Person page')
+    expect(personElement).toBeInTheDocument()
+
     expect(router.state.location.href).toBe('/person')
     expect(window.location.pathname).toBe('/person')
 
@@ -931,6 +1147,21 @@ describe('loader in the route definition', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
     })
     const aboutRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -955,6 +1186,7 @@ describe('loader in the route definition', () => {
         await sleep(WAIT_TIME)
         mock(context)
       },
+      component: () => <div>Person page</div>,
     })
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([personRoute]),
@@ -967,9 +1199,15 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await act(() => router.navigate({ to: '/about' }))
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
 
-    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    const personElement = await screen.findByText('Person page')
+    expect(personElement).toBeInTheDocument()
+
     expect(router.state.location.href).toBe('/person')
     expect(window.location.pathname).toBe('/person')
 
