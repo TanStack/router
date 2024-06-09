@@ -296,6 +296,188 @@ describe('beforeLoad in the route definition', () => {
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
+
+  // Check if context returned by a layout route, is the same its child route (index route) on first-load
+  test('_layout on first-load, route context in the index route is correctly inherited from the layout parent', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'layout' }
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      layoutRoute.addChildren([indexRoute]),
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await sleep(WAIT_TIME * (SLEEP_MODIFIER * 2))
+    expect(router.state.location.href).toBe('/')
+    expect(window.location.pathname).toBe('/')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'layout' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  // Check if context returned by a layout route, is the same its child route (about route) on navigate
+  test('_layout on navigate, route context in the /about route is correctly inherited from the layout parent', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'layout' }
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/about',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      layoutRoute.addChildren([aboutRoute]),
+      indexRoute,
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/about' }))
+
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(router.state.location.href).toBe('/about')
+    expect(window.location.pathname).toBe('/about')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'layout' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  // Check if context returned by a layout route, is the same its child route (about route) on after a redirect on navigate
+  test('_layout on navigate, when a redirect is thrown in beforeLoad in /about, the /person route context is correctly inherited from the layout parent', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/person' })
+      },
+    })
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'layout' }
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/person',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      layoutRoute.addChildren([personRoute]),
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/about' }))
+
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(router.state.location.href).toBe('/person')
+    expect(window.location.pathname).toBe('/person')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'layout' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  test('_layout on navigate, when a redirect is thrown in loader in /about, the /person route context is correctly inherited from the layout parent', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/person' })
+      },
+    })
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'layout' }
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/person',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      layoutRoute.addChildren([personRoute]),
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/about' }))
+
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(router.state.location.href).toBe('/person')
+    expect(window.location.pathname).toBe('/person')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'layout' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('loader in the route definition', () => {
@@ -560,6 +742,188 @@ describe('loader in the route definition', () => {
     expect(router.state.location.pathname).toBe('/person')
 
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  // Check if context returned by a layout route, is the same its child route (index route) on first-load
+  test('_layout on first-load, route context in the index route is correctly inherited from the layout parent', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'layout' }
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/',
+      loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      layoutRoute.addChildren([indexRoute]),
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await sleep(WAIT_TIME * (SLEEP_MODIFIER * 2))
+    expect(router.state.location.href).toBe('/')
+    expect(window.location.pathname).toBe('/')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'layout' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  // Check if context returned by a layout route, is the same its child route (about route) on navigate
+  test('_layout on navigate, route context in the /about route is correctly inherited from the layout parent', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'layout' }
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/about',
+      loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      layoutRoute.addChildren([aboutRoute]),
+      indexRoute,
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/about' }))
+
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(router.state.location.href).toBe('/about')
+    expect(window.location.pathname).toBe('/about')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'layout' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  // Check if context returned by a layout route, is the same its child route (about route) on after a redirect on navigate
+  test('_layout on navigate, when a redirect is thrown in beforeLoad in /about, the /person route context is correctly inherited from the layout parent', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/person' })
+      },
+    })
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'layout' }
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/person',
+      loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      layoutRoute.addChildren([personRoute]),
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/about' }))
+
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(router.state.location.href).toBe('/person')
+    expect(window.location.pathname).toBe('/person')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'layout' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  test('_layout on navigate, when a redirect is thrown in loader in /about, the /person route context is correctly inherited from the layout parent', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/person' })
+      },
+    })
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'layout' }
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/person',
+      loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      layoutRoute.addChildren([personRoute]),
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/about' }))
+
+    await sleep(WAIT_TIME * SLEEP_MODIFIER)
+    expect(router.state.location.href).toBe('/person')
+    expect(window.location.pathname).toBe('/person')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'layout' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
 })
