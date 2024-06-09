@@ -1412,7 +1412,7 @@ describe('useRouteContext in the component', () => {
       getParentRoute: () => layoutRoute,
       path: '/person',
       component: () => {
-        const context = aboutRoute.useRouteContext()
+        const context = personRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
@@ -1476,7 +1476,7 @@ describe('useRouteContext in the component', () => {
       getParentRoute: () => layoutRoute,
       path: '/person',
       component: () => {
-        const context = aboutRoute.useRouteContext()
+        const context = personRoute.useRouteContext()
         return <div>{JSON.stringify(context)}</div>
       },
     })
