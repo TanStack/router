@@ -28,7 +28,6 @@ afterEach(() => {
 })
 
 const WAIT_TIME = 150
-const SLEEP_MODIFIER = 1.5
 
 describe('beforeLoad in the route definition', () => {
   configure({ reactStrictMode: true })
@@ -360,6 +359,224 @@ describe('beforeLoad in the route definition', () => {
     expect(router.state.location.pathname).toBe('/person')
 
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  // Check if context returned by /nested/about, is the same as its parent route /nested on navigate
+  test('nested destination on navigate, route context in the /nested/about route is correctly inherited from the /nested parent', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/nested/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
+    })
+    const nestedRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/nested',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'nested' }
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => nestedRoute,
+      path: '/about',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+      component: () => <div>About page</div>,
+    })
+    const routeTree = rootRoute.addChildren([
+      nestedRoute.addChildren([aboutRoute]),
+      indexRoute,
+    ])
+    const router = await act(() =>
+      createRouter({ routeTree, context: { foo: 'bar' } }),
+    )
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
+
+    const aboutElement = await screen.findByText('About page')
+    expect(aboutElement).toBeInTheDocument()
+
+    expect(router.state.location.href).toBe('/nested/about')
+    expect(window.location.pathname).toBe('/nested/about')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'nested' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  // Check if context returned by /nested/person route, is the same as its parent route /nested on navigate after a redirect /about
+  test('nested destination on navigate, when a redirect is thrown in beforeLoad in /about, the /nested/person route context is correctly inherited from its parent /nested', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/nested/person' })
+      },
+    })
+    const nestedRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/nested',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'nested' }
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => nestedRoute,
+      path: '/person',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+      component: () => <div>Person page</div>,
+    })
+    const routeTree = rootRoute.addChildren([
+      nestedRoute.addChildren([personRoute]),
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = await act(() =>
+      createRouter({ routeTree, context: { foo: 'bar' } }),
+    )
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
+
+    const personElement = await screen.findByText('Person page')
+    expect(personElement).toBeInTheDocument()
+
+    expect(router.state.location.href).toBe('/nested/person')
+    expect(window.location.pathname).toBe('/nested/person')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'nested' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  test('nested destination on navigate, when a redirect is thrown in loader in /about, the /nested/person route context is correctly inherited from parent /nested', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/nested/person' })
+      },
+    })
+    const nestedRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/nested',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'nested' }
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => nestedRoute,
+      path: '/person',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+      component: () => <div>Person page</div>,
+    })
+    const routeTree = rootRoute.addChildren([
+      nestedRoute.addChildren([personRoute]),
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = await act(() =>
+      createRouter({ routeTree, context: { foo: 'bar' } }),
+    )
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
+
+    const personElement = await screen.findByText('Person page')
+    expect(personElement).toBeInTheDocument()
+
+    expect(router.state.location.href).toBe('/nested/person')
+    expect(window.location.pathname).toBe('/nested/person')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'nested' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
 
@@ -953,6 +1170,224 @@ describe('loader in the route definition', () => {
     expect(router.state.location.pathname).toBe('/person')
 
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  // Check if context returned by a /nested/about, is the same as its parent route /nested on navigate
+  test('nested destination on navigate, route context in the /nested/about route is correctly inherited from the /nested parent', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/nested/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
+    })
+    const nestedRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/nested',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'nested' }
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => nestedRoute,
+      path: '/about',
+      loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+      component: () => <div>About page</div>,
+    })
+    const routeTree = rootRoute.addChildren([
+      nestedRoute.addChildren([aboutRoute]),
+      indexRoute,
+    ])
+    const router = await act(() =>
+      createRouter({ routeTree, context: { foo: 'bar' } }),
+    )
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
+
+    const aboutElement = await screen.findByText('About page')
+    expect(aboutElement).toBeInTheDocument()
+
+    expect(router.state.location.href).toBe('/nested/about')
+    expect(window.location.pathname).toBe('/nested/about')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'nested' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  // Check if context returned by a /nested/person route, is the same as its parent route /nested on navigate after a redirect /about
+  test('nested destination on navigate, when a redirect is thrown in beforeLoad in /about, the /nested/person route context is correctly inherited from its parent /nested', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/nested/person' })
+      },
+    })
+    const nestedRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/nested',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'nested' }
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => nestedRoute,
+      path: '/person',
+      loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+      component: () => <div>Person page</div>,
+    })
+    const routeTree = rootRoute.addChildren([
+      nestedRoute.addChildren([personRoute]),
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = await act(() =>
+      createRouter({ routeTree, context: { foo: 'bar' } }),
+    )
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
+
+    const personElement = await screen.findByText('Person page')
+    expect(personElement).toBeInTheDocument()
+
+    expect(router.state.location.href).toBe('/nested/person')
+    expect(window.location.pathname).toBe('/nested/person')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'nested' })
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  test('nested destination on navigate, when a redirect is thrown in loader in /about, the /nested/person route context is correctly inherited from parent /nested', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+        return (
+          <div>
+            <h1>Index page</h1>
+            <button
+              onClick={() => {
+                navigate({ to: '/about' })
+              }}
+            >
+              button to about
+            </button>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/nested/person' })
+      },
+    })
+    const nestedRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/nested',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'nested' }
+      },
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => nestedRoute,
+      path: '/person',
+      loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        mock(context)
+      },
+      component: () => <div>Person page</div>,
+    })
+    const routeTree = rootRoute.addChildren([
+      nestedRoute.addChildren([personRoute]),
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = await act(() =>
+      createRouter({ routeTree, context: { foo: 'bar' } }),
+    )
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const buttonToAbout = await screen.findByRole('button', {
+      name: 'button to about',
+    })
+    expect(buttonToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(buttonToAbout))
+
+    const personElement = await screen.findByText('Person page')
+    expect(personElement).toBeInTheDocument()
+
+    expect(router.state.location.href).toBe('/nested/person')
+    expect(window.location.pathname).toBe('/nested/person')
+
+    expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'nested' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
 
@@ -1589,6 +2024,197 @@ describe('useRouteContext in the component', () => {
 
     expect(router.state.location.href).toBe('/person')
     expect(window.location.pathname).toBe('/person')
+  })
+
+  // Check if context returned by /nested/about, is the same its parent /nested on navigate
+  test('nested destination on navigate, route context in the /nested/about route is correctly inherited from its parent /nested', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <div>
+            <h1>Index page</h1>
+            <Link to="/nested/about">link to about</Link>
+          </div>
+        )
+      },
+    })
+    const nestedRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/nested',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'nested' }
+      },
+      component: () => <Outlet />,
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => nestedRoute,
+      path: '/about',
+      component: () => {
+        const context = aboutRoute.useRouteContext()
+        return <div>{JSON.stringify(context)}</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      nestedRoute.addChildren([aboutRoute]),
+      indexRoute,
+    ])
+    const router = await act(() =>
+      createRouter({ routeTree, context: { foo: 'bar' } }),
+    )
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const linkToAbout = await screen.findByRole('link', {
+      name: 'link to about',
+    })
+    expect(linkToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(linkToAbout))
+
+    const content = await screen.findByText(
+      JSON.stringify({ foo: 'bar', layout: 'nested' }),
+    )
+
+    expect(router.state.location.href).toBe('/nested/about')
+    expect(window.location.pathname).toBe('/nested/about')
+
+    expect(content).toBeInTheDocument()
+  })
+
+  // Check if context returned by a layout route, is the same its child route (about route) on after a redirect on navigate
+  test('nested destination on navigate, when a redirect is thrown in beforeLoad in /about, the /nested/person route context is correctly inherited from its parent /nested', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <div>
+            <h1>Index page</h1>
+            <Link to="/about">link to about</Link>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/nested/person' })
+      },
+    })
+    const nestedRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/nested',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'nested' }
+      },
+      component: () => <Outlet />,
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => nestedRoute,
+      path: '/person',
+      component: () => {
+        const context = personRoute.useRouteContext()
+        return <div>{JSON.stringify(context)}</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      nestedRoute.addChildren([personRoute]),
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = await act(() =>
+      createRouter({ routeTree, context: { foo: 'bar' } }),
+    )
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const linkToAbout = await screen.findByRole('link', {
+      name: 'link to about',
+    })
+    expect(linkToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(linkToAbout))
+
+    const content = await screen.findByText(
+      JSON.stringify({ foo: 'bar', layout: 'nested' }),
+    )
+
+    expect(router.state.location.href).toBe('/nested/person')
+    expect(window.location.pathname).toBe('/nested/person')
+
+    expect(content).toBeInTheDocument()
+  })
+
+  test('nested destination on navigate, when a redirect is thrown in loader in /about, the /nested/person route context is correctly inherited from its parent /nested', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <div>
+            <h1>Index page</h1>
+            <Link to="/about">link to about</Link>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+        throw redirect({ to: '/nested/person' })
+      },
+    })
+    const nestedRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/nested',
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        return { ...context, layout: 'nested' }
+      },
+      component: () => <Outlet />,
+    })
+    const personRoute = createRoute({
+      getParentRoute: () => nestedRoute,
+      path: '/person',
+      component: () => {
+        const context = personRoute.useRouteContext()
+        return <div>{JSON.stringify(context)}</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([
+      nestedRoute.addChildren([personRoute]),
+      aboutRoute,
+      indexRoute,
+    ])
+    const router = await act(() =>
+      createRouter({ routeTree, context: { foo: 'bar' } }),
+    )
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const linkToAbout = await screen.findByRole('link', {
+      name: 'link to about',
+    })
+    expect(linkToAbout).toBeInTheDocument()
+    await act(() => fireEvent.click(linkToAbout))
+
+    const content = await screen.findByText(
+      JSON.stringify({ foo: 'bar', layout: 'nested' }),
+    )
+
+    expect(router.state.location.href).toBe('/nested/person')
+    expect(window.location.pathname).toBe('/nested/person')
+
+    expect(content).toBeInTheDocument()
   })
 
   // Check if context returned by a layout route, is the same its child route (index route) on first-load
