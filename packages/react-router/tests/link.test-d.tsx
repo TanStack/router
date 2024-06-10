@@ -2,14 +2,17 @@ import { expectTypeOf, test } from 'vitest'
 import { Link, createRoute, createRouter } from '../src'
 import { createRootRoute } from '../src'
 
-const rootRoute = createRootRoute()
+const rootRoute = createRootRoute({
+  validateSearch: (): { rootPage?: number } => ({ rootPage: 0 }),
+})
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
+  validateSearch: () => ({ rootIndexPage: 0 }),
 })
 
-export const postsRoute = createRoute({
+const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
 })
@@ -114,7 +117,25 @@ type RouterNeverTrailingSlashes = typeof routerNeverTrailingSlashes
 type RouterPreserveTrailingSlashes = typeof routerPreserveTrailingSlashes
 
 test('when navigating to the root', () => {
-  expectTypeOf(Link<DefaultRouter, string, '/'>)
+  const DefaultRouterLink = Link<DefaultRouter, string, '/'>
+  const DefaultRouterObjectsLink = Link<DefaultRouterObjects, string, '/'>
+  const RouterAlwaysTrailingSlashLink = Link<
+    RouterAlwaysTrailingSlashes,
+    string,
+    '/'
+  >
+  const RouterNeverTrailingSlashLink = Link<
+    RouterNeverTrailingSlashes,
+    string,
+    '/'
+  >
+  const RouterPreserveTrailingSlashLink = Link<
+    RouterPreserveTrailingSlashes,
+    string,
+    '/'
+  >
+
+  expectTypeOf(DefaultRouterLink)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -131,7 +152,7 @@ test('when navigating to the root', () => {
       | undefined
     >()
 
-  expectTypeOf(Link<DefaultRouterObjects, string, '/'>)
+  expectTypeOf(DefaultRouterObjectsLink)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -148,7 +169,7 @@ test('when navigating to the root', () => {
       | undefined
     >()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, string, '/'>)
+  expectTypeOf(RouterAlwaysTrailingSlashLink)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -165,7 +186,7 @@ test('when navigating to the root', () => {
       | undefined
     >()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, string, '/'>)
+  expectTypeOf(RouterNeverTrailingSlashLink)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -182,7 +203,7 @@ test('when navigating to the root', () => {
       | undefined
     >()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, string, '/'>)
+  expectTypeOf(RouterPreserveTrailingSlashLink)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -205,6 +226,131 @@ test('when navigating to the root', () => {
       | '/posts/$postId/'
       | undefined
     >()
+
+  expectTypeOf(DefaultRouterLink)
+    .parameter(0)
+    .toMatchTypeOf<{ search: unknown }>()
+
+  expectTypeOf(DefaultRouterObjectsLink)
+    .parameter(0)
+    .toMatchTypeOf<{ search: unknown }>()
+
+  expectTypeOf(RouterAlwaysTrailingSlashLink)
+    .parameter(0)
+    .toMatchTypeOf<{ search: unknown }>()
+
+  expectTypeOf(RouterNeverTrailingSlashLink)
+    .parameter(0)
+    .toMatchTypeOf<{ search: unknown }>()
+
+  expectTypeOf(RouterPreserveTrailingSlashLink)
+    .parameter(0)
+    .toMatchTypeOf<{ search: unknown }>()
+
+  expectTypeOf(DefaultRouterLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(DefaultRouterObjectsLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(RouterAlwaysTrailingSlashLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(RouterNeverTrailingSlashLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(RouterPreserveTrailingSlashLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(DefaultRouterLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{
+      page?: number
+      rootIndexPage?: number
+      rootPage?: number
+    }>()
+
+  expectTypeOf(DefaultRouterObjectsLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{
+      page?: number
+      rootIndexPage?: number
+      rootPage?: number
+    }>()
+
+  expectTypeOf(RouterAlwaysTrailingSlashLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{
+      page?: number
+      rootIndexPage?: number
+      rootPage?: number
+    }>()
+
+  expectTypeOf(RouterNeverTrailingSlashLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{
+      page?: number
+      rootIndexPage?: number
+      rootPage?: number
+    }>()
+
+  expectTypeOf(RouterPreserveTrailingSlashLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{
+      page?: number
+      rootIndexPage?: number
+      rootPage?: number
+    }>()
+
+  expectTypeOf(DefaultRouterLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(DefaultRouterObjectsLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(RouterAlwaysTrailingSlashLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(RouterNeverTrailingSlashLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(RouterPreserveTrailingSlashLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
 })
 
 test('when navigating from a route with no params and no search to the root', () => {
@@ -2041,53 +2187,78 @@ test('when navigating to a route with search params', () => {
 
   defaultRouterLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number }>()
+    .toEqualTypeOf<{ rootPage?: number; page: number }>()
 
   defaultRouterObjectsLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number }>()
+    .toEqualTypeOf<{ rootPage?: number; page: number }>()
 
   routerAlwaysTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number }>()
+    .toEqualTypeOf<{ rootPage?: number; page: number }>()
 
   routerNeverTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number }>()
+    .toEqualTypeOf<{ rootPage?: number; page: number }>()
 
   routerPreserveTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number }>()
+    .toEqualTypeOf<{ rootPage?: number; page: number }>()
 
-  defaultRouterLinkSearch.returns.toEqualTypeOf<{ page: number }>()
+  defaultRouterLinkSearch.returns.toEqualTypeOf<{
+    page: number
+    rootPage?: number
+  }>()
 
-  defaultRouterObjectsLinkSearch.returns.toEqualTypeOf<{ page: number }>()
+  defaultRouterObjectsLinkSearch.returns.toEqualTypeOf<{
+    page: number
+    rootPage?: number
+  }>()
 
   routerAlwaysTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
     page: number
+    rootPage?: number
   }>()
 
-  routerNeverTrailingSlashesLinkSearch.returns.toEqualTypeOf<{ page: number }>()
-
-  routerPreserveTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
+  routerNeverTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
+    rootPage?: number
     page: number
   }>()
 
-  defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
+  routerPreserveTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
+    page: number
+    rootPage?: number
+  }>()
 
-  defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
+  defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  routerAlwaysTrailingSlashesLinkSearch
-    .parameter(0)
-    .toEqualTypeOf<{ page?: number }>()
+  defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  routerNeverTrailingSlashesLinkSearch
-    .parameter(0)
-    .toEqualTypeOf<{ page?: number }>()
+  routerAlwaysTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  routerPreserveTrailingSlashesLinkSearch
-    .parameter(0)
-    .toEqualTypeOf<{ page?: number }>()
+  routerNeverTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
+
+  routerPreserveTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 })
 
 test('when navigating to a route with optional search params', () => {
@@ -2168,57 +2339,106 @@ test('when navigating to a route with optional search params', () => {
     .parameter(0)
     .not.toMatchTypeOf<{ search: unknown }>()
 
-  defaultRouterLinkSearch
-    .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page?: number | undefined } | undefined>()
+  defaultRouterLinkSearch.exclude<Function | boolean>().toEqualTypeOf<
+    | {
+        rootPage?: number
+        page?: number
+      }
+    | undefined
+  >()
 
-  defaultRouterObjectsLinkSearch
-    .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page?: number | undefined } | undefined>()
+  defaultRouterObjectsLinkSearch.exclude<Function | boolean>().toEqualTypeOf<
+    | {
+        rootPage?: number
+        page?: number
+      }
+    | undefined
+  >()
 
   routerAlwaysTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page?: number | undefined } | undefined>()
+    .toEqualTypeOf<
+      | {
+          rootPage?: number
+          page?: number
+        }
+      | undefined
+    >()
 
   routerNeverTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page?: number | undefined } | undefined>()
+    .toEqualTypeOf<
+      | {
+          rootPage?: number
+          page?: number
+        }
+      | undefined
+    >()
 
   routerPreserveTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page?: number | undefined } | undefined>()
+    .toEqualTypeOf<
+      | {
+          rootPage?: number
+          page?: number
+        }
+      | undefined
+    >()
 
-  defaultRouterLinkSearch.returns.toEqualTypeOf<{ page?: number }>()
+  defaultRouterLinkSearch.returns.toEqualTypeOf<{
+    rootPage?: number
+    page?: number
+  }>()
 
-  defaultRouterObjectsLinkSearch.returns.toEqualTypeOf<{ page?: number }>()
+  defaultRouterObjectsLinkSearch.returns.toEqualTypeOf<{
+    rootPage?: number
+    page?: number
+  }>()
 
   routerAlwaysTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
+    rootPage?: number
     page?: number
   }>()
 
   routerNeverTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
+    rootPage?: number
     page?: number
   }>()
 
   routerPreserveTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
+    rootPage?: number
     page?: number
   }>()
 
-  defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
+  defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
+  defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  routerAlwaysTrailingSlashesLinkSearch
-    .parameter(0)
-    .toEqualTypeOf<{ page?: number }>()
+  routerAlwaysTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  routerNeverTrailingSlashesLinkSearch
-    .parameter(0)
-    .toEqualTypeOf<{ page?: number }>()
+  routerNeverTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  routerPreserveTrailingSlashesLinkSearch
-    .parameter(0)
-    .toEqualTypeOf<{ page?: number }>()
+  routerPreserveTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 })
 
 test('when navigating from a route with no search params to a route with search params', () => {
@@ -2298,47 +2518,72 @@ test('when navigating from a route with no search params to a route with search 
     .parameter(0)
     .toMatchTypeOf<{ search: unknown }>()
 
-  defaultRouterLinkSearch
-    .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number }>()
+  defaultRouterLinkSearch.exclude<Function | boolean>().toEqualTypeOf<{
+    rootPage?: number
+    page: number
+  }>()
 
-  defaultRouterObjectsLinkSearch
-    .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number }>()
+  defaultRouterObjectsLinkSearch.exclude<Function | boolean>().toEqualTypeOf<{
+    rootPage?: number
+    page: number
+  }>()
 
   routerAlwaysTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number }>()
+    .toEqualTypeOf<{
+      rootPage?: number
+      page: number
+    }>()
 
   routerNeverTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number }>()
+    .toEqualTypeOf<{
+      rootPage?: number
+      page: number
+    }>()
 
-  defaultRouterLinkSearch.returns.toEqualTypeOf<{ page: number }>()
+  defaultRouterLinkSearch.returns.toEqualTypeOf<{
+    rootPage?: number
+    page: number
+  }>()
 
-  defaultRouterObjectsLinkSearch.returns.toEqualTypeOf<{ page: number }>()
+  defaultRouterObjectsLinkSearch.returns.toEqualTypeOf<{
+    rootPage?: number
+    page: number
+  }>()
 
   routerAlwaysTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
+    rootPage?: number
     page: number
   }>()
 
   routerNeverTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
+    rootPage?: number
     page: number
   }>()
 
   routerPreserveTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
+    rootPage?: number
     page: number
   }>()
 
-  defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{}>()
+  defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{ rootPage?: number }>()
 
-  defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{}>()
+  defaultRouterObjectsLinkSearch
+    .parameter(0)
+    .toEqualTypeOf<{ rootPage?: number }>()
 
-  routerAlwaysTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{}>()
+  routerAlwaysTrailingSlashesLinkSearch
+    .parameter(0)
+    .toEqualTypeOf<{ rootPage?: number }>()
 
-  routerNeverTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{}>()
+  routerNeverTrailingSlashesLinkSearch
+    .parameter(0)
+    .toEqualTypeOf<{ rootPage?: number }>()
 
-  routerPreserveTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{}>()
+  routerPreserveTrailingSlashesLinkSearch
+    .parameter(0)
+    .toEqualTypeOf<{ rootPage?: number }>()
 })
 
 test('when navigating to a union of routes with search params', () => {
@@ -2423,71 +2668,83 @@ test('when navigating to a union of routes with search params', () => {
 
   defaultRouterLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number } | {} | undefined>()
+    .toEqualTypeOf<
+      { rootPage?: number; page: number } | { rootPage?: number } | undefined
+    >()
 
   defaultRouterObjectsLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number } | {} | undefined>()
+    .toEqualTypeOf<
+      { rootPage?: number; page: number } | { rootPage?: number } | undefined
+    >()
 
   routerAlwaysTrailingSlashesSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number } | {} | undefined>()
+    .toEqualTypeOf<
+      { rootPage?: number; page: number } | { rootPage?: number } | undefined
+    >()
 
   routerNeverTrailingSlashesSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number } | {} | undefined>()
+    .toEqualTypeOf<
+      { rootPage?: number; page: number } | { rootPage?: number } | undefined
+    >()
 
   routerPreserveTrailingSlashesSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number } | {} | undefined>()
+    .toEqualTypeOf<
+      { rootPage?: number; page: number } | { rootPage?: number } | undefined
+    >()
 
-  defaultRouterLinkSearch.returns.toEqualTypeOf<{ page: number } | {}>()
+  defaultRouterLinkSearch.returns.toEqualTypeOf<
+    { rootPage?: number; page: number } | { rootPage?: number }
+  >()
 
-  defaultRouterObjectsLinkSearch.returns.toEqualTypeOf<{ page: number } | {}>()
+  defaultRouterObjectsLinkSearch.returns.toEqualTypeOf<
+    { rootPage?: number; page: number } | { rootPage?: number }
+  >()
 
   routerAlwaysTrailingSlashesSearch.returns.toEqualTypeOf<
-    { page: number } | {}
+    { rootPage?: number; page: number } | { rootPage?: number }
   >()
 
   routerNeverTrailingSlashesSearch.returns.toEqualTypeOf<
-    { page: number } | {}
+    { rootPage?: number; page: number } | { rootPage?: number }
   >()
 
   routerPreserveTrailingSlashesSearch.returns.toEqualTypeOf<
-    { page: number } | {}
+    { rootPage?: number; page: number } | { rootPage?: number }
   >()
 
-  defaultRouterLinkSearch.returns.toEqualTypeOf<{ page: number } | {}>()
+  defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  defaultRouterObjectsLinkSearch.returns.toEqualTypeOf<{ page: number } | {}>()
+  defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  routerAlwaysTrailingSlashesSearch.returns.toEqualTypeOf<
-    { page: number } | {}
-  >()
+  routerAlwaysTrailingSlashesSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  routerNeverTrailingSlashesSearch.returns.toEqualTypeOf<
-    { page: number } | {}
-  >()
+  routerNeverTrailingSlashesSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  routerPreserveTrailingSlashesSearch.returns.toEqualTypeOf<
-    { page: number } | {}
-  >()
-
-  defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
-
-  defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
-
-  routerAlwaysTrailingSlashesSearch
-    .parameter(0)
-    .toEqualTypeOf<{ page?: number }>()
-
-  routerNeverTrailingSlashesSearch
-    .parameter(0)
-    .toEqualTypeOf<{ page?: number }>()
-
-  routerPreserveTrailingSlashesSearch
-    .parameter(0)
-    .toEqualTypeOf<{ page?: number }>()
+  routerPreserveTrailingSlashesSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 })
 
 test('when navigating to a union of routes with search params including the root', () => {
@@ -2498,7 +2755,7 @@ test('when navigating to a union of routes with search params including the root
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouter,
+    DefaultRouterObjects,
     string,
     '/' | '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
@@ -2573,53 +2830,243 @@ test('when navigating to a union of routes with search params including the root
 
   defaultRouterSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number } | {} | undefined>()
+    .toEqualTypeOf<
+      | { rootPage?: number }
+      | { rootPage?: number; page: number }
+      | { rootPage?: number; rootIndexPage: number }
+      | undefined
+    >()
 
   defaultRouterObjectsSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number } | {} | undefined>()
+    .toEqualTypeOf<
+      | { rootPage?: number }
+      | { rootPage?: number; page: number }
+      | { rootPage?: number; rootIndexPage: number }
+      | undefined
+    >()
 
   routerAlwaysTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number } | {} | undefined>()
+    .toEqualTypeOf<
+      | { rootPage?: number }
+      | { rootPage?: number; page: number }
+      | { rootPage?: number; rootIndexPage: number }
+      | undefined
+    >()
 
   routerNeverTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number } | {} | undefined>()
+    .toEqualTypeOf<
+      | { rootPage?: number }
+      | { rootPage?: number; page: number }
+      | { rootPage?: number; rootIndexPage: number }
+      | undefined
+    >()
 
   routerPreserveTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number } | {} | undefined>()
+    .toEqualTypeOf<
+      | { rootPage?: number }
+      | { rootPage?: number; page: number }
+      | { rootPage?: number; rootIndexPage: number }
+      | undefined
+    >()
 
-  defaultRouterSearch.returns.toEqualTypeOf<{ page: number } | {}>()
+  defaultRouterSearch.returns.toEqualTypeOf<
+    | { rootPage?: number; page: number }
+    | { rootPage?: number; rootIndexPage: number }
+    | { rootPage?: number }
+  >()
 
-  defaultRouterObjectsSearch.returns.toEqualTypeOf<{ page: number } | {}>()
+  defaultRouterObjectsSearch.returns.toEqualTypeOf<
+    | { rootPage?: number; page: number }
+    | { rootPage?: number; rootIndexPage: number }
+    | { rootPage?: number }
+  >()
 
   routerAlwaysTrailingSlashesLinkSearch.returns.toEqualTypeOf<
-    { page: number } | {}
+    | { rootPage?: number; page: number }
+    | { rootPage?: number; rootIndexPage: number }
+    | { rootPage?: number }
   >()
 
   routerNeverTrailingSlashesLinkSearch.returns.toEqualTypeOf<
-    { page: number } | {}
+    | { rootPage?: number; page: number }
+    | { rootPage?: number; rootIndexPage: number }
+    | { rootPage?: number }
   >()
 
   routerPreserveTrailingSlashesLinkSearch.returns.toEqualTypeOf<
-    { page: number } | {}
+    | { rootPage?: number; page: number }
+    | { rootPage?: number; rootIndexPage: number }
+    | { rootPage?: number }
   >()
 
-  defaultRouterSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
+  defaultRouterSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  defaultRouterObjectsSearch.parameter(0).toEqualTypeOf<{ page?: number }>()
+  defaultRouterObjectsSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
 
-  routerAlwaysTrailingSlashesLinkSearch
+  routerAlwaysTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
+
+  routerNeverTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
+
+  routerPreserveTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
+    page?: number
+    rootIndexPage?: number
+    rootPage?: number
+  }>()
+})
+
+test('when navigating from the root to /posts', () => {
+  const DefaultRouterLink = Link<DefaultRouter, '/', '/posts'>
+
+  const DefaultRouterObjectsLink = Link<DefaultRouterObjects, '/', '/posts'>
+
+  const RouterAlwaysTrailingSlashesLink = Link<
+    RouterAlwaysTrailingSlashes,
+    '/',
+    '/posts/'
+  >
+
+  const RouterNeverTrailingSlashesLink = Link<
+    RouterNeverTrailingSlashes,
+    '/',
+    '/posts'
+  >
+
+  const RouterPreserveTrailingSlashesLink = Link<
+    RouterPreserveTrailingSlashes,
+    '/',
+    '/posts' | '/posts/'
+  >
+
+  expectTypeOf(DefaultRouterLink).not.toMatchTypeOf<{ search: unknown }>()
+
+  expectTypeOf(DefaultRouterObjectsLink).not.toMatchTypeOf<{
+    search: unknown
+  }>()
+
+  expectTypeOf(RouterAlwaysTrailingSlashesLink).not.toMatchTypeOf<{
+    search: unknown
+  }>()
+
+  expectTypeOf(RouterNeverTrailingSlashesLink).not.toMatchTypeOf<{
+    search: unknown
+  }>()
+
+  expectTypeOf(RouterPreserveTrailingSlashesLink).not.toMatchTypeOf<{
+    search: unknown
+  }>()
+
+  expectTypeOf(DefaultRouterLink)
     .parameter(0)
-    .toEqualTypeOf<{ page?: number }>()
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number } | undefined>()
 
-  routerNeverTrailingSlashesLinkSearch
+  expectTypeOf(DefaultRouterObjectsLink)
     .parameter(0)
-    .toEqualTypeOf<{ page?: number }>()
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number } | undefined>()
 
-  routerPreserveTrailingSlashesLinkSearch
+  expectTypeOf(RouterAlwaysTrailingSlashesLink)
     .parameter(0)
-    .toEqualTypeOf<{ page?: number }>()
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number } | undefined>()
+
+  expectTypeOf(RouterNeverTrailingSlashesLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number } | undefined>()
+
+  expectTypeOf(RouterPreserveTrailingSlashesLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number } | undefined>()
+
+  expectTypeOf(DefaultRouterLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<
+      { rootPage?: number } | { rootPage?: number; rootIndexPage: number }
+    >()
+
+  expectTypeOf(DefaultRouterObjectsLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<
+      { rootPage?: number } | { rootPage?: number; rootIndexPage: number }
+    >()
+
+  expectTypeOf(RouterAlwaysTrailingSlashesLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<
+      { rootPage?: number } | { rootPage?: number; rootIndexPage: number }
+    >()
+
+  expectTypeOf(RouterNeverTrailingSlashesLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<
+      { rootPage?: number } | { rootPage?: number; rootIndexPage: number }
+    >()
+
+  expectTypeOf(RouterPreserveTrailingSlashesLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<
+      { rootPage?: number } | { rootPage?: number; rootIndexPage: number }
+    >()
+
+  expectTypeOf(DefaultRouterLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(DefaultRouterObjectsLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(RouterAlwaysTrailingSlashesLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(RouterNeverTrailingSlashesLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(RouterPreserveTrailingSlashesLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number }>()
 })
