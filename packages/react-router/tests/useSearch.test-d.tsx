@@ -334,12 +334,14 @@ test('when the root has no search params but the index route does', () => {
 
   expectTypeOf(
     useSearch<DefaultRouter['routeTree'], '/invoices', false>,
-  ).returns.toEqualTypeOf<{}>()
+  ).returns.toEqualTypeOf<{ indexPage?: number }>()
 
   expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices', false>)
     .parameter(0)
     .toHaveProperty('select')
-    .toEqualTypeOf<((search: {}) => {}) | undefined>()
+    .toEqualTypeOf<
+      ((search: { indexPage?: number }) => { indexPage?: number }) | undefined
+    >()
 })
 
 test('when the root has search params but the index route does not', () => {

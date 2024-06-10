@@ -3,7 +3,7 @@ import type { AnyRoute } from './route'
 import type { FullSearchSchema, RouteById, RouteIds } from './routeInfo'
 import type { RegisteredRouter } from './router'
 import type { MakeRouteMatch } from './Matches'
-import type { StrictOrFrom } from './utils'
+import type { Expand, StrictOrFrom } from './utils'
 
 export type UseSearchOptions<
   TFrom,
@@ -20,7 +20,7 @@ export function useSearch<
   TStrict extends boolean = true,
   TSearch = TStrict extends false
     ? FullSearchSchema<TRouteTree>
-    : RouteById<TRouteTree, TFrom>['types']['fullSearchSchema'],
+    : Expand<RouteById<TRouteTree, TFrom>['types']['fullSearchSchema']>,
   TSelected = TSearch,
 >(opts: UseSearchOptions<TFrom, TStrict, TSearch, TSelected>): TSelected {
   return useMatch({
