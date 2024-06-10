@@ -597,10 +597,6 @@ export function useLinkProps<
   // If this `to` is a valid external URL, return
   // null for LinkUtils
 
-  const dest = {
-    ...options,
-  }
-
   let type: 'internal' | 'external' = 'internal'
 
   try {
@@ -608,7 +604,7 @@ export function useLinkProps<
     type = 'external'
   } catch {}
 
-  const next = router.buildLocation(dest as any)
+  const next = router.buildLocation(options as any)
   const preload = userPreload ?? router.options.defaultPreload
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
@@ -694,7 +690,7 @@ export function useLinkProps<
   }
 
   const doPreload = () => {
-    router.preloadRoute(dest as any).catch((err) => {
+    router.preloadRoute(options as any).catch((err) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
