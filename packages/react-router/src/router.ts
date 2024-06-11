@@ -380,6 +380,7 @@ export interface BuildNextOptions {
   }
   from?: string
   fromSearch?: unknown
+  _fromLocation?: ParsedLocation
 }
 
 export interface DehydratedRouterState {
@@ -1100,16 +1101,31 @@ export class Router<
       } = {},
       matches?: Array<MakeRouteMatch<TRouteTree>>,
     ): ParsedLocation => {
-      let fromPath = this.latestLocation.pathname
-      let fromSearch = dest.fromSearch || this.latestLocation.search
+      const latestLocation =
+        dest._fromLocation ?? (this.latestLocation as ParsedLocation)
+      let fromPath = latestLocation.pathname
+      let fromSearch = dest.fromSearch || latestLocation.search
 
-      const fromMatches = this.matchRoutes(
-        this.latestLocation.pathname,
-        fromSearch,
+      const fromMatches = this.matchRoutes(latestLocation.pathname, fromSearch)
+
+      const fromMatch =
+        dest.from != null
+          ? fromMatches.find((d) =>
+              matchPathname(this.basepath, trimPathRight(d.pathname), {
+                to: dest.from,
+                caseSensitive: false,
+                fuzzy: false,
+              }),
+            )
+          : undefined
+
+      fromPath = fromMatch?.pathname || fromPath
+
+      invariant(
+        dest.from == null || fromMatch != null,
+        'Could not find match for from: ' + dest.from,
       )
 
-      fromPath =
-        fromMatches.find((d) => d.id === dest.from)?.pathname || fromPath
       fromSearch = last(fromMatches)?.search || this.latestLocation.search
 
       const stayingMatches = matches?.filter((d) =>
@@ -1260,9 +1276,10 @@ export class Router<
         })
 
         if (foundMask) {
+          const { from, ...maskProps } = foundMask
           maskedDest = {
             ...pick(opts, ['from']),
-            ...foundMask,
+            ...maskProps,
             params,
           }
           maskedNext = build(maskedDest)
@@ -1774,7 +1791,7 @@ export class Router<
                   context: match.routeContext,
                   location,
                   navigate: (opts: any) =>
-                    this.navigate({ ...opts, from: match.pathname }),
+                    this.navigate({ ...opts, _fromLocation: location }),
                   buildLocation: this.buildLocation,
                   cause: preload ? 'preload' : match.cause,
                 }
@@ -1832,7 +1849,7 @@ export class Router<
                   context: match.context,
                   location,
                   navigate: (opts) =>
-                    this.navigate({ ...opts, from: match.pathname } as any),
+                    this.navigate({ ...opts, _fromLocation: location }),
                   cause: preload ? 'preload' : match.cause,
                   route,
                 }
@@ -2188,9 +2205,8 @@ export class Router<
     } catch (err) {
       if (isRedirect(err)) {
         return await this.preloadRoute({
-          fromSearch: next.search,
-          from: next.pathname,
           ...(err as any),
+          _fromLocation: next,
         })
       }
       // Preload errors are not fatal, but we should still log them

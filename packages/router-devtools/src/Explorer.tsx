@@ -1,34 +1,38 @@
 import * as React from 'react'
 import { clsx as cx } from 'clsx'
-import { css } from 'goober'
+import * as goober from 'goober'
 import { tokens } from './tokens'
 import { displayValue, styled } from './utils'
+import { ShadowDomTargetContext } from './context'
 
 type ExpanderProps = {
   expanded: boolean
   style?: React.CSSProperties
 }
 
-export const Expander = ({ expanded, style = {} }: ExpanderProps) => (
-  <span className={getStyles().expander}>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="12"
-      height="12"
-      fill="none"
-      viewBox="0 0 24 24"
-      className={cx(getStyles().expanderIcon(expanded))}
-    >
-      <path
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        d="M9 18l6-6-6-6"
-      ></path>
-    </svg>
-  </span>
-)
+export const Expander = ({ expanded, style = {} }: ExpanderProps) => {
+  const styles = useStyles()
+  return (
+    <span className={styles.expander}>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="12"
+        height="12"
+        fill="none"
+        viewBox="0 0 24 24"
+        className={cx(styles.expanderIcon(expanded))}
+      >
+        <path
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M9 18l6-6-6-6"
+        ></path>
+      </svg>
+    </span>
+  )
+}
 
 type Entry = {
   label: string
@@ -84,39 +88,40 @@ export const DefaultRenderer: Renderer = ({
 }) => {
   const [expandedPages, setExpandedPages] = React.useState<Array<number>>([])
   const [valueSnapshot, setValueSnapshot] = React.useState(undefined)
+  const styles = useStyles()
 
   const refreshValueSnapshot = () => {
     setValueSnapshot((value as () => any)())
   }
 
   return (
-    <div className={getStyles().entry}>
+    <div className={styles.entry}>
       {subEntryPages.length ? (
         <>
           <button
-            className={getStyles().expandButton}
+            className={styles.expandButton}
             onClick={() => toggleExpanded()}
           >
             <Expander expanded={expanded} />
             {label}
-            <span className={getStyles().info}>
+            <span className={styles.info}>
               {String(type).toLowerCase() === 'iterable' ? '(Iterable) ' : ''}
               {subEntries.length} {subEntries.length > 1 ? `items` : `item`}
             </span>
           </button>
           {expanded ? (
             subEntryPages.length === 1 ? (
-              <div className={getStyles().subEntries}>
+              <div className={styles.subEntries}>
                 {subEntries.map((entry, index) => handleEntry(entry))}
               </div>
             ) : (
-              <div className={getStyles().subEntries}>
+              <div className={styles.subEntries}>
                 {subEntryPages.map((entries, index) => {
                   return (
                     <div key={index}>
-                      <div className={getStyles().entry}>
+                      <div className={styles.entry}>
                         <button
-                          className={cx(getStyles().labelButton, 'labelButton')}
+                          className={cx(styles.labelButton, 'labelButton')}
                           onClick={() =>
                             setExpandedPages((old) =>
                               old.includes(index)
@@ -130,7 +135,7 @@ export const DefaultRenderer: Renderer = ({
                           {index * pageSize + pageSize - 1}]
                         </button>
                         {expandedPages.includes(index) ? (
-                          <div className={getStyles().subEntries}>
+                          <div className={styles.subEntries}>
                             {entries.map((entry) => handleEntry(entry))}
                           </div>
                         ) : null}
@@ -149,7 +154,7 @@ export const DefaultRenderer: Renderer = ({
             label={
               <button
                 onClick={refreshValueSnapshot}
-                className={getStyles().refreshValueBtn}
+                className={styles.refreshValueBtn}
               >
                 <span>{label}</span> 🔄{' '}
               </button>
@@ -161,7 +166,7 @@ export const DefaultRenderer: Renderer = ({
       ) : (
         <>
           <span>{label}:</span>{' '}
-          <span className={getStyles().value}>{displayValue(value)}</span>
+          <span className={styles.value}>{displayValue(value)}</span>
         </>
       )}
     </div>
@@ -267,9 +272,12 @@ export default function Explorer({
   })
 }
 
-const stylesFactory = () => {
+const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
   const { colors, font, size, alpha, shadow, border } = tokens
   const { fontFamily, lineHeight, size: fontSize } = font
+  const css = shadowDOMTarget
+    ? goober.css.bind({ target: shadowDOMTarget })
+    : goober.css
 
   return {
     entry: css`
@@ -349,9 +357,10 @@ const stylesFactory = () => {
 
 let _styles: ReturnType<typeof stylesFactory> | null = null
 
-function getStyles() {
+function useStyles() {
+  const shadowDomTarget = React.useContext(ShadowDomTargetContext)
   if (_styles) return _styles
-  _styles = stylesFactory()
+  _styles = stylesFactory(shadowDomTarget)
 
   return _styles
 }
