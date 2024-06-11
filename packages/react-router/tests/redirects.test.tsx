@@ -516,6 +516,7 @@ describe('after redirect, the route context is passed to beforeLoad', () => {
     }
     const router = createContextRouter(['/'], 'BEFORE_LOAD', ctx)
     await router.load()
+    await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/about')
     expect(mockFn1).toBeCalledTimes(0)
@@ -536,6 +537,7 @@ describe('after redirect, the route context is passed to loader', () => {
     }
     const router = createContextRouter(['/'], 'LOADER', ctx)
     await router.load()
+    await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/about')
     expect(mockFn1).toBeCalledTimes(0)
