@@ -6,7 +6,6 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
 } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -40,6 +39,7 @@ describe('beforeLoad in the route definition', () => {
       beforeLoad: ({ context }) => {
         mock(context)
       },
+      component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
     const router = await act(() =>
@@ -48,7 +48,9 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    const rootElement = await screen.findByText('Root page')
+    expect(rootElement).toBeInTheDocument()
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
@@ -61,6 +63,7 @@ describe('beforeLoad in the route definition', () => {
         await sleep(WAIT_TIME)
         mock(context)
       },
+      component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
     const router = await act(() =>
@@ -69,7 +72,9 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    const rootElement = await screen.findByText('Root page')
+    expect(rootElement).toBeInTheDocument()
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
@@ -85,6 +90,7 @@ describe('beforeLoad in the route definition', () => {
       beforeLoad: ({ context }) => {
         mock(context)
       },
+      component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = await act(() =>
@@ -93,7 +99,9 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    const indexElement = await screen.findByText('Index page')
+    expect(indexElement).toBeInTheDocument()
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
@@ -109,6 +117,7 @@ describe('beforeLoad in the route definition', () => {
         await sleep(WAIT_TIME)
         mock(context)
       },
+      component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = await act(() =>
@@ -117,7 +126,9 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    const indexElement = await screen.findByText('Index page')
+    expect(indexElement).toBeInTheDocument()
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
@@ -141,6 +152,7 @@ describe('beforeLoad in the route definition', () => {
       beforeLoad: async ({ context }) => {
         mock(context)
       },
+      component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = await act(() =>
@@ -149,7 +161,9 @@ describe('beforeLoad in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    const indexElement = await screen.findByText('Index page')
+    expect(indexElement).toBeInTheDocument()
+
     expect(mock).toHaveBeenCalledWith({ foo: 'sean' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
@@ -851,6 +865,7 @@ describe('loader in the route definition', () => {
       loader: ({ context }) => {
         mock(context)
       },
+      component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
     const router = await act(() =>
@@ -859,7 +874,9 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    const rootElement = await screen.findByText('Root page')
+    expect(rootElement).toBeInTheDocument()
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
@@ -872,6 +889,7 @@ describe('loader in the route definition', () => {
         await sleep(WAIT_TIME)
         mock(context)
       },
+      component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
     const router = await act(() =>
@@ -880,7 +898,9 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    const rootElement = await screen.findByText('Root page')
+    expect(rootElement).toBeInTheDocument()
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
@@ -896,6 +916,7 @@ describe('loader in the route definition', () => {
       loader: ({ context }) => {
         mock(context)
       },
+      component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = await act(() =>
@@ -904,7 +925,9 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    const indexElement = await screen.findByText('Index page')
+    expect(indexElement).toBeInTheDocument()
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
@@ -920,6 +943,7 @@ describe('loader in the route definition', () => {
         await sleep(WAIT_TIME)
         mock(context)
       },
+      component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = await act(() =>
@@ -928,7 +952,9 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    const indexElement = await screen.findByText('Index page')
+    expect(indexElement).toBeInTheDocument()
+
     expect(mock).toHaveBeenCalledWith({ foo: 'bar' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
@@ -952,6 +978,7 @@ describe('loader in the route definition', () => {
       loader: async ({ context }) => {
         mock(context)
       },
+      component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = await act(() =>
@@ -960,7 +987,9 @@ describe('loader in the route definition', () => {
 
     await act(() => render(<RouterProvider router={router} />))
 
-    await waitFor(() => expect(mock).toHaveBeenCalledOnce())
+    const indexElement = await screen.findByText('Index page')
+    expect(indexElement).toBeInTheDocument()
+
     expect(mock).toHaveBeenCalledWith({ foo: 'sean' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
@@ -1966,7 +1995,7 @@ describe('useRouteContext in the component', () => {
     await act(() => fireEvent.click(linkToAbout))
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
-    await waitFor(() => expect(content).toBeInTheDocument())
+    expect(content).toBeInTheDocument()
 
     expect(router.state.location.href).toBe('/person')
     expect(window.location.pathname).toBe('/person')
@@ -2020,7 +2049,7 @@ describe('useRouteContext in the component', () => {
     await act(() => fireEvent.click(linkToAbout))
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
-    await waitFor(() => expect(content).toBeInTheDocument())
+    expect(content).toBeInTheDocument()
 
     expect(router.state.location.href).toBe('/person')
     expect(window.location.pathname).toBe('/person')
