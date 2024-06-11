@@ -1548,7 +1548,7 @@ export class Router<
           redirect = err
           if (!this.isServer) {
             this.navigate({ ...err, replace: true, __isRedirect: true })
-            this.load()
+            // this.load()
           }
         } else if (isNotFound(err)) {
           notFound = err
