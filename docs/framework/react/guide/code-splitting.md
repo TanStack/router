@@ -18,7 +18,7 @@ TanStack Router separates code into two categories:
   - Search Param Validation
   - Loaders, Before Load
   - Route Context
-  - Meta
+  - Static Data
   - Links
   - Scripts
   - Styles
