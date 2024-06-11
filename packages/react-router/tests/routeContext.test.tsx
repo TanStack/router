@@ -150,6 +150,7 @@ describe('beforeLoad in the route definition', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
         mock(context)
       },
       component: () => <div>Index page</div>,
@@ -185,6 +186,7 @@ describe('beforeLoad in the route definition', () => {
       getParentRoute: () => rootRoute,
       path: '/about',
       beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
         mock(context)
       },
       component: () => <div>About page</div>,
@@ -222,6 +224,7 @@ describe('beforeLoad in the route definition', () => {
       getParentRoute: () => rootRoute,
       path: '/about',
       beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
         mock(context)
       },
       component: () => <div>About page</div>,
@@ -278,7 +281,8 @@ describe('beforeLoad in the route definition', () => {
     const personRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/person',
-      beforeLoad: ({ context }) => {
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
         mock(context)
       },
       component: () => <div>Person page</div>,
@@ -344,7 +348,8 @@ describe('beforeLoad in the route definition', () => {
     const personRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/person',
-      beforeLoad: ({ context }) => {
+      beforeLoad: async ({ context }) => {
+        await sleep(WAIT_TIME)
         mock(context)
       },
       component: () => <div>Person page</div>,
@@ -976,6 +981,7 @@ describe('loader in the route definition', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
         mock(context)
       },
       component: () => <div>Index page</div>,
@@ -1011,6 +1017,7 @@ describe('loader in the route definition', () => {
       getParentRoute: () => rootRoute,
       path: '/about',
       loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
         mock(context)
       },
       component: () => <div>About page</div>,
@@ -1048,6 +1055,7 @@ describe('loader in the route definition', () => {
       getParentRoute: () => rootRoute,
       path: '/about',
       loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
         mock(context)
       },
       component: () => <div>About page</div>,
@@ -1104,7 +1112,8 @@ describe('loader in the route definition', () => {
     const personRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/person',
-      loader: ({ context }) => {
+      loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
         mock(context)
       },
       component: () => <div>Person page</div>,
@@ -1170,7 +1179,8 @@ describe('loader in the route definition', () => {
     const personRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/person',
-      loader: ({ context }) => {
+      loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
         mock(context)
       },
       component: () => <div>Person page</div>,
