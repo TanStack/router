@@ -1924,11 +1924,10 @@ export class Router<
                       // we can use the options
                       await lazyPromise
 
-                      // checkLatest()
+                      checkLatest()
 
                       // Kick off the loader!
                       loaderPromise = route.options.loader?.(loaderContext)
-                      checkLatest()
 
                       matches[index] = match = updateMatch(
                         match.id,
