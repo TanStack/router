@@ -542,10 +542,6 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
   const router = useRouter()
-  const matchPathname = useMatch({
-    strict: false,
-    select: (s) => s.pathname,
-  })
   const [isTransitioning, setIsTransitioning] = React.useState(false)
 
   const {
