@@ -29,7 +29,7 @@ export function Transitioner() {
 
   // Subscribe to location changes
   // and try to load the new location
-  useLayoutEffect(() => {
+  React.useEffect(() => {
     const unsub = router.history.subscribe(router.load)
 
     const nextLocation = router.buildLocation({
