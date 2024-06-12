@@ -254,8 +254,8 @@ export async function generator(config: Config) {
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',
     )
 
-    // Ensure the boilerplate for the route exists, which can be skipped for virtual parent routes
-    if (!node.isVirtualParentRoute) {
+    // Ensure the boilerplate for the route exists, which can be skipped for virtual parent routes and virtual routes
+    if (!node.isVirtualParentRoute && !node.isVirtual) {
       const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
       const escapedRoutePath = removeTrailingUnderscores(
@@ -293,12 +293,14 @@ export async function generator(config: Config) {
             (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
           )
           .replace(
-            /(createFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+            /(import\s*\{.*)(create(Lazy)?FileRoute)(.*\}\s*from\s*['"]@tanstack\/react-router['"])/gs,
+            (match, p1, p2, p3, p4) =>
+              `${p1}${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
           )
           .replace(
-            /(createLazyFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+            /create(Lazy)?FileRoute(\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+            (match, p1, p2, p3, p4) =>
+              `${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
           )
       }
 
