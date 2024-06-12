@@ -44,6 +44,7 @@ function SearchComponent() {
           page: 0,
           offset: 10,
           search: 'search',
+          rootSearch: 0,
         }}
       >
         Search
