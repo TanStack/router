@@ -1,15 +1,17 @@
 import fs from 'fs/promises'
+import { join } from 'path'
 import { describe, it, expect } from 'vitest'
 
 import { generator, getConfig, type Config } from '../src'
-import path from 'path'
 
 function makeFolderDir(folder: string) {
-  return process.cwd() + `/tests/generator/${folder}`
+  return join(process.cwd(), 'tests', 'generator', folder)
 }
 
-async function getFoldersNames() {
-  const folders = await fs.readdir(process.cwd() + '/tests/generator')
+async function readDir(...paths: string[]) {
+  const folders = await fs.readdir(
+    join(process.cwd(), 'tests', 'generator', ...paths),
+  )
   return folders
 }
 
@@ -35,13 +37,6 @@ async function getRouteTreeFileText(config: Config) {
   return text
 }
 
-async function getExpectedRouteTreeFileText(folder: string) {
-  const dir = makeFolderDir(folder)
-  const location = dir + '/routeTree.expected.ts'
-  const text = await fs.readFile(location, 'utf-8')
-  return text
-}
-
 function rewriteConfigByFolderName(folderName: string, config: Config) {
   switch (folderName) {
     case 'append-and-prepend':
@@ -53,8 +48,55 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
   }
 }
 
+async function preprocess(folderName: string) {
+  switch (folderName) {
+    case 'file-modification': {
+      const templatePath = join(makeFolderDir(folderName), 'template.tsx')
+      const lazyTemplatePath = join(
+        makeFolderDir(folderName),
+        'template.lazy.tsx',
+      )
+
+      const makeRoutePath = (file: string) =>
+        join(makeFolderDir(folderName), 'routes', '(test)', file)
+      const makeEmptyFile = async (file: string) => {
+        const fh = await fs.open(makeRoutePath(file), 'w')
+        await fh.close()
+      }
+
+      await fs.copyFile(templatePath, makeRoutePath('foo.tsx'))
+      await fs.copyFile(lazyTemplatePath, makeRoutePath('initiallyLazy.tsx'))
+      await fs.copyFile(templatePath, makeRoutePath('bar.lazy.tsx'))
+      await makeEmptyFile('initiallyEmpty.tsx')
+      await makeEmptyFile('initiallyEmpty.lazy.tsx')
+    }
+  }
+}
+
+async function postprocess(folderName: string) {
+  switch (folderName) {
+    case 'file-modification': {
+      const fooPath = join(
+        makeFolderDir(folderName),
+        'routes',
+        '(test)',
+        'foo.tsx',
+      )
+      const fooText = await fs.readFile(fooPath, 'utf-8')
+      const routeFiles = await readDir(folderName, 'routes', '(test)')
+      routeFiles
+        .filter((r) => r.endsWith('.tsx'))
+        .forEach((routeFile) => {
+          expect(fooText).toMatchFileSnapshot(
+            join('generator', folderName, 'snapshot', routeFile),
+          )
+        })
+    }
+  }
+}
+
 describe('generator works', async () => {
-  const folderNames = await getFoldersNames()
+  const folderNames = await readDir()
 
   it.each(folderNames.map((folder) => [folder]))(
     'should wire-up the routes for a "%s" tree',
@@ -63,13 +105,15 @@ describe('generator works', async () => {
 
       rewriteConfigByFolderName(folderName, config)
 
+      await preprocess(folderName)
       await generator(config)
 
       const generatedRouteTree = await getRouteTreeFileText(config)
 
       expect(generatedRouteTree).toMatchFileSnapshot(
-        path.join('generator', folderName, 'routeTree.snapshot.ts'),
+        join('generator', folderName, 'routeTree.snapshot.ts'),
       )
+      await postprocess(folderName)
     },
   )
 })
