@@ -1101,12 +1101,22 @@ export class Router<
       } = {},
       matches?: Array<MakeRouteMatch<TRouteTree>>,
     ): ParsedLocation => {
-      const latestLocation =
-        dest._fromLocation ?? (this.latestLocation as ParsedLocation)
-      let fromPath = latestLocation.pathname
-      let fromSearch = dest.fromSearch || latestLocation.search
+      // if the router is loading the previous location is what
+      // we should use because the old matches are still around
+      // and the latest location has already been updated.
+      // If the router is not loading we should always use the
+      // latest location because resolvedLocation can lag behind
+      // and the new matches could already render
+      const currentLocation = this.state.isLoading
+        ? this.state.resolvedLocation
+        : this.latestLocation
 
-      const fromMatches = this.matchRoutes(latestLocation.pathname, fromSearch)
+      const location = dest._fromLocation ?? currentLocation
+
+      let fromPath = location.pathname
+      let fromSearch = dest.fromSearch || location.search
+
+      const fromMatches = this.matchRoutes(location.pathname, fromSearch)
 
       const fromMatch =
         dest.from != null
