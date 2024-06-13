@@ -29,7 +29,7 @@ importers:
         specifier: ^0.7.11
         version: 0.7.11(@types/node@20.13.0)(esbuild@0.21.1)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11)
       '@types/eslint':
-        specifier: ^8.56.10
+        specifier: ^8.56.2
         version: 8.56.10
       '@types/node':
         specifier: ^20.12.11
@@ -7646,11 +7646,6 @@ packages:
     engines: {node: '>= 0.8'}
     dependencies:
       delayed-stream: 1.0.0
-    dev: true
-
-  /commander@12.1.0:
-    resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==}
-    engines: {node: '>=18'}
     dev: true
 
   /commander@12.1.0:
