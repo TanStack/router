@@ -2527,6 +2527,108 @@ describe('Link', () => {
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
 
+  test('when navigating to /post/$postId with a redirects to from /post/$postId to ../../login', async () => {
+    const ErrorComponent = vi.fn(() => <div>Something went wrong!</div>)
+
+    const rootRoute = createRootRoute({
+      errorComponent: ErrorComponent,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Index</h1>
+            <Link to="/posts/$postId" params={{ postId: 'id1' }}>
+              To first post
+            </Link>
+          </React.Fragment>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <React.Fragment>
+          <h1>Posts</h1>
+          <Outlet />
+        </React.Fragment>
+      )
+    }
+
+    const loaderFn = vi.fn()
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      component: PostsComponent,
+    })
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <React.Fragment>
+          <span>Params: {params.postId}</span>
+          <Outlet />
+        </React.Fragment>
+      )
+    }
+
+    const search = vi.fn((prev) => ({ page: prev.postPage }))
+
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postId',
+      component: PostComponent,
+      validateSearch: () => ({ postPage: 0 }),
+      loader: () => {
+        loaderFn()
+        throw redirect({
+          from: postRoute.fullPath,
+          to: '/../../login',
+          search,
+        })
+      },
+    })
+
+    const LoginComponent = () => {
+      return <React.Fragment>Login!</React.Fragment>
+    }
+
+    const loginRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'login',
+      component: LoginComponent,
+      validateSearch: () => ({ page: 0 }),
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      loginRoute,
+      postsRoute.addChildren([postRoute]),
+    ])
+
+    const router = createRouter({
+      routeTree,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postLink = await screen.findByRole('link', {
+      name: 'To first post',
+    })
+
+    expect(postLink).toHaveAttribute('href', '/posts/id1')
+
+    fireEvent.click(postLink)
+
+    expect(await screen.findByText('Login!')).toBeInTheDocument()
+
+    expect(ErrorComponent).not.toHaveBeenCalled()
+  })
+
   test('when preloading /post/$postId with a beforeLoad that navigates to /login', async () => {
     const ErrorComponent = vi.fn(() => <div>Something went wrong!</div>)
 
