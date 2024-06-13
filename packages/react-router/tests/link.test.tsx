@@ -2584,7 +2584,7 @@ describe('Link', () => {
       loader: () => {
         throw redirect({
           from: postRoute.fullPath,
-          to: '/../../login',
+          to: '../../login',
           search,
         })
       },
@@ -2683,7 +2683,7 @@ describe('Link', () => {
       beforeLoad: () => {
         throw redirect({
           from: postRoute.fullPath,
-          to: '/../../login',
+          to: '../../login',
           search,
         })
       },
