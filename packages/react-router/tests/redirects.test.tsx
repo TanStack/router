@@ -3,14 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createMemoryHistory,
   createRootRoute,
-  createRootRouteWithContext,
   createRoute,
   createRouter,
-  redirect,
   type RouterHistory,
 } from '../src'
-
-const mockFn1 = vi.fn()
 
 afterEach(() => {
   vi.clearAllMocks()
@@ -461,90 +457,5 @@ describe('router.navigate navigation using layout routes resolves correctly', as
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/g/tkdodo')
-  })
-})
-
-function createContextRouter<TCtx extends Record<string, unknown>>(
-  initialEntries: string[],
-  mode: 'BEFORE_LOAD' | 'LOADER',
-  ctx: TCtx,
-) {
-  const rootRoute = createRootRouteWithContext<TCtx>()()
-
-  let allow = false
-
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    beforeLoad: ({ context }) => {
-      if (!allow) {
-        allow = true
-        throw redirect({ to: '/about' })
-      }
-
-      if (mode === 'BEFORE_LOAD') {
-        mockFn1(context)
-      }
-    },
-    loader: ({ context }) => {
-      if (mode === 'LOADER') {
-        mockFn1(context)
-      }
-    },
-  })
-
-  const aboutRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/about',
-  })
-
-  const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
-
-  const router = createRouter({
-    routeTree,
-    history: createMemoryHistory({ initialEntries }),
-    context: ctx,
-  })
-
-  return router
-}
-
-describe('after redirect, the route context is passed to beforeLoad', () => {
-  it('should pass context to beforeLoad', async () => {
-    const ctx = {
-      name: 'Tanner',
-    }
-    const router = createContextRouter(['/'], 'BEFORE_LOAD', ctx)
-    await router.load()
-
-    expect(router.state.location.pathname).toBe('/about')
-    expect(mockFn1).toBeCalledTimes(0)
-
-    await router.navigate({ to: '/' })
-    await router.invalidate()
-
-    expect(router.state.location.pathname).toBe('/')
-    expect(mockFn1).toBeCalledTimes(1)
-    expect(mockFn1).toBeCalledWith(ctx)
-  })
-})
-
-describe('after redirect, the route context is passed to loader', () => {
-  it('should pass context to loader', async () => {
-    const ctx = {
-      name: 'Tanner',
-    }
-    const router = createContextRouter(['/'], 'LOADER', ctx)
-    await router.load()
-
-    expect(router.state.location.pathname).toBe('/about')
-    expect(mockFn1).toBeCalledTimes(0)
-
-    await router.navigate({ to: '/' })
-    await router.invalidate()
-
-    expect(router.state.location.pathname).toBe('/')
-    expect(mockFn1).toBeCalledTimes(1)
-    expect(mockFn1).toBeCalledWith(ctx)
   })
 })

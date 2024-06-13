@@ -156,7 +156,6 @@ export {
   type AnyRoute,
   type RouteConstraints,
   type AnyRootRoute,
-  type RootSearchSchema,
   type ResolveFullPath,
   type RouteMask,
   type ErrorRouteProps,

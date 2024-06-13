@@ -26,14 +26,14 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5(rollup@4.17.2)
       '@tanstack/config':
-        specifier: ^0.7.10
-        version: 0.7.10(@types/node@20.12.11)(esbuild@0.21.1)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11)
+        specifier: ^0.7.11
+        version: 0.7.11(@types/node@20.13.0)(esbuild@0.21.1)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11)
       '@types/eslint':
         specifier: ^8.56.10
         version: 8.56.10
       '@types/node':
         specifier: ^20.12.11
-        version: 20.12.11
+        version: 20.13.0
       '@types/react':
         specifier: ^18.3.1
         version: 18.3.1
@@ -93,10 +93,10 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.2.11
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
       vitest:
         specifier: ^1.6.0
-        version: 1.6.0(@types/node@20.12.11)
+        version: 1.6.0(@types/node@20.13.0)
 
   examples/react/authenticated-routes:
     dependencies:
@@ -136,13 +136,13 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/basic:
     dependencies:
       '@tanstack/react-query':
         specifier: ^5.17.8
-        version: 5.36.0(react@18.3.1)
+        version: 5.40.0(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -170,13 +170,13 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/basic-default-search-params:
     dependencies:
       '@tanstack/react-query':
         specifier: ^5.17.8
-        version: 5.36.0(react@18.3.1)
+        version: 5.40.0(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -207,7 +207,7 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/basic-file-based:
     dependencies:
@@ -247,7 +247,7 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/basic-file-based-codesplitting:
     dependencies:
@@ -287,16 +287,16 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/basic-react-query:
     dependencies:
       '@tanstack/react-query':
         specifier: ^5.17.8
-        version: 5.36.0(react@18.3.1)
+        version: 5.40.0(react@18.3.1)
       '@tanstack/react-query-devtools':
         specifier: ^5.17.8
-        version: 5.17.8(@tanstack/react-query@5.36.0)(react@18.3.1)
+        version: 5.40.0(@tanstack/react-query@5.40.0)(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -324,16 +324,16 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/basic-react-query-file-based:
     dependencies:
       '@tanstack/react-query':
         specifier: ^5.17.8
-        version: 5.36.0(react@18.3.1)
+        version: 5.40.0(react@18.3.1)
       '@tanstack/react-query-devtools':
         specifier: ^5.17.8
-        version: 5.17.8(@tanstack/react-query@5.36.0)(react@18.3.1)
+        version: 5.40.0(@tanstack/react-query@5.40.0)(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -370,7 +370,7 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/basic-ssr-file-based:
     dependencies:
@@ -431,7 +431,7 @@ importers:
         version: 1.15.0
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
       vite-plugin-babel:
         specifier: ^1.2.0
         version: 1.2.0(@babel/core@7.24.5)(vite@5.2.11)
@@ -498,7 +498,7 @@ importers:
         version: 1.15.0
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
       vite-plugin-babel:
         specifier: ^1.2.0
         version: 1.2.0(@babel/core@7.24.5)(vite@5.2.11)
@@ -538,7 +538,7 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/kitchen-sink:
     dependencies:
@@ -575,7 +575,7 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/kitchen-sink-file-based:
     dependencies:
@@ -615,16 +615,16 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/kitchen-sink-react-query:
     dependencies:
       '@tanstack/react-query':
         specifier: ^5.17.8
-        version: 5.36.0(react@18.3.1)
+        version: 5.40.0(react@18.3.1)
       '@tanstack/react-query-devtools':
         specifier: ^5.17.8
-        version: 5.17.8(@tanstack/react-query@5.36.0)(react@18.3.1)
+        version: 5.40.0(@tanstack/react-query@5.40.0)(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -658,16 +658,16 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/kitchen-sink-react-query-file-based:
     dependencies:
       '@tanstack/react-query':
         specifier: ^5.17.8
-        version: 5.36.0(react@18.3.1)
+        version: 5.40.0(react@18.3.1)
       '@tanstack/react-query-devtools':
         specifier: ^5.17.8
-        version: 5.17.8(@tanstack/react-query@5.36.0)(react@18.3.1)
+        version: 5.40.0(@tanstack/react-query@5.40.0)(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -704,13 +704,13 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/large-file-based:
     dependencies:
       '@tanstack/react-query':
         specifier: ^5.17.8
-        version: 5.36.0(react@18.3.1)
+        version: 5.40.0(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -747,7 +747,7 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/location-masking:
     dependencies:
@@ -756,7 +756,7 @@ importers:
         version: 1.0.5(@types/react-dom@18.3.0)(@types/react@18.3.1)(react-dom@18.3.1)(react@18.3.1)
       '@tanstack/react-query':
         specifier: ^5.17.8
-        version: 5.36.0(react@18.3.1)
+        version: 5.40.0(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -784,13 +784,13 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/navigation-blocking:
     dependencies:
       '@tanstack/react-query':
         specifier: ^5.17.8
-        version: 5.36.0(react@18.3.1)
+        version: 5.40.0(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -818,7 +818,7 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/quickstart:
     dependencies:
@@ -846,7 +846,7 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/quickstart-file-based:
     dependencies:
@@ -886,7 +886,7 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/scroll-restoration:
     dependencies:
@@ -917,7 +917,7 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/start-basic:
     dependencies:
@@ -959,7 +959,7 @@ importers:
         version: 1.14.0
       vinxi:
         specifier: ^0.3.11
-        version: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.12.11)
+        version: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.13.0)
     devDependencies:
       '@playwright/test':
         specifier: ^1.44.0
@@ -969,7 +969,7 @@ importers:
         version: 3.0.1(@playwright/test@1.44.0)
       '@types/node':
         specifier: ^20.12.11
-        version: 20.12.11
+        version: 20.13.0
       '@types/react':
         specifier: ^18.2.65
         version: 18.3.1
@@ -1005,7 +1005,7 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.1.4
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
       vite-tsconfig-paths:
         specifier: ^4.3.2
         version: 4.3.2(typescript@5.4.5)(vite@5.2.11)
@@ -1041,7 +1041,7 @@ importers:
         version: 1.14.0
       vinxi:
         specifier: ^0.3.11
-        version: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.12.11)
+        version: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.13.0)
     devDependencies:
       '@types/react':
         specifier: ^18.2.65
@@ -1081,7 +1081,7 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.1.4
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
       vite-tsconfig-paths:
         specifier: ^4.3.2
         version: 4.3.2(typescript@5.4.5)(vite@5.2.11)
@@ -1141,7 +1141,7 @@ importers:
         version: 1.3.1
       vinxi:
         specifier: ^0.3.11
-        version: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.12.11)
+        version: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.13.0)
       zod:
         specifier: ^3.22.4
         version: 3.23.8
@@ -1181,7 +1181,7 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.1.4
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
       vite-tsconfig-paths:
         specifier: ^4.3.2
         version: 4.3.2(typescript@5.4.5)(vite@5.2.11)
@@ -1245,7 +1245,7 @@ importers:
         version: 4.7.0
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
       wait-port:
         specifier: ^1.1.0
         version: 1.1.0
@@ -1294,7 +1294,7 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/wip-with-bling:
     dependencies:
@@ -1373,7 +1373,7 @@ importers:
         version: 1.15.0
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
       vite-plugin-babel:
         specifier: ^1.2.0
         version: 1.2.0(@babel/core@7.24.5)(vite@5.2.11)
@@ -1416,7 +1416,7 @@ importers:
         version: 4.2.1(vite@5.2.11)
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   examples/react/with-trpc:
     dependencies:
@@ -1477,7 +1477,7 @@ importers:
         version: 4.7.0
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
       wait-port:
         specifier: ^1.1.0
         version: 1.1.0
@@ -1550,7 +1550,7 @@ importers:
         version: 17.0.15
       vite:
         specifier: ^5.0.13
-        version: 5.2.11(@types/node@20.12.11)
+        version: 5.2.11(@types/node@20.13.0)
 
   packages/router-devtools:
     dependencies:
@@ -1677,7 +1677,7 @@ importers:
         version: 1.3.1
       vinxi:
         specifier: 0.3.11
-        version: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.12.11)
+        version: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.13.0)
       vite-tsconfig-paths:
         specifier: ^4.3.1
         version: 4.3.2(typescript@5.4.5)(vite@5.2.11)
@@ -1705,7 +1705,7 @@ importers:
         version: 5.4.5
       vite-plugin-dts:
         specifier: ^3.9.1
-        version: 3.9.1(@types/node@20.12.11)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11)
+        version: 3.9.1(@types/node@20.13.0)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11)
       vite-plugin-externalize-deps:
         specifier: ^0.8.0
         version: 0.8.0(vite@5.2.11)
@@ -4250,6 +4250,7 @@ packages:
   /@humanwhocodes/config-array@0.11.14:
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
     engines: {node: '>=10.10.0'}
+    deprecated: Use @eslint/config-array instead
     dependencies:
       '@humanwhocodes/object-schema': 2.0.2
       debug: 4.3.4
@@ -4263,6 +4264,7 @@ packages:
 
   /@humanwhocodes/object-schema@2.0.2:
     resolution: {integrity: sha512-6EwiSjwWYP7pTckG6I5eyFANjPhmPjUX9JRLUSfNPC7FX7zK9gyZAfUEaECL6ALTpGX5AjnBq3C9XmVWPitNpw==}
+    deprecated: Use @eslint/object-schema instead
 
   /@inquirer/confirm@3.1.9:
     resolution: {integrity: sha512-UF09aejxCi4Xqm6N/jJAiFXArXfi9al52AFaSD+2uIHnhZGtd1d6lIGTRMPouVSJxbGEi+HkOWSYaiEY/+szUw==}
@@ -4373,27 +4375,27 @@ packages:
       - supports-color
     dev: false
 
-  /@microsoft/api-extractor-model@7.28.13(@types/node@20.12.11):
+  /@microsoft/api-extractor-model@7.28.13(@types/node@20.13.0):
     resolution: {integrity: sha512-39v/JyldX4MS9uzHcdfmjjfS6cYGAoXV+io8B5a338pkHiSt+gy2eXQ0Q7cGFJ7quSa1VqqlMdlPrB6sLR/cAw==}
     dependencies:
       '@microsoft/tsdoc': 0.14.2
       '@microsoft/tsdoc-config': 0.16.2
-      '@rushstack/node-core-library': 4.0.2(@types/node@20.12.11)
+      '@rushstack/node-core-library': 4.0.2(@types/node@20.13.0)
     transitivePeerDependencies:
       - '@types/node'
     dev: true
 
-  /@microsoft/api-extractor@7.43.0(@types/node@20.12.11):
+  /@microsoft/api-extractor@7.43.0(@types/node@20.13.0):
     resolution: {integrity: sha512-GFhTcJpB+MI6FhvXEI9b2K0snulNLWHqC/BbcJtyNYcKUiw7l3Lgis5ApsYncJ0leALX7/of4XfmXk+maT111w==}
     hasBin: true
     dependencies:
-      '@microsoft/api-extractor-model': 7.28.13(@types/node@20.12.11)
+      '@microsoft/api-extractor-model': 7.28.13(@types/node@20.13.0)
       '@microsoft/tsdoc': 0.14.2
       '@microsoft/tsdoc-config': 0.16.2
-      '@rushstack/node-core-library': 4.0.2(@types/node@20.12.11)
+      '@rushstack/node-core-library': 4.0.2(@types/node@20.13.0)
       '@rushstack/rig-package': 0.5.2
-      '@rushstack/terminal': 0.10.0(@types/node@20.12.11)
-      '@rushstack/ts-command-line': 4.19.1(@types/node@20.12.11)
+      '@rushstack/terminal': 0.10.0(@types/node@20.13.0)
+      '@rushstack/ts-command-line': 4.19.1(@types/node@20.13.0)
       lodash: 4.17.21
       minimatch: 3.0.8
       resolve: 1.22.8
@@ -4832,7 +4834,6 @@ packages:
     dependencies:
       is-glob: 4.0.3
       micromatch: 4.0.5
-      napi-wasm: 1.1.0
     dev: false
     bundledDependencies:
       - napi-wasm
@@ -4843,7 +4844,6 @@ packages:
     dependencies:
       is-glob: 4.0.3
       micromatch: 4.0.5
-      napi-wasm: 1.1.0
     dev: false
     bundledDependencies:
       - napi-wasm
@@ -5219,7 +5219,7 @@ packages:
     dependencies:
       '@replayio/sourcemap-upload': 2.0.3
       '@types/semver': 7.5.8
-      commander: 12.0.0
+      commander: 12.1.0
       debug: 4.3.4
       is-uuid: 1.0.2
       jsonata: 1.8.7
@@ -5530,7 +5530,7 @@ packages:
     resolution: {integrity: sha512-qC/xYId4NMebE6w/V33Fh9gWxLgURiNYgVNObbJl2LZv0GUUItCcCqC5axQSwRaAgaxl2mELq1rMzlswaQ0Zxg==}
     dev: true
 
-  /@rushstack/node-core-library@4.0.2(@types/node@20.12.11):
+  /@rushstack/node-core-library@4.0.2(@types/node@20.13.0):
     resolution: {integrity: sha512-hyES82QVpkfQMeBMteQUnrhASL/KHPhd7iJ8euduwNJG4mu2GSOKybf0rOEjOm1Wz7CwJEUm9y0yD7jg2C1bfg==}
     peerDependencies:
       '@types/node': '*'
@@ -5538,7 +5538,7 @@ packages:
       '@types/node':
         optional: true
     dependencies:
-      '@types/node': 20.12.11
+      '@types/node': 20.13.0
       fs-extra: 7.0.1
       import-lazy: 4.0.0
       jju: 1.4.0
@@ -5554,7 +5554,7 @@ packages:
       strip-json-comments: 3.1.1
     dev: true
 
-  /@rushstack/terminal@0.10.0(@types/node@20.12.11):
+  /@rushstack/terminal@0.10.0(@types/node@20.13.0):
     resolution: {integrity: sha512-UbELbXnUdc7EKwfH2sb8ChqNgapUOdqcCIdQP4NGxBpTZV2sQyeekuK3zmfQSa/MN+/7b4kBogl2wq0vpkpYGw==}
     peerDependencies:
       '@types/node': '*'
@@ -5562,15 +5562,15 @@ packages:
       '@types/node':
         optional: true
     dependencies:
-      '@rushstack/node-core-library': 4.0.2(@types/node@20.12.11)
-      '@types/node': 20.12.11
+      '@rushstack/node-core-library': 4.0.2(@types/node@20.13.0)
+      '@types/node': 20.13.0
       supports-color: 8.1.1
     dev: true
 
-  /@rushstack/ts-command-line@4.19.1(@types/node@20.12.11):
+  /@rushstack/ts-command-line@4.19.1(@types/node@20.13.0):
     resolution: {integrity: sha512-J7H768dgcpG60d7skZ5uSSwyCZs/S2HrWP1Ds8d1qYAyaaeJmpmmLr9BVw97RjFzmQPOYnoXcKA4GkqDCkduQg==}
     dependencies:
-      '@rushstack/terminal': 0.10.0(@types/node@20.12.11)
+      '@rushstack/terminal': 0.10.0(@types/node@20.13.0)
       '@types/argparse': 1.0.38
       argparse: 1.0.10
       string-argv: 0.3.2
@@ -5712,8 +5712,8 @@ packages:
       - vite
     dev: false
 
-  /@tanstack/config@0.7.10(@types/node@20.12.11)(esbuild@0.21.1)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11):
-    resolution: {integrity: sha512-SdYfTnSMvjfrdezsD1MDb5XMD3dtB3s2VGmQShRJ564FtuslEMISJgZxeD4HeGMuXRK6yHCHpwiu7prfzdtZ3g==}
+  /@tanstack/config@0.7.11(@types/node@20.13.0)(esbuild@0.21.1)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11):
+    resolution: {integrity: sha512-Nc+n576zIzwPAV8gPdUvbR+vTvJuqOgUFZoBowHfBiyzoNZ9KGmWnAlJ49ReHegXaISLgj5wmHKAdHFGEeGdKA==}
     engines: {node: '>=18'}
     hasBin: true
     dependencies:
@@ -5730,7 +5730,7 @@ packages:
       semver: 7.6.2
       stream-to-array: 2.3.0
       v8flags: 4.0.1
-      vite-plugin-dts: 3.9.1(@types/node@20.12.11)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11)
+      vite-plugin-dts: 3.9.1(@types/node@20.13.0)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11)
       vite-plugin-externalize-deps: 0.8.0(vite@5.2.11)
       vite-tsconfig-paths: 4.3.2(typescript@5.4.5)(vite@5.2.11)
     transitivePeerDependencies:
@@ -5753,16 +5753,8 @@ packages:
     resolution: {integrity: sha512-DJSilV5+ytBP1FbFcEJovv4rnnm/CokuVvrBEtW/Va9DvuJ3HksbXUJEpI0aV1KtuL4ZoO9AVE6PyNLzF7tLeA==}
     dev: false
 
-  /@tanstack/query-core@5.36.0:
-    resolution: {integrity: sha512-B5BD3pg/mztDR36i77hGcyySKKeYrbM5mnogOROTBi1SUml5ByRK7PGUUl16vvubvQC+mSnqziFG/VIy/DE3FQ==}
-    dev: false
-
   /@tanstack/query-core@5.40.0:
     resolution: {integrity: sha512-eD8K8jsOIq0Z5u/QbvOmfvKKE/XC39jA7yv4hgpl/1SRiU+J8QCIwgM/mEHuunQsL87dcvnHqSVLmf9pD4CiaA==}
-    dev: false
-
-  /@tanstack/query-devtools@5.17.7:
-    resolution: {integrity: sha512-TfgvOqza5K7Sk6slxqkRIvXlEJoUoPSsGGwpuYSrpqgSwLSSvPPpZhq7hv7hcY5IvRoTNGoq6+MT01C/jILqoQ==}
     dev: false
 
   /@tanstack/query-devtools@5.37.1:
@@ -5782,17 +5774,6 @@ packages:
       react-dom: 18.3.1(react@18.3.1)
       superjson: 1.11.0
       use-sync-external-store: 1.2.0(react@18.3.1)
-    dev: false
-
-  /@tanstack/react-query-devtools@5.17.8(@tanstack/react-query@5.36.0)(react@18.3.1):
-    resolution: {integrity: sha512-cj/VftDaTKtT23NsVN7qWEsiTY4c58giQMnd65xE0SXJMRdAQCKsm+r9MI14NhL2nxi0gHx5FYV7LC9qVB1cgQ==}
-    peerDependencies:
-      '@tanstack/react-query': ^5.17.8
-      react: ^18.0.0
-    dependencies:
-      '@tanstack/query-devtools': 5.17.7
-      '@tanstack/react-query': 5.36.0(react@18.3.1)
-      react: 18.3.1
     dev: false
 
   /@tanstack/react-query-devtools@5.40.0(@tanstack/react-query@5.40.0)(react@18.3.1):
@@ -5822,15 +5803,6 @@ packages:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       use-sync-external-store: 1.2.0(react@18.3.1)
-    dev: false
-
-  /@tanstack/react-query@5.36.0(react@18.3.1):
-    resolution: {integrity: sha512-BATvtM0rohwg7pRHUnxgeDiwLWRGZ8OM/4y8LImHVpecQWoH6Uhytu3Z8YV6V7hQ1sMQBFcUrGE1/e4MxR6YiA==}
-    peerDependencies:
-      react: ^18.0.0
-    dependencies:
-      '@tanstack/query-core': 5.36.0
-      react: 18.3.1
     dev: false
 
   /@tanstack/react-query@5.40.0(react@18.3.1):
@@ -5928,7 +5900,7 @@ packages:
       dom-accessibility-api: 0.6.3
       lodash: 4.17.21
       redent: 3.0.0
-      vitest: 1.6.0(@types/node@20.12.11)
+      vitest: 1.6.0(@types/node@20.13.0)
     dev: true
 
   /@testing-library/react@15.0.2(react-dom@18.3.1)(react@18.3.1):
@@ -6010,7 +5982,7 @@ packages:
     resolution: {integrity: sha512-ALYone6pm6QmwZoAgeyNksccT9Q4AWZQ6PvfwR37GT6r6FWUPguq6sUmNGSMV2Wr761oQoBxwGGa6DR5o1DC9g==}
     dependencies:
       '@types/connect': 3.4.35
-      '@types/node': 20.12.11
+      '@types/node': 20.13.0
     dev: true
 
   /@types/braces@3.0.4:
@@ -6020,7 +5992,7 @@ packages:
   /@types/connect@3.4.35:
     resolution: {integrity: sha512-cdeYyv4KWoEgpBISTxWvqYsVy444DOqehiF3fM3ne10AmJ62RSyNkUnxMJXHQWRQQX2eR94m5y1IZyDwBjV9FQ==}
     dependencies:
-      '@types/node': 20.12.11
+      '@types/node': 20.13.0
     dev: true
 
   /@types/conventional-commits-parser@5.0.0:
@@ -6052,7 +6024,7 @@ packages:
   /@types/express-serve-static-core@4.17.36:
     resolution: {integrity: sha512-zbivROJ0ZqLAtMzgzIUC4oNqDG9iF0lSsAqpOD9kbs5xcIM3dTiyuHvBc7R8MtWBp3AAWGaovJa+wzWPjLYW7Q==}
     dependencies:
-      '@types/node': 20.12.11
+      '@types/node': 20.13.0
       '@types/qs': 6.9.7
       '@types/range-parser': 1.2.4
       '@types/send': 0.17.1
@@ -6074,7 +6046,7 @@ packages:
   /@types/http-proxy@1.17.14:
     resolution: {integrity: sha512-SSrD0c1OQzlFX7pGu1eXxSEjemej64aaNPRhhVYUGqXh0BtldAAx37MG8btcumvpgKyZp1F5Gn3JkktdxiFv6w==}
     dependencies:
-      '@types/node': 20.12.11
+      '@types/node': 20.13.0
     dev: false
 
   /@types/jsesc@3.0.3:
@@ -6107,11 +6079,6 @@ packages:
     dependencies:
       '@types/node': 20.13.0
     dev: false
-
-  /@types/node@20.12.11:
-    resolution: {integrity: sha512-vDg9PZ/zi+Nqp6boSOT7plNuthRugEKixDv5sFTIpkE89MmNtEArAShI4mxuX2+UrLEe9pxC1vm2cjm9YlWbJw==}
-    dependencies:
-      undici-types: 5.26.5
 
   /@types/node@20.13.0:
     resolution: {integrity: sha512-FM6AOb3khNkNIXPnHFDYaHerSv8uN22C91z098AnGccVu+Pcdhi+pNUFDi0iLmPIsVE0JBD0KVS7mzUYt4nRzQ==}
@@ -6160,7 +6127,7 @@ packages:
     resolution: {integrity: sha512-Cwo8LE/0rnvX7kIIa3QHCkcuF21c05Ayb0ZfxPiv0W8VRiZiNW/WuRupHKpqqGVGf7SUA44QSOUKaEd9lIrd/Q==}
     dependencies:
       '@types/mime': 1.3.2
-      '@types/node': 20.12.11
+      '@types/node': 20.13.0
     dev: true
 
   /@types/serve-static@1.15.5:
@@ -6168,7 +6135,7 @@ packages:
     dependencies:
       '@types/http-errors': 2.0.4
       '@types/mime': 3.0.4
-      '@types/node': 20.12.11
+      '@types/node': 20.13.0
     dev: true
 
   /@types/statuses@2.0.5:
@@ -6455,7 +6422,7 @@ packages:
       magicast: 0.2.11
       recast: 0.23.4
       tslib: 2.6.2
-      vinxi: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.12.11)
+      vinxi: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.13.0)
     dev: false
 
   /@vinxi/react@0.2.2:
@@ -6474,7 +6441,7 @@ packages:
       astring: 1.8.6
       magicast: 0.2.11
       recast: 0.23.4
-      vinxi: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.12.11)
+      vinxi: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.13.0)
     dev: false
 
   /@vinxi/server-functions@0.3.2(vinxi@0.3.11):
@@ -6489,7 +6456,7 @@ packages:
       astring: 1.8.6
       magicast: 0.2.11
       recast: 0.23.4
-      vinxi: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.12.11)
+      vinxi: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.13.0)
     dev: false
 
   /@vitejs/plugin-react@3.1.0(vite@5.2.11):
@@ -6503,7 +6470,7 @@ packages:
       '@babel/plugin-transform-react-jsx-source': 7.23.3(@babel/core@7.24.5)
       magic-string: 0.27.0
       react-refresh: 0.14.0
-      vite: 5.2.11(@types/node@20.12.11)
+      vite: 5.2.11(@types/node@20.13.0)
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -6519,7 +6486,7 @@ packages:
       '@babel/plugin-transform-react-jsx-source': 7.23.3(@babel/core@7.24.5)
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.0
-      vite: 5.2.11(@types/node@20.12.11)
+      vite: 5.2.11(@types/node@20.13.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -7681,8 +7648,8 @@ packages:
       delayed-stream: 1.0.0
     dev: true
 
-  /commander@12.0.0:
-    resolution: {integrity: sha512-MwVNWlYjDTtOjX5PiD7o5pK0UrFU/OYgcJfjjK4RaHZETNtjJqrZa9Y9ds88+A+f+d5lv+561eZ+yCKoS3gbAA==}
+  /commander@12.1.0:
+    resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==}
     engines: {node: '>=18'}
     dev: true
 
@@ -9540,6 +9507,7 @@ packages:
 
   /glob@7.1.4:
     resolution: {integrity: sha512-hkLPepehmnKk41pUGm3sYxoFs/umurYfYJCerbXEyFIWcAzvpipAgVkBqqT9RBKMGjnq6kMuyYwha6csxbiM1A==}
+    deprecated: Glob versions prior to v9 are no longer supported
     dependencies:
       fs.realpath: 1.0.0
       inflight: 1.0.6
@@ -9551,6 +9519,7 @@ packages:
 
   /glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
+    deprecated: Glob versions prior to v9 are no longer supported
     dependencies:
       fs.realpath: 1.0.0
       inflight: 1.0.6
@@ -9562,6 +9531,7 @@ packages:
   /glob@8.1.0:
     resolution: {integrity: sha512-r8hpEjiQEYlF2QU0df3dS+nxxSIreXQS1qRhMJM0Q5NDdR386C7jb7Hwwod8Fgiuex+k0GFjgft18yvxm5XoCQ==}
     engines: {node: '>=12'}
+    deprecated: Glob versions prior to v9 are no longer supported
     dependencies:
       fs.realpath: 1.0.0
       inflight: 1.0.6
@@ -11007,10 +10977,6 @@ packages:
     resolution: {integrity: sha512-eSRppjcPIatRIMC1U6UngP8XFcz8MQWGQdt1MTBQ7NaAmvXDfvNxbvWV3x2y6CdEUciCSsDHDQZbhYaB8QEo2g==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
-
-  /napi-wasm@1.1.0:
-    resolution: {integrity: sha512-lHwIAJbmLSjF9VDRm9GoVOy9AGp3aIvkjv+Kvz9h16QR3uSVYH78PNQUnT2U4X53mhlnV2M7wrhibQ3GHicDmg==}
-    dev: false
 
   /natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
@@ -12464,6 +12430,7 @@ packages:
 
   /rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
     dependencies:
       glob: 7.2.3
@@ -13912,7 +13879,7 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  /vinxi@0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.12.11):
+  /vinxi@0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.13.0):
     resolution: {integrity: sha512-ASEpiwldZIsViv2/ZlO6qnRhDAwxr92nKXxMOinA+5nCY7nlaKgekaLDjTyUmFzB8DSiXVZqmHnd6OZVkn4vzw==}
     hasBin: true
     dependencies:
@@ -13948,7 +13915,7 @@ packages:
       unctx: 2.3.1
       unenv: 1.9.0
       unstorage: 1.10.2(ioredis@5.4.1)
-      vite: 5.2.11(@types/node@20.12.11)
+      vite: 5.2.11(@types/node@20.13.0)
       zod: 3.23.8
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -13982,7 +13949,7 @@ packages:
       - xml2js
     dev: false
 
-  /vite-node@1.6.0(@types/node@20.12.11):
+  /vite-node@1.6.0(@types/node@20.13.0):
     resolution: {integrity: sha512-de6HJgzC+TFzOu0NTC4RAIsyf/DY/ibWDYQUcuEA84EMHhcefTUGkjFHKKEJhQN4A+6I0u++kr3l36ZF2d7XRw==}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
@@ -13991,7 +13958,7 @@ packages:
       debug: 4.3.4
       pathe: 1.1.2
       picocolors: 1.0.0
-      vite: 5.2.11(@types/node@20.12.11)
+      vite: 5.2.11(@types/node@20.13.0)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -14010,10 +13977,10 @@ packages:
       vite: ^2.7.0 || ^3.0.0 || ^4.0.0 || ^5.0.0
     dependencies:
       '@babel/core': 7.24.5
-      vite: 5.2.11(@types/node@20.12.11)
+      vite: 5.2.11(@types/node@20.13.0)
     dev: true
 
-  /vite-plugin-dts@3.9.1(@types/node@20.12.11)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11):
+  /vite-plugin-dts@3.9.1(@types/node@20.13.0)(rollup@4.17.2)(typescript@5.4.5)(vite@5.2.11):
     resolution: {integrity: sha512-rVp2KM9Ue22NGWB8dNtWEr+KekN3rIgz1tWD050QnRGlriUCmaDwa7qA5zDEjbXg5lAXhYMSBJtx3q3hQIJZSg==}
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
@@ -14023,14 +13990,14 @@ packages:
       vite:
         optional: true
     dependencies:
-      '@microsoft/api-extractor': 7.43.0(@types/node@20.12.11)
+      '@microsoft/api-extractor': 7.43.0(@types/node@20.13.0)
       '@rollup/pluginutils': 5.1.0(rollup@4.17.2)
       '@vue/language-core': 1.8.27(typescript@5.4.5)
       debug: 4.3.4
       kolorist: 1.8.0
       magic-string: 0.30.10
       typescript: 5.4.5
-      vite: 5.2.11(@types/node@20.12.11)
+      vite: 5.2.11(@types/node@20.13.0)
       vue-tsc: 1.8.27(typescript@5.4.5)
     transitivePeerDependencies:
       - '@types/node'
@@ -14043,7 +14010,7 @@ packages:
     peerDependencies:
       vite: ^2.0.0 || ^3.0.0 || ^4.0.0 || ^5.0.0
     dependencies:
-      vite: 5.2.11(@types/node@20.12.11)
+      vite: 5.2.11(@types/node@20.13.0)
     dev: true
 
   /vite-tsconfig-paths@4.3.2(typescript@5.4.5)(vite@5.2.11):
@@ -14057,12 +14024,12 @@ packages:
       debug: 4.3.4
       globrex: 0.1.2
       tsconfck: 3.0.3(typescript@5.4.5)
-      vite: 5.2.11(@types/node@20.12.11)
+      vite: 5.2.11(@types/node@20.13.0)
     transitivePeerDependencies:
       - supports-color
       - typescript
 
-  /vite@5.2.11(@types/node@20.12.11):
+  /vite@5.2.11(@types/node@20.13.0):
     resolution: {integrity: sha512-HndV31LWW05i1BLPMUCE1B9E9GFbOu1MbenhS58FuK6owSO5qHm7GiCotrNY1YE5rMeQSFBGmT5ZaLEjFizgiQ==}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
@@ -14090,14 +14057,14 @@ packages:
       terser:
         optional: true
     dependencies:
-      '@types/node': 20.12.11
+      '@types/node': 20.13.0
       esbuild: 0.20.2
       postcss: 8.4.38
       rollup: 4.17.2
     optionalDependencies:
       fsevents: 2.3.3
 
-  /vitest@1.6.0(@types/node@20.12.11):
+  /vitest@1.6.0(@types/node@20.13.0):
     resolution: {integrity: sha512-H5r/dN06swuFnzNFhq/dnz37bPXnq8xB2xB5JOVk8K09rUtoeNN+LHWkoQ0A/i3hvbUKKcCei9KpbxqHMLhLLA==}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
@@ -14122,7 +14089,7 @@ packages:
       jsdom:
         optional: true
     dependencies:
-      '@types/node': 20.12.11
+      '@types/node': 20.13.0
       '@vitest/expect': 1.6.0
       '@vitest/runner': 1.6.0
       '@vitest/snapshot': 1.6.0
@@ -14140,8 +14107,8 @@ packages:
       strip-literal: 2.1.0
       tinybench: 2.8.0
       tinypool: 0.8.4
-      vite: 5.2.11(@types/node@20.12.11)
-      vite-node: 1.6.0(@types/node@20.12.11)
+      vite: 5.2.11(@types/node@20.13.0)
+      vite-node: 1.6.0(@types/node@20.13.0)
       why-is-node-running: 2.2.2
     transitivePeerDependencies:
       - less
@@ -14221,7 +14188,7 @@ packages:
       hono: 3.12.0
       react: 18.3.0-canary-0cdfef19b-20231211
       react-server-dom-webpack: 18.3.0-canary-0cdfef19b-20231211(react-dom@18.3.0-canary-0cdfef19b-20231211)(react@18.3.0-canary-0cdfef19b-20231211)(webpack@5.91.0)
-      vite: 5.2.11(@types/node@20.12.11)
+      vite: 5.2.11(@types/node@20.13.0)
     dev: false
 
   /watchpack@2.4.1:

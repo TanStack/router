@@ -1,4 +1,4 @@
-import type { AnyRoute, RootSearchSchema } from './route'
+import type { AnyRoute } from './route'
 import type { AnyRouter, TrailingSlashOption } from './router'
 import type { Expand, MergeUnion } from './utils'
 
@@ -115,14 +115,11 @@ export type RouteByToPath<TRouter extends AnyRouter, TTo> = Extract<
 >
 
 export type FullSearchSchema<TRouteTree extends AnyRoute> = MergeUnion<
-  Exclude<ParseRoute<TRouteTree>['types']['fullSearchSchema'], RootSearchSchema>
+  ParseRoute<TRouteTree>['types']['fullSearchSchema']
 >
 
 export type FullSearchSchemaInput<TRouteTree extends AnyRoute> = MergeUnion<
-  Exclude<
-    ParseRoute<TRouteTree>['types']['fullSearchSchemaInput'],
-    RootSearchSchema
-  >
+  ParseRoute<TRouteTree>['types']['fullSearchSchemaInput']
 >
 
 export type AllParams<TRouteTree extends AnyRoute> = MergeUnion<

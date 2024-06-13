@@ -51,7 +51,9 @@ export type Assign<TLeft, TRight> = keyof TLeft extends never
   ? TRight
   : keyof TRight extends never
     ? TLeft
-    : Omit<TLeft, keyof TRight> & TRight
+    : keyof TLeft & keyof TRight extends never
+      ? TLeft & TRight
+      : Omit<TLeft, keyof TRight> & TRight
 
 export type Timeout = ReturnType<typeof setTimeout>
 

@@ -279,3 +279,206 @@ test('when there are overlapping search params', () => {
       | undefined
     >()
 })
+
+test('when the root has no search params but the index route does', () => {
+  const rootRoute = createRootRoute()
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    validateSearch: () => ({ indexPage: 0 }),
+  })
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+  })
+
+  const invoicesIndexRoute = createRoute({
+    getParentRoute: () => invoicesRoute,
+    path: '/',
+  })
+
+  const invoiceRoute = createRoute({
+    getParentRoute: () => invoicesRoute,
+    path: '$invoiceId',
+  })
+
+  const routeTree = rootRoute.addChildren([
+    invoicesRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
+    indexRoute,
+  ])
+
+  const defaultRouter = createRouter({
+    routeTree,
+  })
+
+  type DefaultRouter = typeof defaultRouter
+
+  expectTypeOf(
+    useSearch<DefaultRouter['routeTree'], '/'>,
+  ).returns.toEqualTypeOf<{ indexPage: number }>()
+
+  expectTypeOf(
+    useSearch<DefaultRouter['routeTree'], '__root__'>,
+  ).returns.toEqualTypeOf<{}>()
+
+  expectTypeOf(
+    useSearch<DefaultRouter['routeTree'], '/invoices'>,
+  ).returns.toEqualTypeOf<{}>()
+
+  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices'>)
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<((search: {}) => {}) | undefined>()
+
+  expectTypeOf(
+    useSearch<DefaultRouter['routeTree'], '/invoices', false>,
+  ).returns.toEqualTypeOf<{ indexPage?: number }>()
+
+  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices', false>)
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      ((search: { indexPage?: number }) => { indexPage?: number }) | undefined
+    >()
+})
+
+test('when the root has search params but the index route does not', () => {
+  const rootRoute = createRootRoute({
+    validateSearch: () => ({ rootPage: 0 }),
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+  })
+
+  const invoicesIndexRoute = createRoute({
+    getParentRoute: () => invoicesRoute,
+    path: '/',
+  })
+
+  const invoiceRoute = createRoute({
+    getParentRoute: () => invoicesRoute,
+    path: '$invoiceId',
+  })
+
+  const routeTree = rootRoute.addChildren([
+    invoicesRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
+    indexRoute,
+  ])
+
+  const defaultRouter = createRouter({
+    routeTree,
+  })
+
+  type DefaultRouter = typeof defaultRouter
+
+  expectTypeOf(
+    useSearch<DefaultRouter['routeTree'], '/'>,
+  ).returns.toEqualTypeOf<{ rootPage: number }>()
+
+  expectTypeOf(
+    useSearch<DefaultRouter['routeTree'], '__root__'>,
+  ).returns.toEqualTypeOf<{ rootPage: number }>()
+
+  expectTypeOf(
+    useSearch<DefaultRouter['routeTree'], '/invoices'>,
+  ).returns.toEqualTypeOf<{ rootPage: number }>()
+
+  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices'>)
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      ((search: { rootPage: number }) => { rootPage: number }) | undefined
+    >()
+
+  expectTypeOf(
+    useSearch<DefaultRouter['routeTree'], '/invoices', false>,
+  ).returns.toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices', false>)
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      ((search: { rootPage?: number }) => { rootPage?: number }) | undefined
+    >()
+})
+
+test('when the root has search params but the index does', () => {
+  const rootRoute = createRootRoute({
+    validateSearch: () => ({ rootPage: 0 }),
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    validateSearch: () => ({ indexPage: 0 }),
+  })
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+  })
+
+  const invoicesIndexRoute = createRoute({
+    getParentRoute: () => invoicesRoute,
+    path: '/',
+  })
+
+  const invoiceRoute = createRoute({
+    getParentRoute: () => invoicesRoute,
+    path: '$invoiceId',
+  })
+
+  const routeTree = rootRoute.addChildren([
+    invoicesRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
+    indexRoute,
+  ])
+
+  const defaultRouter = createRouter({
+    routeTree,
+  })
+
+  type DefaultRouter = typeof defaultRouter
+
+  expectTypeOf(
+    useSearch<DefaultRouter['routeTree'], '/'>,
+  ).returns.toEqualTypeOf<{ rootPage: number; indexPage: number }>()
+
+  expectTypeOf(
+    useSearch<DefaultRouter['routeTree'], '__root__'>,
+  ).returns.toEqualTypeOf<{ rootPage: number }>()
+
+  expectTypeOf(
+    useSearch<DefaultRouter['routeTree'], '/invoices'>,
+  ).returns.toEqualTypeOf<{ rootPage: number }>()
+
+  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices'>)
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      ((search: { rootPage: number }) => { rootPage: number }) | undefined
+    >()
+
+  expectTypeOf(
+    useSearch<DefaultRouter['routeTree'], '/invoices', false>,
+  ).returns.toEqualTypeOf<{ indexPage?: number; rootPage?: number }>()
+
+  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices', false>)
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((search: { indexPage?: number; rootPage?: number }) => {
+          indexPage?: number
+          rootPage?: number
+        })
+      | undefined
+    >()
+})
