@@ -39,7 +39,7 @@
   "namespace": "@tanstack",
   "devDependencies": {
     "@rollup/plugin-replace": "^5.0.5",
-    "@tanstack/config": "^0.7.3",
+    "@tanstack/config": "^0.7.11",
     "@types/eslint": "^8.56.2",
     "@types/node": "^20.12.11",
     "@types/react": "^18.3.1",
