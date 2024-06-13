@@ -2250,7 +2250,10 @@ export class Router<
       return false
     }
 
-    const baseLocation = opts?.pending
+    const pending =
+      opts?.pending === undefined ? !this.state.isLoading : opts.pending
+
+    const baseLocation = pending
       ? this.latestLocation
       : this.state.resolvedLocation
 
