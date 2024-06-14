@@ -39,11 +39,11 @@ Since your router will exist both on the server and the client, it's important t
 
 ```tsx
 import * as React from 'react'
-import { createRouter } from '@tanstack/react-router'
-import { routeTree } from 'routeTree.gen'
+import { createRouter as createTanstackRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
 
 export function createRouter() {
-  return createRouter({ routeTree })
+  return createTanstackRouter({ routeTree })
 }
 
 declare module '@tanstack/react-router' {
