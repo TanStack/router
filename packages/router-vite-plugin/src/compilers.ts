@@ -118,6 +118,68 @@ export async function compileFile(opts: {
                                   )
                                 }
                               }
+                            } else if (
+                              t.isIdentifier(fn) ||
+                              t.isCallExpression(fn)
+                            ) {
+                              // A function was passed to createServerFn in the form of an
+                              // identifier or a call expression that returns a function.
+
+                              // We wrap the identifier/call expression in a function
+                              // expression that accepts the same arguments as the original
+                              // function with the "use server" directive at the top of the
+                              // function scope.
+
+                              const args = t.restElement(t.identifier('args'))
+
+                              // Annotate args with the type:
+                              //  Parameters<Parameters<typeof createServerFn>[1]>
+
+                              args.typeAnnotation = t.tsTypeAnnotation(
+                                t.tsTypeReference(
+                                  t.identifier('Parameters'),
+                                  t.tsTypeParameterInstantiation([
+                                    t.tsIndexedAccessType(
+                                      t.tsTypeReference(
+                                        t.identifier('Parameters'),
+                                        t.tsTypeParameterInstantiation([
+                                          t.tsTypeQuery(
+                                            t.identifier('createServerFn'),
+                                          ),
+                                        ]),
+                                      ),
+                                      t.tsLiteralType(t.numericLiteral(1)),
+                                    ),
+                                  ]),
+                                ),
+                              )
+
+                              const wrappedFn = t.arrowFunctionExpression(
+                                [args],
+                                t.blockStatement(
+                                  [
+                                    t.returnStatement(
+                                      t.callExpression(
+                                        t.memberExpression(
+                                          fn,
+                                          t.identifier('apply'),
+                                        ),
+                                        [
+                                          t.identifier('this'),
+                                          t.identifier('args'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  [
+                                    t.directive(
+                                      t.directiveLiteral('use server'),
+                                    ),
+                                  ],
+                                ),
+                              )
+
+                              path.node.arguments[1] = wrappedFn
                             }
                           } else if (
                             path.node.callee.name === 'createRoute' ||
@@ -354,6 +416,68 @@ export async function splitFile(opts: {
                                   )
                                 }
                               }
+                            } else if (
+                              t.isIdentifier(fn) ||
+                              t.isCallExpression(fn)
+                            ) {
+                              // A function was passed to createServerFn in the form of an
+                              // identifier or a call expression that returns a function.
+
+                              // We wrap the identifier/call expression in a function
+                              // expression that accepts the same arguments as the original
+                              // function with the "use server" directive at the top of the
+                              // function scope.
+
+                              const args = t.restElement(t.identifier('args'))
+
+                              // Annotate args with the type:
+                              //  Parameters<Parameters<typeof createServerFn>[1]>
+
+                              args.typeAnnotation = t.tsTypeAnnotation(
+                                t.tsTypeReference(
+                                  t.identifier('Parameters'),
+                                  t.tsTypeParameterInstantiation([
+                                    t.tsIndexedAccessType(
+                                      t.tsTypeReference(
+                                        t.identifier('Parameters'),
+                                        t.tsTypeParameterInstantiation([
+                                          t.tsTypeQuery(
+                                            t.identifier('createServerFn'),
+                                          ),
+                                        ]),
+                                      ),
+                                      t.tsLiteralType(t.numericLiteral(1)),
+                                    ),
+                                  ]),
+                                ),
+                              )
+
+                              const wrappedFn = t.arrowFunctionExpression(
+                                [args],
+                                t.blockStatement(
+                                  [
+                                    t.returnStatement(
+                                      t.callExpression(
+                                        t.memberExpression(
+                                          fn,
+                                          t.identifier('apply'),
+                                        ),
+                                        [
+                                          t.identifier('this'),
+                                          t.identifier('args'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  [
+                                    t.directive(
+                                      t.directiveLiteral('use server'),
+                                    ),
+                                  ],
+                                ),
+                              )
+
+                              path.node.arguments[1] = wrappedFn
                             }
                           } else if (
                             path.node.callee.name === 'createRoute' ||
