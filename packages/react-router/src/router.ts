@@ -1677,7 +1677,7 @@ export class Router<
 
         if (isRedirect(err)) {
           rendered = true
-          err = this.resolveRedirect(err)
+          err = this.resolveRedirect({ ...err, _fromLocation: location })
           throw err
         } else if (isNotFound(err)) {
           this.handleNotFound(matches, err)

@@ -591,6 +591,13 @@ describe('ssr redirects', async () => {
     await router.load()
 
     expect(router.state.redirect).toEqual({
+      _fromLocation: expect.objectContaining({
+        hash: '',
+        href: '/',
+        pathname: '/',
+        search: {},
+        searchStr: '',
+      }),
       to: '/about',
       headers: {},
       href: '/about',
@@ -635,6 +642,13 @@ describe('ssr redirects', async () => {
     await router.load()
 
     expect(router.state.redirect).toEqual({
+      _fromLocation: expect.objectContaining({
+        hash: '',
+        href: '/',
+        pathname: '/',
+        search: {},
+        searchStr: '',
+      }),
       to: '/about',
       headers: {},
       href: '/about',
