@@ -25,6 +25,7 @@ import {
   useParams,
   useSearch,
   useRouteContext,
+  useMatchRoute,
 } from '../src'
 
 afterEach(() => {
@@ -2721,6 +2722,113 @@ describe('Link', () => {
     fireEvent.click(postLink)
 
     expect(await screen.findByText('Login!')).toBeInTheDocument()
+
+    expect(ErrorComponent).not.toHaveBeenCalled()
+  })
+
+  test('when navigating from /posts to /invoices with conditionally rendering Link on the root', async () => {
+    const ErrorComponent = vi.fn(() => <div>Something went wrong!</div>)
+    const RootComponent = () => {
+      const matchRoute = useMatchRoute()
+      const matchPosts = Boolean(matchRoute({ to: '/posts' }))
+      const matchInvoices = Boolean(matchRoute({ to: '/invoices' }))
+
+      return (
+        <React.Fragment>
+          {matchPosts && (
+            <Link from="/posts" to="/posts">
+              From posts
+            </Link>
+          )}
+          {matchInvoices && (
+            <Link from="/invoices" to="/invoices">
+              From invoices
+            </Link>
+          )}
+          <Outlet />
+        </React.Fragment>
+      )
+    }
+
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+      errorComponent: ErrorComponent,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <React.Fragment>
+          <h1>Index Route</h1>
+          <Link to="/posts">Go to posts</Link>
+        </React.Fragment>
+      ),
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      component: () => (
+        <React.Fragment>
+          <h1>On Posts</h1>
+          <Link to="/invoices">To invoices</Link>
+        </React.Fragment>
+      ),
+    })
+
+    const invoicesRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'invoices',
+      component: () => (
+        <React.Fragment>
+          <h1>On Invoices</h1>
+          <Link to="/posts">To posts</Link>
+        </React.Fragment>
+      ),
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      postsRoute,
+      invoicesRoute,
+    ])
+
+    const router = createRouter({
+      routeTree,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Go to posts' })
+
+    fireEvent.click(postsLink)
+
+    const fromPostsLink = await screen.findByRole('link', {
+      name: 'From posts',
+    })
+
+    expect(fromPostsLink).toBeInTheDocument()
+
+    const toInvoicesLink = await screen.findByRole('link', {
+      name: 'To invoices',
+    })
+
+    fireEvent.click(toInvoicesLink)
+
+    const fromInvoicesLink = await screen.findByRole('link', {
+      name: 'From invoices',
+    })
+
+    expect(fromInvoicesLink).toBeInTheDocument()
+
+    expect(fromPostsLink).not.toBeInTheDocument()
+
+    fireEvent.click(await screen.findByRole('link', { name: 'To posts' }))
+
+    expect(await screen.findByText('On Posts')).toBeInTheDocument()
+
+    expect(fromInvoicesLink).not.toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
