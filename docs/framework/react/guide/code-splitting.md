@@ -176,6 +176,66 @@ function Posts() {
 
 Tada! 🎉
 
+## Using automatic code-splitting
+
+> ⚠️ **Experimental:** This feature is experimental and currently in development. It is not recommended for production use.
+
+When using the `experimental.enableCodeSplitting` feature, TanStack Router will automatically code split your route files based on the non-critical route configuration mentioned above.
+
+The automatic code-splitting feature is **ONLY** available when you are using file-based routing with a bundler (e.g: Vite). This will **NOT** work if you are **only** using the CLI (`@tanstack/router-cli`).
+
+To enable this feature, you can add the following to your `tsr.config.json`:
+
+```json
+{
+  "experimental": {
+    "enableCodeSplitting": true
+  }
+}
+```
+
+If you were previously using the `.lazy.tsx` suffix, you must remove it and let the automatic code-splitting feature take care of the rest. Your route files will now look like this:
+
+**Before (Automatic Code Splitting using the `.lazy` suffix)**
+
+```tsx
+// src/routes/posts.tsx
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({
+  loader: fetchPosts,
+})
+```
+
+```tsx
+// src/routes/posts.lazy.tsx
+import { createLaztFileRoute } from '@tanstack/react-router'
+
+export const Route = createLazyFileRoute('/posts')({
+  component: Posts,
+})
+
+function Posts() {
+  // ...
+}
+```
+
+**After (Automatic Code Splitting without the `.lazy` suffix)**
+
+```tsx
+// src/routes/posts.tsx
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({
+  loader: fetchPosts,
+  component: Posts,
+})
+
+function Posts() {
+  // ...
+}
+```
+
 ## Code-Based Splitting
 
 ### Manually Splitting Using `route.lazy()` and `createLazyRoute`
