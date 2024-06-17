@@ -155,9 +155,10 @@ The following options are available for configuration via the `tsr.config.json` 
       '/* prettier-ignore-end */'
     ]
     ```
-- **`experimental.enableCodeSplitting`**
+- **`experimental.enableCodeSplitting`** ⚠️
   - (Optional, **Defaults to `false`**)
   - If set to `true`, all non-critical route configuration items will be automatically code-split.
+  - See the [using automatic code-splitting](../code-splitting#using-automatic-code-splitting) guide.
 
 ## File Naming Conventions
 
