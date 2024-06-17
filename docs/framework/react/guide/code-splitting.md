@@ -36,6 +36,25 @@ TanStack Router separates code into two categories:
 > - Categorically, it is less likely to contribute to a large bundle size than a component.
 > - The loader is one of the most important preloadable assets for a route, especially if you're using a default preload intent, like hovering over a link, so it's important for the loader to be available without any additional async overhead.
 
+## Encapsulating a route's files into a directory
+
+Since TanStack Router's file-based routing system is designed to support both flat and nested file structures, it's possible to encapsulate a route's files into a single directory without any additional configuration.
+
+To encapsulate a route's files into a directory, move the route file itself into a `.route` file within a directory with the same name as the route file.
+
+For example, if you have a route file named `posts.tsx`, you would create a new directory named `posts` and move the `posts.tsx` file into that directory, renaming it to `route.tsx`.
+
+**Before**
+
+- `posts.tsx`
+- `posts.lazy.tsx`
+
+**After**
+
+- `posts`
+  - `route.tsx`
+  - `route.lazy.tsx`
+
 ## Using the `.lazy.tsx` suffix
 
 If you're using the recommended [File-Based Routing](../route-trees) approach, code splitting is **as easy as moving your code into a separate file with a `.lazy.tsx` suffix** and use the `createLazyFileRoute` function instead of the `FileRoute` class or `createFileRoute` function.
@@ -49,7 +68,7 @@ Here are the options currently supported by the `createLazyFileRoute` function:
 | `pendingComponent`  | The component to render while the route is loading.                   |
 | `notFoundComponent` | The component to render if a not-found error gets thrown.             |
 
-### Exceptions
+### Exceptions to the `.lazy.tsx` rule
 
 - The `__root.tsx` route file does not support code splitting, since it's always rendered regardless of the current route.
 
@@ -61,249 +80,130 @@ Here are the options currently supported by the `createLazyFileRoute` function:
 >
 > By keeping the splitting process manual and adhering to a simple set of conventions, there's less room for error and less cognitive overhead when working with code splitting.
 
-### Example
+### Example code splitting with `.lazy.tsx`
 
-#### Before
+When you are using `.lazy.tsx` you can split your route into two files to enable code splitting:
 
-- posts.tsx
+**Before (Single File)**
 
-  ```tsx
-  import { createFileRoute } from '@tanstack/react-router'
-  import { fetchPosts } from './api'
+```tsx
+// src/routes/posts.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { fetchPosts } from './api'
 
-  export const Route = createFileRoute('/posts')({
-    loader: fetchPosts,
-    component: Posts,
-  })
+export const Route = createFileRoute('/posts')({
+  loader: fetchPosts,
+  component: Posts,
+})
 
-  function Posts () {
-    ...
-  }
-  ```
+function Posts() {
+  // ...
+}
+```
 
-#### After
+**After (Split into two files)**
 
-- posts.tsx
+This file would contain the critical route configuration:
 
-  ```tsx
-  import { createFileRoute } from '@tanstack/react-router'
-  import { fetchPosts } from './api'
+```tsx
+// src/routes/posts.tsx
 
-  export const Route = createFileRoute('/posts')({
-    loader: fetchPosts,
-  })
-  ```
+import { createFileRoute } from '@tanstack/react-router'
+import { fetchPosts } from './api'
 
-- posts.lazy.tsx
+export const Route = createFileRoute('/posts')({
+  loader: fetchPosts,
+})
+```
 
-  ```tsx
+With the non-critical route configuration going into the file with the `.lazy.tsx` suffix:
 
-  import { createLazyFileRoute } from '@tanstack/react-router'
+```tsx
+// src/routes/posts.lazy.tsx
+import { createLazyFileRoute } from '@tanstack/react-router'
 
-  export const Route = createLazyFileRoute('/posts')({
-    component: Posts,
-  })
+export const Route = createLazyFileRoute('/posts')({
+  component: Posts,
+})
 
-  function Posts () {
-    ...
-  }
-  ```
+function Posts() {
+  // ...
+}
+```
 
-### Encapsulating a route's files into a directory
-
-Since TanStack Router's file-based routing system is designed to support both flat and nested file structures, it's possible to encapsulate a route's files into a single directory without any additional configuration.
-
-To encapsulate a route's files into a directory, move the route file itself into a `.route` file within a directory with the same name as the route file.
-
-For example, if you have a route file named `posts.tsx`, you would create a new directory named `posts` and move the `posts.tsx` file into that directory, renaming it to `route.tsx`.
-
-#### Before
-
-- `posts.tsx`
-- `posts.lazy.tsx`
-
-#### After
-
-- `posts`
-  - `route.tsx`
-  - `route.lazy.tsx`
-
-### Virtual Routes
+## Using Virtual Routes
 
 You might run into a situation where you end up splitting out everything from a route file, leaving it empty! In this case, simply **delete the route file entirely**! A virtual route will automatically be generated for you to serve as an anchor for your code split files. This virtual route will live directly in the generated route tree file.
 
-#### Before
+**Before (Virtual Routes)**
 
-- `posts.tsx`
+```tsx
+// src/routes/posts.tsx
+import { createFileRoute } from '@tanstack/react-router'
 
-  ```tsx
-  import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/posts')({
+  // Hello?
+})
+```
 
-  export const Route = createFileRoute('/posts')({
-    // Hello?
-  })
-  ```
+```tsx
+// src/routes/posts.lazy.tsx
+import { createLazyFileRoute } from '@tanstack/react-router'
 
-- `posts.lazy.tsx`
+export const Route = createLazyFileRoute('/posts')({
+  component: Posts,
+})
 
-  ```tsx
-  import { createLazyFileRoute } from '@tanstack/react-router'
+function Posts() {
+  // ...
+}
+```
 
-  export const Route = createLazyFileRoute('/posts')({
-    component: Posts,
-  })
+**After (Virtual Routes)**
 
-  function Posts() {
-    // ...
-  }
-  ```
+```tsx
+// src/routes/posts.lazy.tsx
+import { createLazyFileRoute } from '@tanstack/react-router'
 
-#### After
+export const Route = createLazyFileRoute('/posts')({
+  component: Posts,
+})
 
-- `posts.lazy.tsx`
-
-  ```tsx
-  import { createLazyFileRoute } from '@tanstack/react-router'
-
-  export const Route = createLazyFileRoute('/posts')({
-    component: Posts,
-  })
-
-  function Posts() {
-    // ...
-  }
-  ```
+function Posts() {
+  // ...
+}
+```
 
 Tada! 🎉
-
-## Route Inclusion / Exclusion
-
-Via the `routeFilePrefix` and `routeFileIgnorePrefix` options, the CLI can be configured to only include files and directories that start with a specific prefix, or to ignore files and directories that start with a specific prefix. This is especially useful when mixing non-route files with route files in the same directory, or when using a flat structure and wanting to exclude certain files from routing.
-
-## Route Inclusion Example
-
-To only consider files and directories that start with `~` for routing, the following configuration can be used:
-
-> 🧠 A prefix of `~` is generally recommended when using this option. Not only is this symbol typically associated with the home-folder navigation in unix-based systems, but it is also a valid character for use in filenames and urls that will typically force the file to the top of a directory for easier visual indication of routes.
-
-```json
-{
-  "routeFilePrefix": "~",
-  "routesDirectory": "./src/routes",
-  "generatedRouteTree": "./src/routeTree.gen.ts"
-}
-```
-
-With this configuration, the `Posts.tsx`, `Post.tsx`, and `PostEditor.tsx` files will be ignored during route generation.
-
-```
-~__root.tsx
-~posts.tsx
-~posts
-  ~index.tsx
-  ~$postId.tsx
-  ~$postId
-    ~edit.tsx
-    PostEditor.tsx
-  Post.tsx
-Posts.tsx
-```
-
-It's also common to use directories to house related files that do not contain any route files:
-
-```
-~__root.tsx
-~posts.tsx
-~posts
-  ~index.tsx
-  ~$postId.tsx
-  ~$postId
-    ~edit.tsx
-    components
-      PostEditor.tsx
-  components
-    Post.tsx
-components
-  Posts.tsx
-utils
-  Posts.tsx
-```
-
-## Route Exclusion Example
-
-To ignore files and directories that start with `-` for routing, the following configuration can be used:
-
-> 🧠 A prefix of `-` is generally recommended when using this option since the minus symbol is typically associated with removal or exclusion.
-
-```json
-{
-  "routeFileIgnorePrefix": "-",
-  "routesDirectory": "./src/routes",
-  "generatedRouteTree": "./src/routeTree.gen.ts"
-}
-```
-
-With this configuration, the `Posts.tsx`, `Post.tsx`, and `PostEditor.tsx` files will be ignored during route generation.
-
-```
-__root.tsx
-posts.tsx
-posts
-  index.tsx
-  $postId.tsx
-  $postId
-    edit.tsx
-    -PostEditor.tsx
-  -Post.tsx
--Posts.tsx
-```
-
-It's also common to use ignored directories to house related files that do not contain any route files:
-
-```
-__root.tsx
-posts.tsx
-posts
-  index.tsx
-  $postId.tsx
-  $postId
-    edit.tsx
-    -components
-      PostEditor.tsx
-  -components
-    Post.tsx
--components
-  Posts.tsx
--utils
-  Posts.tsx
-```
 
 ## Code-Based Splitting
 
 ### Manually Splitting Using `route.lazy()` and `createLazyRoute`
 
-If you're not using the file-based routing system, you can still manually split your code using the `route.lazy()` method and the `createLazyRoute` function.
+If you're not using the file-based routing system, you can still manually split your code using the `route.lazy()` method and the `createLazyRoute` function. You'd need to:
 
-- `posts.tsx`
+Create a lazy route using the `createLazyRoute` function.
 
-  ```tsx
-  const route = createRoute({
-    getParent: () => routeTree,
-    path: '/posts',
-  }).lazy(() => import('./posts.lazy').then((d) => d.Route))
-  ```
+```tsx
+// src/posts.tsx
+export const Route = createLazyRoute('/posts')({
+  component: MyComponent,
+})
 
-- `posts.lazy.tsx`
+function MyComponent() {
+  return <div>My Component</div>
+}
+```
 
-  ```tsx
-  export const Route = createLazyRoute('/posts')({
-    component: MyComponent,
-  })
+Then, call the `.lazy` method on the route definition in your `app.tsx` to import the lazy/code-split route with the non-critical route configuration.
 
-  function MyComponent() {
-    return <div>My Component</div>
-  }
-  ```
+```tsx
+// src/app.tsx
+const postsRoute = createRoute({
+  getParent: () => rootRoute,
+  path: '/posts',
+}).lazy(() => import('./posts.lazy').then((d) => d.Route))
+```
 
 ## Data Loader Splitting
 

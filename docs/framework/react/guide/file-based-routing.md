@@ -23,13 +23,15 @@ To enable the Vite plugin, add it to your `vite.config.ts` file:
 ```tsx
 // vite.config.ts
 import { defineConfig } from 'vite'
+import viteReact from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    // ...,
     TanStackRouterVite(),
+    viteReact(),
+    // ...
   ],
 })
 ```
@@ -41,6 +43,7 @@ With the plugin enabled, Vite will now watch your configured `routesDirectory` a
 ```tsx
 // vite.config.ts
 import { defineConfig } from 'vite'
+import viteReact from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
 
 // vitest automatically sets NODE_ENV to 'test' when running tests
@@ -49,8 +52,9 @@ const isTest = process.env.NODE_ENV === 'test'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    // ...,
     !isTest && TanStackRouterVite(),
+    viteReact(),
+    // ...
   ],
 })
 ```
@@ -151,6 +155,9 @@ The following options are available for configuration via the `tsr.config.json` 
       '/* prettier-ignore-end */'
     ]
     ```
+- **`experimental.enableCodeSplitting`**
+  - (Optional, **Defaults to `false`**)
+  - If set to `true`, all non-critical route configuration items will be automatically code-split.
 
 ## File Naming Conventions
 
@@ -181,3 +188,105 @@ File-based routing requires that you follow a few simple file naming conventions
 - **`.pendingComponent.tsx` File Type (⚠️ deprecated)**
 - **`.loader.tsx` File Type (⚠️ deprecated)**
   - Each of these suffixes can be used to code-split components or loaders for a route. For example, `blog.post.component.tsx` will be used as the component for the `blog.post` route.
+
+## Route Inclusion / Exclusion
+
+Via the `routeFilePrefix` and `routeFileIgnorePrefix` options, the CLI can be configured to only include files and directories that start with a specific prefix, or to ignore files and directories that start with a specific prefix. This is especially useful when mixing non-route files with route files in the same directory, or when using a flat structure and wanting to exclude certain files from routing.
+
+### Route Inclusion Example
+
+To only consider files and directories that start with `~` for routing, the following configuration can be used:
+
+> 🧠 A prefix of `~` is generally recommended when using this option. Not only is this symbol typically associated with the home-folder navigation in unix-based systems, but it is also a valid character for use in filenames and urls that will typically force the file to the top of a directory for easier visual indication of routes.
+
+```json
+{
+  "routeFilePrefix": "~",
+  "routesDirectory": "./src/routes",
+  "generatedRouteTree": "./src/routeTree.gen.ts"
+}
+```
+
+With this configuration, the `Posts.tsx`, `Post.tsx`, and `PostEditor.tsx` files will be ignored during route generation.
+
+```
+~__root.tsx
+~posts.tsx
+~posts
+  ~index.tsx
+  ~$postId.tsx
+  ~$postId
+    ~edit.tsx
+    PostEditor.tsx
+  Post.tsx
+Posts.tsx
+```
+
+It's also common to use directories to house related files that do not contain any route files:
+
+```
+~__root.tsx
+~posts.tsx
+~posts
+  ~index.tsx
+  ~$postId.tsx
+  ~$postId
+    ~edit.tsx
+    components
+      PostEditor.tsx
+  components
+    Post.tsx
+components
+  Posts.tsx
+utils
+  Posts.tsx
+```
+
+### Route Exclusion Example
+
+To ignore files and directories that start with `-` for routing, the following configuration can be used:
+
+> 🧠 A prefix of `-` is generally recommended when using this option since the minus symbol is typically associated with removal or exclusion.
+
+```json
+{
+  "routeFileIgnorePrefix": "-",
+  "routesDirectory": "./src/routes",
+  "generatedRouteTree": "./src/routeTree.gen.ts"
+}
+```
+
+With this configuration, the `Posts.tsx`, `Post.tsx`, and `PostEditor.tsx` files will be ignored during route generation.
+
+```
+__root.tsx
+posts.tsx
+posts
+  index.tsx
+  $postId.tsx
+  $postId
+    edit.tsx
+    -PostEditor.tsx
+  -Post.tsx
+-Posts.tsx
+```
+
+It's also common to use ignored directories to house related files that do not contain any route files:
+
+```
+__root.tsx
+posts.tsx
+posts
+  index.tsx
+  $postId.tsx
+  $postId
+    edit.tsx
+    -components
+      PostEditor.tsx
+  -components
+    Post.tsx
+-components
+  Posts.tsx
+-utils
+  Posts.tsx
+```
