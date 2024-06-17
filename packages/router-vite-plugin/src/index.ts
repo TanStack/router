@@ -19,9 +19,9 @@ export const configSchema = generatorConfigSchema.extend({
     .optional(),
 })
 
-const CONFIG_FILE_NAME = 'tsr.config.json'
 export type Config = z.infer<typeof configSchema>
 
+const CONFIG_FILE_NAME = 'tsr.config.json'
 const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
 const getConfig = async (inlineConfig: Partial<Config>, root: string) => {
