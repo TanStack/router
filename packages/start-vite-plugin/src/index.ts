@@ -4,10 +4,9 @@ import {
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
-import type { Plugin } from 'vite'
-
 import { compileAst } from './ast'
 import { createServerFnCompiler } from './compilers'
+import type { Plugin } from 'vite'
 
 export const configSchema = generatorConfigSchema.extend({
   enableRouteGeneration: z.boolean().optional(),

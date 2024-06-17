@@ -1,6 +1,6 @@
 import * as babel from '@babel/core'
 
-export type CompileFn = (compileOpts: {
+export type CompileAstFn = (compileOpts: {
   code: string
   filename: string
   getBabelConfig: () => { plugins: Array<any> }

@@ -1,11 +1,11 @@
 import * as t from '@babel/types'
-import * as babel from '@babel/core'
 
-import type { CompileFn } from './ast'
+import type * as babel from '@babel/core'
+import type { CompileAstFn } from './ast'
 
 export async function createServerFnCompiler(opts: {
   code: string
-  compile: CompileFn
+  compile: CompileAstFn
   filename: string
 }) {
   return await opts.compile({
