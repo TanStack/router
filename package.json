@@ -54,7 +54,7 @@
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "glob": "^10.3.14",
-    "nx": "^19.3.0",
+    "nx": "^18.3.4",
     "prettier": "^3.2.5",
     "publint": "^0.2.8",
     "react": "^18.3.1",
