@@ -4,9 +4,10 @@ import {
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
-import { compileFile, makeCompile, splitFile } from './compilers'
-import { splitPrefix } from './constants'
 import type { Plugin } from 'vite'
+
+import { compileAst } from './ast'
+import { createServerFnCompiler } from './compilers'
 
 export const configSchema = generatorConfigSchema.extend({
   enableRouteGeneration: z.boolean().optional(),
@@ -46,16 +47,6 @@ export function TanStackStartViteCreateServerFn(
       ROOT = config.root
       userConfig = await getConfig(inlineConfig, ROOT)
     },
-    resolveId(source) {
-      if (!userConfig.experimental?.enableCodeSplitting) {
-        return null
-      }
-
-      if (source.startsWith(splitPrefix + ':')) {
-        return source.replace(splitPrefix + ':', '')
-      }
-      return null
-    },
     async transform(code, id) {
       if (!userConfig.experimental?.enableCodeSplitting) {
         return null
@@ -65,36 +56,11 @@ export function TanStackStartViteCreateServerFn(
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      const compile = makeCompile({
+      const compile = compileAst({
         root: ROOT,
       })
 
-      if (id.includes(splitPrefix)) {
-        if (debug) console.info('Splitting route: ', id)
-        // const ref = new URLSearchParams(id.split('?')[1]).get('ref') || ''
-
-        const compiled = await splitFile({
-          code,
-          compile,
-          filename: id,
-          // ref,
-        })
-
-        if (debug) console.info('')
-        if (debug) console.info('Split Output')
-        if (debug) console.info('')
-        if (debug) console.info(compiled.code)
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
-
-        return compiled
-      } else if (code.includes('createServerFn')) {
+      if (code.includes('createServerFn')) {
         if (code.includes('@react-refresh')) {
           throw new Error(
             `We detected that the '@vitejs/plugin-react' was passed before '@tanstack/start-vite-plugin'. Please make sure that '@tanstack/router-vite-plugin' is passed before '@vitejs/plugin-react' and try again: 
@@ -108,8 +74,8 @@ plugins: [
           )
         }
 
-        if (debug) console.info('Handling createRoute: ', id)
-        const compiled = await compileFile({
+        if (debug) console.info('Handling createServerFn for id: ', id)
+        const compiled = await createServerFnCompiler({
           code,
           compile,
           filename: id,
