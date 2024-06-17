@@ -61,3 +61,5 @@ export async function getConfig(
 
   return config
 }
+
+export const CONFIG_FILE_NAME = 'tsr.config.json'

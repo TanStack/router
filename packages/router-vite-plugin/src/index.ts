@@ -1,8 +1,7 @@
-import { isAbsolute, join, normalize, resolve } from 'path'
+import { isAbsolute, join } from 'path'
 import { fileURLToPath, pathToFileURL } from 'url'
 import { z } from 'zod'
 import {
-  generator,
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
@@ -21,7 +20,6 @@ export const configSchema = generatorConfigSchema.extend({
 
 export type Config = z.infer<typeof configSchema>
 
-const CONFIG_FILE_NAME = 'tsr.config.json'
 const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
 const getConfig = async (inlineConfig: Partial<Config>, root: string) => {
@@ -30,82 +28,10 @@ const getConfig = async (inlineConfig: Partial<Config>, root: string) => {
   return configSchema.parse({ ...config, ...inlineConfig })
 }
 
-export function TanStackRouterVite(
+export function TanStackStartVite(
   inlineConfig: Partial<Config> = {},
 ): Array<Plugin> {
-  return [
-    TanStackRouterViteGenerator(inlineConfig),
-    TanStackRouterViteCodeSplitter(inlineConfig),
-  ]
-}
-
-let lock = false
-
-export function TanStackRouterViteGenerator(
-  inlineConfig: Partial<Config> = {},
-): Plugin {
-  let ROOT: string = process.cwd()
-  let userConfig: Config
-
-  const generate = async () => {
-    if (lock) {
-      return
-    }
-    lock = true
-    try {
-      await generator(userConfig)
-    } catch (err) {
-      console.error(err)
-      console.info()
-    }
-    lock = false
-  }
-
-  const handleFile = async (
-    file: string,
-    event: 'create' | 'update' | 'delete',
-  ) => {
-    const filePath = normalize(file)
-
-    if (filePath === join(ROOT, CONFIG_FILE_NAME)) {
-      userConfig = await getConfig(inlineConfig, ROOT)
-      return
-    }
-
-    if (
-      event === 'update' &&
-      filePath === resolve(userConfig.generatedRouteTree)
-    ) {
-      // skip generating routes if the generated route tree is updated
-      return
-    }
-
-    const routesDirectoryPath = isAbsolute(userConfig.routesDirectory)
-      ? userConfig.routesDirectory
-      : join(ROOT, userConfig.routesDirectory)
-
-    if (filePath.startsWith(routesDirectoryPath)) {
-      await generate()
-    }
-  }
-
-  return {
-    name: 'vite-plugin-tanstack-router-generator',
-    configResolved: async (config) => {
-      ROOT = process.cwd()
-      userConfig = await getConfig(inlineConfig, ROOT)
-      if (userConfig.enableRouteGeneration ?? true) {
-        await generate()
-      }
-    },
-    watchChange: async (file, context) => {
-      if (userConfig.enableRouteGeneration ?? true) {
-        if (['create', 'update', 'delete'].includes(context.event)) {
-          await handleFile(file, context.event)
-        }
-      }
-    },
-  }
+  return [TanStackStartViteCreateServerFn(inlineConfig)]
 }
 
 function fileIsInRoutesDirectory(filePath: string, routesDirectory: string) {
@@ -116,14 +42,14 @@ function fileIsInRoutesDirectory(filePath: string, routesDirectory: string) {
   return filePath.startsWith(routesDirectoryPath)
 }
 
-export function TanStackRouterViteCodeSplitter(
+export function TanStackStartViteCreateServerFn(
   inlineConfig: Partial<Config> = {},
 ): Plugin {
   let ROOT: string = process.cwd()
   let userConfig: Config
 
   return {
-    name: 'vite-plugin-tanstack-router-code-splitter',
+    name: 'vite-plugin-tanstack-start-create-server-fn',
     enforce: 'pre',
     configResolved: async (config) => {
       ROOT = config.root
@@ -139,7 +65,7 @@ export function TanStackRouterViteCodeSplitter(
       }
       return null
     },
-    async transform(code, id, transformOptions) {
+    async transform(code, id) {
       if (!userConfig.experimental?.enableCodeSplitting) {
         return null
       }
@@ -178,18 +104,16 @@ export function TanStackRouterViteCodeSplitter(
 
         return compiled
       } else if (
-        (fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
-          (code.includes('createRoute(') ||
-            code.includes('createFileRoute('))) ||
+        fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
         code.includes('createServerFn')
       ) {
         if (code.includes('@react-refresh')) {
           throw new Error(
-            `We detected that the '@vitejs/plugin-react' was passed before '@tanstack/router-vite-plugin'. Please make sure that '@tanstack/router-vite-plugin' is passed before '@vitejs/plugin-react' and try again: 
+            `We detected that the '@vitejs/plugin-react' was passed before '@tanstack/start-vite-plugin'. Please make sure that '@tanstack/router-vite-plugin' is passed before '@vitejs/plugin-react' and try again: 
 e.g.
 
 plugins: [
-  TanStackRouterVite(), // Place this before viteReact()
+  TanStackStartVite(), // Place this before viteReact()
   viteReact(),
 ]
 `,
