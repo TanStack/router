@@ -5,7 +5,6 @@ import {
   generator,
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
-  CONFIG_FILE_NAME,
 } from '@tanstack/router-generator'
 import { compileFile, makeCompile, splitFile } from './compilers'
 import { splitPrefix } from './constants'
@@ -20,6 +19,7 @@ export const configSchema = generatorConfigSchema.extend({
     .optional(),
 })
 
+const CONFIG_FILE_NAME = 'tsr.config.json'
 export type Config = z.infer<typeof configSchema>
 
 const debug = Boolean(process.env.TSR_VITE_DEBUG)
