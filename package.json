@@ -5,7 +5,7 @@
     "type": "git",
     "url": "https://github.com/TanStack/router.git"
   },
-  "packageManager": "pnpm@8.12.1",
+  "packageManager": "pnpm@9.3.0",
   "type": "module",
   "scripts": {
     "clean": "pnpm --filter \"./packages/**\" run clean",
@@ -54,9 +54,9 @@
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "glob": "^10.3.14",
-    "nx": "17.2.8",
+    "nx": "^18.3.4",
     "prettier": "^3.2.5",
-    "publint": "^0.2.7",
+    "publint": "^0.2.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "rimraf": "^5.0.6",
