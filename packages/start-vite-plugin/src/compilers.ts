@@ -22,7 +22,8 @@ export async function createServerFnCompiler(opts: {
                     | 'ImportSpecifier'
                     | 'ImportNamespaceSpecifier' = 'ImportSpecifier'
 
-                  let createServerFnIdent = 'createServerFn'
+                  let namespaceId = ''
+                  let serverFnId = 'createServerFn'
 
                   programPath.traverse({
                     ImportDeclaration: (path) => {
@@ -37,22 +38,23 @@ export async function createServerFnCompiler(opts: {
                           specifier.imported.type === 'Identifier'
                         ) {
                           if (specifier.imported.name === 'createServerFn') {
-                            createServerFnIdent = specifier.local.name
+                            serverFnId = specifier.local.name
                             identifierType = 'ImportSpecifier'
                           }
                         }
 
                         // handles a namespace import like "import * as TanStackStart from '@tanstack/start';"
                         if (specifier.type === 'ImportNamespaceSpecifier') {
-                          createServerFnIdent = `${specifier.local.name}.createServerFn`
                           identifierType = 'ImportNamespaceSpecifier'
+                          namespaceId = specifier.local.name
+                          serverFnId = `${specifier.local.name}.createServerFn`
                         }
                       })
                     },
                     CallExpression: (path) => {
                       const importSpecifierCondition =
                         path.node.callee.type === 'Identifier' &&
-                        path.node.callee.name === createServerFnIdent
+                        path.node.callee.name === serverFnId
 
                       const importNamespaceSpecifierCondition =
                         path.node.callee.type === 'MemberExpression' &&
@@ -111,9 +113,7 @@ export async function createServerFnCompiler(opts: {
                                   t.tsTypeReference(
                                     t.identifier('Parameters'),
                                     t.tsTypeParameterInstantiation([
-                                      t.tsTypeQuery(
-                                        t.identifier(createServerFnIdent),
-                                      ),
+                                      t.tsTypeQuery(t.identifier(serverFnId)),
                                     ]),
                                   ),
                                   t.tsLiteralType(t.numericLiteral(1)),
