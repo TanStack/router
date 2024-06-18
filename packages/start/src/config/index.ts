@@ -115,6 +115,7 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
             enableCodeSplitting: true,
           },
         }),
+        TanStackStartVite(),
       ],
     })
   }
