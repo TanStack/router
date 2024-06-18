@@ -18,6 +18,10 @@ export async function createServerFnCompiler(opts: {
             visitor: {
               Program: {
                 enter(programPath: babel.NodePath<t.Program>) {
+                  let identifierType:
+                    | 'ImportSpecifier'
+                    | 'ImportNamespaceSpecifier' = 'ImportSpecifier'
+
                   let createServerFnIdent = 'createServerFn'
 
                   programPath.traverse({
@@ -25,22 +29,42 @@ export async function createServerFnCompiler(opts: {
                       if (path.node.source.value !== '@tanstack/start') {
                         return
                       }
+
                       path.node.specifiers.forEach((specifier) => {
+                        // handles a destructured import being renamed like "import { createServerFn as myCreateServerFn } from '@tanstack/start';"
                         if (
                           specifier.type === 'ImportSpecifier' &&
                           specifier.imported.type === 'Identifier'
                         ) {
                           if (specifier.imported.name === 'createServerFn') {
                             createServerFnIdent = specifier.local.name
+                            identifierType = 'ImportSpecifier'
                           }
+                        }
+
+                        // handles a namespace import like "import * as TanStackStart from '@tanstack/start';"
+                        if (specifier.type === 'ImportNamespaceSpecifier') {
+                          createServerFnIdent = `${specifier.local.name}.createServerFn`
+                          identifierType = 'ImportNamespaceSpecifier'
                         }
                       })
                     },
                     CallExpression: (path) => {
-                      if (
+                      const importSpecifierCondition =
                         path.node.callee.type === 'Identifier' &&
                         path.node.callee.name === createServerFnIdent
-                      ) {
+
+                      const importNamespaceSpecifierCondition =
+                        path.node.callee.type === 'MemberExpression' &&
+                        path.node.callee.property.type === 'Identifier' &&
+                        path.node.callee.property.name === 'createServerFn'
+
+                      const createServerFnEntryCondition =
+                        identifierType === 'ImportSpecifier'
+                          ? importSpecifierCondition
+                          : importNamespaceSpecifierCondition
+
+                      if (createServerFnEntryCondition) {
                         // If the function at createServerFn(_, MyFunc) doesn't have a
                         // 'use server' directive at the top of the function scope,
                         // then add it.
