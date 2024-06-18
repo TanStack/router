@@ -47,7 +47,7 @@ export async function createServerFnCompiler(opts: {
                         if (specifier.type === 'ImportNamespaceSpecifier') {
                           identifierType = 'ImportNamespaceSpecifier'
                           namespaceId = specifier.local.name
-                          serverFnId = `${specifier.local.name}.createServerFn`
+                          serverFnId = `${namespaceId}.createServerFn`
                         }
                       })
                     },
