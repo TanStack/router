@@ -1,56 +1,24 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { z } from 'zod'
-import {
-  configSchema as generatorConfigSchema,
-  getConfig as getGeneratorConfig,
-} from '@tanstack/router-generator'
 import { compileAst } from './ast'
 import { createServerFnCompiler } from './compilers'
 import type { Plugin } from 'vite'
 
-export const configSchema = generatorConfigSchema.extend({
-  enableRouteGeneration: z.boolean().optional(),
-  experimental: z
-    .object({
-      enableCodeSplitting: z.boolean().optional(),
-    })
-    .optional(),
-})
-
-export type Config = z.infer<typeof configSchema>
-
 const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
-const getConfig = async (inlineConfig: Partial<Config>, root: string) => {
-  const config = await getGeneratorConfig(inlineConfig, root)
-
-  return configSchema.parse({ ...config, ...inlineConfig })
+export function TanStackStartVite(): Array<Plugin> {
+  return [TanStackStartViteCreateServerFn()]
 }
 
-export function TanStackStartVite(
-  inlineConfig: Partial<Config> = {},
-): Array<Plugin> {
-  return [TanStackStartViteCreateServerFn(inlineConfig)]
-}
-
-export function TanStackStartViteCreateServerFn(
-  inlineConfig: Partial<Config> = {},
-): Plugin {
+export function TanStackStartViteCreateServerFn(): Plugin {
   let ROOT: string = process.cwd()
-  let userConfig: Config
 
   return {
     name: 'vite-plugin-tanstack-start-create-server-fn',
     enforce: 'pre',
     configResolved: async (config) => {
       ROOT = config.root
-      userConfig = await getConfig(inlineConfig, ROOT)
     },
     async transform(code, id) {
-      if (!userConfig.experimental?.enableCodeSplitting) {
-        return null
-      }
-
       const url = pathToFileURL(id)
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
