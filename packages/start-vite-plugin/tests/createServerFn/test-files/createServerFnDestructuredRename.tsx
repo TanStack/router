@@ -1,7 +1,7 @@
-import { createServerFn } from '@tanstack/start'
+import { createServerFn as serverFn } from '@tanstack/start'
 import { z } from 'zod'
 
-export const withUseServer = createServerFn('GET', async function () {
+export const withUseServer = serverFn('GET', async function () {
   console.log('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
@@ -9,7 +9,7 @@ export const withUseServer = createServerFn('GET', async function () {
     .then((r) => r.data.slice(0, 10))
 })
 
-export const withoutUseServer = createServerFn('GET', async () => {
+export const withoutUseServer = serverFn('GET', async () => {
   console.log('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
@@ -17,7 +17,7 @@ export const withoutUseServer = createServerFn('GET', async () => {
     .then((r) => r.data.slice(0, 10))
 })
 
-export const withVariable = createServerFn('GET', abstractedFunction)
+export const withVariable = serverFn('GET', abstractedFunction)
 
 async function abstractedFunction() {
   console.log('Fetching posts...')
@@ -36,7 +36,7 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(
   }
 }
 
-export const withZodValidator = createServerFn(
+export const withZodValidator = serverFn(
   'GET',
   zodValidator(z.number(), (input) => {
     return { 'you gave': input }

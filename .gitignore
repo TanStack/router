@@ -56,6 +56,7 @@ ts-perf
 nx-cloud.env
 .vscode
 .nx/cache
+.nx/workspace-data
 
 gpt/db.json
 

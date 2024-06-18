@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start",
-  "version": "1.38.1",
+  "version": "1.39.1",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -111,10 +111,11 @@
     "src"
   ],
   "dependencies": {
-    "@tanstack/react-cross-context": "workspace:*",
-    "@tanstack/react-router": "workspace:*",
-    "@tanstack/router-generator": "workspace:*",
-    "@tanstack/router-vite-plugin": "workspace:*",
+    "@tanstack/react-cross-context": "workspace:^",
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/router-generator": "workspace:^",
+    "@tanstack/router-vite-plugin": "workspace:^",
+    "@tanstack/start-vite-plugin": "workspace:^",
     "@types/jsesc": "^3.0.3",
     "@vinxi/react": "0.2.2",
     "@vinxi/server-components": "^0.3.3",
