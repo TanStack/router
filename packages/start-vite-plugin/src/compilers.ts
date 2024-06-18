@@ -18,16 +18,32 @@ export async function createServerFnCompiler(opts: {
             visitor: {
               Program: {
                 enter(programPath: babel.NodePath<t.Program>) {
+                  let createServerFnIdent = 'createServerFn'
+
                   programPath.traverse({
+                    ImportDeclaration: (path) => {
+                      if (path.node.source.value !== '@tanstack/start') {
+                        return
+                      }
+                      path.node.specifiers.forEach((specifier) => {
+                        if (
+                          specifier.type === 'ImportSpecifier' &&
+                          specifier.imported.type === 'Identifier'
+                        ) {
+                          if (specifier.imported.name === 'createServerFn') {
+                            createServerFnIdent = specifier.local.name
+                          }
+                        }
+                      })
+                    },
                     CallExpression: (path) => {
                       if (
                         path.node.callee.type === 'Identifier' &&
-                        path.node.callee.name === 'createServerFn'
+                        path.node.callee.name === createServerFnIdent
                       ) {
                         // If the function at createServerFn(_, MyFunc) doesn't have a
                         // 'use server' directive at the top of the function scope,
                         // then add it.
-
                         const fn = path.node.arguments[1]
 
                         if (
@@ -72,7 +88,7 @@ export async function createServerFnCompiler(opts: {
                                     t.identifier('Parameters'),
                                     t.tsTypeParameterInstantiation([
                                       t.tsTypeQuery(
-                                        t.identifier('createServerFn'),
+                                        t.identifier(createServerFnIdent),
                                       ),
                                     ]),
                                   ),
