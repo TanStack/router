@@ -1,4 +1,5 @@
-import { createUnplugin, type UnpluginFactory } from 'unplugin'
+import { createUnplugin } from 'unplugin'
+import type { UnpluginFactory } from 'unplugin'
 
 import { routerCodeSplitterUnpluginFactory } from './code-splitter'
 import { routerGeneratorUnpluginFactory } from './router-generator'
