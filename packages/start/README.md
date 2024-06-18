@@ -31,5 +31,3 @@
 Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Query](https://github.com/tannerlinsley/react-query), [React Table](https://github.com/tanstack/react-table), [React Charts](https://github.com/tannerlinsley/react-charts), [React Virtual](https://github.com/tannerlinsley/react-virtual)
 
 ## Visit [tanstack.com/router](https://tanstack.com/router) for docs, guides, API and more!
-
-<!-- Use the force, Luke! -->
