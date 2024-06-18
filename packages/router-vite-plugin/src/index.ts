@@ -178,10 +178,8 @@ export function TanStackRouterViteCodeSplitter(
 
         return compiled
       } else if (
-        (fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
-          (code.includes('createRoute(') ||
-            code.includes('createFileRoute('))) ||
-        code.includes('createServerFn')
+        fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
+        (code.includes('createRoute(') || code.includes('createFileRoute('))
       ) {
         if (code.includes('@react-refresh')) {
           throw new Error(
