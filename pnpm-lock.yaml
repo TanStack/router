@@ -1617,6 +1617,9 @@ importers:
       '@babel/types':
         specifier: ^7.24.0
         version: 7.24.5
+      '@tanstack/router-generator':
+        specifier: workspace:*
+        version: link:../router-generator
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
@@ -1629,6 +1632,12 @@ importers:
       '@types/babel__traverse':
         specifier: ^7.20.5
         version: 7.20.5
+      unplugin:
+        specifier: ^1.10.1
+        version: 1.10.1
+      zod:
+        specifier: ^3.22.4
+        version: 3.23.8
 
   packages/router-vite-plugin:
     dependencies:
