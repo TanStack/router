@@ -1586,6 +1586,48 @@ importers:
         specifier: ^3.22.4
         version: 3.23.8
 
+  packages/router-plugin:
+    dependencies:
+      '@babel/core':
+        specifier: ^7.23.7
+        version: 7.24.5
+      '@babel/generator':
+        specifier: ^7.23.6
+        version: 7.24.5
+      '@babel/plugin-syntax-jsx':
+        specifier: ^7.24.1
+        version: 7.24.1(@babel/core@7.24.5)
+      '@babel/plugin-syntax-typescript':
+        specifier: ^7.24.1
+        version: 7.24.1(@babel/core@7.24.5)
+      '@babel/plugin-transform-react-jsx':
+        specifier: ^7.23.4
+        version: 7.23.4(@babel/core@7.24.5)
+      '@babel/plugin-transform-typescript':
+        specifier: ^7.24.1
+        version: 7.24.1(@babel/core@7.24.5)
+      '@babel/template':
+        specifier: ^7.24.0
+        version: 7.24.0
+      '@babel/traverse':
+        specifier: ^7.24.1
+        version: 7.24.5
+      '@babel/types':
+        specifier: ^7.24.0
+        version: 7.24.5
+      '@types/babel__core':
+        specifier: ^7.20.5
+        version: 7.20.5
+      '@types/babel__generator':
+        specifier: ^7.6.8
+        version: 7.6.8
+      '@types/babel__template':
+        specifier: ^7.4.4
+        version: 7.4.4
+      '@types/babel__traverse':
+        specifier: ^7.20.5
+        version: 7.20.5
+
   packages/router-vite-plugin:
     dependencies:
       '@babel/core':
@@ -1618,6 +1660,9 @@ importers:
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator
+      '@tanstack/router-plugin':
+        specifier: workspace:^
+        version: link:../router-plugin
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5

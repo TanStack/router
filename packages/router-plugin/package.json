@@ -1,5 +1,5 @@
 {
-  "name": "@tanstack/router-vite-plugin",
+  "name": "@tanstack/router-plugin",
   "version": "1.39.1",
   "description": "",
   "author": "Tanner Linsley",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/router-vite-plugin"
+    "directory": "packages/start-vite-plugin"
   },
   "homepage": "https://tanstack.com/router",
   "funding": {
@@ -67,13 +67,9 @@
     "@babel/template": "^7.24.0",
     "@babel/traverse": "^7.24.1",
     "@babel/types": "^7.24.0",
-    "@tanstack/router-generator": "workspace:*",
-    "@tanstack/router-plugin": "workspace:^",
     "@types/babel__core": "^7.20.5",
     "@types/babel__generator": "^7.6.8",
     "@types/babel__template": "^7.4.4",
-    "@types/babel__traverse": "^7.20.5",
-    "@vitejs/plugin-react": "^4.2.1",
-    "zod": "^3.22.4"
+    "@types/babel__traverse": "^7.20.5"
   }
 }
