@@ -67,6 +67,14 @@
     "dist",
     "src/**"
   ],
+  "peerDependencies": {
+    "vite": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
   "dependencies": {
     "@babel/core": "^7.23.7",
     "@babel/generator": "^7.23.6",

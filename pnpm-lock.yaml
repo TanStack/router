@@ -1635,6 +1635,9 @@ importers:
       unplugin:
         specifier: ^1.10.1
         version: 1.10.1
+      vite:
+        specifier: '>=5'
+        version: 5.2.11(@types/node@20.13.0)(terser@5.31.0)
       zod:
         specifier: ^3.22.4
         version: 3.23.8
