@@ -1651,6 +1651,9 @@ importers:
       '@tanstack/router-vite-plugin':
         specifier: workspace:*
         version: link:../router-vite-plugin
+      '@tanstack/start-vite-plugin':
+        specifier: workspace:^
+        version: link:../start-vite-plugin
       '@types/jsesc':
         specifier: ^3.0.3
         version: 3.0.3
