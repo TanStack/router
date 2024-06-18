@@ -61,7 +61,6 @@ export type RouteOptions<
   TAllParams = TParams,
   TRouteContextReturn = RouteContext,
   TRouteContext = RouteContext,
-  TRouterContext = AnyContext,
   TAllContext = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn = {},
@@ -76,8 +75,6 @@ export type RouteOptions<
   TParams,
   TAllParams,
   TRouteContextReturn,
-  TRouteContext,
-  TRouterContext,
   TAllContext,
   TLoaderDeps,
   TLoaderDataReturn
@@ -106,8 +103,6 @@ export type FileBaseRouteOptions<
   TParams = {},
   TAllParams = ParamsFallback<TPath, TParams>,
   TRouteContextReturn = RouteContext,
-  TRouteContext = RouteContext,
-  TRouterContext = AnyContext,
   TAllContext = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn = {},
@@ -116,12 +111,7 @@ export type FileBaseRouteOptions<
   shouldReload?:
     | boolean
     | ((
-        match: LoaderFnContext<
-          TAllParams,
-          TFullSearchSchema,
-          TAllContext,
-          TRouteContext
-        >,
+        match: LoaderFnContext<TAllParams, TFullSearchSchema, TAllContext>,
       ) => any)
   // This async function is called before a route is loaded.
   // If an error is thrown here, the route's loader will not be called.
@@ -132,14 +122,13 @@ export type FileBaseRouteOptions<
     TParentRoute,
     TAllParams,
     TRouteContextReturn,
-    TRouterContext
+    TAllContext
   >
   loaderDeps?: (opts: { search: TFullSearchSchema }) => TLoaderDeps
   loader?: RouteLoaderFn<
     TAllParams,
     NoInfer<TLoaderDeps>,
     NoInfer<TAllContext>,
-    NoInfer<TRouteContext>,
     TLoaderDataReturn
   >
 } & (
@@ -170,8 +159,6 @@ export type BaseRouteOptions<
   TParams = {},
   TAllParams = ParamsFallback<TPath, TParams>,
   TRouteContextReturn = RouteContext,
-  TRouteContext = RouteContext,
-  TRouterContext = AnyContext,
   TAllContext = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn = {},
@@ -185,8 +172,6 @@ export type BaseRouteOptions<
     TParams,
     TAllParams,
     TRouteContextReturn,
-    TRouteContext,
-    TRouterContext,
     TAllContext,
     TLoaderDeps,
     TLoaderDataReturn
@@ -199,14 +184,13 @@ type BeforeLoadFn<
   in out TParentRoute extends AnyRoute,
   in out TAllParams,
   TRouteContextReturn,
-  in out TRouterContext = AnyContext,
-  in out TContext = IsAny<TParentRoute['types']['allContext'], TRouterContext>,
+  in out TAllContext,
 > = (opts: {
   search: TFullSearchSchema
   abortController: AbortController
   preload: boolean
   params: TAllParams
-  context: TContext
+  context: TAllContext
   location: ParsedLocation
   navigate: NavigateFn
   buildLocation: BuildLocationFn<TParentRoute>
@@ -330,23 +314,21 @@ export type RouteLoaderFn<
   in out TAllParams = {},
   in out TLoaderDeps extends Record<string, any> = {},
   in out TAllContext = AnyContext,
-  in out TRouteContext = AnyContext,
   TLoaderData = undefined,
 > = (
-  match: LoaderFnContext<TAllParams, TLoaderDeps, TAllContext, TRouteContext>,
+  match: LoaderFnContext<TAllParams, TLoaderDeps, TAllContext>,
 ) => Promise<TLoaderData> | TLoaderData
 
 export interface LoaderFnContext<
   in out TAllParams = {},
   in out TLoaderDeps = {},
   in out TAllContext = AnyContext,
-  in out TRouteContext = AnyContext,
 > {
   abortController: AbortController
   preload: boolean
   params: TAllParams
   deps: TLoaderDeps
-  context: Assign<TAllContext, TRouteContext>
+  context: TAllContext
   location: ParsedLocation // Do not supply search schema here so as to demotivate people from trying to shortcut loaderDeps
   /**
    * @deprecated Use `throw redirect({ to: '/somewhere' })` instead
@@ -421,7 +403,6 @@ export type ResolveLoaderData<TLoaderDataReturn> = [TLoaderDataReturn] extends [
 
 export interface AnyRoute
   extends Route<
-    any,
     any,
     any,
     any,
@@ -592,11 +573,7 @@ export class Route<
   in out TAllParams = ResolveAllParamsFromParent<TParentRoute, TParams>,
   TRouteContextReturn = RouteContext,
   in out TRouteContext = ResolveRouteContext<TRouteContextReturn>,
-  in out TAllContext = Assign<
-    IsAny<TParentRoute['types']['allContext'], {}>,
-    TRouteContext
-  >,
-  in out TRouterContext = AnyContext,
+  in out TAllContext = ResolveAllContext<TParentRoute, TRouteContext>,
   in out TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn = {},
   in out TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
@@ -614,7 +591,6 @@ export class Route<
     TAllParams,
     TRouteContextReturn,
     TRouteContext,
-    TRouterContext,
     TAllContext,
     TLoaderDeps,
     TLoaderDataReturn,
@@ -651,7 +627,6 @@ export class Route<
       TAllParams,
       TRouteContextReturn,
       TRouteContext,
-      TRouterContext,
       TAllContext,
       TLoaderDeps,
       TLoaderDataReturn,
@@ -685,9 +660,9 @@ export class Route<
     routeContext: TRouteContext
     allContext: TAllContext
     children: TChildren
-    routerContext: TRouterContext
     loaderData: TLoaderData
     loaderDeps: TLoaderDeps
+    routerContext: any
   }
 
   init = (opts: { originalIndex: number }): void => {
@@ -705,7 +680,6 @@ export class Route<
           TAllParams,
           TRouteContextReturn,
           TRouteContext,
-          TRouterContext,
           TAllContext,
           TLoaderDeps,
           TLoaderDataReturn,
@@ -785,7 +759,6 @@ export class Route<
     TRouteContextReturn,
     TRouteContext,
     TAllContext,
-    TRouterContext,
     TLoaderDeps,
     TLoaderDataReturn,
     TLoaderData,
@@ -798,13 +771,7 @@ export class Route<
   }
 
   updateLoader = <TNewLoaderData = unknown>(options: {
-    loader: RouteLoaderFn<
-      TAllParams,
-      TLoaderDeps,
-      TAllContext,
-      TRouteContext,
-      TNewLoaderData
-    >
+    loader: RouteLoaderFn<TAllParams, TLoaderDeps, TAllContext, TNewLoaderData>
   }) => {
     Object.assign(this.options, options)
     return this as unknown as Route<
@@ -823,7 +790,6 @@ export class Route<
       TRouteContextReturn,
       TRouteContext,
       TAllContext,
-      TRouterContext,
       TLoaderDeps,
       TNewLoaderData,
       TChildren
@@ -928,11 +894,7 @@ export function createRoute<
   TAllParams = ResolveAllParamsFromParent<TParentRoute, TParams>,
   TRouteContextReturn = RouteContext,
   TRouteContext = ResolveRouteContext<TRouteContextReturn>,
-  TAllContext = Assign<
-    IsAny<TParentRoute['types']['allContext'], {}>,
-    TRouteContext
-  >,
-  TRouterContext = AnyContext,
+  TAllContext = ResolveAllContext<TParentRoute, TRouteContext>,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn = {},
   TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
@@ -949,7 +911,6 @@ export function createRoute<
     TAllParams,
     TRouteContextReturn,
     TRouteContext,
-    TRouterContext,
     TAllContext,
     TLoaderDeps,
     TLoaderDataReturn,
@@ -972,7 +933,6 @@ export function createRoute<
     TRouteContextReturn,
     TRouteContext,
     TAllContext,
-    TRouterContext,
     TLoaderDeps,
     TLoaderDataReturn,
     TLoaderData,
@@ -1003,7 +963,6 @@ export type RootRouteOptions<
     {}, // TAllParams
     TRouteContextReturn, // TRouteContextReturn
     TRouteContext, // TRouteContext
-    TRouterContext,
     Assign<TRouterContext, TRouteContext>, // TAllContext
     TLoaderDeps,
     TLoaderDataReturn, // TLoaderDataReturn,
@@ -1087,7 +1046,6 @@ export class RootRoute<
   TRouteContextReturn, // TRouteContextReturn
   TRouteContext, // TRouteContext
   Assign<TRouterContext, TRouteContext>, // TAllContext
-  TRouterContext, // TRouterContext
   TLoaderDeps,
   TLoaderDataReturn,
   TLoaderData,
@@ -1138,7 +1096,6 @@ export function createRootRoute<
       {}, // TAllParams
       TRouteContextReturn, // TRouteContextReturn
       TRouteContext, // TRouteContext
-      TRouterContext,
       Assign<TRouterContext, TRouteContext>, // TAllContext
       TLoaderDeps,
       TLoaderDataReturn,
@@ -1274,7 +1231,6 @@ export class NotFoundRoute<
   TRouteContextReturn = AnyContext,
   TRouteContext = RouteContext,
   TAllContext = ResolveAllContext<TParentRoute, TRouteContext>,
-  TRouterContext = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn = {},
   TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
@@ -1295,7 +1251,6 @@ export class NotFoundRoute<
   TRouteContextReturn,
   TRouteContext,
   TAllContext,
-  TRouterContext,
   TLoaderDeps,
   TLoaderDataReturn,
   TLoaderData,
@@ -1314,7 +1269,6 @@ export class NotFoundRoute<
         {},
         TRouteContextReturn,
         TRouteContext,
-        TRouterContext,
         TAllContext,
         TLoaderDeps,
         TLoaderDataReturn,

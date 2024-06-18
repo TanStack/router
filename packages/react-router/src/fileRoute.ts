@@ -92,7 +92,6 @@ export class FileRoute<
     TRouteContextReturn = RouteContext,
     TRouteContext = ResolveRouteContext<TRouteContextReturn>,
     TAllContext = ResolveAllContext<TParentRoute, TRouteContext>,
-    TRouterContext = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderDataReturn = {},
     TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
@@ -107,8 +106,6 @@ export class FileRoute<
       TParams,
       TAllParams,
       TRouteContextReturn,
-      TRouteContext,
-      TRouterContext,
       TAllContext,
       TLoaderDeps,
       TLoaderDataReturn
@@ -138,7 +135,6 @@ export class FileRoute<
     TRouteContextReturn,
     TRouteContext,
     TAllContext,
-    TRouterContext,
     TLoaderDeps,
     TLoaderDataReturn,
     TLoaderData,
@@ -169,14 +165,12 @@ export function FileRouteLoader<
     TRoute['types']['allParams'],
     TRoute['types']['loaderDeps'],
     TRoute['types']['allContext'],
-    TRoute['types']['routeContext'],
     TLoaderData
   >,
 ) => RouteLoaderFn<
   TRoute['types']['allParams'],
   TRoute['types']['loaderDeps'],
   TRoute['types']['allContext'],
-  TRoute['types']['routeContext'],
   NoInfer<TLoaderData>
 > {
   warning(
