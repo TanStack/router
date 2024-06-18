@@ -1,10 +1,11 @@
 /* eslint-disable no-shadow */
-import path from 'path'
-import { existsSync, readFileSync, writeFileSync } from 'fs'
-import { readFile } from 'fs/promises'
+import path from 'node:path'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite, configSchema } from '@tanstack/router-vite-plugin'
+import { TanStackStartVite } from '@tanstack/start-vite-plugin'
 import { getConfig } from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
@@ -226,6 +227,7 @@ function startRouterProxy(tsrConfig: z.infer<typeof configSchema>) {
             enableCodeSplitting: true,
           },
         }),
+        TanStackStartVite(),
         ...((await router?.plugins?.()) ?? []),
       ],
     }
