@@ -40,6 +40,10 @@ export const packages = [
     name: '@tanstack/start',
     packageDir: 'packages/start',
   },
+  {
+    name: '@tanstack/start-vite-plugin',
+    packageDir: 'packages/start-vite-plugin',
+  },
 ]
 
 /**
