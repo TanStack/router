@@ -15,8 +15,10 @@ overrides:
   '@tanstack/router-cli': workspace:*
   '@tanstack/router-devtools': workspace:*
   '@tanstack/router-generator': workspace:*
+  '@tanstack/router-plugin': workspace:*
   '@tanstack/router-vite-plugin': workspace:*
   '@tanstack/start': workspace:*
+  '@tanstack/start-vite-plugin': workspace:*
 
 importers:
 
@@ -1661,7 +1663,7 @@ importers:
         specifier: workspace:*
         version: link:../router-generator
       '@tanstack/router-plugin':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../router-plugin
       '@types/babel__core':
         specifier: ^7.20.5
@@ -1697,7 +1699,7 @@ importers:
         specifier: workspace:*
         version: link:../router-vite-plugin
       '@tanstack/start-vite-plugin':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../start-vite-plugin
       '@types/jsesc':
         specifier: ^3.0.3
