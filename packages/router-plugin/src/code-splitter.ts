@@ -45,10 +45,9 @@ plugins: [
   }
 }
 
-export const unpluginFactory: UnpluginFactory<Partial<PluginOptions>> = (
-  options = {},
-  { framework },
-) => {
+export const unpluginFactory: UnpluginFactory<
+  Partial<PluginOptions> | undefined
+> = (options = {}, { framework }) => {
   const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
   let ROOT: string = process.cwd()

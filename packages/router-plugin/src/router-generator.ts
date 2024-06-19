@@ -13,7 +13,7 @@ const setLock = (bool: boolean) => {
   lock = bool
 }
 
-const unpluginFactory: UnpluginFactory<Partial<PluginOptions>> = (
+const unpluginFactory: UnpluginFactory<Partial<PluginOptions> | undefined> = (
   options = {},
 ) => {
   let ROOT: string = process.cwd()

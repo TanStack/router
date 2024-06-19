@@ -8,7 +8,7 @@ export const TanStackRouterGeneratorVite = unpluginRouterGenerator.vite
 export const TanStackRouterCodeSplitterVite = unpluginRouterCodeSplitter.vite
 
 export function TanStackRouterVite(
-  inlineConfig: Partial<PluginOptions>,
+  inlineConfig?: Partial<PluginOptions>,
 ): Array<VitePlugin> {
   return [
     TanStackRouterGeneratorVite(inlineConfig) as VitePlugin,
