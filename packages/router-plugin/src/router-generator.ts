@@ -1,10 +1,9 @@
 import { isAbsolute, join, normalize, resolve } from 'node:path'
-import { createUnplugin } from 'unplugin'
 import { generator } from '@tanstack/router-generator'
 
 import { getConfig } from './config'
 import { CONFIG_FILE_NAME } from './constants'
-import type { PluginOptions } from './config'
+import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
 let lock = false
@@ -13,11 +12,11 @@ const setLock = (bool: boolean) => {
   lock = bool
 }
 
-const unpluginFactory: UnpluginFactory<Partial<PluginOptions> | undefined> = (
-  options = {},
-) => {
+export const unpluginRouterGeneratorFactory: UnpluginFactory<
+  Partial<Config> | undefined
+> = (options = {}) => {
   let ROOT: string = process.cwd()
-  let userConfig = options as PluginOptions
+  let userConfig = options as Config
 
   const generate = async () => {
     if (checkLock()) {
@@ -87,6 +86,3 @@ const unpluginFactory: UnpluginFactory<Partial<PluginOptions> | undefined> = (
     },
   }
 }
-
-export const unpluginRouterGenerator =
-  /* #__PURE__ */ createUnplugin(unpluginFactory)
