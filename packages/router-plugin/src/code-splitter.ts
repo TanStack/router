@@ -128,6 +128,10 @@ export const unpluginFactory: UnpluginFactory<Partial<Config> | undefined> = (
       return null
     },
     async transform(code, id) {
+      if (!userConfig.experimental?.enableCodeSplitting) {
+        return null
+      }
+
       const url = pathToFileURL(id)
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
