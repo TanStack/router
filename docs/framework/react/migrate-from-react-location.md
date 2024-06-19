@@ -35,9 +35,9 @@ npm uninstall @tanstack/react-location @tanstack/react-location-devtools
 
 ### Step 2: Use the file-based routing watcher
 
-If your project uses Vite, you can use the our plugin to watch for changes in your routes files and automatically update the routes configuration.
+If your project uses Vite (or one the supported bundlers), you can use the TanStack Router plugin to watch for changes in your routes files and automatically update the routes configuration.
 
-Install the Vite plugin:
+Installation of the Vite plugin:
 
 ```bash
 npm install -D @tanstack/router-plugin
