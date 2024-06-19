@@ -7,7 +7,7 @@ import { compileFile, splitFile } from './compilers'
 import { getConfig } from './config'
 import { splitPrefix } from './constants'
 
-import type { PluginOptions } from './config'
+import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
 function capitalizeFirst(str: string): string {
@@ -45,13 +45,14 @@ plugins: [
   }
 }
 
-export const unpluginFactory: UnpluginFactory<
-  Partial<PluginOptions> | undefined
-> = (options = {}, { framework }) => {
+export const unpluginFactory: UnpluginFactory<Partial<Config> | undefined> = (
+  options = {},
+  { framework },
+) => {
   const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
   let ROOT: string = process.cwd()
-  let userConfig = options as PluginOptions
+  let userConfig = options as Config
 
   const handleSplittingFile = async (code: string, id: string) => {
     const compiledAst = compileAst({
