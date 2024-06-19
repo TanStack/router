@@ -3031,7 +3031,7 @@ describe('Link', () => {
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
 
-  test.only('when linking to self with from prop set and param containing a slash', async () => {
+  test('when linking to self with from prop set and param containing a slash', async () => {
     const rootRoute = createRootRoute({})
 
     const indexRoute = createRoute({
