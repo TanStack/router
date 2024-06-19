@@ -101,6 +101,7 @@ export const unpluginFactory: UnpluginFactory<Partial<PluginOptions>> = (
 
   return {
     name: 'router-code-splitter-plugin',
+    enforce: 'pre',
     resolveId(source) {
       if (!userConfig?.experimental?.enableCodeSplitting) {
         return null
