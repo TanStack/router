@@ -30,6 +30,7 @@ describe('code-splitter works', async () => {
 
       await expect(compilerResult.code).toMatchFileSnapshot(
         `./code-splitter/snapshots/${filename}`,
+        `Compiled file for "${filename}" should match snapshot`,
       )
 
       const splitResult = await splitFile({
@@ -42,6 +43,7 @@ describe('code-splitter works', async () => {
 
       await expect(splitResult.code).toMatchFileSnapshot(
         `./code-splitter/snapshots/${filename.replace('.tsx', '')}@split.tsx`,
+        `Split file for "${filename}" should match snapshot`,
       )
     },
   )
