@@ -15,8 +15,10 @@ overrides:
   '@tanstack/router-cli': workspace:*
   '@tanstack/router-devtools': workspace:*
   '@tanstack/router-generator': workspace:*
+  '@tanstack/router-plugin': workspace:*
   '@tanstack/router-vite-plugin': workspace:*
   '@tanstack/start': workspace:*
+  '@tanstack/start-vite-plugin': workspace:*
 
 importers:
 
@@ -1586,7 +1588,7 @@ importers:
         specifier: ^3.22.4
         version: 3.23.8
 
-  packages/router-vite-plugin:
+  packages/router-plugin:
     dependencies:
       '@babel/core':
         specifier: ^7.23.7
@@ -1630,12 +1632,21 @@ importers:
       '@types/babel__traverse':
         specifier: ^7.20.5
         version: 7.20.5
-      '@vitejs/plugin-react':
-        specifier: ^4.2.1
-        version: 4.2.1(vite@5.2.11(@types/node@20.13.0)(terser@5.31.0))
+      unplugin:
+        specifier: ^1.10.1
+        version: 1.10.1
+      vite:
+        specifier: '>=5'
+        version: 5.2.11(@types/node@20.13.0)(terser@5.31.0)
       zod:
         specifier: ^3.22.4
         version: 3.23.8
+
+  packages/router-vite-plugin:
+    dependencies:
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../router-plugin
 
   packages/start:
     dependencies:
@@ -1648,11 +1659,11 @@ importers:
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../router-vite-plugin
+        version: link:../router-plugin
       '@tanstack/start-vite-plugin':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../start-vite-plugin
       '@types/jsesc':
         specifier: ^3.0.3

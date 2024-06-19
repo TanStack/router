@@ -1,8 +1,9 @@
 import * as t from '@babel/types'
 import * as template from '@babel/template'
-import * as babel from '@babel/core'
 import { splitPrefix } from './constants'
 import { eliminateUnreferencedIdentifiers } from './eliminateUnreferencedIdentifiers'
+import type * as babel from '@babel/core'
+import type { CompileAstFn } from './ast'
 
 type SplitModulesById = Record<
   string,
@@ -22,60 +23,12 @@ interface State {
   splitModulesById: SplitModulesById
 }
 
-export type CompileFn = (compileOpts: {
-  code: string
-  filename: string
-  getBabelConfig: () => { plugins: Array<any> }
-}) => Promise<{
-  code: string
-  map: any
-}>
-
-export function makeCompile(makeOpts: { root: string }) {
-  return async (opts: {
-    code: string
-    filename: string
-    getBabelConfig: () => { plugins: Array<any> }
-  }): Promise<{
-    code: string
-    map: any
-  }> => {
-    const res = await babel.transform(opts.code, {
-      plugins: [
-        ['@babel/plugin-syntax-jsx', {}],
-        [
-          '@babel/plugin-syntax-typescript',
-          {
-            isTSX: true,
-          },
-        ],
-        ...opts.getBabelConfig().plugins,
-      ],
-      root: makeOpts.root,
-      filename: opts.filename,
-      sourceMaps: true,
-    })
-
-    if (res?.code) {
-      return {
-        code: res.code,
-        map: res.map,
-      }
-    }
-
-    return {
-      code: opts.code,
-      map: null,
-    }
-  }
-}
-
 export async function compileFile(opts: {
   code: string
-  compile: CompileFn
+  compileAst: CompileAstFn
   filename: string
 }) {
-  return await opts.compile({
+  return await opts.compileAst({
     code: opts.code,
     filename: opts.filename,
     getBabelConfig: () => ({
@@ -272,11 +225,10 @@ type SplitNodeType = (typeof splitNodeTypes)[number]
 
 export async function splitFile(opts: {
   code: string
-  compile: CompileFn
+  compileAst: CompileAstFn
   filename: string
-  // ref: string
 }) {
-  return await opts.compile({
+  return await opts.compileAst({
     code: opts.code,
     filename: opts.filename,
     getBabelConfig: () => ({

@@ -2,49 +2,47 @@
 title: Custom Search Param Serialization
 ---
 
-> TODO This portion of documentation is currently under construction
+By default, TanStack Router parses and serializes your URL Search Params automatically using `JSON.stringify` and `JSON.parse`. This process involves escaping and unescaping the search string, which is a common practice for URL search params, in addition to the serialization and deserialization of the search object.
 
-By default, TanStack Router parses and serializes your search params automatically using `JSON.stringify/JSON.parse`. Depending on your needs though, you may want to customize the serialization process.
-
-To do so, [use `Router`'s `parseSearch` and `stringifySearch` options](../custom-search-param-serialization):
+For instance, using the default configuration, if you have the following search object:
 
 ```tsx
-import { createRouter } from '@tanstack/react-router'
-import qs from 'query-string'
-
-// For example, we use `query-string` to render arrays in bracket notation:
-// output: ?key[]=value1&key[]=value2
-
-function customStringifier(searchObj) {
-  return qs.stringify(searchObj, { arrayFormat: 'bracket' })
+const search = {
+  page: 1,
+  sort: 'asc',
+  filters: { author: 'tanner', min_words: 800 },
 }
-
-function customParser(searchString) {
-  return qs.parse(searchString, { arrayFormat: 'bracket' })
-}
-
-const router = createRouter({
-  stringifySearch: customStringifier,
-  parseSearch: customParser,
-})
 ```
 
-Additionally, you can [use the `parseSearchWith` and `stringifySearchWith` utilities](../custom-search-param-serialization) to parse and serialize the search values specifically.
+It would be serialized and escaped into the following search string:
 
-For example, we can reimplement the default parser/serializer with the following code:
+```txt
+?page=1&sort=asc&filters=%7B%22author%22%3A%22tanner%22%2C%22min_words%22%3A800%7D
+```
+
+We can implement the default behavior with the following code:
 
 ```tsx
 import {
-  Router,
+  createRouter,
   parseSearchWith,
   stringifySearchWith,
 } from '@tanstack/react-router'
 
 const router = createRouter({
+  // ...
   parseSearch: parseSearchWith(JSON.parse),
   stringifySearch: stringifySearchWith(JSON.stringify),
 })
 ```
+
+However, this default behavior may not be suitable for all use cases. For example, you may want to use a different serialization format, such as base64 encoding, or you may want to use a purpose-built serialization/deserialization library, like [query-string](https://github.com/sindresorhus/query-string), [JSURL2](https://github.com/wmertens/jsurl2), or [Zipson](https://jgranstrom.github.io/zipson/).
+
+This can be achieved by providing your own serialization and deserialization functions to the `parseSearch` and `stringifySearch` options in the [`Router`](../../api/router/RouterOptionsType#stringifysearch-method) configuration. When doing this, you can utilize TanStack Router's built-in helper functions, `parseSearchWith` and `stringifySearchWith`, to simplify the process.
+
+> 🧠 An important aspect of serialization and deserialization, is that you are able to get the same object back after deserialization. This is important because if the serialization and deserialization process is not done correctly, you may lose some information. For example, if you are using a library that does not support nested objects, you may lose the nested object when deserializing the search string.
+
+Here are some examples of how you can customize the search param serialization in TanStack Router:
 
 ## Using Base64
 
@@ -64,7 +62,7 @@ const router = createRouter({
   ),
 })
 
-export function decodeFromBinary(str: string): string {
+function decodeFromBinary(str: string): string {
   return decodeURIComponent(
     Array.prototype.map
       .call(atob(str), function (c) {
@@ -74,7 +72,7 @@ export function decodeFromBinary(str: string): string {
   )
 }
 
-export function encodeToBinary(str: string): string {
+function encodeToBinary(str: string): string {
   return btoa(
     encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function (match, p1) {
       return String.fromCharCode(parseInt(p1, 16))
@@ -85,7 +83,67 @@ export function encodeToBinary(str: string): string {
 
 > [⚠️ Why does this snippet not use atob/btoa?](#safe-binary-encodingdecoding)
 
-## Using Zipson
+So, if we were to turn the previous object into a search string using this configuration, it would look like this:
+
+```txt
+?page=1&sort=asc&filters=eyJhdXRob3IiOiJ0YW5uZXIiLCJtaW5fd29yZHMiOjgwMH0%3D
+```
+
+## Using the query-string library
+
+The [query-string](https://github.com/sindresorhus/query-string) library is a popular for being able to reliably parse and stringify query strings. You can use it to customize the serialization format of your search params. This can be done with the following code:
+
+```tsx
+import { createRouter } from '@tanstack/react-router'
+import qs from 'query-string'
+
+const router = createRouter({
+  // ...
+  stringifySearch: stringifySearchWith((value) =>
+    qs.stringify(value, {
+      // ...options
+    }),
+  ),
+  parseSearch: parseSearchWith((value) =>
+    qs.parse(value, {
+      // ...options
+    }),
+  ),
+})
+```
+
+So, if we were to turn the previous object into a search string using this configuration, it would look like this:
+
+```txt
+?page=1&sort=asc&filters=author%3Dtanner%26min_words%3D800
+```
+
+## Using the JSURL2 library
+
+[JSURL2](https://github.com/wmertens/jsurl2) is a non-standard library that can compress URLs while still maintaining readability. This can be done with the following code:
+
+```tsx
+import {
+  Router,
+  parseSearchWith,
+  stringifySearchWith,
+} from '@tanstack/react-router'
+import { parse, stringify } from 'jsurl2'
+
+const router = createRouter({
+  // ...
+  parseSearch: parseSearchWith(parse),
+  stringifySearch: stringifySearchWith(stringify),
+})
+```
+
+So, if we were to turn the previous object into a search string using this configuration, it would look like this:
+
+```txt
+?page=1&sort=asc&filters=(author~tanner~min*_words~800)~
+```
+
+## Using the Zipson library
 
 [Zipson](https://jgranstrom.github.io/zipson/) is a very user-friendly and performant JSON compression library (both in runtime performance and the resulting compression performance). To compress your search params with it (which requires escaping/unescaping and base64 encoding/decoding them as well), you can use the following code:
 
@@ -106,7 +164,7 @@ const router = createRouter({
   ),
 })
 
-export function decodeFromBinary(str: string): string {
+function decodeFromBinary(str: string): string {
   return decodeURIComponent(
     Array.prototype.map
       .call(atob(str), function (c) {
@@ -116,7 +174,7 @@ export function decodeFromBinary(str: string): string {
   )
 }
 
-export function encodeToBinary(str: string): string {
+function encodeToBinary(str: string): string {
   return btoa(
     encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function (match, p1) {
       return String.fromCharCode(parseInt(p1, 16))
@@ -127,29 +185,17 @@ export function encodeToBinary(str: string): string {
 
 > [⚠️ Why does this snippet not use atob/btoa?](#safe-binary-encodingdecoding)
 
-## Using JSURL2
+So, if we were to turn the previous object into a search string using this configuration, it would look like this:
 
-[JSURL2](https://github.com/wmertens/jsurl2) is a non-standard library that can both compress URLs while still maintaining readability. This can be done with the following code:
-
-```tsx
-import {
-  Router,
-  parseSearchWith,
-  stringifySearchWith,
-} from '@tanstack/react-router'
-import jsurl from 'jsurl2'
-
-const router = createRouter({
-  parseSearch: parseSearchWith(jsurl.parse),
-  stringifySearch: stringifySearchWith(jsurl.stringify),
-})
+```txt
+?page=1&sort=asc&filters=JTdCJUMyJUE4YXV0aG9yJUMyJUE4JUMyJUE4dGFubmVyJUMyJUE4JUMyJUE4bWluX3dvcmRzJUMyJUE4JUMyJUEyQ3UlN0Q%3D
 ```
 
-<hr></hr>
+<hr>
 
 ### Safe Binary Encoding/Decoding
 
-In the browser, `atob` and `btoa` are not guaranteed to work properly with non-UTF8 characters. We recommend using these encoding/decoding utilities instead:
+In the browser, the `atob` and `btoa` functions are not guaranteed to work properly with non-UTF8 characters. We recommend using these encoding/decoding utilities instead:
 
 To encode from a string to a binary string:
 

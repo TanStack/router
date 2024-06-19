@@ -193,6 +193,9 @@ type BeforeLoadFn<
   params: TAllParams
   context: TParentAllContext
   location: ParsedLocation
+  /**
+   * @deprecated Use `throw redirect({ to: '/somewhere' })` instead
+   **/
   navigate: NavigateFn
   buildLocation: BuildLocationFn
   cause: 'preload' | 'enter' | 'stay'
