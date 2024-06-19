@@ -29,6 +29,10 @@ export const packages = [
     packageDir: 'packages/router-cli',
   },
   {
+    name: '@tanstack/router-plugin',
+    packageDir: 'packages/router-plugin',
+  },
+  {
     name: '@tanstack/router-vite-plugin',
     packageDir: 'packages/router-vite-plugin',
   },
@@ -39,6 +43,10 @@ export const packages = [
   {
     name: '@tanstack/start',
     packageDir: 'packages/start',
+  },
+  {
+    name: '@tanstack/start-vite-plugin',
+    packageDir: 'packages/start-vite-plugin',
   },
 ]
 

@@ -46,7 +46,6 @@
     "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/parser": "^6.20.0",
-    "redaxios": "^0.5.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-import-resolver-typescript": "^3.6.1",
@@ -54,11 +53,12 @@
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "glob": "^10.3.14",
-    "nx": "^18.3.4",
+    "nx": "^19.3.0",
     "prettier": "^3.2.5",
     "publint": "^0.2.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "redaxios": "^0.5.0",
     "rimraf": "^5.0.6",
     "typescript": "^5.4.5",
     "vite": "^5.2.11",
@@ -79,8 +79,10 @@
       "@tanstack/router-cli": "workspace:*",
       "@tanstack/router-devtools": "workspace:*",
       "@tanstack/router-generator": "workspace:*",
+      "@tanstack/router-plugin": "workspace:*",
       "@tanstack/router-vite-plugin": "workspace:*",
-      "@tanstack/start": "workspace:*"
+      "@tanstack/start": "workspace:*",
+      "@tanstack/start-vite-plugin": "workspace:*"
     }
   }
 }

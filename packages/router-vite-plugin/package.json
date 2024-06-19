@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-vite-plugin",
-  "version": "1.38.0",
+  "version": "1.39.3",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -68,6 +68,7 @@
     "@babel/traverse": "^7.24.1",
     "@babel/types": "^7.24.0",
     "@tanstack/router-generator": "workspace:*",
+    "@tanstack/router-plugin": "workspace:^",
     "@types/babel__core": "^7.20.5",
     "@types/babel__generator": "^7.6.8",
     "@types/babel__template": "^7.4.4",

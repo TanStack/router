@@ -16,8 +16,8 @@
   "dependencies": {
     "@tanstack/react-router": "^1.38.1",
     "@tanstack/router-devtools": "^1.38.1",
-    "@tanstack/router-vite-plugin": "^1.38.0",
-    "@tanstack/start": "^1.38.1",
+    "@tanstack/router-vite-plugin": "^1.39.3",
+    "@tanstack/start": "^1.39.3",
     "@typescript-eslint/parser": "^7.2.0",
     "@vitejs/plugin-react": "^4",
     "dotenv": "^16.4.5",
