@@ -13,9 +13,9 @@ const setLock = (bool: boolean) => {
   lock = bool
 }
 
-const unpluginFactory: UnpluginFactory<Partial<Config> | undefined> = (
-  options = {},
-) => {
+export const unpluginRouterGeneratorFactory: UnpluginFactory<
+  Partial<Config> | undefined
+> = (options = {}) => {
   let ROOT: string = process.cwd()
   let userConfig = options as Config
 
@@ -88,5 +88,6 @@ const unpluginFactory: UnpluginFactory<Partial<Config> | undefined> = (
   }
 }
 
-export const unpluginRouterGenerator =
-  /* #__PURE__ */ createUnplugin(unpluginFactory)
+export const unpluginRouterGenerator = /* #__PURE__ */ createUnplugin(
+  unpluginRouterGeneratorFactory,
+)

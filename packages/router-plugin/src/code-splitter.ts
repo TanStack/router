@@ -8,7 +8,7 @@ import { getConfig } from './config'
 import { splitPrefix } from './constants'
 
 import type { Config } from './config'
-import type { UnpluginFactory } from 'unplugin'
+import type { UnpluginFactory, UnpluginContextMeta } from 'unplugin'
 
 function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
@@ -22,19 +22,24 @@ function fileIsInRoutesDirectory(filePath: string, routesDirectory: string) {
   return filePath.startsWith(routesDirectoryPath)
 }
 
-const bannedBeforeExternalPlugins = [
+type BannedBeforeExternalPlugin = {
+  identifier: string
+  pkg: string
+  usage: string
+  frameworks: UnpluginContextMeta['framework'][]
+}
+
+const bannedBeforeExternalPlugins: BannedBeforeExternalPlugin[] = [
   {
     identifier: '@react-refresh',
     pkg: '@vitejs/plugin-react',
     usage: 'viteReact()',
+    frameworks: ['vite'],
   },
 ]
 
 class FoundPluginInBeforeCode extends Error {
-  constructor(
-    externalPlugin: (typeof bannedBeforeExternalPlugins)[number],
-    framework: string,
-  ) {
+  constructor(externalPlugin: BannedBeforeExternalPlugin, framework: string) {
     super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again: 
 e.g.
 plugins: [
@@ -45,10 +50,9 @@ plugins: [
   }
 }
 
-export const unpluginFactory: UnpluginFactory<Partial<Config> | undefined> = (
-  options = {},
-  { framework },
-) => {
+export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
+  Partial<Config> | undefined
+> = (options = {}, { framework }) => {
   const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
   let ROOT: string = process.cwd()
@@ -143,6 +147,10 @@ export const unpluginFactory: UnpluginFactory<Partial<Config> | undefined> = (
         (code.includes('createRoute(') || code.includes('createFileRoute('))
       ) {
         for (const externalPlugin of bannedBeforeExternalPlugins) {
+          if (!externalPlugin.frameworks.includes(framework)) {
+            continue
+          }
+
           if (code.includes(externalPlugin.identifier)) {
             throw new FoundPluginInBeforeCode(externalPlugin, framework)
           }
@@ -162,5 +170,6 @@ export const unpluginFactory: UnpluginFactory<Partial<Config> | undefined> = (
   }
 }
 
-export const unpluginRouterCodeSplitter =
-  /* #__PURE__ */ createUnplugin(unpluginFactory)
+export const unpluginRouterCodeSplitter = /* #__PURE__ */ createUnplugin(
+  unpluginRouterCodeSplitterFactory,
+)

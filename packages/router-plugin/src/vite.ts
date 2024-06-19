@@ -15,6 +15,7 @@ function TanStackRouterVite(inlineConfig?: Partial<Config>): Array<VitePlugin> {
   ]
 }
 
+export default TanStackRouterVite
 export {
   configSchema,
   TanStackRouterGeneratorVite,
