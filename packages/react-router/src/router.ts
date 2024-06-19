@@ -1110,7 +1110,7 @@ export class Router<
     })
   }
 
-  buildLocation: BuildLocationFn<TRouteTree> = (opts) => {
+  buildLocation: BuildLocationFn = (opts) => {
     const build = (
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean

@@ -13,6 +13,7 @@ import type {
   AnyRoute,
   AnySearchSchema,
   FileBaseRouteOptions,
+  InferAllContext,
   ResolveAllContext,
   ResolveAllParamsFromParent,
   ResolveFullSearchSchema,
@@ -98,7 +99,6 @@ export class FileRoute<
     TChildren = unknown,
   >(
     options?: FileBaseRouteOptions<
-      TParentRoute,
       TPath,
       TSearchSchemaInput,
       TSearchSchema,
@@ -106,6 +106,7 @@ export class FileRoute<
       TParams,
       TAllParams,
       TRouteContextReturn,
+      InferAllContext<TParentRoute>,
       TAllContext,
       TLoaderDeps,
       TLoaderDataReturn
