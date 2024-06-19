@@ -4,7 +4,7 @@ import {
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
 
-const configSchema = generatorConfigSchema.extend({
+export const configSchema = generatorConfigSchema.extend({
   enableRouteGeneration: z.boolean().optional(),
   experimental: z
     .object({
@@ -14,7 +14,7 @@ const configSchema = generatorConfigSchema.extend({
 })
 
 export const getConfig = async (
-  inlineConfig: Partial<PluginOptions>,
+  inlineConfig: Partial<Config>,
   root: string,
 ) => {
   const config = await getGeneratorConfig(inlineConfig, root)
@@ -22,4 +22,4 @@ export const getConfig = async (
   return configSchema.parse({ ...config, ...inlineConfig })
 }
 
-export type PluginOptions = z.infer<typeof configSchema>
+export type Config = z.infer<typeof configSchema>
