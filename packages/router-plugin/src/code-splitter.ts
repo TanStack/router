@@ -1,4 +1,3 @@
-// eslint-disable-file @typescript-eslint/no-unnecessary-condition
 import { isAbsolute, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createUnplugin } from 'unplugin'
@@ -119,7 +118,7 @@ export const unpluginFactory: UnpluginFactory<Partial<PluginOptions>> = (
     name: 'router-code-splitter-plugin',
     enforce: 'pre',
     resolveId(source) {
-      if (!userConfig?.experimental?.enableCodeSplitting) {
+      if (!userConfig.experimental?.enableCodeSplitting) {
         return null
       }
 

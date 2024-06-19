@@ -1,9 +1,8 @@
-// eslint-disable-file @typescript-eslint/consistent-type-imports
 import * as t from '@babel/types'
 import * as template from '@babel/template'
-import * as babel from '@babel/core'
 import { splitPrefix } from './constants'
 import { eliminateUnreferencedIdentifiers } from './eliminateUnreferencedIdentifiers'
+import type * as babel from '@babel/core'
 import type { CompileAstFn } from './ast'
 
 type SplitModulesById = Record<
