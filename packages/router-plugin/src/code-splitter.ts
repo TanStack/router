@@ -1,3 +1,4 @@
+// eslint-disable-file @typescript-eslint/no-unnecessary-condition
 import { isAbsolute, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createUnplugin } from 'unplugin'
