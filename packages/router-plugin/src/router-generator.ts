@@ -1,5 +1,4 @@
 import { isAbsolute, join, normalize, resolve } from 'node:path'
-import { createUnplugin } from 'unplugin'
 import { generator } from '@tanstack/router-generator'
 
 import { getConfig } from './config'
@@ -87,7 +86,3 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     },
   }
 }
-
-export const unpluginRouterGenerator = /* #__PURE__ */ createUnplugin(
-  unpluginRouterGeneratorFactory,
-)

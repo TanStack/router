@@ -1,6 +1,5 @@
 import { isAbsolute, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { createUnplugin } from 'unplugin'
 
 import { compileAst } from './ast'
 import { compileFile, splitFile } from './compilers'
@@ -169,7 +168,3 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     },
   }
 }
-
-export const unpluginRouterCodeSplitter = /* #__PURE__ */ createUnplugin(
-  unpluginRouterCodeSplitterFactory,
-)

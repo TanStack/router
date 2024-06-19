@@ -1,12 +1,17 @@
-import { unpluginRouterCodeSplitter } from './code-splitter'
+import { unpluginRouterCodeSplitterFactory } from './code-splitter'
 import { configSchema } from './config'
-import { unpluginRouterGenerator } from './router-generator'
+import { unpluginRouterGeneratorFactory } from './router-generator'
+import { createVitePlugin } from 'unplugin'
 
 import type { Config } from './config'
 import type { VitePlugin } from 'unplugin'
 
-const TanStackRouterGeneratorVite = unpluginRouterGenerator.vite
-const TanStackRouterCodeSplitterVite = unpluginRouterCodeSplitter.vite
+const TanStackRouterGeneratorVite = createVitePlugin(
+  unpluginRouterGeneratorFactory,
+)
+const TanStackRouterCodeSplitterVite = createVitePlugin(
+  unpluginRouterCodeSplitterFactory,
+)
 
 function TanStackRouterVite(inlineConfig?: Partial<Config>): Array<VitePlugin> {
   return [
