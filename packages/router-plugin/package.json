@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/start-vite-plugin"
+    "directory": "packages/router-plugin"
   },
   "homepage": "https://tanstack.com/router",
   "funding": {
@@ -15,9 +15,6 @@
     "url": "https://github.com/sponsors/tannerlinsley"
   },
   "type": "module",
-  "types": "dist/esm/index.d.ts",
-  "main": "dist/cjs/index.cjs",
-  "module": "dist/esm/index.js",
   "exports": {
     ".": {
       "import": {
