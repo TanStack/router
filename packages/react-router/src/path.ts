@@ -260,8 +260,8 @@ export function removeBasepath(basepath: string, pathname: string) {
 
     // avoid matching partial segments - strict equality handled
     // earlier, otherwise, basepath separated from pathname with
-    // separator, therefore lack of seprator means partial segment
-    // match (`/app` should not match `/application`)
+    // separator, therefore lack of separator means partial
+    // segment match (`/app` should not match `/application`)
     case pathname[basepath.length] !== '/':
       return pathname
 

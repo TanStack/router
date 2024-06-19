@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { exactPathTest, removeBasepath, removeTrailingSlash } from '../src/path'
 
 describe('removeBasepath', () => {
-  ;[
+  it.each([
     {
       name: '`/` should leave pathname as-is',
       basepath: '/',
@@ -39,10 +39,8 @@ describe('removeBasepath', () => {
       pathname: '/app/new-application',
       expected: '/app/new-application',
     },
-  ].forEach(({ name, basepath, pathname, expected }) => {
-    it(name, () => {
-      expect(removeBasepath(basepath, pathname)).toBe(expected)
-    })
+  ])('$name', ({ basepath, pathname, expected }) => {
+    expect(removeBasepath(basepath, pathname)).toBe(expected)
   })
 })
 
