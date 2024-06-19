@@ -3,3 +3,5 @@
 # TanStack Router Plugin
 
 See https://tanstack.com/router/latest/docs/framework/react/guide/file-based-routing
+
+<!-- Trigger CI -->
