@@ -7,7 +7,7 @@ import { getConfig } from './config'
 import { splitPrefix } from './constants'
 
 import type { Config } from './config'
-import type { UnpluginFactory, UnpluginContextMeta } from 'unplugin'
+import type { UnpluginContextMeta, UnpluginFactory } from 'unplugin'
 
 function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
@@ -25,10 +25,10 @@ type BannedBeforeExternalPlugin = {
   identifier: string
   pkg: string
   usage: string
-  frameworks: UnpluginContextMeta['framework'][]
+  frameworks: Array<UnpluginContextMeta['framework']>
 }
 
-const bannedBeforeExternalPlugins: BannedBeforeExternalPlugin[] = [
+const bannedBeforeExternalPlugins: Array<BannedBeforeExternalPlugin> = [
   {
     identifier: '@react-refresh',
     pkg: '@vitejs/plugin-react',
