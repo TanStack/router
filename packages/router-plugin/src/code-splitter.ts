@@ -25,10 +25,25 @@ function fileIsInRoutesDirectory(filePath: string, routesDirectory: string) {
 const bannedBeforeExternalPlugins = [
   {
     identifier: '@react-refresh',
-    package: '@vitejs/plugin-react',
+    pkg: '@vitejs/plugin-react',
     usage: 'viteReact()',
   },
 ]
+
+class FoundPluginInBeforeCode extends Error {
+  constructor(
+    externalPlugin: (typeof bannedBeforeExternalPlugins)[number],
+    framework: string,
+  ) {
+    super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again: 
+e.g.
+plugins: [
+  TanStackRouter${capitalizeFirst(framework)}(), // Place this before ${externalPlugin.usage}
+  ${externalPlugin.usage},
+]
+`)
+  }
+}
 
 export const unpluginFactory: UnpluginFactory<Partial<PluginOptions>> = (
   options = {},
@@ -125,19 +140,11 @@ export const unpluginFactory: UnpluginFactory<Partial<PluginOptions>> = (
       ) {
         for (const externalPlugin of bannedBeforeExternalPlugins) {
           if (code.includes(externalPlugin.identifier)) {
-            throw new Error(
-              `We detected that the '${externalPlugin.package}' was passed before '@tanstack/router-plugin'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.package}' and try again: 
-e.g.
-plugins: [
-  TanStackRouter${capitalizeFirst(framework)}(), // Place this before ${externalPlugin.usage}
-  ${externalPlugin.usage},
-]
-`,
-            )
+            throw new FoundPluginInBeforeCode(externalPlugin, framework)
           }
-
-          return await handleCompilingFile(code, id)
         }
+
+        return await handleCompilingFile(code, id)
       }
 
       return null
