@@ -72,13 +72,13 @@ const unpluginFactory: UnpluginFactory<Partial<PluginOptions>> = (
 
   return {
     name: 'router-generator-plugin',
-    watchChange: async (id, { event }) => {
+    async watchChange(id, { event }) {
       await run(async () => {
         await handleFile(id, event)
       })
     },
     vite: {
-      configResolved: async (config) => {
+      async configResolved(config) {
         ROOT = config.root
         userConfig = await getConfig(options, ROOT)
 
