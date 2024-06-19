@@ -6,25 +6,36 @@ Most of the TanStack Router documentation is written for file-based routing. Thi
 
 ## Prerequisites
 
-To enable file-based route generation, you'll need to install either the `@tanstack/router-vite-plugin` or `@tanstack/router-cli` package to generate your route tree file.
+To enable file-based routing, you'll need to be using React with a supported bundler. TanStack Router currently has support for the following bundlers:
 
-## Vite Plugin
+- Vite
+- Rspack (coming soon)
+- Webpack (coming soon)
+- Others (let us know if you'd like to see support for a specific bundler)
 
-The `@tanstack/router-vite-plugin` Vite plugin will **automatically generate your route configuration through Vite's dev and build processes**. It is the easiest way to use TanStack Router's route generation features.
+If your bundler is not yet supported, you reach out to us on Discord or GitHub to let us know you'd like to see support for your bundler. Till then, fear not! You can still use the use the [`@tanstack/router-cli`](#configuration-with-the-tanstack-router-cli) package to generate your route tree file.
+
+## Installation
+
+To get started with file-based routing, you'll need to configure your project's bundler to use the TanStack Router Plugin or the TanStack Router CLI.
+
+If you are using TanStack Router's file-based routing through a bundler, the plugin will **automatically generate your route configuration through your bundler's dev and build processes**. It is the easiest way to use TanStack Router's route generation features.
+
+### Configuration with Vite
+
+To use file-based routing with **Vite**, you'll need to install the `@tanstack/router-plugin` package.
 
 ```sh
-npm install @tanstack/router-vite-plugin
+npm install -D @tanstack/router-plugin
 ```
 
-### Vite Configuration
-
-To enable the Vite plugin, add it to your `vite.config.ts` file:
+Once installed, you'll need to add the plugin to your Vite configuration.
 
 ```tsx
 // vite.config.ts
 import { defineConfig } from 'vite'
 import viteReact from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -36,7 +47,52 @@ export default defineConfig({
 })
 ```
 
-With the plugin enabled, Vite will now watch your configured `routesDirectory` and generate your route tree whenever a file is added, removed, or changed.
+> ⚠️ If you are using the older `@tanstack/router-vite-plugin` package, you can still continue to use it, as it will be aliased to the `@tanstack/router-plugin/vite` package. However, we would recommend using the `@tanstack/router-plugin` package directly.
+
+### Configuration with the TanStack Router CLI
+
+To use file-based routing with the TanStack Router CLI, you'll need to install the `@tanstack/router-cli` package.
+
+```sh
+npm install -D @tanstack/router-cli
+```
+
+Once installed, you'll need to amend your your scripts in your `package.json` for the CLI to `watch` and `generate` files.
+
+```json
+{
+  "scripts": {
+    "generate-routes": "tsr generate",
+    "watch-routes": "tsr watch",
+    "build": "npm run generate-routes && ...",
+    "dev": "npm run watch-routes && ..."
+  }
+}
+```
+
+With the CLI installed, the following commands are made available via the `tsr` command
+
+#### Using the `generate` command
+
+Generates the routes for a project based on the provided configuration.
+
+```sh
+tsr generate
+```
+
+#### Using the `watch` command
+
+Continuously watches the specified directories and regenerates routes as needed.
+
+**Usage:**
+
+```sh
+tsr watch
+```
+
+With file-based routing enabled, whenever you start your application in development mode, TanStack Router will watch your configured `routesDirectory` and generate your route tree whenever a file is added, removed, or changed.
+
+### Disabling the TanStack Router Plugin during tests
 
 > ⚠️ Note: To disable the plugin when running tests via vitest, you can conditionally add it based on the current `NODE_ENV`:
 
@@ -57,36 +113,6 @@ export default defineConfig({
     // ...
   ],
 })
-```
-
-## Router CLI
-
-If you are unable to use Vite, you can always use the Router CLI (which is what the Vite plugin uses) to generate your route configuration from your package dev/build scripts.
-
-```sh
-npm install @tanstack/router-cli
-```
-
-With the CLI installed, the following commands are made available via the `tsr` command
-
-### `generate`
-
-Generates the routes for a project based on the provided configuration.
-
-**Usage:**
-
-```bash
-tsr generate
-```
-
-### `watch`
-
-Continuously watches the specified directories and regenerates routes as needed.
-
-**Usage:**
-
-```bash
-tsr watch
 ```
 
 ## Configuration
