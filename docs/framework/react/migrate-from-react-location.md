@@ -35,42 +35,28 @@ npm uninstall @tanstack/react-location @tanstack/react-location-devtools
 
 ### Step 2: Use the file-based routing watcher
 
-If your project uses vite, you can use the our plugin to watch for changes in your routes files and automatically update the routes configuration.
+If your project uses Vite, you can use the our plugin to watch for changes in your routes files and automatically update the routes configuration.
 
-Install the vite plugin:
+Install the Vite plugin:
 
 ```bash
-npm install -D @tanstack/router-vite-plugin
+npm install -D @tanstack/router-plugin
 ```
 
 And add it to your `vite.config.js`:
 
 ```js
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
+import viteReact from '@vitejs/plugin-react'
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
   // ...
-  plugins: [TanStackRouterVite(), react()],
+  plugins: [TanStackRouterVite(), viteReact()],
 })
 ```
 
-However, if your application does not use vite, you can use the `@tanstack/router-cli` package to watch for changes in your routes files and automatically update the routes configuration.
-
-```bash
-npm install -D @tanstack/router-cli
-```
-
-And add a script to your `package.json`:
-
-```json
-{
-  "scripts": {
-    "dev": "tsr watch"
-  }
-}
-```
+However, if your application does not use Vite, you use one of our other [supported bundlers](../guide/file-based-routing#prerequisites), or you can use the `@tanstack/router-cli` package to watch for changes in your routes files and automatically update the routes configuration.
 
 ### Step 3: Add the file-based configuration file to your project
 
@@ -210,9 +196,9 @@ function PostsId() {
 
 ### Step 10: Generate the route tree
 
-If you are using vite as your bundler, the route tree will be generated automatically when you run the dev script.
+If you are using one of the supported bundlers, the route tree will be generated automatically when you run the dev script.
 
-If you are not using vite, you can generate the route tree by running the following command:
+If you are not using one of the supported bundlers, you can generate the route tree by running the following command:
 
 ```bash
 npx tsr generate
