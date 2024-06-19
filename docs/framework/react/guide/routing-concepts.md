@@ -58,7 +58,7 @@ The `createFileRoute` function takes a single argument, the file-route's path as
 
 **❓❓❓ "Wait, you're making me pass the path of the route file to `createFileRoute`?"**
 
-Yes! But don't worry, this path is **automatically written and managed by the router for you via the Vite plugin or Router CLI.** So, as you create new routes, move routes around or rename routes, the path will be updated for you automatically.
+Yes! But don't worry, this path is **automatically written and managed by the router for you via the TanStack Router plugin or Router CLI.** So, as you create new routes, move routes around or rename routes, the path will be updated for you automatically.
 
 > 🧠 The reason for this pathname has everything to do with the magical type safety of TanStack Router. Without this pathname, TypeScript would have no idea what file we're in! (We wish TypeScript had a built-in for this, but they don't yet 🤷‍♂️)
 

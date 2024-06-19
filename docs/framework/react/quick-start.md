@@ -4,16 +4,14 @@ title: Quick Start
 
 If you're feeling impatient and prefer to skip all of our wonderful documentation, here is the bare minimum to get going with TanStack Router using both file-based route generation and code-based route configuration:
 
-## Using File-Based Route Generation + Vite
+## Using File-Based Route Generation
 
-File based route generation (via Vite) is the recommended way to use TanStack Router as it provides the best experience, performance, and ergonomics for the least amount of effort.
-
-> 🧠 You can also use the Router CLI (the `tsr` binary) to generate routes if you are unable to use Vite. See [File-Based Routing](../guide/file-based-routing) for more info.
+File based route generation (through Vite, and other supported bundlers) is the recommended way to use TanStack Router as it provides the best experience, performance, and ergonomics for the least amount of effort.
 
 ### Install the Vite Plugin and the Router Devtools
 
 ```bash
-npm install --save-dev @tanstack/router-vite-plugin @tanstack/router-devtools
+npm install --save-dev @tanstack/router-plugin @tanstack/router-devtools
 ```
 
 ### Configure the Vite Plugin
@@ -21,16 +19,20 @@ npm install --save-dev @tanstack/router-vite-plugin @tanstack/router-devtools
 ```tsx
 // vite.config.ts
 import { defineConfig } from 'vite'
-import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
+import viteReact from '@vitejs/plugin-react'
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    // ...,
     TanStackRouterVite(),
+    viteReact(),
+    // ...,
   ],
 })
 ```
+
+> 🧠 If you are not using Vite, or a bundler at all, you can check out the [File-Based Routing](../guide/file-based-routing) guide for more info.
 
 Create the following files:
 
@@ -39,7 +41,7 @@ Create the following files:
 - `src/routes/about.lazy.tsx`
 - `src/main.tsx`
 
-> 🧠 **Route files with the `.lazy.tsx` extension are lazy loaded via separate bundles to keep the main bundle size as lean as possible.**
+> 🧠 Route files with the `.lazy.tsx` extension are lazy loaded via separate bundles to keep the main bundle size as lean as possible.
 
 ### `src/routes/__root.tsx`
 
@@ -100,9 +102,7 @@ function About() {
 
 ### `src/main.tsx`
 
-Regardless if you are using the `@tanstack/router-vite-plugin` or manually run `tsr watch`/`tsr generate` from your package scripts, the following file will be generated for you:
-
-- `src/routeTree.gen.ts`
+Regardless if you are using the `@tanstack/router-plugin` package or manually running the `tsr watch`/`tsr generate` commands from your package scripts, the following file will be generated for you at `src/routeTree.gen.ts`.
 
 Import the generated route tree and create a new router instance:
 
@@ -135,6 +135,8 @@ if (!rootElement.innerHTML) {
   )
 }
 ```
+
+If you are working with this pattern you should change the `id` of the root `<div>` on your `index.html` file to `<div id='root'></div>`
 
 ## Using Code-Based Route Configuration
 
@@ -211,9 +213,5 @@ if (!rootElement.innerHTML) {
   )
 }
 ```
-
-## Using File-Based Route Configuration
-
-If you are working with this pattern you should change the `id` of the root `<div>` on your `index.html` file to `<div id='app'></div>`
 
 If you glossed over these examples or didn't understand something, we don't blame you, because there's so much more to learn to really take advantage of TanStack Router! Let's move on.
