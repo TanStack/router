@@ -1707,9 +1707,9 @@ importers:
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../router-vite-plugin
+        version: link:../router-plugin
       '@tanstack/start-vite-plugin':
         specifier: workspace:*
         version: link:../start-vite-plugin
