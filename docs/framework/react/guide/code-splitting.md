@@ -182,7 +182,7 @@ Tada! 🎉
 
 When using the `experimental.enableCodeSplitting` feature, TanStack Router will automatically code split your route files based on the non-critical route configuration mentioned above.
 
-The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](../guide/file-based-routing#prerequisites). This will **NOT** work if you are **only** using the CLI (`@tanstack/router-cli`).
+The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](../../guide/file-based-routing#prerequisites). This will **NOT** work if you are **only** using the CLI (`@tanstack/router-cli`).
 
 To enable this feature, you can add the following to your `tsr.config.json`:
 
