@@ -1,8 +1,2 @@
-export {
-  routerCodeSplitterUnpluginFactory,
-  unpluginRouterCodeSplitter,
-} from './code-splitter'
-export {
-  routerGeneratorUnpluginFactory,
-  unpluginRouterGenerator,
-} from './router-generator'
+export { unpluginRouterCodeSplitter } from './code-splitter'
+export { unpluginRouterGenerator } from './router-generator'

@@ -8,19 +8,23 @@ import type { PluginOptions } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
 let lock = false
+const checkLock = () => lock
+const setLock = (bool: boolean) => {
+  lock = bool
+}
 
-export const routerGeneratorUnpluginFactory: UnpluginFactory<PluginOptions> = (
-  options,
+const unpluginFactory: UnpluginFactory<Partial<PluginOptions>> = (
+  options = {},
 ) => {
   let ROOT: string = process.cwd()
-  let userConfig: PluginOptions = options
+  let userConfig = options as PluginOptions
 
   const generate = async () => {
-    if (lock) {
+    if (checkLock()) {
       return
     }
 
-    lock = true
+    setLock(true)
 
     try {
       await generator(userConfig)
@@ -28,7 +32,7 @@ export const routerGeneratorUnpluginFactory: UnpluginFactory<PluginOptions> = (
       console.error(err)
       console.info()
     } finally {
-      lock = false
+      setLock(false)
     }
   }
 
@@ -84,6 +88,5 @@ export const routerGeneratorUnpluginFactory: UnpluginFactory<PluginOptions> = (
   }
 }
 
-export const unpluginRouterGenerator = /* #__PURE__ */ createUnplugin(
-  routerGeneratorUnpluginFactory,
-)
+export const unpluginRouterGenerator =
+  /* #__PURE__ */ createUnplugin(unpluginFactory)
