@@ -8,9 +8,9 @@ import type { Config } from './config'
 const TanStackRouterGeneratorRspack = /* #__PURE__ */ createRspackPlugin(
   unpluginRouterGeneratorFactory,
 )
-const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
-  unpluginRouterCodeSplitterFactory,
-)
+const unstable_TanStackRouterCodeSplitterRspack =
+  /* #__PURE__ */ createRspackPlugin(unpluginRouterCodeSplitterFactory)
+
 const TanStackRouterRspack = /* #__PURE__ */ createRspackPlugin(
   unpluginRouterComposedFactory,
 )
@@ -20,6 +20,6 @@ export {
   configSchema,
   TanStackRouterRspack,
   TanStackRouterGeneratorRspack,
-  TanStackRouterCodeSplitterRspack,
+  unstable_TanStackRouterCodeSplitterRspack,
 }
 export type { Config }

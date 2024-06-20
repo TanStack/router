@@ -7,15 +7,19 @@ import type { UnpluginFactory } from 'unplugin'
 export const unpluginRouterComposedFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}, meta) => {
-  const codeSplitterResult = unpluginRouterCodeSplitterFactory(options, meta)
   const generatorResult = unpluginRouterGeneratorFactory(options, meta)
 
-  const codeSplitter = Array.isArray(codeSplitterResult)
-    ? codeSplitterResult
-    : [codeSplitterResult]
   const generator = Array.isArray(generatorResult)
     ? generatorResult
     : [generatorResult]
 
-  return [...codeSplitter, ...generator]
+  const codeSplitterResult = unpluginRouterCodeSplitterFactory(options, meta)
+  const codeSplitter =
+    meta.framework === 'rspack'
+      ? []
+      : Array.isArray(codeSplitterResult)
+        ? codeSplitterResult
+        : [codeSplitterResult]
+
+  return [...generator, ...codeSplitter]
 }
