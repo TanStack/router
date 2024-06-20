@@ -9,7 +9,7 @@ Most of the TanStack Router documentation is written for file-based routing. Thi
 To enable file-based routing, you'll need to be using React with a supported bundler. TanStack Router currently has support for the following bundlers:
 
 - Vite
-- Rspack (coming soon)
+- Rspack/Rsbuild
 - Webpack (coming soon)
 - Others (let us know if you'd like to see support for a specific bundler)
 
@@ -48,6 +48,34 @@ export default defineConfig({
 ```
 
 > ⚠️ If you are using the older `@tanstack/router-vite-plugin` package, you can still continue to use it, as it will be aliased to the `@tanstack/router-plugin/vite` package. However, we would recommend using the `@tanstack/router-plugin` package directly.
+
+### Configuration with Rspack/Rsbuild
+
+To use file-based routing with **Rspack** or **Rsbuild**, you'll need to install the `@tanstack/router-plugin` package.
+
+```sh
+npm install -D @tanstack/router-plugin
+```
+
+Once installed, you'll need to add the plugin to your configuration.
+
+```tsx
+// rsbuild.config.ts
+import { defineConfig } from '@rsbuild/core'
+import { pluginReact } from '@rsbuild/plugin-react'
+import { TanStackRouterRspack } from '@tanstack/router-plugin/rspack'
+
+export default defineConfig({
+  plugins: [pluginReact()],
+  tools: {
+    rspack: {
+      plugins: [TanStackRouterRspack()],
+    },
+  },
+})
+```
+
+> ⚠️ **Note:** The `experimental.enableCodeSplitting` option is not yet supported in Rspack/Rsbuild.
 
 ### Configuration with the TanStack Router CLI
 
