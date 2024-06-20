@@ -4,7 +4,7 @@ import { generator } from '@tanstack/router-generator'
 import { getConfig } from './config'
 import { CONFIG_FILE_NAME } from './constants'
 import type { Config } from './config'
-import type { UnpluginFactory } from 'unplugin'
+import { UnpluginFactory } from 'unplugin'
 
 let lock = false
 const checkLock = () => lock
@@ -83,6 +83,11 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
 
         await run(generate)
       },
+    },
+    async rspack(compiler) {
+      userConfig = await getConfig(options, ROOT)
+
+      await run(generate)
     },
   }
 }

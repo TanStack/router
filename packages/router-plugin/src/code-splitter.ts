@@ -121,6 +121,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     name: 'router-code-splitter-plugin',
     enforce: 'pre',
     resolveId(source) {
+      if (framework !== 'vite') return source
       if (!userConfig.experimental?.enableCodeSplitting) {
         return null
       }
@@ -131,6 +132,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       return null
     },
     async transform(code, id) {
+      if (framework !== 'vite') return code
       if (!userConfig.experimental?.enableCodeSplitting) {
         return null
       }
@@ -165,6 +167,9 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         ROOT = config.root
         userConfig = await getConfig(options, ROOT)
       },
+    },
+    async rspack() {
+      userConfig = await getConfig(options, ROOT)
     },
   }
 }

@@ -5,13 +5,15 @@ import { unpluginRouterGeneratorFactory } from './router-generator'
 import { unpluginRouterComposedFactory } from './composed'
 import type { Config } from './config'
 
-const TanStackRouterGeneratorRspack = createRspackPlugin(
+const TanStackRouterGeneratorRspack = /* #__PURE__ */ createRspackPlugin(
   unpluginRouterGeneratorFactory,
 )
-const TanStackRouterCodeSplitterRspack = createRspackPlugin(
+const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
   unpluginRouterCodeSplitterFactory,
 )
-const TanStackRouterRspack = createRspackPlugin(unpluginRouterComposedFactory)
+const TanStackRouterRspack = /* #__PURE__ */ createRspackPlugin(
+  unpluginRouterComposedFactory,
+)
 
 export default TanStackRouterRspack
 export {
