@@ -1651,6 +1651,9 @@ importers:
       '@babel/types':
         specifier: ^7.24.0
         version: 7.24.5
+      '@rsbuild/core':
+        specifier: '>=0.7.9'
+        version: 0.7.9
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator
