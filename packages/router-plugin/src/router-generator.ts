@@ -3,8 +3,8 @@ import { generator } from '@tanstack/router-generator'
 
 import { getConfig } from './config'
 import { CONFIG_FILE_NAME } from './constants'
+import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
-import { UnpluginFactory } from 'unplugin'
 
 let lock = false
 const checkLock = () => lock
