@@ -180,6 +180,8 @@ Tada! 🎉
 
 > ⚠️ **Experimental:** This feature is experimental and currently in development. It is not recommended for production use.
 
+> ⚠️ **Important:** This feature is currently does not work with Rspack/Rsbuild. If you are familiar with [Unplugin](https://unplugin.unjs.io) or Rspack, please let us know if you can help us get this working!
+
 When using the `experimental.enableCodeSplitting` feature, TanStack Router will automatically code split your route files based on the non-critical route configuration mentioned above.
 
 The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](../../guide/file-based-routing#prerequisites). This will **NOT** work if you are **only** using the CLI (`@tanstack/router-cli`).

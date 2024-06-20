@@ -36,6 +36,16 @@
         "default": "./dist/cjs/vite.cjs"
       }
     },
+    "./rspack": {
+      "import": {
+        "types": "./dist/esm/rspack.d.ts",
+        "default": "./dist/esm/rspack.js"
+      },
+      "require": {
+        "types": "./dist/cjs/rspack.d.cts",
+        "default": "./dist/cjs/rspack.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -65,10 +75,14 @@
     "src/**"
   ],
   "peerDependencies": {
-    "vite": ">=5"
+    "vite": ">=5",
+    "@rsbuild/core": ">=0.7.9"
   },
   "peerDependenciesMeta": {
     "vite": {
+      "optional": true
+    },
+    "@rsbuild/core": {
       "optional": true
     }
   },

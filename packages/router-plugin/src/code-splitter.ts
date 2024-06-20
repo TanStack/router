@@ -49,6 +49,8 @@ plugins: [
   }
 }
 
+const PLUGIN_NAME = 'unplugin:router-code-splitter'
+
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}, { framework }) => {
@@ -120,6 +122,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   return {
     name: 'router-code-splitter-plugin',
     enforce: 'pre',
+
     resolveId(source) {
       if (!userConfig.experimental?.enableCodeSplitting) {
         return null
@@ -130,6 +133,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       }
       return null
     },
+
     async transform(code, id) {
       if (!userConfig.experimental?.enableCodeSplitting) {
         return null
@@ -160,11 +164,16 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
       return null
     },
+
     vite: {
       async configResolved(config) {
         ROOT = config.root
         userConfig = await getConfig(options, ROOT)
       },
+    },
+
+    async rspack(compiler) {
+      userConfig = await getConfig(options, ROOT)
     },
   }
 }
