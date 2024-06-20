@@ -3030,6 +3030,54 @@ describe('Link', () => {
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
+
+  test('when linking to self with from prop set and param containing a slash', async () => {
+    const ErrorComponent = vi.fn(() => <h1>Something went wrong!</h1>)
+
+    const rootRoute = createRootRoute({
+      errorComponent: ErrorComponent,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link to="/$postId" params={{ postId: 'id/with-slash' }}>
+          Go to post
+        </Link>
+      ),
+    })
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/$postId',
+      component: () => (
+        <Link from="/$postId" to="/$postId">
+          Link to self with from prop set
+        </Link>
+      ),
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, postRoute])
+    const router = createRouter({ routeTree })
+
+    render(<RouterProvider router={router} />)
+
+    const postLink = await screen.findByRole('link', {
+      name: 'Go to post',
+    })
+
+    expect(postLink).toHaveAttribute('href', '/id%2Fwith-slash')
+
+    fireEvent.click(postLink)
+
+    const selfLink = await screen.findByRole('link', {
+      name: 'Link to self with from prop set',
+    })
+
+    expect(selfLink).toBeInTheDocument()
+    expect(ErrorComponent).not.toHaveBeenCalled()
+  })
 })
 
 describe('createLink', () => {

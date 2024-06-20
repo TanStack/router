@@ -1170,16 +1170,6 @@ export class Router<
           })
       }
 
-      // encode all path params so the generated href is valid and stable
-      Object.keys(nextParams).forEach((key) => {
-        if (['*', '_splat'].includes(key)) {
-          // the splat/catch-all routes shouldn't have the '/' encoded out
-          nextParams[key] = encodeURI(nextParams[key])
-        } else {
-          nextParams[key] = encodeURIComponent(nextParams[key])
-        }
-      })
-
       pathname = interpolatePath({
         path: pathname,
         params: nextParams ?? {},
