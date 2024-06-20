@@ -49,7 +49,10 @@ export async function handleRequest(request: Request) {
             ] as const
           }
 
-          if (request.headers.get(serverFnPayloadTypeHeader) === 'formData') {
+          if (
+            request.headers.get(serverFnPayloadTypeHeader) === 'formData' ||
+            request.headers.get('Content-Type')?.includes('multipart/form-data')
+          ) {
             return [
               method.toLowerCase() === 'get'
                 ? (() => {
