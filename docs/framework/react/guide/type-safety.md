@@ -117,13 +117,12 @@ As your application scales, TypeScript check times will naturally increase. Ther
 
 ### Only infer types you need
 
-A great pattern with client side data caches (TanStack Query etc.) is to prefetch data. For example with TanStack Query you might have a route which calls `ensureQueryData` in a `loader`.
+A great pattern with client side data caches (TanStack Query, etc.) is to prefetch data. For example with TanStack Query you might have a route which calls `queryClient.ensureQueryData` in a `loader`.
 
 ```tsx
 export const Route = createFileRoute('/posts/$postId/deep')({
   loader: ({ context: { queryClient }, params: { postId } }) =>
     queryClient.ensureQueryData(postQueryOptions(postId)),
-  errorComponent: PostErrorComponent as any,
   component: PostDeepComponent,
 })
 
@@ -135,14 +134,13 @@ function PostDeepComponent() {
 }
 ```
 
-This may look fine and for small route trees you may not notice any TS performance issues. However in this case TS has to infer the loader return type despite it never beng used in your route. If the loader data is a complex type and many routes prefetch in this manner it can slow down editor performance. In this case the change is simple and you can let `Promise<void>` be inferred
+This may look fine and for small route trees and you may not notice any TS performance issues. However in this case TS has to infer the loader's return type, despite it never being used in your route. If the loader data is a complex type with many routes that prefetch in this manner, it can slow down editor performance. In this case, the change is quite simple and let typescript infer Promise<void>.
 
 ```tsx
 export const Route = createFileRoute('/posts/$postId/deep')({
   loader: async ({ context: { queryClient }, params: { postId } }) => {
     await queryClient.ensureQueryData(postQueryOptions(postId))
   },
-  errorComponent: PostErrorComponent as any,
   component: PostDeepComponent,
 })
 
