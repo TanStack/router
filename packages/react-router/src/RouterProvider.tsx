@@ -45,19 +45,14 @@ export type NavigateFn = <
   },
 ) => Promise<void>
 
-export type BuildLocationFn<TRouteTree extends AnyRoute> = <
+export type BuildLocationFn = <
   TTo extends string,
-  TFrom extends RoutePaths<TRouteTree> | string = string,
-  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
 >(
-  opts: ToOptions<
-    Router<TRouteTree, 'never'>,
-    TFrom,
-    TTo,
-    TMaskFrom,
-    TMaskTo
-  > & {
+  opts: ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
     leaveParams?: boolean
   },
 ) => ParsedLocation
