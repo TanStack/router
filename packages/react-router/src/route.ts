@@ -678,7 +678,6 @@ export class Route<
     children: TChildren
     loaderData: TLoaderData
     loaderDeps: TLoaderDeps
-    routerContext: any
   }
 
   init = (opts: { originalIndex: number }): void => {

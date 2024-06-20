@@ -14,14 +14,6 @@ test('when creating the root', () => {
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 })
 
-test('when creating the root with a loader', () => {
-  const rootRoute = createRootRoute()
-
-  expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
-  expectTypeOf(rootRoute.id).toEqualTypeOf<'__root__'>()
-  expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
-})
-
 test('when creating the root with beforeLoad', () => {
   const rootRoute = createRootRoute({
     beforeLoad: (opts) => {
@@ -609,6 +601,9 @@ test('when creating a child route with context, search, params, loader, loaderDe
     detailsPermissions: readonly ['view']
     invoicePermissions: readonly ['view']
   }
+  type TExpectedRouteContext = {
+    detailPermission: boolean
+  }
   type TExpectedLoaderData = { detailLoader: 'detailResult' }
   type TExpectedMatch = {
     params: TExpectedParams
@@ -617,6 +612,7 @@ test('when creating a child route with context, search, params, loader, loaderDe
     loaderDeps: { detailPage: number; invoicePage: number }
     loaderPromise: Promise<TExpectedLoaderData>
     loaderData?: TExpectedLoaderData
+    routeContext: TExpectedRouteContext
   }
 
   createRoute({
@@ -626,6 +622,7 @@ test('when creating a child route with context, search, params, loader, loaderDe
       detailPage: deps.search.detailPage,
       invoicePage: deps.search.page,
     }),
+    beforeLoad: () => ({ detailPermission: true }),
     loader: () => ({ detailLoader: 'detailResult' }) as const,
     onEnter: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
     onStay: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
