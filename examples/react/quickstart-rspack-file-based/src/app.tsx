@@ -1,55 +1,7 @@
 import * as React from 'react'
-import {
-  createRootRoute,
-  createRoute,
-  createRouter,
-  Link,
-  Outlet,
-  RouterProvider,
-} from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { createRouter, RouterProvider } from '@tanstack/react-router'
 
-const rootRoute = createRootRoute({
-  component: function RootComponent() {
-    return (
-      <React.Fragment>
-        <div className="flex gap-4">
-          <Link to="/">Home</Link>
-          <Link to="/about">About</Link>
-        </div>
-        <Outlet />
-        <TanStackRouterDevtools />
-      </React.Fragment>
-    )
-  },
-})
-
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/',
-  component: function Component() {
-    return (
-      <div className="content">
-        <h1 className="text-4xl">Index Rsbuild with React</h1>
-        <p>Start building amazing things with Rsbuild.</p>
-      </div>
-    )
-  },
-})
-const aboutRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: 'about',
-  component: function Component() {
-    return (
-      <div className="content">
-        <h1 className="text-4xl">About Rsbuild with React</h1>
-        <p>Start building amazing things with Rsbuild.</p>
-      </div>
-    )
-  },
-})
-
-const routeTree = rootRoute.addChildren({ indexRoute, aboutRoute })
+import { routeTree } from './routeTree.gen'
 
 // Set up a Router instance
 const router = createRouter({
