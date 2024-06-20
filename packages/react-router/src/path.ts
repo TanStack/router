@@ -205,21 +205,33 @@ export function interpolatePath({
   leaveParams,
 }: InterpolatePathOptions) {
   const interpolatedPathSegments = parsePathname(path)
+  const encodedParams: any = {}
+
+  for (const [key, value] of Object.entries(params)) {
+    const isValueString = typeof value === 'string'
+
+    if (['*', '_splat'].includes(key)) {
+      // the splat/catch-all routes shouldn't have the '/' encoded out
+      encodedParams[key] = isValueString ? encodeURI(value) : value
+    } else {
+      encodedParams[key] = isValueString ? encodeURIComponent(value) : value
+    }
+  }
 
   return joinPaths(
     interpolatedPathSegments.map((segment) => {
       if (segment.type === 'wildcard') {
-        const value = params._splat
+        const value = encodedParams._splat
         if (leaveWildcards) return `${segment.value}${value ?? ''}`
         return value
       }
 
       if (segment.type === 'param') {
         if (leaveParams) {
-          const value = params[segment.value]
+          const value = encodedParams[segment.value]
           return `${segment.value}${value ?? ''}`
         }
-        return params![segment.value.substring(1)] ?? 'undefined'
+        return encodedParams![segment.value.substring(1)] ?? 'undefined'
       }
 
       return segment.value

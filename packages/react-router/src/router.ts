@@ -982,20 +982,9 @@ export class Router<
 
       const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
 
-      const encodedParams: Record<string, string> = {}
-
-      for (const [key, value] of Object.entries(routeParams)) {
-        if (['*', '_splat'].includes(key)) {
-          // the splat/catch-all routes shouldn't have the '/' encoded out
-          encodedParams[key] = encodeURI(value)
-        } else {
-          encodedParams[key] = encodeURIComponent(value)
-        }
-      }
-
       const interpolatedPath = interpolatePath({
         path: route.fullPath,
-        params: encodedParams,
+        params: routeParams,
       })
 
       const matchId =
@@ -1180,16 +1169,6 @@ export class Router<
             nextParams = { ...nextParams!, ...fn!(nextParams) }
           })
       }
-
-      // encode all path params so the generated href is valid and stable
-      Object.keys(nextParams).forEach((key) => {
-        if (['*', '_splat'].includes(key)) {
-          // the splat/catch-all routes shouldn't have the '/' encoded out
-          nextParams[key] = encodeURI(nextParams[key])
-        } else {
-          nextParams[key] = encodeURIComponent(nextParams[key])
-        }
-      })
 
       pathname = interpolatePath({
         path: pathname,
