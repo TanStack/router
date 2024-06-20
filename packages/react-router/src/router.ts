@@ -43,6 +43,7 @@ import type {
   ErrorRouteComponent,
   LoaderFnContext,
   NotFoundRouteComponent,
+  RootRoute,
   RouteMask,
 } from './route'
 import type {
@@ -109,13 +110,28 @@ export type HydrationCtx = {
   payload: Record<string, any>
 }
 
+export type InferRouterContext<TRouteTree extends AnyRoute> =
+  TRouteTree extends RootRoute<
+    any,
+    any,
+    any,
+    any,
+    any,
+    infer TRouterContext extends AnyContext,
+    any,
+    any,
+    any
+  >
+    ? TRouterContext
+    : AnyContext
+
 export type RouterContextOptions<TRouteTree extends AnyRoute> =
-  AnyContext extends TRouteTree['types']['routerContext']
+  AnyContext extends InferRouterContext<TRouteTree>
     ? {
-        context?: TRouteTree['types']['routerContext']
+        context?: InferRouterContext<TRouteTree>
       }
     : {
-        context: TRouteTree['types']['routerContext']
+        context: InferRouterContext<TRouteTree>
       }
 
 export type TrailingSlashOption = 'always' | 'never' | 'preserve'
@@ -261,7 +277,7 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#context-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/router-context)
    */
-  context?: TRouteTree['types']['routerContext']
+  context?: InferRouterContext<TRouteTree>
   /**
    * A function that will be called when the router is dehydrated.
    * The return value of this function will be serialized and stored in the router's dehydrated state.
@@ -1094,7 +1110,7 @@ export class Router<
     })
   }
 
-  buildLocation: BuildLocationFn<TRouteTree> = (opts) => {
+  buildLocation: BuildLocationFn = (opts) => {
     const build = (
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
