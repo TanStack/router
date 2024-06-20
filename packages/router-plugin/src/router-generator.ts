@@ -12,6 +12,8 @@ const setLock = (bool: boolean) => {
   lock = bool
 }
 
+const PLUGIN_NAME = 'unplugin:router-generator'
+
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}) => {
@@ -88,6 +90,10 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       userConfig = await getConfig(options, ROOT)
 
       await run(generate)
+
+      compiler.hooks.watchRun.tap(PLUGIN_NAME, async () => {
+        await run(generate)
+      })
     },
   }
 }
