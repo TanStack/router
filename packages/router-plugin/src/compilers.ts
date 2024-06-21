@@ -74,7 +74,7 @@ export async function compileFile(opts: {
                             path.parentPath.node.arguments[0],
                           )
 
-                          let found: boolean = false
+                          let found = false
 
                           const hasImportedOrDefinedIdentifier = (
                             name: string,
@@ -204,7 +204,7 @@ export async function compileFile(opts: {
                             })
                           }
 
-                          if (found) {
+                          if (found as boolean) {
                             programPath.pushContainer('body', [
                               template.statement(
                                 `function TSR_Dummy_Component() {}`,
@@ -225,7 +225,10 @@ export async function compileFile(opts: {
                    * from the program, by checking that the import has no
                    * specifiers
                    */
-                  if (existingCompImportPath || existingLoaderImportPath) {
+                  if (
+                    (existingCompImportPath as string | null) ||
+                    (existingLoaderImportPath as string | null)
+                  ) {
                     programPath.traverse({
                       ImportDeclaration(path) {
                         if (path.node.specifiers.length > 0) return
