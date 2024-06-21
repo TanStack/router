@@ -1,2 +1,2 @@
-export const rootRouteId = '__root__' as const
+export const rootRouteId = '__root__'
 export type RootRouteId = typeof rootRouteId
