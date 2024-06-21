@@ -4,19 +4,11 @@ import { TanStackRouterRspack } from '@tanstack/router-plugin/rspack'
 
 export default defineConfig({
   plugins: [pluginReact()],
-  server: {
-    port: 3001,
-  },
-  dev: {
-    startUrl: false,
-  },
   html: {
     tags: [
       {
         tag: 'script',
-        attrs: {
-          src: 'https://cdn.tailwindcss.com',
-        },
+        attrs: { src: 'https://cdn.tailwindcss.com' },
       },
     ],
   },
