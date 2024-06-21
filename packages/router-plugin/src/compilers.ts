@@ -50,6 +50,7 @@ export async function compileFile(opts: {
                    * `import '../shared/imported'`
                    */
                   let existingCompImportPath: string | null = null
+                  let existingLoaderImportPath: string | null = null
 
                   programPath.traverse(
                     {
@@ -90,7 +91,7 @@ export async function compileFile(opts: {
 
                                     if (t.isIdentifier(value)) {
                                       const importedNodeTracker =
-                                        findIfComponentIsImported(
+                                        findIfIdentifierIsImported(
                                           programPath,
                                           value.name,
                                         )
@@ -149,6 +150,20 @@ export async function compileFile(opts: {
                                     const value = prop.value
 
                                     if (t.isIdentifier(value)) {
+                                      const importedNodeTracker =
+                                        findIfIdentifierIsImported(
+                                          programPath,
+                                          value.name,
+                                        )
+
+                                      if (importedNodeTracker) {
+                                        existingLoaderImportPath =
+                                          getImportPathByLocalName(
+                                            programPath,
+                                            value.name,
+                                          )
+                                      }
+
                                       removeIdentifierLiteral(path, value)
                                     }
 
@@ -210,12 +225,13 @@ export async function compileFile(opts: {
                    * from the program, by checking that the import has no
                    * specifiers
                    */
-                  if (existingCompImportPath) {
+                  if (existingCompImportPath || existingLoaderImportPath) {
                     programPath.traverse({
                       ImportDeclaration(path) {
+                        if (path.node.specifiers.length > 0) return
                         if (
-                          path.node.source.value === existingCompImportPath &&
-                          !path.node.specifiers.length
+                          path.node.source.value === existingCompImportPath ||
+                          path.node.source.value === existingLoaderImportPath
                         ) {
                           path.remove()
                         }
@@ -236,7 +252,7 @@ export async function compileFile(opts: {
   })
 }
 
-function findIfComponentIsImported(
+function findIfIdentifierIsImported(
   programPath: babel.NodePath<t.Program>,
   name: string,
 ):
