@@ -332,7 +332,10 @@ export async function splitFile(opts: {
                             ),
                           ]),
                         )
-                      } else if (t.isImportSpecifier(splitNode)) {
+                      } else if (
+                        t.isImportSpecifier(splitNode) ||
+                        t.isImportDefaultSpecifier(splitNode)
+                      ) {
                         programPath.pushContainer(
                           'body',
                           t.variableDeclaration('const', [
