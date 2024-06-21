@@ -6,7 +6,10 @@ import { compileFile, splitFile } from '../src/compilers'
 import { splitPrefix } from '../src/constants'
 
 async function getFilenames() {
-  return Promise.resolve(['imported-default-component.tsx'])
+  return Promise.resolve([
+    'imported-default-component.tsx',
+    'imported-default-component-destructured-loader.tsx',
+  ])
 }
 
 describe('code-splitter works', async () => {
