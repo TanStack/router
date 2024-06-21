@@ -14,7 +14,7 @@
   "dependencies": {
     "@tanstack/bling": "^0.5.0",
     "@tanstack/react-router": "^1.39.8",
-    "@tanstack/start": "^1.39.9",
+    "@tanstack/start": "^1.39.11",
     "@tanstack/react-store": "^0.2.1",
     "@tanstack/router-devtools": "^1.39.10",
     "redaxios": "^0.5.0",
