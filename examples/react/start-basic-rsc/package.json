@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.39.8",
-    "@tanstack/router-devtools": "^1.39.8",
+    "@tanstack/router-devtools": "^1.39.10",
     "@tanstack/router-vite-plugin": "^1.39.9",
     "@tanstack/start": "^1.39.9",
     "redaxios": "^0.5.0",

@@ -16,7 +16,7 @@
     "@tanstack/react-router": "^1.39.8",
     "@tanstack/start": "^1.39.9",
     "@tanstack/react-store": "^0.2.1",
-    "@tanstack/router-devtools": "^1.39.8",
+    "@tanstack/router-devtools": "^1.39.10",
     "redaxios": "^0.5.0",
     "fastify": "^4.25.2",
     "get-port": "^7.0.0",
