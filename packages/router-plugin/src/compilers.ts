@@ -433,28 +433,31 @@ export async function splitFile(opts: {
                           ]),
                         )
                       } else if (t.isCallExpression(splitNode)) {
-                        const generatedCode = generate(splitNode).code
-                        const ast = babel.parse(generatedCode, {
-                          sourceType: 'unambiguous', // since we're generating an expression
-                        })
+                        const outputSplitNodeCode = generate(splitNode).code
+                        const splitNodeAst = babel.parse(outputSplitNodeCode)
 
-                        if (!ast) {
+                        if (!splitNodeAst) {
                           throw new Error(
                             `Failed to parse the generated code for "${splitType}" in the node type "${splitNode.type}"`,
                           )
                         }
 
-                        const astProgram = ast.program
-                        const expression = astProgram.body[0]
+                        const statement = splitNodeAst.program.body[0]
 
-                        if (t.isExpressionStatement(expression)) {
-                          const statement = expression.expression
+                        if (!statement) {
+                          throw new Error(
+                            `Failed to parse the generated code for "${splitType}" in the node type "${splitNode.type}" as no expression was found in the program body`,
+                          )
+                        }
+
+                        if (t.isExpressionStatement(statement)) {
+                          const expression = statement.expression
                           programPath.pushContainer(
                             'body',
                             t.variableDeclaration('const', [
                               t.variableDeclarator(
                                 t.identifier(splitType),
-                                statement,
+                                expression,
                               ),
                             ]),
                           )
