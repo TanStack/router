@@ -260,7 +260,7 @@ function getImportSpecifierAndPathFromLocalName(
   programPath.traverse({
     ImportDeclaration(importPath) {
       const found = importPath.node.specifiers.find(
-        (specifier) => specifier.local.name === name,
+        (targetSpecifier) => targetSpecifier.local.name === name,
       )
       if (found) {
         specifier = found
