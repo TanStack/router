@@ -40,132 +40,161 @@ export async function compileFile(opts: {
                 enter(programPath: babel.NodePath<t.Program>, state: State) {
                   const splitUrl = `${splitPrefix}:${opts.filename}?${splitPrefix}`
 
+                  /**
+                   * If the component for the route is being imported from
+                   * another file, this is to track the path to that file
+                   * the path itself doesn't matter, we just need to keep
+                   * track of it so that we can remove it from the imports
+                   * list if it's not being used like:
+                   *
+                   * `import '../shared/imported'`
+                   */
+                  let existingCompImportPath: string | null = null
+
                   programPath.traverse(
                     {
                       CallExpression: (path) => {
-                        if (t.isIdentifier(path.node.callee)) {
-                          if (
+                        if (!t.isIdentifier(path.node.callee)) {
+                          return
+                        }
+
+                        if (
+                          !(
                             path.node.callee.name === 'createRoute' ||
                             path.node.callee.name === 'createFileRoute'
-                          ) {
-                            if (t.isCallExpression(path.parentPath.node)) {
-                              const options = resolveIdentifier(
-                                path,
-                                path.parentPath.node.arguments[0],
-                              )
+                          )
+                        ) {
+                          return
+                        }
 
-                              let found = false
+                        if (t.isCallExpression(path.parentPath.node)) {
+                          const options = resolveIdentifier(
+                            path,
+                            path.parentPath.node.arguments[0],
+                          )
 
-                              const hasImportedOrDefinedIdentifier = (
-                                name: string,
-                              ) => {
-                                return programPath.scope.hasBinding(name)
-                              }
+                          let found: boolean = false
 
-                              if (t.isObjectExpression(options)) {
-                                options.properties.forEach((prop) => {
-                                  if (t.isObjectProperty(prop)) {
-                                    if (t.isIdentifier(prop.key)) {
-                                      if (prop.key.name === 'component') {
-                                        const value = prop.value
+                          const hasImportedOrDefinedIdentifier = (
+                            name: string,
+                          ) => {
+                            return programPath.scope.hasBinding(name)
+                          }
 
-                                        if (t.isIdentifier(value)) {
-                                          removeIdentifierLiteral(path, value)
-                                        }
+                          if (t.isObjectExpression(options)) {
+                            options.properties.forEach((prop) => {
+                              if (t.isObjectProperty(prop)) {
+                                if (t.isIdentifier(prop.key)) {
+                                  if (prop.key.name === 'component') {
+                                    const value = prop.value
 
-                                        // Prepend the import statement to the program along with the importer function
-                                        // Check to see if lazyRouteComponent is already imported before attempting
-                                        // to import it again
+                                    if (t.isIdentifier(value)) {
+                                      const importedNodeTracker =
+                                        findIfComponentIsImported(
+                                          programPath,
+                                          value.name,
+                                        )
 
-                                        if (
-                                          !hasImportedOrDefinedIdentifier(
-                                            'lazyRouteComponent',
+                                      if (importedNodeTracker) {
+                                        existingCompImportPath =
+                                          getImportPathByLocalName(
+                                            programPath,
+                                            value.name,
                                           )
-                                        ) {
-                                          programPath.unshiftContainer('body', [
-                                            template.smart(
-                                              `import { lazyRouteComponent } from '@tanstack/react-router'`,
-                                            )() as t.Statement,
-                                          ])
-                                        }
-
-                                        if (
-                                          !hasImportedOrDefinedIdentifier(
-                                            '$$splitComponentImporter',
-                                          )
-                                        ) {
-                                          programPath.unshiftContainer('body', [
-                                            template.smart(
-                                              `const $$splitComponentImporter = () => import('${splitUrl}')`,
-                                            )() as t.Statement,
-                                          ])
-                                        }
-
-                                        prop.value = template.expression(
-                                          `lazyRouteComponent($$splitComponentImporter, 'component')`,
-                                        )() as any
-
-                                        programPath.pushContainer('body', [
-                                          template.smart(
-                                            `function DummyComponent() { return null }`,
-                                          )() as t.Statement,
-                                        ])
-
-                                        found = true
-                                      } else if (prop.key.name === 'loader') {
-                                        const value = prop.value
-
-                                        if (t.isIdentifier(value)) {
-                                          removeIdentifierLiteral(path, value)
-                                        }
-
-                                        // Prepend the import statement to the program along with the importer function
-
-                                        if (
-                                          !hasImportedOrDefinedIdentifier(
-                                            'lazyFn',
-                                          )
-                                        ) {
-                                          programPath.unshiftContainer('body', [
-                                            template.smart(
-                                              `import { lazyFn } from '@tanstack/react-router'`,
-                                            )() as t.Statement,
-                                          ])
-                                        }
-
-                                        if (
-                                          !hasImportedOrDefinedIdentifier(
-                                            '$$splitLoaderImporter',
-                                          )
-                                        ) {
-                                          programPath.unshiftContainer('body', [
-                                            template.smart(
-                                              `const $$splitLoaderImporter = () => import('${splitUrl}')`,
-                                            )() as t.Statement,
-                                          ])
-                                        }
-
-                                        prop.value = template.expression(
-                                          `lazyFn($$splitLoaderImporter, 'loader')`,
-                                        )() as any
-
-                                        found = true
                                       }
+
+                                      removeIdentifierLiteral(path, value)
                                     }
+
+                                    // Prepend the import statement to the program along with the importer function
+                                    // Check to see if lazyRouteComponent is already imported before attempting
+                                    // to import it again
+
+                                    if (
+                                      !hasImportedOrDefinedIdentifier(
+                                        'lazyRouteComponent',
+                                      )
+                                    ) {
+                                      programPath.unshiftContainer('body', [
+                                        template.statement(
+                                          `import { lazyRouteComponent } from '@tanstack/react-router'`,
+                                        )(),
+                                      ])
+                                    }
+
+                                    if (
+                                      !hasImportedOrDefinedIdentifier(
+                                        '$$splitComponentImporter',
+                                      )
+                                    ) {
+                                      programPath.unshiftContainer('body', [
+                                        template.statement(
+                                          `const $$splitComponentImporter = () => import('${splitUrl}')`,
+                                        )(),
+                                      ])
+                                    }
+
+                                    prop.value = template.expression(
+                                      `lazyRouteComponent($$splitComponentImporter, 'component')`,
+                                    )()
+
+                                    programPath.pushContainer('body', [
+                                      template.statement(
+                                        `function DummyComponent() { return null }`,
+                                      )(),
+                                    ])
+
+                                    found = true
+                                  } else if (prop.key.name === 'loader') {
+                                    const value = prop.value
+
+                                    if (t.isIdentifier(value)) {
+                                      removeIdentifierLiteral(path, value)
+                                    }
+
+                                    // Prepend the import statement to the program along with the importer function
+
+                                    if (
+                                      !hasImportedOrDefinedIdentifier('lazyFn')
+                                    ) {
+                                      programPath.unshiftContainer('body', [
+                                        template.smart(
+                                          `import { lazyFn } from '@tanstack/react-router'`,
+                                        )() as t.Statement,
+                                      ])
+                                    }
+
+                                    if (
+                                      !hasImportedOrDefinedIdentifier(
+                                        '$$splitLoaderImporter',
+                                      )
+                                    ) {
+                                      programPath.unshiftContainer('body', [
+                                        template.statement(
+                                          `const $$splitLoaderImporter = () => import('${splitUrl}')`,
+                                        )(),
+                                      ])
+                                    }
+
+                                    prop.value = template.expression(
+                                      `lazyFn($$splitLoaderImporter, 'loader')`,
+                                    )()
+
+                                    found = true
                                   }
-
-                                  programPath.scope.crawl()
-                                })
+                                }
                               }
 
-                              if (found as boolean) {
-                                programPath.pushContainer('body', [
-                                  template.smart(
-                                    `function TSR_Dummy_Component() {}`,
-                                  )() as t.Statement,
-                                ])
-                              }
-                            }
+                              programPath.scope.crawl()
+                            })
+                          }
+
+                          if (found) {
+                            programPath.pushContainer('body', [
+                              template.statement(
+                                `function TSR_Dummy_Component() {}`,
+                              )(),
+                            ])
                           }
                         }
                       },
@@ -174,6 +203,25 @@ export async function compileFile(opts: {
                   )
 
                   eliminateUnreferencedIdentifiers(programPath)
+
+                  /**
+                   * If the component for the route is being imported,
+                   * and it's not being used, remove the import statement
+                   * from the program, by checking that the import has no
+                   * specifiers
+                   */
+                  if (existingCompImportPath) {
+                    programPath.traverse({
+                      ImportDeclaration(path) {
+                        if (
+                          path.node.source.value === existingCompImportPath &&
+                          !path.node.specifiers.length
+                        ) {
+                          path.remove()
+                        }
+                      },
+                    })
+                  }
                 },
               },
             },
@@ -186,6 +234,55 @@ export async function compileFile(opts: {
       ].filter(Boolean),
     }),
   })
+}
+
+function findIfComponentIsImported(
+  programPath: babel.NodePath<t.Program>,
+  name: string,
+):
+  | t.ImportDefaultSpecifier
+  | t.ImportNamespaceSpecifier
+  | t.ImportSpecifier
+  | null {
+  let imported:
+    | t.ImportDefaultSpecifier
+    | t.ImportNamespaceSpecifier
+    | t.ImportSpecifier
+    | null = null
+
+  programPath.traverse({
+    ImportDeclaration(path) {
+      const found = path.node.specifiers.find(
+        (specifier) => specifier.local.name === name,
+      )
+      if (found) {
+        imported = found
+      }
+    },
+  })
+
+  return imported
+}
+
+function getImportPathByLocalName(
+  programPath: babel.NodePath<t.Program>,
+  name: string,
+): string | null {
+  let path: string | null = null
+
+  programPath.traverse({
+    ImportDeclaration(importPath) {
+      const find = importPath.node.specifiers.find((v) => v.local.name === name)
+      if (
+        find &&
+        (t.isImportSpecifier(find) || t.isImportDefaultSpecifier(find))
+      ) {
+        path = importPath.node.source.value
+      }
+    },
+  })
+
+  return path
 }
 
 // Reusable function to get literal value or resolve variable to literal
