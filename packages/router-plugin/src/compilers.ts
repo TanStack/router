@@ -1,8 +1,9 @@
 import * as t from '@babel/types'
+import babel from '@babel/core'
+import generate from '@babel/generator'
 import * as template from '@babel/template'
 import { splitPrefix } from './constants'
 import { eliminateUnreferencedIdentifiers } from './eliminateUnreferencedIdentifiers'
-import type * as babel from '@babel/core'
 import type { CompileAstFn } from './ast'
 
 type SplitModulesById = Record<
@@ -431,8 +432,42 @@ export async function splitFile(opts: {
                             ),
                           ]),
                         )
+                      } else if (t.isCallExpression(splitNode)) {
+                        const outputSplitNodeCode = generate(splitNode).code
+                        const splitNodeAst = babel.parse(outputSplitNodeCode)
+
+                        if (!splitNodeAst) {
+                          throw new Error(
+                            `Failed to parse the generated code for "${splitType}" in the node type "${splitNode.type}"`,
+                          )
+                        }
+
+                        const statement = splitNodeAst.program.body[0]
+
+                        if (!statement) {
+                          throw new Error(
+                            `Failed to parse the generated code for "${splitType}" in the node type "${splitNode.type}" as no statement was found in the program body`,
+                          )
+                        }
+
+                        if (t.isExpressionStatement(statement)) {
+                          const expression = statement.expression
+                          programPath.pushContainer(
+                            'body',
+                            t.variableDeclaration('const', [
+                              t.variableDeclarator(
+                                t.identifier(splitType),
+                                expression,
+                              ),
+                            ]),
+                          )
+                        } else {
+                          throw new Error(
+                            `Unexpected expression type encounter for "${splitType}" in the node type "${splitNode.type}"`,
+                          )
+                        }
                       } else {
-                        console.info(splitNode)
+                        console.info('Unexpected splitNode type:', splitNode)
                         throw new Error(
                           `Unexpected splitNode type ☝️: ${splitNode.type}`,
                         )
