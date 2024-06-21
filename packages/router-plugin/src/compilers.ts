@@ -364,34 +364,40 @@ export async function splitFile(opts: {
                   programPath.traverse(
                     {
                       CallExpression: (path) => {
-                        if (t.isIdentifier(path.node.callee)) {
-                          if (
+                        if (!t.isIdentifier(path.node.callee)) {
+                          return
+                        }
+
+                        if (
+                          !(
                             path.node.callee.name === 'createRoute' ||
                             path.node.callee.name === 'createFileRoute'
-                          ) {
-                            if (t.isCallExpression(path.parentPath.node)) {
-                              const options = resolveIdentifier(
-                                path,
-                                path.parentPath.node.arguments[0],
-                              )
+                          )
+                        ) {
+                          return
+                        }
 
-                              if (t.isObjectExpression(options)) {
-                                options.properties.forEach((prop) => {
-                                  if (t.isObjectProperty(prop)) {
-                                    splitNodeTypes.forEach((type) => {
-                                      if (t.isIdentifier(prop.key)) {
-                                        if (prop.key.name === type) {
-                                          splitNodesByType[type] = prop.value
-                                        }
-                                      }
-                                    })
+                        if (t.isCallExpression(path.parentPath.node)) {
+                          const options = resolveIdentifier(
+                            path,
+                            path.parentPath.node.arguments[0],
+                          )
+
+                          if (t.isObjectExpression(options)) {
+                            options.properties.forEach((prop) => {
+                              if (t.isObjectProperty(prop)) {
+                                splitNodeTypes.forEach((type) => {
+                                  if (t.isIdentifier(prop.key)) {
+                                    if (prop.key.name === type) {
+                                      splitNodesByType[type] = prop.value
+                                    }
                                   }
                                 })
-
-                                // Remove all of the options
-                                options.properties = []
                               }
-                            }
+                            })
+
+                            // Remove all of the options
+                            options.properties = []
                           }
                         }
                       },
