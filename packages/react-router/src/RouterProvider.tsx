@@ -24,6 +24,7 @@ export interface CommitLocationOptions {
    * @deprecated All navigations use React transitions under the hood now
    **/
   startTransition?: boolean
+  ignoreBlocker?: boolean
 }
 
 export interface MatchLocation {

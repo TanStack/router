@@ -1332,6 +1332,7 @@ export class Router<
   commitLocation = async ({
     startTransition,
     viewTransition,
+    ignoreBlocker,
     ...next
   }: ParsedLocation & CommitLocationOptions) => {
     const isSameState = () => {
@@ -1387,6 +1388,7 @@ export class Router<
       this.history[next.replace ? 'replace' : 'push'](
         nextHistory.href,
         nextHistory.state,
+        { ignoreBlocker },
       )
     }
 
@@ -1400,6 +1402,7 @@ export class Router<
     resetScroll,
     startTransition,
     viewTransition,
+    ignoreBlocker,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
     const location = this.buildLocation(rest as any)
@@ -1409,6 +1412,7 @@ export class Router<
       viewTransition,
       replace,
       resetScroll,
+      ignoreBlocker,
     })
   }
 

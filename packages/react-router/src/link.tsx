@@ -183,6 +183,7 @@ export interface NavigateOptionProps {
   startTransition?: boolean
   // if set to `true`, the router will wrap the resulting navigation in a document.startViewTransition() call.
   viewTransition?: boolean
+  ignoreBlocker?: boolean
 }
 
 export type ToOptions<
@@ -572,6 +573,7 @@ export function useLinkProps<
     onMouseEnter,
     onMouseLeave,
     onTouchStart,
+    ignoreBlocker,
     ...rest
   } = options
 
@@ -669,6 +671,7 @@ export function useLinkProps<
         resetScroll,
         startTransition,
         viewTransition,
+        ignoreBlocker,
       })
     }
   }
