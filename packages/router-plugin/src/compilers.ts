@@ -43,14 +43,12 @@ export async function compileFile(opts: {
                   programPath.traverse(
                     {
                       CallExpression: (path) => {
-                        if (path.node.callee.type === 'Identifier') {
+                        if (t.isIdentifier(path.node.callee)) {
                           if (
                             path.node.callee.name === 'createRoute' ||
                             path.node.callee.name === 'createFileRoute'
                           ) {
-                            if (
-                              path.parentPath.node.type === 'CallExpression'
-                            ) {
+                            if (t.isCallExpression(path.parentPath.node)) {
                               const options = resolveIdentifier(
                                 path,
                                 path.parentPath.node.arguments[0],
@@ -250,14 +248,12 @@ export async function splitFile(opts: {
                   programPath.traverse(
                     {
                       CallExpression: (path) => {
-                        if (path.node.callee.type === 'Identifier') {
+                        if (t.isIdentifier(path.node.callee)) {
                           if (
                             path.node.callee.name === 'createRoute' ||
                             path.node.callee.name === 'createFileRoute'
                           ) {
-                            if (
-                              path.parentPath.node.type === 'CallExpression'
-                            ) {
+                            if (t.isCallExpression(path.parentPath.node)) {
                               const options = resolveIdentifier(
                                 path,
                                 path.parentPath.node.arguments[0],
