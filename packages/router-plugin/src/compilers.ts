@@ -446,7 +446,7 @@ export async function splitFile(opts: {
 
                         if (!statement) {
                           throw new Error(
-                            `Failed to parse the generated code for "${splitType}" in the node type "${splitNode.type}" as no expression was found in the program body`,
+                            `Failed to parse the generated code for "${splitType}" in the node type "${splitNode.type}" as no statement was found in the program body`,
                           )
                         }
 
