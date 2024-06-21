@@ -9,3 +9,7 @@ export const importedLoader = () => {
     randomNumber: Math.random(),
   }
 }
+
+export default function ImportedDefaultComponent() {
+  return <div>Default imported</div>
+}
