@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.17.8",
-    "@tanstack/react-router": "^1.39.8",
-    "@tanstack/router-devtools": "^1.39.10",
+    "@tanstack/react-router": "^1.40.0",
+    "@tanstack/router-devtools": "^1.40.0",
     "@tanstack/router-vite-plugin": "^1.39.13",
     "redaxios": "^0.5.0",
     "immer": "^10.0.3",
