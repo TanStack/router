@@ -90,19 +90,11 @@ export async function compileFile(opts: {
                                     const value = prop.value
 
                                     if (t.isIdentifier(value)) {
-                                      const importedNodeTracker =
-                                        findIfIdentifierIsImported(
+                                      existingCompImportPath =
+                                        getImportSpecifierAndPathFromLocalName(
                                           programPath,
                                           value.name,
-                                        )
-
-                                      if (importedNodeTracker) {
-                                        existingCompImportPath =
-                                          getImportPathByLocalName(
-                                            programPath,
-                                            value.name,
-                                          )
-                                      }
+                                        ).path
 
                                       removeIdentifierLiteral(path, value)
                                     }
@@ -150,19 +142,11 @@ export async function compileFile(opts: {
                                     const value = prop.value
 
                                     if (t.isIdentifier(value)) {
-                                      const importedNodeTracker =
-                                        findIfIdentifierIsImported(
+                                      existingLoaderImportPath =
+                                        getImportSpecifierAndPathFromLocalName(
                                           programPath,
                                           value.name,
-                                        )
-
-                                      if (importedNodeTracker) {
-                                        existingLoaderImportPath =
-                                          getImportPathByLocalName(
-                                            programPath,
-                                            value.name,
-                                          )
-                                      }
+                                        ).path
 
                                       removeIdentifierLiteral(path, value)
                                     }
@@ -255,53 +239,37 @@ export async function compileFile(opts: {
   })
 }
 
-function findIfIdentifierIsImported(
+function getImportSpecifierAndPathFromLocalName(
   programPath: babel.NodePath<t.Program>,
   name: string,
-):
-  | t.ImportDefaultSpecifier
-  | t.ImportNamespaceSpecifier
-  | t.ImportSpecifier
-  | null {
-  let imported:
+): {
+  specifier:
+    | t.ImportSpecifier
     | t.ImportDefaultSpecifier
     | t.ImportNamespaceSpecifier
+    | null
+  path: string | null
+} {
+  let specifier:
     | t.ImportSpecifier
+    | t.ImportDefaultSpecifier
+    | t.ImportNamespaceSpecifier
     | null = null
-
-  programPath.traverse({
-    ImportDeclaration(path) {
-      const found = path.node.specifiers.find(
-        (specifier) => specifier.local.name === name,
-      )
-      if (found) {
-        imported = found
-      }
-    },
-  })
-
-  return imported
-}
-
-function getImportPathByLocalName(
-  programPath: babel.NodePath<t.Program>,
-  name: string,
-): string | null {
   let path: string | null = null
 
   programPath.traverse({
     ImportDeclaration(importPath) {
-      const find = importPath.node.specifiers.find((v) => v.local.name === name)
-      if (
-        find &&
-        (t.isImportSpecifier(find) || t.isImportDefaultSpecifier(find))
-      ) {
+      const found = importPath.node.specifiers.find(
+        (specifier) => specifier.local.name === name,
+      )
+      if (found) {
+        specifier = found
         path = importPath.node.source.value
       }
     },
   })
 
-  return path
+  return { specifier, path }
 }
 
 // Reusable function to get literal value or resolve variable to literal
