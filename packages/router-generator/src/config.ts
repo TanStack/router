@@ -10,6 +10,7 @@ export const configSchema = z.object({
   generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
   quoteStyle: z.enum(['single', 'double']).optional().default('single'),
   semicolons: z.boolean().optional().default(false),
+  tabWidth: z.number().optional().default(2),
   disableTypes: z.boolean().optional().default(false),
   addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),

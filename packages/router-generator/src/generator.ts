@@ -306,7 +306,13 @@ export async function generator(config: Config) {
 
       if (replaced !== routeCode) {
         logger.log(`🟡 Updating ${node.fullPath}`)
-        await fsp.writeFile(node.fullPath, replaced)
+        const formattedReplaced = await prettier.format(replaced, {
+          semi: config.semicolons,
+          singleQuote: config.quoteStyle === 'single',
+          tabWidth: config.tabWidth,
+          parser: 'typescript',
+        })
+        await fsp.writeFile(node.fullPath, formattedReplaced)
       }
     }
 
@@ -664,6 +670,7 @@ export async function generator(config: Config) {
     {
       semi: config.semicolons,
       singleQuote: config.quoteStyle === 'single',
+      tabWidth: config.tabWidth,
       parser: 'typescript',
     },
   )
