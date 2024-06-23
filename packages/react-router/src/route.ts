@@ -20,6 +20,7 @@ import type { Assign, Expand, IsAny, NoInfer, PickRequired } from './utils'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { NotFoundError } from './not-found'
 import type { LazyRoute } from './fileRoute'
+import type { DeferredPromise } from './defer'
 
 export type AnyPathParams = {}
 
@@ -318,10 +319,10 @@ export type RouteLoaderFn<
   in out TAllParams = {},
   in out TLoaderDeps extends Record<string, any> = {},
   in out TAllContext = AnyContext,
-  TLoaderData = undefined,
+  TLoaderDataReturn = undefined,
 > = (
   match: LoaderFnContext<TAllParams, TLoaderDeps, TAllContext>,
-) => Promise<TLoaderData> | TLoaderData
+) => TLoaderDataReturn
 
 export interface LoaderFnContext<
   in out TAllParams = {},
@@ -415,7 +416,13 @@ export type ResolveLoaderData<TLoaderDataReturn> = [TLoaderDataReturn] extends [
   never,
 ]
   ? undefined
-  : TLoaderDataReturn
+  : TLoaderDataReturn extends Promise<never>
+    ? undefined
+    : TLoaderDataReturn extends DeferredPromise<infer T>
+      ? DeferredPromise<T>
+      : TLoaderDataReturn extends Promise<infer T>
+        ? T
+        : TLoaderDataReturn
 
 export interface AnyRoute
   extends Route<

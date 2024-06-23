@@ -4,6 +4,8 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  defer,
+  DeferredPromise,
 } from '../src'
 
 test('when creating the root', () => {
@@ -628,4 +630,21 @@ test('when creating a child route with context, search, params, loader, loaderDe
     onStay: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
     onLeave: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
   })
+})
+
+test('when creating a child route with a loader that returns a DeferredPromise', () => {
+  const rootRoute = createRootRoute()
+
+  const invoicesRoute = createRoute({
+    path: 'invoices',
+    getParentRoute: () => rootRoute,
+    loader: (opt) => {
+      expectTypeOf(opt).toMatchTypeOf<{ context: {} }>()
+      return defer(new Promise<string>(() => {}))
+    },
+  })
+
+  expectTypeOf(invoicesRoute.useLoaderData()).toEqualTypeOf<
+    DeferredPromise<string>
+  >()
 })
